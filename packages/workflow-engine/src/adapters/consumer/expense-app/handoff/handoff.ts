@@ -32,7 +32,7 @@ import {
   repositoryConsumerPath,
   repositoryDocumentConfiguration,
   repositoryWorkRegistryConfiguration,
-} from '../repository-consumer-config.ts';
+} from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 
 const LEGACY_SECTIONS = [
   'Current Change',

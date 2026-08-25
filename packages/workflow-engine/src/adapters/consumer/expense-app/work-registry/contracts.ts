@@ -75,7 +75,7 @@ import {
   repositoryConsumerPath,
   repositoryDocumentConfiguration,
   repositoryPlanningConfiguration,
-} from '../repository-consumer-config.ts';
+} from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 
 export { parseCheckCommand };
 export type { CheckDefinition, ChecksConfig, ParsedCheckCommand };

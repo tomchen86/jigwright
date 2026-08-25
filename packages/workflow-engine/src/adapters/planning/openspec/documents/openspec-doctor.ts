@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { repositoryPlanningConfiguration } from '../../../consumer/expense-app/repository-consumer-config.ts';
+import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 import { WorkflowError } from '../../../../foundation/errors/errors.ts';
 import { assertOpenSpecSchemaDirectory } from './openspec-adapter.ts';
 import {

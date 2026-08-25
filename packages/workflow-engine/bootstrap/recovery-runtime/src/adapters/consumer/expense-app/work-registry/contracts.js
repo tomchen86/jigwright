@@ -21,7 +21,7 @@ import { assertChangeId, assertPolicyPathInsideRepository, assertTaskId, matches
 import { PATH_ROLES, } from "../../../../modules/source/path-role-registry.js";
 import { parseCheckCommand, parseChecksConfigSource, } from "../../../../modules/source/check-command.js";
 import { planningProviderBindingPath } from "../../../../modules/source/planning-paths.js";
-import { repositoryConsumerPath, repositoryDocumentConfiguration, repositoryPlanningConfiguration, } from "../repository-consumer-config.js";
+import { repositoryConsumerPath, repositoryDocumentConfiguration, repositoryPlanningConfiguration, } from "../../../../modules/repository-consumer/repository-consumer-config.js";
 export { parseCheckCommand };
 export function repositoryCurrentSchemaName(repositoryRoot) {
     return repositoryPlanningConfiguration(repositoryRoot).currentSchemaName;

@@ -333,17 +333,12 @@
     {
       "path": "src/adapters/consumer/expense-app/documents/issues.ts",
       "mode": "100644",
-      "digest": "sha256:d777cc3fe722d2b412b69b59a84182fb5b6bc450d98e3c5e3d7d058d90de3413"
+      "digest": "sha256:19c50959924af2a7ed6eabfdbf221a0c1a8bd79f380cbb899291083dda7238ad"
     },
     {
       "path": "src/adapters/consumer/expense-app/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:0377bd8062a123384718d47ba3c2e2e9c8fda1c738994c0e5e2a99167a93b13a"
-    },
-    {
-      "path": "src/adapters/consumer/expense-app/repository-consumer-config.ts",
-      "mode": "100644",
-      "digest": "sha256:92cb714f07d1c9f907debdc3c6d647418184e1602b1f309f9954c7c90e6a092b"
+      "digest": "sha256:5829331c74c37041f35c9a1aefbba8d84608909dcee77e99ab7fdc5f9d1e70bc"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/check-registry-adapter.ts",
@@ -363,12 +358,12 @@
     {
       "path": "src/adapters/consumer/expense-app/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:9685aeb86058fa28c0d110f9a283ba221273fc047639a4210f35970354f66d7b"
+      "digest": "sha256:a32c60717b90516d88466d073273d333eb02ac1f0a697c329429a7fb6815e9bd"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/database-policy.ts",
       "mode": "100644",
-      "digest": "sha256:fc9a989a4ca8202a6f494dbff752cd9b99a9e7782972bca5c81f5437d74e6cf7"
+      "digest": "sha256:32c546174f2c851089db3a651caa34efb058d414724f3f7455010a2d95e41f30"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
@@ -418,7 +413,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor.ts",
       "mode": "100644",
-      "digest": "sha256:da2ba8d6bf2ba1bac9045898f9a26144db40e1836ae2c0e37a280f467ad2d7fe"
+      "digest": "sha256:ccb5d120c245fa4d3fb9e9744db87f5f4f411f80e2b94101e1ce0a850ac22aff"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-executor.ts",
@@ -778,7 +773,7 @@
     {
       "path": "src/composition-root/change-routing-production.ts",
       "mode": "100644",
-      "digest": "sha256:9864c17f4183ba8e750a9a43380e05ae581c8984ca9714fbbf9591132c145866"
+      "digest": "sha256:e6424278c13ffefaf745adf2a9b234b773b344c713e0ef2fd6093a6c5342b3c3"
     },
     {
       "path": "src/composition-root/change-routing-transaction-production.ts",
@@ -793,7 +788,7 @@
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:fccf36c6b68347e3d483d15a10fd39c25ac66b637dcc2ba42cdce41c68f6bfc8"
+      "digest": "sha256:542148d07edf32c6a14dca6b605801c1de244c54a1e546fd7a57273b19997f57"
     },
     {
       "path": "src/composition-root/grant-production.ts",
@@ -1318,7 +1313,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:1cc04162b478abe1c96f2e489b8723a0022ac78310ebd1d300b733d321a37e06"
+      "digest": "sha256:a3920f63e276446c4e19536c3ed49152c657f418a660cd10f0bfdd3def1bb493"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1589,6 +1584,11 @@
       "path": "src/modules/provider-orchestration/task-strategy-provider-contract.ts",
       "mode": "100644",
       "digest": "sha256:f3494e7440535c2682a901317468a9401aa77a555b4b90416a5c5c3337684479"
+    },
+    {
+      "path": "src/modules/repository-consumer/repository-consumer-config.ts",
+      "mode": "100644",
+      "digest": "sha256:6af0e11acf22c9ffbdc1b86dbf5129daf703edfac06ac27bbba18961a4ae14b9"
     },
     {
       "path": "src/modules/source/check-command.ts",

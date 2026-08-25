@@ -11,7 +11,7 @@ import {
   repositoryConsumerPath,
   repositoryDocumentConfiguration,
   repositoryWorkRegistryConfiguration,
-} from '../../adapters/consumer/expense-app/repository-consumer-config.ts';
+} from '../repository-consumer/repository-consumer-config.ts';
 
 export type WorkItemKindV1 =
   'feature' | 'bug' | 'improvement' | 'chore' | 'research';

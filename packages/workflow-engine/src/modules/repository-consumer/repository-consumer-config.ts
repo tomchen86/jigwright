@@ -16,12 +16,12 @@ import {
 } from '@jigwright/core/repository-path';
 import { assertPolicyPathInsideRepository } from '@jigwright/core/runtime-path-kernel';
 
-import { isRecord } from '../../../foundation/canonical-json/contract-values.ts';
+import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import {
   ExitCode,
   workflowError,
   type ExitCodeValue,
-} from '../../../foundation/errors/errors.ts';
+} from '../../foundation/errors/errors.ts';
 
 const CONFIG_PATH = 'workflow/repository-consumer.json';
 const WORKFLOW_CONFIG_PATH = 'workflow/config.json';

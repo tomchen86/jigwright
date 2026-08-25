@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:e5628052d080e8f1d1ea5663305596eb3e24e20d9577c62e72581db4ff48dc90"
+      "digest": "sha256:72e2c22cd65390c1c44475d91bda2c282d527460c43d2d3db9ae266f3266b25c"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -196,11 +196,6 @@
       "digest": "sha256:39b387a1c43a7161dead27902abeefb76cc565b997772dbbe749fb9b182e57bd"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/repository-consumer-config.js",
-      "mode": "100644",
-      "digest": "sha256:93e24ba42061c8b656d50b4b30d08c8a60d009406a314fefc9d74e0cf130ac56"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/check-runner.js",
       "mode": "100644",
       "digest": "sha256:62c2e1eea4e72a49bedc696f03636ee3e1db7701b559279ded87c64b0194de4a"
@@ -213,7 +208,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:3e66524ffc16a4adcd60c4e43295c8db8675df9ab79d1eb95dc8d00d2ceea7bf"
+      "digest": "sha256:a7f7ee20619553dbd366bc357a4933baebac41692306538ba27683eba51402cf"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/runner-resolution.js",
@@ -564,6 +559,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/task-strategy-provider-contract.js",
       "mode": "100644",
       "digest": "sha256:b5a740389c4dadd5fffd27fa9ebc4707f8c0ae85d23ed38d2adb3e720e9f972f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-config.js",
+      "mode": "100644",
+      "digest": "sha256:eba3236bc9d024388323bd66013e8d29b1259e3d013008cb82127a437a295b05"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",

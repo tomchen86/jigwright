@@ -35,7 +35,7 @@ import {
   validateWorkRegistryProjections,
   workItemDigest,
 } from '../src/modules/governance-intake/work-registry.ts';
-import { expenseAppCompatibilityConfiguration } from '../src/adapters/consumer/expense-app/repository-consumer-config.ts';
+import { expenseAppCompatibilityConfiguration } from '../src/modules/repository-consumer/repository-consumer-config.ts';
 
 test('source capture is content-addressed, append-only, and idempotent', () => {
   const repositoryRoot = fs.mkdtempSync(

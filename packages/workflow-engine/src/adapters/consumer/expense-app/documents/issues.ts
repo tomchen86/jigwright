@@ -9,7 +9,7 @@ import {
 import {
   repositoryConsumerPath,
   repositoryDocumentConfiguration,
-} from '../repository-consumer-config.ts';
+} from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 import { renderIssueLog } from './issue-renderer.ts';
 
 export type IssueCategory = 'feature' | 'bug' | 'enhancement';

@@ -13,7 +13,7 @@ import {
 } from '../modules/lifecycle/change-routing.ts';
 import { productionChangeRoutingAuthorityPort } from './validated-contract-context.ts';
 import { productionChangeRoutingContinuationGrantPort } from './change-routing-grant-production.ts';
-import { parseRepositoryConsumerConfiguration } from '../adapters/consumer/expense-app/repository-consumer-config.ts';
+import { parseRepositoryConsumerConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
 
 export const parseCommittedRepositoryConsumerConfiguration = (value: unknown) =>
   parseRepositoryConsumerConfiguration(value);

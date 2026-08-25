@@ -22,7 +22,7 @@ const PIN_RELATIVE_PATH =
   'packages/workflow-engine/bootstrap/harness-bootstrap-runtime-closure-pin.ts';
 const ENTRYPOINT = 'bootstrap/recovery-runtime/src/harness-bootstrap.js';
 const TRUSTED_HARNESS_TOOLCHAIN_DIGEST =
-  'sha256:ce89bfb4251ce18306ce03b3e711d638f999d777f9841dea79e4ef9d9a24c208' as const;
+  'sha256:2c5f1c5d7615667a8e552e9dc1f0b0dc0406695d557cb88c4bf3b414cd0e1c31' as const;
 const MAX_TOOLCHAIN_FILES = 1_000;
 const MAX_TOOLCHAIN_BYTES = 64 * 1024 * 1024;
 

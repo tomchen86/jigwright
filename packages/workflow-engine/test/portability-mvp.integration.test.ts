@@ -27,7 +27,7 @@ import { readIssueData } from '../src/adapters/consumer/expense-app/documents/is
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
-} from '../src/adapters/consumer/expense-app/repository-consumer-config.ts';
+} from '../src/modules/repository-consumer/repository-consumer-config.ts';
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/expense-app/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
@@ -138,23 +138,16 @@ test('a neutral consumer selects schema, documents, work registry, and database 
   }
 });
 
-test('the tracked expense-app compatibility configuration is explicit', () => {
+test('the tracked Jigwright package configuration is explicit', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const loaded = loadRepositoryConsumerConfiguration(repositoryRoot);
   assert.equal(loaded.source, 'tracked');
-  assert.equal(loaded.configuration.consumerId, 'expense-app');
-  assert.equal(
-    loaded.configuration.planning.currentSchemaName,
-    'expense-app-v2',
-  );
+  assert.equal(loaded.configuration.consumerId, 'jigwright');
+  assert.equal(loaded.configuration.planning.currentSchemaName, 'jigwright');
   assert.deepEqual(loaded.configuration.planning.managedSchemaNames, [
-    'expense-app',
-    'expense-app-v2',
+    'jigwright',
   ]);
-  assert.equal(
-    loaded.configuration.databasePolicy.adapterId,
-    'postgresql-disposable-v1',
-  );
+  assert.equal(loaded.configuration.databasePolicy.adapterId, 'disabled-v1');
 });
 
 test('the pre-configuration expense-app profile remains a narrow compatibility reader', () => {

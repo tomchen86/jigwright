@@ -16,7 +16,7 @@ import {
 import {
   repositoryConsumerPath,
   repositoryWorkRegistryConfiguration,
-} from '../adapters/consumer/expense-app/repository-consumer-config.ts';
+} from '../modules/repository-consumer/repository-consumer-config.ts';
 
 export function renderGovernanceIntakeHandoff(repositoryRoot: string): string {
   renderHandoff(repositoryRoot);
