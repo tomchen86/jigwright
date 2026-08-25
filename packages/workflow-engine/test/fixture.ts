@@ -462,13 +462,21 @@ export function writeReadyV3ExemptChange(
   } = {},
 ) {
   const changeDirectory = path.join(repository, 'openspec/changes', changeId);
+  const currentSchemaName = (
+    JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/repository-consumer.json'),
+        'utf8',
+      ),
+    ) as { planning: { currentSchemaName: string } }
+  ).planning.currentSchemaName;
   const baseline = {
     commitOid: git(repository, ['rev-parse', 'HEAD']).trim(),
     treeOid: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
   };
   fs.writeFileSync(
     path.join(changeDirectory, '.openspec.yaml'),
-    'schema: expense-app-v2\ncreated: 2026-07-15\n',
+    `schema: ${currentSchemaName}\ncreated: 2026-07-15\n`,
   );
   const config = JSON.parse(
     fs.readFileSync(path.join(repository, 'workflow/config.json'), 'utf8'),
@@ -953,13 +961,8 @@ export function installFakeOpenSpec(repository: string): void {
     path.join(repository, 'openspec/config.yaml'),
   );
   fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app'),
-    path.join(repository, 'openspec/schemas/expense-app'),
-    { recursive: true },
-  );
-  fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app-v2'),
-    path.join(repository, 'openspec/schemas/expense-app-v2'),
+    path.join(sourceRepositoryRoot, 'openspec/schemas/jigwright'),
+    path.join(repository, 'openspec/schemas/jigwright'),
     { recursive: true },
   );
 

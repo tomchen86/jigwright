@@ -48,6 +48,7 @@ import {
   readPreMergeAssurance,
   storePreMergeAssurance,
 } from '../../runtime/storage-journal/pre-merge-assurance-store.ts';
+import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
 
 type PullRequestVerification = ReturnType<typeof verifyPullRequest>;
 
@@ -220,6 +221,9 @@ function derivePreMergeAssurancePreparation(
 ): PreparedPreMergeAssurance | null {
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
+  const currentSchemaName = repositoryPlanningConfiguration(
+    git.repositoryRoot,
+  ).currentSchemaName;
   const commits = listRangeCommits(
     git.repositoryRoot,
     verification.mergeBase,
@@ -239,7 +243,7 @@ function derivePreMergeAssurancePreparation(
       verification.head,
       changeId,
     );
-    if (contract.schemaName !== 'expense-app-v2') continue;
+    if (contract.schemaName !== currentSchemaName) continue;
     reviewedChangeCount += 1;
     const taskCommits = taskCommitsByChange.get(changeId)!;
     const readiness = validateInvestigationFirstPlanningReadiness(

@@ -403,7 +403,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-adapter.ts",
       "mode": "100644",
-      "digest": "sha256:d5b8f6873c9f030d26eb095b05352fde127735d475e7924753d6d2b6d122fd74"
+      "digest": "sha256:30d922a5180ee22139e74b9163e33d62331e12860fcdcc8c1be001169b804235"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor-payload.ts",
@@ -458,7 +458,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
       "mode": "100644",
-      "digest": "sha256:6d94075efac01d0a320e21c01174b7909c79077cca27ca5f61531f09b83e5154"
+      "digest": "sha256:e7ff53f320dee436ff38994e89cb628ca47155f5678a47e4144586513adad22d"
     },
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
@@ -508,17 +508,17 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:46c2e5c559bc9c9a815af7e66e1f969d38c61b2df4aeff8a229e69f04bb2759f"
+      "digest": "sha256:bb893cef044674148fa5614c61058c9df44f715bfc7e280b872c5bfe1dce0cd3"
     },
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:914c180185deedb527a525daf4ffc9db94141880c068623f7f2c74671bb78b6c"
+      "digest": "sha256:a58d2f3832bd0a44c7de40acb6be752be182ed1e8751ebca08fbde2ce64fcf04"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:27b0bec7f2f8f070d3c1cdf8645c7ef09c1aad3670bee0adfff400b8bdd206b3"
+      "digest": "sha256:594134c7da9da53bde31ef9919598d3b229ff5e91af59de5a84b74efe63212ea"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
@@ -703,7 +703,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:422ffe8d44a75646b465bbe3c81341c006d210427c45b8646ff7f372047e6603"
+      "digest": "sha256:e3f5475764b223d896034240356718eec911183d2d1c37b588d8db98eef0ee12"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -818,7 +818,7 @@
     {
       "path": "src/composition-root/planning-provider-production.ts",
       "mode": "100644",
-      "digest": "sha256:5cac0a0244ae40a33a0182fd60fbf87e8014c3dd5101dff51c8e849cbc041bf5"
+      "digest": "sha256:e5b16e88820833a33c4e67328d74cbd5fa0a8cfb8ceb9b17f2f48cb81802a282"
     },
     {
       "path": "src/composition-root/public/central-grant.ts",
@@ -863,7 +863,7 @@
     {
       "path": "src/composition-root/validated-contract-context.ts",
       "mode": "100644",
-      "digest": "sha256:37ad1b248ec13b78e90b7afd29f6891b27295d1699cbd960a9402c35c8488f79"
+      "digest": "sha256:e8f84300d6f90c954932817f2584f88aa263fea31e6726387d50ae085acbb0e2"
     },
     {
       "path": "src/entrypoints/ci/ci-archive-tree.ts",
@@ -873,7 +873,7 @@
     {
       "path": "src/entrypoints/ci/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:6ef1ed4448121320b5bd74ac642710b5c279ff7f2fb1008f9bbb1b1e02b1245f"
+      "digest": "sha256:dab41d4130fb7cc52b2ae08c5e3f9a607e37300fbc1dbceeec3f4a9b10867d0e"
     },
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
@@ -913,7 +913,7 @@
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:5b5fe373defcc0a0f3ca9a0de3b6e98304d77d736c745a5045765ab52197eec5"
+      "digest": "sha256:0a440d56896a80292cd3db9cb26335b7d892019b782cad0be6c8374e0ae64237"
     },
     {
       "path": "src/entrypoints/ci/ci-policy.ts",
@@ -938,12 +938,12 @@
     {
       "path": "src/entrypoints/ci/ci.ts",
       "mode": "100644",
-      "digest": "sha256:7d7243defa34be045f7b1f1863dcd6d3bb9097d4cbf9f4948a58762bc2e36c0a"
+      "digest": "sha256:6ce0c155d6627245270e678db91faa18cf37a322baac478cf08b14eb5d074829"
     },
     {
       "path": "src/entrypoints/ci/pre-merge-assurance-git.ts",
       "mode": "100644",
-      "digest": "sha256:bd845322bcc4f6fca80427d4496e7ce3d0919f06e99d9413f03dfbee1b7828ea"
+      "digest": "sha256:468c188724a86b0f4e544cb1aefabf6ad377ce55d6f67fe137fbd3ccce94cdfe"
     },
     {
       "path": "src/entrypoints/cli/agent-provider-cli.ts",
@@ -1613,7 +1613,7 @@
     {
       "path": "src/modules/source/planning-paths.ts",
       "mode": "100644",
-      "digest": "sha256:b344c4b132ed24b1350bb28788015206c9fe4b4a86d72e672ad5ea2023a11a23"
+      "digest": "sha256:e229928c111e9000a32e36febafa479c22c1d6ede264237722b68acc67b1a3c1"
     },
     {
       "path": "src/modules/source/planning-role-policy-paths.ts",

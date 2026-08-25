@@ -7,7 +7,7 @@ export function planningProviderBindingPath(changeId) {
     }
     return `workflow/change-providers/${changeId}.json`;
 }
-export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedPaths = [], schemaName = 'expense-app', currentSchemaName = 'expense-app-v2') {
+export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedPaths = [], schemaName, currentSchemaName) {
     if (changeId === 'archive') {
         throw workflowError('PLANNING_CHANGE_ID_RESERVED', 'The OpenSpec archive container cannot be used as an active change ID.', ExitCode.guard);
     }
@@ -43,7 +43,7 @@ export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedP
         throw workflowError('PLANNING_PATHS_INVALID', `Planning transition contains paths outside the named ${schemaName} planning tree.`, ExitCode.guard, { details: { invalidPaths: invalid.sort() } });
     }
 }
-export function requiredPlanningArtifactPaths(changeRoot, changeId, schemaName = 'expense-app', currentSchemaName = 'expense-app-v2') {
+export function requiredPlanningArtifactPaths(changeRoot, changeId, schemaName, currentSchemaName) {
     const prefix = `${changeRoot}/${changeId}/`;
     return [
         '.openspec.yaml',

@@ -1287,6 +1287,7 @@ function assertEligibilityArtifactManifest(
     eligibility.changeRoot,
     eligibility.changeId,
     eligibility.schemaName,
+    eligibility.currentSchemaName,
   );
   try {
     assertPlanningPaths(
@@ -1295,6 +1296,7 @@ function assertEligibilityArtifactManifest(
       eligibility.activeArtifactPaths,
       [],
       eligibility.schemaName,
+      eligibility.currentSchemaName,
     );
   } catch {
     throw archiveError(

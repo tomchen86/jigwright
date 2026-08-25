@@ -36,6 +36,7 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { validateWorkflowIntegrationAssets } from '../../adapters/consumer/expense-app/work-registry/integration-assets.ts';
 import { validateRepositoryStateAtCommit } from '../../composition-root/repository-validation.ts';
+import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
 
 export type { CompletedTask } from './ci-task-state.ts';
 
@@ -78,14 +79,17 @@ export function verifyPullRequest(
       loadCommittedChangeContract(git.repositoryRoot, head, changeId),
     ]),
   );
+  const currentSchemaName = repositoryPlanningConfiguration(
+    git.repositoryRoot,
+  ).currentSchemaName;
   const legacyChangeIds = [...contracts]
-    .filter(([, contract]) => contract.schemaName === 'expense-app')
+    .filter(([, contract]) => contract.schemaName !== currentSchemaName)
     .map(([changeId]) => changeId)
     .sort();
   if (legacyChangeIds.length > 0) {
     throw ciError(
       'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN',
-      'Active expense-app changes are historical-only; current CI requires expense-app-v2 with a v3 investigation Manifest.',
+      `Active changes must use the configured current schema ${currentSchemaName} with a v3 investigation Manifest.`,
       { legacyChangeIds },
     );
   }

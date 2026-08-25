@@ -13,6 +13,7 @@ import {
   type CurrentPlanningRoleOverridePolicy,
 } from '../modules/source/planning-role-provider-policy-reader.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
+import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
 
 export {
   agentRolePlanV2Path,
@@ -49,6 +50,7 @@ export function inspectPlanningTransition(
   );
   assertPlanningRolePolicyClosure(
     inspection.schemaName,
+    repositoryPlanningConfiguration(repositoryRoot).currentSchemaName,
     inspection.transitionKind,
     rolePolicyPaths,
     planningRoleOverride,
@@ -92,12 +94,13 @@ export function resolveHistoricalOpenSpecProviderBinding(
 
 function assertPlanningRolePolicyClosure(
   schemaName: string,
+  currentSchemaName: string,
   transitionKind: 'introduction' | 'revision',
   paths: PlanningRolePolicyPathPartition,
   override: CurrentPlanningRoleOverridePolicy | null,
 ): void {
   if (
-    (schemaName !== 'expense-app-v2' &&
+    (schemaName !== currentSchemaName &&
       (paths.policyChanged || override !== null)) ||
     (paths.policyChanged && !paths.policyDeleted && override === null) ||
     (paths.policyDeleted && override !== null) ||

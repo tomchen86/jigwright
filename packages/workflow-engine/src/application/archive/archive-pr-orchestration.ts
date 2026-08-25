@@ -38,6 +38,7 @@ import {
   type CompletedArchivePullRequestGrantReferenceV1,
 } from '../../modules/authority/archive-pr-grant.ts';
 import { grantStorePaths } from '../../runtime/storage-journal/grant-store.ts';
+import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
 
 export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   repositoryId: string;
@@ -231,6 +232,9 @@ export function discoverArchivePullRequestCandidate(
   }
   const stable = loadStableValidatedChangeContract(before, requestedChangeId);
   const { contract, git } = stable;
+  const currentSchemaName = repositoryPlanningConfiguration(
+    git.repositoryRoot,
+  ).currentSchemaName;
   const protectedBase = contract.config.protectedBranches[0];
   if (protectedBase === undefined || git.branch !== protectedBase) {
     throw archivePrError(
@@ -239,7 +243,7 @@ export function discoverArchivePullRequestCandidate(
     );
   }
   if (
-    contract.schemaName !== 'expense-app-v2' ||
+    contract.schemaName !== currentSchemaName ||
     contract.investigation === undefined ||
     contract.planningAssurance === null ||
     contract.tasks.some(({ completed }) => !completed)

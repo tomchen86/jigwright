@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../../modules/authority/optional-grants-package.ts';
+import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
 
 import {
   resolveActorIdentity,
@@ -1791,7 +1792,7 @@ function prepareExemptionPlanningScaffold(
     context.config.changeRoot,
     session.changeId,
   );
-  const metadataBytes = `schema: expense-app-v2\ncreated: ${session.createdAt.slice(0, 10)}\n`;
+  const metadataBytes = `schema: ${currentPlanningSchemaName(context.git.repositoryRoot)}\ncreated: ${session.createdAt.slice(0, 10)}\n`;
   const investigation = buildProposeExemptionInvestigationManifestV3(
     context,
     session,
@@ -1874,7 +1875,7 @@ function prepareExemptionPlanningScaffold(
   const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
   const proposalInstruction = adapter.instructions(
     session.changeId,
-    'expense-app-v2',
+    currentPlanningSchemaName(context.git.repositoryRoot),
     'proposal',
   );
   return {
@@ -7739,9 +7740,12 @@ function preparePlanningScaffold(
   // metadata for this change — and the artifact's exact bytes are committed
   // there. Uncommitted bytes never qualify.
   const committedMetadata = priorArtifactAtBaseline('.openspec.yaml');
+  const currentSchemaName = currentPlanningSchemaName(
+    context.git.repositoryRoot,
+  );
   const managedPriorGeneration =
     committedMetadata !== undefined &&
-    committedMetadata.startsWith('schema: expense-app-v2\n');
+    committedMetadata.startsWith(`schema: ${currentSchemaName}\n`);
   const replaceablePriorGeneration = (
     relativePath: string,
     existing: string,
@@ -7752,7 +7756,7 @@ function preparePlanningScaffold(
   // metadata carries over instead of restamping the creation date.
   const metadataBytes = managedPriorGeneration
     ? committedMetadata
-    : `schema: expense-app-v2\ncreated: ${createdDate}\n`;
+    : `schema: ${currentSchemaName}\ncreated: ${createdDate}\n`;
   const v3Manifest = buildProposeInvestigationManifestV3(context, rebuilt);
   if (v3Manifest.outcome !== 'built') {
     if (materializeScaffold && assertOwned !== undefined) {
@@ -7835,7 +7839,7 @@ function preparePlanningScaffold(
   const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
   const proposalInstruction = adapter.instructions(
     status.changeId,
-    'expense-app-v2',
+    currentPlanningSchemaName(context.git.repositoryRoot),
     'proposal',
   );
   const instructions = [
@@ -9384,7 +9388,7 @@ function derivePlanningSubjectFromCurrentDraft(
   const contract: ChangeContract = {
     changeId: status.changeId,
     changeDirectory,
-    schemaName: 'expense-app-v2',
+    schemaName: currentPlanningSchemaName(context.git.repositoryRoot),
     config: context.config,
     checks,
     guard,
@@ -9572,7 +9576,10 @@ function materializePlanningContribution(
       createdPaths.push(target);
     }
     const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-    const statusPayload = adapter.status(status.changeId, 'expense-app-v2');
+    const statusPayload = adapter.status(
+      status.changeId,
+      currentPlanningSchemaName(context.git.repositoryRoot),
+    );
     const planReview = statusPayload.artifacts.find(
       ({ id }) => id === 'plan-review',
     );
@@ -9608,7 +9615,7 @@ function materializePlanningContribution(
     const draftContract: ChangeContract = {
       changeId: status.changeId,
       changeDirectory: scaffold.changeDirectory,
-      schemaName: 'expense-app-v2',
+      schemaName: currentPlanningSchemaName(context.git.repositoryRoot),
       config: context.config,
       checks,
       guard,
@@ -9703,7 +9710,7 @@ function materializeExemptionPlanningContribution(
   const entries = new Map<string, string>([
     [
       '.openspec.yaml',
-      `schema: expense-app-v2\ncreated: ${session.createdAt.slice(0, 10)}\n`,
+      `schema: ${currentPlanningSchemaName(context.git.repositoryRoot)}\ncreated: ${session.createdAt.slice(0, 10)}\n`,
     ],
     ['investigation.json', scaffold.investigationBytes],
     ['proposal.md', assertAuthoredMarkdown(payload.proposal, 'proposal')],
@@ -9758,7 +9765,10 @@ function materializeExemptionPlanningContribution(
       createdPaths.push(target);
     }
     const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-    const statusPayload = adapter.status(session.changeId, 'expense-app-v2');
+    const statusPayload = adapter.status(
+      session.changeId,
+      currentPlanningSchemaName(context.git.repositoryRoot),
+    );
     const planReview = statusPayload.artifacts.find(
       ({ id }) => id === 'plan-review',
     );
@@ -9793,7 +9803,7 @@ function materializeExemptionPlanningContribution(
     const draftContract: ChangeContract = {
       changeId: session.changeId,
       changeDirectory: scaffold.changeDirectory,
-      schemaName: 'expense-app-v2',
+      schemaName: currentPlanningSchemaName(context.git.repositoryRoot),
       config: context.config,
       checks,
       guard,
@@ -12063,7 +12073,10 @@ function readMaterializedPlanningArtifacts(
     path.join(scaffold.changeDirectory, 'plan-review.json'),
   );
   const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const openspecStatus = adapter.status(status.changeId, 'expense-app-v2');
+  const openspecStatus = adapter.status(
+    status.changeId,
+    currentPlanningSchemaName(context.git.repositoryRoot),
+  );
   if (
     (hasPlanReview && !openspecStatus.isComplete) ||
     (!hasPlanReview && openspecStatus.isComplete) ||
@@ -12148,7 +12161,10 @@ function readMaterializedExemptionPlanningArtifacts(
     path.join(changeDirectory, 'plan-review.json'),
   );
   const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const openspecStatus = adapter.status(session.changeId, 'expense-app-v2');
+  const openspecStatus = adapter.status(
+    session.changeId,
+    currentPlanningSchemaName(context.git.repositoryRoot),
+  );
   if (
     (hasPlanReview && !openspecStatus.isComplete) ||
     (!hasPlanReview && openspecStatus.isComplete) ||
@@ -13503,4 +13519,8 @@ function planningContributionInvalid(
     message,
     ExitCode.usage,
   );
+}
+
+function currentPlanningSchemaName(repositoryRoot: string): string {
+  return repositoryPlanningConfiguration(repositoryRoot).currentSchemaName;
 }

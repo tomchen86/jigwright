@@ -37,6 +37,7 @@ import {
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
+import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
 
 export type ArchiveEligibility = {
   changeId: string;
@@ -49,6 +50,7 @@ export type ArchiveEligibility = {
   changeRoot: string;
   activeRoot: string;
   schemaName: ManagedSchemaName;
+  currentSchemaName: ManagedSchemaName;
   activeArtifactPaths: string[];
   baseRef: string;
   base: string;
@@ -154,6 +156,7 @@ function stableRefreshAuthority(eligibility: ArchiveEligibility) {
     changeRoot: eligibility.changeRoot,
     activeRoot: eligibility.activeRoot,
     schemaName: eligibility.schemaName,
+    currentSchemaName: eligibility.currentSchemaName,
     activeArtifactPaths: eligibility.activeArtifactPaths,
     baseRef: eligibility.baseRef,
     base: eligibility.base,
@@ -222,6 +225,9 @@ function inspectEligibility(
   }
 
   const config = loadWorkflowConfig(initial.repositoryRoot);
+  const currentSchemaName = repositoryPlanningConfiguration(
+    initial.repositoryRoot,
+  ).currentSchemaName;
   const protectedBranch = config.protectedBranches[0];
   if (!protectedBranch) {
     throw archiveError(
@@ -266,11 +272,13 @@ function inspectEligibility(
     activeArtifactPaths,
     [],
     contract.schemaName,
+    currentSchemaName,
   );
   const requiredArtifactPaths = requiredPlanningArtifactPaths(
     config.changeRoot,
     contract.changeId,
     contract.schemaName,
+    currentSchemaName,
   );
   if (
     requiredArtifactPaths.some(
@@ -287,7 +295,7 @@ function inspectEligibility(
       'Archive eligibility requires the complete schema-selected planning manifest.',
     );
   }
-  if (contract.schemaName === 'expense-app-v2') {
+  if (contract.schemaName === currentSchemaName) {
     // The contract loader already replayed current semantic readiness with the
     // shared validator. Archive additionally decides one-use grant uniqueness
     // over every exact planning transition in this change's immutable history;
@@ -439,6 +447,7 @@ function inspectEligibility(
     changeRoot: config.changeRoot,
     activeRoot: activePrefix.slice(0, -1),
     schemaName: contract.schemaName,
+    currentSchemaName,
     activeArtifactPaths,
     baseRef,
     base,

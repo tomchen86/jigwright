@@ -9,15 +9,22 @@ import { isWorkflowError } from './fixture.ts';
 
 test('planning paths accept only the exact named OpenSpec planning grammar', () => {
   assert.doesNotThrow(() =>
-    assertPlanningPaths('openspec/changes', 'demo-change', [
-      'openspec/changes/demo-change/.openspec.yaml',
-      'openspec/changes/demo-change/design.md',
-      'openspec/changes/demo-change/guard.json',
-      'openspec/changes/demo-change/proposal.md',
-      'openspec/changes/demo-change/specs/demo/spec.md',
-      'openspec/changes/demo-change/tasks.md',
-      'workflow/change-providers/demo-change.json',
-    ]),
+    assertPlanningPaths(
+      'openspec/changes',
+      'demo-change',
+      [
+        'openspec/changes/demo-change/.openspec.yaml',
+        'openspec/changes/demo-change/design.md',
+        'openspec/changes/demo-change/guard.json',
+        'openspec/changes/demo-change/proposal.md',
+        'openspec/changes/demo-change/specs/demo/spec.md',
+        'openspec/changes/demo-change/tasks.md',
+        'workflow/change-providers/demo-change.json',
+      ],
+      [],
+      'jigwright',
+      'jigwright',
+    ),
   );
 
   for (const invalidPath of [
@@ -33,14 +40,21 @@ test('planning paths accept only the exact named OpenSpec planning grammar', () 
   ]) {
     assert.throws(
       () =>
-        assertPlanningPaths('openspec/changes', 'demo-change', [invalidPath]),
+        assertPlanningPaths(
+          'openspec/changes',
+          'demo-change',
+          [invalidPath],
+          [],
+          'jigwright',
+          'jigwright',
+        ),
       (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
       invalidPath,
     );
   }
 });
 
-test('planning paths select legacy or v2 grammar explicitly', () => {
+test('planning paths select current or non-current grammar explicitly', () => {
   const investigationPath = 'openspec/changes/demo-change/investigation.json';
   const v2Paths = [
     investigationPath,
@@ -56,7 +70,8 @@ test('planning paths select legacy or v2 grammar explicitly', () => {
       'demo-change',
       v2Paths,
       [],
-      'expense-app-v2',
+      'jigwright',
+      'jigwright',
     ),
   );
   for (const v2Path of v2Paths.filter(
@@ -65,7 +80,15 @@ test('planning paths select legacy or v2 grammar explicitly', () => {
       !candidate.endsWith('/survey.json'),
   )) {
     assert.throws(
-      () => assertPlanningPaths('openspec/changes', 'demo-change', [v2Path]),
+      () =>
+        assertPlanningPaths(
+          'openspec/changes',
+          'demo-change',
+          [v2Path],
+          [],
+          'historical-schema',
+          'jigwright',
+        ),
       (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
       v2Path,
     );
@@ -98,7 +121,7 @@ test('planning paths derive the investigation-first grammar from the configured 
         'demo-change',
         currentPaths,
         [],
-        'expense-app-v2',
+        'historical-schema',
         'orbit-spec-v1',
       ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
@@ -108,9 +131,14 @@ test('planning paths derive the investigation-first grammar from the configured 
 test('planning paths reject the reserved OpenSpec archive container as a change', () => {
   assert.throws(
     () =>
-      assertPlanningPaths('openspec/changes', 'archive', [
-        'openspec/changes/archive/proposal.md',
-      ]),
+      assertPlanningPaths(
+        'openspec/changes',
+        'archive',
+        ['openspec/changes/archive/proposal.md'],
+        [],
+        'jigwright',
+        'jigwright',
+      ),
     (error) => isWorkflowError(error, 'PLANNING_CHANGE_ID_RESERVED'),
   );
 });
@@ -165,13 +193,20 @@ test('planning paths accept only in-tree deletions of non-canonical files', () =
         'openspec/changes/demo-change/requirement-audit.md',
       ],
       ['openspec/changes/demo-change/requirement-audit.md'],
+      'jigwright',
+      'jigwright',
     ),
   );
   assert.throws(
     () =>
-      assertPlanningPaths('openspec/changes', 'demo-change', [
-        'openspec/changes/demo-change/requirement-audit.md',
-      ]),
+      assertPlanningPaths(
+        'openspec/changes',
+        'demo-change',
+        ['openspec/changes/demo-change/requirement-audit.md'],
+        [],
+        'jigwright',
+        'jigwright',
+      ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
   );
   assert.throws(
@@ -181,6 +216,8 @@ test('planning paths accept only in-tree deletions of non-canonical files', () =
         'demo-change',
         ['openspec/changes/other-change/noise.md'],
         ['openspec/changes/other-change/noise.md'],
+        'jigwright',
+        'jigwright',
       ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
   );

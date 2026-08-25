@@ -201,9 +201,9 @@ function validateOpenSpecInputs(
       path: schema.packageSchema.directory,
     },
     {
-      name: 'expense-app',
+      name: schema.currentSchema.name,
       source: 'project' as const,
-      path: path.join(worktree, 'openspec/schemas/expense-app'),
+      path: path.join(worktree, 'openspec/schemas', schema.currentSchema.name),
     },
   ]) {
     parseSchemaResolution(openspec.whichSchema(expected.name).value, expected);
@@ -213,11 +213,15 @@ function validateOpenSpecInputs(
     );
     if (!validation.valid) throw replayMismatch();
   }
-  const status = parseStatus(openspec.status(changeId, 'expense-app').value, {
-    repositoryRoot: worktree,
-    changeId,
-    schemaName: 'expense-app',
-  });
+  const status = parseStatus(
+    openspec.status(changeId, schema.currentSchema.name).value,
+    {
+      repositoryRoot: worktree,
+      changeId,
+      schemaName: schema.currentSchema.name,
+      currentSchemaName: schema.currentSchema.name,
+    },
+  );
   const executed = openspec.validateChange(changeId);
   const validation = parseValidation(executed.value, {
     repositoryRoot: worktree,

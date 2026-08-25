@@ -11,6 +11,7 @@ import {
   type OpenSpecInstallation,
 } from './openspec-executor.ts';
 import { assertChangeId } from '../../../../runtime/session-workspace/paths.ts';
+import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 import { parseDoctor, type OpenSpecDoctor } from './openspec-doctor-payload.ts';
 import {
   parseChangeList,
@@ -66,12 +67,16 @@ export function createOpenSpecAdapter(
 ): OpenSpecAdapter {
   const installation = resolveOpenSpecInstallation(repositoryRoot);
   const openspec = createOpenSpecProcess(installation, options);
+  const repositoryPolicy =
+    options.schemaPolicy === undefined
+      ? repositoryPlanningConfiguration(installation.repositoryRoot)
+      : undefined;
   const schemaPolicy = validateSchemaPolicy(
     options.schemaPolicy ?? {
-      packageSchemaNames: ['spec-driven'],
-      projectSchemaNames: ['expense-app', 'expense-app-v2'],
-      supportedSchemaNames: ['spec-driven', 'expense-app', 'expense-app-v2'],
-      currentSchemaName: 'expense-app-v2',
+      packageSchemaNames: repositoryPolicy!.packageSchemaNames,
+      projectSchemaNames: repositoryPolicy!.managedSchemaNames,
+      supportedSchemaNames: repositoryPolicy!.supportedSchemaNames,
+      currentSchemaName: repositoryPolicy!.currentSchemaName,
     },
   );
   openspec.version();

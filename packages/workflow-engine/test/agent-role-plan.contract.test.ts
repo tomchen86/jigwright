@@ -683,9 +683,14 @@ test('agent-role plan v2 is a repository-owned planning companion and changes th
 
   assert.throws(
     () =>
-      assertPlanningPaths('openspec/changes', CHANGE_ID, [
-        `workflow/agent-plans/${CHANGE_ID}.json`,
-      ]),
+      assertPlanningPaths(
+        'openspec/changes',
+        CHANGE_ID,
+        [`workflow/agent-plans/${CHANGE_ID}.json`],
+        [],
+        'jigwright',
+        'jigwright',
+      ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
   );
   assert.throws(
@@ -695,7 +700,8 @@ test('agent-role plan v2 is a repository-owned planning companion and changes th
         CHANGE_ID,
         [agentRolePlanV2Path(CHANGE_ID)],
         [],
-        'expense-app-v2',
+        'jigwright',
+        'jigwright',
       ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
   );

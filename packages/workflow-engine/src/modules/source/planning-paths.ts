@@ -20,8 +20,8 @@ export function assertPlanningPaths(
   changeId: string,
   changedPaths: string[],
   deletedPaths: readonly string[] = [],
-  schemaName: ManagedSchemaName = 'expense-app',
-  currentSchemaName: ManagedSchemaName = 'expense-app-v2',
+  schemaName: ManagedSchemaName,
+  currentSchemaName: ManagedSchemaName,
 ): void {
   if (changeId === 'archive') {
     throw workflowError(
@@ -78,8 +78,8 @@ export function assertPlanningPaths(
 export function requiredPlanningArtifactPaths(
   changeRoot: string,
   changeId: string,
-  schemaName: ManagedSchemaName = 'expense-app',
-  currentSchemaName: ManagedSchemaName = 'expense-app-v2',
+  schemaName: ManagedSchemaName,
+  currentSchemaName: ManagedSchemaName,
 ): string[] {
   const prefix = `${changeRoot}/${changeId}/`;
   return [

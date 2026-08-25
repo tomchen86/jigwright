@@ -938,8 +938,8 @@ function withPlanningWorktree<T>(
 function requiredArtifactPaths(
   changeRoot: string,
   changeId: string,
-  schemaName: ManagedSchemaName = 'expense-app',
-  currentSchemaName: ManagedSchemaName = 'expense-app-v2',
+  schemaName: ManagedSchemaName,
+  currentSchemaName: ManagedSchemaName,
 ): string[] {
   return [
     ...requiredPlanningArtifactPaths(
@@ -961,8 +961,8 @@ function assertCompletePlanningTree(
   entries: TreeEntry[],
   toleratedDeletedPaths: readonly string[] = [],
   toleratedMissingPaths: readonly string[] = [],
-  schemaName: ManagedSchemaName = 'expense-app',
-  currentSchemaName: ManagedSchemaName = 'expense-app-v2',
+  schemaName: ManagedSchemaName,
+  currentSchemaName: ManagedSchemaName,
 ): void {
   const paths = entries.map(({ path }) => path);
   assertPlanningPaths(

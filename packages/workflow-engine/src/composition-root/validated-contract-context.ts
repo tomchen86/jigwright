@@ -15,6 +15,7 @@ import type {
   ChangeRoutingAuthorityFacts,
   ChangeRoutingAuthorityPort,
 } from '../modules/lifecycle/change-routing.ts';
+import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
 
 export const productionChangeRoutingAuthorityPort: ChangeRoutingAuthorityPort =
   Object.freeze({
@@ -88,10 +89,13 @@ export function loadStableValidatedChangeContract(
       ExitCode.staleState,
     );
   }
-  if (contract.schemaName === 'expense-app') {
+  const currentSchemaName = repositoryPlanningConfiguration(
+    initialGit.repositoryRoot,
+  ).currentSchemaName;
+  if (contract.schemaName !== currentSchemaName) {
     throw workflowError(
       'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN',
-      'Active expense-app changes are historical-only; current lifecycle authority requires expense-app-v2 with a v3 investigation Manifest.',
+      `Active changes must use the configured current schema ${currentSchemaName} with a v3 investigation Manifest.`,
       ExitCode.verification,
     );
   }

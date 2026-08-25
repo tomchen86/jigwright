@@ -11,15 +11,11 @@ import {
   parsePlanReviewArtifact,
 } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import {
-  EXPENSE_APP_SCHEMA_GRAPH,
-  EXPENSE_APP_V2_SCHEMA_GRAPH,
-  EXPENSE_APP_CONFIG_DIGEST,
-  EXPENSE_APP_GUARD_TEMPLATE_DIGEST,
-  EXPENSE_APP_SCHEMA_DIGEST,
   INVESTIGATION_PLANNING_ACTIVATION_DIGEST,
   INVESTIGATION_PLANNING_ACTIVATION_MARKER,
   SPEC_DRIVEN_SCHEMA_GRAPH,
   assertInvestigationPlanningActivation,
+  currentSchemaGraph,
   inspectOpenSpecSchemaContract,
   protectedActivationBaselines,
   resolveInvestigationPlanningActivation,
@@ -31,58 +27,46 @@ import {
 } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { git, isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 
-test('schema contract pins package provenance and the project graph', () => {
+test('schema contract pins package provenance and the configured current graph', () => {
   const contract = inspectOpenSpecSchemaContract(sourceRepositoryRoot);
 
   assert.equal(contract.version, '1.6.0');
   assert.equal(contract.packageSchema.name, 'spec-driven');
   assert.equal(contract.packageSchema.source, 'package');
   assert.deepEqual(contract.packageSchema.graph, SPEC_DRIVEN_SCHEMA_GRAPH);
-  assert.equal(contract.projectSchema.name, 'expense-app');
-  assert.equal(contract.projectSchema.source, 'project');
+  assert.equal(contract.currentSchema.name, 'jigwright');
+  assert.equal(contract.currentSchema.source, 'project');
   assert.equal(
-    contract.projectSchema.files['schema.yaml']?.digest,
-    EXPENSE_APP_SCHEMA_DIGEST,
+    contract.currentSchema.files['schema.yaml']?.digest,
+    '478b443b3e542b5de7ba92b2929d4e0deb771659da335dea784a7786bb8f23d1',
   );
   assert.equal(
-    contract.projectSchema.files['templates/guard.json']?.digest,
-    EXPENSE_APP_GUARD_TEMPLATE_DIGEST,
+    contract.currentSchema.files['templates/guard.json']?.digest,
+    'f1c44b8e477fa42dcf7d42de603e374b27073dd36e06a3f0027ab35fd16aec5a',
   );
-  assert.equal(
-    cryptoDigest(fs.readFileSync(contract.configPath)),
-    EXPENSE_APP_CONFIG_DIGEST,
+  assert.deepEqual(
+    contract.currentSchema.graph,
+    currentSchemaGraph('jigwright'),
   );
-  assert.deepEqual(contract.projectSchema.graph, EXPENSE_APP_SCHEMA_GRAPH);
-  assert.deepEqual(contract.projectSchema.graph.apply, {
-    requires: ['tasks', 'guard'],
-    tracks: 'tasks.md',
-  });
-  assert.equal(contract.projectSchemaV2.name, 'expense-app-v2');
-  assert.equal(contract.projectSchemaV2.source, 'project');
-  assert.deepEqual(contract.projectSchemaV2.graph, EXPENSE_APP_V2_SCHEMA_GRAPH);
-  assert.deepEqual(contract.projectSchemaV2.graph.apply, {
+  assert.deepEqual(contract.currentSchema.graph.apply, {
     requires: ['investigation', 'tasks', 'guard', 'execution', 'plan-review'],
     tracks: 'tasks.md',
   });
-  assert.equal(contract.trackedPaths.length, 18);
+  assert.equal(contract.trackedPaths.length, 11);
   assert.equal(
     contract.configPath,
     path.join(sourceRepositoryRoot, 'openspec/config.yaml'),
   );
   assert.equal(Object.keys(contract.sourceDigests).length, 5);
   assert.equal(
-    contract.projectSchema.files['templates/proposal.md']?.digest,
+    contract.currentSchema.files['templates/proposal.md']?.digest,
     contract.packageSchema.files['templates/proposal.md']?.digest,
   );
   assert.match(
-    fs.readFileSync(contract.projectSchema.files['schema.yaml']!.path, 'utf8'),
-    /hand implementation to `pnpm workflow`[\s\S]*Do not edit task checkboxes[\s\S]*workflow engine owns sessions, checks, completion, and Git/,
+    fs.readFileSync(contract.currentSchema.files['schema.yaml']!.path, 'utf8'),
+    /Jigwright current-v3 investigation-first workflow[\s\S]*hand execution to `pnpm workflow`[\s\S]*Do not edit task checkboxes/,
   );
-  for (const schema of [
-    contract.packageSchema,
-    contract.projectSchema,
-    contract.projectSchemaV2,
-  ]) {
+  for (const schema of [contract.packageSchema, contract.currentSchema]) {
     for (const file of Object.values(schema.files)) {
       assert.equal(file.mode, '100644');
       assert.match(file.digest, /^[0-9a-f]{64}$/);
@@ -90,20 +74,12 @@ test('schema contract pins package provenance and the project graph', () => {
   }
 });
 
-test('configured current schema reuses only the v3 graph and preserves named graphs', () => {
+test('only the configured current schema reuses the current-v3 graph', () => {
   const currentSchemaName = 'orbit-spec-v1';
 
-  assert.equal(
+  assert.deepEqual(
     schemaGraphFor(currentSchemaName, currentSchemaName),
-    EXPENSE_APP_V2_SCHEMA_GRAPH,
-  );
-  assert.equal(
-    schemaGraphFor('expense-app-v2', currentSchemaName),
-    EXPENSE_APP_V2_SCHEMA_GRAPH,
-  );
-  assert.equal(
-    schemaGraphFor('expense-app', currentSchemaName),
-    EXPENSE_APP_SCHEMA_GRAPH,
+    currentSchemaGraph(currentSchemaName),
   );
   assert.equal(
     schemaGraphFor('spec-driven', currentSchemaName),
@@ -113,13 +89,19 @@ test('configured current schema reuses only the v3 graph and preserves named gra
     () => schemaGraphFor('unreviewed-schema', currentSchemaName),
     (error) => isWorkflowError(error, 'OPENSPEC_SCHEMA_CONTRACT_INVALID'),
   );
+  for (const retiredName of ['expense-app', 'expense-app-v2']) {
+    assert.throws(
+      () => schemaGraphFor(retiredName, currentSchemaName),
+      (error) => isWorkflowError(error, 'OPENSPEC_SCHEMA_CONTRACT_INVALID'),
+    );
+  }
 });
 
-test('v2 schema has the exact investigation-first graph and route-back engine templates', () => {
+test('current schema has the exact investigation-first graph and route-back engine templates', () => {
   const contract = inspectOpenSpecSchemaContract(sourceRepositoryRoot);
 
   assert.deepEqual(
-    EXPENSE_APP_V2_SCHEMA_GRAPH.artifacts.map(
+    currentSchemaGraph('jigwright').artifacts.map(
       ({ id, generates, requires }) => ({ id, generates, requires }),
     ),
     [
@@ -152,7 +134,7 @@ test('v2 schema has the exact investigation-first graph and route-back engine te
     'plan-review.json',
   ]) {
     const template = fs.readFileSync(
-      contract.projectSchemaV2.files[`templates/${artifact}`]!.path,
+      contract.currentSchema.files[`templates/${artifact}`]!.path,
       'utf8',
     );
     assert.match(template, /pnpm workflow propose/);
@@ -185,7 +167,7 @@ test('v2 schema has the exact investigation-first graph and route-back engine te
   }
   assert.match(
     fs.readFileSync(
-      contract.projectSchemaV2.files['templates/design.md']!.path,
+      contract.currentSchema.files['templates/design.md']!.path,
       'utf8',
     ),
     /<!-- workflow:investigation-ledger:start v1 -->[\s\S]*<!-- workflow:investigation-ledger:end v1 -->/,
@@ -196,7 +178,7 @@ test('v2 schema has the exact investigation-first graph and route-back engine te
   );
   assert.deepEqual(
     config.split('\n').filter((line) => line.startsWith('schema:')),
-    ['schema: expense-app-v2'],
+    ['schema: jigwright'],
   );
   assert.equal(
     INVESTIGATION_PLANNING_ACTIVATION_MARKER,
@@ -220,7 +202,7 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
     (repository) => {
       const provenancePath = path.join(
         repository,
-        'openspec/schemas/expense-app/provenance.json',
+        'openspec/schemas/jigwright/provenance.json',
       );
       const provenance = JSON.parse(fs.readFileSync(provenancePath, 'utf8'));
       provenance.source.files['templates/proposal.md'] = '0'.repeat(64);
@@ -236,7 +218,7 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
     (repository) => {
       const schemaPath = path.join(
         repository,
-        'openspec/schemas/expense-app/schema.yaml',
+        'openspec/schemas/jigwright/schema.yaml',
       );
       fs.writeFileSync(
         schemaPath,
@@ -249,7 +231,7 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
       fs.chmodSync(
         path.join(
           repository,
-          'openspec/schemas/expense-app/templates/guard.json',
+          'openspec/schemas/jigwright/templates/guard.json',
         ),
         0o755,
       );
@@ -257,14 +239,14 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
     (repository) => {
       const target = path.join(
         repository,
-        'openspec/schemas/expense-app/templates/guard.json',
+        'openspec/schemas/jigwright/templates/guard.json',
       );
       fs.rmSync(target);
       fs.symlinkSync(path.join(repository, 'package.json'), target);
     },
     (repository) => {
       fs.writeFileSync(
-        path.join(repository, 'openspec/schemas/expense-app/unreviewed.txt'),
+        path.join(repository, 'openspec/schemas/jigwright/unreviewed.txt'),
         'unexpected\n',
       );
     },
@@ -274,24 +256,24 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
         configPath,
         fs
           .readFileSync(configPath, 'utf8')
-          .replace('schema: expense-app', 'schema: spec-driven'),
+          .replace('schema: jigwright', 'schema: spec-driven'),
       );
     },
     (repository) => {
       const schemaPath = path.join(
         repository,
-        'openspec/schemas/expense-app-v2/schema.yaml',
+        'openspec/schemas/jigwright/schema.yaml',
       );
       fs.writeFileSync(
         schemaPath,
         fs
           .readFileSync(schemaPath, 'utf8')
-          .replace('tracks: tasks.md', 'tracks: execution.json'),
+          .replace('name: jigwright', 'name: unreviewed-schema'),
       );
     },
     (repository) => {
       fs.writeFileSync(
-        path.join(repository, 'openspec/schemas/expense-app-v2/unreviewed.txt'),
+        path.join(repository, 'openspec/schemas/jigwright/unreviewed.txt'),
         'unexpected\n',
       );
     },
@@ -299,7 +281,7 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
       fs.appendFileSync(
         path.join(
           repository,
-          'openspec/schemas/expense-app-v2/templates/investigation.json',
+          'openspec/schemas/jigwright/templates/investigation.json',
         ),
         '\n',
       );
@@ -308,7 +290,7 @@ test('schema contract rejects digest, graph, file-set, mode, and symlink drift',
       fs.rmSync(
         path.join(
           repository,
-          'openspec/schemas/expense-app-v2/templates/plan-review.json',
+          'openspec/schemas/jigwright/templates/plan-review.json',
         ),
       );
     },
@@ -332,12 +314,12 @@ test('schema contract normalizes restrictive regular-file permissions to Git 100
   const repository = createSchemaFixture();
   try {
     fs.chmodSync(
-      path.join(repository, 'openspec/schemas/expense-app/schema.yaml'),
+      path.join(repository, 'openspec/schemas/jigwright/schema.yaml'),
       0o600,
     );
     fs.chmodSync(path.join(repository, 'openspec/config.yaml'), 0o600);
     assert.equal(
-      inspectOpenSpecSchemaContract(repository).projectSchema.files[
+      inspectOpenSpecSchemaContract(repository).currentSchema.files[
         'schema.yaml'
       ]?.mode,
       '100644',
@@ -347,71 +329,86 @@ test('schema contract normalizes restrictive regular-file permissions to Git 100
   }
 });
 
-test('schema status validation uses the explicit schema graph, not the configured default', () => {
+test('schema status validation uses the configured current graph exactly', () => {
   const repository = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-schema-status-')),
   );
   const changeRoot = path.join(repository, 'openspec/changes/example-change');
   fs.mkdirSync(path.join(changeRoot, 'specs/example'), { recursive: true });
   for (const file of [
+    'investigation.json',
     'proposal.md',
     'design.md',
     'tasks.md',
     'guard.json',
+    'execution.json',
+    'plan-review.json',
     'specs/example/spec.md',
   ]) {
     fs.writeFileSync(path.join(changeRoot, file), `${file}\n`);
   }
   try {
-    const payload = completeStatusPayload(repository, changeRoot);
+    const payload = completeCurrentStatusPayload(repository, changeRoot);
     const status = parseStatus(payload, {
       repositoryRoot: repository,
       changeId: 'example-change',
-      schemaName: 'expense-app',
+      schemaName: 'jigwright',
+      currentSchemaName: 'jigwright',
     });
-    assert.deepEqual(status.applyRequires, ['tasks', 'guard']);
+    assert.deepEqual(status.applyRequires, [
+      'investigation',
+      'tasks',
+      'guard',
+      'execution',
+      'plan-review',
+    ]);
     assert.deepEqual(
       status.artifacts.map(({ id, outputPath }) => ({ id, outputPath })),
       [
+        { id: 'investigation', outputPath: 'investigation.json' },
         { id: 'proposal', outputPath: 'proposal.md' },
-        { id: 'design', outputPath: 'design.md' },
         { id: 'specs', outputPath: 'specs/**/*.md' },
+        { id: 'design', outputPath: 'design.md' },
         { id: 'tasks', outputPath: 'tasks.md' },
         { id: 'guard', outputPath: 'guard.json' },
+        { id: 'execution', outputPath: 'execution.json' },
+        { id: 'plan-review', outputPath: 'plan-review.json' },
       ],
     );
 
     for (const mutate of [
-      (value: ReturnType<typeof completeStatusPayload>) => {
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
         value.applyRequires = ['tasks'];
       },
-      (value: ReturnType<typeof completeStatusPayload>) => {
-        (value.artifacts[4] as { outputPath: string }).outputPath =
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
+        (value.artifacts[5] as { outputPath: string }).outputPath =
           'policy.json';
       },
-      (value: ReturnType<typeof completeStatusPayload>) => {
-        value.artifactPaths.guard!.outputPath = 'policy.json';
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
+        (value.artifactPaths.guard as { outputPath: string }).outputPath =
+          'policy.json';
       },
-      (value: ReturnType<typeof completeStatusPayload>) => {
-        (value.artifacts[4] as Record<string, unknown>).unexpected = true;
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
+        (value.artifacts[5] as Record<string, unknown>).unexpected = true;
       },
-      (value: ReturnType<typeof completeStatusPayload>) => {
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
         (value.artifactPaths.guard as Record<string, unknown>).unexpected =
           true;
       },
-      (value: ReturnType<typeof completeStatusPayload>) => {
-        (value.artifacts[4] as { outputPath: string }).outputPath =
+      (value: ReturnType<typeof completeCurrentStatusPayload>) => {
+        (value.artifacts[5] as { outputPath: string }).outputPath =
           'guard\u0085.json';
       },
     ]) {
-      const invalid = completeStatusPayload(repository, changeRoot);
+      const invalid = completeCurrentStatusPayload(repository, changeRoot);
       mutate(invalid);
       assert.throws(
         () =>
           parseStatus(invalid, {
             repositoryRoot: repository,
             changeId: 'example-change',
-            schemaName: 'expense-app',
+            schemaName: 'jigwright',
+            currentSchemaName: 'jigwright',
           }),
         (error) => isWorkflowError(error, 'OPENSPEC_PAYLOAD_INVALID'),
       );
@@ -421,7 +418,7 @@ test('schema status validation uses the explicit schema graph, not the configure
   }
 });
 
-test('v2 status and instructions use the exact investigation-first graph', () => {
+test('current status and instructions use the exact investigation-first graph', () => {
   const repository = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-schema-v2-status-')),
   );
@@ -441,11 +438,12 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
   }
   try {
     const status = parseStatus(
-      completeV2StatusPayload(repository, changeRoot),
+      completeCurrentStatusPayload(repository, changeRoot),
       {
         repositoryRoot: repository,
         changeId: 'example-change',
-        schemaName: 'expense-app-v2',
+        schemaName: 'jigwright',
+        currentSchemaName: 'jigwright',
       },
     );
     assert.deepEqual(status.applyRequires, [
@@ -466,7 +464,7 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
       'plan-review',
     ]);
 
-    const configuredStatusPayload = completeV2StatusPayload(
+    const configuredStatusPayload = completeCurrentStatusPayload(
       repository,
       changeRoot,
     );
@@ -483,13 +481,13 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
     const instructionPayload = {
       changeName: 'example-change',
       artifactId: 'plan-review',
-      schemaName: 'expense-app-v2',
+      schemaName: 'jigwright',
       changeDir: changeRoot,
       planningHome: {
         kind: 'repo',
         root: repository,
         changesDir: path.join(repository, 'openspec/changes'),
-        defaultSchema: 'expense-app',
+        defaultSchema: 'jigwright',
       },
       outputPath: 'plan-review.json',
       resolvedOutputPath: path.join(changeRoot, 'plan-review.json'),
@@ -516,8 +514,9 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
     const instruction = parseInstructions(instructionPayload, {
       repositoryRoot: repository,
       changeId: 'example-change',
-      schemaName: 'expense-app-v2',
+      schemaName: 'jigwright',
       artifactId: 'plan-review',
+      currentSchemaName: 'jigwright',
     });
     assert.equal(instruction.outputPath, 'plan-review.json');
     const configuredInstruction = parseInstructions(
@@ -532,7 +531,7 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
     );
     assert.equal(configuredInstruction.outputPath, 'plan-review.json');
 
-    const reordered = completeV2StatusPayload(repository, changeRoot);
+    const reordered = completeCurrentStatusPayload(repository, changeRoot);
     reordered.applyRequires = [
       'tasks',
       'investigation',
@@ -545,7 +544,8 @@ test('v2 status and instructions use the exact investigation-first graph', () =>
         parseStatus(reordered, {
           repositoryRoot: repository,
           changeId: 'example-change',
-          schemaName: 'expense-app-v2',
+          schemaName: 'jigwright',
+          currentSchemaName: 'jigwright',
         }),
       (error) => isWorkflowError(error, 'OPENSPEC_PAYLOAD_INVALID'),
     );
@@ -565,13 +565,13 @@ test('instruction payload recomputes dependency readiness and rejects C1 paths',
   const valid = {
     changeName: 'example-change',
     artifactId: 'guard',
-    schemaName: 'expense-app',
+    schemaName: 'jigwright',
     changeDir,
     planningHome: {
       kind: 'repo',
       root: repository,
       changesDir: path.join(repository, 'openspec/changes'),
-      defaultSchema: 'spec-driven',
+      defaultSchema: 'jigwright',
     },
     outputPath: 'guard.json',
     resolvedOutputPath: path.join(changeDir, 'guard.json'),
@@ -586,7 +586,7 @@ test('instruction payload recomputes dependency readiness and rejects C1 paths',
         description: 'Tasks',
       },
     ],
-    unlocks: [],
+    unlocks: ['plan-review'],
     root: { path: repository, source: 'nearest' },
   };
   try {
@@ -594,8 +594,9 @@ test('instruction payload recomputes dependency readiness and rejects C1 paths',
       parseInstructions(valid, {
         repositoryRoot: repository,
         changeId: 'example-change',
-        schemaName: 'expense-app',
+        schemaName: 'jigwright',
         artifactId: 'guard',
+        currentSchemaName: 'jigwright',
       }).outputPath,
       'guard.json',
     );
@@ -616,8 +617,9 @@ test('instruction payload recomputes dependency readiness and rejects C1 paths',
           parseInstructions(invalid, {
             repositoryRoot: repository,
             changeId: 'example-change',
-            schemaName: 'expense-app',
+            schemaName: 'jigwright',
             artifactId: 'guard',
+            currentSchemaName: 'jigwright',
           }),
         (error) => isWorkflowError(error, 'OPENSPEC_PAYLOAD_INVALID'),
       );
@@ -699,7 +701,7 @@ test('activation requires the exact marker and rejects a legacy downgrade', () =
         repositoryRoot: repository,
         baselines: [before],
         readMarker: () => undefined,
-        declaredSchemaName: 'expense-app',
+        declaredSchemaName: 'pre-activation-schema',
       }),
       { activated: false, anchor: null },
     );
@@ -708,7 +710,8 @@ test('activation requires the exact marker and rejects a legacy downgrade', () =
         repositoryRoot: repository,
         baselines: [anchor],
         readMarker,
-        declaredSchemaName: 'expense-app-v2',
+        declaredSchemaName: 'jigwright',
+        currentSchemaName: 'jigwright',
       }),
       { activated: true, anchor },
     );
@@ -718,7 +721,8 @@ test('activation requires the exact marker and rejects a legacy downgrade', () =
           repositoryRoot: repository,
           baselines: [anchor],
           readMarker,
-          declaredSchemaName: 'expense-app',
+          declaredSchemaName: 'pre-activation-schema',
+          currentSchemaName: 'jigwright',
         }),
       (error) => isWorkflowError(error, 'PLANNING_SCHEMA_DOWNGRADE'),
     );
@@ -732,7 +736,8 @@ test('activation requires the exact marker and rejects a legacy downgrade', () =
             repositoryRoot: repository,
             baselines: [anchor],
             readMarker: absent,
-            declaredSchemaName: 'expense-app-v2',
+            declaredSchemaName: 'jigwright',
+            currentSchemaName: 'jigwright',
           }),
         (error) =>
           isWorkflowError(error, 'INVESTIGATION_ACTIVATION_MARKER_INVALID'),
@@ -785,60 +790,7 @@ function write(repository: string, relativePath: string, content: string) {
   fs.writeFileSync(target, content);
 }
 
-function completeStatusPayload(repository: string, changeRoot: string) {
-  const outputs = {
-    proposal: 'proposal.md',
-    specs: 'specs/**/*.md',
-    design: 'design.md',
-    tasks: 'tasks.md',
-    guard: 'guard.json',
-  } as const;
-  const existing = {
-    proposal: [path.join(changeRoot, 'proposal.md')],
-    specs: [path.join(changeRoot, 'specs/example/spec.md')],
-    design: [path.join(changeRoot, 'design.md')],
-    tasks: [path.join(changeRoot, 'tasks.md')],
-    guard: [path.join(changeRoot, 'guard.json')],
-  };
-  return {
-    changeName: 'example-change',
-    schemaName: 'expense-app',
-    changeRoot,
-    planningHome: {
-      kind: 'repo',
-      root: repository,
-      changesDir: path.join(repository, 'openspec/changes'),
-      defaultSchema: 'spec-driven',
-    },
-    artifactPaths: Object.fromEntries(
-      Object.entries(outputs).map(([id, outputPath]) => [
-        id,
-        {
-          outputPath,
-          resolvedOutputPath: path.join(changeRoot, outputPath),
-          existingOutputPaths: existing[id as keyof typeof existing],
-        },
-      ]),
-    ) as Record<
-      string,
-      {
-        outputPath: string;
-        resolvedOutputPath: string;
-        existingOutputPaths: string[];
-      }
-    >,
-    artifacts: ['proposal', 'design', 'specs', 'tasks', 'guard'].map((id) => ({
-      id,
-      outputPath: outputs[id as keyof typeof outputs],
-      status: 'done' as const,
-    })),
-    applyRequires: ['tasks', 'guard'],
-    isComplete: true,
-    root: { path: repository, source: 'nearest' },
-  };
-}
-
-function completeV2StatusPayload(repository: string, changeRoot: string) {
+function completeCurrentStatusPayload(repository: string, changeRoot: string) {
   const outputs = {
     investigation: 'investigation.json',
     proposal: 'proposal.md',
@@ -871,13 +823,13 @@ function completeV2StatusPayload(repository: string, changeRoot: string) {
   };
   return {
     changeName: 'example-change',
-    schemaName: 'expense-app-v2',
+    schemaName: 'jigwright',
     changeRoot,
     planningHome: {
       kind: 'repo',
       root: repository,
       changesDir: path.join(repository, 'openspec/changes'),
-      defaultSchema: 'expense-app',
+      defaultSchema: 'jigwright',
     },
     artifactPaths: Object.fromEntries(
       artifactIds.map((id) => [
@@ -929,15 +881,18 @@ function createSchemaFixture(): string {
     path.join(repository, 'openspec/config.yaml'),
   );
   fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app'),
-    path.join(repository, 'openspec/schemas/expense-app'),
+    path.join(sourceRepositoryRoot, 'openspec/schemas/jigwright'),
+    path.join(repository, 'openspec/schemas/jigwright'),
     { recursive: true },
   );
-  fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app-v2'),
-    path.join(repository, 'openspec/schemas/expense-app-v2'),
-    { recursive: true },
-  );
+  for (const filePath of [
+    'workflow/config.json',
+    'workflow/repository-consumer.json',
+  ]) {
+    const target = path.join(repository, filePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(path.join(sourceRepositoryRoot, filePath), target);
+  }
   fs.writeFileSync(
     path.join(repository, 'package.json'),
     `${JSON.stringify(

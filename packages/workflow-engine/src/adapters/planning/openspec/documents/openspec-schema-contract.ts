@@ -10,6 +10,7 @@ import {
   protectedBranchRef,
   runGit,
 } from '../../../../runtime/repository-transaction/git.ts';
+import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 import {
   PINNED_OPENSPEC_VERSION,
   resolveOpenSpecInstallation,
@@ -37,7 +38,7 @@ export type OpenSpecSchemaFile = {
 };
 
 export type OpenSpecSchemaSurface = {
-  name: 'spec-driven' | 'expense-app' | 'expense-app-v2';
+  name: string;
   source: 'package' | 'project';
   directory: string;
   graph: OpenSpecSchemaGraph;
@@ -47,8 +48,7 @@ export type OpenSpecSchemaSurface = {
 export type OpenSpecSchemaContract = {
   version: typeof PINNED_OPENSPEC_VERSION;
   packageSchema: OpenSpecSchemaSurface;
-  projectSchema: OpenSpecSchemaSurface;
-  projectSchemaV2: OpenSpecSchemaSurface;
+  currentSchema: OpenSpecSchemaSurface;
   sourceDigests: Record<string, string>;
   configPath: string;
   trackedPaths: string[];
@@ -62,17 +62,7 @@ const SOURCE_FILES = [
   'templates/tasks.md',
 ] as const;
 
-const PROJECT_FILES = [
-  'provenance.json',
-  'schema.yaml',
-  'templates/design.md',
-  'templates/guard.json',
-  'templates/proposal.md',
-  'templates/spec.md',
-  'templates/tasks.md',
-] as const;
-
-const PROJECT_V2_FILES = [
+const CURRENT_SCHEMA_FILES = [
   'provenance.json',
   'schema.yaml',
   'templates/design.md',
@@ -85,13 +75,6 @@ const PROJECT_V2_FILES = [
   'templates/tasks.md',
 ] as const;
 
-export const EXPENSE_APP_SCHEMA_DIGEST =
-  '923edffcaaf8670a0324f2cfd380fe5715e286852768b120044d392e024e1019';
-export const EXPENSE_APP_GUARD_TEMPLATE_DIGEST =
-  'f1c44b8e477fa42dcf7d42de603e374b27073dd36e06a3f0027ab35fd16aec5a';
-export const EXPENSE_APP_CONFIG_DIGEST =
-  '74c82a62f2623c7fcb776ab9813b2f9741aff356d1542f5edb2cc49a101cb17a';
-
 /**
  * The reviewed activation marker for investigation-first planning. The first
  * commit that introduces this exact file is the activation anchor.
@@ -102,14 +85,14 @@ export const INVESTIGATION_PLANNING_ACTIVATION_MARKER =
 export const INVESTIGATION_PLANNING_ACTIVATION_DIGEST =
   'adf4c3e3d28db1b208792e3b5acb0a8e792b010931d377cd70bbb52df37681c7';
 
-const EXPENSE_APP_V2_FILE_DIGESTS: Record<
-  (typeof PROJECT_V2_FILES)[number],
+const CURRENT_SCHEMA_FILE_DIGESTS: Record<
+  (typeof CURRENT_SCHEMA_FILES)[number],
   string
 > = {
   'provenance.json':
     'c83ec0dfb200ab7e2b6ad8284c62389c66f6bf5c4b93384560933d255995f55d',
   'schema.yaml':
-    '910e97a4eb6e1797cf453b1a7c54f5207ccb504ab2dfceac94939ea7808a329f',
+    '478b443b3e542b5de7ba92b2929d4e0deb771659da335dea784a7786bb8f23d1',
   'templates/design.md':
     '037c25fcd0b9b6567627a8d27cbff946f1fe76cd906f25b7b691c6ef57d1e779',
   'templates/execution.json':
@@ -160,95 +143,76 @@ export const SPEC_DRIVEN_SCHEMA_GRAPH: OpenSpecSchemaGraph = {
   apply: { requires: ['tasks'], tracks: 'tasks.md' },
 };
 
-export const EXPENSE_APP_SCHEMA_GRAPH: OpenSpecSchemaGraph = {
-  ...SPEC_DRIVEN_SCHEMA_GRAPH,
-  name: 'expense-app',
-  artifacts: [
-    ...SPEC_DRIVEN_SCHEMA_GRAPH.artifacts.map((artifact) => ({
-      ...artifact,
-      requires: [...artifact.requires],
-    })),
-    {
-      id: 'guard',
-      generates: 'guard.json',
-      template: 'guard.json',
-      requires: ['tasks'],
+export function currentSchemaGraph(name: string): OpenSpecSchemaGraph {
+  return {
+    name,
+    version: 1,
+    artifacts: [
+      {
+        id: 'investigation',
+        generates: 'investigation.json',
+        template: 'investigation.json',
+        requires: [],
+      },
+      {
+        id: 'proposal',
+        generates: 'proposal.md',
+        template: 'proposal.md',
+        requires: ['investigation'],
+      },
+      {
+        id: 'specs',
+        generates: 'specs/**/*.md',
+        template: 'spec.md',
+        requires: ['proposal'],
+      },
+      {
+        id: 'design',
+        generates: 'design.md',
+        template: 'design.md',
+        requires: ['proposal'],
+      },
+      {
+        id: 'tasks',
+        generates: 'tasks.md',
+        template: 'tasks.md',
+        requires: ['specs', 'design'],
+      },
+      {
+        id: 'guard',
+        generates: 'guard.json',
+        template: 'guard.json',
+        requires: ['tasks'],
+      },
+      {
+        id: 'execution',
+        generates: 'execution.json',
+        template: 'execution.json',
+        requires: ['tasks'],
+      },
+      {
+        id: 'plan-review',
+        generates: 'plan-review.json',
+        template: 'plan-review.json',
+        requires: ['guard', 'execution'],
+      },
+    ],
+    apply: {
+      requires: ['investigation', 'tasks', 'guard', 'execution', 'plan-review'],
+      tracks: 'tasks.md',
     },
-  ],
-  apply: { requires: ['tasks', 'guard'], tracks: 'tasks.md' },
-};
-
-export const EXPENSE_APP_V2_SCHEMA_GRAPH: OpenSpecSchemaGraph = {
-  name: 'expense-app-v2',
-  version: 1,
-  artifacts: [
-    {
-      id: 'investigation',
-      generates: 'investigation.json',
-      template: 'investigation.json',
-      requires: [],
-    },
-    {
-      id: 'proposal',
-      generates: 'proposal.md',
-      template: 'proposal.md',
-      requires: ['investigation'],
-    },
-    {
-      id: 'specs',
-      generates: 'specs/**/*.md',
-      template: 'spec.md',
-      requires: ['proposal'],
-    },
-    {
-      id: 'design',
-      generates: 'design.md',
-      template: 'design.md',
-      requires: ['proposal'],
-    },
-    {
-      id: 'tasks',
-      generates: 'tasks.md',
-      template: 'tasks.md',
-      requires: ['specs', 'design'],
-    },
-    {
-      id: 'guard',
-      generates: 'guard.json',
-      template: 'guard.json',
-      requires: ['tasks'],
-    },
-    {
-      id: 'execution',
-      generates: 'execution.json',
-      template: 'execution.json',
-      requires: ['tasks'],
-    },
-    {
-      id: 'plan-review',
-      generates: 'plan-review.json',
-      template: 'plan-review.json',
-      requires: ['guard', 'execution'],
-    },
-  ],
-  apply: {
-    requires: ['investigation', 'tasks', 'guard', 'execution', 'plan-review'],
-    tracks: 'tasks.md',
-  },
-};
+  };
+}
 
 export function schemaGraphFor(
   name: string,
-  currentSchemaName = 'expense-app-v2',
+  currentSchemaName?: string,
 ): OpenSpecSchemaGraph {
   if (name === 'spec-driven') {
     return SPEC_DRIVEN_SCHEMA_GRAPH;
   }
-  if (name === 'expense-app') {
-    return EXPENSE_APP_SCHEMA_GRAPH;
-  }
-  if (name === 'expense-app-v2' || name === currentSchemaName) {
-    return EXPENSE_APP_V2_SCHEMA_GRAPH;
+  if (currentSchemaName !== undefined && name === currentSchemaName) {
+    return currentSchemaGraph(currentSchemaName);
   }
   throw invalidSchemaContract('Unsupported managed OpenSpec schema.');
 }
@@ -347,12 +311,14 @@ export function assertInvestigationPlanningActivation(request: {
   // stale pre-activation branch proposed after the protected base activated.
   if (
     request.declaredSchemaName !== undefined &&
-    request.declaredSchemaName !==
-      (request.currentSchemaName ?? 'expense-app-v2')
+    (request.currentSchemaName === undefined ||
+      request.declaredSchemaName !== request.currentSchemaName)
   ) {
+    const expectedSchemaName =
+      request.currentSchemaName ?? 'the configured current schema';
     throw workflowError(
       'PLANNING_SCHEMA_DOWNGRADE',
-      `Investigation-first planning is active; this generation must declare ${request.currentSchemaName ?? 'expense-app-v2'}.`,
+      `Investigation-first planning is active; this generation must declare ${expectedSchemaName}.`,
       ExitCode.guard,
       {
         details: {
@@ -449,87 +415,53 @@ export function inspectOpenSpecSchemaContract(
   repositoryRoot: string,
 ): OpenSpecSchemaContract {
   const installation = resolveOpenSpecInstallation(repositoryRoot);
+  const planning = repositoryPlanningConfiguration(installation.repositoryRoot);
+  const currentSchemaName = planning.currentSchemaName;
+  if (
+    planning.managedSchemaNames.length !== 1 ||
+    planning.managedSchemaNames[0] !== currentSchemaName
+  ) {
+    throw invalidSchemaContract(
+      'The OpenSpec project must expose exactly its configured current schema.',
+    );
+  }
   const packageDirectory = path.join(
     installation.packageDirectory,
     'schemas/spec-driven',
   );
-  const projectDirectory = path.join(
+  const currentDirectory = path.join(
     installation.repositoryRoot,
-    'openspec/schemas/expense-app',
-  );
-  const projectV2Directory = path.join(
-    installation.repositoryRoot,
-    'openspec/schemas/expense-app-v2',
+    'openspec/schemas',
+    currentSchemaName,
   );
   const packageFiles = inspectExactFiles(packageDirectory, SOURCE_FILES);
-  const projectFiles = inspectExactFiles(projectDirectory, PROJECT_FILES);
-  const projectV2Files = inspectExactFiles(
-    projectV2Directory,
-    PROJECT_V2_FILES,
+  const currentFiles = inspectExactFiles(
+    currentDirectory,
+    CURRENT_SCHEMA_FILES,
   );
-  for (const filePath of PROJECT_V2_FILES) {
+  for (const filePath of CURRENT_SCHEMA_FILES) {
     if (
-      projectV2Files[filePath]?.digest !== EXPENSE_APP_V2_FILE_DIGESTS[filePath]
+      currentFiles[filePath]?.digest !== CURRENT_SCHEMA_FILE_DIGESTS[filePath]
     ) {
       throw invalidSchemaContract(
-        'The project v2 OpenSpec schema content differs from the reviewed contract.',
+        'The current OpenSpec schema content differs from the reviewed contract.',
       );
     }
   }
-  const configPath = inspectProjectConfig(installation.repositoryRoot);
-  const provenance = parseProvenance(
-    fs.readFileSync(path.join(projectDirectory, 'provenance.json'), 'utf8'),
+  const configPath = inspectProjectConfig(
+    installation.repositoryRoot,
+    currentSchemaName,
   );
-  if (projectFiles['schema.yaml']?.digest !== EXPENSE_APP_SCHEMA_DIGEST) {
-    throw invalidSchemaContract(
-      'The project OpenSpec schema content differs from the reviewed contract.',
-    );
-  }
-  if (
-    projectFiles['templates/guard.json']?.digest !==
-    EXPENSE_APP_GUARD_TEMPLATE_DIGEST
-  ) {
-    throw invalidSchemaContract(
-      'The project guard template differs from the reviewed contract.',
-    );
-  }
+  const provenance = parseProvenance(
+    fs.readFileSync(path.join(currentDirectory, 'provenance.json'), 'utf8'),
+  );
 
   for (const sourcePath of SOURCE_FILES) {
     const observedSource = packageFiles[sourcePath];
-    const observedProject =
-      sourcePath === 'schema.yaml' ? undefined : projectFiles[sourcePath];
     const expectedDigest = provenance.files[sourcePath];
-    if (
-      !observedSource ||
-      observedSource.digest !== expectedDigest ||
-      (observedProject && observedProject.digest !== expectedDigest)
-    ) {
+    if (!observedSource || observedSource.digest !== expectedDigest) {
       throw invalidSchemaContract(
-        'The project schema provenance does not match the pinned package source.',
-      );
-    }
-  }
-
-  const packageGraph = parseSchemaGraph(
-    fs.readFileSync(path.join(packageDirectory, 'schema.yaml'), 'utf8'),
-  );
-  const projectGraph = parseSchemaGraph(
-    fs.readFileSync(path.join(projectDirectory, 'schema.yaml'), 'utf8'),
-  );
-  const projectV2Graph = parseSchemaGraph(
-    fs.readFileSync(path.join(projectV2Directory, 'schema.yaml'), 'utf8'),
-  );
-  assertExactGraph(packageGraph, SPEC_DRIVEN_SCHEMA_GRAPH);
-  assertExactGraph(projectGraph, EXPENSE_APP_SCHEMA_GRAPH);
-  assertExactGraph(projectV2Graph, EXPENSE_APP_V2_SCHEMA_GRAPH);
-
-  const v2Provenance = parseProvenance(
-    fs.readFileSync(path.join(projectV2Directory, 'provenance.json'), 'utf8'),
-  );
-  for (const sourcePath of SOURCE_FILES) {
-    if (v2Provenance.files[sourcePath] !== provenance.files[sourcePath]) {
-      throw invalidSchemaContract(
-        'The v2 schema provenance does not match the pinned package source.',
+        'The current schema provenance does not match the pinned package source.',
       );
     }
   }
@@ -538,22 +470,21 @@ export function inspectOpenSpecSchemaContract(
     'templates/spec.md',
     'templates/tasks.md',
   ] as const) {
-    if (
-      projectV2Files[sourcePath]?.digest !== packageFiles[sourcePath]?.digest
-    ) {
+    if (currentFiles[sourcePath]?.digest !== packageFiles[sourcePath]?.digest) {
       throw invalidSchemaContract(
-        'The v2 authored templates do not match the pinned package source.',
+        'The current authored templates do not match the pinned package source.',
       );
     }
   }
-  if (
-    projectV2Files['templates/guard.json']?.digest !==
-    projectFiles['templates/guard.json']?.digest
-  ) {
-    throw invalidSchemaContract(
-      'The v2 guard template does not match the reviewed legacy policy template.',
-    );
-  }
+
+  const packageGraph = parseSchemaGraph(
+    fs.readFileSync(path.join(packageDirectory, 'schema.yaml'), 'utf8'),
+  );
+  const currentGraph = parseSchemaGraph(
+    fs.readFileSync(path.join(currentDirectory, 'schema.yaml'), 'utf8'),
+  );
+  assertExactGraph(packageGraph, SPEC_DRIVEN_SCHEMA_GRAPH);
+  assertExactGraph(currentGraph, currentSchemaGraph(currentSchemaName));
 
   return {
     version: PINNED_OPENSPEC_VERSION,
@@ -564,27 +495,19 @@ export function inspectOpenSpecSchemaContract(
       graph: packageGraph,
       files: packageFiles,
     },
-    projectSchema: {
-      name: 'expense-app',
+    currentSchema: {
+      name: currentSchemaName,
       source: 'project',
-      directory: projectDirectory,
-      graph: projectGraph,
-      files: projectFiles,
-    },
-    projectSchemaV2: {
-      name: 'expense-app-v2',
-      source: 'project',
-      directory: projectV2Directory,
-      graph: projectV2Graph,
-      files: projectV2Files,
+      directory: currentDirectory,
+      graph: currentGraph,
+      files: currentFiles,
     },
     sourceDigests: { ...provenance.files },
     configPath,
     trackedPaths: [
       configPath,
-      ...PROJECT_FILES.map((filePath) => path.join(projectDirectory, filePath)),
-      ...PROJECT_V2_FILES.map((filePath) =>
-        path.join(projectV2Directory, filePath),
+      ...CURRENT_SCHEMA_FILES.map((filePath) =>
+        path.join(currentDirectory, filePath),
       ),
     ].sort(),
   };
@@ -645,7 +568,10 @@ function inspectExactFiles(
   }
 }
 
-function inspectProjectConfig(repositoryRoot: string): string {
+function inspectProjectConfig(
+  repositoryRoot: string,
+  currentSchemaName: string,
+): string {
   const configPath = path.join(repositoryRoot, 'openspec/config.yaml');
   let content: string;
   try {
@@ -659,12 +585,6 @@ function inspectProjectConfig(repositoryRoot: string): string {
       throw new Error('unsafe OpenSpec config');
     }
     const bytes = fs.readFileSync(configPath);
-    if (
-      crypto.createHash('sha256').update(bytes).digest('hex') !==
-      EXPENSE_APP_CONFIG_DIGEST
-    ) {
-      throw new Error('OpenSpec config digest differs');
-    }
     content = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     throw invalidSchemaContract(
@@ -682,13 +602,13 @@ function inspectProjectConfig(repositoryRoot: string): string {
   }
   const rootSchemaLines = content
     .split('\n')
-    .filter((line) => /^schema:/.test(line));
+    .filter((line) => /^(?:schema|['"]schema['"]):/.test(line));
   if (
     rootSchemaLines.length !== 1 ||
-    rootSchemaLines[0] !== 'schema: expense-app-v2'
+    rootSchemaLines[0] !== `schema: ${currentSchemaName}`
   ) {
     throw invalidSchemaContract(
-      'The OpenSpec project configuration must select expense-app-v2 exactly once.',
+      'The OpenSpec project configuration must select the configured current schema exactly once.',
     );
   }
   return configPath;
