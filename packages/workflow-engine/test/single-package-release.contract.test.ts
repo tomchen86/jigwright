@@ -9,6 +9,18 @@ import test from 'node:test';
 import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
 
 test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
+  const workspaceManifest = JSON.parse(
+    fs.readFileSync(path.resolve('package.json'), 'utf8'),
+  ) as { scripts: Record<string, string> };
+  assert.equal(
+    workspaceManifest.scripts['jigwright:pack-local'],
+    'node --experimental-strip-types scripts/build-single-jigwright-package.ts --output dist/local-release',
+  );
+  assert.equal(
+    workspaceManifest.scripts['jigwright:pack-workspace'],
+    'node --experimental-strip-types scripts/build-local-jigwright-release.ts --output dist/workspace-release',
+  );
+  assert.equal(workspaceManifest.scripts['jigwright:pack-single'], undefined);
   const scratch = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-single-package-'),
   );
