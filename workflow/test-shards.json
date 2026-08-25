@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260823132415703-9dee6f01-872a-45a9-b571-059ca484497e",
   "sourceTelemetryDigest": "sha256:f688e9e11e78d2f9623cab691959ba5f17ac11c55288bc349adc86b19e42e9c7",
-  "physicalFileCount": 349,
+  "physicalFileCount": 350,
   "executionUnitCount": 347,
-  "inventoryDigest": "sha256:2ad1f42d66664b3bf48232a99d1bcdeaf98099e6dc1a622d7018910d70fc0147",
+  "inventoryDigest": "sha256:5a561df3b91800c188c563791442873ad8a3b03e05d6e6d85a73957213a073cb",
   "shards": [
     {
       "shardNumber": 1,
@@ -2499,7 +2499,8 @@
         {
           "entrypoint": "packages/workflow-engine/test/release-v1.contract.test.ts",
           "ownedPhysicalFiles": [
-            "packages/workflow-engine/test/release-v1.contract.test.ts"
+            "packages/workflow-engine/test/release-v1.contract.test.ts",
+            "packages/workflow-engine/test/single-package-release.contract.test.ts"
           ],
           "legacyOrdinal": 346,
           "estimatedDurationMs": 0

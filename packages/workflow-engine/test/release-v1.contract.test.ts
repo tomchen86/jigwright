@@ -23,6 +23,7 @@ import {
 } from '../../../scripts/prepare-current-jigwright-v1-release.ts';
 import { canonicalJson } from '../../core/src/canonical-json.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
+import './single-package-release.contract.test.ts';
 
 const packageNames = [
   '@jigwright/agent-runtime',

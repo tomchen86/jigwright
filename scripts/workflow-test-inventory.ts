@@ -45,7 +45,7 @@ const FAMILY_LOADERS = Object.freeze({
   [SESSION_ROOT]: `${TEST_ROOT}/session-legacy-family.ts`,
 });
 const ROOT_OWN_TEST_COUNTS = Object.freeze({
-  [CONTRACTS_ROOT]: 35,
+  [CONTRACTS_ROOT]: 36,
   [SESSION_ROOT]: 33,
 });
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
