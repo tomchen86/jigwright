@@ -7,6 +7,109 @@ import test from 'node:test';
 
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
+test('package CLI dispatches against an explicit external repository root', () => {
+  const repository = createExternalRepositoryFixture();
+  try {
+    const result = spawnSync(
+      process.execPath,
+      [
+        path.join(
+          sourceRepositoryRoot,
+          'packages/workflow-engine/bootstrap/jigwright-cli.mjs',
+        ),
+        '--repository-root',
+        repository,
+        'doctor',
+        '--json',
+      ],
+      { cwd: sourceRepositoryRoot, encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const payload = JSON.parse(result.stdout) as {
+      command: string;
+      repository: { root: string };
+    };
+    assert.equal(payload.command, 'doctor');
+    assert.equal(payload.repository.root, fs.realpathSync(repository));
+    assert.notEqual(
+      payload.repository.root,
+      fs.realpathSync(sourceRepositoryRoot),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+function createExternalRepositoryFixture(): string {
+  const repository = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-external-repository-'),
+  );
+  runFixtureGit(repository, ['init', '-b', 'feature']);
+  runFixtureGit(repository, ['config', 'user.email', 'jigwright@example.test']);
+  runFixtureGit(repository, ['config', 'user.name', 'Jigwright Test']);
+  fs.mkdirSync(path.join(repository, 'workflow'), { recursive: true });
+  fs.mkdirSync(path.join(repository, 'openspec/specs'), { recursive: true });
+  fs.writeFileSync(
+    path.join(repository, 'workflow/config.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        repositoryName: 'external-fixture',
+        changeRoot: 'openspec/changes',
+        runtimeDirectory: 'workflow-engine',
+        protectedBranches: ['main', 'master'],
+        branchTemplate: 'work/{changeId}',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  fs.writeFileSync(
+    path.join(repository, 'openspec/specs/README.md'),
+    '# External consumer fixture\n',
+  );
+  runFixtureGit(repository, ['add', '.']);
+  runFixtureGit(repository, [
+    'commit',
+    '-m',
+    'Initialize external consumer fixture',
+  ]);
+  return repository;
+}
+
+function runFixtureGit(repository: string, argv: string[]): void {
+  const result = spawnSync('git', argv, {
+    cwd: repository,
+    encoding: 'utf8',
+  });
+  assert.equal(result.status, 0, result.stderr);
+}
+
+test('package CLI fails closed on an invalid external repository root', () => {
+  const launcher = path.join(
+    sourceRepositoryRoot,
+    'packages/workflow-engine/bootstrap/jigwright-cli.mjs',
+  );
+  for (const requestedRoot of [
+    'relative-consumer',
+    path.join(sourceRepositoryRoot, 'package.json'),
+    path.join(os.tmpdir(), 'missing-jigwright-consumer'),
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      [launcher, '--repository-root', requestedRoot, 'doctor', '--json'],
+      { cwd: sourceRepositoryRoot, encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(
+      (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
+      'JIGWRIGHT_REPOSITORY_ROOT_INVALID',
+    );
+  }
+});
+
 test('main CLI routes human intervention through the durable bootstrap surface', () => {
   const repository = createFixtureRepository();
   const auditRoot = fs.realpathSync(

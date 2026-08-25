@@ -11,7 +11,10 @@ const runtimeManifestPath = fileURLToPath(
 );
 const packageRequire = createRequire(import.meta.url);
 
-export function runInstalledJigwrightRuntime(argv) {
+export function runInstalledJigwrightRuntime(
+  argv,
+  repositoryRoot = process.cwd(),
+) {
   const runtimeRoot = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-installed-runtime-')),
   );
@@ -33,7 +36,7 @@ export function runInstalledJigwrightRuntime(argv) {
         ...argv,
       ],
       {
-        cwd: process.cwd(),
+        cwd: repositoryRoot,
         env: process.env,
         stdio: 'inherit',
         windowsHide: true,
