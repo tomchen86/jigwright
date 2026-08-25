@@ -1,0 +1,32 @@
+{
+  "name": "jigwright-package-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.12.0",
+  "engines": {
+    "node": ">=22.22.1"
+  },
+  "scripts": {
+    "build": "pnpm typecheck",
+    "typecheck": "pnpm --recursive --if-present typecheck",
+    "test:packages": "pnpm --filter @jigwright/core --filter @jigwright/agent-runtime --filter @jigwright/fixture-adapter --filter @jigwright/github-adapter --filter @jigwright/grants --filter @jigwright/openspec-adapter test",
+    "harness-bootstrap": "node --experimental-strip-types packages/workflow-engine/bootstrap/harness-bootstrap-launcher.ts",
+    "jigwright": "node packages/workflow-engine/bootstrap/jigwright-cli.mjs",
+    "jigwright:adopt-local": "node --experimental-strip-types scripts/run-local-jigwright-adoption.ts",
+    "jigwright:pack-local": "node --experimental-strip-types scripts/build-local-jigwright-release.ts --output dist/local-release",
+    "jigwright:release-v1": "node --experimental-strip-types scripts/prepare-jigwright-v1-release.ts --output dist/release-v1",
+    "workflow": "node --experimental-strip-types packages/workflow-engine/bootstrap/workflow-launcher.ts",
+    "workflow:build-human-gate-macos": "node --experimental-strip-types scripts/build-human-gate-macos.ts",
+    "workflow:protected-capabilities": "node --experimental-strip-types packages/workflow-engine/bootstrap/generate-protected-capabilities.ts",
+    "workflow:test": "node --experimental-strip-types scripts/workflow-full-gate.ts",
+    "workflow:test:failures": "node --experimental-strip-types scripts/workflow-full-gate.ts --failures",
+    "workflow:test:status": "node --experimental-strip-types scripts/workflow-full-gate.ts --status",
+    "workflow:test:timings": "node --experimental-strip-types scripts/workflow-full-gate.ts --timings",
+    "workflow:typecheck": "tsc -p packages/workflow-engine/tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "6.0.3"
+  },
+  "license": "UNLICENSED"
+}

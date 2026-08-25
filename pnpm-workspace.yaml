@@ -1,0 +1,6 @@
+packages:
+  - 'packages/*'
+
+# Keep local and CI installs on the same node_modules layout. pnpm 11 otherwise
+# enables the global virtual store locally but disables it under CI.
+enableGlobalVirtualStore: false
