@@ -118,6 +118,12 @@ function resolveRuntimePackage(descriptor) {
   if (descriptor.name === 'jigwright') {
     return { sourceRoot: packageRoot, runtimeAvailable: true };
   }
+  if (typeof descriptor.embeddedSourceRoot === 'string') {
+    return {
+      sourceRoot: path.join(packageRoot, descriptor.embeddedSourceRoot),
+      runtimeAvailable: true,
+    };
+  }
   try {
     return {
       sourceRoot: resolveInstalledPackageRoot(
@@ -172,6 +178,14 @@ function assertDescriptor(value) {
     typeof value.sourceRoot !== 'string' ||
     typeof value.probe !== 'string' ||
     typeof value.optional !== 'boolean' ||
+    !(
+      value.embeddedSourceRoot === undefined ||
+      value.embeddedSourceRoot === null ||
+      (typeof value.embeddedSourceRoot === 'string' &&
+        /^bootstrap\/installed-runtime-sources\/[a-z0-9-]+$/u.test(
+          value.embeddedSourceRoot,
+        ))
+    ) ||
     !(
       value.fallbackSourceRoot === null ||
       (typeof value.fallbackSourceRoot === 'string' &&

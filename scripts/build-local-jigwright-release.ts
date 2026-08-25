@@ -1093,7 +1093,7 @@ function assertFixedHumanGateArtifact(
   }
 }
 
-function writeDeterministicTarball(
+export function writeDeterministicTarball(
   stageParent: string,
   tarballPath: string,
 ): void {
