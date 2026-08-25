@@ -12,13 +12,15 @@ import {
   verifyJigwrightReleaseCompatibilityMatrix,
 } from '../../../scripts/build-local-jigwright-release.ts';
 import {
-  applyVerifiedJigwrightV1ReleaseEvidence,
-  assessJigwrightV1PublishReadiness,
   JIGWRIGHT_V1_RELEASE_EVIDENCE_SIGNATURE_NAMESPACE,
   jigwrightV1ReleaseEvidenceSubject,
-  prepareJigwrightV1ReleaseCandidate,
   verifyJigwrightV1ReleaseEvidenceObject,
 } from '../../../scripts/prepare-jigwright-v1-release.ts';
+import {
+  assessCurrentJigwrightV1PublishReadiness,
+  prepareCurrentJigwrightV1ReleaseCandidate,
+  verifyCurrentJigwrightV1ReleaseCandidate,
+} from '../../../scripts/prepare-current-jigwright-v1-release.ts';
 import { canonicalJson } from '../../core/src/canonical-json.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
 
@@ -30,6 +32,138 @@ const packageNames = [
   '@jigwright/openspec-adapter',
   'jigwright',
 ] as const;
+
+test('the v1 command prepares one current-only Jigwright package', () => {
+  const workspaceManifest = readJson(path.resolve('package.json')) as {
+    scripts: Record<string, string>;
+  };
+  assert.equal(
+    workspaceManifest.scripts['jigwright:release-v1'],
+    'node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --output dist/release-v1',
+  );
+  assert.equal(
+    workspaceManifest.scripts['jigwright:release-workspace'],
+    undefined,
+  );
+});
+
+test('single-package v1 candidate binds reproducibility and stays fail closed for publish', () => {
+  const outputRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-current-v1-release-'),
+  );
+  try {
+    const candidate = prepareCurrentJigwrightV1ReleaseCandidate(
+      process.cwd(),
+      outputRoot,
+      { allowDirty: true },
+    );
+
+    assert.equal(candidate.schemaVersion, 1);
+    assert.equal(candidate.kind, 'jigwright-v1-single-package-candidate.v1');
+    assert.equal(candidate.release.name, 'jigwright');
+    assert.equal(candidate.release.version, '0.1.0');
+    assert.match(candidate.release.digest, /^sha256:[a-f0-9]{64}$/u);
+    assert.deepEqual(candidate.packageBoundary.publicPackageIdentities, [
+      'jigwright',
+    ]);
+    assert.equal(candidate.packageBoundary.externalDependencies, 0);
+    assert.equal(candidate.packageBoundary.verified, true);
+    assert.equal(candidate.reproducibility.identical, true);
+    assert.equal(
+      candidate.reproducibility.repeatedDigest,
+      candidate.release.digest,
+    );
+    assert.equal(candidate.adoption.release.digest, candidate.release.digest);
+    assert.equal(
+      candidate.adoption.kind,
+      'jigwright-current-local-adoption-report.v1',
+    );
+    assert.deepEqual(candidate.operationalGates, {
+      implementation: 'implementation-ready',
+      independentReview: 'independent-review-pending',
+      signedProvenance: 'signed-provenance-pending',
+      realPilot: 'real-pilot-pending',
+      fullGate: 'full-gate-pending',
+      registryPublish: 'not-requested',
+    });
+    assert.equal(candidate.publishReadiness.publishable, false);
+    assert.deepEqual(candidate.publishReadiness.blockers, [
+      'clean-source-required',
+      'license-decision-pending',
+      'independent-review-pending',
+      'signed-provenance-pending',
+      'real-pilot-pending',
+      'full-gate-pending',
+      'registry-publish-not-requested',
+    ]);
+    assert.throws(
+      () => assessCurrentJigwrightV1PublishReadiness(candidate, 'publish'),
+      /not publishable/u,
+    );
+
+    for (const relativePath of [
+      `package/${candidate.release.tarball}`,
+      'adoption/report.json',
+      'integrity.json',
+      'provenance.intoto.json',
+      'sbom.cdx.json',
+      'release-candidate.json',
+      'docs/API.md',
+      'docs/OPERATIONS.md',
+      'docs/COMPATIBILITY.md',
+    ]) {
+      assert.equal(fs.existsSync(path.join(outputRoot, relativePath)), true);
+    }
+    assert.equal(
+      verifyCurrentJigwrightV1ReleaseCandidate(outputRoot).release.digest,
+      candidate.release.digest,
+    );
+
+    const provenancePath = path.join(outputRoot, 'provenance.intoto.json');
+    const provenanceBytes = fs.readFileSync(provenancePath);
+    const provenance = readJson(provenancePath);
+    provenance.subject[0].digest.sha256 = '0'.repeat(64);
+    fs.writeFileSync(provenancePath, JSON.stringify(provenance));
+    assert.throws(
+      () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
+      /provenance binding/u,
+    );
+    fs.writeFileSync(provenancePath, provenanceBytes);
+
+    const sbomPath = path.join(outputRoot, 'sbom.cdx.json');
+    const sbomBytes = fs.readFileSync(sbomPath);
+    const sbom = readJson(sbomPath);
+    sbom.components[0].name = 'tampered';
+    fs.writeFileSync(sbomPath, JSON.stringify(sbom));
+    assert.throws(
+      () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
+      /SBOM binding/u,
+    );
+    fs.writeFileSync(sbomPath, sbomBytes);
+
+    const candidatePath = path.join(outputRoot, 'release-candidate.json');
+    const candidateBytes = fs.readFileSync(candidatePath);
+    const escaped = readJson(candidatePath);
+    escaped.release.tarball = '../../outside.tgz';
+    fs.writeFileSync(candidatePath, JSON.stringify(escaped));
+    assert.throws(
+      () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
+      /candidate is invalid/u,
+    );
+    fs.writeFileSync(candidatePath, candidateBytes);
+
+    fs.appendFileSync(
+      path.join(outputRoot, 'package', candidate.release.tarball),
+      'tampered',
+    );
+    assert.throws(
+      () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
+      /artifact digest/u,
+    );
+  } finally {
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  }
+});
 
 test('v1 release artifacts are reproducible, exact, and supply-chain described', () => {
   const firstRoot = fs.mkdtempSync(
@@ -330,146 +464,6 @@ test('v1 compatibility verification recomputes every public contract and composi
         /compatibility matrix .*match|artifact integrity/u,
         name,
       );
-    }
-  } finally {
-    fs.rmSync(outputRoot, { recursive: true, force: true });
-  }
-});
-
-test('v1 candidate rehearses frozen install and downgrade while publish stays fail closed', () => {
-  const outputRoot = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'jigwright-v1-candidate-'),
-  );
-  try {
-    const dossier = prepareJigwrightV1ReleaseCandidate(
-      process.cwd(),
-      outputRoot,
-      { allowDirty: true },
-    );
-    assert.equal(dossier.status, 'implementation-ready');
-    assert.equal(dossier.reproducibleBuild, true);
-    assert.equal(dossier.installAssurance.lifecycleScriptsDenied, true);
-    assert.equal(dossier.installAssurance.offline, true);
-    assert.equal(dossier.installAssurance.frozenLockfile, true);
-    assert.equal(dossier.installAssurance.exactDowngradeRehearsed, true);
-    assert.equal(dossier.genericBoundary.status, 'extraction-pending');
-    assert.ok(dossier.genericBoundary.consumerOwnedAdapterSourceFiles > 0);
-    assert.equal(
-      dossier.historicalAssurance.providerAvailability.accepted,
-      true,
-    );
-    assert.equal(
-      dossier.historicalAssurance.providerAvailability.futureSla,
-      false,
-    );
-    assert.equal(
-      dossier.historicalAssurance.planningBindingMigration,
-      'mixed-bindings-refused',
-    );
-    assert.deepEqual(dossier.operationalGates, {
-      realPilot: 'real-pilot-pending',
-      fullGate: 'full-gate-pending',
-      registryPublish: 'not-requested',
-    });
-    assert.equal(dossier.extraction.steps.length, 8);
-    assert.equal(
-      dossier.extraction.steps[7]?.state,
-      'operational-gate-pending',
-    );
-
-    const candidate = assessJigwrightV1PublishReadiness(dossier, 'candidate');
-    assert.equal(candidate.status, 'implementation-ready');
-    assert.equal(candidate.publishable, false);
-    assert.deepEqual(candidate.blockers, [
-      'clean-source-required',
-      'consumer-policy-extraction-pending',
-      'independent-bootstrap-review-pending',
-      'license-decision-pending',
-      'signed-provenance-pending',
-      'real-pilot-pending',
-      'full-gate-pending',
-      'registry-publish-not-requested',
-    ]);
-    assert.throws(
-      () => assessJigwrightV1PublishReadiness(dossier, 'publish'),
-      /not publishable/u,
-    );
-
-    const cleanDossier = structuredClone(dossier) as any;
-    cleanDossier.release.source.dirty = false;
-    const fixture = createSshSignedFixture('release-reviewer');
-    try {
-      const completeEvidence = writeReleaseEvidenceObject(
-        outputRoot,
-        cleanDossier.release,
-        fixture,
-        [
-          'full-gate',
-          'real-pilot',
-          'self-hosting-independent-review',
-          'signed-provenance',
-        ],
-      );
-      const verified = verifyJigwrightV1ReleaseEvidenceObject(
-        completeEvidence.path,
-        cleanDossier.release,
-        [fixture.trustedSigner],
-      );
-      const completed = applyVerifiedJigwrightV1ReleaseEvidence(
-        cleanDossier,
-        verified,
-      );
-      assert.equal(completed.selfHosting.independentReview, 'complete');
-      assert.equal(
-        completed.evidence.releaseReadiness.signedProvenance,
-        'complete',
-      );
-      assert.equal(completed.operationalGates.realPilot, 'complete');
-      assert.equal(completed.operationalGates.fullGate, 'complete');
-      assert.equal(
-        completed.evidence.releaseReadiness.objectDigest,
-        completeEvidence.digest,
-      );
-      assert.equal(completed.extraction.steps[3]?.state, 'complete');
-      assert.equal(completed.extraction.steps[4]?.state, 'complete');
-      assert.deepEqual(
-        assessJigwrightV1PublishReadiness(completed, 'candidate').blockers,
-        [
-          'consumer-policy-extraction-pending',
-          'license-decision-pending',
-          'registry-publish-not-requested',
-        ],
-      );
-
-      const provenanceOnly = writeReleaseEvidenceObject(
-        outputRoot,
-        cleanDossier.release,
-        fixture,
-        ['signed-provenance'],
-      );
-      const partiallyCompleted = applyVerifiedJigwrightV1ReleaseEvidence(
-        cleanDossier,
-        verifyJigwrightV1ReleaseEvidenceObject(
-          provenanceOnly.path,
-          cleanDossier.release,
-          [fixture.trustedSigner],
-        ),
-      );
-      assert.equal(
-        partiallyCompleted.evidence.releaseReadiness.signedProvenance,
-        'complete',
-      );
-      assert.equal(partiallyCompleted.selfHosting.independentReview, 'pending');
-      assert.equal(
-        partiallyCompleted.operationalGates.realPilot,
-        'real-pilot-pending',
-      );
-      assert.equal(
-        partiallyCompleted.operationalGates.fullGate,
-        'full-gate-pending',
-      );
-    } finally {
-      fixture.dispose();
     }
   } finally {
     fs.rmSync(outputRoot, { recursive: true, force: true });
