@@ -150,7 +150,7 @@ test('routing never auto-focuses and focus consumes current Manifest v3 plus sep
           schemaVersion: 1,
           action: { kind: 'focus', changeId: 'demo-change' },
         }),
-      { code: 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN' },
+      { code: 'OPENSPEC_MANAGED_SCHEMA_REQUIRED' },
     );
 
     writeReadyV3ExemptChange(repository);

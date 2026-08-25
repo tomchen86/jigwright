@@ -31,7 +31,11 @@ import {
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/expense-app/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
-import { createWorkItem } from '../src/modules/governance-intake/work-registry.ts';
+import {
+  createWorkItem,
+  workItemDigest,
+  type WorkItemV1,
+} from '../src/modules/governance-intake/work-registry.ts';
 import {
   createFixtureRepository,
   git,
@@ -372,12 +376,6 @@ test('portable fixture completes all ten local scenarios twice', () => {
       );
       assert.match(help, /^Usage:\n/u);
 
-      addChangeSkeleton(repository, 'blocked-change', 'src/blocked/**');
-      addChangeSkeleton(repository, 'parallel-one', 'src/parallel-one/**');
-      addChangeSkeleton(repository, 'parallel-two', 'src/parallel-two/**');
-      addChangeSkeleton(repository, 'parallel-three', 'src/parallel-one/**');
-      exerciseRouting(repository);
-
       writePortableDelta(repository);
       const workSourceId = captureSource(repository, 'work-source', {
         semanticAuthor: 'maintainer',
@@ -403,6 +401,7 @@ test('portable fixture completes all ten local scenarios twice', () => {
         summary: 'Exercise one exact local Jigwright lifecycle.',
         sourceRefs: [workSourceId],
       });
+      reviewFixtureWorkItem(repository, workItemId);
       runCli(repository, [
         'source',
         'link-change',
@@ -431,6 +430,12 @@ test('portable fixture completes all ten local scenarios twice', () => {
       assert.equal(validation.tasks.length, 1);
       assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
       const plan = planCommit(repository, 'demo-change');
+      git(repository, ['checkout', 'trunk']);
+      git(repository, ['merge', '--ff-only', plan.commitHash]);
+      git(repository, ['branch', '-d', 'changes/demo-change']);
+      prepareRoutingChangePlans(repository);
+      exerciseRouting(repository);
+      git(repository, ['checkout', '-b', 'changes/demo-change']);
       const sessionId = startTask(repository, 'demo-change');
       fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
       assert.equal(checkTask(repository, sessionId).passed, true);
@@ -500,10 +505,26 @@ test('portable fixture completes all ten local scenarios twice', () => {
       );
       assert.deepEqual(
         managed.map(({ trailers }) => trailers.kind),
-        ['plan', 'task', 'plan', 'plan', 'plan', 'plan', 'archive'],
+        [
+          'plan',
+          'plan',
+          'plan',
+          'plan',
+          'plan',
+          'route',
+          'route',
+          'task',
+          'route',
+          'route',
+          'archive',
+        ],
       );
       assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
-      assert.equal(managed[1]!.fixtureCommitId, task.commitHash);
+      assert.equal(
+        managed.find(({ trailers }) => trailers.kind === 'task')!
+          .fixtureCommitId,
+        task.commitHash,
+      );
       assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
@@ -517,10 +538,7 @@ type ArchiveCommit = Readonly<{
   commitHash: string;
   archivePath: string;
 }>;
-type FixtureWorkItem = Readonly<{
-  id: string;
-  stage: string;
-}>;
+type FixtureWorkItem = WorkItemV1;
 type ChangeOrigin = Readonly<{
   schemaVersion: 1;
   sourceRefs: string[];
@@ -677,6 +695,27 @@ function createFixtureWorkItem(
   }
 }
 
+function reviewFixtureWorkItem(repository: string, workItemId: string): void {
+  const item = showFixtureWorkItem(repository, workItemId);
+  const inputPath = 'work-item-review.json';
+  writeJson(path.join(repository, inputPath), {
+    action: 'accept',
+    expectedDigest: workItemDigest(item),
+    summary: item.interpretation.summary,
+  });
+  try {
+    runCli(repository, [
+      'work-item',
+      'review',
+      workItemId,
+      '--input',
+      inputPath,
+    ]);
+  } finally {
+    fs.rmSync(path.join(repository, inputPath), { force: true });
+  }
+}
+
 function promoteFixtureWorkItem(
   repository: string,
   workItemId: string,
@@ -806,43 +845,21 @@ function archiveChange(repository: string, changeId: string): ArchiveCommit {
 }
 
 function exerciseRouting(repository: string): void {
-  writeJson(path.join(repository, 'routing-block.json'), {
-    schemaVersion: 1,
-    action: {
-      kind: 'block',
-      changeId: 'blocked-change',
-      taskId: '1.1',
-      reason: 'Wait for the focused unblocking change.',
-      blocker: {
-        kind: 'change',
-        id: 'demo-change',
-        resumeCondition: 'done',
-      },
+  applyRoutingAction(repository, 'routing-block', {
+    kind: 'block',
+    changeId: 'blocked-change',
+    taskId: '1.1',
+    reason: 'Wait for the focused unblocking change.',
+    blocker: {
+      kind: 'change',
+      id: 'demo-change',
+      resumeCondition: 'done',
     },
   });
-  runCli(repository, [
-    'route',
-    'prepare',
-    '--intent',
-    'routing-block.json',
-    '--output',
-    'routing-block-review.json',
-  ]);
-  runCli(repository, ['route', 'apply', 'routing-block-review.json']);
-
-  writeJson(path.join(repository, 'routing-focus.json'), {
-    schemaVersion: 1,
-    action: { kind: 'focus', changeId: 'demo-change' },
+  applyRoutingAction(repository, 'routing-focus', {
+    kind: 'focus',
+    changeId: 'demo-change',
   });
-  runCli(repository, [
-    'route',
-    'prepare',
-    '--intent',
-    'routing-focus.json',
-    '--output',
-    'routing-focus-review.json',
-  ]);
-  runCli(repository, ['route', 'apply', 'routing-focus-review.json']);
   const status = runCli(repository, ['route', 'status']) as {
     result: {
       result: {
@@ -871,22 +888,6 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       kind: 'set-concurrent',
       changeId: 'parallel-two',
     });
-    git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Record portable concurrent workset']);
-    for (const changeId of [
-      'blocked-change',
-      'parallel-one',
-      'parallel-two',
-      'parallel-three',
-    ]) {
-      const planningBranch = `changes/${changeId}`;
-      git(repository, ['checkout', '-b', planningBranch]);
-      writeReadyV3ExemptChange(repository, changeId);
-      planCommit(repository, changeId);
-      git(repository, ['checkout', 'trunk']);
-      git(repository, ['merge', '--ff-only', planningBranch]);
-      git(repository, ['branch', '-d', planningBranch]);
-    }
     for (const changeId of ['parallel-one', 'parallel-two', 'parallel-three']) {
       fixtures.push(prepareConcurrentWorktree(repository, changeId));
     }
@@ -1002,18 +1003,48 @@ function applyRoutingAction(
   name: string,
   action: Record<string, unknown>,
 ): void {
-  const intent = `${name}.json`;
-  const review = `${name}-review.json`;
-  writeJson(path.join(repository, intent), { schemaVersion: 1, action });
-  runCli(repository, [
-    'route',
-    'prepare',
-    '--intent',
-    intent,
-    '--output',
-    review,
-  ]);
-  runCli(repository, ['route', 'apply', review]);
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), `jigwright-portable-${name}-`),
+  );
+  const intent = path.join(scratch, 'intent.json');
+  const review = path.join(scratch, 'review.json');
+  try {
+    writeJson(intent, { schemaVersion: 1, action });
+    runCli(repository, [
+      'route',
+      'prepare',
+      '--intent',
+      intent,
+      '--output',
+      review,
+    ]);
+    runCli(repository, ['route', 'apply', review]);
+    syncProtectedBase(repository);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+function prepareRoutingChangePlans(repository: string): void {
+  const changes = [
+    ['blocked-change', 'src/blocked/**'],
+    ['parallel-one', 'src/parallel-one/**'],
+    ['parallel-two', 'src/parallel-two/**'],
+    ['parallel-three', 'src/parallel-one/**'],
+  ] as const;
+  syncProtectedBase(repository);
+
+  for (const [changeId, allowedPath] of changes) {
+    const planningBranch = `changes/${changeId}`;
+    git(repository, ['checkout', '-b', planningBranch]);
+    addChangeSkeleton(repository, changeId, allowedPath);
+    writeReadyV3ExemptChange(repository, changeId);
+    const plan = planCommit(repository, changeId);
+    git(repository, ['checkout', 'trunk']);
+    git(repository, ['merge', '--ff-only', plan.commitHash]);
+    git(repository, ['branch', '-d', planningBranch]);
+    syncProtectedBase(repository);
+  }
 }
 
 type ConcurrentFixture = Readonly<{
@@ -1057,6 +1088,12 @@ function addChangeSkeleton(
   guard.changeId = changeId;
   guard.tasks['1.1']!.allowedPaths = [allowedPath];
   writeJson(guardPath, guard);
+  fs.rmSync(path.join(target, 'origin.json'), { force: true });
+  fs.rmSync(path.join(target, 'survey.json'), { force: true });
+  addChangeProviderBinding(repository, changeId);
+}
+
+function addChangeProviderBinding(repository: string, changeId: string): void {
   const bindingPath = path.join(
     repository,
     'workflow/change-providers',
