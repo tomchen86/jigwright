@@ -1,0 +1,50 @@
+name: Jigwright archive orchestration (disabled)
+
+on:
+  workflow_dispatch:
+    inputs:
+      change_id:
+        description: Completed governed change ID
+        required: true
+        type: string
+      preparation_identity:
+        description: Exact local archive preparation sha256 identity
+        required: true
+        type: string
+      grant_challenge_id:
+        description: Exact completed Central Grant challenge UUID
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: jigwright-archive-${{ inputs.change_id }}
+  cancel-in-progress: false
+
+jobs:
+  archive-publication-contract:
+    # This tracked artifact is intentionally inert. Enabling it requires a
+    # separately reviewed production token/ruleset/publisher composition.
+    if: ${{ false }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out the exact dispatch revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install the pinned Node runtime
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Validate the disabled orchestration contract
+        run: >-
+          node scripts/run-archive-orchestration-manual.mjs
+          --change "${{ inputs.change_id }}"
+          --preparation "${{ inputs.preparation_identity }}"
+          --grant "${{ inputs.grant_challenge_id }}"
