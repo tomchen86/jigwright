@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "adapterId": "configured-repository-v1",
-  "consumerId": "expense-app",
+  "consumerId": "jigwright",
   "planning": {
     "providerId": "openspec",
     "packageSchemaNames": ["spec-driven"],
-    "requiredSchemaNames": ["spec-driven", "expense-app"],
-    "supportedSchemaNames": ["spec-driven", "expense-app", "expense-app-v2"],
-    "managedSchemaNames": ["expense-app", "expense-app-v2"],
-    "currentSchemaName": "expense-app-v2"
+    "requiredSchemaNames": ["spec-driven", "jigwright"],
+    "supportedSchemaNames": ["spec-driven", "jigwright"],
+    "managedSchemaNames": ["jigwright"],
+    "currentSchemaName": "jigwright"
   },
   "documents": {
     "adapterId": "filesystem-documents-v1",
@@ -26,7 +26,5 @@
     "transitionPolicyPath": "workflow/work-registry-policy.json",
     "changeOriginRoot": "openspec/changes"
   },
-  "databasePolicy": {
-    "adapterId": "postgresql-disposable-v1"
-  }
+  "databasePolicy": { "adapterId": "disabled-v1" }
 }

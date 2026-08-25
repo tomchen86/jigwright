@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "repositoryName": "expense-app",
-  "consumerNamespace": "expense-app",
-  "acceptedLegacySchemaPrefixes": ["expense-app.workflow."],
+  "repositoryName": "jigwright",
+  "consumerNamespace": "jigwright",
+  "acceptedLegacySchemaPrefixes": [],
   "changeRoot": "openspec/changes",
   "runtimeDirectory": "workflow-engine",
   "protectedBranches": ["main", "master"],

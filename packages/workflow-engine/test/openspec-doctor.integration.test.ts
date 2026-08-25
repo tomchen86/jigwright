@@ -305,6 +305,62 @@ test('workflow OpenSpec diagnostics report package provenance and semantic failu
   }
 });
 
+test('workflow OpenSpec diagnostics derive schema expectations from repository policy', () => {
+  const repository = createDoctorFixture('1.6.0', {
+    packageSchemaNames: ['spec-driven'],
+    requiredSchemaNames: ['spec-driven', 'jigwright'],
+    supportedSchemaNames: ['spec-driven', 'jigwright'],
+    managedSchemaNames: ['jigwright'],
+    currentSchemaName: 'jigwright',
+  });
+  try {
+    const report = diagnoseOpenSpec(repository);
+
+    assert.deepEqual(
+      report.schemas.map(({ name, expectedSource }) => ({
+        name,
+        expectedSource,
+      })),
+      [
+        { name: 'spec-driven', expectedSource: 'package' },
+        { name: 'jigwright', expectedSource: 'project' },
+      ],
+    );
+    assert.equal(
+      report.diagnostics.some(({ target }) =>
+        target?.includes('expense-app') === true,
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('workflow OpenSpec diagnostics fail closed on invalid repository schema policy', () => {
+  const repository = createDoctorFixture();
+  writeRepositoryConsumerConfiguration(repository, {
+    ...DEFAULT_DOCTOR_PLANNING,
+    currentSchemaName: 'missing-schema',
+  });
+  try {
+    const report = diagnoseOpenSpec(repository);
+
+    assert.equal(report.healthy, false);
+    assert.deepEqual(report.schemas, []);
+    assert.deepEqual(report.diagnostics.at(-1), {
+      severity: 'error',
+      code: 'OPENSPEC_SCHEMA_POLICY_DIAGNOSTIC_FAILED',
+      message:
+        'Repository consumer configuration does not match schema version 1.',
+      target: 'openspec.schema-policy',
+      causeCode: 'REPOSITORY_CONSUMER_CONFIG_INVALID',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('workflow OpenSpec diagnostics preserve an observed runtime version mismatch', () => {
   const repository = createDoctorFixture('1.7.0');
   try {
@@ -392,13 +448,31 @@ test('real workflow doctor reports the pinned local OpenSpec installation', () =
     ),
     [
       { name: 'spec-driven', expectedSource: 'package' },
-      { name: 'expense-app', expectedSource: 'project' },
-      { name: 'expense-app-v2', expectedSource: 'project' },
+      { name: 'jigwright', expectedSource: 'project' },
     ],
   );
 });
 
-function createDoctorFixture(runtimeVersion = '1.6.0'): string {
+type DoctorPlanningConfiguration = Readonly<{
+  packageSchemaNames: string[];
+  requiredSchemaNames: string[];
+  supportedSchemaNames: string[];
+  managedSchemaNames: string[];
+  currentSchemaName: string;
+}>;
+
+const DEFAULT_DOCTOR_PLANNING: DoctorPlanningConfiguration = {
+  packageSchemaNames: ['spec-driven'],
+  requiredSchemaNames: ['spec-driven', 'expense-app'],
+  supportedSchemaNames: ['spec-driven', 'expense-app', 'expense-app-v2'],
+  managedSchemaNames: ['expense-app', 'expense-app-v2'],
+  currentSchemaName: 'expense-app-v2',
+};
+
+function createDoctorFixture(
+  runtimeVersion = '1.6.0',
+  planning: DoctorPlanningConfiguration = DEFAULT_DOCTOR_PLANNING,
+): string {
   const repository = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-openspec-doctor-')),
   );
@@ -407,17 +481,22 @@ function createDoctorFixture(runtimeVersion = '1.6.0'): string {
     'node_modules/@fission-ai/openspec',
   );
   fs.mkdirSync(path.join(packageDirectory, 'bin'), { recursive: true });
-  fs.mkdirSync(path.join(packageDirectory, 'schemas/spec-driven'), {
-    recursive: true,
-  });
   fs.mkdirSync(path.join(repository, 'openspec/changes'), { recursive: true });
   fs.mkdirSync(path.join(repository, 'openspec/specs'), { recursive: true });
-  fs.mkdirSync(path.join(repository, 'openspec/schemas/expense-app'), {
-    recursive: true,
+  for (const schemaName of planning.packageSchemaNames) {
+    fs.mkdirSync(path.join(packageDirectory, 'schemas', schemaName), {
+      recursive: true,
+    });
+  }
+  for (const schemaName of planning.managedSchemaNames) {
+    fs.mkdirSync(path.join(repository, 'openspec/schemas', schemaName), {
+      recursive: true,
+    });
+  }
+  writeJson(path.join(repository, 'workflow/config.json'), {
+    repositoryName: 'doctor-fixture',
   });
-  fs.mkdirSync(path.join(repository, 'openspec/schemas/expense-app-v2'), {
-    recursive: true,
-  });
+  writeRepositoryConsumerConfiguration(repository, planning);
   writeJson(path.join(repository, 'package.json'), {
     name: 'doctor-fixture',
     private: true,
@@ -509,6 +588,38 @@ if (args[0] === '--version') {
 `,
   );
   return repository;
+}
+
+function writeRepositoryConsumerConfiguration(
+  repository: string,
+  planning: DoctorPlanningConfiguration,
+): void {
+  writeJson(path.join(repository, 'workflow/repository-consumer.json'), {
+    schemaVersion: 1,
+    adapterId: 'configured-repository-v1',
+    consumerId: 'doctor-fixture',
+    planning: {
+      providerId: 'openspec',
+      ...planning,
+    },
+    documents: {
+      adapterId: 'filesystem-documents-v1',
+      handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
+      issueSourcePath: 'docs/issues/issues.yaml',
+      issueLogPath: 'docs/ISSUE_LOG.md',
+    },
+    workRegistry: {
+      adapterId: 'filesystem-work-registry-v1',
+      itemRoot: 'docs/work-registry/items',
+      inventoryPath: 'docs/work-registry/inventory.json',
+      backlogPath: 'docs/BACKLOG.md',
+      historyRoot: 'docs/work-history',
+      sourceRoot: 'workflow/source-ledger/objects/sha256',
+      transitionPolicyPath: 'workflow/work-registry-policy.json',
+      changeOriginRoot: 'openspec/changes',
+    },
+    databasePolicy: { adapterId: 'disabled-v1' },
+  });
 }
 
 function writeJson(filePath: string, value: unknown): void {

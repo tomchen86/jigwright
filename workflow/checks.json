@@ -105,6 +105,10 @@
         "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-assets.ts"
       ],
       "destructiveDatabase": false
+    },
+    "openspec-specs": {
+      "command": ["node", "scripts/check-openspec.mjs"],
+      "destructiveDatabase": false
     }
   }
 }

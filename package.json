@@ -9,6 +9,7 @@
   "scripts": {
     "build": "pnpm typecheck",
     "typecheck": "pnpm --recursive --if-present typecheck",
+    "openspec:check": "node scripts/check-openspec.mjs",
     "test:packages": "pnpm --filter @jigwright/core --filter @jigwright/agent-runtime --filter @jigwright/fixture-adapter --filter @jigwright/github-adapter --filter @jigwright/grants --filter @jigwright/openspec-adapter test",
     "harness-bootstrap": "node --experimental-strip-types packages/workflow-engine/bootstrap/harness-bootstrap-launcher.ts",
     "jigwright": "node packages/workflow-engine/bootstrap/jigwright-cli.mjs",
@@ -25,6 +26,7 @@
     "workflow:typecheck": "tsc -p packages/workflow-engine/tsconfig.json"
   },
   "devDependencies": {
+    "@fission-ai/openspec": "1.6.0",
     "@types/node": "^24.13.3",
     "typescript": "6.0.3"
   },

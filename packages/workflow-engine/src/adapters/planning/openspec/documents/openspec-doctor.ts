@@ -1,5 +1,6 @@
 import path from 'node:path';
 
+import { repositoryPlanningConfiguration } from '../../../consumer/expense-app/repository-consumer-config.ts';
 import { WorkflowError } from '../../../../foundation/errors/errors.ts';
 import { assertOpenSpecSchemaDirectory } from './openspec-adapter.ts';
 import {
@@ -45,7 +46,7 @@ type RootDiagnostic = {
 };
 
 type SchemaDiagnostic = {
-  name: 'spec-driven' | 'expense-app' | 'expense-app-v2';
+  name: string;
   expectedSource: 'package' | 'project';
   ok: boolean;
   resolution: { source: 'package' | 'project'; path: string } | null;
@@ -87,6 +88,19 @@ export function diagnoseOpenSpec(
         error,
         'OPENSPEC_INSTALLATION_DIAGNOSTIC_FAILED',
         'openspec.installation',
+      ),
+    );
+    return finalize(report);
+  }
+
+  try {
+    report.schemas = configuredSchemaDiagnostics(installation.repositoryRoot);
+  } catch (error) {
+    report.diagnostics.push(
+      diagnosticFrom(
+        error,
+        'OPENSPEC_SCHEMA_POLICY_DIAGNOSTIC_FAILED',
+        'openspec.schema-policy',
       ),
     );
     return finalize(report);
@@ -137,6 +151,20 @@ export function diagnoseOpenSpec(
     diagnoseSchema(report, installation, openspec, schema);
   }
   return finalize(report);
+}
+
+function configuredSchemaDiagnostics(
+  repositoryRoot: string,
+): SchemaDiagnostic[] {
+  const planning = repositoryPlanningConfiguration(repositoryRoot);
+  const packageSchemas = new Set(planning.packageSchemaNames);
+  return planning.supportedSchemaNames.map((name) => ({
+    name,
+    expectedSource: packageSchemas.has(name) ? 'package' : 'project',
+    ok: false,
+    resolution: null,
+    validation: null,
+  }));
 }
 
 function diagnoseSchema(
@@ -238,29 +266,7 @@ function emptyReport(): OpenSpecDiagnosticReport {
       healthy: null,
       storeActive: null,
     },
-    schemas: [
-      {
-        name: 'spec-driven',
-        expectedSource: 'package',
-        ok: false,
-        resolution: null,
-        validation: null,
-      },
-      {
-        name: 'expense-app',
-        expectedSource: 'project',
-        ok: false,
-        resolution: null,
-        validation: null,
-      },
-      {
-        name: 'expense-app-v2',
-        expectedSource: 'project',
-        ok: false,
-        resolution: null,
-        validation: null,
-      },
-    ],
+    schemas: [],
     diagnostics: [],
   };
 }

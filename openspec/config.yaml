@@ -1,0 +1,22 @@
+schema: jigwright
+
+context: |
+  Jigwright is a repository-owned workflow engine distributed through the
+  single public npm package `jigwright` and the `jigwright` CLI.
+  Preserve current-v3 product capabilities while excluding v1/v2 readers,
+  migrations, shadow/parity paths, and consumer-specific application data.
+  Grants are a disabled-by-default capability: ordinary unprotected paths work
+  without Grants, while grant-required paths fail closed when unavailable.
+  Use targeted tests while iterating and keep every behavior change within
+  RED -> GREEN -> REFACTOR.
+
+rules:
+  proposal:
+    - State explicit scope, non-goals, and the current-v3 capability affected.
+    - Distinguish package behavior from consumer-repository configuration.
+  design:
+    - Identify production callers, fail-closed boundaries, and recovery behavior.
+    - Keep internal modules extractable without introducing additional public packages.
+  tasks:
+    - Keep tasks independently testable and commit each coherent slice.
+    - Prefer MVP production wiring over low-value edge-case expansion.

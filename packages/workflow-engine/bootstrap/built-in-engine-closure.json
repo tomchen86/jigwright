@@ -418,7 +418,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor.ts",
       "mode": "100644",
-      "digest": "sha256:88fa4db62ac82e6027a849cc56b9ecaaf67d1a702c1f5f24ea34cdb5806f7dd9"
+      "digest": "sha256:da2ba8d6bf2ba1bac9045898f9a26144db40e1836ae2c0e37a280f467ad2d7fe"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-executor.ts",

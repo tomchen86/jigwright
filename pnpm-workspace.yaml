@@ -4,3 +4,8 @@ packages:
 # Keep local and CI installs on the same node_modules layout. pnpm 11 otherwise
 # enables the global virtual store locally but disables it under CI.
 enableGlobalVirtualStore: false
+
+allowBuilds:
+  # OpenSpec's postinstall only prints an optional shell-completion hint. The
+  # repository uses the packaged CLI and deliberately does not execute it.
+  '@fission-ai/openspec': false
