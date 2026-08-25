@@ -179,6 +179,49 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       ],
       consumerRoot,
     );
+    fs.writeFileSync(
+      path.join(consumerRoot, 'consumer.ts'),
+      [
+        "import { validateForAuthority, type InvestigationManifestV3 } from 'jigwright/manifest-v3';",
+        "import { validatePlanReview, type ValidatePlanReviewInput } from 'jigwright/plan-review';",
+        "import { loadGrantPolicyV2 } from 'jigwright/central-grant';",
+        '',
+        'export const publicValidators = [',
+        '  validateForAuthority,',
+        '  validatePlanReview,',
+        '  loadGrantPolicyV2,',
+        '] as const;',
+        'export type PublicManifest = InvestigationManifestV3;',
+        'export type PublicPlanReviewInput = ValidatePlanReviewInput;',
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(consumerRoot, 'tsconfig.json'),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2023',
+            module: 'NodeNext',
+            moduleResolution: 'NodeNext',
+            strict: true,
+            noEmit: true,
+            allowImportingTsExtensions: true,
+            skipLibCheck: true,
+            types: ['node'],
+            typeRoots: [path.resolve('node_modules/@types')],
+          },
+          include: ['consumer.ts'],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    run(
+      process.execPath,
+      [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'],
+      consumerRoot,
+    );
     const installedRoot = path.join(consumerRoot, 'node_modules', 'jigwright');
     const repositoryRoot = path.join(scratch, 'repository');
     fs.mkdirSync(repositoryRoot);
@@ -237,7 +280,7 @@ function run(executable: string, args: string[], cwd?: string): string {
   assert.equal(
     result.status,
     0,
-    `${executable} ${args.join(' ')}\n${result.stderr}`,
+    `${executable} ${args.join(' ')}\n${result.stdout}\n${result.stderr}`,
   );
   return result.stdout.trim();
 }
