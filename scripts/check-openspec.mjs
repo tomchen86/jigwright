@@ -38,7 +38,9 @@ const result = spawnSync(
 );
 
 if (result.error) {
-  console.error(`Failed to launch pinned OpenSpec CLI: ${result.error.message}`);
+  console.error(
+    `Failed to launch pinned OpenSpec CLI: ${result.error.message}`,
+  );
   process.exit(1);
 }
 

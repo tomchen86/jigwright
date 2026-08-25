@@ -327,8 +327,8 @@ test('workflow OpenSpec diagnostics derive schema expectations from repository p
       ],
     );
     assert.equal(
-      report.diagnostics.some(({ target }) =>
-        target?.includes('expense-app') === true,
+      report.diagnostics.some(
+        ({ target }) => target?.includes('expense-app') === true,
       ),
       false,
     );

@@ -13,4 +13,3 @@ pnpm jigwright --repository-root /absolute/path/to/consumer doctor --json
 
 This repository has no configured remote. Nothing in this migration checkpoint
 publishes an npm package or performs real external operations.
-

@@ -4,7 +4,7 @@ description: Route implementation, recovery, review, finalization, and archive w
 license: MIT
 compatibility: Requires the repository-owned workflow engine and a reviewed repository plan.
 metadata:
-  author: expense-app
+  author: jigwright
   version: '1.0'
   generatedBy: repository-review
 ---

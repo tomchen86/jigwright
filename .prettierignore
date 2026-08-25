@@ -1,0 +1,8 @@
+node_modules
+dist
+coverage
+packages/workflow-engine/bootstrap/recovery-runtime
+*.min.js
+*.snap
+pnpm-lock.yaml
+.DS_Store

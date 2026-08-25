@@ -5,7 +5,7 @@
       "command": [
         "node-package-bin",
         ".",
-        "@typescript/native",
+        "typescript",
         "tsc",
         "-p",
         "packages/workflow-engine/tsconfig.json"
@@ -49,19 +49,6 @@
       ],
       "destructiveDatabase": false
     },
-    "api-database-policy-test": {
-      "command": [
-        "node-package-bin",
-        "apps/api",
-        "jest",
-        "jest",
-        "--config",
-        "apps/api/jest.isolated.config.js",
-        "--runInBand",
-        "apps/api/src/__tests__/isolated/database-target-policy.isolated.spec.ts"
-      ],
-      "destructiveDatabase": false
-    },
     "managed-documents": {
       "command": [
         "node",
@@ -85,17 +72,14 @@
         "workflow/maintainer-policy.json",
         "workflow/path-roles.json",
         "workflow/schemas",
-        "apps/api/src/__tests__/setup/datasource.factory.ts",
-        "apps/api/src/__tests__/setup/database-target-policy.ts",
-        "apps/api/src/__tests__/isolated/database-target-policy.isolated.spec.ts",
+        "scripts/check-openspec.mjs",
+        "openspec/config.yaml",
         "package.json",
         "pnpm-workspace.yaml",
-        "docs/README.md",
+        "README.md",
         "docs/ROADMAP.md",
-        "docs/CURRENT_AND_NEXT_STEPS.md",
-        "docs/DOCUMENT_STRUCTURE_GUIDE.md",
-        "docs/WORKFLOW.md",
-        "AGENTS.md"
+        "docs/architecture/ARCHITECTURE.md",
+        "prettier.config.cjs"
       ],
       "destructiveDatabase": false
     },

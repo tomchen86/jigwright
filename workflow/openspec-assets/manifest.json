@@ -43,7 +43,7 @@
   },
   "formatter": {
     "runner": "node-package-bin:.:prettier/prettier",
-    "configurationDigest": "8d33e2967e8f95caa3e0e039b8fdbb5f99847a2b8221661d2c7ea4b519cc7e90",
+    "configurationDigest": "2ebcc991d0cac3e8007c7ecafccf5379e6aa6203fa7e4777740a295ff66983aa",
     "assetParser": "markdown",
     "manifestParser": "json"
   },
@@ -77,9 +77,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".codex/skills/workflow-engine/SKILL.md",
       "mirrorOf": null,
-      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
     },
     {
       "target": "claude",
@@ -110,9 +110,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".claude/skills/workflow-engine/SKILL.md",
       "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
-      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
     },
     {
       "target": "agents",
@@ -143,9 +143,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".agents/skills/workflow-engine/SKILL.md",
       "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
-      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
-      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
+      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
     },
     {
       "target": "codex",
