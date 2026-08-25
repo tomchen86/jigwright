@@ -1,0 +1,30 @@
+{
+  "name": "@jigwright/openspec-adapter",
+  "version": "0.1.0",
+  "private": false,
+  "description": "OpenSpec integration adapter for Jigwright.",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.22.1"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./archive-projection": "./src/archive-projection.ts",
+    "./planning-provider": "./src/planning-provider.ts",
+    "./provider-binding": "./src/provider-binding.ts",
+    "./validation-payload": "./src/validation-payload.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jigwright/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  }
+}

@@ -1,0 +1,634 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import test from 'node:test';
+
+import {
+  agentRolePlanDigest,
+  renderAgentRolePlan,
+  type AgentRolePlanBodyV1,
+  type AgentRolePlanV1,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import {
+  CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+  resolveRoleTopologyV1,
+  type CentralRoleTopologyConfigurationV1,
+  type RoleTopologyResolutionDependencyPortV1,
+  type RoleTopologyProviderRegistryV1,
+} from '../src/modules/provider-orchestration/role-topology-resolution.ts';
+import { resolvePlanReviewRoleTopology } from '../src/application/propose/plan-review-role-topology.ts';
+import { createProductionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
+import { isWorkflowError } from './fixture.ts';
+
+const CHANGE_ID = 'topology-change';
+const PLANNING_GENERATION = 'a'.repeat(64);
+const PROVIDER_POLICY_DIGEST = 'b'.repeat(64);
+const GRANT_REFERENCE = '12345678-1234-4123-8123-123456789abc';
+
+function centralConfiguration(
+  required: 'provider-independent' | 'session-independent' | 'none',
+): CentralRoleTopologyConfigurationV1 {
+  return {
+    schemaVersion: 1,
+    configurationId: `fixture-${required}`,
+    pairwiseRequirements: [
+      { pair: 'author-builder', required },
+      { pair: 'author-reviewer', required },
+      { pair: 'builder-reviewer', required },
+    ],
+  };
+}
+
+function registry(
+  logicalProviderIds: readonly string[],
+): RoleTopologyProviderRegistryV1 {
+  return {
+    schemaVersion: 1,
+    policyDigest: PROVIDER_POLICY_DIGEST,
+    providers: logicalProviderIds.map((logicalProviderId, index) => ({
+      logicalProviderId,
+      providerFamily: logicalProviderId,
+      enabled: true,
+      definitionDigest: String(index + 1).repeat(64),
+    })),
+  };
+}
+
+function rolePlan(
+  pairwiseRequirements: AgentRolePlanBodyV1['pairwiseRequirements'],
+  grantReferences: readonly string[] = [],
+): AgentRolePlanV1 {
+  const body: AgentRolePlanBodyV1 = {
+    schemaVersion: 1,
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    roleLanes: [],
+    pairwiseRequirements,
+    customWrapperPolicy: 'forbidden',
+    grantReferences,
+  };
+  return { ...body, planDigest: agentRolePlanDigest(body) };
+}
+
+test('current central floor resolves an exact provider-independent actual pair and emits four bound digests', () => {
+  const resolution = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+    changeOverride: null,
+    providerRegistry: registry(['claude', 'codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '2'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'claude',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+
+  assert.equal(resolution.disposition, 'satisfied');
+  assert.deepEqual(resolution.exactGrantRolePairs, []);
+  assert.deepEqual(resolution.actualRolePairs, [
+    {
+      pair: 'author-reviewer',
+      required: 'provider-independent',
+      achieved: 'provider-independent',
+      left: resolution.actualPlacements[0],
+      right: resolution.actualPlacements[1],
+      meetsOrExceedsConfiguredTopology: true,
+    },
+  ]);
+  assert.deepEqual(resolution.explicitEligibility, {
+    status: 'not-required',
+    explicitlyListed: false,
+    grantReferences: [],
+  });
+  for (const digest of [
+    resolution.centralRoleConfigurationDigest,
+    resolution.changeOverrideDigest,
+    resolution.providerRegistryDigest,
+    resolution.eligibilityPolicyDigest,
+  ]) {
+    assert.match(digest, /^[0-9a-f]{64}$/);
+  }
+});
+
+test('resolution digests and exact grant pairs are directly compatible with role-context binding fields', () => {
+  const resolution = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+    changeOverride: rolePlan(
+      [{ pair: 'author-reviewer', required: 'session-independent' }],
+      [GRANT_REFERENCE],
+    ),
+    providerRegistry: registry(['codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+
+  assert.equal(resolution.disposition, 'exact-grant-required');
+  assert.deepEqual(resolution.exactGrantRolePairs, ['author-reviewer']);
+  assert.equal(resolution.centralRoleConfigurationDigest.length, 64);
+  assert.equal(resolution.changeOverrideDigest.length, 64);
+  assert.equal(resolution.providerRegistryDigest.length, 64);
+  assert.equal(resolution.eligibilityPolicyDigest.length, 64);
+  assert.deepEqual(
+    {
+      centralRoleConfigurationDigest: resolution.centralRoleConfigurationDigest,
+      changeOverrideDigest: resolution.changeOverrideDigest,
+      providerRegistryDigest: resolution.providerRegistryDigest,
+      eligibilityPolicyDigest: resolution.eligibilityPolicyDigest,
+      rolePairs: resolution.exactGrantRolePairs,
+    },
+    {
+      centralRoleConfigurationDigest: resolution.centralRoleConfigurationDigest,
+      changeOverrideDigest: resolution.changeOverrideDigest,
+      providerRegistryDigest: resolution.providerRegistryDigest,
+      eligibilityPolicyDigest: resolution.eligibilityPolicyDigest,
+      rolePairs: ['author-reviewer'],
+    },
+  );
+});
+
+test('logical aliases in one provider family are not provider-independent', () => {
+  const resolution = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+    changeOverride: rolePlan(
+      [{ pair: 'author-reviewer', required: 'session-independent' }],
+      [GRANT_REFERENCE],
+    ),
+    providerRegistry: {
+      schemaVersion: 1,
+      policyDigest: PROVIDER_POLICY_DIGEST,
+      providers: [
+        {
+          logicalProviderId: 'codex-primary',
+          providerFamily: 'codex',
+          enabled: true,
+          definitionDigest: '1'.repeat(64),
+        },
+        {
+          logicalProviderId: 'codex-secondary',
+          providerFamily: 'codex',
+          enabled: true,
+          definitionDigest: '2'.repeat(64),
+        },
+      ],
+    },
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex-primary',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex-secondary',
+        providerDefinitionDigest: '2'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+
+  assert.equal(resolution.actualRolePairs[0]?.achieved, 'session-independent');
+  assert.deepEqual(resolution.exactGrantRolePairs, ['author-reviewer']);
+  assert.equal(resolution.disposition, 'exact-grant-required');
+});
+
+test('application topology bridge has no adapter or runtime value imports', () => {
+  const source = fs.readFileSync(
+    new URL(
+      '../src/application/propose/plan-review-role-topology.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(source, /from ['"]\.\.\/\.\.\/(?:adapters|runtime)\//u);
+});
+
+test('provider registry ordering is canonical rather than caller-order dependent', () => {
+  assert.throws(
+    () =>
+      resolveRoleTopologyV1({
+        changeId: CHANGE_ID,
+        planningGeneration: PLANNING_GENERATION,
+        centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+        changeOverride: null,
+        providerRegistry: registry(['codex', 'claude']),
+        actualPlacements: [
+          {
+            role: 'author',
+            logicalProviderId: 'codex',
+            providerDefinitionDigest: '1'.repeat(64),
+            sessionId: 'author-session',
+          },
+          {
+            role: 'reviewer',
+            logicalProviderId: 'claude',
+            providerDefinitionDigest: '2'.repeat(64),
+            sessionId: 'reviewer-session',
+          },
+        ],
+      }),
+    (error) => isWorkflowError(error, 'ROLE_TOPOLOGY_INVALID'),
+  );
+});
+
+test('one fully collapsed override returns the canonical exact three-pair grant set without authorizing it', () => {
+  const resolution = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: centralConfiguration('provider-independent'),
+    changeOverride: rolePlan(
+      [
+        { pair: 'author-builder', required: 'none' },
+        { pair: 'author-reviewer', required: 'none' },
+        { pair: 'builder-reviewer', required: 'none' },
+      ],
+      [GRANT_REFERENCE],
+    ),
+    providerRegistry: registry(['codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'shared-session',
+      },
+      {
+        role: 'builder',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'shared-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'shared-session',
+      },
+    ],
+  });
+
+  assert.equal(resolution.disposition, 'exact-grant-required');
+  assert.deepEqual(resolution.exactGrantRolePairs, [
+    'author-builder',
+    'author-reviewer',
+    'builder-reviewer',
+  ]);
+  assert.equal(
+    resolution.actualRolePairs.every(
+      ({ achieved, meetsOrExceedsConfiguredTopology }) =>
+        achieved === 'none' && meetsOrExceedsConfiguredTopology,
+    ),
+    true,
+  );
+  assert.deepEqual(resolution.explicitEligibility, {
+    status: 'listed',
+    explicitlyListed: true,
+    grantReferences: [GRANT_REFERENCE],
+  });
+});
+
+test('a stronger override is grant-free while an unlisted weakening fails closed with its exact pair set', () => {
+  const stronger = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: centralConfiguration('none'),
+    changeOverride: rolePlan([
+      { pair: 'author-builder', required: 'provider-independent' },
+      { pair: 'author-reviewer', required: 'provider-independent' },
+      { pair: 'builder-reviewer', required: 'provider-independent' },
+    ]),
+    providerRegistry: registry(['alpha', 'bravo', 'charlie']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'alpha',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'builder',
+        logicalProviderId: 'bravo',
+        providerDefinitionDigest: '2'.repeat(64),
+        sessionId: 'builder-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'charlie',
+        providerDefinitionDigest: '3'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+  assert.equal(stronger.disposition, 'satisfied');
+  assert.deepEqual(stronger.exactGrantRolePairs, []);
+
+  const weakening = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: centralConfiguration('provider-independent'),
+    changeOverride: rolePlan([
+      { pair: 'author-reviewer', required: 'session-independent' },
+    ]),
+    providerRegistry: registry(['codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+  assert.equal(weakening.disposition, 'exact-grant-required');
+  assert.deepEqual(weakening.exactGrantRolePairs, ['author-reviewer']);
+  assert.deepEqual(weakening.explicitEligibility, {
+    status: 'unlisted',
+    explicitlyListed: false,
+    grantReferences: [],
+  });
+});
+
+test('an actual stronger split is accepted but cannot mask a stronger requested override', () => {
+  const resolution = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: centralConfiguration('none'),
+    changeOverride: null,
+    providerRegistry: registry(['claude', 'codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '2'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'claude',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+
+  assert.equal(resolution.disposition, 'satisfied');
+  assert.equal(
+    resolution.actualRolePairs[0]?.meetsOrExceedsConfiguredTopology,
+    true,
+  );
+  assert.deepEqual(resolution.exactGrantRolePairs, []);
+
+  const underRequestedOverride = resolveRoleTopologyV1({
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    centralConfiguration: centralConfiguration('none'),
+    changeOverride: rolePlan([
+      { pair: 'author-reviewer', required: 'provider-independent' },
+    ]),
+    providerRegistry: registry(['codex']),
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest: '1'.repeat(64),
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+  assert.equal(underRequestedOverride.disposition, 'topology-unsatisfied');
+  assert.equal(
+    underRequestedOverride.actualRolePairs[0]?.meetsOrExceedsConfiguredTopology,
+    false,
+  );
+  assert.deepEqual(underRequestedOverride.exactGrantRolePairs, []);
+});
+
+test('a policy-disabled provider cannot form an admitted actual topology', () => {
+  const providerRegistry = registry(['claude', 'codex']);
+  assert.throws(
+    () =>
+      resolveRoleTopologyV1({
+        changeId: CHANGE_ID,
+        planningGeneration: PLANNING_GENERATION,
+        centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+        changeOverride: null,
+        providerRegistry: {
+          ...providerRegistry,
+          providers: providerRegistry.providers.map((entry) =>
+            entry.logicalProviderId === 'codex'
+              ? { ...entry, enabled: false }
+              : entry,
+          ),
+        },
+        actualPlacements: [
+          {
+            role: 'author',
+            logicalProviderId: 'codex',
+            providerDefinitionDigest: '2'.repeat(64),
+            sessionId: 'author-session',
+          },
+          {
+            role: 'reviewer',
+            logicalProviderId: 'claude',
+            providerDefinitionDigest: '1'.repeat(64),
+            sessionId: 'reviewer-session',
+          },
+        ],
+      }),
+    (error) => isWorkflowError(error, 'ROLE_TOPOLOGY_INVALID'),
+  );
+});
+
+test('plan-review resolver uses its required snapshot port and returns the exact active grant pair', () => {
+  const providerRegistry = registry(['claude', 'codex']);
+  let changeOverride: AgentRolePlanV1 | null = null;
+  const requests: Parameters<
+    RoleTopologyResolutionDependencyPortV1['readResolutionSnapshot']
+  >[0][] = [];
+  const dependencies: RoleTopologyResolutionDependencyPortV1 = {
+    readResolutionSnapshot(request) {
+      requests.push(request);
+      return { changeOverride, providerRegistry };
+    },
+  };
+  const common = {
+    repositoryRoot: '/fixture/repository',
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    author: { providerId: 'codex', sessionId: 'author-session' },
+    reviewer: {
+      providerId: 'claude',
+      sessionId: 'reviewer-session',
+    },
+    providerPolicyDigest: PROVIDER_POLICY_DIGEST,
+    providerEnabled: { claude: true, codex: true },
+  };
+  assert.equal(
+    resolvePlanReviewRoleTopology(common, dependencies).disposition,
+    'satisfied',
+  );
+  assert.deepEqual(requests[0], {
+    repositoryRoot: common.repositoryRoot,
+    changeId: CHANGE_ID,
+    planningGeneration: PLANNING_GENERATION,
+    providerPolicyDigest: PROVIDER_POLICY_DIGEST,
+    providerEnabled: common.providerEnabled,
+  });
+
+  const plan = rolePlan(
+    [{ pair: 'author-reviewer', required: 'session-independent' }],
+    [GRANT_REFERENCE],
+  );
+  changeOverride = plan;
+
+  const strongerResolution = resolvePlanReviewRoleTopology(
+    common,
+    dependencies,
+  );
+  assert.equal(strongerResolution.disposition, 'satisfied');
+  assert.equal(strongerResolution.changeOverrideDigest, plan.planDigest);
+  assert.deepEqual(strongerResolution.exactGrantRolePairs, []);
+  assert.equal(
+    strongerResolution.actualRolePairs[0]?.achieved,
+    'provider-independent',
+  );
+  assert.equal(
+    strongerResolution.actualRolePairs[0]?.meetsOrExceedsConfiguredTopology,
+    true,
+  );
+
+  const weakenedResolution = resolvePlanReviewRoleTopology(
+    {
+      ...common,
+      reviewer: {
+        providerId: 'codex',
+        sessionId: 'reviewer-session',
+      },
+    },
+    dependencies,
+  );
+  assert.equal(weakenedResolution.disposition, 'exact-grant-required');
+  assert.deepEqual(weakenedResolution.exactGrantRolePairs, ['author-reviewer']);
+  assert.equal(
+    weakenedResolution.actualRolePairs[0]?.achieved,
+    'session-independent',
+  );
+});
+
+test('production snapshot port owns current plan and reviewed provider-definition capture', () => {
+  const repository = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'role-topology-production-port-'),
+  );
+  try {
+    const port = createProductionRoleTopologyResolutionPort('darwin');
+    const request = {
+      repositoryRoot: repository,
+      changeId: CHANGE_ID,
+      planningGeneration: PLANNING_GENERATION,
+      providerPolicyDigest: PROVIDER_POLICY_DIGEST,
+      providerEnabled: { claude: true, codex: false },
+    };
+    const initial = port.readResolutionSnapshot(request);
+    assert.equal(initial.changeOverride, null);
+    assert.deepEqual(
+      initial.providerRegistry.providers.map(
+        ({ logicalProviderId, providerFamily, enabled }) => ({
+          logicalProviderId,
+          providerFamily,
+          enabled,
+        }),
+      ),
+      [
+        {
+          logicalProviderId: 'claude',
+          providerFamily: 'claude',
+          enabled: true,
+        },
+        {
+          logicalProviderId: 'codex',
+          providerFamily: 'codex',
+          enabled: false,
+        },
+      ],
+    );
+    assert.equal(
+      initial.providerRegistry.providers.every(({ definitionDigest }) =>
+        /^[0-9a-f]{64}$/u.test(definitionDigest ?? ''),
+      ),
+      true,
+    );
+
+    const plan = rolePlan([
+      { pair: 'author-reviewer', required: 'session-independent' },
+    ]);
+    const destination = path.join(
+      repository,
+      'workflow',
+      'agent-plans',
+      `${CHANGE_ID}.json`,
+    );
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.writeFileSync(destination, renderAgentRolePlan(plan));
+
+    assert.deepEqual(port.readResolutionSnapshot(request).changeOverride, plan);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('production CLI injects the topology snapshot port into start and resume', () => {
+  const source = fs.readFileSync(
+    new URL('../src/cli.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(
+    source,
+    /import \{ productionRoleTopologyResolutionPort \} from '\.\/composition-root\/role-topology-resolution-production\.ts';/u,
+  );
+  assert.equal(
+    source.match(
+      /roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu,
+    )?.length,
+    2,
+  );
+});

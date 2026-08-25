@@ -1,0 +1,2862 @@
+{
+  "schemaVersion": 1,
+  "kind": "workflow-test-shard-manifest.v1",
+  "algorithm": {
+    "name": "longest-processing-time",
+    "version": 1,
+    "shardCount": 8,
+    "telemetryNesting": 0,
+    "durationUnit": "milliseconds",
+    "ordering": "duration-descending,legacy-ordinal-ascending,entrypoint-ascending",
+    "placement": "shard-duration-ascending,shard-number-ascending"
+  },
+  "sourceTelemetryRunId": "run-20260823132415703-9dee6f01-872a-45a9-b571-059ca484497e",
+  "sourceTelemetryDigest": "sha256:f688e9e11e78d2f9623cab691959ba5f17ac11c55288bc349adc86b19e42e9c7",
+  "physicalFileCount": 349,
+  "executionUnitCount": 347,
+  "inventoryDigest": "sha256:2ad1f42d66664b3bf48232a99d1bcdeaf98099e6dc1a622d7018910d70fc0147",
+  "shards": [
+    {
+      "shardNumber": 1,
+      "id": "shard-01",
+      "wrapper": "packages/workflow-engine/test/shards/shard-01.ts",
+      "estimatedDurationMs": 2425269.521,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-execution.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-execution.integration.test.ts"
+          ],
+          "legacyOrdinal": 22,
+          "estimatedDurationMs": 1985081.546
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-reuse.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-reuse.integration.test.ts"
+          ],
+          "legacyOrdinal": 25,
+          "estimatedDurationMs": 97.759
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/boundary-hardening.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/boundary-hardening.contract.test.ts"
+          ],
+          "legacyOrdinal": 30,
+          "estimatedDurationMs": 1038.929
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/package-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/package-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 43,
+          "estimatedDurationMs": 210.569
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/grant-envelope-verifier.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/grant-envelope-verifier.contract.test.ts"
+          ],
+          "legacyOrdinal": 45,
+          "estimatedDurationMs": 223.471
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/recovery-authority-descriptor.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/recovery-authority-descriptor.integration.test.ts"
+          ],
+          "legacyOrdinal": 64,
+          "estimatedDurationMs": 733.2
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/recovery-trust-root-restore.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/recovery-trust-root-restore.integration.test.ts"
+          ],
+          "legacyOrdinal": 65,
+          "estimatedDurationMs": 4923.906
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/module-dependency-direction.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/module-dependency-direction.contract.test.ts"
+          ],
+          "legacyOrdinal": 83,
+          "estimatedDurationMs": 3888.14
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-core.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-core.contract.test.ts"
+          ],
+          "legacyOrdinal": 89,
+          "estimatedDurationMs": 1.11
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-policy.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-policy.contract.test.ts"
+          ],
+          "legacyOrdinal": 90,
+          "estimatedDurationMs": 4.025
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/human-gate-macos.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/human-gate-macos.contract.test.ts"
+          ],
+          "legacyOrdinal": 93,
+          "estimatedDurationMs": 7239.642
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/human-grant-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/human-grant-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 94,
+          "estimatedDurationMs": 1675.01
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-provider-invocation-projection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-provider-invocation-projection.integration.test.ts"
+          ],
+          "legacyOrdinal": 108,
+          "estimatedDurationMs": 19794.297
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workspace-closure-generation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workspace-closure-generation.contract.test.ts"
+          ],
+          "legacyOrdinal": 117,
+          "estimatedDurationMs": 1203.76
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-local-adoption-launcher.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-local-adoption-launcher.integration.test.ts"
+          ],
+          "legacyOrdinal": 120,
+          "estimatedDurationMs": 43723.399
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-domain-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-domain-v3.test.ts"
+          ],
+          "legacyOrdinal": 124,
+          "estimatedDurationMs": 142.743
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-why-domain-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-why-domain-v3.test.ts"
+          ],
+          "legacyOrdinal": 130,
+          "estimatedDurationMs": 361.39
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/central-role-provider-default-wizard.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/central-role-provider-default-wizard.contract.test.ts"
+          ],
+          "legacyOrdinal": 136,
+          "estimatedDurationMs": 14.688
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/change-role-assignment-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/change-role-assignment-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 139,
+          "estimatedDurationMs": 12599.751
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/collaboration-grant-composition-drift.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/collaboration-grant-composition-drift.integration.test.ts"
+          ],
+          "legacyOrdinal": 141,
+          "estimatedDurationMs": 62804.101
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/runtime-path-kernel.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/runtime-path-kernel.contract.test.ts"
+          ],
+          "legacyOrdinal": 152,
+          "estimatedDurationMs": 262.942
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/role-context-sharing-degradation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/role-context-sharing-degradation.contract.test.ts"
+          ],
+          "legacyOrdinal": 160,
+          "estimatedDurationMs": 266.181
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/signed-attestation-envelope-reader.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/signed-attestation-envelope-reader.contract.test.ts"
+          ],
+          "legacyOrdinal": 161,
+          "estimatedDurationMs": 315.292
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/implementation-reconciliation-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/implementation-reconciliation-v3.test.ts"
+          ],
+          "legacyOrdinal": 166,
+          "estimatedDurationMs": 49.66
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-provider-package.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-provider-package.contract.test.ts"
+          ],
+          "legacyOrdinal": 171,
+          "estimatedDurationMs": 7.454
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/runtime-path-kernel-package-boundaries.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/runtime-path-kernel-package-boundaries.contract.test.ts"
+          ],
+          "legacyOrdinal": 178,
+          "estimatedDurationMs": 5.828
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/engine-projection-authority.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/engine-projection-authority.integration.test.ts"
+          ],
+          "legacyOrdinal": 194,
+          "estimatedDurationMs": 79910.3
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-shadow-metrics.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-shadow-metrics.integration.test.ts"
+          ],
+          "legacyOrdinal": 203,
+          "estimatedDurationMs": 80.177
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-transition.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-transition.integration.test.ts"
+          ],
+          "legacyOrdinal": 214,
+          "estimatedDurationMs": 111955.001
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-external-input.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-external-input.contract.test.ts"
+          ],
+          "legacyOrdinal": 223,
+          "estimatedDurationMs": 2.054
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/propose-planning-workspace.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/propose-planning-workspace.integration.test.ts"
+          ],
+          "legacyOrdinal": 238,
+          "estimatedDurationMs": 7686.382
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-applicability-public-projection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-applicability-public-projection.integration.test.ts"
+          ],
+          "legacyOrdinal": 239,
+          "estimatedDurationMs": 21434.108
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/full-gate-progress.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/full-gate-progress.contract.test.ts"
+          ],
+          "legacyOrdinal": 263,
+          "estimatedDurationMs": 19.643
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/assurance-floor-propose.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/assurance-floor-propose.integration.test.ts"
+          ],
+          "legacyOrdinal": 276,
+          "estimatedDurationMs": 17555.292
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/document-refresh.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/document-refresh.integration.test.ts"
+          ],
+          "legacyOrdinal": 282,
+          "estimatedDurationMs": 10003.944
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/external-effect-reconciliation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/external-effect-reconciliation.contract.test.ts"
+          ],
+          "legacyOrdinal": 307,
+          "estimatedDurationMs": 27554.69
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-workflow-blocker-projection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-workflow-blocker-projection.integration.test.ts"
+          ],
+          "legacyOrdinal": 317,
+          "estimatedDurationMs": 2399.137
+        }
+      ]
+    },
+    {
+      "shardNumber": 2,
+      "id": "shard-02",
+      "wrapper": "packages/workflow-engine/test/shards/shard-02.ts",
+      "estimatedDurationMs": 2425269.058,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/evidence-reuse-path.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/evidence-reuse-path.contract.test.ts"
+          ],
+          "legacyOrdinal": 1,
+          "estimatedDurationMs": 13.925
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-provider-output.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-provider-output.contract.test.ts"
+          ],
+          "legacyOrdinal": 4,
+          "estimatedDurationMs": 1.762
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/spec-scenario-preservation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/spec-scenario-preservation.contract.test.ts"
+          ],
+          "legacyOrdinal": 7,
+          "estimatedDurationMs": 0.451
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/class-sample-audit-duplicate.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/class-sample-audit-duplicate.integration.test.ts"
+          ],
+          "legacyOrdinal": 17,
+          "estimatedDurationMs": 5.552
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-refusal-audit.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-refusal-audit.integration.test.ts"
+          ],
+          "legacyOrdinal": 19,
+          "estimatedDurationMs": 8367.512
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/repository-path.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/repository-path.contract.test.ts"
+          ],
+          "legacyOrdinal": 24,
+          "estimatedDurationMs": 257.825
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-inspection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-inspection.integration.test.ts"
+          ],
+          "legacyOrdinal": 28,
+          "estimatedDurationMs": 1734057.5
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/openspec-doctor.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/openspec-doctor.integration.test.ts"
+          ],
+          "legacyOrdinal": 29,
+          "estimatedDurationMs": 6639.368
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/class-sample-gating.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/class-sample-gating.integration.test.ts"
+          ],
+          "legacyOrdinal": 36,
+          "estimatedDurationMs": 21208.733
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-applicability-current-tree.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-applicability-current-tree.integration.test.ts"
+          ],
+          "legacyOrdinal": 38,
+          "estimatedDurationMs": 28637.218
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/floor-overflow-production-closure.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/floor-overflow-production-closure.integration.test.ts"
+          ],
+          "legacyOrdinal": 40,
+          "estimatedDurationMs": 13895.996
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts"
+          ],
+          "legacyOrdinal": 54,
+          "estimatedDurationMs": 165683.407
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-evidence-waiver-security.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-evidence-waiver-security.integration.test.ts"
+          ],
+          "legacyOrdinal": 63,
+          "estimatedDurationMs": 4617.905
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/review-enforcement.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/review-enforcement.contract.test.ts"
+          ],
+          "legacyOrdinal": 73,
+          "estimatedDurationMs": 4.525
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/openspec-schema-contract.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/openspec-schema-contract.integration.test.ts"
+          ],
+          "legacyOrdinal": 85,
+          "estimatedDurationMs": 1173.194
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-grant-transitions.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-grant-transitions.contract.test.ts"
+          ],
+          "legacyOrdinal": 96,
+          "estimatedDurationMs": 0.105
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workflow-guidance.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workflow-guidance.integration.test.ts"
+          ],
+          "legacyOrdinal": 132,
+          "estimatedDurationMs": 73149.758
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/harness-jsonl-v2.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/harness-jsonl-v2.contract.test.ts"
+          ],
+          "legacyOrdinal": 145,
+          "estimatedDurationMs": 336.775
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/data-authorization-policy-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/data-authorization-policy-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 147,
+          "estimatedDurationMs": 280.822
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-signer-port-boundaries.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-signer-port-boundaries.contract.test.ts"
+          ],
+          "legacyOrdinal": 168,
+          "estimatedDurationMs": 546.171
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-native-session-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-native-session-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 172,
+          "estimatedDurationMs": 9745.914
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/role-context-sharing-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/role-context-sharing-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 176,
+          "estimatedDurationMs": 2512.044
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/validated-change-contract-application-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/validated-change-contract-application-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 180,
+          "estimatedDurationMs": 19.47
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/hooks.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/hooks.integration.test.ts"
+          ],
+          "legacyOrdinal": 211,
+          "estimatedDurationMs": 29479.138
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/session-check-invalidation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/session-check-invalidation.integration.test.ts"
+          ],
+          "legacyOrdinal": 216,
+          "estimatedDurationMs": 142139.361
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-red-revision-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-red-revision-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 221,
+          "estimatedDurationMs": 856.824
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/hit-predicate.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/hit-predicate.contract.test.ts"
+          ],
+          "legacyOrdinal": 226,
+          "estimatedDurationMs": 8.171
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/recovery-authority-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/recovery-authority-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 244,
+          "estimatedDurationMs": 4003.303
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-why.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-why.integration.test.ts"
+          ],
+          "legacyOrdinal": 251,
+          "estimatedDurationMs": 221.439
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-local-correction-round.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-local-correction-round.integration.test.ts"
+          ],
+          "legacyOrdinal": 258,
+          "estimatedDurationMs": 85082.405
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/protected-capability-path-roles.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/protected-capability-path-roles.contract.test.ts"
+          ],
+          "legacyOrdinal": 270,
+          "estimatedDurationMs": 71.598
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-retention-closure.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-retention-closure.integration.test.ts"
+          ],
+          "legacyOrdinal": 274,
+          "estimatedDurationMs": 19365.474
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-manifest-reuse.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-manifest-reuse.integration.test.ts"
+          ],
+          "legacyOrdinal": 294,
+          "estimatedDurationMs": 107.404
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/scan-hit-context-window.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/scan-hit-context-window.contract.test.ts"
+          ],
+          "legacyOrdinal": 303,
+          "estimatedDurationMs": 137.087
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-audit-service.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-audit-service.contract.test.ts"
+          ],
+          "legacyOrdinal": 304,
+          "estimatedDurationMs": 1998.93
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-governance-store.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-governance-store.integration.test.ts"
+          ],
+          "legacyOrdinal": 319,
+          "estimatedDurationMs": 413.097
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-mode.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-mode.integration.test.ts"
+          ],
+          "legacyOrdinal": 321,
+          "estimatedDurationMs": 16367.726
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-worker.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-worker.integration.test.ts"
+          ],
+          "legacyOrdinal": 322,
+          "estimatedDurationMs": 53594.387
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/collaboration-grant-envelope-reader.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/collaboration-grant-envelope-reader.contract.test.ts"
+          ],
+          "legacyOrdinal": 327,
+          "estimatedDurationMs": 216.474
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/job-attempt-package-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/job-attempt-package-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 328,
+          "estimatedDurationMs": 50.308
+        }
+      ]
+    },
+    {
+      "shardNumber": 3,
+      "id": "shard-03",
+      "wrapper": "packages/workflow-engine/test/shards/shard-03.ts",
+      "estimatedDurationMs": 2425269.506,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-provider-role.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-provider-role.contract.test.ts"
+          ],
+          "legacyOrdinal": 5,
+          "estimatedDurationMs": 2.362
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-promotion-material-binding.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-promotion-material-binding.integration.test.ts"
+          ],
+          "legacyOrdinal": 18,
+          "estimatedDurationMs": 78.727
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/recovery-quarantine.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/recovery-quarantine.integration.test.ts"
+          ],
+          "legacyOrdinal": 20,
+          "estimatedDurationMs": 5288.852
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/contract-artifact-digests.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/contract-artifact-digests.test.ts"
+          ],
+          "legacyOrdinal": 21,
+          "estimatedDurationMs": 16.793
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ci-attestation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ci-attestation.integration.test.ts"
+          ],
+          "legacyOrdinal": 31,
+          "estimatedDurationMs": 36449.989
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/engine-metrics.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/engine-metrics.contract.test.ts"
+          ],
+          "legacyOrdinal": 32,
+          "estimatedDurationMs": 3554.102
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/epoch-transition-retention-maintenance.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/epoch-transition-retention-maintenance.integration.test.ts"
+          ],
+          "legacyOrdinal": 61,
+          "estimatedDurationMs": 159.388
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/issues.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/issues.integration.test.ts"
+          ],
+          "legacyOrdinal": 68,
+          "estimatedDurationMs": 966.041
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/built-in-workspace-closure-v2.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/built-in-workspace-closure-v2.contract.test.ts"
+          ],
+          "legacyOrdinal": 82,
+          "estimatedDurationMs": 1577.915
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-coordinator.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-coordinator.contract.test.ts"
+          ],
+          "legacyOrdinal": 88,
+          "estimatedDurationMs": 307.271
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-ledger-propose.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-ledger-propose.integration.test.ts"
+          ],
+          "legacyOrdinal": 116,
+          "estimatedDurationMs": 13950.041
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-plan.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-plan.integration.test.ts"
+          ],
+          "legacyOrdinal": 121,
+          "estimatedDurationMs": 9252.737
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/agent-provider-config-dry-run.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/agent-provider-config-dry-run.integration.test.ts"
+          ],
+          "legacyOrdinal": 133,
+          "estimatedDurationMs": 1189.274
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/central-role-provider-default.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/central-role-provider-default.contract.test.ts"
+          ],
+          "legacyOrdinal": 137,
+          "estimatedDurationMs": 11.614
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/markdown-sections.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/markdown-sections.contract.test.ts"
+          ],
+          "legacyOrdinal": 150,
+          "estimatedDurationMs": 258.342
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-managed-transition-reader.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-managed-transition-reader.integration.test.ts"
+          ],
+          "legacyOrdinal": 155,
+          "estimatedDurationMs": 248.912
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-verifier-composition.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-verifier-composition.contract.test.ts"
+          ],
+          "legacyOrdinal": 165,
+          "estimatedDurationMs": 21151.815
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/markdown-sections-package-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/markdown-sections-package-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 169,
+          "estimatedDurationMs": 1.58
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-remap.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-remap.contract.test.ts"
+          ],
+          "legacyOrdinal": 181,
+          "estimatedDurationMs": 122043.316
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-status-read-only.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-status-read-only.integration.test.ts"
+          ],
+          "legacyOrdinal": 187,
+          "estimatedDurationMs": 75024.527
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/evidence-node.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/evidence-node.contract.test.ts"
+          ],
+          "legacyOrdinal": 192,
+          "estimatedDurationMs": 494.094
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-execution-epoch-recovery.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-execution-epoch-recovery.integration.test.ts"
+          ],
+          "legacyOrdinal": 200,
+          "estimatedDurationMs": 477.572
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-runtime-registration.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-runtime-registration.integration.test.ts"
+          ],
+          "legacyOrdinal": 201,
+          "estimatedDurationMs": 18634.797
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/unified-plan-capability-path-roles.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/unified-plan-capability-path-roles.contract.test.ts"
+          ],
+          "legacyOrdinal": 205,
+          "estimatedDurationMs": 6.401
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/atomic-text.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/atomic-text.test.ts"
+          ],
+          "legacyOrdinal": 207,
+          "estimatedDurationMs": 26.757
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/external-effect-optional-ttl.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/external-effect-optional-ttl.contract.test.ts"
+          ],
+          "legacyOrdinal": 233,
+          "estimatedDurationMs": 14704.39
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/recovery-trust-root-restore-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/recovery-trust-root-restore-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 245,
+          "estimatedDurationMs": 10564.551
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-transformation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-transformation.integration.test.ts"
+          ],
+          "legacyOrdinal": 246,
+          "estimatedDurationMs": 236284.927
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ci-archive.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ci-archive.integration.test.ts"
+          ],
+          "legacyOrdinal": 247,
+          "estimatedDurationMs": 1024180.936
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-check-registry.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-check-registry.integration.test.ts"
+          ],
+          "legacyOrdinal": 254,
+          "estimatedDurationMs": 184.051
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/full-gate-reporter.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/full-gate-reporter.contract.test.ts"
+          ],
+          "legacyOrdinal": 264,
+          "estimatedDurationMs": 270.783
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/check-registry-package-boundaries.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/check-registry-package-boundaries.contract.test.ts"
+          ],
+          "legacyOrdinal": 267,
+          "estimatedDurationMs": 89.341
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-audit-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-audit-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 268,
+          "estimatedDurationMs": 2837.636
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-provider-output-schema-projection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-provider-output-schema-projection.integration.test.ts"
+          ],
+          "legacyOrdinal": 272,
+          "estimatedDurationMs": 5980.578
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-v2-sidecar-pin.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-v2-sidecar-pin.integration.test.ts"
+          ],
+          "legacyOrdinal": 277,
+          "estimatedDurationMs": 24977.154
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ai-adapter-evaluation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ai-adapter-evaluation.integration.test.ts"
+          ],
+          "legacyOrdinal": 285,
+          "estimatedDurationMs": 94101.065
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-diagnostic-preservation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-diagnostic-preservation.contract.test.ts"
+          ],
+          "legacyOrdinal": 292,
+          "estimatedDurationMs": 3.008
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-direct-human-resume.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-direct-human-resume.integration.test.ts"
+          ],
+          "legacyOrdinal": 298,
+          "estimatedDurationMs": 198958.601
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/collaboration-grant-package.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/collaboration-grant-package.contract.test.ts"
+          ],
+          "legacyOrdinal": 308,
+          "estimatedDurationMs": 32.721
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-updater.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-updater.integration.test.ts"
+          ],
+          "legacyOrdinal": 320,
+          "estimatedDurationMs": 50196.989
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-revision-lease.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-revision-lease.integration.test.ts"
+          ],
+          "legacyOrdinal": 325,
+          "estimatedDurationMs": 450729.556
+        }
+      ]
+    },
+    {
+      "shardNumber": 4,
+      "id": "shard-04",
+      "wrapper": "packages/workflow-engine/test/shards/shard-04.ts",
+      "estimatedDurationMs": 2425269.514,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-grant-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-grant-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 33,
+          "estimatedDurationMs": 23219.968
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-provider-residuals-projection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-provider-residuals-projection.integration.test.ts"
+          ],
+          "legacyOrdinal": 37,
+          "estimatedDurationMs": 13939.138
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/contracts.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/contracts.test.ts"
+          ],
+          "legacyOrdinal": 46,
+          "estimatedDurationMs": 25422.665
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/collaboration-grant.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/collaboration-grant.integration.test.ts"
+          ],
+          "legacyOrdinal": 67,
+          "estimatedDurationMs": 53745.696
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/full-gate-telemetry-summary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/full-gate-telemetry-summary.contract.test.ts"
+          ],
+          "legacyOrdinal": 80,
+          "estimatedDurationMs": 6.43
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/predicate-discrimination.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/predicate-discrimination.contract.test.ts"
+          ],
+          "legacyOrdinal": 81,
+          "estimatedDurationMs": 1.595
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/external-effect-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/external-effect-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 86,
+          "estimatedDurationMs": 4398.225
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-candidate-artifacts.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-candidate-artifacts.contract.test.ts"
+          ],
+          "legacyOrdinal": 100,
+          "estimatedDurationMs": 124.789
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/pre-merge-assurance.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/pre-merge-assurance.contract.test.ts"
+          ],
+          "legacyOrdinal": 101,
+          "estimatedDurationMs": 15.945
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/open-task-atomic-ingress.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/open-task-atomic-ingress.integration.test.ts"
+          ],
+          "legacyOrdinal": 109,
+          "estimatedDurationMs": 223282.527
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-successive-promotion-production.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-successive-promotion-production.integration.test.ts"
+          ],
+          "legacyOrdinal": 113,
+          "estimatedDurationMs": 79786.593
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-publication-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-publication-v3.test.ts"
+          ],
+          "legacyOrdinal": 127,
+          "estimatedDurationMs": 19563.286
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-scanner.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-scanner.integration.test.ts"
+          ],
+          "legacyOrdinal": 128,
+          "estimatedDurationMs": 4398.774
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-plan-migration.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-plan-migration.integration.test.ts"
+          ],
+          "legacyOrdinal": 131,
+          "estimatedDurationMs": 2252.274
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/provider-definition-snapshot.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/provider-definition-snapshot.contract.test.ts"
+          ],
+          "legacyOrdinal": 146,
+          "estimatedDurationMs": 290.541
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/session-runtime-layout-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/session-runtime-layout-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 153,
+          "estimatedDurationMs": 239.181
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/openspec-adapter/openspec-adapter.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/openspec-adapter/openspec-adapter.integration.test.ts"
+          ],
+          "legacyOrdinal": 163,
+          "estimatedDurationMs": 359.358
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-external-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-external-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 186,
+          "estimatedDurationMs": 1067.664
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-attestation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-attestation.contract.test.ts"
+          ],
+          "legacyOrdinal": 190,
+          "estimatedDurationMs": 9.386
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-grant-mandate-audit.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-grant-mandate-audit.contract.test.ts"
+          ],
+          "legacyOrdinal": 195,
+          "estimatedDurationMs": 1208.285
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-semantic-contract-rollover.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-semantic-contract-rollover.integration.test.ts"
+          ],
+          "legacyOrdinal": 204,
+          "estimatedDurationMs": 130.734
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/plan-review.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/plan-review.integration.test.ts"
+          ],
+          "legacyOrdinal": 213,
+          "estimatedDurationMs": 62.444
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-tracked-object-reader.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-tracked-object-reader.integration.test.ts"
+          ],
+          "legacyOrdinal": 218,
+          "estimatedDurationMs": 253.021
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 222,
+          "estimatedDurationMs": 294.004
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/class-sample-audit.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/class-sample-audit.contract.test.ts"
+          ],
+          "legacyOrdinal": 225,
+          "estimatedDurationMs": 32.347
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/path-role-registry.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/path-role-registry.contract.test.ts"
+          ],
+          "legacyOrdinal": 227,
+          "estimatedDurationMs": 29.916
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/openspec-planning-assets.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/openspec-planning-assets.integration.test.ts"
+          ],
+          "legacyOrdinal": 229,
+          "estimatedDurationMs": 86442.222
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-evidence-waiver.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-evidence-waiver.integration.test.ts"
+          ],
+          "legacyOrdinal": 242,
+          "estimatedDurationMs": 8721.659
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-mechanical-transform-lifecycle.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-mechanical-transform-lifecycle.integration.test.ts"
+          ],
+          "legacyOrdinal": 252,
+          "estimatedDurationMs": 465969.738
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-correction-round-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-correction-round-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 257,
+          "estimatedDurationMs": 1605.992
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/change-class-floors.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/change-class-floors.contract.test.ts"
+          ],
+          "legacyOrdinal": 266,
+          "estimatedDurationMs": 3.276
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/plan-amendment-contribution.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/plan-amendment-contribution.integration.test.ts"
+          ],
+          "legacyOrdinal": 273,
+          "estimatedDurationMs": 30730.72
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/spec-delta-shared-applicability.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/spec-delta-shared-applicability.integration.test.ts"
+          ],
+          "legacyOrdinal": 279,
+          "estimatedDurationMs": 713.579
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/check-command.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/check-command.contract.test.ts"
+          ],
+          "legacyOrdinal": 290,
+          "estimatedDurationMs": 201.595
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/class-disposition.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/class-disposition.contract.test.ts"
+          ],
+          "legacyOrdinal": 293,
+          "estimatedDurationMs": 2.19
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/evidence-reuse-production.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/evidence-reuse-production.integration.test.ts"
+          ],
+          "legacyOrdinal": 296,
+          "estimatedDurationMs": 15194.865
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-correction-head.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-correction-head.integration.test.ts"
+          ],
+          "legacyOrdinal": 299,
+          "estimatedDurationMs": 120320.68
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-provider-worker.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-provider-worker.integration.test.ts"
+          ],
+          "legacyOrdinal": 300,
+          "estimatedDurationMs": 780077.981
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-post-approval-budget.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-post-approval-budget.integration.test.ts"
+          ],
+          "legacyOrdinal": 309,
+          "estimatedDurationMs": 183792.569
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-invocation-supersession.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-invocation-supersession.contract.test.ts"
+          ],
+          "legacyOrdinal": 310,
+          "estimatedDurationMs": 10387.972
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-workspace.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-workspace.integration.test.ts"
+          ],
+          "legacyOrdinal": 312,
+          "estimatedDurationMs": 6818.778
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/runner.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/runner-closure.integration.test.ts",
+            "packages/workflow-engine/test/runner-package-security.integration.test.ts",
+            "packages/workflow-engine/test/runner.integration.test.ts"
+          ],
+          "legacyOrdinal": 324,
+          "estimatedDurationMs": 260150.912
+        }
+      ]
+    },
+    {
+      "shardNumber": 5,
+      "id": "shard-05",
+      "wrapper": "packages/workflow-engine/test/shards/shard-05.ts",
+      "estimatedDurationMs": 2425269.232,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/amend-plan-trailers.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/amend-plan-trailers.contract.test.ts"
+          ],
+          "legacyOrdinal": 14,
+          "estimatedDurationMs": 3.42
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-provider-policy-lineage-gap.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-provider-policy-lineage-gap.integration.test.ts"
+          ],
+          "legacyOrdinal": 15,
+          "estimatedDurationMs": 2333.493
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/job-attempt-runtime.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/job-attempt-runtime.contract.test.ts"
+          ],
+          "legacyOrdinal": 23,
+          "estimatedDurationMs": 380.617
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/check-registry-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/check-registry-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 44,
+          "estimatedDurationMs": 208.696
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-supervisor-history-crash.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-supervisor-history-crash.integration.test.ts"
+          ],
+          "legacyOrdinal": 60,
+          "estimatedDurationMs": 267.426
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/managed-change-contract.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/managed-change-contract.integration.test.ts"
+          ],
+          "legacyOrdinal": 71,
+          "estimatedDurationMs": 10492.227
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 92,
+          "estimatedDurationMs": 120.687
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-retention.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-retention.contract.test.ts"
+          ],
+          "legacyOrdinal": 110,
+          "estimatedDurationMs": 55109.167
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/amend-plan-change-option.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/amend-plan-change-option.integration.test.ts"
+          ],
+          "legacyOrdinal": 111,
+          "estimatedDurationMs": 14628.023
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-compactness-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-compactness-v3.test.ts"
+          ],
+          "legacyOrdinal": 123,
+          "estimatedDurationMs": 1190.516
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-shadow-parity-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-shadow-parity-v3.test.ts"
+          ],
+          "legacyOrdinal": 129,
+          "estimatedDurationMs": 129.759
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts"
+          ],
+          "legacyOrdinal": 142,
+          "estimatedDurationMs": 24158.368
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/agent-provider-config.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/agent-provider-config.contract.test.ts"
+          ],
+          "legacyOrdinal": 143,
+          "estimatedDurationMs": 351.871
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-runtime-paths.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-runtime-paths.integration.test.ts"
+          ],
+          "legacyOrdinal": 157,
+          "estimatedDurationMs": 263.037
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/openspec-adapter/validation-payload.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/openspec-adapter/validation-payload.contract.test.ts"
+          ],
+          "legacyOrdinal": 164,
+          "estimatedDurationMs": 234.936
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/scan-saturation-exit.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/scan-saturation-exit.integration.test.ts"
+          ],
+          "legacyOrdinal": 183,
+          "estimatedDurationMs": 626.091
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/implementation-reconciliation-finalization.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/implementation-reconciliation-finalization.integration.test.ts"
+          ],
+          "legacyOrdinal": 184,
+          "estimatedDurationMs": 217900.643
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 196,
+          "estimatedDurationMs": 8717.511
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/legacy-provider-attempt-numbering.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/legacy-provider-attempt-numbering.integration.test.ts"
+          ],
+          "legacyOrdinal": 199,
+          "estimatedDurationMs": 6622.004
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-transition.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-transition.integration.test.ts"
+          ],
+          "legacyOrdinal": 206,
+          "estimatedDurationMs": 248405.115
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-runtime.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-runtime.integration.test.ts"
+          ],
+          "legacyOrdinal": 208,
+          "estimatedDurationMs": 18460.774
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/managed-trailers.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/managed-trailers.contract.test.ts"
+          ],
+          "legacyOrdinal": 212,
+          "estimatedDurationMs": 24.446
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/managed-change-lifecycle.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/managed-change-lifecycle.integration.test.ts"
+          ],
+          "legacyOrdinal": 215,
+          "estimatedDurationMs": 507846.882
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/assurance-assessment-chain.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/assurance-assessment-chain.contract.test.ts"
+          ],
+          "legacyOrdinal": 219,
+          "estimatedDurationMs": 7.933
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/declared-path-symbols.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/declared-path-symbols.contract.test.ts"
+          ],
+          "legacyOrdinal": 220,
+          "estimatedDurationMs": 1.285
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-sidecar-session.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-sidecar-session.integration.test.ts"
+          ],
+          "legacyOrdinal": 241,
+          "estimatedDurationMs": 1689.109
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-lease-expiry-retry.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-lease-expiry-retry.integration.test.ts"
+          ],
+          "legacyOrdinal": 243,
+          "estimatedDurationMs": 4561.298
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review.contract.test.ts"
+          ],
+          "legacyOrdinal": 260,
+          "estimatedDurationMs": 41.518
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-correction-provider-contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-correction-provider-contract.test.ts"
+          ],
+          "legacyOrdinal": 262,
+          "estimatedDurationMs": 5.907
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/assurance-inspection.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/assurance-inspection.integration.test.ts"
+          ],
+          "legacyOrdinal": 265,
+          "estimatedDurationMs": 4211.789
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-mandate.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-mandate.contract.test.ts"
+          ],
+          "legacyOrdinal": 275,
+          "estimatedDurationMs": 84354.293
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ci-planning.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ci-planning.integration.test.ts"
+          ],
+          "legacyOrdinal": 281,
+          "estimatedDurationMs": 162484.338
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ci-bootstrap.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ci-bootstrap.integration.test.ts"
+          ],
+          "legacyOrdinal": 284,
+          "estimatedDurationMs": 41421.961
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-automatic-retry.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-automatic-retry.integration.test.ts"
+          ],
+          "legacyOrdinal": 286,
+          "estimatedDurationMs": 148662.349
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-session.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-session.integration.test.ts"
+          ],
+          "legacyOrdinal": 287,
+          "estimatedDurationMs": 762576.789
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/bounded-provider-process.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/bounded-provider-process.integration.test.ts"
+          ],
+          "legacyOrdinal": 289,
+          "estimatedDurationMs": 1092.479
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/collaboration-grant-selection.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/collaboration-grant-selection.contract.test.ts"
+          ],
+          "legacyOrdinal": 301,
+          "estimatedDurationMs": 21036.683
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-core.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-core.contract.test.ts"
+          ],
+          "legacyOrdinal": 306,
+          "estimatedDurationMs": 62.661
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-retention-human-pin.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-retention-human-pin.contract.test.ts"
+          ],
+          "legacyOrdinal": 313,
+          "estimatedDurationMs": 15.803
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-mandate-grant-budget.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-mandate-grant-budget.integration.test.ts"
+          ],
+          "legacyOrdinal": 314,
+          "estimatedDurationMs": 11414.801
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-diagnostic-budget.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-diagnostic-budget.integration.test.ts"
+          ],
+          "legacyOrdinal": 315,
+          "estimatedDurationMs": 2.128
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-eligibility.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-eligibility.integration.test.ts"
+          ],
+          "legacyOrdinal": 318,
+          "estimatedDurationMs": 63150.399
+        }
+      ]
+    },
+    {
+      "shardNumber": 6,
+      "id": "shard-06",
+      "wrapper": "packages/workflow-engine/test/shards/shard-06.ts",
+      "estimatedDurationMs": 2425269.39,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-external-inventory.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-external-inventory.contract.test.ts"
+          ],
+          "legacyOrdinal": 2,
+          "estimatedDurationMs": 484.497
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/check-registry-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/check-registry-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 6,
+          "estimatedDurationMs": 12.676
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-audit-ledger.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-audit-ledger.contract.test.ts"
+          ],
+          "legacyOrdinal": 8,
+          "estimatedDurationMs": 755.836
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-core-terminal-failures.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-core-terminal-failures.contract.test.ts"
+          ],
+          "legacyOrdinal": 9,
+          "estimatedDurationMs": 2.418
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/plan-review.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/plan-review.contract.test.ts"
+          ],
+          "legacyOrdinal": 13,
+          "estimatedDurationMs": 1115.808
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-external-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-external-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 26,
+          "estimatedDurationMs": 24851.666
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-candidate.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-candidate.contract.test.ts"
+          ],
+          "legacyOrdinal": 35,
+          "estimatedDurationMs": 94.296
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/session.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/session.integration.test.ts"
+          ],
+          "legacyOrdinal": 47,
+          "estimatedDurationMs": 288831.981
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/single-pass-finalize-command.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/single-pass-finalize-command.integration.test.ts"
+          ],
+          "legacyOrdinal": 48,
+          "estimatedDurationMs": 95520.281
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/git-security.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/git-security.test.ts"
+          ],
+          "legacyOrdinal": 50,
+          "estimatedDurationMs": 1569.32
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-adoption-grant-renewal.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-adoption-grant-renewal.integration.test.ts"
+          ],
+          "legacyOrdinal": 53,
+          "estimatedDurationMs": 6123.867
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/retention-control.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/retention-control.contract.test.ts"
+          ],
+          "legacyOrdinal": 56,
+          "estimatedDurationMs": 14321.069
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-reuse-reporting.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-reuse-reporting.integration.test.ts"
+          ],
+          "legacyOrdinal": 57,
+          "estimatedDurationMs": 10026.368
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/adaptive-class-sample-gate.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/adaptive-class-sample-gate.integration.test.ts"
+          ],
+          "legacyOrdinal": 58,
+          "estimatedDurationMs": 76708.345
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-initial-supervisor-bootstrap.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-initial-supervisor-bootstrap.integration.test.ts"
+          ],
+          "legacyOrdinal": 59,
+          "estimatedDurationMs": 189520.012
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-correction-provider-lifecycle.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-correction-provider-lifecycle.integration.test.ts"
+          ],
+          "legacyOrdinal": 78,
+          "estimatedDurationMs": 716701.893
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/spec-delta-applicability.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/spec-delta-applicability.contract.test.ts"
+          ],
+          "legacyOrdinal": 84,
+          "estimatedDurationMs": 1.713
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-approval.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-approval.contract.test.ts"
+          ],
+          "legacyOrdinal": 87,
+          "estimatedDurationMs": 6.18
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-v3-grant-adapter.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-v3-grant-adapter.contract.test.ts"
+          ],
+          "legacyOrdinal": 97,
+          "estimatedDurationMs": 20840.96
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-v3-grant-publication.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-v3-grant-publication.integration.test.ts"
+          ],
+          "legacyOrdinal": 98,
+          "estimatedDurationMs": 43190.49
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/pre-merge-assurance-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/pre-merge-assurance-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 102,
+          "estimatedDurationMs": 52.753
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-retry-accounting.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-retry-accounting.contract.test.ts"
+          ],
+          "legacyOrdinal": 104,
+          "estimatedDurationMs": 3335.015
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/floor-trimming.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/floor-trimming.integration.test.ts"
+          ],
+          "legacyOrdinal": 107,
+          "estimatedDurationMs": 12014.856
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/planning-provider.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/planning-provider.contract.test.ts"
+          ],
+          "legacyOrdinal": 151,
+          "estimatedDurationMs": 260.299
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-evidence-node.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-evidence-node.integration.test.ts"
+          ],
+          "legacyOrdinal": 154,
+          "estimatedDurationMs": 266.091
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-markdown-outline.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-markdown-outline.integration.test.ts"
+          ],
+          "legacyOrdinal": 156,
+          "estimatedDurationMs": 248.6
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/openspec-adapter/archive-projection.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/openspec-adapter/archive-projection.contract.test.ts"
+          ],
+          "legacyOrdinal": 162,
+          "estimatedDurationMs": 320.462
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-native-session.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-native-session.contract.test.ts"
+          ],
+          "legacyOrdinal": 173,
+          "estimatedDurationMs": 153.86
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts"
+          ],
+          "legacyOrdinal": 175,
+          "estimatedDurationMs": 5053.682
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-relay-command.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-relay-command.contract.test.ts"
+          ],
+          "legacyOrdinal": 191,
+          "estimatedDurationMs": 2.698
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/harness-bootstrap-human-ux.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/harness-bootstrap-human-ux.integration.test.ts"
+          ],
+          "legacyOrdinal": 209,
+          "estimatedDurationMs": 3592.513
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/guard-contract.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/guard-contract.integration.test.ts"
+          ],
+          "legacyOrdinal": 210,
+          "estimatedDurationMs": 9147.616
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control.contract.test.ts"
+          ],
+          "legacyOrdinal": 235,
+          "estimatedDurationMs": 17.825
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-replacement-crash-window.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-replacement-crash-window.integration.test.ts"
+          ],
+          "legacyOrdinal": 237,
+          "estimatedDurationMs": 45810.936
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/finalize-transaction-recovery.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/finalize-transaction-recovery.integration.test.ts"
+          ],
+          "legacyOrdinal": 248,
+          "estimatedDurationMs": 515636.023
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/canonical-json.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/canonical-json.contract.test.ts"
+          ],
+          "legacyOrdinal": 253,
+          "estimatedDurationMs": 184.994
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-reconciliation.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-reconciliation.contract.test.ts"
+          ],
+          "legacyOrdinal": 256,
+          "estimatedDurationMs": 8.53
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-public-continuation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-public-continuation.integration.test.ts"
+          ],
+          "legacyOrdinal": 261,
+          "estimatedDurationMs": 207330.83
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workflow-rehearsal.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workflow-rehearsal.integration.test.ts"
+          ],
+          "legacyOrdinal": 288,
+          "estimatedDurationMs": 112487.345
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/propose-scan-saturation-acceptance.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/propose-scan-saturation-acceptance.integration.test.ts"
+          ],
+          "legacyOrdinal": 295,
+          "estimatedDurationMs": 18218.862
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/floor-overflow-pruning.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/floor-overflow-pruning.contract.test.ts"
+          ],
+          "legacyOrdinal": 302,
+          "estimatedDurationMs": 74.916
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/contract-values.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/contract-values.contract.test.ts"
+          ],
+          "legacyOrdinal": 326,
+          "estimatedDurationMs": 371.008
+        }
+      ]
+    },
+    {
+      "shardNumber": 7,
+      "id": "shard-07",
+      "wrapper": "packages/workflow-engine/test/shards/shard-07.ts",
+      "estimatedDurationMs": 2425268.979,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 11,
+          "estimatedDurationMs": 7.103
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-manifest.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-manifest.contract.test.ts"
+          ],
+          "legacyOrdinal": 12,
+          "estimatedDurationMs": 6918.212
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/unified-cli-routing.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/unified-cli-routing.contract.test.ts"
+          ],
+          "legacyOrdinal": 16,
+          "estimatedDurationMs": 9377.174
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-lineage-supersession.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-lineage-supersession.contract.test.ts"
+          ],
+          "legacyOrdinal": 27,
+          "estimatedDurationMs": 334.255
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/human-resolution-supersede.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/human-resolution-supersede.contract.test.ts"
+          ],
+          "legacyOrdinal": 34,
+          "estimatedDurationMs": 5691.174
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/finalize-authenticated-gate-recovery.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/finalize-authenticated-gate-recovery.integration.test.ts"
+          ],
+          "legacyOrdinal": 49,
+          "estimatedDurationMs": 162429.468
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/spec-delta-transition-enforcement.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/spec-delta-transition-enforcement.integration.test.ts"
+          ],
+          "legacyOrdinal": 66,
+          "estimatedDurationMs": 7446.26
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-updater-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-updater-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 69,
+          "estimatedDurationMs": 88106.73
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/harness-jsonl-v1.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/harness-jsonl-v1.contract.test.ts"
+          ],
+          "legacyOrdinal": 72,
+          "estimatedDurationMs": 249.564
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-correction-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-correction-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 75,
+          "estimatedDurationMs": 558.192
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-provider-contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-provider-contract.test.ts"
+          ],
+          "legacyOrdinal": 77,
+          "estimatedDurationMs": 162.322
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/full-gate-runner.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/full-gate-runner.integration.test.ts"
+          ],
+          "legacyOrdinal": 79,
+          "estimatedDurationMs": 13785.974
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/grant-proof-ssh.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/grant-proof-ssh.contract.test.ts"
+          ],
+          "legacyOrdinal": 91,
+          "estimatedDurationMs": 79.407
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-grant-integration.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-grant-integration.contract.test.ts"
+          ],
+          "legacyOrdinal": 95,
+          "estimatedDurationMs": 0.493
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-persistence.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-persistence.contract.test.ts"
+          ],
+          "legacyOrdinal": 99,
+          "estimatedDurationMs": 1432.916
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-orchestration.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-orchestration.contract.test.ts"
+          ],
+          "legacyOrdinal": 103,
+          "estimatedDurationMs": 36.269
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/declared-path-symbol-floor.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/declared-path-symbol-floor.integration.test.ts"
+          ],
+          "legacyOrdinal": 106,
+          "estimatedDurationMs": 20130.142
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/amend-plan-state-gate.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/amend-plan-state-gate.integration.test.ts"
+          ],
+          "legacyOrdinal": 112,
+          "estimatedDurationMs": 207036.621
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workflow-test-inventory.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workflow-test-inventory.contract.test.ts"
+          ],
+          "legacyOrdinal": 118,
+          "estimatedDurationMs": 926.316
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/publish-executor.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/publish-executor.integration.test.ts"
+          ],
+          "legacyOrdinal": 122,
+          "estimatedDurationMs": 52013.686
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-manifest-schema-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-manifest-schema-v3.test.ts"
+          ],
+          "legacyOrdinal": 125,
+          "estimatedDurationMs": 1.918
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-manifest-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-manifest-v3.test.ts"
+          ],
+          "legacyOrdinal": 126,
+          "estimatedDurationMs": 26537.852
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/central-role-provider-default-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/central-role-provider-default-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 134,
+          "estimatedDurationMs": 3439.996
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/bounded-provider-process-v2.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/bounded-provider-process-v2.integration.test.ts"
+          ],
+          "legacyOrdinal": 144,
+          "estimatedDurationMs": 1632.477
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/package-boundary.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/package-boundary.contract.test.ts"
+          ],
+          "legacyOrdinal": 159,
+          "estimatedDurationMs": 247.833
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/implementation-term-floor-v3.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/implementation-term-floor-v3.test.ts"
+          ],
+          "legacyOrdinal": 167,
+          "estimatedDurationMs": 404.951
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/openspec-archive-projection-package.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/openspec-archive-projection-package.contract.test.ts"
+          ],
+          "legacyOrdinal": 170,
+          "estimatedDurationMs": 4.706
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/role-context-sharing-grant.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/role-context-sharing-grant.contract.test.ts"
+          ],
+          "legacyOrdinal": 174,
+          "estimatedDurationMs": 16.415
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/role-topology-resolution.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/role-topology-resolution.contract.test.ts"
+          ],
+          "legacyOrdinal": 177,
+          "estimatedDurationMs": 9.414
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/finalize-recovery-command.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/finalize-recovery-command.integration.test.ts"
+          ],
+          "legacyOrdinal": 185,
+          "estimatedDurationMs": 326277.501
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-provider-retry.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-provider-retry.integration.test.ts"
+          ],
+          "legacyOrdinal": 188,
+          "estimatedDurationMs": 688423.32
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/evidence-currentness.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/evidence-currentness.contract.test.ts"
+          ],
+          "legacyOrdinal": 193,
+          "estimatedDurationMs": 24.788
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/agent-role-plan.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/agent-role-plan.contract.test.ts"
+          ],
+          "legacyOrdinal": 197,
+          "estimatedDurationMs": 2297.224
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-recovery-grant.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-recovery-grant.integration.test.ts"
+          ],
+          "legacyOrdinal": 202,
+          "estimatedDurationMs": 21600.878
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-attestation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-attestation.integration.test.ts"
+          ],
+          "legacyOrdinal": 230,
+          "estimatedDurationMs": 17284.615
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/external-effect-grant.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/external-effect-grant.contract.test.ts"
+          ],
+          "legacyOrdinal": 232,
+          "estimatedDurationMs": 31555.458
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-adapters.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-adapters.integration.test.ts"
+          ],
+          "legacyOrdinal": 250,
+          "estimatedDurationMs": 79411.085
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/grant-lifecycle.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/grant-lifecycle.contract.test.ts"
+          ],
+          "legacyOrdinal": 255,
+          "estimatedDurationMs": 171.439
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-strategy-caller-correction.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-strategy-caller-correction.integration.test.ts"
+          ],
+          "legacyOrdinal": 259,
+          "estimatedDurationMs": 524111.67
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/workspace-source-closure.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/workspace-source-closure.contract.test.ts"
+          ],
+          "legacyOrdinal": 280,
+          "estimatedDurationMs": 97.243
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-refusal-audit.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-refusal-audit.contract.test.ts"
+          ],
+          "legacyOrdinal": 305,
+          "estimatedDurationMs": 289.565
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/protected-capabilities.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/protected-capabilities.contract.test.ts"
+          ],
+          "legacyOrdinal": 311,
+          "estimatedDurationMs": 124706.353
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts"
+          ],
+          "legacyOrdinal": 329,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/change-routing.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/change-routing.integration.test.ts"
+          ],
+          "legacyOrdinal": 330,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/conformance-vectors-v2.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/conformance-vectors-v2.contract.test.ts"
+          ],
+          "legacyOrdinal": 331,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/agent-runtime/agent-runtime-port.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/agent-runtime/agent-runtime-port.integration.test.ts"
+          ],
+          "legacyOrdinal": 332,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/agent-runtime-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/agent-runtime-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 333,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/central-grant-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/central-grant-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 334,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/conformance-vectors.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/conformance-vectors.contract.test.ts"
+          ],
+          "legacyOrdinal": 335,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/governance-source.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/governance-source.contract.test.ts"
+          ],
+          "legacyOrdinal": 336,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/workflow-namespace.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/workflow-namespace.contract.test.ts"
+          ],
+          "legacyOrdinal": 337,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/exact-local-package-invocation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/exact-local-package-invocation.integration.test.ts"
+          ],
+          "legacyOrdinal": 338,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-agent-runtime.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-agent-runtime.integration.test.ts"
+          ],
+          "legacyOrdinal": 339,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/github-adapter/archive-pull-request.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/github-adapter/archive-pull-request.test.ts"
+          ],
+          "legacyOrdinal": 340,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/grants/central-grant-contracts.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/grants/central-grant-contracts.contract.test.ts"
+          ],
+          "legacyOrdinal": 341,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/governance-intake.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/governance-intake.integration.test.ts"
+          ],
+          "legacyOrdinal": 342,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/local-adoption.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/local-adoption.contract.test.ts"
+          ],
+          "legacyOrdinal": 343,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/local-release.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/local-release.contract.test.ts"
+          ],
+          "legacyOrdinal": 344,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/portability-mvp.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/portability-mvp.integration.test.ts"
+          ],
+          "legacyOrdinal": 345,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/release-v1.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/release-v1.contract.test.ts"
+          ],
+          "legacyOrdinal": 346,
+          "estimatedDurationMs": 0
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/t3-boundary-inventory-cli.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/t3-boundary-inventory-cli.contract.test.ts"
+          ],
+          "legacyOrdinal": 347,
+          "estimatedDurationMs": 0
+        }
+      ]
+    },
+    {
+      "shardNumber": 8,
+      "id": "shard-08",
+      "wrapper": "packages/workflow-engine/test/shards/shard-08.ts",
+      "estimatedDurationMs": 2425269.27,
+      "units": [
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 3,
+          "estimatedDurationMs": 112.553
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-bootstrap.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-bootstrap.contract.test.ts"
+          ],
+          "legacyOrdinal": 10,
+          "estimatedDurationMs": 3785.407
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-utc-midnight-rollover.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-utc-midnight-rollover.integration.test.ts"
+          ],
+          "legacyOrdinal": 39,
+          "estimatedDurationMs": 14799.924
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-sidecar-public-replay.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-sidecar-public-replay.integration.test.ts"
+          ],
+          "legacyOrdinal": 41,
+          "estimatedDurationMs": 2473.58
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-strategy-change.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-strategy-change.integration.test.ts"
+          ],
+          "legacyOrdinal": 42,
+          "estimatedDurationMs": 7305.066
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-governance.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-governance.contract.test.ts"
+          ],
+          "legacyOrdinal": 51,
+          "estimatedDurationMs": 1442.11
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/external-effect-refusal-audit.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/external-effect-refusal-audit.contract.test.ts"
+          ],
+          "legacyOrdinal": 52,
+          "estimatedDurationMs": 19719.737
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/maintainer-grant-v2-reissue-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/maintainer-grant-v2-reissue-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 55,
+          "estimatedDurationMs": 1635.468
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-parent-pause-fence.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-parent-pause-fence.integration.test.ts"
+          ],
+          "legacyOrdinal": 62,
+          "estimatedDurationMs": 22728.851
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ci.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ci.integration.test.ts"
+          ],
+          "legacyOrdinal": 70,
+          "estimatedDurationMs": 168301.111
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/semantic-ledger.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/semantic-ledger.contract.test.ts"
+          ],
+          "legacyOrdinal": 74,
+          "estimatedDurationMs": 0.788
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-artifact.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-artifact.contract.test.ts"
+          ],
+          "legacyOrdinal": 76,
+          "estimatedDurationMs": 56.25
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/class-disposition-mounting.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/class-disposition-mounting.integration.test.ts"
+          ],
+          "legacyOrdinal": 105,
+          "estimatedDurationMs": 25268.301
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/epoch-carry-forward-manifest.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/epoch-carry-forward-manifest.integration.test.ts"
+          ],
+          "legacyOrdinal": 114,
+          "estimatedDurationMs": 330.933
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-sidecar-workflow-binding.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-sidecar-workflow-binding.integration.test.ts"
+          ],
+          "legacyOrdinal": 115,
+          "estimatedDurationMs": 14003.142
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/completion.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/completion.integration.test.ts"
+          ],
+          "legacyOrdinal": 119,
+          "estimatedDurationMs": 567020.044
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/central-role-provider-default-store.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/central-role-provider-default-store.contract.test.ts"
+          ],
+          "legacyOrdinal": 135,
+          "estimatedDurationMs": 536.542
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/change-role-assignment-record.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/change-role-assignment-record.contract.test.ts"
+          ],
+          "legacyOrdinal": 138,
+          "estimatedDurationMs": 425.262
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/change-role-assignment.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/change-role-assignment.contract.test.ts"
+          ],
+          "legacyOrdinal": 140,
+          "estimatedDurationMs": 135.564
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/evidence-node.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/evidence-node.contract.test.ts"
+          ],
+          "legacyOrdinal": 148,
+          "estimatedDurationMs": 278.27
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/managed-transition-trailers.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/managed-transition-trailers.contract.test.ts"
+          ],
+          "legacyOrdinal": 149,
+          "estimatedDurationMs": 253.314
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-session-runtime-layout.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/fixture-adapter/fixture-session-runtime-layout.integration.test.ts"
+          ],
+          "legacyOrdinal": 158,
+          "estimatedDurationMs": 245.854
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/session-runtime-layout-package-boundaries.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/session-runtime-layout-package-boundaries.contract.test.ts"
+          ],
+          "legacyOrdinal": 179,
+          "estimatedDurationMs": 4.694
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/archive-applicability-provenance.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/archive-applicability-provenance.contract.test.ts"
+          ],
+          "legacyOrdinal": 182,
+          "estimatedDurationMs": 17.136
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-transition.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-transition.contract.test.ts"
+          ],
+          "legacyOrdinal": 189,
+          "estimatedDurationMs": 9.335
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-branch-rename.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-branch-rename.integration.test.ts"
+          ],
+          "legacyOrdinal": 198,
+          "estimatedDurationMs": 5078.907
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-mechanical-transform.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-mechanical-transform.integration.test.ts"
+          ],
+          "legacyOrdinal": 217,
+          "estimatedDurationMs": 370762.438
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-external-continuation.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-external-continuation.integration.test.ts"
+          ],
+          "legacyOrdinal": 224,
+          "estimatedDurationMs": 572242.365
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/openspec-adapter.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/openspec-adapter.integration.test.ts"
+          ],
+          "legacyOrdinal": 228,
+          "estimatedDurationMs": 11090.491
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/execution-replacement.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/execution-replacement.integration.test.ts"
+          ],
+          "legacyOrdinal": 231,
+          "estimatedDurationMs": 127287.24
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/investigation-groups.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/investigation-groups.contract.test.ts"
+          ],
+          "legacyOrdinal": 234,
+          "estimatedDurationMs": 63.117
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/provider-async-process.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/provider-async-process.contract.test.ts"
+          ],
+          "legacyOrdinal": 236,
+          "estimatedDurationMs": 946.258
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-successive-promotion-lineage.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-successive-promotion-lineage.integration.test.ts"
+          ],
+          "legacyOrdinal": 240,
+          "estimatedDurationMs": 5.295
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/handoff.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/handoff.integration.test.ts"
+          ],
+          "legacyOrdinal": 249,
+          "estimatedDurationMs": 62790.604
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/authority-audit-profile.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/authority-audit-profile.contract.test.ts"
+          ],
+          "legacyOrdinal": 269,
+          "estimatedDurationMs": 7447.478
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/amend-plan-reopen.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/amend-plan-reopen.contract.test.ts"
+          ],
+          "legacyOrdinal": 271,
+          "estimatedDurationMs": 1.803
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/planning-r6-review-coverage.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/planning-r6-review-coverage.integration.test.ts"
+          ],
+          "legacyOrdinal": 278,
+          "estimatedDurationMs": 222398.125
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/intervention-control-bootstrap-cli.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/intervention-control-bootstrap-cli.integration.test.ts"
+          ],
+          "legacyOrdinal": 283,
+          "estimatedDurationMs": 64987.972
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/generated/package-tests/core/tracked-object-reader-port.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/generated/package-tests/core/tracked-object-reader-port.contract.test.ts"
+          ],
+          "legacyOrdinal": 291,
+          "estimatedDurationMs": 194.534
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/task-diff-review-lineage.contract.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/task-diff-review-lineage.contract.test.ts"
+          ],
+          "legacyOrdinal": 297,
+          "estimatedDurationMs": 12.686
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/control-plane-promotion-producer.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/control-plane-promotion-producer.integration.test.ts"
+          ],
+          "legacyOrdinal": 316,
+          "estimatedDurationMs": 29092.393
+        },
+        {
+          "entrypoint": "packages/workflow-engine/test/ignored-state.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/ignored-state.integration.test.ts"
+          ],
+          "legacyOrdinal": 323,
+          "estimatedDurationMs": 99978.328
+        }
+      ]
+    }
+  ]
+}

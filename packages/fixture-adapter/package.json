@@ -1,0 +1,28 @@
+{
+  "name": "@jigwright/fixture-adapter",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/fixture-check-registry.ts",
+    "./agent-runtime": "./src/fixture-agent-runtime.ts",
+    "./evidence-node": "./src/fixture-evidence-node.ts",
+    "./exact-local-package-invocation": "./src/exact-local-package-invocation.ts",
+    "./managed-transition-reader": "./src/fixture-managed-transition-reader.ts",
+    "./markdown-outline": "./src/fixture-markdown-outline.ts",
+    "./portability-profile": "./src/portability-profile.ts",
+    "./repository-consumer": "./src/repository-consumer.ts",
+    "./runtime-paths": "./src/fixture-runtime-paths.ts",
+    "./session-runtime-layout": "./src/fixture-session-runtime-layout.ts",
+    "./tracked-object-reader": "./src/fixture-tracked-object-reader.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jigwright/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  }
+}

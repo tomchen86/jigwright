@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "kind": "central-role-provider-default",
+  "providerGroups": [
+    {
+      "roles": [
+        "author"
+      ],
+      "sessionGroups": [
+        [
+          "author"
+        ]
+      ],
+      "providerRule": {
+        "kind": "adaptive-author"
+      }
+    },
+    {
+      "roles": [
+        "builder"
+      ],
+      "sessionGroups": [
+        [
+          "builder"
+        ]
+      ],
+      "providerRule": {
+        "kind": "ranked-fallback",
+        "preferredLogicalProviderId": null
+      }
+    },
+    {
+      "roles": [
+        "reviewer"
+      ],
+      "sessionGroups": [
+        [
+          "reviewer"
+        ]
+      ],
+      "providerRule": {
+        "kind": "ranked-fallback",
+        "preferredLogicalProviderId": null
+      }
+    }
+  ],
+  "globalProviderRanking": [
+    "claude",
+    "codex"
+  ],
+  "configurationDigest": "6bbd9ffd708bcbfadf5eef016d5e0b93fc01b67a3e2e7d301c580d0af5264baf"
+}

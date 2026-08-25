@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "kind": "jigwright-rust-r1-decision.v1",
+  "decision": "A-typescript-v1",
+  "typescriptAuthority": true,
+  "rustDependencyInV1": false,
+  "rewriteDuringExtraction": "forbidden",
+  "futureOptions": ["typescript-rust-kernel-sidecar", "rust-cli-v2"],
+  "basis": "Unified T3 v3 R1 default; no demonstrated no-Node consumer requirement"
+}

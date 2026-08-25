@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "repositoryName": "expense-app",
+  "consumerNamespace": "expense-app",
+  "acceptedLegacySchemaPrefixes": ["expense-app.workflow."],
+  "changeRoot": "openspec/changes",
+  "runtimeDirectory": "workflow-engine",
+  "protectedBranches": ["main", "master"],
+  "branchTemplate": "work/{changeId}",
+  "allTasksTerminalChecks": [
+    {
+      "checkId": "workflow-full-gate",
+      "subsumes": ["workflow-tests"]
+    }
+  ],
+  "taskAuthorization": {
+    "pathRoleRegistry": "workflow/path-roles.json",
+    "mandateRequiredRoles": [
+      "contract-surface",
+      "control-plane",
+      "grant",
+      "lifecycle",
+      "policy",
+      "verification-infrastructure"
+    ]
+  },
+  "allowedPathModes": ["exact", "directory-prefix"]
+}

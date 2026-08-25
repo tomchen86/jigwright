@@ -1,0 +1,31 @@
+{
+  "name": "@jigwright/agent-runtime",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Provider execution and protocol adapters for Jigwright.",
+  "type": "module",
+  "files": [
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.22.1"
+  },
+  "exports": {
+    ".": "./src/index.ts",
+    "./agent-runtime-port": "./src/agent-runtime-port.ts",
+    "./bounded-provider-process": "./src/bounded-provider-process.ts",
+    "./harness-jsonl-v1": "./src/harness-jsonl-v1.ts",
+    "./harness-jsonl-v2": "./src/harness-jsonl-v2.ts",
+    "./provider-executable-identity": "./src/provider-executable-identity.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jigwright/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  }
+}

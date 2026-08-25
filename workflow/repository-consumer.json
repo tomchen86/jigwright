@@ -1,0 +1,32 @@
+{
+  "schemaVersion": 1,
+  "adapterId": "configured-repository-v1",
+  "consumerId": "expense-app",
+  "planning": {
+    "providerId": "openspec",
+    "packageSchemaNames": ["spec-driven"],
+    "requiredSchemaNames": ["spec-driven", "expense-app"],
+    "supportedSchemaNames": ["spec-driven", "expense-app", "expense-app-v2"],
+    "managedSchemaNames": ["expense-app", "expense-app-v2"],
+    "currentSchemaName": "expense-app-v2"
+  },
+  "documents": {
+    "adapterId": "filesystem-documents-v1",
+    "handoffPath": "docs/CURRENT_AND_NEXT_STEPS.md",
+    "issueSourcePath": "docs/issues/issues.yaml",
+    "issueLogPath": "docs/ISSUE_LOG.md"
+  },
+  "workRegistry": {
+    "adapterId": "filesystem-work-registry-v1",
+    "itemRoot": "docs/work-registry/items",
+    "inventoryPath": "docs/work-registry/inventory.json",
+    "backlogPath": "docs/BACKLOG.md",
+    "historyRoot": "docs/work-history",
+    "sourceRoot": "workflow/source-ledger/objects/sha256",
+    "transitionPolicyPath": "workflow/work-registry-policy.json",
+    "changeOriginRoot": "openspec/changes"
+  },
+  "databasePolicy": {
+    "adapterId": "postgresql-disposable-v1"
+  }
+}

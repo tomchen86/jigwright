@@ -1,0 +1,633 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import test from 'node:test';
+
+import {
+  renderHandoff,
+  validateHandoff,
+} from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import {
+  renderIssues,
+  writeIssueData,
+} from '../src/adapters/consumer/expense-app/documents/issues.ts';
+import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
+import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
+import { completeTask } from '../src/application/finalize/lifecycle.ts';
+import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import {
+  checkSession,
+  startSession,
+} from '../src/application/execute-task/session.ts';
+import {
+  applyWorkItemReview,
+  createWorkItem,
+  renderWorkRegistry,
+  workItemDigest,
+} from '../src/modules/governance-intake/work-registry.ts';
+import {
+  createFixtureRepository,
+  git,
+  runtimeRoot,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
+
+test('generated handoff consumes the optional Work Registry inventory', () => {
+  const repository = createFixtureRepository();
+  try {
+    const blocker = createWorkItem(
+      repository,
+      {
+        schemaVersion: 1,
+        kind: 'chore',
+        lane: 'next',
+        title: 'Resolve the registry prerequisite',
+        summary: 'The current intake view must preserve this blocker.',
+        sourceRefs: [],
+      },
+      {
+        now: () => '2026-08-24T05:00:00.000Z',
+        createId: () => 'WORK-01K39R0V00000000000000000B',
+      },
+    ).item;
+    const dependent = createWorkItem(
+      repository,
+      {
+        schemaVersion: 1,
+        kind: 'feature',
+        lane: 'next',
+        title: 'Blocked registry delivery',
+        summary: 'Expose the unresolved Work Item in the handoff.',
+        sourceRefs: [],
+      },
+      {
+        now: () => '2026-08-24T05:01:00.000Z',
+        createId: () => 'WORK-01K39R0V00000000000000000C',
+      },
+    ).item;
+    const acceptedBlocker = applyWorkItemReview(
+      repository,
+      blocker.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(blocker),
+        summary: blocker.interpretation.summary,
+      },
+      () => '2026-08-24T05:02:00.000Z',
+    );
+    const acceptedDependent = applyWorkItemReview(
+      repository,
+      dependent.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(dependent),
+        summary: dependent.interpretation.summary,
+      },
+      () => '2026-08-24T05:03:00.000Z',
+    );
+    applyWorkItemReview(
+      repository,
+      dependent.id,
+      {
+        action: 'prioritize',
+        expectedDigest: workItemDigest(acceptedDependent),
+        lane: 'next',
+        blockedBy: [acceptedBlocker.id],
+      },
+      () => '2026-08-24T05:04:00.000Z',
+    );
+    renderWorkRegistry(repository);
+
+    const handoff = renderHandoff(repository);
+    assert.match(handoff, /Git-native Work Registry/);
+    assert.match(handoff, /Blocked registry delivery/);
+    assert.match(handoff, /\[Work backlog\]\(BACKLOG\.md\)/);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('committed managed-document validation replays a v3 handoff without private runtime', () => {
+  const repository = createFixtureRepository();
+  try {
+    const policyPath = path.join(repository, 'workflow/document-policy.json');
+    fs.writeFileSync(
+      policyPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeReadyV3ExemptChange(repository);
+    renderHandoff(repository);
+    git(repository, ['add', '-A']);
+    git(repository, ['commit', '-m', 'Record committed managed documents']);
+    const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+    fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
+
+    assert.deepEqual(validateRepositoryStateAtCommit(repository, commit), {
+      repositoryRoot: fs.realpathSync(repository),
+      changes: ['demo-change'],
+      documents: ['docs/CURRENT_AND_NEXT_STEPS.md'],
+    });
+    assert.throws(() => validateManagedDocuments(repository), {
+      code: 'REVIEW_TARGET_STALE',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('committed managed-document validation binds issue documents with zero active changes', () => {
+  const repository = createFixtureRepository();
+  try {
+    const changeRoot = path.join(repository, 'openspec/changes');
+    const archiveRoot = path.join(changeRoot, 'archive');
+    fs.mkdirSync(archiveRoot, { recursive: true });
+    fs.renameSync(
+      path.join(changeRoot, 'demo-change'),
+      path.join(archiveRoot, '2026-08-22-demo-change'),
+    );
+    fs.writeFileSync(
+      path.join(repository, 'workflow/document-policy.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+            'docs/ISSUE_LOG.md': {
+              mode: 'generated',
+              enforcement: 'active',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeIssueData(repository, {
+      schemaVersion: 1,
+      lastUpdated: '2026-08-22',
+      issues: [],
+    });
+    renderIssues(repository);
+    renderHandoff(repository);
+    git(repository, ['add', '-A']);
+    git(repository, ['commit', '-m', 'Record zero-change managed documents']);
+    const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+    fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
+
+    assert.deepEqual(validateRepositoryStateAtCommit(repository, commit), {
+      repositoryRoot: fs.realpathSync(repository),
+      changes: [],
+      documents: ['docs/CURRENT_AND_NEXT_STEPS.md', 'docs/ISSUE_LOG.md'],
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('committed repository validation rejects a configured change root absent from the commit tree', () => {
+  const repository = createFixtureRepository();
+  try {
+    const changeRoot = path.join(repository, 'openspec/changes');
+    const archiveRoot = path.join(changeRoot, 'archive');
+    fs.mkdirSync(archiveRoot, { recursive: true });
+    fs.renameSync(
+      path.join(changeRoot, 'demo-change'),
+      path.join(archiveRoot, '2026-08-22-demo-change'),
+    );
+    renderHandoff(repository);
+    const configPath = path.join(repository, 'workflow/config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    fs.writeFileSync(
+      configPath,
+      `${JSON.stringify(
+        { ...config, changeRoot: 'openspec/missing-changes' },
+        null,
+        2,
+      )}\n`,
+    );
+    git(repository, ['add', '-A']);
+    git(repository, ['commit', '-m', 'Point at a missing change root']);
+    const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+
+    assert.throws(() => validateRepositoryStateAtCommit(repository, commit), {
+      code: 'CI_COMMITTED_CHECKOUT_INVALID',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('zero-change committed validation rejects an ignored workflow check absent from the commit tree', () => {
+  const repository = createFixtureRepository();
+  try {
+    const changeRoot = path.join(repository, 'openspec/changes');
+    const archiveRoot = path.join(changeRoot, 'archive');
+    fs.mkdirSync(archiveRoot, { recursive: true });
+    fs.renameSync(
+      path.join(changeRoot, 'demo-change'),
+      path.join(archiveRoot, '2026-08-22-demo-change'),
+    );
+    renderHandoff(repository);
+    const checksPath = 'workflow/checks.json';
+    git(repository, ['rm', '--cached', '--', checksPath]);
+    fs.appendFileSync(path.join(repository, '.gitignore'), `/${checksPath}\n`);
+    git(repository, ['add', '--', '.gitignore', 'openspec', 'docs']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Hide an uncommitted workflow check registry',
+    ]);
+    const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+    assert.equal(
+      git(repository, ['status', '--porcelain=v1', '--untracked-files=all']),
+      '',
+    );
+
+    assert.throws(() => validateRepositoryStateAtCommit(repository, commit), {
+      code: 'CI_COMMITTED_CHECKOUT_INVALID',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('committed managed-document validation ignores checkout-only changes and issue data', () => {
+  const repository = createFixtureRepository();
+  try {
+    fs.writeFileSync(
+      path.join(repository, 'workflow/document-policy.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeReadyV3ExemptChange(repository);
+    renderHandoff(repository);
+    fs.appendFileSync(
+      path.join(repository, '.gitignore'),
+      ['/openspec/changes/fake-change/', '/docs/issues/issues.yaml', ''].join(
+        '\n',
+      ),
+    );
+    git(repository, ['add', '-A']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Record committed managed-document projection',
+    ]);
+    const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+    fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
+
+    writeChange(repository, 'fake-change', false);
+    writeIssueData(repository, {
+      schemaVersion: 1,
+      lastUpdated: '2026-08-22',
+      issues: [
+        {
+          id: 'ISS-199',
+          category: 'bug',
+          title: 'Checkout-only blocker',
+          status: 'blocked',
+          priority: 'Now',
+          requirement: null,
+          references: [],
+          notes: 'Must not affect committed validation.',
+        },
+      ],
+    });
+    assert.equal(
+      git(repository, ['status', '--porcelain=v1', '--untracked-files=all']),
+      '',
+    );
+
+    assert.deepEqual(validateRepositoryStateAtCommit(repository, commit), {
+      repositoryRoot: fs.realpathSync(repository),
+      changes: ['demo-change'],
+      documents: ['docs/CURRENT_AND_NEXT_STEPS.md'],
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('repository handoff has exactly six semantic sections and no hashes', () => {
+  const repository = createFixtureRepository();
+  try {
+    renderHandoff(repository);
+    validateHandoff(repository);
+    const handoff = fs.readFileSync(
+      path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
+      'utf8',
+    );
+    assert.deepEqual(
+      [...handoff.matchAll(/^## (.+)$/gm)].map((match) => match[1]),
+      [
+        'Current Change',
+        'Current Task',
+        'Next Task',
+        'Current Focus',
+        'Known Blockers',
+        'References',
+      ],
+    );
+    assert.doesNotMatch(handoff, /\b[0-9a-f]{40,64}\b/i);
+    assert.doesNotMatch(handoff, /session-[A-Za-z0-9-]+/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('completion projection refreshes the handoff to no active change', () => {
+  const repository = createFixtureRepository();
+  try {
+    const policyPath = path.join(repository, 'workflow/document-policy.json');
+    fs.writeFileSync(
+      policyPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    renderHandoff(repository);
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '-m', 'Enable generated handoff']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository);
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    checkSession(repository, session.sessionId);
+    completeTask(repository, session.sessionId);
+
+    const handoff = fs.readFileSync(
+      path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
+      'utf8',
+    );
+    assert.match(handoff, /## Current Change\n\nNone\./);
+    assert.match(handoff, /## Current Task\n\nNone — no active change\./);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('final completion renders an explicit no-active-change handoff', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeCompletedChange(repository, 'older-completed-change');
+    const policyPath = path.join(repository, 'workflow/document-policy.json');
+    fs.writeFileSync(
+      policyPath,
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    renderHandoff(repository);
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '-m', 'Add completed change and handoff']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository);
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    checkSession(repository, session.sessionId);
+
+    assert.doesNotThrow(() => completeTask(repository, session.sessionId));
+    const handoff = fs.readFileSync(
+      path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
+      'utf8',
+    );
+    assert.match(handoff, /## Current Change\n\nNone\./);
+    assert.match(handoff, /## Current Task\n\nNone — no active change\./);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('reserved OpenSpec archive directory is not an active change', () => {
+  const repository = createFixtureRepository();
+  try {
+    fs.mkdirSync(path.join(repository, 'openspec/changes/archive'));
+
+    const handoff = renderHandoff(repository);
+
+    assert.match(handoff, /## Current Change\n\n`demo-change`/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('handoff ignores its previous output and selects the sole active change', () => {
+  const repository = createFixtureRepository();
+  try {
+    completeExistingChange(repository, 'demo-change');
+    writeChange(repository, 'selected-completed-change', true);
+    writeChange(repository, 'another-active-change', false);
+    writeSelectedHandoff(repository, 'selected-completed-change');
+
+    const beforeArchive = renderHandoff(repository);
+    archiveChange(repository, 'selected-completed-change', '2026-07-17');
+    const afterArchive = renderHandoff(repository);
+
+    assert.equal(afterArchive, beforeArchive);
+    assert.match(afterArchive, /## Current Change\n\n`another-active-change`/);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('handoff selection is stable when another work branch is checked out', () => {
+  const repository = createFixtureRepository();
+  try {
+    completeExistingChange(repository, 'demo-change');
+    writeChange(repository, 'selected-completed-change', true);
+    archiveChange(repository, 'selected-completed-change', '2026-07-17');
+    writeChange(repository, 'branch-selected-change', false);
+    writeSelectedHandoff(repository, 'selected-completed-change');
+    git(repository, ['checkout', '-b', 'work/branch-selected-change']);
+
+    const handoff = renderHandoff(repository);
+
+    assert.match(handoff, /## Current Change\n\n`branch-selected-change`/);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('a work branch cannot resolve an otherwise ambiguous handoff', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeChange(repository, 'another-active-change', false);
+    git(repository, ['checkout', '-b', 'work/another-active-change']);
+
+    assert.throws(() => renderHandoff(repository), {
+      code: 'HANDOFF_CHANGE_AMBIGUOUS',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('no active changes render an explicit state independent of prior handoff bytes', () => {
+  const repository = createFixtureRepository();
+  try {
+    completeExistingChange(repository, 'demo-change');
+    writeChange(repository, 'selected-completed-change', true);
+    archiveChange(repository, 'selected-completed-change', '2026-07-17');
+    writeSelectedHandoff(repository, 'selected-completed-change');
+
+    const handoff = renderHandoff(repository);
+
+    assert.match(handoff, /## Current Change\n\nNone\./);
+    assert.match(handoff, /## Current Task\n\nNone — no active change\./);
+    assert.doesNotMatch(handoff, /selected-completed-change/);
+    validateHandoff(repository);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+function writeCompletedChange(repository: string, changeId: string): void {
+  writeChange(repository, changeId, true);
+}
+
+function completeExistingChange(repository: string, changeId: string): void {
+  const tasksPath = path.join(
+    repository,
+    'openspec/changes',
+    changeId,
+    'tasks.md',
+  );
+  fs.writeFileSync(
+    tasksPath,
+    fs.readFileSync(tasksPath, 'utf8').replace(/- \[ \]/g, '- [x]'),
+  );
+}
+
+function writeChange(
+  repository: string,
+  changeId: string,
+  completed: boolean,
+): void {
+  const directory = path.join(repository, 'openspec/changes', changeId);
+  fs.mkdirSync(path.join(directory, 'specs/demo'), { recursive: true });
+  fs.writeFileSync(
+    path.join(directory, '.openspec.yaml'),
+    'schema: expense-app\ncreated: 2026-07-15\n',
+  );
+  fs.writeFileSync(path.join(directory, 'proposal.md'), '# Proposal\n');
+  fs.writeFileSync(path.join(directory, 'design.md'), '# Design\n');
+  fs.writeFileSync(
+    path.join(directory, 'tasks.md'),
+    `# Tasks\n\n- [${completed ? 'x' : ' '}] 1.1 ${
+      completed ? 'Completed' : 'Pending'
+    } task\n`,
+  );
+  fs.writeFileSync(
+    path.join(directory, 'specs/demo/spec.md'),
+    '# Delta\n\n## ADDED Requirements\n',
+  );
+  fs.writeFileSync(
+    path.join(directory, 'guard.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        changeId,
+        tasks: {
+          '1.1': {
+            allowedPaths: ['src/**'],
+            requiredChecks: ['fixture'],
+          },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
+
+function writeSelectedHandoff(repository: string, changeId: string): void {
+  const filePath = path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md');
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(
+    filePath,
+    `# Existing handoff\n\n## Current Change\n\n\`${changeId}\`\n`,
+  );
+}
+
+function archiveChange(
+  repository: string,
+  changeId: string,
+  date: string,
+): void {
+  const changeRoot = path.join(repository, 'openspec/changes');
+  const archiveRoot = path.join(changeRoot, 'archive');
+  fs.mkdirSync(archiveRoot, { recursive: true });
+  fs.renameSync(
+    path.join(changeRoot, changeId),
+    path.join(archiveRoot, `${date}-${changeId}`),
+  );
+}
+
+function prepareCurrentV3Change(repository: string): void {
+  writeReadyV3ExemptChange(repository);
+  commitPlanningTransition(repository, 'demo-change');
+}

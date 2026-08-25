@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "kind": "jigwright-self-hosting-policy.v1",
+  "rule": "n-plus-one-uses-n",
+  "firstReleaseBootstrap": {
+    "mode": "narrow-one-time-embedded-baseline",
+    "authorityCommit": "b149246ee02872cac517880f9bf9ba3a01d7c467",
+    "appliesOnlyToVersion": "0.1.0",
+    "independentReview": "pending"
+  },
+  "nextRelease": {
+    "version": "0.1.1",
+    "requiredAuthorityVersion": "0.1.0"
+  }
+}

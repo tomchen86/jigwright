@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "kind": "jigwright-release-license-state.v1",
+  "packageLicense": "UNLICENSED",
+  "status": "owner-decision-pending",
+  "candidateBuildAllowed": true,
+  "registryPublishAllowed": false
+}

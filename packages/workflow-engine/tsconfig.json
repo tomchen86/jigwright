@@ -1,0 +1,84 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "skipLibCheck": true,
+    "paths": {
+      "@jigwright/agent-runtime": ["../agent-runtime/src/index.ts"],
+      "@jigwright/agent-runtime/bounded-provider-process": [
+        "../agent-runtime/src/bounded-provider-process.ts"
+      ],
+      "@jigwright/agent-runtime/harness-jsonl-v1": [
+        "../agent-runtime/src/harness-jsonl-v1.ts"
+      ],
+      "@jigwright/core/canonical-json": ["../core/src/canonical-json.ts"],
+      "@jigwright/core/central-grant-port": [
+        "../core/src/central-grant-port.ts"
+      ],
+      "@jigwright/core/check-command": ["../core/src/check-command.ts"],
+      "@jigwright/core/check-registry-port": [
+        "../core/src/check-registry-port.ts"
+      ],
+      "@jigwright/core/contract-values": ["../core/src/contract-values.ts"],
+      "@jigwright/core/data-authorization-policy-port": [
+        "../core/src/data-authorization-policy-port.ts"
+      ],
+      "@jigwright/core/evidence-node": ["../core/src/evidence-node.ts"],
+      "@jigwright/core/job-attempt-runtime": [
+        "../core/src/job-attempt-runtime.ts"
+      ],
+      "@jigwright/core/managed-transition-trailers": [
+        "../core/src/managed-transition-trailers.ts"
+      ],
+      "@jigwright/core/markdown-sections": ["../core/src/markdown-sections.ts"],
+      "@jigwright/core/planning-provider-binding": [
+        "../core/src/planning-provider-binding.ts"
+      ],
+      "@jigwright/core/planning-provider-port": [
+        "../core/src/planning-provider-port.ts"
+      ],
+      "@jigwright/core/repository-path": ["../core/src/repository-path.ts"],
+      "@jigwright/core/runtime-path-kernel": [
+        "../core/src/runtime-path-kernel.ts"
+      ],
+      "@jigwright/core/session-runtime-layout-port": [
+        "../core/src/session-runtime-layout-port.ts"
+      ],
+      "@jigwright/core/tracked-object-reader-port": [
+        "../core/src/tracked-object-reader-port.ts"
+      ],
+      "@jigwright/grants/collaboration-grant-envelope-reader": [
+        "../grants/src/collaboration-grant-envelope-reader.ts"
+      ],
+      "@jigwright/grants/grant-envelope-verifier": [
+        "../grants/src/grant-envelope-verifier.ts"
+      ],
+      "@jigwright/grants/grant-lifecycle": ["../grants/src/grant-lifecycle.ts"],
+      "@jigwright/grants/role-context-sharing-degradation": [
+        "../grants/src/role-context-sharing-degradation.ts"
+      ],
+      "@jigwright/grants/signed-attestation-envelope-reader": [
+        "../grants/src/signed-attestation-envelope-reader.ts"
+      ],
+      "@jigwright/openspec-adapter": ["../openspec-adapter/src/index.ts"],
+      "@jigwright/openspec-adapter/archive-projection": [
+        "../openspec-adapter/src/archive-projection.ts"
+      ],
+      "@jigwright/openspec-adapter/planning-provider": [
+        "../openspec-adapter/src/planning-provider.ts"
+      ],
+      "@jigwright/openspec-adapter/provider-binding": [
+        "../openspec-adapter/src/provider-binding.ts"
+      ],
+      "@jigwright/openspec-adapter/validation-payload": [
+        "../openspec-adapter/src/validation-payload.ts"
+      ]
+    }
+  },
+  "include": ["bootstrap/**/*.ts", "src/**/*.ts", "test/**/*.ts"]
+}

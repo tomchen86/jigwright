@@ -1,0 +1,47 @@
+{
+  "name": "jigwright",
+  "version": "0.1.0",
+  "private": false,
+  "description": "A repository-owned workflow harness for well-intentioned AI agents.",
+  "type": "module",
+  "bin": {
+    "jigwright": "./bootstrap/jigwright-cli.mjs"
+  },
+  "exports": {
+    "./central-grant": "./src/composition-root/public/central-grant.ts",
+    "./manifest-v3": "./src/composition-root/public/manifest-v3.ts",
+    "./plan-review": "./src/composition-root/public/plan-review.ts"
+  },
+  "files": [
+    "bootstrap",
+    "native/human-gate-macos/bin/human-gate",
+    "native/human-gate-macos/client/main.swift",
+    "src"
+  ],
+  "engines": {
+    "node": ">=22.22.1"
+  },
+  "scripts": {
+    "harness-bootstrap": "node --experimental-strip-types bootstrap/harness-bootstrap-launcher.ts",
+    "jigwright": "node bootstrap/jigwright-cli.mjs",
+    "workflow": "node --experimental-strip-types bootstrap/workflow-launcher.ts",
+    "test": "node --experimental-strip-types ../../scripts/workflow-full-gate.ts",
+    "test:failures": "node --experimental-strip-types ../../scripts/workflow-full-gate.ts --failures",
+    "test:status": "node --experimental-strip-types ../../scripts/workflow-full-gate.ts --status",
+    "test:timings": "node --experimental-strip-types ../../scripts/workflow-full-gate.ts --timings",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@jigwright/agent-runtime": "workspace:*",
+    "@jigwright/core": "workspace:*",
+    "@jigwright/openspec-adapter": "workspace:*"
+  },
+  "optionalDependencies": {
+    "@jigwright/grants": "workspace:*",
+    "@jigwright/github-adapter": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "npm:@typescript/typescript6@^6.0.2"
+  }
+}

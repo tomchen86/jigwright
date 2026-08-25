@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 2,
+  "generator": {
+    "package": "@fission-ai/openspec",
+    "version": "1.6.0",
+    "argv": [
+      "init",
+      "<temporary-project>",
+      "--tools",
+      "codex,claude",
+      "--profile",
+      "custom",
+      "--force"
+    ],
+    "tools": ["codex", "claude"],
+    "profile": "custom",
+    "delivery": "both",
+    "workflows": ["explore", "propose"],
+    "sourceClosures": [
+      {
+        "root": "temporary-project",
+        "disposition": "reviewed-source-and-discarded-scaffold",
+        "files": [
+          ".claude/commands/opsx/explore.md",
+          ".claude/commands/opsx/propose.md",
+          ".claude/skills/openspec-explore/SKILL.md",
+          ".claude/skills/openspec-propose/SKILL.md",
+          ".codex/skills/openspec-explore/SKILL.md",
+          ".codex/skills/openspec-propose/SKILL.md",
+          "openspec/config.yaml"
+        ]
+      },
+      {
+        "root": "isolated-codex-home",
+        "disposition": "reviewed-source",
+        "files": ["prompts/opsx-explore.md", "prompts/opsx-propose.md"]
+      }
+    ]
+  },
+  "overlay": {
+    "version": 5,
+    "policyDigest": "0f32ce0282a441acc9955826bd45ef40e2b0d5ae7f713f69c0872e72e7e70c90"
+  },
+  "formatter": {
+    "runner": "node-package-bin:.:prettier/prettier",
+    "configurationDigest": "8d33e2967e8f95caa3e0e039b8fdbb5f99847a2b8221661d2c7ea4b519cc7e90",
+    "assetParser": "markdown",
+    "manifestParser": "json"
+  },
+  "assets": [
+    {
+      "target": "codex",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".codex/skills/openspec-explore/SKILL.md",
+      "destinationPath": ".codex/skills/openspec-explore/SKILL.md",
+      "mirrorOf": null,
+      "sourceDigest": "79249f798ad0d69bf95f08f3c7a29d44d982e4c1645f1a12a21dfcd488f4ba0d",
+      "overlayDigest": "244ef9424d95315e23208618d189c26b8ee0f57d0cde7fa8016c976953b8b878",
+      "finalDigest": "a7d6669387e8d3b1765b63b87e134d5cbf6f5499856897bd63bf8682ca0e3554"
+    },
+    {
+      "target": "codex",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".codex/skills/openspec-propose/SKILL.md",
+      "destinationPath": ".codex/skills/openspec-propose/SKILL.md",
+      "mirrorOf": null,
+      "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
+      "overlayDigest": "6d971dc8dc403669c7c5a54e81d867de2b22463d21a0467293d0cc34abc854ad",
+      "finalDigest": "2c03ce496476712fd80e317368806413681b8e3cc8ccca0fa7c8ca56ede13d4c"
+    },
+    {
+      "target": "codex",
+      "kind": "skill",
+      "sourceRoot": "repository-root",
+      "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
+      "destinationPath": ".codex/skills/workflow-engine/SKILL.md",
+      "mirrorOf": null,
+      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+    },
+    {
+      "target": "claude",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".claude/skills/openspec-explore/SKILL.md",
+      "destinationPath": ".claude/skills/openspec-explore/SKILL.md",
+      "mirrorOf": null,
+      "sourceDigest": "79249f798ad0d69bf95f08f3c7a29d44d982e4c1645f1a12a21dfcd488f4ba0d",
+      "overlayDigest": "244ef9424d95315e23208618d189c26b8ee0f57d0cde7fa8016c976953b8b878",
+      "finalDigest": "a7d6669387e8d3b1765b63b87e134d5cbf6f5499856897bd63bf8682ca0e3554"
+    },
+    {
+      "target": "claude",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".claude/skills/openspec-propose/SKILL.md",
+      "destinationPath": ".claude/skills/openspec-propose/SKILL.md",
+      "mirrorOf": null,
+      "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
+      "overlayDigest": "6d971dc8dc403669c7c5a54e81d867de2b22463d21a0467293d0cc34abc854ad",
+      "finalDigest": "2c03ce496476712fd80e317368806413681b8e3cc8ccca0fa7c8ca56ede13d4c"
+    },
+    {
+      "target": "claude",
+      "kind": "skill",
+      "sourceRoot": "repository-root",
+      "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
+      "destinationPath": ".claude/skills/workflow-engine/SKILL.md",
+      "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
+      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+    },
+    {
+      "target": "agents",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".codex/skills/openspec-explore/SKILL.md",
+      "destinationPath": ".agents/skills/openspec-explore/SKILL.md",
+      "mirrorOf": ".codex/skills/openspec-explore/SKILL.md",
+      "sourceDigest": "79249f798ad0d69bf95f08f3c7a29d44d982e4c1645f1a12a21dfcd488f4ba0d",
+      "overlayDigest": "244ef9424d95315e23208618d189c26b8ee0f57d0cde7fa8016c976953b8b878",
+      "finalDigest": "a7d6669387e8d3b1765b63b87e134d5cbf6f5499856897bd63bf8682ca0e3554"
+    },
+    {
+      "target": "agents",
+      "kind": "skill",
+      "sourceRoot": "temporary-project",
+      "sourcePath": ".codex/skills/openspec-propose/SKILL.md",
+      "destinationPath": ".agents/skills/openspec-propose/SKILL.md",
+      "mirrorOf": ".codex/skills/openspec-propose/SKILL.md",
+      "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
+      "overlayDigest": "6d971dc8dc403669c7c5a54e81d867de2b22463d21a0467293d0cc34abc854ad",
+      "finalDigest": "2c03ce496476712fd80e317368806413681b8e3cc8ccca0fa7c8ca56ede13d4c"
+    },
+    {
+      "target": "agents",
+      "kind": "skill",
+      "sourceRoot": "repository-root",
+      "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
+      "destinationPath": ".agents/skills/workflow-engine/SKILL.md",
+      "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
+      "sourceDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "overlayDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893",
+      "finalDigest": "26b174454dca9028b8a4c651934c7691794ccaa8a9c2b79bf4f36e1dc7025893"
+    },
+    {
+      "target": "codex",
+      "kind": "prompt",
+      "sourceRoot": "isolated-codex-home",
+      "sourcePath": "prompts/opsx-explore.md",
+      "destinationPath": "workflow/openspec-assets/prompts/opsx-explore.md",
+      "mirrorOf": null,
+      "sourceDigest": "5157eb0a41890551bcc4089159d645172de2a030def8ebb6f2481c3f46ed3d42",
+      "overlayDigest": "6f980fe82b1c98b099815b421b7751a05d8d74229c6fc994b63ae1ef2236f617",
+      "finalDigest": "3833a77cbf302c7f2b515193e260b50e2af11652ea0608e2699a4f20b6652378"
+    },
+    {
+      "target": "codex",
+      "kind": "prompt",
+      "sourceRoot": "isolated-codex-home",
+      "sourcePath": "prompts/opsx-propose.md",
+      "destinationPath": "workflow/openspec-assets/prompts/opsx-propose.md",
+      "mirrorOf": null,
+      "sourceDigest": "887ef29166ad98e5fa45df6e3da3265f8e343389c432c3bd951862ffa7e9dbff",
+      "overlayDigest": "c1055d183d0debc4f372c742778dc8f4c13a81c8f1c82c6e8a0d9484a2606329",
+      "finalDigest": "c1055d183d0debc4f372c742778dc8f4c13a81c8f1c82c6e8a0d9484a2606329"
+    }
+  ]
+}

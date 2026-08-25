@@ -1,0 +1,779 @@
+{
+  "kind": "harness-bootstrap-dependency-closure.v1",
+  "entrypoint": "bootstrap/recovery-runtime/src/harness-bootstrap.js",
+  "boundary": "sealed-e1-independent-recovery-runtime",
+  "scope": "compiled-transitive-runtime",
+  "claim": "This sealed compiled recovery runtime is independent of the mutable E1 src tree and remains usable when E1 cannot load.",
+  "files": [
+    {
+      "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
+      "mode": "100644",
+      "digest": "sha256:e5628052d080e8f1d1ea5663305596eb3e24e20d9577c62e72581db4ff48dc90"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
+      "mode": "100644",
+      "digest": "sha256:919009199463a3b5b339e76b77a5048a4ba0d55e4bc9700f226ccb49a7380943"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/agent-provider-config.js",
+      "mode": "100644",
+      "digest": "sha256:49d2a2a8e1d4ad7c790cedcee49e3dc1735c0acb594129659627e39c73926696"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/bounded-provider-process.js",
+      "mode": "100644",
+      "digest": "sha256:b57390e0a740f6f7cda2c932e1204b6f13cb5ed60ee3921ec98be0f81ba4f886"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/built-in-provider-definition.js",
+      "mode": "100644",
+      "digest": "sha256:605f076422ba04583fa33e5fa64e0e4477e9e58e4d8c067cbd1839ab77a41f39"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/harness-jsonl-v1.js",
+      "mode": "100644",
+      "digest": "sha256:16eeab0e3f2a0c5e5d038b08db2b5e8918270a44aa79956cd9a39ea3fba5969a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/harness-jsonl-v2.js",
+      "mode": "100644",
+      "digest": "sha256:eec0e09fc5a8add00c80dd8d5276dc66c8547d02c44b046b3ecb30bacbe53dd4"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/index.js",
+      "mode": "100644",
+      "digest": "sha256:04f842508ac822d5adbcb5e8c876b5788a243d59574b819b44ec78564b72472b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/provider-definition-snapshot.js",
+      "mode": "100644",
+      "digest": "sha256:8567caef8f16e0d95bd0333c2356b35509ec2c3f0ff06f3a1c7b0ee526d2a164"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/provider-executable-identity.js",
+      "mode": "100644",
+      "digest": "sha256:02576f0bac500999c8d4bb0deaa731cff6ae2b1bfbaaf367eb34d2b6d77f89ba"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
+      "mode": "100644",
+      "digest": "sha256:39ebbcb5d57b7afb69d78b15c7b2caad18c145c0a2b776877eb3631fd3283b94"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
+      "mode": "100644",
+      "digest": "sha256:d8be3daa12202f54d3d688a2d526a591be07fba5859f929e9e11ebc87e27d318"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/canonical-json.js",
+      "mode": "100644",
+      "digest": "sha256:7cb9a9649aad07f73396301de09830a8a91fcf1fa31851f2c95b35f09aff0c7b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/central-grant-port.js",
+      "mode": "100644",
+      "digest": "sha256:81f83952dc58fea0c61813d630aa22439a78ee8fe35c028bb42631eaeac1ac38"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/check-command.js",
+      "mode": "100644",
+      "digest": "sha256:5c77a2898b4bbd47ed6b566a26f57e14c08ce2b23bf61b2de843e41522389952"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/check-registry-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/contract-values.js",
+      "mode": "100644",
+      "digest": "sha256:c1987c0379947e443270d27af46f490dc2ba75b1616e0b93f34a1f52fcd40764"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/data-authorization-policy-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/evidence-node.js",
+      "mode": "100644",
+      "digest": "sha256:ec661e6c5f27945bb41183c16e2f181d857343a50a5c3cdacee5fe51848a3341"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/job-attempt-runtime.js",
+      "mode": "100644",
+      "digest": "sha256:497db5dfedd7854aaaa05473764bf1f3a02f59f8af3ee79a3e5ddee790263d57"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/repository-consumer-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/repository-path.js",
+      "mode": "100644",
+      "digest": "sha256:9c2e690d8120428ce8558a4c3b0c7e9ea8805e6c7038dab000b8e924b377ebce"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/runtime-path-kernel.js",
+      "mode": "100644",
+      "digest": "sha256:dbf845a048c5b66102649daaeca3ce2d72ee7b23005f188e66917ba73078fe18"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/session-runtime-layout-port.js",
+      "mode": "100644",
+      "digest": "sha256:5024842b87c9886e5bfadb80f78fc6749808011e0b04fc1661e3ddee5bec887c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/tracked-object-reader-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/workflow-namespace.js",
+      "mode": "100644",
+      "digest": "sha256:d2a2c2cc3571597b7c3f4f8e3fa6b7977436d238974b5baf580590c13ff3e9d0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/package.json",
+      "mode": "100644",
+      "digest": "sha256:dfe0673fe30e768f0f002457f6ea79b23aae57b961e2af4258279a585ca3701c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.js",
+      "mode": "100644",
+      "digest": "sha256:2a6e290546d860918f12ea43bcbb1f6d80f5c46234e59d1e4da0354e22ea79f3"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/grant-envelope-verifier.js",
+      "mode": "100644",
+      "digest": "sha256:04904fb332d2b7a0fa4de1eb23563e41921b09a9d42c284c9d13a7a92f5da575"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/grant-lifecycle.js",
+      "mode": "100644",
+      "digest": "sha256:b05a8809eefc594db2cfe501e697aa65d13665b014b1c0e1e11ce4992e5f9e6b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/role-context-sharing-degradation.js",
+      "mode": "100644",
+      "digest": "sha256:306a2a8408289215928bc3782c347e8f565dc16c468abc838a443e0fcfd67f2b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/signed-attestation-envelope-reader.js",
+      "mode": "100644",
+      "digest": "sha256:dac4a38ced2864c5432a070f5b7e4ed416b52eb9199498b2ae4e0fa01e238224"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-convergence.js",
+      "mode": "100644",
+      "digest": "sha256:5e5ceb5c529ea4138fe9eb4d0dfb45d53da3aaba96396ebb56012c1e764eb6bf"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-currentness.js",
+      "mode": "100644",
+      "digest": "sha256:dcccfb647b6a95fb8968a9f2c8e690501d3571dd60d107f802083153ea86f4a9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-node.js",
+      "mode": "100644",
+      "digest": "sha256:63733b12a2796938c87d3a51deaf1b4f764a25eda547b6f813d10612cb87bfe9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-reuse-path.js",
+      "mode": "100644",
+      "digest": "sha256:d34341676501e9f24e23ceef18daf7b5dc5619fcd974a2e98277acb09641f829"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.js",
+      "mode": "100644",
+      "digest": "sha256:f901c347d5ac5c5a6ae5ae378ffa79f20c4711bb0f0530d92327a3ddbd3cede1"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/investigation-why.js",
+      "mode": "100644",
+      "digest": "sha256:39b387a1c43a7161dead27902abeefb76cc565b997772dbbe749fb9b182e57bd"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/repository-consumer-config.js",
+      "mode": "100644",
+      "digest": "sha256:93e24ba42061c8b656d50b4b30d08c8a60d009406a314fefc9d74e0cf130ac56"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/check-runner.js",
+      "mode": "100644",
+      "digest": "sha256:62c2e1eea4e72a49bedc696f03636ee3e1db7701b559279ded87c64b0194de4a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/contract-artifacts.js",
+      "mode": "100644",
+      "digest": "sha256:1711638727f47b197b49808da6902f5f31b91ea493dd50cc92e39b78a5b17669"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/contracts.js",
+      "mode": "100644",
+      "digest": "sha256:3e66524ffc16a4adcd60c4e43295c8db8675df9ab79d1eb95dc8d00d2ceea7bf"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/expense-app/work-registry/runner-resolution.js",
+      "mode": "100644",
+      "digest": "sha256:6e26eb60ac611a8dab95b7015d09ba50885fd4f8117d2ff4dcbc4fc6a752b4fb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/providers/built-in-provider-definition.js",
+      "mode": "100644",
+      "digest": "sha256:6422959d6e96f9e41060da918a5ab014076fa4c59e70640e2f8505af3646ecff"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/providers/claude/claude-provider-adapter.js",
+      "mode": "100644",
+      "digest": "sha256:987f3c1914acdcf07a539e71bc1ca5af11bff352a765ac23c6265dcf616e754d"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/providers/codex/codex-provider-adapter.js",
+      "mode": "100644",
+      "digest": "sha256:37e01d23fbd3b747250440b43432489a034e86f60fdb16db4e3fffe4b1f048f8"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/signing/ssh/maintainer-signer.js",
+      "mode": "100644",
+      "digest": "sha256:5e969ae1ca3906187455be85a91d7149d1dcde096fe655b129c0b73b4b261920"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/application/control-plane/human-revocation.js",
+      "mode": "100644",
+      "digest": "sha256:ee040c93cd5f794382daa425b6f173f84089001eb47e348b14cbc09d4084d127"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-control-bootstrap.js",
+      "mode": "100644",
+      "digest": "sha256:aeb773e6ce34deb0d84e88d40cc544b240317fcd8a749c129705edf180bc8c52"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-control-updater.js",
+      "mode": "100644",
+      "digest": "sha256:bba77db359bb2ad78cc03e94cf47397fc6a4d0215b9064658d8a820a90fed94f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-maintenance.js",
+      "mode": "100644",
+      "digest": "sha256:dd7eee8954ae1564d76d2cdb2796a548254d3908b5b41c394dcaacdc96094b31"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/composition-root/maintainer-signer.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/entrypoints/cli/intervention-control-bootstrap-cli.js",
+      "mode": "100644",
+      "digest": "sha256:c14ba5bf87c58372c5d9644faf3c549758fece93b7246fd2600d6c0d21aa63d3"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/foundation/canonical-json/canonical-json.js",
+      "mode": "100644",
+      "digest": "sha256:a88b37b5f72a69c22442ef1cbce353f8c2cf72fb449dbb3a4f1da1ae35a12295"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/foundation/canonical-json/contract-values.js",
+      "mode": "100644",
+      "digest": "sha256:1e7185fad96ddaca7904fee77609d437c1822ffdbecfd0995dea55b60caafb0d"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/foundation/errors/errors.js",
+      "mode": "100644",
+      "digest": "sha256:ab21b9d3cdec61ea568fc942e6b54d92d46d6b7aa8cc5408ade18316e65cc394"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/foundation/repository-path/repository-path.js",
+      "mode": "100644",
+      "digest": "sha256:70efa2e02275666298087c68184de940e1bfa3a57ef8da92600b0327ceb39bc8"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/harness-bootstrap.js",
+      "mode": "100755",
+      "digest": "sha256:08e9ca6481468a433fd0c7b1c6337c933fc54a1b0de4bec538af7e23c39ba128"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review.js",
+      "mode": "100644",
+      "digest": "sha256:9e431a85dcfcf2462b11e6ac0d85386665426c1086b24eeee2134101db03ff22"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-target.js",
+      "mode": "100644",
+      "digest": "sha256:cc98d58f6efc916c6d1bfe9558bfd1954e3b5f3f92877ca759bd3389b3ed4bf9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/review-challenge.js",
+      "mode": "100644",
+      "digest": "sha256:3df4a35f8c9c66056d2fb8f42ffd6a19b4608ff2945b1c22510f3dec1caf7cda"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/task-diff-review-artifact.js",
+      "mode": "100644",
+      "digest": "sha256:eddeda8e47971a9c70cd6f01bdae63de9e4766a47f4543ae0b6f0e85ad2afe3b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/task-diff-review.js",
+      "mode": "100644",
+      "digest": "sha256:e2d02fa27f5bfa6a97010f4daced31a8856889c866a6f82b56b8d405cb8a3d43"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/authority-refusal-audit.js",
+      "mode": "100644",
+      "digest": "sha256:a091b8f025809dfe92c753be4fdebcdafa1b1f2e4d0e711585e5aa9806795c6a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant.js",
+      "mode": "100644",
+      "digest": "sha256:ce3c4ce57ca59409a37c9127a3b3cc5c995a69a0d8b0dc209e8b53c1a63a72fb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant.js",
+      "mode": "100644",
+      "digest": "sha256:d797267b11ba23c69b28af62010aa5e3e178c4847507dc7298fec0c885909082"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance.js",
+      "mode": "100644",
+      "digest": "sha256:4ee62900d68761fe45de752ec1cc10f7fe5db862b46caf8b1ddd1320d541c03c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-core.js",
+      "mode": "100644",
+      "digest": "sha256:a1737d073957466f6237b4dc0ea49f376ada638fb1fcb1c7b1fcdd99cb846b1f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-policy.js",
+      "mode": "100644",
+      "digest": "sha256:bbe91d5167817392dc8093ff4b680708961e9c01d4fdd2fcbb43168d820725a3"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-primitives.js",
+      "mode": "100644",
+      "digest": "sha256:3dc3aa0b74cbd39cc6b24c68322108a3b528440c1d5f6e5b533a2c096ab723cd"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-transition-registry.js",
+      "mode": "100644",
+      "digest": "sha256:027213bd8852172dbb75209d5ac4a619c0d54056a976912f5f948554bd376741"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-verifier-port.js",
+      "mode": "100644",
+      "digest": "sha256:d41d98820b1f005be9e348b6ffb994a1c0539a8c6795c58bf1533ce9e1389b3c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/intervention-control.js",
+      "mode": "100644",
+      "digest": "sha256:706028523c6f6f8eb059954587365cf7f9acdd9376bd43ec7836383f556e4ea0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/maintainer-policy.js",
+      "mode": "100644",
+      "digest": "sha256:121a9acdd6bf7d82928ab8d3ce7925bd0619112cc952582b375cbd671359b324"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/maintainer-signer-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/optional-grants-package.js",
+      "mode": "100644",
+      "digest": "sha256:44b3f37f31ee1763de9009cd887dae39079ea0343d4b8155771a311362306e64"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-consumed-replay.js",
+      "mode": "100644",
+      "digest": "sha256:8e30fa90f7707a5828fa082556766a2c239bb9d5fc69ba00928a0d87ec24aefe"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-grant-lifecycle-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-grant-verifier-port.js",
+      "mode": "100644",
+      "digest": "sha256:ac4436aadd271ef2a6a9641d06e7f5fdfd2336267320f0248a6cb4eadd4e61b8"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-grant.js",
+      "mode": "100644",
+      "digest": "sha256:33fe21554e37dd123623a4a8cc809e988b7ab2c2006417261a7fe5b79c2009e9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/task-mandate.js",
+      "mode": "100644",
+      "digest": "sha256:c26844ff8f22c6aeccd180f0fd8197596ef0f681fcdfabcfaa304224a70c3794"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/compatibility/legacy-workflow-identities.js",
+      "mode": "100644",
+      "digest": "sha256:c1e95998827ec9d693acf9b47d7b5e8b0c9a5163aade8890cca995ebe2e6c420"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
+      "mode": "100644",
+      "digest": "sha256:29d16939e8d66acb28fb8757f7e0fe82df7eb3c79b2d05b75a69713e6c743ce2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-sample-audit.js",
+      "mode": "100644",
+      "digest": "sha256:58e23b9e52799e6b23cbf963664597c88786516e349635a245685451f438312a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/floor-overflow-pruning.js",
+      "mode": "100644",
+      "digest": "sha256:8fef78b5c51c2222317b3e8633fa86dd5d00f5036d988ef03715d036e0c1348c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/hit-predicate.js",
+      "mode": "100644",
+      "digest": "sha256:aebe2232ecaafb9da079c74b7ee990c0e47db339644d244366a3af28df6b26da"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-applicability.js",
+      "mode": "100644",
+      "digest": "sha256:e22231fa32fc9f90cab9c2405f019464a294414e7e74c7128c69fea7a3c7747e"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-domain.js",
+      "mode": "100644",
+      "digest": "sha256:ea414f0d44361d6d5c19fef8124131787556e643f070fbeaf356530ddd8faefb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-groups.js",
+      "mode": "100644",
+      "digest": "sha256:3a4a4e3477e9a7fd88a48bc4aeccd6d70989f3a6071581e79cde7d0c8543c889"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-roots.js",
+      "mode": "100644",
+      "digest": "sha256:42f8e0205c01580f883b3c4432bacfa9149843a05a67117b8761462abf7b3145"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-scanner.js",
+      "mode": "100644",
+      "digest": "sha256:7fa66f89c79915f78516c33a3d74ba578aabc0aac19febb041b869b6d0a15a08"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-terms.js",
+      "mode": "100644",
+      "digest": "sha256:bb9db6fc4534e9a7d36b2f42789f7e555d92f76865c5df2a31153af5e6554dc2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/predicate-discrimination.js",
+      "mode": "100644",
+      "digest": "sha256:68dc1e4e82febc5272a6e7fc9a2c513ae4794587b7d0298e57c43d34924265a1"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-manifest.js",
+      "mode": "100644",
+      "digest": "sha256:173dbe34870e9d50a44316f8bf107de55ee52059580ae9a14514c7e266e1b51f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-materializer.js",
+      "mode": "100644",
+      "digest": "sha256:d5b690e8459aa0f461853cbf8ac9efcb7b46fbc56531de10f8f2cde069012ac9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/lifecycle/context-manifest-contract.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/lifecycle/planning-generation.js",
+      "mode": "100644",
+      "digest": "sha256:14206cb511640afaa37c5de400aab82761899901dc631a884fc9c2f336b21565"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/projection/engine-projection-registry.js",
+      "mode": "100644",
+      "digest": "sha256:e1976da55464222d1b7476ca86941b8ce0e927a2007d392d0f4fff3f8102dbc4"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/actor-identity.js",
+      "mode": "100644",
+      "digest": "sha256:5f6066670b79cfd199a5e81a51efeef40a9e00b9f96f438626ad7a5d4f33318a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/agent-role-plan.js",
+      "mode": "100644",
+      "digest": "sha256:2bda517aac6d9701ed076fc724050a41c7427a3b401ddca32e738b43d7649667"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/agent-runtime-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/agent-runtime-protocol.js",
+      "mode": "100644",
+      "digest": "sha256:830f97a30d0ef8dc9e0d87e77e35d2c856d64b27839d411a90a64501de88af93"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/central-role-provider-default.js",
+      "mode": "100644",
+      "digest": "sha256:675d56d85d98006fe4877e2b8f6846bdb2925dedc8bb6c993c6cc1195a9bdede"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/change-role-assignment-record.js",
+      "mode": "100644",
+      "digest": "sha256:f03679cc432b235ccf7a9221fa007921b77d961ba8ebceea3019927d826f1080"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/change-role-assignment.js",
+      "mode": "100644",
+      "digest": "sha256:9228ed18ff0fbdad920952bb95ca4f3edc620daa0366c699e88f3f95343f9be5"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/execution-core.js",
+      "mode": "100644",
+      "digest": "sha256:875ba580014ed8a18d8cdf51bdc43ab9432bd81ba55e3da187fda822706d5422"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-contracts.js",
+      "mode": "100644",
+      "digest": "sha256:971c8546474ab6cb8ebea07ab6815642d83068030d97bc31077cf5f29057d396"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-native-session.js",
+      "mode": "100644",
+      "digest": "sha256:df4103a6b47ac9e0ef2fafa77751ea6e93c32a53205faeba4bb20405881ebc86"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-registry.js",
+      "mode": "100644",
+      "digest": "sha256:6e2ab16188e2b0085e3bcb8661f490f92b9784ffabfd8f9a957555798ef18ac2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/role-scheduler.js",
+      "mode": "100644",
+      "digest": "sha256:68468bd3be8cc456de6f6e2f8cd4b047a8586d1918333694edb3f2630cee0813"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/role-topology-resolution.js",
+      "mode": "100644",
+      "digest": "sha256:a001e937d7bee5f711f71d015996f5804abe38e35465453a54648dfef71482f0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/task-strategy-provider-contract.js",
+      "mode": "100644",
+      "digest": "sha256:b5a740389c4dadd5fffd27fa9ebc4707f8c0ae85d23ed38d2adb3e720e9f972f"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",
+      "mode": "100644",
+      "digest": "sha256:4c915168df15130e3cf9de36aaef69797f16f193312eeadd747d693b34c7fe5a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/source/mutation-class-policy.js",
+      "mode": "100644",
+      "digest": "sha256:cfffffb9916859502c16d88f3b2b54d5f6a1daa56af701ac47eb8b78cc8c54be"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/source/path-role-registry.js",
+      "mode": "100644",
+      "digest": "sha256:7c65361b42815064561f724402b0eac6e1a6a6a6a44879c57a201224d01aaae7"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/source/planning-paths.js",
+      "mode": "100644",
+      "digest": "sha256:701d5c4535a8d06012897c2eb85c6c26ca7d1c3158195e20093b53ba24a17744"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/source/planning-role-policy-paths.js",
+      "mode": "100644",
+      "digest": "sha256:2ac8611a31b7eb090b50af305fd5dc1dc920c12a0221df98f2f0e2ad45de28e0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/recovery-authority.js",
+      "mode": "100644",
+      "digest": "sha256:302e3772babd7e538c815eb21193edaabf4b4ff37daa5200d3345f2de28880cc"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/recovery-quarantine.js",
+      "mode": "100644",
+      "digest": "sha256:0ad6a3a16c75484baf95e928ac69c63b21a437d579735d7910d4d03d0c395022"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/recovery-trust-root-restore.js",
+      "mode": "100644",
+      "digest": "sha256:62dda7a36c65479264261e91a81f2feaeae669031fc820d6c7278128df458483"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/managed-documents/transaction/investigation-publication.js",
+      "mode": "100644",
+      "digest": "sha256:70c2680ab3f884ab67c4909ab1ae5cac9ee55260bcd598eb1aeda633a09eef47"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/ai-adapter-policy.js",
+      "mode": "100644",
+      "digest": "sha256:e9e462c1d4895bdd5cc79eb9d630fe96a3df74ae9941f79b644fa8a661cf5e25"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/bounded-provider-process.js",
+      "mode": "100644",
+      "digest": "sha256:d708a872245d32ed06fa8565737b18407b0fdb8c85dc6c8bc51eb60594033c51"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/built-in-provider-definition.js",
+      "mode": "100644",
+      "digest": "sha256:6422959d6e96f9e41060da918a5ab014076fa4c59e70640e2f8505af3646ecff"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/execution-environment.js",
+      "mode": "100644",
+      "digest": "sha256:7de1c4277e00fe8920f89455ee44f5c470acc1cf9cecbb81dc122684c1b3bf66"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-execution-governance.js",
+      "mode": "100644",
+      "digest": "sha256:e52c5e26a205b9456d738706b14b43b0266f63a2ec84a6052f4b09a831b27acf"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-execution-policy-authority.js",
+      "mode": "100644",
+      "digest": "sha256:35c32067d653b472d595a2ddee27821b6e8923221f08b63899bf4714b27ca9ae"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-invocation-supersession-schema.js",
+      "mode": "100644",
+      "digest": "sha256:a2929fd548055ef58631d8da070a86d36cba7f9559a95cb576d659161c8a07e7"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-invocation-supersession.js",
+      "mode": "100644",
+      "digest": "sha256:c1da82491db57397c164b3173808a9bbcb19e5a21aeb5744c21b34a78caa73d6"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-runner.js",
+      "mode": "100644",
+      "digest": "sha256:32156fe793d561d11a40dd5a8a332c89c4b58ccb273180c3d3fb6a8a6e088d6c"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/committed-investigation-manifest.js",
+      "mode": "100644",
+      "digest": "sha256:19713ba7b7e380c2f91a6d0d7f7c37ac0a33f5c8e823d4d992b1d9fe0705adff"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/filesystem-safety.js",
+      "mode": "100644",
+      "digest": "sha256:13f32255cc3f59f5ccb10fbcbd895807fcaf8738ffc4d2886c0fa945c6c35305"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git.js",
+      "mode": "100644",
+      "digest": "sha256:8479754ea180868a6b2efce0b62813e408258f9836a677353a301ea92db15a08"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/package-closure.js",
+      "mode": "100644",
+      "digest": "sha256:431a4eca27a3448e129d8fc7805f9c21830adbbaff7e07b5e8c738eb6faf02cb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/tracked-tree-reader.js",
+      "mode": "100644",
+      "digest": "sha256:88692b47695d116bf5604431df20f6f604b4d7d1ac516cabdf644b31e69ad154"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/paths.js",
+      "mode": "100644",
+      "digest": "sha256:78b5e56d34882e60273dced42ff0577b21d1c25af3d12d8653862e511a2ae0fc"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/planning-lock.js",
+      "mode": "100644",
+      "digest": "sha256:12d02df0e7d4c4e0bc27024014ed81e7a9a9aa4f46688d087cfd598505301d2e"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-store.js",
+      "mode": "100644",
+      "digest": "sha256:6fb9bfd322782c87636a378b162c2fcc831ec000f88b4e52af53298ebab9f5ed"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-ledger.js",
+      "mode": "100644",
+      "digest": "sha256:37df493bd428d175abac7046d5cea27486f1dc015785b1c81f6a060676ff4cda"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-service.js",
+      "mode": "100644",
+      "digest": "sha256:6bc655d118a9ef83b67a8bc68536de23bc8b69628af3ffe592c2dd267ab81125"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/collaboration-grant-store.js",
+      "mode": "100644",
+      "digest": "sha256:1ebedba9479e1fe8b5f860002c87467765455801f34f4862fc5cca2b97ac55a6"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/content-record-store.js",
+      "mode": "100644",
+      "digest": "sha256:7565cf164670087d5c1b051b5affbfe7c3e1cd37419a1fa63a68b7cc23d96262"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/control-plane-supervisor-history.js",
+      "mode": "100644",
+      "digest": "sha256:a2893f3c54231a69c6b7b9d2c74b4a5167eae1bb54e613086c810981581b083d"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-object-store.js",
+      "mode": "100644",
+      "digest": "sha256:543548e2c6ed4a95489ca1e885f32899e350053d90de5868cf1a7e7663d097c3"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/execution-store.js",
+      "mode": "100644",
+      "digest": "sha256:50c52658bf112dd38923248a11fe4b475371c4d8ec013dd9c67f0e3790e1a30e"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/grant-store.js",
+      "mode": "100644",
+      "digest": "sha256:267f5032dffb428d9538b3b91073f6365d8d2aa6bf1a7aea6fd115e6b54f39e6"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-control-persistence.js",
+      "mode": "100644",
+      "digest": "sha256:3d80df5c8593a1b3fd3bc508b0b336b597e1f9e4e50637e67fe64f88bf1f16a2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-engine-artifact-store.js",
+      "mode": "100644",
+      "digest": "sha256:051512df3722521161a94478121b0b6ceb3e43ef47cc539ed7f53382b6ef28fb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
+      "mode": "100644",
+      "digest": "sha256:6a7ae57bbb50c7403c1652c32b649d97f53f69b31861ca31768d85da916378aa"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",
+      "mode": "100644",
+      "digest": "sha256:a1db9d1d7a67a80907aa628763526ee1741fb3750f9de69195edb920f7d1905d"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
+      "mode": "100644",
+      "digest": "sha256:b91adbc46c555ff9dce9b533af44c35618f4af6aa1080884da5a4df0e2d087ea"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-catalog.js",
+      "mode": "100644",
+      "digest": "sha256:8ea35162bf3c2551db1e322da8c309951474cfbfcea2d14f84a2e967e92fc175"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-receipt.js",
+      "mode": "100644",
+      "digest": "sha256:00b391ab539671f8c8f90b55c4225115682f09e19bce330af932ae1cb2b13858"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/task-strategy-correction-store.js",
+      "mode": "100644",
+      "digest": "sha256:bd99dafaa9e8a1ae0fdd3af4dfd7880340f92bc1776b71a387eb55aba3ab8a5d"
+    }
+  ]
+}

@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "enforcementMode": "enforced",
+  "documents": {
+    "docs/ROADMAP.md": {
+      "mode": "curated"
+    },
+    "docs/CURRENT_AND_NEXT_STEPS.md": {
+      "mode": "generated",
+      "enforcement": "active",
+      "source": "openspec/changes/*/tasks.md",
+      "validator": "managed-documents",
+      "transition": "completion"
+    },
+    "docs/ISSUE_LOG.md": {
+      "mode": "generated",
+      "enforcement": "active",
+      "source": "docs/issues/issues.yaml",
+      "validator": "managed-documents"
+    },
+    "docs/BACKLOG.md": {
+      "mode": "generated",
+      "enforcement": "planned",
+      "source": "docs/work-registry/items/**",
+      "validator": "work-registry"
+    },
+    "docs/work-registry/inventory.json": {
+      "mode": "generated",
+      "enforcement": "planned",
+      "source": "docs/work-registry/items/**",
+      "validator": "work-registry"
+    },
+    "docs/work-registry/items/**": {
+      "mode": "curated",
+      "enforcement": "planned"
+    },
+    "docs/work-history/**": {
+      "mode": "generated",
+      "enforcement": "planned",
+      "source": "docs/work-registry/items/**",
+      "validator": "work-registry"
+    },
+    "docs/REQUIREMENT_LOG.md": {
+      "mode": "reference",
+      "enforcement": "planned-supersession"
+    },
+    "docs/UPDATE_CHECKLIST.md": {
+      "mode": "reference",
+      "enforcement": "planned-supersession"
+    },
+    "docs/WORKFLOW.md": {
+      "mode": "curated",
+      "enforcement": "planned"
+    },
+    "docs/CHANGELOG.md": {
+      "mode": "append-only",
+      "enforcement": "planned"
+    },
+    "docs/architecture/**": {
+      "mode": "curated",
+      "refresh": "reviewed-section"
+    },
+    "docs/features/**": {
+      "mode": "curated",
+      "refresh": "reviewed-section"
+    },
+    "docs/research/**": {
+      "mode": "reference"
+    },
+    "docs/archive/**": {
+      "mode": "immutable",
+      "enforcement": "planned"
+    },
+    "openspec/specs/**": {
+      "mode": "normative"
+    },
+    "openspec/changes/**": {
+      "mode": "change-artifact"
+    },
+    ".agents/skills/spectra-*/**": {
+      "mode": "reference"
+    }
+  }
+}

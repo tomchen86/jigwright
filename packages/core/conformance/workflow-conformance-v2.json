@@ -1,0 +1,213 @@
+{
+  "kind": "jigwright.workflow-conformance-vectors.v2",
+  "schemaVersion": 2,
+  "algorithms": {
+    "canonical-json": "ecmascript-json-utf16-key-order.v1",
+    "sha256": "sha256-utf8-lowerhex.v1",
+    "managed-trailer": "managed-git-trailer-block.v1",
+    "record": "canonical-record-envelope.v1",
+    "manifest-plan-review": "manifest-plan-review-exact-binding.v1",
+    "central-grant": "central-grant-challenge-subject-transition.v1",
+    "legacy-ssh-envelope": "collaboration-grant-versioned-envelope.v1",
+    "agent-protocol": "harness-jsonl-v1",
+    "planning-binding": "planning-provider-binding-v1"
+  },
+  "domains": {
+    "canonical-json": [
+      {
+        "id": "canonical-recursive-object",
+        "input": {
+          "z": [3, { "b": true, "a": null }],
+          "a": "line\n\"quoted\""
+        },
+        "canonical": "{\"a\":\"line\\n\\\"quoted\\\"\",\"z\":[3,{\"a\":null,\"b\":true}]}"
+      }
+    ],
+    "digest-identity": [
+      {
+        "id": "sha256-unicode-identity",
+        "utf8": "jigwright–工作流",
+        "digest": "6b554f847f16aa3b2045d06d8070a403dd019b88b807b0b38e6749cbaaca9c1d"
+      }
+    ],
+    "managed-trailer": [
+      {
+        "id": "managed-task-trailer",
+        "message": "Complete task\n\nChange: demo-change\nTask: 1.2",
+        "parsed": {
+          "kind": "task",
+          "changeId": "demo-change",
+          "taskId": "1.2"
+        }
+      }
+    ],
+    "journal-record": [
+      {
+        "id": "grant-lifecycle-journal-record",
+        "record": {
+          "schemaVersion": 1,
+          "kind": "jigwright.grant-lifecycle-audit-receipt.v1",
+          "lifecycleContractVersion": "jigwright.grant-lifecycle.v1",
+          "grantId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+          "transitionDigest": null,
+          "fromState": "available",
+          "toState": "reserved",
+          "occurredAt": "2026-08-24T00:00:00.000Z",
+          "reason": "fixture reservation"
+        },
+        "canonical": "{\"fromState\":\"available\",\"grantId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"kind\":\"jigwright.grant-lifecycle-audit-receipt.v1\",\"lifecycleContractVersion\":\"jigwright.grant-lifecycle.v1\",\"occurredAt\":\"2026-08-24T00:00:00.000Z\",\"reason\":\"fixture reservation\",\"schemaVersion\":1,\"toState\":\"reserved\",\"transitionDigest\":null}",
+        "digest": "31ca52a9251f92cd9abca5ea47f16927d5bf75c2d13c2f672c3e0ff1ed166a44"
+      }
+    ],
+    "manifest-plan-review": [
+      {
+        "id": "manifest-plan-review-exact-binding",
+        "subject": {
+          "planningGenerationId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "planTargetDigest": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "manifestDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "investigationTargetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+          "reviewPolicyDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+          "requiredIndependence": "provider-independent",
+          "investigationBaseline": {
+            "head": "1111111111111111111111111111111111111111",
+            "tree": "2222222222222222222222222222222222222222"
+          },
+          "investigationDependencies": [],
+          "investigationRequirements": []
+        },
+        "subjectDigest": "dfda112addc06c44b291c4f165d5e69c1a5833715f1b7f96694726c516d4a7bd",
+        "mismatchedManifestDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    ],
+    "central-grant": [
+      {
+        "id": "central-grant-challenge-and-subject",
+        "request": {
+          "sourceModuleId": "vector-module",
+          "failureCode": "vector-blocked",
+          "facts": { "reason": "fixture" },
+          "stateBinding": {
+            "kind": "vector-state",
+            "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          },
+          "candidate": {
+            "transitionId": "vector-transition",
+            "parameters": { "resume": true },
+            "allowedReasonCodes": ["approved-for-vector"],
+            "reasonRequired": true,
+            "proposedReason": "Continue the vector transition."
+          }
+        },
+        "registry": {
+          "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "resolutionKind": "non-retry"
+        },
+        "challengeId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+        "issuedAt": "2026-08-24T00:00:00.000Z",
+        "expiresAt": "2026-08-24T00:10:00.000Z",
+        "sessionNonce": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "challengeDigest": "sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b",
+        "choiceId": "sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d",
+        "approvalSubjectDigest": "sha256:3a76e9a588d1cbd3da226b1e26af17c813f867ef864131506a0d3a20b60c4ee3",
+        "grantRecord": {
+          "schemaVersion": 1,
+          "kind": "grant-record.v1",
+          "state": "pending",
+          "challenge": {
+            "schemaVersion": 1,
+            "kind": "grant-challenge.v1",
+            "challengeId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+            "sourceModuleId": "vector-module",
+            "failureCode": "vector-blocked",
+            "facts": { "reason": "fixture" },
+            "factsDigest": "sha256:16364ed0baadddad793d8355c32d30688ac617752c60cf932ae5619554934437",
+            "stateBinding": {
+              "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+              "kind": "vector-state"
+            },
+            "choices": [
+              {
+                "choiceId": "sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d",
+                "transitionId": "vector-transition",
+                "parameters": { "resume": true },
+                "parameterDigest": "sha256:0665d9c0c9b18ef7c608e4fafd182eda34bb11535093bace38b88653d9d5713f",
+                "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+                "resolutionKind": "non-retry",
+                "allowedReasonCodes": ["approved-for-vector"],
+                "reasonRequired": true,
+                "proposedReason": "Continue the vector transition."
+              }
+            ],
+            "issuedAt": "2026-08-24T00:00:00.000Z",
+            "expiresAt": "2026-08-24T00:10:00.000Z",
+            "challengeDigest": "sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b"
+          },
+          "recordedAt": "2026-08-24T00:00:00.000Z"
+        },
+        "grantRecordCanonical": "{\"challenge\":{\"challengeDigest\":\"sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b\",\"challengeId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"choices\":[{\"allowedReasonCodes\":[\"approved-for-vector\"],\"choiceId\":\"sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d\",\"consequenceDigest\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"parameterDigest\":\"sha256:0665d9c0c9b18ef7c608e4fafd182eda34bb11535093bace38b88653d9d5713f\",\"parameterSchemaDigest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"parameters\":{\"resume\":true},\"proposedReason\":\"Continue the vector transition.\",\"reasonRequired\":true,\"resolutionKind\":\"non-retry\",\"transitionId\":\"vector-transition\"}],\"expiresAt\":\"2026-08-24T00:10:00.000Z\",\"facts\":{\"reason\":\"fixture\"},\"factsDigest\":\"sha256:16364ed0baadddad793d8355c32d30688ac617752c60cf932ae5619554934437\",\"failureCode\":\"vector-blocked\",\"issuedAt\":\"2026-08-24T00:00:00.000Z\",\"kind\":\"grant-challenge.v1\",\"schemaVersion\":1,\"sourceModuleId\":\"vector-module\",\"stateBinding\":{\"digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"kind\":\"vector-state\"}},\"kind\":\"grant-record.v1\",\"recordedAt\":\"2026-08-24T00:00:00.000Z\",\"schemaVersion\":1,\"state\":\"pending\"}",
+        "grantRecordDigest": "sha256:da732ae5fa96227e7a167050c59b2c5b6608596ba1b46039ab3d84873aa5fb90"
+      }
+    ],
+    "legacy-ssh-envelope": [
+      {
+        "id": "legacy-collaboration-ssh-envelope",
+        "payloadVersion": 1,
+        "signatureNamespace": "expense-app.workflow.collaboration-grant.v1",
+        "readerContractVersion": "jigwright.collaboration-grant-envelope-reader.v1",
+        "currentNamespace": "workflow.collaboration-grant.v2",
+        "unknownVersion": 3,
+        "unknownVersionOutcome": "reject"
+      }
+    ],
+    "agent-protocol-frame": [
+      {
+        "id": "agent-wrapper-hello-and-receipt",
+        "binding": {
+          "invocationId": "vector-invocation",
+          "requestDigest": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "attemptId": "vector-attempt"
+        },
+        "frames": [
+          {
+            "schemaVersion": 1,
+            "type": "hello",
+            "sequence": 1,
+            "protocol": "harness-jsonl-v1"
+          },
+          {
+            "schemaVersion": 1,
+            "type": "result",
+            "sequence": 2,
+            "outputSlot": "primary"
+          }
+        ],
+        "rendered": [
+          "{\"protocol\":\"harness-jsonl-v1\",\"schemaVersion\":1,\"sequence\":1,\"type\":\"hello\"}\n",
+          "{\"outputSlot\":\"primary\",\"schemaVersion\":1,\"sequence\":2,\"type\":\"result\"}\n"
+        ],
+        "receiptDigest": "594aead1c4cb91bdfffddb7d786a6a29143f8d5e093e94788fb7af562025b6ce"
+      }
+    ],
+    "planning-binding": [
+      {
+        "id": "planning-provider-binding-digest",
+        "binding": {
+          "schemaVersion": 1,
+          "changeId": "vector-change",
+          "providerId": "openspec",
+          "adapterContractVersion": 1,
+          "providerRequirement": {
+            "package": "@fission-ai/openspec",
+            "version": "1.6.0"
+          },
+          "planningRoot": "openspec/changes/vector-change"
+        },
+        "digest": "6396d03d22fe82f9c27e5332573574c8e8020f0c0b54214d490ed7e2e7c9f6ff"
+      }
+    ]
+  },
+  "vectorSetDigest": "sha256:b4c732d367c4567284c5f932c432f78afa46df9045e831c7a0047e9a9a7e5bd9"
+}

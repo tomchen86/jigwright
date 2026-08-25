@@ -1,0 +1,103 @@
+import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
+import {
+  discoverRepository,
+  fingerprintRepositoryProjection,
+  type GitState,
+} from '../runtime/repository-transaction/git.ts';
+import {
+  loadValidatedChangeContract,
+  type ValidatedChangeContract,
+} from '../adapters/planning/openspec/documents/managed-change-contract.ts';
+import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
+import { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
+import type { ConsumedPlanReviewReplayPort } from '../modules/assurance/planning-assurance-validator.ts';
+import type {
+  ChangeRoutingAuthorityFacts,
+  ChangeRoutingAuthorityPort,
+} from '../modules/lifecycle/change-routing.ts';
+
+export const productionChangeRoutingAuthorityPort: ChangeRoutingAuthorityPort =
+  Object.freeze({
+    loadCurrentAuthority(
+      repositoryRoot: string,
+      changeId: string,
+    ): ChangeRoutingAuthorityFacts {
+      const { contract } = loadStableValidatedChangeContract(
+        discoverRepository(repositoryRoot),
+        changeId,
+      );
+      const investigation = contract.investigation;
+      const assurance = contract.planningAssurance;
+      if (investigation === undefined || assurance === null) {
+        throw workflowError(
+          'CHANGE_ROUTING_CURRENT_AUTHORITY_REQUIRED',
+          `Change ${changeId} does not have current Manifest v3 and separate PlanReview authority.`,
+          ExitCode.verification,
+        );
+      }
+      return Object.freeze({
+        changeId,
+        manifestDigest: investigation.validation.manifestDigest,
+        investigationTargetDigest:
+          investigation.validation.investigationTargetDigest,
+        planningGenerationId: assurance.planningGenerationId,
+        planTargetDigest: assurance.planTargetDigest,
+        reviewNodeId: assurance.reviewNodeId,
+        reviewResultDigest: assurance.reviewResultDigest,
+        reviewRoleResultDigest: assurance.reviewRoleResultDigest,
+      });
+    },
+  });
+
+export function loadStableValidatedChangeContract(
+  initialGit: GitState,
+  changeId: string,
+): {
+  git: GitState;
+  contract: ValidatedChangeContract;
+  consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+} {
+  const beforeFingerprint = fingerprintRepositoryProjection(
+    initialGit.repositoryRoot,
+    initialGit.head,
+    initialGit.statusEntries,
+  );
+  const contract = loadValidatedChangeContract(
+    initialGit.repositoryRoot,
+    changeId,
+    planningProviderBindingReader,
+    productionConsumedPlanReviewReplayPort,
+  );
+  const git = discoverRepository(initialGit.repositoryRoot);
+  const afterFingerprint = fingerprintRepositoryProjection(
+    git.repositoryRoot,
+    git.head,
+    git.statusEntries,
+  );
+  if (
+    git.repositoryRealPath !== initialGit.repositoryRealPath ||
+    git.gitCommonDirectory !== initialGit.gitCommonDirectory ||
+    git.branch !== initialGit.branch ||
+    git.head !== initialGit.head ||
+    git.tree !== initialGit.tree ||
+    afterFingerprint !== beforeFingerprint
+  ) {
+    throw workflowError(
+      'OPENSPEC_MUTATED_REPOSITORY',
+      'OpenSpec validation changed the repository projection.',
+      ExitCode.staleState,
+    );
+  }
+  if (contract.schemaName === 'expense-app') {
+    throw workflowError(
+      'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN',
+      'Active expense-app changes are historical-only; current lifecycle authority requires expense-app-v2 with a v3 investigation Manifest.',
+      ExitCode.verification,
+    );
+  }
+  return {
+    git,
+    contract,
+    consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+  };
+}

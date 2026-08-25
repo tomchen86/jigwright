@@ -1,0 +1,44 @@
+{
+  "name": "@jigwright/core",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Consumer-neutral contracts and deterministic primitives for Jigwright.",
+  "type": "module",
+  "files": [
+    "src",
+    "conformance"
+  ],
+  "engines": {
+    "node": ">=22.22.1"
+  },
+  "exports": {
+    "./agent-runtime-port": "./src/agent-runtime-port.ts",
+    "./canonical-json": "./src/canonical-json.ts",
+    "./central-grant-port": "./src/central-grant-port.ts",
+    "./check-command": "./src/check-command.ts",
+    "./check-registry-port": "./src/check-registry-port.ts",
+    "./conformance-vectors": "./src/conformance-vectors.ts",
+    "./contract-values": "./src/contract-values.ts",
+    "./data-authorization-policy-port": "./src/data-authorization-policy-port.ts",
+    "./evidence-node": "./src/evidence-node.ts",
+    "./governance-source": "./src/governance-source.ts",
+    "./job-attempt-runtime": "./src/job-attempt-runtime.ts",
+    "./managed-transition-trailers": "./src/managed-transition-trailers.ts",
+    "./markdown-sections": "./src/markdown-sections.ts",
+    "./planning-provider-binding": "./src/planning-provider-binding.ts",
+    "./planning-provider-port": "./src/planning-provider-port.ts",
+    "./repository-path": "./src/repository-path.ts",
+    "./repository-consumer-port": "./src/repository-consumer-port.ts",
+    "./runtime-path-kernel": "./src/runtime-path-kernel.ts",
+    "./session-runtime-layout-port": "./src/session-runtime-layout-port.ts",
+    "./tracked-object-reader-port": "./src/tracked-object-reader-port.ts",
+    "./workflow-namespace": "./src/workflow-namespace.ts"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test test/*.test.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3"
+  }
+}

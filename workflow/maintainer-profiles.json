@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 1,
+  "profiles": {
+    "workflow-engine-bootstrap": {
+      "id": "workflow-engine-bootstrap",
+      "version": 1,
+      "authorityClass": "ordinary",
+      "implementationPaths": ["packages/workflow-engine/src/**"],
+      "evidencePaths": ["packages/workflow-engine/test/**"],
+      "policyPaths": [
+        "workflow/maintainer-policy.json",
+        "workflow/maintainer-profiles.json",
+        "workflow/protected-capabilities.json",
+        "workflow/schemas/**"
+      ],
+      "verificationInfrastructurePaths": [
+        ".github/workflows/**",
+        "workflow/checks.json"
+      ],
+      "forbiddenPaths": [
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+        "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
+        "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-commit.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
+        "packages/workflow-engine/src/cli.ts",
+        "packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts",
+        "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
+        "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
+        "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
+        "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-manifest.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-policy.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate.ts",
+        "packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/filesystem-safety.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+        "packages/workflow-engine/src/runtime/session-workspace/session-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts"
+      ],
+      "constraints": {
+        "evidenceOnlyGrantForbidden": true,
+        "samePackageRequired": true,
+        "evidenceAdditionsAllowed": true,
+        "maximumFiles": 12
+      },
+      "requiredChecks": [
+        "managed-documents",
+        "workflow-format",
+        "workflow-lint",
+        "workflow-tests",
+        "workflow-typecheck"
+      ],
+      "checkDependencies": {
+        "managed-documents": [
+          "harness-engine",
+          "policy",
+          "runner",
+          "source-tree"
+        ],
+        "workflow-format": ["runner", "source-tree"],
+        "workflow-lint": ["runner", "source-tree"],
+        "workflow-tests": [
+          "base-commit",
+          "harness-engine",
+          "policy",
+          "runner",
+          "source-tree"
+        ],
+        "workflow-typecheck": ["runner", "source-tree"]
+      }
+    },
+    "workflow-engine-root-one-shot": {
+      "id": "workflow-engine-root-one-shot",
+      "version": 1,
+      "authorityClass": "root-one-shot",
+      "implementationPaths": ["apps/**", "docs/**", "packages/**"],
+      "evidencePaths": [
+        "apps/api/src/__tests__/**",
+        "packages/workflow-engine/test/**"
+      ],
+      "policyPaths": [
+        "workflow/maintainer-policy.json",
+        "workflow/maintainer-profiles.json",
+        "workflow/protected-capabilities.json",
+        "workflow/schemas/**"
+      ],
+      "verificationInfrastructurePaths": [
+        ".github/workflows/**",
+        "workflow/checks.json"
+      ],
+      "forbiddenPaths": [
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+        "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
+        "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-commit.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
+        "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
+        "packages/workflow-engine/src/cli.ts",
+        "packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts",
+        "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
+        "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
+        "packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts",
+        "packages/workflow-engine/src/modules/assurance/pre-merge-assurance.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-grant.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-manifest.ts",
+        "packages/workflow-engine/src/modules/authority/maintainer-policy.ts",
+        "packages/workflow-engine/src/modules/authority/task-mandate.ts",
+        "packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/filesystem-safety.ts",
+        "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+        "packages/workflow-engine/src/runtime/session-workspace/session-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts",
+        "packages/workflow-engine/src/runtime/storage-journal/pre-merge-assurance-store.ts"
+      ],
+      "constraints": {
+        "evidenceOnlyGrantForbidden": true,
+        "samePackageRequired": true,
+        "evidenceAdditionsAllowed": true,
+        "maximumFiles": 100
+      },
+      "requiredChecks": [
+        "managed-documents",
+        "workflow-format",
+        "workflow-lint",
+        "workflow-tests",
+        "workflow-typecheck"
+      ],
+      "checkDependencies": {
+        "managed-documents": [
+          "harness-engine",
+          "policy",
+          "runner",
+          "source-tree"
+        ],
+        "workflow-format": ["runner", "source-tree"],
+        "workflow-lint": ["runner", "source-tree"],
+        "workflow-tests": [
+          "base-commit",
+          "harness-engine",
+          "policy",
+          "runner",
+          "source-tree"
+        ],
+        "workflow-typecheck": ["runner", "source-tree"]
+      }
+    }
+  }
+}

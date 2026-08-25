@@ -1,0 +1,280 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://expense-app.local/workflow/report.schema.json",
+  "oneOf": [
+    { "$ref": "#/$defs/check" },
+    { "$ref": "#/$defs/completion" },
+    { "$ref": "#/$defs/finish" },
+    { "$ref": "#/$defs/commit" },
+    { "$ref": "#/$defs/authorityCheck" }
+  ],
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "commitHash": {
+      "type": "string",
+      "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
+    },
+    "base": {
+      "type": "object",
+      "required": [
+        "schemaVersion",
+        "kind",
+        "sessionId",
+        "changeId",
+        "taskId",
+        "createdAt"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "kind": {
+          "enum": ["check", "completion", "finish", "commit", "authority-check"]
+        },
+        "sessionId": { "type": "string" },
+        "changeId": { "type": "string" },
+        "taskId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "planningAssurance": { "$ref": "#/$defs/planningAssurance" },
+        "parentReportId": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "inspection": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "type": "object",
+          "required": [
+            "baseline",
+            "branch",
+            "artifactDigests",
+            "allowedPaths",
+            "requiredChecks",
+            "requiredCheckDigests",
+            "changedPaths",
+            "fingerprint",
+            "planningAssurance"
+          ],
+          "properties": {
+            "baseline": { "type": "object" },
+            "branch": { "type": "string" },
+            "artifactDigests": { "type": "object" },
+            "allowedPaths": { "type": "array", "items": { "type": "string" } },
+            "requiredChecks": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requiredCheckDigests": { "type": "object" },
+            "changedPaths": { "type": "array", "items": { "type": "string" } },
+            "fingerprint": { "$ref": "#/$defs/digest" }
+          }
+        }
+      ]
+    },
+    "check": {
+      "allOf": [
+        { "$ref": "#/$defs/inspection" },
+        {
+          "properties": { "kind": { "const": "check" } },
+          "required": ["checks"]
+        }
+      ]
+    },
+    "completion": {
+      "allOf": [
+        { "$ref": "#/$defs/inspection" },
+        {
+          "properties": { "kind": { "const": "completion" } },
+          "required": [
+            "parentReportId",
+            "completedTaskIds",
+            "projectionSourceDigest",
+            "transitionPaths",
+            "reconciledTasks"
+          ]
+        }
+      ]
+    },
+    "finish": {
+      "allOf": [
+        { "$ref": "#/$defs/inspection" },
+        {
+          "properties": { "kind": { "const": "finish" } },
+          "required": [
+            "parentReportId",
+            "completedTaskIds",
+            "projectionSourceDigest",
+            "transitionPaths",
+            "checks",
+            "stagedPaths",
+            "tree"
+          ]
+        }
+      ]
+    },
+    "commit": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": { "kind": { "const": "commit" } },
+          "required": [
+            "parentReportId",
+            "baseline",
+            "branch",
+            "commitHash",
+            "tree",
+            "changedPaths",
+            "completedTaskIds",
+            "projectionSourceDigest",
+            "transitionPaths",
+            "message",
+            "planningAssurance"
+          ]
+        }
+      ]
+    },
+    "authorityCheck": {
+      "allOf": [
+        { "$ref": "#/$defs/base" },
+        {
+          "properties": {
+            "kind": { "const": "authority-check" },
+            "grantId": {
+              "type": "string",
+              "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+            },
+            "baseCommit": { "$ref": "#/$defs/commitHash" },
+            "policyBlob": { "$ref": "#/$defs/commitHash" },
+            "contractDigest": { "$ref": "#/$defs/digest" },
+            "allowedPaths": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "changedPaths": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "requiredChecks": {
+              "type": "array",
+              "items": { "type": "string" }
+            },
+            "checks": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "fingerprint": { "$ref": "#/$defs/digest" }
+          },
+          "required": [
+            "grantId",
+            "baseCommit",
+            "policyBlob",
+            "contractDigest",
+            "allowedPaths",
+            "changedPaths",
+            "requiredChecks",
+            "checks",
+            "fingerprint"
+          ]
+        }
+      ]
+    },
+    "nullableDigest": {
+      "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+    },
+    "planningAssurance": {
+      "anyOf": [
+        { "type": "null" },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "applicabilityKind",
+            "applicabilityDigest",
+            "applicabilityNodeId",
+            "investigationBaseline",
+            "planningGenerationId",
+            "planTargetDigest",
+            "reviewNodeId",
+            "reviewResultDigest",
+            "reviewDispositionNodeId",
+            "reviewRoleResultDigest",
+            "reviewRoleResultForm",
+            "reviewOrchestration",
+            "reviewGrantId",
+            "reviewGrantEnvelopeDigest",
+            "reviewGrantUseDigest",
+            "reviewGrantTransitionDigest",
+            "directHumanReviewAttestationDigest",
+            "requiredIndependence",
+            "achievedIndependence",
+            "degradationAuthorized",
+            "advisoryVerdict"
+          ],
+          "properties": {
+            "applicabilityKind": {
+              "enum": ["sealed-investigation", "investigation-exemption"]
+            },
+            "applicabilityDigest": { "$ref": "#/$defs/digest" },
+            "applicabilityNodeId": { "$ref": "#/$defs/digest" },
+            "investigationBaseline": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["head", "tree"],
+              "properties": {
+                "head": { "$ref": "#/$defs/commitHash" },
+                "tree": { "$ref": "#/$defs/commitHash" }
+              }
+            },
+            "planningGenerationId": { "$ref": "#/$defs/digest" },
+            "planTargetDigest": { "$ref": "#/$defs/digest" },
+            "reviewNodeId": { "$ref": "#/$defs/digest" },
+            "reviewResultDigest": { "$ref": "#/$defs/digest" },
+            "reviewDispositionNodeId": { "$ref": "#/$defs/nullableDigest" },
+            "reviewRoleResultDigest": { "$ref": "#/$defs/digest" },
+            "reviewRoleResultForm": {
+              "enum": [
+                "ordinary-provider",
+                "granted-same-provider",
+                "granted-caller-supplied",
+                "direct-human-attestation"
+              ]
+            },
+            "reviewOrchestration": {
+              "enum": [
+                "engine-spawned-provider",
+                "caller-supplied",
+                "direct-human-review"
+              ]
+            },
+            "reviewGrantId": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+                },
+                { "type": "null" }
+              ]
+            },
+            "reviewGrantEnvelopeDigest": { "$ref": "#/$defs/nullableDigest" },
+            "reviewGrantUseDigest": { "$ref": "#/$defs/nullableDigest" },
+            "reviewGrantTransitionDigest": { "$ref": "#/$defs/nullableDigest" },
+            "directHumanReviewAttestationDigest": {
+              "$ref": "#/$defs/nullableDigest"
+            },
+            "requiredIndependence": { "const": "provider-independent" },
+            "achievedIndependence": {
+              "enum": [
+                "provider-independent",
+                "principal-independent",
+                "session-independent",
+                "none"
+              ]
+            },
+            "degradationAuthorized": { "type": "boolean" },
+            "advisoryVerdict": {
+              "enum": ["advisory-approve", "advisory-reject"]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
