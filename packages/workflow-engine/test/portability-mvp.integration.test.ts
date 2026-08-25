@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
@@ -19,6 +20,7 @@ import {
 } from '../../fixture-adapter/src/portability-profile.ts';
 import { createFixtureRepositoryConsumerPortV1 } from '../../fixture-adapter/src/repository-consumer.ts';
 import { createFakeArchivePullRequestRemote } from '@jigwright/github-adapter';
+import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
 import {
   discoverArchivePullRequestCandidate,
   openArchivePullRequest,
@@ -43,7 +45,9 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
-const packageRoot = path.resolve(import.meta.dirname, '..');
+const sourcePackageRoot = path.resolve(import.meta.dirname, '..');
+let cliPackageRoot = sourcePackageRoot;
+let cliEntrypoint = 'src/cli.ts';
 const scenarioReportPath = path.resolve(
   import.meta.dirname,
   '../../fixture-adapter/portability-mvp-scenarios.json',
@@ -280,7 +284,22 @@ test('consumer paths canonicalize a symlinked repository root while remaining co
   }
 });
 
-test('portable fixture completes all ten local scenarios twice', () => {
+test('portable fixture completes all ten local scenarios twice', (t) => {
+  const installed = installSingleJigwrightFixture();
+  const previousPackageRoot = cliPackageRoot;
+  const previousEntrypoint = cliEntrypoint;
+  cliPackageRoot = installed.packageRoot;
+  cliEntrypoint = 'bin/jigwright.mjs';
+  t.after(() => {
+    cliPackageRoot = previousPackageRoot;
+    cliEntrypoint = previousEntrypoint;
+    installed.dispose();
+  });
+  assert.match(
+    fs.realpathSync(cliPackageRoot),
+    /node_modules\/jigwright$/u,
+    'the portability lifecycle must invoke an exact installed tarball',
+  );
   for (let remainingRuns = 2; remainingRuns > 0; remainingRuns -= 1) {
     const repository = createFixtureRepository();
     try {
@@ -348,7 +367,7 @@ test('portable fixture completes all ten local scenarios twice', () => {
       for (const evidencePath of scenarioReport.targetedEvidence) {
         assert.equal(
           fs
-            .statSync(path.resolve(packageRoot, '../..', evidencePath))
+            .statSync(path.resolve(sourcePackageRoot, '../..', evidencePath))
             .isFile(),
           true,
         );
@@ -366,10 +385,10 @@ test('portable fixture completes all ten local scenarios twice', () => {
         true,
       );
 
-      const help = runExactLocalPackageInvocation(
+      const help = runPortabilityPackageInvocation(
         createExactLocalPackageInvocation({
-          packageRoot,
-          entrypoint: 'src/cli.ts',
+          packageRoot: cliPackageRoot,
+          entrypoint: cliEntrypoint,
           args: ['help'],
           cwd: repository,
         }),
@@ -531,6 +550,64 @@ test('portable fixture completes all ten local scenarios twice', () => {
     }
   }
 });
+
+function installSingleJigwrightFixture(): Readonly<{
+  packageRoot: string;
+  dispose(): void;
+}> {
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-portable-install-'),
+  );
+  try {
+    const releaseRoot = path.join(scratch, 'release');
+    const artifact = buildSingleJigwrightPackage(
+      path.resolve(import.meta.dirname, '../../..'),
+      releaseRoot,
+      { allowDirty: true },
+    );
+    assert.equal(artifact.name, 'jigwright');
+    const consumerRoot = path.join(scratch, 'consumer');
+    fs.mkdirSync(consumerRoot);
+    writeJson(path.join(consumerRoot, 'package.json'), {
+      name: 'jigwright-portability-installer',
+      private: true,
+      type: 'module',
+    });
+    const install = spawnSync(
+      'npm',
+      [
+        'install',
+        '--offline',
+        '--ignore-scripts',
+        '--no-audit',
+        '--no-fund',
+        '--package-lock=false',
+        path.join(releaseRoot, artifact.tarball),
+      ],
+      {
+        cwd: consumerRoot,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          npm_config_cache: path.join(scratch, 'npm-cache'),
+        },
+      },
+    );
+    assert.equal(install.status, 0, install.stderr);
+    const packageRoot = fs.realpathSync(
+      path.join(consumerRoot, 'node_modules', 'jigwright'),
+    );
+    return Object.freeze({
+      packageRoot,
+      dispose() {
+        fs.rmSync(scratch, { recursive: true, force: true });
+      },
+    });
+  } catch (error) {
+    fs.rmSync(scratch, { recursive: true, force: true });
+    throw error;
+  }
+}
 
 type ManagedCommit = Readonly<{ commitHash: string }>;
 type ArchiveCommit = Readonly<{
@@ -1111,15 +1188,23 @@ function addChangeProviderBinding(repository: string, changeId: string): void {
 }
 
 function runCli(repository: string, args: readonly string[]): unknown {
-  const stdout = runExactLocalPackageInvocation(
+  const stdout = runPortabilityPackageInvocation(
     createExactLocalPackageInvocation({
-      packageRoot,
-      entrypoint: 'src/cli.ts',
+      packageRoot: cliPackageRoot,
+      entrypoint: cliEntrypoint,
       args: [...args, '--json'],
       cwd: repository,
     }),
   );
   return JSON.parse(stdout) as unknown;
+}
+
+function runPortabilityPackageInvocation(
+  invocation: ReturnType<typeof createExactLocalPackageInvocation>,
+): string {
+  return runExactLocalPackageInvocation(invocation, {
+    timeoutMs: cliEntrypoint === 'bin/jigwright.mjs' ? 120_000 : 30_000,
+  });
 }
 
 function orbitConsumerConfiguration(): RepositoryConsumerConfigurationV1 {

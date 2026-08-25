@@ -81,13 +81,22 @@ export function createExactLocalPackageInvocation(input: {
 
 export function runExactLocalPackageInvocation(
   invocation: ExactLocalPackageInvocationV1,
+  options: Readonly<{ timeoutMs?: number }> = {},
 ): string {
+  const timeoutMs = options.timeoutMs ?? 30_000;
+  if (
+    !Number.isSafeInteger(timeoutMs) ||
+    timeoutMs < 1 ||
+    timeoutMs > 300_000
+  ) {
+    throw localInvocationInvalid();
+  }
   const result = spawnSync(invocation.executable, invocation.args, {
     cwd: invocation.cwd,
     env: process.env,
     shell: false,
     encoding: 'utf8',
-    timeout: 30_000,
+    timeout: timeoutMs,
     maxBuffer: 8 * 1024 * 1024,
   });
   if (

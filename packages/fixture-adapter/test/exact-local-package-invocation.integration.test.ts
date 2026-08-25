@@ -34,9 +34,16 @@ test('invokes an exact local package entrypoint without PATH or a global binary'
       invocation.args[1],
       path.join(fs.realpathSync(root), 'src/cli.ts'),
     );
-    assert.deepEqual(JSON.parse(runExactLocalPackageInvocation(invocation)), {
-      argv: ['guide', '--json'],
-    });
+    assert.deepEqual(
+      JSON.parse(
+        runExactLocalPackageInvocation(invocation, { timeoutMs: 120_000 }),
+      ),
+      { argv: ['guide', '--json'] },
+    );
+    assert.throws(
+      () => runExactLocalPackageInvocation(invocation, { timeoutMs: 0 }),
+      /Exact local package invocation is invalid/u,
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
