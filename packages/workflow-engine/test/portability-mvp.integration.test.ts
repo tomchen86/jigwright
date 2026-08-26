@@ -33,12 +33,22 @@ import {
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/expense-app/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import type {
+  IntegrationDeltaReviewRequest,
+  IntegrationDeltaReviewSubmission,
+} from '../src/modules/assurance/pre-merge-assurance.ts';
 import {
   createWorkItem,
   workItemDigest,
   type WorkItemV1,
 } from '../src/modules/governance-intake/work-registry.ts';
+import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
+  builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
   createFixtureRepository,
   git,
   installFakeOpenSpec,
@@ -454,7 +464,6 @@ test('portable fixture completes all ten local scenarios twice', (t) => {
       git(repository, ['checkout', '-b', 'changes/demo-change']);
       const sessionId = startTask(repository, 'demo-change');
       fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-      assert.equal(checkTask(repository, sessionId).passed, true);
       assert.deepEqual(
         (
           runCli(repository, ['route', 'status']) as {
@@ -463,15 +472,19 @@ test('portable fixture completes all ten local scenarios twice', (t) => {
         ).result.result.primaryChangeId,
         'demo-change',
       );
-      runCli(repository, ['complete-task', sessionId]);
-      runCli(repository, ['finish', sessionId]);
-      const task = commitTask(
+      const task = finalizePortableTask(
         repository,
         sessionId,
         'Complete portable fixture task',
+        'src/feature.ts',
       );
       git(repository, ['checkout', 'trunk']);
       git(repository, ['merge', '--ff-only', task.commitHash]);
+      const taskParent = git(repository, [
+        'rev-parse',
+        `${task.commitHash}^`,
+      ]).trim();
+      runPortableCi(repository, taskParent, task.commitHash);
       syncProtectedBase(repository);
 
       exerciseConcurrentWorktreesAndUpdateBase(repository);
@@ -649,9 +662,39 @@ function configurePortableConsumer(repository: string): void {
   );
   const repositoryConsumer = JSON.parse(
     fs.readFileSync(repositoryConsumerPath, 'utf8'),
-  ) as { consumerId: string };
+  ) as {
+    consumerId: string;
+    planning: { currentSchemaName: string };
+  };
   repositoryConsumer.consumerId = 'orbit-fixture';
   writeJson(repositoryConsumerPath, repositoryConsumer);
+  fs.writeFileSync(
+    path.join(repository, 'openspec/changes/demo-change/.openspec.yaml'),
+    `schema: ${repositoryConsumer.planning.currentSchemaName}\ncreated: 2026-07-15\n`,
+  );
+  writeJson(path.join(repository, 'workflow/maintainer-policy.json'), {
+    schemaVersion: 1,
+    repository: {
+      id: 'github:R_orbit_fixture',
+      origin: 'https://github.com/jigwright/orbit-fixture.git',
+    },
+    phase: 'bootstrap',
+    auditTagPrefix: 'refs/tags/jigwright-grant/',
+    signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+    maxTtlMinutes: 30,
+    maxUses: 1,
+    bootstrapEligiblePaths: ['workflow/maintainer-policy.json'],
+    sealedImmutablePaths: [],
+    requiredChecks: ['text-check'],
+    trustedSigners: [
+      {
+        identity: 'orbit-fixture-maintainer',
+        publicKey:
+          'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns',
+        fingerprint: 'SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U',
+      },
+    ],
+  });
 
   const manifestPath = path.join(repository, 'package.json');
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
@@ -889,16 +932,171 @@ function readTaskAllowedPaths(repository: string, changeId: string): string[] {
   ).tasks['1.1']!.allowedPaths;
 }
 
-function commitTask(
+function finalizePortableTask(
   repository: string,
   sessionId: string,
   message: string,
+  implementationPath: string,
 ): ManagedCommit {
+  const finalizeArgs = ['finalize', sessionId, '--message', message] as const;
+  assert.throws(
+    () => runCli(repository, finalizeArgs),
+    hasExactLocalWorkflowCode('TASK_DIFF_REVIEW_REQUIRED'),
+  );
+  const started = withProviderDispatchDisabled(() =>
+    runCli(repository, ['review-diff', sessionId, '--actor', 'codex']),
+  ) as {
+    result: {
+      state: string;
+      invocationId: string;
+      subject: {
+        subjectDigest: string;
+        documentationRequirement: { required: boolean } | null;
+        transitions: Array<{
+          path: string;
+          after: { objectId: string } | null;
+        }>;
+        reviewRequirement: {
+          riskPaths: Array<{ path: string; role: string }>;
+        };
+      };
+    };
+  };
+  assert.equal(started.result.state, 'waiting-for-provider');
+  assert.equal(started.result.subject.documentationRequirement?.required, true);
+  const reviewedBlobObjectId = started.result.subject.transitions.find(
+    ({ path: changedPath }) => changedPath === implementationPath,
+  )?.after?.objectId;
+  assert.ok(reviewedBlobObjectId);
+  const submission = portableTaskDiffSubmission(
+    implementationPath,
+    reviewedBlobObjectId,
+    started.result.subject,
+  );
+  const worker = runProviderWorker(repository, started.result.invocationId, {
+    runner(input) {
+      writePortableProviderRuntime(input.invocationDirectory, submission);
+      return {
+        invocationId: started.result.invocationId,
+        providerId: input.providerId,
+        purpose: 'task-diff-review',
+        requestDigest: input.request.requestDigest,
+        semanticOutput: submission,
+        semanticOutputDigest: sha256(canonicalJson(submission)),
+        assurance: 'unchanged-governed-projection',
+        projection: {
+          unchanged: true,
+          changedCategories: [],
+          beforeDigest: started.result.subject.subjectDigest,
+          afterDigest: started.result.subject.subjectDigest,
+        },
+        sameUserProcessConfined: false,
+        residuals: [...PROVIDER_RUNNER_RESIDUALS],
+        executable: builtInProviderExecutableIdentityForTest(input.providerId),
+        elapsedMs: 7,
+        providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
+          input.providerId,
+        ),
+      };
+    },
+  });
+  assert.equal(worker.state, 'succeeded', JSON.stringify(worker.failure));
+  const reviewed = runCli(repository, [
+    'review-diff',
+    sessionId,
+    '--actor',
+    'codex',
+  ]) as { result: { state: string } };
+  assert.equal(reviewed.result.state, 'satisfied');
   return (
-    runCli(repository, ['commit', sessionId, '--message', message]) as {
+    runCli(repository, finalizeArgs) as {
       result: ManagedCommit;
     }
   ).result;
+}
+
+function writePortableProviderRuntime(
+  invocationDirectory: string,
+  semanticOutput: unknown,
+): void {
+  const runtime = path.join(invocationDirectory, 'runtime');
+  fs.mkdirSync(runtime, { mode: 0o700 });
+  for (const [name, content] of [
+    ['prompt.json', '{}\n'],
+    ['schema.json', '{}\n'],
+    ['semantic-output.json', `${canonicalJson(semanticOutput)}\n`],
+  ] as const) {
+    fs.writeFileSync(path.join(runtime, name), content, { mode: 0o600 });
+  }
+}
+
+function portableTaskDiffSubmission(
+  implementationPath: string,
+  blobObjectId: string,
+  subject: Readonly<{
+    documentationRequirement: Readonly<{ required: boolean }> | null;
+    reviewRequirement: Readonly<{
+      riskPaths: readonly Readonly<{ path: string; role: string }>[];
+    }>;
+  }>,
+): TaskDiffReviewSubmission {
+  return {
+    schemaVersion: 1,
+    verdict: 'advisory-approve',
+    coverage: [...TASK_DIFF_REVIEW_COVERAGE],
+    scopeAssessment: {
+      kind: 'no-challenge',
+      evidence: [
+        {
+          kind: 'repository-location',
+          path: implementationPath,
+          line: 1,
+          blobObjectId,
+          observation:
+            'The exact portable candidate stays inside its reviewed task scope.',
+        },
+      ],
+    },
+    findings: [],
+    suggestions: [],
+    riskPathDispositions: subject.reviewRequirement.riskPaths.map(
+      ({ path: riskPath, role }) => ({
+        path: riskPath,
+        role: role as TaskDiffReviewSubmission['riskPathDispositions'][number]['role'],
+        outcome: 'no-challenge',
+      }),
+    ),
+    residualRisk: 'No release-blocking residual risk was identified.',
+    uncertainty: 'Review is limited to the exact checked portable candidate.',
+    documentationAssessment: {
+      decision: 'no-impact',
+      notes:
+        'The synthetic implementation changes no public or operator documentation contract.',
+    },
+  };
+}
+
+function withProviderDispatchDisabled<T>(operation: () => T): T {
+  const previous = process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH;
+  process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH = '1';
+  try {
+    return operation();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH;
+    } else {
+      process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH = previous;
+    }
+  }
+}
+
+function hasExactLocalWorkflowCode(code: string): (error: unknown) => boolean {
+  return (error) =>
+    error instanceof Error && error.message.includes(`\"code\":\"${code}\"`);
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function abortTask(repository: string, sessionId: string): void {
@@ -1022,14 +1220,14 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       secondTaskPath,
       'export const parallelTwoFeature = true;\n',
     );
-    assert.equal(checkTask(second.worktree, secondSessionId).passed, true);
-    runCli(second.worktree, ['complete-task', secondSessionId]);
-    runCli(second.worktree, ['finish', secondSessionId]);
-    const secondTask = commitTask(
-      second.worktree,
-      secondSessionId,
-      'Complete second portable concurrent task',
-    );
+    const secondTask = (
+      runCli(second.worktree, [
+        'finalize',
+        secondSessionId,
+        '--message',
+        'Complete second portable concurrent task',
+      ]) as { result: ManagedCommit }
+    ).result;
 
     fs.writeFileSync(
       path.join(repository, 'src/portable-base-update.ts'),
@@ -1157,10 +1355,20 @@ function addChangeSkeleton(
   const guardPath = path.join(target, 'guard.json');
   const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
     changeId: string;
-    tasks: Record<string, { allowedPaths: string[] }>;
+    tasks: Record<string, { allowedPaths: string[]; requiredChecks: string[] }>;
   };
   guard.changeId = changeId;
   guard.tasks['1.1']!.allowedPaths = [allowedPath];
+  if (changeId === 'parallel-two') {
+    fs.appendFileSync(
+      path.join(target, 'tasks.md'),
+      '\n- [ ] 1.2 Complete the post-refresh follow-up\n',
+    );
+    guard.tasks['1.2'] = {
+      allowedPaths: [allowedPath],
+      requiredChecks: [...guard.tasks['1.1']!.requiredChecks],
+    };
+  }
   writeJson(guardPath, guard);
   fs.rmSync(path.join(target, 'origin.json'), { force: true });
   fs.rmSync(path.join(target, 'survey.json'), { force: true });
@@ -1194,6 +1402,75 @@ function runCli(repository: string, args: readonly string[]): unknown {
     }),
   );
   return JSON.parse(stdout) as unknown;
+}
+
+function runPortableCi(
+  repository: string,
+  baseCommit: string,
+  headCommit: string,
+): unknown {
+  let request: IntegrationDeltaReviewRequest;
+  try {
+    runCli(repository, ['ci', '--base', baseCommit, '--head', headCommit]);
+    assert.fail('portable CI must request exact uncovered integration review');
+  } catch (error) {
+    request = integrationReviewRequest(error);
+  }
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-portable-integration-review-'),
+  );
+  const inputPath = path.join(scratch, 'submission.json');
+  try {
+    const submission: IntegrationDeltaReviewSubmission = {
+      schemaVersion: 1,
+      kind: 'integration-delta-review-submission.v1',
+      requiredCoverageDigest: request.requiredCoverageDigest,
+      uncoveredEntryDigests: request.uncoveredEntries.map(
+        ({ entryDigest }) => entryDigest,
+      ),
+      integrationSubjectDigest: request.integrationSubjectDigest,
+      reviewer: {
+        principalId: 'provider:claude',
+        providerId: 'claude',
+        achievedIndependence: 'provider-independent',
+        degradedForm: null,
+        grantUseDigest: null,
+      },
+      verdict: 'advisory-approve',
+      challenges: [],
+      residualRisk:
+        'The synthetic portability review covers the exact local integration subject.',
+    };
+    writeJson(inputPath, submission);
+    return runCli(repository, [
+      'ci',
+      '--base',
+      baseCommit,
+      '--head',
+      headCommit,
+      '--input',
+      inputPath,
+    ]);
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+}
+
+function integrationReviewRequest(
+  error: unknown,
+): IntegrationDeltaReviewRequest {
+  const prefix = 'Exact local package invocation failed: ';
+  assert.ok(error instanceof Error && error.message.startsWith(prefix));
+  const payload = JSON.parse(error.message.slice(prefix.length).trim()) as {
+    ok: boolean;
+    error: {
+      code: string;
+      details: { request: IntegrationDeltaReviewRequest };
+    };
+  };
+  assert.equal(payload.ok, false);
+  assert.equal(payload.error.code, 'PRE_MERGE_INTEGRATION_REVIEW_REQUIRED');
+  return payload.error.details.request;
 }
 
 function runPortabilityPackageInvocation(
