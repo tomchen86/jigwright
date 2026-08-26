@@ -14,6 +14,7 @@ import {
 import { readCommittedInvestigationManifestV3 } from '../src/runtime/repository-transaction/committed-investigation-manifest.ts';
 import {
   createFixtureRepository,
+  fixtureCurrentSchemaName,
   git,
   isWorkflowError,
   runtimeRoot,
@@ -41,7 +42,7 @@ test('committed change loading binds canonical v3 bytes to an immutable Git tree
       repository,
       commit,
       CHANGE_ID,
-      'expense-app-v2',
+      fixtureCurrentSchemaName(repository),
     );
 
     assert.equal(contract.investigation?.manifest.schemaVersion, 3);
@@ -112,7 +113,7 @@ test('committed v3 loading rejects noncanonical, tampered, and historical schema
             repository,
             commit,
             CHANGE_ID,
-            'expense-app-v2',
+            fixtureCurrentSchemaName(repository),
           ),
         (error) => isWorkflowError(error, fixture.code),
         fixture.name,
@@ -199,7 +200,7 @@ test('committed contract loading rejects a different clean checkout before readi
           repository,
           committed,
           CHANGE_ID,
-          'expense-app-v2',
+          fixtureCurrentSchemaName(repository),
         ),
       isGenericCommittedCheckoutError,
     );
@@ -223,7 +224,7 @@ test('committed contract loading rejects a dirty checkout before reading its art
           repository,
           committed,
           CHANGE_ID,
-          'expense-app-v2',
+          fixtureCurrentSchemaName(repository),
         ),
       isGenericCommittedCheckoutError,
     );
@@ -260,7 +261,7 @@ test('committed contract loading rejects an ignored PlanReview that is absent fr
           repository,
           committed,
           CHANGE_ID,
-          'expense-app-v2',
+          fixtureCurrentSchemaName(repository),
         ),
       isGenericCommittedCheckoutError,
     );
@@ -310,7 +311,7 @@ test('committed contract loading rejects an ignored delta spec outside the commi
           repository,
           committed,
           CHANGE_ID,
-          'expense-app-v2',
+          fixtureCurrentSchemaName(repository),
         ),
       isGenericCommittedCheckoutError,
     );
@@ -348,7 +349,7 @@ test('committed contract loading replaces a mid-read checkout mutation with the 
           repository,
           committed,
           CHANGE_ID,
-          'expense-app-v2',
+          fixtureCurrentSchemaName(repository),
         ),
       isGenericCommittedCheckoutError,
     );

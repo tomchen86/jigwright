@@ -112,6 +112,7 @@ test('document policy cannot invent an engine-owned completion projection', () =
 test('unfinished task guards cannot claim engine-owned projection paths', () => {
   const repository = createFixtureRepository();
   try {
+    writeReadyV3ExemptChange(repository);
     const changeDirectory = path.join(
       repository,
       'openspec/changes/demo-change',
@@ -131,6 +132,7 @@ test('unfinished task guards cannot claim engine-owned projection paths', () => 
       tasksPath,
       fs.readFileSync(tasksPath, 'utf8').replace(/- \[ \]/g, '- [x]'),
     );
+    writeReadyV3ExemptChange(repository);
     assert.doesNotThrow(() => loadChangeContract(repository, 'demo-change'));
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -169,6 +171,7 @@ test('the public handoff command is read-only and refuses render', () => {
 test('completion and finish evidence classify the exact projection union', () => {
   const repository = createFixtureRepository();
   try {
+    writeReadyV3ExemptChange(repository);
     enableCompletionProjection(repository);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
@@ -198,6 +201,7 @@ test('completion and finish evidence classify the exact projection union', () =>
 test('the compatible completion sequence records the same projection categories', () => {
   const repository = createFixtureRepository();
   try {
+    writeReadyV3ExemptChange(repository);
     enableCompletionProjection(repository);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);

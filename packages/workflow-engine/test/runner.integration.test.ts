@@ -31,6 +31,7 @@ function prepareCurrentChange(repository: string): void {
 test('registered full-gate style runner preserves strip-types and streams startup hints', () => {
   const repository = createFixtureRepository();
   try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
     fs.writeFileSync(
       path.join(repository, 'scripts/live-hint.ts'),
       "process.stderr.write('LIVE FULL GATE HINT\\n');\n",
@@ -50,6 +51,7 @@ test('registered full-gate style runner preserves strip-types and streams startu
       },
       ['live'],
     );
+    prepareCurrentChange(repository);
     const run = spawnSync(
       process.execPath,
       [
@@ -130,12 +132,13 @@ test('change validation rejects eval, preload, external, and ambiguous runners',
   for (const command of invalidCommands) {
     const repository = createFixtureRepository();
     try {
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      prepareCurrentChange(repository);
       configureChecks(
         repository,
         { unsafe: { command, destructiveDatabase: false } },
         ['unsafe'],
       );
-      git(repository, ['checkout', '-b', 'work/demo-change']);
       assert.throws(
         () => startSession(repository, 'demo-change', '1.1'),
         (error) => isWorkflowError(error, 'INVALID_CHECK_DEFINITION'),

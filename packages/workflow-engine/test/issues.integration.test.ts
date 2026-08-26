@@ -16,7 +16,11 @@ import {
 } from '../src/adapters/consumer/expense-app/documents/issues.ts';
 import { dispatchIssueCommand } from '../src/entrypoints/cli/issue-cli.ts';
 import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
-import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
+import {
+  createFixtureRepository,
+  sourceRepositoryRoot,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
 
 test('issue commands preserve structured fields and deterministic rendering', () => {
   const repository = createFixtureRepository();
@@ -131,6 +135,7 @@ test('managed issue CLI uses configured document paths without touching expense 
       issues: [],
     });
     renderIssues(repository);
+    writeReadyV3ExemptChange(repository);
     renderHandoff(repository);
     const result = dispatchIssueCommand(
       [
@@ -177,9 +182,9 @@ test('managed issue CLI uses configured document paths without touching expense 
   }
 });
 
-test('repository issue seed is complete and renders without drift', () => {
+test('clean package issue seed is empty and renders without drift', () => {
   const data = readIssueData(sourceRepositoryRoot);
-  assert.equal(data.issues.length, 26);
+  assert.equal(data.issues.length, 0);
   assert.deepEqual(
     Object.fromEntries(
       ['feature', 'bug', 'enhancement'].map((category) => [
@@ -187,7 +192,7 @@ test('repository issue seed is complete and renders without drift', () => {
         data.issues.filter((issue) => issue.category === category).length,
       ]),
     ),
-    { feature: 3, bug: 13, enhancement: 10 },
+    { feature: 0, bug: 0, enhancement: 0 },
   );
   validateIssueLog(sourceRepositoryRoot);
 });
@@ -201,6 +206,7 @@ test('managed issue mutations refresh issue and handoff projections together', (
       issues: [],
     });
     renderIssues(repository);
+    writeReadyV3ExemptChange(repository);
     renderHandoff(repository);
 
     dispatchIssueCommand(
@@ -251,6 +257,7 @@ test('managed issue mutations roll back every projection after a caught refresh 
       issues: [],
     });
     renderIssues(repository);
+    writeReadyV3ExemptChange(repository);
     renderHandoff(repository);
     const before = new Map(
       [sourcePath, issueLogPath, handoffPath].map((filePath) => [

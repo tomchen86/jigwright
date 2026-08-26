@@ -601,6 +601,7 @@ function createRecoveryFixture(): {
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
   );
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
+  writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
   fs.writeFileSync(
     path.join(repository, 'scripts/count-recovery.mjs'),

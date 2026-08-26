@@ -10,10 +10,9 @@ import {
   planningCommitMessage,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
-import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
-  createFixtureRepository,
+  createFixtureRepository as createBareFixtureRepository,
   git,
   isWorkflowError,
   sourceRepositoryRoot,
@@ -22,9 +21,18 @@ import {
 
 const HOOKS = ['pre-commit', 'commit-msg', 'pre-push', 'post-merge'];
 
-function prepareCurrentChange(repository: string): void {
+function createFixtureRepository(): string {
+  const repository = createBareFixtureRepository();
   writeReadyV3ExemptChange(repository);
-  commitPlanningTransition(repository, 'demo-change');
+  git(repository, ['add', '-A']);
+  git(repository, [
+    'commit',
+    '-m',
+    'Plan current Jigwright fixture',
+    '-m',
+    'Change: demo-change\nTransition: plan',
+  ]);
+  return repository;
 }
 
 test('repository hooks are executable two-line workflow proxies', () => {
@@ -56,7 +64,6 @@ test('hook validation is read-only and blocks ordinary commits during a session'
     assert.equal(fs.existsSync(path.join(repository, 'touch-pwned')), false);
 
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentChange(repository);
     startSession(repository, 'demo-change', '1.1');
     assert.throws(
       () => runRepositoryHook(repository, 'pre-commit', []),
@@ -76,7 +83,6 @@ test('an active session does not block a different linked worktree', () => {
   );
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentChange(repository);
     startSession(repository, 'demo-change', '1.1');
     git(repository, ['worktree', 'add', otherWorktree, 'main']);
 

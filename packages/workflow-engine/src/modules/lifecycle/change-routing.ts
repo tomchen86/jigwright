@@ -559,18 +559,21 @@ export function assertChangeRoutingAdmission(
 ): ChangeRoutingAdmission {
   const changeId = assertChangeId(requestedChangeId);
   const snapshot = readSourceSnapshot(repositoryRoot);
+  if (snapshot.source === null) {
+    const structurallyObserved = observeChanges(repositoryRoot);
+    const active = structurallyObserved.filter(
+      (change) => !change.archived && !change.completed,
+    );
+    if (active.length <= 1) {
+      return Object.freeze({
+        role: 'legacy-single' as const,
+        worksetDigest: routingWorksetDigest(null, []),
+        concurrencyEnabled: false,
+      });
+    }
+  }
   const observed = observeChanges(repositoryRoot, authorityPort);
   const source = snapshot.source ?? synthesizeSource(observed);
-  const active = observed.filter(
-    (change) => !change.archived && !change.completed,
-  );
-  if (snapshot.source === null && active.length <= 1) {
-    return Object.freeze({
-      role: 'legacy-single' as const,
-      worksetDigest: routingWorksetDigest(null, []),
-      concurrencyEnabled: false,
-    });
-  }
   const requested = observed.find((change) => change.changeId === changeId);
   const record =
     source.records.find((candidate) => candidate.changeId === changeId) ??

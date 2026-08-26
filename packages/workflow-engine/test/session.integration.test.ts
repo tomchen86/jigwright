@@ -168,38 +168,23 @@ function removeConcurrentTaskWorktree(
   fs.rmSync(fixture.parent, { recursive: true, force: true });
 }
 
-test('legacy activation tasks are retired from current lifecycle authority', () => {
-  const repository = createFixtureRepository();
-  try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-    assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
-    );
-    assert.equal(
-      fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
-      false,
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('the activation marker cannot promote a legacy change to current authority', () => {
-  const repository = createFixtureRepository();
-  try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-    activateInvestigationPlanning(repository);
-    assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
-    );
-    assert.equal(
-      fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
-      false,
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
+test('current lifecycle rejects a non-managed schema with or without an activation marker', () => {
+  for (const activated of [false, true]) {
+    const repository = createFixtureRepository();
+    try {
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      if (activated) activateInvestigationPlanning(repository);
+      assert.throws(
+        () => startSession(repository, 'demo-change', '1.1'),
+        (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
+      );
+      assert.equal(
+        fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
+        false,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
 });
 
@@ -270,7 +255,7 @@ test('CI replays v3 planning assurance from Git with the live validator', () => 
 
     // The CI loader reads only immutable Git objects, but must reach the exact
     // semantic result the live transition recorded.
-    assert.equal(validation.schemaName, 'expense-app-v2');
+    assert.equal(validation.schemaName, 'jigwright');
     assert.deepEqual(validation.planningAssurance, ready.planningAssurance);
     // An exempt plan consumes no collaboration grant, so its aggregate use set
     // is empty rather than absent.
@@ -378,6 +363,8 @@ test('completion rejects a check report with mismatched planning assurance', () 
 test('registered check execution returns pinned non-destructive evidence', () => {
   const repository = createFixtureRepository();
   try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
     const result = runRegisteredCheck(repository, 'fixture', process.env);
 
     assert.equal(result.head, git(repository, ['rev-parse', 'HEAD']).trim());
@@ -1457,6 +1444,8 @@ test('check converts spawn errors without leaking environment values', () => {
 test('change validation rejects inherited object properties as check IDs', () => {
   const repository = createFixtureRepository();
   try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
     configureChecks(
       repository,
       {
@@ -1467,7 +1456,6 @@ test('change validation rejects inherited object properties as check IDs', () =>
       },
       ['constructor'],
     );
-    git(repository, ['checkout', '-b', 'work/demo-change']);
 
     assert.throws(
       () => startSession(repository, 'demo-change', '1.1'),
@@ -1517,6 +1505,8 @@ test(
 test('change validation rejects bare executable check runners', () => {
   const repository = createFixtureRepository();
   try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
     configureChecks(
       repository,
       {
@@ -1527,7 +1517,6 @@ test('change validation rejects bare executable check runners', () => {
       },
       ['unsafe'],
     );
-    git(repository, ['checkout', '-b', 'work/demo-change']);
 
     assert.throws(
       () => startSession(repository, 'demo-change', '1.1'),

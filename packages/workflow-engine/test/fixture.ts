@@ -262,7 +262,7 @@ export function createFixtureRepository(
   addFixtureScripts(repository);
   fs.writeFileSync(
     path.join(changeDirectory, '.openspec.yaml'),
-    'schema: expense-app\ncreated: 2026-07-15\n',
+    'schema: spec-driven\ncreated: 2026-07-15\n',
   );
   fs.writeFileSync(path.join(changeDirectory, 'proposal.md'), '# Proposal\n');
   fs.writeFileSync(path.join(changeDirectory, 'design.md'), '# Design\n');
@@ -360,14 +360,22 @@ export function writeLegacyGoverningPlan(
   return { created: '2026-07-15', governingCommit, taskContent };
 }
 
-export function writeV2ChangeArtifacts(
+export function writeManagedChangeArtifacts(
   repository: string,
   changeId = 'demo-change',
 ) {
   const changeDirectory = path.join(repository, 'openspec/changes', changeId);
+  const currentSchemaName = (
+    JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/repository-consumer.json'),
+        'utf8',
+      ),
+    ) as { planning: { currentSchemaName: string } }
+  ).planning.currentSchemaName;
   fs.writeFileSync(
     path.join(changeDirectory, '.openspec.yaml'),
-    'schema: expense-app-v2\ncreated: 2026-07-15\n',
+    `schema: ${currentSchemaName}\ncreated: 2026-07-15\n`,
   );
   const investigationNode = createEvidenceNode({
     type: 'fixture-investigation',
@@ -450,6 +458,17 @@ export function writeV2ChangeArtifacts(
   return { investigation, execution, planReview };
 }
 
+export function fixtureCurrentSchemaName(repository: string): string {
+  return (
+    JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/repository-consumer.json'),
+        'utf8',
+      ),
+    ) as { planning: { currentSchemaName: string } }
+  ).planning.currentSchemaName;
+}
+
 export function writeReadyV3ExemptChange(
   repository: string,
   changeId = 'demo-change',
@@ -462,14 +481,7 @@ export function writeReadyV3ExemptChange(
   } = {},
 ) {
   const changeDirectory = path.join(repository, 'openspec/changes', changeId);
-  const currentSchemaName = (
-    JSON.parse(
-      fs.readFileSync(
-        path.join(repository, 'workflow/repository-consumer.json'),
-        'utf8',
-      ),
-    ) as { planning: { currentSchemaName: string } }
-  ).planning.currentSchemaName;
+  const currentSchemaName = fixtureCurrentSchemaName(repository);
   const baseline = {
     commitOid: git(repository, ['rev-parse', 'HEAD']).trim(),
     treeOid: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),

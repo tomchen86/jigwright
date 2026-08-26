@@ -195,8 +195,21 @@ test('CI rejects pinned dependency drift before archive replay', () => {
 test('CI rejects reviewed schema drift before archive replay', () => {
   const fixture = archivedFixture();
   try {
+    const currentSchemaName = (
+      JSON.parse(
+        fs.readFileSync(
+          path.join(fixture.repository, 'workflow/repository-consumer.json'),
+          'utf8',
+        ),
+      ) as { planning: { currentSchemaName: string } }
+    ).planning.currentSchemaName;
     fs.appendFileSync(
-      path.join(fixture.repository, 'openspec/schemas/expense-app/schema.yaml'),
+      path.join(
+        fixture.repository,
+        'openspec/schemas',
+        currentSchemaName,
+        'schema.yaml',
+      ),
       '\n# drift\n',
     );
     const head = amendArchive(fixture.repository);

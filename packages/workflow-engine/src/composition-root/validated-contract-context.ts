@@ -50,6 +50,10 @@ export const productionChangeRoutingAuthorityPort: ChangeRoutingAuthorityPort =
     },
   });
 
+export function currentRepositorySchemaName(repositoryRoot: string): string {
+  return repositoryPlanningConfiguration(repositoryRoot).currentSchemaName;
+}
+
 export function loadStableValidatedChangeContract(
   initialGit: GitState,
   changeId: string,
@@ -89,9 +93,9 @@ export function loadStableValidatedChangeContract(
       ExitCode.staleState,
     );
   }
-  const currentSchemaName = repositoryPlanningConfiguration(
+  const currentSchemaName = currentRepositorySchemaName(
     initialGit.repositoryRoot,
-  ).currentSchemaName;
+  );
   if (contract.schemaName !== currentSchemaName) {
     throw workflowError(
       'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN',

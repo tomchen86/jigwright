@@ -971,6 +971,7 @@ function enableOpeningProjection(repository: string): void {
     transition: 'completion',
   };
   fs.writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
+  writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
   git(repository, [
     'add',

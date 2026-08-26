@@ -51,7 +51,10 @@ import {
   type InvestigationManifestPublicationPhase,
 } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
 import { workflowContractArtifactPaths } from '../src/adapters/consumer/expense-app/work-registry/contract-artifacts.ts';
-import { createFixtureRepository, writeV2ChangeArtifacts } from './fixture.ts';
+import {
+  createFixtureRepository,
+  writeManagedChangeArtifacts,
+} from './fixture.ts';
 
 if (import.meta.main) await import('./contracts-legacy-family.ts');
 
@@ -150,58 +153,6 @@ test('runner security suite is portable to the package working directory', () =>
   );
 });
 
-test('workflow assurance checks out an ordinary apps/web directory without gitlink compatibility', () => {
-  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
-  const webEntries = execFileSync(
-    'git',
-    ['ls-files', '--stage', '--', 'apps/web'],
-    {
-      cwd: repositoryRoot,
-      encoding: 'utf8',
-    },
-  )
-    .trim()
-    .split('\n')
-    .filter(Boolean);
-
-  for (const entry of webEntries) {
-    assert.doesNotMatch(
-      entry,
-      /^160000\s/,
-      `apps/web must not contain a gitlink: ${entry}`,
-    );
-  }
-  assert.ok(
-    fs.existsSync(path.join(repositoryRoot, 'apps/web/README.md')),
-    'apps/web must contain its ordinary-directory placeholder',
-  );
-
-  const workflow = fs.readFileSync(
-    path.resolve(
-      import.meta.dirname,
-      '../../../.github/workflows/workflow-assurance.yml',
-    ),
-    'utf8',
-  );
-
-  assert.match(workflow, /uses: actions\/checkout@[0-9a-f]{40}/);
-  assert.match(
-    workflow,
-    /ref: \$\{\{ github\.event\.pull_request\.head\.sha \}\}/,
-  );
-  assert.match(workflow, /fetch-depth: 0/);
-  assert.match(workflow, /persist-credentials: false/);
-  assert.doesNotMatch(workflow, /retained gitlink/i);
-  assert.doesNotMatch(workflow, /transient gitlink/i);
-  assert.doesNotMatch(workflow, /\.gitmodules/);
-  assert.doesNotMatch(workflow, /clean: false/);
-
-  const checkout = workflow.indexOf('- name: Checkout exact PR head');
-  const verify = workflow.indexOf('- name: Recompute workflow assurance');
-  assert.ok(checkout >= 0);
-  assert.ok(checkout < verify);
-});
-
 test('format verification delegates to the registered canonical authority', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const manifest = JSON.parse(
@@ -238,17 +189,20 @@ test('format verification delegates to the registered canonical authority', () =
     'workflow/maintainer-policy.json',
     'workflow/path-roles.json',
     'workflow/schemas',
-    'apps/api/src/__tests__/setup/datasource.factory.ts',
-    'apps/api/src/__tests__/setup/database-target-policy.ts',
-    'apps/api/src/__tests__/isolated/database-target-policy.isolated.spec.ts',
+    'scripts/check-openspec.mjs',
+    'openspec/config.yaml',
     'package.json',
     'pnpm-workspace.yaml',
-    'docs/README.md',
-    'docs/ROADMAP.md',
-    'docs/CURRENT_AND_NEXT_STEPS.md',
-    'docs/DOCUMENT_STRUCTURE_GUIDE.md',
-    'docs/WORKFLOW.md',
     'AGENTS.md',
+    'README.md',
+    'docs/README.md',
+    'docs/WORKFLOW.md',
+    'docs/ROADMAP.md',
+    'docs/architecture/ARCHITECTURE.md',
+    '.github/CODEOWNERS',
+    '.github/workflows/format.yml',
+    '.github/workflows/workflow-assurance.yml',
+    'prettier.config.cjs',
   ];
   assert.equal(registeredFormat?.destructiveDatabase, false);
   assert.deepEqual(registeredFormat?.command, assetSeparatedFormatCommand);
@@ -368,8 +322,7 @@ test('repository exposes only reviewed planning and workflow routing skills', ()
   }
   assert.match(maintenance, /^# Repository skill mirror maintenance/m);
   assert.doesNotMatch(maintenance, /spectra update/i);
-  assert.match(roadmap, /retained root Spectra configuration historical-only/);
-  assert.doesNotMatch(roadmap, /Keep Spectra installed/);
+  assert.doesNotMatch(roadmap, /spectra/i);
 });
 
 test('agent guide documents the complete public workflow surface and source-size rule', () => {
@@ -496,7 +449,10 @@ test('public guidance exposes the investigation-first and repeated managed-task 
     workflow,
     /longer route[\s\S]{0,120}cannot bypass the full gate/i,
   );
-  assert.match(roadmap, /T2\.4[\s\S]{0,120}exact-byte[\s\S]{0,80}closure/i);
+  assert.match(
+    roadmap,
+    /current-only full gate[\s\S]{0,160}exact-tarball/i,
+  );
 });
 
 test('public guidance preserves the assurance registry and keeps exemptions distinct', () => {
@@ -769,14 +725,15 @@ test('documentation entry point is a project overview and archive policy remains
     ),
   ) as { documents: Record<string, unknown> };
 
-  assert.match(readme, /^# Expense App$/m);
-  assert.match(readme, /React Native/);
-  assert.match(readme, /NestJS/);
-  assert.match(readme, /apps\/web/);
-  assert.match(readme, /DOCUMENT_STRUCTURE_GUIDE\.md/);
+  assert.match(readme, /^# Jigwright Documentation$/m);
+  assert.match(readme, /current-v3/i);
+  assert.match(readme, /docs\/WORKFLOW\.md/);
+  assert.match(readme, /openspec\/specs/);
+  assert.doesNotMatch(readme, /expense-app/i);
+  assert.doesNotMatch(readme, /apps\/(?:api|mobile|web)/);
   assert.doesNotMatch(readme, /^# Documentation Entry Point$/m);
   assert.doesNotMatch(readme, /^## Target Structure$/m);
-  assert.match(gitignore, /^\/memo\/$/m);
+  assert.doesNotMatch(gitignore, /^\/memo\/$/m);
 
   assert.deepEqual(documentPolicy.documents['docs/archive/**'], {
     mode: 'immutable',
@@ -785,68 +742,6 @@ test('documentation entry point is a project overview and archive policy remains
   assert.ok(documentPolicy.documents['docs/ROADMAP.md']);
   assert.ok(documentPolicy.documents['openspec/specs/**']);
   assert.ok(documentPolicy.documents['openspec/changes/**']);
-});
-
-test('legacy documents exist only under the immutable archive boundary', () => {
-  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
-  const gitignore = fs.readFileSync(
-    path.join(repositoryRoot, '.gitignore'),
-    'utf8',
-  );
-  const legacyPaths = [
-    'DEVELOPER_NOTE.md',
-    'GUIDE-JAVASCRIPT_WEB_DEVELOPMENT_BASICS.md',
-    'GUIDE-LOG_TRACKING.md',
-    'PROJECT_EVALUATION_REPORT.md',
-    'REQUIREMENT_LOG.md',
-    'UPDATE_CHECKLIST.md',
-    'logs/COMMIT_LOG.md',
-    'logs/LOG-PHASE3_TESTING_REPORT.md',
-    'logs/LOG-SESSION_2025_09_19.md',
-    'logs/LOG-SESSION_2025_09_19_DOCUMENTATION_OPTIMIZATION.md',
-    'logs/LOG-SESSION_2025_09_19_TESTING.md',
-    'logs/LOG-SESSION_2025_09_19_TESTING_FIXES.md',
-    'logs/LOG-SESSION_2025_09_21.md',
-    'logs/LOG-SESSION_2025_09_23_IDENTITY_PHASE.md',
-    'logs/LOG-SESSION_2025_09_25.md',
-    'logs/LOG-SESSION_2025_09_26.md',
-    'planning/PLAN-DOCUMENTATION_STRUCTURE_V2.md',
-    'planning/PLAN-EXECUTABLE_AI_WORKFLOW_ENGINE.md',
-    'planning/PLAN-MOBILE_E2E_TEST_MIGRATION.md',
-    'planning/PLAN-PHASE_2_API_DEVELOPMENT.md',
-    'planning/PLAN-TASK_2.2_API_ENDPOINTS.md',
-    'planning/PLAN-TASK_2.2_IMPLEMENTATION.md',
-    'planning/PLAN-TASK_2.3_AUTH_INTEGRATION.md',
-    'planning/PLAN-TDD_API_IMPLEMENTATION.md',
-    'planning/PLAN-TDD_DATABASE_DESIGN.md',
-    'planning/ROADMAP.md',
-    'planning/mobile-app-analysis.md',
-    'planning/✅ NEXT_STEPS_STRATEGIC_PLAN.md',
-    'status/STATUS-CURRENT_AND_NEXT_STEPS.md',
-    'status/STATUS-E2E_IMPLEMENTATION.md',
-    'status/STATUS-RESUME_AUDIT_2026_03_03.md',
-    'template/ARCHITECTURE_DECISION_RECORDS.md',
-    'template/PERFORMANCE_METRICS.md',
-    'template/RISK_ASSESSMENT.md',
-    'template/TOOL_INTEGRATION_GUIDE.md',
-  ];
-
-  assert.match(gitignore, /^\/legacy\/$/m);
-  assert.doesNotMatch(gitignore, /^legacy\/$/m);
-  for (const legacyPath of legacyPaths) {
-    assert.equal(
-      fs.existsSync(path.join(repositoryRoot, 'docs', legacyPath)),
-      false,
-      `legacy source still exists: docs/${legacyPath}`,
-    );
-    assert.equal(
-      fs.existsSync(
-        path.join(repositoryRoot, 'docs/archive/legacy', legacyPath),
-      ),
-      true,
-      `archived copy is missing: docs/archive/legacy/${legacyPath}`,
-    );
-  }
 });
 
 test('parseTasks reads ordered checkbox tasks', () => {
@@ -863,69 +758,10 @@ test('parseTasks reads ordered checkbox tasks', () => {
   ]);
 });
 
-test('change contracts preserve unmanaged legacy loading and reject v1 investigation as current authority', () => {
-  const repository = createFixtureRepository();
-  try {
-    const legacy = loadChangeContract(repository, 'demo-change');
-    assert.equal(
-      loadChangeContract(
-        path.relative(process.cwd(), repository),
-        'demo-change',
-      ).schemaName,
-      'expense-app',
-    );
-    assert.equal(legacy.schemaName, 'expense-app');
-    assert.equal(legacy.investigation, undefined);
-    assert.equal(legacy.execution, undefined);
-    assert.equal(legacy.planReview, undefined);
-
-    const metadataPath = path.join(
-      repository,
-      'openspec/changes/demo-change/.openspec.yaml',
-    );
-    fs.writeFileSync(metadataPath, 'schema: spec-driven\n');
-    assert.equal(
-      loadChangeContract(repository, 'demo-change').schemaName,
-      'spec-driven',
-    );
-    fs.writeFileSync(
-      metadataPath,
-      'schema: spec-driven\ncreated: 2026-07-15\n',
-    );
-    assert.equal(
-      loadChangeContract(repository, 'demo-change').schemaName,
-      'spec-driven',
-    );
-    fs.writeFileSync(
-      metadataPath,
-      'schema: expense-app\ncreated: 2026-07-15\n',
-    );
-
-    writeV2ChangeArtifacts(repository);
-    assert.throws(
-      () => loadChangeContract(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'SCHEMA_V1_FORBIDDEN'),
-    );
-    fs.writeFileSync(
-      path.join(repository, 'openspec/changes/demo-change/investigation.json'),
-      `${canonicalJson({
-        schemaVersion: 2,
-        kind: 'investigation-artifact-projection',
-      })}\n`,
-    );
-    assert.throws(
-      () => loadChangeContract(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'PROJECTION_PIPELINE_FORBIDDEN'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
 test('change contracts admit a strict v3 Manifest from the observed current tree', () => {
   const repository = createFixtureRepository();
   try {
-    const artifacts = writeV2ChangeArtifacts(repository);
+    const artifacts = writeManagedChangeArtifacts(repository);
     const manifest = buildCurrentV3Investigation(repository);
     assert.equal(
       publishCurrentV3Investigation(repository, manifest).outcome,
@@ -933,7 +769,7 @@ test('change contracts admit a strict v3 Manifest from the observed current tree
     );
     const contract = loadChangeContract(repository, 'demo-change');
 
-    assert.equal(contract.schemaName, 'expense-app-v2');
+    assert.equal(contract.schemaName, 'jigwright');
     assert.deepEqual(contract.investigation?.manifest, manifest);
     assert.deepEqual(contract.investigation?.validation, {
       kind: 'manifest-authority-admissible',
@@ -970,7 +806,7 @@ test('change contracts admit a strict v3 Manifest from the observed current tree
 test('the configured current schema owns investigation-first contract semantics', () => {
   const repository = createFixtureRepository();
   try {
-    const artifacts = writeV2ChangeArtifacts(repository);
+    const artifacts = writeManagedChangeArtifacts(repository);
     const manifest = buildCurrentV3Investigation(repository);
     assert.equal(
       publishCurrentV3Investigation(repository, manifest).outcome,
@@ -1047,7 +883,7 @@ test('the configured current schema owns investigation-first contract semantics'
 test('current change loading rejects a v3 Manifest whose digest no longer replays', () => {
   const repository = createFixtureRepository();
   try {
-    writeV2ChangeArtifacts(repository);
+    writeManagedChangeArtifacts(repository);
     const published = buildCurrentV3Investigation(repository);
     assert.equal(
       publishCurrentV3Investigation(repository, published).outcome,
@@ -1072,7 +908,7 @@ test('current change loading rejects a v3 Manifest whose digest no longer replay
 test('current change loading rejects tracked revision bytes until private current-ref recovery completes', () => {
   const repository = createFixtureRepository();
   try {
-    writeV2ChangeArtifacts(repository);
+    writeManagedChangeArtifacts(repository);
     const first = buildCurrentV3Investigation(repository, 'demo-change', 3);
     assert.equal(
       publishCurrentV3Investigation(repository, first).outcome,
@@ -1131,7 +967,7 @@ test('current change loading resolves its private ref from a linked-worktree git
     path.join(os.tmpdir(), 'contracts-current-v3-private-'),
   );
   try {
-    writeV2ChangeArtifacts(repository);
+    writeManagedChangeArtifacts(repository);
     const privateRoot = path.join(privateStorage, 'git-common');
     fs.renameSync(path.join(repository, '.git'), privateRoot);
     fs.writeFileSync(path.join(repository, '.git'), `gitdir: ${privateRoot}\n`);
@@ -1204,7 +1040,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
   const repository = createFixtureRepository();
   try {
     const { investigation, execution, planReview } =
-      writeV2ChangeArtifacts(repository);
+      writeManagedChangeArtifacts(repository);
     assert.deepEqual(
       parseHistoricalInvestigationArtifact(investigation, 'demo-change'),
       investigation,
@@ -1476,7 +1312,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
 test('execution artifacts use one exact strategy variant per task without claiming execution', () => {
   const repository = createFixtureRepository();
   try {
-    writeV2ChangeArtifacts(repository);
+    writeManagedChangeArtifacts(repository);
     const currentInvestigation = buildCurrentV3Investigation(repository);
     assert.equal(
       publishCurrentV3Investigation(repository, currentInvestigation).outcome,

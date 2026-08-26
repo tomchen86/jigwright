@@ -2438,6 +2438,7 @@ function createReviewFixture(
 } {
   const repository = createFixtureRepository();
   const counterPath = path.join(repository, '.git', 'review-diff-count');
+  writeReadyV3ExemptChange(repository);
   const documentPolicyPath = path.join(
     repository,
     'workflow/document-policy.json',

@@ -40,7 +40,12 @@ import {
   startSession,
 } from '../src/application/execute-task/session.ts';
 import {
+  applyChangeRoutingReview,
+  prepareChangeRoutingReview,
+} from '../src/composition-root/change-routing-production.ts';
+import {
   builtInProviderDefinitionSnapshotForTest,
+  git,
   isWorkflowError,
 } from './fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
@@ -300,6 +305,21 @@ function createReconciliationFixture(): string {
     'implementation-reconciliation-requirement',
   );
   assert.equal(requirement[0]!.reconciliation?.changeId, CHANGE_ID);
+  const routingReview = prepareChangeRoutingReview(fixture.repository, {
+    schemaVersion: 1,
+    action: { kind: 'focus', changeId: CHANGE_ID },
+  });
+  applyChangeRoutingReview(fixture.repository, routingReview);
+  git(fixture.repository, [
+    'add',
+    '--',
+    'openspec/change-lifecycle.json',
+  ]);
+  git(fixture.repository, [
+    'commit',
+    '-m',
+    'Focus reconciliation fixture',
+  ]);
   return fixture.repository;
 }
 

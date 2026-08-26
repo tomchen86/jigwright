@@ -18,7 +18,11 @@ import {
   inspectActiveTaskMandateBinding,
   type TaskMandateBinding,
 } from '../src/modules/authority/task-mandate.ts';
-import { createFixtureRepository, git } from './fixture.ts';
+import {
+  createFixtureRepository,
+  git,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
 
 export const EFFECT_ISSUED_AT = new Date('2026-08-04T01:00:00.000Z');
 export const EFFECT_GRANT_ID = '55555555-5555-4555-8555-555555555555';
@@ -28,6 +32,7 @@ export const EFFECT_REMOTE_URL = 'https://github.com/example/fixture.git';
 
 export function prepareExternalEffectFixture() {
   const repository = createFixtureRepository();
+  writeReadyV3ExemptChange(repository);
   const externalAuditRoot = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'external-effect-authority-audit-')),
   );

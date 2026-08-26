@@ -134,6 +134,7 @@ import {
 } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository,
+  fixtureCurrentSchemaName,
   git,
   isWorkflowError,
   runtimeRoot,
@@ -1236,7 +1237,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     const changeDirectory = path.join(repository, 'openspec/changes', changeId);
     assert.equal(
       fs.readFileSync(path.join(changeDirectory, '.openspec.yaml'), 'utf8'),
-      `schema: expense-app-v2\ncreated: ${sealed.createdDate}\n`,
+      `schema: ${fixtureCurrentSchemaName(repository)}\ncreated: ${sealed.createdDate}\n`,
     );
     const trackedInvestigation = JSON.parse(
       fs.readFileSync(path.join(changeDirectory, 'investigation.json'), 'utf8'),

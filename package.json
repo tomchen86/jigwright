@@ -8,6 +8,7 @@
   },
   "scripts": {
     "build": "pnpm typecheck",
+    "format:check": "pnpm workflow run-check workflow-format --json",
     "typecheck": "pnpm --recursive --if-present typecheck",
     "openspec:check": "node scripts/check-openspec.mjs",
     "test:packages": "pnpm --filter @jigwright/core --filter @jigwright/agent-runtime --filter @jigwright/fixture-adapter --filter @jigwright/github-adapter --filter @jigwright/grants --filter @jigwright/openspec-adapter test",

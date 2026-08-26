@@ -63,6 +63,7 @@
         "prettier",
         "prettier",
         "--check",
+        "--ignore-unknown",
         "packages/workflow-engine",
         "workflow/ai-adapter-policy.json",
         "workflow/checks.json",
@@ -76,9 +77,15 @@
         "openspec/config.yaml",
         "package.json",
         "pnpm-workspace.yaml",
+        "AGENTS.md",
         "README.md",
+        "docs/README.md",
+        "docs/WORKFLOW.md",
         "docs/ROADMAP.md",
         "docs/architecture/ARCHITECTURE.md",
+        ".github/CODEOWNERS",
+        ".github/workflows/format.yml",
+        ".github/workflows/workflow-assurance.yml",
         "prettier.config.cjs"
       ],
       "destructiveDatabase": false

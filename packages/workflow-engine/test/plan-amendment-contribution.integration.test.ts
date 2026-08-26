@@ -37,6 +37,7 @@ import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts'
 import {
   builtInProviderDefinitionSnapshotForTest,
   createFixtureRepository,
+  fixtureCurrentSchemaName,
   git,
   isWorkflowError,
 } from './fixture.ts';
@@ -47,7 +48,6 @@ const CHANGE_ID = 'amended-executed-change';
 // The prior generation, exactly as an executed change carries it: every task
 // completed, a committed review of the plan being replaced, and engine-owned
 // artifacts whose bytes the amendment's new generation cannot reproduce.
-const PRIOR_METADATA = 'schema: expense-app-v2\ncreated: 2026-07-01\n';
 const PRIOR_INVESTIGATION =
   '{"kind":"investigation-artifact","note":"prior generation"}\n';
 const PRIOR_PLAN_REVIEW =
@@ -160,7 +160,7 @@ test('an amendment contribution replaces the executed prior generation without r
     });
     fs.writeFileSync(
       path.join(changeDirectory, '.openspec.yaml'),
-      PRIOR_METADATA,
+      priorMetadata(repository),
     );
     fs.writeFileSync(
       path.join(changeDirectory, 'investigation.json'),
@@ -297,7 +297,7 @@ test('an amendment contribution replaces the executed prior generation without r
     assert.equal(sealedInvestigation.changeId, CHANGE_ID);
     assert.equal(
       fs.readFileSync(path.join(changeDirectory, '.openspec.yaml'), 'utf8'),
-      PRIOR_METADATA,
+      priorMetadata(repository),
     );
 
     const amendedPayload = {
@@ -404,7 +404,7 @@ test('an amendment contribution replaces the executed prior generation without r
     );
     assert.equal(
       fs.readFileSync(path.join(changeDirectory, '.openspec.yaml'), 'utf8'),
-      PRIOR_METADATA,
+      priorMetadata(repository),
     );
     const replacedInvestigation = JSON.parse(
       fs.readFileSync(path.join(changeDirectory, 'investigation.json'), 'utf8'),
@@ -594,7 +594,7 @@ test('novel reviewer terms reopen an amendment whose prior review is committed b
     });
     fs.writeFileSync(
       path.join(changeDirectory, '.openspec.yaml'),
-      PRIOR_METADATA,
+      priorMetadata(repository),
     );
     fs.writeFileSync(
       path.join(changeDirectory, 'investigation.json'),
@@ -828,6 +828,10 @@ function fakeRunnerReport(
       request.providerId,
     ),
   };
+}
+
+function priorMetadata(repository: string): string {
+  return `schema: ${fixtureCurrentSchemaName(repository)}\ncreated: 2026-07-01\n`;
 }
 
 function writePlanningProviderBinding(repository: string): void {

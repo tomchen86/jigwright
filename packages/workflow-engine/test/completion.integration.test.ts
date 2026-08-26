@@ -780,6 +780,7 @@ test('completion rollback restores controlled projections and permits fresh evid
       `${JSON.stringify(documentPolicy, null, 2)}\n`,
     );
     fs.mkdirSync(path.join(repository, 'docs'));
+    writeReadyV3ExemptChange(repository);
     renderHandoff(repository);
     git(repository, ['add', 'workflow/document-policy.json', 'docs']);
     git(repository, ['commit', '-m', 'Enable completion handoff']);
@@ -1151,6 +1152,7 @@ function enableCompletionHandoff(repository: string): void {
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
   );
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
+  writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
 }
 

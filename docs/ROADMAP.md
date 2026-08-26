@@ -16,3 +16,11 @@
 
 The first package release requires targeted-green production paths, one
 current-only full gate, and a real non-database consumer pilot.
+
+The release sequence records one current-only full gate before accepting the
+exact-tarball consumer candidate.
+
+## Authority sealing
+
+Maintainer authority remains bootstrap-only until `workflow-grant/**` and
+`workflow-attestation/**` refs, the migration gate, and the protected environment are independently configured and verified.

@@ -440,9 +440,12 @@ export function inspectOpenSpecSchemaContract(
     CURRENT_SCHEMA_FILES,
   );
   for (const filePath of CURRENT_SCHEMA_FILES) {
-    if (
-      currentFiles[filePath]?.digest !== CURRENT_SCHEMA_FILE_DIGESTS[filePath]
-    ) {
+    const observed = currentFiles[filePath];
+    const digest =
+      filePath === 'schema.yaml' && observed !== undefined
+        ? normalizedCurrentSchemaDigest(observed.path, currentSchemaName)
+        : observed?.digest;
+    if (digest !== CURRENT_SCHEMA_FILE_DIGESTS[filePath]) {
       throw invalidSchemaContract(
         'The current OpenSpec schema content differs from the reviewed contract.',
       );
@@ -511,6 +514,21 @@ export function inspectOpenSpecSchemaContract(
       ),
     ].sort(),
   };
+}
+
+function normalizedCurrentSchemaDigest(
+  schemaPath: string,
+  currentSchemaName: string,
+): string {
+  const content = fs.readFileSync(schemaPath, 'utf8');
+  const actualNameLine = `name: ${currentSchemaName}\n`;
+  if (!content.startsWith(actualNameLine)) {
+    throw invalidSchemaContract(
+      'The current OpenSpec schema name does not match repository configuration.',
+    );
+  }
+  const normalized = `name: jigwright\n${content.slice(actualNameLine.length)}`;
+  return crypto.createHash('sha256').update(normalized).digest('hex');
 }
 
 function inspectExactFiles(

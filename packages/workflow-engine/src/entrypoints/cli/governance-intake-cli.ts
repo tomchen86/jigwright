@@ -79,7 +79,9 @@ export function dispatchGovernanceIntakeCommand(
         action: 'link-change',
         sourceId: args[1],
         changeId: args[3],
-        path: path.relative(cwd, linked.originPath).replaceAll(path.sep, '/'),
+        path: path
+          .relative(fs.realpathSync(cwd), linked.originPath)
+          .replaceAll(path.sep, '/'),
         created: linked.created,
       };
     }

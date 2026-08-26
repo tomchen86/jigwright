@@ -17,6 +17,10 @@ import {
   startSession,
 } from '../src/application/execute-task/session.ts';
 import {
+  applyManagedChangeRoutingReview,
+  prepareChangeRoutingReview,
+} from '../src/composition-root/change-routing-production.ts';
+import {
   createFixtureRepository,
   git,
   runtimeRoot,
@@ -46,6 +50,13 @@ test('disposable repository rehearses plan, task, archive, idempotency, and cros
     assert.equal(
       git(repository, ['show', '-s', '--format=%B', planned.commitHash]).trim(),
       `Plan ${changeId}\n\nChange: ${changeId}\nTransition: plan`,
+    );
+    const routed = applyManagedChangeRoutingReview(
+      repository,
+      prepareChangeRoutingReview(repository, {
+        schemaVersion: 1,
+        action: { kind: 'focus', changeId },
+      }),
     );
 
     const session = startSession(repository, changeId, '1.1');
@@ -102,6 +113,7 @@ test('disposable repository rehearses plan, task, archive, idempotency, and cros
     const result = verifyPullRequest(repository, base, head);
     assert.deepEqual(result.commits, [
       planned.commitHash,
+      routed.commitHash,
       completed.commitHash,
       head,
     ]);

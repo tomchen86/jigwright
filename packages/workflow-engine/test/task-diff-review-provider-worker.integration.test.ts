@@ -551,6 +551,7 @@ function createTaskDiffWorkerFixture(
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
   );
   fs.mkdirSync(`${repository}/docs`, { recursive: true });
+  writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
   fs.copyFileSync(
     `${sourceRepositoryRoot}/workflow/path-roles.json`,

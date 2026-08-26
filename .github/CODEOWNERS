@@ -1,0 +1,15 @@
+# Default reviewer
+* @tomchen86
+
+# Workflow authority and policy boundaries
+/AGENTS.md @tomchen86
+/.husky/ @tomchen86
+/.github/workflows/ @tomchen86
+/.github/CODEOWNERS @tomchen86
+/docs/ @tomchen86
+/openspec/ @tomchen86
+/workflow/ @tomchen86
+/packages/workflow-engine/ @tomchen86
+/package.json @tomchen86
+/pnpm-lock.yaml @tomchen86
+/pnpm-workspace.yaml @tomchen86

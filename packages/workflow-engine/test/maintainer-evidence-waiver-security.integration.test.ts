@@ -493,6 +493,7 @@ function replaceReceipt(
 ): void {
   const envelope: AuthorityApplicationReceiptEnvelope = {
     payload,
+    signatureNamespace: AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
     signature: signer.sign(
       canonicalAuthorityApplicationReceiptPayload(payload),
       AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,

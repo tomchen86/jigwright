@@ -17,7 +17,7 @@ import {
   sourceRepositoryRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
-  writeV2ChangeArtifacts,
+  writeManagedChangeArtifacts,
 } from './fixture.ts';
 
 test('archive eligibility binds completed task evidence to the configured base', () => {
@@ -38,7 +38,7 @@ test('archive eligibility binds completed task evidence to the configured base',
     assert.equal(result.taskCommits.length, 1);
     assert.equal(result.changeRoot, 'openspec/changes');
     assert.equal(result.activeRoot, 'openspec/changes/demo-change');
-    assert.equal(result.schemaName, 'expense-app-v2');
+    assert.equal(result.schemaName, 'jigwright');
     assert.deepEqual(result.activeArtifactPaths, [
       'openspec/changes/demo-change/.openspec.yaml',
       'openspec/changes/demo-change/design.md',
@@ -63,12 +63,12 @@ test('archive eligibility binds completed task evidence to the configured base',
   }
 });
 
-test('archive eligibility rejects a live legacy expense-app change', () => {
+test('archive eligibility rejects a non-managed schema', () => {
   const repository = legacyCompletedFixture();
   try {
     assert.throws(
       () => withArchiveEligibility(repository, 'demo-change', () => undefined),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -100,7 +100,7 @@ test('archive eligibility requires documentation closure after activation', () =
 test('archive eligibility rejects a historical v1 investigation on the current v2 tree', () => {
   const repository = createFixtureRepository();
   try {
-    writeV2ChangeArtifacts(repository);
+    writeManagedChangeArtifacts(repository);
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Record v2 archive fixture']);
     git(repository, ['checkout', '-b', 'work/archive-demo']);
@@ -397,7 +397,7 @@ test('archive eligibility fails closed when an activated repository drops the ma
         'demo-change',
         (eligibility) => eligibility.schemaName,
       ),
-      'expense-app-v2',
+      'jigwright',
     );
 
     git(repository, [

@@ -335,6 +335,7 @@ function createReviewFixture(): string {
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
   );
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
+  writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
   fs.copyFileSync(
     path.join(sourceRepositoryRoot, 'workflow/path-roles.json'),

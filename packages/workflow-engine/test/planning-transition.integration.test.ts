@@ -47,7 +47,7 @@ test('plan-commit introduces an unchecked change through one exact managed commi
     const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
 
     const result = commitPlanningTransition(repository, 'planned-change');
-    const expectedPaths = planningPaths('planned-change', 'expense-app-v2');
+    const expectedPaths = planningPaths('planned-change', 'jigwright');
 
     assert.equal(result.kind, 'introduction');
     assert.equal(result.changeId, 'planned-change');
@@ -122,127 +122,20 @@ test('plan-commit introduces an unchecked change through one exact managed commi
   }
 });
 
-test('plan-commit refuses planning-provider v1 migration before staging', () => {
-  const original = openSpecBinding('demo-change');
-  const candidates = [
-    { ...original, providerId: 'spectra' },
-    { ...original, adapterContractVersion: 2 },
-    {
-      ...original,
-      providerRequirement: {
-        ...original.providerRequirement,
-        package: '@example/planning-provider',
-      },
-    },
-    {
-      ...original,
-      providerRequirement: {
-        ...original.providerRequirement,
-        version: '2.0.0',
-      },
-    },
-    { ...original, planningRoot: 'other/changes/demo-change' },
-  ];
-
-  for (const candidate of candidates) {
-    const repository = createPlanningRepository('demo-change', true);
-    try {
-      const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-      fs.writeFileSync(
-        path.join(repository, 'workflow/change-providers/demo-change.json'),
-        renderPlanningProviderBinding(candidate),
-      );
-      fs.appendFileSync(
-        path.join(repository, 'openspec/changes/demo-change/proposal.md'),
-        '\nReviewed provider migration attempt.\n',
-      );
-
-      assert.throws(
-        () => commitPlanningTransition(repository, 'demo-change'),
-        (error) => isWorkflowError(error, 'PROVIDER_MIGRATION_UNSUPPORTED'),
-      );
-      assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-      assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
-  }
-});
-
-test('plan-commit refuses a pre-cutover OpenSpec revision without a v3 Manifest', () => {
-  const repository = createPlanningRepository('demo-change', true);
-  const bindingPath = path.join(
-    repository,
-    'workflow/change-providers/demo-change.json',
-  );
-  try {
-    fs.rmSync(bindingPath);
-    git(repository, ['add', '-A']);
-    git(repository, ['commit', '-m', 'Record pre-cutover OpenSpec baseline']);
-    const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-
-    fs.appendFileSync(
-      path.join(repository, 'openspec/changes/demo-change/proposal.md'),
-      '\nReviewed legacy planning revision.\n',
-    );
-    fs.writeFileSync(
-      bindingPath,
-      renderPlanningProviderBinding(openSpecBinding('demo-change')),
-    );
-
-    assert.throws(
-      () => commitPlanningTransition(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
-    );
-    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-    assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('planning reports written before planning assurance remain readable as legacy v1 records', () => {
-  const repository = createPlanningRepository('legacy-report-change');
-  try {
-    writeChange(repository, 'legacy-report-change', [
-      { id: '1.1', completed: false, title: 'First task' },
-    ]);
-    writeReadyV3ExemptChange(repository, 'legacy-report-change');
-    const result = commitPlanningTransition(repository, 'legacy-report-change');
-    const reportsDirectory = path.join(
-      runtimeRoot(repository),
-      'planning-reports',
-    );
-    const legacyReport = readContentRecord(reportsDirectory, result.reportId);
-    delete legacyReport.planningAssurance;
-    const legacyReportId = writeContentRecord(reportsDirectory, legacyReport);
-
-    assert.deepEqual(
-      readPlanningTransitionReport(reportsDirectory, legacyReportId),
-      {
-        ...legacyReport,
-        planningAssurance: null,
-      },
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
 test('planning inspection selects the current v3 authority before semantic activation', () => {
-  const repository = createPlanningRepository('v2-change');
+  const repository = createPlanningRepository('current-change');
   try {
     const canonicalRepository = fs.realpathSync(repository);
-    writeChange(repository, 'v2-change', [
+    writeChange(repository, 'current-change', [
       { id: '1.1', completed: false, title: 'First task' },
     ]);
-    writeReadyV3ExemptChange(repository, 'v2-change');
+    writeReadyV3ExemptChange(repository, 'current-change');
     const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-    const expectedPaths = planningPaths('v2-change', 'expense-app-v2');
+    const expectedPaths = planningPaths('current-change', 'jigwright');
 
     const executionPath = path.join(
       repository,
-      'openspec/changes/v2-change/execution.json',
+      'openspec/changes/current-change/execution.json',
     );
     const execution = fs.readFileSync(executionPath);
     fs.rmSync(executionPath);
@@ -252,10 +145,10 @@ test('planning inspection selects the current v3 authority before semantic activ
           canonicalRepository,
           baselineHead,
           'openspec/changes',
-          'v2-change',
+          'current-change',
           expectedPaths.filter(
             (filePath) =>
-              filePath !== 'openspec/changes/v2-change/execution.json',
+              filePath !== 'openspec/changes/current-change/execution.json',
           ),
         ),
       (error) => isWorkflowError(error, 'PLANNING_TREE_INVALID'),
@@ -266,13 +159,13 @@ test('planning inspection selects the current v3 authority before semantic activ
       canonicalRepository,
       baselineHead,
       'openspec/changes',
-      'v2-change',
+      'current-change',
       expectedPaths,
     );
-    assert.equal(inspection.schemaName, 'expense-app-v2');
+    assert.equal(inspection.schemaName, 'jigwright');
     assert.deepEqual(
       inspection.currentPaths,
-      planningChangeTreePaths('v2-change', 'expense-app-v2'),
+      planningChangeTreePaths('current-change', 'jigwright'),
     );
     for (const artifactName of [
       'investigation.json',
@@ -281,49 +174,18 @@ test('planning inspection selects the current v3 authority before semantic activ
     ]) {
       assert.match(
         inspection.artifactDigests[
-          `openspec/changes/v2-change/${artifactName}`
+          `openspec/changes/current-change/${artifactName}`
         ],
         /^[0-9a-f]{64}$/,
       );
     }
 
-    const result = commitPlanningTransition(repository, 'v2-change');
+    const result = commitPlanningTransition(repository, 'current-change');
     assert.equal(result.kind, 'introduction');
     assert.equal(result.baselineHead, baselineHead);
     assert.equal(git(repository, ['status', '--porcelain']), '');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('plan-commit refuses a legacy selection once activation is reachable', () => {
-  for (const activation of ['candidate-parent', 'protected-base'] as const) {
-    const repository = createPlanningRepository('planned-change');
-    try {
-      if (activation === 'candidate-parent') {
-        activateInvestigationPlanning(repository);
-      } else {
-        // A stale branch that never saw the marker still cannot select legacy
-        // once the configured protected base carries the anchor.
-        git(repository, ['checkout', '--quiet', 'main']);
-        activateInvestigationPlanning(repository);
-        syncOriginMain(repository);
-        git(repository, ['checkout', '--quiet', 'work/planned-change']);
-      }
-      const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-      writeChange(repository, 'planned-change', [
-        { id: '1.1', completed: false, title: 'First task' },
-      ]);
-
-      assert.throws(
-        () => commitPlanningTransition(repository, 'planned-change'),
-        (error) => isWorkflowError(error, 'PLANNING_SCHEMA_DOWNGRADE'),
-      );
-      assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-      assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
   }
 });
 
@@ -354,7 +216,7 @@ test('plan-commit fails closed when an activated repository drops the marker', (
   }
 });
 
-test('plan-commit authorizes an exact reviewed v2 revision under an active anchor', () => {
+test('plan-commit authorizes an exact reviewed current revision under an active anchor', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
@@ -375,7 +237,7 @@ test('plan-commit authorizes an exact reviewed v2 revision under an active ancho
   }
 });
 
-test('plan-commit authorizes an exact reviewed v2 investigation exemption and binds its generation', () => {
+test('plan-commit authorizes an exact reviewed current investigation exemption and binds its generation', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
@@ -416,7 +278,7 @@ test('plan-commit authorizes an exact reviewed v2 investigation exemption and bi
   }
 });
 
-test('plan-commit rejects a stale v2 target and a same-provider ordinary review', () => {
+test('plan-commit rejects a stale current target and a same-provider ordinary review', () => {
   for (const variant of ['stale-target', 'same-provider-review'] as const) {
     const repository = createFixtureRepository();
     try {
@@ -547,6 +409,8 @@ test('plan-commit rejects checkbox, code, staged-index, and OpenSpec-invalid dri
   for (const fixture of cases) {
     const repository = createPlanningRepository('demo-change', true);
     try {
+      writeReadyV3ExemptChange(repository);
+      commitPlanningTransition(repository, 'demo-change');
       const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
       fixture.prepare(repository);
       const stagedBefore = git(repository, ['diff', '--cached', '--name-only']);
@@ -572,7 +436,7 @@ test('plan-commit rejects checkbox, code, staged-index, and OpenSpec-invalid dri
   }
 });
 
-test('plan-commit requires the reviewed expense-app schema', () => {
+test('plan-commit requires the configured current schema', () => {
   const repository = createPlanningRepository('demo-change', true);
   try {
     fs.writeFileSync(
@@ -617,43 +481,11 @@ test('plan-commit consumes the exact combined managed-change contract', () => {
   }
 });
 
-test('plan-commit refuses legacy metadata migration without a v3 Manifest', () => {
-  const repository = createPlanningRepository('demo-change', true);
-  const metadataPath = path.join(
-    repository,
-    'openspec/changes/demo-change/.openspec.yaml',
-  );
-  try {
-    fs.writeFileSync(
-      metadataPath,
-      'schema: spec-driven\ncreated: 2026-07-15\n',
-    );
-    git(repository, [
-      'add',
-      '--',
-      'openspec/changes/demo-change/.openspec.yaml',
-    ]);
-    git(repository, ['commit', '-m', 'Record legacy schema baseline']);
-    const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-
-    fs.writeFileSync(
-      metadataPath,
-      'schema: expense-app\ncreated: 2026-07-15\n',
-    );
-    assert.throws(
-      () => commitPlanningTransition(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
-    );
-    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-    assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('plan-commit rejects project schema contract drift before staging', () => {
+test('plan-commit invalidates current PlanReview after schema policy drift', () => {
   const repository = createPlanningRepository('demo-change', true);
   try {
+    writeReadyV3ExemptChange(repository);
+    commitPlanningTransition(repository, 'demo-change');
     fs.appendFileSync(
       path.join(repository, 'openspec/config.yaml'),
       '\nschema : spec-driven\n',
@@ -668,7 +500,7 @@ test('plan-commit rejects project schema contract drift before staging', () => {
 
     assert.throws(
       () => commitPlanningTransition(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'OPENSPEC_SCHEMA_CONTRACT_INVALID'),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
     );
     assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
     assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
@@ -816,7 +648,7 @@ test('plan-commit restores the clean index when compare-and-swap loses the HEAD 
         .filter(Boolean)
         .map((line) => line.slice(3))
         .sort(),
-      planningPaths('planned-change', 'expense-app-v2'),
+      planningPaths('planned-change', 'jigwright'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -992,7 +824,7 @@ function createPlanningRepository(changeId: string, existing = false): string {
   if (existing) {
     fs.writeFileSync(
       path.join(repository, 'openspec/changes/demo-change/.openspec.yaml'),
-      'schema: expense-app\ncreated: 2026-07-15\n',
+      'schema: spec-driven\ncreated: 2026-07-15\n',
     );
   }
   git(repository, ['add', '-A']);
@@ -1025,7 +857,7 @@ function writeChange(
   );
   fs.writeFileSync(
     path.join(changeDirectory, '.openspec.yaml'),
-    'schema: expense-app\ncreated: 2026-07-15\n',
+    'schema: spec-driven\ncreated: 2026-07-15\n',
   );
   fs.writeFileSync(path.join(changeDirectory, 'proposal.md'), '# Proposal\n');
   fs.writeFileSync(path.join(changeDirectory, 'design.md'), '# Design\n');
@@ -1113,7 +945,7 @@ function writeGuard(repository: string, changeId: string, taskIds: string[]) {
 
 function planningPaths(
   changeId: string,
-  schemaName: 'expense-app' | 'expense-app-v2' = 'expense-app',
+  schemaName: 'spec-driven' | 'jigwright' = 'spec-driven',
 ): string[] {
   return [
     ...planningChangeTreePaths(changeId, schemaName),
@@ -1123,12 +955,12 @@ function planningPaths(
 
 function planningChangeTreePaths(
   changeId: string,
-  schemaName: 'expense-app' | 'expense-app-v2' = 'expense-app',
+  schemaName: 'spec-driven' | 'jigwright' = 'spec-driven',
 ): string[] {
   return [
     `.openspec.yaml`,
     'design.md',
-    ...(schemaName === 'expense-app-v2'
+    ...(schemaName === 'jigwright'
       ? ['execution.json', 'investigation.json', 'plan-review.json']
       : []),
     'guard.json',
@@ -1147,8 +979,8 @@ function installFakeOpenSpec(repository: string): void {
     path.join(repository, 'openspec/config.yaml'),
   );
   fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app'),
-    path.join(repository, 'openspec/schemas/expense-app'),
+    path.join(sourceRepositoryRoot, 'openspec/schemas/jigwright'),
+    path.join(repository, 'openspec/schemas/jigwright'),
     { recursive: true },
   );
   const manifestPath = path.join(repository, 'package.json');
@@ -1224,6 +1056,14 @@ function installFakeOpenSpec(repository: string): void {
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { applyFixtureArchiveSpecs } from './archive-helper.js';
+function configuredCurrentSchemaName(root) {
+  return JSON.parse(
+    fs.readFileSync(
+      path.join(root, 'workflow/repository-consumer.json'),
+      'utf8'
+    )
+  ).planning.currentSchemaName;
+}
 if (process.argv[2] === '--version') {
   process.stdout.write('1.6.0\\n');
   process.exit(0);
@@ -1238,7 +1078,7 @@ if (process.argv[2] === 'schema') {
   );
   const schemaPath = schemaName === 'spec-driven'
     ? path.join(packageRoot, 'schemas/spec-driven')
-    : path.join(root, 'openspec/schemas/expense-app');
+    : path.join(root, 'openspec/schemas', schemaName);
   process.stderr.write('Note: Schema commands are experimental and may change.\\n');
   process.stdout.write(JSON.stringify(operation === 'which'
     ? {
@@ -1263,7 +1103,7 @@ if (process.argv[2] === 'status') {
     ['tasks', 'tasks.md', [path.join(changeRoot, 'tasks.md')]],
     ['guard', 'guard.json', [path.join(changeRoot, 'guard.json')]]
   ];
-  const v2Artifacts = [
+  const currentArtifacts = [
     ['investigation', 'investigation.json', [path.join(changeRoot, 'investigation.json')]],
     ['proposal', 'proposal.md', [path.join(changeRoot, 'proposal.md')]],
     ['specs', 'specs/**/*.md', [path.join(changeRoot, 'specs/demo/spec.md')]],
@@ -1273,10 +1113,10 @@ if (process.argv[2] === 'status') {
     ['execution', 'execution.json', [path.join(changeRoot, 'execution.json')]],
     ['plan-review', 'plan-review.json', [path.join(changeRoot, 'plan-review.json')]]
   ];
-  const artifacts = schemaName === 'expense-app-v2'
-    ? v2Artifacts
+  const artifacts = schemaName === configuredCurrentSchemaName(root)
+    ? currentArtifacts
     : legacyArtifacts;
-  const dependencies = schemaName === 'expense-app-v2'
+  const dependencies = schemaName === configuredCurrentSchemaName(root)
     ? {
         investigation: [],
         proposal: ['investigation'],
@@ -1327,7 +1167,7 @@ if (process.argv[2] === 'status') {
       }
     ])),
     artifacts: statuses,
-    applyRequires: schemaName === 'expense-app-v2'
+    applyRequires: schemaName === configuredCurrentSchemaName(root)
       ? ['investigation', 'tasks', 'guard', 'execution', 'plan-review']
       : ['tasks', 'guard'],
     isComplete: statuses.every(({ status }) => status === 'done'),

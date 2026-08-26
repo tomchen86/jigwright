@@ -13,6 +13,7 @@ import {
   createFixtureRepository,
   isWorkflowError,
   sourceRepositoryRoot,
+  writeReadyV3ExemptChange,
 } from './fixture.ts';
 
 type MutableTaskPolicy = {
@@ -289,6 +290,7 @@ function assertContractFailure(
 function withFixture(run: (repository: string) => void): void {
   const repository = createFixtureRepository();
   try {
+    writeReadyV3ExemptChange(repository);
     run(repository);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

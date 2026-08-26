@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
+import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import { INVESTIGATION_PLANNING_ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
   activateInvestigationPlanning,
@@ -59,7 +60,7 @@ test('CI replays an active v3 head after its private runtime is removed', () => 
   }
 });
 
-test('CI rejects a live legacy expense-app change at the active head', () => {
+test('CI rejects a non-managed schema at the active head', () => {
   const repository = createLegacyFixtureRepository();
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
@@ -68,7 +69,7 @@ test('CI rejects a live legacy expense-app change at the active head', () => {
 
     assert.throws(
       () => verifyPullRequest(repository, base, head),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -116,15 +117,8 @@ test('CI accepts an ordinary planning introduction as a distinct transition', ()
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/planned-change']);
-    writePlanningChange(repository, 'planned-change');
-    git(repository, ['add', '.']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Plan planned-change',
-      '-m',
-      'Change: planned-change\nTransition: plan',
-    ]);
+    writeCurrentPlanningChange(repository, 'planned-change');
+    commitPlanningTransition(repository, 'planned-change');
     const head = git(repository, ['rev-parse', 'HEAD']).trim();
 
     const result = verifyPullRequest(repository, base, head);
@@ -136,24 +130,12 @@ test('CI accepts an ordinary planning introduction as a distinct transition', ()
   }
 });
 
-test('CI rejects a plan that targets the reserved OpenSpec archive container', () => {
-  const repository = createSpecDrivenFixtureRepository();
+test('current planning rejects the reserved OpenSpec archive container before commit', () => {
+  const repository = createLegacyFixtureRepository();
   try {
-    const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/archive']);
-    writePlanningChange(repository, 'archive');
-    git(repository, ['add', '.']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Plan archive',
-      '-m',
-      'Change: archive\nTransition: plan',
-    ]);
-    const head = git(repository, ['rev-parse', 'HEAD']).trim();
-
     assert.throws(
-      () => verifyPullRequest(repository, base, head),
+      () => writeCurrentPlanningChange(repository, 'archive'),
       (error) => isWorkflowError(error, 'PLANNING_CHANGE_ID_RESERVED'),
     );
   } finally {
@@ -162,11 +144,8 @@ test('CI rejects a plan that targets the reserved OpenSpec archive container', (
 });
 
 test('CI authorizes a task from the planning revision in its parent', () => {
-  const repository = createLegacyFixtureRepository();
+  const repository = createFixtureRepository();
   try {
-    installPlanningMetadata(repository, 'demo-change');
-    git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Complete planning fixture']);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
@@ -177,6 +156,7 @@ test('CI authorizes a task from the planning revision in its parent', () => {
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
     guard.tasks['1.1'].allowedPaths = ['feature/**'];
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     git(repository, ['add', '.']);
     git(repository, [
       'commit',
@@ -215,9 +195,6 @@ test('CI authorizes a task from the planning revision in its parent', () => {
 test('a later plan revision cannot retroactively widen an earlier task', () => {
   const repository = createFixtureRepository();
   try {
-    installPlanningMetadata(repository, 'demo-change');
-    git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Complete planning fixture']);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
@@ -246,6 +223,7 @@ test('a later plan revision cannot retroactively widen an earlier task', () => {
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
     guard.tasks['1.1'].allowedPaths.push('outside.txt');
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     git(repository, ['add', '.']);
     git(repository, [
       'commit',
@@ -266,11 +244,8 @@ test('a later plan revision cannot retroactively widen an earlier task', () => {
 });
 
 test('an invalid broad parent contract cannot be laundered by a later narrow plan', () => {
-  const repository = createLegacyFixtureRepository();
+  const repository = createFixtureRepository();
   try {
-    installPlanningMetadata(repository, 'demo-change');
-    git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Complete planning fixture']);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
@@ -315,6 +290,7 @@ test('an invalid broad parent contract cannot be laundered by a later narrow pla
     delete guard.tasks['9.9'];
     guard.tasks['1.1'].allowedPaths = ['src/**'];
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     git(repository, ['add', '.']);
     git(repository, [
       'commit',
@@ -327,7 +303,7 @@ test('an invalid broad parent contract cannot be laundered by a later narrow pla
 
     assert.throws(
       () => verifyPullRequest(repository, base, head),
-      (error) => isWorkflowError(error, 'CI_PARENT_GUARD_INVALID'),
+      (error) => isWorkflowError(error, 'TASK_POLICY_MISMATCH'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -440,7 +416,7 @@ test('CI rejects replay of an already completed task trailer', () => {
 });
 
 test('CI rejects completion that skips an earlier task', () => {
-  const repository = createSpecDrivenFixtureRepository();
+  const repository = createFixtureRepository();
   try {
     const tasksPath = path.join(
       repository,
@@ -457,6 +433,7 @@ test('CI rejects completion that skips an earlier task', () => {
       requiredChecks: ['fixture'],
     };
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Add second fixture task']);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
@@ -485,7 +462,7 @@ test('CI rejects completion that skips an earlier task', () => {
 });
 
 test('CI rejects reordering existing tasks to manufacture a valid prefix', () => {
-  const repository = createSpecDrivenFixtureRepository();
+  const repository = createFixtureRepository();
   try {
     const tasksPath = path.join(
       repository,
@@ -505,6 +482,7 @@ test('CI rejects reordering existing tasks to manufacture a valid prefix', () =>
       requiredChecks: ['fixture'],
     };
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Add second reorderable fixture task']);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
@@ -533,7 +511,7 @@ test('CI rejects reordering existing tasks to manufacture a valid prefix', () =>
 });
 
 test('CI rejects head policy self-broadening for an existing change', () => {
-  const repository = createSpecDrivenFixtureRepository();
+  const repository = createFixtureRepository();
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
@@ -544,11 +522,12 @@ test('CI rejects head policy self-broadening for an existing change', () => {
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
     guard.tasks['1.1'].allowedPaths.push('outside.txt');
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
     fs.writeFileSync(path.join(repository, 'outside.txt'), 'outside\n');
     const head = commitCompletedTask(repository);
     assert.throws(
       () => verifyPullRequest(repository, base, head),
-      (error) => isWorkflowError(error, 'CI_GUARD_CHANGED'),
+      (error) => isWorkflowError(error, 'CI_TASK_PLANNING_MUTATION'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -599,7 +578,7 @@ test('CI only grants implicit tasks.md scope to exact checkbox projection', () =
 });
 
 test('CI rejects a required check that mutates the checkout', () => {
-  const repository = createSpecDrivenFixtureRepository();
+  const repository = createFixtureRepository();
   try {
     configureChecks(
       repository,
@@ -611,6 +590,15 @@ test('CI rejects a required check that mutates the checkout', () => {
       },
       ['mutating'],
     );
+    writeReadyV3ExemptChange(repository);
+    git(repository, ['add', '.']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Refresh current check policy',
+      '-m',
+      'Change: demo-change\nTransition: plan',
+    ]);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
     const head = commitCompletedTask(repository);
@@ -800,14 +788,6 @@ function createFixtureRepository(): string {
   return repository;
 }
 
-function createSpecDrivenFixtureRepository(): string {
-  const repository = createLegacyFixtureRepository();
-  installPlanningMetadata(repository, 'demo-change');
-  git(repository, ['add', '.']);
-  git(repository, ['commit', '-m', 'Adopt spec-driven CI fixture']);
-  return repository;
-}
-
 function commitCompletedTask(
   repository: string,
   options: { trailers?: boolean } = {},
@@ -836,17 +816,13 @@ function commitCompletedTask(
   return git(repository, ['rev-parse', 'HEAD']).trim();
 }
 
-function installPlanningMetadata(repository: string, changeId: string): void {
-  fs.writeFileSync(
-    path.join(repository, 'openspec/changes', changeId, '.openspec.yaml'),
-    'schema: spec-driven\ncreated: 2026-07-15\n',
-  );
-}
-
 function writePlanningChange(repository: string, changeId: string): void {
   const directory = path.join(repository, 'openspec/changes', changeId);
   fs.mkdirSync(path.join(directory, 'specs/demo'), { recursive: true });
-  installPlanningMetadata(repository, changeId);
+  fs.writeFileSync(
+    path.join(directory, '.openspec.yaml'),
+    'schema: spec-driven\ncreated: 2026-07-15\n',
+  );
   fs.writeFileSync(path.join(directory, 'proposal.md'), '# Proposal\n');
   fs.writeFileSync(path.join(directory, 'design.md'), '# Design\n');
   fs.writeFileSync(
@@ -872,8 +848,31 @@ function writePlanningChange(repository: string, changeId: string): void {
   );
   fs.writeFileSync(
     path.join(directory, 'specs/demo/spec.md'),
-    '# Delta\n\n## ADDED Requirements\n',
+    '# Delta\n\n## ADDED Requirements\n\n### Requirement: Planned behavior\n\nThe engine SHALL preserve the planned behavior.\n\n#### Scenario: Planned path\n\n- **WHEN** the planned path runs\n- **THEN** the behavior is preserved\n',
   );
+}
+
+function writeCurrentPlanningChange(
+  repository: string,
+  changeId: string,
+): void {
+  writePlanningChange(repository, changeId);
+  const providerBinding = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        repository,
+        'workflow/change-providers/demo-change.json',
+      ),
+      'utf8',
+    ),
+  );
+  providerBinding.changeId = changeId;
+  providerBinding.planningRoot = `openspec/changes/${changeId}`;
+  fs.writeFileSync(
+    path.join(repository, `workflow/change-providers/${changeId}.json`),
+    `${JSON.stringify(providerBinding, null, 2)}\n`,
+  );
+  writeReadyV3ExemptChange(repository, changeId);
 }
 
 function escapeRegex(value: string): string {

@@ -502,16 +502,51 @@ test('CI replays a configured current schema from immutable consumer config', ()
     );
     const consumer = JSON.parse(fs.readFileSync(consumerPath, 'utf8')) as {
       planning: {
+        requiredSchemaNames: string[];
         supportedSchemaNames: string[];
         managedSchemaNames: string[];
         currentSchemaName: string;
       };
     };
-    consumer.planning.supportedSchemaNames.push('orbit-spec-v1');
-    consumer.planning.managedSchemaNames.push('orbit-spec-v1');
+    consumer.planning.requiredSchemaNames = [
+      'spec-driven',
+      'orbit-spec-v1',
+    ];
+    consumer.planning.supportedSchemaNames = [
+      'spec-driven',
+      'orbit-spec-v1',
+    ];
+    consumer.planning.managedSchemaNames = ['orbit-spec-v1'];
     consumer.planning.currentSchemaName = 'orbit-spec-v1';
     fs.writeFileSync(consumerPath, `${JSON.stringify(consumer, null, 2)}\n`);
-    git(repository, ['add', 'workflow/repository-consumer.json']);
+    const openSpecConfigPath = path.join(repository, 'openspec/config.yaml');
+    fs.writeFileSync(
+      openSpecConfigPath,
+      fs
+        .readFileSync(openSpecConfigPath, 'utf8')
+        .replace(/^schema: jigwright$/m, 'schema: orbit-spec-v1'),
+    );
+    fs.cpSync(
+      path.join(repository, 'openspec/schemas/jigwright'),
+      path.join(repository, 'openspec/schemas/orbit-spec-v1'),
+      { recursive: true },
+    );
+    const namedSchemaPath = path.join(
+      repository,
+      'openspec/schemas/orbit-spec-v1/schema.yaml',
+    );
+    fs.writeFileSync(
+      namedSchemaPath,
+      fs
+        .readFileSync(namedSchemaPath, 'utf8')
+        .replace(/^name: jigwright$/m, 'name: orbit-spec-v1'),
+    );
+    git(repository, [
+      'add',
+      'workflow/repository-consumer.json',
+      'openspec/config.yaml',
+      'openspec/schemas/orbit-spec-v1',
+    ]);
     git(repository, ['commit', '-m', 'Select Orbit current schema']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
@@ -1425,7 +1460,14 @@ function planningPaths(changeId: string): string[] {
 function writeReadyV3ExemptChange(
   repository: string,
   changeId = 'demo-change',
-  schemaName = 'expense-app-v2',
+  schemaName = (
+    JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/repository-consumer.json'),
+        'utf8',
+      ),
+    ) as { planning: { currentSchemaName: string } }
+  ).planning.currentSchemaName,
 ): void {
   const changeRoot = path.join(repository, 'openspec/changes', changeId);
   const baseline = {

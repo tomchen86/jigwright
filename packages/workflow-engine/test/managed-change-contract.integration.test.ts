@@ -6,7 +6,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   assertPlanningProviderV1Migration,
@@ -24,7 +23,6 @@ import { loadValidatedChangeContract as loadValidatedChangeContractWithReader } 
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import {
   resolveCurrentOpenSpecProviderBinding,
-  resolveHistoricalOpenSpecProviderBinding,
 } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
 import { planningProviderBindingReader } from '../src/runtime/repository-transaction/planning-provider-binding-store.ts';
 import {
@@ -38,7 +36,7 @@ import {
   git,
   ordinaryPlanReviewReplayPortForTest,
   sourceRepositoryRoot,
-  writeV2ChangeArtifacts,
+  writeReadyV3ExemptChange,
 } from './fixture.ts';
 
 const CHANGE_ID = 'fixture-managed-change';
@@ -266,7 +264,7 @@ test('planning-provider binding is canonical, plane-specific, and refuses v1 mig
   );
 });
 
-test('planning-provider readers reject unsafe current files and retain pre-cutover OpenSpec history', () => {
+test('planning-provider readers reject unsafe current binding files', () => {
   for (const mutate of [
     (repository: string, bindingPath: string) =>
       fs.chmodSync(bindingPath, 0o755),
@@ -301,101 +299,6 @@ test('planning-provider readers reject unsafe current files and retain pre-cutov
     }
   }
 
-  const historical = createFixtureRepository();
-  try {
-    const explicitHead = git(historical, ['rev-parse', 'HEAD']).trim();
-    assert.equal(
-      resolveHistoricalOpenSpecProviderBinding(
-        planningProviderBindingReader,
-        historical,
-        explicitHead,
-        'openspec/changes',
-        'demo-change',
-      ).source,
-      'explicit',
-    );
-
-    fs.rmSync(
-      path.join(historical, 'workflow/change-providers/demo-change.json'),
-    );
-    git(historical, ['add', '-A']);
-    git(historical, ['commit', '-m', 'Create pre-cutover legacy fixture']);
-    const legacyHead = git(historical, ['rev-parse', 'HEAD']).trim();
-    assert.equal(
-      resolveHistoricalOpenSpecProviderBinding(
-        planningProviderBindingReader,
-        historical,
-        legacyHead,
-        'openspec/changes',
-        'demo-change',
-      ).source,
-      'legacy-inferred',
-    );
-
-    fs.appendFileSync(
-      path.join(historical, 'openspec/changes/demo-change/.openspec.yaml'),
-      'unexpected: metadata\n',
-    );
-    git(historical, ['add', '-A']);
-    git(historical, ['commit', '-m', 'Corrupt legacy provider evidence']);
-    const corruptLegacyHead = git(historical, ['rev-parse', 'HEAD']).trim();
-    assert.throws(
-      () =>
-        resolveHistoricalOpenSpecProviderBinding(
-          planningProviderBindingReader,
-          historical,
-          corruptLegacyHead,
-          'openspec/changes',
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'PROVIDER_BINDING_LEGACY_UNPROVEN'),
-    );
-
-    fs.writeFileSync(
-      path.join(
-        historical,
-        'workflow/schemas/planning-provider-binding.schema.json',
-      ),
-      '{}\n',
-    );
-    git(historical, ['add', '-A']);
-    git(historical, ['commit', '-m', 'Activate planning provider bindings']);
-    const activatedHead = git(historical, ['rev-parse', 'HEAD']).trim();
-    assert.throws(
-      () =>
-        resolveHistoricalOpenSpecProviderBinding(
-          planningProviderBindingReader,
-          historical,
-          activatedHead,
-          'openspec/changes',
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'PROVIDER_BINDING_MISSING'),
-    );
-
-    fs.rmSync(
-      path.join(
-        historical,
-        'workflow/schemas/planning-provider-binding.schema.json',
-      ),
-    );
-    git(historical, ['add', '-A']);
-    git(historical, ['commit', '-m', 'Attempt to erase provider cutover']);
-    const erasedMarkerHead = git(historical, ['rev-parse', 'HEAD']).trim();
-    assert.throws(
-      () =>
-        resolveHistoricalOpenSpecProviderBinding(
-          planningProviderBindingReader,
-          historical,
-          erasedMarkerHead,
-          'openspec/changes',
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'PROVIDER_BINDING_MISSING'),
-    );
-  } finally {
-    fs.rmSync(historical, { recursive: true, force: true });
-  }
 });
 
 test('validated managed contract binds OpenSpec readiness to a full mode-aware snapshot', () => {
@@ -415,10 +318,10 @@ test('validated managed contract binds OpenSpec readiness to a full mode-aware s
   }
 
   assert.equal(contract.changeId, CHANGE_ID);
-  assert.equal(contract.schemaName, 'expense-app');
+  assert.equal(contract.schemaName, 'jigwright');
   assert.deepEqual(contract.openspec, {
     version: '1.6.0',
-    schemaName: 'expense-app',
+    schemaName: 'jigwright',
     statusComplete: true,
     validationValid: true,
   });
@@ -432,7 +335,7 @@ test('validated managed contract binds OpenSpec readiness to a full mode-aware s
     `openspec/changes/${CHANGE_ID}/proposal.md`,
     `workflow/change-providers/${CHANGE_ID}.json`,
     'openspec/config.yaml',
-    'openspec/schemas/expense-app/schema.yaml',
+    'openspec/schemas/jigwright/schema.yaml',
     'workflow/ai-adapter-policy.json',
     'workflow/checks.json',
     'package.json',
@@ -451,27 +354,12 @@ test('validated managed contract binds OpenSpec readiness to a full mode-aware s
   );
 });
 
-test('active v1 and v2 investigation artifacts remain historical-only', () => {
+test('validated managed contract rejects a non-managed schema at admission', () => {
   const repository = createFixtureRepository();
   try {
-    const legacy = loadValidatedChangeContract(repository, 'demo-change');
-    assert.equal(legacy.schemaName, 'expense-app');
-    assert.equal(legacy.investigation, undefined);
-    assert.equal(legacy.planningProvider.source, 'explicit');
-
-    writeV2ChangeArtifacts(repository);
     assert.throws(
-      () => loadChangeContract(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'SCHEMA_V1_FORBIDDEN'),
-    );
-
-    fs.writeFileSync(
-      path.join(repository, 'openspec/changes/demo-change/investigation.json'),
-      `${canonicalJson({ schemaVersion: 2 })}\n`,
-    );
-    assert.throws(
-      () => loadChangeContract(repository, 'demo-change'),
-      (error) => isWorkflowError(error, 'PROJECTION_PIPELINE_FORBIDDEN'),
+      () => loadValidatedChangeContract(repository, 'demo-change'),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -481,33 +369,6 @@ test('active v1 and v2 investigation artifacts remain historical-only', () => {
 test('validated v3 readiness reads applicability from the current Manifest', () => {
   const repository = createManagedRepository();
   try {
-    git(repository, ['init', '-b', 'main']);
-    git(repository, ['config', 'user.email', 'workflow@example.test']);
-    git(repository, ['config', 'user.name', 'Workflow Test']);
-    git(repository, ['add', '-A']);
-    git(repository, ['commit', '-m', 'Create managed fixture']);
-
-    writeV2ChangeArtifacts(repository, CHANGE_ID);
-    fs.writeFileSync(
-      changePath(repository, 'execution.json'),
-      `${canonicalJson({
-        schemaVersion: 1,
-        kind: 'execution-artifact',
-        changeId: CHANGE_ID,
-        tasks: {
-          '1.1': {
-            strategy: 'direct-reviewed',
-            enforcement: 'available',
-            allowedPaths: ['package.json'],
-            requiredChecks: ['workflow-tests'],
-            diffReview: 'policy-required',
-            exemptionKind: 'formatting-only',
-            exemptionReason: 'Fixture formatting-only task.',
-            legacyBootstrap: null,
-          },
-        },
-      })}\n`,
-    );
     writeCurrentV3Investigation(repository, CHANGE_ID);
     fs.writeFileSync(path.join(repository, '.openspec-status-incomplete'), '1');
 
@@ -549,7 +410,7 @@ test('managed contract rejects unsafe metadata and incomplete artifact trees bef
       mutate(repository) {
         fs.appendFileSync(
           changePath(repository, '.openspec.yaml'),
-          'schema: expense-app\n',
+          'schema: jigwright\n',
         );
       },
       code: 'OPENSPEC_CHANGE_METADATA_INVALID',
@@ -617,10 +478,10 @@ test('managed contract rejects unsafe metadata and incomplete artifact trees bef
   }
 });
 
-test('v2 managed tree rejects paths outside its temporary schema grammar', () => {
+test('current managed tree rejects paths outside its schema grammar', () => {
   const repository = createFixtureRepository();
   try {
-    writeV2ChangeArtifacts(repository);
+    writeReadyV3ExemptChange(repository);
     fs.writeFileSync(
       path.join(repository, 'openspec/changes/demo-change/notes.txt'),
       'not a managed artifact\n',
@@ -763,13 +624,8 @@ function createManagedRepository(): string {
   fs.mkdirSync(path.join(repository, 'openspec'), { recursive: true });
   copy('openspec/config.yaml', repository);
   fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app'),
-    path.join(repository, 'openspec/schemas/expense-app'),
-    { recursive: true },
-  );
-  fs.cpSync(
-    path.join(sourceRepositoryRoot, 'openspec/schemas/expense-app-v2'),
-    path.join(repository, 'openspec/schemas/expense-app-v2'),
+    path.join(sourceRepositoryRoot, 'openspec/schemas/jigwright'),
+    path.join(repository, 'openspec/schemas/jigwright'),
     { recursive: true },
   );
   writeSyntheticChange(repository);
@@ -790,6 +646,12 @@ function createManagedRepository(): string {
     }),
   );
   installFakeOpenSpec(repository);
+  git(repository, ['init', '-b', 'main']);
+  git(repository, ['config', 'user.email', 'workflow@example.test']);
+  git(repository, ['config', 'user.name', 'Workflow Test']);
+  git(repository, ['add', '-A']);
+  git(repository, ['commit', '-m', 'Create managed fixture baseline']);
+  writeReadyV3ExemptChange(repository, CHANGE_ID);
   return repository;
 }
 
@@ -872,14 +734,7 @@ if (args[0] === 'status') {
     .filter((entry) => String(entry).endsWith('spec.md'))
     .map((entry) => path.join(changeRoot, 'specs', String(entry)))
     .sort();
-  const legacyArtifacts = [
-    ['proposal', 'proposal.md', [path.join(changeRoot, 'proposal.md')], 'done'],
-    ['specs', 'specs/**/*.md', specPaths, 'done'],
-    ['design', 'design.md', [path.join(changeRoot, 'design.md')], 'done'],
-    ['tasks', 'tasks.md', [path.join(changeRoot, 'tasks.md')], 'done'],
-    ['guard', 'guard.json', incomplete ? [] : [path.join(changeRoot, 'guard.json')], incomplete ? 'ready' : 'done']
-  ];
-  const v2Artifacts = [
+  const currentArtifacts = [
     ['investigation', 'investigation.json', [path.join(changeRoot, 'investigation.json')], 'done'],
     ['proposal', 'proposal.md', [path.join(changeRoot, 'proposal.md')], 'done'],
     ['specs', 'specs/**/*.md', specPaths, 'done'],
@@ -889,9 +744,7 @@ if (args[0] === 'status') {
     ['execution', 'execution.json', [path.join(changeRoot, 'execution.json')], 'done'],
     ['plan-review', 'plan-review.json', [path.join(changeRoot, 'plan-review.json')], 'done']
   ];
-  const artifacts = schemaName === 'expense-app-v2'
-    ? v2Artifacts
-    : legacyArtifacts;
+  const artifacts = currentArtifacts;
   process.stdout.write(JSON.stringify({
     changeName: changeId,
     schemaName,
@@ -899,16 +752,14 @@ if (args[0] === 'status') {
     planningHome: {
       kind: 'repo', root,
       changesDir: path.join(root, 'openspec/changes'),
-      defaultSchema: 'expense-app'
+      defaultSchema: 'jigwright'
     },
     artifactPaths: Object.fromEntries(artifacts.map(([id, outputPath, existingOutputPaths]) => [
       id,
       { outputPath, resolvedOutputPath: path.join(changeRoot, outputPath), existingOutputPaths }
     ])),
     artifacts: artifacts.map(([id, outputPath, _paths, status]) => ({ id, outputPath, status })),
-    applyRequires: schemaName === 'expense-app-v2'
-      ? ['investigation', 'tasks', 'guard', 'execution', 'plan-review']
-      : ['tasks', 'guard'],
+    applyRequires: ['investigation', 'tasks', 'guard', 'execution', 'plan-review'],
     isComplete: !incomplete,
     root: { path: root, source: 'nearest' }
   }));
@@ -965,7 +816,7 @@ function writeSyntheticChange(repository: string): void {
     recursive: true,
   });
   const artifacts: Array<[string, string]> = [
-    ['.openspec.yaml', 'schema: expense-app\ncreated: 2026-07-19\n'],
+    ['.openspec.yaml', 'schema: jigwright\ncreated: 2026-07-19\n'],
     [
       'proposal.md',
       '## Why\n\nSynthetic fixture change for contract tests.\n\n## What Changes\n\n- Exercise the managed contract loader.\n',
@@ -999,9 +850,15 @@ function writeSyntheticChange(repository: string): void {
       'specs/fixture-capability/spec.md',
       '## ADDED Requirements\n\n### Requirement: Fixture capability\n\nThe fixture MUST exist.\n\n#### Scenario: Fixture loads\n\n- **WHEN** the fixture change is validated\n- **THEN** the loader accepts it\n',
     ],
+    [
+      'specs/demo/spec.md',
+      '## ADDED Requirements\n\n### Requirement: Demo capability\n\nThe fixture MUST expose the demo capability.\n\n#### Scenario: Demo loads\n\n- **WHEN** the current fixture is validated\n- **THEN** the demo capability is present\n',
+    ],
   ];
   for (const [relativePath, content] of artifacts) {
-    fs.writeFileSync(path.join(changeRoot, relativePath), content);
+    const artifactPath = path.join(changeRoot, relativePath);
+    fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+    fs.writeFileSync(artifactPath, content);
   }
 }
 
@@ -1022,7 +879,7 @@ function writeCurrentV3Investigation(
     state: {
       schemaVersion: 1,
       applicabilityKind: 'exemption',
-      repositoryId: 'expense-app',
+      repositoryId: 'jigwright',
       changeId,
       investigationId: `${changeId}-investigation`,
       normalizedIntent: {

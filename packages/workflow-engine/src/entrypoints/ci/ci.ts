@@ -36,7 +36,7 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { validateWorkflowIntegrationAssets } from '../../adapters/consumer/expense-app/work-registry/integration-assets.ts';
 import { validateRepositoryStateAtCommit } from '../../composition-root/repository-validation.ts';
-import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import { currentRepositorySchemaName } from '../../composition-root/validated-contract-context.ts';
 
 export type { CompletedTask } from './ci-task-state.ts';
 
@@ -79,9 +79,7 @@ export function verifyPullRequest(
       loadCommittedChangeContract(git.repositoryRoot, head, changeId),
     ]),
   );
-  const currentSchemaName = repositoryPlanningConfiguration(
-    git.repositoryRoot,
-  ).currentSchemaName;
+  const currentSchemaName = currentRepositorySchemaName(git.repositoryRoot);
   const legacyChangeIds = [...contracts]
     .filter(([, contract]) => contract.schemaName !== currentSchemaName)
     .map(([changeId]) => changeId)

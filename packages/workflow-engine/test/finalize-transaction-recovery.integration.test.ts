@@ -320,6 +320,7 @@ function createFinalizeFixture(): {
 } {
   const repository = createFixtureRepository();
   const counterPath = path.join(repository, '.git', 'finalize-count');
+  writeReadyV3ExemptChange(repository);
   enableCompletionHandoff(repository);
   fs.writeFileSync(
     path.join(repository, 'scripts/count-finalize.mjs'),

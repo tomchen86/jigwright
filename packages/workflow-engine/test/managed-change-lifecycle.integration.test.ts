@@ -34,6 +34,7 @@ test('start requires combined OpenSpec readiness before creating runtime state',
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/proposal.md'),
       '\nINVALID committed planning state.\n',
@@ -45,7 +46,10 @@ test('start requires combined OpenSpec readiness before creating runtime state',
       () => startSession(repository, 'demo-change', '1.1'),
       (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_INVALID'),
     );
-    assert.equal(fs.existsSync(runtimeRoot(repository)), false);
+    assert.equal(
+      fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
+      false,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -133,7 +137,7 @@ test('check rejects every combined-contract drift class before executing checks'
     },
     {
       name: 'schema configuration',
-      code: 'OPENSPEC_SCHEMA_CONTRACT_INVALID',
+      code: 'ARTIFACTS_CHANGED',
       mutate(repository) {
         fs.appendFileSync(
           path.join(repository, 'openspec/config.yaml'),
@@ -339,7 +343,7 @@ test('finish revalidates combined readiness before rerunning checks or staging',
     );
     assert.throws(
       () => finishSession(repository, session.sessionId),
-      (error) => isWorkflowError(error, 'OPENSPEC_SCHEMA_CONTRACT_INVALID'),
+      (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
     );
 
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');

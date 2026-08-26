@@ -458,7 +458,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
       "mode": "100644",
-      "digest": "sha256:e7ff53f320dee436ff38994e89cb628ca47155f5678a47e4144586513adad22d"
+      "digest": "sha256:c5428b00b1108c823b6ef255a5d964aa3368d17db22a0355949ff68810e89538"
     },
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
@@ -863,7 +863,7 @@
     {
       "path": "src/composition-root/validated-contract-context.ts",
       "mode": "100644",
-      "digest": "sha256:e8f84300d6f90c954932817f2584f88aa263fea31e6726387d50ae085acbb0e2"
+      "digest": "sha256:0405d3b35173d9719878d35028df56722c698388de9267a3e16b1c1acc2b3671"
     },
     {
       "path": "src/entrypoints/ci/ci-archive-tree.ts",
@@ -938,7 +938,7 @@
     {
       "path": "src/entrypoints/ci/ci.ts",
       "mode": "100644",
-      "digest": "sha256:6ce0c155d6627245270e678db91faa18cf37a322baac478cf08b14eb5d074829"
+      "digest": "sha256:d9b547c53e60351c284f7ad4b528ca44be9ceeec528b7d2c0f367d68b4973e2b"
     },
     {
       "path": "src/entrypoints/ci/pre-merge-assurance-git.ts",
@@ -988,7 +988,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:84df3220715d005f9ed4a19f9e6683c9970a5cfb15cd7027b7b1309648794d80"
+      "digest": "sha256:55ea0b4b96c1bd824dc835dc3aacb29ea43be53c26dfbd926c86dd8e7e606360"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1443,7 +1443,7 @@
     {
       "path": "src/modules/lifecycle/change-routing.ts",
       "mode": "100644",
-      "digest": "sha256:457b6dcd3d795c61918974b2a025eed5b07b385ad10fa5b41529035445bb1072"
+      "digest": "sha256:6579f1a286cef14bf5c4db4a864a8632665771a8432aaf77c9ca718b1861678d"
     },
     {
       "path": "src/modules/lifecycle/context-manifest-contract.ts",

@@ -29,6 +29,7 @@ import {
 import {
   activateInvestigationPlanning,
   createFixtureRepository,
+  fixtureCurrentSchemaName,
   git,
   isWorkflowError,
   sourceRepositoryRoot,
@@ -307,7 +308,7 @@ test('CI replay rejects trailers whose reviewed decision names another parent ge
     const assurance = validateOpenSpecPlanning(
       repository,
       'demo-change',
-      'expense-app-v2',
+      fixtureCurrentSchemaName(repository),
     ).planningAssurance;
     assert.notEqual(assurance, null);
     git(repository, ['add', '-A']);

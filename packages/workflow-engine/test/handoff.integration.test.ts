@@ -26,11 +26,17 @@ import {
   workItemDigest,
 } from '../src/modules/governance-intake/work-registry.ts';
 import {
-  createFixtureRepository,
+  createFixtureRepository as createBareFixtureRepository,
   git,
   runtimeRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+
+function createFixtureRepository(): string {
+  const repository = createBareFixtureRepository();
+  writeReadyV3ExemptChange(repository);
+  return repository;
+}
 
 test('generated handoff consumes the optional Work Registry inventory', () => {
   const repository = createFixtureRepository();
@@ -571,7 +577,7 @@ function writeChange(
   fs.mkdirSync(path.join(directory, 'specs/demo'), { recursive: true });
   fs.writeFileSync(
     path.join(directory, '.openspec.yaml'),
-    'schema: expense-app\ncreated: 2026-07-15\n',
+    'schema: spec-driven\ncreated: 2026-07-15\n',
   );
   fs.writeFileSync(path.join(directory, 'proposal.md'), '# Proposal\n');
   fs.writeFileSync(path.join(directory, 'design.md'), '# Design\n');
@@ -583,7 +589,7 @@ function writeChange(
   );
   fs.writeFileSync(
     path.join(directory, 'specs/demo/spec.md'),
-    '# Delta\n\n## ADDED Requirements\n',
+    '# Delta\n\n## ADDED Requirements\n\n### Requirement: Handoff fixture\n\nThe handoff SHALL represent the current change.\n\n#### Scenario: Current change is selected\n\n- **WHEN** the handoff is rendered\n- **THEN** the current change is selected\n',
   );
   fs.writeFileSync(
     path.join(directory, 'guard.json'),
@@ -602,6 +608,7 @@ function writeChange(
       2,
     )}\n`,
   );
+  writeReadyV3ExemptChange(repository, changeId);
 }
 
 function writeSelectedHandoff(repository: string, changeId: string): void {
