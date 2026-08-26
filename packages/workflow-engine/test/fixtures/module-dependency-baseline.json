@@ -592,7 +592,7 @@
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/planning-contract.ts",
@@ -696,7 +696,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
@@ -3104,7 +3104,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/verification.ts",
@@ -4008,7 +4008,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-historical-contract.ts",
@@ -4040,7 +4040,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-planning.ts",

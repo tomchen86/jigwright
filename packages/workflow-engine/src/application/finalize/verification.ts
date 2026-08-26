@@ -45,10 +45,6 @@ import {
   type GitState,
 } from '../../runtime/repository-transaction/git.ts';
 import {
-  assertInvestigationPlanningActivation,
-  readActivationMarkerFile,
-} from '../../adapters/planning/openspec/documents/openspec-schema-contract.ts';
-import {
   assertSessionId,
   matchesAllowedPath,
 } from '../../runtime/session-workspace/paths.ts';
@@ -834,16 +830,6 @@ export function inspectSession(
     discovered,
     session.changeId,
   );
-  // Task execution is authorized by a governing planning generation, so a
-  // change whose generation predates the anchor keeps running its pinned
-  // legacy session after activation. What activation does add is that the
-  // reviewed marker must still be present: removing it from an activated
-  // checkout fails the session closed rather than restoring legacy freedom.
-  assertInvestigationPlanningActivation({
-    repositoryRoot: git.repositoryRoot,
-    baselines: [session.baseline.head],
-    readMarker: () => readActivationMarkerFile(git.repositoryRoot),
-  });
   if (
     JSON.stringify(session.planningAssurance ?? null) !==
     JSON.stringify(

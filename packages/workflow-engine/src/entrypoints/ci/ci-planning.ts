@@ -41,11 +41,6 @@ import { createArchiveApplicabilityProjection } from '../../application/archive/
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 import { validateHandoffForChange } from '../../adapters/consumer/expense-app/handoff/handoff.ts';
 import {
-  assertInvestigationPlanningActivation,
-  readActivationMarkerFile,
-  protectedActivationBaselines,
-} from '../../adapters/planning/openspec/documents/openspec-schema-contract.ts';
-import {
   validateInvestigationFirstPlanningReadiness,
   type InvestigationFirstPlanningAssuranceSummary,
 } from '../../modules/assurance/planning-assurance-validator.ts';
@@ -707,20 +702,8 @@ function replayPlanningTree(
   engineProjectionPaths: readonly string[],
 ): PlanningTreeReplay {
   return withPlanningWorktree(repositoryRoot, commit, (worktree) => {
-    const schemaName = resolveReplayedSchemaName(
-      repositoryRoot,
-      commit,
-      worktree,
-      changeId,
-    );
-    const currentSchemaName = resolveReplayedCurrentSchemaName(worktree);
-    assertInvestigationPlanningActivation({
-      repositoryRoot,
-      baselines: planningActivationBaselines(repositoryRoot, commit),
-      readMarker: () => readActivationMarkerFile(worktree),
-      declaredSchemaName: schemaName,
-      currentSchemaName,
-    });
+    const schemaName = resolveReplayedSchemaName(worktree, changeId);
+    const currentSchemaName = repositoryCurrentSchemaName(worktree);
     if (engineProjectionPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md')) {
       validateHandoffForChange(worktree, changeId);
     }
@@ -795,94 +778,26 @@ function replayPlanningSchema(
   changeId: string,
 ): Pick<PlanningTreeReplay, 'schemaName' | 'currentSchemaName'> {
   return withPlanningWorktree(repositoryRoot, commit, (worktree) => ({
-    schemaName: resolveReplayedSchemaName(
-      repositoryRoot,
-      commit,
-      worktree,
-      changeId,
-    ),
-    currentSchemaName: resolveReplayedCurrentSchemaName(worktree),
+    schemaName: resolveReplayedSchemaName(worktree, changeId),
+    currentSchemaName: repositoryCurrentSchemaName(worktree),
   }));
-}
-
-function resolveReplayedCurrentSchemaName(worktree: string): ManagedSchemaName {
-  if (
-    fs.lstatSync(path.join(worktree, 'workflow/config.json'), {
-      throwIfNoEntry: false,
-    }) === undefined
-  ) {
-    return 'expense-app-v2';
-  }
-  return repositoryCurrentSchemaName(worktree);
-}
-
-/**
- * The baselines that decide activation for one immutable planning commit. Its
- * own parent is always applicable, which is what keeps a governing generation
- * created before the anchor replayable forever. The configured protected base
- * is added only while the commit is not yet contained in it: an unmerged
- * candidate cannot escape activation by branching from stale history, and a
- * commit that is already part of the protected lineage is replayed as the
- * history it is rather than re-judged against a base that grew past it.
- */
-function planningActivationBaselines(
-  repositoryRoot: string,
-  commit: string,
-): string[] {
-  const facts = commitFacts(repositoryRoot, commit);
-  const baselines = facts.parents.slice(0, 1);
-  for (const base of protectedActivationBaselines(repositoryRoot)) {
-    const mergeBase = runGit(
-      repositoryRoot,
-      ['merge-base', facts.hash, base],
-      true,
-    ).trim();
-    if (mergeBase !== facts.hash) {
-      baselines.push(base);
-    }
-  }
-  return baselines;
 }
 
 /**
  * Select the artifact grammar a replayed tree declared through the consumer
  * policy committed with that tree. A validated repository current schema keeps
  * its own name while using the current investigation-first graph; built-in
- * named graphs remain distinct. The legacy fallback is only reached for a
- * pre-managed or unreadable generation whose lineage carries no activation
- * anchor, because an activated caller rejects the fallback as a downgrade.
+ * named graphs remain distinct.
  */
 function resolveReplayedSchemaName(
-  repositoryRoot: string,
-  commit: string,
   worktree: string,
   changeId: string,
 ): ManagedSchemaName {
-  const hasWorkflowConfig =
-    fs.lstatSync(path.join(worktree, 'workflow/config.json'), {
-      throwIfNoEntry: false,
-    }) !== undefined;
-  if (!hasWorkflowConfig) {
-    const metadata = readFileAtCommit(
-      repositoryRoot,
-      commit,
-      `openspec/changes/${changeId}/.openspec.yaml`,
-    );
-    return /^schema: expense-app-v2\ncreated: \d{4}-\d{2}-\d{2}\n$/u.test(
-      metadata ?? '',
-    )
-      ? 'expense-app-v2'
-      : 'expense-app';
-  }
-  try {
-    const changeRoot = loadWorkflowConfig(worktree).changeRoot;
-    return readChangeSchemaName(
-      worktree,
-      path.join(worktree, changeRoot, changeId, '.openspec.yaml'),
-    );
-  } catch {
-    return 'expense-app';
-  }
+  const changeRoot = loadWorkflowConfig(worktree).changeRoot;
+  return readChangeSchemaName(
+    worktree,
+    path.join(worktree, changeRoot, changeId, '.openspec.yaml'),
+  );
 }
 
 /**

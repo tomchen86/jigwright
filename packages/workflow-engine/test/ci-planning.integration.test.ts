@@ -26,7 +26,6 @@ import {
 } from '../src/entrypoints/ci/ci-planning.ts';
 import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
 import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
-import { INVESTIGATION_PLANNING_ACTIVATION_MARKER as ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -427,8 +426,8 @@ test('CI accepts distinct grants across managed planning transitions', () => {
   }
 });
 
-test('CI treats legacy and role-free planning history as zero grant claims', async (t) => {
-  await t.test('legacy plan without evidence artifacts', () => {
+test('CI treats package-schema and role-free planning history as zero grant claims', async (t) => {
+  await t.test('package-schema plan without evidence artifacts', () => {
     const repository = createRepository();
     try {
       writePlanningTree(repository);
@@ -508,14 +507,8 @@ test('CI replays a configured current schema from immutable consumer config', ()
         currentSchemaName: string;
       };
     };
-    consumer.planning.requiredSchemaNames = [
-      'spec-driven',
-      'orbit-spec-v1',
-    ];
-    consumer.planning.supportedSchemaNames = [
-      'spec-driven',
-      'orbit-spec-v1',
-    ];
+    consumer.planning.requiredSchemaNames = ['spec-driven', 'orbit-spec-v1'];
+    consumer.planning.supportedSchemaNames = ['spec-driven', 'orbit-spec-v1'];
     consumer.planning.managedSchemaNames = ['orbit-spec-v1'];
     consumer.planning.currentSchemaName = 'orbit-spec-v1';
     fs.writeFileSync(consumerPath, `${JSON.stringify(consumer, null, 2)}\n`);
@@ -564,7 +557,7 @@ test('CI replays a configured current schema from immutable consumer config', ()
       plan.planningAssurance?.planningGenerationId,
     );
 
-    consumer.planning.currentSchemaName = 'expense-app-v2';
+    consumer.planning.currentSchemaName = 'untrusted-checkout-schema';
     fs.writeFileSync(consumerPath, `${JSON.stringify(consumer, null, 2)}\n`);
     assert.equal(
       validateCiPlanningCommit(repository, plan.commitHash, 'demo-change')
@@ -658,9 +651,9 @@ test('CI accepts an exact planning introduction reconstructed from Git', () => {
       beforeTasks: undefined,
       afterTasks: [{ id: '1.1', completed: false }],
       changedPaths: planningPaths(CHANGE_ID),
-      // A legacy plan declares no investigation-first evidence, so replay
-      // reports the legacy grammar and no semantic assurance.
-      schemaName: 'expense-app',
+      // The retained package graph declares no managed investigation-first
+      // evidence, so replay reports no semantic assurance.
+      schemaName: 'spec-driven',
       planningAssurance: null,
       collaborationGrantUses: [],
     });
@@ -922,7 +915,7 @@ test('CI accepts a revision that reorders and removes unfinished tasks', () => {
           `openspec/changes/${CHANGE_ID}/design.md`,
           `openspec/changes/${CHANGE_ID}/tasks.md`,
         ],
-        schemaName: 'expense-app',
+        schemaName: 'spec-driven',
         planningAssurance: null,
         collaborationGrantUses: [],
       },
@@ -1085,73 +1078,6 @@ test('CI rejects a merge commit even when it uses the plan message', () => {
   }
 });
 
-test('CI replays a pre-activation legacy plan after the anchor lands later', () => {
-  const repository = createRepository();
-  try {
-    writePlanningTree(repository);
-    const plan = commitPlan(repository);
-    // The anchor is introduced after the governing generation, exactly as the
-    // cutover commit does on a branch that already carries legacy plans.
-    activate(repository);
-
-    assert.equal(
-      validateCiPlanningCommit(repository, plan, CHANGE_ID).schemaName,
-      'expense-app',
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('CI rejects a legacy plan introduced after the activation anchor', () => {
-  const repository = createRepository();
-  try {
-    activate(repository);
-    writePlanningTree(repository);
-    const plan = commitPlan(repository);
-
-    assert.throws(
-      () => validateCiPlanningCommit(repository, plan, CHANGE_ID),
-      (error) => isWorkflowError(error, 'PLANNING_SCHEMA_DOWNGRADE'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('CI fails closed when a post-activation plan tree drops the anchor marker', () => {
-  const repository = createRepository();
-  try {
-    activate(repository);
-    git(repository, ['rm', '--quiet', '--', ACTIVATION_MARKER]);
-    commit(repository, 'Delete the activation marker');
-    writePlanningTree(repository);
-    write(
-      repository,
-      `openspec/changes/${CHANGE_ID}/.openspec.yaml`,
-      'schema: expense-app-v2\ncreated: 2026-07-15\n',
-    );
-    const plan = commitPlan(repository);
-
-    assert.throws(
-      () => validateCiPlanningCommit(repository, plan, CHANGE_ID),
-      (error) =>
-        isWorkflowError(error, 'INVESTIGATION_ACTIVATION_MARKER_INVALID'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-function activate(repository: string): string {
-  write(
-    repository,
-    ACTIVATION_MARKER,
-    fs.readFileSync(path.join(sourceRepositoryRoot, ACTIVATION_MARKER), 'utf8'),
-  );
-  return commit(repository, 'Activate investigation-first planning');
-}
-
 function createRepository(): string {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'workflow-ci-planning-'),
@@ -1160,6 +1086,16 @@ function createRepository(): string {
   git(repository, ['config', 'user.email', 'workflow@example.test']);
   git(repository, ['config', 'user.name', 'Workflow Test']);
   write(repository, 'README.md', '# Fixture\n');
+  for (const relativePath of [
+    'workflow/config.json',
+    'workflow/repository-consumer.json',
+  ]) {
+    write(
+      repository,
+      relativePath,
+      fs.readFileSync(path.join(sourceRepositoryRoot, relativePath), 'utf8'),
+    );
+  }
   commit(repository, 'Create fixture');
   return repository;
 }
@@ -1865,37 +1801,7 @@ test('CI accepts a revision that deletes non-canonical planning noise', () => {
   }
 });
 
-test('CI accepts a revision that repairs a bootstrap-era planning tree', () => {
-  const repository = createRepository();
-  try {
-    writePlanningTree(repository);
-    const metadataPath = path.join(
-      changeDirectory(repository),
-      '.openspec.yaml',
-    );
-    fs.rmSync(metadataPath);
-    const noisePath = path.join(
-      changeDirectory(repository),
-      'requirement-audit.md',
-    );
-    fs.writeFileSync(noisePath, 'Bootstrap-era audit noise.\n');
-    commit(repository, 'Admit bootstrap tree without metadata');
-    fs.writeFileSync(metadataPath, 'schema: spec-driven\n');
-    fs.rmSync(noisePath);
-    const revision = commitPlan(repository);
-
-    const result = validateCiPlanningCommit(repository, revision, CHANGE_ID);
-    assert.equal(result.kind, 'revision');
-    assert.deepEqual(result.changedPaths, [
-      `openspec/changes/${CHANGE_ID}/.openspec.yaml`,
-      `openspec/changes/${CHANGE_ID}/requirement-audit.md`,
-    ]);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('CI does not reinterpret corrupt provider metadata as a bootstrap repair', () => {
+test('CI rejects corrupt package-schema metadata before provider replay', () => {
   const repository = createRepository();
   try {
     writePlanningTree(repository);
@@ -1913,7 +1819,7 @@ test('CI does not reinterpret corrupt provider metadata as a bootstrap repair', 
 
     assert.throws(
       () => validateCiPlanningCommit(repository, revision, CHANGE_ID),
-      (error) => isWorkflowError(error, 'PROVIDER_BINDING_LEGACY_UNPROVEN'),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_METADATA_INVALID'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -1934,7 +1840,7 @@ test('CI still rejects a revision whose before tree stays incomplete', () => {
 
     assert.throws(
       () => validateCiPlanningCommit(repository, revision, CHANGE_ID),
-      (error) => isWorkflowError(error, 'CI_PLANNING_TREE_INVALID'),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_TREE_UNSAFE'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

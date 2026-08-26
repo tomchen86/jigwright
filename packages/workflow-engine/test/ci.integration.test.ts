@@ -4,10 +4,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
+import { loadHistoricalTaskAuthority } from '../src/entrypoints/ci/ci-historical-contract.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { INVESTIGATION_PLANNING_ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
-  activateInvestigationPlanning,
   configureChecks,
   createFixtureRepository as createLegacyFixtureRepository,
   git,
@@ -60,7 +59,7 @@ test('CI replays an active v3 head after its private runtime is removed', () => 
   }
 });
 
-test('CI rejects a non-managed schema at the active head', () => {
+test('CI rejects a non-current schema at the active head', () => {
   const repository = createLegacyFixtureRepository();
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
@@ -69,46 +68,44 @@ test('CI rejects a non-managed schema at the active head', () => {
 
     assert.throws(
       () => verifyPullRequest(repository, base, head),
-      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
+      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('CI replays task authority under an active anchor and fails closed without it', () => {
-  for (const marker of ['present', 'deleted'] as const) {
-    const repository = createFixtureRepository();
-    try {
-      git(repository, ['checkout', '-b', 'work/demo-change']);
-      activateInvestigationPlanning(repository);
-      if (marker === 'deleted') {
-        git(repository, [
-          'rm',
-          '--quiet',
-          '--',
-          INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-        ]);
-        git(repository, ['commit', '-m', 'Delete the activation marker']);
-      }
-      const base = git(repository, ['rev-parse', 'HEAD']).trim();
-      const head = commitCompletedTask(repository);
+test('immutable task authority rejects a package-schema governing parent', () => {
+  const repository = createLegacyFixtureRepository();
+  try {
+    const parent = git(repository, ['rev-parse', 'HEAD']).trim();
 
-      if (marker === 'present') {
-        assert.deepEqual(
-          verifyPullRequest(repository, base, head).completedTasks,
-          [{ changeId: 'demo-change', taskId: '1.1' }],
-        );
-      } else {
-        assert.throws(
-          () => verifyPullRequest(repository, base, head),
-          (error) =>
-            isWorkflowError(error, 'INVESTIGATION_ACTIVATION_MARKER_INVALID'),
-        );
-      }
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
+    assert.throws(
+      () =>
+        loadHistoricalTaskAuthority(repository, parent, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'CI_TASK_CURRENT_PLAN_REQUIRED'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('immutable task authority replays its current-v3 governing plan', () => {
+  const repository = createFixtureRepository();
+  try {
+    const parent = git(repository, ['rev-parse', 'HEAD']).trim();
+
+    const authority = loadHistoricalTaskAuthority(
+      repository,
+      parent,
+      'demo-change',
+      '1.1',
+    );
+
+    assert.equal(authority.taskId, '1.1');
+    assert.deepEqual(authority.requiredChecks, ['fixture']);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
@@ -781,7 +778,7 @@ function createFixtureRepository(): string {
   git(repository, [
     'commit',
     '-m',
-    'Plan current v3 demo change',
+    'Plan demo-change',
     '-m',
     'Change: demo-change\nTransition: plan',
   ]);
@@ -859,10 +856,7 @@ function writeCurrentPlanningChange(
   writePlanningChange(repository, changeId);
   const providerBinding = JSON.parse(
     fs.readFileSync(
-      path.join(
-        repository,
-        'workflow/change-providers/demo-change.json',
-      ),
+      path.join(repository, 'workflow/change-providers/demo-change.json'),
       'utf8',
     ),
   );

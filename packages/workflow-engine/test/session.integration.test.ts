@@ -31,7 +31,6 @@ import {
 } from '../src/composition-root/change-routing-production.ts';
 import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
 import {
-  activateInvestigationPlanning,
   addFixtureScripts,
   configureChecks,
   createFixtureRepository,
@@ -168,23 +167,20 @@ function removeConcurrentTaskWorktree(
   fs.rmSync(fixture.parent, { recursive: true, force: true });
 }
 
-test('current lifecycle rejects a non-managed schema with or without an activation marker', () => {
-  for (const activated of [false, true]) {
-    const repository = createFixtureRepository();
-    try {
-      git(repository, ['checkout', '-b', 'work/demo-change']);
-      if (activated) activateInvestigationPlanning(repository);
-      assert.throws(
-        () => startSession(repository, 'demo-change', '1.1'),
-        (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
-      );
-      assert.equal(
-        fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
-        false,
-      );
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
+test('current lifecycle rejects a non-managed schema directly', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    assert.throws(
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
+    );
+    assert.equal(
+      fs.existsSync(path.join(runtimeRoot(repository), 'sessions')),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

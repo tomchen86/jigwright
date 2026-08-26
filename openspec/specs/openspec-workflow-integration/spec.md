@@ -1,8 +1,11 @@
 # openspec-workflow-integration Specification
 
 ## Purpose
+
 TBD - created by archiving change integrate-openspec-with-workflow. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Exact Project-Local OpenSpec Surface
 
 The repository SHALL execute every managed OpenSpec planning operation through
@@ -48,30 +51,30 @@ The adapter MUST NOT expose a generic command pass-through.
 
 ### Requirement: Project-Local Managed Change Schema
 
-Every managed change SHALL declare a reviewed project-local schema. The repository SHALL retain legacy `expense-app` only for immutable planning generations proven to predate the first investigation-planning activation anchor and SHALL use `expense-app-v2` for every later planning introduction or revision.
+Every managed change SHALL declare the validated repository-configured current schema. A fresh repository uses the current investigation-first graph immediately; no activation marker, legacy schema reader, or migration lineage participates in admission or replay.
 
-Activation SHALL be derived monotonically from commit ancestry and the configured protected-base lineage. Current file absence MUST NOT erase a reachable activation anchor. A stale branch, marker deletion/rename, missing protected-base context, or ambiguous ancestry MUST NOT make a post-activation candidate eligible for legacy validation.
+The current apply graph MUST require engine-owned `investigation.json`, authored proposal and delta specs, mixed authored/managed design, tasks, task-only `guard.json`, engine-validated `execution.json`, and exact-target `plan-review.json`. The investigation artifact MUST select exactly one current `sealed-investigation` or eligible structured `investigation-exemption` branch. Repository execution readiness requires tasks, guard, the selected investigation applicability branch, execution, and plan review.
 
-The v2 apply graph MUST require engine-owned `investigation.json`, authored proposal and delta specs, mixed authored/managed design, tasks, task-only `guard.json`, engine-validated `execution.json`, and exact-target `plan-review.json`. The investigation artifact MUST select exactly one current `sealed-investigation` or eligible structured `investigation-exemption` branch. Repository execution readiness requires tasks, guard, the selected investigation applicability branch, execution, and plan review.
+The built-in `spec-driven` graph SHALL remain a distinct named OpenSpec package graph. It MUST NOT substitute for a repository's configured current managed schema. Immutable planning replay SHALL read the repository policy and schema declaration committed in the replayed current-v3 tree and fail closed when either is missing, malformed, or non-current.
 
 #### Scenario: Investigation-first managed change contains all required artifacts
 
-- **GIVEN** a post-activation change declares `schema: expense-app-v2`
+- **GIVEN** a change declares the repository-configured current schema
 - **AND** its current investigation, proposal, delta specs, design, tasks, guard, execution, and plan review exist
 - **WHEN** OpenSpec and repository validation compute readiness
 - **THEN** the required planning graph is complete only when every engine-owned artifact also passes its workflow validator
 
 #### Scenario: Eligible investigation exemption is selected
 
-- **GIVEN** a post-activation change declares `expense-app-v2`
+- **GIVEN** a current managed change
 - **AND** `investigation.json` selects a current eligible structured exemption
 - **WHEN** OpenSpec and repository validation compute readiness
 - **THEN** the artifact graph is complete without sealed scan/disposition/WHY nodes
-- **AND** exact-plan review and every other v2 gate remain required
+- **AND** exact-plan review and every other current gate remain required
 
 #### Scenario: Empty investigation masquerades as exemption
 
-- **GIVEN** a v2 investigation artifact contains empty scan or WHY collections but no eligible typed exemption
+- **GIVEN** a current investigation artifact contains empty scan or WHY collections but no eligible typed exemption
 - **WHEN** readiness is evaluated
 - **THEN** the change is not ready
 
@@ -83,45 +86,28 @@ The v2 apply graph MUST require engine-owned `investigation.json`, authored prop
 
 #### Scenario: Investigation-first artifact is absent
 
-- **GIVEN** a v2 change lacks investigation, execution, or plan-review artifact
+- **GIVEN** a current change lacks investigation, execution, or plan-review artifact
 - **WHEN** readiness is evaluated
 - **THEN** the change is not ready for planning transition or execution
 
-#### Scenario: Pre-activation governing plan uses legacy schema
+#### Scenario: Managed change selects a non-current schema
 
-- **GIVEN** an immutable governing plan commit is proven to predate the first activation anchor in its replayed lineage
-- **AND** that generation declares the legacy `expense-app` schema
-- **WHEN** historical or current replay validates that governing generation
-- **THEN** the legacy artifact graph remains valid without pretending it completed investigation-first planning
+- **GIVEN** the repository configuration names one validated current schema
+- **WHEN** a planning introduction, revision, task, CI, or archive replay selects any other managed schema
+- **THEN** validation fails closed without consulting a historical reader or activation lineage
 
-#### Scenario: Post-activation plan selects legacy schema
+#### Scenario: Immutable current planning generation is replayed
 
-- **GIVEN** activation is reachable from the candidate parent or configured protected-base baseline
-- **WHEN** the candidate selects `expense-app` or omits v2 artifacts
-- **THEN** planning validation fails as a downgrade attempt
+- **GIVEN** a governing current-v3 plan commit contains its repository policy and current schema declaration
+- **WHEN** task, CI, or archive validation replays that generation
+- **THEN** the same current graph and exact committed artifacts are validated
+- **AND** no mutable checkout policy or historical schema fallback substitutes for the committed inputs
 
-#### Scenario: First plan for a new change is introduced after activation
+#### Scenario: Replayed repository policy is absent
 
-- **GIVEN** no prior plan commit exists for the new change
-- **AND** activation is reachable from the candidate parent or configured protected-base baseline
-- **WHEN** planning introduction is validated
-- **THEN** selection is computed directly from those baselines
-- **AND** `expense-app-v2` plus every v2 gate is required
-
-#### Scenario: Marker is deleted after activation
-
-- **GIVEN** the activation anchor remains reachable in applicable history
-- **AND** the candidate tree deletes, renames, or omits the marker file
-- **WHEN** planning, task, CI, or archive validation runs
-- **THEN** validation fails closed
-- **AND** legacy schema eligibility is not restored
-
-#### Scenario: Stale pre-activation branch proposes legacy after protected-base activation
-
-- **GIVEN** the candidate parent predates activation
-- **AND** the configured protected-base baseline contains the activation anchor
-- **WHEN** a planning introduction or revision selects legacy
-- **THEN** validation fails as a downgrade attempt
+- **GIVEN** a planning commit lacks the repository policy required to resolve its current schema
+- **WHEN** immutable planning replay runs
+- **THEN** replay fails closed rather than inferring a former consumer schema
 
 #### Scenario: Schema source is shadowed
 
@@ -129,18 +115,9 @@ The v2 apply graph MUST require engine-owned `investigation.json`, authored prop
 - **WHEN** schema diagnostics or change validation runs
 - **THEN** the operation fails even if a same-named user schema is valid
 
-#### Scenario: Managed change contains all required artifacts
-
-- **GIVEN** a change declares `schema: expense-app`
-- **AND** its proposal, delta specs, design, tasks, and `guard.json` exist
-- **WHEN** OpenSpec computes artifact readiness
-- **THEN** the required planning graph is complete
-
 ### Requirement: Combined Change Readiness
 
 The workflow engine SHALL report an investigation-first change ready only when strict OpenSpec validation and repository investigation applicability, the selected sealed-investigation evidence and managed projection when applicable, exact-plan review, task, guard, execution strategy, check, path, metadata, content, and digest validation all succeed against the same planning generation.
-
-Legacy generations SHALL retain their original readiness contract without being upgraded to an investigation claim.
 
 #### Scenario: Valid delta has unsafe guard policy
 
@@ -180,13 +157,13 @@ Legacy generations SHALL retain their original readiness contract without being 
 
 ### Requirement: Authorized Planning Transition
 
-Except for named historical bootstraps, a planning introduction or revision SHALL be commit-authorized only by a current workflow plan-transition report whose exact diff is confined to the named change's permitted schema-specific planning paths.
+A planning introduction or revision SHALL be commit-authorized only by a current workflow plan-transition report whose exact diff is confined to the named change's permitted schema-specific planning paths.
 
 An investigation-first transition MUST also have a current sealed investigation or eligible structured investigation exemption, the exact managed design projection when applicable, valid execution strategies, immutable planning generation, current exact-target PlanReview, achieved required role separation or an eligible signed degraded result whose exact content admission and use validate, and current dispositions for every challenge. Grant presence alone and the advisory verdict itself MUST NOT be commit authority.
 
 #### Scenario: New investigation-first planning baseline is authorized
 
-- **GIVEN** a v2 change passes combined validation and exact-plan review
+- **GIVEN** a current change passes combined validation and exact-plan review
 - **AND** all newly introduced task checkboxes are unchecked
 - **WHEN** the planning transition is requested
 - **THEN** only its authorized planning paths are staged
@@ -451,7 +428,7 @@ Prompt-authored or manually edited engine fields MUST fail repository validation
 
 #### Scenario: User invokes artifact instructions for an engine-owned artifact
 
-- **WHEN** an engine-owned v2 artifact becomes ready in the OpenSpec graph
+- **WHEN** an engine-owned current artifact becomes ready in the OpenSpec graph
 - **THEN** its reviewed instruction routes creation through `workflow propose`
 - **AND** free-form authored content cannot satisfy workflow validation
 
@@ -460,4 +437,3 @@ Prompt-authored or manually edited engine fields MUST fail repository validation
 - **GIVEN** an investigation, execution, or plan-review projection was current
 - **WHEN** its objective binding or managed bytes are edited outside the engine transition
 - **THEN** combined validation fails
-

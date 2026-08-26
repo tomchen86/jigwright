@@ -132,6 +132,28 @@ export function readFileAtCommit(
     : undefined;
 }
 
+export function lastCommitChangingPath(
+  repositoryRoot: string,
+  head: string,
+  filePath: string,
+): string | null {
+  const exactHead = assertCiCommit(repositoryRoot, head);
+  const normalizedPath = normalizeChangedPath(filePath);
+  const commit = runGit(
+    repositoryRoot,
+    [
+      'log',
+      '-1',
+      '--format=%H',
+      exactHead,
+      '--',
+      `:(literal)${normalizedPath}`,
+    ],
+    true,
+  ).trim();
+  return commit === '' ? null : assertCiCommit(repositoryRoot, commit);
+}
+
 export function treeAtCommit(repositoryRoot: string, commit: string): string {
   const exactCommit = assertCiCommit(repositoryRoot, commit);
   return runGit(repositoryRoot, ['rev-parse', `${exactCommit}^{tree}`]).trim();

@@ -111,7 +111,7 @@ test('archive eligibility requires documentation closure on the current path', (
   }
 });
 
-test('archive eligibility rejects a historical v1 investigation on the current v2 tree', () => {
+test('archive eligibility rejects a historical v1 investigation on the current-v3 tree', () => {
   const repository = createFixtureRepository();
   try {
     writeManagedChangeArtifacts(repository);
@@ -376,7 +376,7 @@ function configuredFixture(): string {
   git(repository, [
     'commit',
     '-m',
-    'Plan current v3 demo change',
+    'Plan demo-change',
     '-m',
     'Change: demo-change\nTransition: plan',
   ]);

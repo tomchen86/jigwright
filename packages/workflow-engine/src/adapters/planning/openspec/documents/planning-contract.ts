@@ -19,11 +19,6 @@ import {
   runGit,
 } from '../../../../runtime/repository-transaction/git.ts';
 import type { PlanningProviderBindingReaderPort } from '../../../../modules/planning-provider/planning-provider-binding.ts';
-import {
-  assertInvestigationPlanningActivation,
-  readActivationMarkerFile,
-  protectedActivationBaselines,
-} from './openspec-schema-contract.ts';
 import { normalizeChangedPath } from '../../../../runtime/session-workspace/paths.ts';
 import {
   assertPlanningPaths,
@@ -111,18 +106,6 @@ export function inspectPlanningTransition(
   const schemaName = readManagedSchemaName(repositoryRoot, metadataPath);
   const currentSchemaName =
     loadRepositoryPlanningPolicy(repositoryRoot).currentSchemaName;
-  // A planning introduction has no prior generation to consult, and a revision
-  // must not be able to reach behind its own parent, so both are decided from
-  // the candidate parent plus the configured protected base. Activation is
-  // monotonic across those baselines: a stale branch that omits the marker
-  // still cannot select legacy once the protected base carries the anchor.
-  assertInvestigationPlanningActivation({
-    repositoryRoot,
-    baselines: [baselineHead, ...protectedActivationBaselines(repositoryRoot)],
-    readMarker: () => readActivationMarkerFile(repositoryRoot),
-    declaredSchemaName: schemaName,
-    currentSchemaName,
-  });
   assertPlanningPaths(
     changeRoot,
     changeId,

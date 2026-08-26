@@ -19,15 +19,15 @@
     "workflowJsonIdentityDigest": "sha256:17895e0b81bbeb7f986b10736d95fa6fad26e65b11a757a518e6cec5f12eb1fa",
     "jsonSchemaIdHosts": {
       "example.local": 1,
-      "expense-app.local": 17,
+      "expense-app.local": 16,
       "expense.local": 1
     },
-    "jsonSchemaIdIdentityDigest": "sha256:9d5df405aa296be8599a20eab56655c7939f974a4d23ec2939dd416b88b600a3"
+    "jsonSchemaIdIdentityDigest": "sha256:a5a6ad5e025680b4e36466fe5c050c8994d1ee5804afe394da1085c2e7d8696d"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 182,
-    "sourceFileCount": 59,
-    "sourceIdentityDigest": "sha256:f5c924f75c30916f6e61fbb02296eeeede73ea8fbcb2fb8835f839e80034eeca",
+    "sourceOccurrences": 179,
+    "sourceFileCount": 57,
+    "sourceIdentityDigest": "sha256:5481fa133fced5ec662af481f19ac710820b0f24d85830e1c8c840a08e59658c",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",

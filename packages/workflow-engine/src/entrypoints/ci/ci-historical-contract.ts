@@ -1,4 +1,5 @@
-import { readFileAtCommit } from './ci-git.ts';
+import { lastCommitChangingPath, readFileAtCommit } from './ci-git.ts';
+import { validateCiPlanningCommit } from './ci-planning.ts';
 import {
   parseCheckCommand,
   parseTasks,
@@ -6,10 +7,6 @@ import {
   type ParsedTask,
 } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertInvestigationPlanningActivation,
-  INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-} from '../../adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
   assertChangeId,
   assertTaskId,
@@ -41,22 +38,30 @@ export function loadHistoricalTaskAuthority(
 ): HistoricalTaskAuthority {
   const changeId = assertChangeId(requestedChangeId);
   const taskId = assertTaskId(requestedTaskId);
-  // Task replay reads activation from the replayed lineage alone, never from
-  // the protected base a later branch grew: a task authorized by a governing
-  // generation that predates the anchor stays replayable forever. Once the
-  // lineage does reach the anchor, the reviewed marker must still be in the
-  // parent tree, so deleting or renaming it fails closed instead of quietly
-  // returning the change to the legacy contract.
-  assertInvestigationPlanningActivation({
+  const planReviewPath = `${changeRoot}/${changeId}/plan-review.json`;
+  const governingPlanCommit = lastCommitChangingPath(
     repositoryRoot,
-    baselines: [commit],
-    readMarker: () =>
-      readFileAtCommit(
-        repositoryRoot,
-        commit,
-        INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-      ),
-  });
+    commit,
+    planReviewPath,
+  );
+  if (governingPlanCommit === null) {
+    throw ciContractError(
+      'CI_TASK_CURRENT_PLAN_REQUIRED',
+      'Task authority requires an immutable current-v3 governing plan commit.',
+    );
+  }
+  const planning = validateCiPlanningCommit(
+    repositoryRoot,
+    governingPlanCommit,
+    changeId,
+    changeRoot,
+  );
+  if (planning.planningAssurance === null) {
+    throw ciContractError(
+      'CI_TASK_CURRENT_PLAN_REQUIRED',
+      'Task authority requires an immutable current-v3 governing plan commit.',
+    );
+  }
   const tasksPath = `${changeRoot}/${changeId}/tasks.md`;
   const tasksContent = requiredFile(repositoryRoot, commit, tasksPath);
   const tasks = parseTasks(tasksContent);

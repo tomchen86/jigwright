@@ -27,7 +27,6 @@ import {
   replacePlanningAmendmentDecisionMarker,
 } from '../src/modules/lifecycle/planning-amendment-decision.ts';
 import {
-  activateInvestigationPlanning,
   createFixtureRepository,
   fixtureCurrentSchemaName,
   git,
@@ -369,8 +368,8 @@ test('duplicate reviewed amendment markers are refused rather than selected', ()
   }
 });
 
-test('amend-plan rejects a pre-epoch completed generation without current task evidence', () => {
-  const repository = preEpochCompletedFixture();
+test('amend-plan rejects completed-looking task state without current task evidence', () => {
+  const repository = completedLookingFixtureWithoutTaskEvidence();
   try {
     prepareReviewedCorrection(repository);
     const before = repositoryState(repository);
@@ -384,46 +383,6 @@ test('amend-plan rejects a pre-epoch completed generation without current task e
       (error: unknown) => isWorkflowError(error, 'AMENDMENT_STATE_INELIGIBLE'),
     );
     assert.deepEqual(repositoryState(repository), before);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('a post-activation plan cannot forge the pre-epoch task exemption', () => {
-  const repository = preEpochCompletedFixture('before-plan');
-  try {
-    prepareReviewedCorrection(repository);
-    const before = repositoryState(repository);
-
-    assert.throws(
-      () =>
-        commitPlanAmendment(repository, 'demo-change', {
-          reason: 'archive-applicability-failure',
-          executionImpact: 'none',
-        }),
-      (error: unknown) => isWorkflowError(error, 'AMENDMENT_STATE_INELIGIBLE'),
-    );
-    assert.deepEqual(repositoryState(repository), before);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('a stale side branch cannot forge pre-epoch evidence after the protected cutover', () => {
-  const repository = preEpochCompletedFixture(
-    'stale-after-protected-activation',
-  );
-  try {
-    prepareReviewedCorrection(repository);
-
-    assert.throws(
-      () =>
-        commitPlanAmendment(repository, 'demo-change', {
-          reason: 'archive-applicability-failure',
-          executionImpact: 'none',
-        }),
-      (error: unknown) => isWorkflowError(error, 'AMENDMENT_STATE_INELIGIBLE'),
-    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -790,29 +749,9 @@ function plannedV2Fixture(): string {
   return repository;
 }
 
-function preEpochCompletedFixture(
-  activation:
-    | 'after-plan'
-    | 'before-plan'
-    | 'stale-after-protected-activation' = 'after-plan',
-): string {
+function completedLookingFixtureWithoutTaskEvidence(): string {
   const repository = createFixtureRepository();
-  const preActivationHead = git(repository, ['rev-parse', 'HEAD']).trim();
-  if (
-    activation === 'before-plan' ||
-    activation === 'stale-after-protected-activation'
-  ) {
-    activateInvestigationPlanning(repository);
-    syncOriginMain(repository);
-  }
-  git(repository, [
-    'checkout',
-    '-b',
-    'work/demo-change',
-    ...(activation === 'stale-after-protected-activation'
-      ? [preActivationHead]
-      : []),
-  ]);
+  git(repository, ['checkout', '-b', 'work/demo-change']);
   writeReadyV3ExemptChange(repository);
   const tasksPath = path.join(
     repository,
@@ -836,12 +775,6 @@ function preEpochCompletedFixture(
     '-m',
     'Change: demo-change\nTransition: plan',
   ]);
-  if (
-    activation === 'after-plan' ||
-    activation === 'stale-after-protected-activation'
-  ) {
-    activateInvestigationPlanning(repository);
-  }
   return repository;
 }
 

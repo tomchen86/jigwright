@@ -22,7 +22,6 @@ import {
 import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
 import { OPENSPEC_REPOSITORY_REVIEWED_SOURCES } from '../src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
 import { generateOpenSpecPlanningAssets } from '../src/adapters/planning/openspec/documents/openspec-planning-assets.ts';
-import { INVESTIGATION_PLANNING_ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -262,7 +261,7 @@ export function createFixtureRepository(
   addFixtureScripts(repository);
   fs.writeFileSync(
     path.join(changeDirectory, '.openspec.yaml'),
-    'schema: spec-driven\ncreated: 2026-07-15\n',
+    'schema: spec-driven\n',
   );
   fs.writeFileSync(path.join(changeDirectory, 'proposal.md'), '# Proposal\n');
   fs.writeFileSync(path.join(changeDirectory, 'design.md'), '# Design\n');
@@ -306,58 +305,6 @@ export function createFixtureRepository(
   git(repository, ['commit', '-m', 'Create fixture']);
   syncOriginMain(repository);
   return repository;
-}
-
-/**
- * Reproduce the immutable legacy history a pre-activation change actually has:
- * a governing `Transition: plan` generation with every task unchecked, then a
- * task commit that checks exactly one box. The legacy-migration transition must
- * preserve that projection instead of re-authoring it.
- */
-export function writeLegacyGoverningPlan(
-  repository: string,
-  changeId: string,
-): { created: string; governingCommit: string; taskContent: string } {
-  git(repository, ['checkout', '-b', `work/${changeId}`]);
-  git(repository, [
-    'mv',
-    'openspec/changes/demo-change',
-    `openspec/changes/${changeId}`,
-  ]);
-  const changeDirectory = path.join(repository, 'openspec/changes', changeId);
-  const guardPath = path.join(changeDirectory, 'guard.json');
-  const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-    changeId: string;
-    tasks: Record<string, unknown>;
-  };
-  guard.changeId = changeId;
-  guard.tasks['1.2'] = {
-    allowedPaths: ['src/**'],
-    requiredChecks: ['fixture'],
-  };
-  writeJson(guardPath, guard);
-  fs.writeFileSync(
-    path.join(changeDirectory, 'tasks.md'),
-    '# Tasks\n\n- [ ] 1.1 Demo task\n- [ ] 1.2 Follow-up task\n',
-  );
-  git(repository, ['add', '-A']);
-  git(repository, [
-    'commit',
-    '-m',
-    `Plan ${changeId}\n\nChange: ${changeId}\nTransition: plan`,
-  ]);
-  const governingCommit = git(repository, ['rev-parse', 'HEAD']).trim();
-
-  const taskContent =
-    '# Tasks\n\n- [x] 1.1 Demo task\n- [ ] 1.2 Follow-up task\n';
-  fs.writeFileSync(path.join(changeDirectory, 'tasks.md'), taskContent);
-  git(repository, ['add', '-A']);
-  git(repository, [
-    'commit',
-    '-m',
-    `Complete the demo task\n\nChange: ${changeId}\nTask: 1.1`,
-  ]);
-  return { created: '2026-07-15', governingCommit, taskContent };
 }
 
 export function writeManagedChangeArtifacts(
@@ -827,27 +774,6 @@ export function syncOriginMain(repository: string): void {
   git(repository, ['update-ref', 'refs/remotes/origin/main', tip]);
 }
 
-/**
- * Introduce the reviewed investigation-planning activation marker exactly as
- * the cutover commit does. The returned commit is the activation anchor for
- * every lineage that reaches it; fixtures that omit this call reproduce a
- * pre-activation repository, where legacy selection is still eligible.
- */
-export function activateInvestigationPlanning(repository: string): string {
-  const target = path.join(
-    repository,
-    INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-  );
-  fs.mkdirSync(path.dirname(target), { recursive: true });
-  fs.copyFileSync(
-    path.join(sourceRepositoryRoot, INVESTIGATION_PLANNING_ACTIVATION_MARKER),
-    target,
-  );
-  git(repository, ['add', '--', INVESTIGATION_PLANNING_ACTIVATION_MARKER]);
-  git(repository, ['commit', '-m', 'Activate investigation-first planning']);
-  return git(repository, ['rev-parse', 'HEAD']).trim();
-}
-
 export function addFixtureScripts(repository: string): void {
   const scriptsDirectory = path.join(repository, 'scripts');
   fs.mkdirSync(scriptsDirectory, { recursive: true });
@@ -1054,7 +980,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 function configuredCurrentSchemaName(root) {
   const configPath = path.join(root, 'workflow/repository-consumer.json');
-  if (!fs.existsSync(configPath)) return 'expense-app-v2';
   return JSON.parse(fs.readFileSync(configPath, 'utf8')).planning.currentSchemaName;
 }
 if (process.argv[2] === 'init') {
@@ -1106,8 +1031,7 @@ if (process.argv[2] === 'instructions') {
   ];
   const artifact = graph.find(([id]) => id === artifactId);
   if (
-    (schemaName !== 'expense-app-v2' &&
-      schemaName !== configuredCurrentSchemaName(root)) ||
+    schemaName !== configuredCurrentSchemaName(root) ||
     !artifact
   ) {
     process.stderr.write('unsupported fixture instructions');
@@ -1203,14 +1127,13 @@ if (process.argv[2] === 'status') {
       fs.writeFileSync(statusCountdown, String(remaining - 1));
     }
   }
-  const legacyArtifacts = [
+  const packageArtifacts = [
     ['proposal', 'proposal.md', [path.join(changeRoot, 'proposal.md')]],
     ['design', 'design.md', [path.join(changeRoot, 'design.md')]],
     ['specs', 'specs/**/*.md', [path.join(changeRoot, 'specs/demo/spec.md')]],
-    ['tasks', 'tasks.md', [path.join(changeRoot, 'tasks.md')]],
-    ['guard', 'guard.json', [path.join(changeRoot, 'guard.json')]]
+    ['tasks', 'tasks.md', [path.join(changeRoot, 'tasks.md')]]
   ];
-  const v2Artifacts = [
+  const currentArtifacts = [
     ['investigation', 'investigation.json', [path.join(changeRoot, 'investigation.json')]],
     ['proposal', 'proposal.md', [path.join(changeRoot, 'proposal.md')]],
     ['specs', 'specs/**/*.md', [path.join(changeRoot, 'specs/demo/spec.md')]],
@@ -1221,12 +1144,11 @@ if (process.argv[2] === 'status') {
     ['plan-review', 'plan-review.json', [path.join(changeRoot, 'plan-review.json')]]
   ];
   const currentSchema = configuredCurrentSchemaName(root);
-  const usesV3Graph =
-    schemaName === 'expense-app-v2' || schemaName === currentSchema;
-  const artifacts = usesV3Graph
-    ? v2Artifacts
-    : legacyArtifacts;
-  const dependencies = usesV3Graph
+  const usesCurrentGraph = schemaName === currentSchema;
+  const artifacts = usesCurrentGraph
+    ? currentArtifacts
+    : packageArtifacts;
+  const dependencies = usesCurrentGraph
     ? {
         investigation: [],
         proposal: ['investigation'],
@@ -1242,7 +1164,6 @@ if (process.argv[2] === 'status') {
         design: [],
         specs: [],
         tasks: [],
-        guard: []
       };
   const done = Object.fromEntries(artifacts.map(([id, , existingOutputPaths]) => [
     id,
@@ -1277,9 +1198,9 @@ if (process.argv[2] === 'status') {
       }
     ])),
     artifacts: statuses,
-    applyRequires: usesV3Graph
+    applyRequires: usesCurrentGraph
       ? ['investigation', 'tasks', 'guard', 'execution', 'plan-review']
-      : ['tasks', 'guard'],
+      : ['tasks'],
     isComplete: statuses.every(({ status }) => status === 'done'),
     root: { path: root, source: 'nearest' }
   }));

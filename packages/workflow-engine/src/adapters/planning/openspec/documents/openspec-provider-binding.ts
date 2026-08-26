@@ -25,7 +25,7 @@ const RESOLVER = createOpenSpecProviderBindingResolverV1({
   }),
   bindingSchemaPath: 'workflow/schemas/planning-provider-binding.schema.json',
   bindingArtifactPath: planningProviderBindingPath,
-  legacySchemaNames: Object.freeze(['expense-app', 'expense-app-v2']),
+  legacySchemaNames: Object.freeze([]),
 });
 
 export function resolveCurrentOpenSpecProviderBinding(

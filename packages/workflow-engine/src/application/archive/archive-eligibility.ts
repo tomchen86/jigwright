@@ -12,10 +12,6 @@ import {
 import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  assertInvestigationPlanningActivation,
-  readActivationMarkerFile,
-} from '../../adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import { validateInvestigationFirstPlanningReadiness } from '../../modules/assurance/planning-assurance-validator.ts';
 import {
   discoverRepository,
@@ -242,15 +238,6 @@ function inspectEligibility(
     'ARCHIVE_BASE_NOT_ANCESTOR',
     'The configured archive base must be an ancestor of HEAD.',
   );
-
-  // Archiving replays an immutable generation, so an activated repository may
-  // still archive a legacy change; what it may not do is archive out of a
-  // checkout that has dropped the reviewed marker.
-  assertInvestigationPlanningActivation({
-    repositoryRoot: initial.repositoryRoot,
-    baselines: [initial.head],
-    readMarker: () => readActivationMarkerFile(initial.repositoryRoot),
-  });
 
   const stable = loadStableValidatedChangeContract(initial, requestedChangeId);
   const { contract, git } = stable;

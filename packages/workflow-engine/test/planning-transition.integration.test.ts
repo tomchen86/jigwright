@@ -24,9 +24,7 @@ import {
   abortSession,
   startSession,
 } from '../src/application/execute-task/session.ts';
-import { INVESTIGATION_PLANNING_ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import {
-  activateInvestigationPlanning,
   createFixtureRepository,
   git,
   isWorkflowError,
@@ -122,7 +120,7 @@ test('plan-commit introduces an unchecked change through one exact managed commi
   }
 });
 
-test('planning inspection selects the current v3 authority before semantic activation', () => {
+test('planning inspection selects the current-v3 authority directly', () => {
   const repository = createPlanningRepository('current-change');
   try {
     const canonicalRepository = fs.realpathSync(repository);
@@ -189,48 +187,16 @@ test('planning inspection selects the current v3 authority before semantic activ
   }
 });
 
-test('plan-commit fails closed when an activated repository drops the marker', () => {
+test('plan-commit authorizes an exact reviewed current revision', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    activateInvestigationPlanning(repository);
-    git(repository, [
-      'rm',
-      '--quiet',
-      '--',
-      INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-    ]);
-    git(repository, ['commit', '-m', 'Delete the activation marker']);
-    const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-    writeReadyV3ExemptChange(repository);
-
-    assert.throws(
-      () => commitPlanningTransition(repository, 'demo-change'),
-      (error) =>
-        isWorkflowError(error, 'INVESTIGATION_ACTIVATION_MARKER_INVALID'),
-    );
-    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-    assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('plan-commit authorizes an exact reviewed current revision under an active anchor', () => {
-  const repository = createFixtureRepository();
-  try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-    const anchor = activateInvestigationPlanning(repository);
     const ready = writeReadyV3ExemptChange(repository);
 
     const result = commitPlanningTransition(repository, 'demo-change');
 
     assert.equal(result.kind, 'revision');
     assert.deepEqual(result.planningAssurance, ready.planningAssurance);
-    assert.equal(
-      git(repository, ['merge-base', '--is-ancestor', anchor, 'HEAD']),
-      '',
-    );
     assert.equal(git(repository, ['status', '--porcelain']), '');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

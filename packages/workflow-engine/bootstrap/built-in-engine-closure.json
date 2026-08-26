@@ -443,17 +443,17 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:50d5dd0a3ccc45f95d4f8eec2478a310025202b7ace4e3efed58d2d275c41676"
+      "digest": "sha256:256fe6cb8450af63218a4a2f88fcee21d429cb4f2bdb4cce87bba52c966437aa"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
       "mode": "100644",
-      "digest": "sha256:c5428b00b1108c823b6ef255a5d964aa3368d17db22a0355949ff68810e89538"
+      "digest": "sha256:fa6e96eafa765c2f0142ce90613bc2ab071d0f35602745aa127fbbb5103f4264"
     },
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
       "mode": "100644",
-      "digest": "sha256:9a8c118dc58f0a491f88f9336ecab9955e2cd864b49775ee3a48e53484aa2836"
+      "digest": "sha256:738836d2d690501bf199cfb52d30dccb0bd661446d60b5bbd593d49b16d2de3c"
     },
     {
       "path": "src/adapters/providers/built-in-provider-definition.ts",
@@ -498,7 +498,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:cd9cec740eda709bd1b23a3081509ef858753d4f12e7df5c41c0e43f6b6256c7"
+      "digest": "sha256:52220ce49234c38de316fd7fe9e3f7d659d3fbbf344fccb302d798200a0b91bb"
     },
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
@@ -678,7 +678,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:df46b074e87481f74bc63c4021560ffd41ad475e10bc1949596e571f09cd4698"
+      "digest": "sha256:4438bd1a60facf384d218072f229bd4f0a1202a06686099b3acdaa25a42ea126"
     },
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
@@ -893,17 +893,17 @@
     {
       "path": "src/entrypoints/ci/ci-git.ts",
       "mode": "100644",
-      "digest": "sha256:a099461e90c378e526af90dbc47c600a8d06df4b8044ca3186f274e2194e4781"
+      "digest": "sha256:3b026d615c46df08965faa98824be03fdcc52a991147c803709522fb4e44ffba"
     },
     {
       "path": "src/entrypoints/ci/ci-historical-contract.ts",
       "mode": "100644",
-      "digest": "sha256:3d1d1fc9d7a2108f19cb495348fa445a1d6b7609c166f2a4a683a209e1e7702b"
+      "digest": "sha256:bc53782ba831a44837c665f2d123921b5ec8c19681de3ec2f2d69de134b737fc"
     },
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:0a440d56896a80292cd3db9cb26335b7d892019b782cad0be6c8374e0ae64237"
+      "digest": "sha256:2d665aa4c4d4f1a7e66dc2db3d15cd290d9a9988d70717f16a8efbbbcace497e"
     },
     {
       "path": "src/entrypoints/ci/ci-policy.ts",
