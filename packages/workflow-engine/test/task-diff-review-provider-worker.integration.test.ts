@@ -11,7 +11,6 @@ import {
   assertDocumentationClosureCommitCurrent,
   parseDocumentationClosureFromCommitMessage,
 } from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
-import { DOCUMENTATION_CLOSURE_ACTIVATION_MARKER } from '../src/runtime/managed-documents/ownership/documentation-closure-activation.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
@@ -531,12 +530,6 @@ function createTaskDiffWorkerFixture(
   options: { documentationClosure?: boolean } = {},
 ) {
   const repository = createFixtureRepository();
-  if (options.documentationClosure) {
-    fs.copyFileSync(
-      `${sourceRepositoryRoot}/${DOCUMENTATION_CLOSURE_ACTIVATION_MARKER}`,
-      `${repository}/${DOCUMENTATION_CLOSURE_ACTIVATION_MARKER}`,
-    );
-  }
   const documentPolicyPath = `${repository}/workflow/document-policy.json`;
   const documentPolicy = JSON.parse(
     fs.readFileSync(documentPolicyPath, 'utf8'),

@@ -36,7 +36,6 @@ import {
   assertDocumentationClosureCommitCurrent,
   parseDocumentationClosureFromCommitMessage,
 } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import { documentationClosureActivationAtCommit } from '../../runtime/managed-documents/ownership/documentation-closure-activation.ts';
 import {
   commitFacts,
   findExactTaskCommits,
@@ -313,20 +312,6 @@ function validateDocumentationClosure(
   const finalTask = parseTasks(after).every(({ completed }) => completed);
   const message = commitFacts(repositoryRoot, commit.hash).message;
   const closure = parseDocumentationClosureFromCommitMessage(message);
-  const activation = documentationClosureActivationAtCommit(
-    repositoryRoot,
-    commit.parents[0]!,
-  );
-  if (!activation.activated) {
-    if (closure !== null) {
-      throw ciError(
-        'CI_DOCUMENTATION_CLOSURE_PREMATURE',
-        'A pre-activation task commit may not carry documentation closure.',
-      );
-    }
-    return;
-  }
-  documentationClosureActivationAtCommit(repositoryRoot, commit.hash);
   if (!finalTask) {
     if (closure !== null) {
       throw ciError(

@@ -281,11 +281,6 @@
       "digest": "sha256:ad1c36608c2bbb777cdd6ddb3e981a0a563c20575fa99e057c8dfa279ca1bc3f"
     },
     {
-      "path": "src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "mode": "100644",
-      "digest": "sha256:4bab2dc8c65ba7d172425755ec6a7a8d796dbbdfec262cc6fca2ba143d5f0864"
-    },
-    {
       "path": "src/adapters/compatibility/investigation-v2/evidence-convergence.ts",
       "mode": "100644",
       "digest": "sha256:597e85786ac599f6947b9280d13e337899bd80042c75c1d1c1b6b22040e57cd9"
@@ -503,7 +498,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:bb893cef044674148fa5614c61058c9df44f715bfc7e280b872c5bfe1dce0cd3"
+      "digest": "sha256:cd9cec740eda709bd1b23a3081509ef858753d4f12e7df5c41c0e43f6b6256c7"
     },
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
@@ -663,7 +658,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:a9ce7d3579d686ba770182ce08e9df313eb49d2ec08a4ff0993b4de38ca270d9"
+      "digest": "sha256:def26769a3d3278bde2fec8114f358453e0d68f73aaef2cb0afe7f6fb4182801"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -678,7 +673,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:91efd1a1030706a1bbc3ae97a19e4b9f6783286ad9934f7d718363fbdef6571c"
+      "digest": "sha256:708e8dfcabb1049074cd00361f64327e5fabe88d3c3342bd8adbe00a95025b2e"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -693,7 +688,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:924484e9112561fa82d3c8cbaa96c2410b2378521ee3a12356ccfcc4b358f103"
+      "digest": "sha256:f6a38e1bc3389e92baffcb660d006559019c6ca9719d78075944e29c8252dbea"
     },
     {
       "path": "src/application/propose/propose-orchestrator.ts",
@@ -868,7 +863,7 @@
     {
       "path": "src/entrypoints/ci/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:dab41d4130fb7cc52b2ae08c5e3f9a607e37300fbc1dbceeec3f4a9b10867d0e"
+      "digest": "sha256:a3a860aec7bee78c415e1fd314eabcfb90b31c8dfac9c05f5b93a951f217bcab"
     },
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
@@ -923,7 +918,7 @@
     {
       "path": "src/entrypoints/ci/ci-sequence.ts",
       "mode": "100644",
-      "digest": "sha256:340955f412665cb1027d3b466d52b8c6287c24beb0b223146ecfb8619b6c1dce"
+      "digest": "sha256:201c3966d8ef6fc7a724050a4d019a29c0a5eff14bee007d8b23aaa00c5e1a71"
     },
     {
       "path": "src/entrypoints/ci/ci-task-state.ts",
@@ -1138,7 +1133,7 @@
     {
       "path": "src/modules/assurance/task-execution-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:8ff841973950f1955b1aa0a8f7a67468444c27b024463a0a2a9904764b9aad57"
+      "digest": "sha256:6808ead6f6c8ef62b93885f928b33495683238153bce5a1472e1afafe263dda8"
     },
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
@@ -1468,7 +1463,7 @@
     {
       "path": "src/modules/lifecycle/planning-execution-epoch.ts",
       "mode": "100644",
-      "digest": "sha256:9d205ffac8a4e62d5863f0e7e4be773310b2f081cebf85c4a2202c5bb4f1772f"
+      "digest": "sha256:aad7e78e3b260437fc08e8fa79eee8af6e7e2e081d967442ee943e29d6a3dd88"
     },
     {
       "path": "src/modules/lifecycle/planning-generation.ts",
@@ -1679,11 +1674,6 @@
       "path": "src/runtime/managed-documents/contracts/markdown-sections.ts",
       "mode": "100644",
       "digest": "sha256:0fda66961dbcb749e8634d2db1528872581e9f2a23b29bb0811149f7055f814d"
-    },
-    {
-      "path": "src/runtime/managed-documents/ownership/documentation-closure-activation.ts",
-      "mode": "100644",
-      "digest": "sha256:8886f0e9499031a8b399b35a77145e4b3a7aa278fe35e08f8cb128c6b7145369"
     },
     {
       "path": "src/runtime/managed-documents/ownership/reviewed-mutation-policy.ts",
@@ -2018,7 +2008,7 @@
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
       "mode": "100644",
-      "digest": "sha256:3b7bd1c8b493db191afe22711be47fd9e58f0ee93155ced25413d20094698241"
+      "digest": "sha256:c00bb1b80fe51b2c80ab7f8e1a656f097d06a0626893ca2e45251454fd4809a8"
     },
     {
       "path": "src/runtime/storage-journal/pre-merge-assurance-store.ts",

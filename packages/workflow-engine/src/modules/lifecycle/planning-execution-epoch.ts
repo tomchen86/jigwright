@@ -33,7 +33,6 @@ import {
   type PlanningCarryForwardTaskEvidence,
   type PlanningTransitionReport,
 } from '../../runtime/storage-journal/planning-report.ts';
-import { preEpochCompletedTaskIds } from '../../adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts';
 import { resolveTaskExecutionGenerationEvidence } from '../assurance/task-execution-evidence.ts';
 
 const SOURCE_CHECKPOINT = 'execution-complete';
@@ -578,12 +577,6 @@ function sourceTaskEvidenceForReport(
     taskIds,
     parentCommit,
   );
-  const preEpoch = preEpochCompletedTaskIds(
-    repositoryRoot,
-    changeRoot,
-    changeId,
-    parentCommit,
-  );
   return taskIds.map((taskId) => {
     const commits = generation.commitsByTask[taskId] ?? [];
     if (commits.length === 1) {
@@ -591,17 +584,6 @@ function sourceTaskEvidenceForReport(
         taskId,
         source: 'managed-task-commit' as const,
         commitHash: commits[0]!.hash,
-      };
-    }
-    if (
-      generation.boundary === null &&
-      commits.length === 0 &&
-      preEpoch.has(taskId)
-    ) {
-      return {
-        taskId,
-        source: 'pre-epoch-exemption' as const,
-        commitHash: null,
       };
     }
     throw workflowError(

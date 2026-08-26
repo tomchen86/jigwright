@@ -1,12 +1,6 @@
 import assert from 'node:assert/strict';
-import fs from 'node:fs';
-import path from 'node:path';
 import test from 'node:test';
 
-import {
-  DOCUMENTATION_CLOSURE_ACTIVATION_MARKER,
-  parseDocumentationClosureActivationMarker,
-} from '../src/runtime/managed-documents/ownership/documentation-closure-activation.ts';
 import {
   createTaskDiffDocumentationClosureRequirement,
   createTaskDiffReviewSubject,
@@ -26,30 +20,6 @@ const OID = {
   afterA: 'e'.repeat(40),
   afterB: 'f'.repeat(40),
 };
-
-test('documentation closure activation is an exact reviewed marker', () => {
-  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
-  const marker = fs.readFileSync(
-    path.join(repositoryRoot, DOCUMENTATION_CLOSURE_ACTIVATION_MARKER),
-  );
-
-  assert.deepEqual(parseDocumentationClosureActivationMarker(marker), {
-    schemaVersion: 1,
-    activation: {
-      marker: DOCUMENTATION_CLOSURE_ACTIVATION_MARKER,
-      enforcement: 'final-managed-task',
-      reviewProtocol: 'task-diff-review',
-      monotonic: true,
-    },
-  });
-  assert.throws(
-    () =>
-      parseDocumentationClosureActivationMarker(
-        Buffer.concat([marker, Buffer.from('\n')]),
-      ),
-    hasCode('DOCUMENTATION_CLOSURE_ACTIVATION_INVALID'),
-  );
-});
 
 test('TaskDiffReview subject canonicalizes exact blob and mode transitions without runtime metadata', () => {
   const input = subjectInput();

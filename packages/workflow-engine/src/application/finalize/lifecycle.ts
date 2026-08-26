@@ -9,7 +9,6 @@ import {
   parseDocumentationClosureFromCommitMessage,
   type DocumentationReviewCapture,
 } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import { documentationClosureActivationAtCommit } from '../../runtime/managed-documents/ownership/documentation-closure-activation.ts';
 import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   loadWorkflowConfig,
@@ -1590,16 +1589,6 @@ function documentationClosureForCommit(
   projectedCommitTree: string,
   projectionPaths: readonly string[],
 ) {
-  const activation = documentationClosureActivationAtCommit(
-    repositoryRoot,
-    session.baseline.head,
-  );
-  if (!activation.activated) {
-    if (completionReport.documentationReview !== undefined) {
-      throw invalidDocumentationClosureCapture();
-    }
-    return null;
-  }
   if (!finalTask) {
     if (completionReport.documentationReview !== undefined) {
       throw invalidDocumentationClosureCapture();

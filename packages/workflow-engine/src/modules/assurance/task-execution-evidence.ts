@@ -4,7 +4,6 @@ import {
   readFileAtCommit,
 } from '../../entrypoints/ci/ci-git.ts';
 import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
-import { preEpochCompletedTaskIds } from '../../adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts';
 import { parseTasks } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -57,17 +56,8 @@ export function resolveTaskExecutionGenerationEvidence(
     changeId,
     tip,
   );
-  const preEpochExemptions =
-    boundary === null
-      ? preEpochCompletedTaskIds(repositoryRoot, changeRoot, changeId, tip)
-      : new Set<string>();
   const commitsByTask = Object.fromEntries(
     uniqueTaskIds.map((taskId) => {
-      // A task that was already complete before the repository's earliest
-      // canonical planning epoch has no managed task transition to replay.
-      // Ignore exact-looking legacy trailers entirely: accepting or rejecting
-      // them would let unauthoritative pre-epoch history decide compatibility.
-      if (preEpochExemptions.has(taskId)) return [taskId, []];
       const candidates = findExactTaskCommits(
         repositoryRoot,
         changeId,

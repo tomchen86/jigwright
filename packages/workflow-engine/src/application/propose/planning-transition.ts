@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { createArchiveApplicabilityProjection } from '../archive/archive-transformation.ts';
-import { preEpochCompletedTaskIds } from '../../adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts';
 import type { ArchiveApplicabilityRecord } from '../../runtime/storage-journal/planning-report.ts';
 import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
 import {
@@ -980,12 +979,6 @@ function assertAmendmentStateEligible(
   beforeTasks: readonly { id: string; completed: boolean }[] | undefined,
 ): PlanningCarryForwardTaskEvidence[] {
   const tasks = beforeTasks ?? [];
-  const preEpochCompleted = preEpochCompletedTaskIds(
-    repositoryRoot,
-    changeRoot,
-    changeId,
-    tip,
-  );
   const incompleteTaskIds = tasks
     .filter(({ completed }) => !completed)
     .map(({ id }) => id);
@@ -1002,9 +995,7 @@ function assertAmendmentStateEligible(
     commits: generationEvidence.commitsByTask[id] ?? [],
   }));
   const invalidTaskEvidence = taskEvidence.filter(
-    ({ taskId, boundary, commits }) =>
-      commits.length !== 1 &&
-      !(boundary === null && preEpochCompleted.has(taskId)),
+    ({ commits }) => commits.length !== 1,
   );
   if (
     tasks.length === 0 ||
@@ -1030,19 +1021,11 @@ function assertAmendmentStateEligible(
     );
   }
   return taskEvidence
-    .map(({ taskId, commits }): PlanningCarryForwardTaskEvidence =>
-      commits.length === 1
-        ? {
-            taskId,
-            source: 'managed-task-commit',
-            commitHash: commits[0]!.hash,
-          }
-        : {
-            taskId,
-            source: 'pre-epoch-exemption',
-            commitHash: null,
-          },
-    )
+    .map(({ taskId, commits }): PlanningCarryForwardTaskEvidence => ({
+      taskId,
+      source: 'managed-task-commit',
+      commitHash: commits[0]!.hash,
+    }))
     .sort((left, right) => left.taskId.localeCompare(right.taskId));
 }
 

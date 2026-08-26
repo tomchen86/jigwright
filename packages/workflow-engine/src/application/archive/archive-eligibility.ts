@@ -11,7 +11,6 @@ import {
 } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
 import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import { documentationClosureActivationAtCommit } from '../../runtime/managed-documents/ownership/documentation-closure-activation.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertInvestigationPlanningActivation,
@@ -24,7 +23,6 @@ import {
   protectedBranchRef,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { preEpochCompletedTaskIds } from '../../adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts';
 import type { TaskCommit } from '../../runtime/repository-transaction/git-transitions.ts';
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
 import { ensurePlanningExecutionEpochCompleteForArchive } from '../../modules/lifecycle/planning-execution-epoch.ts';
@@ -339,12 +337,6 @@ function inspectEligibility(
     );
   }
 
-  const exemptTaskIds = preEpochCompletedTaskIds(
-    git.repositoryRoot,
-    config.changeRoot,
-    contract.changeId,
-    git.head,
-  );
   const executionGeneration = resolveTaskExecutionGenerationEvidence(
     git.repositoryRoot,
     config.changeRoot,
@@ -355,9 +347,6 @@ function inspectEligibility(
   const taskCommits = contract.tasks.flatMap(({ id: taskId }) => {
     const commits = executionGeneration.commitsByTask[taskId] ?? [];
     if (commits.length !== 1) {
-      if (executionGeneration.boundary === null && exemptTaskIds.has(taskId)) {
-        return [];
-      }
       throw archiveError(
         commits.length === 0
           ? 'ARCHIVE_TASK_EVIDENCE_MISSING'
@@ -398,17 +387,18 @@ function inspectEligibility(
       const commit = taskCommits.find(
         ({ taskId: committedTaskId }) => committedTaskId === taskId,
       );
-      return commit === undefined
-        ? {
-            taskId,
-            source: 'pre-epoch-exemption' as const,
-            commitHash: null,
-          }
-        : {
-            taskId,
-            source: 'managed-task-commit' as const,
-            commitHash: commit.hash,
-          };
+      if (commit === undefined) {
+        throw archiveError(
+          'ARCHIVE_TASK_EVIDENCE_MISSING',
+          'Each completed task requires exactly one canonical workflow commit.',
+          { taskId, commitHashes: [] },
+        );
+      }
+      return {
+        taskId,
+        source: 'managed-task-commit' as const,
+        commitHash: commit.hash,
+      };
     }),
     now,
   });
@@ -489,12 +479,6 @@ function assertArchiveDocumentationClosure(input: {
     'rev-parse',
     `${finalCommit.hash}^`,
   ]).trim();
-  const activation = documentationClosureActivationAtCommit(
-    input.repositoryRoot,
-    finalParent,
-  );
-  if (!activation.activated) return;
-  documentationClosureActivationAtCommit(input.repositoryRoot, input.head);
   const taskHashes = new Set(input.taskCommits.map(({ hash }) => hash));
   const firstTaskCommit = runGit(input.repositoryRoot, [
     'rev-list',

@@ -48,11 +48,6 @@ import {
 } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
-  assertDocumentationClosureActivation,
-  documentationClosureActivationAtCommit,
-  readDocumentationClosureActivationMarkerFile,
-} from '../../runtime/managed-documents/ownership/documentation-closure-activation.ts';
-import {
   findExactTaskCommits,
   listStagedPaths,
   previewExactStaging,
@@ -5208,14 +5203,6 @@ export function loadTaskDiffDocumentationReviewCapture(
   requestedSessionId: string,
 ): DocumentationReviewCapture | null {
   const context = loadActiveSessionContext(cwd, requestedSessionId);
-  if (
-    !documentationClosureActivationAtCommit(
-      context.git.repositoryRoot,
-      context.session.baseline.head,
-    ).activated
-  ) {
-    return null;
-  }
   const status = inspectTaskDiffReviewStatus(cwd, requestedSessionId);
   if (status.subject.documentationRequirement?.required !== true) return null;
   if (status.state !== 'satisfied' || !('review' in status)) {
@@ -5474,17 +5461,6 @@ function taskDiffDocumentationRequirement(
   inspection: SessionInspection,
   candidateTree: string,
 ) {
-  const activation = assertDocumentationClosureActivation({
-    repositoryRoot: inspection.git.repositoryRoot,
-    baseline: inspection.session.baseline.head,
-    readMarker: () =>
-      readDocumentationClosureActivationMarkerFile(
-        inspection.git.repositoryRoot,
-      ),
-  });
-  if (!activation.activated) {
-    return createTaskDiffDocumentationClosureRequirement({ required: false });
-  }
   const remainingTasks = inspection.contract.tasks.filter(
     ({ completed, id }) => !completed && id !== inspection.session.taskId,
   );

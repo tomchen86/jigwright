@@ -1,8 +1,8 @@
 {
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
-  "frozenEdgeCount": 821,
-  "frozenIdentityDigest": "sha256:9621b79df3dd3b346edb0736e4579a3485fb32fed8ef7e26547e9717b4551d73",
+  "frozenEdgeCount": 822,
+  "frozenIdentityDigest": "sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -96,7 +96,7 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
@@ -104,7 +104,7 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
@@ -112,7 +112,7 @@
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
@@ -120,7 +120,7 @@
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
@@ -680,7 +680,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
@@ -736,7 +736,7 @@
       "rule": "application-to-runtime",
       "reasonId": "legacy.application-to-runtime",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
@@ -2680,7 +2680,7 @@
       "rule": "application-to-runtime",
       "reasonId": "legacy.application-to-runtime",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
@@ -2936,7 +2936,7 @@
       "rule": "application-to-runtime",
       "reasonId": "legacy.application-to-runtime",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/task-diff-review-lifecycle.ts",
@@ -3184,7 +3184,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
@@ -3632,7 +3632,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
@@ -4192,7 +4192,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-sequence.ts",
@@ -4293,6 +4293,14 @@
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
       "to": "packages/workflow-engine/src/modules/lifecycle/managed-trailers.ts",
+      "rule": "entrypoint-bypass-composition-root",
+      "reasonId": "legacy.entrypoint-bypass-composition-root",
+      "retirementPhase": "post-layout-composition-root-extraction",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
+      "to": "packages/workflow-engine/src/modules/repository-consumer/repository-consumer-config.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -5184,7 +5192,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
@@ -6016,7 +6024,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",

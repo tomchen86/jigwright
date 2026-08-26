@@ -369,39 +369,21 @@ test('duplicate reviewed amendment markers are refused rather than selected', ()
   }
 });
 
-test('amend-plan admits a pre-epoch completed generation without forged task evidence', () => {
+test('amend-plan rejects a pre-epoch completed generation without current task evidence', () => {
   const repository = preEpochCompletedFixture();
   try {
     prepareReviewedCorrection(repository);
+    const before = repositoryState(repository);
 
-    const result = commitPlanAmendment(repository, 'demo-change', {
-      reason: 'archive-applicability-failure',
-      executionImpact: 'none',
-    });
-
-    assert.equal(result.amendment?.executionImpact, 'none');
-    assert.deepEqual(result.amendment?.reopenedTasks, []);
-    const report = readAmendmentReport(
-      repository,
-      result.reportId,
-    ) as unknown as {
-      reportVersion: number;
-      amendment: {
-        executionDisposition: unknown;
-      };
-    };
-    assert.equal(report.reportVersion, 3);
-    assert.deepEqual(report.amendment.executionDisposition, {
-      kind: 'carried-forward',
-      tasks: [
-        {
-          taskId: '1.1',
-          source: 'pre-epoch-exemption',
-          commitHash: null,
-        },
-      ],
-    });
-    assert.equal(git(repository, ['status', '--porcelain']), '');
+    assert.throws(
+      () =>
+        commitPlanAmendment(repository, 'demo-change', {
+          reason: 'archive-applicability-failure',
+          executionImpact: 'none',
+        }),
+      (error: unknown) => isWorkflowError(error, 'AMENDMENT_STATE_INELIGIBLE'),
+    );
+    assert.deepEqual(repositoryState(repository), before);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

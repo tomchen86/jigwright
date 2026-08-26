@@ -14,9 +14,9 @@
     "recoveryOccurrences": 22,
     "recoveryFileCount": 1,
     "recoveryIdentityDigest": "sha256:1a659023015df48e43aa87466d4619f6e8aaf4fccde61898168a2655ab1fb4a1",
-    "workflowJsonOccurrences": 5,
-    "workflowJsonFileCount": 5,
-    "workflowJsonIdentityDigest": "sha256:56a216e7733a5cc8c7594be527b65df1348580e80429ca881b4177a096ff1220",
+    "workflowJsonOccurrences": 4,
+    "workflowJsonFileCount": 4,
+    "workflowJsonIdentityDigest": "sha256:17895e0b81bbeb7f986b10736d95fa6fad26e65b11a757a518e6cec5f12eb1fa",
     "jsonSchemaIdHosts": {
       "example.local": 1,
       "expense-app.local": 17,
@@ -27,7 +27,7 @@
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 182,
     "sourceFileCount": 59,
-    "sourceIdentityDigest": "sha256:cd8b69e0c1189d04a4de3202a73df6e2edf9506b8d6090b991bead1194ac0640",
+    "sourceIdentityDigest": "sha256:f5c924f75c30916f6e61fbb02296eeeede73ea8fbcb2fb8835f839e80034eeca",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
@@ -36,7 +36,7 @@
     "scriptsIdentityDigest": "sha256:53b19ec69ff1f4a18bbcb5abda3fe7aab6921804ba4e61149b0c7157a9a73df3",
     "recoveryOccurrences": 36,
     "recoveryFileCount": 13,
-    "recoveryIdentityDigest": "sha256:743c882cd7740307633f96b49aa8ed96aca950fcffdf5e03e03e97c38d17ed43",
+    "recoveryIdentityDigest": "sha256:59e70fb14e69792854348fee6eff12dd5be0124c9d04559a82e23a1780e8bdbc",
     "recoverySplitPathJoinOccurrences": 3,
     "recoverySplitPathJoinFileCount": 3,
     "recoverySplitPathJoinIdentityDigest": "sha256:56e2cf70b8f616978ba284ab1545216f9e73b9087470220f66a59ecbde560233",
@@ -64,9 +64,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1305,
+    "occurrences": 1306,
     "fileCount": 7,
-    "identityDigest": "sha256:a126f48165352582999015f430c32340eba479bc6018f5c4a9cf007fc49dd914"
+    "identityDigest": "sha256:70b947b9fb0726451a8619bc901585ff59ab736636f0beaf39a0a1a8a5945fd4"
   },
   "couplings": [
     {

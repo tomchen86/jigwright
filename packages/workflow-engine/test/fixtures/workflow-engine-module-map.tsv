@@ -20,7 +20,6 @@ packages/workflow-engine/src/authority-audit-service.ts	packages/workflow-engine
 packages/workflow-engine/src/authority-plan.ts	packages/workflow-engine/src/application/control-plane/authority-plan.ts	MOVE
 packages/workflow-engine/src/authority-refusal-audit.ts	packages/workflow-engine/src/modules/authority/authority-refusal-audit.ts	MOVE
 packages/workflow-engine/src/authority-relay-command.ts	packages/workflow-engine/src/adapters/remote/github/authority-relay-command.ts	MOVE
-packages/workflow-engine/src/bootstrap-task-exemption.ts	packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts	MOVE
 packages/workflow-engine/src/canonical-json.ts	packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts	MOVE
 packages/workflow-engine/src/check-runner.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts	MOVE
 packages/workflow-engine/src/ci-archive-tree.ts	packages/workflow-engine/src/entrypoints/ci/ci-archive-tree.ts	MOVE
@@ -60,7 +59,6 @@ packages/workflow-engine/src/database-policy.ts	packages/workflow-engine/src/ada
 packages/workflow-engine/src/declared-path-symbols.ts	packages/workflow-engine/src/modules/source/declared-path-symbols.ts	MOVE
 packages/workflow-engine/src/document-refresh-cli.ts	packages/workflow-engine/src/entrypoints/cli/document-refresh-cli.ts	MOVE
 packages/workflow-engine/src/document-refresh.ts	packages/workflow-engine/src/runtime/managed-documents/transaction/document-refresh.ts	MOVE
-packages/workflow-engine/src/documentation-closure-activation.ts	packages/workflow-engine/src/runtime/managed-documents/ownership/documentation-closure-activation.ts	MOVE
 packages/workflow-engine/src/documentation-closure.ts	packages/workflow-engine/src/runtime/managed-documents/contracts/documentation-closure.ts	MOVE
 packages/workflow-engine/src/engine-metrics.ts	packages/workflow-engine/src/application/control-plane/engine-metrics.ts	MOVE
 packages/workflow-engine/src/engine-projection-registry.ts	packages/workflow-engine/src/modules/projection/engine-projection-registry.ts	MOVE

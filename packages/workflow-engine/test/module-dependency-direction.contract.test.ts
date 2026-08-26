@@ -24,15 +24,15 @@ import {
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
 import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 
-const EXPECTED_MAP_ROWS = 274;
+const EXPECTED_MAP_ROWS = 272;
 const EXPECTED_FROZEN_MAP_DIGEST =
-  'sha256:1c1469e8dfb0b3c1a7424b66540b3c1642b51efbe7f118df21a6281b0e874bce';
-const EXPECTED_FROZEN_EDGE_COUNT = 821;
-const EXPECTED_ACTIVE_EDGE_COUNT = 771;
+  'sha256:cc1467aa84dca627a7a4929a254abbb17694b9a79b88e24629f6fd69effab65b';
+const EXPECTED_FROZEN_EDGE_COUNT = 822;
+const EXPECTED_ACTIVE_EDGE_COUNT = 759;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
-  'sha256:9621b79df3dd3b346edb0736e4579a3485fb32fed8ef7e26547e9717b4551d73';
+  'sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:f597e5603c89d5ec601bce3a8fc123b4da007e5746d67d147e2eda928d9da5b7';
+  'sha256:01c6872c306cc445147193cef6026116e3ac9ec59ccf814562ffed0eedeb95e5';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -1019,7 +1019,9 @@ test('matching rejects unlisted, stale, and retired-reappearing violations', () 
   );
 
   const retired = cloneBaseline(baseline);
-  retired.edges[0]!.status = 'retired';
+  const newlyRetired = retired.edges.find((edge) => edge.status === 'active');
+  assert.ok(newlyRetired);
+  newlyRetired.status = 'retired';
   assertBaselineShape(retired);
   assert.throws(
     () => assertObservedMatchesBaseline(observed, retired),

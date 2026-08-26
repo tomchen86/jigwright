@@ -1,20 +1,28 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
-import { DOCUMENTATION_CLOSURE_ACTIVATION_MARKER } from '../src/runtime/managed-documents/ownership/documentation-closure-activation.ts';
-import { INVESTIGATION_PLANNING_ACTIVATION_MARKER } from '../src/adapters/planning/openspec/documents/openspec-schema-contract.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  activateInvestigationPlanning,
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+import {
+  createTaskDiffDocumentationClosureRequirement,
+  createTaskDiffReviewSubject,
+  TASK_DIFF_REVIEW_COVERAGE,
+} from '../src/modules/assurance/task-diff-review.ts';
+import { createTaskDiffReviewRecord } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import {
   createFixtureRepository,
   git,
   isWorkflowError,
   runtimeRoot,
-  sourceRepositoryRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
   writeManagedChangeArtifacts,
@@ -75,17 +83,23 @@ test('archive eligibility rejects a non-managed schema', () => {
   }
 });
 
-test('archive eligibility requires documentation closure after activation', () => {
+test('archive eligibility requires documentation closure on the current path', () => {
   const repository = configuredFixture();
   try {
-    fs.copyFileSync(
-      path.join(sourceRepositoryRoot, DOCUMENTATION_CLOSURE_ACTIVATION_MARKER),
-      path.join(repository, DOCUMENTATION_CLOSURE_ACTIVATION_MARKER),
-    );
-    git(repository, ['add', '--', DOCUMENTATION_CLOSURE_ACTIVATION_MARKER]);
-    git(repository, ['commit', '--amend', '--no-edit']);
     completeTasks(repository);
-    commitTask(repository);
+    fs.writeFileSync(
+      path.join(repository, 'src/archive-fixture.ts'),
+      'export const archiveFixture = true;\n',
+    );
+    git(repository, ['add', '.']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Complete demo task without documentation closure',
+      '-m',
+      'Change: demo-change\nTask: 1.1',
+    ]);
+    syncOriginMain(repository);
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
@@ -260,37 +274,20 @@ test('archive eligibility rejects an exact dated destination collision', () => {
   }
 });
 
-test('archive eligibility exempts pre-epoch task completions', () => {
-  const unevidenced = configuredFixture();
-  const ambiguous = configuredFixture();
+test('archive eligibility rejects pre-epoch task completions without current evidence', () => {
+  const repository = configuredFixture();
   try {
-    completeTasks(unevidenced);
-    git(unevidenced, ['add', '.']);
-    git(unevidenced, ['commit', '-m', 'Bootstrap completion']);
-    commitPlanRevision(unevidenced);
-    git(unevidenced, ['checkout', '-b', 'work/archive-demo']);
-    const result = withArchiveEligibility(
-      unevidenced,
-      'demo-change',
-      (eligibility) => eligibility,
+    completeTasks(repository);
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '-m', 'Bootstrap completion']);
+    commitPlanRevision(repository);
+    git(repository, ['checkout', '-b', 'work/archive-demo']);
+    assert.throws(
+      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
     );
-    assert.equal(result.taskCommits.length, 0);
-
-    completeTasks(ambiguous);
-    commitTask(ambiguous);
-    fs.writeFileSync(path.join(ambiguous, 'second.txt'), 'second\n');
-    commitTask(ambiguous);
-    commitPlanRevision(ambiguous);
-    git(ambiguous, ['checkout', '-b', 'work/archive-demo']);
-    const ambiguousResult = withArchiveEligibility(
-      ambiguous,
-      'demo-change',
-      (eligibility) => eligibility,
-    );
-    assert.equal(ambiguousResult.taskCommits.length, 0);
   } finally {
-    fs.rmSync(unevidenced, { recursive: true, force: true });
-    fs.rmSync(ambiguous, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
@@ -387,41 +384,6 @@ function configuredFixture(): string {
   return repository;
 }
 
-test('archive eligibility fails closed when an activated repository drops the marker', () => {
-  const repository = completedFixture();
-  try {
-    activateInvestigationPlanning(repository);
-    assert.equal(
-      withArchiveEligibility(
-        repository,
-        'demo-change',
-        (eligibility) => eligibility.schemaName,
-      ),
-      'jigwright',
-    );
-
-    git(repository, [
-      'rm',
-      '--quiet',
-      '--',
-      INVESTIGATION_PLANNING_ACTIVATION_MARKER,
-    ]);
-    git(repository, ['commit', '-m', 'Delete the activation marker']);
-    assert.throws(
-      () =>
-        withArchiveEligibility(
-          repository,
-          'demo-change',
-          (eligibility) => eligibility,
-        ),
-      (error) =>
-        isWorkflowError(error, 'INVESTIGATION_ACTIVATION_MARKER_INVALID'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
 function completedFixture(): string {
   const repository = configuredFixture();
   completeTasks(repository);
@@ -450,15 +412,144 @@ function completeTasks(repository: string): void {
 }
 
 function commitTask(repository: string): void {
+  const sourcePath = 'src/archive-fixture.ts';
+  fs.writeFileSync(
+    path.join(repository, sourcePath),
+    'export const archiveFixture = true;\n',
+  );
   git(repository, ['add', '.']);
+  const baseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+  const baseTree = git(repository, ['rev-parse', 'HEAD^{tree}']).trim();
+  const candidateTree = git(repository, ['write-tree']).trim();
+  const tasksPath = 'openspec/changes/demo-change/tasks.md';
+  const beforeObjectId = git(repository, [
+    'rev-parse',
+    `${baseCommit}:${tasksPath}`,
+  ]).trim();
+  const afterObjectId = git(repository, ['rev-parse', `:${tasksPath}`]).trim();
+  const sourceObjectId = git(repository, [
+    'rev-parse',
+    `:${sourcePath}`,
+  ]).trim();
+  const documentationTransitions = [
+    {
+      path: sourcePath,
+      before: null,
+      after: { mode: '100644' as const, objectId: sourceObjectId },
+    },
+  ];
+  const requirement = createTaskDiffDocumentationClosureRequirement({
+    required: true,
+    changeBaseCommit: baseCommit,
+    changeBaseTree: baseTree,
+    candidateTree,
+    changedPaths: [sourcePath],
+    patchDigest: sha256(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'task-diff-documentation-change-patch.v1',
+        transitions: documentationTransitions,
+      }),
+    ),
+    hints: [],
+  });
+  const subject = createTaskDiffReviewSubject({
+    repositoryId: 'github:fixture/jigwright-archive',
+    changeId: 'demo-change',
+    taskId: '1.1',
+    baseCommit,
+    baseTree,
+    candidateTree,
+    transitions: [
+      {
+        path: tasksPath,
+        before: { mode: '100644', objectId: beforeObjectId },
+        after: { mode: '100644', objectId: afterObjectId },
+      },
+      ...documentationTransitions,
+    ],
+    taskContractDigest: '1'.repeat(64),
+    requiredCheckPolicyDigest: '2'.repeat(64),
+    checkEvidenceDigest: '3'.repeat(64),
+    planningGenerationId: '4'.repeat(64),
+    planTargetDigest: '5'.repeat(64),
+    planReviewNodeId: '6'.repeat(64),
+    planningAssuranceDigest: '7'.repeat(64),
+    reviewRequirement: {
+      required: true,
+      basis: 'explicit',
+      riskPaths: [],
+    },
+    documentationRequirement: requirement,
+  });
+  const review = createTaskDiffReviewRecord({
+    subject,
+    assignment: {
+      implementerPrincipalId: 'provider-b:implementer',
+      implementerProviderId: 'provider-b',
+      implementationSessionId: 'implementation-session-1',
+      reviewerPrincipalId: 'provider-a:reviewer',
+      reviewerProviderId: 'provider-a',
+      reviewerSessionId: 'review-session-2',
+      achievedIndependence: 'provider-independent',
+      degradedForm: null,
+      grantUseDigest: null,
+    },
+    submission: {
+      schemaVersion: 1,
+      verdict: 'advisory-approve',
+      coverage: [...TASK_DIFF_REVIEW_COVERAGE],
+      scopeAssessment: {
+        kind: 'no-challenge',
+        evidence: [
+          {
+            kind: 'repository-location',
+            path: sourcePath,
+            line: 1,
+            blobObjectId: sourceObjectId,
+            observation:
+              'The exact implementation blob completes the current task.',
+          },
+        ],
+      },
+      findings: [],
+      suggestions: [],
+      riskPathDispositions: [],
+      residualRisk: 'No release-blocking documentation risk remains.',
+      uncertainty: 'Review is limited to the exact current task projection.',
+      documentationAssessment: {
+        decision: 'no-impact',
+        notes:
+          'The task projection changes no operator or product documentation.',
+      },
+    },
+  });
+  const closure = createDocumentationClosureRecord({
+    changeId: 'demo-change',
+    taskId: '1.1',
+    review,
+    finalAssurance: null,
+    remediation: null,
+    projectedCommitTree: candidateTree,
+    projectionPaths: [tasksPath],
+  });
   git(repository, [
     'commit',
     '-m',
-    'Complete demo task',
-    '-m',
-    'Change: demo-change\nTask: 1.1',
+    [
+      'Complete demo task',
+      '',
+      encodeDocumentationClosure(closure),
+      '',
+      'Change: demo-change',
+      'Task: 1.1',
+    ].join('\n'),
   ]);
   syncOriginMain(repository);
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function commitPlanRevision(repository: string, committerDate?: string): void {

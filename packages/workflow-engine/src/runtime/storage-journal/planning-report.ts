@@ -17,8 +17,8 @@ export type PlanningTaskState = {
 
 export type PlanningCarryForwardTaskEvidence = Readonly<{
   taskId: string;
-  source: 'managed-task-commit' | 'pre-epoch-exemption';
-  commitHash: string | null;
+  source: 'managed-task-commit';
+  commitHash: string;
 }>;
 
 export type PlanningAmendmentRecord =
@@ -411,12 +411,8 @@ function isCarryForwardTaskEvidence(
       !isRecord(task) ||
       !hasExactKeys(task, ['commitHash', 'source', 'taskId']) ||
       !/^\d+(?:\.\d+)+$/.test(String(task.taskId)) ||
-      !['managed-task-commit', 'pre-epoch-exemption'].includes(
-        String(task.source),
-      ) ||
-      (task.source === 'managed-task-commit'
-        ? !isGitObject(task.commitHash)
-        : task.commitHash !== null)
+      task.source !== 'managed-task-commit' ||
+      !isGitObject(task.commitHash)
     ) {
       return false;
     }

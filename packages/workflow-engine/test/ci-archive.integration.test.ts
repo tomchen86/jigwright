@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -7,23 +8,30 @@ import test from 'node:test';
 import { commitArchiveTransition } from '../src/application/archive/archive-transition.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
-  commitSession,
-  completeTask,
-  finishSession,
+  finalizeSession,
+  finalizeTask,
 } from '../src/application/finalize/lifecycle.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+  beginTaskDiffReview,
+  reconcileTaskDiffReview,
+} from '../src/application/finalize/task-diff-review-lifecycle.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
 import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
+  builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
   createFixtureRepository,
   git,
   isWorkflowError,
   runtimeRoot,
+  sourceRepositoryRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
@@ -270,7 +278,7 @@ test('CI rejects forbidden generated lifecycle authority when hooks are bypassed
   }
 });
 
-test('CI archive replay exempts pre-epoch task completions', () => {
+test('current archive rejects pre-epoch task completions without current evidence', () => {
   const repository = createFixtureRepository();
   try {
     const deltaPath = path.join(
@@ -304,14 +312,12 @@ test('CI archive replay exempts pre-epoch task completions', () => {
       '-m',
       'Change: demo-change\nTransition: plan',
     ]);
-    const base = git(repository, ['rev-parse', 'HEAD']).trim();
     syncOriginMain(repository);
     git(repository, ['checkout', '-b', 'work/archive-demo']);
-    const archived = commitArchiveTransition(repository, 'demo-change');
-
-    const result = verifyPullRequest(repository, base, archived.commitHash);
-
-    assert.deepEqual(result.archivedChanges, ['demo-change']);
+    assert.throws(
+      () => commitArchiveTransition(repository, 'demo-change'),
+      (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -324,6 +330,21 @@ function archivedFixture(): {
   archivePath: string;
 } {
   const repository = createFixtureRepository();
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/path-roles.json'),
+    path.join(repository, 'workflow/path-roles.json'),
+  );
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
+  );
+  git(repository, [
+    'add',
+    'workflow/path-roles.json',
+    'workflow/maintainer-policy.json',
+  ]);
+  git(repository, ['commit', '-m', 'Configure review policies']);
+  syncOriginMain(repository);
   git(repository, ['checkout', '-b', 'work/demo-change']);
   const deltaPath = path.join(
     repository,
@@ -338,10 +359,87 @@ function archivedFixture(): {
     path.join(repository, 'src/feature.ts'),
     'export const feature = "archived";\n',
   );
-  assert.equal(checkSession(repository, session.sessionId).passed, true);
-  completeTask(repository, session.sessionId);
-  finishSession(repository, session.sessionId);
-  const completed = commitSession(
+  assert.throws(
+    () =>
+      finalizeTask(repository, session.sessionId, process.env, {
+        testCrashAfter: 'checked',
+      }),
+    /Simulated finalize interruption/,
+  );
+  const prepared = beginTaskDiffReview(repository, session.sessionId, {
+    explicitActor: 'codex',
+    environment: {},
+  });
+  assert.equal(prepared.state, 'waiting-for-provider');
+  const sourceObjectId = prepared.subject.transitions.find(
+    ({ path: changedPath }) => changedPath === 'src/feature.ts',
+  )?.after?.objectId;
+  assert.ok(sourceObjectId);
+  const submission: TaskDiffReviewSubmission = {
+    schemaVersion: 1,
+    verdict: 'advisory-approve',
+    coverage: [...TASK_DIFF_REVIEW_COVERAGE],
+    scopeAssessment: {
+      kind: 'no-challenge',
+      evidence: [
+        {
+          kind: 'repository-location',
+          path: 'src/feature.ts',
+          line: 1,
+          blobObjectId: sourceObjectId,
+          observation:
+            'The exact archive fixture implements the reviewed task.',
+        },
+      ],
+    },
+    findings: [],
+    suggestions: [],
+    riskPathDispositions: prepared.subject.reviewRequirement.riskPaths.map(
+      ({ path: riskPath, role }) => ({
+        path: riskPath,
+        role: role as TaskDiffReviewSubmission['riskPathDispositions'][number]['role'],
+        outcome: 'no-challenge' as const,
+      }),
+    ),
+    residualRisk: 'No release-blocking residual risk was identified.',
+    uncertainty: 'Review is limited to the exact archive fixture candidate.',
+    documentationAssessment: {
+      decision: 'no-impact',
+      notes:
+        'The fixture changes no product or operator documentation contract.',
+    },
+  };
+  const providerResult = runProviderWorker(repository, prepared.invocationId, {
+    runner(input) {
+      return {
+        invocationId: prepared.invocationId,
+        providerId: 'claude',
+        purpose: 'task-diff-review',
+        requestDigest: input.request.requestDigest,
+        semanticOutput: submission,
+        semanticOutputDigest: sha256(canonicalJson(submission)),
+        assurance: 'unchanged-governed-projection',
+        projection: {
+          unchanged: true,
+          changedCategories: [],
+          beforeDigest: prepared.subject.subjectDigest,
+          afterDigest: prepared.subject.subjectDigest,
+        },
+        sameUserProcessConfined: false,
+        residuals: [...PROVIDER_RUNNER_RESIDUALS],
+        executable: builtInProviderExecutableIdentityForTest('claude'),
+        elapsedMs: 8,
+        providerDefinitionSnapshot:
+          builtInProviderDefinitionSnapshotForTest('claude'),
+      };
+    },
+  });
+  assert.equal(providerResult.state, 'succeeded');
+  assert.equal(
+    reconcileTaskDiffReview(repository, session.sessionId).state,
+    'satisfied',
+  );
+  const completed = finalizeSession(
     repository,
     session.sessionId,
     'Complete archive fixture',
@@ -358,6 +456,10 @@ function archivedFixture(): {
     head: archived.commitHash,
     archivePath: archived.archivePath,
   };
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function addedDelta(): string {

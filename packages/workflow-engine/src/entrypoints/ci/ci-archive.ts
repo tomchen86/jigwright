@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { verifyArchiveDeltaOutcomes } from '../../runtime/repository-transaction/archive-delta-verifier.ts';
-import { preEpochCompletedTaskIds } from '../../adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts';
 import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
 import { canonicalCheckDefinition } from './ci-historical-contract.ts';
 import {
@@ -293,18 +292,9 @@ function assertTaskEvidence(
   changeId: string,
   tasks: Array<{ id: string }>,
 ): void {
-  const exemptTaskIds = preEpochCompletedTaskIds(
-    repositoryRoot,
-    changeRoot,
-    changeId,
-    parent,
-  );
   for (const task of tasks) {
     const commits = findExactTaskCommits(repositoryRoot, changeId, task.id);
     if (commits.length !== 1) {
-      if (exemptTaskIds.has(task.id)) {
-        continue;
-      }
       throw archiveError(
         'CI_ARCHIVE_TASK_EVIDENCE_INVALID',
         'Every archived task requires one reachable canonical task commit.',
