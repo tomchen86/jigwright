@@ -1578,7 +1578,7 @@
     {
       "path": "src/modules/repository-consumer/repository-consumer-config.ts",
       "mode": "100644",
-      "digest": "sha256:6af0e11acf22c9ffbdc1b86dbf5129daf703edfac06ac27bbba18961a4ae14b9"
+      "digest": "sha256:81cc0eb6af6071f05896456deaa4e983002abf4d292c7a8821636b9ae4f0f7e2"
     },
     {
       "path": "src/modules/source/check-command.ts",

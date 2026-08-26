@@ -32,39 +32,8 @@ const SAFE_SCHEMA_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export type LoadedRepositoryConsumerConfiguration = Readonly<{
   configuration: RepositoryConsumerConfigurationV1;
-  source: 'tracked' | 'legacy-expense-app-compatibility';
+  source: 'tracked';
 }>;
-
-export const expenseAppCompatibilityConfiguration = deepFreeze({
-  schemaVersion: 1,
-  adapterId: 'configured-repository-v1',
-  consumerId: 'expense-app',
-  planning: {
-    providerId: 'openspec',
-    packageSchemaNames: ['spec-driven'],
-    requiredSchemaNames: ['spec-driven', 'expense-app'],
-    supportedSchemaNames: ['spec-driven', 'expense-app', 'expense-app-v2'],
-    managedSchemaNames: ['expense-app', 'expense-app-v2'],
-    currentSchemaName: 'expense-app-v2',
-  },
-  documents: {
-    adapterId: 'filesystem-documents-v1',
-    handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
-    issueSourcePath: 'docs/issues/issues.yaml',
-    issueLogPath: 'docs/ISSUE_LOG.md',
-  },
-  workRegistry: {
-    adapterId: 'filesystem-work-registry-v1',
-    itemRoot: 'docs/work-registry/items',
-    inventoryPath: 'docs/work-registry/inventory.json',
-    backlogPath: 'docs/BACKLOG.md',
-    historyRoot: 'docs/work-history',
-    sourceRoot: 'workflow/source-ledger/objects/sha256',
-    transitionPolicyPath: 'workflow/work-registry-policy.json',
-    changeOriginRoot: 'openspec/changes',
-  },
-  databasePolicy: { adapterId: 'postgresql-disposable-v1' },
-} satisfies RepositoryConsumerConfigurationV1);
 
 export const productionRepositoryConsumerPort: RepositoryConsumerPortV1 =
   Object.freeze({
@@ -81,15 +50,9 @@ export function loadRepositoryConsumerConfiguration(
   const configPath = path.join(repositoryRoot, CONFIG_PATH);
   const stats = fs.lstatSync(configPath, { throwIfNoEntry: false });
   if (stats === undefined) {
-    if (readRepositoryName(repositoryRoot) === 'expense-app') {
-      return Object.freeze({
-        configuration: expenseAppCompatibilityConfiguration,
-        source: 'legacy-expense-app-compatibility' as const,
-      });
-    }
     throw configError(
       'REPOSITORY_CONSUMER_CONFIG_MISSING',
-      'A non-expense consumer must provide workflow/repository-consumer.json.',
+      'The repository must provide workflow/repository-consumer.json.',
       ExitCode.guard,
     );
   }

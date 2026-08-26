@@ -158,15 +158,12 @@ test('the tracked Jigwright package configuration is explicit', () => {
   assert.equal(loaded.configuration.databasePolicy.adapterId, 'disabled-v1');
 });
 
-test('the pre-configuration expense-app profile remains a narrow compatibility reader', () => {
+test('expense-app repositories fail closed without tracked consumer configuration', () => {
   const repository = createConsumerRepository('expense-app');
   try {
-    const loaded = loadRepositoryConsumerConfiguration(repository);
-    assert.equal(loaded.source, 'legacy-expense-app-compatibility');
-    assert.equal(loaded.configuration.consumerId, 'expense-app');
-    assert.equal(
-      loaded.configuration.documents.adapterId,
-      'filesystem-documents-v1',
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repository),
+      hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_MISSING'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

@@ -25,18 +25,18 @@
     "jsonSchemaIdIdentityDigest": "sha256:a5a6ad5e025680b4e36466fe5c050c8994d1ee5804afe394da1085c2e7d8696d"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 179,
+    "sourceOccurrences": 178,
     "sourceFileCount": 57,
-    "sourceIdentityDigest": "sha256:5481fa133fced5ec662af481f19ac710820b0f24d85830e1c8c840a08e59658c",
+    "sourceIdentityDigest": "sha256:ade08eae82ee010334d4f2a4cfa1434274f1dcc97ddb3495b0e2531ff6e2e1bc",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
     "scriptsOccurrences": 4,
     "scriptsFileCount": 2,
     "scriptsIdentityDigest": "sha256:53b19ec69ff1f4a18bbcb5abda3fe7aab6921804ba4e61149b0c7157a9a73df3",
-    "recoveryOccurrences": 36,
+    "recoveryOccurrences": 35,
     "recoveryFileCount": 13,
-    "recoveryIdentityDigest": "sha256:59e70fb14e69792854348fee6eff12dd5be0124c9d04559a82e23a1780e8bdbc",
+    "recoveryIdentityDigest": "sha256:bcdad6a78464db9e7d8aaad2af01ae25e9a50351d5f3df5f82d84190f1bec929",
     "recoverySplitPathJoinOccurrences": 3,
     "recoverySplitPathJoinFileCount": 3,
     "recoverySplitPathJoinIdentityDigest": "sha256:56e2cf70b8f616978ba284ab1545216f9e73b9087470220f66a59ecbde560233",
@@ -52,8 +52,7 @@
       "workflow/path-roles.json",
       "workflow/protected-capabilities.json",
       "workflow/repository-consumer.json",
-      "workflow/role-provider-default.json",
-      "workflow/work-registry-policy.json"
+      "workflow/role-provider-default.json"
     ],
     "splitPathJoinOccurrences": 4,
     "splitPathJoinFileCount": 4,

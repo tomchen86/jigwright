@@ -11,36 +11,6 @@ const MAX_CONFIG_BYTES = 64 * 1024;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
 const SAFE_ID = /^[a-z][a-z0-9-]{0,63}$/u;
 const SAFE_SCHEMA_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-export const expenseAppCompatibilityConfiguration = deepFreeze({
-    schemaVersion: 1,
-    adapterId: 'configured-repository-v1',
-    consumerId: 'expense-app',
-    planning: {
-        providerId: 'openspec',
-        packageSchemaNames: ['spec-driven'],
-        requiredSchemaNames: ['spec-driven', 'expense-app'],
-        supportedSchemaNames: ['spec-driven', 'expense-app', 'expense-app-v2'],
-        managedSchemaNames: ['expense-app', 'expense-app-v2'],
-        currentSchemaName: 'expense-app-v2',
-    },
-    documents: {
-        adapterId: 'filesystem-documents-v1',
-        handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
-        issueSourcePath: 'docs/issues/issues.yaml',
-        issueLogPath: 'docs/ISSUE_LOG.md',
-    },
-    workRegistry: {
-        adapterId: 'filesystem-work-registry-v1',
-        itemRoot: 'docs/work-registry/items',
-        inventoryPath: 'docs/work-registry/inventory.json',
-        backlogPath: 'docs/BACKLOG.md',
-        historyRoot: 'docs/work-history',
-        sourceRoot: 'workflow/source-ledger/objects/sha256',
-        transitionPolicyPath: 'workflow/work-registry-policy.json',
-        changeOriginRoot: 'openspec/changes',
-    },
-    databasePolicy: { adapterId: 'postgresql-disposable-v1' },
-});
 export const productionRepositoryConsumerPort = Object.freeze({
     contractVersion: 'jigwright.repository-consumer-port.v1',
     load(repositoryRoot) {
@@ -52,13 +22,7 @@ export function loadRepositoryConsumerConfiguration(requestedRepositoryRoot) {
     const configPath = path.join(repositoryRoot, CONFIG_PATH);
     const stats = fs.lstatSync(configPath, { throwIfNoEntry: false });
     if (stats === undefined) {
-        if (readRepositoryName(repositoryRoot) === 'expense-app') {
-            return Object.freeze({
-                configuration: expenseAppCompatibilityConfiguration,
-                source: 'legacy-expense-app-compatibility',
-            });
-        }
-        throw configError('REPOSITORY_CONSUMER_CONFIG_MISSING', 'A non-expense consumer must provide workflow/repository-consumer.json.', ExitCode.guard);
+        throw configError('REPOSITORY_CONSUMER_CONFIG_MISSING', 'The repository must provide workflow/repository-consumer.json.', ExitCode.guard);
     }
     const value = readBoundedJson(configPath, stats);
     const configuration = parseRepositoryConsumerConfiguration(value);

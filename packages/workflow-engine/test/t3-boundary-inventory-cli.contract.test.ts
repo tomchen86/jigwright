@@ -46,7 +46,7 @@ test('jigwright exposes the machine-checked T3 boundary inventory through produc
   assert.equal(output.result.kind, 'jigwright.boundary-inventory-check.v1');
   assert.deepEqual(output.result.recordIdentity, {
     schema: 'workflow.t3-boundary-inventory.v1',
-    consumerNamespace: 'expense-app',
+    consumerNamespace: 'jigwright',
   });
   assert.equal(output.result.status, 'current');
   assert.equal(output.result.couplingCount, 16);

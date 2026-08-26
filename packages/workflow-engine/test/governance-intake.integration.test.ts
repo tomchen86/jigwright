@@ -35,7 +35,6 @@ import {
   validateWorkRegistryProjections,
   workItemDigest,
 } from '../src/modules/governance-intake/work-registry.ts';
-import { expenseAppCompatibilityConfiguration } from '../src/modules/repository-consumer/repository-consumer-config.ts';
 
 test('source capture is content-addressed, append-only, and idempotent', () => {
   const repositoryRoot = fs.mkdtempSync(
@@ -1299,8 +1298,34 @@ function configureRepositoryConsumer(repositoryRoot: string): void {
   fs.writeFileSync(
     path.join(workflowRoot, 'repository-consumer.json'),
     `${JSON.stringify({
-      ...expenseAppCompatibilityConfiguration,
+      schemaVersion: 1,
+      adapterId: 'configured-repository-v1',
       consumerId: 'fixture',
+      planning: {
+        providerId: 'openspec',
+        packageSchemaNames: ['spec-driven'],
+        requiredSchemaNames: ['spec-driven', 'fixture'],
+        supportedSchemaNames: ['spec-driven', 'fixture'],
+        managedSchemaNames: ['fixture'],
+        currentSchemaName: 'fixture',
+      },
+      documents: {
+        adapterId: 'filesystem-documents-v1',
+        handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
+        issueSourcePath: 'docs/issues/issues.yaml',
+        issueLogPath: 'docs/ISSUE_LOG.md',
+      },
+      workRegistry: {
+        adapterId: 'filesystem-work-registry-v1',
+        itemRoot: 'docs/work-registry/items',
+        inventoryPath: 'docs/work-registry/inventory.json',
+        backlogPath: 'docs/BACKLOG.md',
+        historyRoot: 'docs/work-history',
+        sourceRoot: 'workflow/source-ledger/objects/sha256',
+        transitionPolicyPath: 'workflow/work-registry-policy.json',
+        changeOriginRoot: 'openspec/changes',
+      },
+      databasePolicy: { adapterId: 'disabled-v1' },
     })}\n`,
   );
 }
