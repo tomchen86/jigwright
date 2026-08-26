@@ -168,8 +168,6 @@ export type CentralGrantProofModulePortV1 = Readonly<{
   ): Readonly<{ claim: ApprovalClaim; proofDigest: CentralGrantDigest }>;
 }>;
 
-export type { HistoricalGrantAdapterV1 } from './historical-grant-adapter.ts';
-
 /** Parse the exact canonical newline-terminated bytes persisted by GrantStore. */
 export function parseCanonicalGrantRecordV1(
   document: string,

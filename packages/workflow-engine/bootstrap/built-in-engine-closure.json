@@ -213,12 +213,12 @@
     {
       "path": "node_modules/@jigwright/grants/package.json",
       "mode": "100644",
-      "digest": "sha256:1876a13f5506e2f9999d189a2cd550870e4e030195a1d8cb89aabf3929137b56"
+      "digest": "sha256:e855e9d54a72c68745a080d703c38446ba40f94b90bc9c5337d71bc8f8f06bfe"
     },
     {
       "path": "node_modules/@jigwright/grants/src/central-grant-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:c850c9d860ffee790ee33365cf711ee622ace9e23f540944f2f9ffc9a1032986"
+      "digest": "sha256:da9b831c48fa3feb16f310bc6f89b75779cc46ce9ffb4dd41a276289bcf7e718"
     },
     {
       "path": "node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.ts",
@@ -234,11 +234,6 @@
       "path": "node_modules/@jigwright/grants/src/grant-lifecycle.ts",
       "mode": "100644",
       "digest": "sha256:22755d917e886da516df86537f06181f00d9c264c9dcaf8929dacb58a12a88f2"
-    },
-    {
-      "path": "node_modules/@jigwright/grants/src/historical-grant-adapter.ts",
-      "mode": "100644",
-      "digest": "sha256:ec966b47f34cd6b7cd6352c52cb6f012f15d0011a44638cc3e264c3c1aeb698f"
     },
     {
       "path": "node_modules/@jigwright/grants/src/role-context-sharing-degradation.ts",

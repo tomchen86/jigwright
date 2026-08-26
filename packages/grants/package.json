@@ -2,7 +2,7 @@
   "name": "@jigwright/grants",
   "version": "0.1.0",
   "private": false,
-  "description": "Optional Grant contracts, lifecycle, and historical readers for Jigwright.",
+  "description": "Optional Grant contracts and lifecycle for Jigwright.",
   "type": "module",
   "files": [
     "src"
@@ -14,7 +14,6 @@
     "./central-grant-contracts": "./src/central-grant-contracts.ts",
     "./collaboration-grant-envelope-reader": "./src/collaboration-grant-envelope-reader.ts",
     "./grant-envelope-verifier": "./src/grant-envelope-verifier.ts",
-    "./historical-grant-adapter": "./src/historical-grant-adapter.ts",
     "./grant-lifecycle": "./src/grant-lifecycle.ts",
     "./role-context-sharing-degradation": "./src/role-context-sharing-degradation.ts",
     "./signed-attestation-envelope-reader": "./src/signed-attestation-envelope-reader.ts"
