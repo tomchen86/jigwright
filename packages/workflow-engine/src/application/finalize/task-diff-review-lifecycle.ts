@@ -202,7 +202,9 @@ import {
   TASK_DIFF_REVIEW_POLICY_DIGEST,
   taskDiffReviewRequirement,
   type TaskDiffReviewCandidatePlan,
+  type TaskDiffDocumentationClosureRequirement,
   type TaskDiffPathTransition,
+  type TaskDiffReviewRequirement,
   type TaskDiffReviewSubject,
   type TaskDiffDocumentationHint,
   type TaskDiffTreeEntry,
@@ -5153,7 +5155,12 @@ export function assertTaskDiffReviewCompletionGateSatisfied(
       ? {}
       : { authorizedTransitionPaths: [...options.authorizedTransitionPaths] }),
   });
-  const requirement = resolveTaskDiffReviewContract(inspection).requirement;
+  const requirement = taskDiffReviewRequirementIncludingDocumentation(
+    resolveTaskDiffReviewContract(inspection).requirement,
+    options.candidateTree === undefined
+      ? undefined
+      : taskDiffDocumentationRequirement(inspection, options.candidateTree),
+  );
   if (!requirement.required) return null;
   try {
     return assertCurrentTaskDiffReviewSatisfied(cwd, requestedSessionId, {
@@ -5449,12 +5456,21 @@ export function inspectTaskDiffReviewSubject(
     planTargetDigest: planningAssurance.planTargetDigest,
     planReviewNodeId: planningAssurance.reviewNodeId,
     planningAssuranceDigest: sha256(canonicalJson(planningAssurance)),
-    reviewRequirement:
-      documentationRequirement.required && !requirement.required
-        ? { required: true, basis: 'explicit', riskPaths: [] }
-        : requirement,
+    reviewRequirement: taskDiffReviewRequirementIncludingDocumentation(
+      requirement,
+      documentationRequirement,
+    ),
     documentationRequirement,
   });
+}
+
+function taskDiffReviewRequirementIncludingDocumentation(
+  requirement: TaskDiffReviewRequirement,
+  documentationRequirement?: TaskDiffDocumentationClosureRequirement,
+): TaskDiffReviewRequirement {
+  return documentationRequirement?.required === true && !requirement.required
+    ? { required: true, basis: 'explicit', riskPaths: [] }
+    : requirement;
 }
 
 function taskDiffDocumentationRequirement(

@@ -673,7 +673,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:708e8dfcabb1049074cd00361f64327e5fabe88d3c3342bd8adbe00a95025b2e"
+      "digest": "sha256:8a522c49b6d67861782419edc6265bfdd10955693d1d0b3433bd5eafa37a0e01"
     },
     {
       "path": "src/application/finalize/verification.ts",

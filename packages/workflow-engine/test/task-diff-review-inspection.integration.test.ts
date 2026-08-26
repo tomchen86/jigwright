@@ -196,6 +196,36 @@ test('review-diff inspect derives one exact checked candidate subject without re
   }
 });
 
+test('final documentation closure activates review for an ordinary candidate', () => {
+  const { repository, counterPath } = createReviewFixture({
+    configurePathRoles(registry) {
+      registry.roles.ordinary.unshift('src/**');
+    },
+  });
+  try {
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(
+      path.join(repository, 'src/feature.ts'),
+      'export const documented = true;\n',
+    );
+
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      hasCode('TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    const subject = inspectTaskDiffReviewSubject(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(subject.reviewRequirement.required, true);
+    assert.equal(subject.reviewRequirement.basis, 'explicit');
+    assert.equal(subject.documentationRequirement?.required, true);
+    assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('review-diff inspect is unavailable before checks freeze a candidate', () => {
   const { repository } = createReviewFixture();
   try {
@@ -2569,6 +2599,15 @@ function validTaskDiffSubmission(
     ),
     residualRisk: 'No release-blocking residual risk was identified.',
     uncertainty: 'Review is limited to the exact canonical candidate.',
+    ...(subject.documentationRequirement?.required === true
+      ? {
+          documentationAssessment: {
+            decision: 'no-impact' as const,
+            notes:
+              'The synthetic candidate changes no public or operator documentation contract.',
+          },
+        }
+      : {}),
   };
 }
 
