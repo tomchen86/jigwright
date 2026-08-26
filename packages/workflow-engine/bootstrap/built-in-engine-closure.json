@@ -328,7 +328,7 @@
     {
       "path": "src/adapters/consumer/expense-app/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:5829331c74c37041f35c9a1aefbba8d84608909dcee77e99ab7fdc5f9d1e70bc"
+      "digest": "sha256:53fbba6192bbe2f7889d7852541c4ed7dd1be4c5058b622e3e4d0b334d55fd52"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/check-registry-adapter.ts",

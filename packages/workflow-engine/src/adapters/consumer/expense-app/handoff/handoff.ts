@@ -357,19 +357,32 @@ function projectRoutingInspection(
     projectedChange.tasks.every(
       ({ completed: taskCompleted }) => taskCompleted,
     );
-  const changes = inspection.changes.map((change) =>
-    change.changeId === projectedChange.changeId
-      ? Object.freeze({
-          ...change,
-          state: completed
-            ? ('completed-awaiting-archive' as const)
-            : change.state,
-          tasks: Object.freeze(
-            projectedChange.tasks.map((task) => Object.freeze({ ...task })),
-          ),
-        })
-      : change,
-  );
+  const changes = inspection.changes.map((change) => {
+    if (change.changeId === projectedChange.changeId) {
+      return Object.freeze({
+        ...change,
+        state: completed
+          ? ('completed-awaiting-archive' as const)
+          : change.state,
+        tasks: Object.freeze(
+          projectedChange.tasks.map((task) => Object.freeze({ ...task })),
+        ),
+      });
+    }
+    if (
+      completed &&
+      change.state === 'blocked' &&
+      change.blocker?.kind === 'change' &&
+      change.blocker.id === projectedChange.changeId &&
+      change.blocker.resumeCondition === 'done'
+    ) {
+      return Object.freeze({
+        ...change,
+        state: 'resume-available' as const,
+      });
+    }
+    return change;
+  });
   return Object.freeze({
     ...inspection,
     primaryChangeId:

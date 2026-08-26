@@ -725,6 +725,55 @@ test('routing inventory remains authoritative across planning and completion pro
   }
 });
 
+test('completion projection wakes blockers that depend on the projected change', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeChange(repository, 'blocked-change', false);
+    writeReadyV3ExemptChange(repository);
+    const blocked = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: {
+        kind: 'block',
+        changeId: 'blocked-change',
+        taskId: '1.1',
+        reason: 'Wait until the focused change is complete.',
+        blocker: {
+          kind: 'change',
+          id: 'demo-change',
+          resumeCondition: 'done',
+        },
+      },
+    });
+    applyChangeRoutingReview(repository, blocked);
+    const focused = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: { kind: 'focus', changeId: 'demo-change' },
+    });
+    applyChangeRoutingReview(repository, focused);
+
+    const completedTasks = '# Tasks\n\n- [x] 1.1 Demo task\n';
+    const projected = projectHandoffForTaskProjection(
+      repository,
+      'demo-change',
+      completedTasks,
+    );
+    fs.writeFileSync(
+      path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+      completedTasks,
+    );
+    const realized = renderHandoff(repository);
+
+    assert.equal(projected, realized);
+    assert.match(projected, /## Ready to Resume[\s\S]*`blocked-change`/u);
+    assert.doesNotMatch(
+      projected,
+      /## Blocked Changes[\s\S]*`blocked-change`/u,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('routing review is stale when exact planning authority facts change', () => {
   const repository = createFixtureRepository();
   try {
