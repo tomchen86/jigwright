@@ -203,7 +203,6 @@ import './intervention-sidecar-workflow-binding.integration.test.ts';
 import './maintainer-evidence-waiver-security.integration.test.ts';
 import './maintainer-evidence-waiver.integration.test.ts';
 import './planning-r6-review-coverage.integration.test.ts';
-import './planning-shadow-metrics.integration.test.ts';
 import './provider-lease-expiry-retry.integration.test.ts';
 import './provider-semantic-contract-rollover.integration.test.ts';
 import './provider-strategy-change.integration.test.ts';
