@@ -8,14 +8,10 @@ import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
 import { preparePullRequestPreMergeAssurance } from '../src/entrypoints/ci/pre-merge-assurance-git.ts';
 import {
   commitSession,
-  completeTask,
-  finishSession,
+  finalizeTask,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyManagedChangeRoutingReview,
   prepareChangeRoutingReview,
@@ -23,16 +19,25 @@ import {
 import {
   createFixtureRepository,
   git,
+  isWorkflowError,
   runtimeRoot,
+  sourceRepositoryRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 const changeId = 'rehearsal-change';
 
 test('disposable repository rehearses plan, task, archive, idempotency, and cross-date CI replay', () => {
   const repository = createFixtureRepository();
   try {
+    fs.copyFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      path.join(repository, 'workflow/maintainer-policy.json'),
+    );
+    git(repository, ['add', 'workflow/maintainer-policy.json']);
+    git(repository, ['commit', '-m', 'Track fixture maintainer policy']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
     writeReadyV3ExemptChange(repository);
     fs.chmodSync(runtimeRoot(repository), 0o700);
@@ -64,9 +69,16 @@ test('disposable repository rehearses plan, task, archive, idempotency, and cros
       path.join(repository, 'src/rehearsal.ts'),
       'export const rehearsed = true;\n',
     );
-    assert.equal(checkSession(repository, session.sessionId).passed, true);
-    completeTask(repository, session.sessionId);
-    finishSession(repository, session.sessionId);
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(
+      repository,
+      session.sessionId,
+      'src/rehearsal.ts',
+    );
+    finalizeTask(repository, session.sessionId);
     const completed = commitSession(
       repository,
       session.sessionId,
