@@ -5,7 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-import { writeDeterministicTarball } from './build-local-jigwright-release.ts';
+import { writeDeterministicTarball } from './deterministic-tarball.ts';
 
 type Sha256Digest = `sha256:${string}`;
 
