@@ -13,12 +13,9 @@ import {
 } from '../src/adapters/consumer/repository/documents/issues.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
 import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
-import { completeTask } from '../src/application/finalize/lifecycle.ts';
+import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
@@ -28,9 +25,12 @@ import {
 import {
   createFixtureRepository as createBareFixtureRepository,
   git,
+  isWorkflowError,
   runtimeRoot,
+  sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 function createFixtureRepository(): string {
   const repository = createBareFixtureRepository();
@@ -399,6 +399,10 @@ test('completion projection refreshes the handoff to no active change', () => {
         2,
       )}\n`,
     );
+    fs.copyFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      path.join(repository, 'workflow/maintainer-policy.json'),
+    );
     renderHandoff(repository);
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Enable generated handoff']);
@@ -406,8 +410,12 @@ test('completion projection refreshes the handoff to no active change', () => {
     prepareCurrentV3Change(repository);
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
-    completeTask(repository, session.sessionId);
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
+    finalizeTask(repository, session.sessionId);
 
     const handoff = fs.readFileSync(
       path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
@@ -444,6 +452,10 @@ test('final completion renders an explicit no-active-change handoff', () => {
         2,
       )}\n`,
     );
+    fs.copyFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      path.join(repository, 'workflow/maintainer-policy.json'),
+    );
     renderHandoff(repository);
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Add completed change and handoff']);
@@ -451,9 +463,13 @@ test('final completion renders an explicit no-active-change handoff', () => {
     prepareCurrentV3Change(repository);
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    checkSession(repository, session.sessionId);
 
-    assert.doesNotThrow(() => completeTask(repository, session.sessionId));
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
+    assert.doesNotThrow(() => finalizeTask(repository, session.sessionId));
     const handoff = fs.readFileSync(
       path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
       'utf8',
