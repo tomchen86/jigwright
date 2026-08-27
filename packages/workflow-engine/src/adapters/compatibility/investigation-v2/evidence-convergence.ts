@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../../modules/compatibility/legacy-workflow-identities.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,
@@ -17,14 +16,16 @@ import {
  * carry every binding needed to re-validate them without ambient state.
  */
 const CONVERGENCE_TYPE = 'evidence-convergence';
-const CONVERGENCE_NODE_SCHEMA = LEGACY_WORKFLOW_IDENTITIES.evidenceConvergence;
-const CONVERGENCE_OUTPUT_SCHEMA =
-  LEGACY_WORKFLOW_IDENTITIES.evidenceConvergenceOutput;
+export const EVIDENCE_CONVERGENCE_NODE_SCHEMA =
+  'workflow.evidence-convergence.v1';
+export const EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA =
+  'workflow.evidence-convergence-output.v1';
 
 const REUSE_PROOF_TYPE = 'evidence-reuse-proof';
-const REUSE_PROOF_NODE_SCHEMA = LEGACY_WORKFLOW_IDENTITIES.evidenceReuseProof;
-const REUSE_PROOF_OUTPUT_SCHEMA =
-  LEGACY_WORKFLOW_IDENTITIES.evidenceReuseProofOutput;
+export const EVIDENCE_REUSE_PROOF_NODE_SCHEMA =
+  'workflow.evidence-reuse-proof.v1';
+export const EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA =
+  'workflow.evidence-reuse-proof-output.v1';
 
 const CONVERGENCE_EXACT_ROLES = ['newParentNode', 'oldParentNode'] as const;
 const CONVERGENCE_PROVENANCE_ROLES = ['newParent', 'oldParent'] as const;
@@ -120,7 +121,7 @@ export function createConvergenceRecord(input: {
 
   return createEvidenceNode({
     type: CONVERGENCE_TYPE,
-    nodeSchema: CONVERGENCE_NODE_SCHEMA,
+    nodeSchema: EVIDENCE_CONVERGENCE_NODE_SCHEMA,
     evaluator: input.validatorVersion,
     policyDigest: oldParent.policyDigest,
     exactInputDigests: {
@@ -134,7 +135,7 @@ export function createConvergenceRecord(input: {
       oldParent: oldParent.nodeId,
       newParent: newParent.nodeId,
     },
-    outputSchema: CONVERGENCE_OUTPUT_SCHEMA,
+    outputSchema: EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA,
     output: {
       sharedResultDigest: oldParent.resultDigest,
       sharedType: oldParent.type,
@@ -205,7 +206,7 @@ export function createDescendantReuseProof(input: {
 
   return createEvidenceNode({
     type: REUSE_PROOF_TYPE,
-    nodeSchema: REUSE_PROOF_NODE_SCHEMA,
+    nodeSchema: EVIDENCE_REUSE_PROOF_NODE_SCHEMA,
     evaluator: input.validatorVersion,
     policyDigest: descendant.policyDigest,
     exactInputDigests: {
@@ -224,7 +225,7 @@ export function createDescendantReuseProof(input: {
       newParent: newParent.nodeId,
       convergence: convergence.nodeId,
     },
-    outputSchema: REUSE_PROOF_OUTPUT_SCHEMA,
+    outputSchema: EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA,
     output: {
       parentRole: input.parentRole,
       sharedResultDigest: oldParent.resultDigest,
@@ -245,8 +246,8 @@ export function readConvergenceBinding(
 ): ConvergenceBinding | null {
   if (
     node.type !== CONVERGENCE_TYPE ||
-    node.nodeSchema !== CONVERGENCE_NODE_SCHEMA ||
-    node.outputSchema !== CONVERGENCE_OUTPUT_SCHEMA ||
+    node.nodeSchema !== EVIDENCE_CONVERGENCE_NODE_SCHEMA ||
+    node.outputSchema !== EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA ||
     !hasExactKeys(node.exactInputDigests, CONVERGENCE_EXACT_ROLES) ||
     !hasExactKeys(node.provenanceParentNodeIds, CONVERGENCE_PROVENANCE_ROLES) ||
     !hasExactKeys(node.semanticParentResultDigests, ['shared'])
@@ -308,8 +309,8 @@ export function readReuseProofBinding(
 ): ReuseProofBinding | null {
   if (
     node.type !== REUSE_PROOF_TYPE ||
-    node.nodeSchema !== REUSE_PROOF_NODE_SCHEMA ||
-    node.outputSchema !== REUSE_PROOF_OUTPUT_SCHEMA ||
+    node.nodeSchema !== EVIDENCE_REUSE_PROOF_NODE_SCHEMA ||
+    node.outputSchema !== EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA ||
     !hasExactKeys(node.exactInputDigests, REUSE_PROOF_EXACT_ROLES) ||
     !hasExactKeys(node.provenanceParentNodeIds, REUSE_PROOF_PROVENANCE_ROLES) ||
     !hasExactKeys(node.semanticParentResultDigests, ['shared'])

@@ -67,6 +67,16 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
     validatorVersion: 'evidence-currentness.v1',
     runtimeMetadata: {},
   });
+  assert.equal(convergence.nodeSchema, 'workflow.evidence-convergence.v1');
+  assert.equal(
+    convergence.outputSchema,
+    'workflow.evidence-convergence-output.v1',
+  );
+  assert.equal(reuseProof.nodeSchema, 'workflow.evidence-reuse-proof.v1');
+  assert.equal(
+    reuseProof.outputSchema,
+    'workflow.evidence-reuse-proof-output.v1',
+  );
   const nodes = [
     oldParent,
     newParent,

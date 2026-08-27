@@ -11,12 +11,6 @@ export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
   taskDiffReviewCollaborationPolicy:
     'expense-app.workflow.collaboration-policy.task-diff-review.v1',
   directHumanReview: 'expense-app.workflow.direct-human-review.v1',
-  evidenceConvergence: 'expense-app.workflow.evidence-convergence.v1',
-  evidenceConvergenceOutput:
-    'expense-app.workflow.evidence-convergence-output.v1',
-  evidenceReuseProof: 'expense-app.workflow.evidence-reuse-proof.v1',
-  evidenceReuseProofOutput:
-    'expense-app.workflow.evidence-reuse-proof-output.v1',
   humanResolutionGrant: 'expense-app.workflow.human-resolution-grant.v1',
   maintainerGrantV1: 'expense-app.workflow.maintainer-grant.v1',
   roleContextSharingPolicy:

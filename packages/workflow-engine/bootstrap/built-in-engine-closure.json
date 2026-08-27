@@ -283,7 +283,7 @@
     {
       "path": "src/adapters/compatibility/investigation-v2/evidence-convergence.ts",
       "mode": "100644",
-      "digest": "sha256:597e85786ac599f6947b9280d13e337899bd80042c75c1d1c1b6b22040e57cd9"
+      "digest": "sha256:1c2ee82b2c651f5ede8e4a0405ce12d6e276f6903d63462fa1d7877fdf2f3814"
     },
     {
       "path": "src/adapters/compatibility/investigation-v2/evidence-currentness.ts",
@@ -1288,7 +1288,7 @@
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:c6a79a385ba7f563c1f6353576adbb492cc327fa052bd2fa4d5993bd45012f67"
+      "digest": "sha256:275efe26002aac34f7644c1c0cab57633c7562a3758f72c24ed4776361a399ea"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",

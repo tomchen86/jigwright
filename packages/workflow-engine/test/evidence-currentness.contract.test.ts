@@ -5,6 +5,10 @@ import test from 'node:test';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
+  EVIDENCE_CONVERGENCE_NODE_SCHEMA,
+  EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA,
+  EVIDENCE_REUSE_PROOF_NODE_SCHEMA,
+  EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA,
 } from '../src/adapters/compatibility/investigation-v2/evidence-convergence.ts';
 import { evaluateEvidenceCurrentness } from '../src/adapters/compatibility/investigation-v2/evidence-currentness.ts';
 import {
@@ -869,7 +873,7 @@ function convergenceEnvelope(
 ): EvidenceNode {
   return createEvidenceNode({
     type: 'evidence-convergence',
-    nodeSchema: 'expense-app.workflow.evidence-convergence.v1',
+    nodeSchema: EVIDENCE_CONVERGENCE_NODE_SCHEMA,
     evaluator: VALIDATOR_VERSION,
     policyDigest: oldParent.policyDigest,
     exactInputDigests: {
@@ -883,7 +887,7 @@ function convergenceEnvelope(
       oldParent: oldParent.nodeId,
       newParent: newParent.nodeId,
     },
-    outputSchema: 'expense-app.workflow.evidence-convergence-output.v1',
+    outputSchema: EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA,
     output: convergenceOutput(oldParent),
     runtimeMetadata: {},
     ...override,
@@ -899,7 +903,7 @@ function reuseProofEnvelope(
 ): EvidenceNode {
   return createEvidenceNode({
     type: 'evidence-reuse-proof',
-    nodeSchema: 'expense-app.workflow.evidence-reuse-proof.v1',
+    nodeSchema: EVIDENCE_REUSE_PROOF_NODE_SCHEMA,
     evaluator: VALIDATOR_VERSION,
     policyDigest: descendant.policyDigest,
     exactInputDigests: {
@@ -918,7 +922,7 @@ function reuseProofEnvelope(
       newParent: newParent.nodeId,
       convergence: convergenceRecord.nodeId,
     },
-    outputSchema: 'expense-app.workflow.evidence-reuse-proof-output.v1',
+    outputSchema: EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA,
     output: {
       parentRole: 'scan',
       sharedResultDigest: oldParent.resultDigest,
