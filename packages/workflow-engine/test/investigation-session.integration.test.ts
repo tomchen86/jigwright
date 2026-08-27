@@ -4959,11 +4959,10 @@ test('managed task start recovers its shared change lock crash windows', () => {
 
 test('managed task start reclaims dead locks bound to terminal sessions', () => {
   for (const candidate of [
-    { state: 'aborted', legacyMarker: false },
-    { state: 'committed', legacyMarker: false },
-    { state: 'aborted', legacyMarker: true },
+    { state: 'aborted' },
+    { state: 'committed' },
   ] as const) {
-    const { state, legacyMarker } = candidate;
+    const { state } = candidate;
     const repository = createFixtureRepository();
     try {
       git(repository, ['checkout', '-b', 'work/demo-change']);
@@ -5009,18 +5008,10 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       >;
       fs.writeFileSync(
         lockPath,
-        `${
-          legacyMarker
-            ? JSON.stringify({
-                sessionId: marker.sessionId,
-                changeId: marker.changeId,
-                taskId: marker.taskId,
-              })
-            : JSON.stringify({
-                ...marker,
-                pid: state === 'aborted' ? process.pid : 2_147_483_647,
-              })
-        }\n`,
+        `${JSON.stringify({
+          ...marker,
+          pid: state === 'aborted' ? process.pid : 2_147_483_647,
+        })}\n`,
         'utf8',
       );
 
@@ -5028,15 +5019,15 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       assert.notEqual(
         successor.sessionId,
         started.sessionId,
-        `${state}:${legacyMarker}`,
+        state,
       );
-      assert.equal(successor.state, 'active', `${state}:${legacyMarker}`);
+      assert.equal(successor.state, 'active', state);
       const successorMarker = fs.readFileSync(lockPath, 'utf8');
       releaseOwnedLock(lockPath, started.sessionId);
       assert.equal(
         fs.readFileSync(lockPath, 'utf8'),
         successorMarker,
-        `${state}:${legacyMarker}`,
+        state,
       );
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
@@ -5193,41 +5184,6 @@ test('managed lock release treats a winning reclaimer as already released', () =
         .filter((name) => name.startsWith('demo-change.lock.reclaim.')),
       [],
     );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('legacy managed lock with an active session remains fenced', () => {
-  const repository = createFixtureRepository();
-  try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-    writeReadyV3ExemptChange(repository);
-    commitPlanningTransition(repository, 'demo-change');
-    const started = startSession(repository, 'demo-change', '1.1');
-    const repositoryState = discoverRepository(repository);
-    const runtime = workflowRuntimePaths(
-      repositoryState.gitCommonDirectory,
-      'workflow-engine',
-    );
-    const lockPath = path.join(runtime.locks, 'demo-change.lock');
-    const legacyMarker = `${JSON.stringify({
-      sessionId: started.sessionId,
-      changeId: started.changeId,
-      taskId: started.taskId,
-    })}\n`;
-    fs.writeFileSync(lockPath, legacyMarker, 'utf8');
-    const before = fs.lstatSync(lockPath);
-
-    assert.throws(
-      () => startSession(repository, 'demo-change', '1.1'),
-      (error: unknown) =>
-        isWorkflowError(error, 'TASK_SESSION_CHANGE_CONFLICT'),
-    );
-    const after = fs.lstatSync(lockPath);
-    assert.equal(after.dev, before.dev);
-    assert.equal(after.ino, before.ino);
-    assert.equal(fs.readFileSync(lockPath, 'utf8'), legacyMarker);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

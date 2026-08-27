@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:854b14352e09dd5b71a84bb44954235255e767c7552e9817c64d334719d48cf8"
+      "digest": "sha256:d0c9254592c7dde3bd152735876da954a004d26b1d4cd067376bb07b3fdf7987"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -688,7 +688,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/planning-lock.js",
       "mode": "100644",
-      "digest": "sha256:12d02df0e7d4c4e0bc27024014ed81e7a9a9aa4f46688d087cfd598505301d2e"
+      "digest": "sha256:e2c82169f09c96b2890ebb27005ca6103a3a11c48eebee22ce0f703b8d334272"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-store.js",

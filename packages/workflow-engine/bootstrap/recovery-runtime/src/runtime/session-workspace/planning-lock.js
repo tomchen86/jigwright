@@ -319,7 +319,6 @@ function reclaimTerminalSessionLock(runtime, lockPath, changeId) {
         `${JSON.stringify(value)}\n` !== content) {
         return false;
     }
-    const legacyMarker = hasExactKeys(value, ['sessionId', 'changeId', 'taskId']);
     const preparedMarker = hasExactKeys(value, [
         'sessionId',
         'ownerToken',
@@ -330,7 +329,7 @@ function reclaimTerminalSessionLock(runtime, lockPath, changeId) {
         typeof value.ownerToken === 'string' &&
         Number.isSafeInteger(value.pid) &&
         value.pid >= 1;
-    if ((!legacyMarker && !preparedMarker) ||
+    if (!preparedMarker ||
         !terminalSessionMatches(runtime, value.sessionId, changeId, value.taskId)) {
         return false;
     }

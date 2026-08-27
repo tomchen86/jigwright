@@ -496,7 +496,6 @@ function reclaimTerminalSessionLock(
   ) {
     return false;
   }
-  const legacyMarker = hasExactKeys(value, ['sessionId', 'changeId', 'taskId']);
   const preparedMarker =
     hasExactKeys(value, [
       'sessionId',
@@ -509,7 +508,7 @@ function reclaimTerminalSessionLock(
     Number.isSafeInteger(value.pid) &&
     (value.pid as number) >= 1;
   if (
-    (!legacyMarker && !preparedMarker) ||
+    !preparedMarker ||
     !terminalSessionMatches(runtime, value.sessionId, changeId, value.taskId)
   ) {
     return false;
