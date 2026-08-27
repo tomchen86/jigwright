@@ -12,7 +12,6 @@ import {
 import {
   completeTask,
   finalizeTask,
-  finishSession,
 } from '../src/application/finalize/lifecycle.ts';
 import {
   PLAN_REVIEW_COVERAGE,
@@ -47,8 +46,10 @@ import {
   builtInProviderDefinitionSnapshotForTest,
   git,
   isWorkflowError,
+  sourceRepositoryRoot,
 } from './fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 const CHANGE_ID = 'implementation-reconciliation';
 const TARGET = 'src/feature.ts';
@@ -111,9 +112,12 @@ test('all task-finalization paths require and replay exact implementation reconc
       `sha256:${sha256("export const reconciledValue = 'UpdatedReconciledValue';\n")}`,
     );
 
-    checkSession(repository, session.sessionId);
-    completeTask(repository, session.sessionId);
-    const finished = finishSession(repository, session.sessionId);
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId, TARGET);
+    const finished = finalizeTask(repository, session.sessionId);
     assert.ok(finished.stagedPaths.includes(TARGET));
     assert.ok(finished.stagedPaths.includes(ledgerIndexPath()));
     assert.ok(
@@ -152,6 +156,11 @@ test('projected single-pass finalize consumes the same immutable reconciliation 
     );
     fs.writeFileSync(ledgerPath, ledgerBytes);
 
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId, TARGET);
     const finalized = finalizeTask(repository, session.sessionId);
     assert.ok(finalized.stagedPaths.includes(TARGET));
   } finally {
@@ -212,6 +221,10 @@ function createReconciliationFixture(): string {
     authorPlanningProviderBinding: true,
     files: {
       [TARGET]: TARGET_CONTENT,
+      'workflow/maintainer-policy.json': fs.readFileSync(
+        path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+        'utf8',
+      ),
       'workflow/path-roles.json': `${canonicalJson({
         schemaVersion: 1,
         kind: 'path-role-registry',
