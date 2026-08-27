@@ -18,7 +18,6 @@ import { renderHandoff } from '../src/adapters/consumer/repository/handoff/hando
 import {
   completeTask,
   finalizeTask,
-  finishSession,
 } from '../src/application/finalize/lifecycle.ts';
 import {
   readFinalizeTransaction,
@@ -1542,7 +1541,7 @@ test('legacy complete-task refuses a review-required candidate instead of bypass
   }
 });
 
-test('legacy finish re-evaluates the shared review predicate after completion projection', () => {
+test('compatibility completion refuses a review-triggering projection without a checked finalize transaction', () => {
   const { repository } = createReviewFixture({
     configurePathRoles(registry) {
       registry.roles.ordinary.unshift('src/**');
@@ -1558,10 +1557,16 @@ test('legacy finish re-evaluates the shared review predicate after completion pr
       'export const reviewed = true;\n',
     );
     checkSession(repository, session.sessionId);
-    completeTask(repository, session.sessionId);
     assert.throws(
-      () => finishSession(repository, session.sessionId),
-      hasCode('TASK_DIFF_REVIEW_REQUIRED'),
+      () => completeTask(repository, session.sessionId),
+      hasCode('TASK_DIFF_REVIEW_NOT_READY'),
+    );
+    assert.match(
+      fs.readFileSync(
+        path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+        'utf8',
+      ),
+      /- \[ \] 1\.1/,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
