@@ -19,8 +19,10 @@ import {
   createFixtureRepository,
   git,
   runtimeRoot,
+  sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 test('workflow status exposes the exact durable finalize recovery classification', () => {
   const { repository, sessionId, transactionPath } = createRecoveryFixture();
@@ -177,6 +179,19 @@ test('workflow finalize-recover explicitly cancels one ambiguous transaction and
       'FINALIZE_CANCELLATION_INVALID',
     );
 
+    const reviewRequired = runCli(repository, [
+      'finalize',
+      sessionId,
+      '--message',
+      'Complete recovered task',
+      '--json',
+    ]);
+    assert.notEqual(reviewRequired.status, 0);
+    assert.equal(
+      parseErrorCode(reviewRequired.stderr),
+      'TASK_DIFF_REVIEW_REQUIRED',
+    );
+    satisfyCurrentTaskDiffReview(repository, sessionId);
     const restarted = runCli(repository, [
       'finalize',
       sessionId,
@@ -285,6 +300,18 @@ test('workflow finalize-recover resumes a safe phase without rerunning its check
     };
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
 
+    const reviewRequired = runCli(repository, [
+      'finalize-recover',
+      sessionId,
+      '--json',
+    ]);
+    assert.notEqual(reviewRequired.status, 0);
+    assert.equal(
+      parseErrorCode(reviewRequired.stderr),
+      'TASK_DIFF_REVIEW_REQUIRED',
+    );
+    assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
+    satisfyCurrentTaskDiffReview(repository, sessionId);
     const recovered = runCli(repository, [
       'finalize-recover',
       sessionId,
@@ -599,6 +626,10 @@ function createRecoveryFixture(): {
   fs.writeFileSync(
     documentPolicyPath,
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
+  );
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
   );
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
   writeReadyV3ExemptChange(repository);
