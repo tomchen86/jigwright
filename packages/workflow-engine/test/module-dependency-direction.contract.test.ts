@@ -32,7 +32,7 @@ const EXPECTED_ACTIVE_EDGE_COUNT = 754;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:8c4f041137faba9b4e67a7b06112884df743116c83a35c9b4e3bc2c1e1646200';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:5f15852203129f8f02d9739487a721eabb5892eb40aa790d7e65a134d33676ad';
+  'sha256:b4df54347922088b1283f5c74c4cd1af64bb546f954ecc6c04045fc2ea4eef42';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -1165,7 +1165,7 @@ test('every live workflow identity writer emits the neutral versioned namespace'
   );
 });
 
-test('legacy consumer identities exist only in exact historical reader registries', () => {
+test('consumer-branded workflow identities are absent from package source', () => {
   const observed = new Map<string, string[]>();
   for (const packageEntry of fs.readdirSync(
     path.join(repositoryRoot, 'packages'),
@@ -1203,20 +1203,7 @@ test('legacy consumer identities exist only in exact historical reader registrie
     Object.fromEntries(
       [...observed].sort(([left], [right]) => left.localeCompare(right)),
     ),
-    {
-      'packages/grants/src/collaboration-grant-envelope-reader.ts': [
-        'expense-app.workflow.collaboration-grant.v1',
-      ],
-      'packages/workflow-engine/src/modules/compatibility/legacy-workflow-identities.ts':
-        [
-          'expense-app.workflow.collaboration-grant.v1',
-          'expense-app.workflow.collaboration-policy.task-diff-review.v1',
-          'expense-app.workflow.collaboration-policy.v1',
-          'expense-app.workflow.human-resolution-grant.v1',
-          'expense-app.workflow.maintainer-grant.v1',
-          'expense-app.workflow.role-context-sharing-policy.v1',
-        ].sort(),
-    },
+    {},
   );
 });
 

@@ -36,7 +36,7 @@
       "pattern": "^refs/tags/[a-z0-9][a-z0-9-]*/$"
     },
     "signatureNamespace": {
-      "const": "expense-app.workflow.maintainer-grant.v1"
+      "const": "workflow.maintainer-grant.v1"
     },
     "maxTtlMinutes": { "const": 30 },
     "maxUses": { "const": 1 },

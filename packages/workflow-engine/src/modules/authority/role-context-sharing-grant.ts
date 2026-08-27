@@ -28,7 +28,6 @@ import {
   type AuthoritativeRoleContextSharingGrantVerifier,
 } from './role-context-sharing-grant-verifier-port.ts';
 import type { MaintainerPolicy } from './maintainer-policy.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 export const ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1 =
   'workflow.role-context-sharing-eligibility.v1' as const;
@@ -55,25 +54,8 @@ export const ROLE_CONTEXT_SHARING_POLICY_DIGEST = crypto
   .createHash('sha256')
   .update(JSON.stringify(ROLE_CONTEXT_SHARING_POLICY))
   .digest('hex');
-export const LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST = crypto
-  .createHash('sha256')
-  .update(
-    JSON.stringify({
-      ...ROLE_CONTEXT_SHARING_POLICY,
-      policyId: LEGACY_WORKFLOW_IDENTITIES.roleContextSharingPolicy,
-    }),
-  )
-  .digest('hex');
-
 export function isKnownRoleContextSharingPolicyDigest(digest: string): boolean {
   return digest === ROLE_CONTEXT_SHARING_POLICY_DIGEST;
-}
-
-/** Inert historical classification; never grants production authority. */
-export function isHistoricalRoleContextSharingPolicyDigest(
-  digest: string,
-): boolean {
-  return digest === LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST;
 }
 
 export type RoleContextSharingEligibilityPortV1 = Readonly<{

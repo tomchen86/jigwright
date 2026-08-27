@@ -2,7 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { isRecord, isStringArray, } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../compatibility/legacy-workflow-identities.js";
 import { matchesAllowedPath, normalizePolicyPath, } from "../../runtime/session-workspace/paths.js";
 const CHECK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const SIGNER_ID = /^[a-zA-Z0-9][a-zA-Z0-9._@+-]{0,127}$/;
@@ -47,7 +46,7 @@ export function parseMaintainerPolicy(value) {
         (value.phase !== 'bootstrap' && value.phase !== 'sealed') ||
         typeof value.auditTagPrefix !== 'string' ||
         !/^refs\/tags\/[a-z0-9][a-z0-9-]*\/$/.test(value.auditTagPrefix) ||
-        value.signatureNamespace !== LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1 ||
+        value.signatureNamespace !== 'workflow.maintainer-grant.v1' ||
         value.maxTtlMinutes !== 30 ||
         value.maxUses !== 1 ||
         !isStringArray(value.bootstrapEligiblePaths) ||

@@ -157,8 +157,6 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../session-workspace/session-store.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../modules/compatibility/legacy-workflow-identities.ts';
-
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_BLIND_MANIFEST_BYTES = 262_144;

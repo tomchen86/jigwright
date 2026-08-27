@@ -11,7 +11,6 @@ import {
 
 import {
   ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1,
-  LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST,
   ROLE_CONTEXT_SHARING_POLICY_DIGEST,
   executeRoleContextSharingGrantTransitionV1,
   verifyRoleContextSharingGrantCapability,
@@ -37,7 +36,7 @@ const POLICY: MaintainerPolicy = {
   },
   phase: 'sealed',
   auditTagPrefix: 'refs/tags/workflow-grant/',
-  signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+  signatureNamespace: 'workflow.maintainer-grant.v1',
   maxTtlMinutes: 30,
   maxUses: 1,
   bootstrapEligiblePaths: ['workflow/protected-capabilities.json'],
@@ -201,12 +200,7 @@ test('missing or unlisted eligibility fails closed before signature verification
   assert.equal(verifierCalls, 0);
 });
 
-test('current grant validation rejects legacy and unknown policy digests', () => {
-  const legacyPayload = {
-    ...payload,
-    roleContextSharingPolicyDigest: LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST,
-  };
-  const legacyEnvelope = { ...envelope, payload: legacyPayload };
+test('current grant validation rejects unknown policy digests', () => {
   let verifierCalls = 0;
   const common = {
     now: NOW,
@@ -217,15 +211,6 @@ test('current grant validation rejects legacy and unknown policy digests', () =>
       },
     }),
   };
-  assert.throws(
-    () =>
-      verifyRoleContextSharingGrantCapability(legacyEnvelope, POLICY, {
-        ...common,
-        expected: bindingFromRoleContextSharingGrantPayloadV1(legacyPayload),
-      }),
-    (error) =>
-      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_BINDING_MISMATCH'),
-  );
   assert.throws(
     () => {
       const unknownPayload = {

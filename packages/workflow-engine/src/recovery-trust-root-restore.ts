@@ -4,7 +4,6 @@ import path from 'node:path';
 
 import { canonicalJson } from './foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from './foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from './modules/compatibility/legacy-workflow-identities.ts';
 import type { PersistenceHumanSignatureVerifier } from './runtime/storage-journal/intervention-control-persistence.ts';
 import {
   assertRecoveryAuthorityDomain,
@@ -153,7 +152,7 @@ export interface RecoveryOperationalTrustRootPayload {
   repositoryId: string;
   generation: number;
   purpose: 'workflow-maintainer-signatures';
-  signatureNamespace: typeof LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1;
+  signatureNamespace: 'workflow.maintainer-grant.v1';
   trustedSigners: RecoveryOperationalTrustSigner[];
   createdAt: string;
 }
@@ -1070,7 +1069,7 @@ function normalizeRootPayload(
     !isIdentifier(value.repositoryId) ||
     !isPositiveInteger(value.generation) ||
     value.purpose !== 'workflow-maintainer-signatures' ||
-    value.signatureNamespace !== LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1 ||
+    value.signatureNamespace !== 'workflow.maintainer-grant.v1' ||
     !Array.isArray(value.trustedSigners) ||
     value.trustedSigners.length === 0 ||
     value.trustedSigners.length > 64
@@ -1099,7 +1098,7 @@ function normalizeRootPayload(
     repositoryId: value.repositoryId,
     generation: value.generation,
     purpose: 'workflow-maintainer-signatures',
-    signatureNamespace: LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1,
+    signatureNamespace: 'workflow.maintainer-grant.v1',
     trustedSigners,
     createdAt: exactIso(value.createdAt),
   });

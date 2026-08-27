@@ -162,7 +162,7 @@ function trustRoot(
     repositoryId: descriptor.repositoryIdentity.repositoryId,
     generation,
     purpose: 'workflow-maintainer-signatures',
-    signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+    signatureNamespace: 'workflow.maintainer-grant.v1',
     trustedSigners: [sshSigner(`replacement-maintainer-${generation}`, seed)],
     createdAt,
   };

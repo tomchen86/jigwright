@@ -6,7 +6,6 @@ import {
   isStringArray,
 } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 import {
   matchesAllowedPath,
   normalizePolicyPath,
@@ -83,7 +82,7 @@ export function parseMaintainerPolicy(value: unknown): MaintainerPolicy {
     (value.phase !== 'bootstrap' && value.phase !== 'sealed') ||
     typeof value.auditTagPrefix !== 'string' ||
     !/^refs\/tags\/[a-z0-9][a-z0-9-]*\/$/.test(value.auditTagPrefix) ||
-    value.signatureNamespace !== LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1 ||
+    value.signatureNamespace !== 'workflow.maintainer-grant.v1' ||
     value.maxTtlMinutes !== 30 ||
     value.maxUses !== 1 ||
     !isStringArray(value.bootstrapEligiblePaths) ||

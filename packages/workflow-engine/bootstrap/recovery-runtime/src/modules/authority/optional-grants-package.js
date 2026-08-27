@@ -1,10 +1,9 @@
 import { createRequire } from 'node:module';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../compatibility/legacy-workflow-identities.js";
 const optionalRequire = createRequire(import.meta.url);
 const loadedModules = new Map();
 export const COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1 = 'jigwright.collaboration-grant-envelope-reader.v1';
-export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE = LEGACY_WORKFLOW_IDENTITIES.collaborationGrant;
+export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE = 'workflow.collaboration-grant.v1';
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE = 'workflow.collaboration-grant.v2';
 export const GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1 = 'jigwright.grant-envelope-verifier.v1';
 export const GRANT_LIFECYCLE_CONTRACT_VERSION_V1 = 'jigwright.grant-lifecycle.v1';

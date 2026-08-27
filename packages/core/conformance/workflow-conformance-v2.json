@@ -17,7 +17,13 @@
       {
         "id": "canonical-recursive-object",
         "input": {
-          "z": [3, { "b": true, "a": null }],
+          "z": [
+            3,
+            {
+              "b": true,
+              "a": null
+            }
+          ],
           "a": "line\n\"quoted\""
         },
         "canonical": "{\"a\":\"line\\n\\\"quoted\\\"\",\"z\":[3,{\"a\":null,\"b\":true}]}"
@@ -86,15 +92,21 @@
         "request": {
           "sourceModuleId": "vector-module",
           "failureCode": "vector-blocked",
-          "facts": { "reason": "fixture" },
+          "facts": {
+            "reason": "fixture"
+          },
           "stateBinding": {
             "kind": "vector-state",
             "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
           },
           "candidate": {
             "transitionId": "vector-transition",
-            "parameters": { "resume": true },
-            "allowedReasonCodes": ["approved-for-vector"],
+            "parameters": {
+              "resume": true
+            },
+            "allowedReasonCodes": [
+              "approved-for-vector"
+            ],
             "reasonRequired": true,
             "proposedReason": "Continue the vector transition."
           }
@@ -121,7 +133,9 @@
             "challengeId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
             "sourceModuleId": "vector-module",
             "failureCode": "vector-blocked",
-            "facts": { "reason": "fixture" },
+            "facts": {
+              "reason": "fixture"
+            },
             "factsDigest": "sha256:16364ed0baadddad793d8355c32d30688ac617752c60cf932ae5619554934437",
             "stateBinding": {
               "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
@@ -131,12 +145,16 @@
               {
                 "choiceId": "sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d",
                 "transitionId": "vector-transition",
-                "parameters": { "resume": true },
+                "parameters": {
+                  "resume": true
+                },
                 "parameterDigest": "sha256:0665d9c0c9b18ef7c608e4fafd182eda34bb11535093bace38b88653d9d5713f",
                 "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 "resolutionKind": "non-retry",
-                "allowedReasonCodes": ["approved-for-vector"],
+                "allowedReasonCodes": [
+                  "approved-for-vector"
+                ],
                 "reasonRequired": true,
                 "proposedReason": "Continue the vector transition."
               }
@@ -155,7 +173,7 @@
       {
         "id": "legacy-collaboration-ssh-envelope",
         "payloadVersion": 1,
-        "signatureNamespace": "expense-app.workflow.collaboration-grant.v1",
+        "signatureNamespace": "workflow.collaboration-grant.v1",
         "readerContractVersion": "jigwright.collaboration-grant-envelope-reader.v1",
         "currentNamespace": "workflow.collaboration-grant.v2",
         "unknownVersion": 3,
@@ -209,5 +227,5 @@
       }
     ]
   },
-  "vectorSetDigest": "sha256:b4c732d367c4567284c5f932c432f78afa46df9045e831c7a0047e9a9a7e5bd9"
+  "vectorSetDigest": "sha256:48cd71a5df55afb013aab0b4cc312d9f1b54259ead96a77ee626f4fb6fe455e4"
 }

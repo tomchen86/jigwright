@@ -34,18 +34,18 @@ test('workflow namespace configuration has no legacy schema admission surface', 
 test('signed history verifies only under its record-owned allowlisted namespace', () => {
   const seen: string[] = [];
   const selected = assertAllowedSignatureNamespace(
-    'expense-app.workflow.maintainer-grant.v1',
+    'workflow.maintainer-grant.v1',
     [
-      'expense-app.workflow.maintainer-grant.v1',
+      'workflow.maintainer-grant.v1',
       'workflow.maintainer-grant.v2',
     ],
   );
   seen.push(selected);
-  assert.deepEqual(seen, ['expense-app.workflow.maintainer-grant.v1']);
+  assert.deepEqual(seen, ['workflow.maintainer-grant.v1']);
   assert.throws(
     () =>
       assertAllowedSignatureNamespace('workflow.maintainer-grant.v3', [
-        'expense-app.workflow.maintainer-grant.v1',
+        'workflow.maintainer-grant.v1',
         'workflow.maintainer-grant.v2',
       ]),
     (error: unknown) =>

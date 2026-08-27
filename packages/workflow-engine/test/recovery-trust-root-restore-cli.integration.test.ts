@@ -695,7 +695,7 @@ function setupFixture() {
         repositoryId: REPOSITORY_ID,
         generation,
         purpose: 'workflow-maintainer-signatures',
-        signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+        signatureNamespace: 'workflow.maintainer-grant.v1',
         trustedSigners: [
           {
             identity: 'restored-operational-maintainer',

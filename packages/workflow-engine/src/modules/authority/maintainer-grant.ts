@@ -4,7 +4,6 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 import {
   isPostApprovalAdmissionFailure,
   runGit,
@@ -59,7 +58,7 @@ const PAYLOAD_KEYS = [
   'signer',
 ];
 export const HUMAN_RESOLUTION_SIGNATURE_NAMESPACE =
-  LEGACY_WORKFLOW_IDENTITIES.humanResolutionGrant;
+  'workflow.human-resolution-grant.v1' as const;
 const HUMAN_RESOLUTION_PAYLOAD_KEYS = [
   'version',
   'grantId',

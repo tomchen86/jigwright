@@ -32,8 +32,8 @@ const PRIMARY_GRANT = '11111111-1111-4111-8111-111111111111';
 const UNSIGNED_GRANT = '22222222-2222-4222-8222-222222222222';
 const RESOLUTION_GRANT = '55555555-5555-4555-8555-555555555555';
 const SECOND_RESOLUTION_GRANT = '66666666-6666-4666-8666-666666666666';
-const GRANT_NAMESPACE = 'expense-app.workflow.maintainer-grant.v1';
-const RESOLUTION_NAMESPACE = 'expense-app.workflow.human-resolution-grant.v1';
+const GRANT_NAMESPACE = 'workflow.maintainer-grant.v1';
+const RESOLUTION_NAMESPACE = 'workflow.human-resolution-grant.v1';
 
 const POLICY_TEMPLATE: Omit<MaintainerPolicy, 'trustedSigners'> = {
   schemaVersion: 1,

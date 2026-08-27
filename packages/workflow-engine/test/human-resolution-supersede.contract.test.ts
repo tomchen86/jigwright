@@ -198,7 +198,7 @@ test('legacy signed supersede without a reason is verification-only', () => {
   );
   assert.equal(
     signer.verifiedNamespaces.at(-1),
-    'expense-app.workflow.human-resolution-grant.v1',
+    'workflow.human-resolution-grant.v1',
   );
 });
 
@@ -336,7 +336,7 @@ function installMaintainerPolicy(repository: string): void {
       repository: { id: 'github:R_fixture', origin },
       phase: 'bootstrap',
       auditTagPrefix: 'refs/tags/workflow-grant/',
-      signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+      signatureNamespace: 'workflow.maintainer-grant.v1',
       maxTtlMinutes: 30,
       maxUses: 1,
       bootstrapEligiblePaths: ['packages/workflow-engine/src/**'],

@@ -161,7 +161,7 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
         },
         phase: 'sealed',
         auditTagPrefix: 'refs/tags/workflow-grant/',
-        signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+        signatureNamespace: 'workflow.maintainer-grant.v1',
         maxTtlMinutes: 30,
         maxUses: 1,
         bootstrapEligiblePaths: ['workflow/protected-capabilities.json'],

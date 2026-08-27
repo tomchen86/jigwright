@@ -9,7 +9,6 @@ import { createInteractiveSshSigner, } from "../../adapters/signing/ssh/maintain
 import { collaborationGrantStorePaths, storeAvailableCollaborationGrant, } from "../../runtime/storage-journal/collaboration-grant-store.js";
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 import { assertChangeId, assertTaskId, } from "../../runtime/session-workspace/paths.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../compatibility/legacy-workflow-identities.js";
 export { ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1, ROLE_CONTEXT_SHARING_POLICY, ROLE_CONTEXT_SHARING_POLICY_DIGEST, executeRoleContextSharingGrantTransitionV1, verifyRoleContextSharingGrantCapability, } from "./role-context-sharing-grant.js";
 export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE;
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
@@ -48,10 +47,7 @@ export const COLLABORATION_GRANT_POLICY_DIGEST = crypto
     .digest('hex');
 export const LEGACY_COLLABORATION_GRANT_POLICY_DIGEST = crypto
     .createHash('sha256')
-    .update(JSON.stringify({
-    ...COLLABORATION_GRANT_POLICY,
-    policyId: LEGACY_WORKFLOW_IDENTITIES.collaborationPolicy,
-}))
+    .update(JSON.stringify(COLLABORATION_GRANT_POLICY))
     .digest('hex');
 export const TASK_DIFF_REVIEW_COLLABORATION_POLICY = deepFreeze({
     schemaVersion: 1,
@@ -71,10 +67,7 @@ export const TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
     .digest('hex');
 export const LEGACY_TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
     .createHash('sha256')
-    .update(JSON.stringify({
-    ...TASK_DIFF_REVIEW_COLLABORATION_POLICY,
-    policyId: LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewCollaborationPolicy,
-}))
+    .update(JSON.stringify(TASK_DIFF_REVIEW_COLLABORATION_POLICY))
     .digest('hex');
 export const COLLABORATION_GRANT_RETAINED_OBLIGATIONS = Object.freeze([
     'engine-search-floor',

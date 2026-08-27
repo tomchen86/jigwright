@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from "./foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "./foundation/errors/errors.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "./modules/compatibility/legacy-workflow-identities.js";
 import { assertRecoveryAuthorityDomain, verifyRecoveryAuthorityDescriptor, } from "./recovery-authority.js";
 /**
  * Recovery substrate only. This module does not inspect HEAD, load the tracked
@@ -555,7 +554,7 @@ function normalizeRootPayload(value) {
         !isIdentifier(value.repositoryId) ||
         !isPositiveInteger(value.generation) ||
         value.purpose !== 'workflow-maintainer-signatures' ||
-        value.signatureNamespace !== LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1 ||
+        value.signatureNamespace !== 'workflow.maintainer-grant.v1' ||
         !Array.isArray(value.trustedSigners) ||
         value.trustedSigners.length === 0 ||
         value.trustedSigners.length > 64) {
@@ -577,7 +576,7 @@ function normalizeRootPayload(value) {
         repositoryId: value.repositoryId,
         generation: value.generation,
         purpose: 'workflow-maintainer-signatures',
-        signatureNamespace: LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1,
+        signatureNamespace: 'workflow.maintainer-grant.v1',
         trustedSigners,
         createdAt: exactIso(value.createdAt),
     });

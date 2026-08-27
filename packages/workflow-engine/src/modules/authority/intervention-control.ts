@@ -6,7 +6,6 @@ import {
   compareCanonicalStrings,
 } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 export type Sha256Digest = `sha256:${string}`;
 
@@ -4613,7 +4612,7 @@ export function verifyLegacyGrantV1ReadOnly(
     record.signedPayload,
     record.signature,
     record.signer,
-    LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1,
+    'workflow.maintainer-grant.v1',
   );
   if (!signatureValid) {
     throw workflowError(

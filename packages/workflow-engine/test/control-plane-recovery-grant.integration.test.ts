@@ -1130,7 +1130,7 @@ test('Recovery Grant rejects unknown fields, excessive TTL, expiry, and stale ex
     for (const [signature, signedNamespace] of [
       [
         'maintenance-grant-signature',
-        'expense-app.workflow.maintainer-grant.v1',
+        'workflow.maintainer-grant.v1',
       ],
       ['task-mandate-signature', 'HARNESS_TASK_MANDATE_V1'],
     ] as const) {

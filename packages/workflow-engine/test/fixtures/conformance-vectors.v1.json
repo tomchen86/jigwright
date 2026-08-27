@@ -12,14 +12,27 @@
   "canonicalJson": [
     {
       "id": "primitives-and-array-order",
-      "input": [null, true, false, 0, 0, 1.25],
+      "input": [
+        null,
+        true,
+        false,
+        0,
+        0,
+        1.25
+      ],
       "canonical": "[null,true,false,0,0,1.25]",
       "sha256": "c9805a7cf1bc89624531145fabd3da94123465fe813aac7208939b32673f7cf0"
     },
     {
       "id": "recursive-object-order",
       "input": {
-        "z": [3, { "b": true, "a": null }],
+        "z": [
+          3,
+          {
+            "b": true,
+            "a": null
+          }
+        ],
         "a": "line\n\"quoted\""
       },
       "canonical": "{\"a\":\"line\\n\\\"quoted\\\"\",\"z\":[3,{\"a\":null,\"b\":true}]}",
@@ -124,7 +137,7 @@
     {
       "id": "collaboration-grant-v1-legacy",
       "contract": "collaboration-grant-v1",
-      "signatureNamespace": "expense-app.workflow.collaboration-grant.v1",
+      "signatureNamespace": "workflow.collaboration-grant.v1",
       "fixtureVerifier": "sha256-namespace-nul-payload-base64-armored.v1",
       "payload": {
         "version": 1,
@@ -354,7 +367,9 @@
     {
       "id": "ordinary-unmanaged",
       "message": "Add ordinary behavior\n",
-      "outcome": { "state": "unmanaged" }
+      "outcome": {
+        "state": "unmanaged"
+      }
     },
     {
       "id": "reserved-invalid-case",
@@ -365,5 +380,5 @@
       }
     }
   ],
-  "vectorSetDigest": "sha256:a1c3bdc559b893e66aae14946006c34e00bf9b42361bfa39fcb6754edff9d136"
+  "vectorSetDigest": "sha256:8224de831f79beac6a71d2496775a0842fa3392f90674aaa5c5c0b94d32d96c5"
 }

@@ -5,18 +5,18 @@
   "architectureDocument": "docs/architecture/WORKFLOW_ENGINE_BOUNDARY_INVENTORY.md",
   "namespaceBaseline": {
     "legacyPrefix": "expense-app.workflow.",
-    "sourceOccurrences": 6,
-    "sourceFileCount": 1,
-    "sourceIdentityDigest": "sha256:8a4c6f2fda58d393c263d0f56fb34d7e1b521dbbcd8bf46c09c05674361bdf84",
-    "bootstrapOccurrences": 1,
-    "bootstrapFileCount": 1,
-    "bootstrapIdentityDigest": "sha256:cfb22a249b4fb89899b743dad600d47759dbd2888b589eed540b064cda97d9ea",
-    "recoveryOccurrences": 6,
-    "recoveryFileCount": 1,
-    "recoveryIdentityDigest": "sha256:871500544b02a2f66de68959bd2391edb920deb66acd7c64ce088c1c0ac4af91",
-    "workflowJsonOccurrences": 3,
-    "workflowJsonFileCount": 3,
-    "workflowJsonIdentityDigest": "sha256:c55e929de39d7f6ad471342058c47fff52d13de6a85ab8e24983a8d51b9fab56",
+    "sourceOccurrences": 0,
+    "sourceFileCount": 0,
+    "sourceIdentityDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bootstrapOccurrences": 0,
+    "bootstrapFileCount": 0,
+    "bootstrapIdentityDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "recoveryOccurrences": 0,
+    "recoveryFileCount": 0,
+    "recoveryIdentityDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "workflowJsonOccurrences": 1,
+    "workflowJsonFileCount": 1,
+    "workflowJsonIdentityDigest": "sha256:f5c559245a025c2927015442c3d2828e75025b316bb3f6f558260b28810b6d59",
     "jsonSchemaIdHosts": {
       "jigwright.local": 18
     },
@@ -484,7 +484,7 @@
         {
           "path": "packages/grants/src/collaboration-grant-envelope-reader.ts",
           "contains": [
-            "'expense-app.workflow.collaboration-grant.v1' as const",
+            "'workflow.collaboration-grant.v1' as const",
             "'workflow.collaboration-grant.v2' as const",
             "No namespace retry or fallback is"
           ]

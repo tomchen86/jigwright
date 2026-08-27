@@ -223,7 +223,7 @@
     {
       "path": "node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.ts",
       "mode": "100644",
-      "digest": "sha256:3a5d401c528dd429c3ab7efef95193acec5240e7cdab9f66a32b419ec6ad2895"
+      "digest": "sha256:eb8b1d34914e18ef50104a76a3055f689982b250e197cc3e86c391222ad76882"
     },
     {
       "path": "node_modules/@jigwright/grants/src/grant-envelope-verifier.ts",
@@ -1163,7 +1163,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:20192b17908029d03432556c7a1ec30c03ac8ee664c13d001a9d977f6554481a"
+      "digest": "sha256:3393ed8f0e6144b27d0889ea612d618f27f9beb88f4ab1deeb7fa5e6510d7adb"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1218,7 +1218,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:ddbb577ba9e9b26a1dece7637413a835224ee4779c949fbb62f03f6c5f6ef639"
+      "digest": "sha256:f34e1529edf1cb8461b70a51bc0affe446dba314bd424e861bed20c176753bcc"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
@@ -1233,7 +1233,7 @@
     {
       "path": "src/modules/authority/maintainer-grant.ts",
       "mode": "100644",
-      "digest": "sha256:4c8d06718659de32aec5de9a2d5a832b10eb9562fee72b332c80e1e90346b387"
+      "digest": "sha256:6c7e72b2cd962f99c19e85b7ae2ad879be208bf133ae74a793e2fc44e58e98b8"
     },
     {
       "path": "src/modules/authority/maintainer-manifest.ts",
@@ -1243,7 +1243,7 @@
     {
       "path": "src/modules/authority/maintainer-policy.ts",
       "mode": "100644",
-      "digest": "sha256:4c222c068a53b174e6328e87bf685b084bd19c9e7d6619db774c8b07a2aa54de"
+      "digest": "sha256:30df53b811263edaa2e2a19947fe0fb839c720e99d721c1c63acd4d194298e03"
     },
     {
       "path": "src/modules/authority/maintainer-signer-port.ts",
@@ -1253,7 +1253,7 @@
     {
       "path": "src/modules/authority/optional-grants-package.ts",
       "mode": "100644",
-      "digest": "sha256:5fea50f3dd9df77ed6577a0c5670d6f5b349dfe0934bf18a75fadc06c7da774e"
+      "digest": "sha256:71dcebf1c1c61c4c45a1f05959295117092e3c6e641ffee703f919bb8bf3ac74"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
@@ -1273,7 +1273,7 @@
     {
       "path": "src/modules/authority/role-context-sharing-grant.ts",
       "mode": "100644",
-      "digest": "sha256:1f440087b43dc88436ae2a432b8db8cc1661da2a31bcf481893443e7de01cc30"
+      "digest": "sha256:3a8eae56e97f57e26a39b21c11aae92a9d713c780f2daacef692f2a9e5ab5f64"
     },
     {
       "path": "src/modules/authority/task-mandate.ts",
@@ -1284,11 +1284,6 @@
       "path": "src/modules/authority/task-revision-approval.ts",
       "mode": "100644",
       "digest": "sha256:2df399295acbf3dfd0de53fdaad62f4a0d2efd03b450964a1e45d410ffd3b638"
-    },
-    {
-      "path": "src/modules/compatibility/legacy-workflow-identities.ts",
-      "mode": "100644",
-      "digest": "sha256:eb08c5a171f835fc4af4f4ca03a2a9c8fc00acfd696815579e2fb2335bf59d8f"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
@@ -1663,7 +1658,7 @@
     {
       "path": "src/recovery-trust-root-restore.ts",
       "mode": "100644",
-      "digest": "sha256:13c493313787abca10f17ec1e82e823c386dceeaee7aaa1115376202eaff5214"
+      "digest": "sha256:56c5eeac6b35b47fc0203bb1c2a77fe16b84a043c356cdbf58c4bff27d29bdcf"
     },
     {
       "path": "src/runtime/managed-documents/contracts/documentation-closure.ts",
@@ -2023,7 +2018,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:bcc1fcb61630cbd2b7f19e3b1f39691550d0e4a43e69dcb9b70d2513e4ad4971"
+      "digest": "sha256:8db140a2d2ea8c085d9d434c3aa7baa15faf6a7c690b30de7d8a2e833ff16201"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",

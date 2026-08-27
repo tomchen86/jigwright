@@ -59,7 +59,7 @@ export function installPlanReviewAuthority(
           },
           phase: 'bootstrap',
           auditTagPrefix: 'refs/tags/workflow-grant/',
-          signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+          signatureNamespace: 'workflow.maintainer-grant.v1',
           maxTtlMinutes: 30,
           maxUses: 1,
           bootstrapEligiblePaths: ['packages/workflow-engine/src/**'],

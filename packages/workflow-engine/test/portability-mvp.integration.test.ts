@@ -680,7 +680,7 @@ function configurePortableConsumer(repository: string): void {
     },
     phase: 'bootstrap',
     auditTagPrefix: 'refs/tags/jigwright-grant/',
-    signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+    signatureNamespace: 'workflow.maintainer-grant.v1',
     maxTtlMinutes: 30,
     maxUses: 1,
     bootstrapEligiblePaths: ['workflow/maintainer-policy.json'],

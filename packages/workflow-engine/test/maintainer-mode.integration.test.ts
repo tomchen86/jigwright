@@ -81,7 +81,7 @@ const POLICY: MaintainerPolicy = {
   },
   phase: 'bootstrap',
   auditTagPrefix: 'refs/tags/workflow-grant/',
-  signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+  signatureNamespace: 'workflow.maintainer-grant.v1',
   maxTtlMinutes: 30,
   maxUses: 1,
   bootstrapEligiblePaths: [
@@ -147,6 +147,7 @@ test('repository maintainer policy is strict, stable, and bootstrap-scoped', () 
     'https://github.com/tomchen86/expense-app.git',
   );
   assert.equal(policy.phase, 'bootstrap');
+  assert.equal(policy.signatureNamespace, 'workflow.maintainer-grant.v1');
   assert.equal(policy.maxTtlMinutes, 30);
   assert.equal(policy.maxUses, 1);
   assert.deepEqual(
@@ -163,6 +164,14 @@ test('repository maintainer policy is strict, stable, and bootstrap-scoped', () 
 test('maintainer policy rejects unknown, unordered, and self-removable trust', () => {
   assert.throws(
     () => parseMaintainerPolicy({ ...POLICY, unexpected: true }),
+    (error) => isWorkflowError(error, 'MAINTAINER_POLICY_INVALID'),
+  );
+  assert.throws(
+    () =>
+      parseMaintainerPolicy({
+        ...POLICY,
+        signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+      }),
     (error) => isWorkflowError(error, 'MAINTAINER_POLICY_INVALID'),
   );
   assert.throws(

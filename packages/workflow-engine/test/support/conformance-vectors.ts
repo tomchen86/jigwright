@@ -32,7 +32,7 @@ export type CollaborationGrantConformanceVector = Readonly<{
   id: string;
   contract: 'collaboration-grant-v1' | 'collaboration-grant-v2-namespace';
   signatureNamespace:
-    | 'expense-app.workflow.collaboration-grant.v1'
+    | 'workflow.collaboration-grant.v1'
     | 'workflow.collaboration-grant.v2';
   fixtureVerifier: 'sha256-namespace-nul-payload-base64-armored.v1';
   payload: Readonly<Record<string, unknown>>;
@@ -247,7 +247,7 @@ function parseCollaborationGrantVectors(
     const signatureNamespace = candidate.signatureNamespace;
     const expectedNamespace =
       contract === 'collaboration-grant-v1'
-        ? 'expense-app.workflow.collaboration-grant.v1'
+        ? 'workflow.collaboration-grant.v1'
         : 'workflow.collaboration-grant.v2';
     if (
       !isVectorId(candidate.id) ||

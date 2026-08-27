@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson, compareCanonicalStrings, } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../compatibility/legacy-workflow-identities.js";
 export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE = 'expense-app.harness-maintenance-grant.v1';
 export const CONTROL_PLANE_SIGNATURE_NAMESPACE = 'expense-app.control-plane-grant.v1';
 export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE = 'expense-app.control-plane-independent-review.v1';
@@ -2390,7 +2389,7 @@ export function verifyLegacyGrantV1ReadOnly(record, context) {
     if (sha256(record.signedPayload) !== record.payloadDigest) {
         throw workflowError('LEGACY_GRANT_V1_PAYLOAD_DIGEST_MISMATCH', 'Historical grant payload digest mismatch.', ExitCode.verification);
     }
-    const signatureValid = verifyHumanSignatureSafely(context.verifyHumanSignature, record.signedPayload, record.signature, record.signer, LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV1);
+    const signatureValid = verifyHumanSignatureSafely(context.verifyHumanSignature, record.signedPayload, record.signature, record.signer, 'workflow.maintainer-grant.v1');
     if (!signatureValid) {
         throw workflowError('LEGACY_GRANT_V1_SIGNATURE_INVALID', 'Historical V1 grant signature could not be verified.', ExitCode.verification);
     }

@@ -54,7 +54,6 @@ import {
   assertChangeId,
   assertTaskId,
 } from '../../runtime/session-workspace/paths.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 export {
   ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1,
@@ -110,12 +109,7 @@ export const COLLABORATION_GRANT_POLICY_DIGEST = crypto
   .digest('hex');
 export const LEGACY_COLLABORATION_GRANT_POLICY_DIGEST = crypto
   .createHash('sha256')
-  .update(
-    JSON.stringify({
-      ...COLLABORATION_GRANT_POLICY,
-      policyId: LEGACY_WORKFLOW_IDENTITIES.collaborationPolicy,
-    }),
-  )
+  .update(JSON.stringify(COLLABORATION_GRANT_POLICY))
   .digest('hex');
 export const TASK_DIFF_REVIEW_COLLABORATION_POLICY = deepFreeze({
   schemaVersion: 1 as const,
@@ -135,12 +129,7 @@ export const TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
   .digest('hex');
 export const LEGACY_TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
   .createHash('sha256')
-  .update(
-    JSON.stringify({
-      ...TASK_DIFF_REVIEW_COLLABORATION_POLICY,
-      policyId: LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewCollaborationPolicy,
-    }),
-  )
+  .update(JSON.stringify(TASK_DIFF_REVIEW_COLLABORATION_POLICY))
   .digest('hex');
 
 export const COLLABORATION_GRANT_RETAINED_OBLIGATIONS = Object.freeze([

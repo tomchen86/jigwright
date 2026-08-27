@@ -8,7 +8,7 @@ import {
 export const COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1 =
   'jigwright.collaboration-grant-envelope-reader.v1' as const;
 export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE =
-  'expense-app.workflow.collaboration-grant.v1' as const;
+  'workflow.collaboration-grant.v1' as const;
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE =
   'workflow.collaboration-grant.v2' as const;
 

@@ -1,8 +1,6 @@
 import { createRequire } from 'node:module';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
-
 type CollaborationGrantEnvelopeReaderModule =
   typeof import('@jigwright/grants/collaboration-grant-envelope-reader');
 type GrantEnvelopeVerifierModule =
@@ -67,7 +65,7 @@ const loadedModules = new Map<string, OptionalGrantModule>();
 export const COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1 =
   'jigwright.collaboration-grant-envelope-reader.v1' as const;
 export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE =
-  LEGACY_WORKFLOW_IDENTITIES.collaborationGrant;
+  'workflow.collaboration-grant.v1' as const;
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE =
   'workflow.collaboration-grant.v2' as const;
 export const GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1 =

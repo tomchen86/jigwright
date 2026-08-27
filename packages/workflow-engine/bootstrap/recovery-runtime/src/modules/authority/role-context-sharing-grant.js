@@ -2,7 +2,6 @@ import crypto from 'node:crypto';
 import { ROLE_CONTEXT_SHARING_GRANT_READER_CONTRACT_VERSION_V1, bindingFromRoleContextSharingGrantPayloadV1, canonicalRoleContextSharingGrantEnvelopeV1, executeGrantLifecycleTransitionV1, GRANT_LIFECYCLE_CONTRACT_VERSION_V1, isRoleContextSharingGrantError, verifyRoleContextSharingGrantCapabilityV1, } from "./optional-grants-package.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { assertAuthoritativeRoleContextSharingGrantVerifier, } from "./role-context-sharing-grant-verifier-port.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../compatibility/legacy-workflow-identities.js";
 export const ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1 = 'workflow.role-context-sharing-eligibility.v1';
 export const ROLE_CONTEXT_SHARING_MAX_TTL_MINUTES = 30;
 export const ROLE_CONTEXT_SHARING_POLICY = deepFreeze({
@@ -27,19 +26,8 @@ export const ROLE_CONTEXT_SHARING_POLICY_DIGEST = crypto
     .createHash('sha256')
     .update(JSON.stringify(ROLE_CONTEXT_SHARING_POLICY))
     .digest('hex');
-export const LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST = crypto
-    .createHash('sha256')
-    .update(JSON.stringify({
-    ...ROLE_CONTEXT_SHARING_POLICY,
-    policyId: LEGACY_WORKFLOW_IDENTITIES.roleContextSharingPolicy,
-}))
-    .digest('hex');
 export function isKnownRoleContextSharingPolicyDigest(digest) {
     return digest === ROLE_CONTEXT_SHARING_POLICY_DIGEST;
-}
-/** Inert historical classification; never grants production authority. */
-export function isHistoricalRoleContextSharingPolicyDigest(digest) {
-    return digest === LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST;
 }
 export function verifyRoleContextSharingGrantCapability(envelope, policy, options) {
     assertAuthoritativeRoleContextSharingGrantVerifier(options.verifier);

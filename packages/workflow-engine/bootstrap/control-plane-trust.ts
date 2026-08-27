@@ -5755,7 +5755,7 @@ function readBootstrapMaintainerPolicyAt(
     (policy.phase !== 'bootstrap' && policy.phase !== 'sealed') ||
     typeof policy.auditTagPrefix !== 'string' ||
     !/^refs\/tags\/[a-z0-9][a-z0-9-]*\/$/.test(policy.auditTagPrefix) ||
-    policy.signatureNamespace !== 'expense-app.workflow.maintainer-grant.v1' ||
+    policy.signatureNamespace !== 'workflow.maintainer-grant.v1' ||
     policy.maxTtlMinutes !== 30 ||
     policy.maxUses !== 1 ||
     !sortedUniqueStrings(policy.bootstrapEligiblePaths, true) ||

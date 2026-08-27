@@ -922,7 +922,7 @@ test('supersede rejects execution failures and legacy V1 grants are verification
         assert.equal(payload, signedPayload);
         assert.equal(signature, 'historical-signature');
         assert.equal(signer, 'retired-maintainer@example.test');
-        assert.equal(namespace, 'expense-app.workflow.maintainer-grant.v1');
+        assert.equal(namespace, 'workflow.maintainer-grant.v1');
         return true;
       },
     },
