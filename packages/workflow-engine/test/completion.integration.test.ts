@@ -36,12 +36,25 @@ import {
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
   configureChecks,
-  createFixtureRepository,
+  createFixtureRepository as createBareFixtureRepository,
   git,
   isWorkflowError,
   runtimeRoot,
+  sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+
+function createFixtureRepository(): string {
+  const repository = createBareFixtureRepository();
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
+  );
+  git(repository, ['add', 'workflow/maintainer-policy.json']);
+  git(repository, ['commit', '-m', 'Track fixture maintainer policy']);
+  return repository;
+}
 
 test('explicit full-gate escalation substitutes only reviewed covered checks and does not impersonate terminal state', () => {
   const tasks = [
@@ -281,6 +294,24 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     const cliPath = path.resolve(import.meta.dirname, '../src/cli.ts');
+    const reviewRequired = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        cliPath,
+        'finalize-task',
+        session.sessionId,
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(reviewRequired.status, 13, reviewRequired.stderr);
+    assert.equal(
+      (JSON.parse(reviewRequired.stderr) as { error: { code: string } }).error
+        .code,
+      'TASK_DIFF_REVIEW_REQUIRED',
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
     const cliOutput = execFileSync(
       process.execPath,
       [
