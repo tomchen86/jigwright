@@ -425,6 +425,11 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
     const submission = validSubmission(
       fixture.reviewedBlobObjectId,
       fixture.riskPathDispositions,
+      {
+        decision: 'no-impact',
+        notes:
+          'The synthetic implementation changes no public or operator documentation contract.',
+      },
     );
     const result = runProviderWorker(fixture.repository, fixture.invocationId, {
       runner(input) {
