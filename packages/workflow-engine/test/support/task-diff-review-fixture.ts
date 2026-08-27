@@ -20,6 +20,7 @@ import {
 export function satisfyCurrentTaskDiffReview(
   repository: string,
   sessionId: string,
+  reviewedPath = 'src/feature.ts',
 ): void {
   const prepared = beginTaskDiffReview(repository, sessionId, {
     explicitActor: 'codex',
@@ -34,7 +35,7 @@ export function satisfyCurrentTaskDiffReview(
   }
   assert.equal(prepared.subject.documentationRequirement?.required, true);
   const reviewedBlobObjectId = prepared.subject.transitions.find(
-    ({ path: changedPath }) => changedPath === 'src/feature.ts',
+    ({ path: changedPath }) => changedPath === reviewedPath,
   )?.after?.objectId;
   assert.ok(reviewedBlobObjectId);
   const submission: TaskDiffReviewSubmission = {
@@ -46,7 +47,7 @@ export function satisfyCurrentTaskDiffReview(
       evidence: [
         {
           kind: 'repository-location',
-          path: 'src/feature.ts',
+          path: reviewedPath,
           line: 1,
           blobObjectId: reviewedBlobObjectId,
           observation:

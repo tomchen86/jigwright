@@ -41,6 +41,7 @@ import {
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 if (import.meta.main) await import('./session-legacy-family.ts');
 
@@ -48,6 +49,30 @@ function prepareCurrentChange(repository: string, changeId = 'demo-change') {
   const ready = writeReadyV3ExemptChange(repository, changeId);
   commitPlanningTransition(repository, changeId);
   return ready;
+}
+
+function prepareCurrentChangeOnMain(
+  repository: string,
+  changeId = 'demo-change',
+): void {
+  const maintainerPolicyPath = path.join(
+    repository,
+    'workflow/maintainer-policy.json',
+  );
+  if (!fs.existsSync(maintainerPolicyPath)) {
+    fs.copyFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      maintainerPolicyPath,
+    );
+    git(repository, ['add', 'workflow/maintainer-policy.json']);
+    git(repository, ['commit', '-m', 'Track fixture maintainer policy']);
+  }
+  const branch = `work/${changeId}`;
+  git(repository, ['checkout', '-b', branch]);
+  prepareCurrentChange(repository, changeId);
+  git(repository, ['checkout', 'main']);
+  git(repository, ['merge', '--ff-only', branch]);
+  git(repository, ['branch', '-d', branch]);
 }
 
 function prepareConcurrentTaskWorktree(
@@ -140,6 +165,8 @@ function declareConcurrentWorkset(
   repository: string,
   concurrentChangeId: string,
 ): void {
+  prepareCurrentChangeOnMain(repository, 'demo-change');
+  prepareCurrentChangeOnMain(repository, concurrentChangeId);
   applyChangeRoutingReview(
     repository,
     prepareChangeRoutingReview(repository, {
@@ -599,6 +626,7 @@ test('a routed writer keeps its source workset through completion projection and
   const repository = createFixtureRepository();
   let fixture: { parent: string; worktree: string } | undefined;
   try {
+    prepareCurrentChangeOnMain(repository);
     applyChangeRoutingReview(
       repository,
       prepareChangeRoutingReview(repository, {
@@ -614,17 +642,27 @@ test('a routed writer keeps its source workset through completion projection and
       'demo-change',
       'src/task/**',
     );
-    const session = startSession(fixture.worktree, 'demo-change', '1.1');
-    fs.mkdirSync(path.join(fixture.worktree, 'src/task'), { recursive: true });
+    const worktree = fixture.worktree;
+    const session = startSession(worktree, 'demo-change', '1.1');
+    fs.mkdirSync(path.join(worktree, 'src/task'), { recursive: true });
     fs.writeFileSync(
-      path.join(fixture.worktree, 'src/task/feature.ts'),
+      path.join(worktree, 'src/task/feature.ts'),
       'export const feature = true;\n',
     );
 
-    const finalized = finalizeTask(fixture.worktree, session.sessionId);
+    assert.throws(
+      () => finalizeTask(worktree, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(
+      worktree,
+      session.sessionId,
+      'src/task/feature.ts',
+    );
+    const finalized = finalizeTask(worktree, session.sessionId);
     assert.equal(finalized.session.finishReportId !== undefined, true);
     const committed = commitSession(
-      fixture.worktree,
+      worktree,
       session.sessionId,
       'Complete routed fixture task',
     );
@@ -710,6 +748,18 @@ test('concurrent destructive checks require distinct disposable database leases 
   const repository = createFixtureRepository();
   const fixtures: Array<{ parent: string; worktree: string }> = [];
   try {
+    const consumerConfigPath = path.join(
+      repository,
+      'workflow/repository-consumer.json',
+    );
+    const consumerConfig = JSON.parse(
+      fs.readFileSync(consumerConfigPath, 'utf8'),
+    ) as { databasePolicy: { adapterId: string } };
+    consumerConfig.databasePolicy.adapterId = 'postgresql-disposable-v1';
+    fs.writeFileSync(
+      consumerConfigPath,
+      `${JSON.stringify(consumerConfig, null, 2)}\n`,
+    );
     configureChecks(
       repository,
       {
