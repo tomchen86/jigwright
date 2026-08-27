@@ -6,7 +6,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   MechanicalTransformExecution,
   TransformationTerm,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import { listStagedPaths } from '../../runtime/repository-transaction/git-transitions.ts';

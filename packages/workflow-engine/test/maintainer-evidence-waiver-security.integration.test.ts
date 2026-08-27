@@ -37,7 +37,7 @@ import {
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { authorizeTaskMandate } from '../src/modules/authority/task-mandate.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
@@ -388,7 +388,7 @@ function installTrustBase(
   fs.mkdirSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry',
+      'packages/workflow-engine/src/adapters/consumer/repository/work-registry',
     ),
     { recursive: true },
   );
@@ -409,7 +409,7 @@ function installTrustBase(
   fs.writeFileSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
     ),
     'export const PROTECTED_CAPABILITY_LOADER = true;\n',
   );
@@ -443,7 +443,7 @@ function installTrustBase(
     'packages/workflow-engine/src/modules/authority/execution-governance.ts',
   ];
   const closureDependencies = [
-    'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
     'workflow/protected-capabilities.json',
   ];
   const closure = computeProtectedCapabilityEntryDigests(

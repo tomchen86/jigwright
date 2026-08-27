@@ -5,7 +5,7 @@ import type {
   CrossAgentTddExecution,
   ExecutionTask,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';

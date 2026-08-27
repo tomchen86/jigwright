@@ -7,7 +7,7 @@ import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime
 import {
   isPlanningAssuranceBinding,
   type PlanningAssuranceBinding,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   ensurePlainDirectory,

@@ -5,7 +5,7 @@ import {
   parseTasks,
   type CheckDefinition,
   type ParsedTask,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertChangeId,

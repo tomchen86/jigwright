@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import type { InvestigationArtifact } from '../../consumer/expense-app/work-registry/contracts.ts';
+import type { InvestigationArtifact } from '../../consumer/repository/work-registry/contracts.ts';
 import {
   assertStoredEvidenceNode,
   type EvidenceNode,

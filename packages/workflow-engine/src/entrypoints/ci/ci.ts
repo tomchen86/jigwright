@@ -31,10 +31,10 @@ import {
   loadChecksConfig,
   loadWorkflowConfig,
   type ChangeContract,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
-import { validateWorkflowIntegrationAssets } from '../../adapters/consumer/expense-app/work-registry/integration-assets.ts';
+import { validateWorkflowIntegrationAssets } from '../../adapters/consumer/repository/work-registry/integration-assets.ts';
 import { validateRepositoryStateAtCommit } from '../../composition-root/repository-validation.ts';
 import { currentRepositorySchemaName } from '../../composition-root/validated-contract-context.ts';
 

@@ -12,9 +12,9 @@ import {
   issueCollaborationGrant,
 } from '../src/modules/authority/collaboration-grant.ts';
 import { inspectCollaborationGrants } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   completeTask,
   finalizeTask,
@@ -213,10 +213,7 @@ test('final documentation closure activates review for an ordinary candidate', (
       () => finalizeTask(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_REQUIRED'),
     );
-    const subject = inspectTaskDiffReviewSubject(
-      repository,
-      session.sessionId,
-    );
+    const subject = inspectTaskDiffReviewSubject(repository, session.sessionId);
     assert.equal(subject.reviewRequirement.required, true);
     assert.equal(subject.reviewRequirement.basis, 'explicit');
     assert.equal(subject.documentationRequirement?.required, true);

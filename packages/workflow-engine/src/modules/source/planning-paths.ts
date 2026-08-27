@@ -1,4 +1,4 @@
-import type { ManagedSchemaName } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { ManagedSchemaName } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { normalizeChangedPath } from '../../runtime/session-workspace/paths.ts';
 

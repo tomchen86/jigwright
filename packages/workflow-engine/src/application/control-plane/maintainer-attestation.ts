@@ -25,7 +25,7 @@ import {
   authorityAttestCommand,
   authorityTagPublishCommand,
 } from '../../adapters/remote/github/authority-relay-command.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { commitFacts } from '../../runtime/repository-transaction/git-transitions.ts';
 import {

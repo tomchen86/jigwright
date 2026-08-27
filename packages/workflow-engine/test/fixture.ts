@@ -10,7 +10,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   loadChangeContract,
   type ExecutionTask,
-} from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {

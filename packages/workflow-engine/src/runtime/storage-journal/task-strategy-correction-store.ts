@@ -7,7 +7,7 @@ import {
   parseObservedCheckFailure,
   type CheckEvidence,
   type ObservedCheckFailure,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   createPrivateCanonicalJson,

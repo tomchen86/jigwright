@@ -27,7 +27,7 @@ import {
   type ChangeContract,
   type ManagedSchemaName,
   type ParsedTask,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { validateForAuthority } from '../../modules/investigation/manifest/investigation-manifest.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
 import { engineProjectionPathsForTransition } from '../../modules/projection/engine-projection-registry.ts';
@@ -39,7 +39,7 @@ import {
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { createArchiveApplicabilityProjection } from '../../application/archive/archive-transformation.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import { validateHandoffForChange } from '../../adapters/consumer/expense-app/handoff/handoff.ts';
+import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import {
   validateInvestigationFirstPlanningReadiness,
   type InvestigationFirstPlanningAssuranceSummary,

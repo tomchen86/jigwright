@@ -13,7 +13,7 @@ import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   loadWorkflowConfig,
   parseTasks,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   finalizeCommittedSession,
   resumePendingCommit,
@@ -124,7 +124,7 @@ import {
   loadTaskDiffDocumentationReviewCapture,
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
-import { resolveTaskAuthorizationRequirement } from '../../adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
+import { resolveTaskAuthorizationRequirement } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 
 export type CompleteTaskResult = {
   session: WorkflowSession;

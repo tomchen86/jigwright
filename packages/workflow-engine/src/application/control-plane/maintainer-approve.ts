@@ -19,13 +19,13 @@ import { authorityApplicationReceiptTagRef } from '../../modules/authority/autho
 import {
   pinCheckRunner,
   runCheck,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CheckDefinition } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
-} from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   armPostApprovalAdmissionDeadline,

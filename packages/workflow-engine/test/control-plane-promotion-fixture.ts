@@ -36,7 +36,7 @@ import {
 } from '../src/modules/authority/maintainer-manifest.ts';
 import type { TrustedMaintainerSigner } from '../src/modules/authority/maintainer-policy.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
 const SOURCE_ENGINE_ROOT = path.resolve(import.meta.dirname, '..');
@@ -53,7 +53,7 @@ const BOOTSTRAP_RUNTIME_NAMES = [
   'control-plane-trust.ts',
 ] as const;
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
-  'src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+  'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
 export interface ControlPlaneFixtureSigning {
   trustedSigners: TrustedMaintainerSigner[];
@@ -751,7 +751,7 @@ function createFixtureProtectedManifest(repository: string) {
           : []),
         ...(capability === 'policy.classify'
           ? [
-              'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+              'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
             ]
           : []),
         ...(capability === 'control-plane.update'

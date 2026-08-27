@@ -13,9 +13,9 @@ import {
   validateIssueLog,
   writeIssueData,
   type IssueData,
-} from '../src/adapters/consumer/expense-app/documents/issues.ts';
+} from '../src/adapters/consumer/repository/documents/issues.ts';
 import { dispatchIssueCommand } from '../src/entrypoints/cli/issue-cli.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   createFixtureRepository,
   sourceRepositoryRoot,

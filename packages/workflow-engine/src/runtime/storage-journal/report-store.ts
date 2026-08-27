@@ -5,7 +5,7 @@ import path from 'node:path';
 import {
   isPlanningAssuranceBinding,
   type PlanningAssuranceBinding,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   WorkflowError,

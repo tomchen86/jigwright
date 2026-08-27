@@ -4,7 +4,7 @@ import {
   readFileAtCommit,
 } from '../../entrypoints/ci/ci-git.ts';
 import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
-import { parseTasks } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitFacts,

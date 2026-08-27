@@ -40,7 +40,7 @@ import {
 import {
   computeProtectedCapabilityEntryDigests,
   REQUIRED_PROTECTED_CAPABILITIES,
-} from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
   createFixtureRepository,
@@ -1849,7 +1849,7 @@ function installV2TrustBase(repository: string): void {
   fs.mkdirSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry',
+      'packages/workflow-engine/src/adapters/consumer/repository/work-registry',
     ),
     { recursive: true },
   );
@@ -1870,7 +1870,7 @@ function installV2TrustBase(repository: string): void {
   fs.writeFileSync(
     path.join(
       repository,
-      'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
     ),
     'export const PROTECTED_CAPABILITY_LOADER = true;\n',
   );
@@ -1956,7 +1956,7 @@ function installV2TrustBase(repository: string): void {
     'packages/workflow-engine/src/modules/authority/execution-governance.ts',
   ];
   const dependencies = [
-    'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
     'workflow/protected-capabilities.json',
   ];
   const closure = computeProtectedCapabilityEntryDigests(

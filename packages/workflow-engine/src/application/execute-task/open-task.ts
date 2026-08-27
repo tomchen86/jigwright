@@ -7,7 +7,7 @@ import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   loadChangeContract,
   loadWorkflowConfig,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
 import { engineProjectionPathsForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import {
@@ -27,7 +27,7 @@ import {
   discoverRepository,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { validateHandoffForChange } from '../../adapters/consumer/expense-app/handoff/handoff.ts';
+import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
 import {
   refreshPlanningDocuments,
@@ -77,7 +77,7 @@ import {
 import {
   assertTaskMandateOptional,
   resolveTaskAuthorizationRequirement,
-} from '../../adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const SHA256 = /^[0-9a-f]{64}$/;

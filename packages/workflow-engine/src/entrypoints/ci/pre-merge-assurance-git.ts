@@ -6,7 +6,7 @@ import { listRangeCommits, type RangeCommit } from './ci-git.ts';
 import {
   loadCommittedChangeContract,
   loadWorkflowConfig,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   parseDocumentationClosureFromCommitMessage,
   type DocumentationClosureRecord,

@@ -26,13 +26,13 @@ import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provi
 
 const EXPECTED_MAP_ROWS = 272;
 const EXPECTED_FROZEN_MAP_DIGEST =
-  'sha256:cc1467aa84dca627a7a4929a254abbb17694b9a79b88e24629f6fd69effab65b';
+  'sha256:fbdb7de9fc8b0623b406ccf885aa487cbbaf27d2e46a9833d0ab620aa0c0332e';
 const EXPECTED_FROZEN_EDGE_COUNT = 822;
 const EXPECTED_ACTIVE_EDGE_COUNT = 754;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
-  'sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af';
+  'sha256:8ef9759371159eda08ed6ee5e7c0876bb46530970bc01972ef213a767050779b';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:b6c1cbc657be5c24b19caeb6d698448cee013b505d33121affb022e859df0449';
+  'sha256:69806c8895817bc045e681ccacf66ff68e8ba58d8da389898e8523e27ca1502e';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -945,7 +945,7 @@ test('direction classifier accepts inward edges and rejects every protected reve
   );
   assert.equal(
     classifyLogicalEdge(
-      `${SRC_PREFIX}adapters/consumer/expense-app/reader.ts`,
+      `${SRC_PREFIX}adapters/consumer/repository/reader.ts`,
       `${SRC_PREFIX}adapters/planning/openspec/writer.ts`,
     ),
     'cross-adapter',

@@ -1,4 +1,4 @@
-import { loadWorkflowConfig } from '../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import type { ChangeRoutingContinuationGrantPort } from '../modules/lifecycle/change-routing.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import {

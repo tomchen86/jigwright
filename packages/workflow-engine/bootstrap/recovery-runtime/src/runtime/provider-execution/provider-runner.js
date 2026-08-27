@@ -6,7 +6,7 @@ import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT, MAX_AI_ADAPTER_LIMITS, } fro
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { buildClaudeProviderInvocation, CLAUDE_REQUIRED_HELP_FLAGS, } from "../../adapters/providers/claude/claude-provider-adapter.js";
 import { buildCodexProviderInvocation, CODEX_REQUIRED_EXEC_HELP_FLAGS, CODEX_REQUIRED_ROOT_HELP_FLAGS, } from "../../adapters/providers/codex/codex-provider-adapter.js";
-import { loadWorkflowConfig } from "../../adapters/consumer/expense-app/work-registry/contracts.js";
+import { loadWorkflowConfig } from "../../adapters/consumer/repository/work-registry/contracts.js";
 import { ExitCode, workflowError, WorkflowError, } from "../../foundation/errors/errors.js";
 import { createProviderExecutionEnvironment } from "./execution-environment.js";
 import { executionJobStatePath } from "../storage-journal/execution-store.js";

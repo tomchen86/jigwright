@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { BehaviorContractRef } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { BehaviorContractRef } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   assertSessionId,

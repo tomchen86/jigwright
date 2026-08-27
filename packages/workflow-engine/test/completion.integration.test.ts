@@ -18,7 +18,7 @@ import {
   previewExactStaging,
   stageExactPaths,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { projectTasksCompleted } from '../src/runtime/managed-documents/transaction/task-projection.ts';
 import {
   readImmutableReport,

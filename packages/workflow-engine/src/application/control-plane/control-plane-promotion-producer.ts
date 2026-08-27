@@ -76,7 +76,7 @@ import {
   type AnyImmutableCandidateBundle,
 } from '../../modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
 const MAX_EXECUTABLE_BYTES = 16 * 1024 * 1024;
 const MAX_PROCESS_OUTPUT_BYTES = 1024 * 1024;

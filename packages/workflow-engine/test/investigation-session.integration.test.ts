@@ -12,7 +12,7 @@ import {
   loadAiAdapterPolicy,
 } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import type {
   InvestigationManifestV3,
   InvestigationPlanReviewCoverageRequirementV3,

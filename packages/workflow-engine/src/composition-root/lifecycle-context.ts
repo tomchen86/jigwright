@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { loadWorkflowConfig } from '../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { listStagedPaths } from '../runtime/repository-transaction/git-transitions.ts';
 import {

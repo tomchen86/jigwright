@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { ObservedCheckFailure } from '../src/adapters/consumer/expense-app/work-registry/check-runner.ts';
+import type { ObservedCheckFailure } from '../src/adapters/consumer/repository/work-registry/check-runner.ts';
 import {
   createTaskStrategyGreenFailureRecord,
   type TaskStrategyGreenFailureRecord,

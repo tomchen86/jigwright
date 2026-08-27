@@ -11,8 +11,8 @@ import {
   readManagedSchemaName,
   repositoryCurrentSchemaName,
   repositoryPlanningPolicy,
-} from '../../../consumer/expense-app/work-registry/contracts.ts';
-import { workflowContractArtifactPaths } from '../../../consumer/expense-app/work-registry/contract-artifacts.ts';
+} from '../../../consumer/repository/work-registry/contracts.ts';
+import { workflowContractArtifactPaths } from '../../../consumer/repository/work-registry/contract-artifacts.ts';
 import {
   ExitCode,
   workflowError,

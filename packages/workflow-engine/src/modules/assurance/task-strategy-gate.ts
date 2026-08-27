@@ -4,7 +4,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';

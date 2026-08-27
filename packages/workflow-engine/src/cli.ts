@@ -40,7 +40,7 @@ import {
 } from './entrypoints/cli/collaboration-grant-cli.ts';
 import { dispatchRoleContextSharingGrantCommand } from './entrypoints/cli/role-context-sharing-grant-cli.ts';
 import { inspectChangeAssurance } from './runtime/repository-transaction/assurance-inspection.ts';
-import { loadWorkflowConfig } from './adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from './adapters/consumer/repository/work-registry/contracts.ts';
 import {
   contextualizeOpenTaskError,
   findOpenTaskLifecycleStatus,
@@ -105,7 +105,7 @@ import {
   discoverRepository,
   runGit,
 } from './runtime/repository-transaction/git.ts';
-import { validateHandoff } from './adapters/consumer/expense-app/handoff/handoff.ts';
+import { validateHandoff } from './adapters/consumer/repository/handoff/handoff.ts';
 import { runRepositoryHook } from './entrypoints/hooks/hooks.ts';
 import {
   isHumanGrantCliInvocation,
@@ -272,7 +272,7 @@ import {
   listProviderRetryScheduleReceipts,
   pumpProviderRetrySchedules,
 } from './runtime/provider-execution/provider-retry-scheduler.ts';
-import { runRegisteredCheck } from './adapters/consumer/expense-app/work-registry/registered-check.ts';
+import { runRegisteredCheck } from './adapters/consumer/repository/work-registry/registered-check.ts';
 import { loadStableValidatedChangeContract } from './composition-root/validated-contract-context.ts';
 import {
   authorizeTaskMandate,

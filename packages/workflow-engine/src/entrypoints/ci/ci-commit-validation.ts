@@ -18,7 +18,7 @@ import {
 import {
   parseTasks,
   type ChangeContract,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { matchesAllowedPath } from '../../runtime/session-workspace/paths.ts';

@@ -1,4 +1,4 @@
-import { loadWorkflowConfig } from '../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import {

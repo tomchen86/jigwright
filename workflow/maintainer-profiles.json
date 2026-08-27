@@ -18,10 +18,10 @@
         "workflow/checks.json"
       ],
       "forbiddenPaths": [
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
         "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
         "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
@@ -100,10 +100,10 @@
         "workflow/checks.json"
       ],
       "forbiddenPaths": [
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
-        "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
+        "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
         "packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts",
         "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
         "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",

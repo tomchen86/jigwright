@@ -4,7 +4,7 @@ import path from 'node:path';
 
 import { createArchiveApplicabilityProjection } from '../archive/archive-transformation.ts';
 import type { ArchiveApplicabilityRecord } from '../../runtime/storage-journal/planning-report.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   WorkflowError,

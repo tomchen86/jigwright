@@ -5,11 +5,11 @@ import {
   loadCommittedChangeContract,
   loadWorkflowConfig,
   repositoryHandoffPath,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   renderHandoff,
   validateHandoff,
-} from '../../adapters/consumer/expense-app/handoff/handoff.ts';
+} from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { verifyPullRequest } from '../../entrypoints/ci/ci.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

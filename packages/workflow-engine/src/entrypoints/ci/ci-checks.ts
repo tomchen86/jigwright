@@ -2,12 +2,12 @@ import {
   pinCheckRunner,
   runCheck,
   type CheckEvidence,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { productionCheckRegistryPort } from '../../composition-root/check-registry-production.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
-} from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import type {
   CheckDefinitionV1,
   CheckRegistryPortV1,

@@ -7,7 +7,7 @@ import test from 'node:test';
 import {
   loadChangeContract,
   parseTasks,
-} from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { normalizeChangedPath } from '../src/runtime/session-workspace/paths.ts';
 import {
   createFixtureRepository,

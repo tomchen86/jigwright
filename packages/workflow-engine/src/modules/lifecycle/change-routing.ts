@@ -9,8 +9,8 @@ import {
   loadWorkflowConfig,
   parseTasks,
   type ParsedTask,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
-import { readIssueData } from '../../adapters/consumer/expense-app/documents/issues.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { readIssueData } from '../../adapters/consumer/repository/documents/issues.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';

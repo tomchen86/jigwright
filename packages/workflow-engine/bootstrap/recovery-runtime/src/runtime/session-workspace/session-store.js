@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
-import { isPlanningAssuranceBinding, } from "../../adapters/consumer/expense-app/work-registry/contracts.js";
+import { isPlanningAssuranceBinding, } from "../../adapters/consumer/repository/work-registry/contracts.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
 import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../storage-journal/investigation-session-store.js";

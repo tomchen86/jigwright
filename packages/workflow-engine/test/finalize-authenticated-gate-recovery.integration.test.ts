@@ -6,7 +6,7 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   cancelFinalizeRecovery,
   finalizeTask,

@@ -358,6 +358,7 @@ function inspectPackageBoundary(
     entries.some(
       (entry) =>
         entry.startsWith('package/apps/') ||
+        entry.includes('/expense-app/') ||
         /package\/(?:internal|bootstrap\/installed-runtime-sources)\/[^/]+\/package\.json$/u.test(
           entry,
         ),

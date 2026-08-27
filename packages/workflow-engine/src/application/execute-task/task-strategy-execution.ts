@@ -5,12 +5,12 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   pinCheckRunner,
   runExpectedRedCheck,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
-import { createCheckEnvironmentForRepository } from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import { createCheckEnvironmentForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import { createEvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
 import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

@@ -47,7 +47,7 @@ import { readVerifiedRoleContextSharingTerminalReceipt } from './role-context-sh
 import {
   loadProtectedCapabilitiesFromWorktree,
   type CollaborationGrantVerifierCompositionV1,
-} from '../adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+} from '../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
 const COLLABORATION_EFFECT = 'role-independence-degradation-only' as const;
 const REQUIRED_PACKAGE_EXPORTS = Object.freeze({

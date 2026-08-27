@@ -4,11 +4,11 @@ import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { isRecord } from '@jigwright/core/contract-values';
 
-import { renderHandoff } from '../adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
-} from '../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
   applyChangeRoutingReviewUnderLifecycleLock,

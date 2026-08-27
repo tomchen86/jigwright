@@ -17,7 +17,7 @@ import {
   createArchiveTransformation,
   type ArchiveTransformation,
 } from './archive-transformation.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   WorkflowError,

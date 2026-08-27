@@ -1,5 +1,5 @@
-import type { CheckEvidence } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
-import type { TaskPolicy } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { TaskPolicy } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,

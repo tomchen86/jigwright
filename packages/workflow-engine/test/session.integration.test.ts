@@ -14,7 +14,7 @@ import {
   finishSession,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { runRegisteredCheck } from '../src/adapters/consumer/expense-app/work-registry/registered-check.ts';
+import { runRegisteredCheck } from '../src/adapters/consumer/repository/work-registry/registered-check.ts';
 import {
   readImmutableReport,
   writeImmutableReport,
@@ -29,7 +29,7 @@ import {
   applyChangeRoutingReview,
   prepareChangeRoutingReview,
 } from '../src/composition-root/change-routing-production.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   addFixtureScripts,
   configureChecks,

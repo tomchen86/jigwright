@@ -1,4 +1,4 @@
-import type { CheckEvidence } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { AuthoritySession } from '../../application/control-plane/maintainer-session.ts';
 import {

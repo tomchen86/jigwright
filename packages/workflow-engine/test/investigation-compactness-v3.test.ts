@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { parseInvestigationArtifact } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
 import {
   createInvestigationCoverageNode,

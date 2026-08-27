@@ -543,7 +543,7 @@ function inspectGenericReleaseBoundary(
 ): JigwrightV1ReleaseCandidateDossier['genericBoundary'] {
   const consumerRoot = path.join(
     repositoryRoot,
-    'packages/workflow-engine/src/adapters/consumer/expense-app',
+    'packages/workflow-engine/src/adapters/consumer/repository',
   );
   const files = listRegularFiles(consumerRoot).map((filePath) =>
     path.relative(repositoryRoot, filePath).split(path.sep).join('/'),

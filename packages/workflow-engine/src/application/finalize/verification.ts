@@ -13,18 +13,18 @@ import {
   loadWorkflowConfig,
   parseTasks,
   type TaskPolicy,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   pinCheckRunner,
   runObservedCheck,
   type CheckEvidence,
   type CheckEvidenceMetadata,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
-} from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import {

@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
 import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';

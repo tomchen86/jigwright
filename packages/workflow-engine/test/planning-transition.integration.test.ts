@@ -11,7 +11,7 @@ import {
   readContentRecord,
   writeContentRecord,
 } from '../src/runtime/storage-journal/content-record-store.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CheckEvidence } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';

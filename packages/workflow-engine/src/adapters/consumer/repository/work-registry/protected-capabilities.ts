@@ -26,7 +26,7 @@ import {
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
-  'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+  'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REGULAR_GIT_MODES = new Set(['100644', '100755']);

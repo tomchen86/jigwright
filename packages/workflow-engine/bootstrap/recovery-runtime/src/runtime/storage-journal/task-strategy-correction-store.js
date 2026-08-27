@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from "../provider-execution/ai-adapter-policy.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { parseObservedCheckFailure, } from "../../adapters/consumer/expense-app/work-registry/check-runner.js";
+import { parseObservedCheckFailure, } from "../../adapters/consumer/repository/work-registry/check-runner.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { createPrivateCanonicalJson, privatePathExists, readPrivateCanonicalJson, withPrivateRuntimeLock, } from "./investigation-session-store.js";
 import { assertSessionId, } from "../session-workspace/paths.js";

@@ -7,7 +7,7 @@ import {
   writeContentRecord,
   type ContentRecord,
 } from '../../storage-journal/content-record-store.ts';
-import { loadWorkflowConfig } from '../../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   workflowError,

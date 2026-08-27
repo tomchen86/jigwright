@@ -14,11 +14,11 @@ import {
   renderHandoffForChange,
   validateHandoff,
   type HandoffChange,
-} from '../../../adapters/consumer/expense-app/handoff/handoff.ts';
+} from '../../../adapters/consumer/repository/handoff/handoff.ts';
 import {
   validateIssueLog,
   type RepositoryTextReader,
-} from '../../../adapters/consumer/expense-app/documents/issues.ts';
+} from '../../../adapters/consumer/repository/documents/issues.ts';
 
 export type GeneratedDocumentMutation = {
   path: string;

@@ -10,7 +10,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   assertDisposableDatabase,
   createCheckEnvironment,
-} from '../src/adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
 import {
   loadChangeContract,
   loadWorkflowConfig,
@@ -20,7 +20,7 @@ import {
   parsePlanReviewArtifact,
   parseTasks,
   workflowNamespaceConfig,
-} from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
@@ -50,7 +50,7 @@ import {
   resumeInvestigationManifestPublication,
   type InvestigationManifestPublicationPhase,
 } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
-import { workflowContractArtifactPaths } from '../src/adapters/consumer/expense-app/work-registry/contract-artifacts.ts';
+import { workflowContractArtifactPaths } from '../src/adapters/consumer/repository/work-registry/contract-artifacts.ts';
 import {
   createFixtureRepository,
   writeManagedChangeArtifacts,

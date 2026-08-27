@@ -25,13 +25,13 @@ import {
   discoverArchivePullRequestCandidate,
   openArchivePullRequest,
 } from '../src/application/archive/archive-pr-orchestration.ts';
-import { readIssueData } from '../src/adapters/consumer/expense-app/documents/issues.ts';
+import { readIssueData } from '../src/adapters/consumer/repository/documents/issues.ts';
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
 } from '../src/modules/repository-consumer/repository-consumer-config.ts';
-import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/expense-app/work-registry/database-policy.ts';
-import { readChangeSchemaName } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
+import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';

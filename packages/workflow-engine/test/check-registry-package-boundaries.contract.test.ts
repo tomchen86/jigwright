@@ -46,7 +46,7 @@ test('expense adapter pins the landed registry DTOs to the public contract', () 
   const adapterSource = fs.readFileSync(
     path.join(
       repositoryRoot,
-      'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-registry-adapter.ts',
+      'packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-registry-adapter.ts',
     ),
     'utf8',
   );

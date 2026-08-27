@@ -2,7 +2,7 @@
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
   "frozenEdgeCount": 822,
-  "frozenIdentityDigest": "sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af",
+  "frozenIdentityDigest": "sha256:8ef9759371159eda08ed6ee5e7c0876bb46530970bc01972ef213a767050779b",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -92,7 +92,7 @@
   "edges": [
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -124,7 +124,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -268,7 +268,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -299,7 +299,7 @@
       "status": "retired"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/atomic-text.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -307,7 +307,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -315,7 +315,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -323,7 +323,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-convergence.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -331,7 +331,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-currentness.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -339,7 +339,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -347,7 +347,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -355,7 +355,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -363,7 +363,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/runtime/managed-documents/transaction/investigation-publication.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "investigation-v3-bootstrap",
@@ -371,7 +371,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/committed-investigation-manifest.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "investigation-v3-bootstrap",
@@ -379,7 +379,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "investigation-v3-bootstrap",
@@ -387,7 +387,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -395,7 +395,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "to": "packages/workflow-engine/src/runtime/provider-execution/execution-environment.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -403,7 +403,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -411,7 +411,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts",
       "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -419,7 +419,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts",
       "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-assets.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -427,7 +427,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts",
       "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
@@ -435,7 +435,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -443,7 +443,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -451,7 +451,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/registered-check.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/registered-check.ts",
       "to": "packages/workflow-engine/src/entrypoints/ci/ci-checks.ts",
       "rule": "adapter-to-entrypoints",
       "reasonId": "legacy.adapter-to-entrypoints",
@@ -459,7 +459,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/registered-check.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/registered-check.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -467,7 +467,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/package-closure.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -475,7 +475,7 @@
       "status": "active"
     },
     {
-      "from": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts",
+      "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
@@ -484,7 +484,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contract-artifacts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contract-artifacts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -492,7 +492,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -556,7 +556,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-assets.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -596,7 +596,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/planning-contract.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -684,7 +684,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -908,7 +908,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transition.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -964,7 +964,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/authority-plan.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1012,7 +1012,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/control-plane-promotion-producer.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1276,7 +1276,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1284,7 +1284,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1292,7 +1292,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-approve.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1396,7 +1396,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1452,7 +1452,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-candidate-dependencies.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1460,7 +1460,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-candidate-dependencies.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1612,7 +1612,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1620,7 +1620,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1628,7 +1628,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1716,7 +1716,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/open-task.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1724,7 +1724,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/open-task.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1732,7 +1732,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/open-task.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1828,7 +1828,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1836,7 +1836,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1844,7 +1844,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/session.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1908,7 +1908,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-mechanical-transform-lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1996,7 +1996,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-mechanical-transform.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2052,7 +2052,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-correction.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2060,7 +2060,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-correction.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2132,7 +2132,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2140,7 +2140,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2148,7 +2148,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2324,7 +2324,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2396,7 +2396,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-patch.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2484,7 +2484,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-red-revision.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2548,7 +2548,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/update-base.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2556,7 +2556,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/update-base.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2636,7 +2636,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2644,7 +2644,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2772,7 +2772,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/predecessor-reconciliation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2780,7 +2780,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/predecessor-reconciliation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2812,7 +2812,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/projected-finalization.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3068,7 +3068,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/verification.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3076,7 +3076,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/verification.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3084,7 +3084,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/verification.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3188,7 +3188,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3340,7 +3340,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3348,7 +3348,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3540,7 +3540,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/revise/task-revision.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3636,7 +3636,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3804,7 +3804,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3884,7 +3884,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-bootstrap.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3908,7 +3908,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-checks.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3916,7 +3916,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-checks.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3924,7 +3924,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-checks.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3940,7 +3940,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-commit-validation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -3996,7 +3996,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-historical-contract.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4020,7 +4020,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-planning.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4028,7 +4028,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-planning.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4172,7 +4172,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-sequence.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4236,7 +4236,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-task-state.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4244,7 +4244,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4252,7 +4252,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4268,7 +4268,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/pre-merge-assurance-git.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4404,7 +4404,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/change-routing-cli.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4476,7 +4476,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/execution-grant-cli.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4756,7 +4756,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/issue-cli.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/documents/issues.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4764,7 +4764,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/issue-cli.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4780,7 +4780,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/hooks/hooks.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4788,7 +4788,7 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/hooks/hooks.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4980,7 +4980,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/finalize-check-policy.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -4996,7 +4996,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5108,7 +5108,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5132,7 +5132,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/planning-shadow-metrics.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5196,7 +5196,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5244,7 +5244,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/task-strategy-gate.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5516,7 +5516,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5524,7 +5524,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5532,7 +5532,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/maintainer-grant-v2.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5716,7 +5716,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/task-revision-approval.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5772,7 +5772,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/governance-intake/work-registry.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/repository-consumer-config.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/repository-consumer-config.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5964,7 +5964,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/change-routing.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/documents/issues.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5972,7 +5972,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/change-routing.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6012,7 +6012,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/contract-digests.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6028,7 +6028,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6164,7 +6164,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/provider-orchestration/task-strategy-provider-contract.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6196,7 +6196,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/source/planning-paths.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6228,7 +6228,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6340,7 +6340,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/transaction/document-refresh.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6364,7 +6364,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/documents/issues.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6372,7 +6372,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6396,7 +6396,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6444,7 +6444,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/provider-execution/provider-runner.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6492,7 +6492,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/repository-transaction/assurance-inspection.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6508,7 +6508,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/session-workspace/planning-workspace.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6516,7 +6516,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/session-workspace/session-store.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6572,7 +6572,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/maintainer-check-journal.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6580,7 +6580,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6628,7 +6628,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/report-store.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6636,7 +6636,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/report-validation.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6652,7 +6652,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/task-strategy-correction-store.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",

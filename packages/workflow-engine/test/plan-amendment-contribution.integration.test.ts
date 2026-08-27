@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { ExecutionArtifact } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { ExecutionArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
 import {
   PLAN_REVIEW_COVERAGE,

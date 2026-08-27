@@ -15,12 +15,12 @@ import {
   runCheck,
   type CheckEvidence,
   type PinnedCheckRunner,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
-import type { CheckDefinition } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   assertDisposableDatabaseForRepository,
   createCheckEnvironmentForRepository,
-} from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+} from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import {
   ExitCode,
   WorkflowError,

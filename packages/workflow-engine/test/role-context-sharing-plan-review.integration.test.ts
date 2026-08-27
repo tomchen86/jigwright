@@ -16,7 +16,7 @@ import {
 } from '../src/application/propose/role-context-sharing-plan-review.ts';
 import { completeRoleContextSharingPlanReviewAdmission } from '../src/application/propose/propose-orchestrator.ts';
 import { runCli } from '../src/cli.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';
 import {
   ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,

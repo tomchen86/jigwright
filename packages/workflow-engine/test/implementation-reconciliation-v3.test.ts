@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { CurrentInvestigationManifest } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CurrentInvestigationManifest } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   buildImplementationReconciliationRequirement,
   IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,

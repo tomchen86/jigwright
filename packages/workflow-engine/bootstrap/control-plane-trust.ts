@@ -1723,7 +1723,7 @@ function verifiedProtectedCapabilityManifest(
     ) ||
     !declaredPaths.some((entry) =>
       matchesBootstrapProtectedPath(
-        'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+        'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
         entry,
       ),
     )

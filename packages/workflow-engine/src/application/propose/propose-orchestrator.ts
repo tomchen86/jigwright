@@ -44,7 +44,7 @@ import {
   type ChangeContract,
   type ExecutionArtifact,
   type GuardContract,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   compareAndSwapEvidenceRef,
   computeInvestigationEvidenceRefsClosure,
@@ -261,7 +261,7 @@ import {
   type TaskMandateBinding,
   type TaskMandateOptions,
 } from '../../modules/authority/task-mandate.ts';
-import { assertTaskMandateOptional } from '../../adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
+import { assertTaskMandateOptional } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import {
   type HeldChangeTransitionAuthority,
   withInvestigationTransitionAuthority,

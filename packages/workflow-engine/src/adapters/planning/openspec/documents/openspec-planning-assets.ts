@@ -28,7 +28,7 @@ import {
 import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
 import { ensurePlainDirectory } from '../../../../runtime/repository-transaction/filesystem-safety.ts';
 import { resolveOpenSpecInstallation } from './openspec-executor.ts';
-import { resolveCheckRunner } from '../../../consumer/expense-app/work-registry/runner-resolution.ts';
+import { resolveCheckRunner } from '../../../consumer/repository/work-registry/runner-resolution.ts';
 
 const EXPECTED_GENERATOR_STDERR =
   '- Setting up Codex...\n' +

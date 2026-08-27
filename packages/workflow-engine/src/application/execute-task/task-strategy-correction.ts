@@ -4,13 +4,13 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import type {
   CheckEvidence,
   ObservedCheckFailure,
-} from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+} from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import type {
   CrossAgentTddExecution,
   TddSingleAgentExecution,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { pinCheckRunner } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { investigationRuntimePaths } from '../../runtime/session-workspace/paths.ts';
 import {
   DEFAULT_TASK_STRATEGY_CORRECTION_POLICY,

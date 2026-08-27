@@ -7,8 +7,8 @@ import {
 } from '../../../bootstrap/control-plane-trust.ts';
 import { BUILT_IN_ENGINE_CLOSURE_MANIFEST_DIGEST } from '../../../bootstrap/built-in-engine-closure-pin.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { pinCheckRunner } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
-import type { CheckDefinition } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
+import type { CheckDefinition } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,

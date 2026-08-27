@@ -11,7 +11,7 @@ import {
   type AuthorityRefusalAuditBinding,
 } from '../../modules/authority/authority-refusal-audit.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { requireExecutionJobMandateBinding } from '../../modules/provider-orchestration/execution-core.ts';
 import {
   canonicalExecutionBudgetGrantEnvelope,

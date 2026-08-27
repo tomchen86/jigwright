@@ -71,7 +71,7 @@ import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts
 import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
 import { replayCommitSequence } from '../src/entrypoints/ci/ci-sequence.ts';
 import { canonicalCheckDefinition } from '../src/entrypoints/ci/ci-historical-contract.ts';
-import { resolveCheckRunner } from '../src/adapters/consumer/expense-app/work-registry/runner-resolution.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 
 const POLICY: MaintainerPolicy = {
   schemaVersion: 1,

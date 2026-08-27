@@ -4,12 +4,12 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { authorityTagPublishCommand } from '../../adapters/remote/github/authority-relay-command.ts';
-import type { CheckEvidence } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import {
   isRecord,
   isStringArray,
 } from '../../foundation/canonical-json/contract-values.ts';
-import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   discoverRepository,
@@ -56,7 +56,7 @@ import {
   terminallyFailSignedMaintainerGrantV2UnderLifecycleLock,
 } from '../../runtime/storage-journal/maintainer-store.ts';
 import { assertChangeId } from '../../runtime/session-workspace/paths.ts';
-import { classifyProtectedCapabilityPaths } from '../../adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+import { classifyProtectedCapabilityPaths } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import {
   assertActiveTaskMandateBindingUnderLifecycleLock,

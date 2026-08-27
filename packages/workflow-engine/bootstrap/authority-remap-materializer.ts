@@ -24,7 +24,7 @@ import { parseAuthorityPlanIntent } from '../src/application/control-plane/autho
 import {
   parseProtectedCapabilitiesManifestSource,
   type ProtectedCapabilitiesManifestSource,
-} from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { runGitBuffer } from '../src/runtime/repository-transaction/git.ts';
 import {
   matchesAllowedPath,

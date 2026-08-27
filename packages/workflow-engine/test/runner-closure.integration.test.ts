@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { resolveCheckRunner } from '../src/adapters/consumer/expense-app/work-registry/runner-resolution.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
   checkSession,

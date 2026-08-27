@@ -17,7 +17,7 @@ import {
   CODEX_REQUIRED_EXEC_HELP_FLAGS,
   CODEX_REQUIRED_ROOT_HELP_FLAGS,
 } from '../../adapters/providers/codex/codex-provider-adapter.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   workflowError,

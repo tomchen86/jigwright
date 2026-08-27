@@ -8,7 +8,7 @@ import test from 'node:test';
 import { issueCollaborationGrant } from '../src/modules/authority/collaboration-grant.ts';
 import { collaborationGrantStorePaths } from '../src/runtime/storage-journal/collaboration-grant-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';

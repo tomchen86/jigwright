@@ -25,7 +25,7 @@
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 178,
     "sourceFileCount": 57,
-    "sourceIdentityDigest": "sha256:ade08eae82ee010334d4f2a4cfa1434274f1dcc97ddb3495b0e2531ff6e2e1bc",
+    "sourceIdentityDigest": "sha256:bda9d415758ec69bec1a8362be1f8f3d1f0c62ee6ace4a00073cce0d3d0438dd",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
@@ -34,7 +34,7 @@
     "scriptsIdentityDigest": "sha256:53b19ec69ff1f4a18bbcb5abda3fe7aab6921804ba4e61149b0c7157a9a73df3",
     "recoveryOccurrences": 35,
     "recoveryFileCount": 13,
-    "recoveryIdentityDigest": "sha256:bcdad6a78464db9e7d8aaad2af01ae25e9a50351d5f3df5f82d84190f1bec929",
+    "recoveryIdentityDigest": "sha256:f6185b0b4de9b826c6231084ad3f723f812640b08d90ebaf55812e5724ee2342",
     "recoverySplitPathJoinOccurrences": 3,
     "recoverySplitPathJoinFileCount": 3,
     "recoverySplitPathJoinIdentityDigest": "sha256:56e2cf70b8f616978ba284ab1545216f9e73b9087470220f66a59ecbde560233",
@@ -63,7 +63,7 @@
     "packagePrefix": "packages/workflow-engine",
     "occurrences": 1300,
     "fileCount": 7,
-    "identityDigest": "sha256:3f9a1efc2539bc4f092e71ef98354f17097819f190653ef08202121d91868461"
+    "identityDigest": "sha256:643273f2b81254d3cd0e9c9dcd4c64e4e9759b70a667f82363b7b1b754dc2b29"
   },
   "couplings": [
     {

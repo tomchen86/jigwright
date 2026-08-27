@@ -6,11 +6,11 @@ import test from 'node:test';
 import {
   renderHandoff,
   validateHandoff,
-} from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+} from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   renderIssues,
   writeIssueData,
-} from '../src/adapters/consumer/expense-app/documents/issues.ts';
+} from '../src/adapters/consumer/repository/documents/issues.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
 import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
 import { completeTask } from '../src/application/finalize/lifecycle.ts';

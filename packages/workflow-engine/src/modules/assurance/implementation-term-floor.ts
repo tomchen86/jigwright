@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CurrentInvestigationManifest } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CurrentInvestigationManifest } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   runGit,

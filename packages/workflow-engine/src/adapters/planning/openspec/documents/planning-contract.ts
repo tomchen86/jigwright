@@ -9,7 +9,7 @@ import {
   repositoryPlanningPolicy as loadRepositoryPlanningPolicy,
   type ManagedSchemaName,
   type ParsedTask,
-} from '../../../consumer/expense-app/work-registry/contracts.ts';
+} from '../../../consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   workflowError,

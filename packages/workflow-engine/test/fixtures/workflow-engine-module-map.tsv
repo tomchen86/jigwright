@@ -21,7 +21,7 @@ packages/workflow-engine/src/authority-plan.ts	packages/workflow-engine/src/appl
 packages/workflow-engine/src/authority-refusal-audit.ts	packages/workflow-engine/src/modules/authority/authority-refusal-audit.ts	MOVE
 packages/workflow-engine/src/authority-relay-command.ts	packages/workflow-engine/src/adapters/remote/github/authority-relay-command.ts	MOVE
 packages/workflow-engine/src/canonical-json.ts	packages/workflow-engine/src/foundation/canonical-json/canonical-json.ts	MOVE
-packages/workflow-engine/src/check-runner.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/check-runner.ts	MOVE
+packages/workflow-engine/src/check-runner.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts	MOVE
 packages/workflow-engine/src/ci-archive-tree.ts	packages/workflow-engine/src/entrypoints/ci/ci-archive-tree.ts	MOVE
 packages/workflow-engine/src/ci-archive.ts	packages/workflow-engine/src/entrypoints/ci/ci-archive.ts	MOVE
 packages/workflow-engine/src/ci-attestation.ts	packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts	MOVE
@@ -48,14 +48,14 @@ packages/workflow-engine/src/collaboration-grant.ts	packages/workflow-engine/src
 packages/workflow-engine/src/commit-object-validation.ts	packages/workflow-engine/src/runtime/repository-transaction/commit-object-validation.ts	MOVE
 packages/workflow-engine/src/commit-recovery.ts	packages/workflow-engine/src/runtime/repository-transaction/commit-recovery.ts	MOVE
 packages/workflow-engine/src/content-record-store.ts	packages/workflow-engine/src/runtime/storage-journal/content-record-store.ts	MOVE
-packages/workflow-engine/src/contract-artifacts.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contract-artifacts.ts	MOVE
+packages/workflow-engine/src/contract-artifacts.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/contract-artifacts.ts	MOVE
 packages/workflow-engine/src/contract-digests.ts	packages/workflow-engine/src/modules/lifecycle/contract-digests.ts	MOVE
 packages/workflow-engine/src/contract-values.ts	packages/workflow-engine/src/foundation/canonical-json/contract-values.ts	MOVE
-packages/workflow-engine/src/contracts.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contracts.ts	MOVE_PRIMARY_OWNER_MIXED
+packages/workflow-engine/src/contracts.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/control-plane-promotion-producer.ts	packages/workflow-engine/src/application/control-plane/control-plane-promotion-producer.ts	MOVE
 packages/workflow-engine/src/control-plane-recovery-grant.ts	packages/workflow-engine/src/modules/authority/control-plane-recovery-grant.ts	MOVE
 packages/workflow-engine/src/control-plane-supervisor-history.ts	packages/workflow-engine/src/runtime/storage-journal/control-plane-supervisor-history.ts	MOVE
-packages/workflow-engine/src/database-policy.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/database-policy.ts	MOVE
+packages/workflow-engine/src/database-policy.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts	MOVE
 packages/workflow-engine/src/declared-path-symbols.ts	packages/workflow-engine/src/modules/source/declared-path-symbols.ts	MOVE
 packages/workflow-engine/src/document-refresh-cli.ts	packages/workflow-engine/src/entrypoints/cli/document-refresh-cli.ts	MOVE
 packages/workflow-engine/src/document-refresh.ts	packages/workflow-engine/src/runtime/managed-documents/transaction/document-refresh.ts	MOVE
@@ -94,7 +94,7 @@ packages/workflow-engine/src/grant-production.ts	packages/workflow-engine/src/co
 packages/workflow-engine/src/grant-proof-ssh.ts	packages/workflow-engine/src/adapters/signing/ssh/grant-proof-ssh.ts	MOVE
 packages/workflow-engine/src/grant-store.ts	packages/workflow-engine/src/runtime/storage-journal/grant-store.ts	MOVE
 packages/workflow-engine/src/grant-transition-registry.ts	packages/workflow-engine/src/modules/authority/grant-transition-registry.ts	MOVE
-packages/workflow-engine/src/handoff.ts	packages/workflow-engine/src/adapters/consumer/expense-app/handoff/handoff.ts	MOVE
+packages/workflow-engine/src/handoff.ts	packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts	MOVE
 packages/workflow-engine/src/harness-bootstrap.ts	packages/workflow-engine/src/harness-bootstrap.ts	KEEP_BOOTSTRAP
 packages/workflow-engine/src/hit-predicate.ts	packages/workflow-engine/src/modules/investigation/domain/hit-predicate.ts	MOVE
 packages/workflow-engine/src/hooks.ts	packages/workflow-engine/src/entrypoints/hooks/hooks.ts	MOVE
@@ -104,7 +104,7 @@ packages/workflow-engine/src/human-revocation.ts	packages/workflow-engine/src/ap
 packages/workflow-engine/src/implementation-reconciliation-policy.ts	packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation-policy.ts	MOVE
 packages/workflow-engine/src/implementation-reconciliation.ts	packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts	MOVE
 packages/workflow-engine/src/implementation-term-floor.ts	packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts	MOVE
-packages/workflow-engine/src/integration-assets.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/integration-assets.ts	MOVE
+packages/workflow-engine/src/integration-assets.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/integration-assets.ts	MOVE
 packages/workflow-engine/src/intervention-control-bootstrap-cli.ts	packages/workflow-engine/src/entrypoints/cli/intervention-control-bootstrap-cli.ts	MOVE
 packages/workflow-engine/src/intervention-control-bootstrap.ts	packages/workflow-engine/src/application/control-plane/intervention-control-bootstrap.ts	MOVE
 packages/workflow-engine/src/intervention-control-cli.ts	packages/workflow-engine/src/entrypoints/cli/intervention-control-cli.ts	MOVE
@@ -134,8 +134,8 @@ packages/workflow-engine/src/investigation-v3-grant.ts	packages/workflow-engine/
 packages/workflow-engine/src/investigation-why-domain.ts	packages/workflow-engine/src/modules/investigation/manifest/investigation-why-domain.ts	MOVE
 packages/workflow-engine/src/investigation-why.ts	packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts	MOVE
 packages/workflow-engine/src/issue-cli.ts	packages/workflow-engine/src/entrypoints/cli/issue-cli.ts	MOVE
-packages/workflow-engine/src/issue-renderer.ts	packages/workflow-engine/src/adapters/consumer/expense-app/documents/issue-renderer.ts	MOVE
-packages/workflow-engine/src/issues.ts	packages/workflow-engine/src/adapters/consumer/expense-app/documents/issues.ts	MOVE
+packages/workflow-engine/src/issue-renderer.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issue-renderer.ts	MOVE
+packages/workflow-engine/src/issues.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts	MOVE
 packages/workflow-engine/src/lifecycle-context.ts	packages/workflow-engine/src/composition-root/lifecycle-context.ts	MOVE
 packages/workflow-engine/src/lifecycle.ts	packages/workflow-engine/src/application/finalize/lifecycle.ts	MOVE
 packages/workflow-engine/src/maintainer-approve.ts	packages/workflow-engine/src/application/control-plane/maintainer-approve.ts	MOVE
@@ -197,7 +197,7 @@ packages/workflow-engine/src/predicate-discrimination.ts	packages/workflow-engin
 packages/workflow-engine/src/projected-finalization.ts	packages/workflow-engine/src/application/finalize/projected-finalization.ts	MOVE
 packages/workflow-engine/src/propose-exemption-store.ts	packages/workflow-engine/src/runtime/storage-journal/propose-exemption-store.ts	MOVE
 packages/workflow-engine/src/propose-orchestrator.ts	packages/workflow-engine/src/application/propose/propose-orchestrator.ts	MOVE
-packages/workflow-engine/src/protected-capabilities.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts	MOVE_PRIMARY_OWNER_MIXED
+packages/workflow-engine/src/protected-capabilities.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/provider-availability-pilot.ts	packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts	MOVE
 packages/workflow-engine/src/provider-contracts.ts	packages/workflow-engine/src/modules/provider-orchestration/provider-contracts.ts	MOVE
 packages/workflow-engine/src/provider-execution-governance.ts	packages/workflow-engine/src/runtime/provider-execution/provider-execution-governance.ts	MOVE
@@ -219,7 +219,7 @@ packages/workflow-engine/src/publish-executor.ts	packages/workflow-engine/src/ad
 packages/workflow-engine/src/recovery-authority.ts	packages/workflow-engine/src/recovery-authority.ts	KEEP_RECOVERY
 packages/workflow-engine/src/recovery-quarantine.ts	packages/workflow-engine/src/recovery-quarantine.ts	KEEP_RECOVERY
 packages/workflow-engine/src/recovery-trust-root-restore.ts	packages/workflow-engine/src/recovery-trust-root-restore.ts	KEEP_RECOVERY
-packages/workflow-engine/src/registered-check.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/registered-check.ts	MOVE
+packages/workflow-engine/src/registered-check.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/registered-check.ts	MOVE
 packages/workflow-engine/src/report-store.ts	packages/workflow-engine/src/runtime/storage-journal/report-store.ts	MOVE
 packages/workflow-engine/src/report-validation.ts	packages/workflow-engine/src/runtime/storage-journal/report-validation.ts	MOVE
 packages/workflow-engine/src/repository-validation.ts	packages/workflow-engine/src/composition-root/repository-validation.ts	MOVE
@@ -228,7 +228,7 @@ packages/workflow-engine/src/review-challenge.ts	packages/workflow-engine/src/mo
 packages/workflow-engine/src/review-coverage.ts	packages/workflow-engine/src/modules/assurance/review-coverage.ts	MOVE
 packages/workflow-engine/src/reviewed-mutation-policy.ts	packages/workflow-engine/src/runtime/managed-documents/ownership/reviewed-mutation-policy.ts	MOVE
 packages/workflow-engine/src/role-scheduler.ts	packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts	MOVE
-packages/workflow-engine/src/runner-resolution.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/runner-resolution.ts	MOVE
+packages/workflow-engine/src/runner-resolution.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/runner-resolution.ts	MOVE
 packages/workflow-engine/src/semantic-freshness.ts	packages/workflow-engine/src/modules/why-knowledge/semantic-freshness.ts	MOVE
 packages/workflow-engine/src/semantic-ledger-projection.ts	packages/workflow-engine/src/runtime/managed-documents/transaction/semantic-ledger-projection.ts	MOVE
 packages/workflow-engine/src/semantic-ledger-store.ts	packages/workflow-engine/src/runtime/storage-journal/semantic-ledger-store.ts	MOVE
@@ -238,7 +238,7 @@ packages/workflow-engine/src/semantic-reconciliation.ts	packages/workflow-engine
 packages/workflow-engine/src/semantic-reuse.ts	packages/workflow-engine/src/modules/why-knowledge/semantic-reuse.ts	MOVE
 packages/workflow-engine/src/session-store.ts	packages/workflow-engine/src/runtime/session-workspace/session-store.ts	MOVE
 packages/workflow-engine/src/session.ts	packages/workflow-engine/src/application/execute-task/session.ts	MOVE
-packages/workflow-engine/src/task-authorization-policy.ts	packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts	MOVE
+packages/workflow-engine/src/task-authorization-policy.ts	packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts	MOVE
 packages/workflow-engine/src/task-diff-review-artifact.ts	packages/workflow-engine/src/modules/assurance/task-diff-review-artifact.ts	MOVE
 packages/workflow-engine/src/task-diff-review-external-store.ts	packages/workflow-engine/src/runtime/storage-journal/task-diff-review-external-store.ts	MOVE
 packages/workflow-engine/src/task-diff-review-input.ts	packages/workflow-engine/src/modules/assurance/task-diff-review-input.ts	MOVE

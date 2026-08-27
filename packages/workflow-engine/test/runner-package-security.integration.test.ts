@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 
-import { resolveCheckRunner } from '../src/adapters/consumer/expense-app/work-registry/runner-resolution.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 import {
   addFixturePackage,
   createFixtureRepository,
@@ -143,7 +143,7 @@ test(
       const moduleUrl = pathToFileURL(
         path.join(
           import.meta.dirname,
-          '../src/adapters/consumer/expense-app/work-registry/runner-resolution.ts',
+          '../src/adapters/consumer/repository/work-registry/runner-resolution.ts',
         ),
       ).href;
       const script = [

@@ -9,7 +9,7 @@ import {
   parseExecutionArtifact,
   parseInvestigationArtifact,
   parsePlanReviewArtifact,
-} from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   SPEC_DRIVEN_SCHEMA_GRAPH,
   currentSchemaGraph,

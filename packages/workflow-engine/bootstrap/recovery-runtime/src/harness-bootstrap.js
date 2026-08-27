@@ -9,7 +9,7 @@ import { authorityRefusalDigest, recordAuthorityRefusal, } from "./modules/autho
 import { recordAuthorityAuditEvent } from "./runtime/storage-journal/authority-audit-service.js";
 import { canonicalJson } from "./foundation/canonical-json/canonical-json.js";
 import { HARNESS_RECOVERY_SIGNATURE_NAMESPACE, canonicalControlPlaneRecoveryGrantPayload, findPersistedControlPlaneRecoveryGrantForSource, throwControlPlaneRecoveryAlreadyConsumed, } from "./modules/authority/control-plane-recovery-grant.js";
-import { loadWorkflowConfig } from "./adapters/consumer/expense-app/work-registry/contracts.js";
+import { loadWorkflowConfig } from "./adapters/consumer/repository/work-registry/contracts.js";
 import { ExitCode, WorkflowError, workflowError, } from "./foundation/errors/errors.js";
 import { discoverRepository, runGit, } from "./runtime/repository-transaction/git.js";
 import { bootstrapInterventionStateRoot, bootstrapInterventionUsage, dispatchBootstrapInterventionCommand, } from "./entrypoints/cli/intervention-control-bootstrap-cli.js";

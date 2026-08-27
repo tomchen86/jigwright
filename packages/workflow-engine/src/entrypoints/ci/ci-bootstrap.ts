@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 
 import { readFileAtCommit } from './ci-git.ts';
 import type { PlanningBootstrapException } from './ci-policy.ts';
-import { parseTasks } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,

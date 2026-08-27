@@ -27,7 +27,7 @@ import {
   renderHandoffForChange,
   validateHandoff,
   validateHandoffForChange,
-} from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+} from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   createFixtureRepository,
   git,

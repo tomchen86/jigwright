@@ -6,7 +6,7 @@ import type {
   MechanicalTransformExecution,
   TransformationRetainedDisposition,
   TransformationTerm,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { CurrentInvestigationManifest } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CurrentInvestigationManifest } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { deriveImplementationTermDelta } from '../src/modules/assurance/implementation-term-floor.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 import { git } from './fixture.ts';

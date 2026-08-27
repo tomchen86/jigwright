@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import type { CurrentInvestigationManifest } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import type { CurrentInvestigationManifest } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,

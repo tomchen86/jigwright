@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -40,8 +40,8 @@ import {
   type TaskMandateBinding,
   type TaskMandateOptions,
 } from '../../modules/authority/task-mandate.ts';
-import { assertTaskMandateOptional } from '../../adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
-import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/expense-app/work-registry/database-policy.ts';
+import { assertTaskMandateOptional } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import {
   completeTaskRevisionAbort,
   prepareTaskRevisionAbort,

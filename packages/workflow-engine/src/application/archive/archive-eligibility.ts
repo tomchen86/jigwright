@@ -8,7 +8,7 @@ import {
   loadWorkflowConfig,
   parseTasks,
   type ManagedSchemaName,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

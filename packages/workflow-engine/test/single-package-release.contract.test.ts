@@ -153,6 +153,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       assert.match(inventory, new RegExp(`^${escapeRegExp(expected)}$`, 'mu'));
     }
     assert.doesNotMatch(inventory, /package\/apps\//u);
+    assert.doesNotMatch(inventory, /package\/[^\n]*expense-app(?:\/|$)/u);
     assert.doesNotMatch(inventory, /package\/internal\/[^/]+\/package\.json/u);
     assert.doesNotMatch(
       inventory,

@@ -51,7 +51,7 @@ import {
   type TaskMandateEnvelope,
   type TaskMandateRequest,
 } from '../src/modules/authority/task-mandate.ts';
-import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
+import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import {
   createFixtureRepository,
   git,

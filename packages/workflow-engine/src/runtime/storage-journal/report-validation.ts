@@ -1,5 +1,5 @@
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
-import { parseTasks } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { ProjectionPathClassification } from '../../modules/projection/engine-projection-registry.ts';
 import { readImmutableReport, type WorkflowReport } from './report-store.ts';

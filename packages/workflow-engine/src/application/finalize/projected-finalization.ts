@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
-import { parseTasks } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { classifyProjectionPaths } from '../../modules/projection/engine-projection-registry.ts';
 import {
   ExitCode,

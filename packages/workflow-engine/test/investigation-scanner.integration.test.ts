@@ -10,7 +10,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   parseInvestigationArtifact,
   type InvestigationArtifact,
-} from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { pinCheckRunner } from '../../adapters/consumer/expense-app/work-registry/check-runner.ts';
+import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';

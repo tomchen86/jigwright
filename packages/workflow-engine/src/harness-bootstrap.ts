@@ -25,7 +25,7 @@ import {
   type ControlPlaneRecoveryAuditRecord,
   type ControlPlaneRecoveryGrantEnvelope,
 } from './modules/authority/control-plane-recovery-grant.ts';
-import { loadWorkflowConfig } from './adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from './adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   WorkflowError,

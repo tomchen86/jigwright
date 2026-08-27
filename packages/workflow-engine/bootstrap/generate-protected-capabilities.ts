@@ -6,7 +6,7 @@ import {
   parseProtectedCapabilitiesManifestSource,
   projectCollaborationGrantVerifierCompositionFromWorktree,
   type ProtectedCapabilitiesManifestSource,
-} from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import { compareCanonicalStrings } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../src/modules/authority/role-context-sharing-grant.ts';
 import { replaceTextAtomic } from '../src/runtime/repository-transaction/atomic-text.ts';

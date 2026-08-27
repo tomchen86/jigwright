@@ -14,7 +14,7 @@ import {
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { loadActiveSessionContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   cancelFinalizeRecovery,

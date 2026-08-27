@@ -12,7 +12,7 @@ import {
   loadWorkflowConfig,
   parseCurrentInvestigationManifest,
   type CurrentInvestigationManifest,
-} from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { discoverRepository } from './git.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';

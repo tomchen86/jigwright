@@ -44,7 +44,7 @@ import {
   persistControlPlaneApprovalCandidate,
   preflightControlPlaneApprovalCandidate,
 } from '../src/application/control-plane/intervention-control-updater.ts';
-import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import {
   bootstrapInterventionStateRoot,
   readBuiltInControlPlaneEngineArtifact,
@@ -71,7 +71,7 @@ const FIXTURE_GRANT_PACKAGE_PATH = 'packages/grants/package.json';
 const FIXTURE_ROLE_CONTEXT_SHARING_SOURCE =
   'packages/grants/src/role-context-sharing-degradation.ts';
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
-  'src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts';
+  'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
 test('anti-lockout bootstrap accepts and binds an optional sealed Grant verifier composition', () => {
   const engineRoot = createSealedEnginePackage();
@@ -1628,7 +1628,7 @@ function createFixtureProtectedManifest(
             : []),
           ...(capability === 'policy.classify'
             ? [
-                'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts',
+                'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts',
               ]
             : []),
           ...(capability === 'control-plane.update'

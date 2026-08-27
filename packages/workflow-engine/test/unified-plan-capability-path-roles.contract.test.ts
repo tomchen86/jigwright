@@ -9,8 +9,8 @@ import {
   resolvePathRole,
   type PathRole,
 } from '../src/modules/source/path-role-registry.ts';
-import { loadWorkflowConfig } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
-import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts';
+import { loadWorkflowConfig } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 
 const EXPECTED_ROLES: ReadonlyArray<
   readonly [repositoryPath: string, role: PathRole]
@@ -25,11 +25,11 @@ const EXPECTED_ROLES: ReadonlyArray<
   ],
   ['packages/workflow-engine/src/recovery-trust-root-restore.ts', 'grant'],
   [
-    'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/contract-artifacts.ts',
+    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/contract-artifacts.ts',
     'control-plane',
   ],
   [
-    'packages/workflow-engine/src/adapters/consumer/expense-app/work-registry/task-authorization-policy.ts',
+    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts',
     'lifecycle',
   ],
 ];

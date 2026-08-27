@@ -1,8 +1,8 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { renderHandoff } from '../adapters/consumer/expense-app/handoff/handoff.ts';
-import { repositoryHandoffRelativePath } from '../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { renderHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
+import { repositoryHandoffRelativePath } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   assertOrdinaryWorkRegistryTransition,
   closeLegacyIssueCompatibilityAlias,

@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { expenseAppCheckRegistryPort } from '../src/adapters/consumer/expense-app/work-registry/check-registry-adapter.ts';
+import { expenseAppCheckRegistryPort } from '../src/adapters/consumer/repository/work-registry/check-registry-adapter.ts';
 import { resolveRequiredCiChecks } from '../src/entrypoints/ci/ci-checks.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { fixtureCheckRegistryPort } from '../../fixture-adapter/src/fixture-check-registry.ts';

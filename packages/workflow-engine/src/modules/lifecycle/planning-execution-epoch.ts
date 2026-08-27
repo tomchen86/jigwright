@@ -5,7 +5,7 @@ import path from 'node:path';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/expense-app/work-registry/contracts.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   buildContextManifest,
   initializeDurableEpochContextStore,

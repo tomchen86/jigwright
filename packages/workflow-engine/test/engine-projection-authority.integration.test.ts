@@ -9,8 +9,8 @@ import {
   engineProjectionDefinitions,
   engineProjectionPathsForTransition,
 } from '../src/modules/projection/engine-projection-registry.ts';
-import { loadChangeContract } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
-import { renderHandoff } from '../src/adapters/consumer/expense-app/handoff/handoff.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import {
   completeTask,
   finalizeTask,

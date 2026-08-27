@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 
-import { parseInvestigationArtifact } from '../src/adapters/consumer/expense-app/work-registry/contracts.ts';
+import { parseInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
