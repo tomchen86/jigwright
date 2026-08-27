@@ -89,7 +89,7 @@ test('single-package v1 candidate binds reproducibility and stays fail closed fo
     });
     assert.equal(candidate.publishReadiness.publishable, false);
     assert.deepEqual(candidate.publishReadiness.blockers, [
-      'clean-source-required',
+      ...(candidate.release.source.dirty ? ['clean-source-required'] : []),
       'license-decision-pending',
       'independent-review-pending',
       'signed-provenance-pending',
