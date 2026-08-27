@@ -1278,7 +1278,7 @@
     {
       "path": "src/modules/authority/task-mandate.ts",
       "mode": "100644",
-      "digest": "sha256:3862ec61b2e98e218799636cab94a0353f566f67dc117d390191b74161c00fb2"
+      "digest": "sha256:309e7bbf595ae6dbf41168b54b906ada11cce9b50ec994e6549a7d96ffab887c"
     },
     {
       "path": "src/modules/authority/task-revision-approval.ts",

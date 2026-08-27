@@ -361,7 +361,7 @@ test('task mandate signs a safe preparation-only contract without changing HEAD'
   }
 });
 
-test('legacy mandate without exact change binding remains inspectable but cannot authorize production work', () => {
+test('current mandate reader rejects a canonical V1 record', () => {
   const repository = prepareRepository();
   const signed: string[] = [];
   const signer = fakeSigner(signed);
@@ -389,25 +389,13 @@ test('legacy mandate without exact change binding remains inspectable but cannot
     signed.push(`${canonicalJson(legacy.envelope.payload)}\n`);
     fs.writeFileSync(authorized.recordPath, `${canonicalJson(legacy)}\n`);
 
-    const inspected = inspectTaskMandate(repository, TASK_ID, {
-      now: new Date('2026-08-03T10:00:00.000Z'),
-      signer,
-    });
-    assert.equal(inspected.legacyReadOnly, true);
-    assert.equal(inspected.changeId, undefined);
     assert.throws(
       () =>
-        authorizeTaskMandateOperation(
-          repository,
-          TASK_ID,
-          { kind: 'local-command' },
-          {
-            changeId: CHANGE_ID,
-            now: new Date('2026-08-03T10:00:00.000Z'),
-            signer,
-          },
-        ),
-      (error) => isWorkflowError(error, 'TASK_MANDATE_LEGACY_READ_ONLY'),
+        inspectTaskMandate(repository, TASK_ID, {
+          now: new Date('2026-08-03T10:00:00.000Z'),
+          signer,
+        }),
+      (error) => isWorkflowError(error, 'TASK_MANDATE_STORE_UNSAFE'),
     );
   } finally {
     cleanupRepository(repository);

@@ -85,7 +85,7 @@ export function authorizeTaskMandate(cwd, requested, options = {}) {
         throw workflowError('TASK_MANDATE_EXISTS', `Task ${request.taskId} already has an active mandate.`, ExitCode.conflict);
     }
     if (fs.existsSync(existingTerminal)) {
-        const terminal = parseTaskMandateRecord(readPrivateFile(existingTerminal));
+        const terminal = parseCurrentTaskMandateRecord(readPrivateFile(existingTerminal));
         validateTaskMandateEnvelopeForRepository(context.repository.repositoryRoot, terminal.envelope, options.signer);
     }
     const signer = options.signer ??
@@ -168,7 +168,7 @@ export function authorizeTaskMandate(cwd, requested, options = {}) {
             throw workflowError('TASK_MANDATE_EXISTS', `Task ${request.taskId} already has an active mandate.`, ExitCode.conflict);
         }
         if (fs.existsSync(terminal)) {
-            const previous = parseTaskMandateRecord(readPrivateFile(terminal));
+            const previous = parseCurrentTaskMandateRecord(readPrivateFile(terminal));
             const history = taskHistoryPath(paths.history, request.taskId, previous.mandateId);
             if (fs.existsSync(history))
                 throw unsafeStore();
@@ -364,7 +364,7 @@ export function revokeTaskMandate(cwd, requestedTaskId, options) {
         ensureStore(paths);
         const terminalPath = taskRecordPath(paths.terminal, taskId);
         if (fs.existsSync(terminalPath)) {
-            const terminal = parseTaskMandateRecord(readPrivateFile(terminalPath));
+            const terminal = parseCurrentTaskMandateRecord(readPrivateFile(terminalPath));
             validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, terminal.envelope, options.signer);
             if (terminal.schemaVersion === 2) {
                 appendTaskMandateAuthorizationAudit(repository.repositoryRoot, terminal, exactDate(options.now ?? new Date()));
@@ -839,16 +839,27 @@ function readTaskRecord(paths, taskId) {
     const active = taskRecordPath(paths.active, taskId);
     const terminal = taskRecordPath(paths.terminal, taskId);
     if (fs.existsSync(active))
-        return parseTaskMandateRecord(readPrivateFile(active));
+        return parseCurrentTaskMandateRecord(readPrivateFile(active));
     if (fs.existsSync(terminal)) {
-        return parseTaskMandateRecord(readPrivateFile(terminal));
+        return parseCurrentTaskMandateRecord(readPrivateFile(terminal));
     }
     throw workflowError('TASK_MANDATE_NOT_FOUND', `No task mandate exists for ${taskId}.`, ExitCode.guard);
 }
 function canonicalTaskMandateRecord(record) {
     return `${canonicalJson(record)}\n`;
 }
-function parseTaskMandateRecord(raw) {
+function parseCurrentTaskMandateRecord(raw) {
+    const record = parseTaskMandateRecordForHistoricalCleanup(raw);
+    if (record.schemaVersion !== 2) {
+        throw unsafeStore();
+    }
+    return record;
+}
+/**
+ * Inert parser retained for audited historical evidence and terminal cleanup.
+ * Production task-mandate admission must use parseCurrentTaskMandateRecord.
+ */
+function parseTaskMandateRecordForHistoricalCleanup(raw) {
     try {
         const value = JSON.parse(raw);
         if (isRecord(value) && value.schemaVersion === 1) {

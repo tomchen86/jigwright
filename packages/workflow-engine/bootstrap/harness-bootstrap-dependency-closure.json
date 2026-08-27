@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:30da52a53ec35c0d9b080a10ec7150a1f8cedbaa7ee323cb74a703ba1692fba1"
+      "digest": "sha256:e55e2dfa4d97d4e90fad1d37e9e29fa10ff1aadf868baaecc235508138bed944"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -403,7 +403,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/task-mandate.js",
       "mode": "100644",
-      "digest": "sha256:c26844ff8f22c6aeccd180f0fd8197596ef0f681fcdfabcfaa304224a70c3794"
+      "digest": "sha256:e08f1a70993a89c74f27cfeaef68e85ea75407d09bd3adfcb07a5b9489115ee5"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/compatibility/legacy-workflow-identities.js",
