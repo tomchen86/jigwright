@@ -15,8 +15,10 @@ import {
   createFixtureRepository,
   git,
   runtimeRoot,
+  sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 type CrashPhase =
   | 'projection-prepared'
@@ -50,16 +52,7 @@ for (const phase of [
     const { repository, counterPath, sessionId, transactionPath } =
       createFinalizeFixture();
     try {
-      assert.throws(
-        () =>
-          (finalizeTask as CrashableFinalize)(
-            repository,
-            sessionId,
-            process.env,
-            { testCrashAfter: phase },
-          ),
-        /Simulated finalize interruption/,
-      );
+      crashFinalize(repository, sessionId, phase);
       assert.equal(
         fs.existsSync(counterPath) ? fs.readFileSync(counterPath, 'utf8') : '0',
         [
@@ -72,7 +65,7 @@ for (const phase of [
           : '1',
       );
 
-      const recovered = finalizeTask(repository, sessionId);
+      const recovered = recoverFinalize(repository, sessionId);
       assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
       assert.equal(recovered.tree, git(repository, ['write-tree']).trim());
       assert.match(
@@ -377,6 +370,10 @@ function enableCompletionHandoff(repository: string): void {
     documentPolicyPath,
     `${JSON.stringify(documentPolicy, null, 2)}\n`,
   );
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
+  );
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
   renderHandoff(repository);
 }
@@ -386,6 +383,17 @@ function crashFinalize(
   sessionId: string,
   phase: CrashPhase,
 ): void {
+  if (
+    phase === 'staged' ||
+    phase === 'reports-persisted' ||
+    phase === 'session-finished'
+  ) {
+    assert.throws(
+      () => finalizeTask(repository, sessionId),
+      hasCode('TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, sessionId);
+  }
   assert.throws(
     () =>
       (finalizeTask as CrashableFinalize)(repository, sessionId, process.env, {
@@ -393,6 +401,21 @@ function crashFinalize(
       }),
     /Simulated finalize interruption/,
   );
+}
+
+function recoverFinalize(
+  repository: string,
+  sessionId: string,
+): ReturnType<typeof finalizeTask> {
+  try {
+    return finalizeTask(repository, sessionId);
+  } catch (error) {
+    if (!hasCode('TASK_DIFF_REVIEW_REQUIRED')(error)) {
+      throw error;
+    }
+  }
+  satisfyCurrentTaskDiffReview(repository, sessionId);
+  return finalizeTask(repository, sessionId);
 }
 
 function readTransaction(transactionPath: string): {
