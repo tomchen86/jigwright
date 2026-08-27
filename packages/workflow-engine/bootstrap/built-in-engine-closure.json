@@ -1228,7 +1228,7 @@
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:6d6e9819806ded00f9d395a2000d8b85c9cd83c0c995b43a73c22409364785e2"
+      "digest": "sha256:b6ac3f77e800f8c9e6565fa028bb3add3995e168073227a61d6060a963437a99"
     },
     {
       "path": "src/modules/authority/maintainer-grant.ts",
@@ -1288,7 +1288,7 @@
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:9150dc309bae8ca0987cb012171b7d3e16bc9220ce5af6acfc55926b43fe1bee"
+      "digest": "sha256:f262a2d677ff1361ea32811d92c819195cc6f087e3bb6c902969ff4e924503f3"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",

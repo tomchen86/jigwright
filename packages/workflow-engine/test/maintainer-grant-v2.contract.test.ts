@@ -1539,6 +1539,13 @@ test('v2 issue signs every binding and stores a canonical one-shot grant', () =>
       parseMaintainerGrantV2Envelope(canonical),
       result.envelope,
     );
+    const namespaceLess = JSON.parse(canonical) as Record<string, unknown>;
+    delete namespaceLess.signatureNamespace;
+    assert.throws(
+      () =>
+        parseMaintainerGrantV2Envelope(`${JSON.stringify(namespaceLess)}\n`),
+      (error) => isWorkflowError(error, 'MAINTAINER_GRANT_INVALID'),
+    );
     assert.equal(fs.readFileSync(result.availableTokenPath, 'utf8'), canonical);
     assert.equal(
       git(repository, ['rev-parse', '--verify', result.tagRef]).trim().length,
@@ -1882,6 +1889,7 @@ test('persisted candidate-less v2 fails closed in parsing and authority start', 
         candidateBundle: null,
         candidateBundleDigest: null,
       },
+      signatureNamespace: MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       signature: FAKE_SIGNATURE,
     };
     const canonical = canonicalMaintainerGrantV2Envelope(candidateLessEnvelope);

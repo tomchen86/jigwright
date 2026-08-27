@@ -63,15 +63,13 @@ import {
   inspectActiveTaskMandateBinding,
   type TaskMandateBinding,
 } from './task-mandate.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
-
 export const MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE =
   'workflow.maintainer-grant.v2' as const;
 
 const MAX_V2_TTL_MINUTES = 7 * 24 * 60;
 const DIGEST = /^[0-9a-f]{64}$/;
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-const LEGACY_PAYLOAD_KEYS = [
+const PAYLOAD_KEYS = [
   'version',
   'grantId',
   'repositoryId',
@@ -91,6 +89,7 @@ const LEGACY_PAYLOAD_KEYS = [
   'allowedPaths',
   'evidenceOverlay',
   'requiredChecks',
+  'evidenceWaivers',
   'checkDependencies',
   'checksAttestation',
   'checksAttestationDigest',
@@ -103,7 +102,6 @@ const LEGACY_PAYLOAD_KEYS = [
   'reason',
   'signer',
 ];
-const PAYLOAD_KEYS = [...LEGACY_PAYLOAD_KEYS, 'evidenceWaivers'];
 const CHECK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 
 export type MaintainerEvidenceOverlayEntry = {
@@ -168,8 +166,7 @@ export type MaintainerGrantV2Payload = {
   allowedPaths: string[];
   evidenceOverlay: MaintainerEvidenceOverlayEntry[];
   requiredChecks: string[];
-  /** Absent only on historical v2 envelopes issued before named waivers. */
-  evidenceWaivers?: MaintainerEvidenceWaiver[];
+  evidenceWaivers: MaintainerEvidenceWaiver[];
   checkDependencies: CapabilityProfile['checkDependencies'];
   checksAttestation: MaintainerChecksAttestation | null;
   checksAttestationDigest: string | null;
@@ -185,8 +182,7 @@ export type MaintainerGrantV2Payload = {
 
 export type MaintainerGrantV2Envelope = {
   payload: MaintainerGrantV2Payload;
-  /** Absent only on historical consumer-branded envelopes. */
-  signatureNamespace?: typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE;
   signature: string;
 };
 
@@ -767,10 +763,11 @@ export function canonicalMaintainerGrantV2Envelope(
     canonicalMaintainerGrantV2Payload(envelope.payload),
   ) as MaintainerGrantV2Payload;
   const signatureNamespace = maintainerGrantV2SignatureNamespace(envelope);
-  const canonicalEnvelope =
-    envelope.signatureNamespace === undefined
-      ? { payload, signature: envelope.signature }
-      : { payload, signatureNamespace, signature: envelope.signature };
+  const canonicalEnvelope = {
+    payload,
+    signatureNamespace,
+    signature: envelope.signature,
+  };
   return `${canonicalJson(canonicalEnvelope)}\n`;
 }
 
@@ -803,27 +800,18 @@ export function parseMaintainerGrantV2Envelope(
     const value = JSON.parse(raw) as unknown;
     if (
       !isRecord(value) ||
-      (!hasExactKeys(value, ['payload', 'signature']) &&
-        !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature'])) ||
+      !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature']) ||
       !isRecord(value.payload) ||
-      (!hasExactKeys(value.payload, PAYLOAD_KEYS) &&
-        !hasExactKeys(value.payload, LEGACY_PAYLOAD_KEYS)) ||
+      !hasExactKeys(value.payload, PAYLOAD_KEYS) ||
+      value.signatureNamespace !== MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE ||
       typeof value.signature !== 'string'
     ) {
       throw new Error('invalid envelope shape');
     }
     const payload = parseMaintainerGrantV2Payload(value.payload);
-    if (
-      'signatureNamespace' in value &&
-      value.signatureNamespace !== MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE
-    ) {
-      throw new Error('unsupported signature namespace');
-    }
     const envelope: MaintainerGrantV2Envelope = {
       payload,
-      ...('signatureNamespace' in value
-        ? { signatureNamespace: MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE }
-        : {}),
+      signatureNamespace: MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       signature: value.signature,
     };
     assertArmoredSignature(envelope.signature);
@@ -957,12 +945,7 @@ export function validateMaintainerGrantV2AuthorityBinding(
 
 export function maintainerGrantV2SignatureNamespace(
   envelope: MaintainerGrantV2Envelope,
-):
-  | typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV2 {
-  if (envelope.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.maintainerGrantV2;
-  }
+): typeof MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE {
   if (envelope.signatureNamespace === MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE) {
     return envelope.signatureNamespace;
   }
@@ -974,10 +957,7 @@ function parseMaintainerGrantV2Payload(
 ): MaintainerGrantV2Payload {
   const manifest = parsePatchManifest(raw.manifest);
   const evidence = raw.evidenceOverlay;
-  const evidenceWaivers =
-    raw.evidenceWaivers === undefined
-      ? undefined
-      : parseMaintainerEvidenceWaivers(raw.evidenceWaivers);
+  const evidenceWaivers = parseMaintainerEvidenceWaivers(raw.evidenceWaivers);
   if (
     raw.version !== 2 ||
     typeof raw.grantId !== 'string' ||
@@ -1045,7 +1025,7 @@ function parseMaintainerGrantV2Payload(
       return { path: entry.path, role: 'evidence' as const };
     }),
     requiredChecks: [...raw.requiredChecks],
-    ...(evidenceWaivers === undefined ? {} : { evidenceWaivers }),
+    evidenceWaivers,
     checkDependencies: Object.fromEntries(
       Object.entries(raw.checkDependencies).map(([checkId, dependencies]) => {
         if (!isStringArray(dependencies)) {
@@ -1095,7 +1075,7 @@ function validateMaintainerGrantV2Payload(
   );
   const expectedOverlay = evidenceOverlay(payload.manifest);
   validateMaintainerEvidenceWaivers(
-    payload.evidenceWaivers ?? [],
+    payload.evidenceWaivers,
     payload.requiredChecks,
     payload.checkDependencies,
   );

@@ -22,6 +22,8 @@ import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   parseMaintainerGrantV2Envelope,
   type MaintainerEvidenceWaiver,
+  type MaintainerGrantV2Envelope,
+  type MaintainerGrantV2Payload,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
 import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
 import { approveAndApplyMaintainerGrantV2 } from '../src/application/control-plane/maintainer-approve.ts';
@@ -131,25 +133,34 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
       fs.realpathSync(path.join(repository, '.git')),
       applied.grantId,
     );
-    assert.equal(isMaintainerGrantV2Envelope(terminal.envelope), true);
-    if (!isMaintainerGrantV2Envelope(terminal.envelope)) {
+    const currentGrant = terminal.envelope;
+    assert.equal(isMaintainerGrantV2Envelope(currentGrant), true);
+    if (!isMaintainerGrantV2Envelope(currentGrant)) {
       assert.fail('expected a terminal v2 grant');
     }
-    const legacyGrantPayload = structuredClone(terminal.envelope.payload);
+    const legacyGrantPayload = structuredClone(
+      currentGrant.payload,
+    ) as unknown as Record<string, unknown>;
     delete legacyGrantPayload.evidenceWaivers;
     const legacyGrantEnvelope = {
       payload: legacyGrantPayload,
+      signatureNamespace: MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       signature: signer.sign(
-        canonicalMaintainerGrantV2Payload(legacyGrantPayload),
+        canonicalMaintainerGrantV2Payload(
+          legacyGrantPayload as unknown as MaintainerGrantV2Payload,
+        ),
         MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
       ),
-    };
-    const parsedLegacyGrant = parseMaintainerGrantV2Envelope(
-      canonicalMaintainerGrantV2Envelope(legacyGrantEnvelope),
+    } as unknown as MaintainerGrantV2Envelope;
+    assert.throws(
+      () =>
+        parseMaintainerGrantV2Envelope(
+          canonicalMaintainerGrantV2Envelope(legacyGrantEnvelope),
+        ),
+      (error) => isWorkflowError(error, 'MAINTAINER_GRANT_INVALID'),
     );
-    assert.equal(parsedLegacyGrant.payload.evidenceWaivers, undefined);
 
-    const candidate = parsedLegacyGrant.payload.candidateBundle;
+    const candidate = currentGrant.payload.candidateBundle;
     assert.ok(candidate);
     assert.equal(candidate.schemaVersion, 2);
     if (candidate.schemaVersion !== 2) assert.fail('expected candidate v2');
@@ -158,23 +169,20 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
     const maxAgeMs = check.maxAgeMs;
     assert.notEqual(maxAgeMs, null);
     if (maxAgeMs === null) assert.fail('fixture check must have a max age');
-    assert.throws(
-      () =>
-        assertCandidateV2ChecksFresh(candidate.checksAttestation, {
-          now: new Date(Date.parse(check.completedAt) + maxAgeMs + 1),
-          candidateTree: candidate.resultTree,
-          patchDigest: parsedLegacyGrant.payload.patchDigest,
-          trustBaseCommit: parsedLegacyGrant.payload.baseCommit,
-          requiredChecks: parsedLegacyGrant.payload.requiredChecks,
-          waivedFreshnessCheckIds:
-            parsedLegacyGrant.payload.evidenceWaivers?.map(
-              ({ checkId }) => checkId,
-            ) ?? [],
-          environmentDigest: check.environmentDigest,
-          currentDependencySnapshot:
-            candidate.checksAttestation.dependencySnapshot,
-        }),
-      (error) => isWorkflowError(error, 'APPLY_ATTESTATION_STALE'),
+    assert.doesNotThrow(() =>
+      assertCandidateV2ChecksFresh(candidate.checksAttestation, {
+        now: new Date(Date.parse(check.completedAt) + maxAgeMs + 1),
+        candidateTree: candidate.resultTree,
+        patchDigest: currentGrant.payload.patchDigest,
+        trustBaseCommit: currentGrant.payload.baseCommit,
+        requiredChecks: currentGrant.payload.requiredChecks,
+        waivedFreshnessCheckIds: currentGrant.payload.evidenceWaivers.map(
+          ({ checkId }) => checkId,
+        ),
+        environmentDigest: check.environmentDigest,
+        currentDependencySnapshot:
+          candidate.checksAttestation.dependencySnapshot,
+      }),
     );
 
     const failedAttestation = structuredClone(candidate.checksAttestation);
@@ -184,9 +192,9 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
         assertCandidateV2ChecksFresh(failedAttestation, {
           now: new Date(check.completedAt),
           candidateTree: candidate.resultTree,
-          patchDigest: parsedLegacyGrant.payload.patchDigest,
-          trustBaseCommit: parsedLegacyGrant.payload.baseCommit,
-          requiredChecks: parsedLegacyGrant.payload.requiredChecks,
+          patchDigest: currentGrant.payload.patchDigest,
+          trustBaseCommit: currentGrant.payload.baseCommit,
+          requiredChecks: currentGrant.payload.requiredChecks,
           waivedFreshnessCheckIds: ['fixture'],
           environmentDigest: check.environmentDigest,
           currentDependencySnapshot:

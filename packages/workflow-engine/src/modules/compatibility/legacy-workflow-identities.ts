@@ -24,7 +24,6 @@ export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
   humanResolutionGrant: 'expense-app.workflow.human-resolution-grant.v1',
   humanRevocation: 'expense-app.workflow.human-revocation.v1',
   maintainerGrantV1: 'expense-app.workflow.maintainer-grant.v1',
-  maintainerGrantV2: 'expense-app.workflow.maintainer-grant.v2',
   providerAvailabilityPilotAuthorization:
     'expense-app.workflow.provider-availability-pilot-authorization.v1',
   providerAvailabilityPilotAuthorizationOutput:
