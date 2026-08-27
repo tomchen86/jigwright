@@ -136,31 +136,22 @@ test('OpenSpec adapter maps injected native read-only evidence to the public cor
   );
 });
 
-test('OpenSpec binding resolver preserves explicit and legacy evidence and refuses migration', () => {
+test('OpenSpec binding resolver requires explicit evidence and refuses migration', () => {
   const resolver = createOpenSpecProviderBindingResolverV1({
     providerRequirement: PROVIDER_REQUIREMENT,
-    bindingSchemaPath: 'workflow/schemas/planning-provider-binding.schema.json',
     bindingArtifactPath: (changeId) =>
       `workflow/change-providers/${changeId}.json`,
-    legacySchemaNames: ['expense-app', 'expense-app-v2'],
   });
   const state: {
     current: PlanningProviderBindingV1 | null;
     pinned: Map<string, PlanningProviderBindingV1 | null>;
-    evidence: Map<string, Uint8Array | null>;
-    activated: Set<string>;
   } = {
     current: BINDING,
     pinned: new Map(),
-    evidence: new Map(),
-    activated: new Set(),
   };
   const reader: PlanningProviderBindingReaderPort = {
     readCurrent: () => state.current,
     readPinnedBinding: (_root, commit) => state.pinned.get(commit) ?? null,
-    readPinnedEvidenceFile: (_root, commit) =>
-      state.evidence.get(commit) ?? null,
-    pinnedHistoryContainsPath: (_root, commit) => state.activated.has(commit),
   };
 
   assert.deepEqual(
@@ -175,27 +166,23 @@ test('OpenSpec binding resolver preserves explicit and legacy evidence and refus
   );
 
   state.current = null;
-  state.evidence.set(
-    'legacy',
-    new TextEncoder().encode('schema: spec-driven\n'),
-  );
+  state.pinned.set('historical', BINDING);
   assert.equal(
     resolver.resolveHistorical(
       reader,
       REPOSITORY,
-      'legacy',
+      'historical',
       'openspec/changes',
       CHANGE_ID,
     ).source,
-    'legacy-inferred',
+    'explicit',
   );
-  state.activated.add('cutover');
   assert.throws(
     () =>
       resolver.resolveHistorical(
         reader,
         REPOSITORY,
-        'cutover',
+        'missing',
         'openspec/changes',
         CHANGE_ID,
       ),

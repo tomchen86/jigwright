@@ -158,7 +158,7 @@
     {
       "path": "node_modules/@jigwright/core/src/planning-provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:8f1ef35699423090c34a112d3f7ff75c32f30991b4c78e48affa83a1574af03d"
+      "digest": "sha256:22c198b41fa3e43a0d2cfe0b7177cc54f3e4bcf9bbc1eb9c33a3f7185bbb4c35"
     },
     {
       "path": "node_modules/@jigwright/core/src/planning-provider-port.ts",
@@ -268,7 +268,7 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:f58da9e23389ce1ee3012e428da5d9ce591119f84a4b765406a5e36a2fe34adb"
+      "digest": "sha256:764fc0f40f01828c128d4fc62abdb54b98c243f1bfe90fbc3bafbbb7cdeaf630"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/validation-payload.ts",
@@ -443,7 +443,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:256fe6cb8450af63218a4a2f88fcee21d429cb4f2bdb4cce87bba52c966437aa"
+      "digest": "sha256:2f6a68b66e9540933f5ca73c155db6659e96810b39fb128f990067b4e5dd5dca"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
@@ -1883,7 +1883,7 @@
     {
       "path": "src/runtime/repository-transaction/planning-provider-binding-store.ts",
       "mode": "100644",
-      "digest": "sha256:6b4c89fe4eedd1050d214783329791cebe48300c2166453250fd383dbea2c5f7"
+      "digest": "sha256:28a201b5a075c8bdee0c0a7419f739e2ebb36d4c9137ffe60ae81ceb40bca54e"
     },
     {
       "path": "src/runtime/repository-transaction/tracked-tree-reader.ts",

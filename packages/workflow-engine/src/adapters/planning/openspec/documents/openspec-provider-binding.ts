@@ -23,9 +23,7 @@ const RESOLVER = createOpenSpecProviderBindingResolverV1({
     package: OPENSPEC_PACKAGE_NAME,
     version: OPENSPEC_PACKAGE_VERSION,
   }),
-  bindingSchemaPath: 'workflow/schemas/planning-provider-binding.schema.json',
   bindingArtifactPath: planningProviderBindingPath,
-  legacySchemaNames: Object.freeze([]),
 });
 
 export function resolveCurrentOpenSpecProviderBinding(

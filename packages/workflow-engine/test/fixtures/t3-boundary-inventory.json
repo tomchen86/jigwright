@@ -29,9 +29,9 @@
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
-    "scriptsOccurrences": 4,
-    "scriptsFileCount": 2,
-    "scriptsIdentityDigest": "sha256:53b19ec69ff1f4a18bbcb5abda3fe7aab6921804ba4e61149b0c7157a9a73df3",
+    "scriptsOccurrences": 1,
+    "scriptsFileCount": 1,
+    "scriptsIdentityDigest": "sha256:2d9fced89d040cc0673bddf643f343dd8da2cc6550aff22d4d3d9c26b5a7e377",
     "recoveryOccurrences": 35,
     "recoveryFileCount": 13,
     "recoveryIdentityDigest": "sha256:f6185b0b4de9b826c6231084ad3f723f812640b08d90ebaf55812e5724ee2342",
@@ -61,9 +61,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1300,
+    "occurrences": 1298,
     "fileCount": 7,
-    "identityDigest": "sha256:9c4bd5efbb32d6ee0f01828bef42997606f3785f91fc2a1170ac77162b5c3c09"
+    "identityDigest": "sha256:94dc7bdf4138ddbb29f1b9ab5b546b02d28a351779c9b04a7be09d0fbffdb2e4"
   },
   "couplings": [
     {
@@ -311,7 +311,7 @@
       "id": "planning-provider-binding",
       "plane": "planning-provider",
       "state": "partial",
-      "t3Disposition": "The v1 binding contract, current/pinned reader, digest, history check, composition wiring, archive retention, and migration refusal are landed; no tracked per-change binding has activated the repository path yet.",
+      "t3Disposition": "The v1 binding contract, current/pinned explicit reader, digest, composition wiring, archive retention, and migration refusal are landed; no tracked per-change binding has activated the repository path yet.",
       "evidence": [
         {
           "path": "packages/core/src/planning-provider-binding.ts",
@@ -325,8 +325,7 @@
           "path": "packages/workflow-engine/src/runtime/repository-transaction/planning-provider-binding-store.ts",
           "contains": [
             "export function readCurrentPlanningProviderBinding(",
-            "export function readPinnedPlanningProviderBinding(",
-            "pinnedHistoryContainsPlanningProviderPath"
+            "export function readPinnedPlanningProviderBinding("
           ]
         }
       ],

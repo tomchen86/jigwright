@@ -13,13 +13,10 @@ export { OpenSpecAdapterError } from './planning-provider.ts';
 
 const OPENSPEC_PROVIDER_ID = 'openspec';
 const OPENSPEC_ADAPTER_CONTRACT_VERSION = 1;
-const SCHEMA_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export type OpenSpecProviderBindingPolicyV1 = Readonly<{
   providerRequirement: Readonly<{ package: string; version: string }>;
-  bindingSchemaPath: string;
   bindingArtifactPath(changeId: string): string;
-  legacySchemaNames: readonly string[];
 }>;
 
 export type OpenSpecProviderBindingResolverV1 = Readonly<{
@@ -58,8 +55,6 @@ export type OpenSpecProviderBindingResolverV1 = Readonly<{
 export function createOpenSpecProviderBindingResolverV1(
   policy: OpenSpecProviderBindingPolicyV1,
 ): OpenSpecProviderBindingResolverV1 {
-  const legacyMetadata = legacyMetadataPattern(policy.legacySchemaNames);
-
   const resolveCurrent = (
     reader: PlanningProviderBindingReaderPort,
     repositoryRoot: string,
@@ -86,54 +81,13 @@ export function createOpenSpecProviderBindingResolverV1(
     changeRoot: string,
     changeId: string,
   ): ResolvedPlanningProviderBinding => {
-    const explicit = reader.readPinnedBinding(repositoryRoot, commit, changeId);
-    if (explicit !== null) {
-      assertOpenSpecBinding(policy, explicit, changeRoot, changeId);
-      return Object.freeze({
-        binding: explicit,
-        source: 'explicit',
-        artifactPath: policy.bindingArtifactPath(changeId),
-        bindingDigest: planningProviderBindingDigest(explicit),
-      });
-    }
-    if (
-      reader.pinnedHistoryContainsPath(
-        repositoryRoot,
-        commit,
-        policy.bindingSchemaPath,
-      )
-    ) {
-      throw providerBindingMissing(policy, changeId);
-    }
-
-    const metadata = reader.readPinnedEvidenceFile(
-      repositoryRoot,
-      commit,
-      `${changeRoot}/${changeId}/.openspec.yaml`,
-    );
-    if (
-      metadata === null ||
-      !isLegacyOpenSpecMetadata(metadata, legacyMetadata)
-    ) {
-      throw new OpenSpecAdapterError(
-        'PROVIDER_BINDING_LEGACY_UNPROVEN',
-        'Historical planning-provider identity is not proven by pre-cutover OpenSpec metadata.',
-        { changeId, commit },
-      );
-    }
-    const binding = Object.freeze({
-      schemaVersion: 1 as const,
-      changeId,
-      providerId: OPENSPEC_PROVIDER_ID,
-      adapterContractVersion: OPENSPEC_ADAPTER_CONTRACT_VERSION,
-      providerRequirement: Object.freeze({ ...policy.providerRequirement }),
-      planningRoot: `${changeRoot}/${changeId}`,
-    });
+    const binding = reader.readPinnedBinding(repositoryRoot, commit, changeId);
+    if (binding === null) throw providerBindingMissing(policy, changeId);
     assertOpenSpecBinding(policy, binding, changeRoot, changeId);
     return Object.freeze({
       binding,
-      source: 'legacy-inferred',
-      artifactPath: null,
+      source: 'explicit',
+      artifactPath: policy.bindingArtifactPath(changeId),
       bindingDigest: planningProviderBindingDigest(binding),
     });
   };
@@ -206,52 +160,14 @@ export function createOpenSpecProviderBindingResolverV1(
       );
     }
 
-    let candidate: ResolvedPlanningProviderBinding | undefined;
-    let previous: ResolvedPlanningProviderBinding;
-    try {
-      previous = resolveHistorical(
-        reader,
-        repositoryRoot,
-        parentCommit,
-        changeRoot,
-        changeId,
-      );
-    } catch (error) {
-      if (
-        !(error instanceof OpenSpecAdapterError) ||
-        error.code !== 'PROVIDER_BINDING_LEGACY_UNPROVEN'
-      ) {
-        throw error;
-      }
-      candidate = resolveHistorical(
-        reader,
-        repositoryRoot,
-        candidateCommit,
-        changeRoot,
-        changeId,
-      );
-      if (
-        candidate.source !== 'legacy-inferred' ||
-        reader.readPinnedEvidenceFile(
-          repositoryRoot,
-          parentCommit,
-          `${changeRoot}/${changeId}/.openspec.yaml`,
-        ) !== null
-      ) {
-        throw error;
-      }
-
-      // Preserve the one bootstrap-era repair accepted by the landed reader:
-      // an otherwise-existing planning tree may add only its missing canonical
-      // OpenSpec metadata before explicit provider bindings existed.
-      previous = Object.freeze({
-        binding: candidate.binding,
-        source: 'legacy-inferred',
-        artifactPath: null,
-        bindingDigest: candidate.bindingDigest,
-      });
-    }
-    if (candidateRaw === null && previous.source === 'explicit') {
+    const previous = resolveHistorical(
+      reader,
+      repositoryRoot,
+      parentCommit,
+      changeRoot,
+      changeId,
+    );
+    if (candidateRaw === null) {
       throw new PlanningProviderBindingError(
         'PROVIDER_MIGRATION_UNSUPPORTED',
         'Planning-provider migration is not supported by binding contract v1.',
@@ -260,7 +176,7 @@ export function createOpenSpecProviderBindingResolverV1(
     if (candidateRaw !== null) {
       assertPlanningProviderV1Migration(previous.binding, candidateRaw);
     }
-    candidate ??= resolveHistorical(
+    const candidate = resolveHistorical(
       reader,
       repositoryRoot,
       candidateCommit,
@@ -277,42 +193,6 @@ export function createOpenSpecProviderBindingResolverV1(
     resolveHistorical,
     resolveHistoricalTransition,
   });
-}
-
-function legacyMetadataPattern(schemaNames: readonly string[]): RegExp {
-  const names = [...new Set(['spec-driven', ...schemaNames])];
-  if (names.some((name) => !SCHEMA_NAME.test(name))) {
-    throw new TypeError('Legacy OpenSpec schema name is invalid.');
-  }
-  const alternatives = names
-    .sort(compareText)
-    .map((name) => name.replace(/[.*+?^${}()|[\]\\]/gu, '\\$&'))
-    .join('|');
-  return new RegExp(
-    `^schema: (${alternatives})\\ncreated: (\\d{4}-\\d{2}-\\d{2})\\n$`,
-    'u',
-  );
-}
-
-function isLegacyOpenSpecMetadata(
-  bytes: Uint8Array,
-  legacyMetadata: RegExp,
-): boolean {
-  let source: string;
-  try {
-    source = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-  } catch {
-    return false;
-  }
-  if (source === 'schema: spec-driven\n') return true;
-  const match = legacyMetadata.exec(source);
-  return match !== null && isCanonicalDate(match[2]!);
-}
-
-function isCanonicalDate(value: string): boolean {
-  const [year, month, day] = value.split('-').map(Number);
-  const timestamp = Date.UTC(year!, month! - 1, day!);
-  return new Date(timestamp).toISOString().slice(0, 10) === value;
 }
 
 function assertOpenSpecBinding(
@@ -348,8 +228,4 @@ function providerBindingMissing(
     'A managed change after the planning-provider cutover requires an explicit binding.',
     { changeId, path: policy.bindingArtifactPath(changeId) },
   );
-}
-
-function compareText(left: string, right: string): number {
-  return left < right ? -1 : left > right ? 1 : 0;
 }

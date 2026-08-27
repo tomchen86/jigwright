@@ -37,8 +37,8 @@ export type PlanningProviderBindingV1 = Readonly<{
 
 export type ResolvedPlanningProviderBinding = Readonly<{
   binding: PlanningProviderBindingV1;
-  source: 'explicit' | 'legacy-inferred';
-  artifactPath: string | null;
+  source: 'explicit';
+  artifactPath: string;
   bindingDigest: string;
 }>;
 
@@ -52,16 +52,6 @@ export type PlanningProviderBindingReaderPort = Readonly<{
     commit: string,
     changeId: string,
   ): PlanningProviderBindingV1 | null;
-  readPinnedEvidenceFile(
-    repositoryRoot: string,
-    commit: string,
-    requestedPath: string,
-  ): Uint8Array | null;
-  pinnedHistoryContainsPath(
-    repositoryRoot: string,
-    commit: string,
-    requestedPath: string,
-  ): boolean;
 }>;
 
 export function parsePlanningProviderBinding(

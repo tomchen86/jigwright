@@ -145,51 +145,10 @@ export function readPinnedPlanningProviderEvidenceFile(
   return bytes;
 }
 
-export function pinnedHistoryContainsPlanningProviderPath(
-  repositoryRoot: string,
-  commit: string,
-  requestedPath: string,
-): boolean {
-  if (!FULL_OBJECT_ID.test(commit)) {
-    throw bindingStoreInvalid(
-      'Pinned planning-provider history requires one full commit object ID.',
-    );
-  }
-  let repositoryPath: string;
-  try {
-    repositoryPath = normalizeExactRepositoryPath(requestedPath);
-  } catch {
-    throw bindingStoreInvalid(
-      'Pinned planning-provider history path is not a safe exact path.',
-    );
-  }
-  const source = runGitBuffer(repositoryRoot, [
-    'rev-list',
-    '--full-history',
-    '--topo-order',
-    '--reverse',
-    commit,
-    '--',
-    `:(literal)${repositoryPath}`,
-  ]).toString('ascii');
-  const revisions = source
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean);
-  if (revisions.some((revision) => !FULL_OBJECT_ID.test(revision))) {
-    throw bindingStoreInvalid(
-      'Pinned planning-provider history returned an invalid commit identity.',
-    );
-  }
-  return revisions.length > 0;
-}
-
 export const planningProviderBindingReader: PlanningProviderBindingReaderPort =
   Object.freeze({
     readCurrent: readCurrentPlanningProviderBinding,
     readPinnedBinding: readPinnedPlanningProviderBinding,
-    readPinnedEvidenceFile: readPinnedPlanningProviderEvidenceFile,
-    pinnedHistoryContainsPath: pinnedHistoryContainsPlanningProviderPath,
   });
 
 function decodeBinding(bytes: Buffer): string {
