@@ -14,7 +14,6 @@ import { renderHandoff } from '../src/adapters/consumer/repository/handoff/hando
 import {
   completeTask,
   finalizeTask,
-  finishSession,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
@@ -31,8 +30,10 @@ import {
   git,
   isWorkflowError,
   runtimeRoot,
+  sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 test('the reviewed engine projection registry is fixed and transition-scoped', () => {
   assert.deepEqual(engineProjectionDefinitions(), [
@@ -178,6 +179,11 @@ test('completion and finish evidence classify the exact projection union', () =>
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
     const result = finalizeTask(repository, session.sessionId);
     const reportsRoot = path.join(runtimeRoot(repository), 'reports');
     const completion = readImmutableReport(
@@ -198,7 +204,7 @@ test('completion and finish evidence classify the exact projection union', () =>
   }
 });
 
-test('the compatible completion sequence records the same projection categories', () => {
+test('the compatible completion sequence cannot bypass documentation review', () => {
   const repository = createFixtureRepository();
   try {
     writeReadyV3ExemptChange(repository);
@@ -209,17 +215,23 @@ test('the compatible completion sequence records the same projection categories'
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     checkSession(repository, session.sessionId);
-    const completion = completeTask(repository, session.sessionId);
-    const finish = finishSession(repository, session.sessionId);
-    const reportsRoot = path.join(runtimeRoot(repository), 'reports');
-
-    assertReportCategories(
-      readImmutableReport(reportsRoot, session.sessionId, completion.reportId),
+    const tasksPath = path.join(
+      repository,
+      'openspec/changes/demo-change/tasks.md',
     );
-    assertReportCategories(
-      readImmutableReport(reportsRoot, session.sessionId, finish.reportId),
+    const handoffPath = path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md');
+    const tasksBefore = fs.readFileSync(tasksPath, 'utf8');
+    const handoffBefore = fs.readFileSync(handoffPath, 'utf8');
+    assert.throws(
+      () => completeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_NOT_READY'),
     );
-    assert.deepEqual(finish.stagedPaths, EXPECTED_CATEGORIES.changedPaths);
+    assert.equal(
+      getSession(repository, session.sessionId).completionReportId,
+      undefined,
+    );
+    assert.equal(fs.readFileSync(tasksPath, 'utf8'), tasksBefore);
+    assert.equal(fs.readFileSync(handoffPath, 'utf8'), handoffBefore);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -247,7 +259,16 @@ function enableCompletionProjection(repository: string): void {
   fs.writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
   fs.mkdirSync(path.join(repository, 'docs'), { recursive: true });
   renderHandoff(repository);
-  git(repository, ['add', 'workflow/document-policy.json', 'docs']);
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
+  );
+  git(repository, [
+    'add',
+    'workflow/document-policy.json',
+    'workflow/maintainer-policy.json',
+    'docs',
+  ]);
   git(repository, ['commit', '-m', 'Enable completion projection']);
 }
 
