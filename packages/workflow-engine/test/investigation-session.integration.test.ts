@@ -5221,7 +5221,8 @@ test('legacy managed lock with an active session remains fenced', () => {
 
     assert.throws(
       () => startSession(repository, 'demo-change', '1.1'),
-      (error: unknown) => isWorkflowError(error, 'ACTIVE_SESSION_CONFLICT'),
+      (error: unknown) =>
+        isWorkflowError(error, 'TASK_SESSION_CHANGE_CONFLICT'),
     );
     const after = fs.lstatSync(lockPath);
     assert.equal(after.dev, before.dev);
