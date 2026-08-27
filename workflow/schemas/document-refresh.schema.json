@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://expense-app.local/workflow/document-refresh.schema.json",
+  "$id": "https://jigwright.local/workflow/document-refresh.schema.json",
   "oneOf": [
     {
       "type": "object",

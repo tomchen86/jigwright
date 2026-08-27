@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://expense-app.local/workflow/maintainer-grant.schema.json",
+  "$id": "https://jigwright.local/workflow/maintainer-grant.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": ["payload", "signature"],

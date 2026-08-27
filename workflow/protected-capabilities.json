@@ -407,8 +407,8 @@
         "workflow/schemas/report.schema.json",
         "workflow/schemas/session.schema.json"
       ],
-      "contentDigest": "sha256:f2c90f305332e060e25962b2520563f2c0ef3238058a21f8aee85679dc3b3e2a",
-      "closureDigest": "sha256:ce325119dc94bc4787e7c004bf05289bbce3c00a3b2921bc9e2c7eeb22665ece"
+      "contentDigest": "sha256:150d31c807aee7b59f8c91f54beb4da7b3df91be5304ca6c84df0c48b3473c57",
+      "closureDigest": "sha256:3946c813e2673b67674f08dd73a20b1c52d694d1715e855437aa9f88eef7b102"
     },
     {
       "capability": "recovery.rollback",

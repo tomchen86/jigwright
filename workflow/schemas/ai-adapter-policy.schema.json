@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://expense.local/workflow/ai-adapter-policy.schema.json",
+  "$id": "https://jigwright.local/workflow/ai-adapter-policy.schema.json",
   "title": "AI Adapter Evaluation Policy",
   "type": "object",
   "additionalProperties": false,

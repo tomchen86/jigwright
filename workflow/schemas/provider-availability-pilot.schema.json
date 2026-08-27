@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://example.local/workflow/provider-availability-pilot.schema.json",
+  "$id": "https://jigwright.local/workflow/provider-availability-pilot.schema.json",
   "title": "Provider availability pilot result",
   "type": "object",
   "additionalProperties": false,

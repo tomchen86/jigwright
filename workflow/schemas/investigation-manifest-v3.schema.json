@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://expense-app.local/workflow/investigation-manifest-v3.schema.json",
+  "$id": "https://jigwright.local/workflow/investigation-manifest-v3.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": [

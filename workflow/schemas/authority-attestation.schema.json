@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://expense-app.local/workflow/authority-attestation.schema.json",
+  "$id": "https://jigwright.local/workflow/authority-attestation.schema.json",
   "type": "object",
   "additionalProperties": false,
   "required": ["payload", "signature"],

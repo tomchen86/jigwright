@@ -18,11 +18,9 @@
     "workflowJsonFileCount": 3,
     "workflowJsonIdentityDigest": "sha256:c55e929de39d7f6ad471342058c47fff52d13de6a85ab8e24983a8d51b9fab56",
     "jsonSchemaIdHosts": {
-      "example.local": 1,
-      "expense-app.local": 16,
-      "expense.local": 1
+      "jigwright.local": 18
     },
-    "jsonSchemaIdIdentityDigest": "sha256:a5a6ad5e025680b4e36466fe5c050c8994d1ee5804afe394da1085c2e7d8696d"
+    "jsonSchemaIdIdentityDigest": "sha256:807380ee62e59b16ba3bec56d3696c503fec8ac338980f86b5dc6a10bc4f92c7"
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 178,
@@ -482,7 +480,7 @@
       "id": "schema-signature-namespace",
       "plane": "contracts-and-history",
       "state": "partial",
-      "t3Disposition": "@jigwright/grants now dispatches exact historical V1 and neutral current V2 Collaboration Grant namespaces without fallback; other consumer-specific record namespaces and JSON Schema hosts remain compatibility debt, and historical records are never re-signed.",
+      "t3Disposition": "@jigwright/grants dispatches exact historical V1 and neutral current V2 Collaboration Grant namespaces without fallback; every JSON Schema host is neutral, while remaining consumer-specific record namespaces stay reader-only and historical records are never re-signed.",
       "evidence": [
         {
           "path": "packages/grants/src/collaboration-grant-envelope-reader.ts",
@@ -494,7 +492,7 @@
         },
         {
           "path": "workflow/schemas/session.schema.json",
-          "contains": ["https://expense-app.local/workflow/session.schema.json"]
+          "contains": ["https://jigwright.local/workflow/session.schema.json"]
         }
       ],
       "negativeEvidence": null

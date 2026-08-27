@@ -17,7 +17,7 @@ test('the standalone v3 Manifest schema is closed and resolves every local defin
   ) as Record<string, unknown>;
   assert.equal(
     schema.$id,
-    'https://expense-app.local/workflow/investigation-manifest-v3.schema.json',
+    'https://jigwright.local/workflow/investigation-manifest-v3.schema.json',
   );
   assert.equal(schema.additionalProperties, false);
   assert.deepEqual(schema.required, [
@@ -52,6 +52,22 @@ test('the standalone v3 Manifest schema is closed and resolves every local defin
       );
     }
   });
+});
+
+test('every workflow schema uses the Jigwright package identity', () => {
+  const schemasDirectory = path.join(sourceRepositoryRoot, 'workflow/schemas');
+  for (const filename of fs.readdirSync(schemasDirectory).sort()) {
+    if (!filename.endsWith('.json')) continue;
+    const schema = JSON.parse(
+      fs.readFileSync(path.join(schemasDirectory, filename), 'utf8'),
+    ) as Record<string, unknown>;
+    if (schema.$id === undefined) continue;
+    assert.match(
+      String(schema.$id),
+      /^https:\/\/jigwright\.local\/workflow\//u,
+      filename,
+    );
+  }
 });
 
 function walkSchema(
