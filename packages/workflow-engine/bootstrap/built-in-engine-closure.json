@@ -1273,7 +1273,7 @@
     {
       "path": "src/modules/authority/role-context-sharing-grant.ts",
       "mode": "100644",
-      "digest": "sha256:1145ccd07dfd9e60680466332c24061b2beb4cbb1c12e3338d4a6598636ff67d"
+      "digest": "sha256:1f440087b43dc88436ae2a432b8db8cc1661da2a31bcf481893443e7de01cc30"
     },
     {
       "path": "src/modules/authority/task-mandate.ts",

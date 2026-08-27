@@ -201,7 +201,7 @@ test('missing or unlisted eligibility fails closed before signature verification
   assert.equal(verifierCalls, 0);
 });
 
-test('the exact legacy policy digest remains readable while unknown identities fail closed', () => {
+test('current grant validation rejects legacy and unknown policy digests', () => {
   const legacyPayload = {
     ...payload,
     roleContextSharingPolicyDigest: LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST,
@@ -217,12 +217,14 @@ test('the exact legacy policy digest remains readable while unknown identities f
       },
     }),
   };
-  assert.equal(
-    verifyRoleContextSharingGrantCapability(legacyEnvelope, POLICY, {
-      ...common,
-      expected: bindingFromRoleContextSharingGrantPayloadV1(legacyPayload),
-    }).envelope.payload.roleContextSharingPolicyDigest,
-    LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST,
+  assert.throws(
+    () =>
+      verifyRoleContextSharingGrantCapability(legacyEnvelope, POLICY, {
+        ...common,
+        expected: bindingFromRoleContextSharingGrantPayloadV1(legacyPayload),
+      }),
+    (error) =>
+      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_BINDING_MISMATCH'),
   );
   assert.throws(
     () => {
@@ -242,7 +244,7 @@ test('the exact legacy policy digest remains readable while unknown identities f
     (error) =>
       isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_BINDING_MISMATCH'),
   );
-  assert.equal(verifierCalls, 1);
+  assert.equal(verifierCalls, 0);
 });
 
 test('configuration, registry, policy, subject, session, and provider-definition drift all fail closed', () => {

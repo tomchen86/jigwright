@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:e55e2dfa4d97d4e90fad1d37e9e29fa10ff1aadf868baaecc235508138bed944"
+      "digest": "sha256:a60ed8984eca617abd9bfd226f8580ec9ac9527b4796ac85cbde25864c0337f5"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -398,7 +398,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-grant.js",
       "mode": "100644",
-      "digest": "sha256:33fe21554e37dd123623a4a8cc809e988b7ab2c2006417261a7fe5b79c2009e9"
+      "digest": "sha256:16ba77b6eded54a5a8a76e2007aa20a0602be1966d5abffa1fb2d7a160facf09"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/task-mandate.js",

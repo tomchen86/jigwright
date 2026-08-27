@@ -66,10 +66,14 @@ export const LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST = crypto
   .digest('hex');
 
 export function isKnownRoleContextSharingPolicyDigest(digest: string): boolean {
-  return (
-    digest === ROLE_CONTEXT_SHARING_POLICY_DIGEST ||
-    digest === LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST
-  );
+  return digest === ROLE_CONTEXT_SHARING_POLICY_DIGEST;
+}
+
+/** Inert historical classification; never grants production authority. */
+export function isHistoricalRoleContextSharingPolicyDigest(
+  digest: string,
+): boolean {
+  return digest === LEGACY_ROLE_CONTEXT_SHARING_POLICY_DIGEST;
 }
 
 export type RoleContextSharingEligibilityPortV1 = Readonly<{
