@@ -2,10 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  parseAiAdapterPolicyDocument,
-  parseLegacyAiAdapterPolicyDocument,
-} from '../provider-execution/ai-adapter-policy.ts';
+import { parseAiAdapterPolicyDocument } from '../provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   parseClassDisposition,
@@ -7648,39 +7645,24 @@ function assertProviderExecutionPolicySnapshot(
     value.requestDigest !== request.requestDigest ||
     value.policyDigest !== request.policyDigest ||
     typeof value.policyDocument !== 'string' ||
-    (value.schemaVersion === 1
-      ? !hasExactKeys(value, [
-          'invocationId',
-          'kind',
-          'policyDigest',
-          'policyDocument',
-          'requestDigest',
-          'schemaVersion',
-        ])
-      : ![2, 3].includes(value.schemaVersion as number) ||
-        !hasExactKeys(value, [
-          'accountingDigest',
-          'attemptReservation',
-          ...(value.schemaVersion === 3 ? ['authority'] : []),
-          'invocationId',
-          'kind',
-          'policyDigest',
-          'policyDocument',
-          'requestDigest',
-          'retryAccounting',
-          'schemaVersion',
-        ]))
+    ![2, 3].includes(value.schemaVersion as number) ||
+    !hasExactKeys(value, [
+      'accountingDigest',
+      'attemptReservation',
+      ...(value.schemaVersion === 3 ? ['authority'] : []),
+      'invocationId',
+      'kind',
+      'policyDigest',
+      'policyDocument',
+      'requestDigest',
+      'retryAccounting',
+      'schemaVersion',
+    ])
   ) {
     throw providerInvocationUnsafe();
   }
   try {
-    let loaded;
-    try {
-      loaded = parseAiAdapterPolicyDocument(value.policyDocument);
-    } catch {
-      if (value.schemaVersion !== 1) throw providerInvocationUnsafe();
-      loaded = parseLegacyAiAdapterPolicyDocument(value.policyDocument);
-    }
+    const loaded = parseAiAdapterPolicyDocument(value.policyDocument);
     if (
       loaded.digest !== value.policyDigest ||
       request.limits.aggregateOutputBytes >
@@ -7702,10 +7684,7 @@ function assertProviderExecutionPolicySnapshot(
       throw providerInvocationUnsafe();
     }
     if (value.schemaVersion === 2 || value.schemaVersion === 3) {
-      if (
-        loaded.policy.schemaVersion !== 4 ||
-        !isRecord(value.attemptReservation)
-      ) {
+      if (!isRecord(value.attemptReservation)) {
         throw providerInvocationUnsafe();
       }
       const attemptReservation = {

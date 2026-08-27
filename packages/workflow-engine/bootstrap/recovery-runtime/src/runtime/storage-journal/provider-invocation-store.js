@@ -603,6 +603,23 @@ export function ensureProviderExecutionPolicySnapshot(paths, requestInput, loade
     return storeProviderExecutionPolicySnapshot(paths, request, loadedInput);
 }
 export function readProviderExecutionPolicySnapshot(paths, requestInput) {
+    const historical = readProviderExecutionPolicySnapshotForHistoricalCleanup(paths, requestInput);
+    if (historical.snapshot.schemaVersion === 1 ||
+        historical.loaded.policy.schemaVersion !== 4 ||
+        historical.accounting === null) {
+        throw providerExecutionPolicySnapshotUnsafe();
+    }
+    return Object.freeze({
+        snapshot: historical.snapshot,
+        loaded: historical.loaded,
+        accounting: historical.accounting,
+    });
+}
+/**
+ * Inert parser retained for audited historical evidence and terminal cleanup.
+ * Production provider execution must use readProviderExecutionPolicySnapshot.
+ */
+function readProviderExecutionPolicySnapshotForHistoricalCleanup(paths, requestInput) {
     const request = assertProviderRequest(requestInput);
     let value;
     try {

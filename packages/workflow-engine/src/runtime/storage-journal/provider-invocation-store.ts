@@ -1398,6 +1398,36 @@ export function readProviderExecutionPolicySnapshot(
   paths: InvestigationRuntimePaths,
   requestInput: ProviderInvocationRequest,
 ): Readonly<{
+  snapshot: ProviderExecutionPolicySnapshotCurrent;
+  loaded: LoadedAiAdapterPolicy;
+  accounting: ProviderRetryAccountingSnapshot;
+}> {
+  const historical = readProviderExecutionPolicySnapshotForHistoricalCleanup(
+    paths,
+    requestInput,
+  );
+  if (
+    historical.snapshot.schemaVersion === 1 ||
+    historical.loaded.policy.schemaVersion !== 4 ||
+    historical.accounting === null
+  ) {
+    throw providerExecutionPolicySnapshotUnsafe();
+  }
+  return Object.freeze({
+    snapshot: historical.snapshot,
+    loaded: historical.loaded as LoadedAiAdapterPolicy,
+    accounting: historical.accounting,
+  });
+}
+
+/**
+ * Inert parser retained for audited historical evidence and terminal cleanup.
+ * Production provider execution must use readProviderExecutionPolicySnapshot.
+ */
+function readProviderExecutionPolicySnapshotForHistoricalCleanup(
+  paths: InvestigationRuntimePaths,
+  requestInput: ProviderInvocationRequest,
+): Readonly<{
   snapshot: ProviderExecutionPolicySnapshot;
   loaded: LoadedAiAdapterPolicy | LoadedLegacyAiAdapterPolicy;
   accounting: ProviderRetryAccountingSnapshot | null;

@@ -93,6 +93,39 @@ test('a present but mismatched policy snapshot stays unsafe', () => {
   }
 });
 
+test('a V1 policy snapshot is not a current lifecycle projection', () => {
+  const fixture = prepareLegacyInvocation('current-projection-v1-refused', {
+    keepSnapshot: true,
+  });
+  try {
+    const current = JSON.parse(
+      fs.readFileSync(fixture.snapshotPath, 'utf8'),
+    ) as Record<string, unknown>;
+    fs.writeFileSync(
+      fixture.snapshotPath,
+      `${canonicalJson({
+        schemaVersion: 1,
+        kind: current.kind,
+        invocationId: current.invocationId,
+        requestDigest: current.requestDigest,
+        policyDigest: current.policyDigest,
+        policyDocument: current.policyDocument,
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    const scan = scanProviderInvocationLifecycles(fixture.runtime);
+    assert.equal(scan.projections.length, 0);
+    assert.equal(scan.unsafeInvocations.length, 1);
+    assert.throws(
+      () => listProviderInvocationLifecycleProjections(fixture.runtime),
+      /provider state is missing, unsafe, or non-canonical/i,
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
 function prepareLegacyInvocation(
   changeId: string,
   options: { keepSnapshot?: boolean } = {},

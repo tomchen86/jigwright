@@ -227,7 +227,7 @@ test('v4 policy snapshots conservative retry accounting and rebuilds one charge 
   }
 });
 
-test('a readable v1 execution-policy snapshot cannot authorize new automatic work', () => {
+test('current execution-policy admission rejects a V1 snapshot', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -251,50 +251,23 @@ test('a readable v1 execution-policy snapshot cannot authorize new automatic wor
       })}\n`,
       { mode: 0o600 },
     );
-    const record = createProviderInvocation(runtime, {
-      investigationId: 'investigation-accounting-v1',
-      changeId: 'demo-change',
-      attempt: 1,
-      manifest,
-      request,
-      createdAt: CREATED_AT,
-    });
-    const claim = claimProviderInvocation(runtime, request.invocationId, {
-      expectedRevision: record.revision,
-      workerId: 'accounting-worker',
-      leaseDurationMs: request.limits.timeoutMs,
-      now: '2026-08-03T08:00:01.000Z',
-    });
-    const failed = failProviderInvocation(runtime, request.invocationId, {
-      expectedRevision: claim.record.revision,
-      leaseGeneration: claim.record.leaseGeneration,
-      leaseToken: claim.leaseToken,
-      failure: {
-        kind: 'retryable',
-        code: 'PROVIDER_TIMEOUT',
-        message: 'Provider exceeded its bounded runtime.',
-      },
-      now: '2026-08-03T09:00:01.000Z',
-    });
-    assert.equal(
-      readProviderExecutionPolicySnapshot(runtime, request).accounting,
-      null,
+    assert.throws(
+      () => readProviderExecutionPolicySnapshot(runtime, request),
+      (error) =>
+        isWorkflowError(error, 'PROVIDER_EXECUTION_POLICY_SNAPSHOT_UNSAFE'),
     );
     assert.throws(
       () =>
-        authorizeAutomaticProviderRetry(runtime, {
-          failed,
-          failedRequest: request,
-          replacementRequest: createReplacementRequest(
-            request,
-            'invocation-accounting-v1-retry',
-          ),
-          replacementExecutionPolicy: policy,
-          dataAuthorizationPolicyPort:
-            AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-          now: '2026-08-03T09:00:02.000Z',
+        createProviderInvocation(runtime, {
+          investigationId: 'investigation-accounting-v1',
+          changeId: 'demo-change',
+          attempt: 1,
+          manifest,
+          request,
+          createdAt: CREATED_AT,
         }),
-      (error) => isWorkflowError(error, 'PROVIDER_RETRY_ACCOUNTING_REQUIRED'),
+      (error) =>
+        isWorkflowError(error, 'PROVIDER_EXECUTION_POLICY_SNAPSHOT_UNSAFE'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
