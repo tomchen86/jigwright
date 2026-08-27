@@ -924,13 +924,13 @@ export function projectLegacyProviderInvocation(input) {
     }
     const createdAt = assertTimestamp(record.createdAt);
     const updatedAt = assertTimestamp(record.updatedAt);
-    const attemptId = assertIdentifier(`attempt-legacy-${record.invocationId}`, 'attemptId');
+    const attemptId = assertIdentifier(`attempt-provider-${record.invocationId}`, 'attemptId');
     // A legacy retry used a fresh invocationId for each process. Binding Job
     // identity to invocationId would therefore turn an attempt retry into a new
     // logical Job. The investigation/stage pair is the stable legacy semantic
     // identity; a digest keeps the projected identifier bounded and canonical.
     const jobIdentityDigest = digestCanonical({
-        kind: 'legacy-provider-job',
+        kind: 'provider-job',
         workflowId,
         stage: record.purpose,
         ...(input.semanticJobIdentityDigest === undefined
@@ -939,7 +939,7 @@ export function projectLegacyProviderInvocation(input) {
                 semanticJobIdentityDigest: assertDigest(input.semanticJobIdentityDigest),
             }),
     }).slice('sha256:'.length, 'sha256:'.length + 32);
-    const jobId = assertIdentifier(`job-legacy-${record.purpose}-${jobIdentityDigest}`, 'jobId');
+    const jobId = assertIdentifier(`job-provider-${record.purpose}-${jobIdentityDigest}`, 'jobId');
     const semanticSpec = {
         schemaVersion: 1,
         contractVersion,
@@ -949,12 +949,12 @@ export function projectLegacyProviderInvocation(input) {
         // the manifest is the immutable semantic input shared by legacy retries.
         inputDigest: normalizeDigest(record.manifestDigest),
         outputContractDigest: digestCanonical({
-            kind: 'legacy-provider-output-contract',
+            kind: 'provider-output-contract',
             purpose: record.purpose,
             schemaVersion: 1,
         }),
         acceptancePolicyDigest: digestCanonical({
-            kind: 'legacy-provider-acceptance',
+            kind: 'provider-acceptance',
             purpose: record.purpose,
             schemaVersion: 1,
         }),

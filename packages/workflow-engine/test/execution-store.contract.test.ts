@@ -51,7 +51,7 @@ import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';
 
-test('legacy creation materializes a private canonical execution aggregate with revision CAS', () => {
+test('provider creation materializes a private canonical execution aggregate with revision CAS', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -289,7 +289,7 @@ test('durable result CAS keeps the first completion and records the loser as lat
   }
 });
 
-test('legacy provider history can be migrated after the durable aggregate is absent', () => {
+test('provider history can be recovered after the durable aggregate is absent', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -415,7 +415,7 @@ test('store-only enumeration and explicit scoped materialization are safe and id
   }
 });
 
-test('recovery repairs a legacy lease after durable acceptance crash exactly once and rejects divergent state', () => {
+test('recovery repairs a provider lease after durable acceptance crash exactly once and rejects divergent state', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;

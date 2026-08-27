@@ -354,7 +354,7 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         runtimeReceipt: Record<string, unknown>;
       };
       tampered.runtimeReceipt.executionAttemptId =
-        'attempt-legacy-invocation-mismatched';
+        'attempt-provider-invocation-mismatched';
       const tamperedReceiptPayload = { ...tampered.runtimeReceipt };
       delete tamperedReceiptPayload.receiptDigest;
       tampered.runtimeReceipt.receiptDigest = sha256(

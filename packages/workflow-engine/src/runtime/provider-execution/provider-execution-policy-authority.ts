@@ -167,7 +167,7 @@ function validateAuthorityCore(
     receipt.workflowId !== grantRequest.workflowId ||
     receipt.epoch !== grantRequest.epoch ||
     receipt.jobId !== grantRequest.jobId ||
-    receipt.attemptId !== `attempt-legacy-${request.invocationId}` ||
+    receipt.attemptId !== `attempt-provider-${request.invocationId}` ||
     receipt.useNumber !== 1 ||
     receipt.remainingUses !== 0 ||
     grantRequest.mandateBinding === undefined ||

@@ -3722,7 +3722,7 @@ function assertProviderRetryReservationForHistoricalCleanup(
     value.requestDigest !== request.requestDigest ||
     value.previousInvocationId === invocationId ||
     (replacement !== undefined &&
-      (replacement.attemptId !== `attempt-legacy-${invocationId}` ||
+      (replacement.attemptId !== `attempt-provider-${invocationId}` ||
         request.authorizationNodeId !== replacement.authorizationNodeId))
   ) {
     throw invocationInvalid();

@@ -904,7 +904,7 @@ export function createProviderRepairLineage(
         repairBudget.schemaAttempts + repairBudget.semanticAttempts - 1,
     },
     previousAttempt: previous.attempt,
-    attemptId: `attempt-legacy-${input.replacementRecord.invocationId}`,
+    attemptId: `attempt-provider-${input.replacementRecord.invocationId}`,
     retryMode: 'repair',
     currentExecutionPolicy: providerExecutionPolicySnapshot(
       input.replacementRequest,

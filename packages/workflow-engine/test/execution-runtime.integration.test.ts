@@ -13,7 +13,10 @@ import {
 } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { requestExecutionReplacement } from '../src/application/control-plane/execution-replacement.ts';
 import { canonicalExecutionBudgetGrantRequest } from '../src/modules/authority/execution-governance.ts';
-import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
+import {
+  executionJobStatePath,
+  readExecutionJobState,
+} from '../src/runtime/storage-journal/execution-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
   createProviderInvocationRequest,
@@ -50,7 +53,7 @@ const RUNTIME_MANDATE_BINDING = {
   externalAuditRoot: '/private/tmp/execution-runtime-authority-audit',
 };
 
-test('300 to 600 is one legacy Job with replacement Attempt lineage and one accepted winner', () => {
+test('300 to 600 is one provider Job with replacement Attempt lineage and one accepted winner', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -237,7 +240,7 @@ test('runtime status exposes scheduled, running, and cancelled without raw proce
   }
 });
 
-test('multiple legacy successes expose one winner and later output as late-duplicate', () => {
+test('multiple provider successes expose one winner and later output as late-duplicate', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -274,7 +277,7 @@ test('multiple legacy successes expose one winner and later output as late-dupli
   }
 });
 
-test('exhausted retryable legacy Job returns a concrete scoped GrantRequest', () => {
+test('exhausted retryable provider Job returns a concrete scoped GrantRequest', () => {
   const repository = createFixtureRepository();
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
@@ -533,7 +536,7 @@ test('runtime inspection uses stable errors for invalid and absent Job IDs', () 
     );
     assert.throws(
       () =>
-        inspectExecutionJob(repository, `job-legacy-survey-${'0'.repeat(32)}`),
+        inspectExecutionJob(repository, `job-provider-survey-${'0'.repeat(32)}`),
       (error) => isWorkflowError(error, 'EXECUTION_RUNTIME_JOB_NOT_FOUND'),
     );
   } finally {
@@ -541,7 +544,39 @@ test('runtime inspection uses stable errors for invalid and absent Job IDs', () 
   }
 });
 
-test('legacy unmandated Job cannot mint new execution-budget authority', () => {
+test('runtime inspection refuses a provider invocation without its durable Job aggregate', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-runtime-missing-durable',
+      300_000,
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: INVESTIGATION_ID,
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T09:00:00.000Z',
+    });
+    const [inspection] = listExecutionJobs(repository);
+    assert.ok(inspection);
+    fs.unlinkSync(executionJobStatePath(runtime, inspection.job.jobId));
+
+    assert.throws(
+      () => listExecutionJobs(repository),
+      (error) => isWorkflowError(error, 'EXECUTION_RUNTIME_JOB_CONFLICT'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('unmandated provider Job cannot mint new execution-budget authority', () => {
   const repository = createFixtureRepository();
   try {
     const context = loadInvestigationRuntimeContext(repository);

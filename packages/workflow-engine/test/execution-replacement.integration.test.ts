@@ -418,7 +418,7 @@ test('granted Survey retries raise a 300s policy ceiling through 600s to the 360
     );
     const wrongReceipt = withReceiptId({
       ...completed.receipt,
-      attemptId: 'attempt-legacy-invocation-wrong-receipt',
+      attemptId: 'attempt-provider-invocation-wrong-receipt',
     });
     assert.throws(
       () =>

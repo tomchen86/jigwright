@@ -2,9 +2,6 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  assertAttemptRecord,
-  assertJobRecord,
-  assertWorkflowRecord,
   createReplacementAttempt,
   projectLegacyProviderInvocation,
   type AttemptRecord,
@@ -121,9 +118,12 @@ export function listExecutionJobs(cwd: string): ExecutionJobInspection[] {
     .map(([, group]) => {
       const jobId = group[0]!.projection.job.jobId;
       const durable = readExecutionJobState(runtime, jobId);
-      return durable === null
-        ? aggregateLegacyJob(group)
-        : aggregateDurableJob(durable, group);
+      if (durable === null) {
+        throw runtimeConflict(
+          'Provider execution state is missing its durable Job aggregate; run execution recovery before inspection.',
+        );
+      }
+      return aggregateDurableJob(durable, group);
     });
 }
 
@@ -451,118 +451,6 @@ function aggregateDurableJob(
   });
 }
 
-function aggregateLegacyJob(
-  input: LegacyProjectionEntry[],
-): ExecutionJobInspection {
-  const entries = [...input].sort(
-    (left, right) =>
-      left.record.attempt - right.record.attempt ||
-      left.record.invocationId.localeCompare(right.record.invocationId),
-  );
-  if (entries.length < 1) throw runtimeConflict('Legacy Job group is empty.');
-  const attemptNumbering = assertCurrentEntries(entries);
-  const successful = entries.filter(
-    ({ record }) => record.state === 'succeeded',
-  );
-  const acceptedInvocationId = successful[0]?.record.invocationId ?? null;
-  const attempts = entries.map((entry, index) => {
-    const projected = entry.projection.attempt;
-    const previous =
-      index === 0 ? undefined : entries[index - 1]!.projection.attempt;
-    const changedFields =
-      previous === undefined
-        ? []
-        : diffExecutionPolicy(
-            previous.policySnapshot,
-            projected.policySnapshot,
-          );
-    const lateDuplicate =
-      entry.record.state === 'succeeded' &&
-      entry.record.invocationId !== acceptedInvocationId;
-    return assertAttemptRecord({
-      ...projected,
-      retryOf: previous?.attemptId ?? null,
-      retryMode:
-        index === 0
-          ? 'none'
-          : changedFields.length === 0
-            ? 'same-input'
-            : 'execution-policy-change',
-      changedFields,
-      status: lateDuplicate ? 'late-duplicate' : projected.status,
-      retention: lateDuplicate ? 'debug' : projected.retention,
-    });
-  });
-  const acceptedAttemptId =
-    acceptedInvocationId === null
-      ? null
-      : (attempts.find(
-          ({ legacyInvocation }) =>
-            legacyInvocation?.invocationId === acceptedInvocationId,
-        )?.attemptId ?? null);
-  if (acceptedInvocationId !== null && acceptedAttemptId === null) {
-    throw runtimeConflict(
-      'Accepted legacy invocation has no projected Attempt.',
-    );
-  }
-  const first = entries[0]!.projection;
-  const latest = entries.at(-1)!.projection;
-  const workflow = assertWorkflowRecord(first.workflow);
-  const job = assertJobRecord({
-    ...first.job,
-    status: acceptedAttemptId === null ? latest.job.status : 'succeeded',
-    acceptedAttemptId,
-    attemptCount: attempts.length,
-    createdAt: attempts[0]!.createdAt,
-    updatedAt: attempts.at(-1)!.updatedAt,
-  });
-  const results = entries.flatMap((entry, index): ExecutionResultView[] => {
-    if (entry.record.state !== 'succeeded' || entry.record.result === null) {
-      return [];
-    }
-    return [
-      {
-        attemptId: attempts[index]!.attemptId,
-        invocationId: entry.record.invocationId,
-        acceptance:
-          entry.record.invocationId === acceptedInvocationId
-            ? 'accepted'
-            : 'late-duplicate',
-        outputDigest: normalizeDigest(entry.record.result.outputDigest),
-        outputSchema: entry.outputSchema,
-        residuals: entry.residuals,
-      },
-    ];
-  });
-  const latestFailedAttempt = [...attempts]
-    .reverse()
-    .find((attempt) => attempt.failure !== null);
-  const latestFailure =
-    latestFailedAttempt?.failure === null || latestFailedAttempt === undefined
-      ? null
-      : {
-          attemptId: latestFailedAttempt.attemptId,
-          failure: latestFailedAttempt.failure,
-          decision: retryDecisionForLegacyFailure({
-            workflow,
-            job,
-            attempt: latestFailedAttempt,
-            attempts,
-          }),
-        };
-  return deepFreeze({
-    schemaVersion: 1,
-    runtimeStatus: projectAgentRuntimeStatus(job),
-    workflow,
-    job,
-    attemptNumbering,
-    attempts,
-    acceptedAttemptId,
-    results,
-    latestFailure,
-  });
-}
-
 function projectAgentRuntimeStatus(
   job: JobRecord,
 ): ExecutionJobInspection['runtimeStatus'] {
@@ -654,32 +542,6 @@ function legacyEnvironmentDigest(request: ProviderInvocationRequest): string {
     provider: request.providerId,
     workerClass: 'legacy-provider',
   });
-}
-
-function diffExecutionPolicy(
-  previous: ExecutionPolicySnapshot,
-  current: ExecutionPolicySnapshot,
-): ChangedField[] {
-  const changed: ChangedField[] = [];
-  for (const key of [
-    'backoffMs',
-    'concurrency',
-    'maxOutputBytes',
-    'processEnvironment',
-    'provider',
-    'timeoutMs',
-    'transientToolConfig',
-    'workerClass',
-  ] as const) {
-    if (canonicalJson(previous[key]) !== canonicalJson(current[key])) {
-      changed.push({
-        path: `/${key}`,
-        from: structuredClone(previous[key]),
-        to: structuredClone(current[key]),
-      });
-    }
-  }
-  return changed;
 }
 
 function normalizeDigest(value: string): string {

@@ -1173,7 +1173,7 @@ function reserveProviderRetryAttempt(
     workflow: authorization.workflow,
     job: authorization.job,
     previousAttempt: authorization.attempt,
-    attemptId: `attempt-legacy-${replacementRequest.invocationId}`,
+    attemptId: `attempt-provider-${replacementRequest.invocationId}`,
     retryMode,
     currentExecutionPolicy: providerExecutionPolicySnapshot(replacementRequest),
     strategyChanges,

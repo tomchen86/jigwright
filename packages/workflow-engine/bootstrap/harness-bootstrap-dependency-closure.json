@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:bbd23f29eed14d8ce006baeabcf768c68a88d57875a50669d69bf91ab0da82eb"
+      "digest": "sha256:c4f5352aaf0522adf5c2309972ef45ac708d6a7241647127ff79cbf2104f232a"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -523,7 +523,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/execution-core.js",
       "mode": "100644",
-      "digest": "sha256:875ba580014ed8a18d8cdf51bdc43ab9432bd81ba55e3da187fda822706d5422"
+      "digest": "sha256:06c4e0bbfc4cee7a026f9b5e4f8f910c73d7a90fcc1727b08afb4fa8d86dd23d"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-contracts.js",
@@ -628,12 +628,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-execution-governance.js",
       "mode": "100644",
-      "digest": "sha256:e52c5e26a205b9456d738706b14b43b0266f63a2ec84a6052f4b09a831b27acf"
+      "digest": "sha256:30908fcbe1f607f003dc4e29177dd62649991cd08b794edcaec0d08c42c224d1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-execution-policy-authority.js",
       "mode": "100644",
-      "digest": "sha256:35c32067d653b472d595a2ddee27821b6e8923221f08b63899bf4714b27ca9ae"
+      "digest": "sha256:dae62962b46f494dc23c6c140f6339adfe05d0662484e67e51d798089cb32351"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-invocation-supersession-schema.js",
@@ -718,7 +718,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-object-store.js",
       "mode": "100644",
-      "digest": "sha256:0caf8ee5b4f68eff6bd803b65ddd1d6250ad146c3fddde50d15ff3c26223c31b"
+      "digest": "sha256:bef1b0b4a820cf18096f2f12cd4fbf7ad54bb1118a28e2bb71348c2daa412f61"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/execution-store.js",
@@ -753,7 +753,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:5e3fea698149eb0092caac4200513c2ac4ab9450c3957f570138baf41f4b001f"
+      "digest": "sha256:0921a85a733b3e81b6f483e88f3038233866697b422b2899bb2c3f06d7be6dfa"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-catalog.js",

@@ -380,7 +380,7 @@ export function executeGrantedReplacement(
     grantId,
     requestDigest,
   }).slice(7, 47)}`;
-  const replacementAttemptId = `attempt-legacy-${replacementInvocationId}`;
+  const replacementAttemptId = `attempt-provider-${replacementInvocationId}`;
   const transactionId = digestCanonical({
     kind: 'execution-replacement-transaction',
     grantId,
@@ -1258,7 +1258,7 @@ function assertTransactionRecord(
       value.requestDigest ||
     replacementRequest.invocationId !== value.replacementInvocationId ||
     value.replacementAttemptId !==
-      `attempt-legacy-${value.replacementInvocationId}` ||
+      `attempt-provider-${value.replacementInvocationId}` ||
     value.transactionId !==
       digestCanonical({
         kind: 'execution-replacement-transaction',

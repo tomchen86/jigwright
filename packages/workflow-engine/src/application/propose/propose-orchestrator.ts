@@ -3400,7 +3400,7 @@ function assertPlanReviewRetryExecutionDecision(
   const replacementPolicy = providerExecutionPolicySnapshot(replacementRequest);
   const now = authorization.evaluatedAt;
   const decision = authorization.decision;
-  const replacementAttemptId = `attempt-legacy-${replacementRequest.invocationId}`;
+  const replacementAttemptId = `attempt-provider-${replacementRequest.invocationId}`;
   if (executionGrantAuthorization !== undefined) {
     assertProviderExecutionGrantAuthorization(
       authorization,
@@ -11680,7 +11680,7 @@ function assertPlanReviewRetryReservation(
     (retryDecision !== null &&
       (retryDecision.evidenceDigest !== node.exactInputDigests.retryDecision ||
         retryDecision.failedAttemptId !==
-          `attempt-legacy-${failedInvocation.invocationId}`)) ||
+          `attempt-provider-${failedInvocation.invocationId}`)) ||
     (executionPolicySnapshot !== null &&
       sha256(canonicalJson(executionPolicySnapshot)) !==
         node.exactInputDigests.executionPolicySnapshot) ||

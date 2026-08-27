@@ -2830,7 +2830,7 @@ function retryInvestigationProviderUnlocked(
     );
   } else if (
     existingReservation.retryDecision.failedAttemptId !==
-    `attempt-legacy-${previous.invocationId}`
+    `attempt-provider-${previous.invocationId}`
   ) {
     throw workflowError(
       'PROVIDER_RETRY_DECISION_EVIDENCE_STALE',
@@ -2980,7 +2980,7 @@ function assertProviderRetryExecutionDecision(
   const replacementPolicy = providerExecutionPolicySnapshot(replacementRequest);
   const now = authorization.evaluatedAt;
   const decision = authorization.decision;
-  const replacementAttemptId = `attempt-legacy-${replacementRequest.invocationId}`;
+  const replacementAttemptId = `attempt-provider-${replacementRequest.invocationId}`;
   if (executionGrantAuthorization !== undefined) {
     assertProviderExecutionGrantAuthorization(
       authorization,

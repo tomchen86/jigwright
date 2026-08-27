@@ -378,7 +378,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:28d41c602c884ac58aac09a5ceaeaab66a92f1894898b2f54d65af700e30ec25"
+      "digest": "sha256:17feb2b788255d3b8a265666edc78db13b9fb966e2c73684bf81cda8dd0aacf9"
     },
     {
       "path": "src/adapters/planning/investigation/investigation-why.ts",
@@ -538,7 +538,7 @@
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:30b416960bfc3c43fcc69c4436f4f686ecbbe92fccc721cb0ba58cc0e28bc1d0"
+      "digest": "sha256:78e7d955e6f98760dbd9517a0bd49ddcaea71f7b9e34bcf2133b908af4731434"
     },
     {
       "path": "src/application/control-plane/human-revocation.ts",
@@ -628,7 +628,7 @@
     {
       "path": "src/application/execute-task/task-strategy-implementation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:da7b0714b9aa339e93da966e1600a4cfc85ff84faf2e0dd8816e31a00749d4fd"
+      "digest": "sha256:ab4efa99878f243b113dff8bf90e9a95cde5e195113956a7b4180aef356bd616"
     },
     {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
@@ -693,7 +693,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:5a7a54e6dd6da0dfa330a088d52c022aa3f5e8525e087c2f27000b9c7945a608"
+      "digest": "sha256:71a0d8b11357155e9649008937c32750d11f507729dabca569e26e7a932e123f"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1533,7 +1533,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:8e95625495660b5139dc034c76530daa3acd8a3be8a23f697a4c16fcb8bc350c"
+      "digest": "sha256:22a53a76b68a0345d4b98f23396d21e1ddbbf09606fecfccef595b92df690526"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
@@ -1748,7 +1748,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:4756d6fc769f08ecda8684a0cb727ef5e58e79785601495c0a59f3cd04008313"
+      "digest": "sha256:d516900c94bef42b3c8c66597513468ad9cd8c1f68c0f7cbc4c2f55119108caa"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
@@ -1758,12 +1758,12 @@
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:762b0dd170a441e0b99111fdba0f6efcd867723d283abde0690628e94fd38014"
+      "digest": "sha256:4c5ebbbeb41cfa2b9dfb3981a4ab91786d48807c1658369560ff2c3a2bd092bd"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-policy-authority.ts",
       "mode": "100644",
-      "digest": "sha256:8e5c876bd5d93fe5ce3fac05b7029cfc7d3f033d1bb0ab0b6b497a1e497b7575"
+      "digest": "sha256:4197a0d7df4d43b752da6671a6cc4a0eda35467f291f153a07c35d6e6035e065"
     },
     {
       "path": "src/runtime/provider-execution/provider-invocation-supersession-schema.ts",
@@ -1948,7 +1948,7 @@
     {
       "path": "src/runtime/storage-journal/evidence-object-store.ts",
       "mode": "100644",
-      "digest": "sha256:085db188584800530b4f46e4ac084fbf0d9ea9a816010779956c2d5789473f9d"
+      "digest": "sha256:9a3a7f61ef004618687713167548a6880d9008d763090fd274ff3670e4b0cf0a"
     },
     {
       "path": "src/runtime/storage-journal/execution-store.ts",
@@ -2018,7 +2018,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:8db140a2d2ea8c085d9d434c3aa7baa15faf6a7c690b30de7d8a2e833ff16201"
+      "digest": "sha256:0831959189cf9bc43aa3fc3f09eb6b2a7c924b48e7b25b1b8c59d960df435ac4"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",

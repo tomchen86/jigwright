@@ -1639,7 +1639,7 @@ function assertPlanReviewRetryOwnership(
         !Number.isSafeInteger(retry.retryDecision.executionRevision) ||
         (retry.retryDecision.executionRevision as number) < 0 ||
         retry.retryDecision.failedAttemptId !==
-          `attempt-legacy-${retry.failedInvocation.invocationId}` ||
+          `attempt-provider-${retry.failedInvocation.invocationId}` ||
         !isDigest(retry.retryDecision.evidenceDigest) ||
         typeof retry.retryDecision.evaluatedAt !== 'string' ||
         Number.isNaN(Date.parse(retry.retryDecision.evaluatedAt)) ||

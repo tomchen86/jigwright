@@ -226,7 +226,7 @@ test('engine governance metrics use canonical supersede reasons and isolate lega
   );
   canonical.workflow.status = 'superseded';
   const legacy = inspection(
-    'job-legacy-supersede',
+    'job-provider-supersede',
     'survey',
     [attempt('legacy-1', 1, 'succeeded', NOW)],
     'legacy-1',
