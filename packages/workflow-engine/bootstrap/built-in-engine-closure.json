@@ -1163,7 +1163,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:c9eef9a9927914150d7693d52ea2115cf149aac63cb5ec1ab37739c0a494f421"
+      "digest": "sha256:3f40911ea6fe434f5c99390cb5c260d1e6a9cb50a5b6a4694f975af26effe4a6"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1288,7 +1288,7 @@
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:275efe26002aac34f7644c1c0cab57633c7562a3758f72c24ed4776361a399ea"
+      "digest": "sha256:eb08c5a171f835fc4af4f4ca03a2a9c8fc00acfd696815579e2fb2335bf59d8f"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",

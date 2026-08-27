@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:83b902e9183a7ef0464c96bf1ced2bd59f0936beec3429b1b846463047346f4d"
+      "digest": "sha256:bc7430ea45f0b6a2ddc812a266ae32a567fd248675f13a97dfeab1702de5ecd5"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -323,7 +323,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant.js",
       "mode": "100644",
-      "digest": "sha256:ce3c4ce57ca59409a37c9127a3b3cc5c995a69a0d8b0dc209e8b53c1a63a72fb"
+      "digest": "sha256:e7c16f0623fe7acfdef7e4f76e8104349f0a640c2dcd93deb005689edee1263c"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant.js",
@@ -408,7 +408,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/compatibility/legacy-workflow-identities.js",
       "mode": "100644",
-      "digest": "sha256:7a1285cae183ab1db7ac35b78dd11c1a141afaa8be71e18c7e759dad34fbda6f"
+      "digest": "sha256:8fe0b55f5ec174de629617764be46350e40dc09de7cb8e07839d487e0c4f7b0a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",

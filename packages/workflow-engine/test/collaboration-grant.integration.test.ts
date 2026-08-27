@@ -1543,7 +1543,7 @@ test('same-provider grants require the only callable provider and a fresh engine
   }
 });
 
-test('direct-human review V1 retains exact canonical bytes and refuses version fallback', () => {
+test('direct-human review requires the current explicit signature namespace', () => {
   const signature =
     '-----BEGIN SSH SIGNATURE-----\nYWJj\n-----END SSH SIGNATURE-----\n';
   const payload = {
@@ -1566,8 +1566,15 @@ test('direct-human review V1 retains exact canonical bytes and refuses version f
     `"reviewResultDigest":"${'e'.repeat(64)}",` +
     '"signedAt":"2026-08-20T00:00:00.000Z",' +
     '"signer":"fixture-maintainer"}\n';
-  const attestation = { payload, signature };
-  const envelopeBytes = `{"payload":${payloadBytes.trimEnd()},"signature":${JSON.stringify(signature)}}\n`;
+  const attestation = {
+    payload,
+    signatureNamespace: DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
+    signature,
+  };
+  const envelopeBytes =
+    `{"payload":${payloadBytes.trimEnd()},` +
+    `"signatureNamespace":"${DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE}",` +
+    `"signature":${JSON.stringify(signature)}}\n`;
 
   assert.equal(canonicalDirectHumanReviewPayload(payload), payloadBytes);
   assert.equal(
@@ -1577,6 +1584,13 @@ test('direct-human review V1 retains exact canonical bytes and refuses version f
   assert.deepEqual(
     parseDirectHumanReviewAttestation(envelopeBytes),
     attestation,
+  );
+  assert.throws(
+    () =>
+      parseDirectHumanReviewAttestation(
+        `{"payload":${payloadBytes.trimEnd()},"signature":${JSON.stringify(signature)}}\n`,
+      ),
+    (error) => isWorkflowError(error, 'DIRECT_HUMAN_REVIEW_INVALID'),
   );
   assert.throws(
     () =>

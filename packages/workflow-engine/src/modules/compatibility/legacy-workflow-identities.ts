@@ -10,7 +10,6 @@ export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
   collaborationPolicy: 'expense-app.workflow.collaboration-policy.v1',
   taskDiffReviewCollaborationPolicy:
     'expense-app.workflow.collaboration-policy.task-diff-review.v1',
-  directHumanReview: 'expense-app.workflow.direct-human-review.v1',
   humanResolutionGrant: 'expense-app.workflow.human-resolution-grant.v1',
   maintainerGrantV1: 'expense-app.workflow.maintainer-grant.v1',
   roleContextSharingPolicy:

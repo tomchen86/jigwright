@@ -369,8 +369,7 @@ export type DirectHumanReviewAttestationPayload = {
 
 export type DirectHumanReviewAttestation = {
   payload: DirectHumanReviewAttestationPayload;
-  /** Absent only on historical consumer-branded attestations. */
-  signatureNamespace?: typeof DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE;
   signature: string;
 };
 
@@ -507,13 +506,12 @@ export function canonicalDirectHumanReviewAttestation(
   attestation: DirectHumanReviewAttestation,
 ): string {
   try {
-    const legacyEnvelope = canonicalSignedAttestationEnvelopeBytesV1(
+    const envelope = canonicalSignedAttestationEnvelopeBytesV1(
       { payload: attestation.payload, signature: attestation.signature },
       DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC,
     );
     const signatureNamespace = directHumanReviewSignatureNamespace(attestation);
-    if (attestation.signatureNamespace === undefined) return legacyEnvelope;
-    const parsed = JSON.parse(legacyEnvelope) as {
+    const parsed = JSON.parse(envelope) as {
       payload: DirectHumanReviewAttestationPayload;
       signature: string;
     };
@@ -544,35 +542,31 @@ export function parseDirectHumanReviewAttestation(
   try {
     const value = JSON.parse(raw) as unknown;
     if (
-      isPlainRecord(value) &&
-      hasExactDataKeys(value, ['payload', 'signatureNamespace', 'signature'])
+      !isPlainRecord(value) ||
+      !hasExactDataKeys(value, [
+        'payload',
+        'signatureNamespace',
+        'signature',
+      ]) ||
+      value.signatureNamespace !== DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE
     ) {
-      if (
-        value.signatureNamespace !== DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE
-      ) {
-        throw directHumanReviewInvalid();
-      }
-      const legacyRaw = `${JSON.stringify({
+      throw directHumanReviewInvalid();
+    }
+    const envelope = parseSignedAttestationEnvelopeV1(
+      `${JSON.stringify({
         payload: value.payload,
         signature: value.signature,
-      })}\n`;
-      const legacy = parseSignedAttestationEnvelopeV1(
-        legacyRaw,
-        DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC,
-      );
-      const current: DirectHumanReviewAttestation = {
-        ...legacy,
-        signatureNamespace: DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-      };
-      if (canonicalDirectHumanReviewAttestation(current) !== raw) {
-        throw directHumanReviewInvalid();
-      }
-      return current;
-    }
-    return parseSignedAttestationEnvelopeV1(
-      raw,
+      })}\n`,
       DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC,
     );
+    const current: DirectHumanReviewAttestation = {
+      ...envelope,
+      signatureNamespace: DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
+    };
+    if (canonicalDirectHumanReviewAttestation(current) !== raw) {
+      throw directHumanReviewInvalid();
+    }
+    return current;
   } catch (error) {
     const signatureError = collaborationReaderSignatureCause(error);
     if (signatureError) throw signatureError;
@@ -850,12 +844,11 @@ export function validateDirectHumanReviewAttestation(
 ): DirectHumanReviewAttestation {
   if (
     !isPlainRecord(attestation) ||
-    (!hasExactDataKeys(attestation, ['payload', 'signature']) &&
-      !hasExactDataKeys(attestation, [
-        'payload',
-        'signatureNamespace',
-        'signature',
-      ])) ||
+    !hasExactDataKeys(attestation, [
+      'payload',
+      'signatureNamespace',
+      'signature',
+    ]) ||
     !isPlainRecord(attestation.payload) ||
     !hasExactDataKeys(attestation.payload, DIRECT_HUMAN_PAYLOAD_KEYS) ||
     typeof attestation.signature !== 'string'
@@ -873,10 +866,7 @@ export function validateDirectHumanReviewAttestation(
       ),
       codec: DIRECT_HUMAN_REVIEW_ATTESTATION_CODEC,
       signatureNamespace,
-      allowedSignatureNamespaces: [
-        DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-        LEGACY_WORKFLOW_IDENTITIES.directHumanReview,
-      ],
+      allowedSignatureNamespaces: [DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE],
       validatePayload(parsedPayload) {
         const grant = validateCollaborationGrantEnvelope(
           options.grantEnvelope,
@@ -932,12 +922,7 @@ export function validateDirectHumanReviewAttestation(
 
 function directHumanReviewSignatureNamespace(
   attestation: DirectHumanReviewAttestation,
-):
-  | typeof DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.directHumanReview {
-  if (attestation.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.directHumanReview;
-  }
+): typeof DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE {
   if (
     attestation.signatureNamespace === DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE
   ) {
