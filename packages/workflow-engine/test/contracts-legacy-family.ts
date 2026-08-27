@@ -235,7 +235,6 @@ import './archive-pr-orchestration.integration.test.ts';
 import './change-routing.integration.test.ts';
 import './governance-intake.integration.test.ts';
 import './local-adoption.contract.test.ts';
-import './local-release.contract.test.ts';
 import './release-v1.contract.test.ts';
 import './portability-mvp.integration.test.ts';
 // BEGIN GENERATED PACKAGE TEST PROJECTIONS

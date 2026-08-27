@@ -18,7 +18,7 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
   );
   assert.equal(
     workspaceManifest.scripts['jigwright:pack-workspace'],
-    'node --experimental-strip-types scripts/build-local-jigwright-release.ts --output dist/workspace-release',
+    undefined,
   );
   assert.equal(workspaceManifest.scripts['jigwright:pack-single'], undefined);
   const scratch = fs.mkdtempSync(

@@ -17,7 +17,7 @@ test('the public adoption command is current-only and preserves the workspace re
   );
   assert.equal(
     workspaceManifest.scripts['jigwright:adopt-workspace'],
-    'node --experimental-strip-types scripts/run-local-jigwright-adoption.ts',
+    undefined,
   );
 });
 
