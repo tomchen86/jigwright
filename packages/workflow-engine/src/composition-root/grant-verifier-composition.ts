@@ -4,7 +4,6 @@ import path from 'node:path';
 
 import {
   COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
-  COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1,
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
@@ -206,7 +205,6 @@ export function createConsumedCollaborationGrantReplayVerifier(
         namespace: string,
       ): void {
         if (
-          namespace !== COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE &&
           namespace !== COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE &&
           namespace !== DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE
         ) {
@@ -543,9 +541,8 @@ function loadAndAssertComposition(
     composition.verifierImplementation !== 'ssh-maintainer-policy.v1' ||
     composition.readerContractVersion !==
       COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1 ||
+    composition.signatureNamespaces.length !== 1 ||
     composition.signatureNamespaces[0] !==
-      COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE ||
-    composition.signatureNamespaces[1] !==
       COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE ||
     composition.authorizedEffects.length !== 1 ||
     composition.authorizedEffects[0] !== COLLABORATION_EFFECT ||

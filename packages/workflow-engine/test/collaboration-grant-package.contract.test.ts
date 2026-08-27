@@ -9,7 +9,6 @@ import test from 'node:test';
 import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_POLICY_DIGEST,
-  COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   LEGACY_COLLABORATION_GRANT_POLICY_DIGEST,
   canonicalCollaborationGrantPayload,
@@ -53,7 +52,7 @@ const POLICY: MaintainerPolicy = {
   ],
 };
 
-test('the production collaboration validator emits typed capabilities for historical V1 and current V2 namespaces', () => {
+test('the production collaboration validator accepts current V2 and rejects historical V1 before verification', () => {
   const namespaces: string[] = [];
   const verifier = {
     verify(
@@ -69,52 +68,39 @@ test('the production collaboration validator emits typed capabilities for histor
     },
   };
 
-  for (const version of [1, 2] as const) {
-    const envelope = collaborationEnvelope(version);
-    const capability = verifyCollaborationGrantCapability(envelope, POLICY, {
-      now: NOW,
-      expected: {
-        repositoryId: envelope.payload.repositoryId,
-        repositoryOrigin: envelope.payload.repositoryOrigin,
-        policyBlob: envelope.payload.policyBlob,
-        collaborationPolicyDigest: envelope.payload.collaborationPolicyDigest,
-        changeId: envelope.payload.changeId,
-        taskId: envelope.payload.taskId,
-        baselineCommit: envelope.payload.baselineCommit,
-        baselineTree: envelope.payload.baselineTree,
-        targetDigest: envelope.payload.targetDigest,
-        lifecyclePhase: envelope.payload.lifecyclePhase,
-        rolePair: envelope.payload.rolePair,
-        availableActor: envelope.payload.availableActor,
-        degradedForm: envelope.payload.degradedForm,
-        reason: envelope.payload.reason,
-      },
-      verifier,
-    });
-    const expectedNamespace =
-      version === 1
-        ? COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE
-        : COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
-    assert.equal(capability.envelope.payload.version, version);
-    assert.equal(
-      capability.verification.receipt.signatureNamespace,
-      expectedNamespace,
-    );
-    assert.equal(
-      capability.verification.receipt.authorizedEffect,
-      COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-    );
-    assert.equal(
-      capability.verification.receipt.signedPayloadDigest,
-      sha256(canonicalCollaborationGrantPayload(envelope.payload)),
-    );
-    assert.equal(Object.isFrozen(capability), true);
-  }
-
-  assert.deepEqual(namespaces, [
-    COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
+  const envelope = collaborationEnvelope(2);
+  const capability = verifyCollaborationGrantCapability(envelope, POLICY, {
+    now: NOW,
+    expected: expectedBinding(envelope),
+    verifier,
+  });
+  assert.equal(capability.envelope.payload.version, 2);
+  assert.equal(
+    capability.verification.receipt.signatureNamespace,
     COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-  ]);
+  );
+  assert.equal(
+    capability.verification.receipt.authorizedEffect,
+    COLLABORATION_GRANT_AUTHORIZED_EFFECT,
+  );
+  assert.equal(
+    capability.verification.receipt.signedPayloadDigest,
+    sha256(canonicalCollaborationGrantPayload(envelope.payload)),
+  );
+  assert.equal(Object.isFrozen(capability), true);
+  assert.deepEqual(namespaces, [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE]);
+
+  const historical = collaborationEnvelope(1);
+  assert.throws(
+    () =>
+      verifyCollaborationGrantCapability(historical, POLICY, {
+        now: NOW,
+        expected: expectedBinding(historical),
+        verifier,
+      }),
+    /Collaboration grant envelope is invalid/u,
+  );
+  assert.deepEqual(namespaces, [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE]);
 });
 
 test('@jigwright/grants is optional at install time while non-grant CLI loading remains available and grant routes fail closed', () => {
@@ -322,6 +308,25 @@ function collaborationEnvelope(version: 1 | 2): CollaborationGrantEnvelope {
           ...common,
         };
   return { payload, signature: SIGNATURE };
+}
+
+function expectedBinding(envelope: CollaborationGrantEnvelope) {
+  return {
+    repositoryId: envelope.payload.repositoryId,
+    repositoryOrigin: envelope.payload.repositoryOrigin,
+    policyBlob: envelope.payload.policyBlob,
+    collaborationPolicyDigest: envelope.payload.collaborationPolicyDigest,
+    changeId: envelope.payload.changeId,
+    taskId: envelope.payload.taskId,
+    baselineCommit: envelope.payload.baselineCommit,
+    baselineTree: envelope.payload.baselineTree,
+    targetDigest: envelope.payload.targetDigest,
+    lifecyclePhase: envelope.payload.lifecyclePhase,
+    rolePair: envelope.payload.rolePair,
+    availableActor: envelope.payload.availableActor,
+    degradedForm: envelope.payload.degradedForm,
+    reason: envelope.payload.reason,
+  };
 }
 
 function sha256(value: string): string {

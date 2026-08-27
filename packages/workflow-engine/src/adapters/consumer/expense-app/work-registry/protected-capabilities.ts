@@ -23,7 +23,6 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../../../runtime/session-workspace/paths.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../../../modules/compatibility/legacy-workflow-identities.ts';
 
 const MANIFEST_PATH = 'workflow/protected-capabilities.json';
 const LOADER_PATH =
@@ -88,10 +87,7 @@ export type CollaborationGrantVerifierCompositionV1 = {
   verifierImplementation: 'ssh-maintainer-policy.v1';
   verifierContractVersion: 'jigwright.grant-envelope-verifier.v1';
   readerContractVersion: 'jigwright.collaboration-grant-envelope-reader.v1';
-  signatureNamespaces: [
-    typeof LEGACY_WORKFLOW_IDENTITIES.collaborationGrant,
-    'workflow.collaboration-grant.v2',
-  ];
+  signatureNamespaces: ['workflow.collaboration-grant.v2'];
   authorizedEffects: ['role-independence-degradation-only'];
   sourcePaths: string[];
   sourceDigest: Sha256Digest;
@@ -586,10 +582,8 @@ function parseCollaborationGrantVerifierComposition(
     !/^[0-9a-f]{64}$/.test(String(value.collaborationPolicyDigest)) ||
     !/^[0-9a-f]{64}$/.test(String(value.taskDiffReviewPolicyDigest)) ||
     !Array.isArray(value.signatureNamespaces) ||
-    value.signatureNamespaces.length !== 2 ||
-    value.signatureNamespaces[0] !==
-      LEGACY_WORKFLOW_IDENTITIES.collaborationGrant ||
-    value.signatureNamespaces[1] !== 'workflow.collaboration-grant.v2' ||
+    value.signatureNamespaces.length !== 1 ||
+    value.signatureNamespaces[0] !== 'workflow.collaboration-grant.v2' ||
     !Array.isArray(value.authorizedEffects) ||
     value.authorizedEffects.length !== 1 ||
     value.authorizedEffects[0] !== 'role-independence-degradation-only' ||
@@ -620,10 +614,7 @@ function parseCollaborationGrantVerifierComposition(
     verifierImplementation: value.verifierImplementation,
     verifierContractVersion: value.verifierContractVersion,
     readerContractVersion: value.readerContractVersion,
-    signatureNamespaces: [
-      LEGACY_WORKFLOW_IDENTITIES.collaborationGrant,
-      'workflow.collaboration-grant.v2',
-    ],
+    signatureNamespaces: ['workflow.collaboration-grant.v2'],
     authorizedEffects: ['role-independence-degradation-only'],
     sourcePaths,
     sourceDigest: value.sourceDigest as Sha256Digest,

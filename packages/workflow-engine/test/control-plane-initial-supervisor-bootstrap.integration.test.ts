@@ -1740,10 +1740,7 @@ function installFixtureGrantVerifierComposition(
     verifierImplementation: 'ssh-maintainer-policy.v1',
     verifierContractVersion: 'jigwright.grant-envelope-verifier.v1',
     readerContractVersion: 'jigwright.collaboration-grant-envelope-reader.v1',
-    signatureNamespaces: [
-      'expense-app.workflow.collaboration-grant.v1',
-      'workflow.collaboration-grant.v2',
-    ],
+    signatureNamespaces: ['workflow.collaboration-grant.v2'],
     authorizedEffects: ['role-independence-degradation-only'],
     sourcePaths: [FIXTURE_GRANT_PACKAGE_PATH],
     sourceDigest: digest(

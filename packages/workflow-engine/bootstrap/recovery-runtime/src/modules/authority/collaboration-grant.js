@@ -519,6 +519,11 @@ export function verifyCollaborationGrantCapability(envelope, policy, options) {
         typeof envelope.signature !== 'string') {
         throw collaborationInvalid('Collaboration grant envelope shape is invalid.');
     }
+    if (envelope.payload.version !== 2 ||
+        envelope.payload.signatureNamespace !==
+            COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE) {
+        throw collaborationInvalid('Collaboration grant envelope is invalid.');
+    }
     try {
         const verified = readAndVerifyCollaborationGrantEnvelopeV1({
             readerContractVersion: COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,

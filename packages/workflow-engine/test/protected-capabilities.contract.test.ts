@@ -169,11 +169,7 @@ function installTypedCompositionManifest(repository: string): string {
     verifierContractVersion: 'jigwright.grant-envelope-verifier.v1' as const,
     readerContractVersion:
       'jigwright.collaboration-grant-envelope-reader.v1' as const,
-    signatureNamespaces: [
-      'expense-app.workflow.collaboration-grant.v1',
-      'workflow.collaboration-grant.v2',
-    ] as [
-      'expense-app.workflow.collaboration-grant.v1',
+    signatureNamespaces: ['workflow.collaboration-grant.v2'] as [
       'workflow.collaboration-grant.v2',
     ],
     authorizedEffects: ['role-independence-degradation-only'] as [

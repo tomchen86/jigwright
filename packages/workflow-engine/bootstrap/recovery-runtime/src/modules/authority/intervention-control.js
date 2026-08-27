@@ -596,10 +596,7 @@ function createCollaborationGrantVerifierComposition(value, entries) {
         throw workflowError('PROTECTED_CAPABILITY_MANIFEST_INVALID', 'The Collaboration Grant verifier composition is malformed.', ExitCode.usage);
     }
     const record = value;
-    const expectedNamespaces = [
-        LEGACY_WORKFLOW_IDENTITIES.collaborationGrant,
-        'workflow.collaboration-grant.v2',
-    ];
+    const expectedNamespaces = ['workflow.collaboration-grant.v2'];
     const expectedEffects = ['role-independence-degradation-only'];
     if (record.kind !== 'collaboration-grant-verifier-composition.v1' ||
         record.packageName !== '@jigwright/grants' ||

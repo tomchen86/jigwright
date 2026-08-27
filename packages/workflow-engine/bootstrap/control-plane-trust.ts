@@ -1832,10 +1832,8 @@ function validGrantVerifierCompositionShape(
     value.readerContractVersion !==
       'jigwright.collaboration-grant-envelope-reader.v1' ||
     !Array.isArray(value.signatureNamespaces) ||
-    value.signatureNamespaces.length !== 2 ||
-    value.signatureNamespaces[0] !==
-      'expense-app.workflow.collaboration-grant.v1' ||
-    value.signatureNamespaces[1] !== 'workflow.collaboration-grant.v2' ||
+    value.signatureNamespaces.length !== 1 ||
+    value.signatureNamespaces[0] !== 'workflow.collaboration-grant.v2' ||
     !Array.isArray(value.authorizedEffects) ||
     value.authorizedEffects.length !== 1 ||
     value.authorizedEffects[0] !== 'role-independence-degradation-only' ||

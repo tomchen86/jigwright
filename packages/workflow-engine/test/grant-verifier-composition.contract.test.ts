@@ -80,12 +80,11 @@ test('R-007 verifier currentness pins the exact production authority source clos
   assert.deepEqual(declared, ROLE_CONTEXT_SHARING_PROTECTED_SOURCE_PATHS);
 });
 
-test('sealed package-integrity composition gates V1/V2 verification with no unsealed fallback', () => {
+test('sealed package-integrity composition gates current V2 verification with no unsealed fallback', () => {
   const manifest = loadProtectedCapabilitiesFromWorktree(sourceRepositoryRoot);
   const composition = manifest.grantVerifierComposition;
   assert.ok(composition);
   assert.deepEqual(composition.signatureNamespaces, [
-    'expense-app.workflow.collaboration-grant.v1',
     'workflow.collaboration-grant.v2',
   ]);
   assert.deepEqual(composition.authorizedEffects, [

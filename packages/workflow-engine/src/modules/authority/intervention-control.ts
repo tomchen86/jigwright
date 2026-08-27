@@ -1130,10 +1130,7 @@ export interface CollaborationGrantVerifierComposition {
   verifierImplementation: 'ssh-maintainer-policy.v1';
   verifierContractVersion: 'jigwright.grant-envelope-verifier.v1';
   readerContractVersion: 'jigwright.collaboration-grant-envelope-reader.v1';
-  signatureNamespaces: [
-    typeof LEGACY_WORKFLOW_IDENTITIES.collaborationGrant,
-    'workflow.collaboration-grant.v2',
-  ];
+  signatureNamespaces: ['workflow.collaboration-grant.v2'];
   authorizedEffects: ['role-independence-degradation-only'];
   sourcePaths: string[];
   sourceDigest: Sha256Digest;
@@ -1227,10 +1224,7 @@ function createCollaborationGrantVerifierComposition(
     );
   }
   const record = value as Record<string, unknown>;
-  const expectedNamespaces = [
-    LEGACY_WORKFLOW_IDENTITIES.collaborationGrant,
-    'workflow.collaboration-grant.v2',
-  ] as const;
+  const expectedNamespaces = ['workflow.collaboration-grant.v2'] as const;
   const expectedEffects = ['role-independence-degradation-only'] as const;
   if (
     record.kind !== 'collaboration-grant-verifier-composition.v1' ||

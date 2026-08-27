@@ -363,7 +363,7 @@
     {
       "path": "src/adapters/consumer/expense-app/work-registry/protected-capabilities.ts",
       "mode": "100644",
-      "digest": "sha256:bc696c7f606a9e0c37f7db6166001d19851df5a8ba4cd421cfadfc8866e67aea"
+      "digest": "sha256:5a3102d4813db8ca9a832b0de58ac5c66df2e3004b2923ff0abd8924bd485954"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/registered-check.ts",
@@ -788,7 +788,7 @@
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
-      "digest": "sha256:b7cf40735305bcf4db2ac8aa9a30dbd8d80ef1db8eab7f9376a2367eddb07414"
+      "digest": "sha256:db7d34ab9eb4d6545d6a0375fad426556f15a16ef749b22840b2aa0239b7bdaa"
     },
     {
       "path": "src/composition-root/lifecycle-context.ts",
@@ -1163,7 +1163,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:3f40911ea6fe434f5c99390cb5c260d1e6a9cb50a5b6a4694f975af26effe4a6"
+      "digest": "sha256:20192b17908029d03432556c7a1ec30c03ac8ee664c13d001a9d977f6554481a"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1218,7 +1218,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:15c783073ca1e0d08b9d06cdfb5ea68f904ca19345eeebd879e44adee413e388"
+      "digest": "sha256:ddbb577ba9e9b26a1dece7637413a835224ee4779c949fbb62f03f6c5f6ef639"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",

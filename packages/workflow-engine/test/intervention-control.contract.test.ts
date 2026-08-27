@@ -407,10 +407,7 @@ function grantVerifierComposition(
     verifierContractVersion: 'jigwright.grant-envelope-verifier.v1' as const,
     readerContractVersion:
       'jigwright.collaboration-grant-envelope-reader.v1' as const,
-    signatureNamespaces: [
-      'expense-app.workflow.collaboration-grant.v1',
-      'workflow.collaboration-grant.v2',
-    ] as const,
+    signatureNamespaces: ['workflow.collaboration-grant.v2'] as const,
     authorizedEffects: ['role-independence-degradation-only'] as const,
     sourcePaths: ['packages/grants/package.json'],
     sourceDigest: digest('fixture-grant-verifier-sources'),
