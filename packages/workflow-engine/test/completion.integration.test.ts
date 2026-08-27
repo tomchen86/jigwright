@@ -479,6 +479,31 @@ test('finalize adds terminal policy checks only when its projection closes the t
       path.join(repository, 'src/feature.ts'),
       'export const complete = true;\n',
     );
+    const reviewRequired = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        'finalize',
+        second.sessionId,
+        '--message',
+        'Complete second task',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(reviewRequired.status, 13, reviewRequired.stderr);
+    assert.equal(
+      (JSON.parse(reviewRequired.stderr.trim().split('\n').at(-1) ?? '') as {
+        error: { code: string };
+      }).error.code,
+      'TASK_DIFF_REVIEW_REQUIRED',
+    );
+    assert.match(
+      reviewRequired.stderr,
+      /This finalize completes the change → running full gate\./,
+    );
+    satisfyCurrentTaskDiffReview(repository, second.sessionId);
     const secondRun = spawnSync(
       process.execPath,
       [
@@ -493,10 +518,6 @@ test('finalize adds terminal policy checks only when its projection closes the t
       { cwd: repository, encoding: 'utf8' },
     );
     assert.equal(secondRun.status, 0, secondRun.stderr);
-    assert.match(
-      secondRun.stderr,
-      /This finalize completes the change → running full gate\./,
-    );
     const secondFinalized = JSON.parse(secondRun.stdout).result as {
       checkReportId: string;
       commitHash: string;
@@ -609,6 +630,11 @@ test('projected single-pass commit rejects a mismatched frozen candidate tree', 
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
     finalizeTask(repository, session.sessionId);
     const finalizedSession = getSession(repository, session.sessionId);
     const reportsRoot = path.join(runtimeRoot(repository), 'reports');
