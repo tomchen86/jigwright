@@ -30,7 +30,6 @@ import {
   writeContentRecord,
 } from '../../runtime/storage-journal/content-record-store.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 export const TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE =
   'workflow.task-revision-approval.v1' as const;
@@ -82,8 +81,7 @@ export type TaskRevisionApprovalPayload = Readonly<{
 
 export type TaskRevisionApprovalEnvelope = Readonly<{
   payload: TaskRevisionApprovalPayload;
-  /** Absent only on historical consumer-branded envelopes. */
-  signatureNamespace?: typeof TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE;
   signature: string;
 }>;
 
@@ -359,11 +357,11 @@ function canonicalTaskRevisionApprovalEnvelope(
     canonicalTaskRevisionApprovalPayload(envelope.payload),
   );
   const signatureNamespace = taskRevisionApprovalSignatureNamespace(envelope);
-  return `${canonicalJson(
-    envelope.signatureNamespace === undefined
-      ? { payload, signature: envelope.signature }
-      : { payload, signatureNamespace, signature: envelope.signature },
-  )}\n`;
+  return `${canonicalJson({
+    payload,
+    signatureNamespace,
+    signature: envelope.signature,
+  })}\n`;
 }
 
 function taskRevisionApprovalRecordId(
@@ -392,26 +390,16 @@ function assertTaskRevisionApprovalEnvelope(
 ): TaskRevisionApprovalEnvelope {
   if (
     !isRecord(value) ||
-    (!hasExactKeys(value, ['payload', 'signature']) &&
-      !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature'])) ||
+    !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature']) ||
+    value.signatureNamespace !== TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE ||
     typeof value.signature !== 'string'
   ) {
     throw approvalInvalid('Task-revision approval envelope is malformed.');
   }
-  if (
-    'signatureNamespace' in value &&
-    value.signatureNamespace !== TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE
-  ) {
-    throw approvalInvalid(
-      'Task-revision approval signature namespace is invalid.',
-    );
-  }
   assertArmoredSignature(value.signature);
   const envelope = {
     payload: assertTaskRevisionApprovalPayloadShape(value.payload),
-    ...('signatureNamespace' in value
-      ? { signatureNamespace: TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE }
-      : {}),
+    signatureNamespace: TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE,
     signature: value.signature,
   };
   const canonical = canonicalTaskRevisionApprovalEnvelope(envelope);
@@ -427,12 +415,7 @@ function assertTaskRevisionApprovalEnvelope(
 
 function taskRevisionApprovalSignatureNamespace(
   envelope: TaskRevisionApprovalEnvelope,
-):
-  | typeof TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.taskRevisionApproval {
-  if (envelope.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.taskRevisionApproval;
-  }
+): typeof TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE {
   if (
     envelope.signatureNamespace === TASK_REVISION_APPROVAL_SIGNATURE_NAMESPACE
   ) {

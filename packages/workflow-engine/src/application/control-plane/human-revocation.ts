@@ -22,7 +22,6 @@ import {
   createInteractiveSshSigner,
   type MaintainerSignerProvider,
 } from '../../adapters/signing/ssh/maintainer-signer.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../modules/compatibility/legacy-workflow-identities.ts';
 
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const SUBJECT = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,255}$/;
@@ -74,8 +73,7 @@ export type HumanRevocationAuthorizationPayload = Readonly<{
 
 export type HumanRevocationAuthorization = Readonly<{
   payload: HumanRevocationAuthorizationPayload;
-  /** Absent only on historical consumer-branded authorizations. */
-  signatureNamespace?: typeof HUMAN_REVOCATION_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof HUMAN_REVOCATION_SIGNATURE_NAMESPACE;
   signature: string;
 }>;
 
@@ -132,8 +130,8 @@ export function assertHumanRevocationAuthorization(
 ): HumanRevocationAuthorization {
   if (
     !isRecord(value) ||
-    (!hasExactKeys(value, ['payload', 'signature']) &&
-      !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature'])) ||
+    !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature']) ||
+    value.signatureNamespace !== HUMAN_REVOCATION_SIGNATURE_NAMESPACE ||
     typeof value.signature !== 'string' ||
     value.signature.length === 0 ||
     value.signature.length > 16_384 ||
@@ -141,17 +139,9 @@ export function assertHumanRevocationAuthorization(
   ) {
     throw invalidRevocation();
   }
-  if (
-    'signatureNamespace' in value &&
-    value.signatureNamespace !== HUMAN_REVOCATION_SIGNATURE_NAMESPACE
-  ) {
-    throw invalidRevocation();
-  }
   return deepFreeze({
     payload: assertPayload(value.payload),
-    ...('signatureNamespace' in value
-      ? { signatureNamespace: HUMAN_REVOCATION_SIGNATURE_NAMESPACE }
-      : {}),
+    signatureNamespace: HUMAN_REVOCATION_SIGNATURE_NAMESPACE,
     signature: value.signature,
   });
 }
@@ -324,12 +314,7 @@ function assertCurrentAuthorizationSignature(
 
 function humanRevocationSignatureNamespace(
   authorization: HumanRevocationAuthorization,
-):
-  | typeof HUMAN_REVOCATION_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.humanRevocation {
-  if (authorization.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.humanRevocation;
-  }
+): typeof HUMAN_REVOCATION_SIGNATURE_NAMESPACE {
   if (
     authorization.signatureNamespace === HUMAN_REVOCATION_SIGNATURE_NAMESPACE
   ) {

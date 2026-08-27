@@ -32,7 +32,7 @@ const EXPECTED_ACTIVE_EDGE_COUNT = 754;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:ff3ec70585dccfc22f87dee80e5bfd888a99bcf40c8fcae6b619060cfb87dcdc';
+  'sha256:64845d31c3b49081542b92faf5fb62c76f47ed326b40e31065eff2ffe57c7b75';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -1219,14 +1219,12 @@ test('legacy consumer identities exist only in exact historical reader registrie
           'expense-app.workflow.evidence-reuse-proof-output.v1',
           'expense-app.workflow.evidence-reuse-proof.v1',
           'expense-app.workflow.human-resolution-grant.v1',
-          'expense-app.workflow.human-revocation.v1',
           'expense-app.workflow.maintainer-grant.v1',
           'expense-app.workflow.provider-availability-pilot-authorization-output.v1',
           'expense-app.workflow.provider-availability-pilot-authorization.v1',
           'expense-app.workflow.role-context-sharing-policy.v1',
           'expense-app.workflow.task-diff-review-continuation-output',
           'expense-app.workflow.task-diff-review-output',
-          'expense-app.workflow.task-revision-approval.v1',
           'expense-app.workflow.task-strategy-implementation-output',
         ].sort(),
     },

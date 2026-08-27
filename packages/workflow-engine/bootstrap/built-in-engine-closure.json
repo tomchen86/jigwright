@@ -543,7 +543,7 @@
     {
       "path": "src/application/control-plane/human-revocation.ts",
       "mode": "100644",
-      "digest": "sha256:a43ac496f0883f0673a96c10a6d3543407b6f41c7cf7114b79f77f634317ba0f"
+      "digest": "sha256:3748432476a5cef5b250e8fbf62134051e9a57a5037248ad037286d95aadb108"
     },
     {
       "path": "src/application/control-plane/intervention-control-bootstrap.ts",
@@ -1283,12 +1283,12 @@
     {
       "path": "src/modules/authority/task-revision-approval.ts",
       "mode": "100644",
-      "digest": "sha256:cd438a9e769c67cdf6e4722ab2600d2ebd11fbe43f03457b983f3fec46af80e8"
+      "digest": "sha256:bcba83050ddc2f1373223b2a131080ff1da01cb66cf54ea9d73935ffa14d3b6c"
     },
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:b370608ed6821112c3950f18cbf4969c65f2ddcab20b0a018e8ca383d420134f"
+      "digest": "sha256:1a30ed4e7d585bc635ce575eade74af32e14c93b82287a2311853ab3a2e765bb"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",

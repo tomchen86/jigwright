@@ -851,30 +851,45 @@ test('approval issuance rejects a mismatched target and an untrusted signer', ()
 });
 
 test('resume rejects approval signature failure and unsafe record publication', () => {
-  for (const failure of ['signature', 'mode', 'noncanonical-record'] as const) {
+  for (const failure of [
+    'signature',
+    'mode',
+    'missing-namespace',
+    'noncanonical-record',
+  ] as const) {
     const fixture = approvedWideningFixture();
     const { repository, session, approval } = fixture;
     try {
       let approvalId = approval.approvalId;
       if (failure === 'mode') {
         fs.chmodSync(approval.recordPath, 0o644);
-      } else if (failure === 'noncanonical-record') {
+      } else if (
+        failure === 'missing-namespace' ||
+        failure === 'noncanonical-record'
+      ) {
         const record = JSON.parse(
           fs.readFileSync(approval.recordPath, 'utf8'),
         ) as Record<string, unknown>;
-        const noncanonical = `${JSON.stringify({
-          envelope: record.envelope,
-          createdAt: record.createdAt,
-          kind: record.kind,
-          schemaVersion: record.schemaVersion,
-        })}\n`;
+        if (failure === 'missing-namespace') {
+          delete (record.envelope as Record<string, unknown>)
+            .signatureNamespace;
+        }
+        const candidate =
+          failure === 'missing-namespace'
+            ? `${JSON.stringify(record, null, 2)}\n`
+            : `${JSON.stringify({
+                envelope: record.envelope,
+                createdAt: record.createdAt,
+                kind: record.kind,
+                schemaVersion: record.schemaVersion,
+              })}\n`;
         approvalId = crypto
           .createHash('sha256')
-          .update(noncanonical)
+          .update(candidate)
           .digest('hex');
         fs.writeFileSync(
           path.join(path.dirname(approval.recordPath), `${approvalId}.json`),
-          noncanonical,
+          candidate,
           { mode: 0o600 },
         );
       }

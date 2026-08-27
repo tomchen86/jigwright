@@ -36,6 +36,12 @@ import {
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 import { issueLegacyHumanResolutionGrantFixture } from './legacy-human-resolution-grant-fixture.ts';
+import {
+  canonicalHumanRevocationAuthorization,
+  HUMAN_REVOCATION_SIGNATURE_NAMESPACE,
+  parseHumanRevocationAuthorization,
+  type HumanRevocationAuthorization,
+} from '../src/application/control-plane/human-revocation.ts';
 
 const EXECUTION_FAILURE_REASONS = [
   'provider-timeout',
@@ -257,6 +263,44 @@ test('human-resolution revocation requires current human presence and preserves 
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('human revocation rejects a missing signature namespace', () => {
+  const authorization: HumanRevocationAuthorization = {
+    payload: {
+      schemaVersion: 1,
+      kind: 'human-revocation-authorization.v1',
+      subjectKind: 'human-resolution-grant',
+      grantId: 'fixture-grant',
+      grantDigest: `sha256:${'a'.repeat(64)}`,
+      repositoryId: 'github:R_fixture',
+      repositoryOrigin: 'https://github.com/example/fixture.git',
+      changeId: 'demo-change',
+      taskId: null,
+      workflowId: null,
+      audit: null,
+      reason: 'Retire unused authority.',
+      revokedAt: '2026-08-03T12:02:00.000Z',
+      signer: 'fixture-maintainer',
+    },
+    signatureNamespace: HUMAN_REVOCATION_SIGNATURE_NAMESPACE,
+    signature: 'fixture-signature',
+  };
+  assert.deepEqual(
+    parseHumanRevocationAuthorization(
+      canonicalHumanRevocationAuthorization(authorization),
+    ),
+    authorization,
+  );
+  const namespaceLess = structuredClone(authorization) as {
+    signatureNamespace?: string;
+  };
+  delete namespaceLess.signatureNamespace;
+  assert.throws(
+    () =>
+      parseHumanRevocationAuthorization(`${canonicalJson(namespaceLess)}\n`),
+    (error) => isWorkflowError(error, 'HUMAN_REVOCATION_INVALID'),
+  );
 });
 
 function supersedeDecision(reason: string): HumanResolutionDecision {

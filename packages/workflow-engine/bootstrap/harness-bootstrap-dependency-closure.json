@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:16a84e70fefa3d6eed5e0f9150721ffa7b727b5ea346185c280d17d59b9262bc"
+      "digest": "sha256:65b0032d893ba0226c86dbb8ca616ddad192574c13d69f3b9be81ba534e68783"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -238,7 +238,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/human-revocation.js",
       "mode": "100644",
-      "digest": "sha256:ee040c93cd5f794382daa425b6f173f84089001eb47e348b14cbc09d4084d127"
+      "digest": "sha256:ae6d2b6f1dff27aabbb1c8a54647a2e1230dd29c8b7aa1fef17cc200e1ff5652"
     },
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-control-bootstrap.js",
@@ -408,7 +408,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/compatibility/legacy-workflow-identities.js",
       "mode": "100644",
-      "digest": "sha256:1c732b503294c75c20f26c9360a6a5690cfcdfe6bd50f22146c433acd075a010"
+      "digest": "sha256:05d02d295a5416208dd2f224873346e320e5991c65ca37fe43def908e3f86d31"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
