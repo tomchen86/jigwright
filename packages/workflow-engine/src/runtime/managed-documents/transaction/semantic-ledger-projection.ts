@@ -3,9 +3,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import type { EvidenceNode } from '../../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import type { EvidenceNode } from '../../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import { readInvestigationWhyNode } from '../../../adapters/compatibility/investigation-v2/investigation-why.ts';
+import { readInvestigationWhyNode } from '../../../adapters/planning/investigation/investigation-why.ts';
 import type { InvestigationWhyOverlayV3 } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import { normalizeExactRepositoryPath } from '../../session-workspace/paths.ts';
 import type { ActualMutation } from '../../../modules/why-knowledge/semantic-reconciliation.ts';

@@ -8,8 +8,8 @@
       "packages/agent-runtime/src/provider-definition-snapshot.ts",
       "packages/core/src/canonical-json.ts",
       "packages/workflow-engine/bootstrap/**",
-      "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts",
-      "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
+      "packages/workflow-engine/src/adapters/planning/investigation/evidence-reuse-path.ts",
+      "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contract-artifacts.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -159,7 +159,7 @@
       "packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts"
     ],
     "lifecycle": [
-      "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
+      "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
       "packages/workflow-engine/src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
       "packages/workflow-engine/src/application/archive/archive-transformation.ts",

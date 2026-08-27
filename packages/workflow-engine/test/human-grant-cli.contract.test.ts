@@ -10,7 +10,7 @@ import { dispatchHumanGrantCli } from '../src/entrypoints/cli/human-grant-cli.ts
 import {
   executeHumanResolutionGrant,
   recoverHumanResolutionGrant,
-} from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+} from '../src/adapters/planning/investigation/investigation-session.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('human grant CLI exposes registered investigation and Work Registry requests without accepting agent decisions', async () => {

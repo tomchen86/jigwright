@@ -14,7 +14,7 @@ import {
 import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,
-} from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   createInvestigationCoverageNode,
   createInvestigationDispositionNodes,
@@ -22,7 +22,7 @@ import {
   deriveInvestigationGroups,
   readInvestigationGroupNode,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
-import { projectInvestigationArtifactForTracking } from '../src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts';
+import { projectInvestigationArtifactForTracking } from '../src/adapters/planning/investigation/investigation-artifact-projection.ts';
 import {
   deriveEngineFloor,
   derivePinnedDiffPathFacts,

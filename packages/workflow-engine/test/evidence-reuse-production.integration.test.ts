@@ -7,7 +7,7 @@ import {
   parseCurrentInvestigationManifest,
   parseHistoricalInvestigationArtifact,
 } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import { isWorkflowError } from './fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';

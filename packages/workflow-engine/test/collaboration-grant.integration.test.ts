@@ -53,7 +53,7 @@ import {
 import {
   createInvestigationCheckpointEnvelope,
   resumeInvestigationSession,
-} from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+} from '../src/adapters/planning/investigation/investigation-session.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
 import type { GrantVerifierPort } from '../src/modules/authority/grant-verifier-port.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';

@@ -45,7 +45,7 @@ import {
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
 import type { InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
-import type { InvestigationWhyAnswer } from '../../adapters/compatibility/investigation-v2/investigation-why.ts';
+import type { InvestigationWhyAnswer } from '../../adapters/planning/investigation/investigation-why.ts';
 import {
   INVESTIGATION_LIMITS,
   previewInvestigationTermUnion,

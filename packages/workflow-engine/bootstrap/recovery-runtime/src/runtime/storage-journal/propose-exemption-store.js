@@ -3,7 +3,7 @@ import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { readContentRecord, writeContentRecord, } from "./content-record-store.js";
 import { compareAndSwapEvidenceRefsDocument, compareAndSwapEvidenceRef, readInvestigationEvidenceRefsClosure, readEvidenceNode, readEvidenceRefs, writeEvidenceNode, } from "./evidence-object-store.js";
-import { assertStoredEvidenceNode, createEvidenceNode, } from "../../adapters/compatibility/investigation-v2/evidence-node.js";
+import { assertStoredEvidenceNode, createEvidenceNode, } from "../../adapters/planning/investigation/evidence-node.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertInvestigationApplicability, } from "../../modules/investigation/domain/investigation-applicability.js";
 import { assertChangeId, } from "../session-workspace/paths.js";

@@ -1,11 +1,11 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { EvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import type { EvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
 import {
   readInvestigationWhyNode,
   type InvestigationWhyOutput,
-} from '../../adapters/compatibility/investigation-v2/investigation-why.ts';
+} from '../../adapters/planning/investigation/investigation-why.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 
 const START = '<!-- workflow:investigation-ledger:start v1 -->';

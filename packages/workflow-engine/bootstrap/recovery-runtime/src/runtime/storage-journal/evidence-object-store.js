@@ -4,7 +4,7 @@ import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
-import { assertStoredEvidenceNode, canonicalEvidenceNodeEnvelope, } from "../../adapters/compatibility/investigation-v2/evidence-node.js";
+import { assertStoredEvidenceNode, canonicalEvidenceNodeEnvelope, } from "../../adapters/planning/investigation/evidence-node.js";
 import { assertInvestigationApplicability, INVESTIGATION_APPLICABILITY_POLICY_DIGEST, } from "../../modules/investigation/domain/investigation-applicability.js";
 import { assertPlanReviewSubject, readPlanReviewTargetSnapshotNode, } from "../../modules/assurance/plan-review.js";
 import { assertChangeId, assertInvestigationId, } from "../session-workspace/paths.js";

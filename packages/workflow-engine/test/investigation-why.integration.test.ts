@@ -5,7 +5,7 @@ import test from 'node:test';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   createInvestigationDispositionNodes,
   deriveInvestigationGroups,
@@ -27,7 +27,7 @@ import {
   readInvestigationWhyNode,
   validateInvestigationWhyEvidence,
   type InvestigationWhyAnswer,
-} from '../src/adapters/compatibility/investigation-v2/investigation-why.ts';
+} from '../src/adapters/planning/investigation/investigation-why.ts';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
 import type {
   TrackedTreeEntry,

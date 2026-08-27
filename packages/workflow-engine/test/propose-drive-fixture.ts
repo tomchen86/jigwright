@@ -5,7 +5,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import {
   createInvestigationCheckpointEnvelope,
   getInvestigationStatus,
-} from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+} from '../src/adapters/planning/investigation/investigation-session.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
   claimProviderInvocation,

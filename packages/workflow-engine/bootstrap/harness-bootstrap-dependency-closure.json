@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:d5d665f5f5da4cb96ab83e3af322c4f7ae056ce27539c5f5bb171a47bcfddb62"
+      "digest": "sha256:854b14352e09dd5b71a84bb44954235255e767c7552e9817c64d334719d48cf8"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -166,36 +166,6 @@
       "digest": "sha256:dac4a38ced2864c5432a070f5b7e4ed416b52eb9199498b2ae4e0fa01e238224"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-convergence.js",
-      "mode": "100644",
-      "digest": "sha256:6348228b931d784488f8d5ffcb12ca4e24c0d230b927b977ecf854839cdc767e"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-currentness.js",
-      "mode": "100644",
-      "digest": "sha256:dcccfb647b6a95fb8968a9f2c8e690501d3571dd60d107f802083153ea86f4a9"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-node.js",
-      "mode": "100644",
-      "digest": "sha256:63733b12a2796938c87d3a51deaf1b4f764a25eda547b6f813d10612cb87bfe9"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/evidence-reuse-path.js",
-      "mode": "100644",
-      "digest": "sha256:d34341676501e9f24e23ceef18daf7b5dc5619fcd974a2e98277acb09641f829"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.js",
-      "mode": "100644",
-      "digest": "sha256:f901c347d5ac5c5a6ae5ae378ffa79f20c4711bb0f0530d92327a3ddbd3cede1"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/compatibility/investigation-v2/investigation-why.js",
-      "mode": "100644",
-      "digest": "sha256:39b387a1c43a7161dead27902abeefb76cc565b997772dbbe749fb9b182e57bd"
-    },
-    {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/check-runner.js",
       "mode": "100644",
       "digest": "sha256:62c2e1eea4e72a49bedc696f03636ee3e1db7701b559279ded87c64b0194de4a"
@@ -208,12 +178,42 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:7e59654ec567efb015a12efebe3618eaea976ac4963490997e8afd97025f870f"
+      "digest": "sha256:c81013d9a02c9ee077ab3a0f6e85c9e4349a3241e52338825e9cea812cacd8b3"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
       "mode": "100644",
       "digest": "sha256:6e26eb60ac611a8dab95b7015d09ba50885fd4f8117d2ff4dcbc4fc6a752b4fb"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-convergence.js",
+      "mode": "100644",
+      "digest": "sha256:6348228b931d784488f8d5ffcb12ca4e24c0d230b927b977ecf854839cdc767e"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-currentness.js",
+      "mode": "100644",
+      "digest": "sha256:dcccfb647b6a95fb8968a9f2c8e690501d3571dd60d107f802083153ea86f4a9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-node.js",
+      "mode": "100644",
+      "digest": "sha256:63733b12a2796938c87d3a51deaf1b4f764a25eda547b6f813d10612cb87bfe9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-reuse-path.js",
+      "mode": "100644",
+      "digest": "sha256:d34341676501e9f24e23ceef18daf7b5dc5619fcd974a2e98277acb09641f829"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/investigation-artifact-projection.js",
+      "mode": "100644",
+      "digest": "sha256:f901c347d5ac5c5a6ae5ae378ffa79f20c4711bb0f0530d92327a3ddbd3cede1"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/investigation-why.js",
+      "mode": "100644",
+      "digest": "sha256:39b387a1c43a7161dead27902abeefb76cc565b997772dbbe749fb9b182e57bd"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/providers/built-in-provider-definition.js",
@@ -293,7 +293,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review.js",
       "mode": "100644",
-      "digest": "sha256:9e431a85dcfcf2462b11e6ac0d85386665426c1086b24eeee2134101db03ff22"
+      "digest": "sha256:d6069387d1ee357c080511e925a52d7bb6f32e1274af2fc9b1d55df46d9a623f"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-target.js",
@@ -443,7 +443,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-groups.js",
       "mode": "100644",
-      "digest": "sha256:3a4a4e3477e9a7fd88a48bc4aeccd6d70989f3a6071581e79cde7d0c8543c889"
+      "digest": "sha256:fbe126c16e378ad458ffda4a2c594f0883120b5a226ea66d7d0fd5b799d39c32"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-roots.js",
@@ -453,7 +453,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-scanner.js",
       "mode": "100644",
-      "digest": "sha256:7fa66f89c79915f78516c33a3d74ba578aabc0aac19febb041b869b6d0a15a08"
+      "digest": "sha256:b3f84e685aaeb999f5fa5b3a34b06de87c187705338b7c263e153df8acb42ddc"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/investigation-terms.js",
@@ -723,7 +723,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/evidence-object-store.js",
       "mode": "100644",
-      "digest": "sha256:543548e2c6ed4a95489ca1e885f32899e350053d90de5868cf1a7e7663d097c3"
+      "digest": "sha256:0caf8ee5b4f68eff6bd803b65ddd1d6250ad146c3fddde50d15ff3c26223c31b"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/execution-store.js",
@@ -753,7 +753,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",
       "mode": "100644",
-      "digest": "sha256:a1db9d1d7a67a80907aa628763526ee1741fb3750f9de69195edb920f7d1905d"
+      "digest": "sha256:8df9bc97807e9f0171bbf845ecd7b67a1b7866cbb02e251f29e42d2fcd3ecb4f"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",

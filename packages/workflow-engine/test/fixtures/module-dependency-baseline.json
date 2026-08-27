@@ -2,7 +2,7 @@
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
   "frozenEdgeCount": 822,
-  "frozenIdentityDigest": "sha256:8ef9759371159eda08ed6ee5e7c0876bb46530970bc01972ef213a767050779b",
+  "frozenIdentityDigest": "sha256:8c4f041137faba9b4e67a7b06112884df743116c83a35c9b4e3bc2c1e1646200",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -91,214 +91,6 @@
   },
   "edges": [
     {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "rule": "cross-adapter",
-      "reasonId": "legacy.cross-adapter",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
-      "rule": "cross-adapter",
-      "reasonId": "legacy.cross-adapter",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "rule": "cross-adapter",
-      "reasonId": "legacy.cross-adapter",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-grant-transitions.ts",
-      "to": "packages/workflow-engine/src/composition-root/lifecycle-context.ts",
-      "rule": "adapter-to-composition-root",
-      "reasonId": "legacy.adapter-to-composition-root",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-grant-transitions.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-grant-transitions.ts",
-      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-grant-transitions.ts",
-      "to": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/application/control-plane/human-revocation.ts",
-      "rule": "adapter-to-application",
-      "reasonId": "legacy.adapter-to-application",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/composition-root/lifecycle-context.ts",
-      "rule": "adapter-to-composition-root",
-      "reasonId": "legacy.adapter-to-composition-root",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/provider-execution/ai-adapter-policy.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/provider-execution/provider-execution-governance.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/session-workspace/planning-lock.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "to": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-store.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-shadow-builder.ts",
-      "to": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-store.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/tracked-tree-reader.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "rule": "cross-adapter",
-      "reasonId": "legacy.cross-adapter",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
-      "rule": "adapter-to-runtime",
-      "reasonId": "legacy.adapter-to-runtime",
-      "retirementPhase": "post-layout-adapter-isolation",
-      "status": "retired"
-    },
-    {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
       "to": "packages/workflow-engine/src/runtime/repository-transaction/atomic-text.ts",
       "rule": "adapter-to-runtime",
@@ -324,7 +116,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-convergence.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-convergence.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -332,7 +124,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-currentness.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-currentness.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -340,7 +132,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -348,7 +140,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-reuse-path.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -356,7 +148,7 @@
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -481,6 +273,214 @@
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "rule": "cross-adapter",
+      "reasonId": "legacy.cross-adapter",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-schema-contract.ts",
+      "rule": "cross-adapter",
+      "reasonId": "legacy.cross-adapter",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "rule": "cross-adapter",
+      "reasonId": "legacy.cross-adapter",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts",
+      "to": "packages/workflow-engine/src/composition-root/lifecycle-context.ts",
+      "rule": "adapter-to-composition-root",
+      "reasonId": "legacy.adapter-to-composition-root",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts",
+      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/application/control-plane/human-revocation.ts",
+      "rule": "adapter-to-application",
+      "reasonId": "legacy.adapter-to-application",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/composition-root/lifecycle-context.ts",
+      "rule": "adapter-to-composition-root",
+      "reasonId": "legacy.adapter-to-composition-root",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/provider-execution/ai-adapter-policy.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/provider-execution/provider-execution-governance.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/session-workspace/planning-lock.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-store.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-shadow-builder.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/provider-invocation-store.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/tracked-tree-reader.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "rule": "cross-adapter",
+      "reasonId": "legacy.cross-adapter",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git-transitions.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
+      "to": "packages/workflow-engine/src/runtime/session-workspace/paths.ts",
+      "rule": "adapter-to-runtime",
+      "reasonId": "legacy.adapter-to-runtime",
+      "retirementPhase": "post-layout-adapter-isolation",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts",
@@ -676,19 +676,19 @@
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
@@ -1988,7 +1988,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-mechanical-transform.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -1996,7 +1996,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-mechanical-transform.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2124,14 +2124,6 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/check-runner.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
@@ -2149,6 +2141,14 @@
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/database-policy.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/execute-task/task-strategy-execution.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2204,7 +2204,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/task-strategy-implementation-lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -2900,7 +2900,7 @@
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/task-diff-review-lifecycle.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
@@ -3180,19 +3180,19 @@
     },
     {
       "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/propose/planning-transition.ts",
@@ -3276,70 +3276,6 @@
     },
     {
       "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-shadow-builder.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-shadow-parity.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
-      "rule": "application-to-adapters",
-      "reasonId": "legacy.application-to-adapters",
-      "retirementPhase": "post-layout-application-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
@@ -3353,6 +3289,70 @@
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-reuse-path.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-shadow-builder.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-shadow-parity.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
@@ -3628,19 +3628,19 @@
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "rule": "entrypoint-bypass-composition-root",
-      "reasonId": "legacy.entrypoint-bypass-composition-root",
-      "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "rule": "entrypoint-bypass-composition-root",
+      "reasonId": "legacy.entrypoint-bypass-composition-root",
+      "retirementPhase": "post-layout-composition-root-extraction",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
@@ -4988,19 +4988,19 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/implementation-term-floor.ts",
@@ -5012,7 +5012,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/plan-review-coverage.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5044,7 +5044,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/plan-review-validation.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5060,7 +5060,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/plan-review.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5068,7 +5068,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/plan-review.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/legacy-plan-migration.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5092,27 +5092,27 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-reuse-path.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts",
@@ -5188,19 +5188,19 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/assurance/task-execution-evidence.ts",
@@ -5812,7 +5812,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-groups.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-currentness.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-currentness.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5820,7 +5820,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-groups.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -5828,7 +5828,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-scanner.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6020,19 +6020,19 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/bootstrap-task-exemption.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "retired"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
       "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/bootstrap-task-exemption.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/planning-execution-epoch.ts",
@@ -6076,7 +6076,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/projection/investigation-design-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6084,7 +6084,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/projection/investigation-design-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6212,23 +6212,23 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
-      "rule": "module-to-adapters",
-      "reasonId": "legacy.module-to-adapters",
-      "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
-    },
-    {
-      "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
       "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
+      "rule": "module-to-adapters",
+      "reasonId": "legacy.module-to-adapters",
+      "retirementPhase": "post-layout-module-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6316,7 +6316,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/why-knowledge/semantic-manifest-reuse.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
@@ -6348,7 +6348,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/transaction/semantic-ledger-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6356,7 +6356,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/transaction/semantic-ledger-projection.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6388,7 +6388,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6396,7 +6396,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
-      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6420,7 +6420,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/provider-execution/provider-retry-scheduler.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-session.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-session.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6540,7 +6540,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6548,7 +6548,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-why.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6564,7 +6564,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/investigation-shadow-store.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-shadow-builder.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/investigation-shadow-builder.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6612,7 +6612,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/propose-exemption-store.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
@@ -6660,7 +6660,7 @@
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/task-strategy-store.ts",
-      "to": "packages/workflow-engine/src/adapters/compatibility/investigation-v2/evidence-node.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",

@@ -39,7 +39,7 @@ import {
   readEvidenceNode,
   writeEvidenceNode,
 } from '../../runtime/storage-journal/evidence-object-store.ts';
-import { createEvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import type { DocumentationReviewCapture } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import {
   ExitCode,

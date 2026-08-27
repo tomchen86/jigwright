@@ -9,13 +9,13 @@ import {
   EVIDENCE_CONVERGENCE_OUTPUT_SCHEMA,
   EVIDENCE_REUSE_PROOF_NODE_SCHEMA,
   EVIDENCE_REUSE_PROOF_OUTPUT_SCHEMA,
-} from '../src/adapters/compatibility/investigation-v2/evidence-convergence.ts';
-import { evaluateEvidenceCurrentness } from '../src/adapters/compatibility/investigation-v2/evidence-currentness.ts';
+} from '../src/adapters/planning/investigation/evidence-convergence.ts';
+import { evaluateEvidenceCurrentness } from '../src/adapters/planning/investigation/evidence-currentness.ts';
 import {
   createEvidenceNode,
   type EvidenceNode,
   type EvidenceNodeInput,
-} from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   evaluatePlanningAssurance,

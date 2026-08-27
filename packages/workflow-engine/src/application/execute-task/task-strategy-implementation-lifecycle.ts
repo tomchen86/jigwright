@@ -18,7 +18,7 @@ import {
   reserveCollaborationGrantUnderLifecycleLock,
   type CollaborationGrantUseProjection,
 } from '../../runtime/storage-journal/collaboration-grant-store.ts';
-import { createEvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import {
   readEvidenceNode,
   writeEvidenceNode,

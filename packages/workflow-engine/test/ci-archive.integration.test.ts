@@ -19,7 +19,7 @@ import {
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';

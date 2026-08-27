@@ -9,7 +9,7 @@ import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapte
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';

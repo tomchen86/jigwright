@@ -27,7 +27,7 @@ import { issueExecutionBudgetGrant } from '../src/entrypoints/cli/execution-gran
 import { listExecutionJobs } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
-import { createInvestigationCheckpointEnvelope } from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {

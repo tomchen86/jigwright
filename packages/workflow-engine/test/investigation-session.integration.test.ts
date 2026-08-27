@@ -29,7 +29,7 @@ import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   preparedLockTemporaryPath,
   publishPreparedExclusiveLock,
@@ -51,7 +51,7 @@ import {
   startInvestigationSession,
   type GrantCoreHumanResolutionAuthorization,
   type GrantCoreHumanResolutionExecutionOptions,
-} from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+} from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
   createPlanningContributionEnvelope,
   createPlanReviewDispositionsEnvelope,
@@ -161,7 +161,7 @@ const WORKFLOW_SOURCE_MODULE_PATHS = {
   'investigation-session-store.ts':
     'runtime/storage-journal/investigation-session-store.ts',
   'investigation-session.ts':
-    'adapters/compatibility/investigation-v2/investigation-session.ts',
+    'adapters/planning/investigation/investigation-session.ts',
   'propose-orchestrator.ts': 'application/propose/propose-orchestrator.ts',
   'evidence-object-store.ts':
     'runtime/storage-journal/evidence-object-store.ts',

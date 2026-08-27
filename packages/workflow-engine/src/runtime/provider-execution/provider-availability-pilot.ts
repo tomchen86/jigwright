@@ -13,7 +13,7 @@ import {
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../storage-journal/evidence-object-store.ts';
 import {
   ExitCode,

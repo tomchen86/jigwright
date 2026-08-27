@@ -5,7 +5,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   assertStoredEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   createPrivateCanonicalJson,

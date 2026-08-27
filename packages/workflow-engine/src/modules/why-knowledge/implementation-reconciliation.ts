@@ -8,10 +8,10 @@ import {
   assertStoredEvidenceNode,
   createEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import { readInvestigationWhyNode } from '../../adapters/compatibility/investigation-v2/investigation-why.ts';
+import { readInvestigationWhyNode } from '../../adapters/planning/investigation/investigation-why.ts';
 import {
   assertInvestigationRequirementV3,
   type InvestigationWhyOverlayV3,

@@ -24,12 +24,12 @@ import {
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
-} from '../src/adapters/compatibility/investigation-v2/evidence-convergence.ts';
+} from '../src/adapters/planning/investigation/evidence-convergence.ts';
 import {
   currentParentEvidenceRef,
   descendantReuseProofEvidenceRef,
-} from '../src/adapters/compatibility/investigation-v2/evidence-reuse-path.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-reuse-path.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {

@@ -185,7 +185,7 @@ import {
   inspectHumanResolutionGrantPublicationRecoveries,
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
-} from './adapters/compatibility/investigation-v2/investigation-session.ts';
+} from './adapters/planning/investigation/investigation-session.ts';
 import { inspectInvestigationQuarantineState } from './runtime/storage-journal/investigation-session-store.ts';
 import {
   inspectImplementationReconciliation,

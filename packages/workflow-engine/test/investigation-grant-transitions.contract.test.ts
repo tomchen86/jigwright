@@ -10,7 +10,7 @@ test('legacy v2 investigation Grant transition module remains retired', () => {
     fs.existsSync(
       path.join(
         sourceRepositoryRoot,
-        'packages/workflow-engine/src/adapters/compatibility/investigation-v2/investigation-grant-transitions.ts',
+        'packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts',
       ),
     ),
     false,

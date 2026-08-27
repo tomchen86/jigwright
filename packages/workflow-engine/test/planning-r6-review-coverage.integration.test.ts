@@ -5,7 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import type { EvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import type { EvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {

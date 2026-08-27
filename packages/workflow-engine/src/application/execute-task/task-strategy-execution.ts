@@ -11,7 +11,7 @@ import type {
   TddSingleAgentExecution,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { createCheckEnvironmentForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
-import { createEvidenceNode } from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../../runtime/storage-journal/evidence-object-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';

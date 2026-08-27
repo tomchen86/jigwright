@@ -8,7 +8,7 @@ import test from 'node:test';
 import {
   createEvidenceNode,
   type EvidenceNode,
-} from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   projectPlanReviewTerms,

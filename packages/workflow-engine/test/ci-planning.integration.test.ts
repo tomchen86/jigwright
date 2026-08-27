@@ -25,7 +25,7 @@ import {
   validateCiPlanningCommit,
 } from '../src/entrypoints/ci/ci-planning.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,

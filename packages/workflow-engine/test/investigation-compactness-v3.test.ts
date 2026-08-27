@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { parseInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../src/adapters/compatibility/investigation-v2/evidence-node.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   createInvestigationCoverageNode,
   createInvestigationDispositionNodes,
@@ -25,7 +25,7 @@ import { buildGlobalPlanReviewCoverageRequirement } from '../src/modules/assuran
 import {
   projectInvestigationArtifactForTracking,
   type ProjectedInvestigationArtifact,
-} from '../src/adapters/compatibility/investigation-v2/investigation-artifact-projection.ts';
+} from '../src/adapters/planning/investigation/investigation-artifact-projection.ts';
 import { createInvestigationApplicability } from '../src/modules/investigation/domain/investigation-applicability.ts';
 import {
   adaptInvestigationScanFactsResult,
@@ -40,7 +40,7 @@ import { git } from './fixture.ts';
 
 const PRODUCTION_SCALE_HIT_COUNT = 400;
 
-test('ordinary propose production is v3-only outside session and generic evidence compatibility', () => {
+test('ordinary propose production is v3-only outside shared session and evidence primitives', () => {
   const source = fs.readFileSync(
     path.join(
       import.meta.dirname,
@@ -48,15 +48,15 @@ test('ordinary propose production is v3-only outside session and generic evidenc
     ),
     'utf8',
   );
-  const compatibilityImports = [
+  const planningInvestigationImports = [
     ...source.matchAll(
-      /from '..\/..\/adapters\/compatibility\/investigation-v2\/([^']+)'/gu,
+      /from '..\/..\/adapters\/planning\/investigation\/([^']+)'/gu,
     ),
   ]
     .map((match) => match[1])
     .filter((moduleName): moduleName is string => moduleName !== undefined);
 
-  assert.deepEqual([...new Set(compatibilityImports)].sort(), [
+  assert.deepEqual([...new Set(planningInvestigationImports)].sort(), [
     'evidence-node.ts',
     'investigation-session.ts',
   ]);

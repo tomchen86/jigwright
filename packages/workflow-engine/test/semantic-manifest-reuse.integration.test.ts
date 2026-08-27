@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { InvestigationFullBlobManifestEntry } from '../src/adapters/compatibility/investigation-v2/investigation-why.ts';
+import type { InvestigationFullBlobManifestEntry } from '../src/adapters/planning/investigation/investigation-why.ts';
 import { createLedgerEntry } from '../src/modules/why-knowledge/semantic-ledger.ts';
 import {
   updateLedgerIndex,

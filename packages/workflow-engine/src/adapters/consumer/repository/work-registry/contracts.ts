@@ -33,7 +33,7 @@ import {
   readCommittedInvestigationManifestV3,
   type ImmutableGitTreeInvestigationObservation,
 } from '../../../../runtime/repository-transaction/committed-investigation-manifest.ts';
-import { materializeProjectedInvestigationArtifact } from '../../../compatibility/investigation-v2/investigation-artifact-projection.ts';
+import { materializeProjectedInvestigationArtifact } from '../../../planning/investigation/investigation-artifact-projection.ts';
 import { workflowContractArtifactPaths } from './contract-artifacts.ts';
 import {
   isRecord,
@@ -42,16 +42,16 @@ import {
 import {
   assertStoredEvidenceNode,
   type EvidenceNode,
-} from '../../../compatibility/investigation-v2/evidence-node.ts';
-import { validateClosedEvidenceDag } from '../../../compatibility/investigation-v2/evidence-currentness.ts';
+} from '../../../planning/investigation/evidence-node.ts';
+import { validateClosedEvidenceDag } from '../../../planning/investigation/evidence-currentness.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
   readConvergenceBinding,
   readReuseProofBinding,
-} from '../../../compatibility/investigation-v2/evidence-convergence.ts';
+} from '../../../planning/investigation/evidence-convergence.ts';
 import { engineProjectionDefinitions } from '../../../../modules/projection/engine-projection-registry.ts';
-import { validateTrackedEvidenceReusePaths } from '../../../compatibility/investigation-v2/evidence-reuse-path.ts';
+import { validateTrackedEvidenceReusePaths } from '../../../planning/investigation/evidence-reuse-path.ts';
 import {
   assertChangeId,
   assertPolicyPathInsideRepository,

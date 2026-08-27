@@ -10,7 +10,7 @@ import {
   assertStoredEvidenceNode,
   createEvidenceNode,
   type EvidenceNode,
-} from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../../adapters/planning/investigation/evidence-node.ts';
 import {
   normalizeInvestigationTerm,
   type InvestigationTermKind,

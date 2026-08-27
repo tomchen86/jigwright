@@ -12,7 +12,7 @@ import {
   assertStoredEvidenceNode,
   canonicalEvidenceNodeEnvelope,
   type EvidenceNode,
-} from '../../adapters/compatibility/investigation-v2/evidence-node.ts';
+} from '../../adapters/planning/investigation/evidence-node.ts';
 import {
   assertInvestigationApplicability,
   INVESTIGATION_APPLICABILITY_POLICY_DIGEST,

@@ -11,7 +11,7 @@ import {
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
   startInvestigationSession,
-} from '../src/adapters/compatibility/investigation-v2/investigation-session.ts';
+} from '../src/adapters/planning/investigation/investigation-session.ts';
 import {
   assertHumanResolutionDecision,
   inspectInvestigationResolutionState,
