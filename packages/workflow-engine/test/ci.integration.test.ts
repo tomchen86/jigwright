@@ -1,10 +1,22 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
 import { loadHistoricalTaskAuthority } from '../src/entrypoints/ci/ci-historical-contract.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import {
+  createDocumentationClosureRecord,
+  encodeDocumentationClosure,
+} from '../src/runtime/managed-documents/contracts/documentation-closure.ts';
+import {
+  createTaskDiffDocumentationClosureRequirement,
+  createTaskDiffReviewSubject,
+  TASK_DIFF_REVIEW_COVERAGE,
+} from '../src/modules/assurance/task-diff-review.ts';
+import { createTaskDiffReviewRecord } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
   configureChecks,
@@ -21,7 +33,9 @@ test('CI recomputes task, scope, trailers, and checks without runtime reports', 
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    const head = commitCompletedTask(repository);
+    const head = commitCompletedTask(repository, {
+      documentationClosure: true,
+    });
     const fakeReports = path.join(repository, '.git/workflow-engine/reports');
     fs.mkdirSync(fakeReports, { recursive: true });
     fs.writeFileSync(path.join(fakeReports, 'forged.json'), '{}\n');
@@ -48,7 +62,9 @@ test('CI replays an active v3 head after its private runtime is removed', () => 
   try {
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    const head = commitCompletedTask(repository);
+    const head = commitCompletedTask(repository, {
+      documentationClosure: true,
+    });
     fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
 
     assert.deepEqual(verifyPullRequest(repository, base, head).completedTasks, [
@@ -174,14 +190,11 @@ test('CI authorizes a task from the planning revision in its parent', () => {
     fs.mkdirSync(path.join(repository, 'feature'));
     fs.writeFileSync(path.join(repository, 'feature/ok.ts'), 'export {};\n');
     git(repository, ['add', '.']);
-    git(repository, [
-      'commit',
-      '-m',
+    const head = commitStagedTaskWithDocumentationClosure(
+      repository,
+      'feature/ok.ts',
       'Complete revised task',
-      '-m',
-      'Change: demo-change\nTask: 1.1',
-    ]);
-    const head = git(repository, ['rev-parse', 'HEAD']).trim();
+    );
 
     assert.doesNotThrow(() => verifyPullRequest(repository, base, head));
   } finally {
@@ -592,13 +605,15 @@ test('CI rejects a required check that mutates the checkout', () => {
     git(repository, [
       'commit',
       '-m',
-      'Refresh current check policy',
+      'Plan demo-change',
       '-m',
       'Change: demo-change\nTransition: plan',
     ]);
     const base = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    const head = commitCompletedTask(repository);
+    const head = commitCompletedTask(repository, {
+      documentationClosure: true,
+    });
     assert.throws(
       () => verifyPullRequest(repository, base, head),
       (error) => isWorkflowError(error, 'CI_CHECK_MUTATED_WORKTREE'),
@@ -787,7 +802,7 @@ function createFixtureRepository(): string {
 
 function commitCompletedTask(
   repository: string,
-  options: { trailers?: boolean } = {},
+  options: { trailers?: boolean; documentationClosure?: boolean } = {},
 ): string {
   const tasksPath = path.join(
     repository,
@@ -799,6 +814,13 @@ function commitCompletedTask(
   );
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   git(repository, ['add', '.']);
+  if (options.documentationClosure === true) {
+    return commitStagedTaskWithDocumentationClosure(
+      repository,
+      'src/feature.ts',
+      'Complete demo task',
+    );
+  }
   const message =
     options.trailers === false
       ? ['commit', '-m', 'Complete task without trailers']
@@ -811,6 +833,148 @@ function commitCompletedTask(
         ];
   git(repository, message);
   return git(repository, ['rev-parse', 'HEAD']).trim();
+}
+
+function commitStagedTaskWithDocumentationClosure(
+  repository: string,
+  sourcePath: string,
+  subject: string,
+): string {
+  const tasksPath = 'openspec/changes/demo-change/tasks.md';
+  const baseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+  const baseTree = git(repository, ['rev-parse', 'HEAD^{tree}']).trim();
+  const candidateTree = git(repository, ['write-tree']).trim();
+  const beforeTaskObjectId = git(repository, [
+    'rev-parse',
+    `${baseCommit}:${tasksPath}`,
+  ]).trim();
+  const afterTaskObjectId = git(repository, [
+    'rev-parse',
+    `:${tasksPath}`,
+  ]).trim();
+  const sourceObjectId = git(repository, [
+    'rev-parse',
+    `:${sourcePath}`,
+  ]).trim();
+  const documentationTransitions = [
+    {
+      path: sourcePath,
+      before: null,
+      after: { mode: '100644' as const, objectId: sourceObjectId },
+    },
+  ];
+  const requirement = createTaskDiffDocumentationClosureRequirement({
+    required: true,
+    changeBaseCommit: baseCommit,
+    changeBaseTree: baseTree,
+    candidateTree,
+    changedPaths: [sourcePath],
+    patchDigest: sha256(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'task-diff-documentation-change-patch.v1',
+        transitions: documentationTransitions,
+      }),
+    ),
+    hints: [],
+  });
+  const subjectRecord = createTaskDiffReviewSubject({
+    repositoryId: 'github:fixture/jigwright-ci',
+    changeId: 'demo-change',
+    taskId: '1.1',
+    baseCommit,
+    baseTree,
+    candidateTree,
+    transitions: [
+      {
+        path: tasksPath,
+        before: { mode: '100644', objectId: beforeTaskObjectId },
+        after: { mode: '100644', objectId: afterTaskObjectId },
+      },
+      ...documentationTransitions,
+    ],
+    taskContractDigest: '1'.repeat(64),
+    requiredCheckPolicyDigest: '2'.repeat(64),
+    checkEvidenceDigest: '3'.repeat(64),
+    planningGenerationId: '4'.repeat(64),
+    planTargetDigest: '5'.repeat(64),
+    planReviewNodeId: '6'.repeat(64),
+    planningAssuranceDigest: '7'.repeat(64),
+    reviewRequirement: {
+      required: true,
+      basis: 'explicit',
+      riskPaths: [],
+    },
+    documentationRequirement: requirement,
+  });
+  const review = createTaskDiffReviewRecord({
+    subject: subjectRecord,
+    assignment: {
+      implementerPrincipalId: 'provider-b:implementer',
+      implementerProviderId: 'provider-b',
+      implementationSessionId: 'implementation-session-1',
+      reviewerPrincipalId: 'provider-a:reviewer',
+      reviewerProviderId: 'provider-a',
+      reviewerSessionId: 'review-session-2',
+      achievedIndependence: 'provider-independent',
+      degradedForm: null,
+      grantUseDigest: null,
+    },
+    submission: {
+      schemaVersion: 1,
+      verdict: 'advisory-approve',
+      coverage: [...TASK_DIFF_REVIEW_COVERAGE],
+      scopeAssessment: {
+        kind: 'no-challenge',
+        evidence: [
+          {
+            kind: 'repository-location',
+            path: sourcePath,
+            line: 1,
+            blobObjectId: sourceObjectId,
+            observation:
+              'The exact implementation blob completes the current task.',
+          },
+        ],
+      },
+      findings: [],
+      suggestions: [],
+      riskPathDispositions: [],
+      residualRisk: 'No release-blocking documentation risk remains.',
+      uncertainty: 'Review is limited to the exact current task projection.',
+      documentationAssessment: {
+        decision: 'no-impact',
+        notes:
+          'The task projection changes no operator or product documentation.',
+      },
+    },
+  });
+  const closure = createDocumentationClosureRecord({
+    changeId: 'demo-change',
+    taskId: '1.1',
+    review,
+    finalAssurance: null,
+    remediation: null,
+    projectedCommitTree: candidateTree,
+    projectionPaths: [tasksPath],
+  });
+  git(repository, [
+    'commit',
+    '-m',
+    [
+      subject,
+      '',
+      encodeDocumentationClosure(closure),
+      '',
+      'Change: demo-change',
+      'Task: 1.1',
+    ].join('\n'),
+  ]);
+  return git(repository, ['rev-parse', 'HEAD']).trim();
+}
+
+function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function writePlanningChange(repository: string, changeId: string): void {
