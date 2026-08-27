@@ -274,6 +274,45 @@ test('current execution-policy admission rejects a V1 snapshot', () => {
   }
 });
 
+test('current retry admission rejects a V1 reservation', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-reservation-v1',
+    );
+    const investigationId = 'investigation-reservation-v1';
+    fs.mkdirSync(runtime.refs, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(
+      path.join(runtime.refs, `${investigationId}.provider-retry-2.json`),
+      `${canonicalJson({
+        schemaVersion: 1,
+        kind: 'provider-retry-reservation',
+        investigationId,
+        changeId: 'demo-change',
+        attempt: 2,
+        previousInvocationId: 'invocation-reservation-v1-previous',
+        invocationId: request.invocationId,
+        manifestDigest: providerInvocationManifestDigest(manifest),
+        requestDigest: request.requestDigest,
+        request,
+        createdAt: CREATED_AT,
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    assert.throws(
+      () => readProviderRetryReservation(runtime, investigationId, 2),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_INVALID'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('semantic repair budget is preflighted without publishing a third reservation or invocation', () => {
   const repository = createFixtureRepository();
   try {

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:0afc906c15be68e470b7e4df9c25ae8798f27c01139bbed47ad9abd2569a5f6e"
+      "digest": "sha256:88347e7c993fa2e0ad1c79aaaf3abe4d291b3f5ecf602b2fa65db824015a1381"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -758,7 +758,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:0b6f1d5a922134ff643d0a426e0848f578c2fe8588917641fd679910a2fb52c4"
+      "digest": "sha256:5e3fea698149eb0092caac4200513c2ac4ab9450c3957f570138baf41f4b001f"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-catalog.js",

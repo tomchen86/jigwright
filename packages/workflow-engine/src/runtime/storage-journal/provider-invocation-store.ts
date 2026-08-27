@@ -359,6 +359,9 @@ export type ProviderRetryReservation =
   | ProviderRetryReservationV2
   | ProviderRetryReservationV3;
 
+export type ProviderRetryReservationCurrent =
+  ProviderRetryReservationV2 | ProviderRetryReservationV3;
+
 export type ProviderInvocationFailure = {
   kind: 'retryable' | 'repository-reconciliation-required';
   code: string;
@@ -695,7 +698,7 @@ export function createProviderRetryReservation(
     mandateBinding?: TaskMandateBinding;
     createdAt?: string;
   },
-): ProviderRetryReservation {
+): ProviderRetryReservationCurrent {
   const investigationId = assertInvestigationId(input.investigationId);
   const changeId = assertChangeId(input.changeId);
   const previousInvocationId = assertInvocationId(input.previousInvocationId);
@@ -756,14 +759,14 @@ export function createProviderRetryReservation(
     paths,
     investigationId,
     input.attempt,
-  ) as ProviderRetryReservation;
+  ) as ProviderRetryReservationCurrent;
 }
 
 export function readProviderRetryReservation(
   paths: InvestigationRuntimePaths,
   requestedInvestigationId: string,
   attempt: number,
-): ProviderRetryReservation | null {
+): ProviderRetryReservationCurrent | null {
   const investigationId = assertInvestigationId(requestedInvestigationId);
   if (!Number.isSafeInteger(attempt) || attempt < 2) {
     throw invocationInvalid();
@@ -3639,6 +3642,18 @@ function assertInvestigationStartReservation(
 }
 
 function assertProviderRetryReservation(
+  value: unknown,
+): ProviderRetryReservationCurrent {
+  const historical = assertProviderRetryReservationForHistoricalCleanup(value);
+  if (historical.schemaVersion === 1) {
+    throw invocationInvalid();
+  }
+  return historical;
+}
+
+// Kept only to validate inert historical evidence during audited cleanup. The
+// current production reader above rejects schema V1 before returning a record.
+function assertProviderRetryReservationForHistoricalCleanup(
   value: unknown,
 ): ProviderRetryReservation {
   const baseKeys = [

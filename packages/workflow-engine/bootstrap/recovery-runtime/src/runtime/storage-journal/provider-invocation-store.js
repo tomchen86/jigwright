@@ -2058,6 +2058,15 @@ function assertInvestigationStartReservation(value) {
     }));
 }
 function assertProviderRetryReservation(value) {
+    const historical = assertProviderRetryReservationForHistoricalCleanup(value);
+    if (historical.schemaVersion === 1) {
+        throw invocationInvalid();
+    }
+    return historical;
+}
+// Kept only to validate inert historical evidence during audited cleanup. The
+// current production reader above rejects schema V1 before returning a record.
+function assertProviderRetryReservationForHistoricalCleanup(value) {
     const baseKeys = [
         'schemaVersion',
         'kind',
