@@ -378,6 +378,15 @@ function initialInputFor(subject: TaskDiffReviewSubject) {
     ),
     residualRisk: 'The challenge requires authenticated closure.',
     uncertainty: 'Review is limited to the exact candidate.',
+    ...(subject.documentationRequirement?.required === true
+      ? {
+          documentationAssessment: {
+            decision: 'no-impact' as const,
+            notes:
+              'The synthetic candidate changes no public or operator documentation contract.',
+          },
+        }
+      : {}),
   };
   return {
     schemaVersion: 1 as const,
