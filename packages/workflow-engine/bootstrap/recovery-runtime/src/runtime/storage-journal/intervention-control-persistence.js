@@ -146,12 +146,7 @@ export function findPersistedBootstrapSidecarSessionForIntervention(storageRoot,
         .readdirSync(directory)
         .filter((name) => name.endsWith('.json'))
         .sort()
-        .map((name) => {
-        const value = readCanonicalRecord(path.join(directory, name), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND');
-        return isRecord(value) && value.kind === 'bootstrap-sidecar-session.v2'
-            ? projectBootstrapSidecarSessionV1(parseBootstrapSidecarWorkflow(value))
-            : parseBootstrapSidecarSession(value);
-    })
+        .map((name) => parseBootstrapSidecarWorkflow(readCanonicalRecord(path.join(directory, name), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND')))
         .filter((record) => record.identity.interventionChangeId === interventionChangeId &&
         record.state === 'repair-active');
     if (matches.length !== 1) {

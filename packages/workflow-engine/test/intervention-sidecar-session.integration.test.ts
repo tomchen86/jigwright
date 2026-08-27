@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   capturePersistedWipIntervention,
   executePersistedAdoptionStep,
@@ -16,8 +17,10 @@ import {
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import {
   advanceBootstrapSidecarPromotionPin,
+  findPersistedBootstrapSidecarSessionForIntervention,
+  interventionControlPersistencePaths,
   preparePersistedEngineAdoption,
-  readPersistedBootstrapSidecarSession,
+  readPersistedBootstrapSidecarWorkflow as readPersistedBootstrapSidecarSession,
   readPersistedIntervention,
   recoverPersistedEngineAdoption,
   recordBootstrapSidecarPromotionIfPresent,
@@ -169,7 +172,7 @@ process.exit(2);
 `;
 }
 
-test('SidecarSession V1 durably repairs every post-authority crash window', () => {
+test('current sidecar Workflow durably repairs every post-authority crash window', () => {
   const value = fixture();
   try {
     assert.throws(
@@ -201,7 +204,7 @@ test('SidecarSession V1 durably repairs every post-authority crash window', () =
       value.stateRoot,
       'parent-A',
     );
-    assert.equal(planned.kind, 'bootstrap-sidecar-session.v1');
+    assert.equal(planned.kind, 'bootstrap-sidecar-session.v2');
     assert.equal(planned.state, 'repair-active');
     assert.deepEqual(planned.identity, {
       parentChangeId: 'parent-A',
@@ -464,6 +467,69 @@ test('SidecarSession V1 durably repairs every post-authority crash window', () =
         'adopted-by-parent',
         'repository-default-promoted',
       ],
+    );
+  } finally {
+    value.cleanup();
+  }
+});
+
+test('current sidecar lookup rejects a valid V1 session record', () => {
+  const value = fixture();
+  try {
+    capturePersistedWipIntervention(value.stateRoot, value.captureInput);
+    const current = readPersistedBootstrapSidecarSession(
+      value.stateRoot,
+      'parent-A',
+    );
+    const legacyPayload = {
+      kind: 'bootstrap-sidecar-session.v1' as const,
+      sidecarSessionId: digest(
+        canonicalJson({
+          kind: 'bootstrap-sidecar-session-identity.v1',
+          ...current.identity,
+        }),
+      ),
+      identity: current.identity,
+      state: 'repair-active' as const,
+      parentUnblock: current.parentUnblock,
+      workspace: current.workspace,
+      artifacts: current.artifacts.map(
+        ({
+          workflowBindingDigest: _binding,
+          workflowStatus: _status,
+          ...rest
+        }) => rest,
+      ),
+      adoption: null,
+      promotion: current.promotion,
+      history: current.history,
+      createdAt: current.createdAt,
+      updatedAt: current.updatedAt,
+    };
+    const legacy = {
+      ...legacyPayload,
+      recordDigest: digest(canonicalJson(legacyPayload)),
+    };
+    const sidecarFile = path.join(
+      interventionControlPersistencePaths(value.stateRoot).sidecarSessions,
+      fs.readdirSync(
+        interventionControlPersistencePaths(value.stateRoot).sidecarSessions,
+      )[0]!,
+    );
+    fs.writeFileSync(sidecarFile, `${canonicalJson(legacy)}\n`, {
+      mode: 0o600,
+    });
+
+    assert.throws(
+      () =>
+        findPersistedBootstrapSidecarSessionForIntervention(
+          value.stateRoot,
+          'intervention-B',
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'INTERVENTION_SIDECAR_SESSION_CORRUPT',
     );
   } finally {
     value.cleanup();

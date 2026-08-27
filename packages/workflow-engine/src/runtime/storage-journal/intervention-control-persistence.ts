@@ -528,7 +528,7 @@ export function readPersistedBootstrapSidecarWorkflow(
 export function findPersistedBootstrapSidecarSessionForIntervention(
   storageRoot: string,
   interventionChangeId: string,
-): PersistedBootstrapSidecarSessionV1 {
+): PersistedBootstrapSidecarSessionV2 {
   assertSidecarIdentityText(interventionChangeId);
   const directory =
     interventionControlPersistencePaths(storageRoot).sidecarSessions;
@@ -544,15 +544,14 @@ export function findPersistedBootstrapSidecarSessionForIntervention(
     .readdirSync(directory)
     .filter((name) => name.endsWith('.json'))
     .sort()
-    .map((name) => {
-      const value = readCanonicalRecord(
-        path.join(directory, name),
-        'INTERVENTION_SIDECAR_SESSION_NOT_FOUND',
-      );
-      return isRecord(value) && value.kind === 'bootstrap-sidecar-session.v2'
-        ? projectBootstrapSidecarSessionV1(parseBootstrapSidecarWorkflow(value))
-        : parseBootstrapSidecarSession(value);
-    })
+    .map((name) =>
+      parseBootstrapSidecarWorkflow(
+        readCanonicalRecord(
+          path.join(directory, name),
+          'INTERVENTION_SIDECAR_SESSION_NOT_FOUND',
+        ),
+      ),
+    )
     .filter(
       (record) =>
         record.identity.interventionChangeId === interventionChangeId &&
