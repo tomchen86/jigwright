@@ -52,20 +52,7 @@ export type ExecutionResultView = {
   invocationId: string;
   acceptance: 'accepted' | 'late-duplicate';
   outputDigest: string;
-  /**
-   * `legacy-superseded` marks a result whose output schema body changed after
-   * the result was written, so its output kept its original binding instead of
-   * being re-judged by the current grammar. It is never inferred from a schema
-   * this engine does not own, only from an earlier generation of one it does.
-   */
   outputSchema: ProviderOutputSchemaGeneration;
-  /**
-   * `legacy-subset` marks a result whose observation carries the residuals list
-   * of the day it was written, from before a caveat this runner now names.
-   * `missing` names every code it therefore does not carry, so a record
-   * claiming fewer soft-containment caveats than today's runner says so rather
-   * than passing as current. Null when the result holds no observation.
-   */
   residuals: ProviderResidualsGeneration | null;
 };
 
@@ -81,15 +68,7 @@ export type ExecutionJobInspection = {
   runtimeStatus: 'scheduled' | 'running' | 'completed' | 'failed' | 'cancelled';
   workflow: WorkflowRecord;
   job: JobRecord;
-  /**
-   * `legacy-renumbered` marks a Job whose records do not carry the 1..N
-   * ordinals the current writer assigns -- a legacy retry opened a fresh
-   * invocation and left it numbered 1 -- so the ordinals below are the reader's,
-   * derived from the order the records were observed in. The observed order is
-   * still required to be monotonic, so this renames the attempts without
-   * reordering the history.
-   */
-  attemptNumbering: 'recorded' | 'legacy-renumbered';
+  attemptNumbering: 'recorded';
   attempts: AttemptRecord[];
   acceptedAttemptId: string | null;
   results: ExecutionResultView[];
@@ -481,7 +460,7 @@ function aggregateLegacyJob(
       left.record.invocationId.localeCompare(right.record.invocationId),
   );
   if (entries.length < 1) throw runtimeConflict('Legacy Job group is empty.');
-  const attemptNumbering = classifyLegacyEntries(entries);
+  const attemptNumbering = assertCurrentEntries(entries);
   const successful = entries.filter(
     ({ record }) => record.state === 'succeeded',
   );
@@ -594,29 +573,15 @@ function projectAgentRuntimeStatus(
   return 'failed';
 }
 
-/**
- * Check that a legacy group is one Job, and report how its attempts are
- * numbered.
- *
- * The current writer refuses to open a second attempt 1 in a group, so a group
- * that carries one cannot have been written by it: the ordinals predate that
- * rule, from when a retry opened a fresh invocation and numbered it 1 again.
- * That is the record's own age, so it is reported rather than refused.
- *
- * Nothing else relaxes. Every identity field must still agree, and the observed
- * order must still be monotonic -- which is what makes renumbering sound at
- * all, since the projected ordinals are that order and no other.
- */
-function classifyLegacyEntries(
-  entries: LegacyProjectionEntry[],
-): 'recorded' | 'legacy-renumbered' {
+function assertCurrentEntries(entries: LegacyProjectionEntry[]): 'recorded' {
   const first = entries[0]!.projection;
   let previousUpdatedAt = 0;
-  let numbering: 'recorded' | 'legacy-renumbered' = 'recorded';
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index]!;
     if (entry.record.attempt !== index + 1) {
-      numbering = 'legacy-renumbered';
+      throw runtimeConflict(
+        'Provider invocations grouped as one Job do not carry current attempt ordinals.',
+      );
     }
     if (
       entry.projection.job.jobId !== first.job.jobId ||
@@ -641,7 +606,7 @@ function classifyLegacyEntries(
     }
     previousUpdatedAt = updatedAt;
   }
-  return numbering;
+  return 'recorded';
 }
 
 function retryDecisionForLegacyFailure(input: {

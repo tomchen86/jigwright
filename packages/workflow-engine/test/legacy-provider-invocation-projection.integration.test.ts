@@ -14,32 +14,25 @@ import { startPropose } from '../src/application/propose/propose-orchestrator.ts
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 
-test('an invocation written before execution policy snapshots existed still projects', () => {
-  // Every invocation this repository recorded before the snapshot file existed
-  // has no execution-policy.json. Refusing to project them does not fail one
-  // read: the scan is fail-closed for the whole store, so a single legacy
-  // record stops every later propose from creating an invocation at all.
+test('an invocation without its current execution policy snapshot is unsafe', () => {
   const fixture = prepareLegacyInvocation('legacy-projection-tolerated');
   try {
     const scan = scanProviderInvocationLifecycles(fixture.runtime);
-    assert.deepEqual(scan.unsafeInvocations, []);
-    assert.equal(scan.projections.length, 1);
-    assert.equal(scan.projections[0]?.invocationId, fixture.invocationId);
-
-    const projections = listProviderInvocationLifecycleProjections(
-      fixture.runtime,
+    assert.equal(scan.projections.length, 0);
+    assert.equal(scan.unsafeInvocations.length, 1);
+    assert.throws(
+      () => listProviderInvocationLifecycleProjections(fixture.runtime),
+      /provider state is missing, unsafe, or non-canonical/i,
     );
-    assert.equal(projections.length, 1);
   } finally {
     fixture.dispose();
   }
 });
 
-test('the legacy projection carries the same lifecycle facts as the record', () => {
-  // Tolerating the missing file must mean reading the record, not inventing a
-  // placeholder: a projection that lied about state or attempt would let the
-  // retry ladder count history that never happened.
-  const fixture = prepareLegacyInvocation('legacy-projection-faithful');
+test('a current invocation projects the exact lifecycle facts it recorded', () => {
+  const fixture = prepareLegacyInvocation('current-projection-faithful', {
+    keepSnapshot: true,
+  });
   try {
     const [projection] = listProviderInvocationLifecycleProjections(
       fixture.runtime,
@@ -59,10 +52,9 @@ test('the legacy projection carries the same lifecycle facts as the record', () 
 });
 
 test('an invocation missing more than the policy snapshot stays unsafe', () => {
-  // The tolerance is narrow on purpose. A directory the current writer could
-  // never have produced in that order is legacy; a directory missing its
-  // manifest is damaged, and damage must still fail closed.
-  const fixture = prepareLegacyInvocation('legacy-projection-damaged');
+  const fixture = prepareLegacyInvocation('current-projection-damaged', {
+    keepSnapshot: true,
+  });
   try {
     fs.rmSync(path.join(fixture.directory, 'manifest.json'), { force: true });
     const scan = scanProviderInvocationLifecycles(fixture.runtime);
@@ -78,11 +70,7 @@ test('an invocation missing more than the policy snapshot stays unsafe', () => {
 });
 
 test('a present but mismatched policy snapshot stays unsafe', () => {
-  // Legacy tolerance keys on absence, never on content: an invocation that has
-  // a snapshot must still be judged against it. The replacement stays valid
-  // JSON in canonical form so the rejection has to come from the policy
-  // assertion rather than from the directory's canonical-encoding check.
-  const fixture = prepareLegacyInvocation('legacy-projection-mismatched', {
+  const fixture = prepareLegacyInvocation('current-projection-mismatched', {
     keepSnapshot: true,
   });
   try {
@@ -140,9 +128,6 @@ function prepareLegacyInvocation(
     invocationId,
   );
 
-  // The current writer makes the snapshot durable before the manifest, so a
-  // directory holding a manifest without one is only reachable from a store
-  // written before the snapshot existed. Removing it reproduces that shape.
   assert.ok(fs.existsSync(snapshotPath), 'the writer must record a snapshot');
   if (options.keepSnapshot !== true) {
     fs.rmSync(snapshotPath, { force: true });

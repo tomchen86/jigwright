@@ -26,41 +26,16 @@ import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';
 
-test('a group whose retries each recorded attempt one still aggregates', () => {
-  // A legacy retry opened a fresh invocation and left it numbered 1, so a Job
-  // can hold two attempt-1 records. Refusing that does not spoil one Job: the
-  // scan is fail-closed for the whole store, so two such records anywhere make
-  // job list and job status unusable for every Job in the repository.
+test('a group with duplicate attempt ordinals is rejected', () => {
   const fixture = prepareGroup('attempt-numbering-duplicated', [
     { suffix: '1', attempt: 1, completedAt: '2026-07-26T00:42:06.850Z' },
     { suffix: '2', attempt: 1, completedAt: '2026-07-26T01:08:43.437Z' },
   ]);
   try {
-    const jobs = listExecutionJobs(fixture.repository);
-    assert.equal(jobs.length, 1);
-    assert.equal(jobs[0]?.attempts.length, 2);
-  } finally {
-    fixture.dispose();
-  }
-});
-
-test('the renumbering is named, and the attempts chain in observed order', () => {
-  // Tolerating the numbering must not mean inventing history: the projected
-  // order has to be the order the records were observed in, and the Job has to
-  // say its ordinals are the reader's rather than the writer's.
-  const fixture = prepareGroup('attempt-numbering-named', [
-    { suffix: '1', attempt: 1, completedAt: '2026-07-26T00:42:06.850Z' },
-    { suffix: '2', attempt: 1, completedAt: '2026-07-26T01:08:43.437Z' },
-  ]);
-  try {
-    const [job] = listExecutionJobs(fixture.repository);
-    assert.equal(job?.attemptNumbering, 'legacy-renumbered');
-    const [first, second] = job!.attempts;
-    assert.equal(first?.retryOf, null);
-    assert.equal(second?.retryOf, first?.attemptId);
-    assert.equal(
-      Date.parse(second!.updatedAt) >= Date.parse(first!.updatedAt),
-      true,
+    assert.throws(
+      () => listExecutionJobs(fixture.repository),
+      (error: unknown) =>
+        isWorkflowError(error, 'EXECUTION_RUNTIME_JOB_CONFLICT'),
     );
   } finally {
     fixture.dispose();
@@ -90,7 +65,7 @@ test('records that cannot be ordered in time stay a conflict', () => {
   // project, so the Job must still fail closed rather than pick one.
   const fixture = prepareGroup('attempt-numbering-unordered', [
     { suffix: '1', attempt: 1, completedAt: '2026-07-26T01:08:43.437Z' },
-    { suffix: '2', attempt: 1, completedAt: '2026-07-26T00:42:06.850Z' },
+    { suffix: '2', attempt: 2, completedAt: '2026-07-26T00:42:06.850Z' },
   ]);
   try {
     assert.throws(

@@ -25,7 +25,6 @@ import { assertTaskDiffReviewChallengeResponseCurrent, parseTaskDiffReviewChalle
 import { parseTaskDiffReviewScope, parseTaskDiffReviewSubject, } from "../../modules/assurance/task-diff-review.js";
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, assertTaskStrategyImplementationManifest, } from "../../modules/provider-orchestration/task-strategy-provider-contract.js";
 import { runtimePaths, withRepositoryLifecycleOperation, } from "../session-workspace/session-store.js";
-import { LEGACY_WORKFLOW_IDENTITIES } from "../../modules/compatibility/legacy-workflow-identities.js";
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_BLIND_MANIFEST_BYTES = 262_144;
@@ -405,7 +404,8 @@ function readProviderInvocationCore(paths, requestedInvocationId) {
         request.providerId !== record.providerId ||
         request.purpose !== record.purpose ||
         (record.result !== null &&
-            canonicalJson(assertProviderResult(request, record.result, providerOutputSchemaGeneration(request), 'legacy-subset')) !== canonicalJson(record.result))) {
+            canonicalJson(assertProviderResult(request, record.result)) !==
+                canonicalJson(record.result))) {
         throw invocationInvalid();
     }
     if (record.runtimeReceipt !== undefined) {
@@ -1361,7 +1361,7 @@ function readProviderCompletionCandidate(paths, invocationId, request) {
         !isDigest(value.candidateDigest)) {
         throw invocationUnsafe();
     }
-    const result = assertProviderResult(request, value.result, providerOutputSchemaGeneration(request), 'legacy-subset');
+    const result = assertProviderResult(request, value.result);
     const runtimeReceipt = Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
         ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt)
         : undefined;
@@ -2280,7 +2280,7 @@ function assertProviderInvocationBinding(changeId, manifest, manifestDigest, req
                 manifest.review.assignment.reviewerProviderId ||
             request.roleAssignment.sessionId ===
                 manifest.review.assignment.reviewerSessionId ||
-            !matchesPersistedProviderOutputSchema(request.outputSchema, TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA, LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewContinuationOutput)) {
+            !matchesPersistedProviderOutputSchema(request.outputSchema, TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA)) {
             throw invocationInvalid();
         }
         return;
@@ -2296,7 +2296,7 @@ function assertProviderInvocationBinding(changeId, manifest, manifestDigest, req
             request.targetDigest !== manifest.subject.subjectDigest ||
             request.inputManifestDigest !== manifestDigest ||
             request.roleAssignment.targetDigest !== request.targetDigest ||
-            !matchesPersistedProviderOutputSchema(request.outputSchema, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, LEGACY_WORKFLOW_IDENTITIES.taskStrategyImplementationOutput)) {
+            !matchesPersistedProviderOutputSchema(request.outputSchema, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA)) {
             throw invocationInvalid();
         }
         return;
@@ -2808,10 +2808,7 @@ function codeOwnedProviderOutputSchema(request) {
         return PLAN_REVIEW_OUTPUT_SCHEMA;
     }
     if (request.purpose === 'task-diff-review') {
-        if (request.outputSchema.id ===
-            TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id ||
-            request.outputSchema.id ===
-                LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewContinuationOutput) {
+        if (request.outputSchema.id === TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id) {
             return TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA;
         }
         return TASK_DIFF_REVIEW_OUTPUT_SCHEMA;
@@ -2821,47 +2818,17 @@ function codeOwnedProviderOutputSchema(request) {
     }
     throw providerOutputSchemaUnsupported();
 }
-/**
- * Classify which generation of a code-owned output schema a request binds.
- *
- * The current writer always binds one constant this module owns for the
- * request's purpose and semantic phase, so a request carrying that constant's
- * exact id and version with a different digest is a shape the writer cannot
- * produce: the schema body was edited after the record was written. That is
- * the record's own age, and it is reported rather than refused. An unrecognized
- * id or version is not evidence of age — no writer of this engine ever emitted
- * one — so it stays unsupported.
- */
 export function providerOutputSchemaGeneration(request) {
     const codeOwned = codeOwnedProviderOutputSchema(request);
-    const legacyId = legacyProviderOutputSchemaId(request, codeOwned.id);
-    if ((request.outputSchema.id !== codeOwned.id &&
-        request.outputSchema.id !== legacyId) ||
-        request.outputSchema.version !== codeOwned.version) {
+    if (request.outputSchema.id !== codeOwned.id ||
+        request.outputSchema.version !== codeOwned.version ||
+        request.outputSchema.digest !== codeOwned.digest) {
         throw providerOutputSchemaUnsupported();
     }
-    if (request.outputSchema.id === legacyId)
-        return 'legacy-superseded';
-    return request.outputSchema.digest === codeOwned.digest
-        ? 'code-owned'
-        : 'legacy-superseded';
+    return 'code-owned';
 }
-function legacyProviderOutputSchemaId(request, currentId) {
-    if (request.purpose === 'survey') {
-        return LEGACY_WORKFLOW_IDENTITIES.blindSurveyOutput;
-    }
-    if (request.purpose === 'task-implementation') {
-        return LEGACY_WORKFLOW_IDENTITIES.taskStrategyImplementationOutput;
-    }
-    if (request.purpose === 'task-diff-review') {
-        return currentId === TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id
-            ? LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewContinuationOutput
-            : LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewOutput;
-    }
-    return undefined;
-}
-function matchesPersistedProviderOutputSchema(observed, current, legacyId) {
-    return ((observed.id === current.id || observed.id === legacyId) &&
+function matchesPersistedProviderOutputSchema(observed, current) {
+    return (observed.id === current.id &&
         observed.version === current.version &&
         observed.digest === current.digest);
 }
@@ -2907,45 +2874,14 @@ export function blindSurveyOutputValidator(request) {
         },
     };
 }
-/**
- * Classify which generation of the runner's residuals list an observation
- * carries.
- *
- * Every list this engine ever wrote spread one frozen constant, so the current
- * writer cannot produce a list shorter than that constant: a shorter one is the
- * record's own age, from a day when the constant itself was shorter. Age is
- * reported rather than refused, and the codes the record does not carry are
- * named so nothing silently claims fewer soft-containment caveats than today's
- * runner would.
- *
- * The tolerance is exactly that shape and nothing else. Because the constant
- * holds no duplicates, matching it as an order-preserving subsequence rejects a
- * superset, an unknown code, a repeat, and a permutation alike -- none of which
- * is evidence of age, because no writer of this engine ever emitted one.
- */
 function classifyProviderResiduals(value) {
-    // Guarded here rather than only at the observation call site, because a value
-    // that has a length and matches nothing -- an empty string, say -- would
-    // otherwise read as the shortest legacy list instead of as the wrong type.
-    if (!Array.isArray(value)) {
-        throw resultInvalid();
-    }
-    const missing = [];
-    let matched = 0;
-    for (const code of PROVIDER_RUNNER_RESIDUALS) {
-        if (matched < value.length && value[matched] === code) {
-            matched += 1;
-        }
-        else {
-            missing.push(code);
-        }
-    }
-    if (matched !== value.length) {
+    if (!Array.isArray(value) ||
+        canonicalJson(value) !== canonicalJson(PROVIDER_RUNNER_RESIDUALS)) {
         throw resultInvalid();
     }
     return deepFreeze({
-        generation: missing.length === 0 ? 'current' : 'legacy-subset',
-        missing,
+        generation: 'current',
+        missing: [],
     });
 }
 /**
@@ -2958,7 +2894,7 @@ export function providerResidualsGeneration(record) {
     const residuals = record.result?.runtimeObservation?.residuals;
     return residuals === undefined ? null : classifyProviderResiduals(residuals);
 }
-function assertProviderResult(request, value, outputSchema = 'code-owned', residuals = 'current-only') {
+function assertProviderResult(request, value) {
     if (!isRecord(value) ||
         !hasExactKeys(value, [
             'requestDigest',
@@ -2977,26 +2913,16 @@ function assertProviderResult(request, value, outputSchema = 'code-owned', resid
         throw resultInvalid();
     }
     const output = deepFreeze(structuredClone(value.output));
-    // A durable result written against a superseded generation cannot be judged
-    // by today's grammar: that grammar is gone from the code, so the choice is to
-    // report the generation or to refuse a record this engine itself wrote. Only
-    // the vanished check is skipped. The request bindings above, the output
-    // digest below — which still fixes the exact output bytes under the schema id
-    // and version the record stored — and the runtime observation all stay
-    // strict. The default keeps every caller strict, so a generation only reaches
-    // this from a call site that classified already-durable state.
-    if (outputSchema === 'code-owned') {
-        const validator = providerOutputValidator(request);
-        let outputAccepted;
-        try {
-            outputAccepted = validator.validate(output) === true;
-        }
-        catch {
-            throw resultInvalid();
-        }
-        if (!outputAccepted) {
-            throw resultInvalid();
-        }
+    const validator = providerOutputValidator(request);
+    let outputAccepted;
+    try {
+        outputAccepted = validator.validate(output) === true;
+    }
+    catch {
+        throw resultInvalid();
+    }
+    if (!outputAccepted) {
+        throw resultInvalid();
     }
     const outputDigest = sha256(canonicalJson({
         id: request.outputSchema.id,
@@ -3006,7 +2932,7 @@ function assertProviderResult(request, value, outputSchema = 'code-owned', resid
     if (value.outputDigest !== outputDigest) {
         throw resultInvalid();
     }
-    const runtimeObservation = assertRuntimeObservation(value.runtimeObservation, request, residuals);
+    const runtimeObservation = assertRuntimeObservation(value.runtimeObservation, request);
     return deepFreeze(structuredClone({ ...value, output, runtimeObservation }));
 }
 function providerResultFromRunnerReport(request, report) {
@@ -3093,7 +3019,7 @@ function providerOutputValidator(request) {
     }
     throw providerOutputSchemaUnsupported();
 }
-function assertRuntimeObservation(value, request, residuals = 'current-only') {
+function assertRuntimeObservation(value, request) {
     if (value === null) {
         return null;
     }
@@ -3153,17 +3079,7 @@ function assertRuntimeObservation(value, request, residuals = 'current-only') {
             throw resultInvalid();
         }
     }
-    // A durable record written before a residual was named carries the list of
-    // its own day. Reading it means classifying that list rather than demanding
-    // today's, and classification still refuses every shape no writer of this
-    // engine produced. A live report has no age to plead, so it must equal the
-    // constant exactly.
-    if (residuals === 'legacy-subset') {
-        classifyProviderResiduals(value.residuals);
-    }
-    else if (canonicalJson(value.residuals) !== canonicalJson(PROVIDER_RUNNER_RESIDUALS)) {
-        throw resultInvalid();
-    }
+    classifyProviderResiduals(value.residuals);
     return deepFreeze(structuredClone(value));
 }
 function assertProviderDefinitionSnapshotForResult(value, providerId, executableCandidatePath) {

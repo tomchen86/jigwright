@@ -57,48 +57,40 @@ const LEGACY_RESIDUALS = PROVIDER_RUNNER_RESIDUALS.filter(
   (code) => code !== RESIDUAL_ADDED_AFTER_THE_LEGACY_RECORDS,
 );
 
-test('a record carrying the residuals list of its own day still projects', () => {
-  // The seven records written before the eighth residual existed do not fail
-  // one read: the legacy scan is fail-closed for the whole store, so they make
-  // `job list` and `job status` unusable for every Job in the repository.
+test('a durable record carrying a superseded residual list is rejected', () => {
   assert.equal(LEGACY_RESIDUALS.length, PROVIDER_RUNNER_RESIDUALS.length - 1);
   const fixture = prepareInvocation('residuals-legacy-projects', {
     residuals: LEGACY_RESIDUALS,
   });
   try {
-    const jobs = listExecutionJobs(fixture.repository);
-    assert.equal(jobs.length, 1);
-    const [result] = jobs[0]!.results;
-    assert.equal(result?.invocationId, fixture.invocationId);
-    assert.deepEqual(result?.residuals, {
-      generation: 'legacy-subset',
-      missing: [RESIDUAL_ADDED_AFTER_THE_LEGACY_RECORDS],
-    });
+    assert.throws(
+      () => listExecutionJobs(fixture.repository),
+      (error: unknown) =>
+        isWorkflowError(error, 'EXECUTION_RUNTIME_STORE_UNSAFE'),
+    );
   } finally {
     fixture.dispose();
   }
 });
 
-test('the projection reports the residuals the record stored', () => {
-  // Tolerating the shorter list must not widen it. Residuals are the honest
-  // caveats an observation carries, and an aged record claiming today's caveats
-  // would assert containment nobody observed. The record keeps its own list and
-  // the projection names the gap instead.
+test('the residual classifier rejects a superseded residual list', () => {
   const fixture = prepareInvocation('residuals-legacy-faithful', {
     residuals: LEGACY_RESIDUALS,
   });
   try {
-    const record = readProviderInvocation(
-      fixture.runtime,
-      fixture.invocationId,
+    assert.throws(
+      () => readProviderInvocation(fixture.runtime, fixture.invocationId),
+      (error: unknown) =>
+        isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
     );
-    assert.deepEqual(record.result?.runtimeObservation?.residuals, [
-      ...LEGACY_RESIDUALS,
-    ]);
-    assert.deepEqual(providerResidualsGeneration(record), {
-      generation: 'legacy-subset',
-      missing: [RESIDUAL_ADDED_AFTER_THE_LEGACY_RECORDS],
-    });
+    assert.throws(
+      () =>
+        providerResidualsGeneration({
+          result: { runtimeObservation: { residuals: LEGACY_RESIDUALS } },
+        } as never),
+      (error: unknown) =>
+        isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
+    );
   } finally {
     fixture.dispose();
   }
@@ -195,18 +187,14 @@ test('a duplicated residual stays invalid', () => {
   }
 });
 
-test('an empty residuals list is legacy, and every missing caveat is named', () => {
-  // An empty list is still a shape the current writer cannot produce, so it is
-  // read rather than refused -- and because the projection names all eight
-  // missing codes, the record that claims the least is the one that discloses
-  // the most.
+test('an empty residuals list is rejected', () => {
   const fixture = prepareInvocation('residuals-empty', { residuals: [] });
   try {
-    const [job] = listExecutionJobs(fixture.repository);
-    assert.deepEqual(job?.results[0]?.residuals, {
-      generation: 'legacy-subset',
-      missing: [...PROVIDER_RUNNER_RESIDUALS],
-    });
+    assert.throws(
+      () => listExecutionJobs(fixture.repository),
+      (error: unknown) =>
+        isWorkflowError(error, 'EXECUTION_RUNTIME_STORE_UNSAFE'),
+    );
   } finally {
     fixture.dispose();
   }

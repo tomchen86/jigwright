@@ -536,18 +536,11 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
     catch {
         throw providerInvocationUnsafe();
     }
-    // The current writer makes execution-policy.json durable before the blind
-    // manifest, so a directory holding a manifest without one is not something it
-    // could have produced: the record predates the snapshot. Absence is therefore
-    // projected as legacy rather than rejected — the scan is fail-closed for the
-    // whole store, so refusing one pre-snapshot record stops every later propose
-    // from creating an invocation at all. Anything present is still judged in
-    // full, so this keys on absence and never on unreadability.
     const policySnapshotPath = path.join(directory, PROVIDER_POLICY_ROOT_FILE);
-    const policySnapshotRecorded = privatePathExists(paths, policySnapshotPath, providerInvocationUnsafe);
-    if (policySnapshotRecorded) {
-        assertProviderExecutionPolicySnapshot(paths, readPrivateCanonicalJson(paths, policySnapshotPath, providerInvocationUnsafe), request);
+    if (!privatePathExists(paths, policySnapshotPath, providerInvocationUnsafe)) {
+        throw providerInvocationUnsafe();
     }
+    assertProviderExecutionPolicySnapshot(paths, readPrivateCanonicalJson(paths, policySnapshotPath, providerInvocationUnsafe), request);
     if (!isRecord(value) ||
         !hasExactKeys(value, [
             'schemaVersion',
@@ -699,7 +692,7 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
         attempt: value.attempt,
         revision: value.revision,
         state: value.state,
-        policySnapshot: policySnapshotRecorded ? 'recorded' : 'legacy-absent',
+        policySnapshot: 'recorded',
         requestDigest: value.requestDigest,
         manifestDigest: value.manifestDigest,
         nonce: request.nonce,

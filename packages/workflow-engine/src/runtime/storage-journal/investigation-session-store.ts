@@ -295,12 +295,7 @@ export type ProviderInvocationLifecycleProjection = Readonly<{
   attempt: number;
   revision: number;
   state: 'prepared' | 'leased' | 'succeeded' | 'failed';
-  /**
-   * `legacy-absent` marks a record written before execution policy snapshots
-   * existed. It is never inferred from an unreadable snapshot, only from one
-   * the current writer could not have omitted.
-   */
-  policySnapshot: 'recorded' | 'legacy-absent';
+  policySnapshot: 'recorded';
   requestDigest: string;
   manifestDigest: string;
   nonce: string;
@@ -1342,30 +1337,19 @@ export function readProviderInvocationLifecycleProjection(
   } catch {
     throw providerInvocationUnsafe();
   }
-  // The current writer makes execution-policy.json durable before the blind
-  // manifest, so a directory holding a manifest without one is not something it
-  // could have produced: the record predates the snapshot. Absence is therefore
-  // projected as legacy rather than rejected — the scan is fail-closed for the
-  // whole store, so refusing one pre-snapshot record stops every later propose
-  // from creating an invocation at all. Anything present is still judged in
-  // full, so this keys on absence and never on unreadability.
   const policySnapshotPath = path.join(directory, PROVIDER_POLICY_ROOT_FILE);
-  const policySnapshotRecorded = privatePathExists(
-    paths,
-    policySnapshotPath,
-    providerInvocationUnsafe,
-  );
-  if (policySnapshotRecorded) {
-    assertProviderExecutionPolicySnapshot(
-      paths,
-      readPrivateCanonicalJson(
-        paths,
-        policySnapshotPath,
-        providerInvocationUnsafe,
-      ),
-      request,
-    );
+  if (!privatePathExists(paths, policySnapshotPath, providerInvocationUnsafe)) {
+    throw providerInvocationUnsafe();
   }
+  assertProviderExecutionPolicySnapshot(
+    paths,
+    readPrivateCanonicalJson(
+      paths,
+      policySnapshotPath,
+      providerInvocationUnsafe,
+    ),
+    request,
+  );
   if (
     !isRecord(value) ||
     !hasExactKeys(value, [
@@ -1534,7 +1518,7 @@ export function readProviderInvocationLifecycleProjection(
     attempt: value.attempt,
     revision: value.revision,
     state: value.state,
-    policySnapshot: policySnapshotRecorded ? 'recorded' : 'legacy-absent',
+    policySnapshot: 'recorded',
     requestDigest: value.requestDigest,
     manifestDigest: value.manifestDigest,
     nonce: request.nonce,

@@ -51,42 +51,23 @@ const FOREIGN_OUTPUT_SCHEMA: ProviderOutputSchema = {
   digest: 'a'.repeat(64),
 };
 
-test('a durable result written against a superseded code-owned schema still reads', () => {
-  // The schema body changed after these records were written, so re-judging
-  // their output against today's grammar is impossible: that grammar is gone
-  // from the code. Refusing them does not fail one read — the legacy scan is
-  // fail-closed for the whole store, so a single aged record makes `job list`
-  // and `job status` unusable for every Job in the repository.
+test('a durable result with a superseded output schema is rejected', () => {
   const fixture = prepareInvocation(SUPERSEDED_OUTPUT_SCHEMA);
   try {
-    const record = readProviderInvocation(fixture.runtime, INVOCATION_ID);
-    assert.equal(record.state, 'succeeded');
-    assert.equal(record.requestDigest, fixture.request.requestDigest);
-
-    const jobs = listExecutionJobs(fixture.repository);
-    assert.equal(jobs.length, 1);
-    assert.equal(jobs[0]?.attempts.length, 1);
-    assert.equal(jobs[0]?.results.length, 1);
-    assert.equal(jobs[0]?.results[0]?.invocationId, INVOCATION_ID);
+    assert.throws(
+      () => readProviderInvocation(fixture.runtime, INVOCATION_ID),
+      (error) => isWorkflowError(error, 'PROVIDER_OUTPUT_SCHEMA_UNSUPPORTED'),
+    );
+    assert.throws(
+      () => listExecutionJobs(fixture.repository),
+      (error) => isWorkflowError(error, 'EXECUTION_RUNTIME_STORE_UNSAFE'),
+    );
   } finally {
     fixture.dispose();
   }
 });
 
-test('the projection reports the superseded generation instead of hiding it', () => {
-  // Skipping a check silently would make an unjudgeable result indistinguishable
-  // from one today's grammar accepted. The reader has to be able to tell which
-  // results were re-validated and which only kept their original binding.
-  const superseded = prepareInvocation(SUPERSEDED_OUTPUT_SCHEMA);
-  try {
-    assert.equal(
-      listExecutionJobs(superseded.repository)[0]?.results[0]?.outputSchema,
-      'legacy-superseded',
-    );
-  } finally {
-    superseded.dispose();
-  }
-
+test('the current output schema remains code-owned', () => {
   const current = prepareInvocation(BLIND_SURVEY_OUTPUT_SCHEMA);
   try {
     assert.equal(
@@ -98,10 +79,7 @@ test('the projection reports the superseded generation instead of hiding it', ()
   }
 });
 
-test('a superseded generation still binds its stored output exactly', () => {
-  // The tolerance drops the vanished grammar check and nothing else. The output
-  // digest recomputation still fixes the exact output bytes under the stored
-  // schema id and version, so an edited output is rejected as it always was.
+test('a superseded generation cannot conceal edited output bytes', () => {
   const fixture = prepareInvocation(SUPERSEDED_OUTPUT_SCHEMA);
   try {
     const statePath = path.join(
@@ -117,7 +95,7 @@ test('a superseded generation still binds its stored output exactly', () => {
 
     assert.throws(
       () => readProviderInvocation(fixture.runtime, INVOCATION_ID),
-      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
+      (error) => isWorkflowError(error, 'PROVIDER_OUTPUT_SCHEMA_UNSUPPORTED'),
     );
   } finally {
     fixture.dispose();
