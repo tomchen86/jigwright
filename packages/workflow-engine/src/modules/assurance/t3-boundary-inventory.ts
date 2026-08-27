@@ -275,19 +275,12 @@ function readConsumerNamespaceConfig(repositoryRoot: string) {
     typeof value.repositoryName !== 'string' ||
     (value.consumerNamespace !== undefined &&
       typeof value.consumerNamespace !== 'string') ||
-    (value.acceptedLegacySchemaPrefixes !== undefined &&
-      (!Array.isArray(value.acceptedLegacySchemaPrefixes) ||
-        value.acceptedLegacySchemaPrefixes.some(
-          (prefix) => typeof prefix !== 'string',
-        )))
+    Object.hasOwn(value, 'acceptedLegacySchemaPrefixes')
   ) {
     throw inventoryInvalid('Workflow namespace configuration is invalid.');
   }
   return createWorkflowNamespaceConfig({
     consumerNamespace: value.consumerNamespace ?? value.repositoryName,
-    acceptedLegacyPrefixes: value.acceptedLegacySchemaPrefixes ?? [
-      `${value.repositoryName}.workflow.`,
-    ],
   });
 }
 

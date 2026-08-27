@@ -126,8 +126,7 @@ export function loadWorkflowConfig(repositoryRoot) {
         typeof value.repositoryName !== 'string' ||
         (value.consumerNamespace !== undefined &&
             typeof value.consumerNamespace !== 'string') ||
-        (value.acceptedLegacySchemaPrefixes !== undefined &&
-            !isStringArray(value.acceptedLegacySchemaPrefixes)) ||
+        Object.hasOwn(value, 'acceptedLegacySchemaPrefixes') ||
         typeof value.changeRoot !== 'string' ||
         typeof value.runtimeDirectory !== 'string' ||
         !isStringArray(value.protectedBranches) ||
@@ -172,13 +171,10 @@ export function loadWorkflowConfig(repositoryRoot) {
             }),
     };
 }
-/** Resolve the consumer-owned namespace while keeping legacy fixtures readable. */
+/** Resolve the consumer-owned namespace for neutral current records. */
 export function workflowNamespaceConfig(config) {
     return createWorkflowNamespaceConfig({
         consumerNamespace: config.consumerNamespace ?? config.repositoryName,
-        acceptedLegacyPrefixes: config.acceptedLegacySchemaPrefixes ?? [
-            `${config.repositoryName}.workflow.`,
-        ],
     });
 }
 function isTaskAuthorizationPolicy(value) {

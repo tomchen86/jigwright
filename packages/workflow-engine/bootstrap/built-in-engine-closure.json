@@ -193,7 +193,7 @@
     {
       "path": "node_modules/@jigwright/core/src/workflow-namespace.ts",
       "mode": "100644",
-      "digest": "sha256:56bdff991dd677f27d3042792bfa9d8a1280bf05833c31a32c94e8693e6b7a81"
+      "digest": "sha256:e7e3ba2be6d2a2ab8f57213513acdb2c1c2047840469ed8f7493619ee42b83b8"
     },
     {
       "path": "node_modules/@jigwright/github-adapter/package.json",
@@ -348,7 +348,7 @@
     {
       "path": "src/adapters/consumer/expense-app/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:a32c60717b90516d88466d073273d333eb02ac1f0a697c329429a7fb6815e9bd"
+      "digest": "sha256:a956c568783e9b9a6a6323776f10d28145c2707895b607d8efa7250036ba1024"
     },
     {
       "path": "src/adapters/consumer/expense-app/work-registry/database-policy.ts",
@@ -1103,7 +1103,7 @@
     {
       "path": "src/modules/assurance/t3-boundary-inventory.ts",
       "mode": "100644",
-      "digest": "sha256:7cbd4713ade91523f73c40a9051ada5df2dde476e2dff44b35e627654a73137e"
+      "digest": "sha256:5d02e7503cba72ca277e46ea810cf5e8a6a8d14f8409982d0105019a43897e67"
     },
     {
       "path": "src/modules/assurance/t3-boundary-scanner.ts",

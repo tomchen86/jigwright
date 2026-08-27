@@ -1,11 +1,9 @@
 const CONSUMER_NAMESPACE = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
 const SCHEMA_KIND = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/u;
-const SCHEMA_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*\.v[1-9][0-9]*$/u;
 
 export type WorkflowNamespaceErrorCode =
   | 'WORKFLOW_NAMESPACE_CONFIG_INVALID'
   | 'WORKFLOW_SCHEMA_ID_INVALID'
-  | 'WORKFLOW_SCHEMA_NAMESPACE_UNSUPPORTED'
   | 'WORKFLOW_SIGNATURE_NAMESPACE_UNSUPPORTED';
 
 export class WorkflowNamespaceError extends TypeError {
@@ -21,7 +19,6 @@ export class WorkflowNamespaceError extends TypeError {
 export type WorkflowNamespaceConfig = Readonly<{
   schemaVersion: 1;
   consumerNamespace: string;
-  acceptedLegacyPrefixes: readonly string[];
 }>;
 
 export type WorkflowRecordIdentity = Readonly<{
@@ -31,20 +28,8 @@ export type WorkflowRecordIdentity = Readonly<{
 
 export function createWorkflowNamespaceConfig(input: {
   consumerNamespace: string;
-  acceptedLegacyPrefixes?: readonly string[];
 }): WorkflowNamespaceConfig {
-  const acceptedLegacyPrefixes = input.acceptedLegacyPrefixes ?? [];
-  if (
-    !CONSUMER_NAMESPACE.test(input.consumerNamespace) ||
-    !Array.isArray(acceptedLegacyPrefixes) ||
-    acceptedLegacyPrefixes.some(
-      (prefix) =>
-        typeof prefix !== 'string' ||
-        !prefix.endsWith('.') ||
-        !CONSUMER_NAMESPACE.test(prefix.slice(0, -1)),
-    ) ||
-    new Set(acceptedLegacyPrefixes).size !== acceptedLegacyPrefixes.length
-  ) {
+  if (!CONSUMER_NAMESPACE.test(input.consumerNamespace)) {
     throw new WorkflowNamespaceError(
       'WORKFLOW_NAMESPACE_CONFIG_INVALID',
       'Workflow namespace configuration is invalid.',
@@ -54,7 +39,6 @@ export function createWorkflowNamespaceConfig(input: {
   return Object.freeze({
     schemaVersion: 1,
     consumerNamespace: input.consumerNamespace,
-    acceptedLegacyPrefixes: Object.freeze([...acceptedLegacyPrefixes]),
   });
 }
 
@@ -82,49 +66,6 @@ export function createWorkflowRecordIdentity(
     schema: workflowSchemaId(kind, version),
     consumerNamespace: validated.consumerNamespace,
   });
-}
-
-export function selectWorkflowRecordSchema(
-  recordSchema: string,
-  currentSchema: string,
-  legacySchemas: readonly string[],
-  config: WorkflowNamespaceConfig,
-): Readonly<{ schema: string; generation: 'current' | 'legacy' }> {
-  const validated = createWorkflowNamespaceConfig(config);
-  if (
-    typeof recordSchema !== 'string' ||
-    !SCHEMA_ID.test(recordSchema) ||
-    typeof currentSchema !== 'string' ||
-    !SCHEMA_ID.test(currentSchema) ||
-    !currentSchema.startsWith('workflow.') ||
-    !Array.isArray(legacySchemas) ||
-    legacySchemas.some(
-      (schema) => typeof schema !== 'string' || !SCHEMA_ID.test(schema),
-    )
-  ) {
-    throw new WorkflowNamespaceError(
-      'WORKFLOW_SCHEMA_ID_INVALID',
-      'Workflow schema identity is invalid.',
-    );
-  }
-
-  if (recordSchema === currentSchema) {
-    return Object.freeze({ schema: recordSchema, generation: 'current' });
-  }
-
-  if (
-    legacySchemas.includes(recordSchema) &&
-    validated.acceptedLegacyPrefixes.some((prefix) =>
-      recordSchema.startsWith(prefix),
-    )
-  ) {
-    return Object.freeze({ schema: recordSchema, generation: 'legacy' });
-  }
-
-  throw new WorkflowNamespaceError(
-    'WORKFLOW_SCHEMA_NAMESPACE_UNSUPPORTED',
-    'Workflow schema namespace or version is not supported.',
-  );
 }
 
 export function assertAllowedSignatureNamespace(

@@ -197,14 +197,11 @@ the later distribution phase.
 
 ### Schema and signature namespace — partial
 
-`@jigwright/grants` now performs exact version dispatch between the historical
-V1 Collaboration Grant namespace and the neutral current V2 namespace, with no
-namespace retry or fallback. `workflow/config.json` now owns the consumer
-namespace and exact accepted legacy prefixes. New boundary records carry the
-neutral `workflow.<kind>.vN` schema separately from `consumerNamespace`; legacy
-schemas are exact-read only and signed history is verified under its record's
-allowlisted namespace, never re-signed. Other consumer-specific namespaces
-remain in historical signatures, records, recovery code, and JSON Schema URIs.
+`workflow/config.json` owns only the consumer namespace. New boundary records
+carry the neutral `workflow.<kind>.vN` schema separately from
+`consumerNamespace`; the current schema admission API has no configurable
+legacy prefix or schema-selection fallback. Exact historical signed namespaces
+remain isolated in their dedicated readers until those readers are retired.
 
 ## Conformance and command surfaces
 

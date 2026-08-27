@@ -107,7 +107,6 @@ export type WorkflowConfig = {
   schemaVersion: 1;
   repositoryName: string;
   consumerNamespace?: string;
-  acceptedLegacySchemaPrefixes?: string[];
   changeRoot: string;
   runtimeDirectory: string;
   protectedBranches: string[];
@@ -438,8 +437,7 @@ export function loadWorkflowConfig(repositoryRoot: string): WorkflowConfig {
     typeof value.repositoryName !== 'string' ||
     (value.consumerNamespace !== undefined &&
       typeof value.consumerNamespace !== 'string') ||
-    (value.acceptedLegacySchemaPrefixes !== undefined &&
-      !isStringArray(value.acceptedLegacySchemaPrefixes)) ||
+    Object.hasOwn(value, 'acceptedLegacySchemaPrefixes') ||
     typeof value.changeRoot !== 'string' ||
     typeof value.runtimeDirectory !== 'string' ||
     !isStringArray(value.protectedBranches) ||
@@ -502,15 +500,12 @@ export function loadWorkflowConfig(repositoryRoot: string): WorkflowConfig {
   } as WorkflowConfig;
 }
 
-/** Resolve the consumer-owned namespace while keeping legacy fixtures readable. */
+/** Resolve the consumer-owned namespace for neutral current records. */
 export function workflowNamespaceConfig(
   config: WorkflowConfig,
 ): WorkflowNamespaceConfig {
   return createWorkflowNamespaceConfig({
     consumerNamespace: config.consumerNamespace ?? config.repositoryName,
-    acceptedLegacyPrefixes: config.acceptedLegacySchemaPrefixes ?? [
-      `${config.repositoryName}.workflow.`,
-    ],
   });
 }
 

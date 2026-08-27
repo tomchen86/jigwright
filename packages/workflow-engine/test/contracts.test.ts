@@ -103,12 +103,14 @@ test('task authorization binds the one reviewed path-role registry artifact', ()
   }
 });
 
-test('workflow namespace is consumer-configured with an exact legacy read prefix', () => {
+test('workflow namespace is current-only and consumer-configured', () => {
   const repository = createFixtureRepository();
   try {
     const fallback = workflowNamespaceConfig(loadWorkflowConfig(repository));
-    assert.equal(fallback.consumerNamespace, 'fixture');
-    assert.deepEqual(fallback.acceptedLegacyPrefixes, ['fixture.workflow.']);
+    assert.deepEqual(fallback, {
+      schemaVersion: 1,
+      consumerNamespace: 'fixture',
+    });
 
     const configPath = path.join(repository, 'workflow/config.json');
     const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<
@@ -116,15 +118,14 @@ test('workflow namespace is consumer-configured with an exact legacy read prefix
       unknown
     >;
     config.consumerNamespace = 'sample-consumer';
-    config.acceptedLegacySchemaPrefixes = ['sample-consumer.workflow.'];
     fs.writeFileSync(configPath, `${JSON.stringify(config)}\n`);
     const explicit = workflowNamespaceConfig(loadWorkflowConfig(repository));
-    assert.equal(explicit.consumerNamespace, 'sample-consumer');
-    assert.deepEqual(explicit.acceptedLegacyPrefixes, [
-      'sample-consumer.workflow.',
-    ]);
+    assert.deepEqual(explicit, {
+      schemaVersion: 1,
+      consumerNamespace: 'sample-consumer',
+    });
 
-    config.acceptedLegacySchemaPrefixes = ['not-a-prefix'];
+    config.acceptedLegacySchemaPrefixes = [];
     fs.writeFileSync(configPath, `${JSON.stringify(config)}\n`);
     assert.throws(() => loadWorkflowConfig(repository));
   } finally {
@@ -449,10 +450,7 @@ test('public guidance exposes the investigation-first and repeated managed-task 
     workflow,
     /longer route[\s\S]{0,120}cannot bypass the full gate/i,
   );
-  assert.match(
-    roadmap,
-    /current-only full gate[\s\S]{0,160}exact-tarball/i,
-  );
+  assert.match(roadmap, /current-only full gate[\s\S]{0,160}exact-tarball/i);
 });
 
 test('public guidance preserves the assurance registry and keeps exemptions distinct', () => {
