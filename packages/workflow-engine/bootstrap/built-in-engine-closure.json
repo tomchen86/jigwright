@@ -1288,7 +1288,7 @@
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:1a30ed4e7d585bc635ce575eade74af32e14c93b82287a2311853ab3a2e765bb"
+      "digest": "sha256:c6a79a385ba7f563c1f6353576adbb492cc327fa052bd2fa4d5993bd45012f67"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
@@ -2073,7 +2073,7 @@
     {
       "path": "src/runtime/storage-journal/task-diff-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:49bc1ff98aec7c2ea771934c70931fe90534598eb3d46c43fe04b68b3a808578"
+      "digest": "sha256:82d8d214e6c6f7dd32c1f1c37ef4e364dc432c249b37a73d58793f23eda91984"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-store.ts",
@@ -2093,7 +2093,7 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-store.ts",
       "mode": "100644",
-      "digest": "sha256:cce8349cf5632027e5dcc8be0e6930c6e5a3c1fdffa088bf8c302c70d7d9f185"
+      "digest": "sha256:07917816d8f60011f155db89ec8239280a76e667f57d06996e3df2bc35f63152"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",

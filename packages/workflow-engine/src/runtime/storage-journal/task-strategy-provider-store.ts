@@ -54,23 +54,17 @@ import {
   type RecordedRoleParticipant,
 } from '../../modules/provider-orchestration/role-scheduler.ts';
 import type { TaskStrategyTransaction } from './task-strategy-store.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../modules/compatibility/legacy-workflow-identities.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TASK_ID = /^\d+(?:\.\d+)+$/;
 
-function isPersistedTaskStrategyOutputSchema(value: unknown): boolean {
+function isCurrentTaskStrategyOutputSchema(value: unknown): boolean {
   try {
-    const observed = canonicalJson(value);
     return (
-      observed === canonicalJson(TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA) ||
-      observed ===
-        canonicalJson({
-          ...TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-          id: LEGACY_WORKFLOW_IDENTITIES.taskStrategyImplementationOutput,
-        })
+      canonicalJson(value) ===
+      canonicalJson(TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA)
     );
   } catch {
     return false;
@@ -1078,6 +1072,7 @@ function parseTaskStrategyImplementationReservation(
     manifest.baseTree !== value.baseline.tree ||
     request.authorizationNodeId !== value.authorizationNodeId ||
     request.targetDigest !== subject.subjectDigest ||
+    !isCurrentTaskStrategyOutputSchema(request.outputSchema) ||
     canonicalJson(request.roleAssignment) !== canonicalJson(value.assignment)
   ) {
     throw stateCorrupt();
@@ -1190,7 +1185,7 @@ function isCurrentImplementationRoleResult(value: AdmittedRoleResult): boolean {
     value.content.kind !== 'task-implementation' ||
     value.content.contentDigest !== value.content.resultDigest ||
     value.content.current !== true ||
-    !isPersistedTaskStrategyOutputSchema(value.content.outputSchema) ||
+    !isCurrentTaskStrategyOutputSchema(value.content.outputSchema) ||
     value.providerInvocation === null ||
     value.providerInvocation.providerId !== value.assignment.providerId ||
     value.providerInvocation.sessionId !== value.assignment.sessionId ||
@@ -1380,7 +1375,7 @@ function parseTaskStrategyCallerImplementationBinding(
       binding.submissionResultDigest ||
     binding.roleResult.content.contentDigest !==
       binding.submissionResultDigest ||
-    !isPersistedTaskStrategyOutputSchema(
+    !isCurrentTaskStrategyOutputSchema(
       binding.roleResult.content.outputSchema,
     ) ||
     binding.roleResult.content.evaluator !==

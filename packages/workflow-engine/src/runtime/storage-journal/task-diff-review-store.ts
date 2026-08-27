@@ -50,7 +50,6 @@ import {
   type TaskDiffReviewSubject,
 } from '../../modules/assurance/task-diff-review.ts';
 import type { TaskMandateBinding } from '../../modules/authority/task-mandate.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../../modules/compatibility/legacy-workflow-identities.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,511}$/;
@@ -1164,10 +1163,8 @@ function parseTaskDiffReviewContinuationReservation(
     request.roleAssignment.providerId !==
       review.assignment.reviewerProviderId ||
     request.roleAssignment.sessionId === review.assignment.reviewerSessionId ||
-    (request.outputSchema.id !==
-      TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id &&
-      request.outputSchema.id !==
-        LEGACY_WORKFLOW_IDENTITIES.taskDiffReviewContinuationOutput) ||
+    request.outputSchema.id !==
+      TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id ||
     request.outputSchema.version !==
       TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.version ||
     request.outputSchema.digest !==

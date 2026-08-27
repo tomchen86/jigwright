@@ -210,6 +210,75 @@ test('provider strategy stores preserve the legacy subject and namespace later R
   }
 });
 
+test('provider strategy stores reject the superseded output schema identity', () => {
+  const fixture = createRuntimeFixture();
+  try {
+    const current = createProviderFixture(fixture, 'a');
+    const currentRequest = current.reservation.request;
+    const legacyOutputSchema = {
+      ...TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
+      id: 'expense-app.workflow.task-strategy-implementation-output',
+    };
+    const legacyRequest = createProviderInvocationRequest({
+      invocationId: currentRequest.invocationId,
+      nonce: currentRequest.nonce,
+      purpose: currentRequest.purpose,
+      providerId: currentRequest.providerId,
+      roleAssignment: currentRequest.roleAssignment,
+      capabilityProfile: currentRequest.capabilityProfile,
+      repositoryId: currentRequest.repositoryId,
+      baseCommit: currentRequest.baseCommit,
+      baseTree: currentRequest.baseTree,
+      targetDigest: currentRequest.targetDigest,
+      inputManifestDigest: currentRequest.inputManifestDigest,
+      authorizationNodeId: currentRequest.authorizationNodeId,
+      writeAllowedPaths: [],
+      outputSchema: legacyOutputSchema,
+      evaluatorVersion: currentRequest.evaluatorVersion,
+      policyDigest: currentRequest.policyDigest,
+      limits: currentRequest.limits,
+    });
+
+    assert.throws(
+      () =>
+        createTaskStrategyImplementationReservation(fixture.paths, {
+          ...current.reservation,
+          request: legacyRequest,
+        }),
+      hasCode('TASK_STRATEGY_IMPLEMENTATION_STATE_CORRUPT'),
+    );
+
+    const { resultDigest: _resultDigest, ...currentRoleResultBody } =
+      current.result.roleResult;
+    const legacyRoleResultBody = {
+      ...currentRoleResultBody,
+      content: {
+        ...currentRoleResultBody.content,
+        outputSchema: legacyOutputSchema,
+      },
+    };
+    const legacyRoleResult = {
+      ...legacyRoleResultBody,
+      resultDigest: digest(
+        canonicalJson({
+          schema: 'admitted-role-result.v1',
+          ...legacyRoleResultBody,
+        }),
+      ),
+    };
+    assert.throws(
+      () =>
+        createTaskStrategyImplementationResultBinding(fixture.paths, {
+          ...current.result,
+          roleResult: legacyRoleResult,
+        }),
+      hasCode('TASK_STRATEGY_IMPLEMENTATION_STATE_CORRUPT'),
+    );
+  } finally {
+    fs.rmSync(fixture.base, { recursive: true, force: true });
+  }
+});
+
 test('patch strategy stores preserve the legacy source tree and namespace later RED source trees', () => {
   const fixture = createRuntimeFixture();
   try {

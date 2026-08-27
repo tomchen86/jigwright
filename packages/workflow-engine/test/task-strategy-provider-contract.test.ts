@@ -87,15 +87,20 @@ test('task implementation assignment binds one exact RED subject and provider re
   assert.equal(request.roleAssignment.role, 'task-implementer');
   assert.equal(request.targetDigest, subject.subjectDigest);
   assert.equal(providerOutputSchemaGeneration(request), 'code-owned');
-  assert.equal(
-    providerOutputSchemaGeneration({
-      ...request,
-      outputSchema: {
-        ...TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-        id: 'expense-app.workflow.task-strategy-implementation-output',
-      },
-    }),
-    'legacy-superseded',
+  assert.throws(
+    () =>
+      providerOutputSchemaGeneration({
+        ...request,
+        outputSchema: {
+          ...TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
+          id: 'expense-app.workflow.task-strategy-implementation-output',
+        },
+      }),
+    (error) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'PROVIDER_OUTPUT_SCHEMA_UNSUPPORTED',
   );
   assert.throws(
     () =>

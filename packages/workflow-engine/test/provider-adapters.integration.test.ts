@@ -3358,7 +3358,7 @@ function providerRequestInput(
     authorizationNodeId: 'e'.repeat(64),
     writeAllowedPaths: [],
     outputSchema: {
-      id: 'expense-app.workflow.blind-survey-output',
+      id: BLIND_SURVEY_OUTPUT_SCHEMA.id,
       version: 1,
       digest: outputSchemaDigest,
     },

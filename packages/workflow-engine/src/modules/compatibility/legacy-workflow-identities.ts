@@ -6,7 +6,6 @@
  * signature verification depends on it.
  */
 export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
-  blindSurveyOutput: 'expense-app.workflow.blind-survey-output',
   collaborationGrant: 'expense-app.workflow.collaboration-grant.v1',
   collaborationPolicy: 'expense-app.workflow.collaboration-policy.v1',
   taskDiffReviewCollaborationPolicy:
@@ -20,17 +19,8 @@ export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
     'expense-app.workflow.evidence-reuse-proof-output.v1',
   humanResolutionGrant: 'expense-app.workflow.human-resolution-grant.v1',
   maintainerGrantV1: 'expense-app.workflow.maintainer-grant.v1',
-  providerAvailabilityPilotAuthorization:
-    'expense-app.workflow.provider-availability-pilot-authorization.v1',
-  providerAvailabilityPilotAuthorizationOutput:
-    'expense-app.workflow.provider-availability-pilot-authorization-output.v1',
   roleContextSharingPolicy:
     'expense-app.workflow.role-context-sharing-policy.v1',
-  taskDiffReviewOutput: 'expense-app.workflow.task-diff-review-output',
-  taskDiffReviewContinuationOutput:
-    'expense-app.workflow.task-diff-review-continuation-output',
-  taskStrategyImplementationOutput:
-    'expense-app.workflow.task-strategy-implementation-output',
 } as const);
 
 export type LegacyWorkflowIdentity =

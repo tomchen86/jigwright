@@ -61,10 +61,36 @@ test('provider continuation inventory spans sessions and excludes exact global n
   }
 });
 
+test('provider continuation rejects the superseded output schema identity', () => {
+  const base = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'task-diff-review-store-'),
+  );
+  const paths = investigationRuntimePaths(base, 'workflow-engine');
+  try {
+    assert.throws(
+      () =>
+        createContinuation(
+          paths,
+          'session-superseded',
+          'superseded',
+          'expense-app.workflow.task-diff-review-continuation-output',
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        (error as Error & { code: string }).code ===
+          'TASK_DIFF_REVIEW_STORE_UNSAFE',
+    );
+  } finally {
+    fs.rmSync(base, { recursive: true, force: true });
+  }
+});
+
 function createContinuation(
   paths: ReturnType<typeof investigationRuntimePaths>,
   sessionId: string,
   seed: string,
+  outputSchemaId: string = TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id,
 ) {
   const subject = createTaskDiffReviewSubject({
     repositoryId: 'github:tomchen86/expense-app',
@@ -196,7 +222,10 @@ function createContinuation(
     inputManifestDigest: digest(manifest),
     authorizationNodeId: digest(`${seed}:authorization`),
     writeAllowedPaths: [],
-    outputSchema: TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
+    outputSchema: {
+      ...TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
+      id: outputSchemaId,
+    },
     evaluatorVersion: 'task-diff-review-continuation.v1',
     policyDigest: subject.reviewPolicyDigest,
     limits: { timeoutMs: 60_000, aggregateOutputBytes: 262_144 },

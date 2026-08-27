@@ -14,6 +14,7 @@ import {
   inspectProviderPromptContextRetentionBinding,
   prepareProviderPromptContextForInvocation,
 } from '../src/runtime/provider-execution/provider-execution-governance.ts';
+import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 
 const FIRST_AT = new Date('2026-08-10T02:00:00.000Z');
 const SECOND_AT = new Date('2026-08-10T02:01:00.000Z');
@@ -165,7 +166,7 @@ function providerRequest(input: {
     authorizationNodeId: 'e'.repeat(64),
     writeAllowedPaths: [],
     outputSchema: {
-      id: 'expense-app.workflow.blind-survey-output',
+      id: BLIND_SURVEY_OUTPUT_SCHEMA.id,
       version: 1,
       digest: input.outputSchemaDigest ?? 'd'.repeat(64),
     },
