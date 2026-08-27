@@ -181,6 +181,7 @@ test('format verification delegates to the registered canonical authority', () =
     'prettier',
     'prettier',
     '--check',
+    '--ignore-unknown',
     'packages/workflow-engine',
     'workflow/ai-adapter-policy.json',
     'workflow/checks.json',
