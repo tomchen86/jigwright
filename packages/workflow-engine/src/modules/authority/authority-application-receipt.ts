@@ -12,7 +12,6 @@ import {
 import { createMaintainerAuditTag } from './maintainer-grant.ts';
 import type { MaintainerPolicy } from './maintainer-policy.ts';
 import type { MaintainerSignerProvider } from './maintainer-signer-port.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 export const AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE =
   'workflow.authority-application-receipt.v1' as const;
@@ -24,7 +23,7 @@ const GRANT_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const TARGET_REF = /^refs\/heads\/[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/;
 const TAG_REF = /^refs\/tags\/[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/;
-const LEGACY_RECEIPT_KEYS = [
+const RECEIPT_KEYS = [
   'schemaVersion',
   'kind',
   'grantId',
@@ -36,6 +35,7 @@ const LEGACY_RECEIPT_KEYS = [
   'grantEnvelopeDigest',
   'candidateBundleDigest',
   'effectsManifestDigest',
+  'evidenceWaivers',
   'candidatePatchDigest',
   'candidateCommit',
   'candidateTree',
@@ -56,7 +56,6 @@ const LEGACY_RECEIPT_KEYS = [
   'grantConsumeAuditReceiptDigest',
   'issuedAt',
 ] as const;
-const RECEIPT_KEYS = [...LEGACY_RECEIPT_KEYS, 'evidenceWaivers'] as const;
 
 export type AuthorityApplicationReceiptPayload = {
   schemaVersion: 1;
@@ -70,8 +69,7 @@ export type AuthorityApplicationReceiptPayload = {
   grantEnvelopeDigest: `sha256:${string}`;
   candidateBundleDigest: string;
   effectsManifestDigest: string;
-  /** Absent only on historical receipts issued before named waivers. */
-  evidenceWaivers?: MaintainerEvidenceWaiver[];
+  evidenceWaivers: MaintainerEvidenceWaiver[];
   candidatePatchDigest: string;
   candidateCommit: string;
   candidateTree: string;
@@ -95,8 +93,7 @@ export type AuthorityApplicationReceiptPayload = {
 
 export type AuthorityApplicationReceiptEnvelope = {
   payload: AuthorityApplicationReceiptPayload;
-  /** Absent only on historical consumer-branded envelopes. */
-  signatureNamespace?: typeof AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE;
   signature: string;
 };
 
@@ -137,10 +134,11 @@ export function canonicalAuthorityApplicationReceiptEnvelope(
   assertArmoredSignature(envelope.signature);
   const signatureNamespace =
     authorityApplicationReceiptSignatureNamespace(envelope);
-  const canonicalEnvelope =
-    envelope.signatureNamespace === undefined
-      ? { payload, signature: envelope.signature }
-      : { payload, signatureNamespace, signature: envelope.signature };
+  const canonicalEnvelope = {
+    payload,
+    signatureNamespace,
+    signature: envelope.signature,
+  };
   return `${canonicalJson(canonicalEnvelope)}\n`;
 }
 
@@ -171,32 +169,20 @@ export function parseAuthorityApplicationReceiptEnvelope(
     const value = JSON.parse(raw) as unknown;
     if (
       !isRecord(value) ||
-      (!hasExactKeys(value, ['payload', 'signature']) &&
-        !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature'])) ||
+      !hasExactKeys(value, ['payload', 'signatureNamespace', 'signature']) ||
       !isRecord(value.payload) ||
-      (!hasExactKeys(value.payload, RECEIPT_KEYS) &&
-        !hasExactKeys(value.payload, LEGACY_RECEIPT_KEYS)) ||
+      !hasExactKeys(value.payload, RECEIPT_KEYS) ||
+      value.signatureNamespace !==
+        AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE ||
       typeof value.signature !== 'string'
     ) {
       throw new Error('invalid receipt envelope');
     }
     const payload = value.payload as AuthorityApplicationReceiptPayload;
     validateAuthorityApplicationReceiptPayload(payload);
-    if (
-      'signatureNamespace' in value &&
-      value.signatureNamespace !==
-        AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE
-    ) {
-      throw new Error('unsupported receipt signature namespace');
-    }
     const envelope: AuthorityApplicationReceiptEnvelope = {
       payload,
-      ...('signatureNamespace' in value
-        ? {
-            signatureNamespace:
-              AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
-          }
-        : {}),
+      signatureNamespace: AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
       signature: value.signature,
     };
     if (canonicalAuthorityApplicationReceiptEnvelope(envelope) !== raw) {
@@ -392,12 +378,7 @@ export function publishAuthorityApplicationReceipt(
 
 function authorityApplicationReceiptSignatureNamespace(
   envelope: AuthorityApplicationReceiptEnvelope,
-):
-  | typeof AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.authorityApplicationReceipt {
-  if (envelope.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.authorityApplicationReceipt;
-  }
+): typeof AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE {
   if (
     envelope.signatureNamespace ===
     AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE
@@ -412,8 +393,7 @@ function validateAuthorityApplicationReceiptPayload(
 ): void {
   if (
     !isRecord(value) ||
-    (!hasExactKeys(value, RECEIPT_KEYS) &&
-      !hasExactKeys(value, LEGACY_RECEIPT_KEYS)) ||
+    !hasExactKeys(value, RECEIPT_KEYS) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'authority-application-receipt.v1' ||
     !GRANT_ID.test(value.grantId) ||

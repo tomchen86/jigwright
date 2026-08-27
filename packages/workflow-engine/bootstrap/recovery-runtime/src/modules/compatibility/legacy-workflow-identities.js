@@ -6,8 +6,6 @@
  * signature verification depends on it.
  */
 export const LEGACY_WORKFLOW_IDENTITIES = Object.freeze({
-    authorityApplicationReceipt: 'expense-app.workflow.authority-application-receipt.v1',
-    authorityAttestation: 'expense-app.workflow.authority-attestation.v1',
     blindSurveyOutput: 'expense-app.workflow.blind-survey-output',
     collaborationGrant: 'expense-app.workflow.collaboration-grant.v1',
     collaborationPolicy: 'expense-app.workflow.collaboration-policy.v1',

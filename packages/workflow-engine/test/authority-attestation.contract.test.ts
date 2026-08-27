@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE,
   AUTHORITY_ATTESTATION_TAG_PREFIX,
   authorityAttestationTagRef,
   canonicalAttestationEnvelope,
@@ -66,7 +67,11 @@ function validPayload(): AuthorityAttestationPayload {
 }
 
 function validEnvelope(): AuthorityAttestationEnvelope {
-  return { payload: validPayload(), signature: SIGNATURE };
+  return {
+    payload: validPayload(),
+    signatureNamespace: AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE,
+    signature: SIGNATURE,
+  };
 }
 
 function facts(overrides: Partial<AttestedCommitFacts>): AttestedCommitFacts {
@@ -93,6 +98,13 @@ test('attestation envelope round-trips through its canonical serialization', () 
   assert.equal(
     canonicalAttestationEnvelope(parseAuthorityAttestationEnvelope(raw)),
     raw,
+  );
+  const namespaceLess = JSON.parse(raw) as Record<string, unknown>;
+  delete namespaceLess.signatureNamespace;
+  assert.throws(
+    () =>
+      parseAuthorityAttestationEnvelope(`${JSON.stringify(namespaceLess)}\n`),
+    (error) => isWorkflowError(error, 'AUTHORITY_ATTESTATION_INVALID'),
   );
 });
 

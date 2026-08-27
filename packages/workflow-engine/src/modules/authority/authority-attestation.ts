@@ -5,7 +5,6 @@ import {
   type AuthorityManagedTrailers,
   type ManagedTrailers,
 } from '../lifecycle/managed-trailers.ts';
-import { LEGACY_WORKFLOW_IDENTITIES } from '../compatibility/legacy-workflow-identities.ts';
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const GRANT_ID =
@@ -23,7 +22,6 @@ const MAX_SIGNATURE_LENGTH = 16_384;
 const MAX_GRANT_BASES = 64;
 const MAX_GRANT_IDS_PER_BASE = 64;
 
-const LEGACY_ENVELOPE_KEYS = ['payload', 'signature'];
 const ENVELOPE_KEYS = ['payload', 'signatureNamespace', 'signature'];
 const PAYLOAD_KEYS = [
   'version',
@@ -67,8 +65,7 @@ export type AuthorityAttestationPayload = {
 
 export type AuthorityAttestationEnvelope = {
   payload: AuthorityAttestationPayload;
-  /** Absent only on historical consumer-branded envelopes. */
-  signatureNamespace?: typeof AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE;
+  signatureNamespace: typeof AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE;
   signature: string;
 };
 
@@ -109,14 +106,11 @@ export function canonicalAttestationEnvelope(
     canonicalAttestationPayload(envelope.payload),
   ) as AuthorityAttestationPayload;
   const signatureNamespace = authorityAttestationSignatureNamespace(envelope);
-  const canonicalEnvelope =
-    envelope.signatureNamespace === undefined
-      ? { payload: canonicalPayload, signature: envelope.signature }
-      : {
-          payload: canonicalPayload,
-          signatureNamespace,
-          signature: envelope.signature,
-        };
+  const canonicalEnvelope = {
+    payload: canonicalPayload,
+    signatureNamespace,
+    signature: envelope.signature,
+  };
   return `${JSON.stringify(canonicalEnvelope)}\n`;
 }
 
@@ -181,8 +175,7 @@ export function parseAuthorityAttestationEnvelope(
     typeof value !== 'object' ||
     value === null ||
     Array.isArray(value) ||
-    (!hasExactKeys(value as Record<string, unknown>, ENVELOPE_KEYS) &&
-      !hasExactKeys(value as Record<string, unknown>, LEGACY_ENVELOPE_KEYS))
+    !hasExactKeys(value as Record<string, unknown>, ENVELOPE_KEYS)
   ) {
     throw invalidAttestation(
       'Authority attestation envelope shape is invalid.',
@@ -190,7 +183,6 @@ export function parseAuthorityAttestationEnvelope(
   }
   const candidate = value as Record<string, unknown>;
   if (
-    'signatureNamespace' in candidate &&
     candidate.signatureNamespace !== AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE
   ) {
     throw invalidAttestation(
@@ -201,9 +193,7 @@ export function parseAuthorityAttestationEnvelope(
   assertAuthorityAttestationPayload(candidate.payload);
   const envelope: AuthorityAttestationEnvelope = {
     payload: candidate.payload,
-    ...('signatureNamespace' in candidate
-      ? { signatureNamespace: AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE }
-      : {}),
+    signatureNamespace: AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE,
     signature: candidate.signature as string,
   };
   if (canonicalAttestationEnvelope(envelope) !== raw) {
@@ -216,12 +206,7 @@ export function parseAuthorityAttestationEnvelope(
 
 export function authorityAttestationSignatureNamespace(
   envelope: AuthorityAttestationEnvelope,
-):
-  | typeof AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE
-  | typeof LEGACY_WORKFLOW_IDENTITIES.authorityAttestation {
-  if (envelope.signatureNamespace === undefined) {
-    return LEGACY_WORKFLOW_IDENTITIES.authorityAttestation;
-  }
+): typeof AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE {
   if (
     envelope.signatureNamespace === AUTHORITY_ATTESTATION_SIGNATURE_NAMESPACE
   ) {

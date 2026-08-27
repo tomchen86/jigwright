@@ -9,6 +9,7 @@ import {
   AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
   canonicalAuthorityApplicationReceiptEnvelope,
   canonicalAuthorityApplicationReceiptPayload,
+  parseAuthorityApplicationReceiptEnvelope,
   readAuthorityApplicationReceiptTag,
   type AuthorityApplicationReceiptEnvelope,
   type AuthorityApplicationReceiptPayload,
@@ -98,6 +99,34 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
       receipt.envelope.payload.evidenceWaivers,
       EVIDENCE_WAIVERS,
     );
+    const currentReceiptRaw = canonicalAuthorityApplicationReceiptEnvelope(
+      receipt.envelope,
+    );
+    const namespaceLessReceipt = JSON.parse(currentReceiptRaw) as Record<
+      string,
+      unknown
+    >;
+    delete namespaceLessReceipt.signatureNamespace;
+    assert.throws(
+      () =>
+        parseAuthorityApplicationReceiptEnvelope(
+          `${JSON.stringify(namespaceLessReceipt)}\n`,
+        ),
+      (error) =>
+        isWorkflowError(error, 'AUTHORITY_APPLICATION_RECEIPT_INVALID'),
+    );
+    const waiverLessReceipt = JSON.parse(currentReceiptRaw) as {
+      payload: Record<string, unknown>;
+    };
+    delete waiverLessReceipt.payload.evidenceWaivers;
+    assert.throws(
+      () =>
+        parseAuthorityApplicationReceiptEnvelope(
+          `${JSON.stringify(waiverLessReceipt)}\n`,
+        ),
+      (error) =>
+        isWorkflowError(error, 'AUTHORITY_APPLICATION_RECEIPT_INVALID'),
+    );
 
     const mismatchedPayload: AuthorityApplicationReceiptPayload = {
       ...receipt.envelope.payload,
@@ -117,16 +146,13 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
 
     const { evidenceWaivers: _omitted, ...legacyPayload } =
       receipt.envelope.payload;
-    replaceReceipt(
-      repository,
-      applied.applicationReceiptTagRef,
-      applied.commitHash,
-      legacyPayload as AuthorityApplicationReceiptPayload,
-      signer,
-    );
     assert.throws(
-      () => validateCiAuthorityCommit(repository, commit),
-      (error) => isWorkflowError(error, 'CI_AUTHORITY_V2_RECEIPT_TAMPERED'),
+      () =>
+        canonicalAuthorityApplicationReceiptPayload(
+          legacyPayload as AuthorityApplicationReceiptPayload,
+        ),
+      (error) =>
+        isWorkflowError(error, 'AUTHORITY_APPLICATION_RECEIPT_INVALID'),
     );
 
     const terminal = readTerminalMaintainerGrant(

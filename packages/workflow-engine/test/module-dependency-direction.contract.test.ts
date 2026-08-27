@@ -32,7 +32,7 @@ const EXPECTED_ACTIVE_EDGE_COUNT = 754;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:39e0c934f7d2ced628e9f16177994b7854c272b11451e294b0823d7533e338af';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:fc92515a71fd956593638f16a3a50c369ca8fe49c9648977f3914d0e8860ef77';
+  'sha256:ff3ec70585dccfc22f87dee80e5bfd888a99bcf40c8fcae6b619060cfb87dcdc';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -1209,8 +1209,6 @@ test('legacy consumer identities exist only in exact historical reader registrie
       ],
       'packages/workflow-engine/src/modules/compatibility/legacy-workflow-identities.ts':
         [
-          'expense-app.workflow.authority-application-receipt.v1',
-          'expense-app.workflow.authority-attestation.v1',
           'expense-app.workflow.blind-survey-output',
           'expense-app.workflow.collaboration-grant.v1',
           'expense-app.workflow.collaboration-policy.task-diff-review.v1',

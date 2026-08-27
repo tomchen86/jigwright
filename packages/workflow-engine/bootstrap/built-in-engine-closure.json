@@ -1148,12 +1148,12 @@
     {
       "path": "src/modules/authority/authority-application-receipt.ts",
       "mode": "100644",
-      "digest": "sha256:82a95e2103b1d8c8eff2de53b3d277e452edf15cf3284b959bcb0f6b2d2c949b"
+      "digest": "sha256:cb4c0193a4c067c4f59169b4b3541e0517125ca57c70d412c64e6a0bb94d42b7"
     },
     {
       "path": "src/modules/authority/authority-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:d5b289e5a9b106cbff930cd70881a6e96b16647c83760e94a38ee0c71eaf443e"
+      "digest": "sha256:2c98236e3d7d4436308a3a85560eaa38103e4bb7d958c26ddede0a83da4a3f1c"
     },
     {
       "path": "src/modules/authority/authority-refusal-audit.ts",
@@ -1288,7 +1288,7 @@
     {
       "path": "src/modules/compatibility/legacy-workflow-identities.ts",
       "mode": "100644",
-      "digest": "sha256:f262a2d677ff1361ea32811d92c819195cc6f087e3bb6c902969ff4e924503f3"
+      "digest": "sha256:b370608ed6821112c3950f18cbf4969c65f2ddcab20b0a018e8ca383d420134f"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
