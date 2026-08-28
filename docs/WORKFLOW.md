@@ -92,7 +92,8 @@ install-prompts`.
 
 Maintainer ceremonies are human-only and require a controlling interactive terminal. Operators use `pnpm workflow maintainer grant`, `pnpm workflow
 maintainer attest`, `pnpm workflow maintainer attestation-relay`, `pnpm
-workflow maintainer inspect`, and `pnpm workflow maintainer revoke`.
+workflow maintainer inspect`, and the family-neutral `pnpm workflow grant
+revoke`.
 
 The local signer is configured with `git config --local gpg.format ssh` and
 `git config --local user.signingkey`. Protected audit refs include
@@ -101,5 +102,5 @@ migration gate, a protected environment, and a one-way transition. Emergency
 recovery remains repository-admin, out-of-band authority.
 
 Legacy V1 issuance and live human-resolution execution entrypoints are absent.
-`authority-start` and the remaining historical inspection and revocation
-surfaces exist only for terminal cleanup and cannot authorize new work.
+`authority-start` and the remaining historical inspection surfaces exist only
+for terminal cleanup and cannot authorize new work.

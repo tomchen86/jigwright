@@ -357,7 +357,7 @@ test('agent guide documents the complete public workflow surface and source-size
     'pnpm workflow issue validate',
     'pnpm workflow maintainer grant',
     'pnpm workflow maintainer inspect',
-    'pnpm workflow maintainer revoke',
+    'pnpm workflow grant revoke',
     'pnpm workflow documents validate',
     'pnpm workflow document-refresh propose',
     'pnpm workflow document-refresh show',
@@ -380,7 +380,7 @@ test('agent guide documents the complete public workflow surface and source-size
   }
   assert.match(
     agents,
-    /Legacy V1 issuance and authority-session entry are disabled/i,
+    /Legacy V1 issuance[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}authority-session parsers[\s\S]{0,40}cannot authorize[\s\S]{0,20}new work/i,
   );
   assert.doesNotMatch(agents, /pnpm workflow handoff render/);
   assert.match(
@@ -682,7 +682,7 @@ test('break-glass maintainer operator contract is complete and bootstrap-only', 
     'pnpm workflow maintainer attest',
     'pnpm workflow maintainer attestation-relay',
     'pnpm workflow maintainer inspect',
-    'pnpm workflow maintainer revoke',
+    'pnpm workflow grant revoke',
   ]) {
     assert.match(workflow, new RegExp(command.replaceAll(' ', '\\s+')));
   }

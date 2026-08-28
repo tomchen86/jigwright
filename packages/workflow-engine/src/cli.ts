@@ -130,7 +130,6 @@ import {
   inspectMaintainerGrants,
   maintainerGrantStorePaths,
 } from './runtime/storage-journal/maintainer-store.ts';
-import { revokeLegacyMaintainerGrant } from './application/control-plane/maintainer-revoke.ts';
 import {
   assertInteractiveSignerContext,
   createInteractiveSshSigner,
@@ -1971,7 +1970,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
           result: projectAuthorityAttestationRelay(cwd, rest[2]),
         };
       }
-      if (rest[0] !== 'inspect' && rest[0] !== 'revoke') {
+      if (rest[0] !== 'inspect') {
         throw maintainerUsage();
       }
       const git = discoverRepository(cwd);
@@ -1981,16 +1980,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
           action: 'inspect',
           ok: true,
           grants: inspectMaintainerGrants(git.gitCommonDirectory, rest[1]),
-        };
-      }
-      if (rest[0] === 'revoke' && rest.length === 4 && rest[2] === '--reason') {
-        return {
-          command,
-          action: 'revoke',
-          ok: true,
-          grant: revokeLegacyMaintainerGrant(cwd, rest[1], {
-            reason: rest[3],
-          }),
         };
       }
       throw maintainerUsage();
@@ -3037,7 +3026,7 @@ function maintainerAttestUsage(): WorkflowError {
 
 function maintainerUsage(): WorkflowError {
   return usage(
-    'Usage: pnpm workflow maintainer <review-diff-attest <session-id> --input <typed-envelope.json> --grant <grant-id>|grant ...|resolution-grant ...|resolution-inspect [grant-id]|resolution-publication-discard <grant-id> ...|resolution-revoke <grant-id> --reason <text>|attest ...|attestation-relay --original <commit>|inspect [grant-id]|revoke <grant-id> --reason <text>|collaboration-grant ...|collaboration-inspect [grant-id]|collaboration-revoke <grant-id> --reason <text>> [--json]',
+    'Usage: pnpm workflow maintainer <review-diff-attest <session-id> --input <typed-envelope.json> --grant <grant-id>|grant ...|resolution-inspect [grant-id]|resolution-publication-discard <grant-id> ...|resolution-revoke <grant-id> --reason <text>|attest ...|attestation-relay --original <commit>|inspect [grant-id]|collaboration-grant ...|collaboration-inspect [grant-id]|collaboration-revoke <grant-id> --reason <text>> [--json]',
   );
 }
 
@@ -3511,7 +3500,6 @@ function usageText(): string {
     '  pnpm workflow maintainer attest --original <commit> --main <commit> [--base <original>=<main> ...] [--json]',
     '  pnpm workflow maintainer attestation-relay --original <commit> [--json]',
     '  pnpm workflow maintainer inspect [grant-id] [--json]',
-    '  pnpm workflow maintainer revoke <grant-id> --reason <text> [--json]',
     '  pnpm workflow maintainer collaboration-grant --change <id> [--task <task-id>] --base <commit> --target <digest> --phase <blind-survey|plan-review|task-diff-review|task-implementation> --author-role <role> --conflicting-role <role> (--provider <codex|claude> --actor-assurance <grade>|--caller <id> --actor-assurance <grade>|--direct-human true) --degraded <same-provider-fresh-session|caller-supplied|direct-human-review> --reason <text> [--ttl <minutes>m] [--uses 1] [--json]',
     '  pnpm workflow maintainer collaboration-inspect [grant-id] [--json]',
     '  pnpm workflow maintainer collaboration-revoke <grant-id> --reason <text> [--json]',

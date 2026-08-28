@@ -228,6 +228,13 @@ test('current CLI exposes no legacy human-resolution execution or signing entryp
     ['human-resolution-recover', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
     ['maintainer', 'resolution-grant'],
     ['maintainer', 'grant', 'legacy-v1'],
+    [
+      'maintainer',
+      'revoke',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      '--reason',
+      'Legacy authority is not admitted by the current CLI.',
+    ],
   ]) {
     const result = spawnSync(
       process.execPath,

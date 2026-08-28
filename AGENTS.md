@@ -93,11 +93,11 @@ Human-only maintainer inspection and ceremonies:
 
 - `pnpm workflow maintainer grant ... --json`
 - `pnpm workflow maintainer inspect --json`
-- `pnpm workflow maintainer revoke <grant-id> --reason <text> --json`
+- `pnpm workflow grant revoke <grant-id> --reason <text> --json`
 
 Legacy V1 issuance and live human-resolution execution entrypoints are absent.
-Remaining historical inspection, revocation, and authority-session parsers
-cannot authorize new work.
+Remaining historical inspection and authority-session parsers cannot authorize
+new work.
 
 ## Development rules
 

@@ -221,17 +221,14 @@ test('main CLI accepts the family-neutral audited grant revoke surface', () => {
   }
 });
 
-test('legacy and human-resolution revoke routes require an explicit reason', () => {
+test('human-resolution revoke requires an explicit reason', () => {
   const repository = createFixtureRepository();
   const cli = path.join(
     sourceRepositoryRoot,
     'packages/workflow-engine/src/cli.ts',
   );
   try {
-    for (const command of [
-      ['maintainer', 'revoke'],
-      ['maintainer', 'resolution-revoke'],
-    ]) {
+    for (const command of [['maintainer', 'resolution-revoke']]) {
       const result = spawnSync(
         process.execPath,
         [
