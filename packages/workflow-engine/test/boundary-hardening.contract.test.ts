@@ -172,20 +172,14 @@ test('a terminal JSON-looking option value is not consumed as output mode', () =
   try {
     assert.equal(
       runCli(
-        ['authority-abort', 'session-does-not-exist', '--reason', '--json'],
+        ['abort', 'session-does-not-exist', '--reason', '--json'],
         repository,
       ),
       ExitCode.staleState,
     );
     assert.equal(
       runCli(
-        [
-          'authority-abort',
-          'session-does-not-exist',
-          '--reason',
-          '--json',
-          '--json',
-        ],
+        ['abort', 'session-does-not-exist', '--reason', '--json', '--json'],
         repository,
       ),
       ExitCode.staleState,

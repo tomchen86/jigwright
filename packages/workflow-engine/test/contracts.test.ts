@@ -380,7 +380,7 @@ test('agent guide documents the complete public workflow surface and source-size
   }
   assert.match(
     agents,
-    /Legacy V1 issuance[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}authority-session parsers[\s\S]{0,40}cannot authorize[\s\S]{0,20}new work/i,
+    /Legacy V1 issuance[\s\S]{0,160}public authority-session commands[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}inspection parsers[\s\S]{0,40}cannot authorize[\s\S]{0,20}new[\s\S]{0,5}work/i,
   );
   assert.doesNotMatch(agents, /pnpm workflow handoff render/);
   assert.match(
@@ -688,7 +688,7 @@ test('break-glass maintainer operator contract is complete and bootstrap-only', 
   }
   assert.match(
     workflow,
-    /legacy V1[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}authority-start[\s\S]{0,160}cannot authorize new work/i,
+    /legacy V1[\s\S]{0,160}public authority-session commands[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}inspection surfaces[\s\S]{0,160}cannot authorize[\s\S]{0,20}new[\s\S]{0,5}work/i,
   );
 
   assert.match(workflow, /controlling interactive terminal/i);

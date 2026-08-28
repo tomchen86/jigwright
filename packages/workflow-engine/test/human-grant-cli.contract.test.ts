@@ -221,7 +221,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
   fs.rmSync(repositoryRoot, { recursive: true, force: true });
 });
 
-test('current CLI exposes no legacy human-resolution execution or signing entrypoints', () => {
+test('current CLI exposes no legacy authority or human-resolution entrypoints', () => {
   const cli = path.resolve(import.meta.dirname, '../src/cli.ts');
   for (const args of [
     ['human-resolution-apply', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
@@ -235,6 +235,16 @@ test('current CLI exposes no legacy human-resolution execution or signing entryp
       '--reason',
       'Legacy authority is not admitted by the current CLI.',
     ],
+    [
+      'authority-start',
+      'demo-change',
+      '--grant',
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    ],
+    ['authority-check', 'legacy-session'],
+    ['authority-commit', 'legacy-session', '--message', 'Legacy authority'],
+    ['authority-recover', 'legacy-session'],
+    ['authority-abort', 'legacy-session', '--reason', 'Legacy authority'],
   ]) {
     const result = spawnSync(
       process.execPath,

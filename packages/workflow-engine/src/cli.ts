@@ -142,13 +142,6 @@ import {
   productionConsumedRoleResultReplayPort,
 } from './composition-root/grant-verifier-composition.ts';
 import { readCollaborationGrantInspection } from './runtime/storage-journal/collaboration-grant-store.ts';
-import { commitAuthoritySession } from './application/control-plane/maintainer-commit.ts';
-import { recoverAuthorityCommit } from './application/control-plane/maintainer-recovery.ts';
-import {
-  abortAuthoritySession,
-  checkAuthoritySession,
-  startAuthoritySession,
-} from './application/control-plane/maintainer-session.ts';
 import { parseMaintainerPolicy } from './modules/authority/maintainer-policy.ts';
 import {
   approveAndApplyMaintainerGrantV2,
@@ -2005,72 +1998,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
         ),
       };
     }
-    case 'authority-start': {
-      const changeId = rest[0];
-      const grantId = optionValue(rest.slice(1), '--grant');
-      if (!changeId || !grantId || rest.length !== 3 || rest[1] !== '--grant') {
-        throw usage(
-          'Usage: pnpm workflow authority-start <change-id> --grant <grant-id> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        session: startAuthoritySession(cwd, changeId, grantId),
-      };
-    }
-    case 'authority-check':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        result: checkAuthoritySession(cwd, rest[0]),
-      };
-    case 'authority-commit': {
-      const sessionId = rest[0];
-      const message = optionValue(rest.slice(1), '--message');
-      if (
-        !sessionId ||
-        !message ||
-        rest.length !== 3 ||
-        rest[1] !== '--message'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow authority-commit <session-id> --message <subject> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        result: commitAuthoritySession(cwd, sessionId, message),
-      };
-    }
-    case 'authority-recover':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        result: recoverAuthorityCommit(cwd, rest[0]),
-      };
-    case 'authority-abort': {
-      const sessionId = rest[0];
-      const reason = optionValue(rest.slice(1), '--reason');
-      if (
-        !sessionId ||
-        !reason ||
-        rest.length !== 3 ||
-        rest[1] !== '--reason'
-      ) {
-        throw usage(
-          'Usage: pnpm workflow authority-abort <session-id> --reason <text> [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        session: abortAuthoritySession(cwd, sessionId, reason),
-      };
-    }
     case 'documents':
       if (rest.length !== 1 || rest[0] !== 'validate') {
         throw usage('Usage: pnpm workflow documents validate [--json]');
@@ -3503,11 +3430,6 @@ function usageText(): string {
     '  pnpm workflow maintainer collaboration-grant --change <id> [--task <task-id>] --base <commit> --target <digest> --phase <blind-survey|plan-review|task-diff-review|task-implementation> --author-role <role> --conflicting-role <role> (--provider <codex|claude> --actor-assurance <grade>|--caller <id> --actor-assurance <grade>|--direct-human true) --degraded <same-provider-fresh-session|caller-supplied|direct-human-review> --reason <text> [--ttl <minutes>m] [--uses 1] [--json]',
     '  pnpm workflow maintainer collaboration-inspect [grant-id] [--json]',
     '  pnpm workflow maintainer collaboration-revoke <grant-id> --reason <text> [--json]',
-    '  pnpm workflow authority-start <change-id> --grant <grant-id> [--json]',
-    '  pnpm workflow authority-check <session-id> [--json]',
-    '  pnpm workflow authority-commit <session-id> --message <subject> [--json]',
-    '  pnpm workflow authority-recover <session-id> [--json]',
-    '  pnpm workflow authority-abort <session-id> --reason <text> [--json]',
     '  pnpm workflow human-resolution-state <investigation-id> [--json]',
     '  pnpm workflow grant human <request-investigation-v3 <investigation-id> --reason <agent-proposed-reason>|request-change-routing-continuation <change-id> --reason <agent-proposed-reason>|request-work-item-review <work-item-id> --input <review.json> --reason <reason>|request-work-item-promotion <work-item-id> --change <change-id> --expected <digest> --reason <reason>|inspect <challenge-id>|decide <challenge-id>|recover <challenge-id>> [--json]',
     '  pnpm workflow documents validate [--json]',
