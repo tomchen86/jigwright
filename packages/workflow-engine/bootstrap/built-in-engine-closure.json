@@ -313,7 +313,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:7b8e31b0036382e22046590f631f89b553e62eea01f0fcead87085479e3c37e1"
+      "digest": "sha256:7eff1ac33411cc973e0a65b1dac005d9d765bc13d8e7ab1f31418c4b5680599b"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",

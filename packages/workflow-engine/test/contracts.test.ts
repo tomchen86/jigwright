@@ -1366,7 +1366,6 @@ test('execution artifacts use one exact strategy variant per task without claimi
         strategy: 'direct-reviewed' as const,
         exemptionKind: 'documentation-only' as const,
         exemptionReason: 'Only authored documentation changes.',
-        legacyBootstrap: null,
       },
       {
         ...common,
@@ -1616,28 +1615,23 @@ test('execution artifacts use one exact strategy variant per task without claimi
         },
       },
     };
-    assert.deepEqual(
-      parseExecutionArtifact(
-        bootstrapExecution,
-        bootstrapExecution.changeId,
-        bootstrapTasks,
-        bootstrapGuard,
-        contract.checks,
-        contract.behaviorContracts,
-      ),
-      bootstrapExecution,
-    );
-    assert.deepEqual(
-      parseExecutionArtifact(
-        bootstrapExecution,
-        bootstrapExecution.changeId,
-        bootstrapTasks.map((task) => ({ ...task, completed: true })),
-        bootstrapGuard,
-        contract.checks,
-        contract.behaviorContracts,
-      ),
-      bootstrapExecution,
-    );
+    for (const tasks of [
+      bootstrapTasks,
+      bootstrapTasks.map((task) => ({ ...task, completed: true })),
+    ]) {
+      assert.throws(
+        () =>
+          parseExecutionArtifact(
+            bootstrapExecution,
+            bootstrapExecution.changeId,
+            tasks,
+            bootstrapGuard,
+            contract.checks,
+            contract.behaviorContracts,
+          ),
+        (error) => isWorkflowError(error, 'INVALID_EXECUTION_ARTIFACT'),
+      );
+    }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

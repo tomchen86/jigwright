@@ -166,7 +166,6 @@ test('granted replacement republication traverses its own reservation crash wind
             diffReview: 'policy-required',
             exemptionKind: 'narrowly-scoped-non-behavioral',
             exemptionReason: 'The fixture exercises workflow orchestration.',
-            legacyBootstrap: null,
           },
         },
       }),

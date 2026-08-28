@@ -664,7 +664,6 @@ test('structured investigation exemption starts a durable planning branch withou
           exemptionKind: 'documentation-only',
           exemptionReason:
             'The task edits documentation only and changes no runtime behavior.',
-          legacyBootstrap: null,
         },
       },
     });
@@ -1395,7 +1394,6 @@ test('fake-backed propose composes breadth and depth before materializing an unc
           exemptionKind: 'narrowly-scoped-non-behavioral',
           exemptionReason:
             'The fixture exercises planning orchestration without product behavior.',
-          legacyBootstrap: null,
         },
       },
     });
@@ -2941,7 +2939,6 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
           exemptionKind: 'narrowly-scoped-non-behavioral',
           exemptionReason:
             'The fixture exercises workflow orchestration without product behavior.',
-          legacyBootstrap: null,
         },
       },
     });
@@ -5016,19 +5013,11 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
       );
 
       const successor = startSession(repository, 'demo-change', '1.1');
-      assert.notEqual(
-        successor.sessionId,
-        started.sessionId,
-        state,
-      );
+      assert.notEqual(successor.sessionId, started.sessionId, state);
       assert.equal(successor.state, 'active', state);
       const successorMarker = fs.readFileSync(lockPath, 'utf8');
       releaseOwnedLock(lockPath, started.sessionId);
-      assert.equal(
-        fs.readFileSync(lockPath, 'utf8'),
-        successorMarker,
-        state,
-      );
+      assert.equal(fs.readFileSync(lockPath, 'utf8'), successorMarker, state);
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }

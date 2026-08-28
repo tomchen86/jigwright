@@ -420,7 +420,6 @@ function planningPayload(changeId: string) {
         exemptionKind: 'narrowly-scoped-non-behavioral' as const,
         exemptionReason:
           'The fixture exercises planning orchestration without product behavior.',
-        legacyBootstrap: null,
       },
     },
   };

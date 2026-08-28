@@ -1503,7 +1503,6 @@ function writeReadyV3ExemptChange(
             diffReview: 'policy-required',
             exemptionKind: 'documentation-only',
             exemptionReason: 'Fixture documentation-only task.',
-            legacyBootstrap: null,
           },
         ]),
       ),

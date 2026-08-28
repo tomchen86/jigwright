@@ -323,16 +323,8 @@ function createReconciliationFixture(): string {
     action: { kind: 'focus', changeId: CHANGE_ID },
   });
   applyChangeRoutingReview(fixture.repository, routingReview);
-  git(fixture.repository, [
-    'add',
-    '--',
-    'openspec/change-lifecycle.json',
-  ]);
-  git(fixture.repository, [
-    'commit',
-    '-m',
-    'Focus reconciliation fixture',
-  ]);
+  git(fixture.repository, ['add', '--', 'openspec/change-lifecycle.json']);
+  git(fixture.repository, ['commit', '-m', 'Focus reconciliation fixture']);
   return fixture.repository;
 }
 
@@ -427,7 +419,6 @@ function reconciliationPlanningPayload() {
         exemptionKind: 'narrowly-scoped-non-behavioral' as const,
         exemptionReason:
           'The fixture exercises workflow reconciliation without product behavior.',
-        legacyBootstrap: null,
       },
     },
   };

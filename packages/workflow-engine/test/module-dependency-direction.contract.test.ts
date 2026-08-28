@@ -32,7 +32,7 @@ const EXPECTED_ACTIVE_EDGE_COUNT = 747;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:8c4f041137faba9b4e67a7b06112884df743116c83a35c9b4e3bc2c1e1646200';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:165389ec7779004656c04acac4dc5bd0a1fbb53fd75099a9830158cb060099a9';
+  'sha256:6086cb12a208730caf70da8a0de7d2c417ceef3044db1f0ebd2c0dc42732d95d';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';

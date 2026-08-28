@@ -373,7 +373,6 @@ export function writeManagedChangeArtifacts(
         diffReview: 'policy-required' as const,
         exemptionKind: 'documentation-only' as const,
         exemptionReason: 'documentation-only',
-        legacyBootstrap: null,
       },
     },
   };
@@ -546,7 +545,6 @@ export function writeReadyV3ExemptChange(
           diffReview: options.diffReview ?? ('policy-required' as const),
           exemptionKind: 'documentation-only' as const,
           exemptionReason: 'Fixture documentation-only task.',
-          legacyBootstrap: null,
         },
       ]),
     ),

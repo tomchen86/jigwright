@@ -133,7 +133,6 @@ const EXECUTION_TASK: ExecutionArtifact['tasks'][string] = {
   exemptionKind: 'narrowly-scoped-non-behavioral',
   exemptionReason:
     'The fixture exercises planning orchestration without product behavior.',
-  legacyBootstrap: null,
 };
 
 test('an amendment contribution replaces the executed prior generation without reopening its work', () => {

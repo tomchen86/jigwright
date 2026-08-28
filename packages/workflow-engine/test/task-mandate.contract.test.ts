@@ -1491,7 +1491,6 @@ test('exempt PlanReview inherits the durable mandate and audits one fail-closed 
           exemptionKind: 'documentation-only',
           exemptionReason:
             'The task edits documentation only and changes no runtime behavior.',
-          legacyBootstrap: null,
         },
       },
     });

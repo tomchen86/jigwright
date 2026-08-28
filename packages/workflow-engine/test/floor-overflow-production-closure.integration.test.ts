@@ -359,7 +359,6 @@ function planningPayload(changeId: string): PlanningContributionPayload {
         exemptionKind: 'narrowly-scoped-non-behavioral',
         exemptionReason:
           'The fixture exercises planning control flow without product behavior.',
-        legacyBootstrap: null,
       },
     },
   };

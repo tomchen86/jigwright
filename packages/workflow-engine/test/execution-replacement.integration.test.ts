@@ -833,7 +833,6 @@ test('granted PlanReview retry publishes one v3 reservation ref before dispatch'
             diffReview: 'policy-required',
             exemptionKind: 'narrowly-scoped-non-behavioral',
             exemptionReason: 'The fixture exercises workflow orchestration.',
-            legacyBootstrap: null,
           },
         },
       }),

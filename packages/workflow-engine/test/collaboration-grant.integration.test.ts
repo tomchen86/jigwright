@@ -457,7 +457,6 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
           diffReview: 'policy-required',
           exemptionKind: 'documentation-only',
           exemptionReason: 'The task edits documentation only.',
-          legacyBootstrap: null,
         },
       },
     });

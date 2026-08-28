@@ -392,10 +392,8 @@ export type DirectReviewedExecution = ExecutionCommon & {
     | 'documentation-only'
     | 'formatting-only'
     | 'dependency-only'
-    | 'narrowly-scoped-non-behavioral'
-    | 'legacy-bootstrap';
+    | 'narrowly-scoped-non-behavioral';
   exemptionReason: string;
-  legacyBootstrap: null | 'establish-investigation-first-planning';
 };
 
 export type ExecutionTask =
@@ -1668,26 +1666,14 @@ export function parseExecutionArtifact(
           ...commonKeys,
           'exemptionKind',
           'exemptionReason',
-          'legacyBootstrap',
         ]) ||
         ![
           'documentation-only',
           'formatting-only',
           'dependency-only',
           'narrowly-scoped-non-behavioral',
-          'legacy-bootstrap',
         ].includes(String(candidate.exemptionKind)) ||
         !isSemanticText(candidate.exemptionReason)
-      ) {
-        throw invalid();
-      }
-      const legacyBootstrap = candidate.legacyBootstrap;
-      if (
-        candidate.exemptionKind === 'legacy-bootstrap'
-          ? expectedChangeId !== 'establish-investigation-first-planning' ||
-            taskId !== '7.1' ||
-            legacyBootstrap !== 'establish-investigation-first-planning'
-          : legacyBootstrap !== null
       ) {
         throw invalid();
       }

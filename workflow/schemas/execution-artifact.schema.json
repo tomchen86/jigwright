@@ -257,8 +257,7 @@
         "requiredChecks",
         "diffReview",
         "exemptionKind",
-        "exemptionReason",
-        "legacyBootstrap"
+        "exemptionReason"
       ],
       "properties": {
         "strategy": { "const": "direct-reviewed" },
@@ -271,38 +270,11 @@
             "documentation-only",
             "formatting-only",
             "dependency-only",
-            "narrowly-scoped-non-behavioral",
-            "legacy-bootstrap"
+            "narrowly-scoped-non-behavioral"
           ]
         },
-        "exemptionReason": { "$ref": "#/$defs/text" },
-        "legacyBootstrap": {
-          "type": ["null", "string"],
-          "enum": [null, "establish-investigation-first-planning"]
-        }
-      },
-      "allOf": [
-        {
-          "if": {
-            "properties": {
-              "exemptionKind": { "const": "legacy-bootstrap" }
-            },
-            "required": ["exemptionKind"]
-          },
-          "then": {
-            "properties": {
-              "legacyBootstrap": {
-                "const": "establish-investigation-first-planning"
-              }
-            }
-          },
-          "else": {
-            "properties": {
-              "legacyBootstrap": { "type": "null" }
-            }
-          }
-        }
-      ]
+        "exemptionReason": { "$ref": "#/$defs/text" }
+      }
     }
   }
 }
