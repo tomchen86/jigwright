@@ -36,6 +36,24 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
+type ArchivedFixture = Readonly<{
+  repository: string;
+  base: string;
+  head: string;
+  archivePath: string;
+}>;
+
+let archivedFixtureTemplate: ArchivedFixture | null = null;
+
+test.after(() => {
+  if (archivedFixtureTemplate !== null) {
+    fs.rmSync(archivedFixtureTemplate.repository, {
+      recursive: true,
+      force: true,
+    });
+  }
+});
+
 test('CI archive validation rejects a duplicate grant in base planning history', () => {
   const repository = createArchiveHistoryRepository();
   try {
@@ -323,12 +341,36 @@ test('current archive rejects pre-epoch task completions without current evidenc
   }
 });
 
-function archivedFixture(): {
-  repository: string;
-  base: string;
-  head: string;
-  archivePath: string;
-} {
+function archivedFixture(): ArchivedFixture {
+  const template = (archivedFixtureTemplate ??=
+    createArchivedFixtureTemplate());
+  const repository = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-ci-archive-clone-'),
+  );
+  fs.rmSync(repository, { recursive: true, force: true });
+  const runtimePath = path.join(template.repository, '.git', 'workflow-engine');
+  try {
+    fs.cpSync(template.repository, repository, {
+      recursive: true,
+      preserveTimestamps: true,
+      verbatimSymlinks: true,
+      filter: (source) =>
+        source !== runtimePath &&
+        !source.startsWith(`${runtimePath}${path.sep}`),
+    });
+    return {
+      repository,
+      base: template.base,
+      head: template.head,
+      archivePath: template.archivePath,
+    };
+  } catch (error) {
+    fs.rmSync(repository, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function createArchivedFixtureTemplate(): ArchivedFixture {
   const repository = createFixtureRepository();
   fs.copyFileSync(
     path.join(sourceRepositoryRoot, 'workflow/path-roles.json'),
