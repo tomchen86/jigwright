@@ -667,6 +667,13 @@ function assertPolicyTransition(
     after,
     'CI_AUTHORITY_POLICY_TRANSITION_INVALID',
   );
+  assertCurrentMaintainerPolicyTransition(parentPolicy, candidate);
+}
+
+export function assertCurrentMaintainerPolicyTransition(
+  parentPolicy: MaintainerPolicy,
+  candidate: MaintainerPolicy,
+): void {
   if (
     JSON.stringify(candidate.repository) !==
       JSON.stringify(parentPolicy.repository) ||

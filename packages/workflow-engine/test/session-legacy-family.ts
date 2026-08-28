@@ -21,7 +21,6 @@ import './intervention-local-adoption-launcher.integration.test.ts';
 import './guard-contract.integration.test.ts';
 import './hooks.integration.test.ts';
 import './managed-trailers.contract.test.ts';
-import './maintainer-mode.integration.test.ts';
 import './authority-plan.integration.test.ts';
 import './ci.integration.test.ts';
 import './ai-adapter-evaluation.integration.test.ts';

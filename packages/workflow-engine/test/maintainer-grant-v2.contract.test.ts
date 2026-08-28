@@ -33,7 +33,10 @@ import {
   issueAuthorityAttestation,
   projectAuthorityAttestationRelay,
 } from '../src/application/control-plane/maintainer-attestation.ts';
-import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts';
+import {
+  assertCurrentMaintainerPolicyTransition,
+  validateCiAuthorityCommit,
+} from '../src/entrypoints/ci/ci-authority.ts';
 import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
 import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
 import { replayCommitSequence } from '../src/entrypoints/ci/ci-sequence.ts';
@@ -65,7 +68,10 @@ import {
   type CandidateChecksAttestationV3,
 } from '../src/modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
-import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
+import {
+  parseMaintainerPolicy,
+  type MaintainerPolicy,
+} from '../src/modules/authority/maintainer-policy.ts';
 import {
   abortAuthoritySession,
   checkAuthoritySession,
@@ -90,6 +96,7 @@ import {
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
 
 const PROFILE_ID = 'workflow-engine-bootstrap';
 const ROOT_PROFILE_ID = 'workflow-engine-root-one-shot';
@@ -909,6 +916,109 @@ test('repository publishes the trust-base capability profile used by v2', () => 
     ),
     true,
   );
+});
+
+test('current maintainer policy rejects malformed trust configuration', () => {
+  const current = JSON.parse(
+    fs.readFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      'utf8',
+    ),
+  ) as MaintainerPolicy;
+  assert.doesNotThrow(() => parseMaintainerPolicy(current));
+
+  const invalidPolicies = [
+    {
+      name: 'unknown property',
+      value: { ...current, unexpected: true },
+    },
+    {
+      name: 'consumer-branded signature namespace',
+      value: {
+        ...current,
+        signatureNamespace: 'expense-app.workflow.maintainer-grant.v1',
+      },
+    },
+    {
+      name: 'unordered bootstrap paths',
+      value: {
+        ...current,
+        bootstrapEligiblePaths: [...current.bootstrapEligiblePaths].reverse(),
+      },
+    },
+    {
+      name: 'immutable path outside bootstrap authority',
+      value: {
+        ...current,
+        sealedImmutablePaths: ['workflow/not-eligible.json'],
+      },
+    },
+  ];
+  for (const { name, value } of invalidPolicies) {
+    assert.throws(
+      () => parseMaintainerPolicy(value),
+      (error) => isWorkflowError(error, 'MAINTAINER_POLICY_INVALID'),
+      name,
+    );
+  }
+});
+
+test('current V2 CI refuses stable identity and sealed trust rollback', () => {
+  const raw = JSON.parse(
+    fs.readFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+      'utf8',
+    ),
+  ) as MaintainerPolicy;
+  const current = parseMaintainerPolicy(raw);
+  const sealed = parseMaintainerPolicy({ ...raw, phase: 'sealed' });
+  assert.doesNotThrow(() =>
+    assertCurrentMaintainerPolicyTransition(current, current),
+  );
+
+  const invalidTransitions = [
+    {
+      name: 'repository identity mutation',
+      parent: current,
+      candidate: parseMaintainerPolicy({
+        ...raw,
+        repository: {
+          id: 'github:R_other',
+          origin: 'https://github.com/example/other.git',
+        },
+      }),
+    },
+    {
+      name: 'sealed phase rollback',
+      parent: sealed,
+      candidate: current,
+    },
+    {
+      name: 'sealed path removal',
+      parent: sealed,
+      candidate: parseMaintainerPolicy({
+        ...raw,
+        phase: 'sealed',
+        sealedImmutablePaths: raw.sealedImmutablePaths.slice(1),
+      }),
+    },
+    {
+      name: 'required check removal',
+      parent: current,
+      candidate: parseMaintainerPolicy({
+        ...raw,
+        requiredChecks: raw.requiredChecks.slice(1),
+      }),
+    },
+  ];
+  for (const { name, parent, candidate } of invalidTransitions) {
+    assert.throws(
+      () => assertCurrentMaintainerPolicyTransition(parent, candidate),
+      (error) =>
+        isWorkflowError(error, 'CI_AUTHORITY_POLICY_TRANSITION_INVALID'),
+      name,
+    );
+  }
 });
 
 test('repository publishes a protected capability dependency closure', () => {
@@ -3376,6 +3486,30 @@ test('remote CI verifies an applied v2 candidate from portable Git authority rec
       (error) => isWorkflowError(error, 'CI_AUTHORITY_V2_RECEIPT_REQUIRED'),
     );
     restoreReceipt();
+
+    const candidateSigner = createSshSignedFixture('fixture-maintainer');
+    try {
+      const candidateSignedEnvelope: AuthorityApplicationReceiptEnvelope = {
+        payload: originalReceipt.payload,
+        signatureNamespace: AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
+        signature: candidateSigner.sign(
+          canonicalAuthorityApplicationReceiptPayload(originalReceipt.payload),
+          AUTHORITY_APPLICATION_RECEIPT_SIGNATURE_NAMESPACE,
+        ),
+      };
+      writeAnnotatedTag(
+        clone,
+        receiptRef,
+        head,
+        canonicalAuthorityApplicationReceiptEnvelope(candidateSignedEnvelope),
+      );
+      assert.throws(validateReceipt, (error) =>
+        isWorkflowError(error, 'CI_AUTHORITY_V2_RECEIPT_SIGNATURE_INVALID'),
+      );
+      restoreReceipt();
+    } finally {
+      candidateSigner.dispose();
+    }
 
     const tamperedEnvelope: AuthorityApplicationReceiptEnvelope = {
       ...originalReceipt,

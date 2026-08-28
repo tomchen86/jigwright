@@ -873,7 +873,7 @@
     {
       "path": "src/entrypoints/ci/ci-authority.ts",
       "mode": "100644",
-      "digest": "sha256:2b2761bd214b663609aa1592650540d5f3cc3f53be4c5ad5662d6ea65fb64205"
+      "digest": "sha256:3600c0f15d7fd33784be668790b0e173f43fc1de0f01ce1b7c523eac0c7b29b2"
     },
     {
       "path": "src/entrypoints/ci/ci-checks.ts",

@@ -4,6 +4,8 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import test from 'node:test';
 
+import { assertInteractiveSignerContext } from '../src/adapters/signing/ssh/maintainer-signer.ts';
+
 const require = createRequire(import.meta.url);
 const ts = require('typescript') as typeof import('typescript');
 const SOURCE_ROOT = path.resolve(import.meta.dirname, '../src');
@@ -70,6 +72,37 @@ test('production code has no type-only dependency on the SSH signer adapter', ()
         }
       }
     }
+  }
+});
+
+test('current signer admission requires every controlling terminal', () => {
+  assert.doesNotThrow(() =>
+    assertInteractiveSignerContext({
+      stdinIsTty: true,
+      stdoutIsTty: true,
+      stderrIsTty: true,
+    }),
+  );
+
+  for (const redirected of [
+    'stdinIsTty',
+    'stdoutIsTty',
+    'stderrIsTty',
+  ] as const) {
+    const context = {
+      stdinIsTty: true,
+      stdoutIsTty: true,
+      stderrIsTty: true,
+      [redirected]: false,
+    };
+    assert.throws(
+      () => assertInteractiveSignerContext(context),
+      (error) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'MAINTAINER_INTERACTIVE_REQUIRED',
+      redirected,
+    );
   }
 });
 

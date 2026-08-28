@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { renderBuiltInEngineClosure } from '../bootstrap/generate-built-in-engine-closure.ts';
+import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -202,5 +205,125 @@ test('workflow-engine value-imports core only through the sealed runtime closure
       ),
       coreModule,
     );
+  }
+});
+
+test('required-check runners remain pinned across workflow CLI edits', () => {
+  const definitions = (
+    JSON.parse(
+      fs.readFileSync(
+        path.join(repositoryRoot, 'workflow/checks.json'),
+        'utf8',
+      ),
+    ) as {
+      checks: Record<
+        string,
+        { command: string[]; destructiveDatabase: boolean }
+      >;
+    }
+  ).checks;
+  const expectedChecks = {
+    'managed-documents': {
+      command: 'documents',
+      entrypoint:
+        'packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts',
+    },
+    'openspec-assets': {
+      command: 'openspec-assets',
+      entrypoint:
+        'packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-assets.ts',
+    },
+  } as const;
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-check-runner-'),
+  );
+  try {
+    for (const [checkId, expected] of Object.entries(expectedChecks)) {
+      const definition = definitions[checkId];
+      assert.ok(definition);
+      assert.deepEqual(definition.command, ['node', expected.entrypoint]);
+
+      const resolved = resolveCheckRunner(repositoryRoot, checkId, definition);
+      const executed = spawnSync(resolved.executable, resolved.args, {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(executed.status, 0, executed.stderr);
+      assert.deepEqual(JSON.parse(executed.stdout), {
+        command: expected.command,
+        ok: true,
+        ...(checkId === 'managed-documents'
+          ? {
+              validated: [
+                'docs/CURRENT_AND_NEXT_STEPS.md',
+                'docs/ISSUE_LOG.md',
+              ],
+            }
+          : {
+              result: {
+                valid: true,
+                assetPaths: [
+                  '.codex/skills/openspec-explore/SKILL.md',
+                  '.codex/skills/openspec-propose/SKILL.md',
+                  '.codex/skills/workflow-engine/SKILL.md',
+                  '.claude/skills/openspec-explore/SKILL.md',
+                  '.claude/skills/openspec-propose/SKILL.md',
+                  '.claude/skills/workflow-engine/SKILL.md',
+                  '.agents/skills/openspec-explore/SKILL.md',
+                  '.agents/skills/openspec-propose/SKILL.md',
+                  '.agents/skills/workflow-engine/SKILL.md',
+                  'workflow/openspec-assets/prompts/opsx-explore.md',
+                  'workflow/openspec-assets/prompts/opsx-propose.md',
+                ],
+              },
+            }),
+      });
+
+      const scratchEntrypoint = path.join(scratch, expected.entrypoint);
+      fs.mkdirSync(path.dirname(scratchEntrypoint), { recursive: true });
+      fs.copyFileSync(
+        path.join(repositoryRoot, expected.entrypoint),
+        scratchEntrypoint,
+      );
+    }
+
+    const scratchCli = path.join(
+      scratch,
+      'packages/workflow-engine/src/cli.ts',
+    );
+    fs.copyFileSync(
+      path.join(repositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      scratchCli,
+    );
+    const before = Object.fromEntries(
+      Object.keys(expectedChecks).map((checkId) => [
+        checkId,
+        resolveCheckRunner(scratch, checkId, definitions[checkId]!).digest,
+      ]),
+    );
+    for (const runnerDigest of Object.values(before)) {
+      assert.match(runnerDigest, /^[0-9a-f]{64}$/);
+    }
+    fs.appendFileSync(scratchCli, '\n// unrelated CLI update\n');
+    const after = Object.fromEntries(
+      Object.keys(expectedChecks).map((checkId) => [
+        checkId,
+        resolveCheckRunner(scratch, checkId, definitions[checkId]!).digest,
+      ]),
+    );
+    assert.deepEqual(after, before);
+
+    for (const [checkId, expected] of Object.entries(expectedChecks)) {
+      fs.appendFileSync(
+        path.join(scratch, expected.entrypoint),
+        '\n// changed check entrypoint\n',
+      );
+      assert.notEqual(
+        resolveCheckRunner(scratch, checkId, definitions[checkId]!).digest,
+        before[checkId],
+      );
+    }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
   }
 });
