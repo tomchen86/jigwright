@@ -46,14 +46,7 @@ import {
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 function createFixtureRepository(): string {
-  const repository = createBareFixtureRepository();
-  fs.copyFileSync(
-    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
-    path.join(repository, 'workflow/maintainer-policy.json'),
-  );
-  git(repository, ['add', 'workflow/maintainer-policy.json']);
-  git(repository, ['commit', '-m', 'Track fixture maintainer policy']);
-  return repository;
+  return createBareFixtureRepository();
 }
 
 test('explicit full-gate escalation substitutes only reviewed covered checks and does not impersonate terminal state', () => {
@@ -127,7 +120,7 @@ test(
     const repository = createFixtureRepository();
     try {
       git(repository, ['checkout', '-b', 'work/demo-change']);
-      prepareCurrentV3Change(repository);
+      prepareCurrentV3Change(repository, { additionalPendingTask: true });
       const session = startSession(repository, 'demo-change', '1.1');
       fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
       checkSession(repository, session.sessionId);
@@ -189,7 +182,7 @@ test('current report authorizes completion, exact staging, and commit', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentV3Change(repository);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
@@ -549,7 +542,7 @@ test('finalize adds terminal policy checks only when its projection closes the t
   }
 });
 
-test('compatible finish cannot bypass checks required by the terminal transition', () => {
+test('compatible completion cannot bypass final review or terminal checks', () => {
   const repository = createFixtureRepository();
   const outputDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'terminal-compatible-finish-'),
@@ -602,20 +595,13 @@ test('compatible finish cannot bypass checks required by the terminal transition
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {}\n');
 
     checkSession(repository, session.sessionId);
-    completeTask(repository, session.sessionId);
-    const finished = finishSession(repository, session.sessionId);
+    assert.throws(
+      () => completeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_NOT_READY'),
+    );
     assert.equal(fs.readFileSync(scopedCounter, 'utf8'), '1');
-    assert.equal(fs.readFileSync(terminalCounter, 'utf8'), '1');
-    const finishReport = readImmutableReport(
-      path.join(runtimeRoot(repository), 'reports'),
-      session.sessionId,
-      finished.reportId,
-    );
-    assert.deepEqual(finishReport.requiredChecks, ['workflow-full-gate']);
-    assert.equal(finishReport.checkEscalation, 'all-tasks-terminal');
-    assert.doesNotThrow(() =>
-      commitSession(repository, session.sessionId, 'Complete with full gate'),
-    );
+    assert.equal(fs.existsSync(terminalCounter), false);
+    assert.equal(getSession(repository, session.sessionId).state, 'active');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(outputDirectory, { recursive: true, force: true });
@@ -842,7 +828,7 @@ test('completion rollback restores controlled projections and permits fresh evid
     git(repository, ['add', 'workflow/document-policy.json', 'docs']);
     git(repository, ['commit', '-m', 'Enable completion handoff']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentV3Change(repository);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const tasksPath = path.join(
       repository,
       'openspec/changes/demo-change/tasks.md',
@@ -886,7 +872,7 @@ test('completion rollback rejects empty reasons and finished sessions', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentV3Change(repository);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     checkSession(repository, session.sessionId);
@@ -989,7 +975,7 @@ test('commit rejects a worktree changed after finish', () => {
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentV3Change(repository);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'before\n');
     checkSession(repository, session.sessionId);
@@ -1021,12 +1007,17 @@ test('completion reconciles the immediate committed predecessor from Git', () =>
         '',
         '- [ ] 1.1 Prior task',
         '- [ ] 1.2 Current task',
+        '- [ ] 1.3 Keep the fixture change open',
         '',
       ].join('\n'),
     );
     const guardPath = path.join(changeDirectory, 'guard.json');
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
     guard.tasks['1.2'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['fixture'],
+    };
+    guard.tasks['1.3'] = {
       allowedPaths: ['src/**'],
       requiredChecks: ['fixture'],
     };
@@ -1125,7 +1116,7 @@ test('managed commit bypasses hooks and accepts explicit workflow identity', () 
     git(repository, ['add', '.managed-hooks']);
     git(repository, ['commit', '-m', 'Add hostile hook']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentV3Change(repository);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
     git(repository, ['config', 'core.hooksPath', '.managed-hooks']);
     git(repository, ['config', '--unset', 'user.name']);
     git(repository, ['config', '--unset', 'user.email']);
@@ -1213,7 +1204,29 @@ function enableCompletionHandoff(repository: string): void {
   renderHandoff(repository);
 }
 
-function prepareCurrentV3Change(repository: string): void {
+function prepareCurrentV3Change(
+  repository: string,
+  options: { additionalPendingTask?: boolean } = {},
+): void {
+  if (options.additionalPendingTask) {
+    const changeRoot = path.join(
+      repository,
+      'openspec/changes/demo-change',
+    );
+    fs.appendFileSync(
+      path.join(changeRoot, 'tasks.md'),
+      '\n- [ ] 1.2 Keep the fixture change open\n',
+    );
+    const guardPath = path.join(changeRoot, 'guard.json');
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<
+        string,
+        { allowedPaths: string[]; requiredChecks: string[] }
+      >;
+    };
+    guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+  }
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
 }

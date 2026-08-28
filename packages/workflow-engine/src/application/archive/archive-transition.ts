@@ -15,6 +15,7 @@ import {
 } from '../../runtime/storage-journal/archive-report.ts';
 import {
   createArchiveTransformation,
+  type ArchiveTransformationTestHooks,
   type ArchiveTransformation,
 } from './archive-transformation.ts';
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
@@ -49,7 +50,7 @@ export type ArchiveTransitionResult = {
   changedPaths: string[];
 };
 
-export type ArchiveTransitionTestHooks = {
+export type ArchiveTransitionTestHooks = ArchiveTransformationTestHooks & {
   now?(): Date;
   expectedRemoteBase?: Readonly<{
     name: 'origin';
@@ -115,7 +116,10 @@ function commitEligibleArchive(
   now: () => Date,
 ): ArchiveTransitionResult {
   assertExpectedRemoteBase(eligibility, testHooks.expectedRemoteBase);
-  const transformation = createArchiveTransformation(eligibility, { now });
+  const transformation = createArchiveTransformation(eligibility, {
+    now,
+    testHooks,
+  });
   const delta = verifyArchiveDeltaOutcomesForTransition(
     eligibility,
     transformation,

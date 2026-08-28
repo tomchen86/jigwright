@@ -35,6 +35,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
 test('amend-plan refuses a reviewed generation whose execution is not complete', () => {
   const repository = plannedV2Fixture();
@@ -779,22 +780,7 @@ function completedLookingFixtureWithoutTaskEvidence(): string {
 }
 
 function completeTask(repository: string): void {
-  const tasksPath = path.join(
-    repository,
-    'openspec/changes/demo-change/tasks.md',
-  );
-  fs.writeFileSync(
-    tasksPath,
-    fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-  );
-  git(repository, ['add', '-A']);
-  git(repository, [
-    'commit',
-    '-m',
-    'Complete demo execution',
-    '-m',
-    'Change: demo-change\nTask: 1.1',
-  ]);
+  commitCurrentFixtureTask(repository);
 }
 
 function prepareReviewedCorrection(

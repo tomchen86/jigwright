@@ -226,6 +226,10 @@ export function createFixtureRepository(
     path.join(sourceRepositoryRoot, 'workflow/ai-adapter-policy.json'),
     path.join(repository, 'workflow/ai-adapter-policy.json'),
   );
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/maintainer-policy.json'),
+    path.join(repository, 'workflow/maintainer-policy.json'),
+  );
   writeJson(path.join(repository, 'workflow/document-policy.json'), {
     schemaVersion: 1,
     enforcementMode: 'enforced',

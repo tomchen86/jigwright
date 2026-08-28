@@ -26,7 +26,7 @@ import {
   archiveCommitMessage,
   commitChangedPaths,
   commitFacts,
-  findExactTaskCommits,
+  findCurrentExecutionTaskCommits,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   listChangedPaths,
@@ -293,7 +293,12 @@ function assertTaskEvidence(
   tasks: Array<{ id: string }>,
 ): void {
   for (const task of tasks) {
-    const commits = findExactTaskCommits(repositoryRoot, changeId, task.id);
+    const commits = findCurrentExecutionTaskCommits(
+      repositoryRoot,
+      changeId,
+      task.id,
+      parent,
+    );
     if (commits.length !== 1) {
       throw archiveError(
         'CI_ARCHIVE_TASK_EVIDENCE_INVALID',

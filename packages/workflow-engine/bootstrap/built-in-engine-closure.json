@@ -508,12 +508,12 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:594134c7da9da53bde31ef9919598d3b229ff5e91af59de5a84b74efe63212ea"
+      "digest": "sha256:24a30145f6400bc195a29153a56d61996bf5fa7e94b8ea3dbd8472406a8bc9f7"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:ccf557b5a94f6cea1790020742c2a824846c6273421c38188e6b0a02eebfe9b7"
+      "digest": "sha256:33df00ee9f1aa0222a048f4129ec7e221fb2cc9be0dbcd385b847f103eb9fecf"
     },
     {
       "path": "src/application/configure/central-role-provider-default-wizard.ts",
@@ -658,7 +658,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:e260c4b3ae331359daf27e89c0118606214c32473486f1d582b55925af274944"
+      "digest": "sha256:27f8519c2b8a0c54744ac9b24d519a81deb56f0556e4193f636dbff9d216fb8a"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -673,7 +673,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:3935460e2584c58843243b6234a391d68401d1ebb2aeb04de7594573a3fca011"
+      "digest": "sha256:a3bef066eac29cbf1c30db0f09921405ea425076c8b87a56f5c1b80fde0426a5"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -688,7 +688,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:0053312845cf4532b6efd14d802384f1651dd0c163e3105bf569a1880ee16296"
+      "digest": "sha256:266adc1fdd85dae69b3f5b2a29229b2f3df78d3fd181ed3d3d77c3049229f7a5"
     },
     {
       "path": "src/application/propose/propose-orchestrator.ts",
@@ -863,7 +863,7 @@
     {
       "path": "src/entrypoints/ci/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:f5fe4437059cde728b1df511afb43ad10d7431fb6e3c0238829e1287c1a65eab"
+      "digest": "sha256:68d9f8cfbe942f768b470dcdf3b98e5e1e2c865aa879ea095d7c438fd93997a0"
     },
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
@@ -918,7 +918,7 @@
     {
       "path": "src/entrypoints/ci/ci-sequence.ts",
       "mode": "100644",
-      "digest": "sha256:d32c73a2a7aa94f2574eed82512c3f2b1434de00382df85693f370b7a7357442"
+      "digest": "sha256:b5487533d4b2d8398d939e9af559850130f7ec3ee841b37984b887e916893696"
     },
     {
       "path": "src/entrypoints/ci/ci-task-state.ts",
@@ -1858,7 +1858,7 @@
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
       "mode": "100644",
-      "digest": "sha256:774f5929829880c86d9cf85dc29a67de910063834c1200f65eacfab7c612b320"
+      "digest": "sha256:4a2267debf2ea7afad982c9335c719c99ad37a6b929c6fca3a986d62e0927085"
     },
     {
       "path": "src/runtime/repository-transaction/git.ts",

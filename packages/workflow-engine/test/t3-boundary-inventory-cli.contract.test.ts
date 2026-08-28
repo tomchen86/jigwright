@@ -50,7 +50,7 @@ test('jigwright exposes the machine-checked T3 boundary inventory through produc
   });
   assert.equal(output.result.status, 'current');
   assert.equal(output.result.couplingCount, 16);
-  assert.ok(output.result.observations.namespace.source.occurrences > 0);
+  assert.equal(output.result.observations.namespace.source.occurrences, 0);
   assert.ok(
     output.result.observations.workflowJsonReferences.source.fileCount > 0,
   );
@@ -106,6 +106,6 @@ test('jigwright verifies the public language-neutral conformance corpus', () => 
     status: 'current',
     domainCount: 9,
     vectorSetDigest:
-      'sha256:b4c732d367c4567284c5f932c432f78afa46df9045e831c7a0047e9a9a7e5bd9',
+      'sha256:48cd71a5df55afb013aab0b4cc312d9f1b54259ead96a77ee626f4fb6fe455e4',
   });
 });

@@ -51,6 +51,21 @@ function prepareCurrentChange(repository: string, changeId = 'demo-change') {
   return ready;
 }
 
+function enableDisposableDatabasePolicy(repository: string): void {
+  const consumerConfigPath = path.join(
+    repository,
+    'workflow/repository-consumer.json',
+  );
+  const consumerConfig = JSON.parse(
+    fs.readFileSync(consumerConfigPath, 'utf8'),
+  ) as { databasePolicy: { adapterId: string } };
+  consumerConfig.databasePolicy.adapterId = 'postgresql-disposable-v1';
+  fs.writeFileSync(
+    consumerConfigPath,
+    `${JSON.stringify(consumerConfig, null, 2)}\n`,
+  );
+}
+
 function prepareCurrentChangeOnMain(
   repository: string,
   changeId = 'demo-change',
@@ -233,6 +248,11 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
     );
 
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    assert.throws(
+      () => finalizeTask(repository, started.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(repository, started.sessionId);
     finalizeTask(repository, started.sessionId);
     commitSession(repository, started.sessionId, 'Bind planning assurance');
 
@@ -520,7 +540,7 @@ test('active session pins a clean baseline, enforces scope, and releases its loc
 
     assert.throws(
       () => startSession(repository, 'demo-change', '1.1'),
-      (error) => isWorkflowError(error, 'ACTIVE_SESSION_CONFLICT'),
+      (error) => isWorkflowError(error, 'TASK_SESSION_CHANGE_CONFLICT'),
     );
 
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
@@ -841,7 +861,7 @@ test('concurrent writers reject a shared guard-declared exclusive resource', () 
   }
 });
 
-test('update-base replays a finished managed task branch and recomputes local PR assurance', () => {
+test('update-base replays a finished non-final task branch and recomputes local PR assurance', () => {
   const repository = createFixtureRepository();
   let fixture: { parent: string; worktree: string } | undefined;
   try {
@@ -873,10 +893,18 @@ test('update-base replays a finished managed task branch and recomputes local PR
       'openspec/changes/demo-change/guard.json',
     );
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-      tasks: Record<string, { allowedPaths: string[] }>;
+      tasks: Record<
+        string,
+        { allowedPaths: string[]; requiredChecks: string[] }
+      >;
     };
     guard.tasks['1.1']!.allowedPaths = ['src/task/**'];
+    guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    fs.appendFileSync(
+      path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+      '\n- [ ] 1.2 Keep the fixture change open\n',
+    );
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentChange(repository);
     git(repository, ['checkout', 'main']);
@@ -1091,17 +1119,27 @@ test('update-base rolls back when generated reconciliation needs a reviewed tran
       'demo-change',
       'src/task/**',
     );
-    const started = startSession(fixture.worktree, 'demo-change', '1.1');
-    fs.mkdirSync(path.join(fixture.worktree, 'src/task'), {
+    const taskWorktree = fixture.worktree;
+    const started = startSession(taskWorktree, 'demo-change', '1.1');
+    fs.mkdirSync(path.join(taskWorktree, 'src/task'), {
       recursive: true,
     });
     fs.writeFileSync(
-      path.join(fixture.worktree, 'src/task/feature.ts'),
+      path.join(taskWorktree, 'src/task/feature.ts'),
       'export const feature = true;\n',
     );
-    finalizeTask(fixture.worktree, started.sessionId);
+    assert.throws(
+      () => finalizeTask(taskWorktree, started.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(
+      taskWorktree,
+      started.sessionId,
+      'src/task/feature.ts',
+    );
+    finalizeTask(taskWorktree, started.sessionId);
     const committed = commitSession(
-      fixture.worktree,
+      taskWorktree,
       started.sessionId,
       'Complete concurrent fixture task',
     );
@@ -1307,6 +1345,7 @@ test('destructive database preflight runs before any required check', () => {
 
   try {
     addFixtureScripts(repository);
+    enableDisposableDatabasePolicy(repository);
     configureChecks(
       repository,
       {
@@ -1343,6 +1382,7 @@ test('destructive database preflight runs before any required check', () => {
 test('destructive check evidence includes only the redacted database identity', () => {
   const repository = createFixtureRepository();
   try {
+    enableDisposableDatabasePolicy(repository);
     configureChecks(
       repository,
       {

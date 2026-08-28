@@ -336,6 +336,10 @@ function validSubmission(
     ),
     residualRisk: 'No release-blocking residual risk was identified.',
     uncertainty: 'Review is limited to the exact canonical candidate.',
+    documentationAssessment: {
+      decision: 'no-impact',
+      notes: 'The reviewed implementation changes no documentation contract.',
+    },
   };
 }
 

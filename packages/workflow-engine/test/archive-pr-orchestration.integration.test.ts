@@ -44,14 +44,10 @@ import {
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
 import {
   commitSession,
-  completeTask,
-  finishSession,
+  finalizeTask,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository,
   git,
@@ -59,6 +55,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 test('discovers one read-only current-v3 independently reviewed archive candidate', () => {
   const repository = completedFixture();
@@ -495,9 +492,12 @@ function completedFixture(): string {
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(repository, 'demo-change', '1.1');
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-  checkSession(repository, session.sessionId);
-  completeTask(repository, session.sessionId);
-  finishSession(repository, session.sessionId);
+  assert.throws(
+    () => finalizeTask(repository, session.sessionId),
+    (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+  );
+  satisfyCurrentTaskDiffReview(repository, session.sessionId);
+  finalizeTask(repository, session.sessionId);
   const completed = commitSession(
     repository,
     session.sessionId,

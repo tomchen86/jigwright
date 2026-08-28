@@ -97,6 +97,7 @@ export type PlanningTransitionResult = {
 };
 
 export type PlanningTransitionTestHooks = {
+  aroundArchiveApplicability?<T>(invoke: () => T): T;
   beforeStaging?(context: {
     repositoryRoot: string;
     expectedHead: string;
@@ -655,15 +656,19 @@ function commitPlanningTransitionLocked(
     // apply is not discoverable until then, which is a whole execution too
     // late. Run the public projection only after the exact candidate tree is
     // pinned; failure still rolls this reversible index lease back below.
-    const archiveApplicability = createArchiveApplicabilityProjection({
-      repositoryRoot: initial.repositoryRoot,
-      changeRoot: config.changeRoot,
-      changeId,
-      baselineCommit: initial.head,
-      sourceCommit: initial.head,
-      activeArtifactPaths: inspection.currentPaths,
-      source: 'worktree',
-    });
+    const createApplicability = () =>
+      createArchiveApplicabilityProjection({
+        repositoryRoot: initial.repositoryRoot,
+        changeRoot: config.changeRoot,
+        changeId,
+        baselineCommit: initial.head,
+        sourceCommit: initial.head,
+        activeArtifactPaths: inspection.currentPaths,
+        source: 'worktree',
+      });
+    const archiveApplicability = testHooks.aroundArchiveApplicability
+      ? testHooks.aroundArchiveApplicability(createApplicability)
+      : createApplicability();
 
     const provenance =
       amendment === undefined || planningValidation.planningAssurance === null

@@ -24,7 +24,27 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
-function prepareCurrentChange(repository: string, changeId = 'demo-change') {
+function prepareCurrentChange(
+  repository: string,
+  changeId = 'demo-change',
+  options: { additionalPendingTask?: boolean } = {},
+) {
+  if (options.additionalPendingTask) {
+    const changeRoot = path.join(repository, 'openspec/changes', changeId);
+    fs.appendFileSync(
+      path.join(changeRoot, 'tasks.md'),
+      '\n- [ ] 1.2 Keep the fixture change open\n',
+    );
+    const guardPath = path.join(changeRoot, 'guard.json');
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<
+        string,
+        { allowedPaths: string[]; requiredChecks: string[] }
+      >;
+    };
+    guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+  }
   const ready = writeReadyV3ExemptChange(repository, changeId);
   commitPlanningTransition(repository, changeId);
   return ready;
@@ -254,7 +274,7 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
   }
 });
 
-test('legacy Task 3.2 bootstrap cannot enter or upgrade current lifecycle state', () => {
+test('an unmanaged schema cannot enter current lifecycle state', () => {
   const repository = createFixtureRepository();
   try {
     const changeDirectory = path.join(
@@ -262,29 +282,20 @@ test('legacy Task 3.2 bootstrap cannot enter or upgrade current lifecycle state'
       'openspec/changes/demo-change',
     );
     fs.writeFileSync(
-      path.join(changeDirectory, 'tasks.md'),
-      '# Tasks\n\n- [ ] 3.2 Bootstrap contract task\n',
+      path.join(changeDirectory, '.openspec.yaml'),
+      'schema: unsupported-experiment\ncreated: 2026-07-15\n',
     );
-    const guardPath = path.join(changeDirectory, 'guard.json');
-    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
-    guard.tasks = {
-      '3.2': {
-        allowedPaths: ['src/**'],
-        requiredChecks: ['fixture'],
-      },
-    };
-    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
     git(repository, ['add', '-A']);
-    git(repository, ['commit', '-m', 'Create Task 3.2 bootstrap fixture']);
+    git(repository, ['commit', '-m', 'Configure unsupported schema fixture']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
 
     assert.throws(
-      () => startSession(repository, 'demo-change', '3.2'),
-      (error) => isWorkflowError(error, 'OPENSPEC_LEGACY_SCHEMA_FORBIDDEN'),
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
     );
     assert.equal(
       fs.readFileSync(path.join(changeDirectory, '.openspec.yaml'), 'utf8'),
-      'schema: expense-app\ncreated: 2026-07-15\n',
+      'schema: unsupported-experiment\ncreated: 2026-07-15\n',
     );
     for (const artifact of [
       'investigation.json',
@@ -330,7 +341,9 @@ test('finish revalidates combined readiness before rerunning checks or staging',
       ['counter'],
     );
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentChange(repository);
+    prepareCurrentChange(repository, 'demo-change', {
+      additionalPendingTask: true,
+    });
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     checkSession(repository, session.sessionId);
@@ -362,7 +375,9 @@ test('finish rolls back exact staging when readiness changes after staging', () 
   const repository = createFixtureRepository();
   try {
     git(repository, ['checkout', '-b', 'work/demo-change']);
-    prepareCurrentChange(repository);
+    prepareCurrentChange(repository, 'demo-change', {
+      additionalPendingTask: true,
+    });
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     checkSession(repository, session.sessionId);

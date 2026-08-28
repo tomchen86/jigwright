@@ -17,7 +17,7 @@ import {
 } from './support/conformance-vectors.ts';
 
 const EXPECTED_VECTOR_SET_DIGEST =
-  'sha256:8224de831f79beac6a71d2496775a0842fa3392f90674aaa5c5c0b94d32d96c5';
+  'sha256:e6caa6473d5b67e2efa6982eb2776a2310e251a063f30fa9152d9c19534cea94';
 
 test('language-neutral canonical JSON and SHA-256 vectors match every landed implementation', async () => {
   const vectors = loadWorkflowConformanceVectors(import.meta.dirname);

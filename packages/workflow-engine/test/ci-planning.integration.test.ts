@@ -643,6 +643,7 @@ test('CI accepts an exact planning introduction reconstructed from Git', () => {
   const repository = createRepository();
   try {
     writePlanningTree(repository);
+    writeProviderBinding(repository);
     const commit = commitPlan(repository);
 
     assert.deepEqual(validateCiPlanningCommit(repository, commit, CHANGE_ID), {
@@ -650,7 +651,10 @@ test('CI accepts an exact planning introduction reconstructed from Git', () => {
       kind: 'introduction',
       beforeTasks: undefined,
       afterTasks: [{ id: '1.1', completed: false }],
-      changedPaths: planningPaths(CHANGE_ID),
+      changedPaths: [
+        ...planningPaths(CHANGE_ID),
+        `workflow/change-providers/${CHANGE_ID}.json`,
+      ].sort(),
       // The retained package graph declares no managed investigation-first
       // evidence, so replay reports no semantic assurance.
       schemaName: 'spec-driven',
@@ -871,6 +875,7 @@ test('CI accepts a revision that reorders and removes unfinished tasks', () => {
         '- [ ] 1.3 Completed task',
       ].join('\n'),
     );
+    writeProviderBinding(repository);
     commitPlan(repository);
     writeTasks(
       repository,
@@ -930,6 +935,7 @@ test('CI rejects a checked task in a planning introduction or revision', async (
     const repository = createRepository();
     try {
       writePlanningTree(repository, '- [x] 1.1 Already complete');
+      writeProviderBinding(repository);
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
@@ -944,6 +950,7 @@ test('CI rejects a checked task in a planning introduction or revision', async (
     const repository = createRepository();
     try {
       writePlanningTree(repository);
+      writeProviderBinding(repository);
       commitPlan(repository);
       writeTasks(repository, '- [x] 1.1 Illegally completed');
       const commitHash = commitPlan(repository);
@@ -1777,6 +1784,7 @@ test('CI accepts a revision that deletes non-canonical planning noise', () => {
   const repository = createRepository();
   try {
     writePlanningTree(repository);
+    writeProviderBinding(repository);
     const noisePath = path.join(
       changeDirectory(repository),
       'requirement-audit.md',

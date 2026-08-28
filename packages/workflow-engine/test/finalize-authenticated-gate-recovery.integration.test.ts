@@ -335,6 +335,10 @@ function challengedTaskDiffSubmission(
     riskPathDispositions: riskPathDispositionsFor(subject),
     residualRisk: 'The challenged invariant requires a candidate correction.',
     uncertainty: 'Review is limited to the exact canonical candidate.',
+    documentationAssessment: {
+      decision: 'no-impact',
+      notes: 'The reviewed implementation changes no documentation contract.',
+    },
   };
 }
 

@@ -9,6 +9,7 @@ import path from 'node:path';
 
 import { listChangedPaths, runGit, runGitWithEnvironment } from './git.ts';
 import { normalizeChangedPath } from '../session-workspace/paths.ts';
+import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
 
 export type TaskCommit = {
   hash: string;
@@ -926,6 +927,66 @@ export function findExactTaskCommits(
     }
   }
   return commits;
+}
+
+/**
+ * Find the exact task commits that belong to the execution generation visible
+ * at `tip`. A required-impact plan amendment deliberately reopens every task;
+ * commits from the invalidated generation remain immutable history, but they
+ * are not candidates for the new generation's completion evidence.
+ */
+export function findCurrentExecutionTaskCommits(
+  repositoryRoot: string,
+  changeId: string,
+  taskId: string,
+  tip = 'HEAD',
+): TaskCommit[] {
+  const commits = findExactTaskCommits(repositoryRoot, changeId, taskId, tip);
+  const boundary = latestRequiredExecutionBoundary(
+    repositoryRoot,
+    changeId,
+    tip,
+  );
+  if (boundary === null) return commits;
+  return commits.filter(
+    ({ hash }) =>
+      hash !== boundary &&
+      runGit(
+        repositoryRoot,
+        ['merge-base', boundary, hash],
+        true,
+      ).trim() === boundary,
+  );
+}
+
+function latestRequiredExecutionBoundary(
+  repositoryRoot: string,
+  changeId: string,
+  tip: string,
+): string | null {
+  const values = runGit(repositoryRoot, [
+    'log',
+    '--first-parent',
+    tip,
+    '--format=%H%x00%B%x00',
+  ]).split('\0');
+  for (let index = 0; index + 1 < values.length; index += 2) {
+    const commitHash = values[index].trimStart();
+    if (!/^[0-9a-f]{40,64}$/.test(commitHash)) continue;
+    const rawMessage = values[index + 1];
+    const message = rawMessage.endsWith('\n')
+      ? rawMessage.slice(0, -1)
+      : rawMessage;
+    const trailers = parseManagedTrailers(message);
+    if (
+      trailers?.kind === 'amend-plan' &&
+      trailers.changeId === changeId &&
+      trailers.executionImpact === 'required'
+    ) {
+      return commitHash;
+    }
+  }
+  return null;
 }
 
 export function hasExactTrailers(

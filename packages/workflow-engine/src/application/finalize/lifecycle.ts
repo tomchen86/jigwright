@@ -895,16 +895,17 @@ function completeTaskUnlocked(
       ? {}
       : { consumedRoleResultReplay: options.consumedRoleResultReplay }),
   });
-  const documentationReview = loadTaskDiffDocumentationReviewCapture(
-    cwd,
-    requestedSessionId,
-  );
-
   const reconciliation = reconcilePredecessor(cwd, initial, environment);
   const completedTaskIds = [
     ...reconciliation.map(({ taskId }) => taskId),
     initial.session.taskId,
   ];
+  const completesChange = initial.contract.tasks.every(
+    ({ id, completed }) => completed || completedTaskIds.includes(id),
+  );
+  const documentationReview = completesChange
+    ? loadTaskDiffDocumentationReviewCapture(cwd, requestedSessionId)
+    : null;
   const projection = projectTasksCompleted(initial.tasksPath, completedTaskIds);
   const projectionSourceDigest = digestTaskContent(projection.before);
   let generatedDocuments: GeneratedDocumentMutation[] = [];

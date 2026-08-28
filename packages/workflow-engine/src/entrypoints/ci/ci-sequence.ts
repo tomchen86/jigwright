@@ -38,7 +38,7 @@ import {
 } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import {
   commitFacts,
-  findExactTaskCommits,
+  findCurrentExecutionTaskCommits,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
@@ -328,7 +328,7 @@ function validateDocumentationClosure(
       'Documentation closure cannot resolve the first task.',
     );
   }
-  const firstTaskCommits = findExactTaskCommits(
+  const firstTaskCommits = findCurrentExecutionTaskCommits(
     repositoryRoot,
     authority.changeId,
     firstTask.id,

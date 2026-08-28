@@ -15,7 +15,10 @@ import {
   CODEX_EXECUTABLE_CANDIDATES,
 } from '../src/adapters/providers/codex/codex-provider-adapter.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import {
+  DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING,
+  parseAiAdapterPolicyDocument,
+} from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import {
   createProviderExecutionEnvironment,
   createTrustedExecutionEnvironment,
@@ -40,6 +43,7 @@ import {
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+  createProviderExecutionPolicySnapshot,
   type ProviderInvocationAcceptanceBinding,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import {
@@ -3654,14 +3658,13 @@ function writeProviderExecutionPolicySnapshot(
   request: ProviderInvocationRequest,
   policyDocument: string,
 ): void {
-  rewritePrivateJson(path.join(invocationDirectory, 'execution-policy.json'), {
-    schemaVersion: 1,
-    kind: 'provider-execution-policy-snapshot',
-    invocationId: request.invocationId,
-    requestDigest: request.requestDigest,
-    policyDigest: request.policyDigest,
-    policyDocument,
-  });
+  rewritePrivateJson(
+    path.join(invocationDirectory, 'execution-policy.json'),
+    createProviderExecutionPolicySnapshot(
+      request,
+      parseAiAdapterPolicyDocument(policyDocument),
+    ),
+  );
 }
 
 function createPrivateDirectory(directory: string): void {

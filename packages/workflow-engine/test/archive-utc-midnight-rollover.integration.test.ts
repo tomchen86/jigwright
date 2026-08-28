@@ -13,6 +13,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
 const START_DATE = '2026-08-09T23:59:59.999Z';
 const ROLLOVER_DATE = '2026-08-10T00:00:00.001Z';
@@ -171,6 +172,8 @@ test('archive does not reinterpret an escaped payload as a UTC rollover', () => 
       () =>
         commitArchiveTransition(repository, 'demo-change', process.env, {
           now: clock.now,
+          aroundOpenSpecArchive: (invoke) =>
+            withPlanningFaultEnabled(repository, 'ARCHIVE_ESCAPE', invoke),
         }),
       (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
     );
@@ -203,12 +206,13 @@ test('archive requires exact payload identity and shape before recognizing a UTC
     const before = repositoryState(repository);
     const worktrees = worktreeTopology(repository);
     for (const malformedSource of malformedSources) {
-      fs.writeFileSync(binPath, malformedSource);
       const clock = fixedClock(START_DATE, ROLLOVER_DATE);
       assert.throws(
         () =>
           commitArchiveTransition(repository, 'demo-change', process.env, {
             now: clock.now,
+            aroundOpenSpecArchive: (invoke) =>
+              withFixtureOpenSpecSource(repository, malformedSource, invoke),
           }),
         (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
       );
@@ -223,7 +227,7 @@ test('archive requires exact payload identity and shape before recognizing a UTC
 
 test('archive bounds a second adjacent UTC rollover without a third attempt', () => {
   const repository = completedFixture();
-  const counterPath = configureFixtureArchiveDateSequence(repository);
+  let archiveCalls = 0;
   const clock = fixedClock(START_DATE, ROLLOVER_DATE, SECOND_ROLLOVER_DATE);
   try {
     const before = repositoryState(repository);
@@ -232,12 +236,17 @@ test('archive bounds a second adjacent UTC rollover without a third attempt', ()
       () =>
         commitArchiveTransition(repository, 'demo-change', process.env, {
           now: clock.now,
+          aroundOpenSpecArchive: (invoke) => {
+            const date =
+              archiveCalls++ === 0 ? ARCHIVE_DATE : '2026-08-11';
+            return withArchiveOutputDate(invoke, date);
+          },
         }),
       (error) => isWorkflowError(error, 'ARCHIVE_UTC_DATE_ROLLOVER'),
     );
 
     assert.equal(clock.calls(), 3);
-    assert.equal(fs.readFileSync(counterPath, 'utf8'), '2');
+    assert.equal(archiveCalls, 2);
     assert.deepEqual(repositoryState(repository), before);
     assert.equal(worktreeTopology(repository), worktrees);
   } finally {
@@ -271,27 +280,16 @@ function completedFixture(marker = ''): string {
   withPlanningFaultDisabled(repository, marker, () =>
     commitPlanningTransition(repository, 'demo-change'),
   );
-  const tasksPath = path.join(
-    repository,
-    'openspec/changes/demo-change/tasks.md',
+  const completed = withPlanningFaultDisabled(repository, marker, () =>
+    commitCurrentFixtureTask(repository, {
+      message: 'Complete demo task',
+    }),
   );
-  fs.writeFileSync(
-    tasksPath,
-    fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-  );
-  git(repository, ['add', '.']);
-  git(repository, [
-    'commit',
-    '-m',
-    'Complete demo task',
-    '-m',
-    'Change: demo-change\nTask: 1.1',
-  ]);
-  const completed = git(repository, ['rev-parse', 'HEAD']).trim();
   git(repository, ['checkout', 'main']);
   git(repository, ['merge', '--ff-only', completed]);
   syncOriginMain(repository);
   git(repository, ['checkout', '-b', 'work/archive-demo']);
+  disablePlanningFault(repository, marker);
   pinFixtureArchiveDate(repository, ARCHIVE_DATE);
   return repository;
 }
@@ -314,6 +312,73 @@ function withPlanningFaultDisabled<T>(
   }
 }
 
+function disablePlanningFault(repository: string, marker: string): void {
+  if (!marker) return;
+  const binaryPath = fixtureOpenSpecBin(repository);
+  const source = fs.readFileSync(binaryPath, 'utf8');
+  const disabled = source.replace(`'${marker}'`, `'DISABLED_${marker}'`);
+  assert.notEqual(disabled, source);
+  fs.writeFileSync(binaryPath, disabled);
+}
+
+function withPlanningFaultEnabled<T>(
+  repository: string,
+  marker: string,
+  action: () => T,
+): T {
+  const binaryPath = fixtureOpenSpecBin(repository);
+  const disabled = fs.readFileSync(binaryPath, 'utf8');
+  const enabled = disabled.replace(`'DISABLED_${marker}'`, `'${marker}'`);
+  assert.notEqual(enabled, disabled);
+  fs.writeFileSync(binaryPath, enabled);
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(binaryPath, disabled);
+  }
+}
+
+function withFixtureOpenSpecSource<T>(
+  repository: string,
+  source: string,
+  action: () => T,
+): T {
+  const binaryPath = fixtureOpenSpecBin(repository);
+  const original = fs.readFileSync(binaryPath, 'utf8');
+  fs.writeFileSync(binaryPath, source);
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(binaryPath, original);
+  }
+}
+
+function withArchiveOutputDate<T>(action: () => T, date: string): T {
+  const document = action() as {
+    status: number;
+    value: {
+      root: { path: string; source: string };
+      archive: Record<string, unknown>;
+    };
+  };
+  const archiveName = `${date}-demo-change`;
+  return {
+    ...document,
+    value: {
+      ...document.value,
+      archive: {
+        ...document.value.archive,
+        archivedAs: archiveName,
+        path: path.join(
+          document.value.root.path,
+          'openspec/changes/archive',
+          archiveName,
+        ),
+      },
+    },
+  } as T;
+}
+
 function pinFixtureArchiveDate(repository: string, date: string): void {
   const binPath = fixtureOpenSpecBin(repository);
   const source = fs.readFileSync(binPath, 'utf8');
@@ -330,23 +395,6 @@ function fixtureOpenSpecBin(repository: string): string {
     repository,
     'node_modules/@fission-ai/openspec/bin/openspec.js',
   );
-}
-
-function configureFixtureArchiveDateSequence(repository: string): string {
-  const binPath = fixtureOpenSpecBin(repository);
-  const counterPath = path.join(repository, '.git', 'archive-date-count');
-  const source = fs.readFileSync(binPath, 'utf8');
-  const expression = `'${ARCHIVE_DATE}' + '-' + changeId`;
-  const sequence = [
-    '(() => {',
-    `  const counterPath = ${JSON.stringify(counterPath)};`,
-    "  const count = fs.existsSync(counterPath) ? Number(fs.readFileSync(counterPath, 'utf8')) : 0;",
-    '  fs.writeFileSync(counterPath, String(count + 1));',
-    "  return count === 0 ? '2026-08-10' : '2026-08-11';",
-    `})() + '-' + changeId`,
-  ].join('\n');
-  fs.writeFileSync(binPath, replaceExactlyOnce(source, expression, sequence));
-  return counterPath;
 }
 
 function replaceExactlyOnce(

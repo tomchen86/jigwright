@@ -16,6 +16,7 @@ import {
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
 test('amend-plan accepts the normative --change option without dropping positional compatibility', () => {
   const repository = createFixtureRepository();
@@ -24,22 +25,9 @@ test('amend-plan accepts the normative --change option without dropping position
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
 
-    const tasksPath = path.join(
-      repository,
-      'openspec/changes/demo-change/tasks.md',
-    );
-    fs.writeFileSync(
-      tasksPath,
-      fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-    );
-    git(repository, ['add', '-A']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Complete demo execution',
-      '-m',
-      'Change: demo-change\nTask: 1.1',
-    ]);
+    commitCurrentFixtureTask(repository, {
+      message: 'Complete demo execution',
+    });
 
     const proposalPath = path.join(
       repository,

@@ -12,6 +12,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
 const SCENARIOS = Array.from(
   { length: 6 },
@@ -47,22 +48,9 @@ test('archive refuses the same scenario loss before applying or staging its tran
   const repository = createScenarioFixture();
   try {
     commitScenarioPlanRevision(repository);
-    const tasksPath = path.join(
-      repository,
-      'openspec/changes/demo-change/tasks.md',
-    );
-    fs.writeFileSync(
-      tasksPath,
-      fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-    );
-    git(repository, ['add', '-A']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Complete scenario fixture',
-      '-m',
-      'Change: demo-change\nTask: 1.1',
-    ]);
+    commitCurrentFixtureTask(repository, {
+      message: 'Complete scenario fixture',
+    });
     writeDroppingDelta(repository);
     writeReadyV3ExemptChange(repository);
     git(repository, ['add', '-A']);
@@ -101,32 +89,22 @@ test('archive returns every rejected rebuilt-spec issue without mutating the rea
   const repository = createScenarioFixture();
   try {
     commitScenarioPlanRevision(repository);
-    const tasksPath = path.join(
-      repository,
-      'openspec/changes/demo-change/tasks.md',
-    );
-    fs.writeFileSync(
-      tasksPath,
-      fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-    );
-    git(repository, ['add', '-A']);
-    git(repository, [
-      'commit',
-      '-m',
-      'Complete rebuilt-spec fixture',
-      '-m',
-      'Change: demo-change\nTask: 1.1',
-    ]);
+    commitCurrentFixtureTask(repository, {
+      message: 'Complete rebuilt-spec fixture',
+    });
     const completed = git(repository, ['rev-parse', 'HEAD']).trim();
     git(repository, ['checkout', 'main']);
     git(repository, ['merge', '--ff-only', completed]);
     syncOriginMain(repository);
     git(repository, ['checkout', '-b', 'work/archive-diagnostics']);
-    installRejectedSpecValidation(repository);
     const before = repositoryState(repository);
 
     assert.throws(
-      () => commitArchiveTransition(repository, 'demo-change'),
+      () =>
+        commitArchiveTransition(repository, 'demo-change', process.env, {
+          aroundOpenSpecValidation: (invoke) =>
+            withRejectedSpecValidation(repository, invoke),
+        }),
       (error: unknown) =>
         isWorkflowError(error, 'ARCHIVE_REBUILT_SPECS_INVALID') &&
         SCENARIOS.every((scenario) =>
@@ -223,7 +201,10 @@ function writeDroppingDelta(repository: string): void {
   );
 }
 
-function installRejectedSpecValidation(repository: string): void {
+function withRejectedSpecValidation<T>(
+  repository: string,
+  action: () => T,
+): T {
   const executablePath = path.join(
     repository,
     'node_modules/@fission-ai/openspec/bin/openspec.js',
@@ -254,6 +235,11 @@ function installRejectedSpecValidation(repository: string): void {
     validationBranch,
   ].join('\n');
   fs.writeFileSync(executablePath, source.replace(validationBranch, injected));
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(executablePath, source);
+  }
 }
 
 function repositoryState(repository: string) {

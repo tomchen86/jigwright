@@ -70,6 +70,11 @@ export type ArchiveApplicabilityProjectionInput = {
   now?: Date;
 };
 
+export type ArchiveTransformationTestHooks = {
+  aroundOpenSpecArchive?<T>(invoke: () => T): T;
+  aroundOpenSpecValidation?<T>(invoke: () => T): T;
+};
+
 type ArchiveTotals = {
   added: number;
   modified: number;
@@ -87,7 +92,10 @@ type PublicArchivePayload = ArchivePayload & { archivePath: string };
 
 export function createArchiveTransformation(
   eligibility: ArchiveEligibility,
-  options: { now?: () => Date } = {},
+  options: {
+    now?: () => Date;
+    testHooks?: ArchiveTransformationTestHooks;
+  } = {},
 ): ArchiveTransformation {
   assertEligibilityCurrent(eligibility);
   assertEligibilityArtifactManifest(eligibility);
@@ -119,7 +127,10 @@ export function createArchiveTransformation(
     });
     let document: { value: unknown; status: number };
     try {
-      document = openspec.archive(eligibility.changeId);
+      const invoke = () => openspec.archive(eligibility.changeId);
+      document = options.testHooks?.aroundOpenSpecArchive
+        ? options.testHooks.aroundOpenSpecArchive(invoke)
+        : invoke();
     } catch (error) {
       throw archiveFailure(error);
     }
@@ -142,7 +153,12 @@ export function createArchiveTransformation(
       installation.version,
       registryProjection.outputPaths,
     );
-    validateRebuiltSpecs(openspec, worktree);
+    const validate = () => validateRebuiltSpecs(openspec, worktree);
+    if (options.testHooks?.aroundOpenSpecValidation) {
+      options.testHooks.aroundOpenSpecValidation(validate);
+    } else {
+      validate();
+    }
     assertTemporaryProjectionCurrent(worktree, eligibility, result);
     assertEligibilityCurrent(eligibility);
     return result;

@@ -5,6 +5,11 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../src/foundation/canonical-json/canonical-json.ts';
 import {
+  commitSession,
+  finalizeTask,
+} from '../../src/application/finalize/lifecycle.ts';
+import { startSession } from '../../src/application/execute-task/session.ts';
+import {
   beginTaskDiffReview,
   reconcileTaskDiffReview,
 } from '../../src/application/finalize/task-diff-review-lifecycle.ts';
@@ -15,7 +20,48 @@ import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/
 import {
   builtInProviderDefinitionSnapshotForTest,
   builtInProviderExecutableIdentityForTest,
+  git,
+  isWorkflowError,
 } from '../fixture.ts';
+
+export function commitCurrentFixtureTask(
+  repository: string,
+  options: {
+    changeId?: string;
+    taskId?: string;
+    implementationPath?: string;
+    implementation?: string;
+    message?: string;
+  } = {},
+): string {
+  const changeId = options.changeId ?? 'demo-change';
+  const taskId = options.taskId ?? '1.1';
+  const implementationPath = options.implementationPath ?? 'src/feature.ts';
+  const session = startSession(repository, changeId, taskId);
+  const target = path.join(repository, implementationPath);
+  fs.mkdirSync(path.dirname(target), { recursive: true });
+  const sourceRevision = git(repository, ['rev-parse', '--short=12', 'HEAD']).trim();
+  fs.writeFileSync(
+    target,
+    options.implementation ??
+      `export const fixtureExecution = '${sourceRevision}';\n`,
+  );
+  assert.throws(
+    () => finalizeTask(repository, session.sessionId),
+    (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+  );
+  satisfyCurrentTaskDiffReview(
+    repository,
+    session.sessionId,
+    implementationPath,
+  );
+  finalizeTask(repository, session.sessionId);
+  return commitSession(
+    repository,
+    session.sessionId,
+    options.message ?? 'Complete demo execution',
+  ).commitHash;
+}
 
 export function satisfyCurrentTaskDiffReview(
   repository: string,

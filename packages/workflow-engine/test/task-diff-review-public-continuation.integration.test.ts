@@ -401,6 +401,10 @@ function challengedSubmission(
     ),
     residualRisk: 'The exact challenge requires an authenticated disposition.',
     uncertainty: 'Review is limited to the exact canonical candidate.',
+    documentationAssessment: {
+      decision: 'no-impact',
+      notes: 'The reviewed implementation changes no documentation contract.',
+    },
   };
 }
 

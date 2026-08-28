@@ -30,6 +30,7 @@ import {
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 const cliPath = path.join(
   sourceRepositoryRoot,
@@ -419,17 +420,21 @@ test('deprecated finalize-task and preferred finalize resume one durable transac
       session.sessionId,
       '--json',
     ]);
-    assert.equal(compatibility.status, 0, compatibility.stderr);
-    const compatibilityResult = JSON.parse(compatibility.stdout) as {
-      deprecation: unknown;
-      result: { transactionId: string; tree: string };
-    };
-    assert.deepEqual(
-      compatibilityResult.deprecation,
-      workflowCommandGuidance('finalize-task').deprecation,
+    assert.equal(
+      compatibility.status,
+      ExitCode.verification,
+      compatibility.stderr,
     );
+    const compatibilityError = JSON.parse(compatibility.stderr) as {
+      error: {
+        code: string;
+        details: { transactionId: string; candidateTree: string };
+      };
+    };
+    assert.equal(compatibilityError.error.code, 'TASK_DIFF_REVIEW_REQUIRED');
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     assert.equal(getSession(repository, session.sessionId).state, 'active');
+    satisfyCurrentTaskDiffReview(repository, session.sessionId);
 
     const preferred = runCli(repository, [
       'finalize',
@@ -446,9 +451,12 @@ test('deprecated finalize-task and preferred finalize resume one durable transac
     };
     assert.equal(
       preferredResult.transactionId,
-      compatibilityResult.result.transactionId,
+      compatibilityError.error.details.transactionId,
     );
-    assert.equal(preferredResult.tree, compatibilityResult.result.tree);
+    assert.equal(
+      preferredResult.tree,
+      compatibilityError.error.details.candidateTree,
+    );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     assert.equal(getSession(repository, session.sessionId).state, 'committed');
     assert.equal(

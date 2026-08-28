@@ -48,7 +48,7 @@ import {
 } from '../../foundation/errors/errors.ts';
 import { readFinalizeTransaction } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
-  findExactTaskCommits,
+  findCurrentExecutionTaskCommits,
   listStagedPaths,
   previewExactStaging,
 } from '../../runtime/repository-transaction/git-transitions.ts';
@@ -5489,7 +5489,7 @@ function taskDiffDocumentationRequirement(
   let changeBaseCommit = inspection.session.baseline.head;
   if (completedTasks.length > 0) {
     const firstTask = completedTasks[0]!;
-    const commits = findExactTaskCommits(
+    const commits = findCurrentExecutionTaskCommits(
       inspection.git.repositoryRoot,
       inspection.session.changeId,
       firstTask.id,

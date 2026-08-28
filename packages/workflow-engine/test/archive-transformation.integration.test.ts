@@ -7,14 +7,10 @@ import { withArchiveEligibility } from '../src/application/archive/archive-eligi
 import { createArchiveTransformation } from '../src/application/archive/archive-transformation.ts';
 import {
   commitSession,
-  completeTask,
-  finishSession,
+  finalizeTask,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import {
   createFixtureRepository,
   git,
@@ -23,6 +19,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 test('archive transformation returns an exact full-index patch without mutating the real worktree', () => {
   const repository = completedFixture();
@@ -116,8 +113,15 @@ for (const fault of [
       const before = realState(repository);
       assert.throws(
         () =>
-          withArchiveEligibility(repository, 'demo-change', (eligible) =>
-            createArchiveTransformation(eligible),
+          withPlanningFaultDisabled(repository, fault[0], () =>
+            withArchiveEligibility(repository, 'demo-change', (eligible) =>
+              createArchiveTransformation(eligible, {
+                testHooks: {
+                  aroundOpenSpecArchive: (invoke) =>
+                    withArchiveFaultEnabled(repository, fault[0], invoke),
+                },
+              }),
+            ),
           ),
         (error) => isWorkflowError(error, fault[1]),
       );
@@ -144,9 +148,12 @@ function completedFixture(marker?: string): string {
   );
   const session = startSession(repository, 'demo-change', '1.1');
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-  checkSession(repository, session.sessionId);
-  completeTask(repository, session.sessionId);
-  finishSession(repository, session.sessionId);
+  assert.throws(
+    () => finalizeTask(repository, session.sessionId),
+    (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+  );
+  satisfyCurrentTaskDiffReview(repository, session.sessionId);
+  finalizeTask(repository, session.sessionId);
   const completed = commitSession(
     repository,
     session.sessionId,
@@ -177,6 +184,29 @@ function withPlanningFaultDisabled<T>(
     return action();
   } finally {
     fs.writeFileSync(binaryPath, original);
+  }
+}
+
+function withArchiveFaultEnabled<T>(
+  repository: string,
+  marker: string,
+  action: () => T,
+): T {
+  const binaryPath = path.join(
+    repository,
+    'node_modules/@fission-ai/openspec/bin/openspec.js',
+  );
+  const disabled = fs.readFileSync(binaryPath, 'utf8');
+  const enabled = disabled.replace(
+    `'DISABLED_${marker}'`,
+    `'${marker}'`,
+  );
+  assert.notEqual(enabled, disabled);
+  fs.writeFileSync(binaryPath, enabled);
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(binaryPath, disabled);
   }
 }
 

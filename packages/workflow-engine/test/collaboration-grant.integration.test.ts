@@ -675,7 +675,7 @@ test('production collaboration admission rejects historical V1 before signature 
       .createHash('sha256')
       .update(canonicalCollaborationGrantEnvelope(envelope))
       .digest('hex'),
-    '8082ee9e05f99d2ea666d1eedd219e84d7ae82ce2a0c365ad2ad3d7e1c3c34de',
+    '03d924fdc47a40e2f4851a2680aee38396c5f52b802b9f0f9c852ec7df6cdd4c',
   );
   assert.throws(
     () =>

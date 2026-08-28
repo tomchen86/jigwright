@@ -21,6 +21,7 @@ import {
   isWorkflowError,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 type MechanicalFixtureOptions = Readonly<{
   files: Readonly<Record<string, string | Buffer>>;
@@ -30,6 +31,7 @@ type MechanicalFixtureOptions = Readonly<{
   replacementTerms?: TransformationTerm[];
   retainedDispositions?: TransformationRetainedDisposition[];
   referencePolicy?: boolean;
+  additionalPendingTask?: boolean;
 }>;
 
 test('mechanical transformation closure scans unchanged live consumers in the full candidate tree', () => {
@@ -94,7 +96,7 @@ test('mechanical transformation closure mints evidence only for the exact determ
   }
 });
 
-test('projected finalize uses the same mechanical evidence predicate without a separate ceremony', () => {
+test('projected finalize preserves mechanical evidence through current TaskDiffReview', () => {
   const fixture = createMechanicalFixture({
     files: {
       'src/features/feature.ts': "export const value = 'OLD_NAME';\n",
@@ -102,6 +104,15 @@ test('projected finalize uses the same mechanical evidence predicate without a s
   });
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
+    assert.throws(
+      () => finalizeTask(fixture.repository, fixture.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    satisfyCurrentTaskDiffReview(
+      fixture.repository,
+      fixture.sessionId,
+      'src/features/feature.ts',
+    );
     const finalized = finalizeTask(fixture.repository, fixture.sessionId);
     assert.equal(finalized.session.finishReportId, finalized.finishReportId);
     assert.equal(
@@ -113,11 +124,12 @@ test('projected finalize uses the same mechanical evidence predicate without a s
   }
 });
 
-test('legacy check-complete-finish consumes the same current mechanical evidence', () => {
+test('compatibility check-complete-finish consumes reviewed mechanical evidence', () => {
   const fixture = createMechanicalFixture({
     files: {
       'src/features/feature.ts': "export const value = 'OLD_NAME';\n",
     },
+    additionalPendingTask: true,
   });
   try {
     replaceInFile(fixture.repository, 'src/features/feature.ts');
@@ -395,15 +407,28 @@ function createMechanicalFixture(options: MechanicalFixtureOptions): {
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Add mechanical transform baseline']);
   git(repository, ['checkout', '-b', 'work/demo-change']);
-  if (options.allowedPaths) {
-    const guardPath = path.join(
+  if (options.allowedPaths || options.additionalPendingTask) {
+    const changeRoot = path.join(
       repository,
-      'openspec/changes/demo-change/guard.json',
+      'openspec/changes/demo-change',
     );
+    const guardPath = path.join(changeRoot, 'guard.json');
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-      tasks: Record<string, { allowedPaths: string[] }>;
+      tasks: Record<
+        string,
+        { allowedPaths: string[]; requiredChecks: string[] }
+      >;
     };
-    guard.tasks['1.1']!.allowedPaths = options.allowedPaths;
+    if (options.allowedPaths) {
+      guard.tasks['1.1']!.allowedPaths = options.allowedPaths;
+    }
+    if (options.additionalPendingTask) {
+      fs.appendFileSync(
+        path.join(changeRoot, 'tasks.md'),
+        '\n- [ ] 1.2 Keep the fixture change open\n',
+      );
+      guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
+    }
     fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
   }
   writeReadyV3ExemptChange(repository, 'demo-change', {

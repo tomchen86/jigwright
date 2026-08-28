@@ -6,14 +6,10 @@ import test from 'node:test';
 import { commitArchiveTransition } from '../src/application/archive/archive-transition.ts';
 import {
   commitSession,
-  completeTask,
-  finishSession,
+  finalizeTask,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import {
-  checkSession,
-  startSession,
-} from '../src/application/execute-task/session.ts';
+import { startSession } from '../src/application/execute-task/session.ts';
 import { runCli } from '../src/cli.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import {
@@ -32,6 +28,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
 
 test('archive transition persists evidence, applies exact staging, commits, and is idempotent', () => {
   const repository = completedFixture(addedDelta());
@@ -207,8 +204,7 @@ test('archive closes linked Work Items and renders registry history in the verif
 });
 
 test('archive transition rejects silently ignored delta outcomes', () => {
-  const repository = completedFixture(
-    [
+  const delta = [
       '# Delta',
       '',
       '<!-- ARCHIVE_IGNORE_DELTA -->',
@@ -223,12 +219,23 @@ test('archive transition rejects silently ignored delta outcomes', () => {
       '- **WHEN** the public archive reports a change without applying it',
       '- **THEN** the transition rejects the inconsistent outcome',
       '',
-    ].join('\n'),
-  );
+    ].join('\n');
+  const repository = completedFixture(delta);
   try {
     const before = repositoryState(repository);
     assert.throws(
-      () => commitArchiveTransition(repository, 'demo-change'),
+      () =>
+        withPlanningIgnoredDeltaDisabled(repository, delta, () =>
+          commitArchiveTransition(
+            repository,
+            'demo-change',
+            process.env,
+            {
+              aroundOpenSpecArchive: (invoke) =>
+                withPlanningIgnoredDeltaEnabled(repository, invoke),
+            },
+          ),
+        ),
       (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
     );
     assert.deepEqual(repositoryState(repository), before);
@@ -342,9 +349,12 @@ function completedFixture(
   );
   const session = startSession(repository, 'demo-change', '1.1');
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-  checkSession(repository, session.sessionId);
-  completeTask(repository, session.sessionId);
-  finishSession(repository, session.sessionId);
+  assert.throws(
+    () => finalizeTask(repository, session.sessionId),
+    (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
+  );
+  satisfyCurrentTaskDiffReview(repository, session.sessionId);
+  finalizeTask(repository, session.sessionId);
   const completed = commitSession(
     repository,
     session.sessionId,
@@ -388,6 +398,28 @@ function withPlanningIgnoredDeltaDisabled<T>(
     return action();
   } finally {
     fs.writeFileSync(helperPath, original);
+  }
+}
+
+function withPlanningIgnoredDeltaEnabled<T>(
+  repository: string,
+  action: () => T,
+): T {
+  const helperPath = path.join(
+    repository,
+    'node_modules/@fission-ai/openspec/bin/archive-helper.js',
+  );
+  const disabled = fs.readFileSync(helperPath, 'utf8');
+  const enabled = disabled.replace(
+    "'DISABLED_ARCHIVE_IGNORE_DELTA'",
+    "'ARCHIVE_IGNORE_DELTA'",
+  );
+  assert.notEqual(enabled, disabled);
+  fs.writeFileSync(helperPath, enabled);
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(helperPath, disabled);
   }
 }
 

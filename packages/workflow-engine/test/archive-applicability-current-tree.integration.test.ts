@@ -19,6 +19,7 @@ import {
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
 const BASE_SPEC_PATH = 'openspec/specs/demo/spec.md';
 const DELTA_SPEC_PATH = 'openspec/changes/demo-change/specs/demo/spec.md';
@@ -124,13 +125,15 @@ test('amend-plan executes the pinned public OpenSpec archive projection', () => 
     commitPlanningTransition(repository, 'demo-change');
     completeTask(repository);
     prepareReviewedCorrection(repository);
-    rejectPublicArchive(repository);
 
     assert.throws(
       () =>
         commitPlanAmendment(repository, 'demo-change', {
           reason: 'archive-applicability-failure',
           executionImpact: 'none',
+        }, process.env, {
+          aroundArchiveApplicability: (invoke) =>
+            withRejectedPublicArchive(repository, invoke),
         }),
       (error: unknown) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_FAILED'),
     );
@@ -188,22 +191,7 @@ function removeCurrentBaseSpec(repository: string): void {
 }
 
 function completeTask(repository: string): void {
-  const tasksPath = path.join(
-    repository,
-    'openspec/changes/demo-change/tasks.md',
-  );
-  fs.writeFileSync(
-    tasksPath,
-    fs.readFileSync(tasksPath, 'utf8').replace('- [ ] 1.1', '- [x] 1.1'),
-  );
-  git(repository, ['add', '-A']);
-  git(repository, [
-    'commit',
-    '-m',
-    'Complete demo execution',
-    '-m',
-    'Change: demo-change\nTask: 1.1',
-  ]);
+  commitCurrentFixtureTask(repository);
 }
 
 function prepareReviewedCorrection(repository: string): void {
@@ -235,7 +223,10 @@ function prepareReviewedCorrection(repository: string): void {
   writeReadyV3ExemptChange(repository);
 }
 
-function rejectPublicArchive(repository: string): void {
+function withRejectedPublicArchive<T>(
+  repository: string,
+  action: () => T,
+): T {
   const executable = path.join(
     repository,
     'node_modules/@fission-ai/openspec/bin/openspec.js',
@@ -243,13 +234,16 @@ function rejectPublicArchive(repository: string): void {
   const source = fs.readFileSync(executable, 'utf8');
   const archiveBranch = "if (process.argv[2] === 'archive') {";
   assert.equal(source.includes(archiveBranch), true);
-  fs.writeFileSync(
-    executable,
-    source.replace(
+  const rejected = source.replace(
       archiveBranch,
       `${archiveBranch}\n  process.stderr.write('public amendment archive projection invoked');\n  process.exit(23);\n}\n${archiveBranch}`,
-    ),
-  );
+    );
+  fs.writeFileSync(executable, rejected);
+  try {
+    return action();
+  } finally {
+    fs.writeFileSync(executable, source);
+  }
 }
 
 function repositoryState(repository: string) {
