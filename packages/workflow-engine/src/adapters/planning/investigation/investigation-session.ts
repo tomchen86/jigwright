@@ -517,30 +517,6 @@ function inspectHumanResolutionGrant(
   };
 }
 
-export function executeHumanResolutionGrant(
-  _cwd: string,
-  _requestedGrantId: string,
-  _options: HumanResolutionExecutionOptions = {},
-): HumanResolutionExecutionResult {
-  throw workflowError(
-    'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-    'Legacy V1 human-resolution grants are historical read-only evidence and cannot start a new live transition.',
-    ExitCode.guard,
-  );
-}
-
-export function recoverHumanResolutionGrant(
-  _cwd: string,
-  _requestedGrantId: string,
-  _options: Omit<HumanResolutionExecutionOptions, 'simulateCrashAfter'> = {},
-): HumanResolutionExecutionResult {
-  throw workflowError(
-    'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-    'Legacy V1 human-resolution grants are historical read-only evidence and cannot recover a live transition.',
-    ExitCode.guard,
-  );
-}
-
 export type GrantCoreHumanResolutionExecutionOptions = Readonly<{
   now?: Date;
   simulateCrashAfter?: NonNullable<

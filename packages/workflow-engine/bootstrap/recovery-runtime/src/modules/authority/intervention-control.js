@@ -2400,6 +2400,3 @@ export function verifyLegacyGrantV1ReadOnly(record, context) {
         signatureValid: true,
     });
 }
-export function assertLegacyGrantV1SigningAllowed() {
-    throw workflowError('LEGACY_GRANT_V1_NEW_SIGNING_DISABLED', 'New V1 grant signing is disabled; V1 records are historical read-only evidence.', ExitCode.guard);
-}

@@ -100,5 +100,6 @@ The local signer is configured with `git config --local gpg.format ssh` and
 migration gate, a protected environment, and a one-way transition. Emergency
 recovery remains repository-admin, out-of-band authority.
 
-Legacy V1 issuance and `authority-start` are retained only for terminal
-historical cleanup and cannot authorize new work.
+Legacy V1 issuance and live human-resolution execution entrypoints are absent.
+`authority-start` and the remaining historical inspection and revocation
+surfaces exist only for terminal cleanup and cannot authorize new work.

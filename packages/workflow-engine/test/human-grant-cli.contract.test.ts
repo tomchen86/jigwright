@@ -7,10 +7,6 @@ import test from 'node:test';
 
 import type { GrantCoordinator } from '../src/modules/authority/grant-coordinator.ts';
 import { dispatchHumanGrantCli } from '../src/entrypoints/cli/human-grant-cli.ts';
-import {
-  executeHumanResolutionGrant,
-  recoverHumanResolutionGrant,
-} from '../src/adapters/planning/investigation/investigation-session.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('human grant CLI exposes registered investigation and Work Registry requests without accepting agent decisions', async () => {
@@ -225,59 +221,23 @@ test('human grant CLI exposes registered investigation and Work Registry request
   fs.rmSync(repositoryRoot, { recursive: true, force: true });
 });
 
-test('legacy human-resolution apply and recovery cannot start a live transition', () => {
-  assert.throws(
-    () =>
-      executeHumanResolutionGrant(
-        '/path/that/must/not/be-read',
-        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      ),
-    (error) =>
-      isWorkflowError(error, 'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED'),
-  );
-
+test('current CLI exposes no legacy human-resolution execution or signing entrypoints', () => {
   const cli = path.resolve(import.meta.dirname, '../src/cli.ts');
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--experimental-strip-types',
-      cli,
-      'human-resolution-apply',
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      '--json',
-    ],
-    { cwd: os.tmpdir(), encoding: 'utf8' },
-  );
-  assert.equal(result.status, 10);
-  assert.equal(
-    (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
-    'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-  );
-
-  assert.throws(
-    () =>
-      recoverHumanResolutionGrant(
-        '/path/that/must/not/be-read',
-        'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      ),
-    (error) =>
-      isWorkflowError(error, 'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED'),
-  );
-
-  const recovery = spawnSync(
-    process.execPath,
-    [
-      '--experimental-strip-types',
-      cli,
-      'human-resolution-recover',
-      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
-      '--json',
-    ],
-    { cwd: os.tmpdir(), encoding: 'utf8' },
-  );
-  assert.equal(recovery.status, 10);
-  assert.equal(
-    (JSON.parse(recovery.stderr) as { error: { code: string } }).error.code,
-    'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-  );
+  for (const args of [
+    ['human-resolution-apply', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
+    ['human-resolution-recover', 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'],
+    ['maintainer', 'resolution-grant'],
+    ['maintainer', 'grant', 'legacy-v1'],
+  ]) {
+    const result = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', cli, ...args, '--json'],
+      { cwd: os.tmpdir(), encoding: 'utf8' },
+    );
+    assert.equal(result.status, 2, result.stderr);
+    assert.equal(
+      (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
+      'INVALID_USAGE',
+    );
+  }
 });

@@ -8,7 +8,6 @@ import {
   REQUIRED_PROTECTED_CAPABILITIES,
   advanceEngineAdoption,
   advanceMinimalUpdaterTransaction,
-  assertLegacyGrantV1SigningAllowed,
   beginHarnessIntervention,
   canonicalControlPlaneGrantPayload,
   canonicalHarnessMaintenanceGrantPayload,
@@ -933,8 +932,4 @@ test('supersede rejects execution failures and legacy V1 grants are verification
     mode: 'historical-read-only',
     signatureValid: true,
   });
-  assert.throws(
-    () => assertLegacyGrantV1SigningAllowed(),
-    hasCode('LEGACY_GRANT_V1_NEW_SIGNING_DISABLED'),
-  );
 });

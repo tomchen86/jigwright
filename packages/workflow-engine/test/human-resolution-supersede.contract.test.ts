@@ -7,7 +7,6 @@ import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapte
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import {
-  executeHumanResolutionGrant,
   inspectHumanResolutionGrants,
   revokeHumanResolutionGrant,
   startInvestigationSession,
@@ -121,7 +120,7 @@ test('production legacy human-resolution issuance is historical read-only', () =
   assert.equal(signerTouched, false);
 });
 
-test('legacy human-resolution evidence verifies read-only but cannot start a live transition', () => {
+test('legacy human-resolution evidence remains verification-only', () => {
   const repository = createFixtureRepository();
   try {
     installMaintainerPolicy(repository);
@@ -145,11 +144,6 @@ test('legacy human-resolution evidence verifies read-only but cannot start a liv
         {} as MaintainerPolicy,
         signer,
       ),
-    );
-    assert.throws(
-      () => executeHumanResolutionGrant(repository, issued.grantId),
-      (error) =>
-        isWorkflowError(error, 'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED'),
     );
     assert.equal(
       inspectInvestigationResolutionState(

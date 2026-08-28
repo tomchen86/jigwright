@@ -378,7 +378,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:17feb2b788255d3b8a265666edc78db13b9fb966e2c73684bf81cda8dd0aacf9"
+      "digest": "sha256:2a0c29b2f7cf250efd0b6f2cb4f8ea759ec4fc3d5e248f47dce4ce3fb307ae17"
     },
     {
       "path": "src/adapters/planning/investigation/investigation-why.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:c717b74b170fcfd5588b92b57c5daa12a0b85693db415dad6f2b6981b4353e29"
+      "digest": "sha256:b4cbe646fbc6c9466d2c77dd15890845a06d678d061b0eeaf58295b92d731980"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1203,7 +1203,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:f34e1529edf1cb8461b70a51bc0affe446dba314bd424e861bed20c176753bcc"
+      "digest": "sha256:9e8ec34ba30bf8a031447d1bf5f621215eb3af81c65ca244d8fb85d01868a183"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",

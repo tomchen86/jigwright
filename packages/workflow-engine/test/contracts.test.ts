@@ -688,7 +688,7 @@ test('break-glass maintainer operator contract is complete and bootstrap-only', 
   }
   assert.match(
     workflow,
-    /legacy V1[\s\S]{0,160}authority-start[\s\S]{0,160}cannot authorize new work/i,
+    /legacy V1[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}authority-start[\s\S]{0,160}cannot authorize new work/i,
   );
 
   assert.match(workflow, /controlling interactive terminal/i);

@@ -179,7 +179,6 @@ import {
   type ControlPlaneApprovalSummaryV2,
   type ControlPlaneUpdaterAuditRecord,
 } from './application/control-plane/intervention-control-updater.ts';
-import { assertLegacyGrantV1SigningAllowed } from './modules/authority/intervention-control.ts';
 import {
   discardHumanResolutionGrantPublication,
   inspectHumanResolutionGrantPublicationRecoveries,
@@ -1888,12 +1887,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
           result: reissueAndApplyMaintainerGrantV2(cwd, request),
         };
       }
-      if (rest[0] === 'grant') {
-        return assertLegacyGrantV1SigningAllowed();
-      }
-      if (rest[0] === 'resolution-grant') {
-        return assertLegacyGrantV1SigningAllowed();
-      }
       if (rest[0] === 'resolution-inspect' && rest.length <= 2) {
         const publicationRecoveries =
           inspectHumanResolutionGrantPublicationRecoveries(cwd, rest[1]);
@@ -1978,6 +1971,9 @@ function dispatch(args: string[], cwd: string): CommandResult {
           result: projectAuthorityAttestationRelay(cwd, rest[2]),
         };
       }
+      if (rest[0] !== 'inspect' && rest[0] !== 'revoke') {
+        throw maintainerUsage();
+      }
       const git = discoverRepository(cwd);
       if (rest[0] === 'inspect' && rest.length <= 2) {
         return {
@@ -2020,18 +2016,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
         ),
       };
     }
-    case 'human-resolution-apply':
-      throw workflowError(
-        'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-        'Legacy V1 human-resolution grants are historical read-only evidence and cannot start a new live transition.',
-        ExitCode.guard,
-      );
-    case 'human-resolution-recover':
-      throw workflowError(
-        'LEGACY_GRANT_V1_LIVE_TRANSITION_DISABLED',
-        'Legacy V1 human-resolution grants are historical read-only evidence and cannot recover a live transition.',
-        ExitCode.guard,
-      );
     case 'authority-start': {
       const changeId = rest[0];
       const grantId = optionValue(rest.slice(1), '--grant');
@@ -3521,7 +3505,6 @@ function usageText(): string {
     '  pnpm workflow maintainer grant approve-and-apply --change <change-id> --task <mandate-task-id> --profile <profile-id> --reason <text> --message <subject> --effects-file <json|none> [--waivers-file <json|none>] [--json]',
     '  pnpm workflow maintainer grant reissue-and-apply --grant <prior-grant-id> --reason <text> [--ttl-minutes <positive-integer>] [--waivers-file <json|none>] [--json]',
     '  pnpm workflow maintainer revision-approval <session-id> --target <digest> --reason <text> [--json]',
-    '  pnpm workflow maintainer resolution-grant --investigation <id> --decision <kind> --continuity <mode> --assurance <mode> --rationale <text> [--json]',
     '  pnpm workflow maintainer resolution-inspect [grant-id] [--json]',
     '  pnpm workflow maintainer resolution-publication-discard <grant-id> --expected-publication-state <digest> --reason <text> [--json]',
     '  pnpm workflow maintainer resolution-revoke <grant-id> --reason <text> [--json]',
