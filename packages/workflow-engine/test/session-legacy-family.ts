@@ -24,7 +24,6 @@ import './managed-trailers.contract.test.ts';
 import './maintainer-mode.integration.test.ts';
 import './authority-plan.integration.test.ts';
 import './ci.integration.test.ts';
-import './ci-bootstrap.integration.test.ts';
 import './ai-adapter-evaluation.integration.test.ts';
 import './provider-adapters.integration.test.ts';
 import './provider-automatic-retry.integration.test.ts';

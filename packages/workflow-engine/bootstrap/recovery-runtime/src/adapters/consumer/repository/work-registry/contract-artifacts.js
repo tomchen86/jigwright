@@ -16,7 +16,6 @@ export function workflowContractArtifactPaths(repositoryRoot) {
         : [];
     const documentPolicy = path.join(repositoryRoot, 'workflow/document-policy.json');
     const repositoryConsumer = path.join(repositoryRoot, 'workflow/repository-consumer.json');
-    const ciPolicy = path.join(repositoryRoot, 'workflow/ci-policy.json');
     const maintainerPolicy = path.join(repositoryRoot, 'workflow/maintainer-policy.json');
     const grantPolicy = path.join(repositoryRoot, 'workflow/grant-policy.json');
     const pathRoleRegistry = path.join(repositoryRoot, 'workflow/path-roles.json');
@@ -28,9 +27,6 @@ export function workflowContractArtifactPaths(repositoryRoot) {
         ...schemas,
         ...(fs.statSync(documentPolicy, { throwIfNoEntry: false })?.isFile()
             ? [documentPolicy]
-            : []),
-        ...(fs.statSync(ciPolicy, { throwIfNoEntry: false })?.isFile()
-            ? [ciPolicy]
             : []),
         ...(fs.statSync(maintainerPolicy, { throwIfNoEntry: false })?.isFile()
             ? [maintainerPolicy]

@@ -2454,6 +2454,46 @@ export function providerCompletionCandidateExists(
 }
 
 /**
+ * Recover the current invocation state from its exact durable Attempt result.
+ * This path never scans or materializes historical invocation journals.
+ */
+export function recoverProviderInvocationCompletion(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+  input: { expectedRevision: number },
+): ProviderCompletionRecovery {
+  const invocationId = assertInvocationId(requestedInvocationId);
+  return withProviderWorkerLifecycle(paths, (assertOwned) => {
+    const current = readProviderInvocation(paths, invocationId);
+    const request = readProviderInvocationRequest(paths, invocationId);
+    const projection = projectProviderInvocationExecution({
+      record: current,
+      request,
+    });
+    const durable = readExecutionJobState(paths, projection.job.jobId);
+    const result = durable?.results.find(
+      ({ attemptId }) => attemptId === projection.attempt.attemptId,
+    );
+    if (result === undefined || result.acceptance !== 'accepted') {
+      throw workflowError(
+        'PROVIDER_COMPLETION_RECOVERY_STATE_MISSING',
+        'Completion recovery requires the exact accepted current Attempt result.',
+        ExitCode.staleState,
+      );
+    }
+    return recoverProviderInvocationCompletionUnderLifecycleLock(
+      paths,
+      invocationId,
+      {
+        expectedLegacyRevision: input.expectedRevision,
+        acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
+      },
+      assertOwned,
+    );
+  });
+}
+
+/**
  * Finalize only an already-durable Attempt result. The caller must hold the
  * repository lifecycle lock and prove the exact durable result identity; this
  * function never evaluates or re-runs provider work.

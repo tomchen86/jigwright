@@ -62,6 +62,8 @@ import {
   completeProviderInvocationFromRunnerUnderLifecycleLock,
   failProviderInvocation,
   prepareProviderInvocationAcceptanceBinding,
+  providerCompletionCandidateExists,
+  recoverProviderInvocationCompletion,
   releaseProviderInvocationWorkerFence,
   readPlanReviewSnapshotRuntime,
   readProviderInvocation,
@@ -259,10 +261,20 @@ function runProviderWorkerWithExecution(
   runtimeFailureProtocolReceipt?: () => ProviderWrapperProtocolReceipt | null,
 ): ProviderWorkerResult | Promise<ProviderWorkerResult> {
   const context = loadInvestigationRuntimeContext(cwd);
-  const initial = readProviderInvocation(
+  let initial = readProviderInvocation(
     context.runtime,
     requestedInvocationId,
   );
+  if (
+    initial.state === 'leased' &&
+    providerCompletionCandidateExists(context.runtime, initial.invocationId)
+  ) {
+    initial = recoverProviderInvocationCompletion(
+      context.runtime,
+      initial.invocationId,
+      { expectedRevision: initial.revision },
+    ).record;
+  }
   if (initial.state !== 'prepared') {
     if (initial.state === 'succeeded' || initial.state === 'failed') {
       runTerminalFollowups(cwd, initial, options);

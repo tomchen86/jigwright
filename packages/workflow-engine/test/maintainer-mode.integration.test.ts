@@ -1882,8 +1882,6 @@ retiredLegacyV1RuntimeScenario(
             fixture.repository,
             listRangeCommits(fixture.repository, fixture.baseCommit, head),
             new Map(),
-            [],
-            [],
             fixtureTime(fixture, 40),
           ),
         (error) => isWorkflowError(error, 'CI_AUTHORITY_GRANT_DUPLICATE'),
@@ -2601,8 +2599,6 @@ retiredLegacyV1RuntimeScenario(
           committed.commitHash,
         ),
         new Map(),
-        [],
-        [],
         fixtureTime(fixture, 40),
       );
       assert.equal(
@@ -2657,8 +2653,6 @@ retiredLegacyV1RuntimeScenario(
           taskCommit.commitHash,
         ),
         new Map(),
-        [],
-        [],
         fixtureTime(fixture, 50),
       );
       assert.equal(

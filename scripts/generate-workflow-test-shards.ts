@@ -38,6 +38,7 @@ export type GenerateWorkflowTestShardOptions = Readonly<{
   repositoryRoot: string;
   telemetryPath: string;
   sourceTelemetryRunId: string;
+  retiredPhysicalFiles?: readonly string[];
 }>;
 
 export function buildWorkflowTestShardManifest(
@@ -49,6 +50,18 @@ export function buildWorkflowTestShardManifest(
   const observations = parseTelemetry(telemetryBytes.toString('utf8'));
   const topology = discoverWorkflowTestTopology(repositoryRoot);
   const knownPhysicalFiles = new Set(topology.physicalFiles);
+  const retiredPhysicalFiles = new Set(options.retiredPhysicalFiles ?? []);
+  if (
+    retiredPhysicalFiles.size !== (options.retiredPhysicalFiles ?? []).length ||
+    [...retiredPhysicalFiles].some(
+      (file) =>
+        knownPhysicalFiles.has(file) ||
+        !/^packages\/workflow-engine\/test\/.+\.test\.ts$/u.test(file),
+    )
+  ) {
+    throw new Error('Retired workflow test paths are invalid or still active.');
+  }
+  const observedRetiredPhysicalFiles = new Set<string>();
   const timing = new Map<
     string,
     { durationMicros: number; firstSequence: number }
@@ -60,6 +73,10 @@ export function buildWorkflowTestShardManifest(
       continue;
     }
     if (!knownPhysicalFiles.has(observation.file)) {
+      if (retiredPhysicalFiles.has(observation.file)) {
+        observedRetiredPhysicalFiles.add(observation.file);
+        continue;
+      }
       throw new Error(
         `Source telemetry names an unknown physical workflow test: ${observation.file}.`,
       );
@@ -74,6 +91,15 @@ export function buildWorkflowTestShardManifest(
       observation.sequence,
     );
     timing.set(observation.file, current);
+  }
+  if (
+    [...retiredPhysicalFiles].some(
+      (file) => !observedRetiredPhysicalFiles.has(file),
+    )
+  ) {
+    throw new Error(
+      'A declared retired workflow test is absent from source telemetry.',
+    );
   }
 
   const weighted = topology.units.map((unit) => {
@@ -289,23 +315,27 @@ function parseCli(argv: readonly string[]): Readonly<{
   check: boolean;
   telemetryPath: string | null;
   sourceTelemetryRunId: string | null;
+  retiredPhysicalFiles: readonly string[];
 }> {
   let check = false;
   let telemetryPath: string | null = null;
   let sourceTelemetryRunId: string | null = null;
+  const retiredPhysicalFiles: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index]!;
     if (argument === '--check') check = true;
     else if (argument === '--telemetry') telemetryPath = argv[++index] ?? null;
     else if (argument === '--run-id') {
       sourceTelemetryRunId = argv[++index] ?? null;
+    } else if (argument === '--retired-test') {
+      retiredPhysicalFiles.push(argv[++index] ?? '');
     } else {
       throw new Error(
         `Unknown workflow test shard generator option: ${argument}.`,
       );
     }
   }
-  return { check, telemetryPath, sourceTelemetryRunId };
+  return { check, telemetryPath, sourceTelemetryRunId, retiredPhysicalFiles };
 }
 
 if (import.meta.main) {
@@ -328,6 +358,7 @@ if (import.meta.main) {
       repositoryRoot,
       telemetryPath: path.resolve(cli.telemetryPath),
       sourceTelemetryRunId: cli.sourceTelemetryRunId,
+      retiredPhysicalFiles: cli.retiredPhysicalFiles,
     });
     process.stdout.write(
       `${manifest.inventoryDigest} ${manifest.executionUnitCount} units ${manifest.physicalFileCount} files\n`,

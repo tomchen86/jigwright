@@ -111,7 +111,7 @@ function assertCanonicalTaskCommit(
       facts.parents[0],
       commitHash,
     );
-    replay = replayCommitSequence(repositoryRoot, commits, new Map(), [], []);
+    replay = replayCommitSequence(repositoryRoot, commits, new Map());
   } catch {
     throw invalidGeneration(
       'Task execution evidence did not pass canonical task-transition replay.',

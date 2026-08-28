@@ -3329,7 +3329,7 @@ test('remote CI verifies an applied v2 candidate from portable Git authority rec
     assert.equal(verified.grantId, applied.grantId);
     assert.equal(verified.changeId, 'demo-change');
     assert.deepEqual(
-      replayCommitSequence(clone, [commit], new Map(), [], []).authorityGrants,
+      replayCommitSequence(clone, [commit], new Map()).authorityGrants,
       [applied.grantId],
     );
     assert.deepEqual(

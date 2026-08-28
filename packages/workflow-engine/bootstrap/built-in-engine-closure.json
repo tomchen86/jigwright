@@ -308,7 +308,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contract-artifacts.ts",
       "mode": "100644",
-      "digest": "sha256:e280309ba92628156096aa6d0ff107c8588aa674895e79200292b56845cd0e28"
+      "digest": "sha256:1e1b362cfbab94cd30be794c13b784ff53d337a3220d09dd393f43b0e0cfba22"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
@@ -876,19 +876,9 @@
       "digest": "sha256:2b2761bd214b663609aa1592650540d5f3cc3f53be4c5ad5662d6ea65fb64205"
     },
     {
-      "path": "src/entrypoints/ci/ci-bootstrap.ts",
-      "mode": "100644",
-      "digest": "sha256:bb559204ce2791ae91fe66547ea097412b40e8a8c5ccdfdaa396f8b1b7cd45fc"
-    },
-    {
       "path": "src/entrypoints/ci/ci-checks.ts",
       "mode": "100644",
       "digest": "sha256:d6a501a7c20822635d4d22db4a6e6eaa91bd037110ceb7269f00c5dede0bdb4d"
-    },
-    {
-      "path": "src/entrypoints/ci/ci-commit-validation.ts",
-      "mode": "100644",
-      "digest": "sha256:5c1484754960d7997a00452dfa5f349d88fb30e1d21d4e2d37589bf6d198fc4c"
     },
     {
       "path": "src/entrypoints/ci/ci-git.ts",
@@ -906,11 +896,6 @@
       "digest": "sha256:b81b48f0902a32717f2832247462c4811a8c4ff8881fe4bf04cdc93bd4773a49"
     },
     {
-      "path": "src/entrypoints/ci/ci-policy.ts",
-      "mode": "100644",
-      "digest": "sha256:3eb6aabc3bb1b859d301929228647cc6ec557b5855a55268a9202f1748217348"
-    },
-    {
       "path": "src/entrypoints/ci/ci-routing.ts",
       "mode": "100644",
       "digest": "sha256:0c352ad23c450dc0c029cac7a0abcc8d67d06b398785f3956393a4d6660dd4bb"
@@ -918,7 +903,7 @@
     {
       "path": "src/entrypoints/ci/ci-sequence.ts",
       "mode": "100644",
-      "digest": "sha256:b5487533d4b2d8398d939e9af559850130f7ec3ee841b37984b887e916893696"
+      "digest": "sha256:69b0ac175b139765e2eac8dc2d0b0b0460d9686d7c21bc5d2dd781a9a460a238"
     },
     {
       "path": "src/entrypoints/ci/ci-task-state.ts",
@@ -928,7 +913,7 @@
     {
       "path": "src/entrypoints/ci/ci.ts",
       "mode": "100644",
-      "digest": "sha256:c994620b8fbab1766d781f57ff1c730fd516eeed3a4e02ba909d80d839edef8e"
+      "digest": "sha256:99ffdb251354faa7064256f9380a1125b673dc681ba836fa0b7b4dbcd1df8068"
     },
     {
       "path": "src/entrypoints/ci/pre-merge-assurance-git.ts",
@@ -1018,7 +1003,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:646bd0bedae3c15ac95180ee5da5e2890190f8c63795df792e3e265a67f94989"
+      "digest": "sha256:7d403ca23b7b03695069b98059c0e29dd291521558eb1c93b9d4775864746693"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1133,7 +1118,7 @@
     {
       "path": "src/modules/assurance/task-execution-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:e6570ab9eed12c7c3549ca97170fa7f3b16ef82ce3e2c15d30883884b0776b04"
+      "digest": "sha256:a8f5e83990c643a6dbd7a7888daf9ca757a17abdd852337eaf3706176bca2ca8"
     },
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
@@ -1741,11 +1726,6 @@
       "digest": "sha256:bee18b2df56e5f94c911591854c7db697063e68af199531370d2bfde825796f1"
     },
     {
-      "path": "src/runtime/provider-execution/execution-recovery.ts",
-      "mode": "100644",
-      "digest": "sha256:c041b13b4e1ca886d95eb03e13646bb8eb9247931cc70c65696f2a77a8d4326b"
-    },
-    {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
       "digest": "sha256:d516900c94bef42b3c8c66597513468ad9cd8c1f68c0f7cbc4c2f55119108caa"
@@ -2018,7 +1998,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:0831959189cf9bc43aa3fc3f09eb6b2a7c924b48e7b25b1b8c59d960df435ac4"
+      "digest": "sha256:17e2ce2013298ebefac428f02c6c1a0332cdae758dfc2693c0f8ca6a892ac42a"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",

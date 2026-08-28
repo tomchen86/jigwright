@@ -5,11 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { buildWorkflowTestShardManifest } from '../../../scripts/generate-workflow-test-shards.ts';
+
 import {
   WORKFLOW_PACKAGE_TEST_FAMILY_LOADER_PATH,
   WORKFLOW_PACKAGE_TEST_PROJECTION_ROOT,
   WORKFLOW_PACKAGE_TEST_ROOTS,
   WORKFLOW_PACKAGE_TEST_RUNNER_PATH,
+  WORKFLOW_TEST_SHARD_ALGORITHM,
   assertWorkflowPackageTestProjections,
   assertWorkflowTestShardWrappers,
   assertWorkflowTestScratchSafety,
@@ -30,6 +33,56 @@ import {
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
 
+test('shard generation accepts only explicitly retired telemetry paths', () => {
+  const fixture = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-retired-test-telemetry-'),
+  );
+  const retired =
+    'packages/workflow-engine/test/retired-legacy.integration.test.ts';
+  try {
+    const telemetryPath = path.join(fixture, 'telemetry.jsonl');
+    fs.writeFileSync(
+      telemetryPath,
+      [
+        JSON.stringify({
+          kind: 'workflow-full-gate-test-telemetry.v1',
+          sequence: 1,
+          file: retired,
+          nesting: WORKFLOW_TEST_SHARD_ALGORITHM.telemetryNesting,
+          durationMs: 1,
+        }),
+        JSON.stringify({
+          kind: 'workflow-full-gate-test-telemetry-end.v1',
+          recordCount: 1,
+        }),
+        '',
+      ].join('\n'),
+    );
+
+    assert.throws(
+      () =>
+        buildWorkflowTestShardManifest({
+          repositoryRoot,
+          telemetryPath,
+          sourceTelemetryRunId:
+            'run-20260828000000000-00000000-0000-4000-8000-000000000000',
+        }),
+      /unknown physical workflow test/u,
+    );
+    assert.doesNotThrow(() =>
+      buildWorkflowTestShardManifest({
+        repositoryRoot,
+        telemetryPath,
+        sourceTelemetryRunId:
+          'run-20260828000000000-00000000-0000-4000-8000-000000000000',
+        retiredPhysicalFiles: [retired],
+      }),
+    );
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
+});
+
 test('the tracked shard manifest owns every physical workflow test exactly once', () => {
   const manifest = loadWorkflowTestShardManifest(repositoryRoot);
   const physicalFiles = expectedPhysicalFiles(manifest);
@@ -41,11 +94,11 @@ test('the tracked shard manifest owns every physical workflow test exactly once'
   assert.equal(manifest.algorithm.version, 1);
   assert.equal(
     manifest.sourceTelemetryDigest,
-    'sha256:abbc79d453c331ca7b7995628d657d9a4e3d3768510c11de13d9a4c6c808acd0',
+    'sha256:b93b964d30e586a971d814a95697174864b0855d54697214e626c59dcae9ea4f',
   );
   assert.equal(manifest.shards.length, 8);
-  assert.equal(physicalFiles.length, 346);
-  assert.equal(units.length, 343);
+  assert.equal(physicalFiles.length, 343);
+  assert.equal(units.length, 340);
   assert.deepEqual(
     workflowTestShardWrapperPaths(manifest),
     Array.from(

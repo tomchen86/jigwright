@@ -13,18 +13,11 @@ import { replayCommitSequence } from './ci-sequence.ts';
 import {
   assertCiCommit,
   findMergeBase,
-  firstCommitIntroduces,
   listChangesAtCommit,
   listRangeCommits,
   listRangePaths,
   readFileAtCommit,
-  type RangeCommit,
 } from './ci-git.ts';
-import {
-  loadCiPolicy,
-  loadPlanningBootstrapPolicy,
-  type BootstrapException,
-} from './ci-policy.ts';
 import type { CompletedTask } from './ci-task-state.ts';
 import {
   loadCommittedChangeContract,
@@ -105,12 +98,6 @@ export function verifyPullRequest(
     ),
   );
   assertPoliciesAnchored(git.repositoryRoot, mergeBase);
-  const exceptions = activeBootstrapExceptions(
-    git.repositoryRoot,
-    mergeBase,
-    contracts,
-    commits,
-  );
   const plannedChangeIds = [
     ...new Set(
       commits.flatMap((commit) =>
@@ -130,8 +117,6 @@ export function verifyPullRequest(
     git.repositoryRoot,
     commits,
     contracts,
-    exceptions,
-    loadPlanningBootstrapPolicy(git.repositoryRoot),
     evaluatedAt,
     priorCollaborationGrantUses,
   );
@@ -309,52 +294,6 @@ function assertHistoricalChecksCurrent(
     }
   }
   return [...required.keys()].sort();
-}
-
-function activeBootstrapExceptions(
-  repositoryRoot: string,
-  base: string,
-  contracts: Map<string, ChangeContract>,
-  commits: RangeCommit[],
-): BootstrapException[] {
-  return loadCiPolicy(repositoryRoot).filter((exception) => {
-    const contract = contracts.get(exception.changeId);
-    if (!contract) {
-      return false;
-    }
-    if (
-      exception.taskIds.some(
-        (taskId) => !contract.tasks.some(({ id }) => id === taskId),
-      ) ||
-      exception.compatibilityCommits.some(
-        ({ taskId }) => !contract.tasks.some(({ id }) => id === taskId),
-      )
-    ) {
-      throw workflowError(
-        'CI_POLICY_INVALID',
-        'Bootstrap exception references an unknown task.',
-        ExitCode.guard,
-      );
-    }
-    const guardPath = relative(
-      repositoryRoot,
-      path.join(contract.changeDirectory, 'guard.json'),
-    );
-    return (
-      readFileAtCommit(repositoryRoot, base, 'workflow/ci-policy.json') ===
-        undefined &&
-      readFileAtCommit(repositoryRoot, base, guardPath) === undefined &&
-      firstCommitIntroduces(
-        repositoryRoot,
-        commits[0],
-        exception.introductionPaths,
-      )
-    );
-  });
-}
-
-function relative(root: string, target: string): string {
-  return path.relative(root, target).split(path.sep).join('/');
 }
 
 function readCurrentFile(

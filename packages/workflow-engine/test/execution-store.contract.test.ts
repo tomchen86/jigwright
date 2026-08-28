@@ -17,12 +17,8 @@ import {
   readExecutionJobState,
   withExecutionJobStateSnapshot,
 } from '../src/runtime/storage-journal/execution-store.ts';
-import {
-  materializeAllLegacyExecution,
-  materializeLegacyExecutionInvestigation,
-  reconcileLegacyProviderInvocation,
-} from '../src/runtime/provider-execution/execution-recovery.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   createProviderInvocationRequest,
   evaluateProviderProcess,
@@ -43,6 +39,7 @@ import {
   prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
   readProviderInvocationRequest,
+  recoverProviderInvocationCompletion,
   storeProviderExecutionPolicySnapshot,
   type BlindSurveyManifest,
   type ProviderLeaseClaim,
@@ -289,132 +286,6 @@ test('durable result CAS keeps the first completion and records the loser as lat
   }
 });
 
-test('provider history can be recovered after the durable aggregate is absent', () => {
-  const repository = createFixtureRepository();
-  try {
-    const runtime = loadInvestigationRuntimeContext(repository).runtime;
-    const manifest = createManifest(repository);
-    const request = createRequest(
-      repository,
-      manifest,
-      'invocation-durable-migration-1',
-      1,
-      'investigation-durable-migration',
-    );
-    createDirectProviderInvocation(repository, runtime, {
-      investigationId: 'investigation-durable-migration',
-      changeId: CHANGE_ID,
-      attempt: 1,
-      manifest,
-      request,
-      createdAt: '2026-08-03T10:00:00.000Z',
-    });
-    const claim = claimProviderInvocation(runtime, request.invocationId, {
-      workerId: 'worker-migration',
-      leaseDurationMs: request.limits.timeoutMs,
-      now: '2026-08-03T10:01:00.000Z',
-    });
-    completeClaim(runtime, request, claim, '2026-08-03T10:02:00.000Z');
-    const record = readProviderInvocation(runtime, request.invocationId);
-    const jobId = projectProviderInvocationExecution({ record, request }).job
-      .jobId;
-    const storeRoot = executionStorePaths(runtime).root;
-    fs.rmSync(storeRoot, { recursive: true, force: true });
-    assert.equal(readExecutionJobState(runtime, jobId), null);
-
-    const migrated = materializeLegacyProviderExecutionJob(runtime, [
-      {
-        record,
-        request: readProviderInvocationRequest(runtime, request.invocationId),
-      },
-    ]);
-    assert.equal(migrated.revision, 0);
-    assert.equal(
-      migrated.job.acceptedAttemptId,
-      migrated.attempts[0]!.attemptId,
-    );
-    assert.equal(migrated.attempts[0]!.status, 'succeeded');
-    assert.equal(migrated.results[0]!.acceptance, 'accepted');
-    assert.deepEqual(readExecutionJobState(runtime, jobId), migrated);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('store-only enumeration and explicit scoped materialization are safe and idempotent', () => {
-  const repository = createFixtureRepository();
-  try {
-    const runtime = loadInvestigationRuntimeContext(repository).runtime;
-    const manifest = createManifest(repository);
-    const fixtures = [
-      {
-        investigationId: 'investigation-materialize-one',
-        invocationId: 'invocation-materialize-one',
-      },
-      {
-        investigationId: 'investigation-materialize-two',
-        invocationId: 'invocation-materialize-two',
-      },
-    ];
-    for (const fixture of fixtures) {
-      const request = createRequest(
-        repository,
-        manifest,
-        fixture.invocationId,
-        1,
-        fixture.investigationId,
-      );
-      createDirectProviderInvocation(repository, runtime, {
-        investigationId: fixture.investigationId,
-        changeId: CHANGE_ID,
-        attempt: 1,
-        manifest,
-        request,
-        createdAt: '2026-08-03T10:30:00.000Z',
-      });
-    }
-    assert.equal(listExecutionJobStates(runtime).length, 2);
-    fs.rmSync(executionStorePaths(runtime).root, {
-      recursive: true,
-      force: true,
-    });
-    assert.deepEqual(listExecutionJobStates(runtime), []);
-
-    const scoped = materializeLegacyExecutionInvestigation(
-      runtime,
-      fixtures[0]!.investigationId,
-    );
-    assert.equal(scoped.scope.kind, 'investigation');
-    assert.equal(scoped.jobs.length, 1);
-    assert.equal(scoped.jobs[0]!.changed, true);
-    assert.equal(listExecutionJobStates(runtime).length, 1);
-
-    const all = materializeAllLegacyExecution(runtime);
-    assert.equal(all.scope.kind, 'repository');
-    assert.equal(all.jobs.length, 2);
-    assert.equal(all.jobs.filter(({ changed }) => changed).length, 1);
-    assert.equal(all.jobs.filter(({ changed }) => !changed).length, 1);
-    assert.equal(listExecutionJobStates(runtime).length, 2);
-    const replay = materializeAllLegacyExecution(runtime);
-    assert.deepEqual(
-      replay.jobs.map(({ changed }) => changed),
-      [false, false],
-    );
-
-    const unexpected = path.join(
-      executionStorePaths(runtime).jobs,
-      'unexpected.json',
-    );
-    fs.writeFileSync(unexpected, '{}\n', { mode: 0o600 });
-    assert.throws(
-      () => listExecutionJobStates(runtime),
-      (error) => isWorkflowError(error, 'EXECUTION_STORE_UNSAFE'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
 test('recovery repairs a provider lease after durable acceptance crash exactly once and rejects divergent state', () => {
   const repository = createFixtureRepository();
   try {
@@ -486,10 +357,8 @@ test('recovery repairs a provider lease after durable acceptance crash exactly o
     fs.writeFileSync(statePath, divergentBytes, 'utf8');
     assert.throws(
       () =>
-        reconcileLegacyProviderInvocation(runtime, {
-          invocationId: request.invocationId,
-          expectedExecutionRevision: accepted.revision,
-          expectedLegacyRevision: leased.revision,
+        recoverProviderInvocationCompletion(runtime, request.invocationId, {
+          expectedRevision: leased.revision,
         }),
       (error) =>
         isWorkflowError(error, 'PROVIDER_COMPLETION_RECOVERY_CONFLICT'),
@@ -497,11 +366,9 @@ test('recovery repairs a provider lease after durable acceptance crash exactly o
     assert.equal(fs.readFileSync(statePath, 'utf8'), divergentBytes);
     fs.writeFileSync(statePath, leasedBytes, 'utf8');
 
-    const recovered = reconcileLegacyProviderInvocation(runtime, {
-      invocationId: request.invocationId,
-      expectedExecutionRevision: accepted.revision,
-      expectedLegacyRevision: leased.revision,
-    });
+    const worker = runProviderWorker(repository, request.invocationId);
+    assert.equal(worker.state, 'succeeded');
+    assert.equal(worker.launched, false);
     const succeeded = readProviderInvocation(runtime, request.invocationId);
     assert.equal(succeeded.state, 'succeeded');
     assert.equal(succeeded.revision, leased.revision + 1);
@@ -509,233 +376,14 @@ test('recovery repairs a provider lease after durable acceptance crash exactly o
       succeeded.result?.outputDigest,
       accepted.results[0]!.outputDigest.replace(/^sha256:/u, ''),
     );
-    assert.equal(
-      recovered.state.job.acceptedAttemptId,
-      projection.attempt.attemptId,
-    );
-    assert.equal(recovered.state.reconciliationReceipts.length, 1);
-
-    const replay = reconcileLegacyProviderInvocation(runtime, {
-      invocationId: request.invocationId,
-      expectedExecutionRevision: accepted.revision,
-      expectedLegacyRevision: leased.revision,
-    });
-    assert.equal(replay.replayed, true);
-    assert.deepEqual(replay.receipt, recovered.receipt);
-    assert.deepEqual(
-      readProviderInvocation(runtime, request.invocationId),
-      succeeded,
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('reconciliation repairs a provider-write crash once, emits one receipt, and preserves the winner', () => {
-  const repository = createFixtureRepository();
-  try {
-    const runtime = loadInvestigationRuntimeContext(repository).runtime;
-    const manifest = createManifest(repository);
-    const request = createRequest(
-      repository,
-      manifest,
-      'invocation-reconciliation-crash',
-      1,
-      'investigation-reconciliation-crash',
-    );
-    createDirectProviderInvocation(repository, runtime, {
-      investigationId: 'investigation-reconciliation-crash',
-      changeId: CHANGE_ID,
-      attempt: 1,
-      manifest,
-      request,
-      createdAt: '2026-08-03T11:00:00.000Z',
-    });
-    const claim = claimProviderInvocation(runtime, request.invocationId, {
-      workerId: 'worker-reconciliation-crash',
-      leaseDurationMs: request.limits.timeoutMs,
-      now: '2026-08-03T11:01:00.000Z',
-    });
-    const projection = projectProviderInvocationExecution({
-      record: claim.record,
-      request,
-    });
-    const accepted = acceptLegacyProviderAttemptResult(runtime, {
-      entries: [{ record: claim.record, request }],
-      attemptId: projection.attempt.attemptId,
-      leaseGeneration: claim.record.leaseGeneration,
-      leaseToken: claim.leaseToken,
-      outputDigest: evaluateProviderProcess(
-        request,
-        providerOutcome(request),
-        blindSurveyOutputValidator(request),
-      ).outputDigest,
-      completedAt: '2026-08-03T11:02:00.000Z',
-    });
-    const result = evaluateProviderProcess(
-      request,
-      providerOutcome(request),
-      blindSurveyOutputValidator(request),
-    );
-    const divergentOutcome = providerOutcome(request);
-    const divergentEnvelope = JSON.parse(divergentOutcome.stdout) as {
-      output: { terms: Array<{ kind: string; value: string }> };
-    };
-    divergentEnvelope.output.terms = [
-      { kind: 'symbol', value: 'DivergentDurableResult' },
-    ];
-    const divergentResult = evaluateProviderProcess(
-      request,
-      { ...divergentOutcome, stdout: JSON.stringify(divergentEnvelope) },
-      blindSurveyOutputValidator(request),
-    );
-    const succeeded = {
-      ...claim.record,
-      revision: claim.record.revision + 1,
-      state: 'succeeded' as const,
-      lease: null,
-      result,
-      failure: null,
-      updatedAt: '2026-08-03T11:02:00.000Z',
-    };
-    fs.writeFileSync(
-      path.join(runtime.invocations, request.invocationId, 'state.json'),
-      `${canonicalJson({ ...succeeded, result: divergentResult })}\n`,
-      'utf8',
-    );
-    assert.throws(
-      () =>
-        reconcileLegacyProviderInvocation(runtime, {
-          invocationId: request.invocationId,
-          expectedExecutionRevision: accepted.state.revision,
-          expectedLegacyRevision: succeeded.revision,
-        }),
-      (error) => isWorkflowError(error, 'EXECUTION_STORE_PROJECTION_CONFLICT'),
-    );
-    fs.writeFileSync(
-      path.join(runtime.invocations, request.invocationId, 'state.json'),
-      `${canonicalJson(succeeded)}\n`,
-      'utf8',
-    );
-    assert.equal(
-      readProviderInvocation(runtime, request.invocationId).revision,
-      succeeded.revision,
-    );
-    assert.throws(
-      () => inspectExecutionJob(repository, projection.job.jobId),
-      (error) => isWorkflowError(error, 'EXECUTION_RUNTIME_JOB_CONFLICT'),
-    );
-    assert.throws(
-      () =>
-        reconcileLegacyProviderInvocation(runtime, {
-          invocationId: request.invocationId,
-          expectedExecutionRevision: accepted.state.revision + 1,
-          expectedLegacyRevision: succeeded.revision,
-        }),
-      (error) => isWorkflowError(error, 'EXECUTION_STORE_CAS_MISMATCH'),
-    );
-
-    const reconciled = reconcileLegacyProviderInvocation(runtime, {
-      invocationId: request.invocationId,
-      expectedExecutionRevision: accepted.state.revision,
-      expectedLegacyRevision: succeeded.revision,
-    });
-    assert.equal(reconciled.replayed, false);
-    assert.equal(
-      reconciled.state.job.acceptedAttemptId,
-      accepted.state.job.acceptedAttemptId,
-    );
-    assert.equal(
-      reconciled.state.legacyProjection.invocations[0]!.legacyRevision,
-      succeeded.revision,
-    );
-    assert.equal(
-      reconciled.receipt.acceptedAttemptId,
-      projection.attempt.attemptId,
-    );
-    assert.equal(
-      reconciled.receipt.resultingExecutionRevision,
-      accepted.state.revision + 1,
-    );
-    assert.deepEqual(reconciled.receipt.reconciledInvocationIds, [
+    const replay = recoverProviderInvocationCompletion(
+      runtime,
       request.invocationId,
-    ]);
-    assert.equal(
-      inspectExecutionJob(repository, projection.job.jobId).acceptedAttemptId,
-      projection.attempt.attemptId,
+      { expectedRevision: leased.revision },
     );
-
-    const replay = reconcileLegacyProviderInvocation(runtime, {
-      invocationId: request.invocationId,
-      expectedExecutionRevision: accepted.state.revision,
-      expectedLegacyRevision: succeeded.revision,
-    });
-    assert.equal(replay.replayed, true);
-    assert.deepEqual(replay.receipt, reconciled.receipt);
-    assert.equal(replay.state.revision, reconciled.state.revision);
-    assert.equal(replay.state.reconciliationReceipts.length, 1);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('reconciliation rejects a canonical durable semantic divergence', () => {
-  const repository = createFixtureRepository();
-  try {
-    const runtime = loadInvestigationRuntimeContext(repository).runtime;
-    const manifest = createManifest(repository);
-    const request = createRequest(
-      repository,
-      manifest,
-      'invocation-reconciliation-divergence',
-      1,
-      'investigation-reconciliation-divergence',
-    );
-    const record = createDirectProviderInvocation(repository, runtime, {
-      investigationId: 'investigation-reconciliation-divergence',
-      changeId: CHANGE_ID,
-      attempt: 1,
-      manifest,
-      request,
-      createdAt: '2026-08-03T12:00:00.000Z',
-    });
-    const jobId = projectProviderInvocationExecution({ record, request }).job
-      .jobId;
-    const stored = readExecutionJobState(runtime, jobId);
-    assert.ok(stored);
-    const divergentContext = `sha256:${'f'.repeat(64)}`;
-    const divergent = {
-      ...stored,
-      workflow: { ...stored.workflow, contextDigest: divergentContext },
-      job: {
-        ...stored.job,
-        contextDigest: divergentContext,
-        requestDigest: `sha256:${'e'.repeat(64)}`,
-        semanticSpec: {
-          ...stored.job.semanticSpec,
-          contextDigest: divergentContext,
-        },
-      },
-      attempts: stored.attempts.map((attempt) => ({
-        ...attempt,
-        contextDigest: divergentContext,
-      })),
-    };
-    fs.writeFileSync(
-      executionJobStatePath(runtime, jobId),
-      `${canonicalJson(divergent)}\n`,
-      'utf8',
-    );
-    assert.ok(readExecutionJobState(runtime, jobId));
-    assert.throws(
-      () =>
-        reconcileLegacyProviderInvocation(runtime, {
-          invocationId: request.invocationId,
-          expectedExecutionRevision: stored.revision,
-          expectedLegacyRevision: record.revision,
-        }),
-      (error) => isWorkflowError(error, 'EXECUTION_STORE_PROJECTION_CONFLICT'),
-    );
+    assert.equal(replay.repaired, false);
+    assert.notEqual(replay.candidateDigest, null);
+    assert.deepEqual(replay.record, succeeded);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

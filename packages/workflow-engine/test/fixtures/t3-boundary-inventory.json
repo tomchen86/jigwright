@@ -18,14 +18,14 @@
     "workflowJsonFileCount": 1,
     "workflowJsonIdentityDigest": "sha256:f5c559245a025c2927015442c3d2828e75025b316bb3f6f558260b28810b6d59",
     "jsonSchemaIdHosts": {
-      "jigwright.local": 18
+      "jigwright.local": 17
     },
-    "jsonSchemaIdIdentityDigest": "sha256:807380ee62e59b16ba3bec56d3696c503fec8ac338980f86b5dc6a10bc4f92c7"
+    "jsonSchemaIdIdentityDigest": "sha256:45c42137167622850f4773f06c2a246c0ebdf9dfd3ee48b84c535d073b306b79"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 178,
-    "sourceFileCount": 57,
-    "sourceIdentityDigest": "sha256:bda9d415758ec69bec1a8362be1f8f3d1f0c62ee6ace4a00073cce0d3d0438dd",
+    "sourceOccurrences": 174,
+    "sourceFileCount": 56,
+    "sourceIdentityDigest": "sha256:d3ac9277ded15e0e3e76d6e543e35ca55974acefa4ac64184fc915e350cab766",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
@@ -41,7 +41,6 @@
     "uniqueLiterals": [
       "workflow/ai-adapter-policy.json",
       "workflow/checks.json",
-      "workflow/ci-policy.json",
       "workflow/config.json",
       "workflow/document-policy.json",
       "workflow/grant-policy.json",
@@ -61,9 +60,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1298,
-    "fileCount": 7,
-    "identityDigest": "sha256:94dc7bdf4138ddbb29f1b9ab5b546b02d28a351779c9b04a7be09d0fbffdb2e4"
+    "occurrences": 1258,
+    "fileCount": 6,
+    "identityDigest": "sha256:81f8e3897b911334397179909b142bbfe69e7919dc12deac37cbb3109b059060"
   },
   "couplings": [
     {

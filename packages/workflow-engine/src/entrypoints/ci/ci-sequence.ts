@@ -1,7 +1,6 @@
 import { validateCiArchiveCommit } from './ci-archive.ts';
 import { validateCiAuthorityCommit } from './ci-authority.ts';
 import { validateCiRouteCommit } from './ci-routing.ts';
-import { assertExactPlanningBootstrap } from './ci-bootstrap.ts';
 import {
   loadHistoricalTaskAuthority,
   type HistoricalTaskAuthority,
@@ -16,11 +15,6 @@ import {
   validateCiPlanningCommit,
   type CiCollaborationGrantUse,
 } from './ci-planning.ts';
-import type {
-  BootstrapCompatibilityCommit,
-  BootstrapException,
-  PlanningBootstrapException,
-} from './ci-policy.ts';
 import {
   assertTaskHistory,
   compareTasks,
@@ -57,8 +51,6 @@ export function replayCommitSequence(
   repositoryRoot: string,
   commits: RangeCommit[],
   contracts: Map<string, ChangeContract>,
-  legacyExceptions: BootstrapException[],
-  planningBootstrapPolicies: PlanningBootstrapException[],
   evaluatedAt: Date = new Date(),
   priorCollaborationGrantUses: readonly CiCollaborationGrantUse[] = [],
 ): CommitSequenceResult {
@@ -71,15 +63,7 @@ export function replayCommitSequence(
     ...priorCollaborationGrantUses,
   ];
   const completionPaths = completionDocumentPaths(repositoryRoot);
-  const expectedCompatibility = legacyExceptions.flatMap((exception) =>
-    exception.compatibilityCommits.map((definition) => ({
-      changeId: exception.changeId,
-      definition,
-    })),
-  );
-  let compatibilityIndex = 0;
-
-  for (const [index, commit] of commits.entries()) {
+  for (const commit of commits) {
     if (commit.parents.length !== 1) {
       throw ciError(
         'CI_NON_LINEAR_COMMIT',
@@ -87,73 +71,10 @@ export function replayCommitSequence(
       );
     }
 
-    const planTrailers =
-      commit.trailers?.kind === 'plan' ? commit.trailers : null;
-    const planningBootstrap =
-      planTrailers !== null && index === 0
-        ? planningBootstrapPolicies.find(
-            (policy) =>
-              policy.changeId === planTrailers.changeId &&
-              policy.expectedParent === commit.parents[0],
-          )
-        : undefined;
-    if (planningBootstrap) {
-      assertExactPlanningBootstrap(
-        repositoryRoot,
-        commit.hash,
-        planningBootstrap,
-        index,
-      );
-      continue;
-    }
-
-    const legacyIntroduction =
-      index === 0 && !commit.trailers && legacyExceptions.length > 0;
-    const compatibility = legacyIntroduction
-      ? undefined
-      : expectedCompatibility[compatibilityIndex];
-
-    if (legacyIntroduction) {
-      const transitions = taskTransitionsForCommit(repositoryRoot, commit);
-      assertLegacyBootstrapTransitions(transitions, legacyExceptions);
-      validateScope(
-        repositoryRoot,
-        commit,
-        transitions,
-        legacyExceptions.flatMap(({ allowedPaths }) => allowedPaths),
-        completionPaths,
-      );
-      recordTransitions(completedTasks, transitions);
-      continue;
-    }
-
-    if (compatibility) {
-      const transitions = taskTransitionsForCommit(repositoryRoot, commit);
-      assertCompatibilityCommit(
-        repositoryRoot,
-        commit,
-        transitions,
-        compatibility.changeId,
-        compatibility.definition,
-      );
-      validateScope(
-        repositoryRoot,
-        commit,
-        transitions,
-        compatibility.definition.changedPaths,
-        completionPaths,
-      );
-      compatibilityIndex += 1;
-      if (commit.trailers?.kind === 'task') {
-        priorTaskTrailers.add(taskKey(commit.trailers));
-      }
-      continue;
-    }
-
     if (!commit.trailers) {
       throw ciError(
         'CI_COMMIT_TRAILERS_REQUIRED',
-        'Every non-bootstrap PR commit requires canonical managed trailers.',
+        'Every current-only PR commit requires canonical managed trailers.',
       );
     }
 
@@ -261,13 +182,6 @@ export function replayCommitSequence(
     recordTransitions(completedTasks, transitions);
     recordCheckDefinitions(requiredCheckDefinitions, authority);
     priorTaskTrailers.add(taskKey(commit.trailers));
-  }
-
-  if (compatibilityIndex !== expectedCompatibility.length) {
-    throw ciError(
-      'CI_BOOTSTRAP_COMPATIBILITY_MISMATCH',
-      'Bootstrap compatibility commits do not match the declared sequence.',
-    );
   }
 
   assertUniqueCollaborationGrantUses(collaborationGrantUses);
@@ -542,79 +456,6 @@ function validateTaskScope(
       'CI_COMMIT_OUT_OF_SCOPE',
       `Commit ${commit.hash} contains paths outside its parent task scope.`,
       { commit: commit.hash, unexpectedPaths: unexpected },
-    );
-  }
-}
-
-function validateScope(
-  repositoryRoot: string,
-  commit: RangeCommit,
-  transitions: CompletedTask[],
-  allowedPaths: string[],
-  completionPaths: string[],
-): void {
-  const implicit = new Set(
-    transitions
-      .map(({ changeId }) => `openspec/changes/${changeId}/tasks.md`)
-      .concat(transitions.length > 0 ? completionPaths : []),
-  );
-  const unexpected = listCommitPaths(repositoryRoot, commit).filter(
-    (changedPath) =>
-      !implicit.has(changedPath) &&
-      !allowedPaths.some((allowedPath) =>
-        matchesAllowedPath(changedPath, allowedPath),
-      ),
-  );
-  if (unexpected.length > 0) {
-    throw ciError(
-      'CI_COMMIT_OUT_OF_SCOPE',
-      `Commit ${commit.hash} contains paths outside its exception scope.`,
-      { commit: commit.hash, unexpectedPaths: unexpected },
-    );
-  }
-}
-
-function assertLegacyBootstrapTransitions(
-  transitions: CompletedTask[],
-  exceptions: BootstrapException[],
-): void {
-  if (
-    transitions.some(
-      (task) =>
-        !exceptions.some(
-          (exception) =>
-            exception.changeId === task.changeId &&
-            exception.taskIds.includes(task.taskId),
-        ),
-    )
-  ) {
-    throw ciError(
-      'CI_BOOTSTRAP_TRANSITION_INVALID',
-      'Bootstrap commit completed a task outside its semantic exception.',
-    );
-  }
-}
-
-function assertCompatibilityCommit(
-  repositoryRoot: string,
-  commit: RangeCommit,
-  transitions: CompletedTask[],
-  changeId: string,
-  expected: BootstrapCompatibilityCommit,
-): void {
-  const changedPaths = listCommitPaths(repositoryRoot, commit);
-  if (
-    transitions.length !== 0 ||
-    commit.trailers?.kind !== 'task' ||
-    commit.trailers.changeId !== changeId ||
-    commit.trailers.taskId !== expected.taskId ||
-    commit.subject !== expected.subject ||
-    JSON.stringify(changedPaths) !== JSON.stringify(expected.changedPaths)
-  ) {
-    throw ciError(
-      'CI_BOOTSTRAP_COMPATIBILITY_MISMATCH',
-      'Bootstrap compatibility commit does not match its semantic policy.',
-      { commit: commit.hash },
     );
   }
 }

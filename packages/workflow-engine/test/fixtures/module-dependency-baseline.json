@@ -3888,7 +3888,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-bootstrap.ts",
@@ -3896,7 +3896,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-bootstrap.ts",
@@ -3904,7 +3904,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-checks.ts",
@@ -3944,7 +3944,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-commit-validation.ts",
@@ -3952,7 +3952,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-commit-validation.ts",
@@ -3960,7 +3960,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-git.ts",
@@ -4168,7 +4168,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-sequence.ts",
