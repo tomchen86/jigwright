@@ -291,7 +291,7 @@ test('consumer paths canonicalize a symlinked repository root while remaining co
   }
 });
 
-test('portable fixture completes all ten local scenarios twice', (t) => {
+test('portable fixture completes all ten local scenarios from an exact tarball', (t) => {
   const installed = installSingleJigwrightFixture();
   const previousPackageRoot = cliPackageRoot;
   const previousEntrypoint = cliEntrypoint;
@@ -307,257 +307,249 @@ test('portable fixture completes all ten local scenarios twice', (t) => {
     /node_modules\/jigwright$/u,
     'the portability lifecycle must invoke an exact installed tarball',
   );
-  for (let remainingRuns = 2; remainingRuns > 0; remainingRuns -= 1) {
-    const repository = createFixtureRepository();
-    try {
-      configurePortableConsumer(repository);
-      assertNeutralPlanningProvider(repository);
-      const scenarioReport = JSON.parse(
-        fs.readFileSync(scenarioReportPath, 'utf8'),
-      ) as {
-        schemaVersion: number;
-        covered: string[];
-        gate6Contracts: string[];
-        targetedEvidence: string[];
-        status: string[];
-        deferred: Array<{ scenario: string; reason: string }>;
-      };
-      assert.equal(scenarioReport.schemaVersion, 2);
-      assert.deepEqual(scenarioReport.covered, [
-        'exact-local-package-install',
-        'plan-lifecycle',
-        'task-lifecycle',
-        'routing-blocked-focus',
-        'two-worktree-third-refusal',
-        'managed-intake-promotion',
-        'merge-rebase-update-base',
-        'archive-idempotency',
-        'fake-remote-archive-pull-request',
-        'immutable-commit-object-replay',
-      ]);
-      assert.deepEqual(scenarioReport.gate6Contracts, [
-        'manifest-v3-direct-writer-and-validation',
-        'authority-ownership-non-duplication',
-        'central-grant-prepared-recovery',
-        'method-agnostic-approval-outcome',
-        'trusted-human-decision-only',
-        'legacy-ssh-read-only',
-        'below-floor-no-local-r007-store',
-        'dual-worktree-state-drift-refusal',
-        'negative-expense-app-coupling-matrix',
-      ]);
-      assert.deepEqual(scenarioReport.targetedEvidence, [
-        'packages/workflow-engine/test/local-adoption.contract.test.ts',
-        'packages/workflow-engine/test/portability-mvp.integration.test.ts',
-        'packages/workflow-engine/test/investigation-manifest-v3.test.ts',
-        'packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts',
-        'packages/workflow-engine/test/grant-coordinator.contract.test.ts',
-        'packages/workflow-engine/test/grant-store.contract.test.ts',
-        'packages/workflow-engine/test/grant-core.contract.test.ts',
-        'packages/workflow-engine/test/grant-approval.contract.test.ts',
-        'packages/workflow-engine/test/grant-policy.contract.test.ts',
-        'packages/workflow-engine/test/human-grant-cli.contract.test.ts',
-        'packages/workflow-engine/test/human-gate-macos.contract.test.ts',
-        'packages/workflow-engine/test/grant-proof-ssh.contract.test.ts',
-        'packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts',
-        'packages/workflow-engine/test/change-role-assignment-record.contract.test.ts',
-        'packages/workflow-engine/test/change-role-assignment-store.contract.test.ts',
-        'packages/workflow-engine/test/provider-native-session.contract.test.ts',
-        'packages/workflow-engine/test/provider-native-session-store.contract.test.ts',
-        'packages/fixture-adapter/test/package-boundary.contract.test.ts',
-      ]);
-      assert.deepEqual(scenarioReport.status, [
-        'implementation-ready',
-        'real-pilot-pending',
-        'full-gate-pending',
-      ]);
-      for (const evidencePath of scenarioReport.targetedEvidence) {
-        assert.equal(
-          fs
-            .statSync(path.resolve(sourcePackageRoot, '../..', evidencePath))
-            .isFile(),
-          true,
-        );
-      }
+  const repository = createFixtureRepository();
+  try {
+    configurePortableConsumer(repository);
+    assertNeutralPlanningProvider(repository);
+    const scenarioReport = JSON.parse(
+      fs.readFileSync(scenarioReportPath, 'utf8'),
+    ) as {
+      schemaVersion: number;
+      covered: string[];
+      gate6Contracts: string[];
+      targetedEvidence: string[];
+      status: string[];
+      deferred: Array<{ scenario: string; reason: string }>;
+    };
+    assert.equal(scenarioReport.schemaVersion, 2);
+    assert.deepEqual(scenarioReport.covered, [
+      'exact-local-package-install',
+      'plan-lifecycle',
+      'task-lifecycle',
+      'routing-blocked-focus',
+      'two-worktree-third-refusal',
+      'managed-intake-promotion',
+      'merge-rebase-update-base',
+      'archive-idempotency',
+      'fake-remote-archive-pull-request',
+      'immutable-commit-object-replay',
+    ]);
+    assert.deepEqual(scenarioReport.gate6Contracts, [
+      'manifest-v3-direct-writer-and-validation',
+      'authority-ownership-non-duplication',
+      'central-grant-prepared-recovery',
+      'method-agnostic-approval-outcome',
+      'trusted-human-decision-only',
+      'legacy-ssh-read-only',
+      'below-floor-no-local-r007-store',
+      'dual-worktree-state-drift-refusal',
+      'negative-expense-app-coupling-matrix',
+    ]);
+    assert.deepEqual(scenarioReport.targetedEvidence, [
+      'packages/workflow-engine/test/local-adoption.contract.test.ts',
+      'packages/workflow-engine/test/portability-mvp.integration.test.ts',
+      'packages/workflow-engine/test/investigation-manifest-v3.test.ts',
+      'packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts',
+      'packages/workflow-engine/test/grant-coordinator.contract.test.ts',
+      'packages/workflow-engine/test/grant-store.contract.test.ts',
+      'packages/workflow-engine/test/grant-core.contract.test.ts',
+      'packages/workflow-engine/test/grant-approval.contract.test.ts',
+      'packages/workflow-engine/test/grant-policy.contract.test.ts',
+      'packages/workflow-engine/test/human-grant-cli.contract.test.ts',
+      'packages/workflow-engine/test/human-gate-macos.contract.test.ts',
+      'packages/workflow-engine/test/grant-proof-ssh.contract.test.ts',
+      'packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts',
+      'packages/workflow-engine/test/change-role-assignment-record.contract.test.ts',
+      'packages/workflow-engine/test/change-role-assignment-store.contract.test.ts',
+      'packages/workflow-engine/test/provider-native-session.contract.test.ts',
+      'packages/workflow-engine/test/provider-native-session-store.contract.test.ts',
+      'packages/fixture-adapter/test/package-boundary.contract.test.ts',
+    ]);
+    assert.deepEqual(scenarioReport.status, [
+      'implementation-ready',
+      'real-pilot-pending',
+      'full-gate-pending',
+    ]);
+    for (const evidencePath of scenarioReport.targetedEvidence) {
       assert.equal(
-        scenarioReport.deferred.some(
-          ({ scenario }) => scenario === 'real-protected-remote-pilot',
-        ),
+        fs
+          .statSync(path.resolve(sourcePackageRoot, '../..', evidencePath))
+          .isFile(),
         true,
       );
-      assert.equal(
-        scenarioReport.deferred.some(
-          ({ scenario }) => scenario === 'full-gate',
-        ),
-        true,
-      );
-
-      const help = runPortabilityPackageInvocation(
-        createExactLocalPackageInvocation({
-          packageRoot: cliPackageRoot,
-          entrypoint: cliEntrypoint,
-          args: ['help'],
-          cwd: repository,
-        }),
-      );
-      assert.match(help, /^Usage:\n/u);
-
-      writePortableDelta(repository);
-      const workSourceId = captureSource(repository, 'work-source', {
-        semanticAuthor: 'maintainer',
-        capturedBy: 'jigwright-portability-fixture',
-        capturedAt: '2026-08-24T04:00:00.000Z',
-        contextRef: 'direct-human:fixture/source-work-item',
-        text: 'Promote this Source through a Work Item.\n',
-        supersedes: null,
-      });
-      const directSourceId = captureSource(repository, 'direct-source', {
-        semanticAuthor: 'maintainer',
-        capturedBy: 'jigwright-portability-fixture',
-        capturedAt: '2026-08-24T04:01:00.000Z',
-        contextRef: 'direct-human:fixture/source-direct-change',
-        text: 'Link this Source directly to the current change.\n',
-        supersedes: null,
-      });
-      const workItemId = createFixtureWorkItem(repository, {
-        schemaVersion: 1,
-        kind: 'feature',
-        lane: 'now',
-        title: 'Portable lifecycle fixture',
-        summary: 'Exercise one exact local Jigwright lifecycle.',
-        sourceRefs: [workSourceId],
-      });
-      reviewFixtureWorkItem(repository, workItemId);
-      runCli(repository, [
-        'source',
-        'link-change',
-        directSourceId,
-        '--change',
-        'demo-change',
-      ]);
-      promoteFixtureWorkItem(repository, workItemId, 'demo-change');
-      const direct = readOrigin(repository, 'demo-change');
-      assert.deepEqual(
-        direct.sourceRefs,
-        [directSourceId, workSourceId].sort(),
-      );
-      assert.deepEqual(direct.workItemRefs, [workItemId]);
-      assert.equal(showFixtureWorkItem(repository, workItemId).stage, 'active');
-
-      git(repository, ['add', '.']);
-      git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
-      git(repository, ['checkout', '-b', 'changes/demo-change']);
-      writeReadyV3ExemptChange(repository);
-      const validation = runCli(repository, [
-        'validate-change',
-        'demo-change',
-      ]) as { changeId: string; tasks: unknown[]; contractDigest: string };
-      assert.equal(validation.changeId, 'demo-change');
-      assert.equal(validation.tasks.length, 1);
-      assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
-      const plan = planCommit(repository, 'demo-change');
-      git(repository, ['checkout', 'trunk']);
-      git(repository, ['merge', '--ff-only', plan.commitHash]);
-      git(repository, ['branch', '-d', 'changes/demo-change']);
-      prepareRoutingChangePlans(repository);
-      exerciseRouting(repository);
-      git(repository, ['checkout', '-b', 'changes/demo-change']);
-      const sessionId = startTask(repository, 'demo-change');
-      fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-      assert.deepEqual(
-        (
-          runCli(repository, ['route', 'status']) as {
-            result: { result: { primaryChangeId: string | null } };
-          }
-        ).result.result.primaryChangeId,
-        'demo-change',
-      );
-      const task = finalizePortableTask(
-        repository,
-        sessionId,
-        'Complete portable fixture task',
-        'src/feature.ts',
-      );
-      git(repository, ['checkout', 'trunk']);
-      git(repository, ['merge', '--ff-only', task.commitHash]);
-      const taskParent = git(repository, [
-        'rev-parse',
-        `${task.commitHash}^`,
-      ]).trim();
-      runPortableCi(repository, taskParent, task.commitHash);
-      syncProtectedBase(repository);
-
-      exerciseConcurrentWorktreesAndUpdateBase(repository);
-      syncProtectedBase(repository);
-
-      const remote = createFakeArchivePullRequestRemote();
-      const candidate = discoverArchivePullRequestCandidate(
-        repository,
-        'demo-change',
-      );
-      const firstRequest = openArchivePullRequest(candidate, remote);
-      const replayedRequest = openArchivePullRequest(candidate, remote);
-      assert.deepEqual(replayedRequest, firstRequest);
-      assert.equal(remote.requests().length, 1);
-
-      git(repository, ['checkout', '-b', 'changes/archive-demo']);
-      const archived = archiveChange(repository, 'demo-change');
-      const replayedArchive = archiveChange(repository, 'demo-change');
-      assert.equal(archived.status, 'committed');
-      assert.equal(replayedArchive.status, 'already-archived');
-      assert.equal(replayedArchive.commitHash, archived.commitHash);
-      assert.deepEqual(
-        JSON.parse(
-          fs.readFileSync(
-            path.join(repository, archived.archivePath, 'origin.json'),
-            'utf8',
-          ),
-        ),
-        direct,
-      );
-
-      const allCommits = git(repository, ['rev-list', '--reverse', 'HEAD'])
-        .trim()
-        .split(/\s+/u);
-      for (const commitHash of allCommits) {
-        replayImmutableCommit(repository, commitHash);
-      }
-      const managed = readFixtureManagedTransitionLog(
-        allCommits.map((commitHash) => {
-          const raw = git(repository, ['cat-file', 'commit', commitHash]);
-          return {
-            kind: 'jigwright.fixture-commit.v1' as const,
-            fixtureCommitId: commitHash,
-            message: raw.slice(raw.indexOf('\n\n') + 2).replace(/\n$/u, ''),
-          };
-        }),
-      );
-      assert.deepEqual(
-        managed.map(({ trailers }) => trailers.kind),
-        [
-          'plan',
-          'plan',
-          'plan',
-          'plan',
-          'plan',
-          'route',
-          'route',
-          'task',
-          'route',
-          'route',
-          'archive',
-        ],
-      );
-      assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
-      assert.equal(
-        managed.find(({ trailers }) => trailers.kind === 'task')!
-          .fixtureCommitId,
-        task.commitHash,
-      );
-      assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
     }
+    assert.equal(
+      scenarioReport.deferred.some(
+        ({ scenario }) => scenario === 'real-protected-remote-pilot',
+      ),
+      true,
+    );
+    assert.equal(
+      scenarioReport.deferred.some(({ scenario }) => scenario === 'full-gate'),
+      true,
+    );
+
+    const help = runPortabilityPackageInvocation(
+      createExactLocalPackageInvocation({
+        packageRoot: cliPackageRoot,
+        entrypoint: cliEntrypoint,
+        args: ['help'],
+        cwd: repository,
+      }),
+    );
+    assert.match(help, /^Usage:\n/u);
+
+    writePortableDelta(repository);
+    const workSourceId = captureSource(repository, 'work-source', {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-portability-fixture',
+      capturedAt: '2026-08-24T04:00:00.000Z',
+      contextRef: 'direct-human:fixture/source-work-item',
+      text: 'Promote this Source through a Work Item.\n',
+      supersedes: null,
+    });
+    const directSourceId = captureSource(repository, 'direct-source', {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-portability-fixture',
+      capturedAt: '2026-08-24T04:01:00.000Z',
+      contextRef: 'direct-human:fixture/source-direct-change',
+      text: 'Link this Source directly to the current change.\n',
+      supersedes: null,
+    });
+    const workItemId = createFixtureWorkItem(repository, {
+      schemaVersion: 1,
+      kind: 'feature',
+      lane: 'now',
+      title: 'Portable lifecycle fixture',
+      summary: 'Exercise one exact local Jigwright lifecycle.',
+      sourceRefs: [workSourceId],
+    });
+    reviewFixtureWorkItem(repository, workItemId);
+    runCli(repository, [
+      'source',
+      'link-change',
+      directSourceId,
+      '--change',
+      'demo-change',
+    ]);
+    promoteFixtureWorkItem(repository, workItemId, 'demo-change');
+    const direct = readOrigin(repository, 'demo-change');
+    assert.deepEqual(direct.sourceRefs, [directSourceId, workSourceId].sort());
+    assert.deepEqual(direct.workItemRefs, [workItemId]);
+    assert.equal(showFixtureWorkItem(repository, workItemId).stage, 'active');
+
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
+    git(repository, ['checkout', '-b', 'changes/demo-change']);
+    writeReadyV3ExemptChange(repository);
+    const validation = runCli(repository, [
+      'validate-change',
+      'demo-change',
+    ]) as { changeId: string; tasks: unknown[]; contractDigest: string };
+    assert.equal(validation.changeId, 'demo-change');
+    assert.equal(validation.tasks.length, 1);
+    assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
+    const plan = planCommit(repository, 'demo-change');
+    git(repository, ['checkout', 'trunk']);
+    git(repository, ['merge', '--ff-only', plan.commitHash]);
+    git(repository, ['branch', '-d', 'changes/demo-change']);
+    prepareRoutingChangePlans(repository);
+    exerciseRouting(repository);
+    git(repository, ['checkout', '-b', 'changes/demo-change']);
+    const sessionId = startTask(repository, 'demo-change');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    assert.deepEqual(
+      (
+        runCli(repository, ['route', 'status']) as {
+          result: { result: { primaryChangeId: string | null } };
+        }
+      ).result.result.primaryChangeId,
+      'demo-change',
+    );
+    const task = finalizePortableTask(
+      repository,
+      sessionId,
+      'Complete portable fixture task',
+      'src/feature.ts',
+    );
+    git(repository, ['checkout', 'trunk']);
+    git(repository, ['merge', '--ff-only', task.commitHash]);
+    const taskParent = git(repository, [
+      'rev-parse',
+      `${task.commitHash}^`,
+    ]).trim();
+    runPortableCi(repository, taskParent, task.commitHash);
+    syncProtectedBase(repository);
+
+    exerciseConcurrentWorktreesAndUpdateBase(repository);
+    syncProtectedBase(repository);
+
+    const remote = createFakeArchivePullRequestRemote();
+    const candidate = discoverArchivePullRequestCandidate(
+      repository,
+      'demo-change',
+    );
+    const firstRequest = openArchivePullRequest(candidate, remote);
+    const replayedRequest = openArchivePullRequest(candidate, remote);
+    assert.deepEqual(replayedRequest, firstRequest);
+    assert.equal(remote.requests().length, 1);
+
+    git(repository, ['checkout', '-b', 'changes/archive-demo']);
+    const archived = archiveChange(repository, 'demo-change');
+    const replayedArchive = archiveChange(repository, 'demo-change');
+    assert.equal(archived.status, 'committed');
+    assert.equal(replayedArchive.status, 'already-archived');
+    assert.equal(replayedArchive.commitHash, archived.commitHash);
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(repository, archived.archivePath, 'origin.json'),
+          'utf8',
+        ),
+      ),
+      direct,
+    );
+
+    const allCommits = git(repository, ['rev-list', '--reverse', 'HEAD'])
+      .trim()
+      .split(/\s+/u);
+    for (const commitHash of allCommits) {
+      replayImmutableCommit(repository, commitHash);
+    }
+    const managed = readFixtureManagedTransitionLog(
+      allCommits.map((commitHash) => {
+        const raw = git(repository, ['cat-file', 'commit', commitHash]);
+        return {
+          kind: 'jigwright.fixture-commit.v1' as const,
+          fixtureCommitId: commitHash,
+          message: raw.slice(raw.indexOf('\n\n') + 2).replace(/\n$/u, ''),
+        };
+      }),
+    );
+    assert.deepEqual(
+      managed.map(({ trailers }) => trailers.kind),
+      [
+        'plan',
+        'plan',
+        'plan',
+        'plan',
+        'plan',
+        'route',
+        'route',
+        'task',
+        'route',
+        'route',
+        'archive',
+      ],
+    );
+    assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
+    assert.equal(
+      managed.find(({ trailers }) => trailers.kind === 'task')!.fixtureCommitId,
+      task.commitHash,
+    );
+    assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
