@@ -23,6 +23,7 @@ import {
 const configuration = `
 # Host operational configuration; repository policy remains separate.
 schema_version = 2
+global_ranking = ["claude-local", "codex-local", "internal-wrapper"]
 
 [[providers]]
 id = "codex-local"
@@ -671,54 +672,16 @@ test('logical-provider exclusion removes every profile alias before ranking', ()
   assert.equal(resolution.selectionReason, 'global-ranking');
 });
 
-test('legacy config projects an explicit compatibility ranking without changing per-role resolution', () => {
-  const snapshot = parseAgentProviderConfigToml(configuration, {
-    platform: 'darwin',
-  });
-
-  assert.equal(snapshot.globalRankingSource, 'legacy-author-preferences');
-  assert.deepEqual(snapshot.globalRanking, [
-    'claude-local',
-    'codex-local',
-    'internal-wrapper',
-  ]);
-  assert.equal(
-    resolveAgentProviderProfile(snapshot, { role: 'builder' }).profile.id,
-    'codex-local',
-  );
+test('host config rejects an omitted global ranking instead of inferring author preferences', () => {
   assert.throws(
     () =>
-      resolveEligibleAgentProviderProfile(snapshot, {
-        role: 'builder',
-        preferredLogicalProviderIds: ['codex'],
-        requiredCapabilities: ['task-implementation'],
-        allowedProviderFamilies: ['codex'],
-        excludedLogicalProviderIds: [],
-      }),
+      parseAgentProviderConfigToml(
+        configuration.replace(
+          'global_ranking = ["claude-local", "codex-local", "internal-wrapper"]\n',
+          '',
+        ),
+        { platform: 'darwin' },
+      ),
     AgentProviderConfigError,
-  );
-  assert.deepEqual(
-    snapshot.providers.map(({ id, logicalProviderId, capabilities }) => ({
-      id,
-      logicalProviderId,
-      capabilities,
-    })),
-    [
-      {
-        id: 'claude-local',
-        logicalProviderId: 'claude',
-        capabilities: [],
-      },
-      {
-        id: 'codex-local',
-        logicalProviderId: 'codex',
-        capabilities: [],
-      },
-      {
-        id: 'internal-wrapper',
-        logicalProviderId: 'custom/internal',
-        capabilities: [],
-      },
-    ],
   );
 });

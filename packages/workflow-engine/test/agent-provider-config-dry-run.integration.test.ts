@@ -30,6 +30,7 @@ import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 const configuration = `
 schema_version = 2
+global_ranking = ["claude-local", "codex-local", "internal-wrapper"]
 
 [[providers]]
 id = "codex-local"
@@ -588,6 +589,7 @@ function writeHostWrapperConfig(hostDirectory: string): string {
     hostDirectory,
     `
 schema_version = 2
+global_ranking = ["wrapper-local"]
 
 [[providers]]
 id = "wrapper-local"

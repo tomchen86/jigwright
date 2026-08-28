@@ -119,6 +119,7 @@ function builtInProfile(
 ): BuiltInReviewedProviderProfileSnapshot {
   return parseAgentProviderConfigToml(
     `schema_version = 2
+global_ranking = ["claude-selected"]
 
 [[providers]]
 id = "claude-selected"

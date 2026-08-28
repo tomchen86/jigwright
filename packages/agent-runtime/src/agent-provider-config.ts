@@ -78,7 +78,7 @@ export type AgentProviderConfigSnapshot = Readonly<{
   providers: readonly AgentProviderProfileSnapshot[];
   preferences: AgentProviderPreferences;
   globalRanking: readonly string[];
-  globalRankingSource: 'explicit' | 'legacy-author-preferences';
+  globalRankingSource: 'explicit';
   configDigest: string;
 }>;
 
@@ -131,12 +131,7 @@ export function parseAgentProviderConfigToml(
     throw invalidConfig();
   }
   const parsed = parseTomlSubset(document);
-  assertExactKeys(
-    parsed.root,
-    Object.hasOwn(parsed.root, 'global_ranking')
-      ? ['global_ranking', 'schema_version']
-      : ['schema_version'],
-  );
+  assertExactKeys(parsed.root, ['global_ranking', 'schema_version']);
   if (parsed.root.schema_version !== 2 || parsed.providers.length === 0) {
     throw invalidConfig();
   }
@@ -153,7 +148,6 @@ export function parseAgentProviderConfigToml(
   const { globalRanking, globalRankingSource } = normalizeGlobalRanking(
     parsed.root.global_ranking,
     providers,
-    preferences,
   );
   const payload = {
     schemaVersion: 2 as const,
@@ -301,8 +295,7 @@ export function assertAgentProviderConfigSnapshot(
     value.providers.length > MAX_PROVIDERS ||
     !isRecord(value.preferences) ||
     !Array.isArray(value.globalRanking) ||
-    (value.globalRankingSource !== 'explicit' &&
-      value.globalRankingSource !== 'legacy-author-preferences')
+    value.globalRankingSource !== 'explicit'
   ) {
     throw invalidConfig();
   }
@@ -327,13 +320,10 @@ export function assertAgentProviderConfigSnapshot(
     value.preferences as Record<string, TomlValue>,
     providers,
   );
-  const globalRankingSource = value.globalRankingSource as
-    'explicit' | 'legacy-author-preferences';
+  const globalRankingSource = 'explicit' as const;
   const expectedGlobalRanking = normalizeGlobalRankingSnapshot(
     value.globalRanking,
-    globalRankingSource,
     providers,
-    preferences,
   );
   const payload = {
     schemaVersion: 2 as const,
@@ -651,25 +641,10 @@ function assertLogicalProviderFamilies(
 function normalizeGlobalRanking(
   value: TomlValue | undefined,
   providers: readonly AgentProviderProfileSnapshot[],
-  preferences: AgentProviderPreferences,
 ): Readonly<{
   globalRanking: readonly string[];
   globalRankingSource: AgentProviderConfigSnapshot['globalRankingSource'];
 }> {
-  if (value === undefined) {
-    const ranked = new Set(preferences.author);
-    const globalRanking = Object.freeze([
-      ...preferences.author,
-      ...providers
-        .map(({ id }) => id)
-        .filter((id) => !ranked.has(id))
-        .sort(compareCodeUnits),
-    ]);
-    return Object.freeze({
-      globalRanking,
-      globalRankingSource: 'legacy-author-preferences' as const,
-    });
-  }
   return Object.freeze({
     globalRanking: assertExactProfileRanking(value, providers),
     globalRankingSource: 'explicit' as const,
@@ -678,18 +653,9 @@ function normalizeGlobalRanking(
 
 function normalizeGlobalRankingSnapshot(
   value: unknown,
-  source: AgentProviderConfigSnapshot['globalRankingSource'],
   providers: readonly AgentProviderProfileSnapshot[],
-  preferences: AgentProviderPreferences,
 ): readonly string[] {
-  const ranking = assertExactProfileRanking(value, providers);
-  if (source === 'legacy-author-preferences') {
-    const expected = normalizeGlobalRanking(undefined, providers, preferences);
-    if (canonicalJson(ranking) !== canonicalJson(expected.globalRanking)) {
-      throw invalidConfig();
-    }
-  }
-  return ranking;
+  return assertExactProfileRanking(value, providers);
 }
 
 function assertExactProfileRanking(
