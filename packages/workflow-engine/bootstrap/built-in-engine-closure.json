@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:a94b8d6660f76366f2b7318a898d8763e280698dd65c0bc280fe3e50e63598d7"
+      "digest": "sha256:dc09c60109df1bea857318a8861dd29f42bc4400613a33f166a9057514b8dcca"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -973,7 +973,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:55ea0b4b96c1bd824dc835dc3aacb29ea43be53c26dfbd926c86dd8e7e606360"
+      "digest": "sha256:bc2627e19fe130d2412ddc426338aed0c18080e2110265fc697b39c09de04aa2"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1298,7 +1298,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:a3920f63e276446c4e19536c3ed49152c657f418a660cd10f0bfdd3def1bb493"
+      "digest": "sha256:71b0dfeccab189e982fc381791e8ff80679a168ede91cb42279b168ae47caddc"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:28f67ff180c8541157cfd23981a1d0c48fd6a5641122c02edc933d532726edcb"
+      "digest": "sha256:281fd93812243f330b8f2440e23d1e8ccf9bd4faea0a14fb2683774c0438bb45"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

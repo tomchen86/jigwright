@@ -255,17 +255,37 @@ export function workRegistryTransitionRequiresGrant(
   );
 }
 
+export type WorkRegistryGrantRequiredDetailsV1 =
+  | Readonly<{
+      schemaVersion: 1;
+      kind: 'work-registry-grant-required.v1';
+      operation: 'review';
+      transition: 'intake' | 'prioritize';
+      workItemId: string;
+      review: WorkItemReviewV1;
+    }>
+  | Readonly<{
+      schemaVersion: 1;
+      kind: 'work-registry-grant-required.v1';
+      operation: 'promote';
+      transition: 'promote';
+      workItemId: string;
+      changeId: string;
+      expectedDigest: string;
+    }>;
+
 export function assertOrdinaryWorkRegistryTransition(
   repositoryRoot: string,
   transition: WorkRegistryGovernedTransition,
   recovery: string,
+  details?: WorkRegistryGrantRequiredDetailsV1,
 ): void {
   if (!workRegistryTransitionRequiresGrant(repositoryRoot, transition)) return;
   throw workflowError(
     'WORK_REGISTRY_GRANT_REQUIRED',
     `Repository policy requires Central Grant for the ${transition} transition.`,
     ExitCode.guard,
-    { recovery },
+    { recovery, ...(details === undefined ? {} : { details }) },
   );
 }
 

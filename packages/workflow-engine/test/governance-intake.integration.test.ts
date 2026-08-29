@@ -14,9 +14,12 @@ import {
   workRegistryGrantTransitionDefinitions,
 } from '../src/modules/governance-intake/work-registry-grant.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
+import { createWorkRegistryFailGrantResult } from '../src/cli.ts';
 import { dispatchIssueCommand } from '../src/entrypoints/cli/issue-cli.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
+import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
@@ -685,7 +688,7 @@ test('promotion requires reviewed backlog priority and satisfied blockers', () =
   }
 });
 
-test('protected intake fails closed and emits a Central Grant recovery route', () => {
+test('protected intake produces one exact Central Fail-Grant challenge', async () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-protected-intake-'),
   );
@@ -728,23 +731,303 @@ test('protected intake fails closed and emits a Central Grant recovery route', (
       })}\n`,
     );
 
-    assert.throws(
-      () =>
-        dispatchGovernanceIntakeCommand(
-          'work-item',
-          ['review', item.id, '--input', reviewPath],
-          repositoryRoot,
-        ),
-      (error: unknown) =>
-        hasCode('WORK_REGISTRY_GRANT_REQUIRED')(error) &&
-        typeof error === 'object' &&
-        error !== null &&
-        'recovery' in error &&
-        JSON.stringify(error.recovery).includes(
-          'grant human request-work-item-review',
-        ),
+    const args = ['work-item', 'review', item.id, '--input', reviewPath];
+    let failure: unknown;
+    try {
+      dispatchGovernanceIntakeCommand(
+        'work-item',
+        ['review', item.id, '--input', reviewPath],
+        repositoryRoot,
+      );
+      assert.fail('expected protected Work Registry review to require Grant');
+    } catch (error) {
+      failure = error;
+    }
+    assert.ok(hasCode('WORK_REGISTRY_GRANT_REQUIRED')(failure));
+    fs.unlinkSync(reviewPath);
+
+    const challengeId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const challengeDigest = `sha256:${'b'.repeat(64)}` as const;
+    const result = await createWorkRegistryFailGrantResult(
+      args,
+      repositoryRoot,
+      failure,
+      {
+        async requestReview(cwd, workItemId, review, proposedReason) {
+          assert.equal(cwd, repositoryRoot);
+          assert.equal(workItemId, item.id);
+          assert.deepEqual(review, {
+            action: 'accept',
+            expectedDigest: workItemDigest(item),
+            summary: item.interpretation.summary,
+          });
+          assert.match(
+            proposedReason,
+            /exact accept Work Registry transition/u,
+          );
+          return { challengeId, challengeDigest };
+        },
+        async requestPromotion() {
+          assert.fail('review must not request a promotion Grant');
+        },
+      },
+    );
+    assert.deepEqual(result, {
+      command: 'work-item',
+      ok: true,
+      result: {
+        schemaVersion: 1,
+        kind: 'workflow-fail-grant-required.v1',
+        workItemId: item.id,
+        transition: 'intake',
+        state: 'human-action-required',
+        nextAction: 'human-action',
+        failure: {
+          code: 'WORK_REGISTRY_GRANT_REQUIRED',
+          message:
+            'Repository policy requires Central Grant for the intake transition.',
+          details: {
+            schemaVersion: 1,
+            kind: 'work-registry-grant-required.v1',
+            operation: 'review',
+            transition: 'intake',
+            workItemId: item.id,
+            review: {
+              action: 'accept',
+              expectedDigest: workItemDigest(item),
+              summary: item.interpretation.summary,
+            },
+          },
+        },
+        grant: { challengeId, challengeDigest },
+        transitionAppliesOnDecision: true,
+        inputSchema: {
+          schemaVersion: 1,
+          kind: 'central-grant-resolution.v1',
+          inspectCommand: `pnpm workflow grant human inspect ${challengeId} --json`,
+          decisionCommand: `pnpm workflow grant human decide ${challengeId} --json`,
+          recoveryCommand: `pnpm workflow grant human recover ${challengeId} --json`,
+          observeAfterDecision: `pnpm workflow work-item show ${item.id} --json`,
+        },
+      },
+    });
+    assert.deepEqual(
+      workflowResultNextSteps(result!, args).map(({ command }) => command),
+      [
+        `pnpm workflow grant human inspect ${challengeId} --json`,
+        `pnpm workflow grant human decide ${challengeId} --json`,
+        `pnpm workflow work-item show ${item.id} --json`,
+      ],
     );
     assert.equal(showWorkItem(repositoryRoot, item.id).stage, 'inbox');
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('Work Registry Fail-Grant mapper preserves exact transition semantics', async () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-work-fail-grant-map-'),
+  );
+  try {
+    const workItemId = 'WORK-01K39R0V00000000000000000F';
+    const digest = `sha256:${'c'.repeat(64)}`;
+    const challengeId = 'cccccccc-cccc-4ccc-8ccc-cccccccccccc';
+    const challengeDigest = `sha256:${'d'.repeat(64)}` as const;
+    const calls: unknown[][] = [];
+    const dependencies = {
+      async requestReview(...values: unknown[]) {
+        calls.push(['review', ...values]);
+        return { challengeId, challengeDigest };
+      },
+      async requestPromotion(...values: unknown[]) {
+        calls.push(['promote', ...values]);
+        return { challengeId, challengeDigest };
+      },
+    };
+    const cases = [
+      {
+        transition: 'intake',
+        args: ['work-item', 'review', workItemId, '--input', 'accept.json'],
+        details: {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'review',
+          transition: 'intake',
+          workItemId,
+          review: { action: 'accept', expectedDigest: digest, summary: 'Keep' },
+        },
+        requestKind: 'review',
+      },
+      {
+        transition: 'intake',
+        args: ['work-item', 'review', workItemId, '--input', 'decline.json'],
+        details: {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'review',
+          transition: 'intake',
+          workItemId,
+          review: {
+            action: 'decline',
+            expectedDigest: digest,
+            outcome: 'obsolete',
+          },
+        },
+        requestKind: 'review',
+      },
+      {
+        transition: 'prioritize',
+        args: ['work-item', 'review', workItemId, '--input', 'prioritize.json'],
+        details: {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'review',
+          transition: 'prioritize',
+          workItemId,
+          review: {
+            action: 'prioritize',
+            expectedDigest: digest,
+            lane: 'next',
+            blockedBy: [],
+          },
+        },
+        requestKind: 'review',
+      },
+      {
+        transition: 'promote',
+        args: [
+          'work-item',
+          'promote',
+          workItemId,
+          '--change',
+          'promoted-change',
+          '--expected',
+          digest,
+        ],
+        details: {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'promote',
+          transition: 'promote',
+          workItemId,
+          changeId: 'promoted-change',
+          expectedDigest: digest,
+        },
+        requestKind: 'promote',
+      },
+    ] as const;
+
+    for (const entry of cases) {
+      calls.length = 0;
+      const result = await createWorkRegistryFailGrantResult(
+        entry.args,
+        repositoryRoot,
+        workflowError(
+          'WORK_REGISTRY_GRANT_REQUIRED',
+          'Central Grant is required.',
+          ExitCode.guard,
+          { details: entry.details },
+        ),
+        dependencies,
+      );
+      assert.equal(
+        (result?.result as { transition: string }).transition,
+        entry.transition,
+      );
+      assert.equal(calls.length, 1);
+      assert.equal(calls[0]?.[0], entry.requestKind);
+      assert.equal(calls[0]?.[1], repositoryRoot);
+      assert.equal(calls[0]?.[2], workItemId);
+      if (entry.details.operation === 'review') {
+        assert.deepEqual(calls[0]?.[3], entry.details.review);
+        assert.match(
+          String(calls[0]?.[4]),
+          new RegExp(`exact ${entry.details.review.action}`),
+        );
+      } else {
+        assert.equal(calls[0]?.[3], entry.details.changeId);
+        assert.equal(calls[0]?.[4], entry.details.expectedDigest);
+        assert.match(String(calls[0]?.[5]), /exact Work Registry promotion/u);
+      }
+    }
+
+    let requestCount = 0;
+    const mustNotRequest = {
+      async requestReview() {
+        requestCount += 1;
+        return { challengeId, challengeDigest };
+      },
+      async requestPromotion() {
+        requestCount += 1;
+        return { challengeId, challengeDigest };
+      },
+    };
+    assert.equal(
+      await createWorkRegistryFailGrantResult(
+        ['work-item', 'review', workItemId, '--input', 'review.json'],
+        repositoryRoot,
+        workflowError(
+          'WORK_REGISTRY_GRANT_REQUIRED',
+          'Central Grant is required.',
+          ExitCode.guard,
+          {
+            details: {
+              ...cases[0].details,
+              unexpected: true,
+            },
+          },
+        ),
+        mustNotRequest,
+      ),
+      null,
+    );
+    assert.equal(
+      await createWorkRegistryFailGrantResult(
+        [
+          'work-item',
+          'promote',
+          workItemId,
+          '--change',
+          'other-change',
+          '--expected',
+          digest,
+        ],
+        repositoryRoot,
+        workflowError(
+          'WORK_REGISTRY_GRANT_REQUIRED',
+          'Central Grant is required.',
+          ExitCode.guard,
+          { details: cases[3].details },
+        ),
+        mustNotRequest,
+      ),
+      null,
+    );
+    assert.equal(requestCount, 0);
+
+    const sentinel = new Error('policy changed before challenge creation');
+    await assert.rejects(
+      createWorkRegistryFailGrantResult(
+        cases[0].args,
+        repositoryRoot,
+        workflowError(
+          'WORK_REGISTRY_GRANT_REQUIRED',
+          'Central Grant is required.',
+          ExitCode.guard,
+          { details: cases[0].details },
+        ),
+        {
+          async requestReview() {
+            throw sentinel;
+          },
+          async requestPromotion() {
+            assert.fail('review must not request promotion');
+          },
+        },
+      ),
+      (error) => error === sentinel,
+    );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
   }

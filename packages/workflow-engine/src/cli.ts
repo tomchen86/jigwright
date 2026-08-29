@@ -114,9 +114,15 @@ import {
 import {
   requestChangeRoleAssignmentGrant,
   requestProtectedBaseInitializationGrant,
+  requestWorkRegistryPromotionGrant,
+  requestWorkRegistryReviewGrant,
 } from './composition-root/grant-production.ts';
 import { dispatchIssueCommand } from './entrypoints/cli/issue-cli.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
+import type {
+  WorkItemReviewV1,
+  WorkRegistryGrantRequiredDetailsV1,
+} from './modules/governance-intake/work-registry.ts';
 import { dispatchChangeRoutingCommand } from './entrypoints/cli/change-routing-cli.ts';
 import { assertMaintainerGrantId } from './modules/authority/maintainer-grant.ts';
 import {
@@ -398,14 +404,19 @@ async function dispatchAsync(
         error,
       );
       if (failGrant !== null) return failGrant;
-      const roleAssignmentGrant =
-        await createRoleAssignmentFailGrantResult(
-          args,
-          cwd,
-          error,
-          roleAssignmentGrantRequest,
-        );
+      const roleAssignmentGrant = await createRoleAssignmentFailGrantResult(
+        args,
+        cwd,
+        error,
+        roleAssignmentGrantRequest,
+      );
       if (roleAssignmentGrant !== null) return roleAssignmentGrant;
+      const workRegistryGrant = await createWorkRegistryFailGrantResult(
+        args,
+        cwd,
+        error,
+      );
+      if (workRegistryGrant !== null) return workRegistryGrant;
       throw error;
     }
   }
@@ -523,6 +534,230 @@ export async function createProposeProtectedBaseFailGrantResult(
       },
     },
   };
+}
+
+type WorkRegistryGrantChallenge = Readonly<{
+  challengeId: string;
+  challengeDigest: string;
+}>;
+
+type WorkRegistryFailGrantDependencies = Readonly<{
+  requestReview(
+    cwd: string,
+    workItemId: string,
+    review: WorkItemReviewV1,
+    proposedReason: string,
+  ): Promise<WorkRegistryGrantChallenge>;
+  requestPromotion(
+    cwd: string,
+    workItemId: string,
+    changeId: string,
+    expectedDigest: string,
+    proposedReason: string,
+  ): Promise<WorkRegistryGrantChallenge>;
+}>;
+
+const WORK_REGISTRY_FAIL_GRANT_DEPENDENCIES: WorkRegistryFailGrantDependencies =
+  Object.freeze({
+    requestReview: requestWorkRegistryReviewGrant,
+    requestPromotion: requestWorkRegistryPromotionGrant,
+  });
+
+export async function createWorkRegistryFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  dependencies: WorkRegistryFailGrantDependencies = WORK_REGISTRY_FAIL_GRANT_DEPENDENCIES,
+): Promise<CommandResult | null> {
+  if (
+    args[0] !== 'work-item' ||
+    !(error instanceof WorkflowError) ||
+    error.code !== 'WORK_REGISTRY_GRANT_REQUIRED'
+  ) {
+    return null;
+  }
+  const details = workRegistryGrantRequiredDetails(error.details);
+  if (details === null || !workRegistryArgsMatch(args, details)) return null;
+  const proposedReason =
+    details.operation === 'review'
+      ? `Authorize only this exact ${details.review.action} Work Registry transition for ${details.workItemId}; the Human Gate decision applies the digest-bound mutation and any state change requires a fresh Grant.`
+      : `Authorize only this exact Work Registry promotion of ${details.workItemId} to ${details.changeId}; the Human Gate decision applies the digest-bound mutation and any state change requires a fresh Grant.`;
+  const grant =
+    details.operation === 'review'
+      ? await dependencies.requestReview(
+          cwd,
+          details.workItemId,
+          details.review,
+          proposedReason,
+        )
+      : await dependencies.requestPromotion(
+          cwd,
+          details.workItemId,
+          details.changeId,
+          details.expectedDigest,
+          proposedReason,
+        );
+  return {
+    command: 'work-item',
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      workItemId: details.workItemId,
+      transition: details.transition,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        details,
+      },
+      grant,
+      transitionAppliesOnDecision: true,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        recoveryCommand: `pnpm workflow grant human recover ${grant.challengeId} --json`,
+        observeAfterDecision: `pnpm workflow work-item show ${details.workItemId} --json`,
+      },
+    },
+  };
+}
+
+function workRegistryGrantRequiredDetails(
+  value: unknown,
+): WorkRegistryGrantRequiredDetailsV1 | null {
+  if (
+    !plainRecord(value) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'work-registry-grant-required.v1' ||
+    typeof value.workItemId !== 'string' ||
+    !/^WORK-[0-9A-HJKMNP-TV-Z]{26}$/u.test(value.workItemId)
+  ) {
+    return null;
+  }
+  if (
+    value.operation === 'review' &&
+    (value.transition === 'intake' || value.transition === 'prioritize') &&
+    exactKeys(value, [
+      'kind',
+      'operation',
+      'review',
+      'schemaVersion',
+      'transition',
+      'workItemId',
+    ])
+  ) {
+    const review = workItemReview(value.review);
+    const transition =
+      review?.action === 'prioritize' ? 'prioritize' : 'intake';
+    if (review !== null && value.transition === transition) {
+      return { ...value, review } as WorkRegistryGrantRequiredDetailsV1;
+    }
+  }
+  if (
+    value.operation === 'promote' &&
+    value.transition === 'promote' &&
+    exactKeys(value, [
+      'changeId',
+      'expectedDigest',
+      'kind',
+      'operation',
+      'schemaVersion',
+      'transition',
+      'workItemId',
+    ]) &&
+    typeof value.changeId === 'string' &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.changeId) &&
+    typeof value.expectedDigest === 'string' &&
+    /^sha256:[0-9a-f]{64}$/u.test(value.expectedDigest)
+  ) {
+    return value as WorkRegistryGrantRequiredDetailsV1;
+  }
+  return null;
+}
+
+function workRegistryArgsMatch(
+  args: readonly string[],
+  details: WorkRegistryGrantRequiredDetailsV1,
+): boolean {
+  if (details.operation === 'review') {
+    return (
+      args.length === 5 &&
+      args[1] === 'review' &&
+      args[2] === details.workItemId &&
+      args[3] === '--input'
+    );
+  }
+  return (
+    args.length === 7 &&
+    args[1] === 'promote' &&
+    args[2] === details.workItemId &&
+    args[3] === '--change' &&
+    args[4] === details.changeId &&
+    args[5] === '--expected' &&
+    args[6] === details.expectedDigest
+  );
+}
+
+function workItemReview(value: unknown): WorkItemReviewV1 | null {
+  if (
+    !plainRecord(value) ||
+    typeof value.expectedDigest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/u.test(value.expectedDigest)
+  ) {
+    return null;
+  }
+  if (
+    value.action === 'accept' &&
+    exactKeys(value, ['action', 'expectedDigest', 'summary']) &&
+    typeof value.summary === 'string' &&
+    value.summary.length > 0 &&
+    Buffer.byteLength(value.summary, 'utf8') <= 2_000 &&
+    !value.summary.includes('\0')
+  ) {
+    return value as WorkItemReviewV1;
+  }
+  if (
+    value.action === 'prioritize' &&
+    exactKeys(value, ['action', 'blockedBy', 'expectedDigest', 'lane']) &&
+    ['now', 'next', 'later', 'icebox'].includes(String(value.lane)) &&
+    Array.isArray(value.blockedBy) &&
+    value.blockedBy.every(
+      (entry) =>
+        typeof entry === 'string' &&
+        /^WORK-[0-9A-HJKMNP-TV-Z]{26}$/u.test(entry),
+    ) &&
+    new Set(value.blockedBy).size === value.blockedBy.length
+  ) {
+    return value as WorkItemReviewV1;
+  }
+  if (
+    value.action === 'decline' &&
+    exactKeys(value, ['action', 'expectedDigest', 'outcome']) &&
+    ['declined', 'duplicate', 'obsolete'].includes(String(value.outcome))
+  ) {
+    return value as WorkItemReviewV1;
+  }
+  return null;
+}
+
+function plainRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function exactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  const keys = Object.keys(value).sort();
+  const sorted = [...expected].sort();
+  return (
+    keys.length === sorted.length &&
+    keys.every((key, index) => key === sorted[index])
+  );
 }
 
 /** Test-only seam proving the hidden command selects the async worker. */

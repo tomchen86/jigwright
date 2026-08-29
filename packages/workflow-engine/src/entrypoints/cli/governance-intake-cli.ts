@@ -134,6 +134,15 @@ export function dispatchGovernanceIntakeCommand(
         cwd,
         'promote',
         `pnpm workflow grant human request-work-item-promotion ${args[1]} --change ${args[3]} --expected ${args[5]} --reason <reason> --json`,
+        {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'promote',
+          transition: 'promote',
+          workItemId: args[1]!,
+          changeId: args[3]!,
+          expectedDigest: args[5]!,
+        },
       );
       const promoted = promoteWorkItem(
         cwd,
@@ -160,6 +169,14 @@ export function dispatchGovernanceIntakeCommand(
         cwd,
         review.action === 'prioritize' ? 'prioritize' : 'intake',
         `pnpm workflow grant human request-work-item-review ${args[1]} --input <review.json> --reason <reason> --json`,
+        {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'review',
+          transition: review.action === 'prioritize' ? 'prioritize' : 'intake',
+          workItemId: args[1]!,
+          review,
+        },
       );
       const item = applyWorkItemReview(cwd, args[1]!, review, dependencies.now);
       return { action: 'review', item };

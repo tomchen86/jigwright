@@ -163,6 +163,29 @@ function failGrantNextSteps(
     return null;
   }
   const input = record(result?.inputSchema);
+  if (result?.transitionAppliesOnDecision === true) {
+    const commands: readonly (readonly [string | undefined, string])[] = [
+      [
+        stringField(input, 'inspectCommand'),
+        'Inspect the exact Central Fail-Grant challenge and its bound consequences.',
+      ],
+      [
+        stringField(input, 'decisionCommand'),
+        'Use Human Gate to approve or reject the exact registered transition.',
+      ],
+      [
+        stringField(input, 'observeAfterDecision'),
+        'Observe the state produced by the completed non-retry transition.',
+      ],
+    ];
+    return Object.freeze(
+      commands
+        .filter(
+          (entry): entry is readonly [string, string] => entry[0] !== undefined,
+        )
+        .map(([command, why]) => Object.freeze({ command, why })),
+    );
+  }
   const reportedRetry =
     stringField(input, 'retryAfterDecision') ??
     stringField(input, 'retryAfterPublication');
