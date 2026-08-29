@@ -14,7 +14,19 @@ import { commitArchiveTransition } from './application/archive/archive-transitio
 import {
   discoverArchivePullRequestCandidates,
   preparePostMergeArchivePullRequest,
+  publishPostMergeArchivePullRequest,
+  type ExactArchiveBranchPublisherPortV1,
+  type GitHubArchiveAdapterModuleV1,
 } from './application/archive/archive-pr-orchestration.ts';
+import type {
+  GitHubArchiveAdapterConfigV1,
+  GitHubArchiveRulesetObserverPortV1,
+} from '@jigwright/github-adapter';
+import {
+  createGitExactArchiveBranchPublisher,
+  createGitHubApiArchiveRulesetObserver,
+  resolveArchivePullRequestPublicationTarget,
+} from './composition-root/archive-pr-publication-production.ts';
 import {
   approveAndApplyAuthorityPlan,
   attestAuthorityPlan,
@@ -113,6 +125,7 @@ import {
 } from './entrypoints/cli/human-grant-cli.ts';
 import {
   requestChangeRoleAssignmentGrant,
+  requestArchivePullRequestPublicationGrant,
   requestProtectedBaseInitializationGrant,
   requestWorkRegistryPromotionGrant,
   requestWorkRegistryReviewGrant,
@@ -772,6 +785,7 @@ export function createAsyncCliDispatcherForTesting(
 async function dispatchArchivePullRequest(
   args: string[],
   cwd: string,
+  dependencies: ArchivePullRequestCliDependencies = ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
 ): Promise<CommandResult> {
   const [, action, ...rest] = args;
   if (action !== 'prepare' && action !== 'open') {
@@ -785,26 +799,14 @@ async function dispatchArchivePullRequest(
       requireGrant: action === 'open',
     },
   );
-  if (action === 'open') {
-    throw workflowError(
-      'ARCHIVE_PR_REMOTE_PUBLICATION_DISABLED',
-      'Remote archive publication is not enabled in the production composition; use the reviewed injected publication harness after it is explicitly configured.',
-      ExitCode.unsafeEnvironment,
-    );
-  }
-  const local = preparePostMergeArchivePullRequest(cwd, parsed.changeId, {
-    ...(parsed.workspaceParent === undefined
-      ? {}
-      : { workspaceParent: parsed.workspaceParent }),
-  });
   const configValue = readArchivePullRequestJson(
     cwd,
     parsed.configPath!,
     'ARCHIVE_PR_GITHUB_CONFIG_INVALID',
   );
-  let adapter: typeof import('@jigwright/github-adapter');
+  let adapter: GitHubArchiveAdapterModuleV1;
   try {
-    adapter = await import('@jigwright/github-adapter');
+    adapter = await dependencies.loadAdapter();
   } catch {
     throw workflowError(
       'ARCHIVE_PR_GITHUB_ADAPTER_UNAVAILABLE',
@@ -812,7 +814,7 @@ async function dispatchArchivePullRequest(
       ExitCode.unsafeEnvironment,
     );
   }
-  let config: ReturnType<typeof adapter.parseGitHubArchiveAdapterConfig>;
+  let config: GitHubArchiveAdapterConfigV1;
   try {
     config = adapter.parseGitHubArchiveAdapterConfig(configValue);
   } catch {
@@ -822,14 +824,145 @@ async function dispatchArchivePullRequest(
       ExitCode.guard,
     );
   }
+  const publicationTarget = dependencies.resolvePublicationTarget(cwd, config);
+  const local = dependencies.prepare(cwd, parsed.changeId, {
+    ...(parsed.workspaceParent === undefined
+      ? {}
+      : { workspaceParent: parsed.workspaceParent }),
+  });
+  if (action === 'prepare') {
+    const grant = await dependencies.requestGrant(
+      cwd,
+      local.preparation.preparationIdentity,
+      config,
+      'Authorize only this exact immutable archive preparation for create-only branch publication and one idempotent pull-request opening; preserve adapter, configuration, ruleset, credential, stale-state, and collision checks.',
+    );
+    return {
+      command: 'archive-pr',
+      action,
+      ok: true,
+      result: {
+        schemaVersion: 1,
+        kind: 'workflow-fail-grant-required.v1',
+        changeId: parsed.changeId,
+        preparationIdentity: local.preparation.preparationIdentity,
+        state: 'human-action-required',
+        nextAction: 'human-action',
+        failure: {
+          code: 'ARCHIVE_PR_PUBLICATION_GRANT_REQUIRED',
+          message:
+            'The exact locally assured archive publication requires Human Gate authorization.',
+        },
+        grant,
+        local,
+        externalPublicationPending: true,
+        inputSchema: {
+          schemaVersion: 1,
+          kind: 'central-grant-resolution.v1',
+          inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+          decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+          publishAfterDecision: archivePullRequestOpenCommand(
+            parsed,
+            grant.challengeId,
+          ),
+        },
+      },
+    };
+  }
+  const environment = dependencies.environment ?? process.env;
+  const fetchImplementation = dependencies.fetch ?? globalThis.fetch;
+  const published = await dependencies.publish(cwd, local, config, {
+    environment,
+    ...(fetchImplementation === undefined
+      ? {}
+      : { fetch: fetchImplementation }),
+    loadAdapter: async () => adapter,
+    grantChallengeId: parsed.grantChallengeId!,
+    publicationTarget,
+    rulesetObserver: dependencies.createRulesetObserver({
+      config,
+      environment,
+      ...(fetchImplementation === undefined
+        ? {}
+        : { fetch: fetchImplementation }),
+    }),
+    branchPublisher: dependencies.createBranchPublisher(),
+  });
   return {
     command: 'archive-pr',
     action,
     ok: true,
-    local,
-    adapterConfig: config,
-    publicationState: 'central-grant-and-authenticated-ruleset-pending',
+    result: published,
   };
+}
+
+type ArchivePullRequestCliDependencies = Readonly<{
+  prepare: typeof preparePostMergeArchivePullRequest;
+  requestGrant: typeof requestArchivePullRequestPublicationGrant;
+  publish: typeof publishPostMergeArchivePullRequest;
+  loadAdapter(): Promise<GitHubArchiveAdapterModuleV1>;
+  createRulesetObserver(
+    input: Readonly<{
+      config: GitHubArchiveAdapterConfigV1;
+      environment: NodeJS.ProcessEnv;
+      fetch?: typeof globalThis.fetch;
+    }>,
+  ): GitHubArchiveRulesetObserverPortV1;
+  createBranchPublisher(): ExactArchiveBranchPublisherPortV1;
+  resolvePublicationTarget(
+    cwd: string,
+    configValue: unknown,
+  ): ReturnType<typeof resolveArchivePullRequestPublicationTarget>;
+  environment?: NodeJS.ProcessEnv;
+  fetch?: typeof globalThis.fetch;
+}>;
+
+const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDependencies =
+  Object.freeze({
+    prepare: preparePostMergeArchivePullRequest,
+    requestGrant: requestArchivePullRequestPublicationGrant,
+    publish: publishPostMergeArchivePullRequest,
+    async loadAdapter() {
+      return (await import('@jigwright/github-adapter')) as GitHubArchiveAdapterModuleV1;
+    },
+    createRulesetObserver: createGitHubApiArchiveRulesetObserver,
+    createBranchPublisher: createGitExactArchiveBranchPublisher,
+    resolvePublicationTarget: resolveArchivePullRequestPublicationTarget,
+  });
+
+export function createArchivePullRequestCliDispatcherForTesting(
+  dependencies: ArchivePullRequestCliDependencies,
+): (args: string[], cwd: string) => Promise<CommandResult> {
+  return (args, cwd) => dispatchArchivePullRequest(args, cwd, dependencies);
+}
+
+function archivePullRequestOpenCommand(
+  parsed: Readonly<{
+    changeId: string;
+    configPath?: string;
+    workspaceParent?: string;
+  }>,
+  challengeId: string,
+): string {
+  const values = [
+    'pnpm workflow archive-pr open',
+    shellCommandArgument(parsed.changeId),
+    '--config',
+    shellCommandArgument(parsed.configPath!),
+    '--grant',
+    shellCommandArgument(challengeId),
+    ...(parsed.workspaceParent === undefined
+      ? []
+      : ['--workspace-parent', shellCommandArgument(parsed.workspaceParent)]),
+    '--json',
+  ];
+  return values.join(' ');
+}
+
+function shellCommandArgument(value: string): string {
+  return /^[A-Za-z0-9_./:@+-]+$/u.test(value)
+    ? value
+    : `'${value.replaceAll("'", `'\"'\"'`)}'`;
 }
 
 function parseArchivePullRequestCliOptions(

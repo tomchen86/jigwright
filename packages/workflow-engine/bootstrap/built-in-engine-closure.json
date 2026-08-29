@@ -503,7 +503,7 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:a58d2f3832bd0a44c7de40acb6be752be182ed1e8751ebca08fbde2ce64fcf04"
+      "digest": "sha256:f91bb49aeef180ac33521b2f39eaace657b42589c33ad9474cf1a330b47983ab"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:dc09c60109df1bea857318a8861dd29f42bc4400613a33f166a9057514b8dcca"
+      "digest": "sha256:73a7572dad14dca14a6afe9c8a257b3e6f2e717b9fab6ed5b2c571e61f67e986"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -734,6 +734,11 @@
       "path": "src/composition-root/agent-runtime-v1-production.ts",
       "mode": "100644",
       "digest": "sha256:feb176e87ebb1d9f449ca943b311a7e4b6f01639fc72a776eb3e2f61d1f29ab4"
+    },
+    {
+      "path": "src/composition-root/archive-pr-publication-production.ts",
+      "mode": "100644",
+      "digest": "sha256:ec136a2be76ccc00a2a1371c4cafa521c251067b676d43752ff946c30201ea7c"
     },
     {
       "path": "src/composition-root/authority-remap.ts",
@@ -788,7 +793,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:5e6da0f782bfe7ff0e389c74e80ef13b842a17496fcabdc05afb9cab4f647bbf"
+      "digest": "sha256:7a148d429f02e65395171e24c9f6704e297021239245ff71bdb2fce1e40b8fd4"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -978,7 +983,7 @@
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:29c77b5a8c325d64ae5d12fdedc60b4d368287a1c935c89c16d71b34d14ad225"
+      "digest": "sha256:f07e55ca7968f85d84e95164e0490c819c92abe5f09c54f1777ec98dced1085d"
     },
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
@@ -1138,7 +1143,7 @@
     {
       "path": "src/modules/authority/archive-pr-grant.ts",
       "mode": "100644",
-      "digest": "sha256:685f31c114e38c57aa6448eef2cb6053f3ce9971a724d9e9cd261a00837d5eed"
+      "digest": "sha256:b7e51219cc2946558a8ee493b1aefbf422c4af602f8a4ed4933ea2952d21d079"
     },
     {
       "path": "src/modules/authority/authority-application-receipt.ts",
@@ -1308,7 +1313,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:281fd93812243f330b8f2440e23d1e8ccf9bd4faea0a14fb2683774c0438bb45"
+      "digest": "sha256:668ae5b7a18c54df014542dc11e5d6dfdfff522f264481052edd271680ce767e"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

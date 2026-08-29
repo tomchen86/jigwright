@@ -24,12 +24,26 @@ import {
 export const ARCHIVE_PR_PUBLICATION_TRANSITION_ID =
   'github.archive-pr.publish' as const;
 const PREPARATION_IDENTITY = /^sha256:[0-9a-f]{64}$/;
+const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const COMPLETED_GRANT_MAX_AGE_MS = 10 * 60_000;
+
+export type ArchivePullRequestPublicationTargetV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'archive-pr-publication-target.v1';
+  repositoryId: string;
+  canonicalOrigin: string;
+  remoteName: 'origin';
+  apiBaseUrl: 'https://api.github.com';
+  owner: string;
+  repository: string;
+  adapterConfigDigest: `sha256:${string}`;
+}>;
 
 export type ArchivePullRequestGrantParametersV1 = Readonly<{
   schemaVersion: 1;
   kind: 'archive-pr-publication-authorization.v1';
   preparationIdentity: `sha256:${string}`;
+  publicationTarget: ArchivePullRequestPublicationTargetV1;
 }>;
 
 export type CompletedArchivePullRequestGrantReferenceV1 =
@@ -39,13 +53,17 @@ export type CompletedArchivePullRequestGrantReferenceV1 =
 export function createArchivePullRequestGrantRequest(
   runtimeRoot: string,
   preparationIdentity: string,
+  publicationTarget: ArchivePullRequestPublicationTargetV1,
   proposedReason: string,
 ): GrantRequestInput {
   const preparation = readArchivePublicationPreparation(
     runtimeRoot,
     preparationIdentity,
   );
-  const parameters = archiveGrantParameters(preparation.preparationIdentity);
+  const parameters = archiveGrantParameters(
+    preparation.preparationIdentity,
+    publicationTarget,
+  );
   return Object.freeze({
     sourceModuleId: 'github-archive',
     failureCode: 'archive-pr-publication-requires-human-authorization',
@@ -55,12 +73,13 @@ export function createArchivePullRequestGrantRequest(
       repositoryId: preparation.repositoryId,
       changeId: preparation.changeId,
       preparationIdentity: preparation.preparationIdentity,
+      publicationTarget,
       remoteName: preparation.protectedBase.remoteName,
       protectedBranch: preparation.protectedBase.branch,
       archiveBranch: preparation.archive.branch,
       archiveHead: preparation.archive.headCommit,
     }),
-    stateBinding: preparationStateBinding(preparation),
+    stateBinding: preparationStateBinding(preparation, publicationTarget),
     candidates: Object.freeze([
       Object.freeze({
         transitionId: ARCHIVE_PR_PUBLICATION_TRANSITION_ID,
@@ -83,7 +102,7 @@ export function archivePullRequestGrantTransitionDefinitions(
         canonicalJson({
           schemaVersion: 1,
           kind: 'archive-pr-publication-authorization-parameters.schema.v1',
-          required: ['preparationIdentity'],
+          required: ['preparationIdentity', 'publicationTarget'],
         }),
       ),
       consequenceDigest: digest(
@@ -105,6 +124,7 @@ export function archivePullRequestGrantTransitionDefinitions(
           title: `Authorize archive PR publication for ${preparation.changeId}`,
           consequences: Object.freeze([
             `Permit publication of exact archive commit ${preparation.archive.headCommit}.`,
+            `Permit only ${parameters.publicationTarget.canonicalOrigin} (${parameters.publicationTarget.owner}/${parameters.publicationTarget.repository}).`,
             'Do not approve, bypass, merge, force-update, or publish any different branch.',
           ]),
         });
@@ -115,6 +135,7 @@ export function archivePullRequestGrantTransitionDefinitions(
             runtimeRoot,
             parameters.preparationIdentity,
           ),
+          parameters.publicationTarget,
         );
       },
       async execute(
@@ -140,6 +161,9 @@ export function archivePullRequestGrantTransitionDefinitions(
             schemaVersion: 1,
             kind: 'archive-pr-publication-authorized.v1',
             preparationIdentity: preparation.preparationIdentity,
+            publicationTargetDigest: digest(
+              canonicalJson(context.parameters.publicationTarget),
+            ),
             remoteEffectApplied: false,
           }),
         });
@@ -153,6 +177,7 @@ export function authenticateCompletedArchivePullRequestGrant(
   runtimeRoot: string,
   challengeId: string,
   preparationIdentity: string,
+  publicationTarget: ArchivePullRequestPublicationTargetV1,
   now = new Date(),
 ): CompletedArchivePullRequestGrantReferenceV1 {
   try {
@@ -161,6 +186,7 @@ export function authenticateCompletedArchivePullRequestGrant(
       runtimeRoot,
       challengeId,
       preparationIdentity,
+      publicationTarget,
       now,
     );
   } catch {
@@ -173,6 +199,7 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
   runtimeRoot: string,
   challengeId: string,
   preparationIdentity: string,
+  publicationTarget: ArchivePullRequestPublicationTargetV1,
   now: Date,
 ): CompletedArchivePullRequestGrantReferenceV1 {
   const preparation = readArchivePublicationPreparation(
@@ -185,8 +212,11 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
   const choice = terminal.challenge.choices.find(
     ({ choiceId }) => choiceId === terminal.approvalSubject.choiceId,
   );
-  const parameters = archiveGrantParameters(preparation.preparationIdentity);
-  const expectedState = preparationStateBinding(preparation);
+  const parameters = archiveGrantParameters(
+    preparation.preparationIdentity,
+    publicationTarget,
+  );
+  const expectedState = preparationStateBinding(preparation, publicationTarget);
   const completedAt = Date.parse(terminal.completedAt);
   const nowTime = now.getTime();
   if (
@@ -210,6 +240,7 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
           schemaVersion: 1,
           kind: 'archive-pr-publication-authorized.v1',
           preparationIdentity: preparation.preparationIdentity,
+          publicationTargetDigest: digest(canonicalJson(publicationTarget)),
           remoteEffectApplied: false,
         },
       })
@@ -228,11 +259,13 @@ function authenticateCompletedArchivePullRequestGrantUnsafe(
 
 function archiveGrantParameters(
   preparationIdentity: string,
+  publicationTarget: ArchivePullRequestPublicationTargetV1,
 ): ArchivePullRequestGrantParametersV1 {
   return assertArchiveGrantParameters({
     schemaVersion: 1,
     kind: 'archive-pr-publication-authorization.v1',
     preparationIdentity,
+    publicationTarget,
   });
 }
 
@@ -242,7 +275,14 @@ function assertArchiveGrantParameters(
   if (
     !isRecord(value) ||
     JSON.stringify(Object.keys(value).sort()) !==
-      JSON.stringify(['schemaVersion', 'kind', 'preparationIdentity'].sort()) ||
+      JSON.stringify(
+        [
+          'schemaVersion',
+          'kind',
+          'preparationIdentity',
+          'publicationTarget',
+        ].sort(),
+      ) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'archive-pr-publication-authorization.v1' ||
     typeof value.preparationIdentity !== 'string' ||
@@ -258,16 +298,70 @@ function assertArchiveGrantParameters(
     schemaVersion: 1,
     kind: 'archive-pr-publication-authorization.v1',
     preparationIdentity: value.preparationIdentity as `sha256:${string}`,
+    publicationTarget: assertArchivePublicationTarget(value.publicationTarget),
   });
 }
 
 function preparationStateBinding(
   preparation: ArchivePublicationPreparationV1,
+  publicationTarget: ArchivePullRequestPublicationTargetV1,
 ): StateBinding {
   return Object.freeze({
     kind: 'archive-pr-publication-preparation',
-    digest: preparation.preparationIdentity,
+    digest: digest(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'archive-pr-publication-state.v1',
+        preparationIdentity: preparation.preparationIdentity,
+        publicationTarget,
+      }),
+    ),
   });
+}
+
+export function assertArchivePublicationTarget(
+  value: unknown,
+): ArchivePullRequestPublicationTargetV1 {
+  if (
+    !isRecord(value) ||
+    JSON.stringify(Object.keys(value).sort()) !==
+      JSON.stringify(
+        [
+          'schemaVersion',
+          'kind',
+          'repositoryId',
+          'canonicalOrigin',
+          'remoteName',
+          'apiBaseUrl',
+          'owner',
+          'repository',
+          'adapterConfigDigest',
+        ].sort(),
+      ) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'archive-pr-publication-target.v1' ||
+    typeof value.repositoryId !== 'string' ||
+    !/^github:[A-Za-z0-9_-]+$/u.test(value.repositoryId) ||
+    typeof value.owner !== 'string' ||
+    !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,37}[A-Za-z0-9])?$/u.test(value.owner) ||
+    typeof value.repository !== 'string' ||
+    !/^[A-Za-z0-9_.-]{1,100}$/u.test(value.repository) ||
+    value.canonicalOrigin !==
+      `https://github.com/${value.owner}/${value.repository}.git` ||
+    value.remoteName !== 'origin' ||
+    value.apiBaseUrl !== 'https://api.github.com' ||
+    typeof value.adapterConfigDigest !== 'string' ||
+    !SHA256.test(value.adapterConfigDigest)
+  ) {
+    throw workflowError(
+      'ARCHIVE_PR_PUBLICATION_TARGET_INVALID',
+      'Archive PR publication target is malformed or does not match its canonical GitHub identity.',
+      ExitCode.guard,
+    );
+  }
+  return Object.freeze(
+    structuredClone(value),
+  ) as ArchivePullRequestPublicationTargetV1;
 }
 
 function digest(value: string): `sha256:${string}` {

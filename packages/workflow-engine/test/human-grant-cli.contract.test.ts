@@ -15,6 +15,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
     path.join(os.tmpdir(), 'jigwright-human-grant-cli-'),
   );
   const reviewPath = path.join(repositoryRoot, 'review.json');
+  const archiveConfigPath = path.join(repositoryRoot, 'archive-config.json');
   fs.writeFileSync(
     reviewPath,
     `${JSON.stringify({
@@ -22,6 +23,10 @@ test('human grant CLI exposes registered investigation and Work Registry request
       expectedDigest: `sha256:${'a'.repeat(64)}`,
       summary: 'Reviewed intake.',
     })}\n`,
+  );
+  fs.writeFileSync(
+    archiveConfigPath,
+    `${JSON.stringify({ schemaVersion: 1, owner: 'example' })}\n`,
   );
   const coordinator = {
     contractVersion: 'central-grant-request-port.v1' as const,
@@ -93,10 +98,11 @@ test('human grant CLI exposes registered investigation and Work Registry request
     async requestArchivePullRequestPublication(
       _cwd: string,
       preparationIdentity: string,
+      configValue: unknown,
       proposedReason: string,
     ) {
       calls.push(
-        `request-archive-publication:${preparationIdentity}:${proposedReason}`,
+        `request-archive-publication:${preparationIdentity}:${JSON.stringify(configValue)}:${proposedReason}`,
       );
       return { preparationIdentity };
     },
@@ -116,6 +122,8 @@ test('human grant CLI exposes registered investigation and Work Registry request
       'human',
       'request-archive-publication',
       `sha256:${'c'.repeat(64)}`,
+      '--config',
+      archiveConfigPath,
       '--reason',
       'Authorize the exact reviewed archive preparation.',
     ],
@@ -182,7 +190,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
     dependencies,
   );
   assert.deepEqual(calls, [
-    `request-archive-publication:sha256:${'c'.repeat(64)}:Authorize the exact reviewed archive preparation.`,
+    `request-archive-publication:sha256:${'c'.repeat(64)}:${JSON.stringify({ schemaVersion: 1, owner: 'example' })}:Authorize the exact reviewed archive preparation.`,
     'request-route:demo-change:Continue the exact reviewed parked change.',
     'request-v3:investigation-demo:The v3 blocker requires a bounded human continuation.',
     'request-work-review:WORK-01K39R0V00000000000000000E:accept:Approve the exact protected intake.',

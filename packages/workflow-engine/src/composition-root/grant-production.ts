@@ -71,6 +71,7 @@ import {
   changeRoleAssignmentGrantTransitionDefinitions,
   createChangeRoleAssignmentGrantRequest,
 } from '../modules/provider-orchestration/change-role-assignment-grant.ts';
+import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -178,6 +179,7 @@ export async function requestProtectedBaseInitializationGrant(
 export async function requestArchivePullRequestPublicationGrant(
   cwd: string,
   preparationIdentity: string,
+  configValue: unknown,
   proposedReason: string,
 ) {
   assertOptionalGrantsPackageAvailable();
@@ -187,6 +189,7 @@ export async function requestArchivePullRequestPublicationGrant(
     createArchivePullRequestGrantRequest(
       runtimeRoot,
       preparationIdentity,
+      resolveArchivePullRequestPublicationTarget(cwd, configValue),
       proposedReason,
     ),
   );

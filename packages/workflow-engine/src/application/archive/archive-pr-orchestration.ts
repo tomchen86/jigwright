@@ -34,7 +34,9 @@ import {
   type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
 import {
+  assertArchivePublicationTarget,
   authenticateCompletedArchivePullRequestGrant,
+  type ArchivePullRequestPublicationTargetV1,
   type CompletedArchivePullRequestGrantReferenceV1,
 } from '../../modules/authority/archive-pr-grant.ts';
 import { grantStorePaths } from '../../runtime/storage-journal/grant-store.ts';
@@ -136,6 +138,7 @@ export type PublishPostMergeArchivePullRequestOptions = Readonly<{
   fetch?: typeof globalThis.fetch;
   loadAdapter?: () => Promise<GitHubArchiveAdapterModuleV1>;
   grantChallengeId: string;
+  publicationTarget: ArchivePullRequestPublicationTargetV1;
   rulesetObserver: GitHubArchiveRulesetObserverPortV1;
   branchPublisher: ExactArchiveBranchPublisherPortV1;
 }>;
@@ -657,6 +660,16 @@ export async function publishPostMergeArchivePullRequest(
       'Remote archive publication configuration is invalid or contains forbidden credential material.',
     );
   }
+  assertPublicationTargetMatchesConfig(options.publicationTarget, config);
+  const runtimeRoot =
+    loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
+  const centralGrantRecord = authenticateCompletedArchivePullRequestGrant(
+    grantStorePaths(runtimeRoot),
+    runtimeRoot,
+    options.grantChallengeId,
+    local.preparation.preparationIdentity,
+    options.publicationTarget,
+  );
   const environment = options.environment ?? process.env;
   const remote = adapter.createGitHubArchivePullRequestRemote({
     config,
@@ -668,14 +681,6 @@ export async function publishPostMergeArchivePullRequest(
     base: local.candidate.base.branch,
     baseCommit: local.candidate.base.commit,
   });
-  const runtimeRoot =
-    loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
-  const centralGrantRecord = authenticateCompletedArchivePullRequestGrant(
-    grantStorePaths(runtimeRoot),
-    runtimeRoot,
-    options.grantChallengeId,
-    local.preparation.preparationIdentity,
-  );
   const authorization = Object.freeze({
     centralGrantRecord,
     rulesetObservation: Object.freeze({
@@ -727,6 +732,24 @@ export async function publishPostMergeArchivePullRequest(
     opened,
     receiptPath,
   });
+}
+
+function assertPublicationTargetMatchesConfig(
+  targetValue: ArchivePullRequestPublicationTargetV1,
+  config: GitHubArchiveAdapterConfigV1,
+): void {
+  const target = assertArchivePublicationTarget(targetValue);
+  if (
+    target.apiBaseUrl !== config.apiBaseUrl ||
+    target.owner !== config.owner ||
+    target.repository !== config.repository ||
+    target.adapterConfigDigest !== digestWithPrefix(canonicalJson(config))
+  ) {
+    throw archivePrError(
+      'ARCHIVE_PR_PUBLICATION_TARGET_CHANGED',
+      'The GitHub adapter target changed after the exact archive publication Grant was created.',
+    );
+  }
 }
 
 function prepareArchiveWorktree(

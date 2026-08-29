@@ -188,7 +188,8 @@ function failGrantNextSteps(
   }
   const reportedRetry =
     stringField(input, 'retryAfterDecision') ??
-    stringField(input, 'retryAfterPublication');
+    stringField(input, 'retryAfterPublication') ??
+    stringField(input, 'publishAfterDecision');
   const retryCommand =
     reportedRetry !== undefined &&
     /^(?:pnpm workflow|jigwright)(?:\s|$)/u.test(reportedRetry)

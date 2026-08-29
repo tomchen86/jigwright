@@ -49,6 +49,7 @@ type HumanGrantCliDependencies = Readonly<{
   requestArchivePullRequestPublication?(
     cwd: string,
     preparationIdentity: string,
+    configValue: unknown,
     proposedReason: string,
   ): Promise<unknown>;
   publishProtectedBaseInitialization(
@@ -82,8 +83,9 @@ export async function dispatchHumanGrantCli(
   const action = argv[2];
   if (
     action === 'request-archive-publication' &&
-    argv.length === 6 &&
-    argv[4] === '--reason'
+    argv.length === 8 &&
+    argv[4] === '--config' &&
+    argv[6] === '--reason'
   ) {
     const request = dependencies.requestArchivePullRequestPublication;
     if (request === undefined) {
@@ -98,7 +100,12 @@ export async function dispatchHumanGrantCli(
       family: 'human',
       action,
       ok: true,
-      result: await request(cwd, argv[3]!, argv[5]!),
+      result: await request(
+        cwd,
+        argv[3]!,
+        readBoundedJsonInput(cwd, argv[5]!),
+        argv[7]!,
+      ),
     };
   }
   if (
@@ -268,7 +275,7 @@ export async function runHumanGrantCli(
 function humanGrantUsage(): WorkflowError {
   return workflowError(
     'USAGE',
-    'Usage: pnpm workflow grant human <request-investigation-v3 <investigation-id> --reason <agent-proposed-reason>|request-change-routing-continuation <change-id> --reason <agent-proposed-reason>|request-work-item-review <work-item-id> --input <review.json> --reason <reason>|request-work-item-promotion <work-item-id> --change <change-id> --expected <digest> --reason <reason>|request-archive-publication <preparation-identity> --reason <reason>|inspect <challenge-id>|decide <challenge-id>|recover <challenge-id>> [--json]',
+    'Usage: pnpm workflow grant human <request-investigation-v3 <investigation-id> --reason <agent-proposed-reason>|request-change-routing-continuation <change-id> --reason <agent-proposed-reason>|request-work-item-review <work-item-id> --input <review.json> --reason <reason>|request-work-item-promotion <work-item-id> --change <change-id> --expected <digest> --reason <reason>|request-archive-publication <preparation-identity> --config <github-adapter.json> --reason <reason>|inspect <challenge-id>|decide <challenge-id>|recover <challenge-id>> [--json]',
     ExitCode.usage,
   );
 }
@@ -292,4 +299,22 @@ function readWorkItemReview(
     throw humanGrantUsage();
   }
   return value as WorkItemReviewV1;
+}
+
+function readBoundedJsonInput(cwd: string, requestedPath: string): unknown {
+  const inputPath = path.resolve(cwd, requestedPath);
+  const stats = fs.lstatSync(inputPath, { throwIfNoEntry: false });
+  if (
+    !stats?.isFile() ||
+    stats.isSymbolicLink() ||
+    stats.size < 2 ||
+    stats.size > 65_536
+  ) {
+    throw humanGrantUsage();
+  }
+  try {
+    return JSON.parse(fs.readFileSync(inputPath, 'utf8')) as unknown;
+  } catch {
+    throw humanGrantUsage();
+  }
 }

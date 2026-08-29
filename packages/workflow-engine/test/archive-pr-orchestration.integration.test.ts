@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -14,6 +14,7 @@ import {
   publishPostMergeArchivePullRequest,
   type ExactArchiveBranchPublisherPortV1,
 } from '../src/application/archive/archive-pr-orchestration.ts';
+import { createArchivePullRequestCliDispatcherForTesting } from '../src/cli.ts';
 import {
   createFakeArchivePullRequestRemote,
   type GitHubArchiveRulesetObservationV1,
@@ -56,6 +57,13 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
+import {
+  createGitExactArchiveBranchPublisher,
+  createGitHubApiArchiveRulesetObserver,
+  resolveArchivePullRequestPublicationTarget,
+} from '../src/composition-root/archive-pr-publication-production.ts';
+import { runGit as runWorkflowGit } from '../src/runtime/repository-transaction/git.ts';
 
 test('discovers one read-only current-v3 independently reviewed archive candidate', () => {
   const repository = completedFixture();
@@ -173,30 +181,192 @@ test('tracked archive manual-dispatch contract is pinned and inert', () => {
   assert.doesNotMatch(harness, /https?:|fetch\(|child_process|exec|spawn/);
 });
 
-test('production archive publication caller remains fail-closed by default', () => {
-  const cli = path.resolve(import.meta.dirname, '../src/cli.ts');
-  const result = spawnSync(
-    process.execPath,
-    [
-      '--experimental-strip-types',
-      cli,
-      'archive-pr',
-      'open',
-      'demo-change',
-      '--config',
-      'must-not-be-read.json',
-      '--grant',
-      '00000000-0000-4000-8000-000000000001',
-      '--json',
-    ],
-    { cwd: path.dirname(cli), encoding: 'utf8' },
+test('archive prepare returns one exact Fail-Grant and open uses its production publication seams', async () => {
+  const repository = fs.mkdtempSync(
+    path.join(path.dirname(import.meta.dirname), 'archive-pr-cli-'),
   );
-  assert.notEqual(result.status, 0);
-  assert.equal(
-    (JSON.parse(result.stderr) as { error: { code: string } }).error.code,
-    'ARCHIVE_PR_REMOTE_PUBLICATION_DISABLED',
+  const configPath = path.join(repository, 'github-adapter.json');
+  fs.writeFileSync(
+    configPath,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      apiBaseUrl: 'https://api.github.com',
+      owner: 'example',
+      repository: 'fixture',
+      tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
+      permissions: {
+        contents: 'write',
+        pullRequests: 'write',
+        metadata: 'read',
+      },
+    })}\n`,
   );
-  assert.equal(result.stdout, '');
+  const preparationIdentity = `sha256:${'1'.repeat(64)}` as const;
+  const local = {
+    preparation: { preparationIdentity },
+  } as ReturnType<typeof preparePostMergeArchivePullRequest>;
+  const rulesetObserver = { contractVersion: 'test-ruleset-observer' };
+  const branchPublisher = { contractVersion: 'test-branch-publisher' };
+  let published:
+    | Readonly<{
+        cwd: string;
+        local: unknown;
+        config: unknown;
+        grantChallengeId: string;
+        publicationTarget: unknown;
+        rulesetObserver: unknown;
+        branchPublisher: unknown;
+      }>
+    | undefined;
+  let requested: readonly string[] | undefined;
+  const publicationTarget = archivePublicationTarget({
+    tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
+  });
+  const dispatch = createArchivePullRequestCliDispatcherForTesting({
+    prepare(cwd, changeId) {
+      assert.equal(cwd, repository);
+      assert.equal(changeId, 'demo-change');
+      return local;
+    },
+    async requestGrant(cwd, requestedPreparationIdentity, config, reason) {
+      requested = [
+        cwd,
+        requestedPreparationIdentity,
+        JSON.stringify(config),
+        reason,
+      ];
+      return {
+        challengeId: '11111111-1111-4111-8111-111111111111',
+        challengeDigest: `sha256:${'2'.repeat(64)}` as const,
+      };
+    },
+    async publish(cwd, prepared, config, options) {
+      published = {
+        cwd,
+        local: prepared,
+        config,
+        grantChallengeId: options.grantChallengeId,
+        publicationTarget: options.publicationTarget,
+        rulesetObserver: options.rulesetObserver,
+        branchPublisher: options.branchPublisher,
+      };
+      return { opened: { number: 23 } } as never;
+    },
+    async loadAdapter() {
+      return {
+        parseGitHubArchiveAdapterConfig(value: unknown) {
+          return value as never;
+        },
+      } as never;
+    },
+    createRulesetObserver() {
+      return rulesetObserver as never;
+    },
+    createBranchPublisher() {
+      return branchPublisher as never;
+    },
+    resolvePublicationTarget() {
+      return publicationTarget;
+    },
+  });
+
+  try {
+    const prepared = await dispatch(
+      [
+        'archive-pr',
+        'prepare',
+        'demo-change',
+        '--config',
+        'github-adapter.json',
+      ],
+      repository,
+    );
+    assert.equal(requested?.[0], repository);
+    assert.equal(requested?.[1], preparationIdentity);
+    assert.equal(
+      requested?.[2],
+      JSON.stringify(JSON.parse(fs.readFileSync(configPath, 'utf8'))),
+    );
+    assert.match(requested?.[3] ?? '', /exact immutable archive preparation/u);
+    assert.deepEqual(prepared, {
+      command: 'archive-pr',
+      action: 'prepare',
+      ok: true,
+      result: {
+        schemaVersion: 1,
+        kind: 'workflow-fail-grant-required.v1',
+        changeId: 'demo-change',
+        preparationIdentity,
+        state: 'human-action-required',
+        nextAction: 'human-action',
+        failure: {
+          code: 'ARCHIVE_PR_PUBLICATION_GRANT_REQUIRED',
+          message:
+            'The exact locally assured archive publication requires Human Gate authorization.',
+        },
+        grant: {
+          challengeId: '11111111-1111-4111-8111-111111111111',
+          challengeDigest: `sha256:${'2'.repeat(64)}`,
+        },
+        local,
+        externalPublicationPending: true,
+        inputSchema: {
+          schemaVersion: 1,
+          kind: 'central-grant-resolution.v1',
+          inspectCommand:
+            'pnpm workflow grant human inspect 11111111-1111-4111-8111-111111111111 --json',
+          decisionCommand:
+            'pnpm workflow grant human decide 11111111-1111-4111-8111-111111111111 --json',
+          publishAfterDecision:
+            'pnpm workflow archive-pr open demo-change --config github-adapter.json --grant 11111111-1111-4111-8111-111111111111 --json',
+        },
+      },
+    });
+    assert.deepEqual(
+      workflowResultNextSteps(prepared, [
+        'archive-pr',
+        'prepare',
+        'demo-change',
+        '--config',
+        'github-adapter.json',
+      ]).map(({ command }) => command),
+      [
+        'pnpm workflow grant human inspect 11111111-1111-4111-8111-111111111111 --json',
+        'pnpm workflow grant human decide 11111111-1111-4111-8111-111111111111 --json',
+        'pnpm workflow archive-pr open demo-change --config github-adapter.json --grant 11111111-1111-4111-8111-111111111111 --json',
+      ],
+    );
+
+    const opened = await dispatch(
+      [
+        'archive-pr',
+        'open',
+        'demo-change',
+        '--config',
+        'github-adapter.json',
+        '--grant',
+        '11111111-1111-4111-8111-111111111111',
+      ],
+      repository,
+    );
+    assert.deepEqual(opened, {
+      command: 'archive-pr',
+      action: 'open',
+      ok: true,
+      result: { opened: { number: 23 } },
+    });
+    assert.deepEqual(published, {
+      cwd: repository,
+      local,
+      config: JSON.parse(fs.readFileSync(configPath, 'utf8')),
+      grantChallengeId: '11111111-1111-4111-8111-111111111111',
+      publicationTarget,
+      rulesetObserver,
+      branchPublisher,
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('candidate discovery fails closed when local protected base differs from remote tracking', () => {
@@ -212,6 +382,277 @@ test('candidate discovery fails closed when local protected base differs from re
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('production archive branch publisher is exact, create-only, and idempotent against a bare remote', async () => {
+  const root = fs.mkdtempSync(
+    path.join(path.dirname(import.meta.dirname), 'archive-publisher-'),
+  );
+  const repository = path.join(root, 'repository');
+  const remote = path.join(root, 'remote.git');
+  try {
+    fs.mkdirSync(repository);
+    execFileSync('git', ['init', '--initial-branch=main', repository], {
+      stdio: 'ignore',
+    });
+    git(repository, ['config', 'user.email', 'fixture@example.com']);
+    git(repository, ['config', 'user.name', 'Fixture']);
+    fs.writeFileSync(path.join(repository, 'base.txt'), 'base\n');
+    git(repository, ['add', 'base.txt']);
+    git(repository, ['commit', '-m', 'Create base']);
+    const protectedBaseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+    execFileSync('git', ['clone', '--bare', repository, remote], {
+      stdio: 'ignore',
+    });
+    git(repository, ['remote', 'add', 'origin', remote]);
+    git(repository, ['checkout', '-b', 'work/archive-demo-change']);
+    fs.writeFileSync(path.join(repository, 'archive.txt'), 'archive\n');
+    git(repository, ['add', 'archive.txt']);
+    git(repository, ['commit', '-m', 'Archive demo change']);
+    const archiveHead = git(repository, ['rev-parse', 'HEAD']).trim();
+    const request = {
+      schemaVersion: 1 as const,
+      kind: 'exact-archive-branch-publication-request.v1' as const,
+      preparationIdentity: `sha256:${'3'.repeat(64)}` as const,
+      repositoryRoot: repository,
+      remoteName: 'origin' as const,
+      protectedBaseRef: 'refs/heads/main',
+      protectedBaseCommit,
+      archiveRef: 'refs/heads/work/archive-demo-change',
+      archiveHead,
+      expectedArchiveRemoteHead: null,
+    };
+    const publisher = createGitExactArchiveBranchPublisher({
+      expectedCanonicalOrigin: remote,
+    });
+
+    const first = await publisher.publish(request);
+    const replay = await publisher.publish(request);
+    assert.equal(first.disposition, 'created');
+    assert.equal(replay.disposition, 'confirmed');
+    assert.equal(first.force, false);
+    assert.equal(
+      git(remote, ['rev-parse', request.archiveRef]).trim(),
+      archiveHead,
+    );
+
+    git(remote, ['update-ref', request.archiveRef, protectedBaseCommit]);
+    await assert.rejects(Promise.resolve(publisher.publish(request)), (error) =>
+      isWorkflowError(error, 'ARCHIVE_PR_BRANCH_PUBLICATION_COLLISION'),
+    );
+    assert.equal(
+      git(remote, ['rev-parse', request.archiveRef]).trim(),
+      protectedBaseCommit,
+    );
+    git(remote, ['update-ref', '-d', request.archiveRef]);
+    let remoteObservationCount = 0;
+    const unknownEffectPublisher = createGitExactArchiveBranchPublisher({
+      expectedCanonicalOrigin: remote,
+      runGit(cwd, args, allowFailure) {
+        if (args[0] === 'ls-remote') {
+          remoteObservationCount += 1;
+          if (remoteObservationCount > 1) {
+            throw new Error('forced post-dispatch observation failure');
+          }
+        }
+        if (args[0] === 'push') {
+          runWorkflowGit(cwd, args, allowFailure);
+          throw new Error('forced ambiguous dispatch result');
+        }
+        return runWorkflowGit(cwd, args, allowFailure);
+      },
+    });
+    await assert.rejects(
+      Promise.resolve(unknownEffectPublisher.publish(request)),
+      (error) =>
+        isWorkflowError(error, 'ARCHIVE_PR_BRANCH_PUBLICATION_UNKNOWN_EFFECT'),
+    );
+    assert.equal(
+      git(remote, ['rev-parse', request.archiveRef]).trim(),
+      archiveHead,
+    );
+    git(repository, [
+      'remote',
+      'set-url',
+      'origin',
+      path.join(root, 'does-not-exist.git'),
+    ]);
+    await assert.rejects(Promise.resolve(publisher.publish(request)), (error) =>
+      isWorkflowError(error, 'ARCHIVE_PR_REMOTE_IDENTITY_INVALID'),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('production archive branch publisher snapshots the validated push target before dispatch', async () => {
+  const root = fs.mkdtempSync(
+    path.join(path.dirname(import.meta.dirname), 'archive-publisher-target-'),
+  );
+  const repository = path.join(root, 'repository');
+  const expectedRemote = path.join(root, 'expected.git');
+  const redirectedRemote = path.join(root, 'redirected.git');
+  try {
+    fs.mkdirSync(repository);
+    execFileSync('git', ['init', '--initial-branch=main', repository], {
+      stdio: 'ignore',
+    });
+    git(repository, ['config', 'user.email', 'fixture@example.com']);
+    git(repository, ['config', 'user.name', 'Fixture']);
+    fs.writeFileSync(path.join(repository, 'base.txt'), 'base\n');
+    git(repository, ['add', 'base.txt']);
+    git(repository, ['commit', '-m', 'Create base']);
+    const protectedBaseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+    for (const remote of [expectedRemote, redirectedRemote]) {
+      execFileSync('git', ['clone', '--bare', repository, remote], {
+        stdio: 'ignore',
+      });
+    }
+    git(repository, ['remote', 'add', 'origin', expectedRemote]);
+    git(repository, ['checkout', '-b', 'work/archive-demo-change']);
+    fs.writeFileSync(path.join(repository, 'archive.txt'), 'archive\n');
+    git(repository, ['add', 'archive.txt']);
+    git(repository, ['commit', '-m', 'Archive demo change']);
+    const archiveHead = git(repository, ['rev-parse', 'HEAD']).trim();
+    const archiveRef = 'refs/heads/work/archive-demo-change';
+    let redirected = false;
+    const publisher = createGitExactArchiveBranchPublisher({
+      expectedCanonicalOrigin: expectedRemote,
+      runGit(cwd, args, allowFailure) {
+        if (args[0] === 'ls-remote' && !redirected) {
+          redirected = true;
+          runWorkflowGit(repository, [
+            'remote',
+            'set-url',
+            'origin',
+            redirectedRemote,
+          ]);
+        }
+        return runWorkflowGit(cwd, args, allowFailure);
+      },
+    });
+
+    await publisher.publish({
+      schemaVersion: 1,
+      kind: 'exact-archive-branch-publication-request.v1',
+      preparationIdentity: `sha256:${'4'.repeat(64)}`,
+      repositoryRoot: repository,
+      remoteName: 'origin',
+      protectedBaseRef: 'refs/heads/main',
+      protectedBaseCommit,
+      archiveRef,
+      archiveHead,
+      expectedArchiveRemoteHead: null,
+    });
+
+    assert.equal(
+      git(expectedRemote, ['rev-parse', archiveRef]).trim(),
+      archiveHead,
+    );
+    assert.throws(() => git(redirectedRemote, ['rev-parse', archiveRef]));
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('production ruleset observer authenticates a current no-bypass workflow-assurance ruleset', async () => {
+  const now = new Date('2026-08-30T00:00:00.000Z');
+  const token = 'github-app-token-for-local-ruleset-double';
+  const calls: Array<Readonly<{ url: string; authorization: string | null }>> =
+    [];
+  const fetchDouble: typeof fetch = async (input, init) => {
+    const url = String(input);
+    calls.push({
+      url,
+      authorization: new Headers(init?.headers).get('authorization'),
+    });
+    if (url.endsWith('/repos/example/fixture')) {
+      return jsonResponse(200, { default_branch: 'main' });
+    }
+    if (url.includes('/repos/example/fixture/rulesets?')) {
+      return jsonResponse(200, [
+        { id: 17, target: 'branch', enforcement: 'active' },
+      ]);
+    }
+    if (url.endsWith('/repos/example/fixture/rulesets/17')) {
+      return jsonResponse(200, {
+        id: 17,
+        target: 'branch',
+        enforcement: 'active',
+        bypass_actors: [],
+        conditions: {
+          ref_name: { include: ['~DEFAULT_BRANCH'], exclude: [] },
+        },
+        rules: [
+          {
+            type: 'required_status_checks',
+            parameters: {
+              required_status_checks: [
+                { context: 'workflow-assurance', integration_id: 0 },
+              ],
+            },
+          },
+        ],
+      });
+    }
+    return jsonResponse(500, {});
+  };
+  const config = {
+    schemaVersion: 1 as const,
+    apiBaseUrl: 'https://api.github.com',
+    owner: 'example',
+    repository: 'fixture',
+    tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
+    permissions: {
+      contents: 'write' as const,
+      pullRequests: 'write' as const,
+      metadata: 'read' as const,
+    },
+  };
+  const observer = createGitHubApiArchiveRulesetObserver({
+    config,
+    environment: { JIGWRIGHT_GITHUB_APP_TOKEN: token },
+    fetch: fetchDouble,
+    now: () => now,
+  });
+  const observation = await observer.observe({
+    repository: { owner: 'example', name: 'fixture' },
+    protectedBase: { branch: 'main', commit: 'a'.repeat(40) },
+  });
+
+  assert.deepEqual(observation.activeRulesetIds, [17]);
+  assert.deepEqual(observation.requiredStatusChecks, ['workflow-assurance']);
+  assert.equal(observation.bypassActorCount, 0);
+  assert.equal(observation.authentication, 'github-app-token');
+  assert.equal(
+    calls.every(({ authorization }) => authorization === `Bearer ${token}`),
+    true,
+  );
+  assert.equal(JSON.stringify(observation).includes(token), false);
+
+  const unavailable = createGitHubApiArchiveRulesetObserver({
+    config,
+    environment: {},
+    fetch: async () => assert.fail('must not contact GitHub'),
+    now: () => now,
+  });
+  await assert.rejects(
+    unavailable.observe({
+      repository: { owner: 'example', name: 'fixture' },
+      protectedBase: { branch: 'main', commit: 'a'.repeat(40) },
+    }),
+    (error) =>
+      isWorkflowError(error, 'ARCHIVE_PR_GITHUB_CREDENTIAL_UNAVAILABLE'),
+  );
+  assert.throws(
+    () =>
+      resolveArchivePullRequestPublicationTarget(
+        path.resolve(import.meta.dirname, '../../..'),
+        config,
+      ),
+    (error) =>
+      isWorkflowError(error, 'ARCHIVE_PR_GITHUB_CONFIG_TARGET_MISMATCH'),
+  );
 });
 
 test('prepares, publishes, and recovers one exact archive PR identity', async () => {
@@ -255,6 +696,9 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
     );
     assert.equal(first.preparation.archive.branch, 'work/archive-demo-change');
     assert.equal(first.preparation.assurance.reportIdentity, '8'.repeat(64));
+    const publicationTarget = archivePublicationTarget({
+      tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
+    });
     await assert.rejects(
       publishPostMergeArchivePullRequest(
         repository,
@@ -262,6 +706,7 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
         {},
         {
           grantChallengeId: '00000000-0000-4000-8000-000000000001',
+          publicationTarget,
           rulesetObserver: createRulesetObserver(first),
           branchPublisher: disabledBranchPublisher(),
           loadAdapter: async () => {
@@ -325,6 +770,7 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
       fetch: fetchDouble,
       loadAdapter: async () => adapter,
       grantChallengeId,
+      publicationTarget,
       rulesetObserver: createRulesetObserver(first),
       branchPublisher: createBareGitBranchPublisher(bareRepository),
     };
@@ -339,11 +785,45 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
         pullRequests: 'write',
         metadata: 'read',
       },
-    };
+    } as const;
     await assert.rejects(
       publishPostMergeArchivePullRequest(repository, first, config, {
         ...publishOptions,
         grantChallengeId: '00000000-0000-4000-8000-000000000099',
+      }),
+      (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
+    );
+    const changedConfig = {
+      ...config,
+      tokenEnvironmentVariable: 'CHANGED_GITHUB_APP_TOKEN',
+    } as const;
+    await assert.rejects(
+      publishPostMergeArchivePullRequest(repository, first, changedConfig, {
+        ...publishOptions,
+        rulesetObserver: {
+          contractVersion: 'github-archive-ruleset-observer.v1',
+          async observe() {
+            return assert.fail('config drift must fail before ruleset access');
+          },
+        },
+        branchPublisher: disabledBranchPublisher(),
+      }),
+      (error) =>
+        isWorkflowError(error, 'ARCHIVE_PR_PUBLICATION_TARGET_CHANGED'),
+    );
+    await assert.rejects(
+      publishPostMergeArchivePullRequest(repository, first, changedConfig, {
+        ...publishOptions,
+        publicationTarget: archivePublicationTarget({
+          tokenEnvironmentVariable: 'CHANGED_GITHUB_APP_TOKEN',
+        }),
+        rulesetObserver: {
+          contractVersion: 'github-archive-ruleset-observer.v1',
+          async observe() {
+            return assert.fail('Grant drift must fail before ruleset access');
+          },
+        },
+        branchPublisher: disabledBranchPublisher(),
       }),
       (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
     );
@@ -356,6 +836,7 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
           loadInvestigationRuntimeContext(repository).lifecycleRuntime.root,
           staleGrantChallengeId,
           first.preparation.preparationIdentity,
+          publicationTarget,
         ),
       (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
     );
@@ -388,6 +869,7 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
           runtimeRoot,
           grantChallengeId,
           replayPreparation.preparationIdentity,
+          publicationTarget,
         ),
       (error) => isWorkflowError(error, 'ARCHIVE_PR_CENTRAL_GRANT_INVALID'),
     );
@@ -512,7 +994,11 @@ function completedFixture(): string {
 function completePublicationGrant(
   repository: string,
   local: ReturnType<typeof preparePostMergeArchivePullRequest>,
-  options: Readonly<{ challengeId?: string; now?: Date }> = {},
+  options: Readonly<{
+    challengeId?: string;
+    now?: Date;
+    publicationTarget?: ReturnType<typeof archivePublicationTarget>;
+  }> = {},
 ): string {
   const now = options.now ?? new Date();
   const runtimeRoot =
@@ -521,10 +1007,16 @@ function completePublicationGrant(
   const registry = createTransitionRegistry(
     archivePullRequestGrantTransitionDefinitions(runtimeRoot),
   );
+  const publicationTarget =
+    options.publicationTarget ??
+    archivePublicationTarget({
+      tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
+    });
   const challenge = createGrantChallenge(
     createArchivePullRequestGrantRequest(
       runtimeRoot,
       local.preparation.preparationIdentity,
+      publicationTarget,
       'Publish the reviewed archive branch and open its PR.',
     ),
     registry,
@@ -566,13 +1058,14 @@ function completePublicationGrant(
   recordGrantTransitionOutcome(paths, {
     challengeId: challenge.challengeId,
     operationId,
-    poststateDigest: local.preparation.preparationIdentity,
+    poststateDigest: challenge.stateBinding.digest,
     outcome: {
       outcome: 'completed',
       details: {
         schemaVersion: 1,
         kind: 'archive-pr-publication-authorized.v1',
         preparationIdentity: local.preparation.preparationIdentity,
+        publicationTargetDigest: digest(canonicalJson(publicationTarget)),
         remoteEffectApplied: false,
       },
     },
@@ -672,6 +1165,34 @@ function disabledBranchPublisher(): ExactArchiveBranchPublisherPortV1 {
     publish() {
       throw new Error('publisher must not run');
     },
+  };
+}
+
+function archivePublicationTarget(
+  input: Readonly<{ tokenEnvironmentVariable: string }>,
+) {
+  const config = {
+    schemaVersion: 1 as const,
+    apiBaseUrl: 'https://api.github.com',
+    owner: 'example',
+    repository: 'fixture',
+    tokenEnvironmentVariable: input.tokenEnvironmentVariable,
+    permissions: {
+      contents: 'write' as const,
+      pullRequests: 'write' as const,
+      metadata: 'read' as const,
+    },
+  };
+  return {
+    schemaVersion: 1 as const,
+    kind: 'archive-pr-publication-target.v1' as const,
+    repositoryId: 'github:fixture',
+    canonicalOrigin: 'https://github.com/example/fixture.git',
+    remoteName: 'origin' as const,
+    apiBaseUrl: 'https://api.github.com' as const,
+    owner: 'example',
+    repository: 'fixture',
+    adapterConfigDigest: digest(canonicalJson(config)),
   };
 }
 
