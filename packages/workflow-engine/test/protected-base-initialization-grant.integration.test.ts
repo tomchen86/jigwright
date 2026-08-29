@@ -29,6 +29,7 @@ import {
   readGrantRecord,
 } from '../src/runtime/storage-journal/grant-store.ts';
 import { createProposeProtectedBaseFailGrantResult } from '../src/cli.ts';
+import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { git, isWorkflowError } from './fixture.ts';
 
@@ -85,6 +86,19 @@ test('propose maps an unavailable protected base to a durable Fail-Grant result'
       },
     },
   });
+  assert.deepEqual(
+    workflowResultNextSteps(result!, [
+      'propose',
+      'demo-change',
+      '--intent',
+      'intent.json',
+    ]).map(({ command }) => command),
+    [
+      `pnpm workflow grant human inspect ${CHALLENGE_ID} --json`,
+      `pnpm workflow grant human decide ${CHALLENGE_ID} --json`,
+      'pnpm workflow propose demo-change --intent intent.json',
+    ],
+  );
 });
 
 test('a completed Human Presence grant publishes one exact create-only protected base', async () => {

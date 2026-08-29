@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:c810e602d5d877d26894bb4a5437270b95d9d74c617d73cd5e70ff1a8e266961"
+      "digest": "sha256:a94b8d6660f76366f2b7318a898d8763e280698dd65c0bc280fe3e50e63598d7"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -746,9 +746,14 @@
       "digest": "sha256:963ca73f20a3999d9a1911ad4f7536daf06c5ea03633de99b003dc1617fc3949"
     },
     {
+      "path": "src/composition-root/change-role-assignment-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:9a2c8613fb4f7a3f5d43a86c4cdd87cfecab6d03a0fd1b1ebf418c9ad6a4dde8"
+    },
+    {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:c07d9479a2e5e425dce73f96b56c794e9bfeb1b92ed7336190e8d0e308e4461d"
+      "digest": "sha256:1f5b665fe4a7b7b81e104dad14a7ed8ca7efe654f34115b173e2a820ebccf664"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -783,7 +788,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:0c0b81dca930ca182bf3e0c3374ff71ee0e69e65657b5472968092f50976521e"
+      "digest": "sha256:5e6da0f782bfe7ff0e389c74e80ef13b842a17496fcabdc05afb9cab4f647bbf"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -1008,7 +1013,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:7d403ca23b7b03695069b98059c0e29dd291521558eb1c93b9d4775864746693"
+      "digest": "sha256:41466d77c8a057afaf57df5e7e0fe978e9265f1c0034d4ce1eefc0e8076aac74"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1303,7 +1308,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:5593dae87d9a8dd34ea8c1800cc2ba679d0d2a6a799540ae94cf8c4f4c72f234"
+      "digest": "sha256:28f67ff180c8541157cfd23981a1d0c48fd6a5641122c02edc933d532726edcb"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",
@@ -1511,6 +1516,11 @@
       "digest": "sha256:cf921f9c4e3e81f9735e51f5c12caaea4d60ebf86731a4d32706f2e2fb8b70a2"
     },
     {
+      "path": "src/modules/provider-orchestration/change-role-assignment-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:fa01e3cb6e79d9065539d7635b5ca6feb1394519ee6369d6c3f236e90ae9efc2"
+    },
+    {
       "path": "src/modules/provider-orchestration/change-role-assignment-record.ts",
       "mode": "100644",
       "digest": "sha256:1ed2647fa75e8220b89402606359dbff5410f19eec79b43842818caec3d59cc2"
@@ -1538,7 +1548,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-native-session.ts",
       "mode": "100644",
-      "digest": "sha256:2e99b2a2ce9ca6a8912e273fb4b2e7dbca09397ecbef4f49f44684f35433f1a5"
+      "digest": "sha256:d5bf50a86f6bdc935f51bdf97446eaa44c9eec38edadc6b5c7f853dbde0b9d2b"
     },
     {
       "path": "src/modules/provider-orchestration/provider-registry.ts",
@@ -1916,6 +1926,11 @@
       "digest": "sha256:1bfff1246649c9857fdc9e66cba8c382973b3af21bf6f71a3402f7930700b928"
     },
     {
+      "path": "src/runtime/storage-journal/change-role-assignment-grant-store.ts",
+      "mode": "100644",
+      "digest": "sha256:b1baa28b1d648f9b3624ea3af2d4962197ff2ef6099b10163c24989b91029710"
+    },
+    {
       "path": "src/runtime/storage-journal/change-role-assignment-store.ts",
       "mode": "100644",
       "digest": "sha256:fcc5798a18ceef6a0393055b6d23bc4643dcd386b6c0357a00eeaee46adaf975"
@@ -2013,7 +2028,7 @@
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:881c68f875d4abdacb0f25da55dfbf2a2696ae6022bd9b150032bfc61d34ed05"
+      "digest": "sha256:d05888c644f2f1daeecd1516b33e2e6f1fe05fee87c8a32c6daa923618613817"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",

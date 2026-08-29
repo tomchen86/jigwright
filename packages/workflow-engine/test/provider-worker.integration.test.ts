@@ -5,6 +5,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
+import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
+import {
+  HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
+  codeOwnedApprovalModuleRegistry,
+  parseGrantPolicyV2,
+} from '../src/modules/authority/grant-policy.ts';
+import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
@@ -37,9 +45,23 @@ import {
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';
 import {
+  createProductionChangeRoleAssignmentGrantPort,
+  observeCurrentChangeRoleAssignmentGrantForInvocation,
+} from '../src/composition-root/change-role-assignment-grant-production.ts';
+import {
+  changeRoleAssignmentGrantTransitionDefinitions,
+  createChangeRoleAssignmentGrantRequest,
+} from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
+import {
   createCentralRoleProviderDefault,
   renderCentralRoleProviderDefault,
 } from '../src/modules/provider-orchestration/central-role-provider-default.ts';
+import {
+  agentRolePlanV2Digest,
+  renderAgentRolePlanV2,
+  type AgentRolePlanBodyV2,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
 import {
   createProviderInvocationRequest,
   PROPOSE_POLICY_DIGEST,
@@ -59,6 +81,7 @@ import {
   storeProviderExecutionPolicySnapshot,
   type PlanReviewManifest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
 import {
   ensureProviderPromptContext,
   providerPromptContextStoreRoot,
@@ -1171,6 +1194,407 @@ test('provider dispatch is detached and replay targets the stored prepared reque
   }
 });
 
+test('below-floor current role assignment blocks worker claim and detached spawn until exact Grant', async () => {
+  const repository = createFixtureRepository();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-agent-providers-grant-')),
+  );
+  const agentProviderConfigPath = path.join(
+    hostDirectory,
+    'agent-providers.toml',
+  );
+  const changeId = 'demo-change';
+  try {
+    const central = createCentralRoleProviderDefault({
+      schemaVersion: 1,
+      kind: 'central-role-provider-default',
+      providerGroups: [
+        {
+          roles: ['author'],
+          sessionGroups: [['author']],
+          providerRule: { kind: 'adaptive-author' },
+        },
+        {
+          roles: ['builder'],
+          sessionGroups: [['builder']],
+          providerRule: {
+            kind: 'ranked-fallback',
+            preferredLogicalProviderId: null,
+          },
+        },
+        {
+          roles: ['reviewer'],
+          sessionGroups: [['reviewer']],
+          providerRule: {
+            kind: 'ranked-fallback',
+            preferredLogicalProviderId: null,
+          },
+        },
+      ],
+      globalProviderRanking: ['claude', 'codex'],
+    });
+    fs.writeFileSync(
+      path.join(repository, 'workflow/role-provider-default.json'),
+      renderCentralRoleProviderDefault(central),
+    );
+    const overrideBody: AgentRolePlanBodyV2 = {
+      schemaVersion: 2,
+      changeId,
+      baseCentralConfigurationDigest: central.configurationDigest,
+      roleLanes: [],
+      pairwiseRequirements: [
+        { pair: 'author-builder', required: 'session-independent' },
+        { pair: 'author-reviewer', required: 'session-independent' },
+        { pair: 'builder-reviewer', required: 'session-independent' },
+      ],
+      customWrapperPolicy: 'forbidden',
+      grantReferences: [],
+    };
+    const overridePath = agentRolePlanV2Path(changeId);
+    fs.mkdirSync(path.dirname(path.join(repository, overridePath)), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(repository, overridePath),
+      renderAgentRolePlanV2({
+        ...overrideBody,
+        planDigest: agentRolePlanV2Digest(overrideBody),
+      }),
+    );
+    fs.writeFileSync(agentProviderConfigPath, agentProviderConfigToml());
+    git(repository, [
+      'add',
+      'workflow/role-provider-default.json',
+      overridePath,
+    ]);
+    git(repository, ['commit', '-m', 'Add below-floor role override']);
+
+    const ready = writeReadyV3ExemptChange(repository, changeId);
+    const planningContext = deriveInvestigationFirstPlanningSubject(
+      repository,
+      loadChangeContract(repository, changeId),
+    );
+    const subject = planningContext.subject;
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const invocationId = 'invocation-plan-review-below-floor';
+    const assignment = {
+      role: 'plan-reviewer' as const,
+      providerId: 'claude' as const,
+      sessionId: 'provider-session-plan-review-below-floor',
+      targetDigest: subject.subjectDigest,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'provider-independent' as const,
+    };
+    const materialization = createEvidenceNode({
+      type: 'propose-planning-materialization',
+      nodeSchema: 'workflow.propose-planning-materialization.v1',
+      evaluator: 'workflow-propose.v1',
+      policyDigest: PROPOSE_POLICY_DIGEST,
+      exactInputDigests: {
+        artifacts: sha256(canonicalJson({})),
+        baseline: sha256(canonicalJson(subject.investigationBaseline)),
+        seal: sha256('below-floor-seal-node'),
+      },
+      semanticParentResultDigests: {
+        seal: sha256('below-floor-seal-result'),
+      },
+      provenanceParentNodeIds: {
+        seal: sha256('below-floor-seal-node'),
+      },
+      outputSchema: 'workflow.propose-planning-materialization-output.v1',
+      output: {
+        investigationId: 'investigation-plan-review-below-floor',
+        changeId,
+        revision: 0,
+        baseline: subject.investigationBaseline,
+        artifacts: {},
+        sealNodeId: sha256('below-floor-seal-node'),
+        sealResultDigest: sha256('below-floor-seal-result'),
+      },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(runtime, materialization);
+    const authorization = createEvidenceNode({
+      type: 'plan-review-authorization',
+      nodeSchema: 'workflow.plan-review-authorization.v1',
+      evaluator: 'workflow-propose.v1',
+      policyDigest: PROPOSE_POLICY_DIGEST,
+      exactInputDigests: {
+        assignment: sha256(canonicalJson(assignment)),
+        generation: subject.planningGenerationId,
+        grantAuthorization: sha256(canonicalJson(null)),
+        subject: subject.subjectDigest,
+      },
+      semanticParentResultDigests: {
+        materialization: materialization.resultDigest,
+      },
+      provenanceParentNodeIds: {
+        materialization: materialization.nodeId,
+      },
+      outputSchema: 'workflow.plan-review-authorization-output.v1',
+      output: {
+        subject,
+        assignment,
+        author: { id: 'fixture-author' },
+        grantAuthorization: null,
+      },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(runtime, authorization);
+    const manifest: PlanReviewManifest = {
+      schemaVersion: 1,
+      kind: 'plan-review-manifest',
+      changeId,
+      repositoryId: 'fixture',
+      baseCommit: locator.head,
+      baseTree: locator.tree,
+      subject,
+      capabilityProfile: 'repository-read-only',
+    };
+    const request = createProviderInvocationRequest({
+      invocationId,
+      nonce: 'plan-review-below-floor-nonce-000001',
+      purpose: 'plan-review',
+      providerId: 'claude',
+      roleAssignment: assignment,
+      capabilityProfile: 'repository-read-only',
+      repositoryId: 'fixture',
+      baseCommit: locator.head,
+      baseTree: locator.tree,
+      targetDigest: subject.subjectDigest,
+      inputManifestDigest: providerInvocationManifestDigest(manifest),
+      authorizationNodeId: authorization.nodeId,
+      writeAllowedPaths: [],
+      outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
+      evaluatorVersion: 'plan-review.v2',
+      policyDigest: loadAiAdapterPolicy(repository).digest,
+      limits: {
+        timeoutMs: 300_000,
+        aggregateOutputBytes: 1_048_576,
+      },
+    });
+    assert.throws(
+      () =>
+        createCurrentAgentRuntimeAssignmentV1({
+          repositoryRoot: repository,
+          runtime,
+          grantRuntimeRoot: path.dirname(runtime.root),
+          changeId,
+          request,
+          configFilePath: agentProviderConfigPath,
+          platform: 'darwin',
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_GRANT_REQUIRED',
+    );
+    storeProviderExecutionPolicySnapshot(
+      runtime,
+      request,
+      loadAiAdapterPolicy(repository),
+    );
+    createProviderInvocation(runtime, {
+      investigationId: 'investigation-plan-review-below-floor',
+      changeId,
+      attempt: 1,
+      manifest,
+      request,
+    });
+
+    let runnerCalls = 0;
+    assert.throws(
+      () =>
+        runProviderWorker(repository, invocationId, {
+          agentProviderConfigPath,
+          platform: 'darwin',
+          runner() {
+            runnerCalls += 1;
+            return successfulWorkerReport(request, invocationId);
+          },
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_GRANT_REQUIRED' &&
+        'details' in error &&
+        (error.details as { invocationId?: unknown })?.invocationId ===
+          invocationId,
+    );
+    assert.equal(runnerCalls, 0);
+    assert.equal(
+      readProviderInvocation(runtime, invocationId).state,
+      'prepared',
+    );
+
+    let spawnCalls = 0;
+    const dispatch = createProviderWorkerDispatcherForTesting(
+      {
+        spawn() {
+          spawnCalls += 1;
+          return { pid: 1234, unref() {} };
+        },
+      },
+      { agentProviderConfigPath, platform: 'darwin' },
+    );
+    assert.throws(
+      () => dispatch(repository, invocationId),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_GRANT_REQUIRED',
+    );
+    assert.equal(spawnCalls, 0);
+    assert.equal(
+      readProviderInvocation(runtime, invocationId).state,
+      'prepared',
+    );
+
+    const grantPort = createProductionChangeRoleAssignmentGrantPort(
+      repository,
+      { configFilePath: agentProviderConfigPath, platform: 'darwin' },
+    );
+    const grantObservation =
+      observeCurrentChangeRoleAssignmentGrantForInvocation(
+        repository,
+        invocationId,
+        { configFilePath: agentProviderConfigPath, platform: 'darwin' },
+      );
+    const ids = [
+      '11111111-1111-4111-8111-111111111111',
+      '22222222-2222-4222-8222-222222222222',
+    ];
+    const grantNow = new Date('2030-08-29T02:00:00.000Z');
+    const coordinator = createGrantCoordinatorKernel({
+      paths: grantStorePaths(path.dirname(runtime.root)),
+      registry: createTransitionRegistry(
+        changeRoleAssignmentGrantTransitionDefinitions(grantPort),
+      ),
+      policy: parseGrantPolicyV2(
+        {
+          schemaVersion: 2,
+          defaultProfile: 'local-presence',
+          profiles: {
+            'local-presence': {
+              requiredClaims: ['fresh-local-device-owner'],
+            },
+          },
+          approvalModules: [
+            {
+              moduleId: 'human-gate-macos',
+              version: '1',
+              allowedClaims: ['fresh-local-device-owner'],
+              configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
+            },
+          ],
+          legacyVerification: { maintainerPolicyV1: 'read-only' },
+        },
+        { registry: codeOwnedApprovalModuleRegistry() },
+      ),
+      now: () => new Date(grantNow),
+      randomUUID: () => ids.shift()!,
+      challengeTtlMs: 10 * 60_000,
+      openApprovalSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              reasonCode: 'approve-exact-role-independence-exception',
+              reason: 'Approve this exact current provider invocation only.',
+              approvalMethod: 'human-presence' as const,
+              sessionNonce: 'nonce-below-floor-provider-worker-000000001',
+            };
+          },
+          async authenticate({ approvalSubjectDigest }) {
+            const proof: VerifiedApprovalProof = {
+              moduleId: 'human-gate-macos',
+              version: '1',
+              claims: ['fresh-local-device-owner'],
+              approvalSubjectDigest,
+              proofDigest: `sha256:${sha256('below-floor-human-proof')}`,
+              verifiedAt: grantNow.toISOString(),
+              identity: null,
+            };
+            return [proof];
+          },
+          async close() {},
+        };
+      },
+      async withLifecycleOperation(_challengeId, operation) {
+        return operation(() => undefined);
+      },
+    });
+    const challenge = await coordinator.requestGrant(
+      createChangeRoleAssignmentGrantRequest(
+        grantObservation,
+        'Authorize only this exact current below-floor assignment.',
+      ),
+    );
+    const completed = await coordinator.resolveChallenge(challenge.challengeId);
+    assert.equal(completed.outcome, 'completed');
+
+    const submission = {
+      schemaVersion: 2 as const,
+      verdict: 'advisory-approve' as const,
+      coverage: [...PLAN_REVIEW_COVERAGE],
+      scopeAssessment: {
+        kind: 'no-challenge' as const,
+        evidence: [
+          {
+            kind: 'investigation-node' as const,
+            nodeId: ready.applicabilityNode.nodeId,
+            resultDigest: ready.applicabilityNode.resultDigest,
+          },
+        ],
+      },
+      findings: [],
+      proposedTerms: [],
+      suggestions: [],
+      residualRisk: 'The review cannot prove semantic completeness.',
+      uncertainty: 'The provider operates under observed soft containment.',
+    };
+    const afterGrant = runProviderWorker(repository, invocationId, {
+      agentProviderConfigPath,
+      platform: 'darwin',
+      runner() {
+        runnerCalls += 1;
+        return {
+          invocationId,
+          providerId: request.providerId,
+          purpose: request.purpose,
+          requestDigest: request.requestDigest,
+          semanticOutput: submission,
+          semanticOutputDigest: sha256(canonicalJson(submission)),
+          assurance: 'unchanged-governed-projection' as const,
+          projection: {
+            unchanged: true as const,
+            changedCategories: [],
+            beforeDigest: 'd'.repeat(64),
+            afterDigest: 'd'.repeat(64),
+          },
+          sameUserProcessConfined: false as const,
+          residuals: [...PROVIDER_RUNNER_RESIDUALS],
+          executable: executableIdentity(),
+          elapsedMs: 8,
+          providerDefinitionSnapshot: resolveBuiltInProviderDefinitionSnapshot(
+            'claude',
+            'darwin',
+          )!,
+        };
+      },
+    });
+    assert.equal(afterGrant.state, 'succeeded', JSON.stringify(afterGrant));
+    assert.equal(runnerCalls, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+  }
+});
+
 test('provider worker selects the code-owned exact PlanReview contract', () => {
   const repository = createFixtureRepository();
   const hostDirectory = fs.realpathSync(
@@ -1311,6 +1735,7 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
     const currentAssignment = createCurrentAgentRuntimeAssignmentV1({
       repositoryRoot: repository,
       runtime,
+      grantRuntimeRoot: path.dirname(runtime.root),
       changeId: 'demo-change',
       request,
       configFilePath: agentProviderConfigPath,
@@ -1429,6 +1854,7 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
         createCurrentAgentRuntimeAssignmentV1({
           repositoryRoot: repository,
           runtime,
+          grantRuntimeRoot: path.dirname(runtime.root),
           changeId: 'demo-change',
           request,
           configFilePath: agentProviderConfigPath,
@@ -1475,6 +1901,7 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
         createCurrentAgentRuntimeAssignmentV1({
           repositoryRoot: repository,
           runtime,
+          grantRuntimeRoot: path.dirname(runtime.root),
           changeId: 'demo-change',
           request: deniedRequest,
           configFilePath: agentProviderConfigPath,

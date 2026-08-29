@@ -21,10 +21,13 @@ export class ProviderNativeSessionError extends TypeError {
  * The scope contains only digests and public identifiers; native provider
  * session identity is deliberately absent.
  */
-export function deriveProviderNativeSessionScopeV1(candidate, requestedSessionSlotId) {
+export function deriveProviderNativeSessionScopeV1(candidate, requestedSessionSlotId, verifyAssignmentAuthority) {
     const assignment = assertChangeRoleAssignmentRecordV1(candidate);
     if (assignment.grantRequirement !== null) {
-        throw new ProviderNativeSessionError('PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED');
+        if (verifyAssignmentAuthority === undefined) {
+            throw new ProviderNativeSessionError('PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED');
+        }
+        verifyAssignmentAuthority(assignment);
     }
     if (typeof requestedSessionSlotId !== 'string' ||
         !SESSION_SLOT_ID.test(requestedSessionSlotId)) {

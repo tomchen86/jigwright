@@ -259,6 +259,10 @@ export class ProviderNativeSessionError extends TypeError {
   }
 }
 
+export type ProviderNativeSessionAssignmentAuthorityVerifierPort = (
+  assignment: ChangeRoleAssignmentRecordV1,
+) => void;
+
 /**
  * Freeze the assignment-wide facts for one fresh provider-native session slot.
  * The scope contains only digests and public identifiers; native provider
@@ -267,12 +271,16 @@ export class ProviderNativeSessionError extends TypeError {
 export function deriveProviderNativeSessionScopeV1(
   candidate: ChangeRoleAssignmentRecordV1,
   requestedSessionSlotId: string,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ProviderNativeSessionScopeV1 {
   const assignment = assertChangeRoleAssignmentRecordV1(candidate);
   if (assignment.grantRequirement !== null) {
-    throw new ProviderNativeSessionError(
-      'PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED',
-    );
+    if (verifyAssignmentAuthority === undefined) {
+      throw new ProviderNativeSessionError(
+        'PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED',
+      );
+    }
+    verifyAssignmentAuthority(assignment);
   }
   if (
     typeof requestedSessionSlotId !== 'string' ||

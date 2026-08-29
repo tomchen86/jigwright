@@ -111,7 +111,10 @@ import {
   isHumanGrantCliInvocation,
   runHumanGrantCli,
 } from './entrypoints/cli/human-grant-cli.ts';
-import { requestProtectedBaseInitializationGrant } from './composition-root/grant-production.ts';
+import {
+  requestChangeRoleAssignmentGrant,
+  requestProtectedBaseInitializationGrant,
+} from './composition-root/grant-production.ts';
 import { dispatchIssueCommand } from './entrypoints/cli/issue-cli.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
 import { dispatchChangeRoutingCommand } from './entrypoints/cli/change-routing-cli.ts';
@@ -359,6 +362,7 @@ async function dispatchAsync(
   args: string[],
   cwd: string,
   providerWorker: typeof runProviderWorkerAsync = runProviderWorkerAsync,
+  roleAssignmentGrantRequest: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
 ): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === 'role-config') {
@@ -394,14 +398,84 @@ async function dispatchAsync(
         error,
       );
       if (failGrant !== null) return failGrant;
+      const roleAssignmentGrant =
+        await createRoleAssignmentFailGrantResult(
+          args,
+          cwd,
+          error,
+          roleAssignmentGrantRequest,
+        );
+      if (roleAssignmentGrant !== null) return roleAssignmentGrant;
       throw error;
     }
   }
   requireArgumentCount(command, rest, 1, 1);
+  try {
+    return {
+      command,
+      ok: true,
+      result: await providerWorker(cwd, rest[0]!),
+    };
+  } catch (error) {
+    const failGrant = await createRoleAssignmentFailGrantResult(
+      args,
+      cwd,
+      error,
+      roleAssignmentGrantRequest,
+    );
+    if (failGrant !== null) return failGrant;
+    throw error;
+  }
+}
+
+export async function createRoleAssignmentFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
+): Promise<CommandResult | null> {
+  if (
+    !(error instanceof WorkflowError) ||
+    error.code !== 'AGENT_RUNTIME_GRANT_REQUIRED'
+  ) {
+    return null;
+  }
+  const invocationId =
+    typeof error.details?.invocationId === 'string'
+      ? error.details.invocationId
+      : args[0] === 'provider-worker' && typeof args[1] === 'string'
+        ? args[1]
+        : null;
+  if (invocationId === null) return null;
+  const grant = await requestGrant(
+    cwd,
+    invocationId,
+    'Authorize only this exact prepared provider invocation to use its current below-floor role assignment; preserve all provider, data-authorization, executable-identity, and stale-state checks.',
+  );
   return {
-    command,
+    command: args[0] ?? 'provider-worker',
     ok: true,
-    result: await providerWorker(cwd, rest[0]!),
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      invocationId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        ...(error.details ? { details: error.details } : {}),
+      },
+      grant,
+      providerInvocationState: 'prepared',
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        retryAfterDecision: `pnpm workflow provider-worker ${invocationId} --json`,
+      },
+    },
   };
 }
 
@@ -454,8 +528,10 @@ export async function createProposeProtectedBaseFailGrantResult(
 /** Test-only seam proving the hidden command selects the async worker. */
 export function createAsyncCliDispatcherForTesting(
   providerWorker: typeof runProviderWorkerAsync,
+  roleAssignmentGrantRequest: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
 ): (args: string[], cwd: string) => Promise<CommandResult> {
-  return (args, cwd) => dispatchAsync(args, cwd, providerWorker);
+  return (args, cwd) =>
+    dispatchAsync(args, cwd, providerWorker, roleAssignmentGrantRequest);
 }
 
 async function dispatchArchivePullRequest(

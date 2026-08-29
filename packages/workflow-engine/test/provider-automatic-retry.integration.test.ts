@@ -123,6 +123,92 @@ test('worker persists Retry-After, creates one cheap replacement, and dispatches
   }
 });
 
+test('replacement role-assignment Fail-Grant reaches the caller and resumes the same schedule after approval', () => {
+  const fixture = startWorkerFixture('worker-auto-role-grant');
+  try {
+    const now = '2030-08-29T02:00:00.000Z';
+    let gatedInvocationId: string | null = null;
+    assert.throws(
+      () =>
+        runProviderWorker(fixture.repository, fixture.invocationId, {
+          runner() {
+            throw workflowError(
+              'PROVIDER_RATE_LIMIT',
+              'The provider asked the worker to retry immediately.',
+              ExitCode.verification,
+              { details: { retryAfterMs: 0 } },
+            );
+          },
+          automaticRetry: {
+            enabled: true,
+            now,
+            dispatcher(_cwd, invocationId) {
+              gatedInvocationId = invocationId;
+              throw workflowError(
+                'AGENT_RUNTIME_GRANT_REQUIRED',
+                'The replacement requires its own exact role-assignment Grant.',
+                ExitCode.verification,
+                { details: { invocationId } },
+              );
+            },
+          },
+          schedulePump: { enabled: false },
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_GRANT_REQUIRED',
+    );
+
+    const schedule = requiredSchedule(fixture.repository, fixture.invocationId);
+    assert.equal(gatedInvocationId, schedule.replacementInvocationId);
+    assert.equal(schedule.state, 'scheduled');
+    assert.equal(
+      readProviderInvocation(fixture.runtime, fixture.invocationId).state,
+      'failed',
+    );
+    assert.equal(
+      readProviderInvocation(fixture.runtime, schedule.replacementInvocationId)
+        .state,
+      'prepared',
+    );
+    assert.equal(
+      listProviderRetryScheduleReceipts(
+        fixture.repository,
+        schedule.scheduleId,
+      )[0]?.state,
+      'started',
+    );
+    assert.deepEqual(
+      listProviderWorkerMaintenanceWarnings(fixture.repository),
+      [],
+    );
+
+    const dispatched: string[] = [];
+    pumpProviderRetrySchedules(fixture.repository, {
+      limit: 1,
+      now,
+      dispatcher(_cwd, invocationId) {
+        dispatched.push(invocationId);
+      },
+    });
+    assert.deepEqual(dispatched, [schedule.replacementInvocationId]);
+    assert.equal(
+      requiredSchedule(fixture.repository, fixture.invocationId).state,
+      'dispatch-issued',
+    );
+    assert.equal(
+      listProviderRetryScheduleReceipts(
+        fixture.repository,
+        schedule.scheduleId,
+      )[0]?.state,
+      'dispatch-issued',
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
 test('production provider timeout creates one automatic replacement in the same Job, context, and epoch', () => {
   const fixture = startWorkerFixture('worker-auto-provider-timeout');
   try {

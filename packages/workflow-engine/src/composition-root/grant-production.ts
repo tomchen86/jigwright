@@ -63,6 +63,14 @@ import {
   protectedBaseInitializationGrantTransitionDefinitions,
 } from '../modules/authority/protected-base-initialization-grant.ts';
 import { createProductionProtectedBaseInitializationPort } from './protected-base-initialization-production.ts';
+import {
+  createProductionChangeRoleAssignmentGrantPort,
+  observeCurrentChangeRoleAssignmentGrantForInvocation,
+} from './change-role-assignment-grant-production.ts';
+import {
+  changeRoleAssignmentGrantTransitionDefinitions,
+  createChangeRoleAssignmentGrantRequest,
+} from '../modules/provider-orchestration/change-role-assignment-grant.ts';
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -127,6 +135,7 @@ export function createProductionWorkflowGrantCoordinator(
   const runtimeRoot =
     loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
   const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
+  const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
   return createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
@@ -135,7 +144,23 @@ export function createProductionWorkflowGrantCoordinator(
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
       ...changeRoutingGrantTransitionDefinitions(cwd),
       ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),
+      ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
     ]),
+  );
+}
+
+export async function requestChangeRoleAssignmentGrant(
+  cwd: string,
+  invocationId: string,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observation = observeCurrentChangeRoleAssignmentGrantForInvocation(
+    repositoryRoot,
+    invocationId,
+  );
+  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+    createChangeRoleAssignmentGrantRequest(observation, proposedReason),
   );
 }
 

@@ -167,8 +167,9 @@ export function dispatchProviderWorker(
 /** The only dispatch injection seam; registered tests never launch a model. */
 export function createProviderWorkerDispatcherForTesting(
   host: ProviderDispatcherHost,
+  preflightOptions: ProviderWorkerOptions = {},
 ): (cwd: string, invocationId: string) => ProviderDispatchResult {
-  return createProviderWorkerDispatcher(host);
+  return createProviderWorkerDispatcher(host, preflightOptions);
 }
 
 /**
@@ -261,10 +262,7 @@ function runProviderWorkerWithExecution(
   runtimeFailureProtocolReceipt?: () => ProviderWrapperProtocolReceipt | null,
 ): ProviderWorkerResult | Promise<ProviderWorkerResult> {
   const context = loadInvestigationRuntimeContext(cwd);
-  let initial = readProviderInvocation(
-    context.runtime,
-    requestedInvocationId,
-  );
+  let initial = readProviderInvocation(context.runtime, requestedInvocationId);
   if (
     initial.state === 'leased' &&
     providerCompletionCandidateExists(context.runtime, initial.invocationId)
@@ -304,6 +302,10 @@ function runProviderWorkerWithExecution(
     context.runtime,
     initial.invocationId,
   );
+  // Grant admission precedes the provider lease. A missing role-assignment
+  // activation must leave this exact invocation prepared so Human Gate can
+  // authorize it and the same worker command can be retried.
+  resolveCurrentAssignment(context, initial.changeId, request, options);
   const claimInput = {
     workerId:
       options.workerId ??
@@ -520,13 +522,24 @@ function runProviderWorkerWithExecution(
     }
     return renderTerminal(completeWithReport(report, acceptanceBinding));
   } catch (error) {
+    if (
+      isRoleAssignmentGrantRequired(error) &&
+      isTerminalInvocation(
+        readProviderInvocation(context.runtime, request.invocationId),
+      )
+    ) {
+      throw error;
+    }
     return renderTerminal(failWithError(error, preparedAcceptanceBinding));
   } finally {
     if (releaseSynchronously) releaseWorkerFence();
   }
 }
 
-function createProviderWorkerDispatcher(host: ProviderDispatcherHost) {
+function createProviderWorkerDispatcher(
+  host: ProviderDispatcherHost,
+  preflightOptions: ProviderWorkerOptions = {},
+) {
   return (
     cwd: string,
     requestedInvocationId: string,
@@ -543,6 +556,11 @@ function createProviderWorkerDispatcher(host: ProviderDispatcherHost) {
         ExitCode.conflict,
       );
     }
+    preflightProviderWorkerAssignment(
+      cwd,
+      requestedInvocationId,
+      preflightOptions,
+    );
     const child = host.spawn(
       process.execPath,
       [
@@ -574,6 +592,27 @@ function createProviderWorkerDispatcher(host: ProviderDispatcherHost) {
       pid: child.pid!,
     };
   };
+}
+
+export function preflightProviderWorkerAssignment(
+  cwd: string,
+  requestedInvocationId: string,
+  options: ProviderWorkerOptions = {},
+): CurrentAgentRuntimeAssignmentV1 | null {
+  const context = loadInvestigationRuntimeContext(cwd);
+  const record = readProviderInvocation(context.runtime, requestedInvocationId);
+  if (record.state !== 'prepared') {
+    throw workflowError(
+      'PROVIDER_INVOCATION_DISPATCH_CONFLICT',
+      'Only the exact prepared provider invocation can enter AgentRuntime Grant preflight.',
+      ExitCode.conflict,
+    );
+  }
+  const request = readProviderInvocationRequest(
+    context.runtime,
+    requestedInvocationId,
+  );
+  return resolveCurrentAssignment(context, record.changeId, request, options);
 }
 
 function realDispatcherHost(): ProviderDispatcherHost {
@@ -756,6 +795,7 @@ function resolveCurrentAssignment(
   return createCurrentAgentRuntimeAssignmentV1({
     repositoryRoot: context.git.repositoryRoot,
     runtime: context.runtime,
+    grantRuntimeRoot: context.lifecycleRuntime.root,
     changeId,
     request,
     configFilePath,
@@ -904,6 +944,7 @@ function runTerminalFollowups(
         consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
       });
     } catch (error) {
+      if (isRoleAssignmentGrantRequired(error)) throw error;
       recordTerminalWarning(cwd, terminal, 'automatic-retry', error);
     }
   }
@@ -926,6 +967,7 @@ function runTerminalFollowups(
           : { faultInjector: options.schedulePump.faultInjector }),
       });
     } catch (error) {
+      if (isRoleAssignmentGrantRequired(error)) throw error;
       recordTerminalWarning(cwd, terminal, 'retry-schedule-pump', error);
     }
   }
@@ -941,6 +983,17 @@ function runTerminalFollowups(
   } catch (error) {
     recordTerminalWarning(cwd, terminal, 'retention-maintenance', error);
   }
+}
+
+function isRoleAssignmentGrantRequired(error: unknown): boolean {
+  return (
+    error instanceof WorkflowError &&
+    error.code === 'AGENT_RUNTIME_GRANT_REQUIRED'
+  );
+}
+
+function isTerminalInvocation(record: ProviderInvocationRecord): boolean {
+  return record.state === 'succeeded' || record.state === 'failed';
 }
 
 function recordTerminalWarning(

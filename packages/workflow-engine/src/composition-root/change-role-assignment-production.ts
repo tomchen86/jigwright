@@ -55,6 +55,10 @@ import {
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../runtime/storage-journal/change-role-assignment-store.ts';
 import {
+  readCompletedChangeRoleAssignmentGrantAuthority,
+  type CompletedChangeRoleAssignmentGrantAuthorityV1,
+} from '../runtime/storage-journal/change-role-assignment-grant-store.ts';
+import {
   claimProviderNativeSessionTurnV1,
   completeProviderNativeSessionTurnV1,
   readProviderNativeSessionChainV1,
@@ -71,6 +75,7 @@ const ROLE_BY_PURPOSE = Object.freeze({
 export type CurrentAgentRuntimeAssignmentInputV1 = Readonly<{
   repositoryRoot: string;
   runtime: InvestigationRuntimePaths;
+  grantRuntimeRoot: string;
   changeId: string;
   request: ProviderInvocationRequest;
   configFilePath: string;
@@ -94,6 +99,18 @@ type CurrentSources = Readonly<{
   policy: ReturnType<typeof loadAiAdapterPolicy>;
 }>;
 
+export type CurrentAgentRuntimeAssignmentPreGrantInputV1 = Omit<
+  CurrentAgentRuntimeAssignmentInputV1,
+  'grantRuntimeRoot' | 'runtime'
+>;
+
+type CurrentAgentRuntimeAssignmentPreGrantResolutionV1 = Readonly<{
+  repositoryRoot: string;
+  sources: CurrentSources;
+  dataAuthorization: ChangeRoleAssignmentDataAuthorizationV1;
+  candidate: ChangeRoleAssignmentRecordV1;
+}>;
+
 /**
  * Resolve and publish one launch-eligible V1 assignment from current Manifest,
  * host registry, and data-authorization facts. Grant-required or unavailable
@@ -103,6 +120,73 @@ type CurrentSources = Readonly<{
 export function createCurrentAgentRuntimeAssignmentV1(
   input: CurrentAgentRuntimeAssignmentInputV1,
 ): CurrentAgentRuntimeAssignmentV1 {
+  const { repositoryRoot, sources, dataAuthorization, candidate } =
+    resolveCurrentAgentRuntimeAssignmentPreGrant(input);
+  const record = createOrReadExactChangeRoleAssignmentRecordV1(
+    input.runtime,
+    candidate,
+    (snapshot) =>
+      assertPinnedCentralRoleProviderDefaultSnapshot(repositoryRoot, snapshot),
+    (snapshot) => assertPinnedAgentRolePlanV2Snapshot(repositoryRoot, snapshot),
+    (evidence) => verifyHostConfiguration(sources, evidence),
+    (evidence) =>
+      verifyProviderRegistry(input, sources, dataAuthorization, evidence),
+    (snapshot) => verifyDataAuthorization(input, sources, snapshot),
+    (evidence) => verifySessionCapabilities(input, sources, evidence),
+    (context) => verifyProtectedContext(input, sources, context),
+  );
+  const grantAuthority =
+    record.grantRequirement === null
+      ? null
+      : readCompletedChangeRoleAssignmentGrantAuthority(
+          input.runtime,
+          input.grantRuntimeRoot,
+          record,
+          input.request.invocationId,
+          input.request.repositoryId,
+        );
+  if (record.grantRequirement !== null && grantAuthority === null) {
+    throw workflowError(
+      'AGENT_RUNTIME_GRANT_REQUIRED',
+      'AgentRuntime assignment requires one exact Central Fail-Grant decision before provider launch.',
+      ExitCode.verification,
+      {
+        details: {
+          invocationId: input.request.invocationId,
+          changeId: input.changeId,
+          recordDigest: record.recordDigest,
+        },
+      },
+    );
+  }
+  const binding = projectRuntimeBinding(record, input.request);
+  return Object.freeze({
+    record,
+    binding,
+    nativeSessionTurn: createNativeSessionTurnController(
+      record,
+      binding,
+      input,
+      sources,
+      dataAuthorization,
+      grantAuthority,
+    ),
+  });
+}
+
+/**
+ * Recompute one current assignment candidate without publishing runtime state,
+ * consuming Grant authority, or creating a native provider session.
+ */
+export function resolveCurrentAgentRuntimeAssignmentPreGrantV1(
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
+): ChangeRoleAssignmentRecordV1 {
+  return resolveCurrentAgentRuntimeAssignmentPreGrant(input).candidate;
+}
+
+function resolveCurrentAgentRuntimeAssignmentPreGrant(
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
+): CurrentAgentRuntimeAssignmentPreGrantResolutionV1 {
   const repository = discoverRepository(input.repositoryRoot);
   const repositoryRoot = repository.repositoryRealPath;
   const manifest = readCurrentManifestFacts(repositoryRoot, input.changeId);
@@ -196,36 +280,12 @@ export function createCurrentAgentRuntimeAssignmentV1(
     providerRegistry,
     resolution: resolution.resolution,
   });
-  const record = createOrReadExactChangeRoleAssignmentRecordV1(
-    input.runtime,
-    candidate,
-    (snapshot) =>
-      assertPinnedCentralRoleProviderDefaultSnapshot(repositoryRoot, snapshot),
-    (snapshot) => assertPinnedAgentRolePlanV2Snapshot(repositoryRoot, snapshot),
-    (evidence) => verifyHostConfiguration(sources, evidence),
-    (evidence) =>
-      verifyProviderRegistry(input, sources, dataAuthorization, evidence),
-    (snapshot) => verifyDataAuthorization(input, sources, snapshot),
-    (evidence) => verifySessionCapabilities(input, sources, evidence),
-    (context) => verifyProtectedContext(input, sources, context),
-  );
-  if (record.grantRequirement !== null) {
-    throw assignmentFailure(
-      'AGENT_RUNTIME_GRANT_REQUIRED',
-      'AgentRuntime assignment requires an unavailable Central Grant transition.',
-    );
-  }
-  const binding = projectRuntimeBinding(record, input.request);
+  assertSourcesCurrent(input, sources);
   return Object.freeze({
-    record,
-    binding,
-    nativeSessionTurn: createNativeSessionTurnController(
-      record,
-      binding,
-      input,
-      sources,
-      dataAuthorization,
-    ),
+    repositoryRoot,
+    sources,
+    dataAuthorization,
+    candidate,
   });
 }
 
@@ -253,7 +313,7 @@ function readCurrentManifestFacts(
 }
 
 function currentDataAuthorization(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
   configuration: AgentProviderConfigSnapshot,
 ): ChangeRoleAssignmentDataAuthorizationV1 {
@@ -359,7 +419,7 @@ function currentSessionCapabilities(
 }
 
 function currentProtectedContext(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
 ): ChangeRoleAssignmentProtectedContextV1 {
   assertSourcesCurrent(input, sources);
@@ -477,7 +537,7 @@ function verifyHostConfiguration(
 }
 
 function verifyProviderRegistry(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
   _initialAuthorization: ChangeRoleAssignmentDataAuthorizationV1,
   evidence: ChangeRoleAssignmentProviderRegistryEvidenceV1,
@@ -500,7 +560,7 @@ function verifyProviderRegistry(
 }
 
 function verifyDataAuthorization(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
   snapshot: ChangeRoleAssignmentDataAuthorizationV1,
 ): ChangeRoleAssignmentDataAuthorizationV1 {
@@ -513,7 +573,7 @@ function verifyDataAuthorization(
 }
 
 function verifySessionCapabilities(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
   evidence: ChangeRoleAssignmentSessionCapabilityEvidenceV1,
 ): ChangeRoleAssignmentSessionCapabilityEvidenceV1 {
@@ -530,7 +590,7 @@ function verifySessionCapabilities(
 }
 
 function verifyProtectedContext(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
   context: ChangeRoleAssignmentProtectedContextV1,
 ): ChangeRoleAssignmentProtectedContextV1 {
@@ -538,9 +598,10 @@ function verifyProtectedContext(
 }
 
 function assertSourcesCurrent(
-  input: CurrentAgentRuntimeAssignmentInputV1,
+  input: CurrentAgentRuntimeAssignmentPreGrantInputV1,
   sources: CurrentSources,
 ): void {
+  assertAgentProviderConfigFileCurrent(sources.host);
   const currentManifest = readCurrentManifestFacts(
     input.repositoryRoot,
     input.changeId,
@@ -564,6 +625,7 @@ function createNativeSessionTurnController(
   input: CurrentAgentRuntimeAssignmentInputV1,
   sources: CurrentSources,
   initialAuthorization: ChangeRoleAssignmentDataAuthorizationV1,
+  grantAuthority: CompletedChangeRoleAssignmentGrantAuthorityV1 | null,
 ): AgentRuntimeNativeSessionTurnControllerV1 | null {
   const role = ROLE_BY_PURPOSE[input.request.purpose];
   const placement = record.resolution.placements.find(
@@ -609,6 +671,8 @@ function createNativeSessionTurnController(
       (snapshot) => verifyDataAuthorization(input, sources, snapshot),
       (evidence) => verifySessionCapabilities(input, sources, evidence),
       (context) => verifyProtectedContext(input, sources, context),
+      (assignment) =>
+        verifyCompletedAssignmentGrant(input, assignment, grantAuthority),
     );
 
   const nextAction = (): 'start' | 'resume' => {
@@ -672,6 +736,8 @@ function createNativeSessionTurnController(
         (snapshot) => verifyDataAuthorization(input, sources, snapshot),
         (evidence) => verifySessionCapabilities(input, sources, evidence),
         (context) => verifyProtectedContext(input, sources, context),
+        (assignment) =>
+          verifyCompletedAssignmentGrant(input, assignment, grantAuthority),
       );
       if (
         claimed.outcome !== 'claimed' ||
@@ -718,12 +784,39 @@ function createNativeSessionTurnController(
         (snapshot) => verifyDataAuthorization(input, sources, snapshot),
         (evidence) => verifySessionCapabilities(input, sources, evidence),
         (context) => verifyProtectedContext(input, sources, context),
+        (assignment) =>
+          verifyCompletedAssignmentGrant(input, assignment, grantAuthority),
       );
       return Object.freeze({
         completionDigest: completion.completionDigest,
       });
     },
   });
+}
+
+function verifyCompletedAssignmentGrant(
+  input: CurrentAgentRuntimeAssignmentInputV1,
+  assignment: ChangeRoleAssignmentRecordV1,
+  expected: CompletedChangeRoleAssignmentGrantAuthorityV1 | null,
+): void {
+  if (assignment.grantRequirement === null) return;
+  const current = readCompletedChangeRoleAssignmentGrantAuthority(
+    input.runtime,
+    input.grantRuntimeRoot,
+    assignment,
+    input.request.invocationId,
+    input.request.repositoryId,
+  );
+  if (
+    expected === null ||
+    current === null ||
+    canonicalJson(current) !== canonicalJson(expected)
+  ) {
+    throw assignmentFailure(
+      'AGENT_RUNTIME_GRANT_REQUIRED',
+      'Provider-native launch requires the exact completed Central role-assignment Grant.',
+    );
+  }
 }
 
 function projectRuntimeBinding(

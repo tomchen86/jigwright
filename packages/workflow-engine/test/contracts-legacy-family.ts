@@ -140,6 +140,8 @@ import './central-role-provider-default-cli.integration.test.ts';
 import './change-role-assignment.contract.test.ts';
 import './change-role-assignment-record.contract.test.ts';
 import './change-role-assignment-store.contract.test.ts';
+import './change-role-assignment-grant.contract.test.ts';
+import './role-assignment-fail-grant-cli.contract.test.ts';
 import './provider-native-session.contract.test.ts';
 import './provider-native-session-store.contract.test.ts';
 import './agent-role-plan.contract.test.ts';

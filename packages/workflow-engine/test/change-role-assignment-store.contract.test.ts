@@ -8,6 +8,18 @@ import test from 'node:test';
 import { parseAgentProviderConfigToml } from '@jigwright/agent-runtime';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
+import {
+  createGrantCoordinatorKernel,
+  type GrantApprovalSession,
+  type TrustedGrantPresentation,
+} from '../src/modules/authority/grant-coordinator.ts';
+import {
+  codeOwnedApprovalModuleRegistry,
+  HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
+  parseGrantPolicyV2,
+} from '../src/modules/authority/grant-policy.ts';
+import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   agentRolePlanV2Digest,
   renderAgentRolePlanV2,
@@ -33,12 +45,24 @@ import {
   type ChangeRoleAssignmentDataAuthorizationVerifierPort,
   type ChangeRoleAssignmentProtectedContextVerifierPort,
 } from '../src/modules/provider-orchestration/change-role-assignment.ts';
+import {
+  changeRoleAssignmentGrantTransitionDefinitions,
+  changeRoleAssignmentGrantRequirementDigestV1,
+  createChangeRoleAssignmentGrantRequest,
+  type ChangeRoleAssignmentGrantParametersV1,
+} from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
 import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
 import {
   createOrReadExactChangeRoleAssignmentRecordV1,
   inspectHistoricalChangeRoleAssignmentRecordV1,
   readChangeRoleAssignmentRecordV1,
 } from '../src/runtime/storage-journal/change-role-assignment-store.ts';
+import {
+  activateChangeRoleAssignmentGrant,
+  observeChangeRoleAssignmentGrantActivation,
+  readCompletedChangeRoleAssignmentGrantAuthority,
+} from '../src/runtime/storage-journal/change-role-assignment-grant-store.ts';
+import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
   readPinnedAgentRolePlanV2Snapshot,
@@ -57,6 +81,9 @@ const INPUT_MANIFEST_DIGEST = '4'.repeat(64);
 const RELEVANT_TARGET_DIGEST = '5'.repeat(64);
 const PATH_ROLE_SOURCE_DIGEST = '6'.repeat(64);
 const PROTECTED_POLICY_SOURCE_DIGEST = '7'.repeat(64);
+const GRANT_NOW = new Date('2030-01-02T03:04:05.000Z');
+const GRANT_CHALLENGE_ID = '11111111-1111-4111-8111-111111111111';
+const GRANT_OPERATION_ID = '22222222-2222-4222-8222-222222222222';
 
 function centralConfiguration(reviewerPreference: string | null = null) {
   return createCentralRoleProviderDefault({
@@ -331,6 +358,200 @@ function locations(
       value.changeId,
       `${value.planningGeneration}.json`,
     ),
+  };
+}
+
+test('completed Central Grant activates only the exact durable below-floor assignment', async () => {
+  const state = fixture();
+  try {
+    const expected = record(
+      state.primaryCentralSnapshot,
+      true,
+      state.primaryChangeOverrideSnapshot,
+    );
+    assert.notEqual(expected.grantRequirement, null);
+    createOrReadExactChangeRoleAssignmentRecordV1(
+      state.paths,
+      expected,
+      state.verifyCentralSnapshot,
+      state.verifyChangeOverrideSnapshot,
+      state.verifyHostConfiguration,
+      state.verifyProviderRegistry,
+      state.verifyDataAuthorization,
+      state.verifySessionCapabilities,
+      state.verifyProtectedContext,
+    );
+    const parameters: ChangeRoleAssignmentGrantParametersV1 = {
+      schemaVersion: 1,
+      kind: 'change-role-assignment-grant-activation.v1',
+      repositoryId: 'github:example/jigwright',
+      changeId: expected.changeId,
+      planningGeneration: expected.planningGeneration,
+      invocationId: 'provider-invocation-below-floor',
+      recordDigest: expected.recordDigest,
+      assignmentDigest: expected.assignmentDigest,
+      grantRequirementDigest: changeRoleAssignmentGrantRequirementDigestV1(
+        expected.grantRequirement!,
+      ),
+      exactRolePairs: expected.grantRequirement!.exactRolePairs,
+    };
+    const port = {
+      observe: (input: ChangeRoleAssignmentGrantParametersV1) =>
+        observeChangeRoleAssignmentGrantActivation(state.paths, input),
+      activate: (
+        input: Parameters<
+          ReturnType<typeof changeRoleAssignmentGrantTransitionDefinitions>[number]['execute']
+        >[0],
+      ) => activateChangeRoleAssignmentGrant(state.paths, input),
+    };
+    const ids = [GRANT_CHALLENGE_ID, GRANT_OPERATION_ID];
+    const coordinator = createGrantCoordinatorKernel({
+      paths: grantStorePaths(path.dirname(state.paths.root)),
+      registry: createTransitionRegistry(
+        changeRoleAssignmentGrantTransitionDefinitions(port),
+      ),
+      policy: parseGrantPolicyV2(roleAssignmentGrantPolicy(), {
+        registry: codeOwnedApprovalModuleRegistry(),
+      }),
+      now: () => new Date(GRANT_NOW),
+      randomUUID: () => ids.shift()!,
+      openApprovalSession: roleAssignmentGrantApprovalSession,
+      async withLifecycleOperation(_challengeId, operation) {
+        return operation(() => undefined);
+      },
+    });
+    const challenge = await coordinator.requestGrant(
+      createChangeRoleAssignmentGrantRequest(
+        port.observe(parameters),
+        'Approve only this exact below-floor role assignment.',
+      ),
+    );
+
+    assert.equal(
+      readCompletedChangeRoleAssignmentGrantAuthority(
+        state.paths,
+        path.dirname(state.paths.root),
+        expected,
+        parameters.invocationId,
+        parameters.repositoryId,
+      ),
+      null,
+    );
+    const completed = await coordinator.resolveChallenge(challenge.challengeId);
+    assert.equal(completed.outcome, 'completed');
+    const authority = readCompletedChangeRoleAssignmentGrantAuthority(
+      state.paths,
+      path.dirname(state.paths.root),
+      expected,
+      parameters.invocationId,
+      parameters.repositoryId,
+    );
+    assert.equal(authority?.challengeId, GRANT_CHALLENGE_ID);
+    assert.equal(authority?.assignmentRecordDigest, expected.recordDigest);
+    assert.equal(
+      authority?.grantRequirementDigest,
+      parameters.grantRequirementDigest,
+    );
+    assert.throws(
+      () =>
+        readCompletedChangeRoleAssignmentGrantAuthority(
+          state.paths,
+          path.dirname(state.paths.root),
+          expected,
+          parameters.invocationId,
+          'github:other/repository',
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_INVALID',
+    );
+    assert.equal(
+      readCompletedChangeRoleAssignmentGrantAuthority(
+        state.paths,
+        path.dirname(state.paths.root),
+        expected,
+        'provider-invocation-other',
+        parameters.repositoryId,
+      ),
+      null,
+    );
+
+    const drifted = {
+      ...expected,
+      assignmentDigest: 'f'.repeat(64),
+    } as ChangeRoleAssignmentRecordV1;
+    assert.throws(
+      () =>
+        readCompletedChangeRoleAssignmentGrantAuthority(
+          state.paths,
+          path.dirname(state.paths.root),
+          drifted,
+          parameters.invocationId,
+          parameters.repositoryId,
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_INVALID',
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+function roleAssignmentGrantPolicy() {
+  return {
+    schemaVersion: 2,
+    defaultProfile: 'local-presence',
+    profiles: {
+      'local-presence': {
+        requiredClaims: ['fresh-local-device-owner'],
+      },
+    },
+    approvalModules: [
+      {
+        moduleId: 'human-gate-macos',
+        version: '1',
+        allowedClaims: ['fresh-local-device-owner'],
+        configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
+      },
+    ],
+    legacyVerification: { maintainerPolicyV1: 'read-only' },
+  };
+}
+
+function roleAssignmentGrantApprovalSession(
+  presentation: TrustedGrantPresentation,
+): GrantApprovalSession {
+  return {
+    async collectDecision() {
+      return {
+        choiceId: presentation.choices[0]!.choiceId,
+        reasonCode: 'approve-exact-role-independence-exception',
+        reason: 'The exact assignment is acceptable for this current state.',
+        approvalMethod: 'human-presence',
+        sessionNonce: 'role-assignment-grant-session-0000000000000001',
+      };
+    },
+    async authenticate({ approvalSubjectDigest }) {
+      return [roleAssignmentGrantProof(approvalSubjectDigest)];
+    },
+    async close() {},
+  };
+}
+
+function roleAssignmentGrantProof(
+  subjectDigest: `sha256:${string}`,
+): VerifiedApprovalProof {
+  return {
+    moduleId: 'human-gate-macos',
+    version: '1',
+    claims: ['fresh-local-device-owner'],
+    approvalSubjectDigest: subjectDigest,
+    proofDigest: `sha256:${'9'.repeat(64)}`,
+    verifiedAt: GRANT_NOW.toISOString(),
+    identity: null,
   };
 }
 

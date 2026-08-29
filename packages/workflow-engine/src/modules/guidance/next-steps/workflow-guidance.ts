@@ -125,6 +125,8 @@ export function workflowResultNextSteps(
 ): readonly WorkflowNextStep[] {
   const commandId = typeof result.command === 'string' ? result.command : null;
   if (commandId === 'guide') return Object.freeze([]);
+  const failGrant = failGrantNextSteps(record(result.result), invocation);
+  if (failGrant !== null) return failGrant;
   const bindings = resultBindings(result, invocation);
   if (commandId === 'status') return statusNextSteps(result, bindings);
   if (commandId === 'review-diff') {
@@ -150,6 +152,47 @@ export function workflowResultNextSteps(
       ? entry.successors
       : ['guide'],
     bindings,
+  );
+}
+
+function failGrantNextSteps(
+  result: Readonly<Record<string, unknown>> | undefined,
+  invocation: readonly string[],
+): readonly WorkflowNextStep[] | null {
+  if (stringField(result, 'kind') !== 'workflow-fail-grant-required.v1') {
+    return null;
+  }
+  const input = record(result?.inputSchema);
+  const reportedRetry =
+    stringField(input, 'retryAfterDecision') ??
+    stringField(input, 'retryAfterPublication');
+  const retryCommand =
+    reportedRetry !== undefined &&
+    /^(?:pnpm workflow|jigwright)(?:\s|$)/u.test(reportedRetry)
+      ? reportedRetry
+      : invocation.length > 0
+        ? `pnpm workflow ${invocation.map((value) => shellQuote(value)).join(' ')}`
+        : undefined;
+  const commands: readonly (readonly [string | undefined, string])[] = [
+    [
+      stringField(input, 'inspectCommand'),
+      'Inspect the exact Central Fail-Grant challenge and its bound consequences.',
+    ],
+    [
+      stringField(input, 'decisionCommand'),
+      'Use Human Gate to approve or reject the exact registered transition.',
+    ],
+    [
+      retryCommand,
+      'Retry the same current operation only after the Grant transition completes.',
+    ],
+  ];
+  return Object.freeze(
+    commands
+      .filter(
+        (entry): entry is readonly [string, string] => entry[0] !== undefined,
+      )
+      .map(([command, why]) => Object.freeze({ command, why })),
   );
 }
 

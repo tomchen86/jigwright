@@ -451,6 +451,31 @@ test('a below-floor assignment cannot create provider-native launch scope before
   );
 });
 
+test('a below-floor assignment requires one exact authority verifier before deriving launch scope', () => {
+  const record = assignmentRecord({ belowFloor: true });
+  const slot = slotFor(record, 'builder');
+  let verificationCalls = 0;
+  const scope = deriveProviderNativeSessionScopeV1(
+    record,
+    slot.sessionSlotId,
+    (candidate) => {
+      verificationCalls += 1;
+      assert.equal(candidate.recordDigest, record.recordDigest);
+      assert.equal(candidate.assignmentDigest, record.assignmentDigest);
+    },
+  );
+  assert.equal(verificationCalls, 1);
+  assert.equal(scope.assignmentRecordDigest, record.recordDigest);
+
+  assert.throws(
+    () =>
+      deriveProviderNativeSessionScopeV1(record, slot.sessionSlotId, () => {
+        throw new Error('exact completed role-assignment Grant is stale');
+      }),
+    /exact completed role-assignment Grant is stale/,
+  );
+});
+
 test('scope and public terminal records bind the exact assignment-wide slot without raw native identity', () => {
   const record = assignmentRecord();
   const builderSlot = slotFor(record, 'builder');

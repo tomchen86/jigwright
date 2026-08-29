@@ -29,6 +29,7 @@ import {
   type ProviderNativeSessionHandleV1,
   type ProviderNativeSessionHandleV2,
   type ProviderNativeSessionScopeV1,
+  type ProviderNativeSessionAssignmentAuthorityVerifierPort,
   type ProviderNativeTurnBindingV1,
   assertProviderNativeSessionClaimV1,
   assertProviderNativeSessionClaimV2,
@@ -291,6 +292,7 @@ export function claimProviderNativeSessionTurnV1(
   verifyDataAuthorization: ChangeRoleAssignmentDataAuthorizationVerifierPort,
   verifySessionCapability: ChangeRoleAssignmentSessionCapabilityVerifierPort,
   verifyProtectedContext: ChangeRoleAssignmentProtectedContextVerifierPort,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ClaimProviderNativeSessionTurnResultV1 {
   const input = assertClaimInput(candidate);
   const scope = loadScope(
@@ -303,6 +305,7 @@ export function claimProviderNativeSessionTurnV1(
     verifyDataAuthorization,
     verifySessionCapability,
     verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
   return withScopeLock(paths, scope, () => {
     const currentScope = assertCurrentScope(
@@ -316,6 +319,7 @@ export function claimProviderNativeSessionTurnV1(
       verifyDataAuthorization,
       verifySessionCapability,
       verifyProtectedContext,
+      verifyAssignmentAuthority,
     );
     const chain = readChainForScope(paths, currentScope);
     if (chain.state === 'terminal-unusable') throw terminalUnusable();
@@ -393,6 +397,7 @@ export function completeProviderNativeSessionTurnV1(
   verifyDataAuthorization: ChangeRoleAssignmentDataAuthorizationVerifierPort,
   verifySessionCapability: ChangeRoleAssignmentSessionCapabilityVerifierPort,
   verifyProtectedContext: ChangeRoleAssignmentProtectedContextVerifierPort,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ProviderNativeSessionCompletionV1 {
   const input = assertCompletionInput(candidate);
   const scope = loadScope(
@@ -405,6 +410,7 @@ export function completeProviderNativeSessionTurnV1(
     verifyDataAuthorization,
     verifySessionCapability,
     verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
   return withScopeLock(paths, scope, () => {
     const currentScope = assertCurrentScope(
@@ -418,6 +424,7 @@ export function completeProviderNativeSessionTurnV1(
       verifyDataAuthorization,
       verifySessionCapability,
       verifyProtectedContext,
+      verifyAssignmentAuthority,
     );
     const chain = readChainForScope(paths, currentScope);
     const turnIndex = chain.turns.findIndex(
@@ -494,6 +501,7 @@ export function readProviderNativeSessionChainV1(
   verifyDataAuthorization: ChangeRoleAssignmentDataAuthorizationVerifierPort,
   verifySessionCapability: ChangeRoleAssignmentSessionCapabilityVerifierPort,
   verifyProtectedContext: ChangeRoleAssignmentProtectedContextVerifierPort,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ProviderNativeSessionChainV1 {
   const identity = assertChainIdentity({
     changeId: requestedChangeId,
@@ -511,6 +519,7 @@ export function readProviderNativeSessionChainV1(
     verifyDataAuthorization,
     verifySessionCapability,
     verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
   return withScopeLock(paths, scope, () => {
     const currentScope = assertCurrentScope(
@@ -524,6 +533,7 @@ export function readProviderNativeSessionChainV1(
       verifyDataAuthorization,
       verifySessionCapability,
       verifyProtectedContext,
+      verifyAssignmentAuthority,
     );
     return readChainForScope(paths, currentScope);
   });
@@ -2313,6 +2323,7 @@ function assertCurrentScope(
   verifyDataAuthorization: ChangeRoleAssignmentDataAuthorizationVerifierPort,
   verifySessionCapability: ChangeRoleAssignmentSessionCapabilityVerifierPort,
   verifyProtectedContext: ChangeRoleAssignmentProtectedContextVerifierPort,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ProviderNativeSessionScopeV1 {
   const current = loadScope(
     paths,
@@ -2324,6 +2335,7 @@ function assertCurrentScope(
     verifyDataAuthorization,
     verifySessionCapability,
     verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
   if (
     current.scopeKey !== expected.scopeKey ||
@@ -2349,6 +2361,7 @@ function loadScope(
   verifyDataAuthorization: ChangeRoleAssignmentDataAuthorizationVerifierPort,
   verifySessionCapability: ChangeRoleAssignmentSessionCapabilityVerifierPort,
   verifyProtectedContext: ChangeRoleAssignmentProtectedContextVerifierPort,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ): ProviderNativeSessionScopeV1 {
   const assignment = readChangeRoleAssignmentRecordV1(
     paths,
@@ -2366,7 +2379,11 @@ function loadScope(
   if (assignment.recordDigest !== input.assignmentRecordDigest) {
     throw storeConflict();
   }
-  return deriveProviderNativeSessionScopeV1(assignment, input.sessionSlotId);
+  return deriveProviderNativeSessionScopeV1(
+    assignment,
+    input.sessionSlotId,
+    verifyAssignmentAuthority,
+  );
 }
 
 function withScopeLock<T>(

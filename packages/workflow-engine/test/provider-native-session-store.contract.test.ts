@@ -45,6 +45,7 @@ import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../src/runtime/st
 import {
   createProviderNativeSessionClaimV2,
   createProviderNativeTurnBindingV1,
+  type ProviderNativeSessionAssignmentAuthorityVerifierPort,
   type ProviderNativeTurnBindingV1,
 } from '../src/modules/provider-orchestration/provider-native-session.ts';
 import {
@@ -476,6 +477,7 @@ function claimInput(
 function claimTurn(
   state: ReturnType<typeof fixture>,
   input: ReturnType<typeof claimInput>,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ) {
   return claimProviderNativeSessionTurnV1(
     state.paths,
@@ -487,6 +489,7 @@ function claimTurn(
     state.verifyDataAuthorization,
     state.verifySessionCapabilities,
     state.verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
 }
 
@@ -525,6 +528,7 @@ function claimTurnV2(
 function completeTurn(
   state: ReturnType<typeof fixture>,
   input: Parameters<typeof completeProviderNativeSessionTurnV1>[1],
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
 ) {
   return completeProviderNativeSessionTurnV1(
     state.paths,
@@ -536,6 +540,7 @@ function completeTurn(
     state.verifyDataAuthorization,
     state.verifySessionCapabilities,
     state.verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
 }
 
@@ -574,7 +579,10 @@ function completeTurnV2(
   );
 }
 
-function readChain(state: ReturnType<typeof fixture>) {
+function readChain(
+  state: ReturnType<typeof fixture>,
+  verifyAssignmentAuthority?: ProviderNativeSessionAssignmentAuthorityVerifierPort,
+) {
   return readProviderNativeSessionChainV1(
     state.paths,
     state.assignment.changeId,
@@ -588,6 +596,7 @@ function readChain(state: ReturnType<typeof fixture>) {
     state.verifyDataAuthorization,
     state.verifySessionCapabilities,
     state.verifyProtectedContext,
+    verifyAssignmentAuthority,
   );
 }
 
@@ -1617,6 +1626,59 @@ test('store refuses a below-floor assignment before publishing any native-sessio
     assert.equal(
       fs.existsSync(path.join(state.paths.root, 'provider-native-sessions')),
       false,
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('V1 native-session claim, read, and completion reverify exact role-assignment Grant authority', () => {
+  const state = fixture({ belowFloor: true });
+  try {
+    let verificationCalls = 0;
+    const verifyAssignmentAuthority: ProviderNativeSessionAssignmentAuthorityVerifierPort =
+      (assignment) => {
+        verificationCalls += 1;
+        assert.equal(assignment.recordDigest, state.assignment.recordDigest);
+        assert.equal(
+          assignment.assignmentDigest,
+          state.assignment.assignmentDigest,
+        );
+      };
+    const claim = claimTurn(
+      state,
+      claimInput(state, null, 'below-floor-exact-authority'),
+      verifyAssignmentAuthority,
+    );
+    assert.equal(claim.outcome, 'claimed');
+    assert.ok(claim.binding);
+    const callsAfterClaim = verificationCalls;
+    assert.ok(callsAfterClaim >= 2);
+
+    const chain = readChain(state, verifyAssignmentAuthority);
+    assert.equal(chain.state, 'claimed');
+    assert.ok(verificationCalls > callsAfterClaim);
+    const callsAfterRead = verificationCalls;
+
+    completeTurn(
+      state,
+      {
+        changeId: state.assignment.changeId,
+        planningGeneration: state.assignment.planningGeneration,
+        assignmentRecordDigest: state.assignment.recordDigest,
+        sessionSlotId: state.slot.sessionSlotId,
+        claimDigest: claim.claim.claimDigest,
+        terminal: successfulTerminal(
+          claim.binding!,
+          'provider-native-below-floor-exact-authority',
+        ),
+      },
+      verifyAssignmentAuthority,
+    );
+    assert.ok(verificationCalls > callsAfterRead);
+    assert.equal(
+      readChain(state, verifyAssignmentAuthority).state,
+      'resumable',
     );
   } finally {
     state.cleanup();
