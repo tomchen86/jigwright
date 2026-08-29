@@ -761,7 +761,18 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
     );
     assert.deepEqual(snapshotTree(runtimeRoot(repository)), crashGapSnapshot);
 
-    const secondResult = reconcileTaskDiffReview(repository, session.sessionId);
+    const recovered = runCli(repository, [
+      'review-diff',
+      'reconcile',
+      session.sessionId,
+      '--json',
+    ]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    const secondResult = (
+      JSON.parse(recovered.stdout) as {
+        result: ReturnType<typeof reconcileTaskDiffReview>;
+      }
+    ).result;
     assert.equal(secondResult.state, 'satisfied');
     if (!('review' in secondResult)) throw new Error('review required');
     const commonSupersessions = listTaskDiffReviewLineageSupersessions(runtime);

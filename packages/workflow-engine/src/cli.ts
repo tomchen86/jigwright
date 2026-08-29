@@ -2631,7 +2631,28 @@ function dispatch(args: string[], cwd: string): CommandResult {
         };
       }
       if (rest.length === 2 && rest[0] === 'reconcile') {
-        const status = inspectTaskDiffReviewStatus(cwd, rest[1]);
+        let status;
+        try {
+          status = inspectTaskDiffReviewStatus(cwd, rest[1]);
+        } catch (error) {
+          if (
+            !(error instanceof WorkflowError) ||
+            error.code !==
+              'TASK_DIFF_REVIEW_SUPERSESSION_RECONCILIATION_REQUIRED'
+          ) {
+            throw error;
+          }
+          return {
+            command,
+            ok: true,
+            result: reconcileTaskDiffReview(cwd, rest[1], {
+              collaborationGrantValidation: {
+                consumedRoleResultReplay:
+                  productionConsumedRoleResultReplayPort,
+              },
+            }),
+          };
+        }
         const grantSelection =
           'assignment' in status && 'grantId' in status.assignment
             ? taskDiffCollaborationGrantSelection(
