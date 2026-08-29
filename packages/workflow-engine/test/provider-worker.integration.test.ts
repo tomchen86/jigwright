@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
+import { approvalSubjectDigest } from '../src/modules/authority/grant-core.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import {
   HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
@@ -49,6 +50,7 @@ import {
   observeCurrentChangeRoleAssignmentGrantForInvocation,
 } from '../src/composition-root/change-role-assignment-grant-production.ts';
 import {
+  assertChangeRoleAssignmentGrantParameters,
   changeRoleAssignmentGrantTransitionDefinitions,
   createChangeRoleAssignmentGrantRequest,
 } from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
@@ -81,7 +83,10 @@ import {
   storeProviderExecutionPolicySnapshot,
   type PlanReviewManifest,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
-import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  grantStorePaths,
+  readGrantRecord,
+} from '../src/runtime/storage-journal/grant-store.ts';
 import {
   ensureProviderPromptContext,
   providerPromptContextStoreRoot,
@@ -1464,6 +1469,24 @@ test('below-floor current role assignment blocks worker claim and detached spawn
         invocationId,
         { configFilePath: agentProviderConfigPath, platform: 'darwin' },
       );
+    const grantRequest = createChangeRoleAssignmentGrantRequest(
+      grantObservation,
+      'Authorize only this exact current below-floor assignment.',
+    );
+    const grantParameters = assertChangeRoleAssignmentGrantParameters(
+      grantRequest.candidates[0]!.parameters,
+    );
+    assert.throws(
+      () =>
+        grantPort.observe({
+          ...grantParameters,
+          repositoryId: 'a-different-immutable-repository',
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
+    );
     const ids = [
       '11111111-1111-4111-8111-111111111111',
       '22222222-2222-4222-8222-222222222222',
@@ -1528,14 +1551,57 @@ test('below-floor current role assignment blocks worker claim and detached spawn
         return operation(() => undefined);
       },
     });
-    const challenge = await coordinator.requestGrant(
-      createChangeRoleAssignmentGrantRequest(
-        grantObservation,
-        'Authorize only this exact current below-floor assignment.',
-      ),
-    );
+    const challenge = await coordinator.requestGrant(grantRequest);
     const completed = await coordinator.resolveChallenge(challenge.challengeId);
     assert.equal(completed.outcome, 'completed');
+
+    const completedRecord = readGrantRecord(
+      grantStorePaths(path.dirname(runtime.root)),
+      challenge.challengeId,
+    );
+    assert.equal(completedRecord.state, 'completed');
+    if (completedRecord.state !== 'completed') {
+      assert.fail('expected completed role-assignment Grant');
+    }
+    const hostConfiguration = fs.readFileSync(agentProviderConfigPath);
+    fs.unlinkSync(agentProviderConfigPath);
+    try {
+      const recoveredActivation = grantPort.activate({
+        parameters: grantParameters,
+        approvalSubject: completedRecord.approvalSubject,
+        approvalSubjectDigest: approvalSubjectDigest(
+          completedRecord.approvalSubject,
+        ),
+        challengeId: completedRecord.challenge.challengeId,
+        operationId: completedRecord.operationId,
+        recovered: true,
+        assertLifecycleOwned() {},
+      });
+      assert.equal(
+        recoveredActivation.activation?.challengeId,
+        challenge.challengeId,
+      );
+      assert.throws(
+        () =>
+          grantPort.activate({
+            parameters: grantParameters,
+            approvalSubject: completedRecord.approvalSubject,
+            approvalSubjectDigest: approvalSubjectDigest(
+              completedRecord.approvalSubject,
+            ),
+            challengeId: completedRecord.challenge.challengeId,
+            operationId: '55555555-5555-4555-8555-555555555555',
+            recovered: true,
+            assertLifecycleOwned() {},
+          }),
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_CONFLICT',
+      );
+    } finally {
+      fs.writeFileSync(agentProviderConfigPath, hostConfiguration);
+    }
 
     const submission = {
       schemaVersion: 2 as const,

@@ -753,7 +753,7 @@
     {
       "path": "src/composition-root/change-role-assignment-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:9a2c8613fb4f7a3f5d43a86c4cdd87cfecab6d03a0fd1b1ebf418c9ad6a4dde8"
+      "digest": "sha256:3cce24c1bb39749adce8779fabdd58c2fdaec7f1f6b7404ff0a3a595da2185dc"
     },
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
@@ -1523,7 +1523,7 @@
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-grant.ts",
       "mode": "100644",
-      "digest": "sha256:fa01e3cb6e79d9065539d7635b5ca6feb1394519ee6369d6c3f236e90ae9efc2"
+      "digest": "sha256:141837a063a899c66e0524ef9887e48e3a0540eea29814ecff3fc357e3c0cd1d"
     },
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-record.ts",

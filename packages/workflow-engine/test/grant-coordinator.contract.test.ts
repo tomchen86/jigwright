@@ -437,6 +437,7 @@ test('role-assignment prepared recovery terminalizes production current-source d
   await withRuntime(async (runtimeRoot) => {
     let drifted = false;
     let activationAttempts = 0;
+    let activation: ChangeRoleAssignmentGrantObservationV1['activation'] = null;
     const observation: ChangeRoleAssignmentGrantObservationV1 = Object.freeze({
       schemaVersion: 1,
       kind: 'change-role-assignment-grant-observation.v1',
@@ -452,6 +453,9 @@ test('role-assignment prepared recovery terminalizes production current-source d
     });
     const definition = changeRoleAssignmentGrantTransitionDefinitions({
       observe() {
+        if (activation !== null) {
+          return Object.freeze({ ...observation, activation });
+        }
         if (drifted) {
           try {
             throw workflowError(
@@ -465,12 +469,28 @@ test('role-assignment prepared recovery terminalizes production current-source d
         }
         return observation;
       },
-      activate() {
+      activate(context) {
         activationAttempts += 1;
-        throw new Error('simulated role-assignment activation crash');
+        if (activationAttempts === 1) {
+          throw new Error('simulated role-assignment activation crash');
+        }
+        activation = Object.freeze({
+          challengeId: context.challengeId,
+          challengeDigest: context.approvalSubject.challengeDigest,
+          operationId: context.operationId,
+          approvalSubjectDigest: context.approvalSubjectDigest,
+        });
+        return Object.freeze({ ...observation, activation });
       },
     })[0]!;
-    const ids = [CHALLENGE_ID, OPERATION_ID];
+    const freshChallengeId = '33333333-3333-4333-8333-333333333333';
+    const freshOperationId = '44444444-4444-4444-8444-444444444444';
+    const ids = [
+      CHALLENGE_ID,
+      OPERATION_ID,
+      freshChallengeId,
+      freshOperationId,
+    ];
     const coordinator = createGrantCoordinatorKernel({
       paths: grantStorePaths(runtimeRoot),
       registry: createTransitionRegistry([definition]),
@@ -531,6 +551,121 @@ test('role-assignment prepared recovery terminalizes production current-source d
       'failed',
     );
     assert.doesNotThrow(() => assertGrantLifecycleBarrier(runtimeRoot));
+
+    drifted = false;
+    const fresh = await coordinator.requestGrant(
+      createChangeRoleAssignmentGrantRequest(
+        observation,
+        'Authorize the repaired exact current role assignment.',
+      ),
+    );
+    assert.equal(fresh.challengeId, freshChallengeId);
+    const completed = await coordinator.resolveChallenge(freshChallengeId);
+    assert.equal(completed.outcome, 'completed');
+    assert.equal(activationAttempts, 2);
+    assert.equal(
+      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      'failed',
+    );
+    assert.equal(
+      readGrantRecord(grantStorePaths(runtimeRoot), freshChallengeId).state,
+      'completed',
+    );
+  });
+});
+
+test('role-assignment recovery keeps its barrier when invocation advancement has unknown effect', async () => {
+  await withRuntime(async (runtimeRoot) => {
+    let invocationAdvanced = false;
+    let activationAttempts = 0;
+    const observation: ChangeRoleAssignmentGrantObservationV1 = Object.freeze({
+      schemaVersion: 1,
+      kind: 'change-role-assignment-grant-observation.v1',
+      repositoryId: 'github:example/jigwright',
+      changeId: 'role-grant-unknown-effect',
+      planningGeneration: '5'.repeat(64),
+      invocationId: 'provider-invocation-role-grant-unknown-effect',
+      recordDigest: '6'.repeat(64),
+      assignmentDigest: '7'.repeat(64),
+      grantRequirementDigest: '8'.repeat(64),
+      exactRolePairs: Object.freeze(['author-reviewer'] as const),
+      activation: null,
+    });
+    const definition = changeRoleAssignmentGrantTransitionDefinitions({
+      observe() {
+        if (invocationAdvanced) {
+          throw workflowError(
+            'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_NOT_PREPARED',
+            'The provider invocation advanced and its effect is unknown.',
+            ExitCode.staleState,
+          );
+        }
+        return observation;
+      },
+      activate() {
+        activationAttempts += 1;
+        throw new Error('simulated role-assignment activation crash');
+      },
+    })[0]!;
+    const ids = [CHALLENGE_ID, OPERATION_ID];
+    const coordinator = createGrantCoordinatorKernel({
+      paths: grantStorePaths(runtimeRoot),
+      registry: createTransitionRegistry([definition]),
+      policy: parseGrantPolicyV2(policyInput(), {
+        registry: codeOwnedApprovalModuleRegistry(),
+      }),
+      now: () => new Date(NOW),
+      randomUUID: () => ids.shift()!,
+      challengeTtlMs: 10 * 60_000,
+      openApprovalSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              reasonCode: 'approve-exact-role-independence-exception',
+              reason: 'Approve this exact current role assignment only.',
+              approvalMethod: 'human-presence' as const,
+              sessionNonce: 'nonce-role-grant-unknown-effect-000000000001',
+            };
+          },
+          async authenticate(subject) {
+            return [humanProof(subject.approvalSubjectDigest)];
+          },
+          async close() {},
+        };
+      },
+      async withLifecycleOperation(_challengeId, operation) {
+        return operation(() => undefined);
+      },
+    });
+    await coordinator.requestGrant(
+      createChangeRoleAssignmentGrantRequest(
+        observation,
+        'Authorize only this exact current role assignment.',
+      ),
+    );
+    await assert.rejects(
+      coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated role-assignment activation crash/,
+    );
+
+    invocationAdvanced = true;
+    await assert.rejects(
+      coordinator.recoverChallenge(CHALLENGE_ID),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_NOT_PREPARED',
+    );
+    assert.equal(activationAttempts, 1);
+    assert.equal(
+      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      'prepared',
+    );
+    assert.throws(
+      () => assertGrantLifecycleBarrier(runtimeRoot),
+      (error) => isWorkflowError(error, 'GRANT_TRANSITION_RECOVERY_REQUIRED'),
+    );
   });
 });
 

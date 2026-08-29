@@ -87,6 +87,31 @@ export function createProductionChangeRoleAssignmentGrantPort(
       const parameters = assertChangeRoleAssignmentGrantParameters(
         transitionContext.parameters,
       );
+      const existing = observeChangeRoleAssignmentGrantActivation(
+        context.runtime,
+        parameters,
+      );
+      if (existing.activation !== null) {
+        // The activation is the exact effect receipt. Its store reader already
+        // binds every immutable parameter; recovery may accept it only for the
+        // same Grant operation and must not re-evaluate mutable sources after
+        // the effect exists.
+        if (
+          existing.activation.challengeId !== transitionContext.challengeId ||
+          existing.activation.challengeDigest !==
+            transitionContext.approvalSubject.challengeDigest ||
+          existing.activation.operationId !== transitionContext.operationId ||
+          existing.activation.approvalSubjectDigest !==
+            transitionContext.approvalSubjectDigest
+        ) {
+          throw workflowError(
+            'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_CONFLICT',
+            'A different exact role-assignment Grant activation already exists.',
+            ExitCode.conflict,
+          );
+        }
+        return existing;
+      }
       try {
         assertPreparedInvocationMatches(
           repositoryRoot,
@@ -202,17 +227,23 @@ function assertPreparedInvocationMatches(
   request: ReturnType<typeof readProviderInvocationRequest>,
   options: ChangeRoleAssignmentGrantProductionOptions,
 ): void {
+  if (invocation.state !== 'prepared') {
+    throw workflowError(
+      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_NOT_PREPARED',
+      'The exact provider invocation is no longer prepared for Central Grant activation.',
+      ExitCode.staleState,
+    );
+  }
   if (
-    invocation.state !== 'prepared' ||
     invocation.invocationId !== parameters.invocationId ||
     invocation.changeId !== parameters.changeId ||
     request.invocationId !== parameters.invocationId ||
     request.repositoryId !== parameters.repositoryId
   ) {
     throw workflowError(
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-      'The prepared provider invocation changed after the Central Grant challenge was issued.',
-      ExitCode.staleState,
+      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
+      'The immutable provider invocation identity does not match the Central Grant parameters.',
+      ExitCode.verification,
     );
   }
   if (

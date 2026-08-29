@@ -198,9 +198,10 @@ export function changeRoleAssignmentGrantTransitionDefinitions(
           before.activation !== null &&
           !activationMatchesContext(before.activation, context)
         ) {
-          throw grantTransitionPreconditionChanged(
-            'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-            'The exact role assignment activation changed before Central Grant execution.',
+          throw workflowError(
+            'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_CONFLICT',
+            'A different durable role-assignment activation already exists.',
+            ExitCode.conflict,
           );
         }
         context.assertLifecycleOwned();
@@ -376,9 +377,10 @@ function assertMatchingObservation(
     canonicalJson(parametersFromObservation(observation)) !==
     canonicalJson(parameters)
   ) {
-    throw grantTransitionPreconditionChanged(
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-      'The exact role assignment changed after the Central Grant challenge was issued.',
+    throw workflowError(
+      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
+      'The observed role-assignment activation does not match the immutable invocation bound to this Central Grant.',
+      ExitCode.verification,
     );
   }
   return observation;
@@ -442,13 +444,7 @@ function roleAssignmentPreconditionCode(error: unknown): string | null {
     error instanceof Error && 'code' in error && typeof error.code === 'string'
       ? error.code
       : null;
-  if (
-    code !== null &&
-    new Set([
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_NOT_PREPARED',
-    ]).has(code)
-  ) {
+  if (code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED') {
     return code;
   }
   return null;
