@@ -43,8 +43,8 @@ function validPayload(): AuthorityAttestationPayload {
   return {
     version: 1,
     grantId: PRIMARY_GRANT,
-    repositoryId: 'github:R_kgDOOotVag',
-    repositoryOrigin: 'https://github.com/tomchen86/expense-app.git',
+    repositoryId: 'github:R_kgDOUHqyNQ',
+    repositoryOrigin: 'https://github.com/tomchen86/jigwright.git',
     protectedBranch: 'main',
     originalCommit: oid('a'),
     mainCommit: oid('b'),

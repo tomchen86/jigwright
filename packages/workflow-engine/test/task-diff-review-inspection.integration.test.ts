@@ -103,7 +103,7 @@ test('review-diff inspect derives one exact checked candidate subject without re
     assert.deepEqual(replay, first);
     assert.equal(first.changeId, 'demo-change');
     assert.equal(first.taskId, '1.1');
-    assert.equal(first.repositoryId, 'github:R_kgDOOotVag');
+    assert.equal(first.repositoryId, 'github:R_kgDOUHqyNQ');
     assert.equal(first.reviewRequirement.required, true);
     assert.equal(first.reviewRequirement.basis, 'risk-role');
     assert.match(first.subjectDigest, /^[0-9a-f]{64}$/);
