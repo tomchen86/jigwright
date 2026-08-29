@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawn, type ChildProcess } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -145,6 +146,48 @@ test('pinning provider-runtime evidence after its physical artifacts were pruned
           { signer: fixture.mandate.signer },
         ),
       (error) => isWorkflowError(error, 'RETENTION_EVIDENCE_ALREADY_PRUNED'),
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('a malformed human-pin catalog blocks pruning without deleting provider runtime', () => {
+  const fixture = preparePrunableProviderRuntime(
+    'retention-malformed-pin-catalog',
+  );
+  const statePath = path.join(
+    fixture.runtime.root,
+    'execution-governance-store',
+    'states',
+    `${crypto.createHash('sha256').update(fixture.workflowId).digest('hex')}.json`,
+  );
+  const promptPath = path.join(
+    fixture.runtime.invocations,
+    fixture.prunableInvocationId,
+    'runtime',
+    'prompt.json',
+  );
+  try {
+    assert.equal(fs.lstatSync(statePath).isFile(), true);
+    assert.equal(fs.lstatSync(promptPath).isFile(), true);
+    fs.writeFileSync(statePath, '{"malformed":true}\n', { mode: 0o600 });
+
+    assert.throws(
+      () =>
+        pruneProviderRuntime(fixture.repository, {
+          limit: 10,
+          now: fixture.retentionNow,
+        }),
+      (error) => isWorkflowError(error, 'EXECUTION_GOVERNANCE_STORE_UNSAFE'),
+    );
+    assert.equal(fs.lstatSync(promptPath).isFile(), true);
+    assert.equal(
+      readProviderRetentionReceipt(
+        fixture.runtime,
+        fixture.prunableInvocationId,
+      ),
+      null,
     );
   } finally {
     fixture.dispose();

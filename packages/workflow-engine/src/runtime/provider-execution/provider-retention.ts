@@ -170,9 +170,10 @@ export type ProviderRetentionMetrics = Readonly<{
 }>;
 
 /**
- * Reads the human pins recorded for one workflow. A missing or unreadable
- * catalog means no pin has been recorded, which leaves the ordinary schedule
- * in charge rather than silently protecting or deleting anything.
+ * Reads the human pins recorded for one workflow. Only a genuinely absent
+ * workflow catalog means no pin has been recorded. An unreadable or invalid
+ * catalog must block physical pruning because treating uncertain authority as
+ * an empty pin set could delete evidence that a human retained.
  */
 function readHumanPinnedEvidenceIds(
   storeRoot: string,
@@ -181,8 +182,14 @@ function readHumanPinnedEvidenceIds(
   let records: readonly EvidenceRetentionRecord[];
   try {
     records = inspectDurableRetentionCatalog(storeRoot, workflowId).records;
-  } catch {
-    return new Set();
+  } catch (error) {
+    if (
+      error instanceof WorkflowError &&
+      error.code === 'EXECUTION_CONTEXT_NOT_FOUND'
+    ) {
+      return new Set();
+    }
+    throw error;
   }
   return new Set(
     records
@@ -1152,7 +1159,16 @@ function readInvocationBinding(
       return undefined;
     }
     return { state, attempt: attempts[0]!, record, context };
-  } catch {
+  } catch (error) {
+    // A missing or stale binding retains evidence as unprovable. Corruption of
+    // the same governance state that owns human pins is different: swallowing
+    // it here would later model an uncertain catalog as an empty pin set.
+    if (
+      error instanceof WorkflowError &&
+      error.code === 'EXECUTION_GOVERNANCE_STORE_UNSAFE'
+    ) {
+      throw error;
+    }
     return undefined;
   }
 }

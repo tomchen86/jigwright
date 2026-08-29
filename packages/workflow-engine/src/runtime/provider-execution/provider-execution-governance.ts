@@ -340,8 +340,14 @@ export function inspectProviderPromptContextRetentionBinding(
   let current: ReturnType<typeof inspectDurableEpochContextStore>;
   try {
     current = inspectDurableEpochContextStore(storeRoot, workflowId);
-  } catch {
-    return null;
+  } catch (error) {
+    if (
+      error instanceof WorkflowError &&
+      error.code === 'EXECUTION_CONTEXT_NOT_FOUND'
+    ) {
+      return null;
+    }
+    throw error;
   }
   const candidateEpochs = new Set<number>([
     current.workflow.currentEpoch,
