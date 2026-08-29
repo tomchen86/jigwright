@@ -263,9 +263,9 @@ function assertPreparedInvocationMatches(
   );
   if (historical === null) {
     throw workflowError(
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-      'The exact role assignment is no longer durable.',
-      ExitCode.staleState,
+      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
+      'The immutable role assignment bound to this provider invocation is no longer durable.',
+      ExitCode.verification,
     );
   }
   assertRecordMatchesRequest(historical.record, request);

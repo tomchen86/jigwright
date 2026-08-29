@@ -294,9 +294,9 @@ function readExactAssignment(
       canonicalJson(parameters.exactRolePairs)
   ) {
     throw workflowError(
-      'CHANGE_ROLE_ASSIGNMENT_GRANT_STATE_CHANGED',
-      'The exact below-floor role assignment changed after the Central Grant challenge was issued.',
-      ExitCode.staleState,
+      'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
+      'The immutable below-floor role assignment bound to this provider invocation is unavailable or does not match.',
+      ExitCode.verification,
     );
   }
   return record;

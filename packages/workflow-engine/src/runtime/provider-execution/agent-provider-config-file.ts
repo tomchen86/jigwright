@@ -118,14 +118,9 @@ export function assertAgentProviderConfigFileCurrent(
   ) {
     throw staleConfig();
   }
-  let observed: LoadedAgentProviderConfigFile;
-  try {
-    observed = loadAgentProviderConfigFile(binding.sourcePath, {
-      platform: binding.platform,
-    });
-  } catch {
-    throw staleConfig();
-  }
+  const observed = loadAgentProviderConfigFile(binding.sourcePath, {
+    platform: binding.platform,
+  });
   if (
     observed.sourceDigest !== binding.sourceDigest ||
     observed.snapshot.configDigest !== binding.snapshot.configDigest ||

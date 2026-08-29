@@ -400,7 +400,9 @@ test('completed Central Grant activates only the exact durable below-floor assig
         observeChangeRoleAssignmentGrantActivation(state.paths, input),
       activate: (
         input: Parameters<
-          ReturnType<typeof changeRoleAssignmentGrantTransitionDefinitions>[number]['execute']
+          ReturnType<
+            typeof changeRoleAssignmentGrantTransitionDefinitions
+          >[number]['execute']
         >[0],
       ) => activateChangeRoleAssignmentGrant(state.paths, input),
     };
@@ -494,6 +496,59 @@ test('completed Central Grant activates only the exact durable below-floor assig
         error instanceof Error &&
         'code' in error &&
         error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_ACTIVATION_INVALID',
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('a missing immutable assignment remains a hard error before Grant activation', () => {
+  const state = fixture();
+  try {
+    const expected = record(
+      state.primaryCentralSnapshot,
+      true,
+      state.primaryChangeOverrideSnapshot,
+    );
+    assert.notEqual(expected.grantRequirement, null);
+    createOrReadExactChangeRoleAssignmentRecordV1(
+      state.paths,
+      expected,
+      state.verifyCentralSnapshot,
+      state.verifyChangeOverrideSnapshot,
+      state.verifyHostConfiguration,
+      state.verifyProviderRegistry,
+      state.verifyDataAuthorization,
+      state.verifySessionCapabilities,
+      state.verifyProtectedContext,
+    );
+    const parameters: ChangeRoleAssignmentGrantParametersV1 = {
+      schemaVersion: 1,
+      kind: 'change-role-assignment-grant-activation.v1',
+      repositoryId: 'github:example/jigwright',
+      changeId: expected.changeId,
+      planningGeneration: expected.planningGeneration,
+      invocationId: 'provider-invocation-missing-assignment',
+      recordDigest: expected.recordDigest,
+      assignmentDigest: expected.assignmentDigest,
+      grantRequirementDigest: changeRoleAssignmentGrantRequirementDigestV1(
+        expected.grantRequirement!,
+      ),
+      exactRolePairs: expected.grantRequirement!.exactRolePairs,
+    };
+    assert.equal(
+      observeChangeRoleAssignmentGrantActivation(state.paths, parameters)
+        .activation,
+      null,
+    );
+
+    fs.unlinkSync(locations(state.paths, expected).ref);
+    assert.throws(
+      () => observeChangeRoleAssignmentGrantActivation(state.paths, parameters),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CHANGE_ROLE_ASSIGNMENT_GRANT_INVOCATION_MISMATCH',
     );
   } finally {
     state.cleanup();

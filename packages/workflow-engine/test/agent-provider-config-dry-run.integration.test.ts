@@ -199,6 +199,37 @@ test('host config file loading seals one immutable snapshot and fails currentnes
   }
 });
 
+test('host config currentness preserves unavailable and unsafe hard failures', () => {
+  const repository = createFixtureRepository();
+  try {
+    const configPath = writeProviderConfig(repository);
+    const unavailable = loadAgentProviderConfigFile(configPath, {
+      platform: 'darwin',
+    });
+    fs.unlinkSync(configPath);
+    assert.throws(
+      () => assertAgentProviderConfigFileCurrent(unavailable),
+      (error) =>
+        error instanceof AgentProviderConfigFileError &&
+        error.code === 'AGENT_PROVIDER_CONFIG_FILE_UNAVAILABLE',
+    );
+
+    writeProviderConfig(repository);
+    const unsafe = loadAgentProviderConfigFile(configPath, {
+      platform: 'darwin',
+    });
+    fs.chmodSync(configPath, 0o666);
+    assert.throws(
+      () => assertAgentProviderConfigFileCurrent(unsafe),
+      (error) =>
+        error instanceof AgentProviderConfigFileError &&
+        error.code === 'AGENT_PROVIDER_CONFIG_FILE_UNSAFE',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('built-in config dry-run consumes the production boundary and preserves code-owned argv', () => {
   const runtimeSource = fs.readFileSync(
     path.resolve(

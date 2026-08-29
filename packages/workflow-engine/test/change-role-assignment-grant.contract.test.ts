@@ -176,6 +176,11 @@ test('only deterministic current-source drift is normalized for prepared recover
       ExitCode.verification,
     ),
     workflowError(
+      'CHANGE_ROLE_ASSIGNMENT_STORE_INVALID',
+      'The immutable assignment store is corrupt.',
+      ExitCode.verification,
+    ),
+    workflowError(
       'GRANT_TRANSITION_EFFECT_UNKNOWN',
       'The transition may have produced an unknown effect.',
       ExitCode.verification,
