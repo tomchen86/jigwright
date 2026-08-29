@@ -260,6 +260,10 @@ export async function requestChangeRoutingContinuationGrant(
   cwd: string,
   changeId: string,
   proposedReason: string,
+  expected?: Readonly<{
+    sourceDigest: `sha256:${string}`;
+    stateBindingDigest: `sha256:${string}`;
+  }>,
 ) {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
   return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
@@ -267,6 +271,7 @@ export async function requestChangeRoutingContinuationGrant(
       repositoryRoot,
       changeId,
       proposedReason,
+      expected,
     ),
   );
 }

@@ -66,6 +66,7 @@ type RoutingRecord = Readonly<{
 
 export type ChangeLifecycleSource = Readonly<{
   schemaVersion: 1;
+  routingRevision: number;
   maxConcurrent: 1;
   concurrentChangeIds: readonly string[];
   primaryChangeId: string | null;
@@ -324,6 +325,7 @@ export function prepareChangeRoutingReview(
   const continuationAuthority = authorizeContinuation(
     repositoryRoot,
     source,
+    snapshot.digest,
     intent,
     observed,
     continuationGrantPort,
@@ -414,6 +416,7 @@ export function applyChangeRoutingReviewUnderLifecycleLock(
   const continuationAuthority = authorizeContinuation(
     repositoryRoot,
     current,
+    snapshot.digest,
     review.intent,
     observed,
     continuationGrantPort,
@@ -735,6 +738,7 @@ function applyIntent(
   assertChangeDependencyGraph(nextRecords, observed);
   return Object.freeze({
     schemaVersion: 1 as const,
+    routingRevision: nextRoutingRevision(source.routingRevision),
     maxConcurrent: 1 as const,
     concurrentChangeIds: Object.freeze(
       concurrentChangeIds.filter((changeId) => activeIds.has(changeId)),
@@ -978,6 +982,7 @@ export function observeChangeRoutingContinuationState(
 function authorizeContinuation(
   repositoryRoot: string,
   source: ChangeLifecycleSource,
+  sourceDigest: string | null,
   intent: ChangeRoutingIntent,
   observed: readonly ObservedChange[],
   continuationGrantPort: ChangeRoutingContinuationGrantPort,
@@ -1006,10 +1011,32 @@ function authorizeContinuation(
     return null;
   }
   if (action.grantChallengeId === undefined) {
+    const continuation = observeChangeRoutingContinuationState(
+      repositoryRoot,
+      action.changeId,
+    );
+    if (sourceDigest === null || continuation.sourceDigest !== sourceDigest) {
+      throw workflowError(
+        'CHANGE_ROUTING_REVIEW_STALE',
+        'The protected routing record changed while its continuation was being prepared.',
+        ExitCode.staleState,
+      );
+    }
     throw workflowError(
       'CHANGE_ROUTING_GRANT_REQUIRED',
       'Manual, external, and parked continuation requires one exact completed Central Grant transition.',
       ExitCode.guard,
+      {
+        details: {
+          schemaVersion: 1,
+          kind: 'change-routing-grant-required.v1',
+          changeId: action.changeId,
+          sourceDigest: continuation.sourceDigest,
+          stateBindingDigest: continuation.digest,
+        },
+        recovery:
+          'Resolve the exact Central Grant challenge, add its challengeId to the resume intent, and prepare the review again.',
+      },
     );
   }
   return verifyCompletedContinuationGrant(
@@ -1043,6 +1070,15 @@ function verifyCompletedContinuationGrant(
     repositoryRoot,
     challengeId,
   );
+  const expectedOutcome = Object.freeze({
+    outcome: 'completed' as const,
+    details: Object.freeze({
+      authorized: true,
+      changeId,
+      sourceDigest: observed.sourceDigest,
+      autoFocus: false,
+    }),
+  });
   if (
     !isRecord(record) ||
     record.state !== 'completed' ||
@@ -1056,6 +1092,9 @@ function verifyCompletedContinuationGrant(
     record.challenge.stateBinding.digest !== observed.digest ||
     !Array.isArray(record.challenge.choices) ||
     !isRecord(record.approvalSubject) ||
+    record.approvalSubject.stateDigest !== observed.digest ||
+    record.poststateDigest !== observed.digest ||
+    canonicalJson(record.outcome) !== canonicalJson(expectedOutcome) ||
     typeof record.approvalSubject.choiceId !== 'string' ||
     typeof record.operationId !== 'string' ||
     typeof record.challenge.challengeId !== 'string' ||
@@ -1147,6 +1186,7 @@ function synthesizeSource(
   const active = observed.filter((change) => !change.archived);
   return Object.freeze({
     schemaVersion: 1 as const,
+    routingRevision: 0,
     maxConcurrent: 1 as const,
     concurrentChangeIds: Object.freeze([]),
     primaryChangeId: null,
@@ -1202,9 +1242,12 @@ export function parseChangeLifecycleSource(
       'maxConcurrent',
       'primaryChangeId',
       'records',
+      'routingRevision',
       'schemaVersion',
     ]) ||
     value.schemaVersion !== 1 ||
+    !Number.isSafeInteger(value.routingRevision) ||
+    Number(value.routingRevision) < 0 ||
     value.maxConcurrent !== 1 ||
     !Array.isArray(value.concurrentChangeIds) ||
     value.concurrentChangeIds.length > 1 ||
@@ -1255,11 +1298,23 @@ export function parseChangeLifecycleSource(
   }
   return Object.freeze({
     schemaVersion: 1 as const,
+    routingRevision: value.routingRevision as number,
     maxConcurrent: 1 as const,
     concurrentChangeIds: Object.freeze(concurrentChangeIds),
     primaryChangeId,
     records: Object.freeze(records),
   });
+}
+
+function nextRoutingRevision(current: number): number {
+  if (!Number.isSafeInteger(current) || current >= Number.MAX_SAFE_INTEGER) {
+    throw workflowError(
+      'CHANGE_ROUTING_REVISION_EXHAUSTED',
+      'The controlled lifecycle routing revision cannot advance safely.',
+      ExitCode.guard,
+    );
+  }
+  return current + 1;
 }
 
 function routingWorksetDigest(

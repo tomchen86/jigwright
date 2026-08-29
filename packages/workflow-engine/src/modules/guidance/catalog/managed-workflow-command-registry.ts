@@ -130,7 +130,7 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     id: 'route',
     route: ['route'],
     usage: [
-      'pnpm workflow route <prepare --intent <intent.json> --output <review.json>|apply <review.json>|status> [--json]',
+      'pnpm workflow route <prepare --intent <intent.json> --output <review.json> [--grant <challenge-id>]|apply <review.json>|status> [--json]',
     ],
     status: 'preferred',
     purpose:

@@ -87,11 +87,26 @@ export function createChangeRoutingContinuationGrantRequest(
   repositoryRoot: string,
   changeId: string,
   proposedReason: string,
+  expected?: Readonly<{
+    sourceDigest: `sha256:${string}`;
+    stateBindingDigest: `sha256:${string}`;
+  }>,
 ): CentralGrantRequestInputV1 {
   const observed = observeChangeRoutingContinuationState(
     repositoryRoot,
     changeId,
   );
+  if (
+    expected !== undefined &&
+    (observed.sourceDigest !== expected.sourceDigest ||
+      observed.digest !== expected.stateBindingDigest)
+  ) {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_STATE_CHANGED',
+      'The protected routing record changed before its exact Central Grant challenge was created.',
+      ExitCode.staleState,
+    );
+  }
   return Object.freeze({
     sourceModuleId: 'change-routing',
     failureCode: 'protected-continuation-required',

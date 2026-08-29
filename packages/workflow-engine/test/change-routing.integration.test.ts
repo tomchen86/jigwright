@@ -4,6 +4,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { canonicalJson } from '@jigwright/core/canonical-json';
+
 import {
   applyChangeRoutingReview,
   applyManagedChangeRoutingReview,
@@ -15,6 +17,11 @@ import {
   changeRoutingGrantTransitionDefinitions,
   createChangeRoutingContinuationGrantRequest,
 } from '../src/modules/lifecycle/change-routing-grant.ts';
+import { parseChangeLifecycleSource } from '../src/modules/lifecycle/change-routing.ts';
+import {
+  createChangeRoutingFailGrantResult,
+  dispatchAsync,
+} from '../src/cli.ts';
 import { dispatchChangeRoutingCommand } from '../src/entrypoints/cli/change-routing-cli.ts';
 import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
@@ -138,6 +145,37 @@ test('managed routing projects mixed repository state and recovers idempotently'
   }
 });
 
+test('fresh routing starts at revision one and rejects pre-revision source bytes', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeReadyV3ExemptChange(repository);
+    const review = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: {
+        kind: 'block',
+        changeId: 'demo-change',
+        taskId: '1.1',
+        reason: 'Wait for the exact external decision.',
+        blocker: {
+          kind: 'external',
+          id: 'external-decision',
+          resumeCondition: 'manual',
+        },
+      },
+    });
+    assert.equal(review.nextSource.routingRevision, 1);
+    const preRevisionSource: Record<string, unknown> = {
+      ...review.nextSource,
+    };
+    delete preRevisionSource.routingRevision;
+    assert.throws(() => parseChangeLifecycleSource(preRevisionSource), {
+      code: 'CHANGE_ROUTING_INVALID',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('routing never auto-focuses and focus consumes current Manifest v3 plus separate PlanReview', () => {
   const repository = createFixtureRepository();
   try {
@@ -200,6 +238,19 @@ test('manual or parked continuation requires one exact completed Central Grant t
     applyChangeRoutingReview(repository, blocked);
     assert.throws(
       () =>
+        createChangeRoutingContinuationGrantRequest(
+          repository,
+          'demo-change',
+          'Reject a cross-wired routing snapshot.',
+          {
+            sourceDigest: `sha256:${'0'.repeat(64)}`,
+            stateBindingDigest: `sha256:${'1'.repeat(64)}`,
+          },
+        ),
+      { code: 'CHANGE_ROUTING_GRANT_STATE_CHANGED' },
+    );
+    assert.throws(
+      () =>
         prepareChangeRoutingReview(repository, {
           schemaVersion: 1,
           action: { kind: 'resume', changeId: 'demo-change' },
@@ -259,15 +310,68 @@ test('manual or parked continuation requires one exact completed Central Grant t
       ),
     );
     await coordinator.resolveChallenge(requested.challengeId);
-
-    const resumed = prepareChangeRoutingReview(repository, {
-      schemaVersion: 1,
-      action: {
-        kind: 'resume',
-        changeId: 'demo-change',
-        grantChallengeId: requested.challengeId,
+    const grantPaths = grantStorePaths(runtimeRoot(repository));
+    const grantRecordPath = path.join(
+      grantPaths.records,
+      `${requested.challengeId}.json`,
+    );
+    const grantRecordBytes = fs.readFileSync(grantRecordPath, 'utf8');
+    const forgedTerminal = JSON.parse(grantRecordBytes) as {
+      poststateDigest: string;
+      outcome: unknown;
+    };
+    forgedTerminal.poststateDigest = `sha256:${'0'.repeat(64)}`;
+    forgedTerminal.outcome = {
+      outcome: 'completed',
+      details: {
+        authorized: false,
+        autoFocus: true,
+        changeId: 'different-change',
+        sourceDigest: `sha256:${'1'.repeat(64)}`,
       },
-    });
+    };
+    fs.writeFileSync(grantRecordPath, `${canonicalJson(forgedTerminal)}\n`);
+    assert.throws(
+      () =>
+        prepareChangeRoutingReview(repository, {
+          schemaVersion: 1,
+          action: {
+            kind: 'resume',
+            changeId: 'demo-change',
+            grantChallengeId: requested.challengeId,
+          },
+        }),
+      { code: 'CHANGE_ROUTING_GRANT_INVALID' },
+    );
+    fs.writeFileSync(grantRecordPath, grantRecordBytes);
+
+    fs.writeFileSync(
+      path.join(repository, 'resume-intent.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          action: { kind: 'resume', changeId: 'demo-change' },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    const prepared = dispatchChangeRoutingCommand(
+      [
+        'prepare',
+        '--intent',
+        'resume-intent.json',
+        '--output',
+        'resume-review.json',
+        '--grant',
+        requested.challengeId,
+      ],
+      repository,
+    );
+    assert.equal(prepared.action, 'prepare');
+    const resumed = JSON.parse(
+      fs.readFileSync(path.join(repository, 'resume-review.json'), 'utf8'),
+    ) as ReturnType<typeof prepareChangeRoutingReview>;
     assert.equal(
       resumed.continuationAuthority?.challengeId,
       requested.challengeId,
@@ -276,6 +380,204 @@ test('manual or parked continuation requires one exact completed Central Grant t
     const inspection = inspectChangeRouting(repository);
     assert.equal(inspection.primaryChangeId, null);
     assert.equal(inspection.changes[0]?.state, 'ready');
+
+    const reblocked = prepareChangeRoutingReview(repository, blocked.intent);
+    assert.notEqual(
+      reblocked.nextSourceDigest,
+      blocked.nextSourceDigest,
+      'a later byte-equivalent blocker must have a distinct routing occurrence',
+    );
+    applyChangeRoutingReview(repository, reblocked);
+    assert.throws(
+      () =>
+        prepareChangeRoutingReview(repository, {
+          schemaVersion: 1,
+          action: {
+            kind: 'resume',
+            changeId: 'demo-change',
+            grantChallengeId: requested.challengeId,
+          },
+        }),
+      { code: 'CHANGE_ROUTING_GRANT_INVALID' },
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('route prepare converts the exact protected continuation refusal into a Central Fail-Grant', async () => {
+  const repository = createFixtureRepository();
+  try {
+    writeReadyV3ExemptChange(repository);
+    const blocked = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: {
+        kind: 'block',
+        changeId: 'demo-change',
+        taskId: '1.1',
+        reason: 'Manual review is pending.',
+        blocker: {
+          kind: 'external',
+          id: 'manual-review',
+          resumeCondition: 'manual',
+        },
+      },
+    });
+    applyChangeRoutingReview(repository, blocked);
+
+    const resumeIntent = {
+      schemaVersion: 1,
+      action: { kind: 'resume', changeId: 'demo-change' },
+    } as const;
+    fs.writeFileSync(
+      path.join(repository, 'resume-intent.json'),
+      `${JSON.stringify(resumeIntent, null, 2)}\n`,
+    );
+
+    let refusal: unknown;
+    try {
+      prepareChangeRoutingReview(repository, resumeIntent);
+      assert.fail('expected protected continuation refusal');
+    } catch (error) {
+      refusal = error;
+    }
+
+    const challengeId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const nestedCwd = path.join(repository, 'nested', 'caller');
+    fs.mkdirSync(nestedCwd, { recursive: true });
+    const result = await dispatchAsync(
+      [
+        'route',
+        'prepare',
+        '--intent',
+        'resume-intent.json',
+        '--output',
+        'resume-review.json',
+      ],
+      nestedCwd,
+      undefined,
+      undefined,
+      async (cwd, changeId, reason, expected) => {
+        assert.equal(cwd, fs.realpathSync(repository));
+        assert.equal(changeId, 'demo-change');
+        assert.match(reason, /exact protected routing record/u);
+        assert.deepEqual(expected, {
+          sourceDigest: (refusal as { details: { sourceDigest: string } })
+            .details.sourceDigest,
+          stateBindingDigest: (
+            refusal as { details: { stateBindingDigest: string } }
+          ).details.stateBindingDigest,
+        });
+        return {
+          challengeId,
+          challengeDigest: `sha256:${'a'.repeat(64)}`,
+        };
+      },
+    );
+    assert.ok(result);
+    assert.equal(result.command, 'route');
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.result, {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      changeId: 'demo-change',
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: 'CHANGE_ROUTING_GRANT_REQUIRED',
+        message:
+          'Manual, external, and parked continuation requires one exact completed Central Grant transition.',
+        details: {
+          schemaVersion: 1,
+          kind: 'change-routing-grant-required.v1',
+          changeId: 'demo-change',
+          sourceDigest: (refusal as { details: { sourceDigest: string } })
+            .details.sourceDigest,
+          stateBindingDigest: (
+            refusal as { details: { stateBindingDigest: string } }
+          ).details.stateBindingDigest,
+        },
+      },
+      grant: {
+        challengeId,
+        challengeDigest: `sha256:${'a'.repeat(64)}`,
+      },
+      transitionAppliesOnDecision: false,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'change-routing-central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${challengeId} --json`,
+        grantChallengeId: challengeId,
+        retryAfterDecision: `pnpm workflow route prepare --intent resume-intent.json --output resume-review.json --grant ${challengeId} --json`,
+      },
+    });
+    assert.throws(
+      () =>
+        dispatchChangeRoutingCommand(
+          [
+            'prepare',
+            '--intent',
+            'resume-intent.json',
+            '--output',
+            'resume-review.json',
+            '--grant',
+            challengeId,
+          ],
+          repository,
+        ),
+      { code: 'GRANT_STORE_UNSAFE' },
+    );
+    const lifecyclePath = path.join(
+      repository,
+      'openspec/change-lifecycle.json',
+    );
+    const lifecycleBytes = fs.readFileSync(lifecyclePath, 'utf8');
+    const driftedLifecycle = JSON.parse(lifecycleBytes) as {
+      records: Array<{ changeId: string; reason: string | null }>;
+    };
+    const driftedRecord = driftedLifecycle.records.find(
+      ({ changeId }) => changeId === 'demo-change',
+    );
+    assert.ok(driftedRecord);
+    driftedRecord.reason = 'A different manual review is now pending.';
+    fs.writeFileSync(
+      lifecyclePath,
+      `${JSON.stringify(driftedLifecycle, null, 2)}\n`,
+    );
+    await assert.rejects(
+      createChangeRoutingFailGrantResult(
+        [
+          'route',
+          'prepare',
+          '--intent',
+          'resume-intent.json',
+          '--output',
+          'resume-review.json',
+        ],
+        repository,
+        refusal,
+        async () => assert.fail('drift must not request a replacement Grant'),
+      ),
+      { code: 'CHANGE_ROUTING_GRANT_STATE_CHANGED' },
+    );
+    fs.writeFileSync(lifecyclePath, lifecycleBytes);
+    assert.equal(
+      await createChangeRoutingFailGrantResult(
+        [
+          'route',
+          'prepare',
+          '--intent',
+          'resume-intent.json',
+          '--output',
+          'resume-review.json',
+        ],
+        repository,
+        new Error('automatic resume is not ready'),
+        async () => assert.fail('unrelated errors must not request a Grant'),
+      ),
+      null,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

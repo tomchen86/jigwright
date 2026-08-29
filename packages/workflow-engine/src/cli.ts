@@ -126,6 +126,7 @@ import {
 import {
   requestChangeRoleAssignmentGrant,
   requestArchivePullRequestPublicationGrant,
+  requestChangeRoutingContinuationGrant,
   requestProtectedBaseInitializationGrant,
   requestWorkRegistryPromotionGrant,
   requestWorkRegistryReviewGrant,
@@ -137,6 +138,10 @@ import type {
   WorkRegistryGrantRequiredDetailsV1,
 } from './modules/governance-intake/work-registry.ts';
 import { dispatchChangeRoutingCommand } from './entrypoints/cli/change-routing-cli.ts';
+import {
+  observeChangeRoutingContinuationState,
+  parseChangeRoutingIntent,
+} from './modules/lifecycle/change-routing.ts';
 import { assertMaintainerGrantId } from './modules/authority/maintainer-grant.ts';
 import {
   parseMaintainerEvidenceWaivers,
@@ -378,11 +383,12 @@ export async function runCliAsync(
   }
 }
 
-async function dispatchAsync(
+export async function dispatchAsync(
   args: string[],
   cwd: string,
   providerWorker: typeof runProviderWorkerAsync = runProviderWorkerAsync,
   roleAssignmentGrantRequest: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
+  changeRoutingGrantRequest: ChangeRoutingGrantRequest = requestChangeRoutingContinuationGrant,
 ): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === 'role-config') {
@@ -431,6 +437,13 @@ async function dispatchAsync(
         error,
       );
       if (workRegistryGrant !== null) return workRegistryGrant;
+      const changeRoutingGrant = await createChangeRoutingFailGrantResult(
+        args,
+        cwd,
+        error,
+        changeRoutingGrantRequest,
+      );
+      if (changeRoutingGrant !== null) return changeRoutingGrant;
       throw error;
     }
   }
@@ -451,6 +464,150 @@ async function dispatchAsync(
     if (failGrant !== null) return failGrant;
     throw error;
   }
+}
+
+type ChangeRoutingGrantChallenge = Readonly<{
+  challengeId: string;
+  challengeDigest: string;
+}>;
+
+type ChangeRoutingGrantRequest = (
+  cwd: string,
+  changeId: string,
+  proposedReason: string,
+  expected: Readonly<{
+    sourceDigest: `sha256:${string}`;
+    stateBindingDigest: `sha256:${string}`;
+  }>,
+) => Promise<ChangeRoutingGrantChallenge>;
+
+export async function createChangeRoutingFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: ChangeRoutingGrantRequest = requestChangeRoutingContinuationGrant,
+): Promise<CommandResult | null> {
+  if (
+    args.length !== 6 ||
+    args[0] !== 'route' ||
+    args[1] !== 'prepare' ||
+    args[2] !== '--intent' ||
+    args[4] !== '--output' ||
+    !(error instanceof WorkflowError) ||
+    error.code !== 'CHANGE_ROUTING_GRANT_REQUIRED'
+  ) {
+    return null;
+  }
+  const details = changeRoutingGrantRequiredDetails(error.details);
+  if (details === null) return null;
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const intentPath = path.resolve(repositoryRoot, args[3]!);
+  let intent: ReturnType<typeof parseChangeRoutingIntent>;
+  try {
+    intent = parseChangeRoutingIntent(
+      JSON.parse(fs.readFileSync(intentPath, 'utf8')) as unknown,
+    );
+  } catch {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_STATE_CHANGED',
+      'The exact resume intent changed before its Central Grant challenge could be created.',
+      ExitCode.staleState,
+    );
+  }
+  if (
+    intent.action.kind !== 'resume' ||
+    intent.action.changeId !== details.changeId ||
+    intent.action.grantChallengeId !== undefined
+  ) {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_STATE_CHANGED',
+      'The exact resume intent no longer matches the protected continuation refusal.',
+      ExitCode.staleState,
+    );
+  }
+  const current = observeChangeRoutingContinuationState(
+    repositoryRoot,
+    details.changeId,
+  );
+  if (
+    current.sourceDigest !== details.sourceDigest ||
+    current.digest !== details.stateBindingDigest
+  ) {
+    throw workflowError(
+      'CHANGE_ROUTING_GRANT_STATE_CHANGED',
+      'The protected routing record changed before its Central Grant challenge could be created.',
+      ExitCode.staleState,
+    );
+  }
+  const grant = await requestGrant(
+    repositoryRoot,
+    details.changeId,
+    `Authorize only this exact protected routing record for ${details.changeId} to return to ready; preserve its source digest, blocker identity, review, managed commit, and no-auto-focus boundary.`,
+    {
+      sourceDigest: details.sourceDigest,
+      stateBindingDigest: details.stateBindingDigest,
+    },
+  );
+  return {
+    command: 'route',
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      changeId: details.changeId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        details,
+      },
+      grant,
+      transitionAppliesOnDecision: false,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'change-routing-central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        grantChallengeId: grant.challengeId,
+        retryAfterDecision: `pnpm workflow route prepare --intent ${shellCommandArgument(args[3]!)} --output ${shellCommandArgument(args[5]!)} --grant ${shellCommandArgument(grant.challengeId)} --json`,
+      },
+    },
+  };
+}
+
+function changeRoutingGrantRequiredDetails(value: unknown): Readonly<{
+  schemaVersion: 1;
+  kind: 'change-routing-grant-required.v1';
+  changeId: string;
+  sourceDigest: `sha256:${string}`;
+  stateBindingDigest: `sha256:${string}`;
+}> | null {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return null;
+  }
+  const details = value as Record<string, unknown>;
+  if (
+    Object.keys(details).sort().join('\0') !==
+      'changeId\0kind\0schemaVersion\0sourceDigest\0stateBindingDigest' ||
+    details.schemaVersion !== 1 ||
+    details.kind !== 'change-routing-grant-required.v1' ||
+    typeof details.changeId !== 'string' ||
+    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(details.changeId) ||
+    typeof details.sourceDigest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/u.test(details.sourceDigest) ||
+    typeof details.stateBindingDigest !== 'string' ||
+    !/^sha256:[0-9a-f]{64}$/u.test(details.stateBindingDigest)
+  ) {
+    return null;
+  }
+  return {
+    schemaVersion: 1,
+    kind: 'change-routing-grant-required.v1',
+    changeId: details.changeId,
+    sourceDigest: details.sourceDigest as `sha256:${string}`,
+    stateBindingDigest: details.stateBindingDigest as `sha256:${string}`,
+  };
 }
 
 export async function createRoleAssignmentFailGrantResult(

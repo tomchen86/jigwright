@@ -65,7 +65,7 @@ test('workflow guide exposes one versioned advisory catalog with finalize as the
     'pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] [--json]',
   ]);
   assert.deepEqual(workflowCommandGuidance('route').usage, [
-    'pnpm workflow route <prepare --intent <intent.json> --output <review.json>|apply <review.json>|status> [--json]',
+    'pnpm workflow route <prepare --intent <intent.json> --output <review.json> [--grant <challenge-id>]|apply <review.json>|status> [--json]',
   ]);
   assert.match(
     workflowCommandGuidance('route').preconditions.join('\n'),

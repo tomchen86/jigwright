@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:65e2f3e31d13398f3956b14c31dd5e0e977de99e46edbc45ba7f4076a0d86d17"
+      "digest": "sha256:235d848a5ccf2907dd15c3345de08def91742da561655b8d02205a869b55da76"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -793,7 +793,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:7a148d429f02e65395171e24c9f6704e297021239245ff71bdb2fce1e40b8fd4"
+      "digest": "sha256:3c1611c76a3d2b750dcdda9d35baa5dc12a195f3b462a9eb98f8c884c9b0791b"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -958,7 +958,7 @@
     {
       "path": "src/entrypoints/cli/change-routing-cli.ts",
       "mode": "100644",
-      "digest": "sha256:dbca81b36e4760d0b4d9815ef39477f1c01bfd3f2195655dfc856c448c045b77"
+      "digest": "sha256:47db32e7d41bbe2c7b00d3f1a4224b38249e7eeac666cd1208908007c2495873"
     },
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
@@ -1308,7 +1308,7 @@
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:c767f962c8a3fe2cd500dfffb5a9344ea77f6b717a0db9bc1aaf1dab6178d3d1"
+      "digest": "sha256:213b40a6bbc49a1113ec380a6146a7cb5715e22f87ea30ee8a7b741d9e6e8edd"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
@@ -1423,7 +1423,7 @@
     {
       "path": "src/modules/lifecycle/change-routing-grant.ts",
       "mode": "100644",
-      "digest": "sha256:a8a87badc4de2e9617385f4d31676e53822184759d6977d40cc098f7eb33904b"
+      "digest": "sha256:a518894a9597db09bf2b2a09b3f174247eb398f9f0977ad84c39322ca05df841"
     },
     {
       "path": "src/modules/lifecycle/change-routing-transaction.ts",
@@ -1433,7 +1433,7 @@
     {
       "path": "src/modules/lifecycle/change-routing.ts",
       "mode": "100644",
-      "digest": "sha256:811366d656d94006d5d6a9f1cc2686370371ff0146c572de105b9a0135a3b1e8"
+      "digest": "sha256:28b8c7dfd03b948870a7fd6d8196b5a07a3f6b7734bcb6b7ee781fc4317c1128"
     },
     {
       "path": "src/modules/lifecycle/context-manifest-contract.ts",

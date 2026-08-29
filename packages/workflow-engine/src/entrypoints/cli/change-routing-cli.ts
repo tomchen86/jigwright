@@ -31,14 +31,38 @@ export function dispatchChangeRoutingCommand(
       result: ReturnType<typeof inspectChangeRouting>;
     }> {
   if (
-    args.length === 5 &&
+    (args.length === 5 || args.length === 7) &&
     args[0] === 'prepare' &&
     args[1] === '--intent' &&
-    args[3] === '--output'
+    args[3] === '--output' &&
+    (args.length === 5 || args[5] === '--grant')
   ) {
     const inputPath = path.resolve(repositoryRoot, args[2]!);
     const outputPath = path.resolve(repositoryRoot, args[4]!);
-    const intent = parseChangeRoutingIntent(readJson(inputPath, 'intent'));
+    const parsedIntent = parseChangeRoutingIntent(
+      readJson(inputPath, 'intent'),
+    );
+    if (
+      args.length === 7 &&
+      (parsedIntent.action.kind !== 'resume' ||
+        parsedIntent.action.grantChallengeId !== undefined)
+    ) {
+      throw workflowError(
+        'CHANGE_ROUTING_INPUT_INVALID',
+        'The --grant retry option requires one ungranted resume intent.',
+        ExitCode.usage,
+      );
+    }
+    const intent =
+      args.length === 5
+        ? parsedIntent
+        : parseChangeRoutingIntent({
+            ...parsedIntent,
+            action: {
+              ...parsedIntent.action,
+              grantChallengeId: args[6],
+            },
+          });
     const review = prepareChangeRoutingReview(repositoryRoot, intent);
     const bytes = `${JSON.stringify(review, null, 2)}\n`;
     fs.mkdirSync(path.dirname(outputPath), { recursive: true });
@@ -73,7 +97,7 @@ export function dispatchChangeRoutingCommand(
   }
   throw workflowError(
     'INVALID_USAGE',
-    'Usage: jigwright route <prepare --intent <intent.json> --output <review.json>|apply <review.json>|status> [--json]',
+    'Usage: jigwright route <prepare --intent <intent.json> --output <review.json> [--grant <challenge-id>]|apply <review.json>|status> [--json]',
     ExitCode.usage,
   );
 }
