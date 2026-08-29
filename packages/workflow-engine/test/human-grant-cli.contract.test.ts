@@ -35,7 +35,14 @@ test('human grant CLI exposes registered investigation and Work Registry request
     },
     async resolveChallenge(challengeId) {
       calls.push(`decide:${challengeId}`);
-      return { challengeId } as never;
+      return {
+        challengeId,
+        operationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        transitionId: 'git.protected-base.initialize-authorize.v1',
+        outcome: 'completed',
+        poststateDigest: `sha256:${'a'.repeat(64)}`,
+        recovered: false,
+      } as const;
     },
     async recoverChallenge(challengeId) {
       calls.push(`recover:${challengeId}`);
@@ -92,6 +99,14 @@ test('human grant CLI exposes registered investigation and Work Registry request
         `request-archive-publication:${preparationIdentity}:${proposedReason}`,
       );
       return { preparationIdentity };
+    },
+    async publishProtectedBaseInitialization(
+      _cwd: string,
+      grant: { challengeId: string },
+    ) {
+      const challengeId = grant.challengeId;
+      calls.push(`publish-protected-base:${challengeId}`);
+      return { challengeId, disposition: 'created' };
     },
   };
 
@@ -173,6 +188,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
     'request-work-review:WORK-01K39R0V00000000000000000E:accept:Approve the exact protected intake.',
     `request-work-promotion:WORK-01K39R0V00000000000000000E:deliver-registry-item:sha256:${'b'.repeat(64)}:Approve the exact protected promotion.`,
     'decide:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'publish-protected-base:aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   ]);
 
   await assert.rejects(
@@ -217,7 +233,7 @@ test('human grant CLI exposes registered investigation and Work Registry request
     ),
     (error) => isWorkflowError(error, 'USAGE'),
   );
-  assert.equal(calls.length, 6);
+  assert.equal(calls.length, 7);
   fs.rmSync(repositoryRoot, { recursive: true, force: true });
 });
 

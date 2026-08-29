@@ -693,7 +693,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:71a0d8b11357155e9649008937c32750d11f507729dabca569e26e7a932e123f"
+      "digest": "sha256:28f629f8e212cafaf2e5486860cf3db6c1f443e608c1d344183f5617e3adaed4"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:1a57f4e7f0ca1201fe80b09ad12856a78de1e735297e03c0d774d7dd93dc9638"
+      "digest": "sha256:c810e602d5d877d26894bb4a5437270b95d9d74c617d73cd5e70ff1a8e266961"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -783,7 +783,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:405849c941893c7c3d18db296e86a17520c2782f2d3dbd58aea32d45019a7d92"
+      "digest": "sha256:0c0b81dca930ca182bf3e0c3374ff71ee0e69e65657b5472968092f50976521e"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -809,6 +809,11 @@
       "path": "src/composition-root/planning-provider-production.ts",
       "mode": "100644",
       "digest": "sha256:e5b16e88820833a33c4e67328d74cbd5fa0a8cfb8ceb9b17f2f48cb81802a282"
+    },
+    {
+      "path": "src/composition-root/protected-base-initialization-production.ts",
+      "mode": "100644",
+      "digest": "sha256:d8f7378163654c580e70719d7b839ce9c6ddae14227bbfec4822be5884cff2af"
     },
     {
       "path": "src/composition-root/public/central-grant.ts",
@@ -968,7 +973,7 @@
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:58ca3edfca807e7ccd64bab0d2570b9780295a30edbce6488ff11a26ef7a9c64"
+      "digest": "sha256:29c77b5a8c325d64ae5d12fdedc60b4d368287a1c935c89c16d71b34d14ad225"
     },
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
@@ -1239,6 +1244,11 @@
       "path": "src/modules/authority/optional-grants-package.ts",
       "mode": "100644",
       "digest": "sha256:71dcebf1c1c61c4c45a1f05959295117092e3c6e641ffee703f919bb8bf3ac74"
+    },
+    {
+      "path": "src/modules/authority/protected-base-initialization-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:5ed48997149b790e96913a0fd50be0d159bd2a731c3f76707017a51b348405d4"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",

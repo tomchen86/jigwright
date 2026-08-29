@@ -10,7 +10,11 @@ import {
   requestWorkRegistryReviewGrant,
   type WorkItemReviewV1,
 } from '../../composition-root/grant-production.ts';
-import type { GrantCoordinator } from '../../modules/authority/grant-coordinator.ts';
+import { publishProtectedBaseInitializationAfterGrant } from '../../composition-root/protected-base-initialization-production.ts';
+import type {
+  GrantCoordinator,
+  GrantExecutionResult,
+} from '../../modules/authority/grant-coordinator.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -47,6 +51,10 @@ type HumanGrantCliDependencies = Readonly<{
     preparationIdentity: string,
     proposedReason: string,
   ): Promise<unknown>;
+  publishProtectedBaseInitialization(
+    cwd: string,
+    grant: GrantExecutionResult,
+  ): Promise<unknown | null> | unknown | null;
 }>;
 
 const PRODUCTION_DEPENDENCIES: HumanGrantCliDependencies = Object.freeze({
@@ -57,6 +65,8 @@ const PRODUCTION_DEPENDENCIES: HumanGrantCliDependencies = Object.freeze({
   requestWorkItemPromotion: requestWorkRegistryPromotionGrant,
   requestArchivePullRequestPublication:
     requestArchivePullRequestPublicationGrant,
+  publishProtectedBaseInitialization:
+    publishProtectedBaseInitializationAfterGrant,
 });
 
 export function isHumanGrantCliInvocation(argv: readonly string[]): boolean {
@@ -175,24 +185,44 @@ export async function dispatchHumanGrantCli(
     };
   }
   if (action === 'decide' && argv.length === 4) {
+    const grant = await dependencies
+      .coordinator(cwd)
+      .resolveChallenge(argv[3]!);
     return {
       command: 'grant',
       family: 'human',
       action,
       ok: true,
-      result: await dependencies.coordinator(cwd).resolveChallenge(argv[3]!),
+      result: await attachProtectedBasePublication(cwd, grant, dependencies),
     };
   }
   if (action === 'recover' && argv.length === 4) {
+    const grant = await dependencies
+      .coordinator(cwd)
+      .recoverChallenge(argv[3]!);
     return {
       command: 'grant',
       family: 'human',
       action,
       ok: true,
-      result: await dependencies.coordinator(cwd).recoverChallenge(argv[3]!),
+      result: await attachProtectedBasePublication(cwd, grant, dependencies),
     };
   }
   throw humanGrantUsage();
+}
+
+async function attachProtectedBasePublication(
+  cwd: string,
+  grant: GrantExecutionResult,
+  dependencies: HumanGrantCliDependencies,
+): Promise<GrantExecutionResult | Readonly<Record<string, unknown>>> {
+  const publish = dependencies.publishProtectedBaseInitialization;
+  const publication = await publish(cwd, grant);
+  if (publication === null) return grant;
+  return Object.freeze({
+    ...grant,
+    publication,
+  });
 }
 
 export async function runHumanGrantCli(

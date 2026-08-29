@@ -106,6 +106,7 @@ import './grant-core.contract.test.ts';
 import './grant-policy.contract.test.ts';
 import './grant-proof-ssh.contract.test.ts';
 import './grant-store.contract.test.ts';
+import './protected-base-initialization-grant.integration.test.ts';
 import './collaboration-grant-package.contract.test.ts';
 import './job-attempt-package-boundary.contract.test.ts';
 import './human-gate-macos.contract.test.ts';

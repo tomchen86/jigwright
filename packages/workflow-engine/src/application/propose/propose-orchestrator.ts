@@ -1303,16 +1303,17 @@ export function startPropose(
     );
   }
   const protectedBaseRef = protectedBranchRef(protectedBranch);
-  const protectedBaseCommit = runGit(context.git.repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    `${protectedBaseRef}^{commit}`,
-  ]).trim();
+  const protectedBaseCommit = runGit(
+    context.git.repositoryRoot,
+    ['rev-parse', '--verify', `${protectedBaseRef}^{commit}`],
+    true,
+  ).trim();
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(protectedBaseCommit)) {
     throw workflowError(
-      'PROPOSE_BASE_REF_INVALID',
-      'The configured protected base did not resolve to an exact commit.',
+      'PROPOSE_PROTECTED_BASE_UNAVAILABLE',
+      'The configured protected remote-tracking base is unavailable; an exact Fail-Grant challenge is required before initialization.',
       ExitCode.staleState,
+      { details: { protectedBaseRef } },
     );
   }
 

@@ -45,6 +45,7 @@ import '../completion.integration.test.ts';
 import '../guard-contract.integration.test.ts';
 import '../generated/package-tests/core/contract-values.contract.test.ts';
 import '../generated/package-tests/core/agent-runtime-port.contract.test.ts';
+import '../protected-base-initialization-grant.integration.test.ts';
 import '../provider-invocation-projection.contract.test.ts';
 import '../provider-output-schema-current.contract.test.ts';
 import '../provider-residuals-current.contract.test.ts';

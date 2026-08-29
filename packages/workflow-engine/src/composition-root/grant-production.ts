@@ -58,6 +58,11 @@ import {
   changeRoutingGrantTransitionDefinitions,
   createChangeRoutingContinuationGrantRequest,
 } from '../modules/lifecycle/change-routing-grant.ts';
+import {
+  createProtectedBaseInitializationGrantRequest,
+  protectedBaseInitializationGrantTransitionDefinitions,
+} from '../modules/authority/protected-base-initialization-grant.ts';
+import { createProductionProtectedBaseInitializationPort } from './protected-base-initialization-production.ts';
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -121,6 +126,7 @@ export function createProductionWorkflowGrantCoordinator(
   assertOptionalGrantsPackageAvailable();
   const runtimeRoot =
     loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
+  const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
   return createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
@@ -128,7 +134,19 @@ export function createProductionWorkflowGrantCoordinator(
       ...workRegistryGrantTransitionDefinitions(cwd),
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
       ...changeRoutingGrantTransitionDefinitions(cwd),
+      ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),
     ]),
+  );
+}
+
+export async function requestProtectedBaseInitializationGrant(
+  cwd: string,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const port = createProductionProtectedBaseInitializationPort(repositoryRoot);
+  return createProductionWorkflowGrantCoordinator(repositoryRoot).requestGrant(
+    createProtectedBaseInitializationGrantRequest(port, proposedReason),
   );
 }
 

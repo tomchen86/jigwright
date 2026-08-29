@@ -111,6 +111,7 @@ import {
   isHumanGrantCliInvocation,
   runHumanGrantCli,
 } from './entrypoints/cli/human-grant-cli.ts';
+import { requestProtectedBaseInitializationGrant } from './composition-root/grant-production.ts';
 import { dispatchIssueCommand } from './entrypoints/cli/issue-cli.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
 import { dispatchChangeRoutingCommand } from './entrypoints/cli/change-routing-cli.ts';
@@ -321,8 +322,8 @@ export function runCli(argv: string[], cwd = process.cwd()): number {
 }
 
 /**
- * Production CLI entry. Only the hidden provider worker is async; every other
- * command retains the existing synchronous dispatcher and output contract.
+ * Production CLI entry. Provider work and Fail-Grant challenge creation use
+ * the async boundary; ordinary commands retain the synchronous dispatcher.
  */
 export async function runCliAsync(
   argv: string[],
@@ -383,12 +384,70 @@ async function dispatchAsync(
   if (command === 'archive-pr') {
     return dispatchArchivePullRequest(args, cwd);
   }
-  if (command !== 'provider-worker') return dispatch(args, cwd);
+  if (command !== 'provider-worker') {
+    try {
+      return dispatch(args, cwd);
+    } catch (error) {
+      const failGrant = await createProposeProtectedBaseFailGrantResult(
+        args,
+        cwd,
+        error,
+      );
+      if (failGrant !== null) return failGrant;
+      throw error;
+    }
+  }
   requireArgumentCount(command, rest, 1, 1);
   return {
     command,
     ok: true,
     result: await providerWorker(cwd, rest[0]!),
+  };
+}
+
+export async function createProposeProtectedBaseFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: typeof requestProtectedBaseInitializationGrant = requestProtectedBaseInitializationGrant,
+): Promise<CommandResult | null> {
+  if (
+    args[0] !== 'propose' ||
+    !(error instanceof WorkflowError) ||
+    error.code !== 'PROPOSE_PROTECTED_BASE_UNAVAILABLE'
+  ) {
+    return null;
+  }
+  const changeId = args[1];
+  if (changeId === undefined) return null;
+  const grant = await requestGrant(
+    cwd,
+    'Authorize create-only initialization of the empty canonical remote protected base from the exact current commit so governed planning can continue.',
+  );
+  return {
+    command: 'propose',
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      changeId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        ...(error.details ? { details: error.details } : {}),
+      },
+      grant,
+      externalPublicationPending: true,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        retryAfterPublication: 'rerun the same propose command',
+      },
+    },
   };
 }
 

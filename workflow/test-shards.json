@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260827232100472-16315c4d-29a0-4538-a07d-de0624fbdac6",
   "sourceTelemetryDigest": "sha256:b93b964d30e586a971d814a95697174864b0855d54697214e626c59dcae9ea4f",
-  "physicalFileCount": 341,
-  "executionUnitCount": 338,
-  "inventoryDigest": "sha256:d468b628ac3646cecd527e374212576d181711265bbbaa775911169c2f49a4d6",
+  "physicalFileCount": 342,
+  "executionUnitCount": 339,
+  "inventoryDigest": "sha256:654d6f24c1503bcad69a52826cae28591c4fdeeb09bdcf8ff242d80868c560ba",
   "shards": [
     {
       "shardNumber": 1,
@@ -2408,11 +2408,19 @@
           "estimatedDurationMs": 151.224
         },
         {
+          "entrypoint": "packages/workflow-engine/test/protected-base-initialization-grant.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/protected-base-initialization-grant.integration.test.ts"
+          ],
+          "legacyOrdinal": 336,
+          "estimatedDurationMs": 0
+        },
+        {
           "entrypoint": "packages/workflow-engine/test/provider-invocation-projection.contract.test.ts",
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/provider-invocation-projection.contract.test.ts"
           ],
-          "legacyOrdinal": 336,
+          "legacyOrdinal": 337,
           "estimatedDurationMs": 0
         },
         {
@@ -2420,7 +2428,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/provider-output-schema-current.contract.test.ts"
           ],
-          "legacyOrdinal": 337,
+          "legacyOrdinal": 338,
           "estimatedDurationMs": 0
         },
         {
@@ -2428,7 +2436,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/provider-residuals-current.contract.test.ts"
           ],
-          "legacyOrdinal": 338,
+          "legacyOrdinal": 339,
           "estimatedDurationMs": 0
         }
       ]
