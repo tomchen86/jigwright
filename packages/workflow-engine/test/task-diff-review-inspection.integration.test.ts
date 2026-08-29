@@ -1351,10 +1351,12 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
         ),
       /Simulated TaskDiffReview continuation interruption/,
     );
-    assert.equal(
-      inspectTaskDiffReviewStatus(repository, session.sessionId).state,
-      'challenge-closure-required',
+    const closureStatus = inspectTaskDiffReviewStatus(
+      repository,
+      session.sessionId,
     );
+    assert.equal(closureStatus.state, 'challenge-closure-required');
+    assert.ok('response' in closureStatus, JSON.stringify(closureStatus));
     assert.throws(
       () => assertCurrentTaskDiffReviewSatisfied(repository, session.sessionId),
       hasCode('TASK_DIFF_REVIEW_CHALLENGE_OPEN'),
@@ -1364,12 +1366,21 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
       hasCode('TASK_DIFF_REVIEW_CHALLENGE_OPEN'),
     );
 
-    const closed = reconcileTaskDiffReviewContinuation(
-      repository,
+    const reconciled = runCli(repository, [
+      'review-diff',
+      'reconcile',
       session.sessionId,
-      response.responseDigest,
-    );
+      '--json',
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    const closed = (
+      JSON.parse(reconciled.stdout) as {
+        result: ReturnType<typeof reconcileTaskDiffReviewContinuation>;
+      }
+    ).result;
     assert.equal(closed.state, 'satisfied');
+    assert.equal(closed.invocationId, continuation.invocationId);
+    assert.equal(closed.response.responseDigest, response.responseDigest);
     assert.equal(closed.finalAssurance?.verdict, 'satisfied');
     assert.equal(
       closed.finalAssurance?.subjectDigest,
@@ -2096,25 +2107,18 @@ test('caller-supplied TaskDiffReview consumes exact no-provider authority withou
         }),
       hasCode('TASK_DIFF_EXTERNAL_REVIEW_ATTEMPT_ACTIVE'),
     );
-    const completed = submitExternalTaskDiffReview(
-      repository,
+    const recovered = runCli(repository, [
+      'review-diff',
+      'reconcile',
       session.sessionId,
-      input,
-      {
-        explicitActor: 'codex',
-        environment: {},
-        consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        collaborationGrant: {
-          grantId: grant.grantId,
-          now: new Date(now.getTime() + 120_000),
-          consumedReplayVerifier:
-            consumedCollaborationGrantReplayVerifierForTest(
-              repository,
-              signing.signer,
-            ),
-        },
-      },
-    );
+      '--json',
+    ]);
+    assert.equal(recovered.status, 0, recovered.stderr);
+    const completed = (
+      JSON.parse(recovered.stdout) as {
+        result: ReturnType<typeof submitExternalTaskDiffReview>;
+      }
+    ).result;
     assert.equal(completed.state, 'satisfied');
     assert.equal(
       inspectCollaborationGrants(

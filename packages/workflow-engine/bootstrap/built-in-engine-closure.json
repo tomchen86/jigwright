@@ -673,7 +673,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:a3bef066eac29cbf1c30db0f09921405ea425076c8b87a56f5c1b80fde0426a5"
+      "digest": "sha256:633f97b569d983424000eb73e42ed5780e884fe49092594214f22d79c955baa1"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:dae78a58bf639bf41ff4cb9acdd3cd487fd74f5c3ac8f148aa20246630f88d07"
+      "digest": "sha256:65e2f3e31d13398f3956b14c31dd5e0e977de99e46edbc45ba7f4076a0d86d17"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1313,7 +1313,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:668ae5b7a18c54df014542dc11e5d6dfdfff522f264481052edd271680ce767e"
+      "digest": "sha256:3d73cc1318896680edf628ac86819d8ca3aab9dafea9444ccaa7967706c75952"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

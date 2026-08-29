@@ -71,7 +71,7 @@ const TASK_DIFF_REVIEW_STATE_GUIDANCE = {
   'collaboration-grant-required': 'waiting',
   'external-grant-resume-required': 'external-grant',
   'direct-human-attestation-required': 'direct-human',
-  'external-reconciliation-required': 'waiting',
+  'external-reconciliation-required': 'reconcile',
   satisfied: 'satisfied',
   'challenge-response-required': 'inspect',
   'challenge-closure-required': 'waiting',
@@ -430,6 +430,12 @@ function taskDiffReviewNextSteps(
   const generalStatus = nextStep('status', bindings);
   const state = stringField(reviewResult, 'state');
   const guidance = stateGuidance(TASK_DIFF_REVIEW_STATE_GUIDANCE, state);
+  if (
+    state === 'external-reconciliation-required' &&
+    stringField(reviewResult, 'grantState') !== 'consumed'
+  ) {
+    return limitNextSteps([reviewStatus, generalStatus, nextStep('guide', {})]);
+  }
   if (guidance === 'direct-human') {
     const grantId = stringField(reviewResult, 'grantId');
     const inputPath = invocationOptionValue(invocation, '--input');

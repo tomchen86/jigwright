@@ -340,6 +340,7 @@ export type TaskDiffReviewLifecycleStatus =
       subject: TaskDiffReviewSubject;
       implementationActor: RecordedRoleParticipant;
       degradedForm: 'caller-supplied' | 'direct-human-review';
+      grantState: 'reserved' | 'consumed';
       grantId: string;
       grantEnvelopeDigest: string;
       transitionDigest: string;
@@ -495,6 +496,7 @@ export type TaskDiffReviewExternalContinuationLifecycleStatus =
       review: TaskDiffReviewRecord;
       response: TaskDiffReviewChallengeResponseRecord;
       degradedForm: 'caller-supplied' | 'direct-human-review';
+      grantState: 'reserved' | 'consumed';
       grantId: string;
       grantEnvelopeDigest: string;
       transitionDigest: string;
@@ -1649,6 +1651,162 @@ export function submitExternalTaskDiffReviewContinuation(
           finalAssurance,
         );
       }),
+  );
+}
+
+export type ReconcileExternalTaskDiffReviewOptions = Readonly<{
+  consumedReplayVerifier?: ConsumedCollaborationGrantReplayVerifier;
+  consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
+}>;
+
+/**
+ * Finish only an already-consumed external TaskDiffReview attempt from its
+ * immutable reservation and authority-free content. This recovery accepts no
+ * replacement input, signer, or fresh Grant.
+ */
+export function reconcileExternalTaskDiffReview(
+  cwd: string,
+  requestedSessionId: string,
+  options: ReconcileExternalTaskDiffReviewOptions = {},
+): TaskDiffReviewInspectionStatus {
+  const status = inspectTaskDiffReviewStatus(cwd, requestedSessionId);
+  if (status.state !== 'external-reconciliation-required') {
+    throw externalTaskDiffReconciliationNotAvailable();
+  }
+  const context = loadActiveSessionContext(cwd, requestedSessionId);
+  const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+  const grantInspection = readCollaborationGrantInspection(
+    context.git.gitCommonDirectory,
+    status.grantId,
+  );
+  if (
+    status.grantState !== 'consumed' ||
+    grantInspection?.state !== 'consumed' ||
+    grantInspection.use === undefined ||
+    grantInspection.signedEnvelopeDigest !== status.grantEnvelopeDigest ||
+    grantInspection.transitionDigest !== status.transitionDigest ||
+    grantInspection.degradedForm !== status.degradedForm ||
+    grantInspection.use.signedEnvelopeDigest !== status.grantEnvelopeDigest ||
+    grantInspection.use.transitionDigest !== status.transitionDigest ||
+    grantInspection.use.degradedForm !== status.degradedForm ||
+    (status.degradedForm === 'direct-human-review') !==
+      (grantInspection.use.directHumanReviewAttestation !== null)
+  ) {
+    throw externalTaskDiffAuthorityInvalid();
+  }
+  const collaborationGrant = {
+    grantId: status.grantId,
+    ...(grantInspection.use.directHumanReviewAttestation === null
+      ? {}
+      : {
+          directHumanReviewAttestation:
+            grantInspection.use.directHumanReviewAttestation,
+        }),
+    ...(options.consumedReplayVerifier === undefined
+      ? {}
+      : { consumedReplayVerifier: options.consumedReplayVerifier }),
+  };
+  const consumedRoleResultReplay =
+    options.consumedRoleResultReplay === undefined
+      ? {}
+      : { consumedRoleResultReplay: options.consumedRoleResultReplay };
+
+  if (status.source === 'external') {
+    const reservation = requireExternalTaskDiffReviewReservation(
+      runtime,
+      status.subject.subjectDigest,
+      status.grantEnvelopeDigest,
+    );
+    const submission = readTaskDiffExternalReviewSubmission(
+      runtime,
+      status.subject.subjectDigest,
+      status.reviewScopeDigest,
+      status.inputDigest,
+    );
+    if (
+      reservation.reservationDigest !== status.reservationDigest ||
+      reservation.grant.grantId !== status.grantId ||
+      reservation.grant.grantEnvelopeDigest !== status.grantEnvelopeDigest ||
+      reservation.grant.grantTransitionDigest !== status.transitionDigest ||
+      reservation.grant.grantTargetDigest !==
+        grantInspection.use.targetDigest ||
+      submission === null ||
+      submission.recordDigest !== status.submissionRecordDigest
+    ) {
+      throw externalTaskDiffAuthorityInvalid();
+    }
+    const input = parseTaskDiffReviewExternalSubmissionInput({
+      schemaVersion: 1,
+      kind: 'task-diff-review-submission-input.v1',
+      subjectDigest: status.subject.subjectDigest,
+      submission: submission.submission,
+    });
+    if (sha256(canonicalJson(input)) !== status.inputDigest) {
+      throw externalTaskDiffAuthorityInvalid();
+    }
+    return submitExternalTaskDiffReview(cwd, requestedSessionId, input, {
+      ...externalTaskDiffActorReplayOptions(reservation.implementationActor),
+      ...consumedRoleResultReplay,
+      collaborationGrant,
+    });
+  }
+
+  const targetDigest = taskDiffExternalContinuationTargetDigest({
+    subjectDigest: status.subject.subjectDigest,
+    reviewRecordDigest: status.review.recordDigest,
+    responseDigest: status.response.responseDigest,
+  });
+  const reservation = requireExternalTaskDiffContinuationReservation(
+    runtime,
+    targetDigest,
+    status.grantEnvelopeDigest,
+  );
+  const response = readTaskDiffExternalChallengeResponse(
+    runtime,
+    status.subject.subjectDigest,
+    status.review.recordDigest,
+    status.response.responseDigest,
+  );
+  const submission = readTaskDiffExternalClosureSubmission(
+    runtime,
+    targetDigest,
+    status.inputDigest,
+  );
+  if (
+    reservation.reservationDigest !== status.reservationDigest ||
+    reservation.grant.grantId !== status.grantId ||
+    reservation.grant.grantEnvelopeDigest !== status.grantEnvelopeDigest ||
+    reservation.grant.grantTransitionDigest !== status.transitionDigest ||
+    reservation.grant.grantTargetDigest !== grantInspection.use.targetDigest ||
+    response === null ||
+    canonicalJson(response.response) !== canonicalJson(status.response) ||
+    submission === null ||
+    submission.subjectDigest !== status.subject.subjectDigest ||
+    submission.reviewRecordDigest !== status.review.recordDigest ||
+    submission.responseDigest !== status.response.responseDigest
+  ) {
+    throw externalTaskDiffAuthorityInvalid();
+  }
+  const input = parseTaskDiffReviewExternalClosureInput({
+    schemaVersion: 1,
+    kind: 'task-diff-review-closure-input.v1',
+    subjectDigest: status.subject.subjectDigest,
+    reviewRecordDigest: status.review.recordDigest,
+    responseDigest: status.response.responseDigest,
+    proposedDispositions: submission.submission.proposedDispositions,
+  });
+  if (sha256(canonicalJson(input)) !== status.inputDigest) {
+    throw externalTaskDiffAuthorityInvalid();
+  }
+  return submitExternalTaskDiffReviewContinuation(
+    cwd,
+    requestedSessionId,
+    response.response,
+    input,
+    {
+      ...consumedRoleResultReplay,
+      collaborationGrant,
+    },
   );
 }
 
@@ -3939,6 +4097,9 @@ function inspectExternalTaskDiffPendingStatus(
       reservation,
     );
   }
+  if (grant.state !== 'reserved' && grant.state !== 'consumed') {
+    throw externalTaskDiffAuthorityInvalid();
+  }
   return Object.freeze({
     state: 'external-reconciliation-required' as const,
     source: 'external' as const,
@@ -3946,6 +4107,7 @@ function inspectExternalTaskDiffPendingStatus(
     subject,
     implementationActor: currentActor,
     degradedForm: reservation.grant.degradedForm,
+    grantState: grant.state,
     grantId: reservation.grant.grantId,
     grantEnvelopeDigest: reservation.grant.grantEnvelopeDigest,
     transitionDigest: reservation.grant.grantTransitionDigest,
@@ -4102,6 +4264,9 @@ function inspectExternalTaskDiffContinuationPendingStatus(
       reservation,
     );
   }
+  if (grant.state !== 'reserved' && grant.state !== 'consumed') {
+    throw externalTaskDiffAuthorityInvalid();
+  }
   return Object.freeze({
     state: 'external-reconciliation-required' as const,
     source: 'external-continuation' as const,
@@ -4111,6 +4276,7 @@ function inspectExternalTaskDiffContinuationPendingStatus(
     review: current.review,
     response,
     degradedForm: reservation.grant.degradedForm,
+    grantState: grant.state,
     grantId: reservation.grant.grantId,
     grantEnvelopeDigest: reservation.grant.grantEnvelopeDigest,
     transitionDigest: reservation.grant.grantTransitionDigest,
@@ -4283,7 +4449,8 @@ export function inspectTaskDiffReviewStatus(
     if (candidatePlan.action !== 'reuse') {
       throw taskDiffReviewLineageConflict();
     }
-    return renderReusedTaskDiffReviewStatus(
+    return renderInspectedReusedTaskDiffReviewStatus(
+      runtime,
       context.session.sessionId,
       subject,
       loadReusedTaskDiffReview(
@@ -4329,7 +4496,8 @@ export function inspectTaskDiffReviewStatus(
       'inspect',
     );
     if (candidatePlan.action === 'reuse') {
-      return renderReusedTaskDiffReviewStatus(
+      return renderInspectedReusedTaskDiffReviewStatus(
+        runtime,
         context.session.sessionId,
         subject,
         loadReusedTaskDiffReview(
@@ -4369,14 +4537,7 @@ export function inspectTaskDiffReviewStatus(
       context.session.sessionId,
       providerSource.binding.review.recordDigest,
     );
-    if (
-      continuationReservation !== null &&
-      readTaskDiffReviewContinuationResultBinding(
-        runtime,
-        context.session.sessionId,
-        providerSource.binding.review.recordDigest,
-      ) === null
-    ) {
+    if (continuationReservation !== null) {
       assertContinuationReservationBound(
         reservation,
         providerSource.binding.review,
@@ -4388,7 +4549,8 @@ export function inspectTaskDiffReviewStatus(
         continuationReservation,
       );
     }
-    return renderReusedTaskDiffReviewStatus(
+    return renderInspectedReusedTaskDiffReviewStatus(
+      runtime,
       context.session.sessionId,
       subject,
       current,
@@ -6443,6 +6605,38 @@ function renderReusedTaskDiffReviewStatus(
     review: current.review,
     finalAssurance: current.terminal.finalAssurance,
   });
+}
+
+function renderInspectedReusedTaskDiffReviewStatus(
+  runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  currentSessionId: string,
+  currentSubject: TaskDiffReviewSubject,
+  current: ReturnType<typeof loadReusedTaskDiffReview>,
+): TaskDiffReviewInspectionStatus {
+  if (
+    current.source === 'provider' &&
+    current.terminal.state === 'challenge-open' &&
+    current.terminal.closureSource === 'provider'
+  ) {
+    const continuation = readTaskDiffReviewContinuationReservation(
+      runtime,
+      current.reservation.sessionId,
+      current.review.recordDigest,
+    );
+    if (continuation === null) throw taskDiffReviewLineageConflict();
+    assertContinuationReservationBound(
+      current.reservation,
+      current.review,
+      continuation.response,
+      continuation,
+    );
+    return renderTaskDiffReviewContinuationStatus(runtime, continuation);
+  }
+  return renderReusedTaskDiffReviewStatus(
+    currentSessionId,
+    currentSubject,
+    current,
+  );
 }
 
 function createNewTaskDiffReviewReservation(
@@ -8694,5 +8888,13 @@ function externalTaskDiffAuthorityInvalid() {
     'TASK_DIFF_EXTERNAL_REVIEW_AUTHORITY_INVALID',
     'External TaskDiffReview authority does not replay from the exact submission, consumed grant, admitted role result, and evidence node.',
     ExitCode.verification,
+  );
+}
+
+function externalTaskDiffReconciliationNotAvailable() {
+  return workflowError(
+    'TASK_DIFF_EXTERNAL_RECONCILIATION_NOT_AVAILABLE',
+    'External TaskDiffReview reconciliation requires one exact consumed Grant and its durable reservation.',
+    ExitCode.staleState,
   );
 }

@@ -285,6 +285,41 @@ test('TaskDiff guidance emits at most three exact executable recovery commands f
     },
     {
       result: {
+        state: 'external-reconciliation-required',
+        sessionId,
+        grantState: 'consumed',
+      },
+      expected: [
+        `pnpm workflow review-diff reconcile ${sessionId} --json`,
+        `pnpm workflow review-diff status ${sessionId} --json`,
+        `pnpm workflow status ${sessionId} --json`,
+      ],
+    },
+    {
+      result: {
+        state: 'external-reconciliation-required',
+        sessionId,
+        grantState: 'reserved',
+      },
+      expected: [
+        `pnpm workflow review-diff status ${sessionId} --json`,
+        `pnpm workflow status ${sessionId} --json`,
+        'pnpm workflow guide --json',
+      ],
+    },
+    {
+      result: {
+        state: 'challenge-closure-required',
+        sessionId,
+      },
+      expected: [
+        `pnpm workflow review-diff status ${sessionId} --json`,
+        `pnpm workflow status ${sessionId} --json`,
+        'pnpm workflow guide --json',
+      ],
+    },
+    {
+      result: {
         state: 'collaboration-grant-required',
         sessionId,
       },

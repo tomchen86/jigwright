@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -34,6 +34,7 @@ import {
   assertCurrentTaskDiffReviewSatisfied,
   beginTaskDiffReview,
   beginTaskDiffReviewContinuation,
+  inspectTaskDiffReviewStatus,
   loadCurrentExternalTaskDiffTerminalAssurance,
   reconcileTaskDiffReview,
   submitExternalTaskDiffReview,
@@ -571,20 +572,58 @@ test('external initial review and external continuation retain two independently
       'initial-external-reviewer',
       now,
     );
-    const externalReview = submitExternalTaskDiffReview(
+    const reviewInput = {
+      schemaVersion: 1 as const,
+      kind: 'task-diff-review-submission-input.v1' as const,
+      subjectDigest: paused.subject.subjectDigest,
+      submission: challengedSubmission(paused.subject),
+    };
+    assert.throws(
+      () =>
+        submitExternalTaskDiffReview(
+          repository,
+          session.sessionId,
+          reviewInput,
+          {
+            explicitActor: 'codex',
+            environment: {},
+            ...grantOptions(signing, reviewGrant.grantId, now, 30_000),
+            testCrashAfter: 'grant-consumed',
+          },
+        ),
+      /Simulated external TaskDiffReview interruption/,
+    );
+    const initialRecovery = inspectTaskDiffReviewStatus(
       repository,
       session.sessionId,
-      {
-        schemaVersion: 1,
-        kind: 'task-diff-review-submission-input.v1',
-        subjectDigest: paused.subject.subjectDigest,
-        submission: challengedSubmission(paused.subject),
-      },
-      {
-        explicitActor: 'codex',
-        environment: {},
-        ...grantOptions(signing, reviewGrant.grantId, now, 30_000),
-      },
+    );
+    assert.equal(initialRecovery.state, 'external-reconciliation-required');
+    assert.ok('grantState' in initialRecovery);
+    assert.equal(initialRecovery.grantState, 'consumed');
+    assert.ok('source' in initialRecovery);
+    assert.equal(initialRecovery.source, 'external');
+    assert.ok('grantId' in initialRecovery);
+    assert.equal(initialRecovery.grantId, reviewGrant.grantId);
+    const grantsBeforeInitialRecovery = inspectCollaborationGrants(
+      discoverRepository(repository).gitCommonDirectory,
+    );
+    const initialRecovered = runCli(repository, [
+      'review-diff',
+      'reconcile',
+      session.sessionId,
+      '--json',
+    ]);
+    assert.equal(initialRecovered.status, 0, initialRecovered.stderr);
+    const externalReview = (
+      JSON.parse(initialRecovered.stdout) as {
+        result: ReturnType<typeof submitExternalTaskDiffReview>;
+      }
+    ).result;
+    assert.deepEqual(
+      inspectCollaborationGrants(
+        discoverRepository(repository).gitCommonDirectory,
+      ),
+      grantsBeforeInitialRecovery,
     );
     assert.equal(externalReview.state, 'challenge-response-required');
     if (
@@ -614,12 +653,54 @@ test('external initial review and external continuation retain two independently
       'external-challenge-closer',
       now,
     );
-    const completed = submitExternalTaskDiffReviewContinuation(
+    assert.throws(
+      () =>
+        submitExternalTaskDiffReviewContinuation(
+          repository,
+          session.sessionId,
+          response,
+          closureInput,
+          {
+            ...grantOptions(signing, closureGrant.grantId, now, 60_000),
+            testCrashAfter: 'grant-consumed',
+          },
+        ),
+      /Simulated external TaskDiffReview continuation interruption/,
+    );
+    const continuationRecovery = inspectTaskDiffReviewStatus(
       repository,
       session.sessionId,
-      response,
-      closureInput,
-      grantOptions(signing, closureGrant.grantId, now, 60_000),
+    );
+    assert.equal(
+      continuationRecovery.state,
+      'external-reconciliation-required',
+    );
+    assert.ok('grantState' in continuationRecovery);
+    assert.equal(continuationRecovery.grantState, 'consumed');
+    assert.ok('source' in continuationRecovery);
+    assert.equal(continuationRecovery.source, 'external-continuation');
+    assert.ok('grantId' in continuationRecovery);
+    assert.equal(continuationRecovery.grantId, closureGrant.grantId);
+    const grantsBeforeContinuationRecovery = inspectCollaborationGrants(
+      discoverRepository(repository).gitCommonDirectory,
+    );
+    const continuationRecovered = runCli(repository, [
+      'review-diff',
+      'reconcile',
+      session.sessionId,
+      '--json',
+    ]);
+    assert.equal(continuationRecovered.status, 0, continuationRecovered.stderr);
+    const completed = (
+      JSON.parse(continuationRecovered.stdout) as {
+        result: ReturnType<typeof submitExternalTaskDiffReviewContinuation>;
+      }
+    ).result;
+    assert.deepEqual(
+      inspectCollaborationGrants(
+        discoverRepository(repository).gitCommonDirectory,
+      ),
+      grantsBeforeContinuationRecovery,
     );
     assert.equal(completed.state, 'satisfied');
     assert.deepEqual(
@@ -662,6 +743,25 @@ test('external initial review and external continuation retain two independently
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+function runCli(
+  repository: string,
+  args: string[],
+): { status: number | null; stdout: string; stderr: string } {
+  return spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      ...args,
+    ],
+    {
+      cwd: repository,
+      encoding: 'utf8',
+      env: process.env,
+    },
+  );
+}
 
 function challengeResponse(
   review: Parameters<typeof createTaskDiffReviewChallengeResponse>[0]['review'],

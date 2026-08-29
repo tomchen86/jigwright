@@ -246,6 +246,7 @@ import {
   inspectTaskDiffReviewStatus,
   inspectTaskDiffReviewSubject,
   loadCurrentAuthenticatedTaskDiffReview,
+  reconcileExternalTaskDiffReview,
   reconcileTaskDiffReviewContinuation,
   reconcileTaskDiffReview,
   resumeDirectHumanTaskDiffReview,
@@ -2653,6 +2654,20 @@ function dispatch(args: string[], cwd: string): CommandResult {
             }),
           };
         }
+        if (status.state === 'external-reconciliation-required') {
+          return {
+            command,
+            ok: true,
+            result: reconcileExternalTaskDiffReview(cwd, rest[1], {
+              consumedReplayVerifier:
+                taskDiffConsumedCollaborationGrantReplayVerifier(
+                  cwd,
+                  status.grantId,
+                ),
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            }),
+          };
+        }
         const grantSelection =
           'assignment' in status && 'grantId' in status.assignment
             ? taskDiffCollaborationGrantSelection(
@@ -4022,6 +4037,17 @@ function currentRoleContextSharingGrantSelection(cwd: string, grantId: string) {
   });
 }
 
+function maintainerPolicyAtCommit(repositoryRoot: string, commit: string) {
+  return parseMaintainerPolicy(
+    JSON.parse(
+      runGit(repositoryRoot, [
+        'show',
+        `${commit}:workflow/maintainer-policy.json`,
+      ]),
+    ),
+  );
+}
+
 function taskDiffCollaborationGrantSelection(cwd: string, grantId: string) {
   const repository = discoverRepository(cwd);
   const inspection = readCollaborationGrantInspection(
@@ -4036,13 +4062,9 @@ function taskDiffCollaborationGrantSelection(cwd: string, grantId: string) {
         ExitCode.guard,
       );
     }
-    const historicalPolicy = parseMaintainerPolicy(
-      JSON.parse(
-        runGit(repository.repositoryRoot, [
-          'show',
-          `${inspection.use.envelope.payload.baselineCommit}:workflow/maintainer-policy.json`,
-        ]),
-      ),
+    const historicalPolicy = maintainerPolicyAtCommit(
+      repository.repositoryRoot,
+      inspection.use.envelope.payload.baselineCommit,
     );
     return Object.freeze({
       grantId,
@@ -4065,6 +4087,29 @@ function taskDiffCollaborationGrantSelection(cwd: string, grantId: string) {
     consumedReplayVerifier:
       createConsumedCollaborationGrantReplayVerifier(currentPolicy),
   });
+}
+
+function taskDiffConsumedCollaborationGrantReplayVerifier(
+  cwd: string,
+  grantId: string,
+) {
+  const repository = discoverRepository(cwd);
+  const inspection = readCollaborationGrantInspection(
+    repository.gitCommonDirectory,
+    grantId,
+  );
+  if (inspection?.state !== 'consumed' || inspection.use === undefined) {
+    throw workflowError(
+      'TASK_DIFF_EXTERNAL_RECONCILIATION_GRANT_NOT_CONSUMED',
+      'External TaskDiffReview reconciliation currently requires the exact Grant to have reached its durable consumed state.',
+      ExitCode.guard,
+    );
+  }
+  const historicalPolicy = maintainerPolicyAtCommit(
+    repository.repositoryRoot,
+    inspection.use.envelope.payload.baselineCommit,
+  );
+  return createConsumedCollaborationGrantReplayVerifier(historicalPolicy);
 }
 
 function printFailure(

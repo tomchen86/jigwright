@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -298,22 +298,23 @@ test('human-only TaskDiffReview resume signs only an exact durable pause and rec
       session.sessionId,
     );
     assert.equal(consumedStatus.state, 'external-reconciliation-required');
+    assert.ok('grantState' in consumedStatus);
+    assert.equal(consumedStatus.grantState, 'consumed');
     assert.ok('source' in consumedStatus);
     assert.equal(consumedStatus.source, 'external-continuation');
 
-    const completed = resumeDirectHumanTaskDiffReview(
-      repository,
+    const reconciled = runCli(repository, [
+      'review-diff',
+      'reconcile',
       session.sessionId,
-      closureRequest,
-      continuationGrant.grantId,
-      {
-        now: plus(issuedAt, 100_000),
-        signer: signing.signer,
-        verifier,
-        consumedReplayVerifier,
-        consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-      },
-    );
+      '--json',
+    ]);
+    assert.equal(reconciled.status, 0, reconciled.stderr);
+    const completed = (
+      JSON.parse(reconciled.stdout) as {
+        result: ReturnType<typeof resumeDirectHumanTaskDiffReview>;
+      }
+    ).result;
     assert.equal(completed.state, 'satisfied');
     assert.equal(signing.signCalls(), afterCrashSignatures);
     assert.deepEqual(
@@ -603,6 +604,25 @@ function createSigningFixture(): {
       fs.rmSync(root, { recursive: true, force: true });
     },
   };
+}
+
+function runCli(
+  repository: string,
+  args: string[],
+): { status: number | null; stdout: string; stderr: string } {
+  return spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      path.resolve(import.meta.dirname, '../src/cli.ts'),
+      ...args,
+    ],
+    {
+      cwd: repository,
+      encoding: 'utf8',
+      env: process.env,
+    },
+  );
 }
 
 function snapshotTree(root: string): readonly string[] {
