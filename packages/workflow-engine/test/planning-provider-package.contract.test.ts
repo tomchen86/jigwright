@@ -5,7 +5,6 @@ import test from 'node:test';
 
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
-  assertPlanningProviderV1Migration,
   parsePlanningProviderBinding,
   planningProviderBindingDigest,
   renderPlanningProviderBinding,
@@ -30,7 +29,17 @@ const binding: PlanningProviderBindingV1 = {
   planningRoot: 'openspec/changes/demo-change',
 };
 
-test('workflow compatibility facades preserve landed provider bytes and errors', () => {
+test('workflow planning-provider surface omits V1 migration helpers', async () => {
+  const surface =
+    await import('../src/modules/planning-provider/planning-provider-binding.ts');
+
+  assert.equal('assertPlanningProviderV1Migration' in surface, false);
+  assert.equal(typeof surface.parsePlanningProviderBinding, 'function');
+  assert.equal(typeof surface.renderPlanningProviderBinding, 'function');
+  assert.equal(typeof surface.planningProviderBindingDigest, 'function');
+});
+
+test('workflow current facades preserve landed provider bytes and errors', () => {
   const change: PlanningProviderChangeResult = {
     readiness: 'ready',
     blockers: [],
@@ -89,17 +98,6 @@ test('workflow compatibility facades preserve landed provider bytes and errors',
       error instanceof WorkflowError &&
       error.code === 'PLANNING_PROVIDER_CONTRACT_INVALID' &&
       error.exitCode === 13,
-  );
-  assert.throws(
-    () =>
-      assertPlanningProviderV1Migration(binding, {
-        ...binding,
-        providerId: 'other-provider',
-      }),
-    (error) =>
-      error instanceof WorkflowError &&
-      error.code === 'PROVIDER_MIGRATION_UNSUPPORTED' &&
-      error.exitCode === 10,
   );
 });
 

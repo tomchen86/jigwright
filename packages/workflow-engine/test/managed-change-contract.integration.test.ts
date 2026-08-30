@@ -8,7 +8,6 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
-  assertPlanningProviderV1Migration,
   parsePlanningProviderBinding,
   planningProviderBindingDigest,
   renderPlanningProviderBinding,
@@ -21,9 +20,7 @@ import {
 } from '../src/modules/planning-provider/planning-provider-port.ts';
 import { loadValidatedChangeContract as loadValidatedChangeContractWithReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
-import {
-  resolveCurrentOpenSpecProviderBinding,
-} from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
+import { resolveCurrentOpenSpecProviderBinding } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
 import { planningProviderBindingReader } from '../src/runtime/repository-transaction/planning-provider-binding-store.ts';
 import {
   buildInvestigationManifestDraft,
@@ -204,7 +201,7 @@ test('core consumes a fake planning-provider port and rejects contradictory evid
   }
 });
 
-test('planning-provider binding is canonical, plane-specific, and refuses v1 migration', () => {
+test('planning-provider binding is canonical and plane-specific', () => {
   const binding: PlanningProviderBindingV1 = {
     schemaVersion: 1,
     changeId: CHANGE_ID,
@@ -220,25 +217,6 @@ test('planning-provider binding is canonical, plane-specific, and refuses v1 mig
   assert.deepEqual(parsePlanningProviderBinding(source, CHANGE_ID), binding);
   assert.match(planningProviderBindingDigest(binding), /^[0-9a-f]{64}$/u);
 
-  for (const candidate of [
-    { ...binding, changeId: 'different-change' },
-    { ...binding, providerId: 'spectra' },
-    { ...binding, adapterContractVersion: 2 },
-    { ...binding, planningRoot: `other/changes/${CHANGE_ID}` },
-    {
-      ...binding,
-      providerRequirement: { ...binding.providerRequirement, version: '2.0.0' },
-    },
-  ]) {
-    assert.throws(
-      () => assertPlanningProviderV1Migration(binding, candidate),
-      (error) => isWorkflowError(error, 'PROVIDER_MIGRATION_UNSUPPORTED'),
-    );
-  }
-
-  assert.doesNotThrow(() =>
-    assertPlanningProviderV1Migration(binding, { ...binding }),
-  );
   assert.throws(
     () =>
       parsePlanningProviderBinding(
@@ -298,7 +276,6 @@ test('planning-provider readers reject unsafe current binding files', () => {
       fs.rmSync(repository, { recursive: true, force: true });
     }
   }
-
 });
 
 test('validated managed contract binds OpenSpec readiness to a full mode-aware snapshot', () => {

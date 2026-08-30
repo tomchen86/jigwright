@@ -1,5 +1,4 @@
 import {
-  assertPlanningProviderV1Migration as assertCorePlanningProviderV1Migration,
   parsePlanningProviderBinding as parseCorePlanningProviderBinding,
   PlanningProviderBindingError,
   planningProviderBindingDigest as corePlanningProviderBindingDigest,
@@ -18,9 +17,9 @@ export type {
 };
 
 /**
- * Compatibility facade for the mechanically extracted v1 binding codec.
- * Durable bytes and digests are core-owned; workflow-engine retains only its
- * stable WorkflowError/exit-code surface.
+ * Workflow facade for the current binding codec. Durable bytes and digests are
+ * core-owned; workflow-engine retains only its stable WorkflowError/exit-code
+ * surface.
  */
 export function parsePlanningProviderBinding(
   source: string,
@@ -41,15 +40,6 @@ export function planningProviderBindingDigest(
   value: PlanningProviderBindingV1,
 ): string {
   return mapBindingError(() => corePlanningProviderBindingDigest(value));
-}
-
-export function assertPlanningProviderV1Migration(
-  previous: PlanningProviderBindingV1,
-  candidate: PlanningProviderBindingV1,
-): void {
-  mapBindingError(() =>
-    assertCorePlanningProviderV1Migration(previous, candidate),
-  );
 }
 
 function mapBindingError<T>(operation: () => T): T {

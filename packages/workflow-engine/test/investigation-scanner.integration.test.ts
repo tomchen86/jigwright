@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -14,13 +15,16 @@ import {
 import {
   canonicalEvidenceNodeEnvelope,
   createEvidenceNode,
+  type EvidenceNode,
 } from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
   createInvestigationCoverageNode,
   createInvestigationDispositionNodes,
   deriveInvestigationGroupFacts,
-  deriveInvestigationGroups,
+  deriveInvestigationHitNodes,
   readInvestigationGroupNode,
+  readInvestigationHitNode,
+  type InvestigationGroupFacts,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
 import { projectInvestigationArtifactForTracking } from '../src/adapters/planning/investigation/investigation-artifact-projection.ts';
 import {
@@ -1573,57 +1577,12 @@ test('domain grouping facts consume scanner facts without constructing evidence 
       assert.equal(serializedFacts.includes(`"${forbidden}"`), false);
     }
 
-    const legacyScan = scanInvestigationTree(request);
-    assert.equal(legacyScan.outcome, 'ready');
-    if (legacyScan.outcome !== 'ready') {
-      assert.fail('expected legacy scan adapter');
-    }
-    const legacyGroups = deriveInvestigationGroups({
-      scanNodes: legacyScan.nodes,
-      mutationPolicy,
-      declaredRoots,
-      reviewedRelationships: [],
-      exceptions: [],
-    }).groupNodes.map(readInvestigationGroupNode);
-
-    const normalizeDomainGroups = domain.groups
-      .map((group) => ({
-        selector: group.selector,
-        hits: group.hits
-          .map(({ hitKey: _hitKey, ...hit }) => hit)
-          .sort((left, right) =>
-            canonicalJson(left).localeCompare(canonicalJson(right)),
-          ),
-        sourceObjects: group.sourceObjects,
-      }))
-      .sort((left, right) =>
-        canonicalJson(left.selector).localeCompare(
-          canonicalJson(right.selector),
-        ),
-      );
-    const normalizeLegacyGroups = legacyGroups
-      .map((group) => ({
-        selector: {
-          termId: group.selector.termId,
-          rootId: group.selector.rootId,
-          extension: group.selector.extension,
-          mutationClass: group.selector.mutationClass,
-          relationshipId: group.selector.relationshipId,
-          splitId: group.selector.splitId,
-        },
-        hits: group.hits
-          .map(({ hitId: _hitId, ...hit }) => hit)
-          .sort((left, right) =>
-            canonicalJson(left).localeCompare(canonicalJson(right)),
-          ),
-        sourceObjects: group.sourceObjects,
-      }))
-      .sort((left, right) =>
-        canonicalJson(left.selector).localeCompare(
-          canonicalJson(right.selector),
-        ),
-      );
-    assert.deepEqual(normalizeDomainGroups, normalizeLegacyGroups);
+    assert.equal(domain.groups.length, 2);
+    assert.equal(domain.hits.length, 3);
+    assert.deepEqual(
+      domain.groups.flatMap(({ hitKeys }) => hitKeys).sort(),
+      domain.hits.map(({ hitKey }) => hitKey).sort(),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -1651,16 +1610,26 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
     if (scan.outcome !== 'ready') {
       assert.fail('expected a replayable scan');
     }
-    const grouped = deriveInvestigationGroups({
-      scanNodes: scan.nodes,
+    const scanFacts = scanInvestigationTreeFacts({
+      repositoryRoot: repository,
+      treeOid: baseline.tree,
+      terms: [term],
+    });
+    assert.equal(scanFacts.outcome, 'ready');
+    if (scanFacts.outcome !== 'ready') {
+      assert.fail('expected current scan facts');
+    }
+    const grouping = deriveInvestigationGroupFacts({
+      scanFacts: scanFacts.facts,
       mutationPolicy: createMutationClassPolicy({ rules: [] }),
       declaredRoots: [{ rootId: 'repository', path: '' }],
       reviewedRelationships: [],
-      exceptions: [],
     });
+    const hitNodes = deriveInvestigationHitNodes(scan.nodes);
+    const groupNodes = createHistoricalGroupFixture(grouping, hitNodes);
     const dispositions = createInvestigationDispositionNodes({
-      groupNodes: grouped.groupNodes,
-      dispositions: grouped.groupNodes.map((node) => ({
+      groupNodes,
+      dispositions: groupNodes.map((node) => ({
         groupId: (node.output as { groupId: string }).groupId,
         classification: 'load-bearing',
         rationale: 'The repeated fixture is deliberately load-bearing.',
@@ -1671,8 +1640,8 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       effectiveTermIds: [term.termId],
       scanNodes: scan.nodes,
       inventoryNode: scan.inventory.evidenceNode,
-      hitNodes: grouped.hitNodes,
-      groupNodes: grouped.groupNodes,
+      hitNodes,
+      groupNodes,
       dispositionNodes: dispositions,
     });
     const termUnion = createEvidenceNode({
@@ -1707,8 +1676,8 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
           termUnion,
           ...scan.nodes,
           scan.inventory.evidenceNode,
-          ...grouped.hitNodes,
-          ...grouped.groupNodes,
+          ...hitNodes,
+          ...groupNodes,
           ...dispositions,
           coverage,
         ].sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
@@ -1720,6 +1689,13 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
 
     const projected = projectInvestigationArtifactForTracking(repository, full);
     assert.equal(projected.schemaVersion, 2);
+    assert.equal(
+      projected.replay.groups.some(
+        ({ exceptions }) =>
+          Array.isArray(exceptions) && exceptions.length === 1,
+      ),
+      true,
+    );
     assert.equal(projected.nodes.length, 1);
     assert.ok(
       Buffer.byteLength(canonicalJson(projected)) <
@@ -1857,6 +1833,118 @@ function createScannerRepository(): string {
   fs.writeFileSync(path.join(repository, '.gitignore'), 'ignored/\n');
   commitAll(repository, 'Create scanner fixture');
   return repository;
+}
+
+function createHistoricalGroupFixture(
+  grouping: InvestigationGroupFacts,
+  hitNodes: EvidenceNode[],
+): EvidenceNode[] {
+  assert.equal(grouping.groups.length, 1);
+  const group = grouping.groups[0]!;
+  const members = [...hitNodes].sort((left, right) =>
+    left.nodeId.localeCompare(right.nodeId),
+  );
+  const hits = members.map(readInvestigationHitNode);
+  assert.deepEqual(
+    hits
+      .map(({ hitId: _hitId, ...hit }) => hit)
+      .sort((left, right) =>
+        canonicalJson(left).localeCompare(canonicalJson(right)),
+      ),
+    group.hits
+      .map(({ hitKey: _hitKey, ...hit }) => hit)
+      .sort((left, right) =>
+        canonicalJson(left).localeCompare(canonicalJson(right)),
+      ),
+  );
+  const [splitMember, ...baseMembers] = members;
+  assert.ok(splitMember);
+  const splitId = 'historical-projection-split';
+  const baseSelector = { selectorId: group.key, ...group.selector };
+  const splitSelectorFields = { ...group.selector, splitId };
+  const splitSelector = {
+    selectorId: digestCanonical({
+      schema: 'investigation.selector.v1',
+      ...splitSelectorFields,
+    }),
+    ...splitSelectorFields,
+  };
+  const exception = {
+    exceptionId: 'historical-projection-first-hit',
+    hitId: splitMember.nodeId,
+    baseSelectorId: group.key,
+    splitId,
+    rationale: 'This occurrence was historically reviewed as a distinct group.',
+    author: 'projection-test',
+  };
+  return [
+    createHistoricalGroupNode({
+      groupingPolicyDigest: grouping.groupingPolicyDigest,
+      selector: baseSelector,
+      members: baseMembers,
+      sourceObjects: group.sourceObjects,
+      exceptions: [],
+    }),
+    createHistoricalGroupNode({
+      groupingPolicyDigest: grouping.groupingPolicyDigest,
+      selector: splitSelector,
+      members: [splitMember],
+      sourceObjects: group.sourceObjects,
+      exceptions: [exception],
+    }),
+  ].sort((left, right) => left.nodeId.localeCompare(right.nodeId));
+}
+
+function createHistoricalGroupNode(input: {
+  groupingPolicyDigest: string;
+  selector: {
+    selectorId: string;
+    termId: string;
+    rootId: string;
+    extension: { rawBase64: string; utf8: string | null };
+    mutationClass: string;
+    relationshipId: string | null;
+    splitId: string | null;
+  };
+  members: EvidenceNode[];
+  sourceObjects: unknown[];
+  exceptions: unknown[];
+}): EvidenceNode {
+  const provenanceParentNodeIds: Record<string, string> = {};
+  const semanticParentResultDigests: Record<string, string> = {};
+  input.members.forEach((member, index) => {
+    provenanceParentNodeIds[`hit-${index}`] = member.nodeId;
+    semanticParentResultDigests[`hit-${index}`] = member.resultDigest;
+  });
+  return createEvidenceNode({
+    type: 'investigation-group',
+    nodeSchema: 'investigation.group.v1',
+    evaluator: 'investigation-groups.v1',
+    policyDigest: input.groupingPolicyDigest,
+    exactInputDigests: {
+      exceptions: digestCanonical({
+        schema: 'investigation.group-exceptions.v1',
+        exceptions: input.exceptions,
+      }),
+      selector: input.selector.selectorId,
+    },
+    semanticParentResultDigests,
+    provenanceParentNodeIds,
+    outputSchema: 'investigation.group-output.v1',
+    output: {
+      groupId: input.selector.selectorId,
+      selector: input.selector,
+      hitIds: input.members.map(({ nodeId }) => nodeId),
+      hits: input.members.map(readInvestigationHitNode),
+      sourceObjects: input.sourceObjects,
+      exceptions: input.exceptions,
+    },
+    runtimeMetadata: {},
+  });
+}
+
+function digestCanonical(value: unknown): string {
+  return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
 }
 
 function commitAll(repository: string, message: string): void {

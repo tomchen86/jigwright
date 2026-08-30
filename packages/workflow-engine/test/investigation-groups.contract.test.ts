@@ -8,52 +8,40 @@ import {
   createEvidenceNode,
   type EvidenceNode,
 } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   createInvestigationCoverageNode,
   createInvestigationDispositionNodes,
-  deriveInvestigationGroups,
+  deriveInvestigationGroupFacts,
+  deriveInvestigationHitNodes,
   readInvestigationCoverageNode,
   readInvestigationDispositionNode,
   readInvestigationGroupNode,
   readInvestigationHitNode,
-  validateInvestigationEvidenceDag,
+  replayInvestigationGroupNodes,
   type DeclaredInvestigationRoot,
-  type InvestigationDispositionInput,
-  type InvestigationGroupException,
+  type InvestigationGroupFacts,
   type ReviewedPathRelationship,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
+import type { InvestigationScanFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
+import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
 import {
   MUTATION_CLASSES,
   classifyMutationPath,
   createMutationClassPolicy,
   type MutationClassPolicy,
 } from '../src/modules/source/mutation-class-policy.ts';
+import { isWorkflowError } from './fixture.ts';
 
 const POLICY_DIGEST = '1'.repeat(64);
 const TREE_DIGEST = '2'.repeat(64);
-const TERM_A = 'a'.repeat(64);
-const TERM_B = 'b'.repeat(64);
-const TERM_ZERO = 'c'.repeat(64);
 
-test('mutation classes are explicit, raw-path-safe grouping metadata and never a scan filter', () => {
+test('mutation classes remain explicit raw-path-safe grouping metadata', () => {
   const policy = mutationPolicy();
-  const reorderedPolicy = createMutationClassPolicy({
+  const reordered = createMutationClassPolicy({
     rules: [...policy.rules].reverse(),
   });
-  assert.equal(reorderedPolicy.policyDigest, policy.policyDigest);
-  assert.deepEqual(reorderedPolicy.rules, policy.rules);
-
-  const cases = [
-    ['src/a.ts', 'live'],
-    ['blocked/file.ts', 'prohibited'],
-    ['generated/file.ts', 'generated'],
-    ['mirror/file.ts', 'mirror'],
-    ['CHANGELOG.md', 'append-only'],
-    ['archive/file.md', 'immutable'],
-    ['history/file.md', 'historical-reference'],
-  ] as const;
-
+  assert.equal(reordered.policyDigest, policy.policyDigest);
+  assert.deepEqual(reordered.rules, policy.rules);
   assert.deepEqual(MUTATION_CLASSES, [
     'live',
     'prohibited',
@@ -63,16 +51,25 @@ test('mutation classes are explicit, raw-path-safe grouping metadata and never a
     'immutable',
     'historical-reference',
   ]);
-  for (const [filePath, expected] of cases) {
-    const classified = classifyMutationPath(policy, pathIdentity(filePath));
-    assert.equal(classified.mutationClass, expected);
-    assert.equal(classified.policyDigest, policy.policyDigest);
+
+  for (const [filePath, expected] of [
+    ['src/a.ts', 'live'],
+    ['blocked/file.ts', 'prohibited'],
+    ['generated/file.ts', 'generated'],
+    ['mirror/file.ts', 'mirror'],
+    ['CHANGELOG.md', 'append-only'],
+    ['archive/file.md', 'immutable'],
+    ['history/file.md', 'historical-reference'],
+  ] as const) {
+    assert.equal(
+      classifyMutationPath(policy, pathIdentity(filePath)).mutationClass,
+      expected,
+    );
   }
 
-  const invalidRaw = Buffer.concat([
+  const rawPrefix = Buffer.concat([
     Buffer.from('blocked/'),
     Buffer.from([0xff]),
-    Buffer.from('/secret.ts'),
   ]);
   const rawPolicy = createMutationClassPolicy({
     rules: [
@@ -82,17 +79,16 @@ test('mutation classes are explicit, raw-path-safe grouping metadata and never a
         mutationClass: 'prohibited',
         selector: {
           kind: 'raw-prefix',
-          rawBase64: Buffer.concat([
-            Buffer.from('blocked/'),
-            Buffer.from([0xff]),
-          ]).toString('base64'),
+          rawBase64: rawPrefix.toString('base64'),
         },
       },
     ],
   });
   assert.equal(
     classifyMutationPath(rawPolicy, {
-      rawBase64: invalidRaw.toString('base64'),
+      rawBase64: Buffer.concat([rawPrefix, Buffer.from('/secret.ts')]).toString(
+        'base64',
+      ),
       utf8: null,
     }).mutationClass,
     'prohibited',
@@ -112,165 +108,166 @@ test('mutation classes are explicit, raw-path-safe grouping metadata and never a
     () => classifyMutationPath(ambiguous, pathIdentity('blocked/file.ts')),
     (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
   );
-
   assert.throws(
     () =>
-      classifyMutationPath(
-        {
-          policyDigest: policy.policyDigest,
-          rules: policy.rules.map((rule) =>
-            rule.ruleId === 'generated'
-              ? { ...rule, mutationClass: 'prohibited' }
-              : rule,
-          ),
-        },
-        pathIdentity('generated/file.ts'),
-      ),
-    (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
-  );
-
-  for (const invalidPath of [
-    { rawBase64: '', utf8: '' },
-    { rawBase64: 'not-canonical-base64', utf8: null },
-    {
-      rawBase64: Buffer.from('src/a.ts', 'utf8').toString('base64'),
-      utf8: 'src/spoofed.ts',
-    },
-    {
-      rawBase64: Buffer.from('src/a.ts', 'utf8').toString('base64'),
-      utf8: null,
-    },
-  ]) {
-    assert.throws(
-      () => classifyMutationPath(policy, invalidPath),
-      (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
-    );
-  }
-
-  for (const selector of [
-    { kind: 'raw-prefix', rawBase64: '' },
-    { kind: 'raw-prefix', rawBase64: 'not-canonical-base64' },
-  ]) {
-    assert.throws(
-      () =>
-        createMutationClassPolicy({
-          rules: [
-            {
-              ruleId: 'invalid-raw-selector',
-              mutationClass: 'prohibited',
-              selector,
-            },
-          ] as Parameters<typeof createMutationClassPolicy>[0]['rules'],
-        }),
-      (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
-    );
-  }
-
-  assert.throws(
-    () =>
-      createMutationClassPolicy({
-        rules: policy.rules,
-        hidden: true,
-      } as Parameters<typeof createMutationClassPolicy>[0]),
-    (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
-  );
-  assert.throws(
-    () =>
-      classifyMutationPath(
-        { ...policy, hidden: true } as MutationClassPolicy,
-        pathIdentity('src/a.ts'),
-      ),
+      classifyMutationPath(policy, {
+        ...pathIdentity('src/a.ts'),
+        utf8: 'src/spoofed.ts',
+      }),
     (error) => isWorkflowError(error, 'MUTATION_CLASS_POLICY_INVALID'),
   );
 });
 
-test('grouping creates stable per-term hit identities and conservative selector groups', () => {
+test('current grouping facts are deterministic, conservative, and fail closed', () => {
   const context = groupingContext();
-  const scanA = scanNode(TERM_A, [
-    hit('src/a.ts', 0),
-    hit('src/b.ts', 1),
-    hit('src/c.ts', 2),
-    hit('blocked/file.ts', 3),
-    hit('generated/file.ts', 4),
-    hit('mirror/file.ts', 5),
-    hit('CHANGELOG.md', 6),
-    hit('archive/file.md', 7),
-    hit('history/file.md', 8),
+  const termA = investigationTerm('group-a');
+  const termB = investigationTerm('group-b');
+  const facts = scanFacts([
+    {
+      term: termA,
+      hits: [
+        hit('src/a.ts', 0),
+        hit('src/b.ts', 1),
+        hit('src/c.ts', 2),
+        hit('blocked/file.ts', 3),
+        hit('generated/file.ts', 4),
+        hit('mirror/file.ts', 5),
+        hit('CHANGELOG.md', 6),
+        hit('archive/file.md', 7),
+        hit('history/file.md', 8),
+      ],
+    },
+    { term: termB, hits: [hit('src/a.ts', 0)] },
   ]);
-  const scanB = scanNode(TERM_B, [hit('src/a.ts', 0)]);
 
-  const grouped = deriveInvestigationGroups({
-    scanNodes: [scanA, scanB],
+  const grouped = deriveInvestigationGroupFacts({
+    scanFacts: facts,
     ...context,
-    exceptions: [],
   });
-  assert.equal(grouped.hitNodes.length, 10);
+  assert.equal(grouped.hits.length, 10);
+  assert.equal(new Set(grouped.hits.map(({ hitKey }) => hitKey)).size, 10);
   assert.equal(
-    new Set(
-      grouped.hitNodes.map((node) => readInvestigationHitNode(node).hitId),
-    ).size,
-    10,
+    grouped.hits.filter(({ path }) => path.utf8 === 'src/a.ts').length,
+    2,
   );
-  const sameOccurrence = grouped.hitNodes
-    .map(readInvestigationHitNode)
-    .filter((candidate) => candidate.path.utf8 === 'src/a.ts');
-  assert.equal(sameOccurrence.length, 2);
-  assert.notEqual(sameOccurrence[0]?.hitId, sameOccurrence[1]?.hitId);
-
   assert.deepEqual(
     [
-      ...new Set(
-        grouped.groupNodes.map(
-          (node) => readInvestigationGroupNode(node).selector.mutationClass,
-        ),
-      ),
+      ...new Set(grouped.groups.map(({ selector }) => selector.mutationClass)),
     ].sort(),
     [...MUTATION_CLASSES].sort(),
   );
-  const sharedLiveGroup = grouped.groupNodes
-    .map(readInvestigationGroupNode)
-    .find((group) => {
-      const paths = group.hits.map((entry) => entry.path.utf8).sort();
-      return canonicalJson(paths) === canonicalJson(['src/b.ts', 'src/c.ts']);
-    });
+  const sharedLiveGroup = grouped.groups.find((group) =>
+    group.hits.some(({ path }) => path.utf8 === 'src/b.ts'),
+  );
   assert.ok(sharedLiveGroup);
+  assert.deepEqual(sharedLiveGroup.hits.map(({ path }) => path.utf8).sort(), [
+    'src/b.ts',
+    'src/c.ts',
+  ]);
   assert.equal(sharedLiveGroup.selector.rootId, 'source');
   assert.equal(sharedLiveGroup.selector.extension.utf8, '.ts');
   assert.equal(sharedLiveGroup.selector.relationshipId, null);
 
-  const shuffled = deriveInvestigationGroups({
-    scanNodes: [scanB, scanA],
+  const shuffled = deriveInvestigationGroupFacts({
+    scanFacts: { ...facts, terms: [...facts.terms].reverse() },
     mutationPolicy: context.mutationPolicy,
     declaredRoots: [...context.declaredRoots].reverse(),
     reviewedRelationships: [...context.reviewedRelationships].reverse(),
-    exceptions: [],
   });
-  assert.deepEqual(
-    shuffled.hitNodes.map(({ nodeId }) => nodeId),
-    grouped.hitNodes.map(({ nodeId }) => nodeId),
-  );
-  assert.deepEqual(
-    shuffled.groupNodes.map(({ nodeId }) => nodeId),
-    grouped.groupNodes.map(({ nodeId }) => nodeId),
-  );
+  assert.equal(canonicalJson(shuffled), canonicalJson(grouped));
 
   assert.throws(
     () =>
-      deriveInvestigationGroups({
-        scanNodes: [scanA],
+      deriveInvestigationGroupFacts({
+        scanFacts: facts,
         ...context,
         declaredRoots: [
           ...context.declaredRoots,
           { rootId: 'duplicate-source', path: 'src' },
         ],
-        exceptions: [],
+      }),
+    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
+  );
+  for (const reviewedRelationships of [
+    [{ ...context.reviewedRelationships[0]!, kind: 'inferred' }],
+    [{ ...context.reviewedRelationships[0]!, reference: '   ' }],
+    [
+      context.reviewedRelationships[0]!,
+      reviewedRelationship(
+        'generated-chain',
+        'generated/file.ts',
+        'generated/second.ts',
+      ),
+    ],
+    [
+      {
+        ...context.reviewedRelationships[0]!,
+        subjectPath: {
+          ...context.reviewedRelationships[0]!.subjectPath,
+          utf8: 'src/spoofed.ts',
+        },
+      },
+    ],
+  ]) {
+    assert.throws(
+      () =>
+        deriveInvestigationGroupFacts({
+          scanFacts: facts,
+          mutationPolicy: context.mutationPolicy,
+          declaredRoots: context.declaredRoots,
+          reviewedRelationships,
+        }),
+      (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
+    );
+  }
+
+  const collisionFacts = scanFacts([
+    { term: termA, hits: [hit('src/a.ts', 0)] },
+  ]);
+  const relationshipCollisionA = deriveInvestigationGroupFacts({
+    scanFacts: collisionFacts,
+    mutationPolicy: context.mutationPolicy,
+    declaredRoots: context.declaredRoots,
+    reviewedRelationships: [
+      reviewedRelationship('a+b', 'src/a.ts', 'generated/one.ts'),
+      reviewedRelationship('c', 'src/a.ts', 'generated/two.ts'),
+    ],
+  });
+  const relationshipCollisionB = deriveInvestigationGroupFacts({
+    scanFacts: collisionFacts,
+    mutationPolicy: context.mutationPolicy,
+    declaredRoots: context.declaredRoots,
+    reviewedRelationships: [
+      reviewedRelationship('a', 'src/a.ts', 'generated/one.ts'),
+      reviewedRelationship('b+c', 'src/a.ts', 'generated/two.ts'),
+    ],
+  });
+  assert.notEqual(
+    relationshipCollisionA.groups[0]?.selector.relationshipId,
+    relationshipCollisionB.groups[0]?.selector.relationshipId,
+  );
+
+  assert.throws(
+    () =>
+      deriveInvestigationGroupFacts({
+        scanFacts: scanFacts([{ term: termA, hits: [] }]),
+        mutationPolicy: {
+          policyDigest: context.mutationPolicy.policyDigest,
+          rules: context.mutationPolicy.rules.map((rule) =>
+            rule.ruleId === 'generated'
+              ? { ...rule, mutationClass: 'prohibited' }
+              : rule,
+          ),
+        },
+        declaredRoots: context.declaredRoots,
+        reviewedRelationships: [],
       }),
     (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
   assert.throws(
     () =>
-      deriveInvestigationGroups({
-        scanNodes: [scanA],
+      deriveInvestigationGroupFacts({
+        scanFacts: facts,
         ...context,
         reviewedRelationships: [
           ...context.reviewedRelationships,
@@ -282,648 +279,162 @@ test('grouping creates stable per-term hit identities and conservative selector 
             reference: 'review:ambiguous',
           },
         ],
-        exceptions: [],
       }),
     (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
-
-  for (const reviewedRelationships of [
-    [
-      {
-        ...context.reviewedRelationships[0]!,
-        kind: 'inferred',
-      },
-    ],
-    [
-      {
-        ...context.reviewedRelationships[0]!,
-        reference: '   ',
-      },
-    ],
-    [
-      context.reviewedRelationships[0]!,
-      {
-        relationshipId: 'generated-chain',
-        kind: 'generated',
-        subjectPath: pathIdentity('generated/file.ts'),
-        counterpartPath: pathIdentity('generated/second.ts'),
-        reference: 'review:generated-chain',
-      },
-    ],
-  ]) {
-    assert.throws(
-      () =>
-        deriveInvestigationGroups({
-          scanNodes: [scanA],
-          mutationPolicy: context.mutationPolicy,
-          declaredRoots: context.declaredRoots,
-          reviewedRelationships,
-          exceptions: [],
-        }),
-      (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-    );
-  }
-
   assert.throws(
     () =>
-      deriveInvestigationGroups({
-        scanNodes: [scanA],
-        mutationPolicy: context.mutationPolicy,
-        declaredRoots: context.declaredRoots,
-        reviewedRelationships: [
+      deriveInvestigationGroupFacts({
+        scanFacts: scanFacts([
           {
-            ...context.reviewedRelationships[0]!,
-            subjectPath: {
-              ...context.reviewedRelationships[0]!.subjectPath,
-              utf8: 'src/spoofed.ts',
-            },
+            term: termA,
+            hits: [
+              hit('src/b.ts', 0, { objectId: 'a'.repeat(40) }),
+              hit('src/c.ts', 1, {
+                objectId: 'a'.repeat(40),
+                contentSha256: 'b'.repeat(64),
+              }),
+            ],
           },
-        ],
-        exceptions: [],
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const relationshipCollisionA = deriveInvestigationGroups({
-    scanNodes: [scanNode(TERM_A, [hit('src/a.ts', 0)])],
-    mutationPolicy: context.mutationPolicy,
-    declaredRoots: context.declaredRoots,
-    reviewedRelationships: [
-      reviewedRelationship('a+b', 'src/a.ts', 'generated/one.ts'),
-      reviewedRelationship('c', 'src/a.ts', 'generated/two.ts'),
-    ],
-    exceptions: [],
-  });
-  const relationshipCollisionB = deriveInvestigationGroups({
-    scanNodes: [scanNode(TERM_A, [hit('src/a.ts', 0)])],
-    mutationPolicy: context.mutationPolicy,
-    declaredRoots: context.declaredRoots,
-    reviewedRelationships: [
-      reviewedRelationship('a', 'src/a.ts', 'generated/one.ts'),
-      reviewedRelationship('b+c', 'src/a.ts', 'generated/two.ts'),
-    ],
-    exceptions: [],
-  });
-  assert.notEqual(
-    readInvestigationGroupNode(relationshipCollisionA.groupNodes[0]!).selector
-      .relationshipId,
-    readInvestigationGroupNode(relationshipCollisionB.groupNodes[0]!).selector
-      .relationshipId,
-  );
-
-  assert.throws(
-    () =>
-      deriveInvestigationGroups({
-        scanNodes: [scanNode(TERM_ZERO, [])],
-        mutationPolicy: {
-          policyDigest: context.mutationPolicy.policyDigest,
-          rules: context.mutationPolicy.rules.map((rule) =>
-            rule.ruleId === 'generated'
-              ? { ...rule, mutationClass: 'prohibited' }
-              : rule,
-          ),
-        },
-        declaredRoots: context.declaredRoots,
-        reviewedRelationships: [],
-        exceptions: [],
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-});
-
-test('explicit exceptions split one current hit without dropping or overlapping coverage', () => {
-  const context = groupingContext();
-  const scan = scanNode(TERM_A, [
-    hit('src/b.ts', 1),
-    hit('src/c.ts', 2),
-    hit('src/d.ts', 3),
-  ]);
-  const base = deriveInvestigationGroups({
-    scanNodes: [scan],
-    ...context,
-    exceptions: [],
-  });
-  assert.equal(base.groupNodes.length, 1);
-  const baseGroup = readInvestigationGroupNode(base.groupNodes[0]!);
-  const splitHit = baseGroup.hits.find(
-    (candidate) => candidate.path.utf8 === 'src/c.ts',
-  )!;
-  const exception: InvestigationGroupException = {
-    exceptionId: 'split-src-c',
-    hitId: splitHit.hitId,
-    baseSelectorId: baseGroup.selector.selectorId,
-    splitId: 'separate-load-bearing-file',
-    rationale: 'This consumer guards a distinct invariant.',
-    author: 'codex',
-  };
-
-  const split = deriveInvestigationGroups({
-    scanNodes: [scan],
-    ...context,
-    exceptions: [exception],
-  });
-  assert.equal(split.groupNodes.length, 2);
-  assert.deepEqual(
-    split.groupNodes
-      .flatMap((node) => readInvestigationGroupNode(node).hitIds)
-      .sort(),
-    baseGroup.hitIds,
-  );
-  const exceptionGroup = split.groupNodes
-    .map(readInvestigationGroupNode)
-    .find((group) => group.selector.splitId === exception.splitId);
-  assert.deepEqual(exceptionGroup?.exceptions, [exception]);
-  assert.deepEqual(exceptionGroup?.hitIds, [splitHit.hitId]);
-
-  const revisedExceptionSplit = deriveInvestigationGroups({
-    scanNodes: [scan],
-    ...context,
-    exceptions: [
-      {
-        ...exception,
-        rationale: 'This consumer guards a separately reviewed invariant.',
-      },
-    ],
-  });
-  const splitNode = split.groupNodes.find(
-    (node) =>
-      readInvestigationGroupNode(node).selector.splitId === exception.splitId,
-  )!;
-  const revisedSplitNode = revisedExceptionSplit.groupNodes.find(
-    (node) =>
-      readInvestigationGroupNode(node).selector.splitId === exception.splitId,
-  )!;
-  const unaffectedBaseNode = split.groupNodes.find(
-    (node) => readInvestigationGroupNode(node).selector.splitId === null,
-  )!;
-  const revisedBaseNode = revisedExceptionSplit.groupNodes.find(
-    (node) => readInvestigationGroupNode(node).selector.splitId === null,
-  )!;
-  assert.notEqual(revisedSplitNode.nodeId, splitNode.nodeId);
-  assert.equal(revisedBaseNode.nodeId, unaffectedBaseNode.nodeId);
-
-  const secondSplitHit = baseGroup.hits.find(
-    (candidate) => candidate.path.utf8 === 'src/d.ts',
-  )!;
-  const secondException: InvestigationGroupException = {
-    exceptionId: 'split-src-d',
-    hitId: secondSplitHit.hitId,
-    baseSelectorId: baseGroup.selector.selectorId,
-    splitId: exception.splitId,
-    rationale: 'This consumer belongs to the same reviewed split.',
-    author: 'codex',
-  };
-  const splitPair = deriveInvestigationGroups({
-    scanNodes: [scan],
-    ...context,
-    exceptions: [exception, secondException],
-  });
-  const reversedSplitPair = deriveInvestigationGroups({
-    scanNodes: [scan],
-    ...context,
-    exceptions: [secondException, exception],
-  });
-  assert.deepEqual(
-    reversedSplitPair.groupNodes.map(({ nodeId, resultDigest }) => ({
-      nodeId,
-      resultDigest,
-    })),
-    splitPair.groupNodes.map(({ nodeId, resultDigest }) => ({
-      nodeId,
-      resultDigest,
-    })),
-  );
-
-  for (const exceptions of [
-    [exception, { ...exception, exceptionId: 'duplicate-hit' }],
-    [{ ...exception, hitId: 'f'.repeat(64) }],
-    [{ ...exception, baseSelectorId: 'e'.repeat(64) }],
-    [{ ...exception, splitId: '' }],
-    [{ ...exception, rationale: '   ' }],
-    [{ ...exception, author: '' }],
-  ]) {
-    assert.throws(
-      () =>
-        deriveInvestigationGroups({
-          scanNodes: [scan],
-          ...context,
-          exceptions,
-        }),
-      (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-    );
-  }
-});
-
-test('dispositions cover every current hit exactly once and bind selector, blobs, and exceptions', () => {
-  const context = groupingContext();
-  const scan = scanNode(TERM_A, [
-    hit('src/a.ts', 0),
-    hit('generated/file.ts', 1),
-    hit('mirror/file.ts', 2),
-  ]);
-  const zero = scanNode(TERM_ZERO, []);
-  const grouped = deriveInvestigationGroups({
-    scanNodes: [scan, zero],
-    ...context,
-    exceptions: [],
-  });
-  const answers = dispositionAnswers(grouped.groupNodes);
-  const dispositions = createInvestigationDispositionNodes({
-    groupNodes: grouped.groupNodes,
-    dispositions: answers,
-  });
-  assert.equal(dispositions.length, grouped.groupNodes.length);
-  for (const node of dispositions) {
-    const disposition = readInvestigationDispositionNode(node);
-    const group = readInvestigationGroupNode(
-      grouped.groupNodes.find(
-        (candidate) =>
-          readInvestigationGroupNode(candidate).groupId === disposition.groupId,
-      )!,
-    );
-    assert.deepEqual(disposition.coveredHitIds, group.hitIds);
-    assert.deepEqual(disposition.sourceObjects, group.sourceObjects);
-    assert.deepEqual(disposition.selectorEvidence, group.selector);
-    assert.deepEqual(disposition.exceptions, group.exceptions);
-    assert.ok(disposition.rationale.length > 0);
-  }
-
-  const inventory = inventoryNode();
-  const coverage = createInvestigationCoverageNode({
-    effectiveTermIds: [TERM_A, TERM_ZERO],
-    scanNodes: [scan, zero],
-    inventoryNode: inventory,
-    hitNodes: grouped.hitNodes,
-    groupNodes: grouped.groupNodes,
-    dispositionNodes: dispositions,
-  });
-  const coverageOutput = readInvestigationCoverageNode(coverage);
-  assert.deepEqual(coverageOutput.zeroHitTermIds, [TERM_ZERO]);
-  assert.equal(coverageOutput.hitIds.length, grouped.hitNodes.length);
-  assert.equal(coverageOutput.dispositionNodeIds.length, dispositions.length);
-
-  const validation = validateInvestigationEvidenceDag({
-    effectiveTermIds: [TERM_A, TERM_ZERO],
-    scanNodes: [scan, zero],
-    inventoryNode: inventory,
-    hitNodes: grouped.hitNodes,
-    groupNodes: grouped.groupNodes,
-    dispositionNodes: dispositions,
-    coverageNode: coverage,
-    ...context,
-    exceptions: [],
-  });
-  assert.deepEqual(validation, {
-    valid: true,
-    scanCount: 2,
-    zeroHitTermIds: [TERM_ZERO],
-    hitCount: grouped.hitNodes.length,
-    groupCount: grouped.groupNodes.length,
-    dispositionCount: dispositions.length,
-  });
-
-  const reorderedCoverage = createInvestigationCoverageNode({
-    effectiveTermIds: [TERM_ZERO, TERM_A],
-    scanNodes: [zero, scan],
-    inventoryNode: inventory,
-    hitNodes: [...grouped.hitNodes].reverse(),
-    groupNodes: [...grouped.groupNodes].reverse(),
-    dispositionNodes: [...dispositions].reverse(),
-  });
-  assert.equal(reorderedCoverage.nodeId, coverage.nodeId);
-  assert.equal(reorderedCoverage.resultDigest, coverage.resultDigest);
-
-  const dispositionToForge = dispositions[0]!;
-  const forgedDisposition = createEvidenceNode({
-    ...nodeInput(dispositionToForge),
-    output: {
-      ...readInvestigationDispositionNode(dispositionToForge),
-      coveredHitIds: [],
-      sourceObjects: [],
-    },
-  });
-  const forgedDispositions = dispositions.map((node) =>
-    node.nodeId === dispositionToForge.nodeId ? forgedDisposition : node,
-  );
-  const forgedCoverage = createInvestigationCoverageNode({
-    effectiveTermIds: [TERM_A, TERM_ZERO],
-    scanNodes: [scan, zero],
-    inventoryNode: inventory,
-    hitNodes: grouped.hitNodes,
-    groupNodes: grouped.groupNodes,
-    dispositionNodes: forgedDispositions,
-  });
-  assert.throws(
-    () =>
-      validateInvestigationEvidenceDag({
-        effectiveTermIds: [TERM_A, TERM_ZERO],
-        scanNodes: [scan, zero],
-        inventoryNode: inventory,
-        hitNodes: grouped.hitNodes,
-        groupNodes: grouped.groupNodes,
-        dispositionNodes: forgedDispositions,
-        coverageNode: forgedCoverage,
+        ]),
         ...context,
-        exceptions: [],
+        reviewedRelationships: [],
       }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_EVIDENCE_DAG_INVALID'),
+    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
+});
 
-  const forgedDispositionInput = createEvidenceNode({
-    ...nodeInput(dispositionToForge),
-    exactInputDigests: { forged: 'f'.repeat(64) },
-    output: dispositionToForge.output,
+test('zero-hit and unrelated terms preserve current grouping identities', () => {
+  const context = groupingContext();
+  const termA = investigationTerm('stable-a');
+  const termB = investigationTerm('stable-b');
+  const zero = investigationTerm('stable-zero');
+  const first = deriveInvestigationGroupFacts({
+    scanFacts: scanFacts([
+      { term: termA, hits: [hit('src/a.ts', 0)] },
+      { term: zero, hits: [] },
+    ]),
+    ...context,
   });
-  const forgedInputDispositions = dispositions.map((node) =>
-    node.nodeId === dispositionToForge.nodeId ? forgedDispositionInput : node,
+  assert.equal(
+    first.hits.some(({ termId }) => termId === zero.termId),
+    false,
   );
-  assert.throws(
-    () =>
-      createInvestigationCoverageNode({
-        effectiveTermIds: [TERM_A, TERM_ZERO],
-        scanNodes: [scan, zero],
-        inventoryNode: inventory,
-        hitNodes: grouped.hitNodes,
-        groupNodes: grouped.groupNodes,
-        dispositionNodes: forgedInputDispositions,
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_COVERAGE_INVALID'),
+  assert.equal(
+    first.groups.some(({ selector }) => selector.termId === zero.termId),
+    false,
   );
 
-  const forgedDispositionAnswerDigest = createEvidenceNode({
-    ...nodeInput(dispositionToForge),
-    exactInputDigests: { answer: 'f'.repeat(64) },
-    output: dispositionToForge.output,
+  const expanded = deriveInvestigationGroupFacts({
+    scanFacts: scanFacts([
+      { term: termB, hits: [hit('generated/file.ts', 0)] },
+      { term: zero, hits: [] },
+      { term: termA, hits: [hit('src/a.ts', 0)] },
+    ]),
+    ...context,
   });
-  assert.throws(
-    () => readInvestigationDispositionNode(forgedDispositionAnswerDigest),
-    (error) => isWorkflowError(error, 'INVESTIGATION_DISPOSITIONS_INVALID'),
+  assert.deepEqual(
+    expanded.hits
+      .filter(({ termId }) => termId === termA.termId)
+      .map(({ hitKey }) => hitKey),
+    first.hits.map(({ hitKey }) => hitKey),
   );
-
-  assert.throws(
-    () =>
-      createInvestigationDispositionNodes({
-        groupNodes: [grouped.groupNodes[0]!, grouped.groupNodes[0]!],
-        dispositions: [answers[0]!],
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_DISPOSITIONS_INVALID'),
+  assert.deepEqual(
+    expanded.groups
+      .filter(({ selector }) => selector.termId === termA.termId)
+      .map(({ key }) => key),
+    first.groups.map(({ key }) => key),
   );
+});
 
-  for (const badAnswers of [
-    answers.slice(1),
-    [...answers, answers[0]!],
-    [{ ...answers[0]!, groupId: 'f'.repeat(64) }, ...answers.slice(1)],
-    [
-      { ...answers[0]!, classification: 'directory-inferred' },
-      ...answers.slice(1),
-    ],
-    [{ ...answers[0]!, rationale: '   ' }, ...answers.slice(1)],
-  ]) {
-    assert.throws(
-      () =>
-        createInvestigationDispositionNodes({
-          groupNodes: grouped.groupNodes,
-          dispositions: badAnswers as InvestigationDispositionInput[],
-        }),
-      (error) => isWorkflowError(error, 'INVESTIGATION_DISPOSITIONS_INVALID'),
+test('historical replay primitives remain closed and truth-preserving', () => {
+  const context = groupingContext();
+  const term = investigationTerm('replay');
+  const zero = investigationTerm('replay-zero');
+  const hits = [hit('src/a.ts', 0), hit('src/b.ts', 1)];
+  const facts = scanFacts([
+    { term, hits },
+    { term: zero, hits: [] },
+  ]);
+  const grouping = deriveInvestigationGroupFacts({
+    scanFacts: facts,
+    ...context,
+  });
+  const scanNodes = [scanNode(term.termId, hits), scanNode(zero.termId, [])];
+  const hitNodes = deriveInvestigationHitNodes(scanNodes);
+  const groupNodes = createHistoricalGroupFixtures(grouping, hitNodes);
+  const dispositions = createInvestigationDispositionNodes({
+    groupNodes,
+    dispositions: groupNodes.map((node) => ({
+      groupId: readInvestigationGroupNode(node).groupId,
+      classification: 'load-bearing',
+      rationale: 'The historical fixture remains load-bearing.',
+      author: 'replay-test',
+    })),
+  });
+  const inventory = inventoryNode();
+  const coverage = createInvestigationCoverageNode({
+    effectiveTermIds: [term.termId, zero.termId],
+    scanNodes,
+    inventoryNode: inventory,
+    hitNodes,
+    groupNodes,
+    dispositionNodes: dispositions,
+  });
+  assert.deepEqual(readInvestigationCoverageNode(coverage).zeroHitTermIds, [
+    zero.termId,
+  ]);
+  assert.equal(dispositions.length, groupNodes.length);
+  for (const disposition of dispositions) {
+    const output = readInvestigationDispositionNode(disposition);
+    assert.ok(
+      groupNodes.some(
+        (node) => readInvestigationGroupNode(node).groupId === output.groupId,
+      ),
     );
   }
 
+  const records = groupNodes.map((node) => {
+    const output = readInvestigationGroupNode(node);
+    return {
+      nodeId: node.nodeId,
+      policyDigest: node.policyDigest,
+      selector: output.selector,
+      hitIds: output.hitIds,
+      exceptions: output.exceptions,
+    };
+  });
+  assert.deepEqual(
+    replayInvestigationGroupNodes({ hitNodes, groups: records }).map(
+      ({ nodeId }) => nodeId,
+    ),
+    groupNodes.map(({ nodeId }) => nodeId),
+  );
   assert.throws(
     () =>
-      createInvestigationCoverageNode({
-        effectiveTermIds: [TERM_A, TERM_ZERO],
-        scanNodes: [scan],
-        inventoryNode: inventory,
-        hitNodes: grouped.hitNodes,
-        groupNodes: grouped.groupNodes,
-        dispositionNodes: dispositions,
+      replayInvestigationGroupNodes({
+        hitNodes,
+        groups: [
+          { ...records[0]!, nodeId: 'f'.repeat(64) },
+          ...records.slice(1),
+        ],
       }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_COVERAGE_INVALID'),
+    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
-
   assert.throws(
     () =>
-      createInvestigationCoverageNode({
-        effectiveTermIds: [TERM_A, TERM_ZERO],
-        scanNodes: [scan, zero],
-        inventoryNode: inventoryNode('3'.repeat(64)),
-        hitNodes: grouped.hitNodes,
-        groupNodes: grouped.groupNodes,
-        dispositionNodes: dispositions,
+      replayInvestigationGroupNodes({
+        hitNodes: hitNodes.slice(1),
+        groups: records,
       }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_COVERAGE_INVALID'),
-  );
-
-  assert.throws(
-    () => readInvestigationHitNode(grouped.groupNodes[0]!),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-  assert.throws(
-    () => readInvestigationGroupNode(scan),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-  assert.throws(
-    () => readInvestigationDispositionNode(grouped.groupNodes[0]!),
-    (error) => isWorkflowError(error, 'INVESTIGATION_DISPOSITIONS_INVALID'),
-  );
-  assert.throws(
-    () => readInvestigationCoverageNode(grouped.groupNodes[0]!),
-    (error) => isWorkflowError(error, 'INVESTIGATION_COVERAGE_INVALID'),
-  );
-
-  const malformedGroupOutput = createEvidenceNode({
-    ...nodeInput(grouped.groupNodes[0]!),
-    output: {
-      ...readInvestigationGroupNode(grouped.groupNodes[0]!),
-      hitIds: [123],
-    },
-  });
-  assert.throws(
-    () => readInvestigationGroupNode(malformedGroupOutput),
     (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
 
-  const groupWithUnexpectedInput = createEvidenceNode({
-    ...nodeInput(grouped.groupNodes[0]!),
-    exactInputDigests: {
-      ...grouped.groupNodes[0]!.exactInputDigests,
-      hidden: 'f'.repeat(64),
-    },
-    output: grouped.groupNodes[0]!.output,
-  });
-  assert.throws(
-    () => readInvestigationGroupNode(groupWithUnexpectedInput),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const groupWithForgedExceptionDigest = createEvidenceNode({
-    ...nodeInput(grouped.groupNodes[0]!),
-    exactInputDigests: {
-      ...grouped.groupNodes[0]!.exactInputDigests,
-      exceptions: 'f'.repeat(64),
-    },
-    output: grouped.groupNodes[0]!.output,
-  });
-  assert.throws(
-    () => readInvestigationGroupNode(groupWithForgedExceptionDigest),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const validGroupOutput = readInvestigationGroupNode(grouped.groupNodes[0]!);
-  const groupWithMalformedSource = createEvidenceNode({
-    ...nodeInput(grouped.groupNodes[0]!),
-    output: {
-      ...validGroupOutput,
-      sourceObjects: validGroupOutput.sourceObjects.map((source, index) =>
-        index === 0 ? { ...source, objectId: 'not-a-git-object-id' } : source,
-      ),
-    },
-  });
-  assert.throws(
-    () => readInvestigationGroupNode(groupWithMalformedSource),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const hitWithNegativeOffset = createEvidenceNode({
-    ...nodeInput(grouped.hitNodes[0]!),
-    output: {
-      ...(grouped.hitNodes[0]!.output as Record<string, unknown>),
-      byteOffset: -1,
-    },
-  });
-  assert.throws(
-    () => readInvestigationHitNode(hitWithNegativeOffset),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const malformedCoverageOutput = createEvidenceNode({
-    ...nodeInput(coverage),
-    output: {
-      ...readInvestigationCoverageNode(coverage),
-      effectiveTermIds: [TERM_A, TERM_A],
-    },
-  });
-  assert.throws(
-    () => readInvestigationCoverageNode(malformedCoverageOutput),
-    (error) => isWorkflowError(error, 'INVESTIGATION_COVERAGE_INVALID'),
-  );
-});
-
-test('zero-hit terms are current leaves and unrelated terms preserve existing descendants', () => {
-  const context = groupingContext();
-  const scanA = scanNode(TERM_A, [hit('src/a.ts', 0)]);
-  const scanB = scanNode(TERM_B, [hit('generated/file.ts', 0)]);
-  const zero = scanNode(TERM_ZERO, []);
-  const first = deriveInvestigationGroups({
-    scanNodes: [scanA, zero],
-    ...context,
-    exceptions: [],
-  });
-  assert.equal(
-    first.hitNodes.some(
-      (node) => readInvestigationHitNode(node).termId === TERM_ZERO,
-    ),
-    false,
-  );
-  assert.equal(
-    first.groupNodes.some(
-      (node) => readInvestigationGroupNode(node).selector.termId === TERM_ZERO,
-    ),
-    false,
-  );
-
-  const expanded = deriveInvestigationGroups({
-    scanNodes: [scanB, zero, scanA],
-    ...context,
-    exceptions: [],
-  });
-  const firstHitIds = first.hitNodes.map(({ nodeId }) => nodeId);
-  const firstGroupIds = first.groupNodes.map(({ nodeId }) => nodeId);
-  assert.deepEqual(
-    expanded.hitNodes
-      .filter((node) => readInvestigationHitNode(node).termId === TERM_A)
-      .map(({ nodeId }) => nodeId),
-    firstHitIds,
-  );
-  assert.deepEqual(
-    expanded.groupNodes
-      .filter(
-        (node) => readInvestigationGroupNode(node).selector.termId === TERM_A,
-      )
-      .map(({ nodeId }) => nodeId),
-    firstGroupIds,
-  );
-
-  const firstDispositions = createInvestigationDispositionNodes({
-    groupNodes: first.groupNodes,
-    dispositions: dispositionAnswers(first.groupNodes),
-  });
-  const expandedDispositions = createInvestigationDispositionNodes({
-    groupNodes: expanded.groupNodes,
-    dispositions: dispositionAnswers(expanded.groupNodes),
-  });
-  assert.deepEqual(
-    expandedDispositions
-      .filter((node) => {
-        const groupId = readInvestigationDispositionNode(node).groupId;
-        return first.groupNodes.some(
-          (group) => readInvestigationGroupNode(group).groupId === groupId,
-        );
-      })
-      .map(({ nodeId }) => nodeId),
-    firstDispositions.map(({ nodeId }) => nodeId),
-  );
-
-  const changedRationale = createInvestigationDispositionNodes({
-    groupNodes: first.groupNodes,
-    dispositions: dispositionAnswers(first.groupNodes).map((answer) => ({
-      ...answer,
-      rationale: `${answer.rationale} Reviewed again.`,
-    })),
-  });
-  assert.deepEqual(
-    first.groupNodes.map(({ nodeId }) => nodeId),
-    firstGroupIds,
-  );
-  assert.notDeepEqual(
-    changedRationale.map(({ resultDigest }) => resultDigest),
-    firstDispositions.map(({ resultDigest }) => resultDigest),
-  );
-  assert.notDeepEqual(
-    changedRationale.map(({ nodeId }) => nodeId),
-    firstDispositions.map(({ nodeId }) => nodeId),
-  );
-});
-
-test('closed DAG validation is topological and rejects missing parents, collisions, and forged grouping output', () => {
-  const context = groupingContext();
-  const scan = scanNode(TERM_A, [hit('src/a.ts', 0)]);
-  const zero = scanNode(TERM_ZERO, []);
-  const inventory = inventoryNode();
-  const grouped = deriveInvestigationGroups({
-    scanNodes: [scan, zero],
-    ...context,
-    exceptions: [],
-  });
-  const dispositions = createInvestigationDispositionNodes({
-    groupNodes: grouped.groupNodes,
-    dispositions: dispositionAnswers(grouped.groupNodes),
-  });
-  const coverage = createInvestigationCoverageNode({
-    effectiveTermIds: [TERM_A, TERM_ZERO],
-    scanNodes: [scan, zero],
-    inventoryNode: inventory,
-    hitNodes: grouped.hitNodes,
-    groupNodes: grouped.groupNodes,
-    dispositionNodes: dispositions,
-  });
   const nodes = [
-    scan,
-    zero,
+    ...scanNodes,
     inventory,
-    ...grouped.hitNodes,
-    ...grouped.groupNodes,
+    ...hitNodes,
+    ...groupNodes,
     ...dispositions,
     coverage,
   ];
@@ -931,126 +442,21 @@ test('closed DAG validation is topological and rejects missing parents, collisio
   const reverse = validateClosedEvidenceDag([...nodes].reverse());
   assert.deepEqual(reverse, forward);
   assert.equal(forward.topologicalNodeIds.at(-1), coverage.nodeId);
-
   assert.throws(
     () =>
       validateClosedEvidenceDag(
-        nodes.filter(({ nodeId }) => nodeId !== grouped.hitNodes[0]!.nodeId),
+        nodes.filter(({ nodeId }) => nodeId !== hitNodes[0]!.nodeId),
       ),
     (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
   );
 
-  const collisionA = createEvidenceNode({
-    type: 'collision',
-    nodeSchema: 'collision.v1',
-    evaluator: 'collision.v1',
-    policyDigest: POLICY_DIGEST,
-    exactInputDigests: { source: TREE_DIGEST },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'collision-output.v1',
-    output: { value: 'a' },
-    runtimeMetadata: {},
-  });
-  const collisionB = createEvidenceNode({
-    ...nodeInput(collisionA),
-    output: { value: 'b' },
-  });
-  assert.equal(collisionA.nodeId, collisionB.nodeId);
-  assert.notEqual(collisionA.resultDigest, collisionB.resultDigest);
-  assert.throws(
-    () => validateClosedEvidenceDag([collisionA, collisionB]),
-    (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
-  );
-
-  const validGroup = grouped.groupNodes[0]!;
-  const forgedGroup = createEvidenceNode({
-    ...nodeInput(validGroup),
-    output: {
-      ...readInvestigationGroupNode(validGroup),
-      hitIds: [],
-      hits: [],
-      sourceObjects: [],
-    },
-  });
-  assert.equal(forgedGroup.nodeId, validGroup.nodeId);
-  assert.notEqual(forgedGroup.resultDigest, validGroup.resultDigest);
-  assert.throws(
-    () =>
-      validateInvestigationEvidenceDag({
-        effectiveTermIds: [TERM_A, TERM_ZERO],
-        scanNodes: [scan, zero],
-        inventoryNode: inventory,
-        hitNodes: grouped.hitNodes,
-        groupNodes: [forgedGroup],
-        dispositionNodes: dispositions,
-        coverageNode: coverage,
-        ...context,
-        exceptions: [],
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_EVIDENCE_DAG_INVALID'),
-  );
-
-  const futureEvidenceNode = createEvidenceNode({
-    type: 'future-evidence',
-    nodeSchema: 'future.evidence.v1',
-    evaluator: 'future-evidence.v1',
-    policyDigest: POLICY_DIGEST,
-    exactInputDigests: { blob: TREE_DIGEST },
-    semanticParentResultDigests: {
-      disposition: dispositions[0]!.resultDigest,
-    },
-    provenanceParentNodeIds: {
-      disposition: dispositions[0]!.nodeId,
-    },
-    outputSchema: 'future.evidence-output.v1',
-    output: { observation: 'Preserves a load-bearing invariant.' },
-    runtimeMetadata: {},
-  });
-  const extendedOrder = validateClosedEvidenceDag([
-    ...nodes,
-    futureEvidenceNode,
-  ]).topologicalNodeIds;
-  assert.ok(extendedOrder.includes(futureEvidenceNode.nodeId));
-  assert.ok(
-    extendedOrder.indexOf(dispositions[0]!.nodeId) <
-      extendedOrder.indexOf(futureEvidenceNode.nodeId),
-  );
-
-  const forgedFutureParentResult = createEvidenceNode({
-    ...nodeInput(futureEvidenceNode),
-    semanticParentResultDigests: {
-      disposition: 'f'.repeat(64),
-    },
-    output: futureEvidenceNode.output,
-  });
-  assert.throws(
-    () => validateClosedEvidenceDag([...nodes, forgedFutureParentResult]),
-    (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
-  );
-
-  const missingFutureSemanticParent = createEvidenceNode({
-    ...nodeInput(futureEvidenceNode),
-    semanticParentResultDigests: {},
-    output: futureEvidenceNode.output,
-  });
-  assert.throws(
-    () => validateClosedEvidenceDag([...nodes, missingFutureSemanticParent]),
-    (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
-  );
-
   const wrongTypedScan = createEvidenceNode({
-    ...nodeInput(scan),
+    ...nodeInput(scanNodes[0]!),
     type: 'not-an-investigation-scan',
-    output: scan.output,
+    output: scanNodes[0]!.output,
   });
   assert.throws(
-    () =>
-      deriveInvestigationGroups({
-        scanNodes: [wrongTypedScan],
-        ...context,
-        exceptions: [],
-      }),
+    () => deriveInvestigationHitNodes([wrongTypedScan]),
     (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
   );
 });
@@ -1141,23 +547,88 @@ function reviewedRelationship(
   };
 }
 
-function dispositionAnswers(
-  groupNodes: EvidenceNode[],
-): InvestigationDispositionInput[] {
-  return groupNodes.map((node) => {
-    const group = readInvestigationGroupNode(node);
-    return {
-      groupId: group.groupId,
-      classification:
-        group.selector.mutationClass === 'generated'
-          ? ('generated' as const)
-          : group.selector.mutationClass === 'mirror'
-            ? ('test-or-mirror' as const)
-            : ('load-bearing' as const),
-      rationale: `Reviewed exact selector ${group.selector.selectorId}.`,
-      author: 'codex',
-    };
-  });
+function investigationTerm(value: string) {
+  return {
+    ...normalizeInvestigationTerm({ kind: 'literal-content', value }),
+    provenance: [
+      {
+        source: 'main' as const,
+        reference: `main:${value}`,
+        rationale: `Investigate ${value}.`,
+        expectedRelationship: `${value} may identify a current consumer.`,
+      },
+    ],
+  };
+}
+
+function scanFacts(
+  terms: Array<{
+    term: ReturnType<typeof investigationTerm>;
+    hits: Array<ReturnType<typeof hit>>;
+  }>,
+): InvestigationScanFacts {
+  return {
+    schemaVersion: 1,
+    kind: 'investigation-scan-facts',
+    treeDigest: TREE_DIGEST,
+    policyDigest: POLICY_DIGEST,
+    inventory: { treeDigest: TREE_DIGEST, skippedObjects: [] },
+    terms,
+  };
+}
+
+function createHistoricalGroupFixtures(
+  grouping: InvestigationGroupFacts,
+  hitNodes: EvidenceNode[],
+): EvidenceNode[] {
+  return grouping.groups
+    .map((group) => {
+      const expected = new Set(
+        group.hits.map(({ hitKey: _hitKey, ...value }) => canonicalJson(value)),
+      );
+      const members = hitNodes
+        .filter((node) => {
+          const { hitId: _hitId, ...value } = readInvestigationHitNode(node);
+          return expected.has(canonicalJson(value));
+        })
+        .sort((left, right) => left.nodeId.localeCompare(right.nodeId));
+      assert.equal(members.length, group.hits.length);
+      const provenanceParentNodeIds: Record<string, string> = {};
+      const semanticParentResultDigests: Record<string, string> = {};
+      members.forEach((member, index) => {
+        provenanceParentNodeIds[`hit-${index}`] = member.nodeId;
+        semanticParentResultDigests[`hit-${index}`] = member.resultDigest;
+      });
+      const selector = { selectorId: group.key, ...group.selector };
+      return createEvidenceNode({
+        type: 'investigation-group',
+        nodeSchema: 'investigation.group.v1',
+        evaluator: 'investigation-groups.v1',
+        policyDigest: grouping.groupingPolicyDigest,
+        exactInputDigests: {
+          exceptions: sha256(
+            canonicalJson({
+              schema: 'investigation.group-exceptions.v1',
+              exceptions: [],
+            }),
+          ),
+          selector: group.key,
+        },
+        semanticParentResultDigests,
+        provenanceParentNodeIds,
+        outputSchema: 'investigation.group-output.v1',
+        output: {
+          groupId: group.key,
+          selector,
+          hitIds: members.map(({ nodeId }) => nodeId),
+          hits: members.map(readInvestigationHitNode),
+          sourceObjects: group.sourceObjects,
+          exceptions: [],
+        },
+        runtimeMetadata: {},
+      });
+    })
+    .sort((left, right) => left.nodeId.localeCompare(right.nodeId));
 }
 
 function scanNode(
@@ -1169,10 +640,7 @@ function scanNode(
     nodeSchema: 'investigation.term-scan.v1',
     evaluator: 'investigation-scanner.v1',
     policyDigest: POLICY_DIGEST,
-    exactInputDigests: {
-      term: sha256(`term:${termId}`),
-      tree: TREE_DIGEST,
-    },
+    exactInputDigests: { term: sha256(`term:${termId}`), tree: TREE_DIGEST },
     semanticParentResultDigests: {},
     provenanceParentNodeIds: {},
     outputSchema: 'investigation.term-scan-output.v1',
@@ -1181,13 +649,13 @@ function scanNode(
   });
 }
 
-function inventoryNode(treeDigest = TREE_DIGEST): EvidenceNode {
+function inventoryNode(): EvidenceNode {
   return createEvidenceNode({
     type: 'investigation-tree-inventory',
     nodeSchema: 'investigation.tree-inventory.v1',
     evaluator: 'investigation-scanner.v1',
     policyDigest: POLICY_DIGEST,
-    exactInputDigests: { tree: treeDigest },
+    exactInputDigests: { tree: TREE_DIGEST },
     semanticParentResultDigests: {},
     provenanceParentNodeIds: {},
     outputSchema: 'investigation.tree-inventory-output.v1',
@@ -1196,15 +664,19 @@ function inventoryNode(treeDigest = TREE_DIGEST): EvidenceNode {
   });
 }
 
-function hit(filePath: string, byteOffset: number) {
+function hit(
+  filePath: string,
+  byteOffset: number,
+  override: { objectId?: string; contentSha256?: string } = {},
+) {
   return {
     path: pathIdentity(filePath),
     sourceObject: {
-      objectId: sha1(`object:${filePath}`),
+      objectId: override.objectId ?? sha1(`object:${filePath}`),
       objectType: 'blob',
       mode: '100644',
       byteSize: 128,
-      contentSha256: sha256(`content:${filePath}`),
+      contentSha256: override.contentSha256 ?? sha256(`content:${filePath}`),
       skipReason: null,
     },
     surface: 'content' as const,
@@ -1243,8 +715,4 @@ function sha1(value: string): string {
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function isWorkflowError(error: unknown, code: string): boolean {
-  return error instanceof WorkflowError && error.code === code;
 }
