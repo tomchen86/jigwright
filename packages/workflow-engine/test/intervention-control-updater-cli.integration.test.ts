@@ -402,10 +402,10 @@ function legacyReadOnlyDependencies(
         return (
           (signature === 'cli-signature' &&
             signer === 'maintainer@example.test' &&
-            namespace === 'expense-app.control-plane-grant.v1') ||
+            namespace === 'jigwright.control-plane-grant.v1') ||
           (signature === 'cli-review-signature' &&
             signer === 'cli-reviewer@example.test' &&
-            namespace === 'expense-app.control-plane-independent-review.v1')
+            namespace === 'jigwright.control-plane-independent-review.v1')
         );
       },
       auditSink: {

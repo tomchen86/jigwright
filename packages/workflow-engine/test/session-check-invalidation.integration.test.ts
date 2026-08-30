@@ -576,7 +576,7 @@ function adoptLocalEngine(repository: string, sessionId: string) {
     ) {
       return (
         signature === 'selective-invalidation-human-signature' &&
-        namespace === 'expense-app.harness-maintenance-grant.v1'
+        namespace === 'jigwright.harness-maintenance-grant.v1'
       );
     },
   };

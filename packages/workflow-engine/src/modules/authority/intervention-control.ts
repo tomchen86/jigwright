@@ -10,19 +10,19 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 export type Sha256Digest = `sha256:${string}`;
 
 export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE =
-  'expense-app.harness-maintenance-grant.v1';
+  'jigwright.harness-maintenance-grant.v1';
 export const CONTROL_PLANE_SIGNATURE_NAMESPACE =
-  'expense-app.control-plane-grant.v1';
+  'jigwright.control-plane-grant.v1';
 export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE =
-  'expense-app.control-plane-independent-review.v1';
+  'jigwright.control-plane-independent-review.v1';
 export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 =
-  'expense-app.control-plane-grant.v2';
+  'jigwright.control-plane-grant.v2';
 export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 =
-  'expense-app.control-plane-independent-review.v2';
+  'jigwright.control-plane-independent-review.v2';
 export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 =
-  'expense-app.control-plane-grant.v3';
+  'jigwright.control-plane-grant.v3';
 export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 =
-  'expense-app.control-plane-independent-review.v3';
+  'jigwright.control-plane-independent-review.v3';
 
 type HumanSignatureVerifier = (
   payload: string,

@@ -133,7 +133,7 @@ function dependencies(
       return (
         signature === 'public-replay-signature' &&
         signer === 'maintainer@example.test' &&
-        namespace === 'expense-app.harness-maintenance-grant.v1'
+        namespace === 'jigwright.harness-maintenance-grant.v1'
       );
     },
     presentMaintenanceSummary() {},

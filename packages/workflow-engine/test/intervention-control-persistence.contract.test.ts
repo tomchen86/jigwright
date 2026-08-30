@@ -271,7 +271,7 @@ test('adoption journal persists CAS transitions and crash recovery through rollb
         now: () => NOW,
         verifyHumanSignature(_payload, signature, _signer, namespace) {
           assert.equal(signature, 'maintenance-human-signature');
-          assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+          assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
           return true;
         },
       },
@@ -533,7 +533,7 @@ test('minimal updater transaction persists reservation, recovery, rollback, and 
         consumedGrantIds: new Set(),
         verifyHumanSignature(_payload, signature, _signer, namespace) {
           assert.equal(signature, 'control-human-signature');
-          assert.equal(namespace, 'expense-app.control-plane-grant.v1');
+          assert.equal(namespace, 'jigwright.control-plane-grant.v1');
           return true;
         },
       },

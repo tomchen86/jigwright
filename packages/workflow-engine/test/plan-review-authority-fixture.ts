@@ -90,7 +90,7 @@ export function installPlanReviewAuthority(
             '-f',
             keyPath,
             '-n',
-            namespace ?? 'expense-app.plan-review-challenge-closure.v1',
+            namespace ?? 'jigwright.plan-review-challenge-closure.v1',
             payloadPath,
           ],
           { encoding: 'utf8' },
@@ -107,7 +107,7 @@ export function installPlanReviewAuthority(
         signature,
         signerIdentity,
         publicKey,
-        namespace ?? 'expense-app.plan-review-challenge-closure.v1',
+        namespace ?? 'jigwright.plan-review-challenge-closure.v1',
       );
     },
   };

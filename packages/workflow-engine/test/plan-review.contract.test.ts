@@ -22,6 +22,7 @@ import {
   createPlanReviewSubject,
   assertPlanReviewSubject,
   PLAN_REVIEW_COVERAGE,
+  PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
   planReviewSubjectDigest,
@@ -69,6 +70,13 @@ const DIGESTS = {
   investigationNode: 'a'.repeat(64),
   investigationResult: 'b'.repeat(64),
 } as const;
+
+test('PlanReview challenge authority uses the Jigwright product identity', () => {
+  assert.equal(
+    PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE,
+    'jigwright.plan-review-challenge-closure.v1',
+  );
+});
 
 test('v3 authoring builds global PlanReview coverage as a direct payload', () => {
   const requirement = buildGlobalPlanReviewCoverageRequirement({

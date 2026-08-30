@@ -58,7 +58,7 @@ const AUTHORIZED_DISPOSITION_EVALUATOR = 'plan-review-disposition.v2';
 const AUTHORIZED_DISPOSITION_OUTPUT_SCHEMA =
   'plan-review-disposition-output.v2';
 export const PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE =
-  'expense-app.plan-review-challenge-closure.v1';
+  'jigwright.plan-review-challenge-closure.v1';
 
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;

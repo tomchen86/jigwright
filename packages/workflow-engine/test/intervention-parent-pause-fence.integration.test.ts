@@ -49,7 +49,7 @@ function dependencies(now = NOW) {
       namespace: string,
     ) {
       assert.equal(signature, 'parent-fence-human-signature');
-      assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+      assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
       return true;
     },
   };

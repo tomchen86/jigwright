@@ -216,7 +216,7 @@ function humanDependencies(
     verifyHumanSignature(_payload, signature, signer, namespace) {
       assert.equal(signature, 'bootstrap-cli-human-signature');
       assert.equal(signer, 'maintainer@example.test');
-      assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+      assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
       return options.signatureValid !== false;
     },
     presentMaintenanceSummary(summary) {
@@ -373,7 +373,7 @@ test('human intervene derives durable state, presents exact scope, signs once, a
     );
     assert.equal(
       human.observed.signatures[0]!.namespace,
-      'expense-app.harness-maintenance-grant.v1',
+      'jigwright.harness-maintenance-grant.v1',
     );
     assert.equal(
       Date.parse(grant.envelope.payload.expiresAt) -

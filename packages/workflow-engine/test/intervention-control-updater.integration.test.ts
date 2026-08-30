@@ -361,12 +361,12 @@ function dependencies(
       namespace: string,
     ) {
       options.verifiedNamespaces?.push(namespace);
-      if (namespace === 'expense-app.control-plane-grant.v1') {
+      if (namespace === 'jigwright.control-plane-grant.v1') {
         assert.equal(signature, 'control-plane-human-signature');
         assert.equal(signer, 'maintainer@example.test');
         return true;
       }
-      if (namespace === 'expense-app.control-plane-independent-review.v1') {
+      if (namespace === 'jigwright.control-plane-independent-review.v1') {
         assert.equal(signature, 'independent-review-signature');
         assert.equal(signer, 'reviewer@example.test');
         return true;
@@ -741,7 +741,7 @@ test('crash after the atomic switch recovers conservatively and idempotently rol
     assert.equal(
       verifiedNamespaces.filter(
         (namespace) =>
-          namespace === 'expense-app.control-plane-independent-review.v1',
+          namespace === 'jigwright.control-plane-independent-review.v1',
       ).length >= 4,
       true,
     );

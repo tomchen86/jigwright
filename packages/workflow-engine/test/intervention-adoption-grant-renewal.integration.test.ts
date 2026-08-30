@@ -144,7 +144,7 @@ function dependencies(
     verifyHumanSignature(_payload, signature, signer, namespace) {
       assert.equal(signature, 'renewal-human-signature');
       assert.equal(signer, 'maintainer@example.test');
-      assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+      assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
       return true;
     },
     presentMaintenanceSummary() {},

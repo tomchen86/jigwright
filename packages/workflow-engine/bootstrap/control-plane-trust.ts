@@ -16,14 +16,12 @@ const MAX_PROMOTION_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_PROMOTION_TOTAL_BYTES = 64 * 1024 * 1024;
 const MAX_PROMOTION_BUNDLE_BYTES = 192 * 1024 * 1024;
 const CONTROL_PLANE_GRANT_V2_MAX_TTL_MS = 5 * 60 * 1000;
-const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 =
-  'expense-app.control-plane-grant.v2';
+const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-grant.v2';
 const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 =
-  'expense-app.control-plane-independent-review.v2';
-const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 =
-  'expense-app.control-plane-grant.v3';
+  'jigwright.control-plane-independent-review.v2';
+const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-grant.v3';
 const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 =
-  'expense-app.control-plane-independent-review.v3';
+  'jigwright.control-plane-independent-review.v3';
 const CONTROL_PLANE_HISTORY_RECORD_FILE = /^[0-9a-f]{64}\.json$/;
 const RECOVERY_QUARANTINE_GRANT_ID =
   /^quarantine-(?:enter|release)-[0-9a-f]{64}$/;

@@ -201,7 +201,7 @@ test('control-plane classify and verify-grant remain read-only and require human
       consumedControlPlaneGrantIds: new Set(),
       verifyHumanSignature(_payload, signature, _signer, namespace) {
         assert.equal(signature, 'human-control-signature');
-        assert.equal(namespace, 'expense-app.control-plane-grant.v1');
+        assert.equal(namespace, 'jigwright.control-plane-grant.v1');
         return true;
       },
     },

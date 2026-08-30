@@ -63,7 +63,7 @@ function humanDependencies(
       namespace: string,
     ) {
       assert.equal(signature, 'sidecar-human-signature');
-      assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+      assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
       return true;
     },
     testHooks,

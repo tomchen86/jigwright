@@ -5,6 +5,13 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
+  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
+  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
+  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
+  CONTROL_PLANE_SIGNATURE_NAMESPACE,
+  CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
+  CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
+  HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
   REQUIRED_PROTECTED_CAPABILITIES,
   advanceEngineAdoption,
   advanceMinimalUpdaterTransaction,
@@ -34,6 +41,29 @@ import {
 } from '../src/modules/authority/intervention-control.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
+
+test('intervention signature namespaces use the Jigwright product identity', () => {
+  assert.deepEqual(
+    [
+      HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
+      CONTROL_PLANE_SIGNATURE_NAMESPACE,
+      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
+      CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
+      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
+      CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
+      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
+    ],
+    [
+      'jigwright.harness-maintenance-grant.v1',
+      'jigwright.control-plane-grant.v1',
+      'jigwright.control-plane-independent-review.v1',
+      'jigwright.control-plane-grant.v2',
+      'jigwright.control-plane-independent-review.v2',
+      'jigwright.control-plane-grant.v3',
+      'jigwright.control-plane-independent-review.v3',
+    ],
+  );
+});
 
 function digest(label: string): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(label).digest('hex')}`;
@@ -186,7 +216,7 @@ test('maintenance grant is only verified and V1 adoption commits without a schem
       verifiedPayloads.push(payload);
       assert.equal(signature, 'human-signature-bytes');
       assert.equal(signer, 'maintainer@example.test');
-      assert.equal(namespace, 'expense-app.harness-maintenance-grant.v1');
+      assert.equal(namespace, 'jigwright.harness-maintenance-grant.v1');
       return true;
     },
   });
@@ -728,7 +758,7 @@ test('Control-Plane Grant binds exact closures/diff and minimal updater rolls ba
       signed.push(payload);
       assert.equal(signature, 'control-plane-human-signature');
       assert.equal(signer, 'maintainer@example.test');
-      assert.equal(namespace, 'expense-app.control-plane-grant.v1');
+      assert.equal(namespace, 'jigwright.control-plane-grant.v1');
       return true;
     },
   });
