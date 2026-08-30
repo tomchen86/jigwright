@@ -129,7 +129,10 @@ export function readImmutableReport(
     typeof value.taskId !== 'string' ||
     typeof value.createdAt !== 'string' ||
     Number.isNaN(Date.parse(value.createdAt)) ||
-    (value.planningAssurance !== undefined &&
+    (value.kind === 'authority-check'
+      ? Object.hasOwn(value, 'planningAssurance')
+      : !Object.hasOwn(value, 'planningAssurance')) ||
+    (Object.hasOwn(value, 'planningAssurance') &&
       value.planningAssurance !== null &&
       !isPlanningAssuranceBinding(value.planningAssurance)) ||
     (value.parentReportId !== undefined && !isDigest(value.parentReportId))

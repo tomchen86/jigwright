@@ -103,6 +103,38 @@ test('report writes and reads reject a symlinked report file', () => {
   }
 });
 
+test('task reports require explicit planning assurance while authority reports omit it', () => {
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'report-current-shapes-')),
+  );
+  const reportsRoot = path.join(root, 'reports');
+  try {
+    const taskReport = report();
+    delete taskReport.planningAssurance;
+    const taskReportId = writeImmutableReport(reportsRoot, taskReport);
+    assert.throws(
+      () => readImmutableReport(reportsRoot, SESSION_ID, taskReportId),
+      (error) => isWorkflowError(error, 'REPORT_INVALID'),
+    );
+
+    const authorityReport = report();
+    authorityReport.kind = 'authority-check';
+    authorityReport.taskId = 'authority-maintenance';
+    delete authorityReport.planningAssurance;
+    const authorityReportId = writeImmutableReport(
+      reportsRoot,
+      authorityReport,
+    );
+    assert.equal(
+      readImmutableReport(reportsRoot, SESSION_ID, authorityReportId)
+        .planningAssurance,
+      undefined,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('repository lifecycle cleanup preserves operation and release failures', () => {
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'repository-lock-errors-')),
@@ -339,6 +371,7 @@ function report(): WorkflowReport {
     changeId: 'demo-change',
     taskId: '1.1',
     createdAt: '2026-01-01T00:00:00.000Z',
+    planningAssurance: null,
   };
 }
 
