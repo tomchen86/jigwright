@@ -11,6 +11,7 @@ import {
   createPlanReviewTargetSnapshotNode,
   createPlanReviewSubject,
   PLAN_REVIEW_COVERAGE,
+  PLAN_REVIEW_OUTPUT_SCHEMA,
   readPlanReviewNode,
 } from '../src/modules/assurance/plan-review.ts';
 import { validatePlanReview } from '../src/modules/assurance/plan-review-validation.ts';
@@ -19,6 +20,7 @@ import {
   type PlanTargetInput,
 } from '../src/modules/assurance/plan-target.ts';
 import { createPlanningGeneration } from '../src/modules/lifecycle/planning-generation.ts';
+import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
 
 test('exact PlanReview composes target, generation, challenge, terms, and advisory eligibility', () => {
   const targetInput = integrationTargetInput();
@@ -141,6 +143,47 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
     providerResultNode,
     submission,
   });
+  const independenceAuthorization = {
+    kind: 'admitted-role-result' as const,
+    roleResult: admitRoleResult({
+      assignment,
+      author: {
+        providerId: 'codex',
+        sessionId: 'author-session',
+        principalId: null,
+        identityAssurance: 'runtime-hint',
+        engineSpawned: false,
+      },
+      participant: {
+        providerId: assignment.providerId,
+        sessionId: assignment.sessionId,
+        principalId: null,
+        identityAssurance: 'adapter-assigned',
+        engineSpawned: true,
+      },
+      content: {
+        kind: 'plan-review',
+        nodeId: reviewNode.nodeId,
+        resultDigest: reviewNode.resultDigest,
+        outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
+        evaluator: reviewNode.evaluator,
+        policyDigest: reviewNode.policyDigest,
+        contentDigest: reviewNode.resultDigest,
+        current: true,
+      },
+      providerInvocation: {
+        invocationId: 'plan-review-integration',
+        requestDigest: 'c'.repeat(64),
+        outputDigest: 'd'.repeat(64),
+        providerId: assignment.providerId,
+        sessionId: assignment.sessionId,
+        targetDigest: assignment.targetDigest,
+        engineSpawned: true,
+      },
+      grantUse: null,
+      grantValidation: null,
+    }),
+  };
   const challengeId = readPlanReviewNode(reviewNode).findings[0]!.findingId;
   const dispositionNode = createPlanReviewDispositionNode({
     reviewNode,
@@ -162,10 +205,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
     target,
     expectedReviewPolicyDigest: 'a'.repeat(64),
     requiredIndependence: 'provider-independent',
-    independenceAuthorization: {
-      kind: 'ordinary-provider-independent',
-      planAuthorProviderId: 'codex',
-    },
+    independenceAuthorization,
     repositoryEvidence: {
       tree: subject.investigationBaseline.tree,
       locations: [
@@ -195,10 +235,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
       target,
       expectedReviewPolicyDigest: 'a'.repeat(64),
       requiredIndependence: 'provider-independent',
-      independenceAuthorization: {
-        kind: 'ordinary-provider-independent',
-        planAuthorProviderId: 'codex',
-      },
+      independenceAuthorization,
       repositoryEvidence: {
         tree: subject.investigationBaseline.tree,
         locations: [

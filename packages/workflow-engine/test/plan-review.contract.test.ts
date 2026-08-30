@@ -245,6 +245,28 @@ test('plan review rejects structurally incomplete or invented admitted-result as
   }
 });
 
+test('plan review rejects retired caller-authored provider independence', () => {
+  const context = reviewContext();
+  const reviewNode = createPlanReviewNode({
+    subject: context.subject,
+    assignment: context.assignment,
+    providerResultNode: context.providerResult,
+    submission: challengeSubmission(),
+  });
+
+  assert.throws(
+    () =>
+      validatePlanReview({
+        ...currentValidationInput(context, reviewNode),
+        independenceAuthorization: {
+          kind: 'ordinary-provider-independent',
+          planAuthorProviderId: 'codex',
+        },
+      } as never),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+});
+
 test('plan target canonicalizes only enumerated component semantics', () => {
   const original = createPlanTarget(planTargetInput());
 
@@ -1161,44 +1183,25 @@ test('review validation rejects policy substitution, unknown dispositions, and u
   assert.equal(dispositionNode.type, 'plan-review-disposition');
 });
 
-test('review eligibility recomputes provider separation and resolves repository citations', () => {
+test('review eligibility uses admitted role assurance and resolves repository citations', () => {
   const context = reviewContext();
   const submission = challengeSubmission();
-  const sameProviderAssignment: RoleAssignment = {
-    ...context.assignment,
-    providerId: 'codex',
-  };
-  const sameProviderResult = createPlanReviewProviderResultNode({
-    subject: context.subject,
-    assignment: sameProviderAssignment,
-    submission,
-    providerPolicyDigest: DIGESTS.reviewPolicy,
-    targetSnapshotNode: context.targetSnapshotNode,
-  });
-  const sameProviderReview = createPlanReviewNode({
-    subject: context.subject,
-    assignment: sameProviderAssignment,
-    providerResultNode: sameProviderResult,
-    submission,
-  });
-  const sameProvider = validatePlanReview(
-    currentValidationInput(context, sameProviderReview),
-  );
-  assert.equal(sameProvider.current, false);
-  assert.equal(sameProvider.eligible, false);
-  assert.equal(sameProvider.achievedIndependence, 'none');
-  assert.ok(
-    sameProvider.staleReasons.includes(
-      'REVIEWER_PROVIDER_INDEPENDENCE_MISMATCH',
-    ),
-  );
-
   const reviewNode = createPlanReviewNode({
     subject: context.subject,
     assignment: context.assignment,
     providerResultNode: context.providerResult,
     submission,
   });
+  const admitted = validatePlanReview(
+    currentValidationInput(context, reviewNode),
+  );
+  assert.equal(admitted.current, true);
+  assert.equal(admitted.eligible, true);
+  assert.equal(admitted.achievedIndependence, 'provider-independent');
+  assert.equal(admitted.roleResultForm, 'ordinary-provider');
+  assert.equal(admitted.orchestration, 'engine-spawned-provider');
+  assert.equal(admitted.degradationAuthorized, false);
+
   const missingLocation = validatePlanReview({
     ...currentValidationInput(context, reviewNode),
     repositoryEvidence: {
@@ -1737,13 +1740,6 @@ function suggestion(summary: string) {
   };
 }
 
-function currentValidation(
-  context: ReturnType<typeof reviewContext>,
-  reviewNode: EvidenceNode,
-) {
-  return validatePlanReview(currentValidationInput(context, reviewNode));
-}
-
 function currentValidationInput(
   context: Pick<
     ReturnType<typeof reviewContext>,
@@ -1776,14 +1772,56 @@ function currentValidationInput(
     target: context.target,
     expectedReviewPolicyDigest: DIGESTS.reviewPolicy,
     requiredIndependence: 'provider-independent' as const,
-    independenceAuthorization: {
-      kind: 'ordinary-provider-independent' as const,
-      planAuthorProviderId: 'codex' as const,
-    },
+    independenceAuthorization: admittedRoleAuthorization(reviewNode),
     repositoryEvidence: repositoryEvidenceFor(
       reviewNode,
       context.subject.investigationBaseline.tree,
     ),
+  };
+}
+
+function admittedRoleAuthorization(reviewNode: EvidenceNode) {
+  const review = readPlanReviewNode(reviewNode);
+  return {
+    kind: 'admitted-role-result' as const,
+    roleResult: admitRoleResult({
+      assignment: review.assignment,
+      author: {
+        providerId: 'codex',
+        sessionId: 'author-session',
+        principalId: null,
+        identityAssurance: 'runtime-hint',
+        engineSpawned: false,
+      },
+      participant: {
+        providerId: review.assignment.providerId,
+        sessionId: review.assignment.sessionId,
+        principalId: null,
+        identityAssurance: 'adapter-assigned',
+        engineSpawned: true,
+      },
+      content: {
+        kind: 'plan-review',
+        nodeId: reviewNode.nodeId,
+        resultDigest: reviewNode.resultDigest,
+        outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
+        evaluator: reviewNode.evaluator,
+        policyDigest: reviewNode.policyDigest,
+        contentDigest: reviewNode.resultDigest,
+        current: true,
+      },
+      providerInvocation: {
+        invocationId: 'plan-review-invocation',
+        requestDigest: 'c'.repeat(64),
+        outputDigest: 'd'.repeat(64),
+        providerId: review.assignment.providerId,
+        sessionId: review.assignment.sessionId,
+        targetDigest: review.assignment.targetDigest,
+        engineSpawned: true,
+      },
+      grantUse: null,
+      grantValidation: null,
+    }),
   };
 }
 

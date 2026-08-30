@@ -18,10 +18,6 @@ import {
   type PlanReviewVerdict,
 } from './plan-review.ts';
 import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
-import {
-  isProviderId,
-  type ProviderId,
-} from '../provider-orchestration/provider-registry.ts';
 import type {
   AdmittedRoleResult,
   IndependenceDimension,
@@ -30,11 +26,6 @@ const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_RESOLVED_REPOSITORY_LOCATIONS = 16_384;
 const MAX_RESOLVED_PLANNING_LOCATIONS = 4_096;
-
-export type PlanReviewOrdinaryIndependenceAuthorization = {
-  kind: 'ordinary-provider-independent';
-  planAuthorProviderId: ProviderId;
-};
 
 export type PlanReviewAdmittedRoleAuthorization = {
   kind: 'admitted-role-result';
@@ -84,9 +75,7 @@ export type ValidatePlanReviewInput = {
   target: PlanTarget;
   expectedReviewPolicyDigest: string;
   requiredIndependence: IndependenceDimension;
-  independenceAuthorization:
-    | PlanReviewOrdinaryIndependenceAuthorization
-    | PlanReviewAdmittedRoleAuthorization;
+  independenceAuthorization: PlanReviewAdmittedRoleAuthorization;
   repositoryEvidence: PlanReviewRepositoryEvidence;
   planningTarget?: PlanReviewTargetSnapshot;
   planningEvidence?: PlanReviewPlanningEvidence;
@@ -96,10 +85,11 @@ export type ValidatePlanReviewInput = {
  * A replayable, content-pure verdict on one exact PlanReview. `current` and
  * `eligible` are conditional on independently derived validation inputs;
  * neither field by itself authorizes a lifecycle transition. Given those facts,
- * `eligible` additionally requires every challenge dispositioned and
- * provider independence recomputed. The advisory verdict is reported but never
- * gates eligibility, and independent follow-ups surface as deduplicated
- * non-blocking intake candidates that never carry a repository issue identity.
+ * `eligible` additionally requires every challenge dispositioned and provider
+ * independence validated from the exact admitted role result. The advisory
+ * verdict is reported but never gates eligibility, and independent follow-ups
+ * surface as deduplicated non-blocking intake candidates that never carry a
+ * repository issue identity.
  */
 export type PlanReviewValidation = {
   current: boolean;
@@ -116,9 +106,8 @@ export type PlanReviewValidation = {
   reviewPolicyDigest: string;
   requiredIndependence: IndependenceDimension;
   achievedIndependence: IndependenceDimension;
-  roleResultForm: AdmittedRoleResult['form'] | 'ordinary-provider-legacy';
-  orchestration:
-    AdmittedRoleResult['orchestration'] | 'legacy-caller-authorization';
+  roleResultForm: AdmittedRoleResult['form'];
+  orchestration: AdmittedRoleResult['orchestration'];
   degradationAuthorized: boolean;
 };
 
@@ -250,40 +239,22 @@ export function validatePlanReview(
     staleReasons.add('REPOSITORY_EVIDENCE_MISMATCH');
   }
 
-  const admittedRoleResult =
-    independenceAuthorization.kind === 'admitted-role-result'
-      ? independenceAuthorization.roleResult
-      : null;
-  const legacyPlanAuthorProviderId =
-    independenceAuthorization.kind === 'ordinary-provider-independent'
-      ? independenceAuthorization.planAuthorProviderId
-      : null;
-  const achievedIndependence: IndependenceDimension = admittedRoleResult
-    ? admittedRoleResult.achievedIndependence
-    : review.assignment.providerId !== legacyPlanAuthorProviderId
-      ? 'provider-independent'
-      : 'none';
-  const roleResultForm = admittedRoleResult
-    ? admittedRoleResult.form
-    : ('ordinary-provider-legacy' as const);
-  const orchestration = admittedRoleResult
-    ? admittedRoleResult.orchestration
-    : ('legacy-caller-authorization' as const);
-  const degradationAuthorized =
-    admittedRoleResult !== null &&
-    admittedRoleResult.form !== 'ordinary-provider';
+  const admittedRoleResult = independenceAuthorization.roleResult;
+  const achievedIndependence: IndependenceDimension =
+    admittedRoleResult.achievedIndependence;
+  const roleResultForm = admittedRoleResult.form;
+  const orchestration = admittedRoleResult.orchestration;
+  const degradationAuthorized = admittedRoleResult.form !== 'ordinary-provider';
   if (
-    admittedRoleResult &&
-    (admittedRoleResult.role !== 'plan-reviewer' ||
-      admittedRoleResult.targetDigest !== subject.subjectDigest ||
-      admittedRoleResult.content.nodeId !== review.nodeId ||
-      admittedRoleResult.content.resultDigest !== review.resultDigest ||
-      admittedRoleResult.content.policyDigest !== review.policyDigest ||
-      admittedRoleResult.assignment.providerId !==
-        review.assignment.providerId ||
-      admittedRoleResult.assignment.sessionId !== review.assignment.sessionId ||
-      admittedRoleResult.assignment.targetDigest !==
-        review.assignment.targetDigest)
+    admittedRoleResult.role !== 'plan-reviewer' ||
+    admittedRoleResult.targetDigest !== subject.subjectDigest ||
+    admittedRoleResult.content.nodeId !== review.nodeId ||
+    admittedRoleResult.content.resultDigest !== review.resultDigest ||
+    admittedRoleResult.content.policyDigest !== review.policyDigest ||
+    admittedRoleResult.assignment.providerId !== review.assignment.providerId ||
+    admittedRoleResult.assignment.sessionId !== review.assignment.sessionId ||
+    admittedRoleResult.assignment.targetDigest !==
+      review.assignment.targetDigest
   ) {
     staleReasons.add('REVIEW_ROLE_RESULT_MISMATCH');
   }
@@ -515,9 +486,7 @@ function planningLocationsExactlyCoverCitations(
 
 function assertIndependenceAuthorization(
   value: unknown,
-):
-  | PlanReviewOrdinaryIndependenceAuthorization
-  | PlanReviewAdmittedRoleAuthorization {
+): PlanReviewAdmittedRoleAuthorization {
   if (
     isPlainRecord(value) &&
     hasExactKeys(value, ['kind', 'roleResult']) &&
@@ -529,20 +498,9 @@ function assertIndependenceAuthorization(
       roleResult: structuredClone(value.roleResult),
     };
   }
-  if (
-    !isPlainRecord(value) ||
-    !hasExactKeys(value, ['kind', 'planAuthorProviderId']) ||
-    value.kind !== 'ordinary-provider-independent' ||
-    !isProviderId(value.planAuthorProviderId)
-  ) {
-    throw planReviewInvalid(
-      'Plan review independence authorization is malformed.',
-    );
-  }
-  return {
-    kind: 'ordinary-provider-independent',
-    planAuthorProviderId: value.planAuthorProviderId,
-  };
+  throw planReviewInvalid(
+    'Plan review independence authorization is malformed.',
+  );
 }
 
 function isAdmittedRoleResultShape(
