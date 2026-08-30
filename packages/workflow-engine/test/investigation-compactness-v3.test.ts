@@ -107,6 +107,17 @@ test('current-v3 production no longer exports historical EvidenceNode replay wra
         'readImplementationReconciliationRequirementNode',
       ],
     ],
+    [
+      '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts',
+      [
+        'projectInvestigationWhyToLedger',
+        'projectReconciledInvestigationWhyToLedger',
+      ],
+    ],
+    [
+      '../src/modules/investigation/domain/investigation-groups.ts',
+      ['deriveClassGroupsWithContext'],
+    ],
   ] as const) {
     const source = fs.readFileSync(
       path.join(import.meta.dirname, relativePath),
@@ -114,7 +125,7 @@ test('current-v3 production no longer exports historical EvidenceNode replay wra
     );
     for (const retiredExport of retiredExports) {
       assert.equal(
-        source.includes(`export function ${retiredExport}`),
+        source.includes(`export function ${retiredExport}(`),
         false,
         `${relativePath} must not retain ${retiredExport}`,
       );

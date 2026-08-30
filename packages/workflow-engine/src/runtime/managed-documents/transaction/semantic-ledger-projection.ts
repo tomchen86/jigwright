@@ -3,9 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import type { EvidenceNode } from '../../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import { readInvestigationWhyNode } from '../../../adapters/planning/investigation/investigation-why.ts';
 import type { InvestigationWhyOverlayV3 } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import { normalizeExactRepositoryPath } from '../../session-workspace/paths.ts';
 import type { ActualMutation } from '../../../modules/why-knowledge/semantic-reconciliation.ts';
@@ -32,38 +30,6 @@ export type ReconciledLedgerProjection = Readonly<{
   paths: readonly string[];
   indexDigest: string;
 }>;
-
-/**
- * Historical/planning projection primitive for completed, engine-validated
- * full-blob WHY evidence. Production promotion now uses the reconciled writer
- * below; this function remains available for deterministic migration and
- * read-only comparison. It records only a planning-time claim, never an
- * implementation result; no mutation disposition or post-implementation
- * assurance is inferred from the author's prose.
- */
-export function projectInvestigationWhyToLedger(input: {
-  repositoryRoot: string;
-  changeId: string;
-  baselineCommit: string;
-  whyNodes: readonly EvidenceNode[];
-  policyDigest: string;
-}): Readonly<{ entries: readonly LedgerEntry[]; index: LedgerIndex }> {
-  return projectPlanningWhyClaims({
-    ...input,
-    claims: input.whyNodes.map((node) => {
-      const why = readInvestigationWhyNode(node);
-      return {
-        pathIdentity: why.path,
-        contentSha256: why.blob.contentSha256,
-        semanticDigest: semanticClaimDigest(why),
-        extractorVersion: 'investigation-why-file-claim.v1',
-        why: why.why,
-        protectedInvariant: why.protectedInvariant,
-        reviewerQuestion: why.reviewerQuestion,
-      };
-    }),
-  });
-}
 
 /** Planning-time v3 projection from one authority-validated Manifest. */
 export function projectInvestigationManifestWhyToLedger(input: {
@@ -174,34 +140,6 @@ function projectPlanningWhyClaims(input: {
   return Object.freeze({
     entries: Object.freeze(entries),
     index: updateLedgerIndex(input.repositoryRoot, entries),
-  });
-}
-
-/**
- * Historical v2 adapter for reconciled WHY EvidenceNodes. Active production
- * uses the Manifest-v3 entrypoint below; both feed the same exact-source
- * projection so historical replay does not fork ledger semantics.
- */
-export function projectReconciledInvestigationWhyToLedger(input: {
-  repositoryRoot: string;
-  changeId: string;
-  baselineCommit: string;
-  whyNodes: readonly EvidenceNode[];
-  policyDigest: string;
-  actualMutations: readonly ActualMutation[];
-}): ReconciledLedgerProjection | null {
-  return projectReconciledWhyClaims({
-    ...input,
-    claims: input.whyNodes.map((node) => {
-      const why = readInvestigationWhyNode(node);
-      return {
-        identity: node.nodeId,
-        pathIdentity: why.path,
-        why: why.why,
-        protectedInvariant: why.protectedInvariant,
-        reviewerQuestion: why.reviewerQuestion,
-      };
-    }),
   });
 }
 
@@ -415,26 +353,6 @@ function sameClaim(current: LedgerEntry, candidate: LedgerEntryInput): boolean {
       semanticDependencies: candidate.semanticDependencies,
       policyDigest: candidate.policyDigest,
     })
-  );
-}
-
-function semanticClaimDigest(
-  why: ReturnType<typeof readInvestigationWhyNode>,
-): string {
-  return prefixedDigest(
-    sha256(
-      canonicalJson({
-        schema: 'investigation-why-file-claim.v1',
-        path: why.path,
-        blob: why.blob,
-        relationshipsToChange: why.relationshipsToChange,
-        why: why.why,
-        protectedInvariant: why.protectedInvariant,
-        reviewerQuestion: why.reviewerQuestion,
-        answer: why.answer,
-        semanticAssurance: why.semanticAssurance,
-      }),
-    ),
   );
 }
 
