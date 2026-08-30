@@ -325,10 +325,13 @@ function prepareProviderEntries(paths, input) {
     if (input.length < 1 || input.length > MAX_PROVIDER_ATTEMPTS) {
         throw executionProjectionConflict('Provider execution materialization requires a bounded non-empty history.');
     }
+    if (input.some(({ retryAccounting }) => retryAccounting == null)) {
+        throw executionProjectionConflict('Provider execution materialization requires exact retry accounting for every Attempt.');
+    }
     let entries;
     try {
         entries = input
-            .map(({ record, request, retryAccounting = null, retryReplacement = null, }) => ({
+            .map(({ record, request, retryAccounting, retryReplacement = null }) => ({
             record,
             request,
             projection: projectProviderInvocationExecution({ record, request }),
@@ -383,9 +386,7 @@ function buildProviderExecutionState(prepared, current) {
         throw executionProjectionConflict('Durable execution state conflicts with the provider semantic identity.');
     }
     assertInvocationProjectionMonotonic(prepared, current);
-    const frozenRetryPolicy = firstEntry.retryAccounting === null
-        ? (current?.job.retryPolicy ?? first.job.retryPolicy)
-        : providerRetryPolicyFromAccounting(firstEntry.retryAccounting.retryPolicy, firstEntry.record.createdAt);
+    const frozenRetryPolicy = providerRetryPolicyFromAccounting(firstEntry.retryAccounting.retryPolicy, firstEntry.record.createdAt);
     const currentResults = new Map((current?.results ?? []).map((result) => [result.attemptId, result]));
     let acceptedAttemptId = current?.job.acceptedAttemptId ?? null;
     if (acceptedAttemptId === null) {
@@ -400,14 +401,12 @@ function buildProviderExecutionState(prepared, current) {
     for (let index = 0; index < prepared.entries.length; index += 1) {
         const entry = prepared.entries[index];
         const projected = entry.projection.attempt;
-        const chargedProjection = entry.retryAccounting === null
-            ? projected
-            : assertAttemptRecord({
-                ...projected,
-                runtimeMs: entry.retryAccounting.attemptReservation.runtimeMs,
-                providerCostMicros: entry.retryAccounting.attemptReservation.providerCostMicros,
-                providerTokens: entry.retryAccounting.attemptReservation.providerTokens,
-            });
+        const chargedProjection = assertAttemptRecord({
+            ...projected,
+            runtimeMs: entry.retryAccounting.attemptReservation.runtimeMs,
+            providerCostMicros: entry.retryAccounting.attemptReservation.providerCostMicros,
+            providerTokens: entry.retryAccounting.attemptReservation.providerTokens,
+        });
         const previous = attempts.at(-1);
         const previousEntry = prepared.entries[index - 1];
         const hasAdjacentPrevious = previous !== undefined &&

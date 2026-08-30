@@ -40,10 +40,6 @@ const BLIND_PROVIDER_CORE_ROOT_FILES = [
     'request.json',
     'state.json',
 ];
-/**
- * Made durable before the blind manifest, so a directory holding a manifest
- * without it predates the snapshot rather than having lost it.
- */
 const PROVIDER_POLICY_ROOT_FILE = 'execution-policy.json';
 const BLIND_PROVIDER_RUNTIME_FILES = [
     'prompt.json',
@@ -4174,9 +4170,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const reviewRootPath = path.join(directory, 'review-root');
     const optionalRootFiles = OPTIONAL_PROVIDER_ROOT_FILES.filter((name) => rootNames.includes(name));
     const rootFiles = [
-        ...(rootNames.includes(PROVIDER_POLICY_ROOT_FILE)
-            ? [PROVIDER_POLICY_ROOT_FILE]
-            : []),
+        PROVIDER_POLICY_ROOT_FILE,
         ...BLIND_PROVIDER_CORE_ROOT_FILES,
     ];
     const expectedRootNames = [
