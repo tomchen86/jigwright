@@ -1173,7 +1173,7 @@
     {
       "path": "src/modules/authority/execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:3c44514821fd18399aa73fc3939b0bb9db14c5ee7a5fa0ac3d37df8ba2df8d28"
+      "digest": "sha256:435a0af9a897aeed9bb3ca2e4aea9809e3c3b8be96e64cb67c70460ea96aab67"
     },
     {
       "path": "src/modules/authority/external-effect-grant.ts",

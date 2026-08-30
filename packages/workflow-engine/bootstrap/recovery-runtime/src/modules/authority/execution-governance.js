@@ -709,9 +709,7 @@ export function performEpochRollover(input) {
     const invalidated = sortedUniqueIdentities(input.invalidated, invalidEpochTransition, 'invalidated stage');
     const verification = validateEpochVerification(input.verification);
     const createdAt = exactDate(input.createdAt, 'EPOCH_TRANSITION_INVALID');
-    const carryForwardManifest = input.carryForwardManifest === undefined
-        ? null
-        : normalizeEpochCarryForwardManifest(input.carryForwardManifest, input.workflow, carriedForward);
+    const carryForwardManifest = normalizeEpochCarryForwardManifest(input.carryForwardManifest, input.workflow, carriedForward);
     const workflow = {
         ...input.workflow,
         currentEpoch: input.nextManifest.epoch,
@@ -738,13 +736,11 @@ export function performEpochRollover(input) {
         verification,
         createdAt,
     };
-    const receipt = carryForwardManifest === null
-        ? { schemaVersion: 1, ...receiptCommon }
-        : {
-            schemaVersion: 2,
-            ...receiptCommon,
-            carryForwardManifest,
-        };
+    const receipt = {
+        schemaVersion: 2,
+        ...receiptCommon,
+        carryForwardManifest,
+    };
     validateEpochTransitionReceipt(receipt);
     return { workflow, receipt };
 }
@@ -1102,9 +1098,7 @@ export function rolloverDurableEpochContextStore(storeRoot, input) {
             verification: input.verification,
             createdAt: input.createdAt,
         });
-        if (transition.receipt.schemaVersion === 2) {
-            assertEpochCarryForwardSourceMembership(transition.receipt.carryForwardManifest, state.context.currentManifest, input.nextManifest);
-        }
+        assertEpochCarryForwardSourceMembership(transition.receipt.carryForwardManifest, state.context.currentManifest, input.nextManifest);
         persistManifestItems(paths, input.workflowId, input.nextManifest, input.items);
         const compacted = compactEpochTransitionReceipts([...state.context.transitionReceipts, transition.receipt], state.context.transitionStubs, { now: input.createdAt, policy });
         const context = {
@@ -2509,10 +2503,8 @@ function validateEpochTransitionReceipt(value) {
         'createdAt',
     ];
     if (!isRecord(value) ||
-        (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
-        !hasExactKeys(value, value.schemaVersion === 1
-            ? commonKeys
-            : [...commonKeys, 'carryForwardManifest']) ||
+        value.schemaVersion !== 2 ||
+        !hasExactKeys(value, [...commonKeys, 'carryForwardManifest']) ||
         value.kind !== 'epoch-transition') {
         throw invalidEpochTransition('Transition receipt has an invalid shape.');
     }
@@ -2526,14 +2518,12 @@ function validateEpochTransitionReceipt(value) {
     assertReason(value.reason, invalidEpochTransition, 'rollover reason');
     assertIdentity(value.restartFrom, invalidEpochTransition, 'restart checkpoint');
     sortedUniqueIdentities(value.carriedForward, invalidEpochTransition, 'carried-forward identity', true);
-    if (value.schemaVersion === 2) {
-        const manifest = validateEpochCarryForwardManifest(value.carryForwardManifest);
-        if (manifest.sourceWorkflow !== value.workflowId ||
-            manifest.sourceEpoch !== value.fromEpoch ||
-            canonicalJson(manifest.carriedForward.map(({ identity }) => identity)) !==
-                canonicalJson(value.carriedForward)) {
-            throw invalidEpochTransition('Transition carry-forward decisions do not match the receipt summary.');
-        }
+    const manifest = validateEpochCarryForwardManifest(value.carryForwardManifest);
+    if (manifest.sourceWorkflow !== value.workflowId ||
+        manifest.sourceEpoch !== value.fromEpoch ||
+        canonicalJson(manifest.carriedForward.map(({ identity }) => identity)) !==
+            canonicalJson(value.carriedForward)) {
+        throw invalidEpochTransition('Transition carry-forward decisions do not match the receipt summary.');
     }
     sortedUniqueIdentities(value.invalidated, invalidEpochTransition, 'invalidated stage', true);
     assertDigest(value.previousContextDigest, invalidEpochTransition, 'previous context digest');
