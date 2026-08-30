@@ -1463,7 +1463,7 @@ test('Recovery Grant treats expiresAt as exclusive for fresh and reserved admiss
   }
 });
 
-test('Recovery Grant source lookup tolerates only its own crash-orphan temporary record', () => {
+test('Recovery Grant source lookup rejects retired temporary names without deleting bytes', () => {
   const value = fixture();
   const controlAudit: ControlPlaneUpdaterAuditRecord[] = [];
   const recoveryAudit: ControlPlaneRecoveryAuditRecord[] = [];
@@ -1518,23 +1518,7 @@ test('Recovery Grant source lookup tolerates only its own crash-orphan temporary
     );
     fs.chmodSync(path.join(directory, orphanName), 0o600);
 
-    assert.equal(
-      findPersistedControlPlaneRecoveryGrantForSource(
-        value.storageRoot,
-        value.envelope.payload.grantId,
-      )?.state,
-      'reserved',
-    );
-    assert.equal(
-      fs.existsSync(path.join(directory, orphanName)),
-      false,
-      'a verified orphan created by the atomic writer must be cleaned',
-    );
-
-    fs.writeFileSync(path.join(directory, 'attacker.tmp'), '', {
-      mode: 0o600,
-      flag: 'wx',
-    });
+    const orphanBytes = fs.readFileSync(path.join(directory, orphanName));
     assert.throws(
       () =>
         findPersistedControlPlaneRecoveryGrantForSource(
@@ -1543,12 +1527,17 @@ test('Recovery Grant source lookup tolerates only its own crash-orphan temporary
         ),
       errorWithCode('HARNESS_RECOVERY_RECORD_CORRUPT'),
     );
+    assert.equal(fs.existsSync(path.join(directory, orphanName)), true);
+    assert.deepEqual(
+      fs.readFileSync(path.join(directory, orphanName)),
+      orphanBytes,
+    );
   } finally {
     value.cleanup();
   }
 });
 
-test('Recovery Grant exact replay repairs a legacy partial final target without overwriting another record', () => {
+test('Recovery Grant exact replay rejects a strict-prefix final without altering its bytes', () => {
   const value = persistenceGrantFixture();
   makePrivateDirectory(value.directory);
   const envelopeDigestAnchor = `,"envelopeDigest":"${value.record.envelopeDigest}",`;
@@ -1559,13 +1548,16 @@ test('Recovery Grant exact replay repairs a legacy partial final target without 
   const prefix = value.bytes.slice(0, envelopeDigestEnd);
   writeDurable(value.target, prefix);
 
-  const repaired = reservePersistedControlPlaneRecoveryGrant(
-    value.storageRoot,
-    value.envelope,
-    '2026-08-10T10:00:45.000Z',
+  assert.throws(
+    () =>
+      reservePersistedControlPlaneRecoveryGrant(
+        value.storageRoot,
+        value.envelope,
+        '2026-08-10T10:00:45.000Z',
+      ),
+    errorWithCode('HARNESS_RECOVERY_RECORD_CORRUPT'),
   );
-  assert.deepEqual(repaired, value.record);
-  assert.equal(fs.readFileSync(value.target, 'utf8'), value.bytes);
+  assert.equal(fs.readFileSync(value.target, 'utf8'), prefix);
   assert.equal(fs.lstatSync(value.target).nlink, 1);
   assert.deepEqual(fs.readdirSync(value.directory), [value.recordName]);
 

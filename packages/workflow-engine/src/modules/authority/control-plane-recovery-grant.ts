@@ -22,8 +22,6 @@ const RECOVERY_GRANT_ID = /^recovery-[0-9a-f]{64}$/;
 const RECOVERY_RECORD_NAME = /^[0-9a-f]{64}\.json$/;
 const RECOVERY_RECORD_TEMPORARY =
   /^\.([0-9a-f]{64}\.json)\.(absent|[0-9a-f]{64})\.([0-9a-f]{64})\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.tmp$/;
-const LEGACY_RECOVERY_RECORD_TEMPORARY =
-  /^\.([0-9a-f]{64}\.json)\.([1-9][0-9]*)\.([0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.tmp$/;
 const PAYLOAD_KEYS = [
   'controlPlaneJournalDigest',
   'controlPlaneUpdateRecordDigest',
@@ -867,8 +865,7 @@ export function findPersistedControlPlaneRecoveryGrantForSource(
     entries.some(
       (entry) =>
         !RECOVERY_RECORD_NAME.test(entry) &&
-        !RECOVERY_RECORD_TEMPORARY.test(entry) &&
-        !LEGACY_RECOVERY_RECORD_TEMPORARY.test(entry),
+        !RECOVERY_RECORD_TEMPORARY.test(entry),
     )
   ) {
     throw recoveryRecordCorrupt();
@@ -1427,29 +1424,26 @@ function reconcileRecoveryRecordTemporaries(
     .map((entry) => ({
       entry,
       current: RECOVERY_RECORD_TEMPORARY.exec(entry),
-      legacy: LEGACY_RECOVERY_RECORD_TEMPORARY.exec(entry),
     }))
-    .filter(({ current, legacy }) => current !== null || legacy !== null);
+    .filter(
+      (match): match is { entry: string; current: RegExpExecArray } =>
+        match.current !== null,
+    );
   if (
     entries.some(
       (entry) =>
         !RECOVERY_RECORD_NAME.test(entry) &&
-        !RECOVERY_RECORD_TEMPORARY.test(entry) &&
-        !LEGACY_RECOVERY_RECORD_TEMPORARY.test(entry),
+        !RECOVERY_RECORD_TEMPORARY.test(entry),
     )
   ) {
     throw recoveryRecordCorrupt();
   }
-
-  recoverExactPartialFinal(directory, expectation);
-
   for (const match of recognized) {
     const temporaryPath = path.join(directory, match.entry);
-    const targetName = (match.current ?? match.legacy)![1]!;
+    const targetName = match.current[1]!;
     const targetPath = path.join(directory, targetName);
     if (
       expectation?.targetName === targetName &&
-      match.current !== null &&
       !expectationMatchesPreparation(expectation, targetName, match)
     ) {
       throw recoveryRecordCorrupt();
@@ -1462,7 +1456,7 @@ function reconcileRecoveryRecordTemporaries(
     if (targetStats && sameInode(inspected.stats, targetStats)) {
       assertExactHardLinkPair(temporaryPath, targetPath);
       if (inspected.value === null) throw recoveryRecordCorrupt();
-      assertPreparedRecord(inspected.value, targetName, match.current?.[3]);
+      assertPreparedRecord(inspected.value, targetName, match.current[3]);
       const targetValue = readCanonicalRecord(targetPath, [2]);
       if (canonicalJson(targetValue) !== canonicalJson(inspected.value)) {
         throw recoveryRecordCorrupt();
@@ -1476,31 +1470,27 @@ function reconcileRecoveryRecordTemporaries(
     if (!isRecord(inspected.value)) {
       if (
         expectationMatchesPreparation(expectation, targetName, match) &&
-        (match.current !== null
-          ? isStrictBytePrefix(inspected.raw, expectation!.bytes)
-          : isRecoverableLegacyFinalPrefix(inspected.raw, expectation!.bytes))
+        isStrictBytePrefix(inspected.raw, expectation!.bytes)
       ) {
         unlinkExactSingleFile(temporaryPath, inspected.stats);
         fsyncDirectory(directory);
         continue;
       }
-      if (match.current !== null) {
-        const namedExpected = match.current[2]!;
-        if (!targetStats && namedExpected === 'absent') continue;
-        if (targetStats?.nlink === 1) {
-          const currentValue = readCanonicalRecord(targetPath);
-          if (
-            isRecord(currentValue) &&
-            namedExpected !== 'absent' &&
-            currentValue.recordDigest === `sha256:${namedExpected}`
-          ) {
-            continue;
-          }
+      const namedExpected = match.current[2]!;
+      if (!targetStats && namedExpected === 'absent') continue;
+      if (targetStats?.nlink === 1) {
+        const currentValue = readCanonicalRecord(targetPath);
+        if (
+          isRecord(currentValue) &&
+          namedExpected !== 'absent' &&
+          currentValue.recordDigest === `sha256:${namedExpected}`
+        ) {
+          continue;
         }
       }
       throw recoveryRecordCorrupt();
     }
-    assertPreparedRecord(inspected.value, targetName, match.current?.[3]);
+    assertPreparedRecord(inspected.value, targetName, match.current[3]);
     if (!targetStats) {
       if (
         expectationMatchesPreparation(expectation, targetName, match) &&
@@ -1510,7 +1500,7 @@ function reconcileRecoveryRecordTemporaries(
         fsyncDirectory(directory);
         continue;
       }
-      if (match.current?.[2] === 'absent') continue;
+      if (match.current[2] === 'absent') continue;
       throw recoveryRecordCorrupt();
     }
 
@@ -1520,10 +1510,10 @@ function reconcileRecoveryRecordTemporaries(
       fsyncDirectory(directory);
       continue;
     }
-    if (match.legacy !== null || !isRecord(currentValue)) {
+    if (!isRecord(currentValue)) {
       throw recoveryRecordCorrupt();
     }
-    const namedExpected = match.current![2]!;
+    const namedExpected = match.current[2]!;
     if (
       namedExpected === 'absent' ||
       currentValue.recordDigest !== `sha256:${namedExpected}`
@@ -1613,25 +1603,7 @@ function reconcileCleanupQuarantine(recordsDirectory: string): void {
 }
 
 interface RecoveryPreparationMatch {
-  current: RegExpExecArray | null;
-  legacy: RegExpExecArray | null;
-}
-
-function recoverExactPartialFinal(
-  directory: string,
-  expectation: RecoveryRecordReconcileExpectation | undefined,
-): void {
-  if (expectation === undefined) return;
-  const target = path.join(directory, expectation.targetName);
-  const stats = fs.lstatSync(target, { throwIfNoEntry: false });
-  if (stats === undefined || stats.nlink !== 1) return;
-  const inspected = inspectPrivateRecordFile(target, [1]);
-  if (inspected.value !== null) return;
-  if (!isRecoverableLegacyFinalPrefix(inspected.raw, expectation.bytes)) {
-    throw recoveryRecordCorrupt();
-  }
-  unlinkExactSingleFile(target, inspected.stats);
-  fsyncDirectory(directory);
+  current: RegExpExecArray;
 }
 
 function expectationMatchesPreparation(
@@ -1642,13 +1614,12 @@ function expectationMatchesPreparation(
   if (expectation === undefined || expectation.targetName !== targetName) {
     return false;
   }
-  if (match.legacy !== null) return true;
   const expected =
     expectation.expectedOldRecordDigest === null
       ? 'absent'
       : expectation.expectedOldRecordDigest.slice('sha256:'.length);
   return (
-    match.current?.[2] === expected &&
+    match.current[2] === expected &&
     match.current[3] === expectation.nextRecordDigest.slice('sha256:'.length)
   );
 }
@@ -1674,38 +1645,6 @@ function isStrictBytePrefix(prefix: Buffer, exact: string): boolean {
   return (
     prefix.length < expected.length &&
     prefix.equals(expected.subarray(0, prefix.length))
-  );
-}
-
-function isRecoverableLegacyFinalPrefix(
-  prefix: Buffer,
-  exact: string,
-): boolean {
-  if (!isStrictBytePrefix(prefix, exact)) return false;
-  let expected: unknown;
-  try {
-    expected = JSON.parse(exact) as unknown;
-  } catch {
-    return false;
-  }
-  if (
-    !isRecord(expected) ||
-    typeof expected.createdAt !== 'string' ||
-    !isDigest(expected.envelopeDigest)
-  ) {
-    return false;
-  }
-  const envelopeAnchor = `,"envelopeDigest":${JSON.stringify(
-    expected.envelopeDigest,
-  )},`;
-  const envelopeAnchorStart = exact.indexOf(envelopeAnchor);
-  if (envelopeAnchorStart < 0) return false;
-  const provenLength = envelopeAnchorStart + envelopeAnchor.length;
-  return (
-    prefix.length >= provenLength &&
-    prefix
-      .subarray(0, provenLength)
-      .equals(Buffer.from(exact.slice(0, provenLength), 'utf8'))
   );
 }
 
