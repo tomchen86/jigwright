@@ -1780,11 +1780,6 @@ function updateProviderInvocation(paths, invocationId, expectedRevision, transit
     }, 'PROVIDER_INVOCATION_OPERATION_CONFLICT', invocationLockInvalid);
 }
 function providerExecutionEntry(paths, record, request) {
-    // A record written before execution policy snapshots existed reserved no
-    // attempt budget, which is exactly what a null accounting already means to
-    // the retry ladder in execution-store. Reading a snapshot that was never
-    // written would fail the whole history instead.
-    const snapshotRecorded = privatePathExists(paths, providerExecutionPolicySnapshotPath(paths, request.invocationId), providerExecutionPolicySnapshotUnsafe);
     const retryReservation = record.attempt < 2
         ? null
         : readProviderRetryReservation(paths, record.investigationId, record.attempt);
@@ -1797,9 +1792,8 @@ function providerExecutionEntry(paths, record, request) {
     return {
         record,
         request,
-        retryAccounting: snapshotRecorded
-            ? readProviderExecutionPolicySnapshot(paths, request).accounting
-            : null,
+        retryAccounting: readProviderExecutionPolicySnapshot(paths, request)
+            .accounting,
         retryReplacement: retryReservation?.schemaVersion === 3
             ? retryReservation.replacement
             : null,

@@ -42,30 +42,40 @@ import {
   type ChangeRoleAssignmentProtectedContextVerifierPort,
 } from '../src/modules/provider-orchestration/change-role-assignment.ts';
 import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../src/runtime/storage-journal/change-role-assignment-store.ts';
+import { type ProviderNativeSessionAssignmentAuthorityVerifierPort } from '../src/modules/provider-orchestration/provider-native-session.ts';
 import {
-  createProviderNativeTurnBindingV1,
-  type ProviderNativeSessionAssignmentAuthorityVerifierPort,
-  type ProviderNativeTurnBindingV1,
-} from '../src/modules/provider-orchestration/provider-native-session.ts';
-import {
-  claimProviderNativeSessionTurnV2,
   claimProviderNativeSessionTurnV1,
   completeClaimedProviderNativeSessionTurnV1,
-  completeProviderNativeSessionTurnV2,
   completeProviderNativeSessionTurnV1,
-  readProviderNativeSessionChainV2,
   readProviderNativeSessionChainV1,
-  type ProviderNativeTurnCurrentnessVerifierPort,
 } from '../src/runtime/storage-journal/provider-native-session-store.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 
 const CHANGE_ID = 'native-session-store';
 const PLANNING_GENERATION = 'a'.repeat(64);
 
-test('provider native session store exposes no historical V2 diagnostic reader', async () => {
+test('provider native session store exposes no inactive V2 surface', async () => {
   const publicSurface =
     await import('../src/runtime/storage-journal/provider-native-session-store.ts');
-  assert.equal('inspectProviderNativeSessionChainV2' in publicSurface, false);
+  for (const retiredExport of [
+    'claimProviderNativeSessionTurnV2',
+    'completeProviderNativeSessionTurnV2',
+    'inspectProviderNativeSessionChainV2',
+    'readProviderNativeSessionChainV2',
+  ]) {
+    assert.equal(retiredExport in publicSurface, false, retiredExport);
+  }
+  const source = fs.readFileSync(
+    new URL(
+      '../src/runtime/storage-journal/provider-native-session-store.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    source,
+    /ProviderNativeSession.*V2|NativeTurnCurrentness/u,
+  );
 });
 
 function assignmentRecord(options: Readonly<{ belowFloor?: boolean }> = {}) {
@@ -297,77 +307,11 @@ function fixture(options: Readonly<{ belowFloor?: boolean }> = {}) {
   const slot = assignment.sessionSlots.find((entry) =>
     entry.roles.includes('builder'),
   )!;
-  const rawLeaseToken = 'private-store-native-turn-lease-token';
-  let currentTurnBinding = nativeTurnBinding(
-    assignment,
-    slot,
-    'builder',
-    'current',
-    rawLeaseToken,
-  );
-  let currentLeaseToken = rawLeaseToken;
-  let currentnessCalls = 0;
-  const verifyNativeTurnCurrentness: ProviderNativeTurnCurrentnessVerifierPort =
-    {
-      withCurrentFence(query, operation) {
-        currentnessCalls += 1;
-        assert.equal(query.changeId, assignment.changeId);
-        assert.equal(query.planningGeneration, assignment.planningGeneration);
-        assert.equal(query.assignmentRecordDigest, assignment.recordDigest);
-        assert.equal(
-          query.sessionSlotId,
-          currentTurnBinding.assignment.sessionSlotId,
-        );
-        assert.equal(
-          query.invocationId,
-          currentTurnBinding.invocation.invocationId,
-        );
-        assert.equal(query.workflowId, currentTurnBinding.execution.workflowId);
-        assert.equal(query.jobId, currentTurnBinding.execution.jobId);
-        assert.equal(query.attemptId, currentTurnBinding.execution.attemptId);
-        assert.equal(
-          query.leaseGeneration,
-          currentTurnBinding.execution.leaseGeneration,
-        );
-        assert.equal(query.leaseToken, currentLeaseToken);
-        assert.equal(
-          currentTurnBinding.execution.leaseTokenDigest,
-          `sha256:${crypto.createHash('sha256').update(query.leaseToken).digest('hex')}`,
-        );
-        assert.deepEqual(Object.keys(query).sort(), [
-          'assignmentRecordDigest',
-          'attemptId',
-          'changeId',
-          'invocationId',
-          'jobId',
-          'kind',
-          'leaseGeneration',
-          'leaseToken',
-          'planningGeneration',
-          'schemaVersion',
-          'sessionSlotId',
-          'workflowId',
-        ]);
-        return operation(currentTurnBinding);
-      },
-    };
   return {
     gitCommonDirectory,
     paths,
     assignment,
     slot,
-    rawLeaseToken,
-    verifyNativeTurnCurrentness,
-    currentnessCalls: () => currentnessCalls,
-    currentTurnBinding: () => currentTurnBinding,
-    currentLeaseToken: () => currentLeaseToken,
-    setCurrentTurnBinding(
-      binding: ProviderNativeTurnBindingV1,
-      leaseToken = rawLeaseToken,
-    ) {
-      currentTurnBinding = binding;
-      currentLeaseToken = leaseToken;
-    },
     verifyCentralSnapshot,
     verifyChangeOverrideSnapshot,
     verifyHostConfiguration,
@@ -378,88 +322,6 @@ function fixture(options: Readonly<{ belowFloor?: boolean }> = {}) {
     cleanup: () =>
       fs.rmSync(gitCommonDirectory, { recursive: true, force: true }),
   };
-}
-
-function nativeTurnBinding(
-  assignment: ReturnType<typeof assignmentRecord>,
-  slot: ReturnType<typeof assignmentRecord>['sessionSlots'][number],
-  roleLane: 'author' | 'builder' | 'reviewer',
-  suffix: string,
-  leaseToken: string,
-  attemptIdentitySuffix = suffix,
-) {
-  const profile = slot.profiles.find(
-    (candidate) => candidate.profileId !== null,
-  )!;
-  const profileConfiguration = assignment.host.configuration.providers.find(
-    ({ id }) => id === profile.profileId,
-  )!;
-  return createProviderNativeTurnBindingV1({
-    assignment: {
-      changeId: assignment.changeId,
-      planningGeneration: assignment.planningGeneration,
-      assignmentRecordDigest: assignment.recordDigest,
-      assignmentDigest: assignment.assignmentDigest,
-      resolutionDigest: assignment.resolution.resolutionDigest,
-      dataAuthorizationPolicyDigest:
-        assignment.dataAuthorization.snapshot.policyDigest,
-      inputManifestDigest:
-        assignment.dataAuthorization.snapshot.inputManifestDigest!,
-      relevantTargetDigest:
-        assignment.dataAuthorization.snapshot.relevantTargetDigest!,
-      sessionSlotId: slot.sessionSlotId,
-      roleLane,
-      logicalProviderId: slot.logicalProviderId,
-      profileId: profile.profileId!,
-      profileDigest: profile.profileDigest!,
-      providerFamily: profileConfiguration.family,
-      providerDefinitionDigest: slot.providerDefinitionDigest,
-    },
-    invocation: {
-      ownerWorkflowId: `native-workflow-${attemptIdentitySuffix}`,
-      invocationId: `native-invocation-${suffix}`,
-      revision: 11,
-      state: 'leased',
-      providerId: profileConfiguration.family,
-      purpose: roleLane === 'reviewer' ? 'plan-review' : 'task-implementation',
-      requestDigest: crypto
-        .createHash('sha256')
-        .update(`request-${suffix}`)
-        .digest('hex'),
-      inputManifestDigest: '4'.repeat(64),
-      targetDigest: '5'.repeat(64),
-      policyDigest: 'c'.repeat(64),
-      repositoryId: 'github:example/repository',
-      baseCommit: '1'.repeat(40),
-      baseTree: '2'.repeat(40),
-    },
-    execution: {
-      workflowId: `native-workflow-${attemptIdentitySuffix}`,
-      workflowEpoch: 5,
-      workflowContextDigest: `sha256:${'3'.repeat(64)}`,
-      executionRevision: 13,
-      executionStateDigest: `sha256:${crypto.createHash('sha256').update(`execution-${suffix}`).digest('hex')}`,
-      jobId: `native-job-${attemptIdentitySuffix}`,
-      jobStatus: 'running',
-      jobRequestDigest: `sha256:${crypto.createHash('sha256').update(`job-request-${attemptIdentitySuffix}`).digest('hex')}`,
-      acceptedAttemptId: null,
-      acceptanceBindingDigest: null,
-      attemptId: `native-attempt-${attemptIdentitySuffix}`,
-      attemptNumber: 3,
-      retryOf: `native-attempt-prior-${attemptIdentitySuffix}`,
-      provider: profileConfiguration.family,
-      attemptStatus: 'leased',
-      attemptInputDigest: `sha256:${'4'.repeat(64)}`,
-      attemptRequestDigest: `sha256:${crypto.createHash('sha256').update(`request-${suffix}`).digest('hex')}`,
-      attemptContextDigest: `sha256:${'3'.repeat(64)}`,
-      attemptEnvironmentDigest: `sha256:${crypto.createHash('sha256').update(`environment-${suffix}`).digest('hex')}`,
-      leaseGeneration: 6,
-      leaseWorkerId: `native-worker-${suffix}`,
-      leaseTokenDigest: `sha256:${crypto.createHash('sha256').update(leaseToken).digest('hex')}`,
-      leaseAcquiredAt: '2030-01-02T02:04:05.000Z',
-      leaseExpiresAt: '2030-01-02T03:04:05.000Z',
-    },
-  });
 }
 
 function claimInput(
@@ -498,38 +360,6 @@ function claimTurn(
   );
 }
 
-function claimTurnV2(
-  state: ReturnType<typeof fixture>,
-  predecessorCompletionDigest: string | null,
-  sessionSlotId = state.slot.sessionSlotId,
-) {
-  const binding = state.currentTurnBinding();
-  return claimProviderNativeSessionTurnV2(
-    state.paths,
-    {
-      changeId: state.assignment.changeId,
-      planningGeneration: state.assignment.planningGeneration,
-      assignmentRecordDigest: state.assignment.recordDigest,
-      sessionSlotId,
-      predecessorCompletionDigest,
-      invocationId: binding.invocation.invocationId,
-      workflowId: binding.execution.workflowId,
-      jobId: binding.execution.jobId,
-      attemptId: binding.execution.attemptId,
-      leaseGeneration: binding.execution.leaseGeneration,
-      leaseToken: state.currentLeaseToken(),
-    },
-    state.verifyCentralSnapshot,
-    state.verifyChangeOverrideSnapshot,
-    state.verifyHostConfiguration,
-    state.verifyProviderRegistry,
-    state.verifyDataAuthorization,
-    state.verifySessionCapabilities,
-    state.verifyProtectedContext,
-    state.verifyNativeTurnCurrentness,
-  );
-}
-
 function completeTurn(
   state: ReturnType<typeof fixture>,
   input: Parameters<typeof completeProviderNativeSessionTurnV1>[1],
@@ -546,41 +376,6 @@ function completeTurn(
     state.verifySessionCapabilities,
     state.verifyProtectedContext,
     verifyAssignmentAuthority,
-  );
-}
-
-function completeTurnV2(
-  state: ReturnType<typeof fixture>,
-  claimDigest: string,
-  terminal: Parameters<
-    typeof completeProviderNativeSessionTurnV2
-  >[1]['terminal'],
-) {
-  const binding = state.currentTurnBinding();
-  return completeProviderNativeSessionTurnV2(
-    state.paths,
-    {
-      changeId: state.assignment.changeId,
-      planningGeneration: state.assignment.planningGeneration,
-      assignmentRecordDigest: state.assignment.recordDigest,
-      sessionSlotId: state.slot.sessionSlotId,
-      claimDigest,
-      invocationId: binding.invocation.invocationId,
-      workflowId: binding.execution.workflowId,
-      jobId: binding.execution.jobId,
-      attemptId: binding.execution.attemptId,
-      leaseGeneration: binding.execution.leaseGeneration,
-      leaseToken: state.currentLeaseToken(),
-      terminal,
-    },
-    state.verifyCentralSnapshot,
-    state.verifyChangeOverrideSnapshot,
-    state.verifyHostConfiguration,
-    state.verifyProviderRegistry,
-    state.verifyDataAuthorization,
-    state.verifySessionCapabilities,
-    state.verifyProtectedContext,
-    state.verifyNativeTurnCurrentness,
   );
 }
 
@@ -602,23 +397,6 @@ function readChain(
     state.verifySessionCapabilities,
     state.verifyProtectedContext,
     verifyAssignmentAuthority,
-  );
-}
-
-function readChainV2(state: ReturnType<typeof fixture>) {
-  return readProviderNativeSessionChainV2(
-    state.paths,
-    state.assignment.changeId,
-    state.assignment.planningGeneration,
-    state.assignment.recordDigest,
-    state.slot.sessionSlotId,
-    state.verifyCentralSnapshot,
-    state.verifyChangeOverrideSnapshot,
-    state.verifyHostConfiguration,
-    state.verifyProviderRegistry,
-    state.verifyDataAuthorization,
-    state.verifySessionCapabilities,
-    state.verifyProtectedContext,
   );
 }
 
@@ -723,420 +501,6 @@ function movePublishedFileToRecoveryTemp(
   assert.equal(fs.statSync(temporary).nlink, 1);
   return temporary;
 }
-
-test('inactive V2 claims hold exact Attempt currentness across indexed scope publication without public secrets', () => {
-  const state = fixture();
-  try {
-    const first = claimTurnV2(state, null);
-    assert.equal(first.outcome, 'claimed');
-    assert.notEqual(first.binding, null);
-    assert.equal(
-      first.claim.turnBinding.execution.attemptId,
-      'native-attempt-current',
-    );
-    assert.equal(
-      first.claim.turnBinding.execution.leaseTokenDigest,
-      `sha256:${crypto.createHash('sha256').update(state.rawLeaseToken).digest('hex')}`,
-    );
-    assert.equal(state.currentnessCalls(), 1);
-
-    const replay = claimTurnV2(state, null);
-    assert.equal(replay.outcome, 'already-claimed');
-    assert.equal(replay.binding, null);
-    assert.equal(replay.claim.claimDigest, first.claim.claimDigest);
-    assert.equal(state.currentnessCalls(), 2);
-
-    const completionTimeBinding = createProviderNativeTurnBindingV1({
-      assignment: first.claim.turnBinding.assignment,
-      invocation: {
-        ...first.claim.turnBinding.invocation,
-        revision: first.claim.turnBinding.invocation.revision + 1,
-      },
-      execution: {
-        ...first.claim.turnBinding.execution,
-        executionRevision:
-          first.claim.turnBinding.execution.executionRevision + 1,
-        executionStateDigest: `sha256:${crypto
-          .createHash('sha256')
-          .update('completion-time-execution-state')
-          .digest('hex')}`,
-        jobStatus: 'running',
-        attemptStatus: 'running',
-      },
-    });
-    state.setCurrentTurnBinding(completionTimeBinding);
-    const rawNativeSessionId = 'private-v2-native-session-id';
-    const completion = completeTurnV2(
-      state,
-      first.claim.claimDigest,
-      successfulTerminal(first.binding!, rawNativeSessionId),
-    );
-    assert.equal(completion.disposition, 'usable');
-    assert.equal(
-      completion.turnBinding.turnBindingDigest,
-      completionTimeBinding.turnBindingDigest,
-    );
-    assert.notEqual(
-      completion.turnBinding.turnBindingDigest,
-      first.claim.turnBinding.turnBindingDigest,
-    );
-    assert.equal(state.currentnessCalls(), 3);
-    const chain = readChainV2(state);
-    assert.equal(chain.state, 'resumable');
-    assert.equal(
-      chain.turns[0]?.completion?.completionDigest,
-      completion.completionDigest,
-    );
-
-    const files = allFiles(
-      path.join(state.paths.root, 'provider-native-sessions', 'v2'),
-    );
-    const publicFiles = files.filter(
-      (file) => !file.includes('/handles/sha256/'),
-    );
-    assert.equal(
-      publicFiles.some((file) =>
-        fs.readFileSync(file, 'utf8').includes(rawNativeSessionId),
-      ),
-      false,
-    );
-    assert.equal(
-      files.some((file) =>
-        fs.readFileSync(file, 'utf8').includes(state.rawLeaseToken),
-      ),
-      false,
-    );
-    const privateHandles = files.filter((file) =>
-      file.includes('/handles/sha256/'),
-    );
-    assert.equal(privateHandles.length, 1);
-    assert.equal(
-      fs.readFileSync(privateHandles[0]!, 'utf8').includes(rawNativeSessionId),
-      true,
-    );
-    assert.equal(fs.statSync(privateHandles[0]!).mode & 0o777, 0o600);
-  } finally {
-    state.cleanup();
-  }
-});
-
-test('inactive V2 completion refuses a rebound or re-leased Attempt before publishing terminal evidence', () => {
-  const state = fixture();
-  try {
-    const first = claimTurnV2(state, null);
-    const reboundLeaseToken = 'different-private-lease-token';
-    const rebound = createProviderNativeTurnBindingV1({
-      assignment: first.claim.turnBinding.assignment,
-      invocation: {
-        ...first.claim.turnBinding.invocation,
-        revision: first.claim.turnBinding.invocation.revision + 1,
-      },
-      execution: {
-        ...first.claim.turnBinding.execution,
-        executionRevision:
-          first.claim.turnBinding.execution.executionRevision + 1,
-        executionStateDigest: `sha256:${crypto
-          .createHash('sha256')
-          .update('re-leased-execution-state')
-          .digest('hex')}`,
-        leaseGeneration: first.claim.turnBinding.execution.leaseGeneration + 1,
-        leaseTokenDigest: `sha256:${crypto
-          .createHash('sha256')
-          .update(reboundLeaseToken)
-          .digest('hex')}`,
-        leaseAcquiredAt: '2030-01-02T02:14:05.000Z',
-      },
-    });
-    assert.equal(
-      rebound.attemptIdentityDigest,
-      first.claim.turnBinding.attemptIdentityDigest,
-    );
-    assert.notEqual(
-      rebound.turnBindingDigest,
-      first.claim.turnBinding.turnBindingDigest,
-    );
-    state.setCurrentTurnBinding(rebound, reboundLeaseToken);
-
-    assert.throws(
-      () =>
-        completeTurnV2(
-          state,
-          first.claim.claimDigest,
-          successfulTerminal(first.binding!, 'must-not-be-persisted'),
-        ),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-    assert.equal(readChainV2(state).state, 'claimed');
-    assert.equal(
-      allFiles(
-        path.join(state.paths.root, 'provider-native-sessions', 'v2'),
-      ).some((file) => file.endsWith('.completion.json')),
-      false,
-    );
-  } finally {
-    state.cleanup();
-  }
-});
-
-test('inactive V2 rejects a current binding whose role lane is not owned by the selected assignment slot', () => {
-  const state = fixture();
-  try {
-    assert.deepEqual(state.slot.roles, ['builder']);
-    state.setCurrentTurnBinding(
-      nativeTurnBinding(
-        state.assignment,
-        state.slot,
-        'reviewer',
-        'current',
-        state.rawLeaseToken,
-      ),
-    );
-    assert.throws(
-      () => claimTurnV2(state, null),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-    assert.equal(
-      fs.existsSync(
-        path.join(state.paths.root, 'provider-native-sessions', 'v2'),
-      ),
-      false,
-    );
-  } finally {
-    state.cleanup();
-  }
-});
-
-test('inactive V2 rejects assignment and authorized-input rebound before any scope publication', async (t) => {
-  const cases = [
-    {
-      name: 'selected profile and provider family',
-      mutate(binding: ProviderNativeTurnBindingV1) {
-        return createProviderNativeTurnBindingV1({
-          assignment: {
-            ...binding.assignment,
-            profileId: 'gamma-primary',
-            providerFamily: 'gamma',
-          },
-          invocation: { ...binding.invocation, providerId: 'gamma' },
-          execution: { ...binding.execution, provider: 'gamma' },
-        });
-      },
-    },
-    {
-      name: 'input manifest',
-      mutate(binding: ProviderNativeTurnBindingV1) {
-        const digest = '8'.repeat(64);
-        return createProviderNativeTurnBindingV1({
-          assignment: { ...binding.assignment, inputManifestDigest: digest },
-          invocation: { ...binding.invocation, inputManifestDigest: digest },
-          execution: {
-            ...binding.execution,
-            attemptInputDigest: `sha256:${digest}`,
-          },
-        });
-      },
-    },
-    {
-      name: 'relevant target',
-      mutate(binding: ProviderNativeTurnBindingV1) {
-        const digest = '9'.repeat(64);
-        return createProviderNativeTurnBindingV1({
-          assignment: { ...binding.assignment, relevantTargetDigest: digest },
-          invocation: { ...binding.invocation, targetDigest: digest },
-          execution: binding.execution,
-        });
-      },
-    },
-    {
-      name: 'assignment digest',
-      mutate(binding: ProviderNativeTurnBindingV1) {
-        return createProviderNativeTurnBindingV1({
-          assignment: {
-            ...binding.assignment,
-            assignmentDigest: '6'.repeat(64),
-          },
-          invocation: binding.invocation,
-          execution: binding.execution,
-        });
-      },
-    },
-    {
-      name: 'data-authorization policy',
-      mutate(binding: ProviderNativeTurnBindingV1) {
-        const digest = '7'.repeat(64);
-        return createProviderNativeTurnBindingV1({
-          assignment: {
-            ...binding.assignment,
-            dataAuthorizationPolicyDigest: digest,
-          },
-          invocation: { ...binding.invocation, policyDigest: digest },
-          execution: binding.execution,
-        });
-      },
-    },
-  ];
-
-  for (const candidate of cases) {
-    await t.test(candidate.name, () => {
-      const state = fixture();
-      try {
-        state.setCurrentTurnBinding(
-          candidate.mutate(state.currentTurnBinding()),
-        );
-        assert.throws(
-          () => claimTurnV2(state, null),
-          (error: unknown) =>
-            error instanceof Error &&
-            'code' in error &&
-            error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-        );
-        assert.equal(
-          fs.existsSync(
-            path.join(state.paths.root, 'provider-native-sessions', 'v2'),
-          ),
-          false,
-        );
-      } finally {
-        state.cleanup();
-      }
-    });
-  }
-});
-
-test('inactive V2 global Attempt index prevents one engine Attempt from claiming two assignment session scopes', () => {
-  const state = fixture();
-  try {
-    const first = claimTurnV2(state, null);
-    const reviewerSlot = state.assignment.sessionSlots.find((entry) =>
-      entry.roles.includes('reviewer'),
-    )!;
-    const secondScopeBinding = nativeTurnBinding(
-      state.assignment,
-      reviewerSlot,
-      'reviewer',
-      'other-scope',
-      state.rawLeaseToken,
-      'current',
-    );
-    assert.equal(
-      secondScopeBinding.attemptIdentityDigest,
-      first.claim.turnBinding.attemptIdentityDigest,
-    );
-    state.setCurrentTurnBinding(secondScopeBinding);
-
-    assert.throws(
-      () => claimTurnV2(state, null, reviewerSlot.sessionSlotId),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-    assert.equal(readChainV2(state).turns.length, 1);
-  } finally {
-    state.cleanup();
-  }
-});
-
-test('inactive V2 recovers the crash window after Attempt index publication without reissuing launch', () => {
-  const state = fixture();
-  try {
-    const first = claimTurnV2(state, null);
-    const root = path.join(state.paths.root, 'provider-native-sessions', 'v2');
-    const claimRef = allFiles(root).find(
-      (file) =>
-        file.includes(`${path.sep}chains${path.sep}sha256${path.sep}`) &&
-        file.endsWith('.claim-ref.json'),
-    );
-    const attemptIndex = allFiles(root).find(
-      (file) =>
-        file.includes(`${path.sep}attempts${path.sep}sha256${path.sep}`) &&
-        file.endsWith('.claim-ref.json'),
-    );
-    assert.notEqual(claimRef, undefined);
-    assert.notEqual(attemptIndex, undefined);
-    const indexBefore = fs.readFileSync(attemptIndex!);
-
-    // Simulate process death after the globally serialized Attempt index was
-    // durable but before the per-scope discovery ref was published.
-    fs.unlinkSync(claimRef!);
-    assert.equal(readChainV2(state).state, 'empty');
-
-    const recovered = claimTurnV2(state, null);
-    assert.equal(recovered.outcome, 'already-claimed');
-    assert.equal(recovered.binding, null);
-    assert.equal(recovered.claim.claimDigest, first.claim.claimDigest);
-    assert.equal(readChainV2(state).state, 'claimed');
-    assert.deepEqual(fs.readFileSync(attemptIndex!), indexBefore);
-
-    const reviewerSlot = state.assignment.sessionSlots.find((entry) =>
-      entry.roles.includes('reviewer'),
-    )!;
-    state.setCurrentTurnBinding(
-      nativeTurnBinding(
-        state.assignment,
-        reviewerSlot,
-        'reviewer',
-        'post-recovery-other-scope',
-        state.rawLeaseToken,
-        'current',
-      ),
-    );
-    assert.throws(
-      () => claimTurnV2(state, null, reviewerSlot.sessionSlotId),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-  } finally {
-    state.cleanup();
-  }
-});
-
-test('publication cleanup failure never masks the primary create-only conflict', (t) => {
-  const state = fixture();
-  const originalLinkSync = fs.linkSync.bind(fs);
-  const originalUnlinkSync = fs.unlinkSync.bind(fs);
-  try {
-    t.mock.method(
-      fs,
-      'linkSync',
-      (temporaryPath: fs.PathLike, targetPath: fs.PathLike) => {
-        if (!String(temporaryPath).endsWith('.publish.tmp')) {
-          return originalLinkSync(temporaryPath, targetPath);
-        }
-        fs.writeFileSync(targetPath, '{}\n', { flag: 'wx', mode: 0o600 });
-        throw Object.assign(new Error('forced create-only conflict'), {
-          code: 'EEXIST',
-        });
-      },
-    );
-    t.mock.method(fs, 'unlinkSync', (targetPath: fs.PathLike) => {
-      if (String(targetPath).endsWith('.publish.tmp')) {
-        throw Object.assign(new Error('forced cleanup failure'), {
-          code: 'EACCES',
-        });
-      }
-      return originalUnlinkSync(targetPath);
-    });
-
-    assert.throws(
-      () => claimTurnV2(state, null),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-  } finally {
-    state.cleanup();
-  }
-});
 
 test('store refuses a below-floor assignment before publishing any native-session launch evidence', () => {
   const state = fixture({ belowFloor: true });
