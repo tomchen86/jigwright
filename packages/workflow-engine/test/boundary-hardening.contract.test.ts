@@ -167,6 +167,21 @@ test('the global JSON flag is accepted once at the terminal argv position', () =
   }
 });
 
+test('help omits the retired Work Registry migration command', () => {
+  const originalWrite = process.stdout.write;
+  let output = '';
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    output += chunk.toString();
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    assert.equal(runCli(['--help']), 0);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  assert.doesNotMatch(output, /\bmigrate-issues\b/);
+});
+
 test('a terminal JSON-looking option value is not consumed as output mode', () => {
   const repository = createFixtureRepository();
   try {
