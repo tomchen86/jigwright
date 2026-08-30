@@ -224,11 +224,6 @@ export type HumanResolutionConsequences = {
   claimsWaived: string[];
 };
 
-export type LegacySupersedeHumanResolutionDecisionReadOnly = {
-  kind: 'supersede';
-  parameters: { successorInvestigationId: string | null };
-};
-
 export type HumanResolutionAvailability = {
   kind: HumanResolutionDecision['kind'];
   parameterSchemaDigest: string;
@@ -1143,36 +1138,6 @@ export function assertHumanResolutionDecision(
     return deepFreeze(structuredClone(value)) as HumanResolutionDecision;
   }
   throw humanResolutionInvalid('Human resolution decision is unsupported.');
-}
-
-/**
- * Parses only the supersede shape signed before a canonical reason was
- * required. The returned value is deliberately not a HumanResolutionDecision:
- * callers may inspect or verify historical bytes, but cannot feed it into a
- * current grant, node, or lifecycle transition.
- */
-export function assertLegacySupersedeHumanResolutionDecisionReadOnly(
-  value: unknown,
-): LegacySupersedeHumanResolutionDecisionReadOnly {
-  if (
-    !isRecord(value) ||
-    value.kind !== 'supersede' ||
-    !hasExactKeys(value, ['kind', 'parameters']) ||
-    !isRecord(value.parameters) ||
-    !hasExactKeys(value.parameters, ['successorInvestigationId']) ||
-    (value.parameters.successorInvestigationId !== null &&
-      typeof value.parameters.successorInvestigationId !== 'string')
-  ) {
-    throw humanResolutionInvalid(
-      'Legacy supersede decision is not a read-only historical record.',
-    );
-  }
-  if (typeof value.parameters.successorInvestigationId === 'string') {
-    assertInvestigationId(value.parameters.successorInvestigationId);
-  }
-  return deepFreeze(
-    structuredClone(value),
-  ) as LegacySupersedeHumanResolutionDecisionReadOnly;
 }
 
 export function assertHumanResolutionConsequences(

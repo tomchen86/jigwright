@@ -273,7 +273,8 @@ function writeResolutionTag(
     targetCommit?: string;
     policyBlob?: string;
     consequences?: HumanResolutionGrantPayload['consequences'];
-    legacySupersede?: boolean;
+    currentSupersede?: boolean;
+    preReasonSupersede?: boolean;
     messageTransform?: (message: string) => string;
     signatureNamespace?: string;
   } = {},
@@ -302,20 +303,36 @@ function writeResolutionTag(
       stateDigest: 'a'.repeat(64),
       currentRefDigest: null,
     },
-    decision: options.legacySupersede
+    decision: options.preReasonSupersede
       ? ({
           kind: 'supersede',
           parameters: { successorInvestigationId: null },
         } as unknown as HumanResolutionGrantPayload['decision'])
-      : {
-          kind: 'quarantine',
-          parameters: { reason: 'Preserve fixture evidence' },
-        },
-    consequences: options.consequences ?? {
-      continuity: 'not-applicable',
-      assurance: 'degraded',
-      claimsWaived: [],
-    },
+      : options.currentSupersede
+        ? {
+            kind: 'supersede',
+            parameters: {
+              successorInvestigationId: null,
+              reason: 'workflow-replaced',
+            },
+          }
+        : {
+            kind: 'quarantine',
+            parameters: { reason: 'Preserve fixture evidence' },
+          },
+    consequences:
+      options.consequences ??
+      (options.currentSupersede
+        ? {
+            continuity: 'broken',
+            assurance: 'degraded',
+            claimsWaived: [],
+          }
+        : {
+            continuity: 'not-applicable',
+            assurance: 'degraded',
+            claimsWaived: [],
+          }),
     rationale: 'Preserve fixture evidence',
     issuedAt: new Date(now.getTime() - 300_000).toISOString(),
     expiresAt: new Date(now.getTime() + 300_000).toISOString(),
@@ -454,7 +471,7 @@ function cleanup(fixture: ScannerFixture): void {
   fs.rmSync(fixture.signingDirectory, { recursive: true, force: true });
 }
 
-test('base replay accepts a fully attested authority lineage', () => {
+test('base replay accepts an authenticated current reason-bearing supersede tag', () => {
   const fixture = prepareScannerFixture();
   try {
     issueFixtureAttestation(fixture);
@@ -464,6 +481,7 @@ test('base replay accepts a fully attested authority lineage', () => {
       fixture.policy,
       fixture.originalBase,
       fixture.now,
+      { currentSupersede: true },
     );
     const result = verifyBaseAuthorityAttestations(
       fixture.repository,
@@ -484,7 +502,7 @@ test('base replay accepts a fully attested authority lineage', () => {
   }
 });
 
-test('base replay accepts an authenticated legacy resolution tag read-only', () => {
+test('base replay rejects an authenticated pre-reason supersede tag without rewriting tag bytes or refs', () => {
   const fixture = prepareScannerFixture();
   try {
     issueFixtureAttestation(fixture);
@@ -495,7 +513,7 @@ test('base replay accepts an authenticated legacy resolution tag read-only', () 
       fixture.originalBase,
       fixture.now,
       {
-        legacySupersede: true,
+        preReasonSupersede: true,
         consequences: {
           continuity: 'broken',
           assurance: 'degraded',
@@ -505,44 +523,17 @@ test('base replay accepts an authenticated legacy resolution tag read-only', () 
     );
     const tagRef =
       fixture.policy.auditTagPrefix + 'resolution-' + RESOLUTION_GRANT;
+    const refsBefore = sh(fixture.repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]);
+    const tagBytesBefore = sh(fixture.repository, ['cat-file', 'tag', tagRef]);
 
     assert.throws(
       () =>
         readHumanResolutionAuditTag(fixture.repository, fixture.policy, tagRef),
       (error) => isWorkflowError(error, 'HUMAN_RESOLUTION_AUDIT_TAG_INVALID'),
     );
-    assert.doesNotThrow(() =>
-      verifyBaseAuthorityAttestations(
-        fixture.repository,
-        fixture.mainCommit,
-        fixture.now,
-      ),
-    );
-  } finally {
-    cleanup(fixture);
-  }
-});
-
-test('base replay rejects a legacy resolution tag with incompatible consequences', () => {
-  const fixture = prepareScannerFixture();
-  try {
-    issueFixtureAttestation(fixture);
-    writeResolutionTag(
-      fixture.repository,
-      fixture.privateKey,
-      fixture.policy,
-      fixture.originalBase,
-      fixture.now,
-      {
-        legacySupersede: true,
-        consequences: {
-          continuity: 'preserved',
-          assurance: 'unchanged',
-          claimsWaived: [],
-        },
-      },
-    );
-
     assert.throws(
       () =>
         verifyBaseAuthorityAttestations(
@@ -551,6 +542,17 @@ test('base replay rejects a legacy resolution tag with incompatible consequences
           fixture.now,
         ),
       (error) => isWorkflowError(error, 'CI_ATTESTATION_GRANT_INVALID'),
+    );
+    assert.equal(
+      sh(fixture.repository, [
+        'for-each-ref',
+        '--format=%(refname)%00%(objectname)',
+      ]),
+      refsBefore,
+    );
+    assert.equal(
+      sh(fixture.repository, ['cat-file', 'tag', tagRef]),
+      tagBytesBefore,
     );
   } finally {
     cleanup(fixture);
