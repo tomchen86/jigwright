@@ -3790,7 +3790,6 @@ function readBoundProviderRetryReservation(paths, filePath, session, expectedAtt
     catch {
         throw makeError();
     }
-    const retryV2 = isRecord(value) && value.schemaVersion === 2;
     if (content !== `${canonicalJson(value)}\n` ||
         !isRecord(value) ||
         !hasExactKeys(value, [
@@ -3805,17 +3804,13 @@ function readBoundProviderRetryReservation(paths, filePath, session, expectedAtt
             'requestDigest',
             'request',
             'createdAt',
-            ...(retryV2
-                ? [
-                    'executionPolicySnapshot',
-                    ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-                        ? ['mandateBinding']
-                        : []),
-                    'retryDecision',
-                ]
+            'executionPolicySnapshot',
+            ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
+                ? ['mandateBinding']
                 : []),
+            'retryDecision',
         ]) ||
-        (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
+        value.schemaVersion !== 2 ||
         value.kind !== 'provider-retry-reservation' ||
         value.investigationId !== session.investigationId ||
         value.changeId !== session.changeId ||
@@ -3866,19 +3861,15 @@ function readBoundProviderRetryReservation(paths, filePath, session, expectedAtt
         request.baseTree !== session.baseline.tree) {
         throw makeError();
     }
-    let executionPolicySnapshot = null;
-    if (retryV2) {
-        if (!isRecord(value.executionPolicySnapshot) ||
-            !isRecord(value.retryDecision)) {
-            throw makeError();
-        }
-        try {
-            assertProviderExecutionPolicySnapshot(paths, value.executionPolicySnapshot, request);
-        }
-        catch {
-            throw makeError();
-        }
-        executionPolicySnapshot = value.executionPolicySnapshot;
+    if (!isRecord(value.executionPolicySnapshot) ||
+        !isRecord(value.retryDecision)) {
+        throw makeError();
+    }
+    try {
+        assertProviderExecutionPolicySnapshot(paths, value.executionPolicySnapshot, request);
+    }
+    catch {
+        throw makeError();
     }
     return {
         attempt: expectedAttempt,
@@ -3888,7 +3879,7 @@ function readBoundProviderRetryReservation(paths, filePath, session, expectedAtt
         manifestDigest: value.manifestDigest,
         nonce: request.nonce,
         request,
-        executionPolicySnapshot,
+        executionPolicySnapshot: value.executionPolicySnapshot,
         reservationDigest: sha256(content),
         status,
     };
@@ -4043,8 +4034,7 @@ function assertPendingProviderExecutionPolicySnapshot(paths, pending) {
     }
     const snapshot = readPrivateCanonicalJson(paths, path.join(directory, 'execution-policy.json'), providerInvocationUnsafe);
     assertProviderExecutionPolicySnapshot(paths, snapshot, pending.request);
-    if (pending.executionPolicySnapshot !== null &&
-        canonicalJson(snapshot) !== canonicalJson(pending.executionPolicySnapshot)) {
+    if (canonicalJson(snapshot) !== canonicalJson(pending.executionPolicySnapshot)) {
         throw providerInvocationUnsafe();
     }
     return pending.invocationId;
@@ -4067,7 +4057,8 @@ function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
             }
             const retryV2 = value.kind === 'provider-retry-reservation' &&
                 value.schemaVersion === 2;
-            const expectedKeys = value.kind === 'investigation-start-reservation'
+            const expectedKeys = value.kind === 'investigation-start-reservation' &&
+                value.schemaVersion === 1
                 ? [
                     'baseline',
                     'branch',
@@ -4087,7 +4078,7 @@ function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
                     'requestDigest',
                     'schemaVersion',
                 ]
-                : value.kind === 'provider-retry-reservation'
+                : retryV2
                     ? [
                         'attempt',
                         'changeId',
@@ -4103,14 +4094,12 @@ function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
                         'request',
                         'requestDigest',
                         'schemaVersion',
-                        ...(retryV2
-                            ? ['executionPolicySnapshot', 'retryDecision']
-                            : []),
+                        'executionPolicySnapshot',
+                        'retryDecision',
                     ]
                     : null;
             if (expectedKeys === null ||
                 !hasExactKeys(value, expectedKeys) ||
-                (value.schemaVersion !== 1 && !retryV2) ||
                 value.invocationId !== invocationId) {
                 continue;
             }
