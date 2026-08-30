@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import {
   parseExecutionArtifact,
-  parseInvestigationArtifact,
+  parseHistoricalInvestigationArtifact,
   parsePlanReviewArtifact,
 } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
@@ -137,7 +137,7 @@ test('current schema has the exact investigation-first graph and route-back engi
     const parsed = JSON.parse(template);
     if (artifact === 'investigation.json') {
       assert.throws(
-        () => parseInvestigationArtifact(parsed, 'demo-change'),
+        () => parseHistoricalInvestigationArtifact(parsed, 'demo-change'),
         (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
       );
     } else if (artifact === 'execution.json') {

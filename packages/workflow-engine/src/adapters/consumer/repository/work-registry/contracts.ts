@@ -1471,9 +1471,6 @@ export function parseHistoricalInvestigationArtifact(
   };
 }
 
-/** @deprecated Historical-only compatibility alias. */
-export const parseInvestigationArtifact = parseHistoricalInvestigationArtifact;
-
 export function parsePlanReviewArtifact(
   value: unknown,
   expectedChangeId: string,

@@ -6,6 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import * as repositoryContracts from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   assertDisposableDatabase,
@@ -16,7 +17,6 @@ import {
   loadWorkflowConfig,
   parseExecutionArtifact,
   parseHistoricalInvestigationArtifact,
-  parseInvestigationArtifact,
   parsePlanReviewArtifact,
   parseTasks,
   workflowNamespaceConfig,
@@ -57,6 +57,10 @@ import {
 } from './fixture.ts';
 
 if (import.meta.main) await import('./contracts-legacy-family.ts');
+
+test('the retired investigation parser alias is absent', () => {
+  assert.equal('parseInvestigationArtifact' in repositoryContracts, false);
+});
 
 test('maintainer policy is a pinned workflow contract artifact', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
@@ -1081,12 +1085,16 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     const forgedInvestigation = structuredClone(investigation);
     forgedInvestigation.nodes[0]!.resultDigest = 'f'.repeat(64);
     assert.throws(
-      () => parseInvestigationArtifact(forgedInvestigation, 'demo-change'),
+      () =>
+        parseHistoricalInvestigationArtifact(
+          forgedInvestigation,
+          'demo-change',
+        ),
       (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
     );
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           { ...investigation, unexpected: true },
           'demo-change',
         ),
@@ -1102,7 +1110,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     );
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           {
             ...investigation,
             nodes: [investigation.nodes[0], investigation.nodes[0]],
@@ -1124,7 +1132,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     );
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           { ...investigation, legacyMigration: true },
           'demo-change',
         ),
@@ -1136,7 +1144,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
       legacyMigration: true,
     };
     assert.deepEqual(
-      parseInvestigationArtifact(
+      parseHistoricalInvestigationArtifact(
         namedMigration,
         'establish-investigation-first-planning',
       ),
@@ -1156,7 +1164,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     });
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           {
             ...investigation,
             nodes: [orphan],
@@ -1181,7 +1189,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     });
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           {
             ...investigation,
             nodes: [parent, mismatchedRoles].sort((left, right) =>
@@ -1207,7 +1215,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
     });
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           {
             ...investigation,
             nodes: [parent, forgedParentResult].sort((left, right) =>
@@ -1284,7 +1292,7 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
       },
     };
     assert.deepEqual(
-      parseInvestigationArtifact(artifactWithReuse, 'demo-change'),
+      parseHistoricalInvestigationArtifact(artifactWithReuse, 'demo-change'),
       artifactWithReuse,
     );
 

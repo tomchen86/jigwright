@@ -9,7 +9,7 @@ import { createFixtureTrackedObjectReaderPort } from '../../fixture-adapter/src/
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
-  parseInvestigationArtifact,
+  parseHistoricalInvestigationArtifact,
   type InvestigationArtifact,
 } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
@@ -1666,7 +1666,7 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       sealNodeId: coverage.nodeId,
       sealResultDigest: coverage.resultDigest,
     });
-    const full = parseInvestigationArtifact(
+    const full = parseHistoricalInvestigationArtifact(
       {
         schemaVersion: 1,
         kind: 'investigation-artifact',
@@ -1714,7 +1714,7 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       output: termUnion.output,
       runtimeMetadata: {},
     });
-    const multiEpoch = parseInvestigationArtifact(
+    const multiEpoch = parseHistoricalInvestigationArtifact(
       {
         ...full,
         nodes: [...full.nodes, historicalTermUnion].sort((left, right) =>
@@ -1732,14 +1732,18 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       path.join(repository, 'src/base.txt'),
       'uncommitted worktree bytes must never satisfy replay\n',
     );
-    const replayed = parseInvestigationArtifact(
+    const replayed = parseHistoricalInvestigationArtifact(
       projected,
       'compact-investigation',
       { repositoryRoot: repository },
     );
     assert.equal(canonicalJson(replayed), canonicalJson(full));
     assert.throws(
-      () => parseInvestigationArtifact(projected, 'compact-investigation'),
+      () =>
+        parseHistoricalInvestigationArtifact(
+          projected,
+          'compact-investigation',
+        ),
       (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
     );
 
@@ -1760,7 +1764,7 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
     };
     assert.throws(
       () =>
-        parseInvestigationArtifact(
+        parseHistoricalInvestigationArtifact(
           changedDisposition,
           'compact-investigation',
           { repositoryRoot: repository },
@@ -1784,9 +1788,13 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
     };
     assert.throws(
       () =>
-        parseInvestigationArtifact(missingTree, 'compact-investigation', {
-          repositoryRoot: repository,
-        }),
+        parseHistoricalInvestigationArtifact(
+          missingTree,
+          'compact-investigation',
+          {
+            repositoryRoot: repository,
+          },
+        ),
       (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
     );
 
@@ -1811,9 +1819,13 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
     };
     assert.throws(
       () =>
-        parseInvestigationArtifact(treeAsHead, 'compact-investigation', {
-          repositoryRoot: repository,
-        }),
+        parseHistoricalInvestigationArtifact(
+          treeAsHead,
+          'compact-investigation',
+          {
+            repositoryRoot: repository,
+          },
+        ),
       (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
     );
   } finally {

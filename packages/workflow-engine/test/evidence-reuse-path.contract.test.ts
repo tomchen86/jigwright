@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 
-import { parseInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { parseHistoricalInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
@@ -105,7 +105,11 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
     { ...base.currentRefs, [reuseProofRef]: reuseProof.nodeId },
   ]) {
     assert.throws(
-      () => parseInvestigationArtifact({ ...base, currentRefs }, 'demo-change'),
+      () =>
+        parseHistoricalInvestigationArtifact(
+          { ...base, currentRefs },
+          'demo-change',
+        ),
       (error) => workflowCode(error) === 'INVALID_INVESTIGATION_ARTIFACT',
     );
   }
@@ -118,7 +122,10 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
       [reuseProofRef]: reuseProof.nodeId,
     },
   };
-  assert.deepEqual(parseInvestigationArtifact(current, 'demo-change'), current);
+  assert.deepEqual(
+    parseHistoricalInvestigationArtifact(current, 'demo-change'),
+    current,
+  );
 });
 
 test('projection retains one old descendant only through a generated current reuse path', () => {
@@ -159,7 +166,7 @@ test('projection retains one old descendant only through a generated current reu
     currentRefs: projected.currentRefs,
   };
   assert.deepEqual(
-    parseInvestigationArtifact(artifact, 'demo-change'),
+    parseHistoricalInvestigationArtifact(artifact, 'demo-change'),
     artifact,
   );
 });
