@@ -6,7 +6,6 @@ export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'route',
   'open-task',
   'update-base',
-  'start',
   'revise-task',
   'resume-task',
   'resume',
@@ -157,27 +156,6 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
       'Selects the planning-state transition and activates one exact task session.',
     ],
     successors: ['status', 'check', 'finalize'],
-  },
-  {
-    id: 'start',
-    route: ['start'],
-    usage: [
-      'pnpm workflow start <change-id> --task <task-id> [--mandate <mandate-task-id>] [--json]',
-    ],
-    status: 'deprecated',
-    purpose: 'Compatibility alias for opening an already committed plan.',
-    preconditions: [
-      'The exact planning transition is committed; a protected task scope requires an exact active Task Mandate.',
-    ],
-    consequences: ['Activates one exact task session and its lifecycle lock.'],
-    successors: ['status', 'check', 'finalize'],
-    deprecation: {
-      phase: 1,
-      replacementCommandId: 'open-task',
-      replacement: OPEN_TASK_REPLACEMENT,
-      reason:
-        'open-task selects the correct planning state; start remains a compatibility alias.',
-    },
   },
   {
     id: 'update-base',

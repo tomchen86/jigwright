@@ -118,6 +118,7 @@ import {
   authoritativeCollaborationGrantVerifierForTest,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
@@ -784,7 +785,7 @@ test('task mandate revoke records a trusted interactive refusal without mutating
   }
 });
 
-test('managed start binds the exact top-level mandate without conflating the OpenSpec task ID', () => {
+test('managed session activation binds the exact top-level mandate without conflating the OpenSpec task ID', () => {
   const repository = prepareRepository();
   const signed: string[] = [];
   const signer = fakeSigner(signed);
@@ -795,7 +796,7 @@ test('managed start binds the exact top-level mandate without conflating the Ope
       now: ISSUED_AT,
       signer,
     });
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, CHANGE_ID);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, CHANGE_ID);
     const session = startMandatedSession(
@@ -815,7 +816,7 @@ test('managed start binds the exact top-level mandate without conflating the Ope
   }
 });
 
-test('ordinary start CLI needs no task mandate', () => {
+test('ordinary open-task CLI needs no task mandate', () => {
   const repository = prepareRepository();
   const cli = path.join(
     sourceRepositoryRoot,
@@ -823,7 +824,7 @@ test('ordinary start CLI needs no task mandate', () => {
   );
   try {
     enableConditionalTaskAuthorization(repository);
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, CHANGE_ID);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, CHANGE_ID);
 
@@ -832,7 +833,7 @@ test('ordinary start CLI needs no task mandate', () => {
       [
         '--experimental-strip-types',
         cli,
-        'start',
+        'open-task',
         CHANGE_ID,
         '--task',
         '1.1',
@@ -842,9 +843,12 @@ test('ordinary start CLI needs no task mandate', () => {
     );
     assert.equal(ordinary.status, 0, ordinary.stderr);
     const ordinaryOutput = JSON.parse(ordinary.stdout) as {
-      session: { mandateBinding?: unknown };
+      result: { sessionId: string };
     };
-    assert.equal(ordinaryOutput.session.mandateBinding, undefined);
+    assert.equal(
+      getSession(repository, ordinaryOutput.result.sessionId).mandateBinding,
+      undefined,
+    );
   } finally {
     cleanupRepository(repository);
   }
@@ -980,16 +984,17 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       grantReferences: [],
     };
     const roleOverridePath = agentRolePlanV2Path(CHANGE_ID);
+    const roleOverride = renderAgentRolePlanV2({
+      ...roleOverrideBody,
+      planDigest: agentRolePlanV2Digest(roleOverrideBody),
+    });
     fs.mkdirSync(
       path.dirname(path.join(protectedRepository, roleOverridePath)),
       { recursive: true },
     );
     fs.writeFileSync(
       path.join(protectedRepository, roleOverridePath),
-      renderAgentRolePlanV2({
-        ...roleOverrideBody,
-        planDigest: agentRolePlanV2Digest(roleOverrideBody),
-      }),
+      roleOverride,
     );
     git(protectedRepository, [
       'add',
@@ -1027,7 +1032,16 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       now: new Date(),
       signer: realSigningProvider(privateKey),
     });
-    git(protectedRepository, ['checkout', '-b', 'work/demo-change']);
+    fs.rmSync(path.join(protectedRepository, roleOverridePath));
+    prepareCurrentV3IntroductionFixture(protectedRepository, CHANGE_ID);
+    fs.mkdirSync(
+      path.dirname(path.join(protectedRepository, roleOverridePath)),
+      { recursive: true },
+    );
+    fs.writeFileSync(
+      path.join(protectedRepository, roleOverridePath),
+      roleOverride,
+    );
     writeReadyV3ExemptChange(protectedRepository);
     commitPlanningTransition(protectedRepository, CHANGE_ID);
 
@@ -1036,7 +1050,7 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       [
         '--experimental-strip-types',
         cli,
-        'start',
+        'open-task',
         CHANGE_ID,
         '--task',
         '1.1',
@@ -1055,7 +1069,7 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       [
         '--experimental-strip-types',
         cli,
-        'start',
+        'open-task',
         CHANGE_ID,
         '--task',
         '1.1',
@@ -1066,28 +1080,20 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       { cwd: protectedRepository, encoding: 'utf8' },
     );
     assert.equal(started.status, 0, started.stderr);
-    const output = JSON.parse(started.stdout) as {
-      session: {
-        sessionId: string;
-        taskId: string;
-        branch: string;
-        baseline: { head: string; tree: string };
-        mandateBinding: {
-          schemaVersion: 1;
-          mandateTaskId: string;
-          changeId: string;
-          mandateId: string;
-          mandateDigest: string;
-          externalAuditRoot: string;
-        };
-      };
+    const opened = JSON.parse(started.stdout) as {
+      result: { sessionId: string };
+    };
+    const output = {
+      session: getSession(protectedRepository, opened.result.sessionId),
     };
     assert.equal(output.session.taskId, '1.1');
-    assert.deepEqual(output.session.mandateBinding, {
+    const mandateBinding = output.session.mandateBinding;
+    assert.ok(mandateBinding);
+    assert.deepEqual(mandateBinding, {
       schemaVersion: 1,
       mandateTaskId: TASK_ID,
       mandateId: MANDATE_ID,
-      mandateDigest: output.session.mandateBinding.mandateDigest,
+      mandateDigest: mandateBinding.mandateDigest,
       changeId: CHANGE_ID,
       externalAuditRoot: externalAuditRoot(protectedRepository),
     });
@@ -1996,7 +2002,7 @@ test('open-task selects the next incomplete task for an already committed plan',
   const changeId = CHANGE_ID;
   try {
     enableConditionalTaskAuthorization(repository);
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, CHANGE_ID);
     writeReadyV3ExemptChange(repository);
     const governingPlan = commitPlanningTransition(repository, CHANGE_ID);
     const governingCommit = governingPlan.commitHash;

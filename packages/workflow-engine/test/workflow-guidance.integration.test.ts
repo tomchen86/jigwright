@@ -37,6 +37,49 @@ const cliPath = path.join(
   'packages/workflow-engine/src/cli.ts',
 );
 
+test('retired start command is absent and fails before repository mutation', () => {
+  assert.equal(
+    MANAGED_WORKFLOW_COMMAND_REGISTRY.entries.some(
+      ({ id }) => (id as string) === 'start',
+    ),
+    false,
+  );
+
+  const repository = createFixtureRepository();
+  try {
+    const beforeStatus = git(repository, ['status', '--porcelain=v1']);
+    const runtime = path.join(repository, '.git/workflow-engine');
+    const runtimeExisted = fs.existsSync(runtime);
+    const run = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        cliPath,
+        'start',
+        'demo-change',
+        '--task',
+        '1.1',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+
+    assert.equal(run.status, 2, run.stderr);
+    assert.equal(
+      (
+        JSON.parse(run.stderr.trim().split('\n').at(-1) ?? '') as {
+          error: { code: string };
+        }
+      ).error.code,
+      'INVALID_USAGE',
+    );
+    assert.equal(git(repository, ['status', '--porcelain=v1']), beforeStatus);
+    assert.equal(fs.existsSync(runtime), runtimeExisted);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('workflow guide exposes one versioned advisory catalog with finalize as the preferred surface', () => {
   const run = spawnSync(
     process.execPath,
@@ -75,14 +118,6 @@ test('workflow guide exposes one versioned advisory catalog with finalize as the
     workflowCommandGuidance('open-task').preconditions.join('\n'),
     /protected task scope requires/u,
   );
-  assert.deepEqual(workflowCommandGuidance('start').deprecation, {
-    phase: 1,
-    replacementCommandId: 'open-task',
-    replacement:
-      'pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] [--json]',
-    reason:
-      'open-task selects the correct planning state; start remains a compatibility alias.',
-  });
   assert.deepEqual(workflowCommandGuidance('finalize-task').deprecation, {
     phase: 1,
     replacementCommandId: 'finalize',
@@ -363,7 +398,7 @@ test('error recovery emits one exact executable command and never treats advisor
         ExitCode.guard,
         { recovery: 'Delete or stash whatever seems appropriate.' },
       ),
-      ['start', 'demo-change'],
+      ['open-task', 'demo-change'],
     ),
     'pnpm workflow guide --json',
   );

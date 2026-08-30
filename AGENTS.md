@@ -118,7 +118,6 @@ Managed lifecycle:
 - `pnpm workflow open-task <id> --json`
 - `pnpm workflow finalize <session-id> --message "Subject" --json`
 - `pnpm workflow status <session-id> --json`
-- `pnpm workflow start <id> --task <task-id> --json`
 - `pnpm workflow check <session-id> --json`
 - `pnpm workflow complete-task <session-id> --json`
 - `pnpm workflow finish <session-id> --json`

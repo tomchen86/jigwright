@@ -494,7 +494,7 @@ test('portable fixture completes all ten local scenarios from an exact tarball',
     prepareRoutingChangePlans(repository);
     exerciseRouting(repository);
     git(repository, ['checkout', '-b', 'changes/demo-change']);
-    const sessionId = startTask(repository, 'demo-change');
+    const sessionId = openTaskSession(repository, 'demo-change');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
     assert.deepEqual(
       (
@@ -931,12 +931,12 @@ function planCommit(repository: string, changeId: string): ManagedCommit {
   ).result;
 }
 
-function startTask(repository: string, changeId: string): string {
+function openTaskSession(repository: string, changeId: string): string {
   return (
-    runCli(repository, ['start', changeId, '--task', '1.1']) as {
-      session: { sessionId: string };
+    runCli(repository, ['open-task', changeId, '--task', '1.1']) as {
+      result: { sessionId: string };
     }
-  ).session.sessionId;
+  ).result.sessionId;
 }
 
 function checkTask(repository: string, sessionId: string): { passed: boolean } {
@@ -1198,8 +1198,8 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       ConcurrentFixture,
       ConcurrentFixture,
     ];
-    const firstSessionId = startTask(first.worktree, first.changeId);
-    const secondSessionId = startTask(second.worktree, second.changeId);
+    const firstSessionId = openTaskSession(first.worktree, first.changeId);
+    const secondSessionId = openTaskSession(second.worktree, second.changeId);
     const firstStatus = taskStatus(first.worktree, firstSessionId);
     const secondStatus = taskStatus(second.worktree, secondSessionId);
     assert.notEqual(
@@ -1220,7 +1220,7 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       'src/parallel-one/**',
     ]);
     assert.throws(
-      () => startTask(third.worktree, third.changeId),
+      () => openTaskSession(third.worktree, third.changeId),
       (error: unknown) =>
         error instanceof Error &&
         /CHANGE_ROUTING_REQUIRED/u.test(error.message),

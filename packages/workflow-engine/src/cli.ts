@@ -239,8 +239,6 @@ import {
   checkSession,
   getSession,
   listSessions,
-  startMandatedSession,
-  startSession,
 } from './application/execute-task/session.ts';
 import { updateTaskSessionBase } from './application/execute-task/update-base.ts';
 import { runtimePaths } from './runtime/session-workspace/session-store.ts';
@@ -2403,36 +2401,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
         };
       }
       throw taskMandateUsage();
-    }
-    case 'start': {
-      const changeId = rest[0];
-      const taskId = optionValue(rest.slice(1), '--task');
-      const mandateTaskId = optionValue(rest.slice(1), '--mandate');
-      if (!changeId || !taskId) {
-        throw usage(
-          'Usage: pnpm workflow start <change-id> --task <task-id> [--mandate <mandate-task-id>] [--json]',
-        );
-      }
-      const allowed = mandateTaskId
-        ? [changeId, '--task', taskId, '--mandate', mandateTaskId]
-        : [changeId, '--task', taskId];
-      if (
-        rest.length !== allowed.length ||
-        JSON.stringify(rest) !== JSON.stringify(allowed)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow start <change-id> --task <task-id> [--mandate <mandate-task-id>] [--json]',
-        );
-      }
-      return {
-        command,
-        ok: true,
-        deprecation: workflowCommandGuidance(command).deprecation,
-        session:
-          mandateTaskId === undefined
-            ? startSession(cwd, changeId, taskId)
-            : startMandatedSession(cwd, changeId, taskId, mandateTaskId),
-      };
     }
     case 'revise-task': {
       const sessionId = rest[0];

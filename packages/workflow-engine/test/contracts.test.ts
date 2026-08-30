@@ -474,7 +474,6 @@ test('agent guide documents the complete public workflow surface and source-size
     'pnpm workflow openspec-assets install-prompts',
     'pnpm workflow open-task',
     'pnpm workflow finalize',
-    'pnpm workflow start',
     'pnpm workflow status',
     'pnpm workflow check',
     'pnpm workflow ci',
