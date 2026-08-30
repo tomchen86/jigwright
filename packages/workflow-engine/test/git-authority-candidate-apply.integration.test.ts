@@ -57,6 +57,7 @@ import {
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
+  createProductionCentralGrantRequestPort,
   createProductionGitAuthorityCandidateApplyGrantCoordinator,
   createProductionGrantCoordinator,
   createProductionWorkflowGrantCoordinator,
@@ -536,7 +537,7 @@ test('ordinary production coordinator ignores dirty Grant policy and runtime red
   }
 });
 
-test('generic and Git Apply production coordinators omit the optional Collaboration package veto', () => {
+test('generic Central production coordinators omit the optional Collaboration package veto', () => {
   assert.doesNotMatch(
     createProductionGrantCoordinator.toString(),
     /assertOptionalGrantsPackageAvailable/u,
@@ -545,8 +546,12 @@ test('generic and Git Apply production coordinators omit the optional Collaborat
     createProductionGitAuthorityCandidateApplyGrantCoordinator.toString(),
     /assertOptionalGrantsPackageAvailable/u,
   );
-  assert.match(
+  assert.doesNotMatch(
     createProductionWorkflowGrantCoordinator.toString(),
+    /assertOptionalGrantsPackageAvailable/u,
+  );
+  assert.doesNotMatch(
+    createProductionCentralGrantRequestPort.toString(),
     /assertOptionalGrantsPackageAvailable/u,
   );
 });

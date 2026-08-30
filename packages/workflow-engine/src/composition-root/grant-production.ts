@@ -480,7 +480,6 @@ function productionApprovalSession(
 export function createProductionWorkflowGrantCoordinator(
   cwd: string,
 ): GrantCoordinator {
-  assertOptionalGrantsPackageAvailable();
   const git = discoverRepository(cwd);
   const authority = productionGrantAuthorityAtCommit(
     git.repositoryRoot,
@@ -866,7 +865,6 @@ function assertWorkRegistryGrantRequired(
 export function createProductionCentralGrantRequestPort(
   cwd: string,
 ): CentralGrantRequestPortV1 {
-  assertOptionalGrantsPackageAvailable();
   return createProductionWorkflowGrantCoordinator(cwd);
 }
 

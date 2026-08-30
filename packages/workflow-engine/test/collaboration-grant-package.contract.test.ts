@@ -6,7 +6,14 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import {
+  applyChangeRoutingReview,
+  prepareChangeRoutingReview,
+} from '../src/composition-root/change-routing-production.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
+import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
+import { parseGrantPolicyV2Document } from '../src/modules/authority/grant-policy.ts';
+import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_POLICY_DIGEST,
@@ -18,6 +25,17 @@ import {
   type CollaborationGrantPayload,
 } from '../src/modules/authority/collaboration-grant.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
+import {
+  changeRoutingGrantTransitionDefinitions,
+  createChangeRoutingContinuationGrantRequest,
+} from '../src/modules/lifecycle/change-routing-grant.ts';
+import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import {
+  createFixtureRepository,
+  git,
+  runtimeRoot,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
 
 const NOW = new Date('2026-08-20T00:01:00.000Z');
 const SIGNATURE = [
@@ -118,7 +136,7 @@ test('the production collaboration boundary accepts current V2 and rejects retir
   assert.deepEqual(namespaces, [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE]);
 });
 
-test('@jigwright/grants is optional at install time while non-grant CLI loading remains available and grant routes fail closed', () => {
+test('@jigwright/grants remains optional for generic Central Grant inspection and recovery while package-dependent routes fail closed', async () => {
   const packageManifest = JSON.parse(
     fs.readFileSync(path.join(ENGINE_ROOT, 'package.json'), 'utf8'),
   ) as {
@@ -219,8 +237,7 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
     const fixturePreimage = fs
       .readdirSync(fixtureRoot, { recursive: true, encoding: 'utf8' })
       .sort();
-    const challengeId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
-    const humanGrantRoutes = [
+    const packageDependentHumanGrantRoutes = [
       [
         'request-investigation-v3',
         'investigation-fixture',
@@ -253,11 +270,8 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
         '--reason',
         'Request the registered archive publication transition.',
       ],
-      ['inspect', challengeId],
-      ['decide', challengeId],
-      ['recover', challengeId],
     ] as const;
-    for (const route of humanGrantRoutes) {
+    for (const route of packageDependentHumanGrantRoutes) {
       const result = childProcess.spawnSync(
         process.execPath,
         [
@@ -285,10 +299,199 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
       fs.readdirSync(fixtureRoot, { recursive: true, encoding: 'utf8' }).sort(),
       fixturePreimage,
     );
+
+    const repository = createFixtureRepository();
+    try {
+      const completed =
+        await createCompletedGenericCentralChallenge(repository);
+      const terminalBytes = fs.readFileSync(completed.recordPath, 'utf8');
+
+      const inspect = runCopiedHumanGrantCli(
+        cliPath,
+        repository,
+        'inspect',
+        completed.challengeId,
+      );
+      assert.equal(inspect.status, 0, inspect.stderr);
+      assert.equal(inspect.stdoutJson.ok, true);
+      assert.equal(inspect.stdoutJson.action, 'inspect');
+      const inspection = inspect.stdoutJson.result as {
+        challenge?: { challengeId?: unknown };
+        choices?: readonly { transitionId?: unknown }[];
+      };
+      assert.equal(inspection.challenge?.challengeId, completed.challengeId);
+      assert.equal(
+        inspection.choices?.[0]?.transitionId,
+        completed.transitionId,
+      );
+
+      const decide = runCopiedHumanGrantCli(
+        cliPath,
+        repository,
+        'decide',
+        completed.challengeId,
+      );
+      assert.notEqual(decide.status, 0);
+      assert.deepEqual(decide.stderrJson, {
+        ok: false,
+        error: {
+          code: 'GRANT_CHALLENGE_UNAVAILABLE',
+          message: `Grant challenge ${completed.challengeId} is not available.`,
+        },
+      });
+
+      const recover = runCopiedHumanGrantCli(
+        cliPath,
+        repository,
+        'recover',
+        completed.challengeId,
+      );
+      assert.equal(recover.status, 0, recover.stderr);
+      assert.equal(recover.stdoutJson.ok, true);
+      assert.equal(recover.stdoutJson.action, 'recover');
+      assert.deepEqual(recover.stdoutJson.result, {
+        challengeId: completed.challengeId,
+        operationId: completed.operationId,
+        transitionId: completed.transitionId,
+        outcome: 'completed',
+        poststateDigest: completed.poststateDigest,
+        recovered: true,
+      });
+      assert.equal(
+        fs.readFileSync(completed.recordPath, 'utf8'),
+        terminalBytes,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   } finally {
     fs.rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
+
+async function createCompletedGenericCentralChallenge(repository: string) {
+  fs.copyFileSync(
+    path.join(WORKSPACE_ROOT, 'workflow/grant-policy.json'),
+    path.join(repository, 'workflow/grant-policy.json'),
+  );
+  git(repository, ['add', '--', 'workflow/grant-policy.json']);
+  git(repository, ['commit', '-m', 'Configure generic Central Grant policy']);
+  writeReadyV3ExemptChange(repository);
+  const blocked = prepareChangeRoutingReview(repository, {
+    schemaVersion: 1,
+    action: {
+      kind: 'block',
+      changeId: 'demo-change',
+      taskId: '1.1',
+      reason: 'Wait for the exact external decision.',
+      blocker: {
+        kind: 'external',
+        id: 'generic-central-grant-fixture',
+        resumeCondition: 'manual',
+      },
+    },
+  });
+  applyChangeRoutingReview(repository, blocked);
+
+  const now = new Date();
+  const ids = [
+    'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+    'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+  ];
+  const coordinator = createGrantCoordinatorKernel({
+    paths: grantStorePaths(runtimeRoot(repository)),
+    registry: createTransitionRegistry(
+      changeRoutingGrantTransitionDefinitions(repository),
+    ),
+    policy: parseGrantPolicyV2Document(
+      fs.readFileSync(
+        path.join(repository, 'workflow/grant-policy.json'),
+        'utf8',
+      ),
+    ).policy,
+    now: () => new Date(now),
+    randomUUID: () => ids.shift()!,
+    openApprovalSession(presentation) {
+      return {
+        async collectDecision() {
+          return {
+            choiceId: presentation.choices[0]!.choiceId,
+            reasonCode: 'manual-continuation-reviewed',
+            reason: 'The exact generic Central continuation was reviewed.',
+            approvalMethod: 'human-presence' as const,
+            sessionNonce: 'nonce-66666666666666666666666666666666',
+          };
+        },
+        async authenticate({ approvalSubjectDigest }) {
+          return [
+            {
+              moduleId: 'human-gate-macos',
+              version: '1',
+              claims: ['fresh-local-device-owner'] as const,
+              approvalSubjectDigest,
+              proofDigest: `sha256:${'4'.repeat(64)}` as const,
+              verifiedAt: now.toISOString(),
+              identity: null,
+              portableEvidence: null,
+            },
+          ];
+        },
+        async close() {},
+      };
+    },
+    async withLifecycleOperation(_challengeId, operation) {
+      return operation(() => undefined);
+    },
+  });
+  const requested = await coordinator.requestGrant(
+    createChangeRoutingContinuationGrantRequest(
+      repository,
+      'demo-change',
+      'Continue after the exact external decision.',
+    ),
+  );
+  const completed = await coordinator.resolveChallenge(requested.challengeId);
+  assert.equal(completed.outcome, 'completed');
+  const recordPath = path.join(
+    grantStorePaths(runtimeRoot(repository)).records,
+    `${completed.challengeId}.json`,
+  );
+  return { ...completed, recordPath };
+}
+
+function runCopiedHumanGrantCli(
+  cliPath: string,
+  repository: string,
+  action: 'inspect' | 'decide' | 'recover',
+  challengeId: string,
+) {
+  const result = childProcess.spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      cliPath,
+      'grant',
+      'human',
+      action,
+      challengeId,
+      '--json',
+    ],
+    { cwd: repository, encoding: 'utf8' },
+  );
+  return {
+    status: result.status,
+    stdout: result.stdout,
+    stderr: result.stderr,
+    stdoutJson:
+      result.stdout === ''
+        ? {}
+        : (JSON.parse(result.stdout) as Record<string, unknown>),
+    stderrJson:
+      result.stderr === ''
+        ? {}
+        : (JSON.parse(result.stderr) as Record<string, unknown>),
+  };
+}
 
 function collaborationEnvelope(): CollaborationGrantEnvelope {
   const common = {
