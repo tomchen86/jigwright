@@ -10,7 +10,6 @@ import {
   parseTasks,
   type ParsedTask,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { readIssueData } from '../../adapters/consumer/repository/documents/issues.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
 import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
@@ -29,7 +28,7 @@ import {
 export const changeLifecycleRelativePath = 'openspec/change-lifecycle.json';
 
 export type ChangeRoutingBlocker = Readonly<{
-  kind: 'issue' | 'change' | 'external';
+  kind: 'change' | 'external';
   id: string;
   resumeCondition: 'done' | 'merged' | 'archived' | 'manual';
 }>;
@@ -504,7 +503,7 @@ export function inspectChangeRouting(
     else if (change.completed) state = 'completed-awaiting-archive';
     else if (runtimeState !== null) state = runtimeState;
     else if (record.disposition === 'blocked') {
-      state = blockerSatisfied(repositoryRoot, record.blocker, observed)
+      state = blockerSatisfied(record.blocker, observed)
         ? 'resume-available'
         : 'blocked';
     } else if (record.disposition === 'parked') state = 'parked';
@@ -998,10 +997,10 @@ function authorizeContinuation(
   if (!protectedContinuation(record)) {
     if (action.grantChallengeId !== undefined) {
       throw routingInvalid(
-        'Automatic issue or change continuation cannot consume a manual grant.',
+        'Automatic change continuation cannot consume a manual grant.',
       );
     }
-    if (!blockerSatisfied(repositoryRoot, record.blocker, observed)) {
+    if (!blockerSatisfied(record.blocker, observed)) {
       throw workflowError(
         'CHANGE_ROUTING_RESUME_NOT_READY',
         'The exact automatic resume condition is not yet satisfied.',
@@ -1382,7 +1381,7 @@ function parseRecord(value: unknown): RoutingRecord {
 
 function parseBlocker(value: Record<string, unknown>): ChangeRoutingBlocker {
   assertExactKeys(value, ['id', 'kind', 'resumeCondition']);
-  if (!['issue', 'change', 'external'].includes(String(value.kind))) {
+  if (!['change', 'external'].includes(String(value.kind))) {
     throw routingInvalid('Routing blocker kind is unsupported.');
   }
   if (
@@ -1401,7 +1400,6 @@ function parseBlocker(value: Record<string, unknown>): ChangeRoutingBlocker {
 }
 
 function blockerSatisfied(
-  repositoryRoot: string,
   blocker: ChangeRoutingBlocker | null,
   observed: readonly ObservedChange[],
 ): boolean {
@@ -1414,16 +1412,6 @@ function blockerSatisfied(
     return blocker.resumeCondition === 'archived'
       ? dependency.archived
       : dependency.archived || dependency.completed;
-  }
-  if (blocker.kind === 'issue') {
-    try {
-      const issue = readIssueData(repositoryRoot).issues.find(
-        (candidate) => candidate.id === blocker.id,
-      );
-      return issue?.closed !== undefined;
-    } catch {
-      return false;
-    }
   }
   return false;
 }

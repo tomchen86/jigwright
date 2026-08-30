@@ -145,6 +145,70 @@ test('managed routing projects mixed repository state and recovers idempotently'
   }
 });
 
+test('routing rejects retired Issue blockers in admission and persisted state', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeReadyV3ExemptChange(repository);
+    assert.throws(
+      () =>
+        prepareChangeRoutingReview(repository, {
+          schemaVersion: 1,
+          action: {
+            kind: 'block',
+            changeId: 'demo-change',
+            taskId: '1.1',
+            reason: 'Retired Issue state cannot authorize routing.',
+            blocker: {
+              kind: 'issue',
+              id: 'ISS-199',
+              resumeCondition: 'done',
+            },
+          },
+        }),
+      { code: 'CHANGE_ROUTING_INVALID' },
+    );
+
+    const current = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: {
+        kind: 'block',
+        changeId: 'demo-change',
+        taskId: '1.1',
+        reason: 'Wait for one current external decision.',
+        blocker: {
+          kind: 'external',
+          id: 'external-decision',
+          resumeCondition: 'manual',
+        },
+      },
+    });
+    const persisted = JSON.parse(JSON.stringify(current.nextSource)) as {
+      records: Array<{
+        changeId: string;
+        blocker: {
+          kind: string;
+          id: string;
+          resumeCondition: string;
+        } | null;
+      }>;
+    };
+    const record = persisted.records.find(
+      ({ changeId }) => changeId === 'demo-change',
+    );
+    assert.ok(record);
+    record.blocker = {
+      kind: 'issue',
+      id: 'ISS-199',
+      resumeCondition: 'done',
+    };
+    assert.throws(() => parseChangeLifecycleSource(persisted), {
+      code: 'CHANGE_ROUTING_INVALID',
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('fresh routing starts at revision one and rejects pre-revision source bytes', () => {
   const repository = createFixtureRepository();
   try {

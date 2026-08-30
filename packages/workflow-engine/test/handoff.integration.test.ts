@@ -38,7 +38,7 @@ function createFixtureRepository(): string {
   return repository;
 }
 
-test('generated handoff consumes the optional Work Registry inventory', () => {
+test('current Work Registry handoff ignores poisoned legacy Issue data', () => {
   const repository = createFixtureRepository();
   try {
     const blocker = createWorkItem(
@@ -103,11 +103,25 @@ test('generated handoff consumes the optional Work Registry inventory', () => {
       () => '2026-08-24T05:04:00.000Z',
     );
     renderWorkRegistry(repository);
+    const legacyIssuePath = path.join(repository, 'docs/issues/issues.yaml');
+    const poisonedLegacyIssueBytes =
+      '{"schemaVersion":1,"poisonedLegacyIssue":"ISS-999"}\n';
+    fs.mkdirSync(path.dirname(legacyIssuePath), { recursive: true });
+    fs.writeFileSync(legacyIssuePath, poisonedLegacyIssueBytes);
+    fs.chmodSync(legacyIssuePath, 0o640);
 
     const handoff = renderHandoff(repository);
     assert.match(handoff, /Git-native Work Registry/);
     assert.match(handoff, /Blocked registry delivery/);
     assert.match(handoff, /\[Work backlog\]\(BACKLOG\.md\)/);
+    assert.doesNotMatch(handoff, /\bISS-[0-9]+\b/u);
+    assert.doesNotMatch(handoff, /structured issue data/u);
+    assert.doesNotMatch(handoff, /\[Issue log\]/u);
+    assert.equal(
+      fs.readFileSync(legacyIssuePath, 'utf8'),
+      poisonedLegacyIssueBytes,
+    );
+    assert.equal(fs.statSync(legacyIssuePath).mode & 0o777, 0o640);
     validateHandoff(repository);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

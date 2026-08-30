@@ -15,10 +15,6 @@ import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
-import {
-  readIssueData,
-  type RepositoryTextReader,
-} from '../documents/issues.ts';
 import { assertChangeId } from '../../../../runtime/session-workspace/paths.ts';
 import {
   changeLifecycleRelativePath,
@@ -59,6 +55,8 @@ export type HandoffChange = {
   changeId: string;
   tasks: ParsedTask[];
 };
+
+type RepositoryTextReader = (relativePath: string) => string | undefined;
 
 export type HandoffReadContext = Readonly<{
   contracts: readonly HandoffChange[];
@@ -169,7 +167,7 @@ function buildHandoff(
     '',
     registryEnabled
       ? 'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and the Git-native Work Registry.'
-      : 'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and structured issue data.',
+      : 'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records.',
     '',
     '## Current Change',
     '',
@@ -198,7 +196,7 @@ function buildHandoff(
     '## Known Blockers',
     '',
     ...(blockers.length > 0
-      ? blockers.map((issue) => `- \`${issue.id}\` — ${issue.title}`)
+      ? blockers.map((blocker) => `- \`${blocker.id}\` — ${blocker.title}`)
       : ['None.']),
     '',
     '## References',
@@ -211,7 +209,6 @@ function buildHandoff(
           `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
         ]
       : []),
-    `- [Issue log](${handoffLink(repositoryRoot, repositoryDocumentConfiguration(repositoryRoot).issueLogPath)})`,
     '- [System architecture](architecture/ARCHITECTURE.md)',
     '',
   ].join('\n');
@@ -228,7 +225,7 @@ function buildRoutingHandoff(
   const observedInspection =
     readContext === undefined
       ? inspectChangeRouting(repositoryRoot, authorityPort)
-      : inspectCommittedRouting(repositoryRoot, readContext, sourceBytes);
+      : inspectCommittedRouting(readContext, sourceBytes);
   const inspection = projectRoutingInspection(
     observedInspection,
     selectedChangeId,
@@ -241,14 +238,7 @@ function buildRoutingHandoff(
           ({ changeId }) => changeId === inspection.primaryChangeId,
         );
   const blockers = readBlockers(repositoryRoot, readContext?.readText);
-  const assignedBlockerIds = new Set(
-    inspection.changes.flatMap(({ blocker }) =>
-      blocker?.kind === 'issue' ? [blocker.id] : [],
-    ),
-  );
-  const unassigned = blockers.filter(
-    (issue) => !assignedBlockerIds.has(issue.id),
-  );
+  const unassigned = blockers;
   const registryEnabled = hasWorkRegistryInventory(
     repositoryRoot,
     readContext?.readText,
@@ -258,7 +248,7 @@ function buildRoutingHandoff(
     '',
     registryEnabled
       ? 'This generated repository inventory is derived from controlled lifecycle, task, Work Registry, and archive facts.'
-      : 'This generated repository inventory is derived from controlled lifecycle, task, issue, and archive facts.',
+      : 'This generated repository inventory is derived from controlled lifecycle, task, and archive facts.',
     '',
     '## Current Work',
     '',
@@ -309,7 +299,7 @@ function buildRoutingHandoff(
     '## Unassigned Repository Blockers',
     '',
     ...(unassigned.length > 0
-      ? unassigned.map((issue) => `- \`${issue.id}\` — ${issue.title}`)
+      ? unassigned.map((blocker) => `- \`${blocker.id}\` — ${blocker.title}`)
       : ['None.']),
     '',
     '## References',
@@ -323,7 +313,6 @@ function buildRoutingHandoff(
           `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
         ]
       : []),
-    `- [Issue log](${handoffLink(repositoryRoot, repositoryDocumentConfiguration(repositoryRoot).issueLogPath)})`,
     '',
   ].join('\n');
 }
@@ -394,7 +383,6 @@ function projectRoutingInspection(
 }
 
 function inspectCommittedRouting(
-  repositoryRoot: string,
   readContext: HandoffReadContext,
   sourceBytes: string,
 ): ChangeRoutingInspection {
@@ -425,13 +413,6 @@ function inspectCommittedRouting(
       )
       .map(({ changeId }) => changeId),
   );
-  const issueData = (() => {
-    try {
-      return readIssueData(repositoryRoot, readContext.readText).issues;
-    } catch {
-      return [];
-    }
-  })();
   const changes = [...readContext.contracts]
     .sort((left, right) => left.changeId.localeCompare(right.changeId))
     .map((contract): ChangeRoutingObservation => {
@@ -443,15 +424,9 @@ function inspectCommittedRouting(
         blocker: null,
       };
       const blockerSatisfied =
-        record.blocker?.resumeCondition !== 'manual' &&
-        (record.blocker?.kind === 'issue'
-          ? issueData.some(
-              (issue) =>
-                issue.id === record.blocker?.id && issue.closed !== undefined,
-            )
-          : record.blocker?.kind === 'change'
-            ? completed.has(record.blocker.id)
-            : false);
+        record.blocker?.kind === 'change' &&
+        record.blocker.resumeCondition !== 'manual' &&
+        completed.has(record.blocker.id);
       const state = completed.has(contract.changeId)
         ? ('completed-awaiting-archive' as const)
         : record.disposition === 'blocked'
@@ -643,46 +618,12 @@ function liveContracts(repositoryRoot: string): HandoffChange[] {
 
 function readBlockers(repositoryRoot: string, readText?: RepositoryTextReader) {
   const inventory = readWorkRegistryInventory(repositoryRoot, readText);
-  if (inventory !== null) {
-    const blocked = new Set(inventory.blockedItemIds);
-    const registryBlockers = inventory.items
-      .filter((item) => item.stage !== 'closed' && blocked.has(item.id))
-      .map((item) => ({ id: item.id, title: item.title }));
-    const legacyBlockers = readLegacyIssueBlockers(repositoryRoot, readText)
-      .map((issue) => {
-        const item = inventory.items.find((candidate) =>
-          candidate.aliases.includes(issue.id),
-        );
-        return item === undefined
-          ? { id: issue.id, title: issue.title }
-          : { id: item.id, title: item.title };
-      })
-      .filter(
-        (candidate) => !registryBlockers.some(({ id }) => id === candidate.id),
-      );
-    return [...registryBlockers, ...legacyBlockers].sort((left, right) =>
-      left.id.localeCompare(right.id),
-    );
-  }
-  return readLegacyIssueBlockers(repositoryRoot, readText);
-}
-
-function readLegacyIssueBlockers(
-  repositoryRoot: string,
-  readText?: RepositoryTextReader,
-) {
-  const issueSourcePath =
-    repositoryDocumentConfiguration(repositoryRoot).issueSourcePath;
-  if (
-    readText
-      ? readText(issueSourcePath) === undefined
-      : !fs.existsSync(path.join(repositoryRoot, issueSourcePath))
-  ) {
-    return [];
-  }
-  return readIssueData(repositoryRoot, readText).issues.filter(
-    (issue) => issue.status === 'blocked' && !issue.closed,
-  );
+  if (inventory === null) return [];
+  const blocked = new Set(inventory.blockedItemIds);
+  return inventory.items
+    .filter((item) => item.stage !== 'closed' && blocked.has(item.id))
+    .map((item) => ({ id: item.id, title: item.title }))
+    .sort((left, right) => left.id.localeCompare(right.id));
 }
 
 type WorkRegistryHandoffInventory = Readonly<{
