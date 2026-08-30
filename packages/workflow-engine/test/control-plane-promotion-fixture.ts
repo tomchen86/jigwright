@@ -8,7 +8,7 @@ import { pathToFileURL } from 'node:url';
 
 import { bootstrapInterventionStateRoot } from '../bootstrap/control-plane-trust.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { produceControlPlaneApprovalCandidateV2 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
+import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import {
   createEngineArtifact,
   createProtectedCapabilityManifest,
@@ -243,7 +243,7 @@ export interface FinalizedControlPlanePromotionFixtureOptions extends ControlPla
 }
 
 /**
- * Build a terminal V2 state exclusively through the production producer and
+ * Build a terminal current V3 state exclusively through the production producer and
  * updater. Inputs may shape fixture material and ceremony time, but no signed
  * envelope, promotion bundle, diff, or signature can be supplied by the caller.
  */
@@ -254,7 +254,7 @@ export async function setupFinalizedControlPlanePromotionFixture(
   try {
     const reviewCalls = { present: 0, human: 0, sign: 0 };
     const grantCalls = { present: 0, human: 0, sign: 0 };
-    const produced = produceControlPlaneApprovalCandidateV2(
+    const produced = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(fixture.repository),
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,
@@ -270,7 +270,17 @@ export async function setupFinalizedControlPlanePromotionFixture(
         },
       },
     );
-    const approvalSummaries: ControlPlaneApprovalSummaryV2[] = [];
+    const approvalSummaries: ControlPlaneApprovalSummaryV3[] = [];
+    const updaterDependencies = controlPlaneFixtureUpdaterDependencies(
+      fixture.frozen,
+      fixture.signing.signer(CONTROL_PLANE_FIXTURE_GRANT_SIGNER, grantCalls),
+      fixture.signing.verifier,
+      [],
+      new Date(options.grantIssuedAt ?? '2026-08-10T10:05:00.000Z'),
+    );
+    updaterDependencies.presentApprovalSummaryV3 = (summary) => {
+      approvalSummaries.push(summary);
+    };
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
       [
         'approve-and-apply',
@@ -279,16 +289,10 @@ export async function setupFinalizedControlPlanePromotionFixture(
         fixture.frozen.mandateBinding.mandateTaskId,
       ],
       fixture.stateRoot,
-      controlPlaneFixtureUpdaterDependencies(
-        fixture.frozen,
-        fixture.signing.signer(CONTROL_PLANE_FIXTURE_GRANT_SIGNER, grantCalls),
-        fixture.signing.verifier,
-        approvalSummaries,
-        new Date(options.grantIssuedAt ?? '2026-08-10T10:05:00.000Z'),
-      ),
+      updaterDependencies,
       fs.realpathSync(fixture.repository),
     );
-    assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v2');
+    assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v3');
     assert.equal(promoted.record.transaction.state, 'FINALIZED');
     return {
       ...fixture,

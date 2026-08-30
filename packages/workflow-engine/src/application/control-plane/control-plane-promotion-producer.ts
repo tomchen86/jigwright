@@ -7,7 +7,6 @@ import {
   bootstrapInterventionStateRoot,
   readInitialControlPlaneSupervisorAnchorEvidence,
   readBuiltInControlPlaneEngineArtifact,
-  resolveControlPlaneEngineSelection,
 } from '../../../bootstrap/control-plane-trust.ts';
 import {
   canonicalJson,
@@ -64,7 +63,6 @@ import {
   persistControlPlaneApprovalCandidateV2,
   persistControlPlaneApprovalCandidateV3,
   readPersistedControlPlaneApprovalCandidateCurrent,
-  readPersistedControlPlaneApprovalCandidateV2,
   readControlPlaneSupervisorState,
   type PersistedControlPlaneApprovalCandidateV2,
   type PersistedControlPlaneApprovalCandidateV3,
@@ -575,7 +573,6 @@ export function produceControlPlaneApprovalCandidateV3(
     );
   }
   const authority = ensureTerminalSupervisorHistory(
-    repository.gitCommonDirectory,
     stateRoot,
     supervisor,
     candidate.expectedOldCommit,
@@ -903,7 +900,6 @@ export function produceControlPlaneApprovalCandidateV3(
 }
 
 function ensureTerminalSupervisorHistory(
-  gitCommonDirectory: string,
   stateRoot: string,
   supervisor: ReturnType<typeof readControlPlaneSupervisorState>,
   expectedActiveTrustCommit: string,
@@ -930,11 +926,10 @@ function ensureTerminalSupervisorHistory(
     };
   }
   if (supervisor.generation !== 1 || supervisor.transition !== null) {
-    return createLegacyV2SupervisorHistoryAnchor(
-      gitCommonDirectory,
-      stateRoot,
-      supervisor,
-      expectedActiveTrustCommit,
+    throw producerError(
+      'CONTROL_PLANE_PRODUCER_HISTORY_REQUIRED',
+      'A successor supervisor requires an existing verified current history anchor.',
+      ExitCode.staleState,
     );
   }
   const evidence = readInitialControlPlaneSupervisorAnchorEvidence(
@@ -976,22 +971,17 @@ function resolveTerminalHistoryArtifact(
   history: VerifiedControlPlaneSupervisorHistory,
 ): ReturnType<typeof readBuiltInControlPlaneEngineArtifact> {
   const leaf = history.leaf;
-  const grantId =
-    leaf.kind === 'control-plane-supervisor-history-anchor.v1'
-      ? leaf.authority.kind === 'legacy-v2-terminal-anchor.v1'
-        ? leaf.authority.grantId
-        : null
-      : leaf.grantId;
-  if (grantId === null) {
+  if (leaf.kind === 'control-plane-supervisor-history-anchor.v1') {
     throw producerError(
       'CONTROL_PLANE_PRODUCER_HISTORY_ARTIFACT_UNAVAILABLE',
       'The terminal history leaf has no material-bound update authority.',
       ExitCode.verification,
     );
   }
+  const grantId = leaf.grantId;
   const record = readPersistedControlPlaneUpdate(stateRoot, grantId);
   if (
-    record.kind === 'persisted-control-plane-update.v1' ||
+    record.kind !== 'persisted-control-plane-update.v3' ||
     record.grantState !== 'consumed' ||
     (record.transaction.state !== 'FINALIZED' &&
       record.transaction.state !== 'ROLLED_BACK')
@@ -1027,118 +1017,6 @@ function resolveTerminalHistoryArtifact(
     );
   }
   return artifact;
-}
-
-function createLegacyV2SupervisorHistoryAnchor(
-  gitCommonDirectory: string,
-  stateRoot: string,
-  supervisor: ReturnType<typeof readControlPlaneSupervisorState>,
-  expectedActiveTrustCommit: string,
-): {
-  history: VerifiedControlPlaneSupervisorHistory;
-  restartArtifact: ReturnType<typeof readBuiltInControlPlaneEngineArtifact>;
-} {
-  const transition = supervisor.transition;
-  if (
-    transition === null ||
-    (supervisor.generation !== 2 && supervisor.generation !== 3)
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_HISTORY_REQUIRED',
-      'A successor supervisor requires an existing verified history anchor.',
-      ExitCode.staleState,
-    );
-  }
-  // This invokes the bootstrap-owned V2 verifier before any legacy terminal is
-  // promoted into a V3 history anchor.
-  if (
-    resolveControlPlaneEngineSelection(stateRoot, supervisor.repositoryId) ===
-    null
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_HISTORY_MISMATCH',
-      'The legacy V2 supervisor is not independently executable authority.',
-      ExitCode.verification,
-    );
-  }
-  const record = readPersistedControlPlaneUpdate(stateRoot, transition.grantId);
-  if (
-    record.kind !== 'persisted-control-plane-update.v2' ||
-    record.grantState !== 'consumed' ||
-    record.transaction.txId !== transition.txId ||
-    (record.transaction.state !== 'FINALIZED' &&
-      record.transaction.state !== 'ROLLED_BACK')
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_HISTORY_MISMATCH',
-      'The legacy V2 update is not the exact terminal supervisor authority.',
-      ExitCode.verification,
-    );
-  }
-  const candidate = readPersistedControlPlaneApprovalCandidateV2(
-    stateRoot,
-    record.envelope.payload.promotionBundleDigest,
-  );
-  const material = candidate.bundle.material;
-  const restartArtifact =
-    record.transaction.state === 'FINALIZED'
-      ? material.candidateArtifact
-      : material.recoveryBundle.restartArtifact;
-  const initial = readInitialControlPlaneSupervisorAnchorEvidence(
-    stateRoot,
-    supervisor.repositoryId,
-  );
-  const activeTrustCommit =
-    record.transaction.state === 'FINALIZED'
-      ? readStoredImmutableCandidateBundle(
-          gitCommonDirectory,
-          material.frozenCandidateBundleDigest.slice('sha256:'.length),
-        ).candidateCommit
-      : initial.activeTrustCommit;
-  if (
-    activeTrustCommit !== expectedActiveTrustCommit ||
-    restartArtifact.artifactId !== supervisor.activeArtifact.artifactId ||
-    restartArtifact.executableDigest !==
-      supervisor.activeArtifact.executableDigest ||
-    supervisor.activeArtifact.closureDigest !==
-      (record.transaction.state === 'FINALIZED'
-        ? material.afterClosureDigest
-        : material.beforeClosureDigest)
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_HISTORY_MISMATCH',
-      'The legacy V2 terminal artifact or trust commit differs from the successor prestate.',
-      ExitCode.staleState,
-    );
-  }
-  const anchor = createControlPlaneSupervisorHistoryAnchor({
-    repositoryId: supervisor.repositoryId,
-    generation: supervisor.generation,
-    supervisorRecordDigest: supervisor.recordDigest,
-    activeArtifact: {
-      artifactId: supervisor.activeArtifact.artifactId,
-      executableDigest: supervisor.activeArtifact.executableDigest,
-      closureDigest: supervisor.activeArtifact.closureDigest,
-    },
-    activeTrustCommit,
-    authority: {
-      kind: 'legacy-v2-terminal-anchor.v1',
-      initialBootstrapPublishedDigest: initial.publishedRecordDigest,
-      grantId: transition.grantId,
-      txId: transition.txId,
-      terminalState: record.transaction.state,
-      updateRecordDigest: record.recordDigest,
-      transactionJournalDigest: record.transaction.journalDigest,
-      grantEnvelopeDigest: rawDigest(canonicalJson(record.envelope)),
-      promotionBundleDigest: candidate.bundle.bundleDigest,
-    },
-    recordedAt: record.updatedAt,
-  });
-  appendControlPlaneSupervisorHistoryRecord(stateRoot, anchor);
-  return {
-    history: readControlPlaneSupervisorHistory(stateRoot),
-    restartArtifact,
-  };
 }
 
 function assertFrozenCandidatePrestate(

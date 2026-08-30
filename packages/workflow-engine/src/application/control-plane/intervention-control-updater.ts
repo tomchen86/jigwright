@@ -1054,23 +1054,22 @@ export function readPersistedControlPlaneApprovalCandidateV3(
 export function readPersistedControlPlaneApprovalCandidateCurrent(
   storageRoot: string,
   candidateId: string,
-):
-  | PersistedControlPlaneApprovalCandidateV2
-  | PersistedControlPlaneApprovalCandidateV3 {
+): PersistedControlPlaneApprovalCandidateV3 {
   const value = readCanonicalPrivateRecord(
     controlPlaneApprovalCandidatePath(storageRoot, candidateId),
     'CONTROL_PLANE_APPROVAL_CANDIDATE_NOT_FOUND',
   );
   if (
-    isRecord(value) &&
-    value.kind === 'persisted-control-plane-approval-candidate.v3'
+    !isRecord(value) ||
+    value.kind !== 'persisted-control-plane-approval-candidate.v3'
   ) {
-    return readPersistedControlPlaneApprovalCandidateV3(
-      storageRoot,
-      candidateId,
+    throw workflowError(
+      'CONTROL_PLANE_APPROVAL_CANDIDATE_UNSUPPORTED_SCHEMA',
+      'Current control-plane approval accepts only persisted candidate schema v3.',
+      ExitCode.guard,
     );
   }
-  return readPersistedControlPlaneApprovalCandidateV2(storageRoot, candidateId);
+  return readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidateId);
 }
 
 export function findPersistedControlPlaneApprovalCandidateV2ByMaterialDigestAndReviewer(

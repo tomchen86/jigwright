@@ -21,22 +21,10 @@ export interface ControlPlaneSupervisorHistoryArtifactSelection {
   closureDigest: ControlPlaneSupervisorHistoryDigest;
 }
 
-export type ControlPlaneSupervisorHistoryAnchorAuthority =
-  | {
-      kind: 'initial-bootstrap-anchor.v1';
-      initialBootstrapPublishedDigest: ControlPlaneSupervisorHistoryDigest;
-    }
-  | {
-      kind: 'legacy-v2-terminal-anchor.v1';
-      initialBootstrapPublishedDigest: ControlPlaneSupervisorHistoryDigest;
-      grantId: string;
-      txId: string;
-      terminalState: 'FINALIZED' | 'ROLLED_BACK';
-      updateRecordDigest: ControlPlaneSupervisorHistoryDigest;
-      transactionJournalDigest: ControlPlaneSupervisorHistoryDigest;
-      grantEnvelopeDigest: ControlPlaneSupervisorHistoryDigest;
-      promotionBundleDigest: ControlPlaneSupervisorHistoryDigest;
-    };
+export interface ControlPlaneSupervisorHistoryAnchorAuthority {
+  kind: 'initial-bootstrap-anchor.v1';
+  initialBootstrapPublishedDigest: ControlPlaneSupervisorHistoryDigest;
+}
 
 export interface ControlPlaneSupervisorHistoryAnchor {
   kind: 'control-plane-supervisor-history-anchor.v1';
@@ -840,50 +828,17 @@ function verifyAnchorAuthority(
   if (!isRecord(value)) {
     throw recordInvalid('Supervisor history anchor authority is invalid.');
   }
-  if (value.kind === 'initial-bootstrap-anchor.v1') {
-    if (!hasExactKeys(value, ['initialBootstrapPublishedDigest', 'kind'])) {
-      throw recordInvalid('Initial supervisor history authority is invalid.');
-    }
-    assertDigest(value.initialBootstrapPublishedDigest);
-    return deepFreeze({
-      kind: value.kind,
-      initialBootstrapPublishedDigest: value.initialBootstrapPublishedDigest,
-    });
-  }
   if (
-    value.kind !== 'legacy-v2-terminal-anchor.v1' ||
-    !hasExactKeys(value, [
-      'grantEnvelopeDigest',
-      'grantId',
-      'initialBootstrapPublishedDigest',
-      'kind',
-      'promotionBundleDigest',
-      'terminalState',
-      'transactionJournalDigest',
-      'txId',
-      'updateRecordDigest',
-    ]) ||
-    (value.terminalState !== 'FINALIZED' &&
-      value.terminalState !== 'ROLLED_BACK')
+    value.kind !== 'initial-bootstrap-anchor.v1' ||
+    !hasExactKeys(value, ['initialBootstrapPublishedDigest', 'kind'])
   ) {
-    throw recordInvalid('Legacy V2 supervisor history authority is invalid.');
+    throw recordInvalid('Initial supervisor history authority is invalid.');
   }
-  assertNonEmpty(value.grantId);
-  assertNonEmpty(value.txId);
-  for (const field of [
-    value.initialBootstrapPublishedDigest,
-    value.updateRecordDigest,
-    value.transactionJournalDigest,
-    value.grantEnvelopeDigest,
-    value.promotionBundleDigest,
-  ]) {
-    assertDigest(field);
-  }
-  return deepFreeze(
-    structuredClone(
-      value,
-    ) as unknown as ControlPlaneSupervisorHistoryAnchorAuthority,
-  );
+  assertDigest(value.initialBootstrapPublishedDigest);
+  return deepFreeze({
+    kind: value.kind,
+    initialBootstrapPublishedDigest: value.initialBootstrapPublishedDigest,
+  });
 }
 
 function assertTransitionFollows(

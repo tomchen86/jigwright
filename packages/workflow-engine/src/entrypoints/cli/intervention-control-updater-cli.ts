@@ -10,15 +10,11 @@ import { discoverRepository } from '../../runtime/repository-transaction/git.ts'
 import {
   executeControlPlanePromotion,
   assertSameControlPlaneTaskMandateBinding,
-  preflightControlPlaneApprovalCandidateV2,
   preflightControlPlaneApprovalCandidateV3,
-  prepareControlPlanePromotionV2,
   prepareControlPlanePromotionV3,
   readPersistedControlPlaneApprovalCandidateCurrent,
-  readPersistedControlPlaneApprovalCandidateV2,
   readControlPlaneSupervisorState,
   recoverControlPlanePromotion,
-  type ControlPlaneApprovalPreflightV2,
   type ControlPlaneApprovalPreflightV3,
   type ControlPlaneApprovalSummary,
   type ControlPlaneApprovalSummaryV2,
@@ -33,18 +29,13 @@ import {
   type PersistedControlPlaneUpdateRecordV1,
 } from '../../runtime/storage-journal/intervention-control-persistence.ts';
 import type {
-  ControlPlaneGrantEnvelopeV2,
   ControlPlaneGrantEnvelopeV3,
-  ControlPlaneGrantPayloadV2,
   ControlPlaneGrantPayloadV3,
-  ControlPlanePromotionBundleV2,
   ControlPlanePromotionBundleV3,
   ControlPlaneTaskMandateBinding,
 } from '../../modules/authority/intervention-control.ts';
 import {
-  canonicalControlPlaneGrantPayloadV2,
   canonicalControlPlaneGrantPayloadV3,
-  CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
   normalizeControlPlaneTaskMandateBinding,
 } from '../../modules/authority/intervention-control.ts';
@@ -159,136 +150,14 @@ export function dispatchProductionControlPlaneUpdaterCommand(
         ExitCode.guard,
       );
     }
-    if (candidate.kind === 'persisted-control-plane-approval-candidate.v3') {
-      return approveAndApplyControlPlaneCandidateV3({
-        requestBaseDirectory,
-        stateRoot,
-        candidate,
-        candidateId,
-        parentTaskId,
-        signer,
-        dependencies,
-      });
-    }
-    const presentSummary = dependencies.presentApprovalSummaryV2;
-    if (!presentSummary) {
-      throw workflowError(
-        'CONTROL_PLANE_APPROVAL_UI_REQUIRED',
-        'Approve-and-apply requires a controlling-terminal signer and summary presenter.',
-        ExitCode.unsafeEnvironment,
-      );
-    }
-    const resolveTaskMandateBinding = dependencies.resolveTaskMandateBinding;
-    const revalidateTaskMandateBinding =
-      dependencies.revalidateTaskMandateBinding;
-    if (!resolveTaskMandateBinding || !revalidateTaskMandateBinding) {
-      throw workflowError(
-        'CONTROL_PLANE_TASK_MANDATE_VALIDATOR_REQUIRED',
-        'Production control-plane approval requires an active Task Mandate resolver and revalidator.',
-        ExitCode.unsafeEnvironment,
-      );
-    }
-    const resolvedMandate = normalizeControlPlaneTaskMandateBinding(
-      resolveTaskMandateBinding(parentTaskId),
-    );
-    assertSameControlPlaneTaskMandateBinding(
-      candidate.mandateBinding,
-      resolvedMandate,
-    );
-    revalidateTaskMandateBinding(resolvedMandate, 'approval-preflight');
-    signer.assertHumanPresent();
-    const humanSigner = signer.identity();
-    const issuedAt = exactNow(dependencies).toISOString();
-    const grantId = controlPlaneApprovalGrantId(candidateId);
-    const preflight = preflightControlPlaneApprovalCandidateV2(
+    return approveAndApplyControlPlaneCandidateV3({
+      requestBaseDirectory,
       stateRoot,
+      candidate,
       candidateId,
-      {
-        grantId,
-        humanSigner,
-        issuedAt,
-        verifyHumanSignature: dependencies.verifyHumanSignature,
-      },
-    );
-    assertSameControlPlaneTaskMandateBinding(
-      resolvedMandate,
-      preflight.candidate.mandateBinding,
-    );
-    const approval = withAuthorityRefusalAudit(
-      controlPlaneApprovalRefusalBinding(
-        requestBaseDirectory,
-        preflight,
-        grantId,
-        humanSigner,
-      ),
-      { now: new Date(issuedAt) },
-      () => {
-        revalidateTaskMandateBinding(resolvedMandate, 'approval-preflight');
-        presentSummary(preflight.summary);
-        const payload = controlPlaneGrantPayloadV2(
-          grantId,
-          humanSigner,
-          issuedAt,
-          preflight.summary,
-          preflight.candidate.bundle,
-        );
-        const signature = signer
-          .sign(
-            canonicalControlPlaneGrantPayloadV2(payload),
-            CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
-          )
-          .trim();
-        const current = readPersistedControlPlaneApprovalCandidateV2(
-          stateRoot,
-          candidateId,
-        );
-        if (current.recordDigest !== preflight.candidate.recordDigest) {
-          throw workflowError(
-            'CONTROL_PLANE_APPROVAL_CANDIDATE_DRIFT',
-            'Persisted candidate changed after the approval summary was presented.',
-            ExitCode.staleState,
-          );
-        }
-        assertSameControlPlaneTaskMandateBinding(
-          resolvedMandate,
-          current.mandateBinding,
-        );
-        revalidateTaskMandateBinding(resolvedMandate, 'before-persistence');
-        return {
-          current,
-          envelope: {
-            payload,
-            signature,
-          } satisfies ControlPlaneGrantEnvelopeV2,
-        };
-      },
-    );
-    // Durable preparation can reserve a grant before a later audit-sink
-    // failure. It therefore stays outside refusal handling and remains owned
-    // by the control-plane transaction's recovery path.
-    prepareControlPlanePromotionV2(
-      stateRoot,
-      {
-        txId: approval.current.txId,
-        envelope: approval.envelope,
-        beforeManifest: approval.current.beforeManifest,
-        afterManifest: approval.current.afterManifest,
-        bundle: approval.current.bundle,
-      },
+      parentTaskId,
+      signer,
       dependencies,
-    );
-    const completed = executeControlPlanePromotion(
-      stateRoot,
-      grantId,
-      dependencies,
-    );
-    return result({
-      action: 'approve-and-apply',
-      grantId,
-      stateRoot,
-      record: completed.record,
-      supervisor: completed.supervisor,
-      effectsPerformed: true,
     });
   }
 
@@ -587,7 +456,7 @@ function controlPlaneApprovalGrantId(candidateId: string): string {
 
 function controlPlaneApprovalRefusalBinding(
   requestBaseDirectory: string,
-  preflight: ControlPlaneApprovalPreflightV2 | ControlPlaneApprovalPreflightV3,
+  preflight: ControlPlaneApprovalPreflightV3,
   grantId: string,
   humanSigner: string,
 ): AuthorityRefusalAuditBinding {
@@ -635,47 +504,6 @@ function exactNow(dependencies: ControlPlaneUpdaterCliDependencies): Date {
     );
   }
   return new Date(now.getTime());
-}
-
-function controlPlaneGrantPayloadV2(
-  grantId: string,
-  humanSigner: string,
-  issuedAt: string,
-  summary: ControlPlaneApprovalSummaryV2,
-  bundle: ControlPlanePromotionBundleV2,
-): ControlPlaneGrantPayloadV2 {
-  return {
-    kind: 'control-plane-grant.v2',
-    grantId,
-    mandateBinding: structuredClone(summary.mandateBinding),
-    repositoryId: summary.repositoryId,
-    frozenCandidateBundleDigest: summary.frozenCandidateBundleDigest,
-    candidateDigest: summary.candidateDigest,
-    promotionMaterialDigest: summary.promotionMaterialDigest,
-    promotionBundleDigest: summary.promotionBundleDigest,
-    exactChanges: summary.exactChanges.map((change) => ({ ...change })),
-    beforeClosureDigest: summary.beforeClosureDigest,
-    afterClosureDigest: summary.afterClosureDigest,
-    affectedCapabilities: [...summary.affectedCapabilities],
-    behaviorChangeSummary: summary.behaviorChangeSummary,
-    recoveryBundle: {
-      bundleDigest: summary.recoveryBundleDigest,
-      previousClosureDigest:
-        bundle.material.recoveryBundle.previousClosureDigest,
-      restartArtifactDigest:
-        bundle.material.recoveryBundle.restartArtifact.executableDigest,
-      rollbackTestReportDigest: summary.rollbackTestReportDigest,
-    },
-    independentReviewAttestationDigest:
-      summary.independentReview.attestationDigest,
-    updaterVersion: 2,
-    oneShot: true,
-    issuedAt,
-    expiresAt: new Date(
-      Date.parse(issuedAt) + CONTROL_PLANE_GRANT_TTL_MS,
-    ).toISOString(),
-    humanSigner,
-  };
 }
 
 function controlPlaneGrantPayloadV3(

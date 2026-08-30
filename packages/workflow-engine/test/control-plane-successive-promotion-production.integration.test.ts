@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import { resolveControlPlaneEngineSelection } from '../bootstrap/control-plane-trust.ts';
@@ -22,13 +23,16 @@ import {
   produceControlPlaneApprovalCandidateV3,
 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import {
+  createControlPlaneSupervisorHistoryAnchor,
   readControlPlaneSupervisorHistory,
   readControlPlaneSupervisorHistoryProgress,
 } from '../src/runtime/storage-journal/control-plane-supervisor-history.ts';
 import {
   persistControlPlaneApprovalCandidateV3,
   preflightControlPlaneApprovalCandidateV3,
+  controlPlaneApprovalCandidatePath,
   readControlPlaneSupervisorState,
+  readPersistedControlPlaneApprovalCandidateCurrent,
   readPersistedControlPlaneApprovalCandidateV3,
 } from '../src/application/control-plane/intervention-control-updater.ts';
 import { readPersistedControlPlaneUpdate } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
@@ -41,6 +45,68 @@ import {
   setupControlPlaneProducerFixture,
   setupFinalizedControlPlanePromotionFixture,
 } from './control-plane-promotion-fixture.ts';
+
+test('current control-plane approval admission rejects retired candidate schemas before parsing', async () => {
+  const fixture = await setupControlPlaneProducerFixture();
+  try {
+    const candidateId = digest('retired-control-plane-candidate-v2');
+    const candidatePath = controlPlaneApprovalCandidatePath(
+      fixture.stateRoot,
+      candidateId,
+    );
+    fs.mkdirSync(path.dirname(candidatePath), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(
+      candidatePath,
+      `${canonicalJson({
+        kind: 'persisted-control-plane-approval-candidate.v2',
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    assert.throws(
+      () =>
+        readPersistedControlPlaneApprovalCandidateCurrent(
+          fixture.stateRoot,
+          candidateId,
+        ),
+      {
+        code: 'CONTROL_PLANE_APPROVAL_CANDIDATE_UNSUPPORTED_SCHEMA',
+      },
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('current supervisor history rejects retired V2 migration anchors', () => {
+  assert.throws(
+    () =>
+      createControlPlaneSupervisorHistoryAnchor({
+        repositoryId: 'fixture-repository',
+        generation: 2,
+        supervisorRecordDigest: digest('supervisor-v2'),
+        activeArtifact: {
+          artifactId: digest('artifact-v2'),
+          executableDigest: digest('executable-v2'),
+          closureDigest: digest('closure-v2'),
+        },
+        activeTrustCommit: commit('trust-v2'),
+        authority: {
+          kind: 'legacy-v2-terminal-anchor.v1',
+          initialBootstrapPublishedDigest: digest('bootstrap-v2'),
+          grantId: 'grant-v2',
+          txId: 'tx-v2',
+          terminalState: 'FINALIZED',
+          updateRecordDigest: digest('update-v2'),
+          transactionJournalDigest: digest('journal-v2'),
+          grantEnvelopeDigest: digest('envelope-v2'),
+          promotionBundleDigest: digest('bundle-v2'),
+        } as never,
+        recordedAt: '2026-08-10T10:00:00.000Z',
+      }),
+    { code: 'CONTROL_PLANE_SUPERVISOR_HISTORY_RECORD_INVALID' },
+  );
+});
 
 // Substrate-only: no production producer, updater, persistence, or bootstrap
 // selector consumes this value object yet.
@@ -320,7 +386,7 @@ test('production successor producer derives and persists the initial history anc
   }
 });
 
-test('production successor producer anchors an independently verified V2 terminal', async () => {
+test('production successor producer extends an independently verified current terminal', async () => {
   const fixture = await setupFinalizedControlPlanePromotionFixture();
   const successor = prepareSuccessorControlPlaneCandidate(fixture);
   try {
@@ -339,7 +405,7 @@ test('production successor producer anchors an independently verified V2 termina
       },
     );
     const history = readControlPlaneSupervisorHistory(fixture.stateRoot);
-    assert.equal(history.anchor.authority.kind, 'legacy-v2-terminal-anchor.v1');
+    assert.equal(history.anchor.authority.kind, 'initial-bootstrap-anchor.v1');
     assert.equal(history.generation, 2);
     assert.equal(produced.candidate.bundle.lineage.previousGeneration, 2);
     assert.equal(

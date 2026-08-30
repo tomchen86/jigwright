@@ -202,13 +202,13 @@ import {
   dispatchProductionControlPlaneUpdaterCommand,
 } from './entrypoints/cli/intervention-control-updater-cli.ts';
 import {
-  produceControlPlaneApprovalCandidateV2,
-  type ControlPlanePromotionReviewSummaryV2,
+  produceControlPlaneApprovalCandidateV3,
+  type ControlPlanePromotionReviewSummaryV3,
 } from './application/control-plane/control-plane-promotion-producer.ts';
 import {
   assertSameControlPlaneTaskMandateBinding,
   type ControlPlaneTaskMandateValidationPhase,
-  type ControlPlaneApprovalSummaryV2,
+  type ControlPlaneApprovalSummaryV3,
   type ControlPlaneUpdaterAuditRecord,
 } from './application/control-plane/intervention-control-updater.ts';
 import {
@@ -4181,16 +4181,12 @@ function dispatchProductionControlPlaneCommand(rest: string[], cwd: string) {
   );
   const dependencies = controlPlaneUpdaterDependencies(cwd);
   if (rest[0] === 'produce' && rest.length === 2) {
-    return produceControlPlaneApprovalCandidateV2(
+    return produceControlPlaneApprovalCandidateV3(
       repository.repositoryRealPath,
       stateRoot,
       rest[1]!,
       {
         now: dependencies.now,
-        // NEEDS-EXPLICIT-USER-AUTHORIZATION: the current real policy has one
-        // trusted identity, while V2 intentionally requires the later grant
-        // signer to differ from this reviewer. Production therefore produces
-        // review material but fails closed before same-key grant signing.
         reviewSigner: dependencies.approvalSigner,
         verifyHumanSignature: dependencies.verifyHumanSignature,
         presentReviewSummary: dependencies.presentReviewSummary,
@@ -4258,10 +4254,10 @@ function controlPlaneUpdaterDependencies(cwd: string) {
       );
       assertSameControlPlaneTaskMandateBinding(binding, current);
     },
-    presentApprovalSummaryV2(summary: ControlPlaneApprovalSummaryV2): void {
+    presentApprovalSummaryV3(summary: ControlPlaneApprovalSummaryV3): void {
       process.stderr.write(`\n${summary.humanReadable}\n\n`);
     },
-    presentReviewSummary(summary: ControlPlanePromotionReviewSummaryV2): void {
+    presentReviewSummary(summary: ControlPlanePromotionReviewSummaryV3): void {
       process.stderr.write(`\n${summary.humanReadable}\n\n`);
     },
     consumedGrantIds: new Set<string>(),
