@@ -46,6 +46,44 @@ test('installed runtime descriptors are exact embedded-only records', () => {
   }
 });
 
+test('single Jigwright tarball ships current installed CLI guidance', () => {
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-current-readme-'),
+  );
+  try {
+    const outputRoot = path.join(scratch, 'release');
+    const artifact = buildSingleJigwrightPackage(process.cwd(), outputRoot, {
+      allowDirty: true,
+    });
+    const shippedReadme = run('tar', [
+      '-xOzf',
+      path.join(outputRoot, artifact.tarball),
+      'package/README.md',
+    ]);
+    const normalizedReadme = shippedReadme.replace(/\s+/gu, ' ');
+
+    assert.match(
+      normalizedReadme,
+      /jigwright --repository-root \/absolute\/path\/to\/repository doctor --json/u,
+    );
+    assert.match(
+      normalizedReadme,
+      /does not publish an npm package or perform real external operations/u,
+    );
+    for (const retiredWording of [
+      /migration repository/iu,
+      /package-side engine/iu,
+      /migration checkpoint/iu,
+      /final single-package layout/iu,
+      /pnpm jigwright/u,
+    ]) {
+      assert.doesNotMatch(normalizedReadme, retiredWording);
+    }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
 test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
   const workspaceManifest = JSON.parse(
     fs.readFileSync(path.resolve('package.json'), 'utf8'),

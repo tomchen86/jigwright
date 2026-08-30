@@ -1,15 +1,15 @@
 # Jigwright
 
-Jigwright is a repository-owned workflow harness for well-intentioned AI
-agents. This migration repository preserves the frozen current-v3 engine
-closure before consumer assumptions are removed and the final single-package
-layout is produced.
+Jigwright is a repository-owned current-v3 workflow harness for
+well-intentioned AI agents. It is distributed as one public `jigwright` package
+containing the installed CLI and public current-v3 module surfaces.
 
-The package-side engine can currently operate on a separate local consumer:
+After installing the local package, inspect a repository with:
 
 ```bash
-pnpm jigwright --repository-root /absolute/path/to/consumer doctor --json
+jigwright --repository-root /absolute/path/to/repository doctor --json
 ```
 
-This repository has no configured remote. Nothing in this migration checkpoint
-publishes an npm package or performs real external operations.
+This repository has no configured remote. Its local release workflow builds
+candidate artifacts only; it does not publish an npm package or perform real
+external operations.
