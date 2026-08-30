@@ -260,21 +260,17 @@ export function buildAndPersistInterventionEngineArtifact(
 export function maintenanceGrantId(
   parentChangeId: string,
   checkpointId: Sha256Digest,
-  issuedAt?: string,
-  interventionChangeId?: string,
+  issuedAt: string,
+  interventionChangeId: string,
 ): string {
   assertNonEmpty(parentChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
   assertDigest(checkpointId, 'MAINTENANCE_GRANT_RECORD_INVALID');
-  if (issuedAt !== undefined) {
-    exactDate(new Date(issuedAt));
-    assertNonEmpty(interventionChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
-  }
+  exactDate(new Date(issuedAt));
+  assertNonEmpty(interventionChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
   return `maintenance-${crypto
     .createHash('sha256')
     .update(
-      issuedAt === undefined
-        ? `maintenance-grant\0${parentChangeId}\0${checkpointId}`
-        : `maintenance-grant.v2\0${parentChangeId}\0${checkpointId}\0${interventionChangeId}\0${issuedAt}`,
+      `maintenance-grant.v2\0${parentChangeId}\0${checkpointId}\0${interventionChangeId}\0${issuedAt}`,
     )
     .digest('hex')}`;
 }
@@ -335,22 +331,17 @@ export function persistMaintenanceGrantRecord(
     now: Date;
   },
 ): PersistedMaintenanceGrantRecord {
-  const paths = maintenancePaths(storageRoot);
-  ensurePrivateDirectory(paths.grants);
   const payload = input.envelope.payload;
   assertAuditBinding(input.summary.authorityAudit);
-  const legacyGrantId = maintenanceGrantId(
-    input.summary.parentChangeId,
-    input.summary.checkpointId,
-  );
   const issuedGrantId = maintenanceGrantId(
     input.summary.parentChangeId,
     input.summary.checkpointId,
     payload.issuedAt,
     payload.interventionChangeId,
   );
+  const at = exactDate(input.now).toISOString();
   if (
-    ![legacyGrantId, issuedGrantId].includes(payload.grantId) ||
+    payload.grantId !== issuedGrantId ||
     payload.parentChangeId !== input.summary.parentChangeId ||
     payload.interventionChangeId !== input.summary.interventionChangeId ||
     payload.engineFromDigest !== input.summary.engineFromDigest ||
@@ -364,7 +355,8 @@ export function persistMaintenanceGrantRecord(
       'Maintenance grant does not match the presented approval summary.',
     );
   }
-  const at = exactDate(input.now).toISOString();
+  const paths = maintenancePaths(storageRoot);
+  ensurePrivateDirectory(paths.grants);
   const record = withRecordDigest({
     kind: 'persisted-maintenance-grant.v1' as const,
     state: 'available' as const,
@@ -437,6 +429,13 @@ export function readMaintenanceGrantRecord(
   assertAuditBinding(record.summary.authorityAudit);
   if (
     record.envelope.payload.grantId !== grantId ||
+    record.envelope.payload.grantId !==
+      maintenanceGrantId(
+        record.parentChangeId,
+        record.checkpointId,
+        record.envelope.payload.issuedAt,
+        record.interventionChangeId,
+      ) ||
     record.envelope.payload.parentChangeId !== record.parentChangeId ||
     record.envelope.payload.interventionChangeId !==
       record.interventionChangeId ||

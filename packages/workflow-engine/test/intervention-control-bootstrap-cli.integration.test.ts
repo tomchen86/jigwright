@@ -6,20 +6,28 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   bootstrapInterventionUsage,
   dispatchBootstrapInterventionCommand,
   type BootstrapInterventionCliDependencies,
 } from '../src/entrypoints/cli/intervention-control-bootstrap-cli.ts';
 import {
+  HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
   canonicalHarnessMaintenanceGrantPayload,
   createEngineArtifact,
+  verifyHarnessMaintenanceGrant,
+  type HarnessMaintenanceGrantEnvelope,
 } from '../src/modules/authority/intervention-control.ts';
 import {
+  maintenanceGrantId,
+  persistMaintenanceGrantRecord,
   persistInterventionEngineArtifact,
   readInterventionEngineArtifact,
   readMaintenanceGrantRecord,
   readMaintenanceGrantForParent,
+  type MaintenanceApprovalSummary,
+  type PersistedMaintenanceGrantRecord,
 } from '../src/application/control-plane/intervention-maintenance.ts';
 import { readPersistedIntervention } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {
@@ -37,6 +45,130 @@ const NOW = new Date('2026-08-03T10:00:00.000Z');
 
 function digest(value: string | Buffer): `sha256:${string}` {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+function legacyMaintenanceGrantIdForTest(
+  parentChangeId: string,
+  checkpointId: string,
+): string {
+  return `maintenance-${crypto
+    .createHash('sha256')
+    .update(`maintenance-grant\0${parentChangeId}\0${checkpointId}`)
+    .digest('hex')}`;
+}
+
+function maintenanceGrantRecordPathForTest(
+  stateRoot: string,
+  grantId: string,
+): string {
+  const name = crypto
+    .createHash('sha256')
+    .update(`maintenance-record\0${grantId}`)
+    .digest('hex');
+  return path.join(stateRoot, 'maintenance-grants', `${name}.json`);
+}
+
+type PathSnapshot =
+  | { exists: false }
+  | {
+      exists: true;
+      entries: Array<{
+        path: string;
+        kind: 'directory' | 'file' | 'symlink';
+        mode: number;
+        bytes?: string;
+        target?: string;
+      }>;
+    };
+
+function snapshotPath(root: string): PathSnapshot {
+  if (!fs.existsSync(root)) return { exists: false };
+  const entries: Extract<PathSnapshot, { exists: true }>['entries'] = [];
+  const visit = (absolute: string, relative: string): void => {
+    const stats = fs.lstatSync(absolute);
+    const mode = stats.mode & 0o777;
+    if (stats.isSymbolicLink()) {
+      entries.push({
+        path: relative,
+        kind: 'symlink',
+        mode,
+        target: fs.readlinkSync(absolute),
+      });
+      return;
+    }
+    if (stats.isDirectory()) {
+      entries.push({ path: relative, kind: 'directory', mode });
+      for (const name of fs.readdirSync(absolute).sort()) {
+        visit(path.join(absolute, name), path.join(relative, name));
+      }
+      return;
+    }
+    assert.equal(stats.isFile(), true, `unexpected fixture entry: ${absolute}`);
+    entries.push({
+      path: relative,
+      kind: 'file',
+      mode,
+      bytes: fs.readFileSync(absolute).toString('base64'),
+    });
+  };
+  visit(root, '.');
+  return { exists: true, entries };
+}
+
+function mutationBoundarySnapshot(
+  fixture: Fixture,
+  childWorkspacePath: string,
+  additionalStateRoot?: string,
+) {
+  return {
+    state: snapshotPath(fixture.stateRoot),
+    audit: snapshotPath(fixture.externalAuditRoot),
+    refs: git(fixture.repositoryRoot, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]),
+    childWorkspace: snapshotPath(childWorkspacePath),
+    additionalState:
+      additionalStateRoot === undefined
+        ? undefined
+        : snapshotPath(additionalStateRoot),
+  };
+}
+
+function signedLegacyEnvelopeForTest(
+  record: PersistedMaintenanceGrantRecord,
+  signer: NonNullable<
+    BootstrapInterventionCliDependencies['maintenanceSigner']
+  >,
+): HarnessMaintenanceGrantEnvelope {
+  const payload = {
+    ...structuredClone(record.envelope.payload),
+    grantId: legacyMaintenanceGrantIdForTest(
+      record.parentChangeId,
+      record.checkpointId,
+    ),
+  };
+  return {
+    payload,
+    signature: signer.sign(
+      canonicalHarnessMaintenanceGrantPayload(payload),
+      HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
+    ),
+  };
+}
+
+function durableLegacyRecordForTest(
+  record: PersistedMaintenanceGrantRecord,
+  envelope: HarnessMaintenanceGrantEnvelope,
+): PersistedMaintenanceGrantRecord {
+  const { recordDigest: _recordDigest, ...body } = {
+    ...structuredClone(record),
+    envelope,
+  };
+  return {
+    ...body,
+    recordDigest: digest(canonicalJson(body)),
+  };
 }
 
 function hasCode(code: string) {
@@ -165,14 +297,7 @@ function humanDependencies(
     identityCalls: 0,
     resolverCalls: 0,
     signatures: [] as Array<{ payload: string; namespace?: string }>,
-    summaries: [] as Array<{
-      checkpointId: string;
-      reason: string;
-      maxLocalAdoptions: number;
-      humanReadable: string;
-      scope: { paths: string[]; operations: string[] };
-      waivers: string[];
-    }>,
+    summaries: [] as MaintenanceApprovalSummary[],
   };
   const now = options.now ?? NOW;
   const dependencies: BootstrapInterventionCliDependencies = {
@@ -363,6 +488,15 @@ test('human intervene derives durable state, presents exact scope, signs once, a
       intervention.childWorkspace.changeRef,
     );
     const grant = readMaintenanceGrantForParent(fixture.stateRoot, 'parent-A');
+    assert.equal(
+      grant.envelope.payload.grantId,
+      maintenanceGrantId(
+        grant.parentChangeId,
+        grant.checkpointId,
+        grant.envelope.payload.issuedAt,
+        grant.interventionChangeId,
+      ),
+    );
     assert.deepEqual(grant.authorityAudit, {
       externalAuditRoot: fixture.externalAuditRoot,
       repositoryId: fixture.auditScope.repositoryId,
@@ -387,6 +521,118 @@ test('human intervene derives durable state, presents exact scope, signs once, a
     assert.equal(human.observed.humanPresenceChecks, 1);
     assert.equal(human.observed.signatures.length, 1);
     assert.equal(scanAuthorityAuditLedger(fixture.auditScope).recordCount, 2);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('maintenance persistence rejects a signed legacy two-argument grant id before durable mutation', () => {
+  const fixture = fixtureRepository();
+  try {
+    createParentWip(fixture);
+    const human = humanDependencies(fixture);
+    const intervention = intervene(fixture, human.dependencies).intervention!;
+    const current = readMaintenanceGrantForParent(
+      fixture.stateRoot,
+      'parent-A',
+    );
+    const legacyEnvelope = signedLegacyEnvelopeForTest(
+      current,
+      human.dependencies.maintenanceSigner!,
+    );
+    const verified = verifyHarnessMaintenanceGrant(legacyEnvelope, {
+      now: NOW,
+      parent: intervention.parent,
+      relationship: intervention.relationship,
+      checkpoint: intervention.checkpoint,
+      verifyHumanSignature(payload, signature, signer, namespace) {
+        assert.equal(
+          payload,
+          canonicalHarnessMaintenanceGrantPayload(legacyEnvelope.payload),
+        );
+        assert.equal(signature, legacyEnvelope.signature);
+        assert.equal(signer, legacyEnvelope.payload.humanSigner);
+        assert.equal(namespace, HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE);
+        return true;
+      },
+    });
+    assert.equal(verified.verification, 'human-signature-verified');
+
+    const isolatedStateRoot = path.join(fixture.root, 'legacy-write-admission');
+    const before = mutationBoundarySnapshot(
+      fixture,
+      intervention.childWorkspace.childWorkspacePath,
+      isolatedStateRoot,
+    );
+    assert.equal(before.additionalState?.exists, false);
+    assert.throws(
+      () =>
+        persistMaintenanceGrantRecord(isolatedStateRoot, {
+          envelope: legacyEnvelope,
+          summary: current.summary,
+          now: NOW,
+        }),
+      hasCode('MAINTENANCE_GRANT_RECORD_CORRUPT'),
+    );
+    assert.deepEqual(
+      mutationBoundarySnapshot(
+        fixture,
+        intervention.childWorkspace.childWorkspacePath,
+        isolatedStateRoot,
+      ),
+      before,
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('human intervention resume rejects a digest-valid signed legacy two-argument grant id without mutation', () => {
+  const fixture = fixtureRepository();
+  try {
+    createParentWip(fixture);
+    const crashing = humanDependencies(fixture, {
+      afterMaintenanceGrantPersisted() {
+        throw new Error('simulated grant-persistence crash');
+      },
+    });
+    assert.throws(
+      () => intervene(fixture, crashing.dependencies),
+      /simulated grant-persistence crash/,
+    );
+    const current = readMaintenanceGrantForParent(
+      fixture.stateRoot,
+      'parent-A',
+    );
+    const legacyEnvelope = signedLegacyEnvelopeForTest(
+      current,
+      crashing.dependencies.maintenanceSigner!,
+    );
+    const legacy = durableLegacyRecordForTest(current, legacyEnvelope);
+    const currentPath = maintenanceGrantRecordPathForTest(
+      fixture.stateRoot,
+      current.envelope.payload.grantId,
+    );
+    const legacyPath = maintenanceGrantRecordPathForTest(
+      fixture.stateRoot,
+      legacy.envelope.payload.grantId,
+    );
+    const legacyBytes = `${canonicalJson(legacy)}\n`;
+    fs.writeFileSync(legacyPath, legacyBytes, { flag: 'wx', mode: 0o600 });
+    fs.unlinkSync(currentPath);
+
+    const childWorkspacePath = legacy.summary.childWorkspace.path;
+    assert.equal(fs.existsSync(childWorkspacePath), false);
+    const before = mutationBoundarySnapshot(fixture, childWorkspacePath);
+    assert.throws(
+      () => intervene(fixture, humanDependencies(fixture).dependencies),
+      hasCode('MAINTENANCE_GRANT_RECORD_CORRUPT'),
+    );
+    assert.deepEqual(
+      mutationBoundarySnapshot(fixture, childWorkspacePath),
+      before,
+    );
+    assert.equal(fs.readFileSync(legacyPath, 'utf8'), legacyBytes);
   } finally {
     fixture.cleanup();
   }
