@@ -3,7 +3,6 @@ import { SCAN_HIT_MAX_CONTEXT_BYTES, } from "./investigation-scanner.js";
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../../foundation/errors/errors.js";
 import { assertStoredEvidenceNode, createEvidenceNode, } from "../../../adapters/planning/investigation/evidence-node.js";
-import { validateClosedEvidenceDag } from "../../../adapters/planning/investigation/evidence-currentness.js";
 import { assertMutationClassPolicy, assertPathIdentity, classifyMutationPath, MUTATION_CLASSES, } from "../../source/mutation-class-policy.js";
 const EVALUATOR = 'investigation-groups.v1';
 const HIT_TYPE = 'investigation-hit';
@@ -93,8 +92,8 @@ function assertContextWindow(value, invalid) {
 /**
  * Derive mechanical Hit and Group facts directly from the scanner domain
  * result. This is the manifest-first path: it neither accepts nor constructs a
- * generic evidence envelope. The legacy v2 adapter below remains independent
- * so it can serve as a transition-time parity oracle.
+ * generic evidence envelope. Historical artifact materialization uses the
+ * narrower replay primitives below and cannot author a new v2 grouping.
  */
 export function deriveInvestigationGroupFacts(input) {
     const { scanFacts } = input;
@@ -177,38 +176,6 @@ export function deriveInvestigationGroupFacts(input) {
             .map(({ summary }) => summary)
             .sort((left, right) => left.hitKey < right.hitKey ? -1 : left.hitKey > right.hitKey ? 1 : 0),
         groups,
-    };
-}
-/**
- * Deterministically project one hit node per raw-byte occurrence and conservative
- * groups keyed by term, nearest declared root, extension, mutation class, and any
- * single reviewed relationship. Output is independent of scan/root/relationship
- * input order and of unrelated terms. Explicit exceptions only split coverage;
- * ambiguous roots or relationships, an invalid policy, or a spoofed path fail
- * closed.
- */
-export function deriveInvestigationGroups(input) {
-    const context = normalizeContext(input.mutationPolicy, input.declaredRoots, input.reviewedRelationships);
-    const baseGroups = new Map();
-    const hitBaseSelector = new Map();
-    const hitRecords = deriveInvestigationHitRecords(input.scanNodes);
-    for (const record of hitRecords) {
-        const selector = baseSelectorFor(record.summary.termId, record.summary, context);
-        let group = baseGroups.get(selector.selectorId);
-        if (!group) {
-            group = { selector, members: new Map(), exceptions: [] };
-            baseGroups.set(selector.selectorId, group);
-        }
-        group.members.set(record.hitId, record);
-        hitBaseSelector.set(record.hitId, selector.selectorId);
-    }
-    const finalGroups = applyExceptions(baseGroups, hitBaseSelector, input.exceptions);
-    const groupNodes = finalGroups
-        .map((group) => buildGroupNode(group, context.groupingPolicyDigest))
-        .sort(byNodeId);
-    return {
-        hitNodes: hitRecords.map(({ node }) => node).sort(byNodeId),
-        groupNodes,
     };
 }
 /**
@@ -396,62 +363,6 @@ export function createInvestigationCoverageNode(input) {
         },
         runtimeMetadata: {},
     });
-}
-/**
- * Recompute the hit and group projection from the scans and grouping context and
- * reject any envelope whose engine-derived output does not match. Each disposition
- * envelope is recomputed from its parsed semantic answer and current group and
- * compared by node ID and result digest — enforcing policy, exact-input, and
- * exact parent maps, not only output equality — as an exact one-per-group
- * partition. The coverage node is recomputed and the closed provenance DAG is
- * checked. Any forged hit, group, disposition, or coverage output fails closed.
- */
-export function validateInvestigationEvidenceDag(input) {
-    const recomputed = deriveInvestigationGroups({
-        scanNodes: input.scanNodes,
-        mutationPolicy: input.mutationPolicy,
-        declaredRoots: input.declaredRoots,
-        reviewedRelationships: input.reviewedRelationships,
-        exceptions: input.exceptions,
-    });
-    assertSameEnvelopes(recomputed.hitNodes, input.hitNodes);
-    assertSameEnvelopes(recomputed.groupNodes, input.groupNodes);
-    assertDispositionsPartitionGroups(input.groupNodes, input.dispositionNodes);
-    const recomputedCoverage = createInvestigationCoverageNode({
-        effectiveTermIds: input.effectiveTermIds,
-        scanNodes: input.scanNodes,
-        inventoryNode: input.inventoryNode,
-        hitNodes: input.hitNodes,
-        groupNodes: input.groupNodes,
-        dispositionNodes: input.dispositionNodes,
-    });
-    const coverage = assertStoredEvidenceNode(input.coverageNode, investigationDagInvalid);
-    if (recomputedCoverage.nodeId !== coverage.nodeId ||
-        recomputedCoverage.resultDigest !== coverage.resultDigest) {
-        throw investigationDagInvalid('Coverage node does not match recomputation.');
-    }
-    try {
-        validateClosedEvidenceDag([
-            ...input.scanNodes,
-            input.inventoryNode,
-            ...input.hitNodes,
-            ...input.groupNodes,
-            ...input.dispositionNodes,
-            input.coverageNode,
-        ]);
-    }
-    catch {
-        throw investigationDagInvalid('Closed investigation DAG is malformed.');
-    }
-    const coverageOutput = readInvestigationCoverageNode(coverage);
-    return {
-        valid: true,
-        scanCount: input.scanNodes.length,
-        zeroHitTermIds: coverageOutput.zeroHitTermIds,
-        hitCount: input.hitNodes.length,
-        groupCount: input.groupNodes.length,
-        dispositionCount: input.dispositionNodes.length,
-    };
 }
 export function readInvestigationHitNode(node) {
     const validated = assertNodeIdentity(node, HIT_TYPE, HIT_SCHEMA, EVALUATOR, HIT_OUTPUT_SCHEMA, groupsInvalid);
@@ -710,81 +621,6 @@ function relationshipFor(rawBase64, context) {
     }
     return null;
 }
-function applyExceptions(baseGroups, hitBaseSelector, exceptions) {
-    const splitGroups = new Map();
-    const seenExceptionIds = new Set();
-    const seenHitIds = new Set();
-    for (const exception of exceptions) {
-        const record = assertExactKeys(exception, [
-            'exceptionId',
-            'hitId',
-            'baseSelectorId',
-            'splitId',
-            'rationale',
-            'author',
-        ], groupsInvalid);
-        if (typeof record.exceptionId !== 'string' ||
-            record.exceptionId.length === 0 ||
-            typeof record.splitId !== 'string' ||
-            record.splitId.length === 0 ||
-            typeof record.hitId !== 'string' ||
-            typeof record.baseSelectorId !== 'string' ||
-            typeof record.rationale !== 'string' ||
-            record.rationale.trim().length === 0 ||
-            typeof record.author !== 'string' ||
-            record.author.trim().length === 0) {
-            throw groupsInvalid('Group exception is malformed.');
-        }
-        if (seenExceptionIds.has(exception.exceptionId)) {
-            throw groupsInvalid(`Duplicate exception ID: ${exception.exceptionId}`);
-        }
-        seenExceptionIds.add(exception.exceptionId);
-        if (seenHitIds.has(exception.hitId)) {
-            throw groupsInvalid('A hit may be split by at most one exception.');
-        }
-        seenHitIds.add(exception.hitId);
-        const baseSelectorId = hitBaseSelector.get(exception.hitId);
-        if (baseSelectorId === undefined) {
-            throw groupsInvalid('Exception targets an unknown hit.');
-        }
-        if (baseSelectorId !== exception.baseSelectorId) {
-            throw groupsInvalid('Exception base selector does not match the hit.');
-        }
-        const baseGroup = baseGroups.get(baseSelectorId);
-        const hitRecord = baseGroup.members.get(exception.hitId);
-        baseGroup.members.delete(exception.hitId);
-        const splitSelectorFields = {
-            termId: baseGroup.selector.termId,
-            rootId: baseGroup.selector.rootId,
-            extension: baseGroup.selector.extension,
-            mutationClass: baseGroup.selector.mutationClass,
-            relationshipId: baseGroup.selector.relationshipId,
-            splitId: exception.splitId,
-        };
-        const splitSelectorId = selectorId(splitSelectorFields);
-        let splitGroup = splitGroups.get(splitSelectorId);
-        if (!splitGroup) {
-            splitGroup = {
-                selector: { selectorId: splitSelectorId, ...splitSelectorFields },
-                members: new Map(),
-                exceptions: [],
-            };
-            splitGroups.set(splitSelectorId, splitGroup);
-        }
-        splitGroup.members.set(hitRecord.hitId, hitRecord);
-        splitGroup.exceptions.push(exception);
-    }
-    const finalGroups = [];
-    for (const group of baseGroups.values()) {
-        if (group.members.size > 0) {
-            finalGroups.push(group);
-        }
-    }
-    for (const group of splitGroups.values()) {
-        finalGroups.push(group);
-    }
-    return finalGroups;
-}
 function deriveInvestigationHitRecords(scanNodes) {
     const records = [];
     const seenTermIds = new Set();
@@ -950,46 +786,6 @@ function dispositionAnswerDigest(answer) {
             author: answer.author,
         },
     }));
-}
-function assertDispositionsPartitionGroups(groupNodes, dispositionNodes) {
-    try {
-        const groupsById = new Map();
-        for (const node of groupNodes) {
-            const output = readInvestigationGroupNode(node);
-            if (groupsById.has(output.groupId)) {
-                throw investigationDagInvalid('Duplicate group in evidence DAG.');
-            }
-            groupsById.set(output.groupId, { node, output });
-        }
-        const seen = new Set();
-        for (const node of dispositionNodes) {
-            const disposition = readInvestigationDispositionNode(node);
-            const group = groupsById.get(disposition.groupId);
-            if (!group || seen.has(disposition.groupId)) {
-                throw investigationDagInvalid('Disposition does not map one-to-one.');
-            }
-            seen.add(disposition.groupId);
-            const expected = buildDispositionNode(group, {
-                groupId: disposition.groupId,
-                classification: disposition.classification,
-                rationale: disposition.rationale,
-                author: disposition.author,
-            });
-            if (expected.nodeId !== node.nodeId ||
-                expected.resultDigest !== node.resultDigest) {
-                throw investigationDagInvalid('Disposition envelope is forged.');
-            }
-        }
-        if (seen.size !== groupsById.size) {
-            throw investigationDagInvalid('Dispositions do not cover every group.');
-        }
-    }
-    catch (error) {
-        if (error instanceof WorkflowError) {
-            throw investigationDagInvalid(error.message);
-        }
-        throw error;
-    }
 }
 function dedupeSourceObjects(sourceObjects) {
     const byId = new Map();
@@ -1408,19 +1204,6 @@ function assertSortedUniqueIds(value, pattern, invalid) {
         previous = item;
     }
     return array;
-}
-function assertSameEnvelopes(recomputed, provided) {
-    const expected = envelopeMap(recomputed);
-    const actual = envelopeMap(provided);
-    if (canonicalJson([...expected].sort()) !== canonicalJson([...actual].sort())) {
-        throw investigationDagInvalid('Provided evidence does not match the recomputed projection.');
-    }
-}
-function envelopeMap(nodes) {
-    return nodes.map((node) => {
-        const validated = assertStoredEvidenceNode(node, investigationDagInvalid);
-        return `${validated.nodeId}:${validated.resultDigest}`;
-    });
 }
 function byNodeId(left, right) {
     return left.nodeId < right.nodeId ? -1 : left.nodeId > right.nodeId ? 1 : 0;
