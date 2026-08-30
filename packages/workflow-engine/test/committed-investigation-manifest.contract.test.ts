@@ -64,7 +64,7 @@ test('committed change loading binds canonical v3 bytes to an immutable Git tree
   }
 });
 
-test('committed v3 loading rejects noncanonical, tampered, and historical schemas without fallback', () => {
+test('committed v3 loading rejects noncanonical, tampered, and non-current schemas without fallback', () => {
   for (const fixture of [
     {
       name: 'noncanonical',
@@ -85,14 +85,21 @@ test('committed v3 loading rejects noncanonical, tampered, and historical schema
       mutate(): string {
         return `${canonicalJson({ schemaVersion: 1 })}\n`;
       },
-      code: 'SCHEMA_V1_FORBIDDEN',
+      code: 'UNSUPPORTED_SCHEMA_VERSION',
     },
     {
       name: 'schema-v2',
       mutate(): string {
         return `${canonicalJson({ schemaVersion: 2 })}\n`;
       },
-      code: 'PROJECTION_PIPELINE_FORBIDDEN',
+      code: 'UNSUPPORTED_SCHEMA_VERSION',
+    },
+    {
+      name: 'schema-v4',
+      mutate(): string {
+        return `${canonicalJson({ schemaVersion: 4 })}\n`;
+      },
+      code: 'UNSUPPORTED_SCHEMA_VERSION',
     },
   ] as const) {
     const repository = committedV3Fixture();
