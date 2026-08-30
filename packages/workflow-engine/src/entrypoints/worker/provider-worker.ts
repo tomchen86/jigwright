@@ -44,7 +44,10 @@ import {
   TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
   TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
-import { assertTaskDiffReviewProviderOwnerCurrent } from '../../application/finalize/task-diff-review-lifecycle.ts';
+import {
+  assertTaskDiffReviewProviderOwnerCurrent,
+  withTaskDiffReviewProviderLifecycleOperation,
+} from '../../application/finalize/task-diff-review-lifecycle.ts';
 import {
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
   TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
@@ -61,10 +64,13 @@ import {
   completeProviderInvocationFromRunner,
   completeProviderInvocationFromRunnerUnderLifecycleLock,
   failProviderInvocation,
+  failProviderInvocationUnderLifecycleLock,
   prepareProviderInvocationAcceptanceBinding,
   providerCompletionCandidateExists,
   recoverProviderInvocationCompletion,
+  recoverProviderInvocationCompletionForWorkerUnderLifecycleLock,
   releaseProviderInvocationWorkerFence,
+  releaseProviderInvocationWorkerFenceUnderLifecycleLock,
   readPlanReviewSnapshotRuntime,
   readProviderInvocation,
   readProviderInvocationRuntimeReceipt,
@@ -85,8 +91,10 @@ import {
 import { runEvidenceRetentionMaintenance } from '../../runtime/provider-execution/retention-control.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import {
+  assertActiveTaskMandateBindingUnderLifecycleLock,
   recordTaskMandateProviderInvocationUnderLifecycleLock,
   withActiveTaskMandateBinding,
+  type TaskMandateBinding,
 } from '../../modules/authority/task-mandate.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
 
@@ -253,6 +261,52 @@ type ProviderWorkerExecution = (
   options: AgentRuntimeSingleShotOptions,
 ) => AgentRuntimeSingleShotReport | Promise<AgentRuntimeSingleShotReport>;
 
+function withCurrentTaskDiffReviewProviderLifecycle<T>(
+  cwd: string,
+  invocation: ProviderInvocationRecord,
+  sessionId: string,
+  operation: (assertOwned: () => void) => T,
+): T {
+  return withTaskDiffReviewProviderLifecycleOperation(
+    cwd,
+    sessionId,
+    (assertOwned) => {
+      assertOwned();
+      const owner = assertTaskDiffReviewProviderOwnerCurrent(
+        cwd,
+        invocation.invocationId,
+        {
+          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+        },
+      );
+      if (
+        owner.sessionId !== sessionId ||
+        owner.changeId !== invocation.changeId ||
+        canonicalJson(owner.mandateBinding ?? null) !==
+          canonicalJson(invocation.mandateBinding ?? null)
+      ) {
+        throw workflowError(
+          'TASK_MANDATE_BINDING_STALE',
+          'TaskDiffReview provider invocation no longer matches its exact durable owner.',
+          ExitCode.staleState,
+        );
+      }
+      if (
+        invocation.mandateBinding !== undefined &&
+        invocation.mandateBinding !== null
+      ) {
+        assertActiveTaskMandateBindingUnderLifecycleLock(
+          cwd,
+          invocation.mandateBinding,
+          assertOwned,
+        );
+      }
+      assertOwned();
+      return operation(assertOwned);
+    },
+  );
+}
+
 function runProviderWorkerWithExecution(
   cwd: string,
   requestedInvocationId: string,
@@ -263,15 +317,41 @@ function runProviderWorkerWithExecution(
 ): ProviderWorkerResult | Promise<ProviderWorkerResult> {
   const context = loadInvestigationRuntimeContext(cwd);
   let initial = readProviderInvocation(context.runtime, requestedInvocationId);
+  const request = readProviderInvocationRequest(
+    context.runtime,
+    initial.invocationId,
+  );
+  const taskDiffReviewOwner =
+    request.purpose === 'task-diff-review' &&
+    initial.state !== 'succeeded' &&
+    initial.state !== 'failed'
+      ? assertTaskDiffReviewProviderOwnerCurrent(cwd, initial.invocationId, {
+          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+        })
+      : null;
   if (
     initial.state === 'leased' &&
     providerCompletionCandidateExists(context.runtime, initial.invocationId)
   ) {
-    initial = recoverProviderInvocationCompletion(
-      context.runtime,
-      initial.invocationId,
-      { expectedRevision: initial.revision },
-    ).record;
+    initial =
+      taskDiffReviewOwner === null
+        ? recoverProviderInvocationCompletion(
+            context.runtime,
+            initial.invocationId,
+            { expectedRevision: initial.revision },
+          ).record
+        : withCurrentTaskDiffReviewProviderLifecycle(
+            cwd,
+            initial,
+            taskDiffReviewOwner.sessionId,
+            (assertOwned) =>
+              recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(
+                context.runtime,
+                initial.invocationId,
+                { expectedRevision: initial.revision },
+                assertOwned,
+              ).record,
+          );
   }
   if (initial.state !== 'prepared') {
     if (initial.state === 'succeeded' || initial.state === 'failed') {
@@ -280,16 +360,6 @@ function runProviderWorkerWithExecution(
     return renderWorkerResult(initial, false);
   }
 
-  const request = readProviderInvocationRequest(
-    context.runtime,
-    initial.invocationId,
-  );
-  const taskDiffReviewOwner =
-    request.purpose === 'task-diff-review'
-      ? assertTaskDiffReviewProviderOwnerCurrent(cwd, initial.invocationId, {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        })
-      : null;
   const taskStrategyImplementationOwner =
     request.purpose === 'task-implementation'
       ? assertTaskStrategyImplementationProviderOwnerCurrent(
@@ -313,68 +383,80 @@ function runProviderWorkerWithExecution(
     leaseDurationMs: request.limits.timeoutMs,
     expectedRevision: initial.revision,
   };
+  const claimWithActiveMandate = (
+    activeBinding: TaskMandateBinding,
+    assertOwned: () => void,
+  ) => {
+    const owner =
+      taskDiffReviewOwner !== null
+        ? assertTaskDiffReviewProviderOwnerCurrent(cwd, initial.invocationId, {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+          })
+        : taskStrategyImplementationOwner !== null
+          ? assertTaskStrategyImplementationProviderOwnerCurrent(
+              cwd,
+              initial.invocationId,
+            )
+          : isProposeExemptionInvestigationId(initial.investigationId)
+            ? readProposeExemptionSession(
+                context.runtime,
+                initial.investigationId,
+              )
+            : readInvestigationSession(
+                context.runtime,
+                initial.investigationId,
+              );
+    if (
+      owner.changeId !== initial.changeId ||
+      canonicalJson(owner.mandateBinding ?? null) !==
+        canonicalJson(activeBinding) ||
+      canonicalJson(initial.mandateBinding) !== canonicalJson(activeBinding)
+    ) {
+      throw workflowError(
+        'TASK_MANDATE_BINDING_STALE',
+        'Provider worker invocation no longer matches its durable Task Mandate owner.',
+        ExitCode.staleState,
+      );
+    }
+    recordTaskMandateProviderInvocationUnderLifecycleLock(
+      cwd,
+      activeBinding,
+      {
+        providerId: request.providerId,
+        invocationId: initial.invocationId,
+        requestDigest: request.requestDigest,
+        occurredAt: initial.createdAt,
+      },
+      assertOwned,
+    );
+    return claimProviderInvocationForWorkerUnderLifecycleLock(
+      context.runtime,
+      initial.invocationId,
+      claimInput,
+      assertOwned,
+    );
+  };
   const claim = initial.mandateBinding
-    ? withActiveTaskMandateBinding(
-        cwd,
-        initial.mandateBinding.mandateTaskId,
-        {},
-        (activeBinding, assertOwned) => {
-          const owner =
-            taskDiffReviewOwner !== null
-              ? assertTaskDiffReviewProviderOwnerCurrent(
-                  cwd,
-                  initial.invocationId,
-                  {
-                    consumedRoleResultReplay:
-                      productionConsumedRoleResultReplayPort,
-                  },
-                )
-              : taskStrategyImplementationOwner !== null
-                ? assertTaskStrategyImplementationProviderOwnerCurrent(
-                    cwd,
-                    initial.invocationId,
-                  )
-                : isProposeExemptionInvestigationId(initial.investigationId)
-                  ? readProposeExemptionSession(
-                      context.runtime,
-                      initial.investigationId,
-                    )
-                  : readInvestigationSession(
-                      context.runtime,
-                      initial.investigationId,
-                    );
-          if (
-            owner.changeId !== initial.changeId ||
-            canonicalJson(owner.mandateBinding ?? null) !==
-              canonicalJson(activeBinding) ||
-            canonicalJson(initial.mandateBinding) !==
-              canonicalJson(activeBinding)
-          ) {
-            throw workflowError(
-              'TASK_MANDATE_BINDING_STALE',
-              'Provider worker invocation no longer matches its durable Task Mandate owner.',
-              ExitCode.staleState,
-            );
-          }
-          recordTaskMandateProviderInvocationUnderLifecycleLock(
-            cwd,
-            activeBinding,
-            {
-              providerId: request.providerId,
-              invocationId: initial.invocationId,
-              requestDigest: request.requestDigest,
-              occurredAt: initial.createdAt,
-            },
-            assertOwned,
-          );
-          return claimProviderInvocationForWorkerUnderLifecycleLock(
-            context.runtime,
-            initial.invocationId,
-            claimInput,
-            assertOwned,
-          );
-        },
-      )
+    ? taskDiffReviewOwner !== null
+      ? withTaskDiffReviewProviderLifecycleOperation(
+          cwd,
+          taskDiffReviewOwner.sessionId,
+          (assertOwned) =>
+            claimWithActiveMandate(
+              assertActiveTaskMandateBindingUnderLifecycleLock(
+                cwd,
+                initial.mandateBinding!,
+                assertOwned,
+              ),
+              assertOwned,
+            ),
+        )
+      : withActiveTaskMandateBinding(
+          cwd,
+          initial.mandateBinding.mandateTaskId,
+          {},
+          claimWithActiveMandate,
+        )
     : claimProviderInvocationForWorker(
         context.runtime,
         initial.invocationId,
@@ -423,28 +505,43 @@ function runProviderWorkerWithExecution(
         ? {}
         : { runtimeProgress: runtimeProgress() }),
     };
-    return taskStrategyImplementationOwner === null
-      ? completeProviderInvocationFromRunner(
+    if (taskDiffReviewOwner !== null) {
+      return withCurrentTaskDiffReviewProviderLifecycle(
+        cwd,
+        initial,
+        taskDiffReviewOwner.sessionId,
+        (assertOwned) =>
+          completeProviderInvocationFromRunnerUnderLifecycleLock(
+            context.runtime,
+            request.invocationId,
+            completion,
+            assertOwned,
+          ),
+      );
+    }
+    if (taskStrategyImplementationOwner === null) {
+      return completeProviderInvocationFromRunner(
+        context.runtime,
+        request.invocationId,
+        completion,
+      );
+    }
+    return withRepositoryLifecycleOperation(
+      context.lifecycleRuntime,
+      (assertOwned) => {
+        assertTaskStrategyImplementationProviderOwnerCurrent(
+          cwd,
+          request.invocationId,
+        );
+        assertOwned();
+        return completeProviderInvocationFromRunnerUnderLifecycleLock(
           context.runtime,
           request.invocationId,
           completion,
-        )
-      : withRepositoryLifecycleOperation(
-          context.lifecycleRuntime,
-          (assertOwned) => {
-            assertTaskStrategyImplementationProviderOwnerCurrent(
-              cwd,
-              request.invocationId,
-            );
-            assertOwned();
-            return completeProviderInvocationFromRunnerUnderLifecycleLock(
-              context.runtime,
-              request.invocationId,
-              completion,
-              assertOwned,
-            );
-          },
+          assertOwned,
         );
+      },
+    );
   };
   const failWithError = (
     error: unknown,
@@ -453,7 +550,7 @@ function runProviderWorkerWithExecution(
     const failure = classifyProviderFailure(error);
     const repair = extractProviderRepairFailure(error, semantic.schema);
     const protocolReceipt = runtimeFailureProtocolReceipt?.() ?? null;
-    return failProviderInvocation(context.runtime, request.invocationId, {
+    const failureInput = {
       expectedRevision: claim.record.revision,
       leaseGeneration: claim.record.leaseGeneration,
       leaseToken: claim.leaseToken,
@@ -468,7 +565,25 @@ function runProviderWorkerWithExecution(
             },
           }),
       ...(repair === null ? {} : { repair }),
-    });
+    };
+    return taskDiffReviewOwner === null
+      ? failProviderInvocation(
+          context.runtime,
+          request.invocationId,
+          failureInput,
+        )
+      : withCurrentTaskDiffReviewProviderLifecycle(
+          cwd,
+          initial,
+          taskDiffReviewOwner.sessionId,
+          (assertOwned) =>
+            failProviderInvocationUnderLifecycleLock(
+              context.runtime,
+              request.invocationId,
+              failureInput,
+              assertOwned,
+            ),
+        );
   };
   const renderTerminal = (
     terminal: ProviderInvocationRecord,
@@ -476,12 +591,28 @@ function runProviderWorkerWithExecution(
     runTerminalFollowups(cwd, terminal, options);
     return renderWorkerResult(terminal, true);
   };
-  const releaseWorkerFence = () =>
-    releaseProviderInvocationWorkerFence(
-      context.runtime,
-      request.invocationId,
-      claim.workerFenceToken,
+  const releaseWorkerFence = () => {
+    if (taskDiffReviewOwner === null) {
+      releaseProviderInvocationWorkerFence(
+        context.runtime,
+        request.invocationId,
+        claim.workerFenceToken,
+      );
+      return;
+    }
+    withCurrentTaskDiffReviewProviderLifecycle(
+      cwd,
+      initial,
+      taskDiffReviewOwner.sessionId,
+      (assertOwned) =>
+        releaseProviderInvocationWorkerFenceUnderLifecycleLock(
+          context.runtime,
+          request.invocationId,
+          claim.workerFenceToken,
+          assertOwned,
+        ),
     );
+  };
   let releaseSynchronously = true;
   let preparedAcceptanceBinding: ProviderInvocationAcceptanceBinding | null =
     null;

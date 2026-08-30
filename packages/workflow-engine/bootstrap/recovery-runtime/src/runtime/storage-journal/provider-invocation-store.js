@@ -971,17 +971,21 @@ function createProviderWorkerFence(paths, record, ownerToken) {
     createPrivateCanonicalJson(paths, providerWorkerFencePath(paths, record.invocationId), fence, providerWorkerFenceUnsafe, 'PROVIDER_INVOCATION_WORKER_FENCE_CONFLICT');
 }
 export function releaseProviderInvocationWorkerFence(paths, requestedInvocationId, ownerToken) {
+    withProviderWorkerLifecycle(paths, (assertOwned) => releaseProviderInvocationWorkerFenceUnderLifecycleLock(paths, requestedInvocationId, ownerToken, assertOwned));
+}
+export function releaseProviderInvocationWorkerFenceUnderLifecycleLock(paths, requestedInvocationId, ownerToken, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);
-    withProviderWorkerLifecycle(paths, () => {
-        const fence = readProviderWorkerFence(paths, invocationId);
-        if (fence === null ||
-            fence.ownerToken !== ownerToken ||
-            fence.pid !== process.pid) {
-            throw providerWorkerFenceUnsafe();
-        }
-        fs.unlinkSync(providerWorkerFencePath(paths, invocationId));
-        fsyncDirectory(paths.locks);
-    });
+    assertOwned();
+    const fence = readProviderWorkerFence(paths, invocationId);
+    if (fence === null ||
+        fence.ownerToken !== ownerToken ||
+        fence.pid !== process.pid) {
+        throw providerWorkerFenceUnsafe();
+    }
+    assertOwned();
+    fs.unlinkSync(providerWorkerFencePath(paths, invocationId));
+    fsyncDirectory(paths.locks);
+    assertOwned();
 }
 export function assertProviderWorkersQuiescentUnderLifecycleLock(paths) {
     const stats = fs.lstatSync(paths.locks, { throwIfNoEntry: false });
@@ -1217,24 +1221,26 @@ export function providerCompletionCandidateExists(paths, requestedInvocationId) 
  * This path never scans or materializes historical invocation journals.
  */
 export function recoverProviderInvocationCompletion(paths, requestedInvocationId, input) {
+    return withProviderWorkerLifecycle(paths, (assertOwned) => recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned));
+}
+export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);
-    return withProviderWorkerLifecycle(paths, (assertOwned) => {
-        const current = readProviderInvocation(paths, invocationId);
-        const request = readProviderInvocationRequest(paths, invocationId);
-        const projection = projectProviderInvocationExecution({
-            record: current,
-            request,
-        });
-        const durable = readExecutionJobState(paths, projection.job.jobId);
-        const result = durable?.results.find(({ attemptId }) => attemptId === projection.attempt.attemptId);
-        if (result === undefined || result.acceptance !== 'accepted') {
-            throw workflowError('PROVIDER_COMPLETION_RECOVERY_STATE_MISSING', 'Completion recovery requires the exact accepted current Attempt result.', ExitCode.staleState);
-        }
-        return recoverProviderInvocationCompletionUnderLifecycleLock(paths, invocationId, {
-            expectedLegacyRevision: input.expectedRevision,
-            acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
-        }, assertOwned);
+    assertOwned();
+    const current = readProviderInvocation(paths, invocationId);
+    const request = readProviderInvocationRequest(paths, invocationId);
+    const projection = projectProviderInvocationExecution({
+        record: current,
+        request,
     });
+    const durable = readExecutionJobState(paths, projection.job.jobId);
+    const result = durable?.results.find(({ attemptId }) => attemptId === projection.attempt.attemptId);
+    if (result === undefined || result.acceptance !== 'accepted') {
+        throw workflowError('PROVIDER_COMPLETION_RECOVERY_STATE_MISSING', 'Completion recovery requires the exact accepted current Attempt result.', ExitCode.staleState);
+    }
+    return recoverProviderInvocationCompletionUnderLifecycleLock(paths, invocationId, {
+        expectedLegacyRevision: input.expectedRevision,
+        acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
+    }, assertOwned);
 }
 /**
  * Finalize only an already-durable Attempt result. The caller must hold the
@@ -1487,10 +1493,14 @@ function providerExecutionHistory(paths, investigationId, purpose, beforeAttempt
         left.record.invocationId.localeCompare(right.record.invocationId));
 }
 export function failProviderInvocation(paths, requestedInvocationId, input) {
+    return withProviderWorkerLifecycle(paths, (assertOwned) => failProviderInvocationUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned));
+}
+export function failProviderInvocationUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);
     const now = parseNow(input.now);
     const failure = assertProviderFailure(input.failure);
-    return withProviderWorkerLifecycle(paths, () => updateProviderInvocation(paths, invocationId, input.expectedRevision, (current) => {
+    assertOwned();
+    const failed = updateProviderInvocation(paths, invocationId, input.expectedRevision, (current) => {
         assertCurrentLease(current, input.leaseGeneration, input.leaseToken, now);
         if (input.repair !== undefined) {
             persistProviderRepairEvidence(paths, {
@@ -1525,7 +1535,9 @@ export function failProviderInvocation(paths, requestedInvocationId, input) {
             ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
             updatedAt: new Date(now).toISOString(),
         };
-    }));
+    });
+    assertOwned();
+    return failed;
 }
 function createAgentRuntimeCompletionReceipt(input) {
     assertProviderAcceptanceBinding(input.acceptanceBinding);

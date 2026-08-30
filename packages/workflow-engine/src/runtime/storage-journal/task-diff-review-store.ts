@@ -1679,7 +1679,10 @@ function parseMandateBinding(
     !isDigest(value.mandateDigest) ||
     value.changeId !== expectedChangeId ||
     !isIdentity(value.changeId) ||
-    !isIdentity(value.externalAuditRoot)
+    !isAbsolutePath(value.externalAuditRoot) ||
+    path.normalize(value.externalAuditRoot) !== value.externalAuditRoot ||
+    Buffer.byteLength(value.externalAuditRoot) > 4096 ||
+    value.externalAuditRoot.includes('\0')
   ) {
     throw storeUnsafe();
   }

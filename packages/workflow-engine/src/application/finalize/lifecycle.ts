@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertCommitObject } from '../../runtime/repository-transaction/commit-object-validation.ts';
 import {
   createDocumentationClosureRecord,
@@ -65,6 +66,7 @@ import {
   removeFinalizeTransaction,
   readFinalizeTransaction,
   type FinalizeTransaction,
+  type ProtectedTaskApplyAuthorizationBinding,
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
   finalizeTaskUnlocked,
@@ -125,6 +127,8 @@ import {
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
 import { resolveTaskAuthorizationRequirement } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import type { ProtectedTaskApplyFinalizationParametersV1 } from '../../modules/authority/protected-task-apply-grant.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 
 export type CompleteTaskResult = {
   session: WorkflowSession;
@@ -162,6 +166,31 @@ export type FinalizeSessionOptions = Readonly<{
   consumedRoleResultReplay?: TaskDiffReviewCompletionGateOptions['consumedRoleResultReplay'];
   onCheckEscalation?: FinalizeTaskOptions['onCheckEscalation'];
   testCrashAfter?: FinalizeTaskOptions['testCrashAfter'] | 'finalized';
+}>;
+
+export type ProtectedTaskApplyLifecycleState = Readonly<{
+  phase: 'pending' | 'in-progress' | 'completed';
+  changeId: string;
+  sessionId: string;
+  taskId: string;
+  branch: string;
+  baseline: WorkflowSession['baseline'];
+  mandateBinding: NonNullable<WorkflowSession['mandateBinding']>;
+  changedPaths: readonly string[];
+  commitMessage: string;
+  fullGate: boolean;
+  stateFingerprint: `sha256:${string}`;
+  transactionId: string | null;
+  commitHash: string | null;
+  authorization: Readonly<{
+    changeId: string;
+    taskId: string;
+    mandateTaskId: string;
+    changedPaths: readonly string[];
+    roles: readonly string[];
+    matchedPatterns: readonly string[];
+    unclassifiedScope: boolean;
+  }> | null;
 }>;
 
 type TaskDiffReviewReplayOptions = Pick<
@@ -208,6 +237,11 @@ export function cancelFinalizeRecovery(
       config.runtimeDirectory,
     );
     const archived = readFinalizeCancellation(runtime.root, transactionId);
+    if (archived?.transaction.protectedApply !== undefined) {
+      throw protectedTaskApplyCancellationRequiresGrantRecovery(
+        archived.transaction.protectedApply.challengeId,
+      );
+    }
     if (archived?.phase === 'completed') {
       assertCancellationRequest(archived, session, git, transactionId, reason);
       removeCancelledActiveTransaction(runtime.root, archived);
@@ -220,6 +254,11 @@ export function cancelFinalizeRecovery(
     if (transaction === null || transaction.transactionId !== transactionId) {
       throw invalidFinalizeCancellation(
         'The requested ambiguous finalize transaction is not active.',
+      );
+    }
+    if (transaction.protectedApply !== undefined) {
+      throw protectedTaskApplyCancellationRequiresGrantRecovery(
+        transaction.protectedApply.challengeId,
       );
     }
     assertFinalizeTransactionMatchesSession(transaction, session, git);
@@ -286,6 +325,16 @@ export function inspectFinalizeRecoveryStatus(
   const transaction = readFinalizeTransaction(runtime.root, session.sessionId);
   if (transaction === null) return null;
   assertFinalizeTransactionMatchesSession(transaction, session, git);
+  if (transaction.protectedApply !== undefined) {
+    return {
+      state:
+        transaction.phase === 'completed' ? 'completed' : 'recovery-required',
+      transactionId: transaction.transactionId,
+      phase: transaction.phase,
+      retrySafe: transaction.phase !== 'checks-running',
+      recoveryCommand: `pnpm workflow grant human recover ${transaction.protectedApply.challengeId} --json`,
+    };
+  }
   if (transaction.phase === 'checks-running') {
     return {
       state: 'recovery-required',
@@ -406,56 +455,129 @@ export function finalizeSession(
   options: FinalizeSessionOptions = {},
 ): FinalizeSessionResult {
   validateCommitSubject(subject);
-  return runSessionOperation(cwd, requestedSessionId, () => {
-    const observed = getSession(cwd, requestedSessionId);
-    let finalized: FinalizeTaskResult;
-    if (observed.state === 'committed') {
-      finalized = replayCompletedFinalize(cwd, observed);
-    } else {
-      assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
-      finalized = finalizeTaskUnlocked(cwd, requestedSessionId, environment, {
-        ...(options.fullGate === true ? { fullGate: true } : {}),
-        ...(options.consumedRoleResultReplay === undefined
-          ? {}
-          : {
-              consumedRoleResultReplay: options.consumedRoleResultReplay,
-            }),
-        ...(options.onCheckEscalation
-          ? { onCheckEscalation: options.onCheckEscalation }
-          : {}),
-        ...(options.testCrashAfter && options.testCrashAfter !== 'finalized'
-          ? { testCrashAfter: options.testCrashAfter }
-          : {}),
-      });
-      if (options.testCrashAfter === 'finalized') {
-        throw new Error('Simulated finalize interruption after finalized.');
-      }
-    }
-    const committed = commitSessionUnlocked(
+  return runSessionOperation(cwd, requestedSessionId, () =>
+    finalizeSessionUnlocked(
       cwd,
       requestedSessionId,
       subject,
       environment,
+      options,
+      null,
+    ),
+  );
+}
+
+export function finalizeProtectedTaskApplyUnderGrant(
+  cwd: string,
+  parameters: ProtectedTaskApplyFinalizationParametersV1,
+  authorization: ProtectedTaskApplyAuthorizationBinding,
+  assertLifecycleOwned: () => void,
+  environment: NodeJS.ProcessEnv = process.env,
+): FinalizeSessionResult {
+  validateCommitSubject(parameters.commitMessage);
+  assertProtectedApplyAuthorizationMatchesParameters(authorization, parameters);
+  const repository = discoverRepository(cwd);
+  const workflowConfig = loadWorkflowConfig(repository.repositoryRoot);
+  assertPreparedProtectedTaskApplyAuthorization(
+    runtimePaths(repository.gitCommonDirectory, workflowConfig.runtimeDirectory)
+      .root,
+    authorization,
+    parameters,
+  );
+  return runSessionOperation(cwd, parameters.sessionId, () => {
+    assertLifecycleOwned();
+    assertProtectedTaskApplyParametersCurrent(cwd, parameters);
+    assertLifecycleOwned();
+    const result = finalizeSessionUnlocked(
+      cwd,
+      parameters.sessionId,
+      parameters.commitMessage,
+      environment,
+      {
+        ...(parameters.fullGate === true ? { fullGate: true } : {}),
+        consumedRoleResultReplay: undefined,
+      },
+      { parameters, authorization },
     );
-    const facts = commitFacts(
-      finalized.session.repositoryRoot,
-      committed.commitHash,
-    );
-    if (facts.tree !== finalized.tree) {
-      throw workflowError(
-        'FINALIZE_TRANSACTION_DIVERGED',
-        'Managed finalize commit does not match its checked candidate tree.',
-        ExitCode.staleState,
+    assertLifecycleOwned();
+    return result;
+  });
+}
+
+function finalizeSessionUnlocked(
+  cwd: string,
+  requestedSessionId: string,
+  subject: string,
+  environment: NodeJS.ProcessEnv,
+  options: FinalizeSessionOptions,
+  protectedApply: Readonly<{
+    parameters: ProtectedTaskApplyFinalizationParametersV1;
+    authorization: ProtectedTaskApplyAuthorizationBinding;
+  }> | null,
+): FinalizeSessionResult {
+  const observed = getSession(cwd, requestedSessionId);
+  let finalized: FinalizeTaskResult;
+  if (observed.state === 'committed') {
+    if (protectedApply !== null) {
+      assertProtectedApplyTransactionAuthorization(
+        cwd,
+        observed,
+        protectedApply.authorization,
       );
     }
-    const { session: _activeSession, ...result } = finalized;
-    return {
-      ...result,
-      session: committed.session,
-      commitReportId: committed.reportId,
-      commitHash: committed.commitHash,
-    };
-  });
+    finalized = replayCompletedFinalize(cwd, observed);
+  } else {
+    if (protectedApply === null) {
+      assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
+    } else {
+      assertProtectedTaskApplyParametersCurrent(cwd, protectedApply.parameters);
+    }
+    finalized = finalizeTaskUnlocked(cwd, requestedSessionId, environment, {
+      ...(options.fullGate === true ? { fullGate: true } : {}),
+      ...(options.consumedRoleResultReplay === undefined
+        ? {}
+        : {
+            consumedRoleResultReplay: options.consumedRoleResultReplay,
+          }),
+      ...(options.onCheckEscalation
+        ? { onCheckEscalation: options.onCheckEscalation }
+        : {}),
+      ...(options.testCrashAfter && options.testCrashAfter !== 'finalized'
+        ? { testCrashAfter: options.testCrashAfter }
+        : {}),
+      ...(protectedApply === null
+        ? {}
+        : { protectedApply: protectedApply.authorization }),
+    });
+    if (options.testCrashAfter === 'finalized') {
+      throw new Error('Simulated finalize interruption after finalized.');
+    }
+  }
+  const committed = commitSessionUnlocked(
+    cwd,
+    requestedSessionId,
+    subject,
+    environment,
+    protectedApply?.authorization ?? null,
+  );
+  const facts = commitFacts(
+    finalized.session.repositoryRoot,
+    committed.commitHash,
+  );
+  if (facts.tree !== finalized.tree) {
+    throw workflowError(
+      'FINALIZE_TRANSACTION_DIVERGED',
+      'Managed finalize commit does not match its checked candidate tree.',
+      ExitCode.staleState,
+    );
+  }
+  const { session: _activeSession, ...result } = finalized;
+  return {
+    ...result,
+    session: committed.session,
+    commitReportId: committed.reportId,
+    commitHash: committed.commitHash,
+  };
 }
 
 export function finalizeTask(
@@ -572,6 +694,250 @@ function finalizeTransactionTaskPaths(
   ]);
   return changedPaths.filter(
     (changedPath) => !engineOwnedPaths.has(changedPath),
+  );
+}
+
+export function inspectProtectedTaskApplyLifecycleState(
+  cwd: string,
+  requestedSessionId: string,
+  commitMessage: string,
+  fullGate: boolean,
+  expectedParameters?: ProtectedTaskApplyFinalizationParametersV1,
+): ProtectedTaskApplyLifecycleState {
+  validateCommitSubject(commitMessage);
+  const session = getSession(cwd, requestedSessionId);
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const transaction = readFinalizeTransaction(runtime.root, session.sessionId);
+  const mandateBinding = session.mandateBinding;
+  if (mandateBinding === undefined || mandateBinding === null) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'Protected Apply requires the session exact Task Mandate binding.',
+    );
+  }
+
+  if (transaction === null) {
+    if (session.state !== 'active') {
+      throw protectedTaskApplyAuthorizationInvalid(
+        'Protected Apply has no durable finalize transaction for this terminal session.',
+      );
+    }
+    const inspection = inspectSession(cwd, session.sessionId);
+    const engineOwnedPaths = new Set(
+      session.implementationReconciliationPaths ?? [],
+    );
+    const changedPaths = inspection.changedPaths.filter(
+      (changedPath) => !engineOwnedPaths.has(changedPath),
+    );
+    const requirement = resolveTaskAuthorizationRequirement(
+      inspection.git.repositoryRoot,
+      inspection.contract.config,
+      changedPaths,
+    );
+    if (!requirement.requiresMandate) {
+      throw protectedTaskApplyAuthorizationInvalid(
+        'The current task diff does not require protected Apply authority.',
+      );
+    }
+    return Object.freeze({
+      phase: 'pending' as const,
+      changeId: session.changeId,
+      sessionId: session.sessionId,
+      taskId: session.taskId,
+      branch: session.branch,
+      baseline: session.baseline,
+      mandateBinding,
+      changedPaths: Object.freeze([...changedPaths]),
+      commitMessage,
+      fullGate,
+      stateFingerprint: protectedTaskApplyFingerprint({
+        phase: 'pending',
+        session,
+        repositoryFingerprint: inspection.fingerprint,
+        statusEntries: inspection.git.statusEntries,
+        requirement,
+        commitMessage,
+        fullGate,
+      }),
+      transactionId: null,
+      commitHash: null,
+      authorization: Object.freeze({
+        changeId: session.changeId,
+        taskId: session.taskId,
+        mandateTaskId: mandateBinding.mandateTaskId,
+        changedPaths: Object.freeze([...changedPaths]),
+        roles: Object.freeze([...requirement.roles]),
+        matchedPatterns: Object.freeze([...requirement.matchedPatterns]),
+        unclassifiedScope: requirement.unclassifiedScope,
+      }),
+    });
+  }
+
+  assertFinalizeTransactionMatchesSession(transaction, session, git);
+  if (transaction.protectedApply === undefined) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'The durable finalize transaction has no protected Apply authorization lineage.',
+    );
+  }
+  assertPreparedProtectedTaskApplyAuthorization(
+    runtime.root,
+    transaction.protectedApply,
+    expectedParameters,
+  );
+  if (expectedParameters !== undefined) {
+    assertProtectedApplyAuthorizationMatchesParameters(
+      transaction.protectedApply,
+      expectedParameters,
+    );
+  }
+  if (transaction.protectedApply.commitMessage !== commitMessage) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'The protected Apply commit subject changed after authorization.',
+    );
+  }
+  const changedPaths = finalizeTransactionTaskPaths(transaction, session);
+  const completed =
+    transaction.phase === 'completed' &&
+    session.state === 'committed' &&
+    session.commitHash !== undefined &&
+    session.commitHash !== null;
+  return Object.freeze({
+    phase: completed ? ('completed' as const) : ('in-progress' as const),
+    changeId: session.changeId,
+    sessionId: session.sessionId,
+    taskId: session.taskId,
+    branch: session.branch,
+    baseline: session.baseline,
+    mandateBinding,
+    changedPaths: Object.freeze([...changedPaths]),
+    commitMessage,
+    fullGate,
+    stateFingerprint: protectedTaskApplyFingerprint({
+      phase: completed ? 'completed' : 'in-progress',
+      transactionId: transaction.transactionId,
+      transactionDigest: transaction.recordDigest,
+      transactionPhase: transaction.phase,
+      sessionState: session.state,
+      commitHash: session.commitHash ?? null,
+      commitReportId: session.commitReportId ?? null,
+    }),
+    transactionId: transaction.transactionId,
+    commitHash: completed ? (session.commitHash ?? null) : null,
+    authorization: null,
+  });
+}
+
+function assertProtectedTaskApplyParametersCurrent(
+  cwd: string,
+  parameters: ProtectedTaskApplyFinalizationParametersV1,
+): void {
+  const observed = inspectProtectedTaskApplyLifecycleState(
+    cwd,
+    parameters.sessionId,
+    parameters.commitMessage,
+    parameters.fullGate === true,
+    parameters,
+  );
+  if (
+    canonicalJson({
+      changeId: observed.changeId,
+      sessionId: observed.sessionId,
+      taskId: observed.taskId,
+      branch: observed.branch,
+      baseline: observed.baseline,
+      mandateBinding: observed.mandateBinding,
+      changedPaths: observed.changedPaths,
+      commitMessage: observed.commitMessage,
+      fullGate: observed.fullGate,
+    }) !==
+    canonicalJson({
+      changeId: parameters.changeId,
+      sessionId: parameters.sessionId,
+      taskId: parameters.taskId,
+      branch: parameters.branch,
+      baseline: parameters.baseline,
+      mandateBinding: parameters.mandateBinding,
+      changedPaths: parameters.changedPaths,
+      commitMessage: parameters.commitMessage,
+      fullGate: parameters.fullGate === true,
+    })
+  ) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'The protected task changed after its exact Grant was prepared.',
+    );
+  }
+}
+
+function assertProtectedApplyAuthorizationMatchesParameters(
+  authorization: ProtectedTaskApplyAuthorizationBinding,
+  parameters: ProtectedTaskApplyFinalizationParametersV1,
+): void {
+  if (
+    authorization.transitionId !== 'task.protected-apply.finalize.v1' ||
+    authorization.stateBindingDigest !== parameters.stateBindingDigest ||
+    authorization.parametersDigest !==
+      protectedTaskApplyFingerprint(parameters) ||
+    authorization.commitMessage !== parameters.commitMessage
+  ) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'Protected Apply authorization does not bind the exact transition parameters.',
+    );
+  }
+}
+
+function assertProtectedApplyTransactionAuthorization(
+  cwd: string,
+  session: WorkflowSession,
+  authorization: ProtectedTaskApplyAuthorizationBinding,
+): FinalizeTransaction {
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const transaction = readFinalizeTransaction(runtime.root, session.sessionId);
+  if (transaction === null) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'Protected Apply finalize transaction is unavailable.',
+    );
+  }
+  assertFinalizeTransactionMatchesSession(transaction, session, git);
+  assertPreparedProtectedTaskApplyAuthorization(runtime.root, authorization);
+  if (
+    transaction.protectedApply === undefined ||
+    canonicalJson(transaction.protectedApply) !== canonicalJson(authorization)
+  ) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'Protected Apply finalize transaction belongs to another Grant operation.',
+    );
+  }
+  return transaction;
+}
+
+function protectedTaskApplyFingerprint(value: unknown): `sha256:${string}` {
+  return `sha256:${crypto
+    .createHash('sha256')
+    .update(canonicalJson(value))
+    .digest('hex')}`;
+}
+
+function protectedTaskApplyAuthorizationInvalid(message: string) {
+  return workflowError(
+    'PROTECTED_TASK_APPLY_AUTHORIZATION_INVALID',
+    message,
+    ExitCode.guard,
+  );
+}
+
+function protectedTaskApplyCancellationRequiresGrantRecovery(
+  challengeId: string,
+) {
+  return workflowError(
+    'PROTECTED_TASK_APPLY_GRANT_RECOVERY_REQUIRED',
+    'A protected Apply transaction cannot be cancelled outside its exact prepared Grant operation.',
+    ExitCode.guard,
+    {
+      recovery: `pnpm workflow grant human recover ${challengeId} --json`,
+    },
   );
 }
 
@@ -1163,6 +1529,7 @@ function commitSessionUnlocked(
   requestedSessionId: string,
   subject: string,
   environment: NodeJS.ProcessEnv,
+  protectedApply: ProtectedTaskApplyAuthorizationBinding | null = null,
 ): CommitSessionResult {
   const observed = getSession(cwd, requestedSessionId);
   if (observed.state === 'committed') {
@@ -1216,12 +1583,25 @@ function commitSessionUnlocked(
     [path.relative(inspection.git.repositoryRoot, inspection.tasksPath)],
     transitionPaths,
   );
-  assertProtectedTaskApplyNotRequired(
-    inspection.git.repositoryRoot,
-    inspection.contract.config,
-    inspection.session,
-    pathClassification.taskPaths,
-  );
+  if (protectedApply === null) {
+    assertProtectedTaskApplyNotRequired(
+      inspection.git.repositoryRoot,
+      inspection.contract.config,
+      inspection.session,
+      pathClassification.taskPaths,
+    );
+  } else {
+    assertProtectedApplyTransactionAuthorization(
+      cwd,
+      inspection.session,
+      protectedApply,
+    );
+    if (protectedApply.commitMessage !== subject) {
+      throw protectedTaskApplyAuthorizationInvalid(
+        'Protected Apply commit subject no longer matches its exact authorization.',
+      );
+    }
+  }
   const finishReport = readSessionReport(
     inspection,
     initialSession.finishReportId,

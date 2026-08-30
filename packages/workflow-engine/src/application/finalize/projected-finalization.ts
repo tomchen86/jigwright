@@ -17,6 +17,7 @@ import {
   removeFinalizeTransaction,
   type FinalizeTransaction,
   type FinalizeTransactionPhase,
+  type ProtectedTaskApplyAuthorizationBinding,
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import {
   resolveExplicitFinalizeChecks,
@@ -102,6 +103,8 @@ export type FinalizeTaskOptions = Readonly<{
     escalation: Exclude<FinalizeCheckEscalation, null>,
     requiredChecks: readonly string[],
   ) => void;
+  /** Internal exact authorization lineage; never accepted from a CLI caller. */
+  protectedApply?: ProtectedTaskApplyAuthorizationBinding;
   testCrashAfter?:
     | 'projection-prepared'
     | 'task-projected'
@@ -129,6 +132,7 @@ export function finalizeTaskUnlocked(
   if (existing !== null) {
     assertFinalizeTransactionIdentity(active, existing);
     assertExplicitCheckRequestMatches(active, existing, options);
+    assertProtectedApplyRequestMatches(existing, options);
     try {
       return continueFinalizeTransaction(cwd, existing, environment, options);
     } catch (error) {
@@ -241,6 +245,9 @@ export function finalizeTaskUnlocked(
           'write-tree',
         ]).trim(),
         createdAt: new Date().toISOString(),
+        ...(options.protectedApply === undefined
+          ? {}
+          : { protectedApply: options.protectedApply }),
       }),
     );
     maybeInterrupt(options, 'projection-prepared');
@@ -827,6 +834,23 @@ function assertExplicitCheckRequestMatches(
       },
     );
   }
+}
+
+function assertProtectedApplyRequestMatches(
+  transaction: FinalizeTransaction,
+  options: FinalizeTaskOptions,
+): void {
+  if (
+    JSON.stringify(transaction.protectedApply ?? null) ===
+    JSON.stringify(options.protectedApply ?? null)
+  ) {
+    return;
+  }
+  throw workflowError(
+    'FINALIZE_REQUEST_CHANGED',
+    'A durable protected Apply transaction can only resume under its exact Central Grant operation.',
+    ExitCode.conflict,
+  );
 }
 
 function assertFinalizeTransactionIdentity(

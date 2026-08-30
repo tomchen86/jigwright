@@ -11,7 +11,11 @@ import {
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../src/foundation/errors/errors.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
@@ -24,6 +28,23 @@ import {
   startPropose,
 } from '../src/application/propose/propose-orchestrator.ts';
 import { readProposeExemptionSession } from '../src/runtime/storage-journal/propose-exemption-store.ts';
+import {
+  grantStorePaths,
+  readGrantRecord,
+} from '../src/runtime/storage-journal/grant-store.ts';
+import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
+import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
+import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
+import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
+import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
+import {
+  runtimePaths,
+  withRepositoryLifecycleOperationAsync,
+} from '../src/runtime/session-workspace/session-store.ts';
+import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   claimProviderInvocation,
   failProviderInvocation,
@@ -52,6 +73,10 @@ import {
   type TaskMandateRequest,
 } from '../src/modules/authority/task-mandate.ts';
 import { resolveTaskAuthorizationRequirement } from '../src/adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import {
+  computeProtectedCapabilityEntryDigestsFromWorktree,
+  REQUIRED_PROTECTED_CAPABILITIES,
+} from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import {
   createFixtureRepository,
   git,
@@ -122,6 +147,10 @@ function prepareRepository(
     path.join(repository, 'workflow/maintainer-policy.json'),
     `${JSON.stringify(policy, null, 2)}\n`,
   );
+  fs.copyFileSync(
+    path.join(sourceRepositoryRoot, 'workflow/grant-policy.json'),
+    path.join(repository, 'workflow/grant-policy.json'),
+  );
   git(repository, [
     'remote',
     'add',
@@ -133,7 +162,10 @@ function prepareRepository(
   return repository;
 }
 
-function enableConditionalTaskAuthorization(repository: string): void {
+function enableConditionalTaskAuthorization(
+  repository: string,
+  protectedRole = 'lifecycle',
+): void {
   const configPath = path.join(repository, 'workflow/config.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<
     string,
@@ -141,7 +173,7 @@ function enableConditionalTaskAuthorization(repository: string): void {
   >;
   config.taskAuthorization = {
     pathRoleRegistry: 'workflow/path-roles.json',
-    mandateRequiredRoles: ['lifecycle'],
+    mandateRequiredRoles: [protectedRole],
   };
   fs.writeFileSync(configPath, `${canonicalJson(config)}\n`, 'utf8');
   fs.writeFileSync(
@@ -150,13 +182,50 @@ function enableConditionalTaskAuthorization(repository: string): void {
       schemaVersion: 1,
       kind: 'path-role-registry',
       roles: {
-        lifecycle: ['packages/workflow-engine/src/**'],
+        [protectedRole]: ['packages/workflow-engine/src/**'],
         ordinary: ['src/**'],
       },
     })}\n`,
     'utf8',
   );
-  git(repository, ['add', 'workflow/config.json', 'workflow/path-roles.json']);
+  const loaderPath =
+    'packages/workflow-engine/src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
+  const manifestPath = 'workflow/protected-capabilities.json';
+  const loaderTarget = path.join(repository, loaderPath);
+  fs.mkdirSync(path.dirname(loaderTarget), { recursive: true });
+  fs.writeFileSync(loaderTarget, 'export const fixtureLoader = true;\n');
+  const entries = REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
+    const entrypoints =
+      capability === 'authorization.verify'
+        ? [loaderPath, manifestPath]
+        : [manifestPath];
+    return {
+      capability,
+      entrypoints,
+      dependencies: [],
+      ...computeProtectedCapabilityEntryDigestsFromWorktree(repository, {
+        entrypoints,
+        dependencies: [],
+      }),
+    };
+  });
+  fs.writeFileSync(
+    path.join(repository, manifestPath),
+    `${canonicalJson({
+      kind: 'protected-capability-manifest.v1',
+      schemaVersion: 1,
+      manifestPath,
+      entries,
+    })}\n`,
+    'utf8',
+  );
+  git(repository, [
+    'add',
+    'workflow/config.json',
+    'workflow/path-roles.json',
+    manifestPath,
+    loaderPath,
+  ]);
   git(repository, ['commit', '-m', 'Enable conditional task authorization']);
 }
 
@@ -739,7 +808,7 @@ test('unclassified task scope remains ordinary unless policy explicitly protects
   }
 });
 
-test('protected start CLI requires and persists an exact task mandate', () => {
+test('protected finalize becomes one exact non-retry Central Fail-Grant while split paths stay hard', async () => {
   const keyDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'task-mandate-cli-key-'),
   );
@@ -750,7 +819,7 @@ test('protected start CLI requires and persists an exact task mandate', () => {
     'packages/workflow-engine/src/cli.ts',
   );
   try {
-    enableConditionalTaskAuthorization(protectedRepository);
+    enableConditionalTaskAuthorization(protectedRepository, 'control-plane');
     const guardPath = path.join(
       protectedRepository,
       'openspec/changes/demo-change/guard.json',
@@ -817,6 +886,8 @@ test('protected start CLI requires and persists an exact task mandate', () => {
       session: {
         sessionId: string;
         taskId: string;
+        branch: string;
+        baseline: { head: string; tree: string };
         mandateBinding: {
           schemaVersion: 1;
           mandateTaskId: string;
@@ -837,6 +908,9 @@ test('protected start CLI requires and persists an exact task mandate', () => {
       externalAuditRoot: externalAuditRoot(protectedRepository),
     });
     fs.writeFileSync(protectedPath, 'export const protectedDemo = 2;\n');
+    const protectedChangedPaths = [
+      'packages/workflow-engine/src/protected-demo.ts',
+    ];
     const finalized = spawnSync(
       process.execPath,
       [
@@ -850,18 +924,151 @@ test('protected start CLI requires and persists an exact task mandate', () => {
       ],
       { cwd: protectedRepository, encoding: 'utf8' },
     );
-    assert.notEqual(finalized.status, 0, finalized.stderr);
-    assert.match(
-      `${finalized.stdout}\n${finalized.stderr}`,
-      /PROTECTED_TASK_APPLY_REQUIRED/,
-    );
-    const protectedError = JSON.parse(finalized.stderr) as {
-      error: { recovery: string };
+    assert.equal(finalized.status, 0, finalized.stderr);
+    const protectedGrant = JSON.parse(finalized.stdout) as {
+      ok: boolean;
+      result: {
+        kind: string;
+        sessionId: string;
+        state: string;
+        nextAction: string;
+        failure: {
+          code: string;
+          details: {
+            changeId: string;
+            taskId: string;
+            mandateTaskId: string;
+            changedPaths: string[];
+            roles: string[];
+            matchedPatterns: string[];
+            unclassifiedScope: boolean;
+          };
+        };
+        grant: { challengeId: string; challengeDigest: string };
+        transitionAppliesOnDecision: boolean;
+        inputSchema: {
+          kind: string;
+          inspectCommand: string;
+          decisionCommand: string;
+          observeAfterDecision: string;
+          retryAfterDecision?: string;
+        };
+      };
     };
+    assert.equal(protectedGrant.ok, true);
+    assert.equal(protectedGrant.result.kind, 'workflow-fail-grant-required.v1');
+    assert.equal(protectedGrant.result.sessionId, output.session.sessionId);
+    assert.equal(protectedGrant.result.state, 'human-action-required');
+    assert.equal(protectedGrant.result.nextAction, 'human-action');
     assert.equal(
-      protectedError.error.recovery,
-      `pnpm workflow abort ${output.session.sessionId} --reason protected-apply-required --json`,
+      protectedGrant.result.failure.code,
+      'PROTECTED_TASK_APPLY_REQUIRED',
     );
+    assert.deepEqual(protectedGrant.result.failure.details, {
+      changeId: CHANGE_ID,
+      taskId: '1.1',
+      mandateTaskId: TASK_ID,
+      changedPaths: protectedChangedPaths,
+      roles: ['control-plane'],
+      matchedPatterns: ['packages/workflow-engine/src/**'],
+      unclassifiedScope: false,
+    });
+    assert.equal(protectedGrant.result.transitionAppliesOnDecision, true);
+    assert.equal(
+      protectedGrant.result.inputSchema.kind,
+      'central-grant-resolution.v1',
+    );
+    assert.match(
+      protectedGrant.result.inputSchema.inspectCommand,
+      /pnpm workflow grant human inspect/u,
+    );
+    assert.match(
+      protectedGrant.result.inputSchema.decisionCommand,
+      /pnpm workflow grant human decide/u,
+    );
+    assert.equal(
+      protectedGrant.result.inputSchema.observeAfterDecision,
+      `pnpm workflow status ${output.session.sessionId} --json`,
+    );
+    assert.equal(
+      protectedGrant.result.inputSchema.retryAfterDecision,
+      undefined,
+    );
+
+    const grant = readGrantRecord(
+      grantStorePaths(runtimeRoot(protectedRepository)),
+      protectedGrant.result.grant.challengeId,
+    );
+    assert.equal(grant.state, 'pending');
+    assert.equal(
+      grant.challenge.challengeDigest,
+      protectedGrant.result.grant.challengeDigest,
+    );
+    assert.equal(grant.challenge.sourceModuleId, 'task-finalization');
+    assert.equal(grant.challenge.failureCode, 'protected-task-apply-required');
+    assert.equal(
+      grant.challenge.stateBinding.kind,
+      'protected-task-apply-state.v1',
+    );
+    assert.deepEqual(
+      grant.challenge.choices.map(({ transitionId, resolutionKind }) => ({
+        transitionId,
+        resolutionKind,
+      })),
+      [
+        {
+          transitionId: 'task.protected-apply.finalize.v1',
+          resolutionKind: 'non-retry',
+        },
+      ],
+    );
+    const choice = grant.challenge.choices[0]!;
+    assert.deepEqual(choice.allowedReasonCodes, [
+      'approve-exact-protected-task-apply',
+    ]);
+    assert.equal(choice.reasonRequired, true);
+    const facts = grant.challenge.facts as {
+      repositoryId: string;
+      changeId: string;
+      sessionId: string;
+      taskId: string;
+      mandateBinding: unknown;
+      changedPaths: string[];
+    };
+    assert.equal(facts.repositoryId, 'github:R_fixture');
+    assert.equal(facts.changeId, CHANGE_ID);
+    assert.equal(facts.sessionId, output.session.sessionId);
+    assert.equal(facts.taskId, '1.1');
+    assert.deepEqual(facts.mandateBinding, output.session.mandateBinding);
+    assert.deepEqual(facts.changedPaths, protectedChangedPaths);
+    const parameters = choice.parameters as {
+      schemaVersion: number;
+      kind: string;
+      repositoryId: string;
+      changeId: string;
+      sessionId: string;
+      taskId: string;
+      branch: string;
+      baseline: { head: string; tree: string };
+      mandateBinding: unknown;
+      changedPaths: string[];
+      commitMessage: string;
+      stateBindingDigest: string;
+    };
+    assert.deepEqual(parameters, {
+      schemaVersion: 1,
+      kind: 'protected-task-apply-finalization.v1',
+      repositoryId: 'github:R_fixture',
+      changeId: CHANGE_ID,
+      sessionId: output.session.sessionId,
+      taskId: '1.1',
+      branch: output.session.branch,
+      baseline: output.session.baseline,
+      mandateBinding: output.session.mandateBinding,
+      changedPaths: protectedChangedPaths,
+      commitMessage: 'Update protected demo',
+      stateBindingDigest: grant.challenge.stateBinding.digest,
+    });
     for (const compatibleCommand of ['finalize-task', 'complete-task']) {
       const bypass = spawnSync(
         process.execPath,
@@ -891,6 +1098,142 @@ test('protected start CLI requires and persists an exact task mandate', () => {
         'utf8',
       ),
       /- \[ \] 1\.1/u,
+    );
+
+    const repositoryState = discoverRepository(protectedRepository);
+    const lifecycleRuntime = runtimePaths(
+      repositoryState.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const coordinator = createGrantCoordinatorKernel({
+      paths: grantStorePaths(lifecycleRuntime.root),
+      registry: createTransitionRegistry(
+        protectedTaskApplyGrantTransitionDefinitions(
+          createProductionProtectedTaskApplyGrantPort(protectedRepository),
+        ),
+      ),
+      policy: loadGrantPolicyV2(protectedRepository).policy,
+      openApprovalSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              approvalMethod: 'human-presence' as const,
+              reasonCode: 'approve-exact-protected-task-apply',
+              reason:
+                'Approve only the exact protected task finalization bound by this challenge.',
+              sessionNonce: 'nonce-55555555555555555555555555555555',
+            };
+          },
+          async authenticate(subject) {
+            return [
+              {
+                moduleId: 'human-gate-macos',
+                version: '1',
+                claims: ['fresh-local-device-owner'] as const,
+                approvalSubjectDigest: subject.approvalSubjectDigest,
+                proofDigest: `sha256:${'a'.repeat(64)}` as const,
+                verifiedAt: new Date().toISOString(),
+                identity: null,
+              },
+            ];
+          },
+          async close() {},
+        };
+      },
+      async withLifecycleOperation(challengeId, operation) {
+        return withRepositoryLifecycleOperationAsync(
+          lifecycleRuntime,
+          operation,
+          { allowGrantChallengeId: challengeId },
+        );
+      },
+    });
+    await assert.rejects(
+      coordinator.resolveChallenge(protectedGrant.result.grant.challengeId),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'TASK_DIFF_REVIEW_REQUIRED',
+    );
+    const prepared = readGrantRecord(
+      grantStorePaths(lifecycleRuntime.root),
+      protectedGrant.result.grant.challengeId,
+    );
+    assert.equal(prepared.state, 'prepared');
+    const transaction = readFinalizeTransaction(
+      lifecycleRuntime.root,
+      output.session.sessionId,
+    );
+    assert.equal(transaction?.phase, 'checked');
+    assert.equal(
+      transaction?.protectedApply?.challengeId,
+      protectedGrant.result.grant.challengeId,
+    );
+    assert.equal(
+      transaction?.protectedApply?.transitionId,
+      'task.protected-apply.finalize.v1',
+    );
+    assert.throws(
+      () =>
+        assertPreparedProtectedTaskApplyAuthorization(lifecycleRuntime.root, {
+          ...transaction!.protectedApply!,
+          operationId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+        }),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'PROTECTED_TASK_APPLY_AUTHORIZATION_INVALID',
+    );
+    const review = beginTaskDiffReview(
+      protectedRepository,
+      output.session.sessionId,
+      { explicitActor: 'codex', environment: {} },
+    );
+    assert.equal(review.state, 'waiting-for-provider');
+    if (review.state !== 'waiting-for-provider') {
+      assert.fail('expected the protected TaskDiffReview provider reservation');
+    }
+    const failedReview = runProviderWorker(
+      protectedRepository,
+      review.invocationId,
+      {
+        runner() {
+          throw workflowError(
+            'PROVIDER_RATE_LIMIT',
+            'The protected TaskDiffReview provider failed after its lease.',
+            ExitCode.verification,
+          );
+        },
+      },
+    );
+    assert.equal(failedReview.state, 'failed');
+    assert.equal(
+      readProviderInvocation(
+        investigationRuntimePaths(
+          repositoryState.gitCommonDirectory,
+          'workflow-engine',
+        ),
+        review.invocationId,
+      ).state,
+      'failed',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          investigationRuntimePaths(
+            repositoryState.gitCommonDirectory,
+            'workflow-engine',
+          ).locks,
+          `${review.invocationId}.worker-active`,
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      readGrantRecord(
+        grantStorePaths(lifecycleRuntime.root),
+        protectedGrant.result.grant.challengeId,
+      ).state,
+      'prepared',
     );
   } finally {
     cleanupRepository(protectedRepository);

@@ -1995,19 +1995,36 @@ export function releaseProviderInvocationWorkerFence(
   requestedInvocationId: string,
   ownerToken: string,
 ): void {
+  withProviderWorkerLifecycle(paths, (assertOwned) =>
+    releaseProviderInvocationWorkerFenceUnderLifecycleLock(
+      paths,
+      requestedInvocationId,
+      ownerToken,
+      assertOwned,
+    ),
+  );
+}
+
+export function releaseProviderInvocationWorkerFenceUnderLifecycleLock(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+  ownerToken: string,
+  assertOwned: () => void,
+): void {
   const invocationId = assertInvocationId(requestedInvocationId);
-  withProviderWorkerLifecycle(paths, () => {
-    const fence = readProviderWorkerFence(paths, invocationId);
-    if (
-      fence === null ||
-      fence.ownerToken !== ownerToken ||
-      fence.pid !== process.pid
-    ) {
-      throw providerWorkerFenceUnsafe();
-    }
-    fs.unlinkSync(providerWorkerFencePath(paths, invocationId));
-    fsyncDirectory(paths.locks);
-  });
+  assertOwned();
+  const fence = readProviderWorkerFence(paths, invocationId);
+  if (
+    fence === null ||
+    fence.ownerToken !== ownerToken ||
+    fence.pid !== process.pid
+  ) {
+    throw providerWorkerFenceUnsafe();
+  }
+  assertOwned();
+  fs.unlinkSync(providerWorkerFencePath(paths, invocationId));
+  fsyncDirectory(paths.locks);
+  assertOwned();
 }
 
 export function assertProviderWorkersQuiescentUnderLifecycleLock(
@@ -2462,35 +2479,50 @@ export function recoverProviderInvocationCompletion(
   requestedInvocationId: string,
   input: { expectedRevision: number },
 ): ProviderCompletionRecovery {
-  const invocationId = assertInvocationId(requestedInvocationId);
-  return withProviderWorkerLifecycle(paths, (assertOwned) => {
-    const current = readProviderInvocation(paths, invocationId);
-    const request = readProviderInvocationRequest(paths, invocationId);
-    const projection = projectProviderInvocationExecution({
-      record: current,
-      request,
-    });
-    const durable = readExecutionJobState(paths, projection.job.jobId);
-    const result = durable?.results.find(
-      ({ attemptId }) => attemptId === projection.attempt.attemptId,
-    );
-    if (result === undefined || result.acceptance !== 'accepted') {
-      throw workflowError(
-        'PROVIDER_COMPLETION_RECOVERY_STATE_MISSING',
-        'Completion recovery requires the exact accepted current Attempt result.',
-        ExitCode.staleState,
-      );
-    }
-    return recoverProviderInvocationCompletionUnderLifecycleLock(
+  return withProviderWorkerLifecycle(paths, (assertOwned) =>
+    recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(
       paths,
-      invocationId,
-      {
-        expectedLegacyRevision: input.expectedRevision,
-        acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
-      },
+      requestedInvocationId,
+      input,
       assertOwned,
-    );
+    ),
+  );
+}
+
+export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+  input: { expectedRevision: number },
+  assertOwned: () => void,
+): ProviderCompletionRecovery {
+  const invocationId = assertInvocationId(requestedInvocationId);
+  assertOwned();
+  const current = readProviderInvocation(paths, invocationId);
+  const request = readProviderInvocationRequest(paths, invocationId);
+  const projection = projectProviderInvocationExecution({
+    record: current,
+    request,
   });
+  const durable = readExecutionJobState(paths, projection.job.jobId);
+  const result = durable?.results.find(
+    ({ attemptId }) => attemptId === projection.attempt.attemptId,
+  );
+  if (result === undefined || result.acceptance !== 'accepted') {
+    throw workflowError(
+      'PROVIDER_COMPLETION_RECOVERY_STATE_MISSING',
+      'Completion recovery requires the exact accepted current Attempt result.',
+      ExitCode.staleState,
+    );
+  }
+  return recoverProviderInvocationCompletionUnderLifecycleLock(
+    paths,
+    invocationId,
+    {
+      expectedLegacyRevision: input.expectedRevision,
+      acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
+    },
+    assertOwned,
+  );
 }
 
 /**
@@ -2928,58 +2960,82 @@ export function failProviderInvocation(
     now?: string;
   },
 ): ProviderInvocationRecord {
+  return withProviderWorkerLifecycle(paths, (assertOwned) =>
+    failProviderInvocationUnderLifecycleLock(
+      paths,
+      requestedInvocationId,
+      input,
+      assertOwned,
+    ),
+  );
+}
+
+export function failProviderInvocationUnderLifecycleLock(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+  input: {
+    expectedRevision: number;
+    leaseGeneration: number;
+    leaseToken: string;
+    failure: ProviderInvocationFailure;
+    runtimeEvidence?: Readonly<{
+      acceptanceBinding: ProviderInvocationAcceptanceBinding;
+      progress: AgentRuntimeProcessProgressProjection;
+      protocolReceipt?: ProviderWrapperProtocolReceipt;
+    }>;
+    repair?: ProviderRepairFailureInput;
+    now?: string;
+  },
+  assertOwned: () => void,
+): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
   const now = parseNow(input.now);
   const failure = assertProviderFailure(input.failure);
-  return withProviderWorkerLifecycle(paths, () =>
-    updateProviderInvocation(
-      paths,
-      invocationId,
-      input.expectedRevision,
-      (current) => {
-        assertCurrentLease(
-          current,
-          input.leaseGeneration,
-          input.leaseToken,
-          now,
-        );
-        if (input.repair !== undefined) {
-          persistProviderRepairEvidence(paths, {
-            record: current,
-            request: readProviderInvocationRequest(paths, invocationId),
-            failure,
-            repair: input.repair,
-            recordedAt: new Date(now).toISOString(),
-          });
-        }
-        const runtimeReceipt =
-          input.runtimeEvidence === undefined
-            ? undefined
-            : createAgentRuntimeCompletionReceipt({
-                current,
-                request: readProviderInvocationRequest(paths, invocationId),
-                acceptanceBinding: input.runtimeEvidence.acceptanceBinding,
-                terminalState: 'failed',
-                progress: input.runtimeEvidence.progress,
-                ...(input.runtimeEvidence.protocolReceipt === undefined
-                  ? {}
-                  : {
-                      protocolReceipt: input.runtimeEvidence.protocolReceipt,
-                    }),
-              });
-        return {
-          ...current,
-          revision: current.revision + 1,
-          state: 'failed',
-          lease: null,
-          result: null,
+  assertOwned();
+  const failed = updateProviderInvocation(
+    paths,
+    invocationId,
+    input.expectedRevision,
+    (current) => {
+      assertCurrentLease(current, input.leaseGeneration, input.leaseToken, now);
+      if (input.repair !== undefined) {
+        persistProviderRepairEvidence(paths, {
+          record: current,
+          request: readProviderInvocationRequest(paths, invocationId),
           failure,
-          ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
-          updatedAt: new Date(now).toISOString(),
-        };
-      },
-    ),
+          repair: input.repair,
+          recordedAt: new Date(now).toISOString(),
+        });
+      }
+      const runtimeReceipt =
+        input.runtimeEvidence === undefined
+          ? undefined
+          : createAgentRuntimeCompletionReceipt({
+              current,
+              request: readProviderInvocationRequest(paths, invocationId),
+              acceptanceBinding: input.runtimeEvidence.acceptanceBinding,
+              terminalState: 'failed',
+              progress: input.runtimeEvidence.progress,
+              ...(input.runtimeEvidence.protocolReceipt === undefined
+                ? {}
+                : {
+                    protocolReceipt: input.runtimeEvidence.protocolReceipt,
+                  }),
+            });
+      return {
+        ...current,
+        revision: current.revision + 1,
+        state: 'failed',
+        lease: null,
+        result: null,
+        failure,
+        ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
+        updatedAt: new Date(now).toISOString(),
+      };
+    },
   );
+  assertOwned();
+  return failed;
 }
 
 function createAgentRuntimeCompletionReceipt(input: {

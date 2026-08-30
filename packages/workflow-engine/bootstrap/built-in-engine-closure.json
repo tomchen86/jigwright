@@ -658,7 +658,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:27f8519c2b8a0c54744ac9b24d519a81deb56f0556e4193f636dbff9d216fb8a"
+      "digest": "sha256:5ff5067559f4495c6c0f3fd8e202ed1105fd2405ef816a62a3161ca12dc68e30"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -668,12 +668,17 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:29486fc90578ba6ec9f7c59ab314ca14478bb5e19da2313c79fa28cd9447ba43"
+      "digest": "sha256:46ad1382336c9a98c64ae8fdc326157afd1879f959aeb2160f9f3b1e98dd1408"
+    },
+    {
+      "path": "src/application/finalize/protected-task-apply-authorization.ts",
+      "mode": "100644",
+      "digest": "sha256:31c4d5b837762f1219b20333ba3280f0d46297015b8da0356d4b18edc3a9e3e9"
     },
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:633f97b569d983424000eb73e42ed5780e884fe49092594214f22d79c955baa1"
+      "digest": "sha256:3839ec8efdd5b34a6ccf143b2ac1e9b3f350ad72ee6414fa956e331f98dc6957"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -708,7 +713,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:235d848a5ccf2907dd15c3345de08def91742da561655b8d02205a869b55da76"
+      "digest": "sha256:dc7efb33e4a9051590b6bc93d63acd3bc8331fb1bab94bb3ddb3d8bbc0b11fad"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -793,7 +798,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:3c1611c76a3d2b750dcdda9d35baa5dc12a195f3b462a9eb98f8c884c9b0791b"
+      "digest": "sha256:15775428837f2bffc3215bb68a487a724c859e53e4c98b4a484bca4755875eca"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -824,6 +829,11 @@
       "path": "src/composition-root/protected-base-initialization-production.ts",
       "mode": "100644",
       "digest": "sha256:d8f7378163654c580e70719d7b839ce9c6ddae14227bbfec4822be5884cff2af"
+    },
+    {
+      "path": "src/composition-root/protected-task-apply-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:d4d4494b90e4be270997dcfcfdd3637cf17c29efc41344e221a8dc8f51aa076b"
     },
     {
       "path": "src/composition-root/public/central-grant.ts",
@@ -1018,7 +1028,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:41466d77c8a057afaf57df5e7e0fe978e9265f1c0034d4ce1eefc0e8076aac74"
+      "digest": "sha256:38488f1d0874227820d62c9a3f634331d4c11db9535fb8fcafe6ebf78dd81bb7"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1259,6 +1269,11 @@
       "path": "src/modules/authority/protected-base-initialization-grant.ts",
       "mode": "100644",
       "digest": "sha256:5ed48997149b790e96913a0fd50be0d159bd2a731c3f76707017a51b348405d4"
+    },
+    {
+      "path": "src/modules/authority/protected-task-apply-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:9fe3d1a7bd076cdbbf6f4fa974a27fd046a6e4d746979061187119406ddb4f1a"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
@@ -1858,7 +1873,7 @@
     {
       "path": "src/runtime/repository-transaction/finalize-transaction.ts",
       "mode": "100644",
-      "digest": "sha256:ed8a53c621ecd9e30b7826dbfcddb0cfeb31a4641dce7a6cf2bd3afe5c3e3bc3"
+      "digest": "sha256:0e9bb3de143c237c9f8e45a6101986628e901674fba69764e4dafdb91aa572c3"
     },
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
@@ -2028,7 +2043,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:17e2ce2013298ebefac428f02c6c1a0332cdae758dfc2693c0f8ca6a892ac42a"
+      "digest": "sha256:e7bf66a2836340d668f8873201cd99756708c75077f82c1743c382ada4e4b106"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
@@ -2078,7 +2093,7 @@
     {
       "path": "src/runtime/storage-journal/task-diff-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:82d8d214e6c6f7dd32c1f1c37ef4e364dc432c249b37a73d58793f23eda91984"
+      "digest": "sha256:a87a7f7fffa29dcbf8b084ed93f5b3a5d30f17803ec054da2beb8bab2102d0d1"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-store.ts",

@@ -72,6 +72,15 @@ import {
   createChangeRoleAssignmentGrantRequest,
 } from '../modules/provider-orchestration/change-role-assignment-grant.ts';
 import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
+import {
+  createProductionProtectedTaskApplyGrantPort,
+  observeCurrentProtectedTaskApply,
+} from './protected-task-apply-grant-production.ts';
+import {
+  createProtectedTaskApplyGrantRequest,
+  protectedTaskApplyGrantTransitionDefinitions,
+  type ProtectedTaskApplyFailureDetailsV1,
+} from '../modules/authority/protected-task-apply-grant.ts';
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -137,6 +146,7 @@ export function createProductionWorkflowGrantCoordinator(
     loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
   const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
   const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
+  const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(cwd);
   return createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
@@ -146,7 +156,28 @@ export function createProductionWorkflowGrantCoordinator(
       ...changeRoutingGrantTransitionDefinitions(cwd),
       ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),
       ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
+      ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
     ]),
+  );
+}
+
+export async function requestProtectedTaskApplyGrant(
+  cwd: string,
+  sessionId: string,
+  commitMessage: string,
+  fullGate: boolean,
+  failure: ProtectedTaskApplyFailureDetailsV1,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observation = observeCurrentProtectedTaskApply(
+    repositoryRoot,
+    sessionId,
+    commitMessage,
+    fullGate,
+  );
+  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+    createProtectedTaskApplyGrantRequest(observation, failure, proposedReason),
   );
 }
 

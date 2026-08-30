@@ -39,6 +39,7 @@ import {
   readEvidenceNode,
   writeEvidenceNode,
 } from '../../runtime/storage-journal/evidence-object-store.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import type { DocumentationReviewCapture } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import {
@@ -111,6 +112,7 @@ import {
 import {
   withRepositoryLifecycleOperation,
   withSessionOperation,
+  type RepositoryLifecycleOperationOptions,
 } from '../../runtime/session-workspace/session-store.ts';
 import {
   assertTaskDiffReviewChallengeResponseCurrent,
@@ -547,6 +549,106 @@ type ReplayedTaskDiffReviewTerminal = Readonly<{
 
 type TaskDiffReviewReplayMode = 'inspect' | 'governing';
 
+function taskDiffReviewLifecycleOptions(
+  context: ReturnType<typeof loadActiveSessionContext>,
+  requestedSessionId: string,
+): RepositoryLifecycleOperationOptions {
+  const challengeId = protectedTaskApplyReviewChallenge(
+    context,
+    requestedSessionId,
+  );
+  return challengeId === null ? {} : { allowGrantChallengeId: challengeId };
+}
+
+function assertTaskDiffReviewLifecycleGrantCurrent(
+  context: ReturnType<typeof loadActiveSessionContext>,
+  requestedSessionId: string,
+): void {
+  protectedTaskApplyReviewChallenge(context, requestedSessionId);
+}
+
+function protectedTaskApplyReviewChallenge(
+  context: ReturnType<typeof loadActiveSessionContext>,
+  requestedSessionId: string,
+): string | null {
+  if (context.session.sessionId !== requestedSessionId) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  const transaction = readFinalizeTransaction(
+    context.runtime.root,
+    context.session.sessionId,
+  );
+  if (transaction?.protectedApply === undefined) return null;
+  if (
+    transaction.phase !== 'checked' ||
+    transaction.candidateTree === null ||
+    transaction.sessionId !== context.session.sessionId ||
+    transaction.changeId !== context.session.changeId ||
+    transaction.taskId !== context.session.taskId ||
+    transaction.repositoryRoot !== context.git.repositoryRealPath ||
+    transaction.gitCommonDirectory !== context.git.gitCommonDirectory ||
+    transaction.branch !== context.session.branch ||
+    canonicalJson(transaction.baseline) !==
+      canonicalJson(context.session.baseline)
+  ) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  const binding = transaction.protectedApply;
+  const { parameters } = assertPreparedProtectedTaskApplyAuthorization(
+    context.runtime.root,
+    binding,
+  );
+  const engineOwnedPaths = new Set([
+    transaction.taskProjectionPath,
+    ...transaction.transitionPaths,
+    ...(context.session.implementationReconciliationPaths ?? []),
+  ]);
+  const taskPaths = transaction.changedPaths.filter(
+    (changedPath) => !engineOwnedPaths.has(changedPath),
+  );
+  if (
+    parameters.changeId !== context.session.changeId ||
+    parameters.sessionId !== context.session.sessionId ||
+    parameters.taskId !== context.session.taskId ||
+    parameters.branch !== context.session.branch ||
+    canonicalJson(parameters.baseline) !==
+      canonicalJson(context.session.baseline) ||
+    canonicalJson(parameters.mandateBinding) !==
+      canonicalJson(context.session.mandateBinding ?? null) ||
+    canonicalJson(parameters.changedPaths) !== canonicalJson(taskPaths)
+  ) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  return binding.challengeId;
+}
+
+function protectedTaskApplyReviewAuthorizationInvalid() {
+  return workflowError(
+    'PROTECTED_TASK_APPLY_REVIEW_AUTHORIZATION_INVALID',
+    'TaskDiffReview cannot cross a protected Apply barrier without the exact current prepared Grant journal binding.',
+    ExitCode.guard,
+  );
+}
+
+/** Internal worker seam; the challenge identity is derived from the journal. */
+export function withTaskDiffReviewProviderLifecycleOperation<T>(
+  cwd: string,
+  requestedSessionId: string,
+  operation: (assertOwned: () => void) => T,
+): T {
+  const initialContext = loadActiveSessionContext(cwd, requestedSessionId);
+  return withRepositoryLifecycleOperation(
+    initialContext.runtime,
+    (assertOwned) => {
+      assertOwned();
+      const context = loadActiveSessionContext(cwd, requestedSessionId);
+      assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
+      return operation(assertOwned);
+    },
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
+  );
+}
+
 /**
  * Reserve one exact, provider-independent TaskDiffReview. The reservation is
  * immutable and replay-safe; it does not launch the provider or advance the
@@ -579,6 +681,7 @@ export function beginTaskDiffReview(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const subject = inspectTaskDiffReviewSubject(cwd, requestedSessionId);
         if (canonicalJson(subject) !== canonicalJson(initialSubject)) {
           throw candidateDiverged();
@@ -737,6 +840,7 @@ export function beginTaskDiffReview(
         assertOwned();
         return renderTaskDiffReviewStatus(runtime, reservation);
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 
@@ -774,6 +878,7 @@ export function submitExternalTaskDiffReview(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const runtime = loadInvestigationRuntimeContext(cwd).runtime;
         const subject = inspectTaskDiffReviewSubject(cwd, requestedSessionId);
         const implementationActor = resolveTaskDiffImplementationActor(
@@ -1216,6 +1321,7 @@ export function submitExternalTaskDiffReview(
           ),
         );
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 
@@ -1251,6 +1357,7 @@ export function submitExternalTaskDiffReviewContinuation(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const runtime = loadInvestigationRuntimeContext(cwd).runtime;
         const current = loadCurrentAuthenticatedTaskDiffReview(
           cwd,
@@ -1651,6 +1758,7 @@ export function submitExternalTaskDiffReviewContinuation(
           finalAssurance,
         );
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 
@@ -4753,6 +4861,7 @@ export function beginTaskDiffReviewContinuation(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const runtime = loadInvestigationRuntimeContext(cwd).runtime;
         const current = loadCurrentTaskDiffReview(context, runtime, validation);
         const response = assertTaskDiffReviewChallengeResponseCurrent(
@@ -4796,6 +4905,7 @@ export function beginTaskDiffReviewContinuation(
           current,
         );
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 
@@ -4839,6 +4949,7 @@ export function reconcileTaskDiffReviewContinuation(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const runtime = loadInvestigationRuntimeContext(cwd).runtime;
         const current = loadCurrentTaskDiffReview(context, runtime, options);
         const reservation = readTaskDiffReviewContinuationReservation(
@@ -4970,6 +5081,7 @@ export function reconcileTaskDiffReviewContinuation(
           current,
         );
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 
@@ -4986,6 +5098,7 @@ export function reconcileTaskDiffReview(
       withSessionOperation(initialContext.runtime, requestedSessionId, () => {
         assertOwned();
         const context = loadActiveSessionContext(cwd, requestedSessionId);
+        assertTaskDiffReviewLifecycleGrantCurrent(context, requestedSessionId);
         const subject = inspectTaskDiffReviewSubject(cwd, requestedSessionId);
         if (!subject.reviewRequirement.required) {
           return Object.freeze({
@@ -5195,6 +5308,7 @@ export function reconcileTaskDiffReview(
         assertOwned();
         return renderTaskDiffReviewStatus(runtime, reservation);
       }),
+    taskDiffReviewLifecycleOptions(initialContext, requestedSessionId),
   );
 }
 

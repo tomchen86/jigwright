@@ -127,6 +127,7 @@ import {
   requestChangeRoleAssignmentGrant,
   requestArchivePullRequestPublicationGrant,
   requestChangeRoutingContinuationGrant,
+  requestProtectedTaskApplyGrant,
   requestProtectedBaseInitializationGrant,
   requestWorkRegistryPromotionGrant,
   requestWorkRegistryReviewGrant,
@@ -389,6 +390,7 @@ export async function dispatchAsync(
   providerWorker: typeof runProviderWorkerAsync = runProviderWorkerAsync,
   roleAssignmentGrantRequest: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
   changeRoutingGrantRequest: ChangeRoutingGrantRequest = requestChangeRoutingContinuationGrant,
+  protectedTaskApplyGrantRequest: typeof requestProtectedTaskApplyGrant = requestProtectedTaskApplyGrant,
 ): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === 'role-config') {
@@ -431,6 +433,14 @@ export async function dispatchAsync(
         roleAssignmentGrantRequest,
       );
       if (roleAssignmentGrant !== null) return roleAssignmentGrant;
+      const protectedTaskApplyGrant =
+        await createProtectedTaskApplyFailGrantResult(
+          args,
+          cwd,
+          error,
+          protectedTaskApplyGrantRequest,
+        );
+      if (protectedTaskApplyGrant !== null) return protectedTaskApplyGrant;
       const workRegistryGrant = await createWorkRegistryFailGrantResult(
         args,
         cwd,
@@ -470,6 +480,130 @@ type ChangeRoutingGrantChallenge = Readonly<{
   challengeId: string;
   challengeDigest: string;
 }>;
+
+export async function createProtectedTaskApplyFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: typeof requestProtectedTaskApplyGrant = requestProtectedTaskApplyGrant,
+): Promise<CommandResult | null> {
+  const fullGate = args.length === 5 && args[4] === '--full-gate';
+  if (
+    (args.length !== 4 && !fullGate) ||
+    args[0] !== 'finalize' ||
+    args[2] !== '--message' ||
+    !(error instanceof WorkflowError) ||
+    error.code !== 'PROTECTED_TASK_APPLY_REQUIRED'
+  ) {
+    return null;
+  }
+  const sessionId = args[1];
+  const commitMessage = args[3];
+  const details = protectedTaskApplyRequiredDetails(error.details);
+  if (
+    sessionId === undefined ||
+    commitMessage === undefined ||
+    details === null
+  ) {
+    return null;
+  }
+  const grant = await requestGrant(
+    cwd,
+    sessionId,
+    commitMessage,
+    fullGate,
+    details,
+    `Authorize only the exact checked finalize of protected task ${details.taskId} for ${details.changeId}; preserve its Task Mandate, baseline, paths, checks, TaskDiffReview, projection, and managed-commit boundaries.`,
+  );
+  return {
+    command: 'finalize',
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      sessionId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        details,
+      },
+      grant,
+      transitionAppliesOnDecision: true,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        recoveryCommand: `pnpm workflow grant human recover ${grant.challengeId} --json`,
+        observeAfterDecision: `pnpm workflow status ${sessionId} --json`,
+      },
+    },
+  };
+}
+
+function protectedTaskApplyRequiredDetails(value: unknown): Readonly<{
+  changeId: string;
+  taskId: string;
+  mandateTaskId: string;
+  changedPaths: readonly string[];
+  roles: readonly string[];
+  matchedPatterns: readonly string[];
+  unclassifiedScope: boolean;
+}> | null {
+  if (
+    !plainRecord(value) ||
+    !exactKeys(value, [
+      'changeId',
+      'taskId',
+      'mandateTaskId',
+      'changedPaths',
+      'roles',
+      'matchedPatterns',
+      'unclassifiedScope',
+    ]) ||
+    typeof value.changeId !== 'string' ||
+    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.changeId) ||
+    typeof value.taskId !== 'string' ||
+    value.taskId.length === 0 ||
+    typeof value.mandateTaskId !== 'string' ||
+    value.mandateTaskId.length === 0 ||
+    !isExactStringArray(value.changedPaths, true) ||
+    !isExactStringArray(value.roles, false) ||
+    !isExactStringArray(value.matchedPatterns, false) ||
+    typeof value.unclassifiedScope !== 'boolean'
+  ) {
+    return null;
+  }
+  return Object.freeze({
+    changeId: value.changeId,
+    taskId: value.taskId,
+    mandateTaskId: value.mandateTaskId,
+    changedPaths: Object.freeze([...value.changedPaths]),
+    roles: Object.freeze([...value.roles]),
+    matchedPatterns: Object.freeze([...value.matchedPatterns]),
+    unclassifiedScope: value.unclassifiedScope,
+  });
+}
+
+function isExactStringArray(
+  value: unknown,
+  requireEntry: boolean,
+): value is string[] {
+  return (
+    Array.isArray(value) &&
+    (!requireEntry || value.length > 0) &&
+    value.every(
+      (entry) =>
+        typeof entry === 'string' &&
+        entry.length > 0 &&
+        entry.trim() === entry &&
+        !/\p{Cc}/u.test(entry),
+    ) &&
+    new Set(value).size === value.length
+  );
+}
 
 type ChangeRoutingGrantRequest = (
   cwd: string,

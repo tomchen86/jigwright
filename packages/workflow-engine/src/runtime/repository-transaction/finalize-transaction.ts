@@ -17,7 +17,10 @@ import { writeJsonAtomic } from '../session-workspace/session-store.ts';
 import type { FinalizeCheckEscalation } from '../../modules/assurance/finalize-check-policy.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
+const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+const UUID_V4 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 
 export type FinalizeTransactionPhase =
   | 'projection-prepared'
@@ -39,6 +42,18 @@ export type FinalizeReconciledTask = Readonly<{
   commitHash: string;
   changedPaths: readonly string[];
   checks: readonly unknown[];
+}>;
+
+export type ProtectedTaskApplyAuthorizationBinding = Readonly<{
+  schemaVersion: 1;
+  kind: 'protected-task-apply-authorization.v1';
+  transitionId: 'task.protected-apply.finalize.v1';
+  challengeId: string;
+  operationId: string;
+  approvalSubjectDigest: `sha256:${string}`;
+  stateBindingDigest: `sha256:${string}`;
+  parametersDigest: `sha256:${string}`;
+  commitMessage: string;
 }>;
 
 export type FinalizeTransaction = Readonly<{
@@ -74,6 +89,7 @@ export type FinalizeTransaction = Readonly<{
   completionReportId: string | null;
   finishReportId: string | null;
   documentationReview?: DocumentationReviewCapture;
+  protectedApply?: ProtectedTaskApplyAuthorizationBinding;
 }>;
 
 type FinalizeTransactionSeed = Readonly<{
@@ -98,6 +114,7 @@ type FinalizeTransactionSeed = Readonly<{
   transitionPaths: readonly string[];
   previousIndexTree: string;
   createdAt: string;
+  protectedApply?: ProtectedTaskApplyAuthorizationBinding;
 }>;
 
 export function createFinalizeTransaction(
@@ -340,9 +357,15 @@ export function parseFinalizeTransaction(value: unknown): FinalizeTransaction {
     'transitionPaths',
     ...(version === 2 ? ['checkEscalation', 'requiredChecks'] : []),
   ].sort();
-  const keys = Object.hasOwn(value, 'documentationReview')
-    ? [...baseKeys, 'documentationReview'].sort()
-    : baseKeys;
+  const optionalKeys = [
+    ...(Object.hasOwn(value, 'documentationReview')
+      ? ['documentationReview']
+      : []),
+    ...(version === 2 && Object.hasOwn(value, 'protectedApply')
+      ? ['protectedApply']
+      : []),
+  ];
+  const keys = [...baseKeys, ...optionalKeys].sort();
   if (
     version === null ||
     JSON.stringify(Object.keys(value).sort()) !== JSON.stringify(keys) ||
@@ -454,6 +477,9 @@ export function parseFinalizeTransaction(value: unknown): FinalizeTransaction {
       throw malformed();
     }
   }
+  const protectedApply = Object.hasOwn(value, 'protectedApply')
+    ? parseProtectedTaskApplyAuthorizationBinding(value.protectedApply)
+    : undefined;
   if (
     !isCanonicalPathArray(projectionMutations.map((entry) => entry.path)) ||
     !projectionMutations.some(
@@ -523,6 +549,7 @@ export function parseFinalizeTransaction(value: unknown): FinalizeTransaction {
     completionReportId: value.completionReportId as string | null,
     finishReportId: value.finishReportId as string | null,
     ...(documentationReview === undefined ? {} : { documentationReview }),
+    ...(protectedApply === undefined ? {} : { protectedApply }),
   };
   const seed = transactionSeed(transaction);
   if (
@@ -571,6 +598,13 @@ function normalizeSeed(
     transitionPaths: [...input.transitionPaths],
     previousIndexTree: input.previousIndexTree,
     createdAt: input.createdAt,
+    ...(input.protectedApply === undefined
+      ? {}
+      : {
+          protectedApply: parseProtectedTaskApplyAuthorizationBinding(
+            input.protectedApply,
+          ),
+        }),
   };
 }
 
@@ -602,6 +636,62 @@ function transactionSeed(
     transitionPaths: transaction.transitionPaths,
     previousIndexTree: transaction.previousIndexTree,
     createdAt: transaction.createdAt,
+    ...(transaction.protectedApply === undefined
+      ? {}
+      : { protectedApply: transaction.protectedApply }),
+  });
+}
+
+export function parseProtectedTaskApplyAuthorizationBinding(
+  value: unknown,
+): ProtectedTaskApplyAuthorizationBinding {
+  if (
+    !isRecord(value) ||
+    JSON.stringify(Object.keys(value).sort()) !==
+      JSON.stringify(
+        [
+          'approvalSubjectDigest',
+          'challengeId',
+          'commitMessage',
+          'kind',
+          'operationId',
+          'parametersDigest',
+          'schemaVersion',
+          'stateBindingDigest',
+          'transitionId',
+        ].sort(),
+      ) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'protected-task-apply-authorization.v1' ||
+    value.transitionId !== 'task.protected-apply.finalize.v1' ||
+    typeof value.challengeId !== 'string' ||
+    !UUID_V4.test(value.challengeId) ||
+    typeof value.operationId !== 'string' ||
+    !UUID_V4.test(value.operationId) ||
+    typeof value.approvalSubjectDigest !== 'string' ||
+    !SHA256_DIGEST.test(value.approvalSubjectDigest) ||
+    typeof value.stateBindingDigest !== 'string' ||
+    !SHA256_DIGEST.test(value.stateBindingDigest) ||
+    typeof value.parametersDigest !== 'string' ||
+    !SHA256_DIGEST.test(value.parametersDigest) ||
+    typeof value.commitMessage !== 'string' ||
+    value.commitMessage.length === 0 ||
+    value.commitMessage.trim() !== value.commitMessage ||
+    Buffer.byteLength(value.commitMessage) > 4096 ||
+    /\p{Cc}/u.test(value.commitMessage)
+  ) {
+    throw malformed();
+  }
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: 'protected-task-apply-authorization.v1',
+    transitionId: 'task.protected-apply.finalize.v1',
+    challengeId: value.challengeId,
+    operationId: value.operationId,
+    approvalSubjectDigest: value.approvalSubjectDigest as `sha256:${string}`,
+    stateBindingDigest: value.stateBindingDigest as `sha256:${string}`,
+    parametersDigest: value.parametersDigest as `sha256:${string}`,
+    commitMessage: value.commitMessage,
   });
 }
 
