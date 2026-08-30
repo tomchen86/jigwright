@@ -438,6 +438,80 @@ test('persisted adoption reader rejects retired V1 records without mutation', ()
   }
 });
 
+test('persisted adoption reader rejects a V2 journal without its exact workflow binding', () => {
+  const fixture = temporaryFixture();
+  try {
+    const intervention = persistInterventionPlan(
+      fixture.storeRoot,
+      interventionInput(fixture),
+    );
+    const artifact = createEngineArtifact({
+      sourceChangeId: 'intervention-B',
+      sourceDigest: digest('source-unbound-adoption-v2'),
+      executableDigest: digest('engine-unbound-adoption-v2'),
+      protocolVersion: 3,
+      canReadSessionSchemas: ['v4'],
+      writesSessionSchema: 'v4',
+      policySchemaVersion: 2,
+      smokeReportDigest: digest('smoke-unbound-adoption-v2'),
+    });
+    const prepared = preparePersistedEngineAdoption(
+      fixture.storeRoot,
+      {
+        txId: 'unbound-adoption-v2',
+        parentChangeId: 'parent-A',
+        artifact,
+        maintenanceGrantEnvelope: maintenanceEnvelope(
+          intervention.parent.engineBinding,
+        ),
+        priorLocalAdoptions: 0,
+      },
+      {
+        now: () => NOW,
+        verifyHumanSignature: () => true,
+      },
+    );
+    assert.equal(prepared.kind, 'persisted-engine-adoption.v2');
+    assert.equal(
+      Object.prototype.hasOwnProperty.call(
+        prepared.journal,
+        'workflowBindingDigest',
+      ),
+      true,
+    );
+    assert.equal(prepared.journal.workflowStatus, 'repair-active');
+
+    const adoptionDirectory = interventionControlPersistencePaths(
+      fixture.storeRoot,
+    ).adoptions;
+    const adoptionFiles = fs.readdirSync(adoptionDirectory);
+    assert.equal(adoptionFiles.length, 1);
+    const target = path.join(adoptionDirectory, adoptionFiles[0]!);
+    const poisoned = JSON.parse(fs.readFileSync(target, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const journal = poisoned.journal as Record<string, unknown>;
+    delete journal.workflowBindingDigest;
+    delete journal.workflowStatus;
+    delete journal.journalDigest;
+    journal.journalDigest = digest(canonicalJson(journal));
+    delete poisoned.recordDigest;
+    poisoned.recordDigest = digest(canonicalJson(poisoned));
+    const poisonedBytes = `${canonicalJson(poisoned)}\n`;
+    fs.writeFileSync(target, poisonedBytes, { mode: 0o600 });
+
+    assert.throws(
+      () =>
+        readPersistedEngineAdoption(fixture.storeRoot, prepared.journal.txId),
+      hasCode('INTERVENTION_ADOPTION_RECORD_CORRUPT'),
+    );
+    assert.equal(fs.readFileSync(target, 'utf8'), poisonedBytes);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test('persisted adoption cannot start without an injected human verifier', () => {
   const fixture = temporaryFixture();
   try {

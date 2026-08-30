@@ -1611,6 +1611,14 @@ export function readPersistedEngineAdoption(
   const record = value as unknown as PersistedEngineAdoptionRecord;
   try {
     if (
+      !isRecord(record.journal) ||
+      !Object.prototype.hasOwnProperty.call(
+        record.journal,
+        'workflowBindingDigest',
+      ) ||
+      !Object.prototype.hasOwnProperty.call(record.journal, 'workflowStatus') ||
+      record.journal.workflowBindingDigest === undefined ||
+      record.journal.workflowStatus !== 'repair-active' ||
       record.journal.txId !== txId ||
       record.effectsPerformed !== false ||
       (record.artifactRecordDigest !== undefined &&
