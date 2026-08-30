@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { assertAgentProviderProfileSnapshot, } from '@jigwright/agent-runtime';
-import { parseAiAdapterPolicyDocument, parseLegacyAiAdapterPolicyDocument, } from "../provider-execution/ai-adapter-policy.js";
+import { parseAiAdapterPolicyDocument, } from "../provider-execution/ai-adapter-policy.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { resolvePlanReviewInvocationOwner, resolveTaskDiffReviewInvocationOwner, resolveTaskStrategyImplementationInvocationOwner, } from "./evidence-object-store.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
@@ -747,23 +747,6 @@ export function ensureProviderExecutionPolicySnapshot(paths, requestInput, loade
     return storeProviderExecutionPolicySnapshot(paths, request, loadedInput);
 }
 export function readProviderExecutionPolicySnapshot(paths, requestInput) {
-    const historical = readProviderExecutionPolicySnapshotForHistoricalCleanup(paths, requestInput);
-    if (historical.snapshot.schemaVersion === 1 ||
-        historical.loaded.policy.schemaVersion !== 4 ||
-        historical.accounting === null) {
-        throw providerExecutionPolicySnapshotUnsafe();
-    }
-    return Object.freeze({
-        snapshot: historical.snapshot,
-        loaded: historical.loaded,
-        accounting: historical.accounting,
-    });
-}
-/**
- * Inert parser retained for audited historical evidence and terminal cleanup.
- * Production provider execution must use readProviderExecutionPolicySnapshot.
- */
-function readProviderExecutionPolicySnapshotForHistoricalCleanup(paths, requestInput) {
     const request = assertProviderRequest(requestInput);
     let value;
     try {
@@ -785,69 +768,20 @@ function readProviderExecutionPolicySnapshotForHistoricalCleanup(paths, requestI
         loaded = parseAiAdapterPolicyDocument(value.policyDocument);
     }
     catch {
-        if (value.schemaVersion !== 1) {
-            throw providerExecutionPolicySnapshotUnsafe();
-        }
-        try {
-            loaded = parseLegacyAiAdapterPolicyDocument(value.policyDocument);
-        }
-        catch {
-            throw providerExecutionPolicySnapshotUnsafe();
-        }
+        throw providerExecutionPolicySnapshotUnsafe();
     }
-    if (value.invocationId !== request.invocationId ||
-        value.requestDigest !== request.requestDigest ||
-        value.policyDigest !== request.policyDigest ||
-        value.policyDigest !== loaded.digest ||
-        request.limits.aggregateOutputBytes >
-            loaded.policy.limits.aggregateOutputBytes) {
-        throw providerExecutionPolicySnapshotMismatch();
-    }
-    const validated = value.schemaVersion === 1
-        ? null
-        : validateProviderExecutionPolicySnapshot(request, value);
-    if (validated?.schemaVersion === 3) {
-        assertDurableProviderExecutionBudgetAuthority(paths, validated.authority);
-    }
-    else if (request.limits.timeoutMs > loaded.policy.limits.timeoutMs) {
-        throw providerExecutionPolicySnapshotMismatch();
-    }
-    let accounting = null;
-    if (value.schemaVersion === 2 || value.schemaVersion === 3) {
-        if (loaded.policy.schemaVersion !== 4) {
-            throw providerExecutionPolicySnapshotUnsafe();
-        }
-        const expectedReservation = {
-            runtimeMs: request.limits.timeoutMs,
-            providerCostMicros: loaded.policy.retryAccounting.reservations[request.providerId]
-                .providerCostMicros,
-            providerTokens: loaded.policy.retryAccounting.reservations[request.providerId]
-                .providerTokens,
-        };
-        if (canonicalJson(value.retryAccounting) !==
-            canonicalJson(loaded.policy.retryAccounting) ||
-            canonicalJson(value.attemptReservation) !==
-                canonicalJson(expectedReservation) ||
-            value.accountingDigest !==
-                providerRetryAccountingDigest({
-                    invocationId: request.invocationId,
-                    requestDigest: request.requestDigest,
-                    policyDigest: request.policyDigest,
-                    retryAccounting: loaded.policy.retryAccounting,
-                    attemptReservation: expectedReservation,
-                })) {
-            throw providerExecutionPolicySnapshotMismatch();
-        }
-        accounting = deepFreeze({
-            retryPolicy: structuredClone(loaded.policy.retryAccounting),
-            attemptReservation: structuredClone(expectedReservation),
-            accountingDigest: value.accountingDigest,
-        });
+    const snapshot = validateProviderExecutionPolicySnapshot(request, value);
+    if (snapshot.schemaVersion === 3) {
+        assertDurableProviderExecutionBudgetAuthority(paths, snapshot.authority);
     }
     return Object.freeze({
-        snapshot: Object.freeze(structuredClone(value)),
+        snapshot,
         loaded,
-        accounting,
+        accounting: deepFreeze({
+            retryPolicy: structuredClone(loaded.policy.retryAccounting),
+            attemptReservation: structuredClone(snapshot.attemptReservation),
+            accountingDigest: snapshot.accountingDigest,
+        }),
     });
 }
 function isProviderExecutionPolicySnapshotShape(value) {
@@ -858,16 +792,6 @@ function isProviderExecutionPolicySnapshotShape(value) {
         typeof value.policyDocument === 'string';
     if (!common)
         return false;
-    if (value.schemaVersion === 1) {
-        return hasExactKeys(value, [
-            'invocationId',
-            'kind',
-            'policyDigest',
-            'policyDocument',
-            'requestDigest',
-            'schemaVersion',
-        ]);
-    }
     const expectedKeys = [
         'accountingDigest',
         'attemptReservation',
@@ -2275,15 +2199,6 @@ function assertInvestigationStartReservation(value) {
     }));
 }
 function assertProviderRetryReservation(value) {
-    const historical = assertProviderRetryReservationForHistoricalCleanup(value);
-    if (historical.schemaVersion === 1) {
-        throw invocationInvalid();
-    }
-    return historical;
-}
-// Kept only to validate inert historical evidence during audited cleanup. The
-// current production reader above rejects schema V1 before returning a record.
-function assertProviderRetryReservationForHistoricalCleanup(value) {
     const baseKeys = [
         'schemaVersion',
         'kind',
@@ -2298,19 +2213,16 @@ function assertProviderRetryReservationForHistoricalCleanup(value) {
         'createdAt',
     ];
     if (!isRecord(value) ||
-        (value.schemaVersion === 1
-            ? !hasExactKeys(value, baseKeys)
-            : value.schemaVersion !== 2 && value.schemaVersion !== 3
-                ? true
-                : !hasExactKeys(value, [
-                    ...baseKeys,
-                    'executionPolicySnapshot',
-                    ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-                        ? ['mandateBinding']
-                        : []),
-                    'retryDecision',
-                    ...(value.schemaVersion === 3 ? ['replacement'] : []),
-                ])) ||
+        (value.schemaVersion !== 2 && value.schemaVersion !== 3) ||
+        !hasExactKeys(value, [
+            ...baseKeys,
+            'executionPolicySnapshot',
+            ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
+                ? ['mandateBinding']
+                : []),
+            'retryDecision',
+            ...(value.schemaVersion === 3 ? ['replacement'] : []),
+        ]) ||
         value.kind !== 'provider-retry-reservation' ||
         typeof value.investigationId !== 'string' ||
         typeof value.changeId !== 'string' ||
@@ -2330,12 +2242,8 @@ function assertProviderRetryReservationForHistoricalCleanup(value) {
     assertInvocationId(value.previousInvocationId);
     const invocationId = assertInvocationId(value.invocationId);
     const request = assertProviderRequest(value.request);
-    const retryDecision = value.schemaVersion === 2 || value.schemaVersion === 3
-        ? assertProviderRetryDecisionBinding(value.retryDecision)
-        : undefined;
-    const executionPolicySnapshot = value.schemaVersion === 2 || value.schemaVersion === 3
-        ? assertEmbeddedProviderExecutionPolicySnapshot(value.executionPolicySnapshot, request)
-        : undefined;
+    const retryDecision = assertProviderRetryDecisionBinding(value.retryDecision);
+    const executionPolicySnapshot = assertEmbeddedProviderExecutionPolicySnapshot(value.executionPolicySnapshot, request);
     const replacement = value.schemaVersion === 3
         ? assertProviderRetryReplacementBinding(value.replacement)
         : undefined;
@@ -2351,10 +2259,8 @@ function assertProviderRetryReservationForHistoricalCleanup(value) {
         ...value,
         invocationId,
         request,
-        ...(retryDecision === undefined ? {} : { retryDecision }),
-        ...(executionPolicySnapshot === undefined
-            ? {}
-            : { executionPolicySnapshot }),
+        retryDecision,
+        executionPolicySnapshot,
         ...(replacement === undefined ? {} : { replacement }),
     }));
 }

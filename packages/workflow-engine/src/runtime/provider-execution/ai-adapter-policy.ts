@@ -73,20 +73,7 @@ export type AiAdapterRetryAccounting =
 
 export type AiAdapterPolicy = DataAuthorizationPolicyV4<ProviderId>;
 
-export type LegacyAiAdapterPolicy = Omit<
-  AiAdapterPolicy,
-  'retryAccounting' | 'schemaVersion'
-> & {
-  schemaVersion: 3;
-};
-
 export type LoadedAiAdapterPolicy = LoadedDataAuthorizationPolicyV4<ProviderId>;
-
-export type LoadedLegacyAiAdapterPolicy = {
-  policy: LegacyAiAdapterPolicy;
-  digest: string;
-  document: string;
-};
 
 export function loadAiAdapterPolicy(
   repositoryRoot: string,
@@ -105,25 +92,6 @@ export function parseAiAdapterPolicyDocument(
 ): LoadedAiAdapterPolicy {
   const value = parsePolicyJson(content);
   if (!isAiAdapterPolicy(value)) {
-    throw invalidPolicy();
-  }
-  return {
-    policy: value,
-    digest: crypto.createHash('sha256').update(content).digest('hex'),
-    document: content,
-  };
-}
-
-/**
- * Historical v1 execution-policy snapshots may contain the former v3 policy
- * document. This parser exists only for that durable read path; live policy
- * loading and every new snapshot remain strict v4.
- */
-export function parseLegacyAiAdapterPolicyDocument(
-  content: string,
-): LoadedLegacyAiAdapterPolicy {
-  const value = parsePolicyJson(content);
-  if (!isLegacyAiAdapterPolicy(value)) {
     throw invalidPolicy();
   }
   return {
@@ -214,32 +182,6 @@ function isAiAdapterPolicy(value: unknown): value is AiAdapterPolicy {
     isProvidersPolicy(value.providers) &&
     isLimitsPolicy(value.limits) &&
     isRetryAccounting(value.retryAccounting)
-  );
-}
-
-function isLegacyAiAdapterPolicy(
-  value: unknown,
-): value is LegacyAiAdapterPolicy {
-  if (!isRecord(value)) return false;
-  const expectedKeys = [
-    'launchPolicy',
-    'limits',
-    'mode',
-    'providers',
-    'requiredControls',
-    'schemaVersion',
-  ];
-  return (
-    JSON.stringify(Object.keys(value).sort()) ===
-      JSON.stringify(expectedKeys) &&
-    value.schemaVersion === 3 &&
-    value.mode === 'managed-read-only' &&
-    value.launchPolicy === 'lifecycle-only' &&
-    Array.isArray(value.requiredControls) &&
-    JSON.stringify(value.requiredControls) ===
-      JSON.stringify(REQUIRED_AI_ADAPTER_CONTROLS) &&
-    isProvidersPolicy(value.providers) &&
-    isLimitsPolicy(value.limits)
   );
 }
 

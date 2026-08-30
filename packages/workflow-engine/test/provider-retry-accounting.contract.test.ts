@@ -39,6 +39,32 @@ import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const CREATED_AT = '2026-08-03T08:00:00.000Z';
 
+test('provider policy and retry readers contain no V1 cleanup parsers', () => {
+  const invocationStore = fs.readFileSync(
+    new URL(
+      '../src/runtime/storage-journal/provider-invocation-store.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const adapterPolicy = fs.readFileSync(
+    new URL(
+      '../src/runtime/provider-execution/ai-adapter-policy.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    invocationStore,
+    /Provider(?:ExecutionPolicySnapshot|RetryReservation)V1|ForHistoricalCleanup|parseLegacyAiAdapterPolicyDocument/u,
+  );
+  assert.doesNotMatch(
+    adapterPolicy,
+    /LegacyAiAdapterPolicy|parseLegacyAiAdapterPolicyDocument/u,
+  );
+});
+
 test('v4 policy snapshots conservative retry accounting and rebuilds one charge per Attempt', () => {
   const repository = createFixtureRepository();
   try {

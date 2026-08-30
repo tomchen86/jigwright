@@ -1783,7 +1783,7 @@
     {
       "path": "src/runtime/provider-execution/ai-adapter-policy.ts",
       "mode": "100644",
-      "digest": "sha256:72ae9831820c699eba28672a1e66c58758e9c222a86b78346f454769ab5d0c45"
+      "digest": "sha256:cadee62fc491b70734f3afc27689e445ec805984cb3d96ce6260044c97b36479"
     },
     {
       "path": "src/runtime/provider-execution/bounded-provider-process.ts",
@@ -2078,7 +2078,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:7975d5e2c3a7eec832c36e1e1da30bc1c89b60c16004a0d7b87c371c71e0c35f"
+      "digest": "sha256:e60c9a44fa4f36c6bb50d56d49c9412368354612ba89f653100aa87867ba33c2"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
