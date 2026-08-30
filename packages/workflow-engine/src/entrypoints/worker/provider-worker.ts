@@ -74,6 +74,7 @@ import {
   releaseProviderInvocationWorkerFenceForWorkerClaim,
   readPlanReviewSnapshotRuntime,
   readProviderInvocation,
+  readProviderInvocationCancellationRequestForWorkerClaim,
   readProviderInvocationRuntimeReceipt,
   readProviderInvocationRequest,
   type ProviderInvocationFailure,
@@ -98,6 +99,8 @@ import {
   type TaskMandateBinding,
 } from '../../modules/authority/task-mandate.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
+
+const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
 
 export {
   listProviderWorkerMaintenanceWarnings,
@@ -227,7 +230,6 @@ export async function runProviderWorkerAsync(
       return agentRuntime
         .runSingleShotAsync(input, {
           ...runtimeOptions,
-          ...(options.signal === undefined ? {} : { signal: options.signal }),
           onActivity: progress.record,
           onProtocolReceipt(receipt) {
             if (failureProtocolReceipt !== null) {
@@ -245,6 +247,7 @@ export async function runProviderWorkerAsync(
     },
     () => progress.snapshot(),
     () => failureProtocolReceipt,
+    true,
   );
   const context = loadInvestigationRuntimeContext(cwd);
   return Object.freeze({
@@ -315,6 +318,7 @@ function runProviderWorkerWithExecution(
   execute: ProviderWorkerExecution,
   runtimeProgress?: () => AgentRuntimeProcessProgressProjection,
   runtimeFailureProtocolReceipt?: () => ProviderWrapperProtocolReceipt | null,
+  watchDurableCancellation = false,
 ): ProviderWorkerResult | Promise<ProviderWorkerResult> {
   const context = loadInvestigationRuntimeContext(cwd);
   let initial = readProviderInvocation(context.runtime, requestedInvocationId);
@@ -463,6 +467,14 @@ function runProviderWorkerWithExecution(
         initial.invocationId,
         claimInput,
       );
+  const cancellationWatcher = watchDurableCancellation
+    ? createProviderInvocationCancellationWatcher(
+        context.runtime,
+        request.invocationId,
+        claim,
+        options.signal,
+      )
+    : null;
   const agentRuntime = resolveAgentRuntime(options);
   const runtimeInputBase: Omit<
     AgentRuntimeSingleShotInput,
@@ -485,8 +497,11 @@ function runProviderWorkerWithExecution(
     reviewSnapshotRoot: reviewSnapshot?.root ?? null,
     sourceEnvironment: options.environment ?? process.env,
   };
-  const runtimeOptions = {
+  const runtimeOptions: AgentRuntimeSingleShotOptions = {
     platform: options.platform ?? process.platform,
+    ...(cancellationWatcher === null
+      ? {}
+      : { signal: cancellationWatcher.signal }),
   };
   const completeWithReport = (
     report: AgentRuntimeSingleShotReport,
@@ -506,7 +521,10 @@ function runProviderWorkerWithExecution(
         ? {}
         : { runtimeProgress: runtimeProgress() }),
     };
-    if (taskDiffReviewOwner !== null) {
+    if (
+      taskDiffReviewOwner !== null ||
+      cancellationWatcher?.hasExactCancellation() === true
+    ) {
       return completeProviderInvocationFromRunnerForWorkerClaim(
         context.runtime,
         request.invocationId,
@@ -560,16 +578,17 @@ function runProviderWorkerWithExecution(
           }),
       ...(repair === null ? {} : { repair }),
     };
-    return taskDiffReviewOwner === null
-      ? failProviderInvocation(
-          context.runtime,
-          request.invocationId,
-          failureInput,
-        )
-      : failProviderInvocationForWorkerClaim(
+    return taskDiffReviewOwner !== null ||
+      cancellationWatcher?.hasExactCancellation() === true
+      ? failProviderInvocationForWorkerClaim(
           context.runtime,
           request.invocationId,
           { ...failureInput, workerFenceToken: claim.workerFenceToken },
+        )
+      : failProviderInvocation(
+          context.runtime,
+          request.invocationId,
+          failureInput,
         );
   };
   const renderTerminal = (
@@ -579,23 +598,30 @@ function runProviderWorkerWithExecution(
     return renderWorkerResult(terminal, true);
   };
   const releaseWorkerFence = () => {
-    if (taskDiffReviewOwner === null) {
+    try {
+      if (
+        taskDiffReviewOwner !== null ||
+        cancellationWatcher?.hasExactCancellation() === true
+      ) {
+        releaseProviderInvocationWorkerFenceForWorkerClaim(
+          context.runtime,
+          request.invocationId,
+          {
+            leaseGeneration: claim.record.leaseGeneration,
+            leaseToken: claim.leaseToken,
+            workerFenceToken: claim.workerFenceToken,
+          },
+        );
+        return;
+      }
       releaseProviderInvocationWorkerFence(
         context.runtime,
         request.invocationId,
         claim.workerFenceToken,
       );
-      return;
+    } finally {
+      cancellationWatcher?.stop();
     }
-    releaseProviderInvocationWorkerFenceForWorkerClaim(
-      context.runtime,
-      request.invocationId,
-      {
-        leaseGeneration: claim.record.leaseGeneration,
-        leaseToken: claim.leaseToken,
-        workerFenceToken: claim.workerFenceToken,
-      },
-    );
   };
   let releaseSynchronously = true;
   let preparedAcceptanceBinding: ProviderInvocationAcceptanceBinding | null =
@@ -649,6 +675,64 @@ function runProviderWorkerWithExecution(
   } finally {
     if (releaseSynchronously) releaseWorkerFence();
   }
+}
+
+type ProviderInvocationCancellationWatcher = Readonly<{
+  signal: AbortSignal;
+  hasExactCancellation(): boolean;
+  stop(): void;
+}>;
+
+function createProviderInvocationCancellationWatcher(
+  runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  invocationId: string,
+  claim: ReturnType<typeof claimProviderInvocationForWorker>,
+  externalSignal: AbortSignal | undefined,
+): ProviderInvocationCancellationWatcher {
+  const control = new AbortController();
+  let stopped = false;
+  let exactCancellation = false;
+  let timer: NodeJS.Timeout | undefined;
+  const inspect = (): boolean => {
+    if (exactCancellation) return true;
+    try {
+      const request = readProviderInvocationCancellationRequestForWorkerClaim(
+        runtime,
+        invocationId,
+        {
+          leaseGeneration: claim.record.leaseGeneration,
+          leaseToken: claim.leaseToken,
+          workerFenceToken: claim.workerFenceToken,
+        },
+      );
+      if (request === null) return false;
+      exactCancellation = true;
+      control.abort();
+      return true;
+    } catch {
+      // A malformed, forged, stale, or differently claimed request has no
+      // cancellation authority. Durable storage validation remains responsible
+      // for reporting that state; the provider process must keep its own result.
+      return false;
+    }
+  };
+  const poll = () => {
+    if (stopped || inspect()) return;
+    timer = setTimeout(poll, PROVIDER_CANCELLATION_POLL_INTERVAL_MS);
+    timer.unref();
+  };
+  poll();
+  return Object.freeze({
+    signal:
+      externalSignal === undefined
+        ? control.signal
+        : AbortSignal.any([externalSignal, control.signal]),
+    hasExactCancellation: inspect,
+    stop() {
+      stopped = true;
+      if (timer !== undefined) clearTimeout(timer);
+    },
+  });
 }
 
 function createProviderWorkerDispatcher(

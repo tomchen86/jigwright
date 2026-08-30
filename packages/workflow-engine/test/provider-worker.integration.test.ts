@@ -40,6 +40,10 @@ import {
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
+  runtimePaths,
+  withRepositoryLifecycleOperationAsync,
+} from '../src/runtime/session-workspace/session-store.ts';
+import {
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
 } from '../src/modules/assurance/plan-review.ts';
@@ -54,6 +58,14 @@ import {
   changeRoleAssignmentGrantTransitionDefinitions,
   createChangeRoleAssignmentGrantRequest,
 } from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
+import {
+  createProviderInvocationCancellationGrantRequest,
+  providerInvocationCancellationTransitionDefinitions,
+} from '../src/modules/authority/provider-invocation-cancellation-grant.ts';
+import {
+  createProductionProviderInvocationCancellationGrantPort,
+  observeCurrentProviderInvocationCancellationRequest,
+} from '../src/composition-root/provider-invocation-cancellation-grant-production.ts';
 import {
   createCentralRoleProviderDefault,
   renderCentralRoleProviderDefault,
@@ -74,10 +86,12 @@ import {
   claimProviderInvocationForWorker,
   completeProviderInvocationFromRunner,
   createProviderInvocation,
+  createProviderInvocationCancellationBinding,
   prepareProviderInvocationAcceptanceBinding,
   providerInvocationManifestDigest,
   releaseProviderInvocationWorkerFence,
   readProviderInvocation,
+  readProviderInvocationCancellationRequest,
   readProviderInvocationManifest,
   readProviderInvocationRequest,
   storeProviderExecutionPolicySnapshot,
@@ -177,6 +191,7 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
             NonNullable<AgentRuntimePort['runSingleShotAsync']>
           >[0]['acceptanceBinding']
         | null = null;
+      let runtimeSignal: AbortSignal | null = null;
       const controller = new AbortController();
       const agentRuntime: AgentRuntimePort = {
         runSingleShot() {
@@ -185,7 +200,10 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         async runSingleShotAsync(input, options) {
           launches += 1;
           launchBinding = input.acceptanceBinding;
-          assert.equal(options.signal, controller.signal);
+          assert.ok(options.signal);
+          runtimeSignal = options.signal;
+          assert.notEqual(options.signal, controller.signal);
+          assert.equal(options.signal.aborted, false);
           assert.equal(
             sha256(canonicalJson(input.semanticOutputSchema)),
             request.outputSchema.digest,
@@ -233,6 +251,10 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
 
       assert.equal(completed.state, 'succeeded');
       assert.equal(completed.launched, true);
+      const mergedRuntimeSignal = runtimeSignal as AbortSignal | null;
+      assert.ok(mergedRuntimeSignal);
+      controller.abort();
+      assert.equal(mergedRuntimeSignal.aborted, true);
       const durable = readProviderInvocation(runtime, invocationId);
       assert.equal(durable.state, 'succeeded');
       const acceptedBinding =
@@ -558,6 +580,280 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+test(
+  'approved exact Grant aborts the leased async provider and clears its claim-bound fence',
+  { timeout: 10_000 },
+  async () => {
+    const repository = createFixtureRepository();
+    const changeId = 'worker-durable-cancellation';
+    try {
+      git(repository, ['checkout', '-b', `work/${changeId}`]);
+      const started = startPropose(repository, changeId, intent(), {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const invocationId = started.investigation!.providerInvocationId;
+      const locator = discoverRepository(repository);
+      const runtime = investigationRuntimePaths(
+        locator.gitCommonDirectory,
+        'workflow-engine',
+      );
+      let markLaunched!: () => void;
+      const launched = new Promise<void>((resolve) => {
+        markLaunched = resolve;
+      });
+      const agentRuntime: AgentRuntimePort = {
+        runSingleShot() {
+          assert.fail('async cancellation fixture must not use runSingleShot');
+        },
+        async runSingleShotAsync(_input, options) {
+          const signal = options.signal;
+          assert.ok(signal);
+          markLaunched();
+          return await new Promise<ProviderRunnerReport>((_resolve, reject) => {
+            const cancel = () => {
+              options.onActivity?.({ type: 'cancelled', elapsedMs: 1 });
+              reject(
+                workflowError(
+                  'AGENT_RUNTIME_V1_CANCELLED',
+                  'Exact durable provider cancellation was requested.',
+                  ExitCode.verification,
+                ),
+              );
+            };
+            signal.addEventListener('abort', cancel, { once: true });
+            if (signal.aborted) cancel();
+          });
+        },
+      };
+
+      const worker = runProviderWorkerAsync(repository, invocationId, {
+        workerId: 'durable-cancellation-worker',
+        agentRuntime,
+      });
+      await launched;
+      assert.equal(
+        readProviderInvocation(runtime, invocationId).state,
+        'leased',
+      );
+      const reason =
+        'Cancel the exact active provider before protected recovery.';
+      const grant = await beginExactProviderCancellationGrant(
+        repository,
+        invocationId,
+        reason,
+      );
+      const [result, resolution] = await Promise.all([
+        worker,
+        grant.resolution,
+      ]);
+      assert.equal(resolution.outcome, 'completed');
+      assert.equal(result.state, 'failed');
+      assert.equal(result.failure?.code, 'AGENT_RUNTIME_V1_CANCELLED');
+      const cancellation = readProviderInvocationCancellationRequest(
+        runtime,
+        invocationId,
+      );
+      assert.ok(cancellation);
+      assert.equal(cancellation.grantChallengeId, grant.challengeId);
+      assert.equal(cancellation.reason, reason);
+      assert.equal(
+        readProviderInvocation(runtime, invocationId).state,
+        'failed',
+      );
+      assert.equal(
+        fs.existsSync(
+          path.join(runtime.locks, `${invocationId}.worker-active`),
+        ),
+        false,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'approved cancellation preserves a natural provider success that wins the terminal race',
+  { timeout: 10_000 },
+  async () => {
+    const repository = createFixtureRepository();
+    const changeId = 'worker-cancellation-success-race';
+    try {
+      git(repository, ['checkout', '-b', `work/${changeId}`]);
+      const started = startPropose(repository, changeId, intent(), {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const invocationId = started.investigation!.providerInvocationId;
+      const locator = discoverRepository(repository);
+      const runtime = investigationRuntimePaths(
+        locator.gitCommonDirectory,
+        'workflow-engine',
+      );
+      const request = readProviderInvocationRequest(runtime, invocationId);
+      let markLaunched!: () => void;
+      const launched = new Promise<void>((resolve) => {
+        markLaunched = resolve;
+      });
+      let cancellationSignalObserved = false;
+      const agentRuntime: AgentRuntimePort = {
+        runSingleShot() {
+          assert.fail('success-race fixture must use the async runtime');
+        },
+        async runSingleShotAsync(_input, options) {
+          const signal = options.signal;
+          assert.ok(signal);
+          options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+          markLaunched();
+          await new Promise<void>((resolve) => {
+            const finishNaturally = () => {
+              cancellationSignalObserved = true;
+              resolve();
+            };
+            signal.addEventListener('abort', finishNaturally, { once: true });
+            if (signal.aborted) finishNaturally();
+          });
+          options.onActivity?.({ type: 'exited', elapsedMs: 2 });
+          return successfulWorkerReport(request, invocationId);
+        },
+      };
+
+      const worker = runProviderWorkerAsync(repository, invocationId, {
+        workerId: 'cancellation-success-race-worker',
+        agentRuntime,
+      });
+      await launched;
+      const grant = await beginExactProviderCancellationGrant(
+        repository,
+        invocationId,
+        'Request cancellation while preserving the actual provider result.',
+      );
+      const [result, resolution] = await Promise.all([
+        worker,
+        grant.resolution,
+      ]);
+
+      assert.equal(cancellationSignalObserved, true);
+      assert.equal(result.state, 'succeeded');
+      assert.equal(resolution.outcome, 'completed');
+      assert.equal(
+        readProviderInvocation(runtime, invocationId).state,
+        'succeeded',
+      );
+      assert.equal(
+        fs.existsSync(
+          path.join(runtime.locks, `${invocationId}.worker-active`),
+        ),
+        false,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  'forged cancellation storage cannot abort the claimed provider process',
+  { timeout: 10_000 },
+  async () => {
+    const repository = createFixtureRepository();
+    const changeId = 'worker-forged-cancellation';
+    try {
+      git(repository, ['checkout', '-b', `work/${changeId}`]);
+      const started = startPropose(repository, changeId, intent(), {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const invocationId = started.investigation!.providerInvocationId;
+      const locator = discoverRepository(repository);
+      const runtime = investigationRuntimePaths(
+        locator.gitCommonDirectory,
+        'workflow-engine',
+      );
+      const request = readProviderInvocationRequest(runtime, invocationId);
+      let markLaunched!: () => void;
+      const launched = new Promise<void>((resolve) => {
+        markLaunched = resolve;
+      });
+      let finishProvider!: () => void;
+      const finish = new Promise<void>((resolve) => {
+        finishProvider = resolve;
+      });
+      let abortObserved = false;
+      const agentRuntime: AgentRuntimePort = {
+        runSingleShot() {
+          assert.fail('forged-cancellation fixture must use the async runtime');
+        },
+        async runSingleShotAsync(_input, options) {
+          const signal = options.signal;
+          assert.ok(signal);
+          signal.addEventListener(
+            'abort',
+            () => {
+              abortObserved = true;
+            },
+            { once: true },
+          );
+          options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+          markLaunched();
+          await finish;
+          options.onActivity?.({ type: 'exited', elapsedMs: 100 });
+          return successfulWorkerReport(request, invocationId);
+        },
+      };
+
+      const worker = runProviderWorkerAsync(repository, invocationId, {
+        workerId: 'forged-cancellation-worker',
+        agentRuntime,
+      });
+      await launched;
+      const binding = createProviderInvocationCancellationBinding(
+        runtime,
+        invocationId,
+      );
+      const forgedBody = {
+        schemaVersion: 1 as const,
+        kind: 'provider-invocation-cancellation-request.v1' as const,
+        binding,
+        grantChallengeId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        grantOperationId: 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+        grantRecordDigest: `sha256:${'c'.repeat(64)}` as const,
+        reason: 'Forged storage has no Grant Core authority.',
+        requestedAt: '2030-08-30T00:00:00.000Z',
+      };
+      const forged = {
+        ...forgedBody,
+        requestDigest: `sha256:${sha256(
+          `workflow.provider-invocation-cancellation-request.v1\n${canonicalJson(forgedBody)}`,
+        )}` as const,
+      };
+      fs.writeFileSync(
+        path.join(
+          runtime.invocations,
+          invocationId,
+          'cancellation-request.json',
+        ),
+        `${canonicalJson(forged)}\n`,
+        { encoding: 'utf8', flag: 'wx', mode: 0o600 },
+      );
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      assert.equal(abortObserved, false);
+      finishProvider();
+
+      const result = await worker;
+      assert.equal(abortObserved, false);
+      assert.equal(result.state, 'succeeded');
+      assert.deepEqual(
+        readProviderInvocationCancellationRequest(runtime, invocationId),
+        forged,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  },
+);
 
 for (const fixture of [
   {
@@ -1986,6 +2282,104 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
     fs.rmSync(hostDirectory, { recursive: true, force: true });
   }
 });
+
+async function beginExactProviderCancellationGrant(
+  repository: string,
+  invocationId: string,
+  reason: string,
+) {
+  const locator = discoverRepository(repository);
+  const runtime = investigationRuntimePaths(
+    locator.gitCommonDirectory,
+    'workflow-engine',
+  );
+  const lifecycleRuntime = runtimePaths(
+    locator.gitCommonDirectory,
+    'workflow-engine',
+  );
+  const port =
+    createProductionProviderInvocationCancellationGrantPort(repository);
+  const observation = observeCurrentProviderInvocationCancellationRequest(
+    repository,
+    invocationId,
+    reason,
+  );
+  const request = createProviderInvocationCancellationGrantRequest(
+    observation,
+    'Approve cancellation of this one exact claimed provider invocation.',
+  );
+  const grantNow = new Date('2030-08-30T01:00:00.000Z');
+  const coordinator = createGrantCoordinatorKernel({
+    paths: grantStorePaths(path.dirname(runtime.root)),
+    registry: createTransitionRegistry(
+      providerInvocationCancellationTransitionDefinitions(port),
+    ),
+    policy: parseGrantPolicyV2(
+      {
+        schemaVersion: 2,
+        defaultProfile: 'local-presence',
+        profiles: {
+          'local-presence': {
+            requiredClaims: ['fresh-local-device-owner'],
+          },
+        },
+        approvalModules: [
+          {
+            moduleId: 'human-gate-macos',
+            version: '1',
+            allowedClaims: ['fresh-local-device-owner'],
+            configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
+          },
+        ],
+        legacyVerification: { maintainerPolicyV1: 'read-only' },
+      },
+      { registry: codeOwnedApprovalModuleRegistry() },
+    ),
+    now: () => new Date(grantNow),
+    randomUUID: () => crypto.randomUUID(),
+    challengeTtlMs: 10 * 60_000,
+    openApprovalSession(presentation) {
+      return {
+        async collectDecision() {
+          return {
+            choiceId: presentation.choices[0]!.choiceId,
+            reasonCode: 'cancel-exact-provider-invocation',
+            reason: 'Approve only this exact provider cancellation.',
+            approvalMethod: 'human-presence' as const,
+            sessionNonce: 'nonce-provider-cancellation-grant-000000000001',
+          };
+        },
+        async authenticate({ approvalSubjectDigest }) {
+          const proof: VerifiedApprovalProof = {
+            moduleId: 'human-gate-macos',
+            version: '1',
+            claims: ['fresh-local-device-owner'],
+            approvalSubjectDigest,
+            proofDigest: `sha256:${sha256(
+              `provider-cancellation-proof:${invocationId}`,
+            )}`,
+            verifiedAt: grantNow.toISOString(),
+            identity: null,
+          };
+          return [proof];
+        },
+        async close() {},
+      };
+    },
+    async withLifecycleOperation(challengeId, operation) {
+      return withRepositoryLifecycleOperationAsync(
+        lifecycleRuntime,
+        operation,
+        { allowGrantChallengeIds: [challengeId] },
+      );
+    },
+  });
+  const challenge = await coordinator.requestGrant(request);
+  return {
+    challengeId: challenge.challengeId,
+    resolution: coordinator.resolveChallenge(challenge.challengeId),
+  };
+}
 
 function intent() {
   return {

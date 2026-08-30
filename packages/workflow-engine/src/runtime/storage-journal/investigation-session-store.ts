@@ -57,6 +57,7 @@ import {
   validateWorkflowSupersedeReason,
   type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
+import { assertProviderInvocationCancellationRequestV1 } from '../../modules/authority/provider-invocation-cancellation-grant.ts';
 import {
   PROPOSE_POLICY_DIGEST,
   recreateProviderInvocationRequest,
@@ -114,6 +115,7 @@ const BLIND_PROVIDER_RUNTIME_FILES = [
   'semantic-output.json',
 ] as const;
 const OPTIONAL_PROVIDER_ROOT_FILES = [
+  'cancellation-request.json',
   'repair-evidence.json',
   'repair-lineage.json',
 ] as const;
@@ -6769,7 +6771,7 @@ function digestPrivateDirectoryEntries(
     if (`${canonicalJson(parsed)}\n` !== content) {
       throw makeError();
     }
-    assertProviderRepairAuthorityArtifact(name, parsed, request, makeError);
+    assertOptionalProviderRootArtifact(name, parsed, request, makeError);
     files.push({ name, digest: sha256(content) });
   }
 
@@ -7722,12 +7724,23 @@ function assertProviderExecutionPolicySnapshot(
   }
 }
 
-function assertProviderRepairAuthorityArtifact(
+function assertOptionalProviderRootArtifact(
   name: (typeof OPTIONAL_PROVIDER_ROOT_FILES)[number],
   value: unknown,
   request: ProviderInvocationRequest,
   makeError: () => WorkflowError,
 ): void {
+  if (name === 'cancellation-request.json') {
+    try {
+      const cancellation = assertProviderInvocationCancellationRequestV1(value);
+      if (cancellation.binding.invocationId !== request.invocationId) {
+        throw makeError();
+      }
+    } catch {
+      throw makeError();
+    }
+    return;
+  }
   if (!isRecord(value)) {
     throw makeError();
   }

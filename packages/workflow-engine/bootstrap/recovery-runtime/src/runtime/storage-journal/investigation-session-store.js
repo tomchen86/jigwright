@@ -18,6 +18,7 @@ import { assertHumanRevocationAuthorization, authorizeHumanRevocation, canonical
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
 import { INVESTIGATION_LIMITS, previewInvestigationTermUnion, } from "../../modules/investigation/domain/investigation-terms.js";
 import { WORKFLOW_SUPERSEDE_REASONS, validateWorkflowSupersedeReason, } from "../../modules/authority/intervention-control.js";
+import { assertProviderInvocationCancellationRequestV1 } from "../../modules/authority/provider-invocation-cancellation-grant.js";
 import { PROPOSE_POLICY_DIGEST, recreateProviderInvocationRequest, } from "../../modules/provider-orchestration/provider-contracts.js";
 import { inspectProviderInvocationSupersessionRelations } from "../provider-execution/provider-invocation-supersession-schema.js";
 import { assertDurableProviderExecutionBudgetAuthority, validateProviderExecutionBudgetAuthority, } from "../provider-execution/provider-execution-policy-authority.js";
@@ -50,6 +51,7 @@ const BLIND_PROVIDER_RUNTIME_FILES = [
     'semantic-output.json',
 ];
 const OPTIONAL_PROVIDER_ROOT_FILES = [
+    'cancellation-request.json',
     'repair-evidence.json',
     'repair-lineage.json',
 ];
@@ -4250,7 +4252,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
         if (`${canonicalJson(parsed)}\n` !== content) {
             throw makeError();
         }
-        assertProviderRepairAuthorityArtifact(name, parsed, request, makeError);
+        assertOptionalProviderRootArtifact(name, parsed, request, makeError);
         files.push({ name, digest: sha256(content) });
     }
     const stateContent = readPrivateFile(path.join(directory, 'state.json'), makeError);
@@ -4992,7 +4994,19 @@ function assertProviderExecutionPolicySnapshot(paths, value, request) {
         throw providerInvocationUnsafe();
     }
 }
-function assertProviderRepairAuthorityArtifact(name, value, request, makeError) {
+function assertOptionalProviderRootArtifact(name, value, request, makeError) {
+    if (name === 'cancellation-request.json') {
+        try {
+            const cancellation = assertProviderInvocationCancellationRequestV1(value);
+            if (cancellation.binding.invocationId !== request.invocationId) {
+                throw makeError();
+            }
+        }
+        catch {
+            throw makeError();
+        }
+        return;
+    }
     if (!isRecord(value)) {
         throw makeError();
     }

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:bdbd17c842f7075d8d4f176f7e2da73a3a8aa8e2142fe56636d345cc69c9c320"
+      "digest": "sha256:321539f21efbe68693f5b72207bce369c5579c85c7b4124c89b3daad3754b30c"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -386,6 +386,11 @@
       "digest": "sha256:e47e6361eb42416610846e8a8ac0f7e00ecd0a4284dfbe7de918e51452c6e9cc"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/provider-invocation-cancellation-grant.js",
+      "mode": "100644",
+      "digest": "sha256:570f4828a2ab84e8695b5a23ee8f53768ea1cfcbcfa82a1351da4938e9eaea38"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/role-context-sharing-consumed-replay.js",
       "mode": "100644",
       "digest": "sha256:8e30fa90f7707a5828fa082556766a2c239bb9d5fc69ba00928a0d87ec24aefe"
@@ -748,7 +753,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
       "mode": "100644",
-      "digest": "sha256:5324599badc967036f1b7a26836862d80389bfe8735597131fcf5572d5c2757a"
+      "digest": "sha256:48f9e5ed7674b4c23cc28d494434fee5e89712d8a08f18f3c5b34d4cd919891e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",
@@ -758,7 +763,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:c4ce846c074c6e8f4ed367cef24e5592f37bfeaf19580371b7a469c7738e5fa2"
+      "digest": "sha256:74d089a4fb07c74456a516047761a48898dfcbf7a7eb1cb97d78e7a353af3f1b"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-catalog.js",

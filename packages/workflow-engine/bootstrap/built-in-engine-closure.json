@@ -803,7 +803,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:e93435fcec2a3f8ef569a0de015ce5e3f18045f403758b6c39317b5ff8d04457"
+      "digest": "sha256:59143f33a5ba3a0f677cc7dd7acb25b267098ae275827d2ffff6316c59ac3ce9"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -849,6 +849,11 @@
       "path": "src/composition-root/protected-task-apply-recovery-grant-production.ts",
       "mode": "100644",
       "digest": "sha256:37649d93a4bf22e565117db389229aab76920c9c94c9ed992d90a78ebc483e80"
+    },
+    {
+      "path": "src/composition-root/provider-invocation-cancellation-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:ea1dd832690386c9eb804c5a5a0f3a3f9868a80b28f0cd2c8c4fb2696e4070d4"
     },
     {
       "path": "src/composition-root/public/central-grant.ts",
@@ -1043,7 +1048,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:71ff911c195b8594d90e25a8d9a6c3210d3f042aa4560aa1e206d977c1c1ffbc"
+      "digest": "sha256:2ed0c65a164b4db78e5e7544c7d5da83cd76bcdc691a49ddb2cd7ab14fd998a2"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1304,6 +1309,11 @@
       "path": "src/modules/authority/protected-task-apply-recovery-grant.ts",
       "mode": "100644",
       "digest": "sha256:a75b1075c6d93b20b2a53342d118887793888621fb347eee0f3f7c0986a5af07"
+    },
+    {
+      "path": "src/modules/authority/provider-invocation-cancellation-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:ccf1ef5f3130f073d83adba2a9b08c87c469ab73b03c8fab6dd55235504cddd8"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
@@ -2033,7 +2043,7 @@
     {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:6024b7fa69fd186e01090ef172bf08215edc2a414442fd6e259a33c5bd288baf"
+      "digest": "sha256:146d083c0492e35e4244dd2ef9b33cd74263b8cc6875e29f1d470c88b6ad5202"
     },
     {
       "path": "src/runtime/storage-journal/investigation-v3-failure-store.ts",
@@ -2073,7 +2083,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:1f855173cde15d158287fa42b1deb046a1852039df8ffe16bc83f4b7554fecfe"
+      "digest": "sha256:7975d5e2c3a7eec832c36e1e1da30bc1c89b60c16004a0d7b87c371c71e0c35f"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",

@@ -116,6 +116,14 @@ import {
   protectedTaskApplyDescendantSettlementTransitionDefinitions,
   type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
 } from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
+import {
+  createProviderInvocationCancellationGrantRequest,
+  providerInvocationCancellationTransitionDefinitions,
+} from '../modules/authority/provider-invocation-cancellation-grant.ts';
+import {
+  createProductionProviderInvocationCancellationGrantPort,
+  observeCurrentProviderInvocationCancellationRequest,
+} from './provider-invocation-cancellation-grant-production.ts';
 
 const TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION =
   'task.protected-apply.task-diff-role-assignment.v1' as const;
@@ -435,6 +443,8 @@ export function createProductionWorkflowGrantCoordinator(
     createProductionProtectedTaskApplyRecoveryGrantPort(cwd);
   const protectedTaskApplyDescendantSettlement =
     createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
+  const providerInvocationCancellation =
+    createProductionProviderInvocationCancellationGrantPort(cwd);
   const coordinator = createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
@@ -450,6 +460,9 @@ export function createProductionWorkflowGrantCoordinator(
       ),
       ...protectedTaskApplyDescendantSettlementTransitionDefinitions(
         protectedTaskApplyDescendantSettlement,
+      ),
+      ...providerInvocationCancellationTransitionDefinitions(
+        providerInvocationCancellation,
       ),
     ]),
   );
@@ -566,6 +579,26 @@ export async function requestProtectedTaskApplyDescendantSettlementGrant(
     );
   return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
     createProtectedTaskApplyDescendantSettlementGrantRequest(
+      observation,
+      proposedReason,
+    ),
+  );
+}
+
+export async function requestProviderInvocationCancellationGrant(
+  cwd: string,
+  invocationId: string,
+  reason: string,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observation = observeCurrentProviderInvocationCancellationRequest(
+    repositoryRoot,
+    invocationId,
+    reason,
+  );
+  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+    createProviderInvocationCancellationGrantRequest(
       observation,
       proposedReason,
     ),
