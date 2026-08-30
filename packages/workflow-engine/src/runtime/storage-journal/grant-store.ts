@@ -8,6 +8,7 @@ import { ensurePlainDirectory } from '../repository-transaction/filesystem-safet
 import {
   assertApprovalSubject,
   assertGrantChallenge,
+  approvalSubjectDigest,
   createApprovalSubject,
   type ApprovalSubject,
   type GrantChallenge,
@@ -19,9 +20,16 @@ import {
   GRANT_STABLE_ID,
   GRANT_UUID_V4,
   grantHasExactKeys,
+  grantSha256,
   grantSameStrings,
   parseGrantTimestamp,
 } from '../../modules/authority/grant-primitives.ts';
+import {
+  assertGrantParentBindingV1,
+  createPreparedGrantDescendantTreeV1,
+  type PreparedGrantDescendantNodeV1,
+  type PreparedGrantDescendantTreeV1,
+} from '../../modules/authority/grant-parent-binding.ts';
 import type { TransitionOutcome } from '../../modules/authority/grant-transition-registry.ts';
 
 const MODULE_VERSION = /^[1-9][0-9]*$/;
@@ -139,6 +147,132 @@ export function readGrantRecord(
   }
   if (record.challenge.challengeId !== challengeId) throw storeUnsafe();
   return record;
+}
+
+export function grantRecordDigest(candidate: GrantRecord): `sha256:${string}` {
+  const record = assertGrantRecord(candidate);
+  return grantSha256(`workflow.grant-record.v1\n${canonicalJson(record)}`);
+}
+
+export function listGrantRecords(
+  paths: GrantStorePaths,
+): readonly GrantRecord[] {
+  assertGrantStore(paths);
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(paths.records, { withFileTypes: true });
+  } catch {
+    throw storeUnsafe();
+  }
+  const records: GrantRecord[] = [];
+  for (const entry of entries.sort((left, right) =>
+    left.name.localeCompare(right.name),
+  )) {
+    if (!entry.isFile() || entry.isSymbolicLink()) throw storeUnsafe();
+    if (!RECORD_FILE.test(entry.name)) {
+      if (/\.tmp$/.test(entry.name)) continue;
+      throw storeUnsafe();
+    }
+    const record = readCanonicalFile(
+      path.join(paths.records, entry.name),
+      assertGrantRecord,
+    );
+    if (entry.name !== `${record.challenge.challengeId}.json`) {
+      throw storeUnsafe();
+    }
+    records.push(record);
+  }
+  return Object.freeze(records);
+}
+
+export function listPreparedGrantRecords(
+  paths: GrantStorePaths,
+): readonly PreparedGrantRecord[] {
+  return Object.freeze(
+    listGrantRecords(paths).filter(
+      (record): record is PreparedGrantRecord => record.state === 'prepared',
+    ),
+  );
+}
+
+export function inspectPreparedGrantDescendantTree(
+  paths: GrantStorePaths,
+  candidateRoot: PreparedGrantRecord,
+): PreparedGrantDescendantTreeV1 {
+  const root = assertGrantRecord(candidateRoot);
+  if (root.state !== 'prepared') throw storeUnsafe();
+  const remaining = new Map(
+    listPreparedGrantRecords(paths)
+      .filter(
+        ({ challenge }) => challenge.challengeId !== root.challenge.challengeId,
+      )
+      .map((record) => [record.challenge.challengeId, record]),
+  );
+  const known = new Map<
+    string,
+    Readonly<{ record: PreparedGrantRecord; depth: number }>
+  >([[root.challenge.challengeId, { record: root, depth: 0 }]]);
+  const nodes: PreparedGrantDescendantNodeV1[] = [];
+  let found = true;
+  while (found) {
+    found = false;
+    for (const [challengeId, record] of [...remaining]) {
+      const facts = record.challenge.facts;
+      if (!isRecord(facts) || !Object.hasOwn(facts, 'parentGrantBinding')) {
+        continue;
+      }
+      const binding = assertGrantParentBindingV1(facts.parentGrantBinding);
+      const parent = known.get(binding.parentChallengeId);
+      if (parent === undefined) continue;
+      assertExactPreparedGrantParentBinding(parent.record, binding);
+      const node = Object.freeze({
+        schemaVersion: 1 as const,
+        kind: 'prepared-grant-descendant.v1' as const,
+        depth: parent.depth + 1,
+        challengeId,
+        challengeDigest: record.challenge.challengeDigest,
+        operationId: record.operationId,
+        approvalSubjectDigest: approvalSubjectDigest(record.approvalSubject),
+        stateBindingDigest: record.challenge.stateBinding.digest,
+        preparedRecordDigest: grantRecordDigest(record),
+        parentBinding: binding,
+      });
+      nodes.push(node);
+      known.set(challengeId, { record, depth: node.depth });
+      remaining.delete(challengeId);
+      found = true;
+    }
+  }
+  return createPreparedGrantDescendantTreeV1({
+    schemaVersion: 1,
+    kind: 'prepared-grant-descendant-tree.v1',
+    rootChallengeId: root.challenge.challengeId,
+    rootPreparedRecordDigest: grantRecordDigest(root),
+    nodes,
+  });
+}
+
+function assertExactPreparedGrantParentBinding(
+  parent: PreparedGrantRecord,
+  binding: ReturnType<typeof assertGrantParentBindingV1>,
+): void {
+  const choice = parent.challenge.choices.find(
+    ({ choiceId }) => choiceId === parent.approvalSubject.choiceId,
+  );
+  if (
+    choice === undefined ||
+    binding.parentChallengeId !== parent.challenge.challengeId ||
+    binding.parentChallengeDigest !== parent.challenge.challengeDigest ||
+    binding.parentOperationId !== parent.operationId ||
+    binding.parentApprovalSubjectDigest !==
+      approvalSubjectDigest(parent.approvalSubject) ||
+    binding.parentStateBindingDigest !== parent.challenge.stateBinding.digest ||
+    binding.parentParametersDigest !==
+      grantSha256(canonicalJson(choice.parameters)) ||
+    binding.parentPreparedRecordDigest !== grantRecordDigest(parent)
+  ) {
+    throw storeUnsafe();
+  }
 }
 
 export function prepareGrantTransition(
@@ -259,27 +393,8 @@ export function assertGrantLifecycleBarrier(
   const rootStats = fs.lstatSync(root, { throwIfNoEntry: false });
   if (rootStats === undefined) return;
   const paths = grantStorePaths(runtimeRoot);
-  assertGrantStore(paths);
-  let entries: fs.Dirent[];
-  try {
-    entries = fs.readdirSync(paths.records, { withFileTypes: true });
-  } catch {
-    throw storeUnsafe();
-  }
-  for (const entry of entries) {
-    if (!entry.isFile() || entry.isSymbolicLink()) throw storeUnsafe();
-    if (!RECORD_FILE.test(entry.name)) {
-      if (/\.tmp$/.test(entry.name)) continue;
-      throw storeUnsafe();
-    }
-    const record = readCanonicalFile(
-      path.join(paths.records, entry.name),
-      assertGrantRecord,
-    );
-    if (
-      record.state === 'prepared' &&
-      !allowed.has(record.challenge.challengeId)
-    ) {
+  for (const record of listPreparedGrantRecords(paths)) {
+    if (!allowed.has(record.challenge.challengeId)) {
       throw workflowError(
         'GRANT_TRANSITION_RECOVERY_REQUIRED',
         `Prepared grant ${record.challenge.challengeId} must be recovered before another repository lifecycle operation.`,

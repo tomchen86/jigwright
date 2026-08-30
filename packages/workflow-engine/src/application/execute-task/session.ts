@@ -47,6 +47,17 @@ import {
   prepareTaskRevisionAbort,
 } from '../revise/task-revision.ts';
 import { assertChangeRoutingAdmission } from '../../modules/lifecycle/change-routing.ts';
+import {
+  assertProtectedTaskApplyRecoveryParameters,
+  protectedTaskApplyRecoveryGrantRequired,
+  type ProtectedTaskApplyRecoveryParametersV1,
+} from '../../modules/authority/protected-task-apply-recovery-grant.ts';
+import { protectedTaskApplyDescendantSettlementGrantRequired } from '../../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
+import { inspectPreparedGrantDescendants } from '../../modules/authority/grant-coordinator.ts';
+import {
+  readActiveFinalizeTransaction,
+  readProtectedFinalizeCancellation,
+} from '../finalize/finalize-cancellation.ts';
 
 export type SessionStartOptions = Readonly<{
   environment?: NodeJS.ProcessEnv;
@@ -472,13 +483,132 @@ export function abortSession(
   const initial = readSessionFile(
     path.join(runtime.sessions, `${sessionId}.json`),
   );
+  const initialTransaction = readActiveFinalizeTransaction(
+    runtime.root,
+    sessionId,
+  );
+  const parentChallengeId =
+    initialTransaction?.protectedApply?.challengeId ?? null;
+  if (initialTransaction?.protectedApply !== undefined) {
+    const descendants = inspectPreparedGrantDescendants(
+      runtime.root,
+      initialTransaction.protectedApply.challengeId,
+    );
+    if (descendants !== null && descendants.nodes.length > 0) {
+      if (
+        initialTransaction.phase !== 'checks-running' &&
+        initialTransaction.phase !== 'checked'
+      ) {
+        throw workflowError(
+          'PROTECTED_TASK_APPLY_RECOVERY_PHASE_UNSUPPORTED',
+          `Protected descendant settlement is not yet implemented for finalize phase ${initialTransaction.phase}.`,
+          ExitCode.staleState,
+        );
+      }
+      throw protectedTaskApplyDescendantSettlementGrantRequired({
+        action: 'cancel-and-abort',
+        changeId: initialTransaction.changeId,
+        taskId: initialTransaction.taskId,
+        sessionId: initialTransaction.sessionId,
+        transactionId: initialTransaction.transactionId,
+        transactionDigest: initialTransaction.recordDigest,
+        transactionPhase: initialTransaction.phase,
+        parentChallengeId: initialTransaction.protectedApply.challengeId,
+        parentOperationId: initialTransaction.protectedApply.operationId,
+        parentApprovalSubjectDigest:
+          initialTransaction.protectedApply.approvalSubjectDigest,
+        parentStateBindingDigest:
+          initialTransaction.protectedApply.stateBindingDigest,
+        parentParametersDigest:
+          initialTransaction.protectedApply.parametersDigest,
+        preparedDescendantTree: descendants,
+        reason: reason.trim(),
+      });
+    }
+  }
   const operation = () =>
     withSessionOperation(runtime, sessionId, () =>
       abortSessionUnlocked(runtime, sessionId, reason),
     );
-  return initial.state === 'revising' || initial.revisionLeaseId !== undefined
-    ? withRepositoryLifecycleOperation(runtime, operation)
-    : operation();
+  return withRepositoryLifecycleOperation(runtime, operation, {
+    ...(parentChallengeId === null
+      ? {}
+      : { allowGrantChallengeIds: [parentChallengeId] }),
+  });
+}
+
+export function abortSessionAfterProtectedTaskApplyRecoveryUnderGrant(
+  cwd: string,
+  candidate: ProtectedTaskApplyRecoveryParametersV1,
+  assertLifecycleOwned: () => void,
+): WorkflowSession {
+  const parameters = assertProtectedTaskApplyRecoveryParameters(candidate);
+  if (parameters.action !== 'cancel-and-abort') {
+    throw workflowError(
+      'PROTECTED_TASK_APPLY_RECOVERY_ACTION_INVALID',
+      'Only cancel-and-abort recovery can terminate the task session.',
+      ExitCode.guard,
+    );
+  }
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  return withSessionOperation(runtime, parameters.sessionId, () => {
+    assertLifecycleOwned();
+    const cancellation = readProtectedFinalizeCancellation(
+      runtime.root,
+      parameters.sessionId,
+      parameters.parentChallengeId,
+    );
+    if (
+      cancellation?.phase !== 'completed' ||
+      cancellation.cancelledAt === null ||
+      cancellation.transactionId !== parameters.transactionId ||
+      cancellation.transaction.recordDigest !== parameters.transactionDigest ||
+      cancellation.reason !== parameters.reason ||
+      cancellation.transaction.protectedApply?.operationId !==
+        parameters.parentOperationId
+    ) {
+      throw workflowError(
+        'PROTECTED_TASK_APPLY_RECOVERY_STATE_CHANGED',
+        'The exact protected finalize cancellation is not complete.',
+        ExitCode.staleState,
+      );
+    }
+    if (
+      readActiveFinalizeTransaction(runtime.root, parameters.sessionId) !== null
+    ) {
+      throw workflowError(
+        'PROTECTED_TASK_APPLY_RECOVERY_STATE_CHANGED',
+        'The protected finalize transaction remains active after cancellation.',
+        ExitCode.staleState,
+      );
+    }
+    const session = readSessionFile(
+      path.join(runtime.sessions, `${parameters.sessionId}.json`),
+    );
+    if (session.state === 'aborted') {
+      if (session.abortReason !== parameters.reason) {
+        throw workflowError(
+          'PROTECTED_TASK_APPLY_RECOVERY_STATE_CHANGED',
+          'The task session was aborted for another reason.',
+          ExitCode.staleState,
+        );
+      }
+      assertLifecycleOwned();
+      releaseAbortedSessionLocks(runtime, session);
+      assertLifecycleOwned();
+      return session;
+    }
+    assertLifecycleOwned();
+    const aborted = abortSessionUnlocked(
+      runtime,
+      parameters.sessionId,
+      parameters.reason,
+    );
+    assertLifecycleOwned();
+    return aborted;
+  });
 }
 
 function abortSessionUnlocked(
@@ -490,11 +620,7 @@ function abortSessionUnlocked(
   const session = readSessionFile(sessionPath);
 
   if (session.state === 'aborted' && session.revisionLeaseId !== undefined) {
-    releaseOwnedLock(
-      path.join(runtime.locks, `${session.changeId}.lock`),
-      sessionId,
-    );
-    releaseTaskSessionIsolationLeases(runtime, session);
+    releaseAbortedSessionLocks(runtime, session);
     completeTaskRevisionAbort(runtime, session);
     return session;
   }
@@ -516,6 +642,20 @@ function abortSessionUnlocked(
       ExitCode.staleState,
     );
   }
+  const transaction = readActiveFinalizeTransaction(runtime.root, sessionId);
+  if (transaction?.protectedApply !== undefined) {
+    throw protectedTaskApplyRecoveryGrantRequired({
+      action: 'cancel-and-abort',
+      changeId: transaction.changeId,
+      taskId: transaction.taskId,
+      sessionId: transaction.sessionId,
+      transactionId: transaction.transactionId,
+      transactionDigest: transaction.recordDigest,
+      transactionPhase: transaction.phase,
+      protectedApply: transaction.protectedApply,
+      reason: reason.trim(),
+    });
+  }
 
   if (session.state === 'revising') {
     prepareTaskRevisionAbort(runtime, session, reason.trim());
@@ -528,15 +668,22 @@ function abortSessionUnlocked(
     abortReason: reason.trim(),
   };
   writeJsonAtomic(sessionPath, aborted);
-  releaseOwnedLock(
-    path.join(runtime.locks, `${session.changeId}.lock`),
-    sessionId,
-  );
-  releaseTaskSessionIsolationLeases(runtime, aborted);
+  releaseAbortedSessionLocks(runtime, aborted);
   if (session.state === 'revising') {
     completeTaskRevisionAbort(runtime, aborted);
   }
   return aborted;
+}
+
+function releaseAbortedSessionLocks(
+  runtime: ReturnType<typeof runtimePaths>,
+  session: WorkflowSession,
+): void {
+  releaseOwnedLock(
+    path.join(runtime.locks, `${session.changeId}.lock`),
+    session.sessionId,
+  );
+  releaseTaskSessionIsolationLeases(runtime, session);
 }
 
 export function getSession(

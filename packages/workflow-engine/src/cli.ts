@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { loadWorkflowConformanceVectorsV2 } from '@jigwright/core/conformance-vectors';
+import { canonicalJson } from './foundation/canonical-json/canonical-json.ts';
 
 import { dispatchAiAdapterCommand } from './entrypoints/cli/ai-adapter-cli.ts';
 import { dispatchAgentProviderCommand } from './entrypoints/cli/agent-provider-cli.ts';
@@ -128,10 +129,20 @@ import {
   requestArchivePullRequestPublicationGrant,
   requestChangeRoutingContinuationGrant,
   requestProtectedTaskApplyGrant,
+  requestProtectedTaskApplyDescendantSettlementGrant,
+  requestProtectedTaskApplyRecoveryGrant,
   requestProtectedBaseInitializationGrant,
   requestWorkRegistryPromotionGrant,
   requestWorkRegistryReviewGrant,
 } from './composition-root/grant-production.ts';
+import {
+  assertProtectedTaskApplyRecoveryGrantRequiredDetails,
+  type ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
+} from './modules/authority/protected-task-apply-recovery-grant.ts';
+import {
+  assertProtectedTaskApplyDescendantSettlementGrantRequiredDetails,
+  type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+} from './modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import { dispatchIssueCommand } from './entrypoints/cli/issue-cli.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
 import type {
@@ -391,6 +402,8 @@ export async function dispatchAsync(
   roleAssignmentGrantRequest: typeof requestChangeRoleAssignmentGrant = requestChangeRoleAssignmentGrant,
   changeRoutingGrantRequest: ChangeRoutingGrantRequest = requestChangeRoutingContinuationGrant,
   protectedTaskApplyGrantRequest: typeof requestProtectedTaskApplyGrant = requestProtectedTaskApplyGrant,
+  protectedTaskApplyRecoveryGrantRequest: typeof requestProtectedTaskApplyRecoveryGrant = requestProtectedTaskApplyRecoveryGrant,
+  protectedTaskApplyDescendantSettlementGrantRequest: typeof requestProtectedTaskApplyDescendantSettlementGrant = requestProtectedTaskApplyDescendantSettlementGrant,
 ): Promise<CommandResult> {
   const [command, ...rest] = args;
   if (command === 'role-config') {
@@ -441,6 +454,26 @@ export async function dispatchAsync(
           protectedTaskApplyGrantRequest,
         );
       if (protectedTaskApplyGrant !== null) return protectedTaskApplyGrant;
+      const protectedTaskApplyDescendantSettlementGrant =
+        await createProtectedTaskApplyDescendantSettlementFailGrantResult(
+          args,
+          cwd,
+          error,
+          protectedTaskApplyDescendantSettlementGrantRequest,
+        );
+      if (protectedTaskApplyDescendantSettlementGrant !== null) {
+        return protectedTaskApplyDescendantSettlementGrant;
+      }
+      const protectedTaskApplyRecoveryGrant =
+        await createProtectedTaskApplyRecoveryFailGrantResult(
+          args,
+          cwd,
+          error,
+          protectedTaskApplyRecoveryGrantRequest,
+        );
+      if (protectedTaskApplyRecoveryGrant !== null) {
+        return protectedTaskApplyRecoveryGrant;
+      }
       const workRegistryGrant = await createWorkRegistryFailGrantResult(
         args,
         cwd,
@@ -474,6 +507,72 @@ export async function dispatchAsync(
     if (failGrant !== null) return failGrant;
     throw error;
   }
+}
+
+export async function createProtectedTaskApplyDescendantSettlementFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: typeof requestProtectedTaskApplyDescendantSettlementGrant = requestProtectedTaskApplyDescendantSettlementGrant,
+): Promise<CommandResult | null> {
+  if (
+    !(error instanceof WorkflowError) ||
+    error.code !== 'PROTECTED_TASK_APPLY_DESCENDANT_SETTLEMENT_GRANT_REQUIRED'
+  ) {
+    return null;
+  }
+  const details = protectedTaskApplyDescendantSettlementRequiredDetails(
+    error.details,
+  );
+  if (details === null) return null;
+  const expectedArgs =
+    details.action === 'cancel'
+      ? [
+          'finalize-recover',
+          details.sessionId,
+          '--cancel',
+          details.transactionId,
+          '--reason',
+          details.reason,
+        ]
+      : ['abort', details.sessionId, '--reason', details.reason];
+  if (canonicalJson(args) !== canonicalJson(expectedArgs)) return null;
+  const grant = await requestGrant(
+    cwd,
+    details,
+    `Settle only the ${details.preparedDescendantTree.nodes.length} exact prepared child Grant(s) bound to protected Apply ${details.parentChallengeId}; preserve every observed effect truthfully, then retry ${details.action}.`,
+  );
+  return {
+    command: args[0]!,
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      sessionId: details.sessionId,
+      transactionId: details.transactionId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        details,
+      },
+      grant,
+      transitionAppliesOnDecision: false,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        recoveryCommand: `pnpm workflow grant human recover ${grant.challengeId} --json`,
+        observeAfterDecision: `pnpm workflow status ${details.sessionId} --json`,
+        retryAfterDecision:
+          details.action === 'cancel'
+            ? `pnpm workflow finalize-recover ${details.sessionId} --cancel ${details.transactionId} --reason ${JSON.stringify(details.reason)} --json`
+            : `pnpm workflow abort ${details.sessionId} --reason ${JSON.stringify(details.reason)} --json`,
+      },
+    },
+  };
 }
 
 type ChangeRoutingGrantChallenge = Readonly<{
@@ -541,6 +640,90 @@ export async function createProtectedTaskApplyFailGrantResult(
       },
     },
   };
+}
+
+export async function createProtectedTaskApplyRecoveryFailGrantResult(
+  args: readonly string[],
+  cwd: string,
+  error: unknown,
+  requestGrant: typeof requestProtectedTaskApplyRecoveryGrant = requestProtectedTaskApplyRecoveryGrant,
+): Promise<CommandResult | null> {
+  if (
+    !(error instanceof WorkflowError) ||
+    error.code !== 'PROTECTED_TASK_APPLY_RECOVERY_GRANT_REQUIRED'
+  ) {
+    return null;
+  }
+  const details = protectedTaskApplyRecoveryRequiredDetails(error.details);
+  if (details === null) return null;
+  const expectedArgs =
+    details.action === 'cancel'
+      ? [
+          'finalize-recover',
+          details.sessionId,
+          '--cancel',
+          details.transactionId,
+          '--reason',
+          details.reason,
+        ]
+      : ['abort', details.sessionId, '--reason', details.reason];
+  if (canonicalJson(args) !== canonicalJson(expectedArgs)) return null;
+  const grant = await requestGrant(
+    cwd,
+    details,
+    details.action === 'cancel'
+      ? `Cancel only protected finalize transaction ${details.transactionId}, restore its exact projection, record its parent Apply as failed, and leave session ${details.sessionId} active.`
+      : `Cancel only protected finalize transaction ${details.transactionId}, restore its exact projection, record its parent Apply as failed, then abort session ${details.sessionId}.`,
+  );
+  return {
+    command: args[0]!,
+    ok: true,
+    result: {
+      schemaVersion: 1,
+      kind: 'workflow-fail-grant-required.v1',
+      sessionId: details.sessionId,
+      transactionId: details.transactionId,
+      state: 'human-action-required',
+      nextAction: 'human-action',
+      failure: {
+        code: error.code,
+        message: error.message,
+        details,
+      },
+      grant,
+      transitionAppliesOnDecision: true,
+      inputSchema: {
+        schemaVersion: 1,
+        kind: 'central-grant-resolution.v1',
+        inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
+        decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
+        recoveryCommand: `pnpm workflow grant human recover ${grant.challengeId} --json`,
+        observeAfterDecision: `pnpm workflow status ${details.sessionId} --json`,
+      },
+    },
+  };
+}
+
+function protectedTaskApplyRecoveryRequiredDetails(
+  value: unknown,
+): ProtectedTaskApplyRecoveryGrantRequiredDetailsV1 | null {
+  try {
+    return assertProtectedTaskApplyRecoveryGrantRequiredDetails(value);
+  } catch {
+    return null;
+  }
+}
+
+function protectedTaskApplyDescendantSettlementRequiredDetails(
+  value: unknown,
+): ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1 | null {
+  try {
+    return assertProtectedTaskApplyDescendantSettlementGrantRequiredDetails(
+      value,
+    );
+  } catch {
+    return null;
+  }
 }
 
 function protectedTaskApplyRequiredDetails(value: unknown): Readonly<{

@@ -10,6 +10,10 @@ import type {
   TransitionDefinition,
 } from '../authority/grant-transition-registry.ts';
 import { grantTransitionPreconditionChanged } from '../authority/grant-transition-registry.ts';
+import {
+  assertGrantParentBindingV1,
+  type GrantParentBindingV1,
+} from '../authority/grant-parent-binding.ts';
 import type { AgentRolePair } from './agent-role-plan.ts';
 import type { ChangeRoleAssignmentGrantRequirementV1 } from './change-role-assignment-record.ts';
 
@@ -112,6 +116,7 @@ export function changeRoleAssignmentGrantRequirementDigestV1(
 export function createChangeRoleAssignmentGrantRequest(
   candidate: ChangeRoleAssignmentGrantObservationV1,
   proposedReason: string,
+  parentGrantBinding: GrantParentBindingV1 | null = null,
 ): CentralGrantRequestInputV1 {
   const observation = assertChangeRoleAssignmentGrantObservation(candidate);
   if (observation.activation !== null) {
@@ -125,7 +130,10 @@ export function createChangeRoleAssignmentGrantRequest(
   return Object.freeze({
     sourceModuleId: 'agent-runtime-role-assignment',
     failureCode: 'role-independence-grant-required',
-    facts: factsFromObservation(observation),
+    facts: changeRoleAssignmentGrantChallengeFacts(
+      parameters,
+      parentGrantBinding,
+    ),
     stateBinding: changeRoleAssignmentGrantStateBinding(observation),
     candidates: Object.freeze([
       Object.freeze({
@@ -349,12 +357,14 @@ function parametersFromObservation(
   return Object.freeze({
     schemaVersion: 1,
     kind: 'change-role-assignment-grant-activation.v1',
-    ...factsFromObservation(observation),
+    ...identityFacts(observation),
   });
 }
 
-function factsFromObservation(
-  observation: ChangeRoleAssignmentGrantObservationV1,
+function identityFacts(
+  observation:
+    | ChangeRoleAssignmentGrantObservationV1
+    | ChangeRoleAssignmentGrantParametersV1,
 ) {
   return Object.freeze({
     repositoryId: observation.repositoryId,
@@ -366,6 +376,27 @@ function factsFromObservation(
     grantRequirementDigest: observation.grantRequirementDigest,
     exactRolePairs: observation.exactRolePairs,
   });
+}
+
+export function changeRoleAssignmentGrantChallengeFacts(
+  parameters: ChangeRoleAssignmentGrantParametersV1,
+  parentGrantBinding: GrantParentBindingV1 | null = null,
+) {
+  const normalized = assertChangeRoleAssignmentGrantParameters(parameters);
+  return Object.freeze({
+    ...identityFacts(normalized),
+    ...(parentGrantBinding === null
+      ? {}
+      : { parentGrantBinding: assertGrantParentBindingV1(parentGrantBinding) }),
+  });
+}
+
+export function changeRoleAssignmentGrantParentBinding(
+  facts: unknown,
+): GrantParentBindingV1 | null {
+  if (!isRecord(facts)) throw grantInvalid();
+  if (!Object.hasOwn(facts, 'parentGrantBinding')) return null;
+  return assertGrantParentBindingV1(facts.parentGrantBinding);
 }
 
 function assertMatchingObservation(

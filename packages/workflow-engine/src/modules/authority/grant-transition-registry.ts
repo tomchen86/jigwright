@@ -15,6 +15,10 @@ import {
   GRANT_SHA256_DIGEST as SHA256_DIGEST,
   GRANT_STABLE_ID as STABLE_ID,
 } from './grant-primitives.ts';
+import type {
+  PreparedGrantDescendantNodeV1,
+  PreparedGrantDescendantTreeV1,
+} from './grant-parent-binding.ts';
 
 export type TrustedChoicePresentation = Readonly<{
   title: string;
@@ -34,6 +38,14 @@ export type AuthorizedTransitionContext<TParameters> = Readonly<{
   operationId: string;
   recovered: boolean;
   assertLifecycleOwned(): void;
+  settlePreparedDescendant?(
+    node: PreparedGrantDescendantNodeV1,
+  ): Promise<Readonly<{ challengeId: string; outcome: 'failed' }>>;
+}>;
+
+export type TransitionObservationContext = Readonly<{
+  challengeId: string;
+  operationId: string | null;
 }>;
 
 export class GrantTransitionPreconditionError extends WorkflowError {
@@ -57,7 +69,13 @@ export type TransitionDefinition<TParameters> = Readonly<{
   resolutionKind: 'retry' | 'non-retry';
   validateParameters(value: unknown): TParameters;
   renderTrustedChoice(parameters: TParameters): TrustedChoicePresentation;
-  observeState(parameters: TParameters): StateBinding | Promise<StateBinding>;
+  preparedDescendantTree?(
+    parameters: TParameters,
+  ): PreparedGrantDescendantTreeV1;
+  observeState(
+    parameters: TParameters,
+    context?: TransitionObservationContext,
+  ): StateBinding | Promise<StateBinding>;
   /** A GrantTransitionPreconditionError asserts no effect was applied. */
   execute(
     context: AuthorizedTransitionContext<TParameters>,
@@ -71,7 +89,11 @@ type TransitionRegistration = Readonly<{
   resolutionKind: 'retry' | 'non-retry';
   validateParameters(value: unknown): unknown;
   renderTrustedChoice(parameters: never): TrustedChoicePresentation;
-  observeState(parameters: never): StateBinding | Promise<StateBinding>;
+  preparedDescendantTree?(parameters: never): PreparedGrantDescendantTreeV1;
+  observeState(
+    parameters: never,
+    context?: TransitionObservationContext,
+  ): StateBinding | Promise<StateBinding>;
   execute(
     context: AuthorizedTransitionContext<never>,
   ): Promise<TransitionOutcome>;
@@ -84,7 +106,11 @@ export type RegisteredTransitionDefinition = Readonly<{
   resolutionKind: 'retry' | 'non-retry';
   validateParameters(value: unknown): unknown;
   renderTrustedChoice(parameters: unknown): TrustedChoicePresentation;
-  observeState(parameters: unknown): StateBinding | Promise<StateBinding>;
+  preparedDescendantTree?(parameters: unknown): PreparedGrantDescendantTreeV1;
+  observeState(
+    parameters: unknown,
+    context?: TransitionObservationContext,
+  ): StateBinding | Promise<StateBinding>;
   execute(
     context: AuthorizedTransitionContext<unknown>,
   ): Promise<TransitionOutcome>;
@@ -126,8 +152,16 @@ export function createTransitionRegistry(
           candidate.validateParameters(value),
         renderTrustedChoice: (parameters: unknown) =>
           candidate.renderTrustedChoice(parameters as never),
-        observeState: (parameters: unknown) =>
-          candidate.observeState(parameters as never),
+        ...(candidate.preparedDescendantTree === undefined
+          ? {}
+          : {
+              preparedDescendantTree: (parameters: unknown) =>
+                candidate.preparedDescendantTree!(parameters as never),
+            }),
+        observeState: (
+          parameters: unknown,
+          context?: TransitionObservationContext,
+        ) => candidate.observeState(parameters as never, context),
         execute: (context: AuthorizedTransitionContext<unknown>) =>
           candidate.execute(
             context as unknown as AuthorizedTransitionContext<never>,
@@ -206,6 +240,8 @@ function assertDefinition(value: TransitionRegistration): void {
     !['retry', 'non-retry'].includes(value.resolutionKind) ||
     typeof value.validateParameters !== 'function' ||
     typeof value.renderTrustedChoice !== 'function' ||
+    (value.preparedDescendantTree !== undefined &&
+      typeof value.preparedDescendantTree !== 'function') ||
     typeof value.observeState !== 'function' ||
     typeof value.execute !== 'function'
   ) {

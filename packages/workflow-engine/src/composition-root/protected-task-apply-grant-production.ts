@@ -23,6 +23,7 @@ export function observeCurrentProtectedTaskApply(
   commitMessage: string,
   fullGate: boolean,
   expectedParameters?: ProtectedTaskApplyFinalizationParametersV1,
+  expectedParentChallengeId?: string,
 ): ProtectedTaskApplyObservationV1 {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
   const observed = inspectProtectedTaskApplyLifecycleState(
@@ -31,6 +32,7 @@ export function observeCurrentProtectedTaskApply(
     commitMessage,
     fullGate,
     expectedParameters,
+    expectedParentChallengeId,
   );
   const repositoryId = repositoryIdAtBaseline(
     repositoryRoot,
@@ -49,13 +51,17 @@ export function createProductionProtectedTaskApplyGrantPort(
 ): ProtectedTaskApplyGrantPort {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
   return Object.freeze({
-    observe(parameters: ProtectedTaskApplyFinalizationParametersV1) {
+    observe(
+      parameters: ProtectedTaskApplyFinalizationParametersV1,
+      parentChallengeId?: string,
+    ) {
       const observed = observeCurrentProtectedTaskApply(
         repositoryRoot,
         parameters.sessionId,
         parameters.commitMessage,
         parameters.fullGate === true,
         parameters,
+        parentChallengeId,
       );
       if (observed.repositoryId !== parameters.repositoryId) {
         throw workflowError(

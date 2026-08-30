@@ -603,7 +603,7 @@
     {
       "path": "src/application/execute-task/session.ts",
       "mode": "100644",
-      "digest": "sha256:d7b93a11b95e94c2391e51ac032993dff19e8a9750300af3feac642a4a3392c8"
+      "digest": "sha256:ecb84974a95d9f46795b7483c8b514a2c512573f30fe359e76d0ccece9681408"
     },
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
@@ -653,12 +653,12 @@
     {
       "path": "src/application/finalize/finalize-cancellation.ts",
       "mode": "100644",
-      "digest": "sha256:b636d7c2b57fbb1ec80a9848e9d06037e3f33acace1f47eaf889868e3dfed21a"
+      "digest": "sha256:715ce168954333626e988e24b91d3cf116e21bc8d8ec1233ab34187d3c69616b"
     },
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:f8b4304549bd110184003e1d1b8f8a1d1204dbd55cea98b4657d0828a149135b"
+      "digest": "sha256:140abf6e6a60a1fce0b08b2da31d7fbdfdc1673c68d336f1728553653e1083f7"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -713,7 +713,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:dc7efb33e4a9051590b6bc93d63acd3bc8331fb1bab94bb3ddb3d8bbc0b11fad"
+      "digest": "sha256:abd61b9dc2c6549c87f8cfaba82d2d6f11969fb851f913685943955d027c6411"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -763,7 +763,7 @@
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:5dad7404d16e26c9843a00abb045e72134b8ab993e120e2902db9cf51a34837c"
+      "digest": "sha256:18093d4efd6112fecd1f3edfc28a7e844a3080fe233d6d98194507c362dc83d4"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -803,7 +803,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:020190bf8939b440243ce4826fb39ec1daadbc1094ea2755992d61172ca2888a"
+      "digest": "sha256:e93435fcec2a3f8ef569a0de015ce5e3f18045f403758b6c39317b5ff8d04457"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -836,9 +836,19 @@
       "digest": "sha256:d8f7378163654c580e70719d7b839ce9c6ddae14227bbfec4822be5884cff2af"
     },
     {
+      "path": "src/composition-root/protected-task-apply-descendant-settlement-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:23d84c69c1426c2ac770dc28b3516a7d13ab272a1a66b00d8e17f03506691943"
+    },
+    {
       "path": "src/composition-root/protected-task-apply-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:d4d4494b90e4be270997dcfcfdd3637cf17c29efc41344e221a8dc8f51aa076b"
+      "digest": "sha256:009c52281c4aa826b498fbf771bd2e98a99ef84051728c9da33d026913b0e489"
+    },
+    {
+      "path": "src/composition-root/protected-task-apply-recovery-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:37649d93a4bf22e565117db389229aab76920c9c94c9ed992d90a78ebc483e80"
     },
     {
       "path": "src/composition-root/public/central-grant.ts",
@@ -1033,7 +1043,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:38488f1d0874227820d62c9a3f634331d4c11db9535fb8fcafe6ebf78dd81bb7"
+      "digest": "sha256:71ff911c195b8594d90e25a8d9a6c3210d3f042aa4560aa1e206d977c1c1ffbc"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1203,12 +1213,17 @@
     {
       "path": "src/modules/authority/grant-coordinator.ts",
       "mode": "100644",
-      "digest": "sha256:c8c72df7e2657f01615a92182a83c1c07e429fcb201936ae191026bfd82944d4"
+      "digest": "sha256:463df6af2baf262ca4dd1d71a77f1922bdabb837eaa5c83a2b0885c61ae5e5ab"
     },
     {
       "path": "src/modules/authority/grant-core.ts",
       "mode": "100644",
       "digest": "sha256:abf3b8f29859d71dc7a64d3222ec9bcec20d45b2917db9ab1de99a555fbf1205"
+    },
+    {
+      "path": "src/modules/authority/grant-parent-binding.ts",
+      "mode": "100644",
+      "digest": "sha256:876f727899519e3a8c7823b7fcd6d94e356e8a7a4ad6f2695ebd86dda3187a05"
     },
     {
       "path": "src/modules/authority/grant-policy.ts",
@@ -1223,7 +1238,7 @@
     {
       "path": "src/modules/authority/grant-transition-registry.ts",
       "mode": "100644",
-      "digest": "sha256:eedbfe277620ba0a9424333037b84a4a7309075d6c4d3a7da63bb423d34eb4c4"
+      "digest": "sha256:f08f764130fe48ec9bcaf88461cc91e48251960494ec3c382280202d001b203f"
     },
     {
       "path": "src/modules/authority/grant-verifier-port.ts",
@@ -1276,9 +1291,19 @@
       "digest": "sha256:5ed48997149b790e96913a0fd50be0d159bd2a731c3f76707017a51b348405d4"
     },
     {
+      "path": "src/modules/authority/protected-task-apply-descendant-settlement-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:cbe0f0abc03f5fc87f55132db923de9a73f63203056c3bc34300ba713291ec59"
+    },
+    {
       "path": "src/modules/authority/protected-task-apply-grant.ts",
       "mode": "100644",
-      "digest": "sha256:9fe3d1a7bd076cdbbf6f4fa974a27fd046a6e4d746979061187119406ddb4f1a"
+      "digest": "sha256:7bc2c0eea0b278c5dda36d3aac4d7a601877fa03d5215804d54a5ec3e487f39d"
+    },
+    {
+      "path": "src/modules/authority/protected-task-apply-recovery-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:a75b1075c6d93b20b2a53342d118887793888621fb347eee0f3f7c0986a5af07"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
@@ -1543,7 +1568,7 @@
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-grant.ts",
       "mode": "100644",
-      "digest": "sha256:141837a063a899c66e0524ef9887e48e3a0540eea29814ecff3fc357e3c0cd1d"
+      "digest": "sha256:bb7062826abd262f307c6dfb89ca1c1814392d6d8c94e00578adff74fcd2ebcd"
     },
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-record.ts",
@@ -1953,7 +1978,7 @@
     {
       "path": "src/runtime/storage-journal/change-role-assignment-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:59717fc2eef47e592074ebdf86e2e6b2a31645d9661068d8590b1508f91feb48"
+      "digest": "sha256:865508eb44e0617b020aa63646105aa9588671026948fa482f0cdc4f80755c5c"
     },
     {
       "path": "src/runtime/storage-journal/change-role-assignment-store.ts",
@@ -1993,7 +2018,7 @@
     {
       "path": "src/runtime/storage-journal/grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:10d381f59c70e4f589ca0f0b6fcd02199cfc094c5280421f794c569569710e65"
+      "digest": "sha256:f0fa2109d259d170a1921c6d1af46ac3e1fdb3dada4b7faaeb645fa33363921b"
     },
     {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",
@@ -2048,12 +2073,12 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:e7bf66a2836340d668f8873201cd99756708c75077f82c1743c382ada4e4b106"
+      "digest": "sha256:1f855173cde15d158287fa42b1deb046a1852039df8ffe16bc83f4b7554fecfe"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:d05888c644f2f1daeecd1516b33e2e6f1fe05fee87c8a32c6daa923618613817"
+      "digest": "sha256:baa575d6bed240fac729c89b20c823876cddf81a97604b5d865973de0792f9f6"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",

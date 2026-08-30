@@ -62,13 +62,16 @@ import {
   claimProviderInvocationForWorker,
   claimProviderInvocationForWorkerUnderLifecycleLock,
   completeProviderInvocationFromRunner,
+  completeProviderInvocationFromRunnerForWorkerClaim,
   completeProviderInvocationFromRunnerUnderLifecycleLock,
   failProviderInvocation,
+  failProviderInvocationForWorkerClaim,
   prepareProviderInvocationAcceptanceBinding,
   providerCompletionCandidateExists,
   recoverProviderInvocationCompletion,
   recoverProviderInvocationCompletionForWorkerUnderLifecycleLock,
   releaseProviderInvocationWorkerFence,
+  releaseProviderInvocationWorkerFenceForWorkerClaim,
   readPlanReviewSnapshotRuntime,
   readProviderInvocation,
   readProviderInvocationRuntimeReceipt,
@@ -503,6 +506,13 @@ function runProviderWorkerWithExecution(
         ? {}
         : { runtimeProgress: runtimeProgress() }),
     };
+    if (taskDiffReviewOwner !== null) {
+      return completeProviderInvocationFromRunnerForWorkerClaim(
+        context.runtime,
+        request.invocationId,
+        { ...completion, workerFenceToken: claim.workerFenceToken },
+      );
+    }
     if (taskStrategyImplementationOwner === null) {
       return completeProviderInvocationFromRunner(
         context.runtime,
@@ -550,11 +560,17 @@ function runProviderWorkerWithExecution(
           }),
       ...(repair === null ? {} : { repair }),
     };
-    return failProviderInvocation(
-      context.runtime,
-      request.invocationId,
-      failureInput,
-    );
+    return taskDiffReviewOwner === null
+      ? failProviderInvocation(
+          context.runtime,
+          request.invocationId,
+          failureInput,
+        )
+      : failProviderInvocationForWorkerClaim(
+          context.runtime,
+          request.invocationId,
+          { ...failureInput, workerFenceToken: claim.workerFenceToken },
+        );
   };
   const renderTerminal = (
     terminal: ProviderInvocationRecord,
@@ -563,10 +579,22 @@ function runProviderWorkerWithExecution(
     return renderWorkerResult(terminal, true);
   };
   const releaseWorkerFence = () => {
-    releaseProviderInvocationWorkerFence(
+    if (taskDiffReviewOwner === null) {
+      releaseProviderInvocationWorkerFence(
+        context.runtime,
+        request.invocationId,
+        claim.workerFenceToken,
+      );
+      return;
+    }
+    releaseProviderInvocationWorkerFenceForWorkerClaim(
       context.runtime,
       request.invocationId,
-      claim.workerFenceToken,
+      {
+        leaseGeneration: claim.record.leaseGeneration,
+        leaseToken: claim.leaseToken,
+        workerFenceToken: claim.workerFenceToken,
+      },
     );
   };
   let releaseSynchronously = true;

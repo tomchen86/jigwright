@@ -28,13 +28,17 @@ import {
 import {
   copyGrantDate,
   freezeGrantCanonical as freezeCanonical,
+  grantSha256,
   GRANT_SHA256_DIGEST as SHA256_DIGEST,
   GRANT_UUID_V4 as UUID_V4,
   grantHasExactKeys as hasExactKeys,
 } from './grant-primitives.ts';
 import {
+  grantStorePaths,
+  inspectPreparedGrantDescendantTree,
   persistGrantChallenge,
   prepareGrantTransition,
+  grantRecordDigest,
   readGrantRecord,
   recordGrantTransitionOutcome,
   type GrantStorePaths,
@@ -42,6 +46,12 @@ import {
   type PreparedGrantRecord,
   type TerminalGrantRecord,
 } from '../../runtime/storage-journal/grant-store.ts';
+import {
+  assertPreparedGrantDescendantNodeV1,
+  assertPreparedGrantDescendantTreeV1,
+  type PreparedGrantDescendantNodeV1,
+  type PreparedGrantDescendantTreeV1,
+} from './grant-parent-binding.ts';
 import type {
   RegisteredTransitionDefinition,
   TransitionOutcome,
@@ -107,6 +117,22 @@ export type GrantCoordinator = CentralGrantRequestPortV1 &
     resolveChallenge(challengeId: string): Promise<GrantExecutionResult>;
     recoverChallenge(challengeId: string): Promise<GrantExecutionResult>;
   }>;
+
+/**
+ * Read-only authority preflight for application recovery routing. Keeping the
+ * store traversal beside the coordinator avoids teaching application modules
+ * about the runtime Grant representation.
+ */
+export function inspectPreparedGrantDescendants(
+  runtimeRoot: string,
+  challengeId: string,
+): PreparedGrantDescendantTreeV1 | null {
+  const paths = grantStorePaths(runtimeRoot);
+  const record = readGrantRecord(paths, challengeId);
+  return record.state === 'prepared'
+    ? inspectPreparedGrantDescendantTree(paths, record)
+    : null;
+}
 
 type LifecycleOperation = <T>(
   challengeId: string,
@@ -226,6 +252,7 @@ export function createGrantCoordinatorKernel(
             selected.definition,
             selected.parameters,
             challenge.stateBinding,
+            challenge.challengeId,
           );
           assertOwned();
           const prepared = prepareGrantTransition(options.paths, {
@@ -315,6 +342,12 @@ async function executePreparedTransition(
     record.approvalSubject,
     registry,
   );
+  const descendantTree =
+    selected.definition.preparedDescendantTree === undefined
+      ? null
+      : assertPreparedGrantDescendantTreeV1(
+          selected.definition.preparedDescendantTree(selected.parameters),
+        );
   assertOwned();
   let outcome: TransitionOutcome;
   try {
@@ -326,6 +359,20 @@ async function executePreparedTransition(
       operationId: record.operationId,
       recovered,
       assertLifecycleOwned: assertOwned,
+      ...(descendantTree === null
+        ? {}
+        : {
+            settlePreparedDescendant: (node: PreparedGrantDescendantNodeV1) =>
+              terminalizeAuthorizedPreparedDescendant({
+                paths,
+                registry,
+                outerRecord: record,
+                descendantTree,
+                node,
+                assertOwned,
+                now,
+              }),
+          }),
     });
   } catch (error) {
     if (!(error instanceof GrantTransitionPreconditionError)) {
@@ -333,7 +380,10 @@ async function executePreparedTransition(
     }
     assertOwned();
     const observed = assertStateBinding(
-      await selected.definition.observeState(selected.parameters),
+      await selected.definition.observeState(selected.parameters, {
+        challengeId: challenge.challengeId,
+        operationId: record.operationId,
+      }),
     );
     assertOwned();
     if (
@@ -364,7 +414,13 @@ async function executePreparedTransition(
     return executionResult(failed, recovered);
   }
   assertOwned();
-  const poststate = await selected.definition.observeState(selected.parameters);
+  const poststate = await selected.definition.observeState(
+    selected.parameters,
+    {
+      challengeId: challenge.challengeId,
+      operationId: record.operationId,
+    },
+  );
   const normalizedPoststate = assertStateBinding(poststate);
   const completed = recordGrantTransitionOutcome(paths, {
     challengeId: challenge.challengeId,
@@ -375,6 +431,154 @@ async function executePreparedTransition(
     audit: grantAudit(record),
   });
   return executionResult(completed, recovered);
+}
+
+async function terminalizeAuthorizedPreparedDescendant(
+  input: Readonly<{
+    paths: GrantStorePaths;
+    registry: TransitionRegistry;
+    outerRecord: PreparedGrantRecord;
+    descendantTree: PreparedGrantDescendantTreeV1;
+    node: PreparedGrantDescendantNodeV1;
+    assertOwned(): void;
+    now(): Date;
+  }>,
+): Promise<Readonly<{ challengeId: string; outcome: 'failed' }>> {
+  const node = assertPreparedGrantDescendantNodeV1(input.node);
+  const authorizedNode = input.descendantTree.nodes.find(
+    ({ challengeId }) => challengeId === node.challengeId,
+  );
+  if (
+    authorizedNode === undefined ||
+    canonicalJson(authorizedNode) !== canonicalJson(node)
+  ) {
+    throw workflowError(
+      'GRANT_DESCENDANT_SETTLEMENT_UNAUTHORIZED',
+      'The outer Grant does not authorize this prepared descendant.',
+      ExitCode.guard,
+    );
+  }
+  input.assertOwned();
+  const current = readGrantRecord(input.paths, node.challengeId);
+  if (current.state === 'completed' || current.state === 'failed') {
+    if (
+      current.state !== 'failed' ||
+      current.operationId !== node.operationId ||
+      current.challenge.challengeDigest !== node.challengeDigest ||
+      approvalSubjectDigest(current.approvalSubject) !==
+        node.approvalSubjectDigest ||
+      !isMatchingAncestorCancellationOutcome(
+        current.outcome.details,
+        input.outerRecord,
+        input.descendantTree,
+        node,
+      )
+    ) {
+      throw workflowError(
+        'GRANT_DESCENDANT_SETTLEMENT_CHANGED',
+        'Prepared Grant descendant was terminalized by another operation.',
+        ExitCode.staleState,
+      );
+    }
+    return Object.freeze({ challengeId: node.challengeId, outcome: 'failed' });
+  }
+  if (
+    current.state !== 'prepared' ||
+    current.operationId !== node.operationId ||
+    current.challenge.challengeDigest !== node.challengeDigest ||
+    current.challenge.stateBinding.digest !== node.stateBindingDigest ||
+    approvalSubjectDigest(current.approvalSubject) !==
+      node.approvalSubjectDigest ||
+    grantRecordDigest(current) !== node.preparedRecordDigest
+  ) {
+    throw workflowError(
+      'GRANT_DESCENDANT_SETTLEMENT_CHANGED',
+      'Prepared Grant descendant changed before settlement.',
+      ExitCode.staleState,
+    );
+  }
+  const selected = selectedTransition(
+    current.challenge,
+    current.approvalSubject,
+    input.registry,
+  );
+  let observed: StateBinding | null = null;
+  let observationErrorCode: string | null = null;
+  try {
+    observed = assertStateBinding(
+      await selected.definition.observeState(selected.parameters, {
+        challengeId: current.challenge.challengeId,
+        operationId: current.operationId,
+      }),
+    );
+  } catch (error) {
+    observationErrorCode =
+      error instanceof Error && 'code' in error
+        ? safeTransitionErrorCode(String(error.code))
+        : 'OBSERVATION_UNAVAILABLE';
+  }
+  input.assertOwned();
+  const unchanged =
+    observed !== null &&
+    observed.kind === current.challenge.stateBinding.kind &&
+    observed.digest === current.challenge.stateBinding.digest;
+  const details = freezeCanonical({
+    schemaVersion: 1,
+    kind: 'grant-transition-cancelled-by-ancestor-recovery.v1',
+    outerChallengeId: input.outerRecord.challenge.challengeId,
+    outerOperationId: input.outerRecord.operationId,
+    outerApprovalSubjectDigest: approvalSubjectDigest(
+      input.outerRecord.approvalSubject,
+    ),
+    rootChallengeId: input.descendantTree.rootChallengeId,
+    descendantTreeDigest: input.descendantTree.treeDigest,
+    preparedRecordDigest: node.preparedRecordDigest,
+    expectedStateBinding: current.challenge.stateBinding,
+    transitionCompleted: unchanged ? false : null,
+    effectState: unchanged
+      ? 'not-applied'
+      : observed === null
+        ? 'observation-unavailable-authorized'
+        : 'state-changed-authorized',
+    observedStateBinding: observed,
+    observationErrorCode,
+  });
+  const poststateDigest =
+    observed?.digest ??
+    grantSha256(
+      `workflow.grant-descendant-observation-unavailable.v1\n${canonicalJson({
+        node,
+        observationErrorCode,
+      })}`,
+    );
+  recordGrantTransitionOutcome(input.paths, {
+    challengeId: current.challenge.challengeId,
+    operationId: current.operationId,
+    poststateDigest,
+    outcome: Object.freeze({ outcome: 'failed' as const, details }),
+    completedAt: exactDate(input.now()).toISOString(),
+    audit: grantAudit(current),
+  });
+  return Object.freeze({ challengeId: node.challengeId, outcome: 'failed' });
+}
+
+function isMatchingAncestorCancellationOutcome(
+  value: unknown,
+  outerRecord: PreparedGrantRecord,
+  tree: PreparedGrantDescendantTreeV1,
+  node: PreparedGrantDescendantNodeV1,
+): boolean {
+  return (
+    isRecord(value) &&
+    value.kind === 'grant-transition-cancelled-by-ancestor-recovery.v1' &&
+    value.outerChallengeId === outerRecord.challenge.challengeId &&
+    value.outerOperationId === outerRecord.operationId &&
+    value.outerApprovalSubjectDigest ===
+      approvalSubjectDigest(outerRecord.approvalSubject) &&
+    value.rootChallengeId === tree.rootChallengeId &&
+    value.descendantTreeDigest === tree.treeDigest &&
+    value.preparedRecordDigest === node.preparedRecordDigest
+  );
 }
 
 function safeTransitionErrorCode(value: string): string {
@@ -452,9 +656,13 @@ async function assertExpectedState(
   definition: RegisteredTransitionDefinition,
   parameters: unknown,
   expected: StateBinding,
+  challengeId: string,
 ): Promise<void> {
   const observed = assertStateBinding(
-    await definition.observeState(parameters),
+    await definition.observeState(parameters, {
+      challengeId,
+      operationId: null,
+    }),
   );
   if (observed.kind !== expected.kind || observed.digest !== expected.digest) {
     throw workflowError(

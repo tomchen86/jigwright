@@ -10,6 +10,7 @@ import {
 } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {
   parseFinalizeTransaction,
+  readFinalizeTransaction,
   type FinalizeTransaction,
 } from '../../runtime/repository-transaction/finalize-transaction.ts';
 import { writeJsonAtomic } from '../../runtime/session-workspace/session-store.ts';
@@ -147,6 +148,54 @@ export function readFinalizeCancellation(
   return readCancellationFile(filePath, normalizedId, () =>
     cancellationPreparationPath(runtimeRoot, normalizedId),
   );
+}
+
+export function readActiveFinalizeTransaction(
+  runtimeRoot: string,
+  sessionId: string,
+): FinalizeTransaction | null {
+  return readFinalizeTransaction(runtimeRoot, sessionId);
+}
+
+export function readProtectedFinalizeCancellation(
+  runtimeRoot: string,
+  sessionId: string,
+  parentChallengeId: string,
+): FinalizeCancellation | null {
+  const directory = cancellationDirectory(runtimeRoot);
+  const directoryStats = fs.lstatSync(directory, { throwIfNoEntry: false });
+  if (!directoryStats) return null;
+  try {
+    assertPlainDirectory(directory);
+  } catch {
+    throw invalidCancellation('Finalize cancellation directory is unsafe.');
+  }
+  const matches = fs
+    .readdirSync(directory, { withFileTypes: true })
+    .filter(
+      (entry) =>
+        entry.isFile() &&
+        !entry.isSymbolicLink() &&
+        /^[0-9a-f]{64}\.json$/u.test(entry.name),
+    )
+    .map((entry) =>
+      readFinalizeCancellation(
+        runtimeRoot,
+        entry.name.slice(0, -'.json'.length),
+      ),
+    )
+    .filter(
+      (entry): entry is FinalizeCancellation =>
+        entry !== null &&
+        entry.sessionId === sessionId &&
+        entry.transaction.protectedApply?.challengeId === parentChallengeId,
+    );
+  if (matches.length > 1) {
+    throw invalidCancellation(
+      'More than one finalize cancellation matches the protected Apply Grant.',
+    );
+  }
+  return matches[0] ?? null;
 }
 
 function readCancellationFile(

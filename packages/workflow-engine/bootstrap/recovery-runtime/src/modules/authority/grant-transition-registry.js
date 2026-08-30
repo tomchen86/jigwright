@@ -24,7 +24,12 @@ export function createTransitionRegistry(definitions) {
             resolutionKind: candidate.resolutionKind,
             validateParameters: (value) => candidate.validateParameters(value),
             renderTrustedChoice: (parameters) => candidate.renderTrustedChoice(parameters),
-            observeState: (parameters) => candidate.observeState(parameters),
+            ...(candidate.preparedDescendantTree === undefined
+                ? {}
+                : {
+                    preparedDescendantTree: (parameters) => candidate.preparedDescendantTree(parameters),
+                }),
+            observeState: (parameters, context) => candidate.observeState(parameters, context),
             execute: (context) => candidate.execute(context),
         }));
     }
@@ -78,6 +83,8 @@ function assertDefinition(value) {
         !['retry', 'non-retry'].includes(value.resolutionKind) ||
         typeof value.validateParameters !== 'function' ||
         typeof value.renderTrustedChoice !== 'function' ||
+        (value.preparedDescendantTree !== undefined &&
+            typeof value.preparedDescendantTree !== 'function') ||
         typeof value.observeState !== 'function' ||
         typeof value.execute !== 'function') {
         throw transitionInvalid('GRANT_TRANSITION_DEFINITION_INVALID', 'A code-owned transition definition is malformed.');

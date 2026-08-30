@@ -13,6 +13,8 @@ import {
   CHANGE_ROLE_ASSIGNMENT_GRANT_PARAMETER_SCHEMA_DIGEST,
   CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID,
   assertChangeRoleAssignmentGrantParameters,
+  changeRoleAssignmentGrantChallengeFacts,
+  changeRoleAssignmentGrantParentBinding,
   changeRoleAssignmentGrantRequirementDigestV1,
   changeRoleAssignmentGrantStateBinding,
   type ChangeRoleAssignmentGrantActivationV1,
@@ -228,16 +230,12 @@ export function readCompletedChangeRoleAssignmentGrantAuthority(
     grant.challenge.sourceModuleId !== 'agent-runtime-role-assignment' ||
     grant.challenge.failureCode !== 'role-independence-grant-required' ||
     canonicalJson(grant.challenge.facts) !==
-      canonicalJson({
-        repositoryId: activation.repositoryId,
-        changeId: activation.changeId,
-        planningGeneration: activation.planningGeneration,
-        invocationId: activation.invocationId,
-        recordDigest: activation.recordDigest,
-        assignmentDigest: activation.assignmentDigest,
-        grantRequirementDigest: activation.grantRequirementDigest,
-        exactRolePairs: activation.exactRolePairs,
-      }) ||
+      canonicalJson(
+        changeRoleAssignmentGrantChallengeFacts(
+          parameters,
+          changeRoleAssignmentGrantParentBinding(grant.challenge.facts),
+        ),
+      ) ||
     canonicalJson(grant.challenge.stateBinding) !==
       canonicalJson(changeRoleAssignmentGrantStateBinding(preActivation)) ||
     grant.poststateDigest !==

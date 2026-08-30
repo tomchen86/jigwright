@@ -8,6 +8,7 @@ import {
   grantTransitionPreconditionChanged,
   type AuthorizedTransitionContext,
   type TransitionDefinition,
+  type TransitionObservationContext,
 } from './grant-transition-registry.ts';
 
 export const PROTECTED_TASK_APPLY_TRANSITION_ID =
@@ -30,7 +31,7 @@ export type ProtectedTaskApplyFailureDetailsV1 = Readonly<{
 export type ProtectedTaskApplyObservationV1 = Readonly<{
   schemaVersion: 1;
   kind: 'protected-task-apply-observation.v1';
-  phase: 'pending' | 'in-progress' | 'completed';
+  phase: 'pending' | 'in-progress' | 'cancelled' | 'completed';
   repositoryId: string;
   changeId: string;
   sessionId: string;
@@ -66,6 +67,7 @@ export type ProtectedTaskApplyFinalizationParametersV1 = Readonly<{
 export type ProtectedTaskApplyGrantPort = Readonly<{
   observe(
     parameters: ProtectedTaskApplyFinalizationParametersV1,
+    parentChallengeId?: string,
   ): ProtectedTaskApplyObservationV1;
   finalize(
     context: AuthorizedTransitionContext<ProtectedTaskApplyFinalizationParametersV1>,
@@ -189,10 +191,16 @@ export function protectedTaskApplyGrantTransitionDefinitions(
           ]),
         });
       },
-      observeState(parameters: ProtectedTaskApplyFinalizationParametersV1) {
+      observeState(
+        parameters: ProtectedTaskApplyFinalizationParametersV1,
+        observationContext?: TransitionObservationContext,
+      ) {
         const exact = assertProtectedTaskApplyParameters(parameters);
         return protectedTaskApplyStateBinding(
-          assertMatchingObservation(port.observe(exact), exact),
+          assertMatchingObservation(
+            port.observe(exact, observationContext?.challengeId),
+            exact,
+          ),
         );
       },
       async execute(
@@ -203,9 +211,18 @@ export function protectedTaskApplyGrantTransitionDefinitions(
         );
         context.assertLifecycleOwned();
         const before = assertMatchingObservation(
-          port.observe(parameters),
+          port.observe(parameters, context.challengeId),
           parameters,
         );
+        if (before.phase === 'cancelled') {
+          if (!context.recovered || before.transactionId === null) {
+            throw grantTransitionPreconditionChanged(
+              'PROTECTED_TASK_APPLY_RECOVERY_UNEXPECTED',
+              'Protected task Apply was cancelled before this Grant execution.',
+            );
+          }
+          return cancelledOutcome(before);
+        }
         const beforeBinding = protectedTaskApplyStateBinding(before);
         if (
           before.phase === 'pending' &&
@@ -235,7 +252,7 @@ export function protectedTaskApplyGrantTransitionDefinitions(
         const result = await port.finalize({ ...context, parameters });
         context.assertLifecycleOwned();
         const after = assertMatchingObservation(
-          port.observe(parameters),
+          port.observe(parameters, context.challengeId),
           parameters,
         );
         if (
@@ -384,7 +401,9 @@ function assertProtectedTaskApplyObservation(
     ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'protected-task-apply-observation.v1' ||
-    !['pending', 'in-progress', 'completed'].includes(String(value.phase)) ||
+    !['pending', 'in-progress', 'cancelled', 'completed'].includes(
+      String(value.phase),
+    ) ||
     typeof value.repositoryId !== 'string' ||
     typeof value.changeId !== 'string' ||
     !CHANGE_ID.test(value.changeId) ||
@@ -531,6 +550,20 @@ function completedOutcome(observation: ProtectedTaskApplyObservationV1) {
       sessionId: observation.sessionId,
       transactionId: observation.transactionId,
       commitHash: observation.commitHash,
+    }),
+  });
+}
+
+function cancelledOutcome(observation: ProtectedTaskApplyObservationV1) {
+  return Object.freeze({
+    outcome: 'failed' as const,
+    details: Object.freeze({
+      schemaVersion: 1,
+      kind: 'protected-task-apply-cancelled.v1',
+      sessionId: observation.sessionId,
+      transactionId: observation.transactionId,
+      cancellationStateFingerprint: observation.stateFingerprint,
+      transitionCompleted: false,
     }),
   });
 }

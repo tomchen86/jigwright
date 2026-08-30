@@ -34,6 +34,7 @@ import {
   markFinalizeProjectionRestored,
   publishFinalizeCancellation,
   readFinalizeCancellation,
+  readProtectedFinalizeCancellation,
   type FinalizeCancellation,
 } from './finalize-cancellation.ts';
 import { resolveFinalizeCheckPolicy } from '../../modules/assurance/finalize-check-policy.ts';
@@ -134,6 +135,14 @@ import {
   type TaskAuthorizationRequirement,
 } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import type { ProtectedTaskApplyFinalizationParametersV1 } from '../../modules/authority/protected-task-apply-grant.ts';
+import {
+  assertProtectedTaskApplyRecoveryAuthorization,
+  assertProtectedTaskApplyRecoveryParameters,
+  protectedTaskApplyRecoveryGrantRequired,
+  type ProtectedTaskApplyRecoveryAuthorizationBinding,
+  type ProtectedTaskApplyRecoveryParametersV1,
+} from '../../modules/authority/protected-task-apply-recovery-grant.ts';
+import { grantSha256 } from '../../modules/authority/grant-primitives.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
 
@@ -176,7 +185,7 @@ export type FinalizeSessionOptions = Readonly<{
 }>;
 
 export type ProtectedTaskApplyLifecycleState = Readonly<{
-  phase: 'pending' | 'in-progress' | 'completed';
+  phase: 'pending' | 'in-progress' | 'cancelled' | 'completed';
   changeId: string;
   sessionId: string;
   taskId: string;
@@ -234,8 +243,72 @@ export function cancelFinalizeRecovery(
   reason: string,
   options: FinalizeCancellationOptions = {},
 ): FinalizeCancellationResult {
+  return cancelFinalizeRecoveryInternal(
+    cwd,
+    requestedSessionId,
+    transactionId,
+    reason,
+    options,
+    null,
+  );
+}
+
+export function cancelProtectedTaskApplyRecoveryUnderGrant(
+  cwd: string,
+  candidate: ProtectedTaskApplyRecoveryParametersV1,
+  candidateAuthorization: ProtectedTaskApplyRecoveryAuthorizationBinding,
+  assertLifecycleOwned: () => void,
+): FinalizeCancellationResult {
+  const parameters = assertProtectedTaskApplyRecoveryParameters(candidate);
+  const authorization = assertProtectedTaskApplyRecoveryAuthorization(
+    candidateAuthorization,
+  );
+  if (
+    authorization.parentChallengeId !== parameters.parentChallengeId ||
+    authorization.parentOperationId !== parameters.parentOperationId ||
+    authorization.parentApprovalSubjectDigest !==
+      parameters.parentApprovalSubjectDigest ||
+    authorization.parentStateBindingDigest !==
+      parameters.parentStateBindingDigest ||
+    authorization.parentParametersDigest !==
+      parameters.parentParametersDigest ||
+    authorization.action !== parameters.action ||
+    authorization.stateBindingDigest !== parameters.stateBindingDigest ||
+    authorization.parametersDigest !== grantSha256(canonicalJson(parameters))
+  ) {
+    throw workflowError(
+      'PROTECTED_TASK_APPLY_RECOVERY_AUTHORIZATION_INVALID',
+      'Protected task Apply recovery authorization does not bind the exact transition.',
+      ExitCode.guard,
+    );
+  }
+  return cancelFinalizeRecoveryInternal(
+    cwd,
+    parameters.sessionId,
+    parameters.transactionId,
+    parameters.reason,
+    {},
+    Object.freeze({ parameters, authorization, assertLifecycleOwned }),
+  );
+}
+
+type ProtectedFinalizeRecoveryContext = Readonly<{
+  parameters: ProtectedTaskApplyRecoveryParametersV1;
+  authorization: ProtectedTaskApplyRecoveryAuthorizationBinding;
+  assertLifecycleOwned(): void;
+}>;
+
+function cancelFinalizeRecoveryInternal(
+  cwd: string,
+  requestedSessionId: string,
+  transactionId: string,
+  reason: string,
+  options: FinalizeCancellationOptions,
+  protectedRecovery: ProtectedFinalizeRecoveryContext | null,
+): FinalizeCancellationResult {
   assertFinalizeCancellationReason(reason);
   return runSessionOperation(cwd, requestedSessionId, () => {
+    protectedRecovery?.assertLifecycleOwned();
     const session = getSession(cwd, requestedSessionId);
     const git = discoverRepository(cwd);
     const config = loadWorkflowConfig(git.repositoryRoot);
@@ -244,13 +317,15 @@ export function cancelFinalizeRecovery(
       config.runtimeDirectory,
     );
     const archived = readFinalizeCancellation(runtime.root, transactionId);
-    if (archived?.transaction.protectedApply !== undefined) {
-      throw protectedTaskApplyCancellationRequiresGrantRecovery(
-        archived.transaction.protectedApply.challengeId,
-      );
-    }
     if (archived?.phase === 'completed') {
       assertCancellationRequest(archived, session, git, transactionId, reason);
+      if (archived.transaction.protectedApply !== undefined) {
+        assertProtectedFinalizeRecoveryContext(
+          archived.transaction,
+          protectedRecovery,
+          reason,
+        );
+      }
       removeCancelledActiveTransaction(runtime.root, archived);
       return cancellationResult(archived);
     }
@@ -264,14 +339,34 @@ export function cancelFinalizeRecovery(
       );
     }
     if (transaction.protectedApply !== undefined) {
-      throw protectedTaskApplyCancellationRequiresGrantRecovery(
-        transaction.protectedApply.challengeId,
+      if (protectedRecovery === null) {
+        throw protectedTaskApplyRecoveryGrantRequired({
+          action: 'cancel',
+          changeId: transaction.changeId,
+          taskId: transaction.taskId,
+          sessionId: transaction.sessionId,
+          transactionId: transaction.transactionId,
+          transactionDigest: transaction.recordDigest,
+          transactionPhase: transaction.phase,
+          protectedApply: transaction.protectedApply,
+          reason,
+        });
+      }
+      assertProtectedFinalizeRecoveryContext(
+        transaction,
+        protectedRecovery,
+        reason,
+      );
+    } else if (protectedRecovery !== null) {
+      throw invalidFinalizeCancellation(
+        'Protected Apply recovery does not own this finalize transaction.',
       );
     }
     assertFinalizeTransactionMatchesSession(transaction, session, git);
     let cancellation = archived;
     if (cancellation === null) {
       if (
+        protectedRecovery === null &&
         transaction.phase !== 'checks-running' &&
         !isAuthenticatedCheckedFinalizeCancellation(
           cwd,
@@ -292,6 +387,7 @@ export function cancelFinalizeRecovery(
           new Date().toISOString(),
         ),
       );
+      protectedRecovery?.assertLifecycleOwned();
       maybeInterruptFinalizeCancellation(options, 'cancellation-requested');
     } else {
       assertCancellationRequest(
@@ -305,6 +401,7 @@ export function cancelFinalizeRecovery(
     if (cancellation.phase === 'requested') {
       restoreFinalizeTransactionProjection(cwd, transaction, cancellation);
       cancellation = markFinalizeProjectionRestored(runtime.root, cancellation);
+      protectedRecovery?.assertLifecycleOwned();
       maybeInterruptFinalizeCancellation(options, 'projection-restored');
     }
     if (cancellation.phase === 'projection-restored') {
@@ -313,9 +410,11 @@ export function cancelFinalizeRecovery(
         cancellation,
         new Date().toISOString(),
       );
+      protectedRecovery?.assertLifecycleOwned();
       maybeInterruptFinalizeCancellation(options, 'cancellation-completed');
     }
     removeCancelledActiveTransaction(runtime.root, cancellation);
+    protectedRecovery?.assertLifecycleOwned();
     return cancellationResult(cancellation);
   });
 }
@@ -761,6 +860,7 @@ export function inspectProtectedTaskApplyLifecycleState(
   commitMessage: string,
   fullGate: boolean,
   expectedParameters?: ProtectedTaskApplyFinalizationParametersV1,
+  expectedParentChallengeId?: string,
 ): ProtectedTaskApplyLifecycleState {
   validateCommitSubject(commitMessage);
   const session = getSession(cwd, requestedSessionId);
@@ -776,6 +876,68 @@ export function inspectProtectedTaskApplyLifecycleState(
   }
 
   if (transaction === null) {
+    const cancellation =
+      expectedParentChallengeId === undefined
+        ? null
+        : readProtectedFinalizeCancellation(
+            runtime.root,
+            session.sessionId,
+            expectedParentChallengeId,
+          );
+    if (cancellation !== null) {
+      if (
+        cancellation.phase !== 'completed' ||
+        cancellation.cancelledAt === null ||
+        cancellation.transaction.protectedApply === undefined ||
+        expectedParameters === undefined
+      ) {
+        throw protectedTaskApplyAuthorizationInvalid(
+          'Protected Apply cancellation is not durably complete.',
+        );
+      }
+      assertFinalizeTransactionMatchesSession(
+        cancellation.transaction,
+        session,
+        git,
+      );
+      assertPreparedProtectedTaskApplyAuthorization(
+        runtime.root,
+        cancellation.transaction.protectedApply,
+        expectedParameters,
+      );
+      assertProtectedApplyAuthorizationMatchesParameters(
+        cancellation.transaction.protectedApply,
+        expectedParameters,
+      );
+      const changedPaths = finalizeTransactionTaskPaths(
+        cancellation.transaction,
+        session,
+      );
+      return Object.freeze({
+        phase: 'cancelled' as const,
+        changeId: session.changeId,
+        sessionId: session.sessionId,
+        taskId: session.taskId,
+        branch: session.branch,
+        baseline: session.baseline,
+        mandateBinding,
+        changedPaths: Object.freeze([...changedPaths]),
+        commitMessage,
+        fullGate,
+        stateFingerprint: protectedTaskApplyFingerprint({
+          phase: 'cancelled',
+          transactionId: cancellation.transactionId,
+          transactionDigest: cancellation.transaction.recordDigest,
+          cancellationRecordDigest: cancellation.recordDigest,
+          cancellationReason: cancellation.reason,
+          cancelledAt: cancellation.cancelledAt,
+          sessionState: session.state,
+        }),
+        transactionId: cancellation.transactionId,
+        commitHash: null,
+        authorization: null,
+      });
+    }
     if (session.state !== 'active') {
       throw protectedTaskApplyAuthorizationInvalid(
         'Protected Apply has no durable finalize transaction for this terminal session.',
@@ -850,6 +1012,14 @@ export function inspectProtectedTaskApplyLifecycleState(
   if (transaction.protectedApply === undefined) {
     throw protectedTaskApplyAuthorizationInvalid(
       'The durable finalize transaction has no protected Apply authorization lineage.',
+    );
+  }
+  if (
+    expectedParentChallengeId !== undefined &&
+    transaction.protectedApply.challengeId !== expectedParentChallengeId
+  ) {
+    throw protectedTaskApplyAuthorizationInvalid(
+      'Protected Apply transaction belongs to another Grant challenge.',
     );
   }
   assertPreparedProtectedTaskApplyAuthorization(
@@ -997,19 +1167,6 @@ function protectedTaskApplyAuthorizationInvalid(message: string) {
     'PROTECTED_TASK_APPLY_AUTHORIZATION_INVALID',
     message,
     ExitCode.guard,
-  );
-}
-
-function protectedTaskApplyCancellationRequiresGrantRecovery(
-  challengeId: string,
-) {
-  return workflowError(
-    'PROTECTED_TASK_APPLY_GRANT_RECOVERY_REQUIRED',
-    'A protected Apply transaction cannot be cancelled outside its exact prepared Grant operation.',
-    ExitCode.guard,
-    {
-      recovery: `pnpm workflow grant human recover ${challengeId} --json`,
-    },
   );
 }
 
@@ -1884,6 +2041,46 @@ function assertCancellationRequest(
   ) {
     throw invalidFinalizeCancellation(
       'Finalize cancellation does not match the exact transaction and reason.',
+    );
+  }
+}
+
+function assertProtectedFinalizeRecoveryContext(
+  transaction: FinalizeTransaction,
+  context: ProtectedFinalizeRecoveryContext | null,
+  reason: string,
+): asserts context is ProtectedFinalizeRecoveryContext {
+  const protectedApply = transaction.protectedApply;
+  if (protectedApply === undefined || context === null) {
+    throw invalidFinalizeCancellation(
+      'Protected finalize cancellation requires its exact recovery Grant.',
+    );
+  }
+  const { parameters, authorization } = context;
+  if (
+    parameters.changeId !== transaction.changeId ||
+    parameters.taskId !== transaction.taskId ||
+    parameters.sessionId !== transaction.sessionId ||
+    parameters.transactionId !== transaction.transactionId ||
+    parameters.transactionDigest !== transaction.recordDigest ||
+    parameters.transactionPhase !== transaction.phase ||
+    parameters.reason !== reason ||
+    parameters.parentChallengeId !== protectedApply.challengeId ||
+    parameters.parentOperationId !== protectedApply.operationId ||
+    parameters.parentApprovalSubjectDigest !==
+      protectedApply.approvalSubjectDigest ||
+    parameters.parentStateBindingDigest !== protectedApply.stateBindingDigest ||
+    parameters.parentParametersDigest !== protectedApply.parametersDigest ||
+    authorization.parentChallengeId !== protectedApply.challengeId ||
+    authorization.parentOperationId !== protectedApply.operationId ||
+    authorization.parentApprovalSubjectDigest !==
+      protectedApply.approvalSubjectDigest ||
+    authorization.parentStateBindingDigest !==
+      protectedApply.stateBindingDigest ||
+    authorization.parentParametersDigest !== protectedApply.parametersDigest
+  ) {
+    throw invalidFinalizeCancellation(
+      'Protected finalize cancellation no longer matches its exact recovery Grant.',
     );
   }
 }

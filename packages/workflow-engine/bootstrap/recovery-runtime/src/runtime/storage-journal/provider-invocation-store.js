@@ -973,6 +973,14 @@ function createProviderWorkerFence(paths, record, ownerToken) {
 export function releaseProviderInvocationWorkerFence(paths, requestedInvocationId, ownerToken) {
     withProviderWorkerLifecycle(paths, (assertOwned) => releaseProviderInvocationWorkerFenceUnderLifecycleLock(paths, requestedInvocationId, ownerToken, assertOwned));
 }
+export function releaseProviderInvocationWorkerFenceForWorkerClaim(paths, requestedInvocationId, input) {
+    const invocationId = assertInvocationId(requestedInvocationId);
+    withPrivateRuntimeLock(paths, path.join(paths.locks, `${invocationId}.lock`), () => {
+        assertProviderWorkerFenceClaim(paths, invocationId, input);
+        fs.unlinkSync(providerWorkerFencePath(paths, invocationId));
+        fsyncDirectory(paths.locks);
+    }, 'PROVIDER_INVOCATION_OPERATION_CONFLICT', invocationLockInvalid);
+}
 export function releaseProviderInvocationWorkerFenceUnderLifecycleLock(paths, requestedInvocationId, ownerToken, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);
     assertOwned();
@@ -1070,6 +1078,16 @@ function readProviderWorkerFence(paths, invocationId) {
     }
     return value;
 }
+function assertProviderWorkerFenceClaim(paths, invocationId, input) {
+    const fence = readProviderWorkerFence(paths, invocationId);
+    if (fence === null ||
+        fence.leaseGeneration !== input.leaseGeneration ||
+        fence.leaseTokenDigest !== sha256(input.leaseToken) ||
+        fence.ownerToken !== input.workerFenceToken ||
+        fence.pid !== process.pid) {
+        throw providerWorkerFenceUnsafe();
+    }
+}
 function providerWorkerFencePath(paths, invocationId) {
     return path.join(paths.locks, `${invocationId}.worker-active`);
 }
@@ -1151,6 +1169,14 @@ export function completeProviderInvocation(paths, requestedInvocationId, input) 
  */
 export function completeProviderInvocationFromRunner(paths, requestedInvocationId, input) {
     return withProviderWorkerLifecycle(paths, (assertOwned) => completeProviderInvocationFromRunnerUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned));
+}
+export function completeProviderInvocationFromRunnerForWorkerClaim(paths, requestedInvocationId, input) {
+    const invocationId = assertInvocationId(requestedInvocationId);
+    return completeProviderInvocationFromRunnerUnderLifecycleLock(paths, invocationId, input, () => assertProviderWorkerFenceClaim(paths, invocationId, {
+        leaseGeneration: input.leaseGeneration,
+        leaseToken: input.leaseToken,
+        workerFenceToken: input.workerFenceToken,
+    }));
 }
 /**
  * Complete one fixed-runner result while the caller holds the repository
@@ -1494,6 +1520,14 @@ function providerExecutionHistory(paths, investigationId, purpose, beforeAttempt
 }
 export function failProviderInvocation(paths, requestedInvocationId, input) {
     return withProviderWorkerLifecycle(paths, (assertOwned) => failProviderInvocationUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned));
+}
+export function failProviderInvocationForWorkerClaim(paths, requestedInvocationId, input) {
+    const invocationId = assertInvocationId(requestedInvocationId);
+    return failProviderInvocationUnderLifecycleLock(paths, invocationId, input, () => assertProviderWorkerFenceClaim(paths, invocationId, {
+        leaseGeneration: input.leaseGeneration,
+        leaseToken: input.leaseToken,
+        workerFenceToken: input.workerFenceToken,
+    }));
 }
 export function failProviderInvocationUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);

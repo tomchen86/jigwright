@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:4067b1f68e12287a6369bc4972b89bd2c70edf6f4ba612e6534284bc63af6ae3"
+      "digest": "sha256:bdbd17c842f7075d8d4f176f7e2da73a3a8aa8e2142fe56636d345cc69c9c320"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -341,6 +341,11 @@
       "digest": "sha256:a1737d073957466f6237b4dc0ea49f376ada638fb1fcb1c7b1fcdd99cb846b1f"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/grant-parent-binding.js",
+      "mode": "100644",
+      "digest": "sha256:aa063c07f56c165a3f4658e6cfff6d0a4c9d50307b13e74cc2c48061d9f2c084"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-policy.js",
       "mode": "100644",
       "digest": "sha256:bbe91d5167817392dc8093ff4b680708961e9c01d4fdd2fcbb43168d820725a3"
@@ -353,7 +358,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-transition-registry.js",
       "mode": "100644",
-      "digest": "sha256:027213bd8852172dbb75209d5ac4a619c0d54056a976912f5f948554bd376741"
+      "digest": "sha256:8a58c76d2ca3aa8c0e6b62fdbe05b3660f101eee31442aa4011000d2553b39ff"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-verifier-port.js",
@@ -728,7 +733,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/grant-store.js",
       "mode": "100644",
-      "digest": "sha256:857b27079d2208492def0934ace8c015515061ece3b9a191d56ea81894861b0a"
+      "digest": "sha256:ae15ceb6350f095e64de1741cf9b38da06902a22db9a3d1845fccec6f19cd6cf"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-control-persistence.js",
@@ -753,7 +758,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:1220d68d458499af777db65bd122858af724c16a094eb483531cefecf177e531"
+      "digest": "sha256:c4ce846c074c6e8f4ed367cef24e5592f37bfeaf19580371b7a469c7738e5fa2"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-catalog.js",

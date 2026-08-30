@@ -39,8 +39,16 @@ import { readCurrentInvestigationV3FailureObservation } from '../runtime/storage
 import { loadGrantPolicyV2 } from '../modules/authority/grant-policy.ts';
 import {
   grantStorePaths,
+  grantRecordDigest,
   readGrantRecord,
 } from '../runtime/storage-journal/grant-store.ts';
+import { approvalSubjectDigest } from '../modules/authority/grant-core.ts';
+import { grantSha256 } from '../modules/authority/grant-primitives.ts';
+import {
+  assertGrantParentBindingV1,
+  createGrantParentBindingV1,
+  type GrantParentBindingV1,
+} from '../modules/authority/grant-parent-binding.ts';
 import type { TransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
 import { createTransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
 import {
@@ -72,6 +80,7 @@ import {
   changeRoleAssignmentGrantTransitionDefinitions,
   assertChangeRoleAssignmentGrantParameters,
   CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID,
+  changeRoleAssignmentGrantParentBinding,
   createChangeRoleAssignmentGrantRequest,
 } from '../modules/provider-orchestration/change-role-assignment-grant.ts';
 import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
@@ -82,9 +91,34 @@ import {
 import {
   createProtectedTaskApplyGrantRequest,
   protectedTaskApplyGrantTransitionDefinitions,
+  PROTECTED_TASK_APPLY_TRANSITION_ID,
   type ProtectedTaskApplyFailureDetailsV1,
 } from '../modules/authority/protected-task-apply-grant.ts';
 import { deriveProtectedTaskApplyTaskDiffProviderGrantContinuation } from '../application/finalize/task-diff-review-lifecycle.ts';
+import {
+  createProtectedTaskApplyRecoveryGrantRequest,
+  protectedTaskApplyRecoveryGrantTransitionDefinitions,
+  type ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
+} from '../modules/authority/protected-task-apply-recovery-grant.ts';
+import {
+  createProductionProtectedTaskApplyRecoveryGrantPort,
+  observeCurrentProtectedTaskApplyRecoveryRequest,
+  protectedTaskApplyRecoveryParentContinuation,
+  protectedTaskApplyRecoveryParentReference,
+} from './protected-task-apply-recovery-grant-production.ts';
+import {
+  createProductionProtectedTaskApplyDescendantSettlementGrantPort,
+  observeCurrentProtectedTaskApplyDescendantSettlementRequest,
+  protectedTaskApplyDescendantSettlementContinuation,
+} from './protected-task-apply-descendant-settlement-grant-production.ts';
+import {
+  createProtectedTaskApplyDescendantSettlementGrantRequest,
+  protectedTaskApplyDescendantSettlementTransitionDefinitions,
+  type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+} from '../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
+
+const TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION =
+  'task.protected-apply.task-diff-role-assignment.v1' as const;
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -135,14 +169,39 @@ export async function withProductionGrantLifecycleOperation<T>(
   const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
   const paths = grantStorePaths(runtime.root);
   const stored = readGrantRecord(paths, challengeId);
-  const continuation = taskDiffRoleAssignmentGrantContinuation(
+  const taskDiffContinuation = taskDiffRoleAssignmentGrantContinuation(
     git.repositoryRoot,
     stored.challenge,
   );
-  const allowGrantChallengeIds = [
-    challengeId,
-    ...(continuation === null ? [] : [continuation.parentChallengeId]),
-  ];
+  const recoveryContinuation = protectedTaskApplyRecoveryParentContinuation(
+    git.repositoryRoot,
+    stored.challenge,
+  );
+  const settlementContinuation =
+    protectedTaskApplyDescendantSettlementContinuation(stored.challenge);
+  if (
+    [taskDiffContinuation, recoveryContinuation, settlementContinuation].filter(
+      (value) => value !== null,
+    ).length > 1
+  ) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'One Grant challenge cannot claim two parent continuations.',
+      ExitCode.guard,
+    );
+  }
+  const continuation =
+    taskDiffContinuation ?? recoveryContinuation ?? settlementContinuation;
+  const continuationChallengeIds =
+    settlementContinuation !== null
+      ? [
+          settlementContinuation.parentChallengeId,
+          ...settlementContinuation.descendantChallengeIds,
+        ]
+      : continuation === null
+        ? []
+        : [continuation.parentChallengeId];
+  const allowGrantChallengeIds = [challengeId, ...continuationChallengeIds];
   return withRepositoryLifecycleOperationAsync(
     runtime,
     async (assertLifecycleOwned) => {
@@ -156,7 +215,14 @@ export async function withProductionGrantLifecycleOperation<T>(
             taskDiffRoleAssignmentGrantContinuation(
               git.repositoryRoot,
               current.challenge,
-            ),
+            ) ??
+              protectedTaskApplyRecoveryParentContinuation(
+                git.repositoryRoot,
+                current.challenge,
+              ) ??
+              protectedTaskApplyDescendantSettlementContinuation(
+                current.challenge,
+              ),
           ) !== canonicalJson(continuation)
         ) {
           throw workflowError(
@@ -226,10 +292,18 @@ function taskDiffRoleAssignmentGrantContinuation(
       repositoryRoot,
       parameters.invocationId,
     );
+  const parentBinding = changeRoleAssignmentGrantParentBinding(challenge.facts);
+  if (continuation === null && parentBinding === null) return null;
+  if (continuation === null || parentBinding === null) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Protected TaskDiffReview role-assignment Grant lineage is incomplete.',
+      ExitCode.guard,
+    );
+  }
   if (
-    continuation !== null &&
-    (continuation.repositoryId !== parameters.repositoryId ||
-      continuation.changeId !== parameters.changeId)
+    continuation.repositoryId !== parameters.repositoryId ||
+    continuation.changeId !== parameters.changeId
   ) {
     throw workflowError(
       'GRANT_CONTINUATION_INVALID',
@@ -237,7 +311,98 @@ function taskDiffRoleAssignmentGrantContinuation(
       ExitCode.guard,
     );
   }
+  assertTaskDiffRoleAssignmentParentBinding(
+    repositoryRoot,
+    continuation,
+    parentBinding,
+  );
   return continuation;
+}
+
+function createTaskDiffRoleAssignmentParentBinding(
+  repositoryRoot: string,
+  continuation: NonNullable<
+    ReturnType<typeof deriveProtectedTaskApplyTaskDiffProviderGrantContinuation>
+  >,
+): GrantParentBindingV1 {
+  const parent = readRepositoryGrantRecord(
+    repositoryRoot,
+    continuation.parentChallengeId,
+  );
+  const choice = parent.challenge.choices[0];
+  if (
+    parent.state !== 'prepared' ||
+    parent.challenge.choices.length !== 1 ||
+    choice?.transitionId !== PROTECTED_TASK_APPLY_TRANSITION_ID
+  ) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Protected TaskDiffReview role-assignment parent is not one exact prepared Apply Grant.',
+      ExitCode.staleState,
+    );
+  }
+  return createGrantParentBindingV1({
+    schemaVersion: 1,
+    kind: 'grant-parent-binding.v1',
+    relationKind: TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION,
+    parentChallengeId: parent.challenge.challengeId,
+    parentChallengeDigest: parent.challenge.challengeDigest,
+    parentOperationId: parent.operationId,
+    parentApprovalSubjectDigest: approvalSubjectDigest(parent.approvalSubject),
+    parentStateBindingDigest: parent.challenge.stateBinding.digest,
+    parentParametersDigest: grantSha256(canonicalJson(choice.parameters)),
+    parentPreparedRecordDigest: grantRecordDigest(parent),
+    relationshipFactsDigest:
+      taskDiffRoleAssignmentRelationshipFactsDigest(continuation),
+  });
+}
+
+function assertTaskDiffRoleAssignmentParentBinding(
+  repositoryRoot: string,
+  continuation: NonNullable<
+    ReturnType<typeof deriveProtectedTaskApplyTaskDiffProviderGrantContinuation>
+  >,
+  candidate: GrantParentBindingV1,
+): void {
+  const binding = assertGrantParentBindingV1(candidate);
+  const expected = createTaskDiffRoleAssignmentParentBinding(
+    repositoryRoot,
+    continuation,
+  );
+  if (canonicalJson(binding) !== canonicalJson(expected)) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Protected TaskDiffReview role-assignment parent binding changed.',
+      ExitCode.staleState,
+    );
+  }
+}
+
+function taskDiffRoleAssignmentRelationshipFactsDigest(
+  continuation: NonNullable<
+    ReturnType<typeof deriveProtectedTaskApplyTaskDiffProviderGrantContinuation>
+  >,
+): `sha256:${string}` {
+  return grantSha256(
+    `workflow.task-diff-role-assignment-parent.v1\n${canonicalJson({
+      invocationId: continuation.invocationId,
+      repositoryId: continuation.repositoryId,
+      changeId: continuation.changeId,
+      sessionId: continuation.sessionId,
+      parentChallengeId: continuation.parentChallengeId,
+      subjectDigest: continuation.subjectDigest,
+    })}`,
+  );
+}
+
+function readRepositoryGrantRecord(
+  repositoryRoot: string,
+  challengeId: string,
+) {
+  const git = discoverRepository(repositoryRoot);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  return readGrantRecord(grantStorePaths(runtime.root), challengeId);
 }
 
 function productionApprovalSession(
@@ -266,7 +431,11 @@ export function createProductionWorkflowGrantCoordinator(
   const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
   const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
   const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(cwd);
-  return createProductionGrantCoordinator(
+  const protectedTaskApplyRecovery =
+    createProductionProtectedTaskApplyRecoveryGrantPort(cwd);
+  const protectedTaskApplyDescendantSettlement =
+    createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
+  const coordinator = createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
       ...investigationV3GrantTransitionDefinitions(cwd),
@@ -276,8 +445,77 @@ export function createProductionWorkflowGrantCoordinator(
       ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),
       ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
       ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
+      ...protectedTaskApplyRecoveryGrantTransitionDefinitions(
+        protectedTaskApplyRecovery,
+      ),
+      ...protectedTaskApplyDescendantSettlementTransitionDefinitions(
+        protectedTaskApplyDescendantSettlement,
+      ),
     ]),
   );
+  return coordinateProtectedTaskApplyRecoveryParent(cwd, coordinator);
+}
+
+export function coordinateProtectedTaskApplyRecoveryParent(
+  cwd: string,
+  coordinator: GrantCoordinator,
+): GrantCoordinator {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const complete = async (
+    challengeId: string,
+    operation: () => ReturnType<GrantCoordinator['resolveChallenge']>,
+  ) => {
+    const git = discoverRepository(repositoryRoot);
+    const config = loadWorkflowConfig(git.repositoryRoot);
+    const runtime = runtimePaths(
+      git.gitCommonDirectory,
+      config.runtimeDirectory,
+    );
+    const paths = grantStorePaths(runtime.root);
+    const before = readGrantRecord(paths, challengeId);
+    const reference = protectedTaskApplyRecoveryParentReference(
+      before.challenge,
+    );
+    const result = await operation();
+    if (reference === null || result.outcome !== 'completed') return result;
+    let parent = readGrantRecord(paths, reference.parentChallengeId);
+    if (parent.state === 'prepared') {
+      const parentResult = await coordinator.recoverChallenge(
+        reference.parentChallengeId,
+      );
+      if (parentResult.outcome !== 'failed') {
+        throw workflowError(
+          'PROTECTED_TASK_APPLY_RECOVERY_RESULT_INVALID',
+          'Protected Apply parent did not record the exact cancellation failure.',
+          ExitCode.verification,
+        );
+      }
+      parent = readGrantRecord(paths, reference.parentChallengeId);
+    }
+    if (
+      parent.state !== 'failed' ||
+      !isRecord(parent.outcome.details) ||
+      parent.outcome.details.kind !== 'protected-task-apply-cancelled.v1'
+    ) {
+      throw workflowError(
+        'PROTECTED_TASK_APPLY_RECOVERY_RESULT_INVALID',
+        'Protected Apply parent recovery is not the exact truthful cancellation outcome.',
+        ExitCode.verification,
+      );
+    }
+    return result;
+  };
+  return Object.freeze({
+    contractVersion: coordinator.contractVersion,
+    challengeContractVersion: coordinator.challengeContractVersion,
+    requestGrant: (input) => coordinator.requestGrant(input),
+    inspectChallenge: (challengeId) =>
+      coordinator.inspectChallenge(challengeId),
+    resolveChallenge: (challengeId) =>
+      complete(challengeId, () => coordinator.resolveChallenge(challengeId)),
+    recoverChallenge: (challengeId) =>
+      complete(challengeId, () => coordinator.recoverChallenge(challengeId)),
+  });
 }
 
 export async function requestProtectedTaskApplyGrant(
@@ -300,18 +538,106 @@ export async function requestProtectedTaskApplyGrant(
   );
 }
 
+export async function requestProtectedTaskApplyRecoveryGrant(
+  cwd: string,
+  details: ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observation = observeCurrentProtectedTaskApplyRecoveryRequest(
+    repositoryRoot,
+    details,
+  );
+  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+    createProtectedTaskApplyRecoveryGrantRequest(observation, proposedReason),
+  );
+}
+
+export async function requestProtectedTaskApplyDescendantSettlementGrant(
+  cwd: string,
+  details: ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+  proposedReason: string,
+) {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observation =
+    observeCurrentProtectedTaskApplyDescendantSettlementRequest(
+      repositoryRoot,
+      details,
+    );
+  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
+    createProtectedTaskApplyDescendantSettlementGrantRequest(
+      observation,
+      proposedReason,
+    ),
+  );
+}
+
 export async function requestChangeRoleAssignmentGrant(
   cwd: string,
   invocationId: string,
   proposedReason: string,
 ) {
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const observation = observeCurrentChangeRoleAssignmentGrantForInvocation(
-    repositoryRoot,
-    invocationId,
-  );
-  return createProductionCentralGrantRequestPort(repositoryRoot).requestGrant(
-    createChangeRoleAssignmentGrantRequest(observation, proposedReason),
+  const git = discoverRepository(cwd);
+  const repositoryRoot = git.repositoryRoot;
+  const config = loadWorkflowConfig(repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const initialContinuation =
+    deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+      repositoryRoot,
+      invocationId,
+    );
+  return withRepositoryLifecycleOperationAsync(
+    runtime,
+    async (assertOwned) => {
+      assertOwned();
+      const continuation =
+        deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+          repositoryRoot,
+          invocationId,
+        );
+      if (canonicalJson(continuation) !== canonicalJson(initialContinuation)) {
+        throw workflowError(
+          'GRANT_CONTINUATION_INVALID',
+          'TaskDiffReview role-assignment parent changed before Grant creation.',
+          ExitCode.staleState,
+        );
+      }
+      const parentBinding =
+        continuation === null
+          ? null
+          : createTaskDiffRoleAssignmentParentBinding(
+              repositoryRoot,
+              continuation,
+            );
+      const observation = observeCurrentChangeRoleAssignmentGrantForInvocation(
+        repositoryRoot,
+        invocationId,
+      );
+      const result = await createProductionCentralGrantRequestPort(
+        repositoryRoot,
+      ).requestGrant(
+        createChangeRoleAssignmentGrantRequest(
+          observation,
+          proposedReason,
+          parentBinding,
+        ),
+      );
+      assertOwned();
+      if (continuation !== null && parentBinding !== null) {
+        assertTaskDiffRoleAssignmentParentBinding(
+          repositoryRoot,
+          continuation,
+          parentBinding,
+        );
+      }
+      return result;
+    },
+    {
+      allowGrantChallengeIds:
+        initialContinuation === null
+          ? []
+          : [initialContinuation.parentChallengeId],
+    },
   );
 }
 

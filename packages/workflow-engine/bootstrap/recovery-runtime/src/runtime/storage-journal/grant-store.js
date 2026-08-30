@@ -4,8 +4,9 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { ensurePlainDirectory } from "../repository-transaction/filesystem-safety.js";
-import { assertApprovalSubject, assertGrantChallenge, createApprovalSubject, } from "../../modules/authority/grant-core.js";
-import { freezeGrantCanonical, GRANT_SHA256_DIGEST, GRANT_STABLE_ID, GRANT_UUID_V4, grantHasExactKeys, grantSameStrings, parseGrantTimestamp, } from "../../modules/authority/grant-primitives.js";
+import { assertApprovalSubject, assertGrantChallenge, approvalSubjectDigest, createApprovalSubject, } from "../../modules/authority/grant-core.js";
+import { freezeGrantCanonical, GRANT_SHA256_DIGEST, GRANT_STABLE_ID, GRANT_UUID_V4, grantHasExactKeys, grantSha256, grantSameStrings, parseGrantTimestamp, } from "../../modules/authority/grant-primitives.js";
+import { assertGrantParentBindingV1, createPreparedGrantDescendantTreeV1, } from "../../modules/authority/grant-parent-binding.js";
 const MODULE_VERSION = /^[1-9][0-9]*$/;
 const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$/;
 const RECORD_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/;
@@ -51,6 +52,102 @@ export function readGrantRecord(paths, challengeId) {
     if (record.challenge.challengeId !== challengeId)
         throw storeUnsafe();
     return record;
+}
+export function grantRecordDigest(candidate) {
+    const record = assertGrantRecord(candidate);
+    return grantSha256(`workflow.grant-record.v1\n${canonicalJson(record)}`);
+}
+export function listGrantRecords(paths) {
+    assertGrantStore(paths);
+    let entries;
+    try {
+        entries = fs.readdirSync(paths.records, { withFileTypes: true });
+    }
+    catch {
+        throw storeUnsafe();
+    }
+    const records = [];
+    for (const entry of entries.sort((left, right) => left.name.localeCompare(right.name))) {
+        if (!entry.isFile() || entry.isSymbolicLink())
+            throw storeUnsafe();
+        if (!RECORD_FILE.test(entry.name)) {
+            if (/\.tmp$/.test(entry.name))
+                continue;
+            throw storeUnsafe();
+        }
+        const record = readCanonicalFile(path.join(paths.records, entry.name), assertGrantRecord);
+        if (entry.name !== `${record.challenge.challengeId}.json`) {
+            throw storeUnsafe();
+        }
+        records.push(record);
+    }
+    return Object.freeze(records);
+}
+export function listPreparedGrantRecords(paths) {
+    return Object.freeze(listGrantRecords(paths).filter((record) => record.state === 'prepared'));
+}
+export function inspectPreparedGrantDescendantTree(paths, candidateRoot) {
+    const root = assertGrantRecord(candidateRoot);
+    if (root.state !== 'prepared')
+        throw storeUnsafe();
+    const remaining = new Map(listPreparedGrantRecords(paths)
+        .filter(({ challenge }) => challenge.challengeId !== root.challenge.challengeId)
+        .map((record) => [record.challenge.challengeId, record]));
+    const known = new Map([[root.challenge.challengeId, { record: root, depth: 0 }]]);
+    const nodes = [];
+    let found = true;
+    while (found) {
+        found = false;
+        for (const [challengeId, record] of [...remaining]) {
+            const facts = record.challenge.facts;
+            if (!isRecord(facts) || !Object.hasOwn(facts, 'parentGrantBinding')) {
+                continue;
+            }
+            const binding = assertGrantParentBindingV1(facts.parentGrantBinding);
+            const parent = known.get(binding.parentChallengeId);
+            if (parent === undefined)
+                continue;
+            assertExactPreparedGrantParentBinding(parent.record, binding);
+            const node = Object.freeze({
+                schemaVersion: 1,
+                kind: 'prepared-grant-descendant.v1',
+                depth: parent.depth + 1,
+                challengeId,
+                challengeDigest: record.challenge.challengeDigest,
+                operationId: record.operationId,
+                approvalSubjectDigest: approvalSubjectDigest(record.approvalSubject),
+                stateBindingDigest: record.challenge.stateBinding.digest,
+                preparedRecordDigest: grantRecordDigest(record),
+                parentBinding: binding,
+            });
+            nodes.push(node);
+            known.set(challengeId, { record, depth: node.depth });
+            remaining.delete(challengeId);
+            found = true;
+        }
+    }
+    return createPreparedGrantDescendantTreeV1({
+        schemaVersion: 1,
+        kind: 'prepared-grant-descendant-tree.v1',
+        rootChallengeId: root.challenge.challengeId,
+        rootPreparedRecordDigest: grantRecordDigest(root),
+        nodes,
+    });
+}
+function assertExactPreparedGrantParentBinding(parent, binding) {
+    const choice = parent.challenge.choices.find(({ choiceId }) => choiceId === parent.approvalSubject.choiceId);
+    if (choice === undefined ||
+        binding.parentChallengeId !== parent.challenge.challengeId ||
+        binding.parentChallengeDigest !== parent.challenge.challengeDigest ||
+        binding.parentOperationId !== parent.operationId ||
+        binding.parentApprovalSubjectDigest !==
+            approvalSubjectDigest(parent.approvalSubject) ||
+        binding.parentStateBindingDigest !== parent.challenge.stateBinding.digest ||
+        binding.parentParametersDigest !==
+            grantSha256(canonicalJson(choice.parameters)) ||
+        binding.parentPreparedRecordDigest !== grantRecordDigest(parent)) {
+        throw storeUnsafe();
+    }
 }
 export function prepareGrantTransition(paths, input) {
     initializeGrantStore(paths);
@@ -135,25 +232,8 @@ export function assertGrantLifecycleBarrier(runtimeRoot, allowedChallengeIds = [
     if (rootStats === undefined)
         return;
     const paths = grantStorePaths(runtimeRoot);
-    assertGrantStore(paths);
-    let entries;
-    try {
-        entries = fs.readdirSync(paths.records, { withFileTypes: true });
-    }
-    catch {
-        throw storeUnsafe();
-    }
-    for (const entry of entries) {
-        if (!entry.isFile() || entry.isSymbolicLink())
-            throw storeUnsafe();
-        if (!RECORD_FILE.test(entry.name)) {
-            if (/\.tmp$/.test(entry.name))
-                continue;
-            throw storeUnsafe();
-        }
-        const record = readCanonicalFile(path.join(paths.records, entry.name), assertGrantRecord);
-        if (record.state === 'prepared' &&
-            !allowed.has(record.challenge.challengeId)) {
+    for (const record of listPreparedGrantRecords(paths)) {
+        if (!allowed.has(record.challenge.challengeId)) {
             throw workflowError('GRANT_TRANSITION_RECOVERY_REQUIRED', `Prepared grant ${record.challenge.challengeId} must be recovered before another repository lifecycle operation.`, ExitCode.staleState);
         }
     }
