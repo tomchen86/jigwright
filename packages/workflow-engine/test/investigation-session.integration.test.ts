@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -240,146 +240,6 @@ test('evidence object publication recovers exact crash aliases without exposing 
       assert.deepEqual(listEvidenceObjectCrashAliases(objectPath), []);
     }
 
-    for (const phase of [
-      'after-legacy-prefix-claim',
-      'after-legacy-final-unlink',
-      'after-legacy-final-link',
-    ] as const) {
-      const legacyNode = createCrashPublicationEvidenceNode(phase);
-      const legacyContent = canonicalEvidenceNodeEnvelope(legacyNode);
-      const legacyPath = path.join(
-        paths.objects,
-        legacyNode.nodeId.slice(0, 2),
-        `${legacyNode.nodeId}.json`,
-      );
-      fs.mkdirSync(path.dirname(legacyPath), {
-        recursive: true,
-        mode: 0o700,
-      });
-      fs.chmodSync(path.dirname(legacyPath), 0o700);
-      fs.writeFileSync(
-        legacyPath,
-        legacyContent.slice(0, Math.floor(legacyContent.length / 2)),
-        { mode: 0o600 },
-      );
-      const legacyCrash = runEvidenceObjectCrashChild(
-        repository,
-        repositoryState.gitCommonDirectory,
-        legacyNode,
-        legacyPath,
-        phase,
-      );
-      assert.equal(
-        legacyCrash.signal,
-        'SIGKILL',
-        String(legacyCrash.stderr || legacyCrash.stdout),
-      );
-      if (phase === 'after-legacy-prefix-claim') {
-        assert.equal(fs.lstatSync(legacyPath).nlink, 1);
-        assert.equal(
-          fs.readFileSync(legacyPath, 'utf8').length < legacyContent.length,
-          true,
-        );
-        assert.equal(listEvidenceObjectCrashAliases(legacyPath).length, 2);
-      } else if (phase === 'after-legacy-final-unlink') {
-        assert.equal(fs.existsSync(legacyPath), false);
-        assert.equal(listEvidenceObjectCrashAliases(legacyPath).length, 1);
-      } else {
-        assert.equal(fs.readFileSync(legacyPath, 'utf8'), legacyContent);
-        assert.equal(fs.lstatSync(legacyPath).nlink, 2);
-        assert.equal(listEvidenceObjectCrashAliases(legacyPath).length, 1);
-      }
-      assert.equal(writeEvidenceNode(paths, legacyNode), legacyNode.nodeId);
-      assert.deepEqual(readEvidenceNode(paths, legacyNode.nodeId), legacyNode);
-      assert.deepEqual(listEvidenceObjectCrashAliases(legacyPath), []);
-    }
-
-    const competingExactInput = sha256('competing-legacy-repair');
-    const claimWinner = createEvidenceNode({
-      type: 'crash-publication-test',
-      nodeSchema: 'workflow.crash-publication-test.v1',
-      evaluator: 'workflow-test.v1',
-      policyDigest: '1'.repeat(64),
-      exactInputDigests: { input: competingExactInput },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'workflow.crash-publication-test-output.v1',
-      output: { label: 'claim-winner' },
-      runtimeMetadata: {},
-    });
-    const claimLoser = createEvidenceNode({
-      type: 'crash-publication-test',
-      nodeSchema: 'workflow.crash-publication-test.v1',
-      evaluator: 'workflow-test.v1',
-      policyDigest: '1'.repeat(64),
-      exactInputDigests: { input: competingExactInput },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'workflow.crash-publication-test-output.v1',
-      output: { label: 'claim-loser' },
-      runtimeMetadata: {},
-    });
-    assert.equal(claimWinner.nodeId, claimLoser.nodeId);
-    assert.notEqual(claimWinner.resultDigest, claimLoser.resultDigest);
-    const winnerContent = canonicalEvidenceNodeEnvelope(claimWinner);
-    const loserContent = canonicalEvidenceNodeEnvelope(claimLoser);
-    let commonPrefixLength = 0;
-    while (
-      commonPrefixLength < winnerContent.length &&
-      commonPrefixLength < loserContent.length &&
-      winnerContent[commonPrefixLength] === loserContent[commonPrefixLength]
-    ) {
-      commonPrefixLength += 1;
-    }
-    assert.ok(commonPrefixLength > 0);
-    const competingPath = path.join(
-      paths.objects,
-      claimWinner.nodeId.slice(0, 2),
-      `${claimWinner.nodeId}.json`,
-    );
-    fs.mkdirSync(path.dirname(competingPath), {
-      recursive: true,
-      mode: 0o700,
-    });
-    fs.chmodSync(path.dirname(competingPath), 0o700);
-    fs.writeFileSync(
-      competingPath,
-      winnerContent.slice(0, commonPrefixLength),
-      { mode: 0o600 },
-    );
-    const winnerClaimCrash = runEvidenceObjectCrashChild(
-      repository,
-      repositoryState.gitCommonDirectory,
-      claimWinner,
-      competingPath,
-      'after-legacy-prefix-claim',
-    );
-    assert.equal(
-      winnerClaimCrash.signal,
-      'SIGKILL',
-      String(winnerClaimCrash.stderr || winnerClaimCrash.stdout),
-    );
-    const competingClaimPath = `${competingPath}.legacy-prefix-repair`;
-    const prefixBeforeCollision = fs.readFileSync(competingPath);
-    const claimBeforeCollision = fs.readFileSync(competingClaimPath);
-    const aliasesBeforeCollision =
-      listEvidenceObjectCrashAliases(competingPath);
-    assert.equal(aliasesBeforeCollision.length, 2);
-    assert.throws(
-      () => writeEvidenceNode(paths, claimLoser),
-      (error: unknown) => isWorkflowError(error, 'EVIDENCE_OBJECT_COLLISION'),
-    );
-    assert.deepEqual(fs.readFileSync(competingPath), prefixBeforeCollision);
-    assert.deepEqual(fs.readFileSync(competingClaimPath), claimBeforeCollision);
-    assert.deepEqual(
-      listEvidenceObjectCrashAliases(competingPath),
-      aliasesBeforeCollision,
-    );
-    assert.equal(writeEvidenceNode(paths, claimWinner), claimWinner.nodeId);
-    assert.deepEqual(readEvidenceNode(paths, claimWinner.nodeId), claimWinner);
-    assert.equal(fs.lstatSync(competingPath).nlink, 1);
-    assert.deepEqual(listEvidenceObjectCrashAliases(competingPath), []);
-
     const divergentNode = createCrashPublicationEvidenceNode('divergent');
     const divergentPath = path.join(
       paths.objects,
@@ -402,59 +262,38 @@ test('evidence object publication recovers exact crash aliases without exposing 
   }
 });
 
-test('concurrent legacy-prefix repair converges through a fixed exact-output claim', async () => {
+test('evidence object publication rejects a strict-prefix final without altering bytes', () => {
   const repository = createFixtureRepository();
-  const barrierDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'evidence-legacy-barrier-'),
-  );
   try {
     const repositoryState = discoverRepository(repository);
     const paths = investigationRuntimePaths(
       repositoryState.gitCommonDirectory,
       'workflow-engine',
     );
-    const node = createCrashPublicationEvidenceNode('two-writer-barrier');
-    const content = canonicalEvidenceNodeEnvelope(node);
+    const node = createCrashPublicationEvidenceNode(
+      'retired-strict-prefix-final',
+    );
+    const content = Buffer.from(canonicalEvidenceNodeEnvelope(node), 'utf8');
     const objectPath = path.join(
       paths.objects,
       node.nodeId.slice(0, 2),
       `${node.nodeId}.json`,
     );
-    fs.mkdirSync(path.dirname(objectPath), { recursive: true, mode: 0o700 });
+    fs.mkdirSync(path.dirname(objectPath), {
+      recursive: true,
+      mode: 0o700,
+    });
     fs.chmodSync(path.dirname(objectPath), 0o700);
-    fs.writeFileSync(
-      objectPath,
-      content.slice(0, Math.floor(content.length / 2)),
-      { mode: 0o600 },
+    const prefix = content.subarray(0, Math.floor(content.byteLength / 2));
+    fs.writeFileSync(objectPath, prefix, { mode: 0o600 });
+
+    assert.throws(
+      () => writeEvidenceNode(paths, node),
+      (error: unknown) => isWorkflowError(error, 'EVIDENCE_OBJECT_COLLISION'),
     );
-    const children = [0, 1].map(() =>
-      runConcurrentLegacyRepairChild(
-        repository,
-        repositoryState.gitCommonDirectory,
-        node,
-        objectPath,
-        barrierDirectory,
-      ),
-    );
-    await waitForFileCount(barrierDirectory, 'pre-ready-', 2);
-    fs.writeFileSync(path.join(barrierDirectory, 'pre-release'), '');
-    await waitForFileCount(barrierDirectory, 'post-ready-', 2);
-    assert.equal(fs.lstatSync(objectPath).nlink, 1);
-    assert.equal(fs.lstatSync(`${objectPath}.legacy-prefix-repair`).nlink, 2);
-    assert.equal(listEvidenceObjectCrashAliases(objectPath).length, 3);
-    fs.writeFileSync(path.join(barrierDirectory, 'release'), '');
-    const results = await Promise.all(children.map(waitForChild));
-    assert.equal(
-      results.some(({ code }) => code === 0),
-      true,
-      results.map(({ stderr }) => stderr).join('\n'),
-    );
-    assert.equal(writeEvidenceNode(paths, node), node.nodeId);
-    assert.deepEqual(readEvidenceNode(paths, node.nodeId), node);
-    assert.equal(fs.lstatSync(objectPath).nlink, 1);
+    assert.deepEqual(fs.readFileSync(objectPath), prefix);
     assert.deepEqual(listEvidenceObjectCrashAliases(objectPath), []);
   } finally {
-    fs.rmSync(barrierDirectory, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
@@ -8831,13 +8670,7 @@ function runEvidenceObjectCrashChild(
   gitCommonDirectory: string,
   node: EvidenceNode,
   objectPath: string,
-  phase:
-    | 'during-temp-write'
-    | 'before-link'
-    | 'after-link'
-    | 'after-legacy-prefix-claim'
-    | 'after-legacy-final-unlink'
-    | 'after-legacy-final-link',
+  phase: 'during-temp-write' | 'before-link' | 'after-link',
 ): ReturnType<typeof spawnSync> {
   const script = `
     const fs = (await import('node:fs')).default;
@@ -8866,25 +8699,7 @@ function runEvidenceObjectCrashChild(
         process.kill(process.pid, 'SIGKILL');
       }
       const result = originalLink(source, target);
-      if (
-        (String(target) === objectPath && phase === 'after-link') ||
-        (String(target).endsWith('.legacy-prefix-repair') &&
-          phase === 'after-legacy-prefix-claim') ||
-        (String(target) === objectPath &&
-          String(source).endsWith('.legacy-prefix-repair') &&
-          phase === 'after-legacy-final-link')
-      ) {
-        process.kill(process.pid, 'SIGKILL');
-      }
-      return result;
-    };
-    const originalUnlink = fs.unlinkSync.bind(fs);
-    fs.unlinkSync = (target, ...args) => {
-      const result = originalUnlink(target, ...args);
-      if (
-        String(target) === objectPath &&
-        phase === 'after-legacy-final-unlink'
-      ) {
+      if (String(target) === objectPath && phase === 'after-link') {
         process.kill(process.pid, 'SIGKILL');
       }
       return result;
@@ -8908,115 +8723,6 @@ function runEvidenceObjectCrashChild(
   );
 }
 
-function runConcurrentLegacyRepairChild(
-  repository: string,
-  gitCommonDirectory: string,
-  node: EvidenceNode,
-  objectPath: string,
-  barrierDirectory: string,
-): ChildProcess {
-  const script = `
-    const fs = (await import('node:fs')).default;
-    const claimPath = ${JSON.stringify(`${objectPath}.legacy-prefix-repair`)};
-    const barrierDirectory = ${JSON.stringify(barrierDirectory)};
-    const preReleasePath = barrierDirectory + '/pre-release';
-    const releasePath = barrierDirectory + '/release';
-    const originalLink = fs.linkSync.bind(fs);
-    fs.linkSync = (source, target) => {
-      if (String(target) !== claimPath) {
-        return originalLink(source, target);
-      }
-      fs.writeFileSync(
-        barrierDirectory + '/pre-ready-' + process.pid,
-        String(process.pid),
-      );
-      const preDeadline = Date.now() + 20_000;
-      while (!fs.existsSync(preReleasePath)) {
-        if (Date.now() >= preDeadline) {
-          throw new Error('legacy repair pre-link barrier timed out');
-        }
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-      }
-      let result;
-      let failure;
-      try {
-        result = originalLink(source, target);
-      } catch (error) {
-        failure = error;
-      }
-      fs.writeFileSync(
-        barrierDirectory + '/post-ready-' + process.pid,
-        String(process.pid),
-      );
-      const deadline = Date.now() + 20_000;
-      while (!fs.existsSync(releasePath)) {
-        if (Date.now() >= deadline) {
-          throw new Error('legacy repair barrier timed out');
-        }
-        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
-      }
-      if (failure) {
-        throw failure;
-      }
-      return result;
-    };
-    const { writeEvidenceNode } =
-      await import(${JSON.stringify(EVIDENCE_STORE_MODULE_URL)});
-    const { investigationRuntimePaths } =
-      await import(${JSON.stringify(PATHS_MODULE_URL)});
-    writeEvidenceNode(
-      investigationRuntimePaths(
-        ${JSON.stringify(gitCommonDirectory)},
-        'workflow-engine',
-      ),
-      ${JSON.stringify(node)},
-    );
-  `;
-  return spawn(
-    process.execPath,
-    ['--experimental-strip-types', '--input-type=module', '--eval', script],
-    {
-      cwd: repository,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    },
-  );
-}
-
-async function waitForFileCount(
-  directory: string,
-  prefix: string,
-  expected: number,
-): Promise<void> {
-  const deadline = Date.now() + 20_000;
-  while (
-    fs.readdirSync(directory).filter((name) => name.startsWith(prefix)).length <
-    expected
-  ) {
-    if (Date.now() >= deadline) {
-      throw new Error('timed out waiting for crash-test barrier');
-    }
-    await new Promise((resolve) => setTimeout(resolve, 10));
-  }
-}
-
-function waitForChild(child: ChildProcess): Promise<{
-  code: number | null;
-  signal: NodeJS.Signals | null;
-  stderr: string;
-}> {
-  return new Promise((resolve, reject) => {
-    let stderr = '';
-    child.stderr?.setEncoding('utf8');
-    child.stderr?.on('data', (chunk: string) => {
-      stderr += chunk;
-    });
-    child.once('error', reject);
-    child.once('close', (code, signal) => {
-      resolve({ code, signal, stderr });
-    });
-  });
-}
-
 function listEvidenceObjectCrashAliases(objectPath: string): string[] {
   const directory = path.dirname(objectPath);
   const basename = path.basename(objectPath);
@@ -9025,9 +8731,7 @@ function listEvidenceObjectCrashAliases(objectPath: string): string[] {
         .readdirSync(directory)
         .filter(
           (name) =>
-            name.startsWith(`${basename}.`) &&
-            (name.endsWith('.publish.tmp') ||
-              name.endsWith('.legacy-prefix-repair')),
+            name.startsWith(`${basename}.`) && name.endsWith('.publish.tmp'),
         )
         .sort()
         .map((name) => path.join(directory, name))
