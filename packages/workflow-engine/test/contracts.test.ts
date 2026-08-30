@@ -93,6 +93,99 @@ test('retired documentation closure activation is absent from current contract a
   );
 });
 
+test('active OpenSpec specifications are current-v3 only', () => {
+  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  const specifications = [
+    {
+      path: 'openspec/specs/investigation-first-planning/spec.md',
+      currentRequirements: [
+        'Manifest v3 and PlanReview Remain Separate Authorities',
+        '`investigation.json` SHALL contain only the current schema-v3 Manifest',
+        '`plan-review.json` SHALL remain a separate artifact bound to the exact',
+        'MUST stale both the investigation seal and any PlanReview',
+      ],
+      retiredPhrases: [
+        'Scenario: Pre-cutover plan is migrated',
+        'legacy planning generation',
+        'eligible managed migration',
+        'At v3 cutover',
+        'Scenario: Shadow v3 exists before central Grant Core readiness',
+        'schema-v3 shadow Manifest',
+        'current v2 investigation',
+      ],
+    },
+    {
+      path: 'openspec/specs/investigation-evidence-and-why/spec.md',
+      currentRequirements: [
+        'Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git',
+        'strict replay contract',
+        'materialized evidence view',
+        'stable unsupported-schema contract',
+        'Investigation v3 Is Manifest-First',
+        'MUST NOT accept or first construct a schema-v1/v2 artifact',
+        'Every v3 Failure Delegates Continuation to Central Grant Core',
+        'publication/CAS, and recoverable crash-state classification',
+      ],
+      retiredPhrases: [
+        'Tracked Investigation Evidence May Replay Deterministic Nodes From Pinned Git',
+        'replay recipe',
+        'replayed logical artifact',
+        'complete node-set digest',
+        'compact tracked projection',
+        'During the v2 shadow interval',
+        'Scenario: Legacy full artifact is loaded during v2 shadow',
+        'Requirement: v2/v3 Shadow Is Independent and Non-Authoritative',
+        'use v2 only as a parity oracle',
+        'INVESTIGATION_V3_SHADOW_MISMATCH',
+        'Engine-produced shadow failure enters central Grant Core',
+        'private v3 shadow observation',
+        'Central contract is not published for every v3 failure',
+        'v2 authority, readers, and fallback remain in place',
+      ],
+    },
+    {
+      path: 'openspec/specs/workflow-assurance/spec.md',
+      currentRequirements: [
+        'Whole-Change Documentation Closure',
+        'For every managed change, the workflow engine SHALL require one authenticated',
+        'TaskDiff review of the whole final change before final task completion',
+        'commit recovery compares it with content-addressed report evidence',
+        'CI and archive independently replay the closure from Git objects',
+      ],
+      retiredPhrases: [
+        'documentation-closure activation marker',
+        'activated final',
+        'activated final candidate',
+        'activated final review',
+        'activated final task',
+        'Scenario: Historical task predates activation',
+        'predates activation',
+        'valid without a documentation closure',
+      ],
+    },
+  ] as const;
+
+  for (const specification of specifications) {
+    const contents = fs.readFileSync(
+      path.join(repositoryRoot, specification.path),
+      'utf8',
+    );
+    for (const currentRequirement of specification.currentRequirements) {
+      assert.ok(
+        contents.includes(currentRequirement),
+        `${specification.path} must retain ${currentRequirement}`,
+      );
+    }
+    for (const retiredPhrase of specification.retiredPhrases) {
+      assert.equal(
+        contents.includes(retiredPhrase),
+        false,
+        `${specification.path} must retire ${retiredPhrase}`,
+      );
+    }
+  }
+});
+
 test('task authorization binds the one reviewed path-role registry artifact', () => {
   const repository = createFixtureRepository();
   try {

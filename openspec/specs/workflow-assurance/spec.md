@@ -285,14 +285,12 @@ after the corresponding executable validator and CI check exist.
 
 ### Requirement: Whole-Change Documentation Closure
 
-For every managed change whose final task baseline reaches the exact tracked
-documentation-closure activation marker, the workflow engine SHALL require one
-authenticated TaskDiff review of the whole final change before final task
-completion. The review subject SHALL bind the parent of the first managed task
-commit, its tree, the final projected candidate tree, every non-projection
-changed path, their canonical transition digest, and code-owned documentation
-hints. Hints are advisory inputs and SHALL NOT themselves decide documentation
-impact.
+For every managed change, the workflow engine SHALL require one authenticated
+TaskDiff review of the whole final change before final task completion. The
+review subject SHALL bind the parent of the first managed task commit, its tree,
+the final projected candidate tree, every non-projection changed path, their
+canonical transition digest, and code-owned documentation hints. Hints are
+advisory inputs and SHALL NOT themselves decide documentation impact.
 
 The reviewer SHALL return exactly one structured documentation assessment:
 `updated` with exact changed documentation paths, `generated-verified` with
@@ -304,14 +302,14 @@ authority paths and SHALL preserve their actual achieved independence.
 
 #### Scenario: Final product task has no documentation impact
 
-- **GIVEN** the activated final candidate changes no documentation path
+- **GIVEN** the final candidate changes no documentation path
 - **WHEN** the authenticated reviewer returns `no-impact` with a concrete rationale
 - **THEN** finalization may continue
 - **AND** the final task commit records the exact review and assessment
 
 #### Scenario: Reviewer requires a documentation path outside task scope
 
-- **GIVEN** an activated final review returns `needs-changes`
+- **GIVEN** the final review returns `needs-changes`
 - **WHEN** it names exact canonical paths under `docs/**` or an exact `README.md`
 - **THEN** only those paths are added to that session's remediation scope
 - **AND** every other out-of-scope path remains rejected
@@ -320,20 +318,13 @@ authority paths and SHALL preserve their actual achieved independence.
 
 #### Scenario: Final closure is replayed from Git
 
-- **GIVEN** the activated final task has a satisfied documentation assessment
+- **GIVEN** the final task has a satisfied documentation assessment
 - **WHEN** the managed task commit is created
 - **THEN** its canonical message embeds a closure bound to the whole-change
   base/tree/path/patch digest, reviewer authority, assessment, final-assurance
   commitment when present, and remediation lineage
 - **AND** commit recovery compares it with content-addressed report evidence
 - **AND** CI and archive independently replay the closure from Git objects
-
-#### Scenario: Historical task predates activation
-
-- **GIVEN** a managed task parent does not reach the activation marker
-- **WHEN** commit, CI, or archive validation runs
-- **THEN** existing task evidence remains valid without a documentation closure
-- **AND** the validator does not accept a premature closure on that history
 
 ### Requirement: Semantic Handoff Traceability
 

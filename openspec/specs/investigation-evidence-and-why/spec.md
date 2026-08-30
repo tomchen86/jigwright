@@ -153,46 +153,39 @@ An exact input or provenance-parent change MUST produce a new `nodeId`. Invalida
 - **WHEN** output bytes happen to match
 - **THEN** the old and new parent edges do not converge
 
-### Requirement: Tracked Investigation Evidence May Replay Deterministic Nodes From Pinned Git
+### Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
 
-The tracked investigation artifact MAY omit deterministic tree-inventory, scan, hit, group, disposition, and coverage node envelopes only when it stores a strict replay recipe bound to the exact baseline commit and tree. Loading that projection SHALL verify the commit-to-tree binding, read source content from the pinned Git objects, regenerate the omitted nodes under the recorded policies, and recover the exact logical artifact before assurance validation.
+The tracked schema-v3 investigation Manifest SHALL store a strict replay contract bound to the exact baseline commit and tree for deterministic tree-inventory, scan, hit, mechanical-grouping, and coverage facts. Loading the current Manifest SHALL verify the commit-to-tree binding, read source content only from pinned Git objects, regenerate those facts under the recorded policies, and materialize the exact process-local evidence view before assurance validation.
 
-The replayed logical artifact MUST match the recorded complete node count and canonical node-set digest. The projection MUST retain semantic term contributions, provider results, WHY evidence, annotations, reviews, seals, and every other non-replayable node as immutable full envelopes. It MUST NOT infer or regenerate actor judgment from Git source. Missing Git objects, malformed replay data, unexpected node identities, digest mismatch, incomplete grouping, or provenance collision MUST fail closed. During the v2 shadow interval, existing schema-v1 full artifacts remain readable without projection; after v3 authority cutover, an active top-level schema-v1 input is forbidden while archived bytes remain untouched and read-only historical inspection cannot confer authority.
+The materialized evidence view MUST match the Manifest's recorded roots, counts, and derived commitments. The Manifest MUST retain irreducible semantic term contributions, provider results, decisions, WHY overlays, reviews, approval, and provenance in its semantic delta and attestation. Replay MUST NOT infer or regenerate actor judgment from Git source. Missing Git objects, malformed replay data, commitment mismatch, incomplete grouping, or provenance collision MUST fail closed. Any active non-v3 top-level input is refused under the stable unsupported-schema contract, while archived bytes remain untouched and read-only historical inspection cannot confer authority.
 
-#### Scenario: Compact artifact has an intact pinned Git baseline
+#### Scenario: Current Manifest has an intact pinned Git baseline
 
-- **GIVEN** a tracked compact investigation artifact names an existing commit, its exact tree, and a valid replay recipe
-- **WHEN** the artifact is loaded for validation or execution
-- **THEN** the engine regenerates every omitted deterministic node from the pinned Git tree
-- **AND** the recovered logical node set has the recorded identities, count, digest, and provenance closure
+- **GIVEN** a tracked schema-v3 Manifest names an existing commit, its exact tree, and a valid replay contract
+- **WHEN** the Manifest is loaded for validation or execution
+- **THEN** the engine regenerates every deterministic fact from the pinned Git tree
+- **AND** the materialized evidence view has the recorded roots, counts, derived commitments, and provenance closure
 
 #### Scenario: Pinned Git content is unavailable
 
-- **GIVEN** a compact artifact names a commit, tree, or blob that is not available in the repository
-- **WHEN** the artifact is loaded
+- **GIVEN** a current Manifest names a commit, tree, or blob that is not available in the repository
+- **WHEN** the Manifest is loaded
 - **THEN** loading fails closed
 - **AND** current working-tree bytes are not substituted for the missing pinned content
 
 #### Scenario: Replay no longer produces the recorded evidence
 
-- **GIVEN** replay code, policy, or compact recipe produces a different scan, group, disposition, coverage, node identity, or complete node-set digest
+- **GIVEN** replay code, policy, or the current Manifest contract produces a different scan, group, disposition, coverage, root, count, or derived commitment
 - **WHEN** reconstruction is validated
-- **THEN** the artifact is rejected as invalid
+- **THEN** the Manifest is rejected as invalid
 - **AND** the differing reconstruction does not become current evidence
 
-#### Scenario: Semantic evidence is present beside a replay recipe
+#### Scenario: Semantic evidence is present beside the replay contract
 
-- **GIVEN** the investigation contains actor-authored WHY or provider and review evidence
-- **WHEN** a compact tracked projection is written
-- **THEN** those semantic nodes remain as complete immutable envelopes
-- **AND** only eligible deterministic nodes are represented by replay instructions
-
-#### Scenario: Legacy full artifact is loaded during v2 shadow
-
-- **GIVEN** an existing schema-v1 investigation artifact contains the complete node set
-- **WHEN** it is loaded after compact projection support is enabled
-- **THEN** it remains readable under its original validation rules
-- **AND** it does not require a replay recipe
+- **GIVEN** the investigation contains actor-authored WHY overlays or provider and review evidence
+- **WHEN** the tracked schema-v3 Manifest is written
+- **THEN** its semantic delta and attestation retain the exact irreducible inputs, decisions, approval, and provenance
+- **AND** only eligible deterministic facts are represented by the replay contract
 
 ### Requirement: Investigation v3 Is Manifest-First
 
@@ -234,45 +227,20 @@ The engine SHALL expose distinct draft-seal validation, current authority valida
 - **THEN** replay and semantic-proof collections are absent
 - **AND** investigation breadth/depth claims remain inapplicable rather than satisfied
 
-### Requirement: v2/v3 Shadow Is Independent and Non-Authoritative
-
-During transition, v2 SHALL remain the sole investigation authority. The engine SHALL produce v2 and v3 from common raw/domain inputs, use v2 only as a parity oracle, and compare terms, inventory/hits, mechanical and final Groups, coverage, Dispositions, WHY, exceptions, applicability, knowledge reuse, and assurance through canonical facet roots. A shadow record MAY persist the compact v3 Manifest and parity roots or structured blocker, but MUST mark itself non-authoritative.
-
-#### Scenario: Shadow facets match
-
-- **GIVEN** v2 and v3 were independently derived from one pinned raw input set
-- **WHEN** every governed facet has the same canonical root
-- **THEN** the private shadow observation records a matched schema-v3 Manifest
-- **AND** it remains ineligible for lifecycle authority
-
-#### Scenario: One shadow facet differs
-
-- **GIVEN** any governed v2/v3 facet differs
-- **WHEN** parity is evaluated
-- **THEN** the v3 shadow returns `INVESTIGATION_V3_SHADOW_MISMATCH`
-- **AND** authority cutover remains prohibited
-
 ### Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
 
-Every v3 failure outcome under engine control, including validation, reconstruction, publication/CAS, shadow mismatch, and recoverable crash-state classification, SHALL emit exact failure identity, attempted transition, candidate digest, non-exhaustive failure code, details digest, and missing-assurance facts in a shape consumable by the published central Grant Core producer contract.
+Every v3 failure outcome under engine control, including validation, reconstruction, publication/CAS, and recoverable crash-state classification, SHALL emit exact failure identity, attempted transition, candidate digest, non-exhaustive failure code, details digest, and missing-assurance facts in a shape consumable by the published central Grant Core producer contract.
 
 Investigation v3 MUST NOT define a local grant schema, candidate label, callback, signer, trusted UI, authentication step, reservation, consumption rule, audit journal, degraded-reference placement, or resume command. It only emits canonical failure facts and state binding; the central Transition Registry and Grant Core own choices, fresh local device-owner authentication, once-only consumption, recovery, and audit.
 
-#### Scenario: Engine-produced shadow failure enters central Grant Core
+#### Scenario: Engine-produced v3 failure enters central Grant Core
 
-- **GIVEN** the private v3 shadow observation contains an exact structured blocker
-- **WHEN** the central Grant producer is asked to create its human challenge
+- **GIVEN** a current v3 operation returns an exact structured blocker
+- **WHEN** the central Grant producer is asked to create its human challenge from that blocker
 - **THEN** Grant Core persists the durable challenge with a code-owned non-retry stop transition
 - **AND** transition consumption re-observes the current failure state and rejects drift
-- **AND** the shadow record stores no challenge, approval, Grant reference, or audit state
-- **AND** stopping preserves the failed assurance and current authority without relabelling either as verified
-
-#### Scenario: Central contract is not published for every v3 failure
-
-- **GIVEN** one realized v3 failure has no registered central producer/transition contract
-- **WHEN** cutover readiness is evaluated
-- **THEN** v3 may continue in non-authoritative shadow
-- **AND** v2 authority, readers, and fallback remain in place
+- **AND** the v3 source state stores no challenge, approval, Grant reference, or audit state
+- **AND** stopping preserves the failed assurance without relabelling it as verified
 
 #### Scenario: Publication failure enters central Grant Core from its real source
 

@@ -26,13 +26,6 @@ Non-authoritative scratch material MUST NOT be adopted automatically as authorit
 - **THEN** the prior investigation becomes stale
 - **AND** planning remains blocked until the changed investigation is sealed
 
-#### Scenario: Pre-cutover plan is migrated
-
-- **GIVEN** an immutable legacy planning generation predates investigation-first activation
-- **WHEN** its eligible managed migration runs
-- **THEN** the migration records that investigation did not precede the legacy plan's cognition
-- **AND** the resulting planning revision MUST satisfy every current investigation and review gate
-
 ### Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
 
 The workflow engine SHALL permit an `investigation-exemption` only for documentation-only, formatting-only, deterministic-generated-projection, or time-boxed-research work that neither modifies nor relies on existing non-trivial behavior. The exemption MUST bind category, exact baseline and normalized intent, normalized declared paths/scope, bounded non-empty rationale, semantic author/provenance, `nonTrivialBehaviorReliance: none-declared`, applicable research budget, and the code-owned exemption-policy digest.
@@ -215,17 +208,9 @@ The wrapper SHALL assemble existing planning and plan-commit prerequisites witho
 
 ### Requirement: Manifest v3 and PlanReview Remain Separate Authorities
 
-At v3 cutover, `investigation.json` SHALL contain only the current Manifest and its investigation attestation. `plan-review.json` SHALL remain a separate artifact bound to the exact `manifestDigest`, `investigationTargetDigest`, planning generation, complete plan target, reviewer result, challenges, dispositions, and provenance. A change to baseline, intent, terms, evaluator/policy versions, roots, Groups, Dispositions, WHY, knowledge references, exceptions, or provenance MUST stale both the investigation seal and any PlanReview that targeted it.
+`investigation.json` SHALL contain only the current schema-v3 Manifest and its investigation attestation. `plan-review.json` SHALL remain a separate artifact bound to the exact `manifestDigest`, `investigationTargetDigest`, planning generation, complete plan target, reviewer result, challenges, dispositions, and provenance. A change to baseline, intent, terms, evaluator/policy versions, roots, Groups, Dispositions, WHY, knowledge references, exceptions, or provenance MUST stale both the investigation seal and any PlanReview that targeted it.
 
 Any degraded-continuation reference SHALL appear only where the published central Fail-Grant contract requires it. Investigation v3 MUST NOT invent a local reference field or placement rule.
-
-#### Scenario: Shadow v3 exists before central Grant Core readiness
-
-- **GIVEN** a matched non-authoritative schema-v3 shadow Manifest exists
-- **AND** the published central contract does not cover every realized v3 failure outcome
-- **WHEN** planning authority is selected
-- **THEN** the current v2 investigation and its separately validated PlanReview remain authoritative
-- **AND** the shadow Manifest cannot authorize planning, CI, merge, task start, or archive
 
 #### Scenario: Manifest semantics change after PlanReview
 
