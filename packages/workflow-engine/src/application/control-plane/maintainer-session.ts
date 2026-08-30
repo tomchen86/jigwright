@@ -1018,13 +1018,6 @@ function assertV2CandidateFresh(
 ): void {
   const candidate = envelope.payload.candidateBundle;
   if (candidate === null) return;
-  if (candidate.schemaVersion !== 2) {
-    throw workflowError(
-      'APPLY_CANDIDATE_LEGACY_READ_ONLY',
-      'Immutable candidate v1 is historical read-only evidence and cannot authorize repository mutation.',
-      ExitCode.guard,
-    );
-  }
   assertCandidateV2ChecksFresh(candidate.checksAttestation, {
     now,
     candidateTree: candidate.resultTree,

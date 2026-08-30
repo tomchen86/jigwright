@@ -55,10 +55,10 @@ import {
   storeCandidateHumanReadableSummary,
   storeCandidateSupportingArtifacts,
   storeImmutableCandidateBundle,
-  type AnyImmutableCandidateBundle,
   type CandidateChecksAttestationV3,
   type CandidateExternalEffect,
   type CandidateProviderInvocation,
+  type ImmutableCandidateBundleV2,
 } from '../../modules/authority/maintainer-candidate.ts';
 import {
   resolveCandidateHarnessEngineDigest,
@@ -798,7 +798,6 @@ function reissueAndApplyMaintainerGrantV2WithDeadline(
       const candidate = payload.candidateBundle;
       if (
         candidate === null ||
-        candidate.schemaVersion !== 2 ||
         payload.checksAttestation === null ||
         payload.checksAttestation.schemaVersion !== 2
       ) {
@@ -1291,7 +1290,7 @@ function assertApplyMandateChange(
 
 function appendCandidateBundleAudit(
   scope: AuthorityAuditLedgerScope,
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
   changeId: string,
 ): void {
   const candidateBundleDigest = prefixedDigest(candidate.candidateBundleDigest);

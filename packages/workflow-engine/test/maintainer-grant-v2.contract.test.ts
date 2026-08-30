@@ -58,7 +58,6 @@ import {
   verifyAuthorityAuditEvents,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
 import {
-  buildImmutableCandidateBundle,
   buildImmutableCandidateBundleV2,
   readDurableRefGenerationLedger,
   readStoredCandidateHumanReadableSummary,
@@ -1827,63 +1826,6 @@ test('v2 issue rejects a candidate-less request before touching the signer', () 
       (error) => isWorkflowError(error, 'APPLY_CANDIDATE_REQUIRED'),
     );
     assert.equal(signerTouched, false);
-    assert.deepEqual(signed, []);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('v2 issue keeps immutable candidate v1 historical and read-only', () => {
-  const repository = prepareCandidate();
-  const preparedSigned: string[] = [];
-  const signed: string[] = [];
-  try {
-    const prepared = freezeIssuableCandidate(repository, preparedSigned);
-    const current = prepared.candidateBundle!;
-    assert.equal(current.schemaVersion, 2);
-    if (current.schemaVersion !== 2) assert.fail('expected candidate v2');
-    const {
-      candidateBundleDigest: _candidateDigest,
-      humanReadableSummaryDigest: _summaryDigest,
-      checksAttestation,
-      ...common
-    } = current;
-    const legacyCandidate = buildImmutableCandidateBundle({
-      ...common,
-      checksAttestation: {
-        schemaVersion: 2,
-        candidateTree: checksAttestation.candidateTree,
-        patchDigest: checksAttestation.patchDigest,
-        trustBaseCommit: checksAttestation.trustBaseCommit,
-        checks: checksAttestation.checks,
-      },
-    });
-    assert.equal(
-      readStoredImmutableCandidateBundle(
-        fs.realpathSync(path.join(repository, '.git')),
-        current.candidateBundleDigest,
-      ).schemaVersion,
-      2,
-    );
-    assert.throws(
-      () =>
-        issueMaintainerGrantV2(
-          repository,
-          {
-            changeId: 'demo-change',
-            reason: 'Reject executable authority from historical candidate v1',
-            manifest: prepared.manifest,
-            checksAttestation: prepared.checksAttestation!,
-            candidateBundle: legacyCandidate,
-          },
-          {
-            now: new Date('2026-08-03T09:01:00.000Z'),
-            grantId: GRANT_ID,
-            signer: fakeSigner(signed),
-          },
-        ),
-      (error) => isWorkflowError(error, 'APPLY_CANDIDATE_LEGACY_READ_ONLY'),
-    );
     assert.deepEqual(signed, []);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

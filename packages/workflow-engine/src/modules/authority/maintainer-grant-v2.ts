@@ -29,7 +29,6 @@ import {
   parseImmutableCandidateBundle,
   readDurableRefGenerationLedger,
   readStoredImmutableCandidateBundle,
-  type AnyImmutableCandidateBundle,
   type ImmutableCandidateBundleV2,
 } from './maintainer-candidate.ts';
 import { currentCandidateDependencySnapshot } from '../../application/control-plane/maintainer-candidate-dependencies.ts';
@@ -170,7 +169,7 @@ export type MaintainerGrantV2Payload = {
   checkDependencies: CapabilityProfile['checkDependencies'];
   checksAttestation: MaintainerChecksAttestation | null;
   checksAttestationDigest: string | null;
-  candidateBundle: AnyImmutableCandidateBundle | null;
+  candidateBundle: ImmutableCandidateBundleV2 | null;
   candidateBundleDigest: string | null;
   effectsManifestDigest: string | null;
   issuedAt: string;
@@ -209,7 +208,7 @@ export type MaintainerGrantV2IssueRequest = {
   manifest: PatchManifest;
   ttlMinutes?: number;
   checksAttestation?: MaintainerChecksAttestation;
-  candidateBundle?: AnyImmutableCandidateBundle;
+  candidateBundle?: ImmutableCandidateBundleV2;
   evidenceWaivers?: MaintainerEvidenceWaiver[];
 };
 
@@ -372,13 +371,6 @@ export function issueMaintainerGrantV2(
   const candidateBundle = parseImmutableCandidateBundle(
     canonicalImmutableCandidateBundle(request.candidateBundle),
   );
-  if (candidateBundle.schemaVersion !== 2) {
-    throw workflowError(
-      'APPLY_CANDIDATE_LEGACY_READ_ONLY',
-      'Immutable candidate v1 is historical read-only evidence and cannot issue a new Apply Grant.',
-      ExitCode.guard,
-    );
-  }
   if (candidateBundle.classification !== classification) {
     throw invalidGrant(
       'Apply Grant v2 requires the exact matching immutable candidate classification.',
@@ -852,13 +844,6 @@ export function validateMaintainerGrantV2AuthorityBinding(
       'Maintainer grant v2 requires an immutable candidate at authority admission.',
     );
   }
-  if (candidate.schemaVersion !== 2) {
-    throw workflowError(
-      'APPLY_CANDIDATE_LEGACY_READ_ONLY',
-      'Immutable candidate v1 is historical read-only evidence and cannot authorize repository mutation.',
-      ExitCode.guard,
-    );
-  }
   assertStoredCandidateSupportingArtifacts(
     discoverRepository(repositoryRoot).gitCommonDirectory,
     envelope.payload.changeId,
@@ -1044,7 +1029,7 @@ function parseMaintainerGrantV2Payload(
         ? null
         : parseImmutableCandidateBundle(
             canonicalImmutableCandidateBundle(
-              raw.candidateBundle as AnyImmutableCandidateBundle,
+              raw.candidateBundle as ImmutableCandidateBundleV2,
             ),
           ),
     candidateBundleDigest: raw.candidateBundleDigest,
@@ -1180,20 +1165,17 @@ function assertApplyCandidateRequest(
       ExitCode.guard,
     );
   }
-  if (
-    request.candidateBundle.schemaVersion !== 2 ||
-    request.checksAttestation.schemaVersion !== 2
-  ) {
+  if (request.checksAttestation.schemaVersion !== 2) {
     throw workflowError(
       'APPLY_CANDIDATE_LEGACY_READ_ONLY',
-      'Immutable candidate v1 and its legacy checks are historical read-only evidence.',
+      'Legacy checks are historical read-only evidence.',
       ExitCode.guard,
     );
   }
 }
 
 function candidateChecksAreExact(
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
   attestation: MaintainerChecksAttestation,
 ): boolean {
   const candidateChecks = candidate.checksAttestation.checks;
@@ -1218,10 +1200,9 @@ function candidateChecksAreExact(
         candidateCheck.completedAt === grantCheck.completedAt
       );
     }) &&
-    (candidate.schemaVersion === 1 ||
-      (attestation.schemaVersion === 2 &&
-        candidate.checksAttestation.dependencySnapshot.harnessEngineDigest ===
-          attestation.harnessEngineDigest))
+    attestation.schemaVersion === 2 &&
+    candidate.checksAttestation.dependencySnapshot.harnessEngineDigest ===
+      attestation.harnessEngineDigest
   );
 }
 
@@ -1420,7 +1401,7 @@ function cloneCheckDependencies(
 }
 
 function assertCandidateDependencies(
-  candidate: AnyImmutableCandidateBundle | null,
+  candidate: ImmutableCandidateBundleV2 | null,
   profile: CapabilityProfile,
 ): void {
   if (candidate === null) return;
@@ -1433,14 +1414,13 @@ function assertCandidateDependencies(
   if (
     canonicalJson(observed) !==
       canonicalJson(cloneCheckDependencies(profile)) ||
-    (candidate.schemaVersion === 2 &&
-      candidate.checksAttestation.checks.some((check) =>
-        check.dependsOn.includes('external-state')
-          ? check.reuseClass !== 'external-state' ||
-            check.maxAgeMs !==
-              profile.externalStateFreshness?.[check.checkId]?.maxAgeMs
-          : check.externalSnapshotDigest !== null,
-      ))
+    candidate.checksAttestation.checks.some((check) =>
+      check.dependsOn.includes('external-state')
+        ? check.reuseClass !== 'external-state' ||
+          check.maxAgeMs !==
+            profile.externalStateFreshness?.[check.checkId]?.maxAgeMs
+        : check.externalSnapshotDigest !== null,
+    )
   ) {
     throw invalidGrant(
       'Candidate check dependencies differ from the trust-base profile.',

@@ -5,11 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   acceptApplyPrestate,
   assertCandidateChecksFresh,
   assertCandidateV2ChecksFresh,
-  buildImmutableCandidateBundle,
+  buildImmutableCandidateBundleV2,
   canonicalImmutableCandidateBundle,
   createRefGenerationLedger,
   ensureDurableRefGenerationLedger,
@@ -114,8 +115,8 @@ function checksV3(): CandidateChecksAttestationV3 {
   };
 }
 
-function candidateBundle() {
-  return buildImmutableCandidateBundle({
+function candidateBundle(commitMessage = 'Apply exact candidate\n') {
+  return buildImmutableCandidateBundleV2({
     mandateBinding,
     repositoryId: 'github:R_fixture',
     targetRef: 'refs/heads/work/demo-change',
@@ -123,15 +124,48 @@ function candidateBundle() {
     expectedRefGeneration: 7,
     candidateCommit: OID_B,
     resultTree: TREE,
-    commitMessage: 'Apply exact candidate\n',
+    commitMessage,
     manifest,
-    checksAttestation: checks(),
+    checksAttestation: checksV3(),
     effectsManifestDigest: '6'.repeat(64),
     providerInvocationsDigest: '7'.repeat(64),
     classification: 'ordinary',
     recoveryPlanDigest: '8'.repeat(64),
     createdAt: '2026-08-03T09:01:00.000Z',
-  });
+  }).bundle;
+}
+
+function retiredV1CandidateBytes(): string {
+  const current = candidateBundle();
+  const legacyChecks = {
+    schemaVersion: 2 as const,
+    candidateTree: current.checksAttestation.candidateTree,
+    patchDigest: current.checksAttestation.patchDigest,
+    trustBaseCommit: current.checksAttestation.trustBaseCommit,
+    checks: current.checksAttestation.checks,
+  };
+  const {
+    schemaVersion: _schemaVersion,
+    humanReadableSummaryDigest: _humanReadableSummaryDigest,
+    candidateBundleDigest: _candidateBundleDigest,
+    checksAttestation: _checksAttestation,
+    checksAttestationDigest: _checksAttestationDigest,
+    ...common
+  } = current;
+  const body = {
+    schemaVersion: 1 as const,
+    ...common,
+    checksAttestation: legacyChecks,
+    checksAttestationDigest: canonicalDigest(legacyChecks),
+  };
+  return `${canonicalJson({
+    ...body,
+    candidateBundleDigest: canonicalDigest(body),
+  })}\n`;
+}
+
+function canonicalDigest(value: unknown): string {
+  return crypto.createHash('sha256').update(canonicalJson(value)).digest('hex');
 }
 
 test('immutable candidate identity binds commit, result tree, manifests, effects, and message', () => {
@@ -140,12 +174,7 @@ test('immutable candidate identity binds commit, result tree, manifests, effects
   assert.match(candidate.candidateBundleDigest, /^[0-9a-f]{64}$/);
   assert.equal(candidate.resultTree, TREE);
   assert.equal(candidate.expectedRefGeneration, 7);
-  const { candidateBundleDigest: _candidateBundleDigest, ...candidateInput } =
-    candidate;
-  const changedMessage = buildImmutableCandidateBundle({
-    ...candidateInput,
-    commitMessage: 'Apply different candidate\n',
-  });
+  const changedMessage = candidateBundle('Apply different candidate\n');
   assert.notEqual(
     changedMessage.candidateBundleDigest,
     candidate.candidateBundleDigest,
@@ -157,6 +186,13 @@ test('immutable candidate identity binds commit, result tree, manifests, effects
   unknown.untrusted = true;
   assert.throws(
     () => parseImmutableCandidateBundle(`${JSON.stringify(unknown)}\n`),
+    (error) => isWorkflowError(error, 'APPLY_CANDIDATE_INVALID'),
+  );
+});
+
+test('immutable candidate parser rejects retired V1 bundles', () => {
+  assert.throws(
+    () => parseImmutableCandidateBundle(retiredV1CandidateBytes()),
     (error) => isWorkflowError(error, 'APPLY_CANDIDATE_INVALID'),
   );
 });

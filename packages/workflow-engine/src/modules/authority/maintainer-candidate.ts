@@ -98,28 +98,10 @@ type ImmutableCandidateBundleCommon = {
   candidateBundleDigest: string;
 };
 
-export type ImmutableCandidateBundle = ImmutableCandidateBundleCommon & {
-  schemaVersion: 1;
-  checksAttestation: CandidateChecksAttestation;
-};
-
 export type ImmutableCandidateBundleV2 = ImmutableCandidateBundleCommon & {
   schemaVersion: 2;
   checksAttestation: CandidateChecksAttestationV3;
   humanReadableSummaryDigest: string;
-};
-
-export type AnyImmutableCandidateBundle =
-  ImmutableCandidateBundle | ImmutableCandidateBundleV2;
-
-export type ImmutableCandidateBundleInput = Omit<
-  ImmutableCandidateBundle,
-  | 'schemaVersion'
-  | 'manifestDigest'
-  | 'checksAttestationDigest'
-  | 'candidateBundleDigest'
-> & {
-  candidateBundleDigest?: string;
 };
 
 export type ImmutableCandidateBundleV2Input = Omit<
@@ -233,73 +215,6 @@ export type StoredCandidateSupportingArtifacts = {
   recoveryPlanDigest: string;
   paths: string[];
 };
-
-export function buildImmutableCandidateBundle(
-  input: ImmutableCandidateBundleInput,
-): ImmutableCandidateBundle {
-  const mandateBinding = assertCandidateMandateBinding(input.mandateBinding);
-  const manifest = parsePatchManifest(canonicalPatchManifest(input.manifest));
-  const checksAttestation = assertCandidateChecksAttestation(
-    input.checksAttestation,
-  );
-  const createdAt = exactTimestamp(input.createdAt, 'candidate creation time');
-  if (
-    !/^github:[A-Za-z0-9_.:-]+$/.test(input.repositoryId) ||
-    !validRef(input.targetRef) ||
-    !OBJECT_ID.test(input.expectedOldCommit) ||
-    !Number.isSafeInteger(input.expectedRefGeneration) ||
-    input.expectedRefGeneration < 0 ||
-    !OBJECT_ID.test(input.candidateCommit) ||
-    input.candidateCommit === input.expectedOldCommit ||
-    !OBJECT_ID.test(input.resultTree) ||
-    !validCommitMessage(input.commitMessage) ||
-    !DIGEST.test(input.effectsManifestDigest) ||
-    !DIGEST.test(input.providerInvocationsDigest) ||
-    !['ordinary', 'root-one-shot', 'control-plane'].includes(
-      input.classification,
-    ) ||
-    !DIGEST.test(input.recoveryPlanDigest) ||
-    checksAttestation.candidateTree !== input.resultTree ||
-    checksAttestation.patchDigest !== manifest.patchDigest ||
-    checksAttestation.trustBaseCommit !== manifest.trustBaseCommit
-  ) {
-    throw candidateError(
-      'APPLY_CANDIDATE_INVALID',
-      'Immutable candidate bundle bindings are malformed or inconsistent.',
-    );
-  }
-  const bundleBody = {
-    schemaVersion: 1 as const,
-    mandateBinding,
-    repositoryId: input.repositoryId,
-    targetRef: input.targetRef,
-    expectedOldCommit: input.expectedOldCommit,
-    expectedRefGeneration: input.expectedRefGeneration,
-    candidateCommit: input.candidateCommit,
-    resultTree: input.resultTree,
-    commitMessage: input.commitMessage,
-    manifest,
-    manifestDigest: digest(canonicalPatchManifest(manifest)),
-    checksAttestation,
-    checksAttestationDigest: digest(canonicalJson(checksAttestation)),
-    effectsManifestDigest: input.effectsManifestDigest,
-    providerInvocationsDigest: input.providerInvocationsDigest,
-    classification: input.classification,
-    recoveryPlanDigest: input.recoveryPlanDigest,
-    createdAt,
-  };
-  const candidateBundleDigest = digest(canonicalJson(bundleBody));
-  if (
-    input.candidateBundleDigest !== undefined &&
-    input.candidateBundleDigest !== candidateBundleDigest
-  ) {
-    throw candidateError(
-      'APPLY_CANDIDATE_DIGEST_MISMATCH',
-      'Candidate bundle digest differs from its canonical content.',
-    );
-  }
-  return { ...bundleBody, candidateBundleDigest };
-}
 
 export function buildImmutableCandidateBundleV2(
   input: ImmutableCandidateBundleV2Input,
@@ -438,7 +353,7 @@ function candidateHumanReadableSummary(
   ].join('\n');
 }
 
-const CANDIDATE_V1_KEYS = [
+const CANDIDATE_COMMON_KEYS = [
   'schemaVersion',
   'mandateBinding',
   'repositoryId',
@@ -460,17 +375,20 @@ const CANDIDATE_V1_KEYS = [
   'candidateBundleDigest',
 ];
 
-const CANDIDATE_V2_KEYS = [...CANDIDATE_V1_KEYS, 'humanReadableSummaryDigest'];
+const CANDIDATE_V2_KEYS = [
+  ...CANDIDATE_COMMON_KEYS,
+  'humanReadableSummaryDigest',
+];
 
 export function canonicalImmutableCandidateBundle(
-  bundle: AnyImmutableCandidateBundle,
+  bundle: ImmutableCandidateBundleV2,
 ): string {
   return `${canonicalJson(bundle)}\n`;
 }
 
 export function parseImmutableCandidateBundle(
   raw: string,
-): AnyImmutableCandidateBundle {
+): ImmutableCandidateBundleV2 {
   try {
     if (
       typeof raw !== 'string' ||
@@ -483,11 +401,8 @@ export function parseImmutableCandidateBundle(
     const value = JSON.parse(raw) as unknown;
     if (
       !isRecord(value) ||
-      (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
-      !hasExactKeys(
-        value,
-        value.schemaVersion === 1 ? CANDIDATE_V1_KEYS : CANDIDATE_V2_KEYS,
-      ) ||
+      value.schemaVersion !== 2 ||
+      !hasExactKeys(value, CANDIDATE_V2_KEYS) ||
       !isRecord(value.mandateBinding) ||
       typeof value.repositoryId !== 'string' ||
       typeof value.targetRef !== 'string' ||
@@ -508,8 +423,7 @@ export function parseImmutableCandidateBundle(
       typeof value.recoveryPlanDigest !== 'string' ||
       typeof value.createdAt !== 'string' ||
       typeof value.candidateBundleDigest !== 'string' ||
-      (value.schemaVersion === 2 &&
-        typeof value.humanReadableSummaryDigest !== 'string')
+      typeof value.humanReadableSummaryDigest !== 'string'
     ) {
       throw new Error('invalid candidate shape');
     }
@@ -531,24 +445,15 @@ export function parseImmutableCandidateBundle(
       createdAt: value.createdAt,
       candidateBundleDigest: value.candidateBundleDigest,
     };
-    const bundle =
-      value.schemaVersion === 1
-        ? buildImmutableCandidateBundle({
-            ...common,
-            checksAttestation:
-              value.checksAttestation as CandidateChecksAttestation,
-          })
-        : buildImmutableCandidateBundleV2({
-            ...common,
-            checksAttestation:
-              value.checksAttestation as CandidateChecksAttestationV3,
-          }).bundle;
+    const bundle = buildImmutableCandidateBundleV2({
+      ...common,
+      checksAttestation:
+        value.checksAttestation as CandidateChecksAttestationV3,
+    }).bundle;
     if (
       value.manifestDigest !== bundle.manifestDigest ||
       value.checksAttestationDigest !== bundle.checksAttestationDigest ||
-      (bundle.schemaVersion === 2 &&
-        value.humanReadableSummaryDigest !==
-          bundle.humanReadableSummaryDigest) ||
+      value.humanReadableSummaryDigest !== bundle.humanReadableSummaryDigest ||
       canonicalImmutableCandidateBundle(bundle) !== raw
     ) {
       throw new Error('candidate digest or canonical bytes differ');
@@ -760,7 +665,7 @@ export function readStoredCandidateHumanReadableSummary(
 export function assertStoredCandidateSupportingArtifacts(
   gitCommonDirectory: string,
   changeId: string,
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
 ): CandidateSupportingArtifactSet {
   if (!CHANGE_ID.test(changeId)) {
     throw candidateError(
@@ -805,24 +710,22 @@ export function assertStoredCandidateSupportingArtifacts(
       'Stored candidate supporting artifacts do not bind the immutable candidate.',
     );
   }
-  if (candidate.schemaVersion === 2) {
-    const summary = readStoredCandidateHumanReadableSummary(
-      gitCommonDirectory,
-      candidate.humanReadableSummaryDigest,
+  const summary = readStoredCandidateHumanReadableSummary(
+    gitCommonDirectory,
+    candidate.humanReadableSummaryDigest,
+  );
+  if (summary !== canonicalCandidateHumanReadableSummary(candidate)) {
+    throw candidateError(
+      'APPLY_CANDIDATE_ARTIFACT_BINDING_INVALID',
+      'Stored candidate summary does not describe the immutable candidate.',
     );
-    if (summary !== canonicalCandidateHumanReadableSummary(candidate)) {
-      throw candidateError(
-        'APPLY_CANDIDATE_ARTIFACT_BINDING_INVALID',
-        'Stored candidate summary does not describe the immutable candidate.',
-      );
-    }
   }
   return { effectsManifest, providerInvocations, recoveryPlan };
 }
 
 export function storeImmutableCandidateBundle(
   gitCommonDirectory: string,
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
 ): string {
   const bundle = parseImmutableCandidateBundle(
     canonicalImmutableCandidateBundle(candidate),
@@ -881,7 +784,7 @@ export function storeImmutableCandidateBundle(
 export function readStoredImmutableCandidateBundle(
   gitCommonDirectory: string,
   requestedCandidateBundleDigest: string,
-): AnyImmutableCandidateBundle {
+): ImmutableCandidateBundleV2 {
   const digestValue = assertCandidateBundleDigest(
     requestedCandidateBundleDigest,
   );

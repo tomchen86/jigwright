@@ -5106,6 +5106,7 @@ function readFrozenControlPlaneCandidate(
       'effectsManifestDigest',
       'expectedOldCommit',
       'expectedRefGeneration',
+      'humanReadableSummaryDigest',
       'mandateBinding',
       'manifest',
       'manifestDigest',
@@ -5116,11 +5117,12 @@ function readFrozenControlPlaneCandidate(
       'schemaVersion',
       'targetRef',
     ]) ||
-    candidate.schemaVersion !== 1 ||
+    candidate.schemaVersion !== 2 ||
     candidate.classification !== 'control-plane' ||
     candidate.repositoryId !== material.repositoryId ||
     candidate.candidateBundleDigest !== frozenDigest.slice('sha256:'.length) ||
     !/^[0-9a-f]{64}$/.test(String(candidate.candidateBundleDigest)) ||
+    !/^[0-9a-f]{64}$/.test(String(candidate.humanReadableSummaryDigest)) ||
     !/^[0-9a-f]{40,64}$/.test(String(candidate.expectedOldCommit)) ||
     !/^[0-9a-f]{40,64}$/.test(String(candidate.candidateCommit)) ||
     !/^[0-9a-f]{40,64}$/.test(String(candidate.resultTree)) ||

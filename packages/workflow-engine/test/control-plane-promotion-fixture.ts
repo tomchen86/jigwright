@@ -24,7 +24,8 @@ import {
 } from '../src/application/control-plane/intervention-control-updater.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
 import {
-  buildImmutableCandidateBundle,
+  buildImmutableCandidateBundleV2,
+  storeCandidateHumanReadableSummary,
   storeCandidateSupportingArtifacts,
   storeImmutableCandidateBundle,
   type CandidateSupportingArtifactSet,
@@ -569,49 +570,58 @@ function freezeClassCCandidate(
     fs.realpathSync(path.join(repository, '.git')),
     artifacts,
   );
-  const candidate = buildImmutableCandidateBundle({
-    mandateBinding,
-    repositoryId: CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
-    targetRef: `refs/heads/${branch}`,
-    expectedOldCommit,
-    expectedRefGeneration: 0,
-    candidateCommit,
-    resultTree,
-    commitMessage,
-    manifest,
-    checksAttestation: {
-      schemaVersion: 2,
-      candidateTree: resultTree,
-      patchDigest: manifest.patchDigest,
-      trustBaseCommit: expectedOldCommit,
-      checks: [
-        {
-          checkId: 'workflow-tests',
-          definitionDigest: '3'.repeat(64),
-          commandDigest: '4'.repeat(64),
-          runnerDigest: '5'.repeat(64),
-          environmentDigest: '6'.repeat(64),
-          resultDigest: '7'.repeat(64),
-          outcome: 'passed',
-          startedAt: '2026-08-10T09:58:00.000Z',
-          completedAt: '2026-08-10T09:59:00.000Z',
-          reuseClass: 'content-pure',
-          maxAgeMs: null,
-          externalSnapshotDigest: null,
-          dependsOn: ['harness-engine', 'source-tree'],
+  const { bundle: candidate, humanReadableSummary } =
+    buildImmutableCandidateBundleV2({
+      mandateBinding,
+      repositoryId: CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
+      targetRef: `refs/heads/${branch}`,
+      expectedOldCommit,
+      expectedRefGeneration: 0,
+      candidateCommit,
+      resultTree,
+      commitMessage,
+      manifest,
+      checksAttestation: {
+        schemaVersion: 3,
+        candidateTree: resultTree,
+        patchDigest: manifest.patchDigest,
+        trustBaseCommit: expectedOldCommit,
+        dependencySnapshot: {
+          schemaVersion: 1,
+          sourceTree: resultTree,
+          baseCommit: expectedOldCommit,
+          harnessEngineDigest: '8'.repeat(64),
+          policyDigest: manifest.policyDigest,
+          runnerDigests: { 'workflow-tests': '5'.repeat(64) },
+          externalStateDigests: { 'workflow-tests': null },
         },
-      ],
-    },
-    effectsManifestDigest: storedArtifacts.effectsManifestDigest,
-    providerInvocationsDigest: storedArtifacts.providerInvocationsDigest,
-    classification: 'control-plane',
-    recoveryPlanDigest: storedArtifacts.recoveryPlanDigest,
-    createdAt: '2026-08-10T10:00:30.000Z',
-  });
-  storeImmutableCandidateBundle(
-    fs.realpathSync(path.join(repository, '.git')),
-    candidate,
-  );
+        checks: [
+          {
+            checkId: 'workflow-tests',
+            definitionDigest: '3'.repeat(64),
+            commandDigest: '4'.repeat(64),
+            runnerDigest: '5'.repeat(64),
+            environmentDigest: '6'.repeat(64),
+            resultDigest: '7'.repeat(64),
+            outcome: 'passed',
+            startedAt: '2026-08-10T09:58:00.000Z',
+            completedAt: '2026-08-10T09:59:00.000Z',
+            reuseClass: 'content-pure',
+            maxAgeMs: null,
+            externalSnapshotDigest: null,
+            dependsOn: ['harness-engine', 'source-tree'],
+          },
+        ],
+      },
+      effectsManifestDigest: storedArtifacts.effectsManifestDigest,
+      providerInvocationsDigest: storedArtifacts.providerInvocationsDigest,
+      classification: 'control-plane',
+      recoveryPlanDigest: storedArtifacts.recoveryPlanDigest,
+      createdAt: '2026-08-10T10:00:30.000Z',
+    });
+  const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+  storeCandidateHumanReadableSummary(gitCommonDirectory, humanReadableSummary);
+  storeImmutableCandidateBundle(gitCommonDirectory, candidate);
   git(repository, ['reset', '--hard', expectedOldCommit]);
   return { ...candidate, afterClosureDigest, mandateBinding };
 }

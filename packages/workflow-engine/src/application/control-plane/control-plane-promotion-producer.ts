@@ -63,7 +63,7 @@ import { readInterventionEngineArtifact } from './intervention-maintenance.ts';
 import {
   assertStoredCandidateSupportingArtifacts,
   readStoredImmutableCandidateBundle,
-  type AnyImmutableCandidateBundle,
+  type ImmutableCandidateBundleV2,
 } from '../../modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../../adapters/consumer/repository/work-registry/protected-capabilities.ts';
@@ -648,7 +648,7 @@ function resolveTerminalHistoryArtifact(
 
 function assertFrozenCandidatePrestate(
   repository: ReturnType<typeof discoverRepository>,
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
 ): void {
   const expectedTargetRef =
     repository.branch === null ? null : `refs/heads/${repository.branch}`;
@@ -744,7 +744,7 @@ function readGitCommitMessage(
 
 function deriveFrozenCandidate(
   repositoryRoot: string,
-  candidate: AnyImmutableCandidateBundle,
+  candidate: ImmutableCandidateBundleV2,
 ): DerivedFrozenCandidate {
   const changedPaths = runGitBuffer(repositoryRoot, [
     'diff',
