@@ -10,8 +10,6 @@ export type RepositoryPlanningConfigurationV1 = Readonly<{
 export type RepositoryDocumentConfigurationV1 = Readonly<{
   adapterId: string;
   handoffPath: string;
-  issueSourcePath: string;
-  issueLogPath: string;
 }>;
 
 export type RepositoryWorkRegistryConfigurationV1 = Readonly<{

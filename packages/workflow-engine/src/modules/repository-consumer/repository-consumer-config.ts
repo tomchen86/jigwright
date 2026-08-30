@@ -139,12 +139,7 @@ export function parseRepositoryConsumerConfiguration(
     typeof value.planning.currentSchemaName !== 'string' ||
     !SAFE_SCHEMA_NAME.test(value.planning.currentSchemaName) ||
     !isRecord(value.documents) ||
-    !hasExactKeys(value.documents, [
-      'adapterId',
-      'handoffPath',
-      'issueLogPath',
-      'issueSourcePath',
-    ]) ||
+    !hasExactKeys(value.documents, ['adapterId', 'handoffPath']) ||
     typeof value.documents.adapterId !== 'string' ||
     !isRecord(value.workRegistry) ||
     !hasExactKeys(value.workRegistry, [
@@ -198,11 +193,7 @@ export function parseRepositoryConsumerConfiguration(
   }
   const documents = value.documents as Record<string, unknown>;
   const workRegistry = value.workRegistry as Record<string, unknown>;
-  const documentPaths = [
-    documents.handoffPath,
-    documents.issueSourcePath,
-    documents.issueLogPath,
-  ].map(safePathValue);
+  const documentPaths = [documents.handoffPath].map(safePathValue);
   const registryPaths = [
     workRegistry.itemRoot,
     workRegistry.inventoryPath,
@@ -235,8 +226,6 @@ export function parseRepositoryConsumerConfiguration(
     documents: {
       adapterId: 'filesystem-documents-v1',
       handoffPath: documentPaths[0]!,
-      issueSourcePath: documentPaths[1]!,
-      issueLogPath: documentPaths[2]!,
     },
     workRegistry: {
       adapterId: 'filesystem-work-registry-v1',
@@ -258,8 +247,6 @@ function assertConfiguredPathsInsideRepository(
 ): void {
   const paths = [
     configuration.documents.handoffPath,
-    configuration.documents.issueSourcePath,
-    configuration.documents.issueLogPath,
     configuration.workRegistry.itemRoot,
     configuration.workRegistry.inventoryPath,
     configuration.workRegistry.backlogPath,

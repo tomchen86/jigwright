@@ -5,10 +5,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { runCli } from '../src/cli.ts';
-import {
-  renderIssues,
-  writeIssueData,
-} from '../src/adapters/consumer/repository/documents/issues.ts';
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { withChangeTransitionAuthority } from '../src/runtime/session-workspace/planning-lock.ts';
@@ -193,12 +189,14 @@ test('help omits retired Work Registry migration and Issue commands', () => {
 
 test('retired Issue commands fail before mutation while Work Registry remains available', () => {
   const repository = createFixtureRepository();
-  writeIssueData(repository, {
-    schemaVersion: 1,
-    lastUpdated: '2026-08-30',
-    issues: [],
-  });
-  renderIssues(repository);
+  const legacyIssueSourcePath = path.join(
+    repository,
+    'docs/issues/issues.yaml',
+  );
+  const legacyIssueLogPath = path.join(repository, 'docs/ISSUE_LOG.md');
+  fs.mkdirSync(path.dirname(legacyIssueSourcePath), { recursive: true });
+  fs.writeFileSync(legacyIssueSourcePath, Buffer.from([0xff, 0x00, 0x49]));
+  fs.writeFileSync(legacyIssueLogPath, Buffer.from([0x00, 0xfe, 0x4c]));
   writeReadyV3ExemptChange(repository);
   renderHandoff(repository);
   const managedPaths = [

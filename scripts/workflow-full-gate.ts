@@ -46,7 +46,6 @@ const DEFAULT_SAMPLE_INTERVAL_MS = 5_000;
 const DUPLICATE_GATE_EXIT_CODE = 75;
 const GENERATED_ARTIFACT_PATHS = Object.freeze([
   'docs/CURRENT_AND_NEXT_STEPS.md',
-  'docs/ISSUE_LOG.md',
   'packages/workflow-engine/bootstrap/built-in-engine-closure-pin.ts',
   'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
   'packages/workflow-engine/bootstrap/harness-bootstrap-dependency-closure.json',

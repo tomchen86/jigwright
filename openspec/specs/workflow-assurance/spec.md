@@ -276,12 +276,19 @@ Managed documents SHALL declare generated, append-only, curated, normative,
 reference, or immutable mutation policy, and blocking claims SHALL only be made
 after the corresponding executable validator and CI check exist.
 
-#### Scenario: Generated issue view is edited directly
+#### Scenario: Generated handoff is edited directly
 
-- GIVEN structured issue source and its renderer are active
-- WHEN `docs/ISSUE_LOG.md` differs from deterministic rendered output
+- GIVEN managed handoff validation is active
+- WHEN `docs/CURRENT_AND_NEXT_STEPS.md` differs from its deterministic projection
 - THEN validation fails
-- AND the correction must be made through an authorized issue command
+- AND the correction must be made through an authorized managed transition
+
+#### Scenario: Active document policy has no registered validator
+
+- GIVEN an active managed-document policy names an unregistered document path
+- WHEN managed-document validation runs
+- THEN validation fails with `UNSUPPORTED_ACTIVE_DOCUMENT_POLICY`
+- AND it does not read the unsupported document target
 
 ### Requirement: Whole-Change Documentation Closure
 

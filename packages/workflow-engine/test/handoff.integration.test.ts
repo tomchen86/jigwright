@@ -7,10 +7,6 @@ import {
   renderHandoff,
   validateHandoff,
 } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import {
-  renderIssues,
-  writeIssueData,
-} from '../src/adapters/consumer/repository/documents/issues.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
 import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
 import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
@@ -170,7 +166,7 @@ test('committed managed-document validation replays a v3 handoff without private
   }
 });
 
-test('committed managed-document validation binds issue documents with zero active changes', () => {
+test('committed managed-document validation replays a terminal handoff with zero active changes', () => {
   const repository = createFixtureRepository();
   try {
     const changeRoot = path.join(repository, 'openspec/changes');
@@ -192,32 +188,26 @@ test('committed managed-document validation binds issue documents with zero acti
               enforcement: 'active',
               transition: 'completion',
             },
-            'docs/ISSUE_LOG.md': {
-              mode: 'generated',
-              enforcement: 'active',
-            },
           },
         },
         null,
         2,
       )}\n`,
     );
-    writeIssueData(repository, {
-      schemaVersion: 1,
-      lastUpdated: '2026-08-22',
-      issues: [],
-    });
-    renderIssues(repository);
     renderHandoff(repository);
     git(repository, ['add', '-A']);
-    git(repository, ['commit', '-m', 'Record zero-change managed documents']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Record terminal handoff without active changes',
+    ]);
     const commit = git(repository, ['rev-parse', 'HEAD']).trim();
     fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
 
     assert.deepEqual(validateRepositoryStateAtCommit(repository, commit), {
       repositoryRoot: fs.realpathSync(repository),
       changes: [],
-      documents: ['docs/CURRENT_AND_NEXT_STEPS.md', 'docs/ISSUE_LOG.md'],
+      documents: ['docs/CURRENT_AND_NEXT_STEPS.md'],
     });
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -294,7 +284,7 @@ test('zero-change committed validation rejects an ignored workflow check absent 
   }
 });
 
-test('committed managed-document validation ignores checkout-only changes and issue data', () => {
+test('committed managed-document validation ignores checkout-only changes', () => {
   const repository = createFixtureRepository();
   try {
     fs.writeFileSync(
@@ -319,9 +309,7 @@ test('committed managed-document validation ignores checkout-only changes and is
     renderHandoff(repository);
     fs.appendFileSync(
       path.join(repository, '.gitignore'),
-      ['/openspec/changes/fake-change/', '/docs/issues/issues.yaml', ''].join(
-        '\n',
-      ),
+      '/openspec/changes/fake-change/\n',
     );
     git(repository, ['add', '-A']);
     git(repository, [
@@ -333,22 +321,6 @@ test('committed managed-document validation ignores checkout-only changes and is
     fs.rmSync(runtimeRoot(repository), { recursive: true, force: true });
 
     writeChange(repository, 'fake-change', false);
-    writeIssueData(repository, {
-      schemaVersion: 1,
-      lastUpdated: '2026-08-22',
-      issues: [
-        {
-          id: 'ISS-199',
-          category: 'bug',
-          title: 'Checkout-only blocker',
-          status: 'blocked',
-          priority: 'Now',
-          requirement: null,
-          references: [],
-          notes: 'Must not affect committed validation.',
-        },
-      ],
-    });
     assert.equal(
       git(repository, ['status', '--porcelain=v1', '--untracked-files=all']),
       '',

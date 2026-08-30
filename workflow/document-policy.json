@@ -12,12 +12,6 @@
       "validator": "managed-documents",
       "transition": "completion"
     },
-    "docs/ISSUE_LOG.md": {
-      "mode": "generated",
-      "enforcement": "active",
-      "source": "docs/issues/issues.yaml",
-      "validator": "managed-documents"
-    },
     "docs/BACKLOG.md": {
       "mode": "generated",
       "enforcement": "planned",

@@ -47,8 +47,6 @@ function fixtureConfiguration(
     documents: Object.freeze({
       adapterId: profile.documentAdapter,
       handoffPath: 'notebook/handoff.md',
-      issueSourcePath: 'notebook/issues.json',
-      issueLogPath: 'notebook/issue-index.md',
     }),
     workRegistry: Object.freeze({
       adapterId: 'fixture-work-registry-v1',

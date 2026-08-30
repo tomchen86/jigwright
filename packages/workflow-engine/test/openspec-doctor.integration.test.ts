@@ -605,8 +605,6 @@ function writeRepositoryConsumerConfiguration(
     documents: {
       adapterId: 'filesystem-documents-v1',
       handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
-      issueSourcePath: 'docs/issues/issues.yaml',
-      issueLogPath: 'docs/ISSUE_LOG.md',
     },
     workRegistry: {
       adapterId: 'filesystem-work-registry-v1',

@@ -1,92 +1,129 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
 import {
-  addIssue,
-  closeIssue,
-  readIssueData,
-  renderIssues,
-  updateIssue,
-  validateIssueLog,
-  writeIssueData,
-  type IssueData,
-} from '../src/adapters/consumer/repository/documents/issues.ts';
-import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
+  createFixtureRepository,
+  isWorkflowError,
+  sourceRepositoryRoot,
+} from './fixture.ts';
 
-test('issue commands preserve structured fields and deterministic rendering', () => {
+test('current handoff-only managed documents still validate', () => {
   const repository = createFixtureRepository();
-  const initial: IssueData = {
-    schemaVersion: 1,
-    lastUpdated: '2026-07-14',
-    issues: [
-      {
-        id: 'ISS-001',
-        category: 'feature',
-        title: 'First issue',
-        status: 'proposed',
-        priority: 'Next',
-        requirement: null,
-        references: ['docs/one.md'],
-        notes: 'Keep every field.',
-      },
-    ],
-  };
-
   try {
-    writeIssueData(repository, initial);
-    renderIssues(repository);
-    validateIssueLog(repository);
-    addIssue(repository, {
-      id: 'ISS-101',
-      category: 'bug',
-      title: 'Second issue',
-      status: 'in-progress',
-      priority: 'Now',
-      requirement: {
-        label: 'Req: Groups',
-        href: 'docs/REQUIREMENT_LOG.md#groups',
+    writeDocumentPolicy(repository, {
+      'docs/CURRENT_AND_NEXT_STEPS.md': {
+        mode: 'generated',
+        enforcement: 'active',
+        transition: 'completion',
       },
-      references: ['apps/mobile/app.tsx'],
-      notes: 'Fix it.',
     });
-    updateIssue(repository, 'ISS-101', 'notes', 'Updated without data loss.');
-    closeIssue(repository, 'ISS-101', '2026-07-15', 'Validated fix.');
-    renderIssues(repository);
-    validateIssueLog(repository);
+    renderHandoff(repository);
 
-    const data = readIssueData(repository);
-    assert.equal(data.issues.length, 2);
-    assert.deepEqual(data.issues[1], {
-      id: 'ISS-101',
-      category: 'bug',
-      title: 'Second issue',
-      status: 'done',
-      priority: 'Now',
-      requirement: {
-        label: 'Req: Groups',
-        href: 'docs/REQUIREMENT_LOG.md#groups',
-      },
-      references: ['apps/mobile/app.tsx'],
-      notes: 'Updated without data loss.',
-      closed: { date: '2026-07-15', notes: 'Validated fix.' },
-    });
+    assert.deepEqual(validateManagedDocuments(repository), [
+      'docs/CURRENT_AND_NEXT_STEPS.md',
+    ]);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('clean package issue seed is empty and renders without drift', () => {
-  const data = readIssueData(sourceRepositoryRoot);
-  assert.equal(data.issues.length, 0);
-  assert.deepEqual(
-    Object.fromEntries(
-      ['feature', 'bug', 'enhancement'].map((category) => [
-        category,
-        data.issues.filter((issue) => issue.category === category).length,
-      ]),
-    ),
-    { feature: 0, bug: 0, enhancement: 0 },
-  );
-  validateIssueLog(sourceRepositoryRoot);
+test('retired active IssueLog policy fails generically without reading poisoned legacy issue data', () => {
+  const repository = createFixtureRepository();
+  const issueSourcePath = 'docs/issues/issues.yaml';
+  const issueLogPath = 'docs/ISSUE_LOG.md';
+  const sourcePoison = 'this retired source must never be read or changed\n';
+  const targetPoison = 'this retired target must never be read or changed\n';
+  try {
+    writeDocumentPolicy(repository, {
+      'docs/ISSUE_LOG.md': {
+        mode: 'generated',
+        enforcement: 'active',
+      },
+    });
+    fs.mkdirSync(path.join(repository, 'docs/issues'), { recursive: true });
+    fs.writeFileSync(path.join(repository, issueSourcePath), sourcePoison);
+    fs.writeFileSync(path.join(repository, issueLogPath), targetPoison);
+
+    let legacyIssueReads = 0;
+    let validationError: unknown;
+    try {
+      validateManagedDocuments(repository, {
+        contracts: [],
+        readText(relativePath) {
+          if (
+            relativePath === issueSourcePath ||
+            relativePath === issueLogPath
+          ) {
+            legacyIssueReads += 1;
+          }
+          return fs.readFileSync(path.join(repository, relativePath), 'utf8');
+        },
+      });
+    } catch (error) {
+      validationError = error;
+    }
+
+    assert.deepEqual(
+      {
+        unsupported: isWorkflowError(
+          validationError,
+          'UNSUPPORTED_ACTIVE_DOCUMENT_POLICY',
+        ),
+        legacyIssueReads,
+        sourceAfterValidation: fs.readFileSync(
+          path.join(repository, issueSourcePath),
+          'utf8',
+        ),
+        targetAfterValidation: fs.readFileSync(
+          path.join(repository, issueLogPath),
+          'utf8',
+        ),
+      },
+      {
+        unsupported: true,
+        legacyIssueReads: 0,
+        sourceAfterValidation: sourcePoison,
+        targetAfterValidation: targetPoison,
+      },
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
+
+test('IssueLog adapter modules and tracked artifacts are absent', () => {
+  for (const relativePath of [
+    'packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts',
+    'packages/workflow-engine/src/adapters/consumer/repository/documents/issue-renderer.ts',
+    'docs/issues/issues.yaml',
+    'docs/ISSUE_LOG.md',
+  ]) {
+    assert.equal(
+      fs.existsSync(path.join(sourceRepositoryRoot, relativePath)),
+      false,
+      `${relativePath} must be retired`,
+    );
+  }
+});
+
+function writeDocumentPolicy(
+  repository: string,
+  documents: Record<string, Record<string, string>>,
+): void {
+  fs.writeFileSync(
+    path.join(repository, 'workflow/document-policy.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        enforcementMode: 'enforced',
+        documents,
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}

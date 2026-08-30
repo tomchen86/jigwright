@@ -254,10 +254,7 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
         ok: true,
         ...(checkId === 'managed-documents'
           ? {
-              validated: [
-                'docs/CURRENT_AND_NEXT_STEPS.md',
-                'docs/ISSUE_LOG.md',
-              ],
+              validated: ['docs/CURRENT_AND_NEXT_STEPS.md'],
             }
           : {
               result: {

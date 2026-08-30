@@ -1283,32 +1283,12 @@ test('archive reconciliation rejects a one-sided Work Item link before mutation'
   }
 });
 
-test('Work Registry refuses legacy Issue migration and provenance', () => {
+test('Work Registry rejects retired migration and invalid provenance while preserving aliases', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-migration-'),
   );
   configureRepositoryConsumer(repositoryRoot);
   try {
-    fs.mkdirSync(path.join(repositoryRoot, 'docs/issues'), { recursive: true });
-    fs.writeFileSync(
-      path.join(repositoryRoot, 'docs/issues/issues.yaml'),
-      `${JSON.stringify({
-        schemaVersion: 1,
-        lastUpdated: '2026-08-23',
-        issues: [
-          {
-            id: 'ISS-101',
-            category: 'bug',
-            title: 'Legacy issue',
-            status: 'proposed',
-            priority: 'Next',
-            requirement: null,
-            references: [],
-            notes: 'Imported without inventing historical authorship.',
-          },
-        ],
-      })}\n`,
-    );
     assert.throws(
       () =>
         dispatchGovernanceIntakeCommand(
@@ -1587,8 +1567,6 @@ function configureRepositoryConsumer(repositoryRoot: string): void {
       documents: {
         adapterId: 'filesystem-documents-v1',
         handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
-        issueSourcePath: 'docs/issues/issues.yaml',
-        issueLogPath: 'docs/ISSUE_LOG.md',
       },
       workRegistry: {
         adapterId: 'filesystem-work-registry-v1',

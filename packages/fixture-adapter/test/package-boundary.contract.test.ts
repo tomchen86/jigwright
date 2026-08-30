@@ -177,6 +177,33 @@ test('a neutral consumer binds a different base, branch, planning schema, docume
   }
 });
 
+test('the public fixture repository-consumer port exposes only current document keys', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-fixture-port-documents-'),
+  );
+  try {
+    const configuration = createFixtureRepositoryConsumerPortV1(
+      repositoryRoot,
+      {
+        repositoryName: 'orbit-fixture',
+        planningSchema: 'orbit-spec-v1',
+        documentAdapter: 'orbit-notebook-v1',
+      },
+    ).load(repositoryRoot);
+
+    assert.deepEqual(configuration.documents, {
+      adapterId: 'orbit-notebook-v1',
+      handoffPath: 'notebook/handoff.md',
+    });
+    assert.deepEqual(Object.keys(configuration.documents).sort(), [
+      'adapterId',
+      'handoffPath',
+    ]);
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
 test('consumer-neutral package sources reject every known expense-app coupling class', () => {
   const sourceRoots = [
     path.resolve(packageRoot, '../core/src'),

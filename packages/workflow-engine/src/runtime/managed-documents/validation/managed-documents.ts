@@ -15,10 +15,8 @@ import {
   validateHandoff,
   type HandoffChange,
 } from '../../../adapters/consumer/repository/handoff/handoff.ts';
-import {
-  validateIssueLog,
-  type RepositoryTextReader,
-} from '../../../adapters/consumer/repository/documents/issues.ts';
+
+type RepositoryTextReader = (relativePath: string) => string | undefined;
 
 export type GeneratedDocumentMutation = {
   path: string;
@@ -61,11 +59,6 @@ export function validateManagedDocuments(
       throw invalidPolicy();
     }
     if (rawPolicy.enforcement !== 'active') {
-      continue;
-    }
-    if (documentPath === 'docs/ISSUE_LOG.md') {
-      validateIssueLog(repositoryRoot, context?.readText);
-      validated.push(documentPath);
       continue;
     }
     if (documentPath === 'docs/CURRENT_AND_NEXT_STEPS.md') {

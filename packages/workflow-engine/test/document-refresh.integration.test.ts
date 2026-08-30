@@ -94,14 +94,14 @@ test('refresh rejects target drift and a review bound to another proposal', () =
   }
 });
 
-test('refresh rejects targets outside curated architecture and feature roots', () => {
+test('refresh rejects managed handoff outside curated architecture and feature roots', () => {
   const repository = createFixtureRepository();
   try {
     assert.throws(
       () =>
         proposeDocumentRefresh(
           repository,
-          'docs/ISSUE_LOG.md',
+          'docs/CURRENT_AND_NEXT_STEPS.md',
           '## Purpose',
           '## Purpose\n\nReplacement.\n',
         ),

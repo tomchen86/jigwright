@@ -28,9 +28,7 @@ const UTF8 = new TextDecoder('utf-8', { fatal: true });
 const COMMITTED_DOCUMENT_PATHS = new Set([
   'workflow/document-policy.json',
   'docs/CURRENT_AND_NEXT_STEPS.md',
-  'docs/ISSUE_LOG.md',
   'docs/work-registry/inventory.json',
-  'docs/issues/issues.yaml',
   changeLifecycleRelativePath,
 ]);
 const COMMITTED_WORKFLOW_PROJECTION = ['workflow'] as const;

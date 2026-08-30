@@ -25,7 +25,6 @@ import {
   discoverArchivePullRequestCandidate,
   openArchivePullRequest,
 } from '../src/application/archive/archive-pr-orchestration.ts';
-import { readIssueData } from '../src/adapters/consumer/repository/documents/issues.ts';
 import {
   loadRepositoryConsumerConfiguration,
   repositoryConsumerPath,
@@ -86,14 +85,6 @@ test('a neutral consumer selects schema, documents, work registry, and database 
       config,
     );
 
-    writeJson(path.join(repository, 'docs/issues/issues.yaml'), {
-      poisonedExpenseFallback: true,
-    });
-    writeJson(path.join(repository, 'notebook/issues.json'), {
-      schemaVersion: 1,
-      lastUpdated: '2026-08-24',
-      issues: [],
-    });
     const metadataPath = path.join(repository, 'plans/demo/.openspec.yaml');
     fs.mkdirSync(path.dirname(metadataPath), { recursive: true });
     fs.writeFileSync(
@@ -115,11 +106,6 @@ test('a neutral consumer selects schema, documents, work registry, and database 
       readChangeSchemaName(repository, metadataPath),
       'orbit-spec-v1',
     );
-    assert.deepEqual(readIssueData(repository), {
-      schemaVersion: 1,
-      lastUpdated: '2026-08-24',
-      issues: [],
-    });
     const created = createWorkItem(
       repository,
       {
@@ -166,6 +152,58 @@ test('the tracked Jigwright package configuration is explicit', () => {
     'jigwright',
   ]);
   assert.equal(loaded.configuration.databasePolicy.adapterId, 'disabled-v1');
+});
+
+test('repository consumer documents accept only adapterId and handoffPath', () => {
+  const repository = createConsumerRepository('orbit-consumer');
+  try {
+    const configuration = orbitConsumerConfiguration();
+    writeJson(
+      path.join(repository, 'workflow/repository-consumer.json'),
+      configuration,
+    );
+
+    const loaded = loadRepositoryConsumerConfiguration(repository);
+    assert.deepEqual(Object.keys(loaded.configuration.documents).sort(), [
+      'adapterId',
+      'handoffPath',
+    ]);
+    assert.deepEqual(
+      loaded.configuration.workRegistry,
+      configuration.workRegistry,
+    );
+
+    for (const [legacyKey, legacyPath] of [
+      ['issueLogPath', 'notebook/issue-index.md'],
+      ['issueSourcePath', 'notebook/issues.json'],
+    ] as const) {
+      writeJson(path.join(repository, 'workflow/repository-consumer.json'), {
+        ...configuration,
+        documents: {
+          ...configuration.documents,
+          [legacyKey]: legacyPath,
+        },
+      });
+      assert.throws(
+        () => loadRepositoryConsumerConfiguration(repository),
+        hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+      );
+    }
+
+    writeJson(path.join(repository, 'workflow/repository-consumer.json'), {
+      ...configuration,
+      documents: {
+        ...configuration.documents,
+        handoffPath: configuration.workRegistry.backlogPath,
+      },
+    });
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repository),
+      hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('expense-app repositories fail closed without tracked consumer configuration', () => {
@@ -251,11 +289,11 @@ test('neutral repositories fail closed on missing, unknown, and escaping configu
 
     fs.rmSync(path.join(repository, 'notebook'));
     fs.mkdirSync(path.join(repository, 'notebook'));
-    const outsideIssueSource = path.join(outside, 'issues.json');
-    fs.writeFileSync(outsideIssueSource, '{}\n');
+    const outsideHandoff = path.join(outside, 'handoff.md');
+    fs.writeFileSync(outsideHandoff, '# Outside handoff\n');
     fs.symlinkSync(
-      outsideIssueSource,
-      path.join(repository, 'notebook/issues.json'),
+      outsideHandoff,
+      path.join(repository, 'notebook/handoff.md'),
       'file',
     );
     assert.throws(
@@ -1489,8 +1527,6 @@ function orbitConsumerConfiguration(): RepositoryConsumerConfigurationV1 {
     documents: {
       adapterId: 'filesystem-documents-v1',
       handoffPath: 'notebook/handoff.md',
-      issueSourcePath: 'notebook/issues.json',
-      issueLogPath: 'notebook/issue-index.md',
     },
     workRegistry: {
       adapterId: 'filesystem-work-registry-v1',
