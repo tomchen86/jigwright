@@ -1347,14 +1347,10 @@ type EpochTransitionReceiptCommon = {
   createdAt: string;
 };
 
-export type EpochTransitionReceipt =
-  | (EpochTransitionReceiptCommon & {
-      schemaVersion: 1;
-    })
-  | (EpochTransitionReceiptCommon & {
-      schemaVersion: 2;
-      carryForwardManifest: EpochCarryForwardManifest;
-    });
+export type EpochTransitionReceipt = EpochTransitionReceiptCommon & {
+  schemaVersion: 2;
+  carryForwardManifest: EpochCarryForwardManifest;
+};
 
 export type EpochTransitionStub = {
   schemaVersion: 1;
@@ -1372,7 +1368,7 @@ export function performEpochRollover(input: {
   reason: string;
   restartFrom: string;
   carriedForward: string[];
-  carryForwardManifest?: {
+  carryForwardManifest: {
     sourceWorkflow: string;
     sourceEpoch: number;
     carriedForward: EpochCarryForwardDecision[];
@@ -1419,14 +1415,11 @@ export function performEpochRollover(input: {
   );
   const verification = validateEpochVerification(input.verification);
   const createdAt = exactDate(input.createdAt, 'EPOCH_TRANSITION_INVALID');
-  const carryForwardManifest =
-    input.carryForwardManifest === undefined
-      ? null
-      : normalizeEpochCarryForwardManifest(
-          input.carryForwardManifest,
-          input.workflow,
-          carriedForward,
-        );
+  const carryForwardManifest = normalizeEpochCarryForwardManifest(
+    input.carryForwardManifest,
+    input.workflow,
+    carriedForward,
+  );
   const workflow: WorkflowContextState = {
     ...input.workflow,
     currentEpoch: input.nextManifest.epoch,
@@ -1453,14 +1446,11 @@ export function performEpochRollover(input: {
     verification,
     createdAt,
   };
-  const receipt: EpochTransitionReceipt =
-    carryForwardManifest === null
-      ? { schemaVersion: 1, ...receiptCommon }
-      : {
-          schemaVersion: 2,
-          ...receiptCommon,
-          carryForwardManifest,
-        };
+  const receipt: EpochTransitionReceipt = {
+    schemaVersion: 2,
+    ...receiptCommon,
+    carryForwardManifest,
+  };
   validateEpochTransitionReceipt(receipt);
   return { workflow, receipt };
 }
@@ -2082,7 +2072,7 @@ export function rolloverDurableEpochContextStore(
     reason: string;
     restartFrom: string;
     carriedForward: string[];
-    carryForwardManifest?: {
+    carryForwardManifest: {
       sourceWorkflow: string;
       sourceEpoch: number;
       carriedForward: EpochCarryForwardDecision[];
@@ -2126,13 +2116,11 @@ export function rolloverDurableEpochContextStore(
       verification: input.verification,
       createdAt: input.createdAt,
     });
-    if (transition.receipt.schemaVersion === 2) {
-      assertEpochCarryForwardSourceMembership(
-        transition.receipt.carryForwardManifest,
-        state.context.currentManifest,
-        input.nextManifest,
-      );
-    }
+    assertEpochCarryForwardSourceMembership(
+      transition.receipt.carryForwardManifest,
+      state.context.currentManifest,
+      input.nextManifest,
+    );
     persistManifestItems(
       paths,
       input.workflowId,
@@ -4295,13 +4283,8 @@ function validateEpochTransitionReceipt(
   ];
   if (
     !isRecord(value) ||
-    (value.schemaVersion !== 1 && value.schemaVersion !== 2) ||
-    !hasExactKeys(
-      value,
-      value.schemaVersion === 1
-        ? commonKeys
-        : [...commonKeys, 'carryForwardManifest'],
-    ) ||
+    value.schemaVersion !== 2 ||
+    !hasExactKeys(value, [...commonKeys, 'carryForwardManifest']) ||
     value.kind !== 'epoch-transition'
   ) {
     throw invalidEpochTransition('Transition receipt has an invalid shape.');
@@ -4335,20 +4318,18 @@ function validateEpochTransitionReceipt(
     'carried-forward identity',
     true,
   );
-  if (value.schemaVersion === 2) {
-    const manifest = validateEpochCarryForwardManifest(
-      value.carryForwardManifest,
+  const manifest = validateEpochCarryForwardManifest(
+    value.carryForwardManifest,
+  );
+  if (
+    manifest.sourceWorkflow !== value.workflowId ||
+    manifest.sourceEpoch !== value.fromEpoch ||
+    canonicalJson(manifest.carriedForward.map(({ identity }) => identity)) !==
+      canonicalJson(value.carriedForward)
+  ) {
+    throw invalidEpochTransition(
+      'Transition carry-forward decisions do not match the receipt summary.',
     );
-    if (
-      manifest.sourceWorkflow !== value.workflowId ||
-      manifest.sourceEpoch !== value.fromEpoch ||
-      canonicalJson(manifest.carriedForward.map(({ identity }) => identity)) !==
-        canonicalJson(value.carriedForward)
-    ) {
-      throw invalidEpochTransition(
-        'Transition carry-forward decisions do not match the receipt summary.',
-      );
-    }
   }
   sortedUniqueIdentities(
     value.invalidated,

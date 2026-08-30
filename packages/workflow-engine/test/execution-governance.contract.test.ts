@@ -26,6 +26,7 @@ import {
   inspectExecutionBudgetGrant,
   markEpochEvidenceExpiring,
   parseContextManifest,
+  parseEpochTransitionReceipt,
   parseExecutionBudgetGrantRequest,
   performEpochRollover,
   pinEvidence,
@@ -671,6 +672,17 @@ test('epoch rollover is semantic while lifecycle-only changes do not invalidate 
     reason: 'Semantic validator contract now requires scope assessment.',
     restartFrom: 'main-terms',
     carriedForward: ['intent:intent-7'],
+    carryForwardManifest: {
+      sourceWorkflow: 'change-a',
+      sourceEpoch: 4,
+      carriedForward: [
+        {
+          identity: 'intent:intent-7',
+          reason: 'The exact current intent remains valid in the new epoch.',
+        },
+      ],
+      excluded: [],
+    },
     invalidated: ['plan-review'],
     verification: {
       check: 'plan-review-scope-assessment-contract',
@@ -687,6 +699,31 @@ test('epoch rollover is semantic while lifecycle-only changes do not invalidate 
     assessAttemptResultEligibility(rollover.workflow, job, result)
       .classification,
     'stale',
+  );
+});
+
+test('epoch transition reader rejects retired V1 receipts', () => {
+  const legacy = {
+    schemaVersion: 1,
+    kind: 'epoch-transition',
+    workflowId: 'change-a',
+    fromEpoch: 1,
+    toEpoch: 2,
+    fromContractVersion: 1,
+    toContractVersion: 2,
+    reason: 'A retired transition omitted exact carry-forward decisions.',
+    restartFrom: 'main-terms',
+    carriedForward: [],
+    invalidated: ['plan-review'],
+    previousContextDigest: `sha256:${'1'.repeat(64)}`,
+    newContextDigest: `sha256:${'2'.repeat(64)}`,
+    verification: null,
+    createdAt: NOW.toISOString(),
+  };
+
+  assert.throws(
+    () => parseEpochTransitionReceipt(`${canonicalJson(legacy)}\n`),
+    (error) => isWorkflowError(error, 'EPOCH_TRANSITION_INVALID'),
   );
 });
 
@@ -779,7 +816,7 @@ test('bounded retention never prunes current-manifest references and compacts re
   const receipts: EpochTransitionReceipt[] = Array.from(
     { length: 25 },
     (_, index) => ({
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'epoch-transition',
       workflowId: 'change-a',
       fromEpoch: index + 1,
@@ -789,6 +826,14 @@ test('bounded retention never prunes current-manifest references and compacts re
       reason: `Transition ${index + 1} changed semantic context.`,
       restartFrom: 'main-terms',
       carriedForward: [],
+      carryForwardManifest: {
+        schemaVersion: 1,
+        kind: 'epoch-carry-forward-manifest',
+        sourceWorkflow: 'change-a',
+        sourceEpoch: index + 1,
+        carriedForward: [],
+        excluded: [],
+      },
       invalidated: ['plan-review'],
       previousContextDigest: `sha256:${index.toString(16).padStart(64, '0')}`,
       newContextDigest: `sha256:${(index + 1).toString(16).padStart(64, '0')}`,

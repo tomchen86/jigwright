@@ -138,6 +138,17 @@ test('durable epoch context CAS exposes only the current manifest and rejects la
       reason: 'The semantic validation contract changed.',
       restartFrom: 'main-terms',
       carriedForward: [],
+      carryForwardManifest: {
+        sourceWorkflow: 'change-a',
+        sourceEpoch: 1,
+        carriedForward: [],
+        excluded: [
+          {
+            identity: 'intent:stable',
+            reason: 'The semantic validation contract changed its content.',
+          },
+        ],
+      },
       invalidated: ['plan-review'],
       verification: {
         check: 'semantic-contract-check',
@@ -224,6 +235,17 @@ test('durable epoch context CAS exposes only the current manifest and rejects la
           reason: 'Retry a stale epoch transition.',
           restartFrom: 'main-terms',
           carriedForward: [],
+          carryForwardManifest: {
+            sourceWorkflow: 'change-a',
+            sourceEpoch: 1,
+            carriedForward: [],
+            excluded: [
+              {
+                identity: 'intent:stable',
+                reason: 'The stale transition proposed changed content.',
+              },
+            ],
+          },
           invalidated: ['plan-review'],
           verification: null,
           createdAt: new Date('2026-08-03T09:02:00.000Z'),

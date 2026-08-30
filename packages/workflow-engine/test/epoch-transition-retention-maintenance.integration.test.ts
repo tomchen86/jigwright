@@ -65,6 +65,17 @@ test('retention maintenance compacts an expired epoch receipt without another ro
       reason: 'The semantic contract changed.',
       restartFrom: 'main-terms',
       carriedForward: [],
+      carryForwardManifest: {
+        sourceWorkflow: first.workflowId,
+        sourceEpoch: first.epoch,
+        carriedForward: [],
+        excluded: [
+          {
+            identity: 'intent:current',
+            reason: 'The current intent content changed with the contract.',
+          },
+        ],
+      },
       invalidated: ['plan-review'],
       verification: { check: 'semantic-contract-check', result: 'passed' },
       createdAt: new Date('2026-01-02T00:00:00.000Z'),

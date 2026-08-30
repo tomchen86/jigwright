@@ -1272,6 +1272,17 @@ test('provider worker rejects output when current context rolls during execution
           reason: 'Exercise provider completion freshness.',
           restartFrom: request.purpose,
           carriedForward: [],
+          carryForwardManifest: {
+            sourceWorkflow: binding.workflowId,
+            sourceEpoch: binding.epoch,
+            carriedForward: [],
+            excluded: [
+              {
+                identity: 'provider-input-manifest',
+                reason: 'The provider input changed while the worker ran.',
+              },
+            ],
+          },
           invalidated: ['provider-input-manifest'],
           verification: null,
           createdAt: new Date(Date.parse(current.updatedAt) + 1),
@@ -1389,6 +1400,17 @@ test('completion guard rejects rollover after runner return and before acceptanc
       reason: 'Exercise completion-time freshness.',
       restartFrom: request.purpose,
       carriedForward: [],
+      carryForwardManifest: {
+        sourceWorkflow: acceptanceBinding.context.workflowId,
+        sourceEpoch: acceptanceBinding.context.epoch,
+        carriedForward: [],
+        excluded: [
+          {
+            identity: 'provider-input-manifest',
+            reason: 'The provider input changed before completion acceptance.',
+          },
+        ],
+      },
       invalidated: ['provider-input-manifest'],
       verification: null,
       createdAt: new Date(Date.parse(current.updatedAt) + 1),

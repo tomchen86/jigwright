@@ -1905,6 +1905,17 @@ test('production prompt assembly rejects a stale request after durable context r
       reason: 'Test a semantically changed provider context.',
       restartFrom: 'survey',
       carriedForward: [],
+      carryForwardManifest: {
+        sourceWorkflow: binding.workflowId,
+        sourceEpoch: 1,
+        carriedForward: [],
+        excluded: [
+          {
+            identity: 'provider-input-manifest',
+            reason: 'The provider context changed for this stale-request test.',
+          },
+        ],
+      },
       invalidated: ['provider-input-manifest'],
       verification: null,
       createdAt: new Date(Date.parse(current.updatedAt) + 1),
