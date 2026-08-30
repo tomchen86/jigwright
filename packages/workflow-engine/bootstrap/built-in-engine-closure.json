@@ -543,7 +543,7 @@
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:514fa83c1f48d6098ac10f6eea5773d876edda43b9a5c4026639c0bcafbe9c16"
+      "digest": "sha256:4d67a4cba57fd40c6d6476e555215afbb9af8df630f1c243cb0bc69d3587e52e"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -1233,7 +1233,7 @@
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:28aa2392b385cfb53c5f21c808443ac45b3a81832586bb84912cd1562d028250"
+      "digest": "sha256:9ff54e48eab17c1acb97fa48e43916a308604435a74bbafdc8f8ec6ca07b8193"
     },
     {
       "path": "src/modules/authority/maintainer-grant.ts",
@@ -2023,7 +2023,7 @@
     {
       "path": "src/runtime/storage-journal/maintainer-check-journal.ts",
       "mode": "100644",
-      "digest": "sha256:a5e6064a119714512c7e00d529aeae6dd1189617475fe8b3c69c206c6652be94"
+      "digest": "sha256:9feba3bfacc1947acf62bab3062d09f56b4a919661be1af3d7e842cb1ef3ff07"
     },
     {
       "path": "src/runtime/storage-journal/maintainer-report.ts",
