@@ -7550,6 +7550,92 @@ test('failed provider work can retry without discarding completed main input', (
   }
 });
 
+test('investigation resolution replay rejects retired V1 provider retry reservations', () => {
+  const fixture = investigationFixture('invocation-retired-retry-reader');
+  try {
+    const started = startFixture(fixture);
+    const waiting = resumeInvestigationSession(
+      fixture.repository,
+      started.investigationId,
+      mainTermsEnvelope(started),
+    );
+    const claim = claimProviderInvocation(
+      fixture.paths,
+      waiting.providerInvocationId,
+      {
+        workerId: 'worker-retired-retry-reader',
+        leaseDurationMs: 1_000,
+      },
+    );
+    const failed = failProviderInvocation(
+      fixture.paths,
+      waiting.providerInvocationId,
+      {
+        expectedRevision: claim.record.revision,
+        leaseGeneration: claim.record.leaseGeneration,
+        leaseToken: claim.leaseToken,
+        failure: {
+          kind: 'retryable',
+          code: 'PROVIDER_PROCESS_FAILED',
+          message: 'Provider exited non-zero.',
+        },
+      },
+    );
+    const replacement = createProviderInvocationRequest(
+      providerRequestInput(fixture, 'invocation-retired-retry-replacement', {
+        nonce: 'retired-retry-reader-nonce-at-least-16-bytes',
+      }),
+    );
+    const authorization = authorizeProviderRetryFixture(
+      fixture,
+      failed,
+      replacement,
+    );
+    const current = createProviderRetryReservation(fixture.paths, {
+      investigationId: waiting.investigationId,
+      changeId: waiting.changeId,
+      attempt: 2,
+      previousInvocationId: waiting.providerInvocationId,
+      manifest: fixture.blindManifest,
+      request: replacement,
+      ...authorization,
+    });
+    const legacy = structuredClone(current) as Record<string, unknown>;
+    legacy.schemaVersion = 1;
+    delete legacy.executionPolicySnapshot;
+    delete legacy.retryDecision;
+    fs.writeFileSync(
+      path.join(
+        fixture.paths.refs,
+        `${waiting.investigationId}.provider-retry-2.json`,
+      ),
+      `${canonicalJson(legacy)}\n`,
+      'utf8',
+    );
+
+    assert.throws(
+      () =>
+        inspectInvestigationResolutionState(
+          fixture.paths,
+          waiting.investigationId,
+          fixture.blindManifest.repositoryId,
+        ),
+      (error) =>
+        isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+    );
+    assert.notEqual(
+      inspectInvestigationQuarantineState(
+        fixture.paths,
+        waiting.investigationId,
+        fixture.blindManifest.repositoryId,
+      ).envelope.ambiguityDigest,
+      null,
+    );
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
 test('malformed native output creates bounded durable repair evidence and replacement is fully revalidated', () => {
   const fixture = investigationFixture('invocation-repair-first-attempt');
   const policyDigest = sha256(
