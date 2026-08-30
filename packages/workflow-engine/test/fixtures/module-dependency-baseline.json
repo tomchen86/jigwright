@@ -6396,7 +6396,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts",

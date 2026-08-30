@@ -168,7 +168,7 @@
     {
       "path": "node_modules/@jigwright/core/src/repository-consumer-port.ts",
       "mode": "100644",
-      "digest": "sha256:11f8f6f6424dba7abf34924ec310f4981a4e512957f3ee0cb79ca31dacbe04b0"
+      "digest": "sha256:6d17899e970d7cc043153af71dde46dc60315a6d3ce51a78e0a25301c19581ba"
     },
     {
       "path": "node_modules/@jigwright/core/src/repository-path.ts",
@@ -279,16 +279,6 @@
       "path": "package.json",
       "mode": "100644",
       "digest": "sha256:ad1c36608c2bbb777cdd6ddb3e981a0a563c20575fa99e057c8dfa279ca1bc3f"
-    },
-    {
-      "path": "src/adapters/consumer/repository/documents/issue-renderer.ts",
-      "mode": "100644",
-      "digest": "sha256:caf8a1c1e08f993730a19de001b9238168ccb1d0f14f712ca1c0837ffbfbc05b"
-    },
-    {
-      "path": "src/adapters/consumer/repository/documents/issues.ts",
-      "mode": "100644",
-      "digest": "sha256:19c50959924af2a7ed6eabfdbf221a0c1a8bd79f380cbb899291083dda7238ad"
     },
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
@@ -663,7 +653,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:96559a7be3a3d333e13ba6175dc0eae9fe48bb8dd9731b62f9efae57501016e3"
+      "digest": "sha256:e07efa8b263dc15c560f6d3246f46e04186709941415182f80a132ddc6f71a4a"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -858,7 +848,7 @@
     {
       "path": "src/composition-root/repository-validation.ts",
       "mode": "100644",
-      "digest": "sha256:5e53709acb29f0a0add2153e55c72465bb523ea5137a9a3e331b1391f10d5f9f"
+      "digest": "sha256:ca835a3ea3723083bfe39238e699cc9b7a9f060b7583c3ba3924b77e9bb35dea"
     },
     {
       "path": "src/composition-root/role-context-sharing-grant-approval-production.ts",
@@ -1138,7 +1128,7 @@
     {
       "path": "src/modules/assurance/task-diff-review.ts",
       "mode": "100644",
-      "digest": "sha256:0c76552e17e67f02b01629ec4e6161ac1981b4697aaa98126c2f896720fd0132"
+      "digest": "sha256:ec69a181183a286ce9623d3d717a828f8256219706025ceb544ebb67d6cd6748"
     },
     {
       "path": "src/modules/assurance/task-execution-evidence.ts",
@@ -1518,7 +1508,7 @@
     {
       "path": "src/modules/projection/engine-projection-registry.ts",
       "mode": "100644",
-      "digest": "sha256:8f97a052f1fe166450360d379a7bd1c12710f60890f93d8cd4828d633b4d9efb"
+      "digest": "sha256:9da56e99b5b152bae73fd658ba3cdf2d722724a5920d2a6af4f18b30048b5cee"
     },
     {
       "path": "src/modules/projection/investigation-design-projection.ts",
@@ -1618,7 +1608,7 @@
     {
       "path": "src/modules/repository-consumer/repository-consumer-config.ts",
       "mode": "100644",
-      "digest": "sha256:81cc0eb6af6071f05896456deaa4e983002abf4d292c7a8821636b9ae4f0f7e2"
+      "digest": "sha256:6da3ba71251d81744d1dca4a8690df819053449f2f026651e72c35cd7c3364e9"
     },
     {
       "path": "src/modules/source/check-command.ts",
@@ -1743,7 +1733,7 @@
     {
       "path": "src/runtime/managed-documents/validation/managed-documents.ts",
       "mode": "100644",
-      "digest": "sha256:18b01e0354dfa8a38b5326c6f4decf6c5b4e298cf16ba2a4ad590357e031fa00"
+      "digest": "sha256:c424a1423f578a6fcba3a0ad0a29bae03586e5eaa26523d4479fff1d4b3c0472"
     },
     {
       "path": "src/runtime/provider-execution/agent-provider-config-dry-run.ts",

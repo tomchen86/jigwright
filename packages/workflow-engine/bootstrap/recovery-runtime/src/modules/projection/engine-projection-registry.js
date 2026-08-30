@@ -5,7 +5,6 @@ const REGISTRY = Object.freeze([
         transitions: Object.freeze([
             'archive',
             'completion',
-            'issue',
             'plan',
             'rollback-completion',
         ]),

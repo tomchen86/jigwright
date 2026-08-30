@@ -639,7 +639,7 @@ function normalizeDocumentationHints(value) {
                 'configuration-changed',
                 'migration-changed',
                 'user-visible-behavior-changed',
-                'issue-or-roadmap-state-changed',
+                'roadmap-state-changed',
                 'authority-boundary-changed',
             ].includes(String(candidate.reason)) ||
             !Array.isArray(candidate.suggestedPaths) ||

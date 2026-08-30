@@ -127,8 +127,6 @@ packages/workflow-engine/src/investigation-terms.ts	packages/workflow-engine/src
 packages/workflow-engine/src/investigation-v3-failure-source.ts	packages/workflow-engine/src/modules/investigation/seal/investigation-v3-failure-source.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/investigation-v3-grant.ts	packages/workflow-engine/src/modules/investigation/seal/investigation-v3-grant.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/investigation-why-domain.ts	packages/workflow-engine/src/modules/investigation/manifest/investigation-why-domain.ts	MOVE
-packages/workflow-engine/src/issue-renderer.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issue-renderer.ts	MOVE
-packages/workflow-engine/src/issues.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts	MOVE
 packages/workflow-engine/src/lifecycle-context.ts	packages/workflow-engine/src/composition-root/lifecycle-context.ts	MOVE
 packages/workflow-engine/src/lifecycle.ts	packages/workflow-engine/src/application/finalize/lifecycle.ts	MOVE
 packages/workflow-engine/src/maintainer-approve.ts	packages/workflow-engine/src/application/control-plane/maintainer-approve.ts	MOVE

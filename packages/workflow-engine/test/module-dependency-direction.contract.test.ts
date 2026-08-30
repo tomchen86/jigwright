@@ -24,11 +24,11 @@ import {
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
 import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 
-const EXPECTED_MAP_ROWS = 264;
+const EXPECTED_MAP_ROWS = 262;
 const EXPECTED_FROZEN_MAP_DIGEST =
-  'sha256:293c832b25ca20d79b227ecc39c0cd02746a6792c5a456077366d1952344c8f7';
+  'sha256:931d205467a344db99e9c5d9295557bbcd031987899a40aeccde3b87f4ef2762';
 const EXPECTED_FROZEN_EDGE_COUNT = 825;
-const EXPECTED_ACTIVE_EDGE_COUNT = 728;
+const EXPECTED_ACTIVE_EDGE_COUNT = 727;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =

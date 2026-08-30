@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:ee8638a5fd56eccec8a0f0944b410fa7f5f977acca0b5b8001b0f5bfd3e465f3"
+      "digest": "sha256:0d657205dd16a2f86da2666f2fce10ac3030c440a68852a992431ce0659f007a"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -303,7 +303,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/task-diff-review.js",
       "mode": "100644",
-      "digest": "sha256:e2d02fa27f5bfa6a97010f4daced31a8856889c866a6f82b56b8d405cb8a3d43"
+      "digest": "sha256:ebb26f7052eafef5d2d9f5607b7f058b170a3959f4099a1d97e456ccdc0cb74a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-refusal-audit.js",
@@ -488,7 +488,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/projection/engine-projection-registry.js",
       "mode": "100644",
-      "digest": "sha256:e1976da55464222d1b7476ca86941b8ce0e927a2007d392d0f4fff3f8102dbc4"
+      "digest": "sha256:f2f96adedfb181a53dd6d6e9c37438fb58dd87189889b3837b634d19b35ff4c6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/actor-identity.js",
@@ -563,7 +563,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-config.js",
       "mode": "100644",
-      "digest": "sha256:84a4d9b4aa70879a702104272cca31fdb8b4dc04b5ed10302b399af676ef34ee"
+      "digest": "sha256:80d27e65d845920893ee37878d551687745bb87449fa0b8b5608a4dc697724ec"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",
