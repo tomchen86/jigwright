@@ -94,9 +94,6 @@ export type GrantPolicyV2 = Readonly<{
   legacyVerification: Readonly<{ maintainerPolicyV1: 'read-only' }>;
 }>;
 
-/** Compatibility alias retained for the pre-release Central Grant surface. */
-export type CentralGrantPolicyV2 = GrantPolicyV2;
-
 export type CentralGrantProofModuleSummaryV1 = Readonly<{
   moduleId: string;
   version: string;

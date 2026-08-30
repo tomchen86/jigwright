@@ -461,42 +461,6 @@ function projectAgentRuntimeStatus(
   return 'failed';
 }
 
-function assertCurrentEntries(entries: LegacyProjectionEntry[]): 'recorded' {
-  const first = entries[0]!.projection;
-  let previousUpdatedAt = 0;
-  for (let index = 0; index < entries.length; index += 1) {
-    const entry = entries[index]!;
-    if (entry.record.attempt !== index + 1) {
-      throw runtimeConflict(
-        'Provider invocations grouped as one Job do not carry current attempt ordinals.',
-      );
-    }
-    if (
-      entry.projection.job.jobId !== first.job.jobId ||
-      entry.projection.workflow.workflowId !== first.workflow.workflowId ||
-      entry.projection.workflow.currentEpoch !== first.workflow.currentEpoch ||
-      entry.projection.workflow.contextDigest !==
-        first.workflow.contextDigest ||
-      canonicalJson(entry.projection.job.semanticSpec) !==
-        canonicalJson(first.job.semanticSpec) ||
-      canonicalJson(entry.projection.job.mandateBinding ?? null) !==
-        canonicalJson(first.job.mandateBinding ?? null) ||
-      canonicalJson(entry.projection.job.retryPolicy) !==
-        canonicalJson(first.job.retryPolicy)
-    ) {
-      throw runtimeConflict(
-        'Legacy invocations grouped as one Job have conflicting semantic identity or attempt order.',
-      );
-    }
-    const updatedAt = Date.parse(entry.record.updatedAt);
-    if (updatedAt < previousUpdatedAt) {
-      throw runtimeConflict('Legacy invocation timestamps are not monotonic.');
-    }
-    previousUpdatedAt = updatedAt;
-  }
-  return 'recorded';
-}
-
 function retryDecisionForLegacyFailure(input: {
   workflow: WorkflowRecord;
   job: JobRecord;
