@@ -910,9 +910,9 @@ export function createTaskDiffFinalAssuranceRecord(input: {
   reviewerAuthority: TaskDiffFinalAssuranceReviewerAuthority;
   exceptions?: readonly TaskDiffFinalAssuranceException[];
   /** Already authenticated and replayed by the lifecycle; never caller claims. */
-  authenticatedReviewAuthority?: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedReviewAuthority: TaskDiffAuthenticatedReviewerAuthority;
   /** Already authenticated and replayed by the lifecycle; never caller claims. */
-  authenticatedChallengeClosureAuthority?: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedChallengeClosureAuthority: TaskDiffAuthenticatedReviewerAuthority;
 }): TaskDiffFinalAssuranceRecord {
   const subject = parseTaskDiffReviewSubject(input.subject);
   const review = parseTaskDiffReviewRecord(input.review);
@@ -1082,9 +1082,9 @@ export function assertTaskDiffFinalAssuranceCurrent(input: {
   response: TaskDiffReviewChallengeResponseRecord;
   assurance: TaskDiffFinalAssuranceRecord;
   /** Already authenticated and replayed by the lifecycle; never caller claims. */
-  authenticatedReviewAuthority?: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedReviewAuthority: TaskDiffAuthenticatedReviewerAuthority;
   /** Already authenticated and replayed by the lifecycle; never caller claims. */
-  authenticatedChallengeClosureAuthority?: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedChallengeClosureAuthority: TaskDiffAuthenticatedReviewerAuthority;
 }): TaskDiffFinalAssuranceRecord {
   const subject = parseTaskDiffReviewSubject(input.subject);
   const review = parseTaskDiffReviewRecord(input.review);
@@ -2386,22 +2386,13 @@ function assertFinalAssuranceAuthorityBindings(input: {
   review: TaskDiffReviewRecord;
   response: TaskDiffReviewChallengeResponseRecord;
   reviewerAuthority: TaskDiffFinalAssuranceReviewerAuthority;
-  authenticatedReviewAuthority?: TaskDiffAuthenticatedReviewerAuthority;
-  authenticatedChallengeClosureAuthority?: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedReviewAuthority: TaskDiffAuthenticatedReviewerAuthority;
+  authenticatedChallengeClosureAuthority: TaskDiffAuthenticatedReviewerAuthority;
 }): void {
   const expectedReviewAuthority = expectedInitialReviewAuthority(input.review);
-  const legacyExactProviderContinuation =
-    expectedReviewAuthority.kind === 'engine-attributed-provider-reviewer' &&
-    input.reviewerAuthority.kind === 'engine-attributed-provider-reviewer' &&
-    canonicalJson(input.reviewerAuthority) ===
-      canonicalJson(expectedReviewAuthority);
   const reviewFact = input.authenticatedReviewAuthority;
   const closureFact = input.authenticatedChallengeClosureAuthority;
 
-  if (reviewFact === undefined && closureFact === undefined) {
-    if (!legacyExactProviderContinuation) throw finalAssuranceInvalid();
-    return;
-  }
   if (reviewFact === undefined || closureFact === undefined) {
     throw finalAssuranceInvalid();
   }

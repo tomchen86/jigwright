@@ -539,6 +539,29 @@ test('advisory dispositions cannot close challenges; Final Assurance uses the sh
       },
     ],
   };
+  const reviewerAuthority = {
+    kind: 'engine-attributed-provider-reviewer' as const,
+    principalId: input.assignment.reviewerPrincipalId,
+    providerId: input.assignment.reviewerProviderId,
+    policyDigest: input.subject.reviewPolicyDigest,
+  };
+  const authenticated = authenticatedFinalAssuranceAuthorities(
+    record,
+    response,
+    reviewerAuthority,
+  );
+  const implementerAuthority = {
+    kind: 'engine-attributed-provider-reviewer' as const,
+    principalId: input.assignment.implementerPrincipalId,
+    providerId: implementerProviderId,
+    policyDigest: input.subject.reviewPolicyDigest,
+  };
+  const implementerAuthenticated = authenticatedFinalAssuranceAuthorities(
+    record,
+    response,
+    reviewerAuthority,
+    implementerAuthority,
+  );
   assert.throws(
     () =>
       createTaskDiffFinalAssuranceRecord({
@@ -546,26 +569,18 @@ test('advisory dispositions cannot close challenges; Final Assurance uses the sh
         review: record,
         response,
         submission,
-        reviewerAuthority: {
-          kind: 'engine-attributed-provider-reviewer',
-          principalId: input.assignment.implementerPrincipalId,
-          providerId: implementerProviderId,
-          policyDigest: input.subject.reviewPolicyDigest,
-        },
+        reviewerAuthority: implementerAuthority,
+        ...implementerAuthenticated,
       }),
-    hasCode('TASK_DIFF_FINAL_ASSURANCE_INVALID'),
+    hasCode('REVIEW_CHALLENGE_INVALID'),
   );
   const assurance = createTaskDiffFinalAssuranceRecord({
     subject: input.subject,
     review: record,
     response,
     submission,
-    reviewerAuthority: {
-      kind: 'engine-attributed-provider-reviewer',
-      principalId: input.assignment.reviewerPrincipalId,
-      providerId: input.assignment.reviewerProviderId,
-      policyDigest: input.subject.reviewPolicyDigest,
-    },
+    reviewerAuthority,
+    ...authenticated,
   });
   assert.equal(assurance.verdict, 'satisfied');
   assert.deepEqual(
@@ -578,6 +593,7 @@ test('advisory dispositions cannot close challenges; Final Assurance uses the sh
       review: record,
       response,
       assurance,
+      ...authenticated,
     }),
     assurance,
   );
@@ -631,6 +647,11 @@ test('Final Assurance records the exact collaboration-grant degradation without 
     providerId: input.assignment.reviewerProviderId,
     policyDigest: input.subject.reviewPolicyDigest,
   };
+  const authenticated = authenticatedFinalAssuranceAuthorities(
+    review,
+    response,
+    reviewerAuthority,
+  );
   assert.throws(
     () =>
       createTaskDiffFinalAssuranceRecord({
@@ -639,6 +660,7 @@ test('Final Assurance records the exact collaboration-grant degradation without 
         response,
         submission,
         reviewerAuthority,
+        ...authenticated,
       }),
     hasCode('TASK_DIFF_FINAL_ASSURANCE_INVALID'),
   );
@@ -656,6 +678,7 @@ test('Final Assurance records the exact collaboration-grant degradation without 
         degradedForm: 'same-provider-fresh-session',
       },
     ],
+    ...authenticated,
   });
   assert.deepEqual(
     assertTaskDiffFinalAssuranceCurrent({
@@ -663,6 +686,7 @@ test('Final Assurance records the exact collaboration-grant degradation without 
       review,
       response,
       assurance,
+      ...authenticated,
     }),
     assurance,
   );
@@ -906,7 +930,7 @@ test('provider review can continue through separately authenticated external cha
         reviewerAuthority,
         exceptions,
         authenticatedChallengeClosureAuthority,
-      }),
+      } as unknown as Parameters<typeof createTaskDiffFinalAssuranceRecord>[0]),
     hasCode('TASK_DIFF_FINAL_ASSURANCE_INVALID'),
   );
 
@@ -1098,6 +1122,17 @@ test('accepted TaskDiffReview challenges produce changes-required Final Assuranc
       },
     ],
   });
+  const reviewerAuthority = {
+    kind: 'engine-attributed-provider-reviewer' as const,
+    principalId: input.assignment.reviewerPrincipalId,
+    providerId: input.assignment.reviewerProviderId,
+    policyDigest: input.subject.reviewPolicyDigest,
+  };
+  const authenticated = authenticatedFinalAssuranceAuthorities(
+    record,
+    response,
+    reviewerAuthority,
+  );
   const assurance = createTaskDiffFinalAssuranceRecord({
     subject: input.subject,
     review: record,
@@ -1115,12 +1150,8 @@ test('accepted TaskDiffReview challenges produce changes-required Final Assuranc
         },
       ],
     },
-    reviewerAuthority: {
-      kind: 'engine-attributed-provider-reviewer',
-      principalId: input.assignment.reviewerPrincipalId,
-      providerId: input.assignment.reviewerProviderId,
-      policyDigest: input.subject.reviewPolicyDigest,
-    },
+    reviewerAuthority,
+    ...authenticated,
   });
   assert.equal(assurance.verdict, 'changes-required');
 });
@@ -1322,4 +1353,114 @@ function hasCode(code: string): (error: unknown) => boolean {
     error !== null &&
     'code' in error &&
     (error as { code: unknown }).code === code;
+}
+test('Final Assurance rejects omitted authenticated review and challenge-closure facts even for exact provider continuation', () => {
+  const input = reviewInput({ challenge: true });
+  const review = createTaskDiffReviewRecord(input);
+  const challenge = review.challenges[0]!;
+  const response = createTaskDiffReviewChallengeResponse({
+    review,
+    responses: [
+      {
+        challengeId: challenge.challengeId,
+        rationale: 'The exact candidate evidence answers the challenge.',
+        evidence: [challenge.evidence[0]!],
+      },
+    ],
+  });
+  const submission = {
+    schemaVersion: 1 as const,
+    reviewRecordDigest: review.recordDigest,
+    responseDigest: response.responseDigest,
+    proposedDispositions: [
+      {
+        challengeId: challenge.challengeId,
+        decision: 'rebutted' as const,
+        rationale: 'The exact candidate evidence rebuts the challenge.',
+        supersededBy: null,
+      },
+    ],
+  };
+  const reviewerAuthority = {
+    kind: 'engine-attributed-provider-reviewer' as const,
+    principalId: input.assignment.reviewerPrincipalId,
+    providerId: input.assignment.reviewerProviderId,
+    policyDigest: input.subject.reviewPolicyDigest,
+  };
+
+  assert.throws(
+    () =>
+      createTaskDiffFinalAssuranceRecord({
+        subject: input.subject,
+        review,
+        response,
+        submission,
+        reviewerAuthority,
+      } as unknown as Parameters<typeof createTaskDiffFinalAssuranceRecord>[0]),
+    hasCode('TASK_DIFF_FINAL_ASSURANCE_INVALID'),
+  );
+
+  const authenticated = authenticatedFinalAssuranceAuthorities(
+    review,
+    response,
+    reviewerAuthority,
+  );
+  const assurance = createTaskDiffFinalAssuranceRecord({
+    subject: input.subject,
+    review,
+    response,
+    submission,
+    reviewerAuthority,
+    ...authenticated,
+  });
+  assert.throws(
+    () =>
+      assertTaskDiffFinalAssuranceCurrent({
+        subject: input.subject,
+        review,
+        response,
+        assurance,
+      } as unknown as Parameters<
+        typeof assertTaskDiffFinalAssuranceCurrent
+      >[0]),
+    hasCode('TASK_DIFF_FINAL_ASSURANCE_INVALID'),
+  );
+});
+
+function authenticatedFinalAssuranceAuthorities(
+  review: Parameters<typeof createTaskDiffFinalAssuranceRecord>[0]['review'],
+  response: Parameters<
+    typeof createTaskDiffFinalAssuranceRecord
+  >[0]['response'],
+  reviewAuthority: Parameters<
+    typeof createTaskDiffFinalAssuranceRecord
+  >[0]['reviewerAuthority'],
+  closureAuthority: Parameters<
+    typeof createTaskDiffFinalAssuranceRecord
+  >[0]['reviewerAuthority'] = reviewAuthority,
+) {
+  return {
+    authenticatedReviewAuthority: {
+      schemaVersion: 1 as const,
+      kind: 'task-diff-authenticated-reviewer-authority.v1' as const,
+      stage: 'review' as const,
+      subjectDigest: review.subjectDigest,
+      reviewRecordDigest: review.recordDigest,
+      responseDigest: null,
+      authorityNodeId: 'a'.repeat(64),
+      authorityResultDigest: 'b'.repeat(64),
+      authority: reviewAuthority,
+    },
+    authenticatedChallengeClosureAuthority: {
+      schemaVersion: 1 as const,
+      kind: 'task-diff-authenticated-reviewer-authority.v1' as const,
+      stage: 'challenge-closure' as const,
+      subjectDigest: review.subjectDigest,
+      reviewRecordDigest: review.recordDigest,
+      responseDigest: response.responseDigest,
+      authorityNodeId: 'c'.repeat(64),
+      authorityResultDigest: 'd'.repeat(64),
+      authority: closureAuthority,
+    },
+  };
 }
