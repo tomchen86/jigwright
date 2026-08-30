@@ -23,9 +23,9 @@
     "jsonSchemaIdIdentityDigest": "sha256:45c42137167622850f4773f06c2a246c0ebdf9dfd3ee48b84c535d073b306b79"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 174,
-    "sourceFileCount": 56,
-    "sourceIdentityDigest": "sha256:d3ac9277ded15e0e3e76d6e543e35ca55974acefa4ac64184fc915e350cab766",
+    "sourceOccurrences": 177,
+    "sourceFileCount": 59,
+    "sourceIdentityDigest": "sha256:28d1a1950646b14a8330a0d0e6a3c216bf56e70b0ee4dab2b3ceafd07755a05c",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
@@ -60,9 +60,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1260,
+    "occurrences": 1263,
     "fileCount": 6,
-    "identityDigest": "sha256:e193a3d6fa90d6d6c661661dc2569e479acdb687a3f6a7f06ac6748ffbabf4cb"
+    "identityDigest": "sha256:6d23ee2579355d52376bd8d6d67af5bad0b7355d165e4a851265f7f743e53dee"
   },
   "couplings": [
     {

@@ -808,7 +808,7 @@ test('unclassified task scope remains ordinary unless policy explicitly protects
   }
 });
 
-test('protected finalize becomes one exact non-retry Central Fail-Grant while split paths stay hard', async () => {
+test('protected finalize becomes one exact Central Fail-Grant while deprecated split paths cannot bypass it', async () => {
   const keyDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'task-mandate-cli-key-'),
   );
@@ -827,7 +827,10 @@ test('protected finalize becomes one exact non-retry Central Fail-Grant while sp
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
       tasks: Record<string, { allowedPaths: string[] }>;
     };
-    guard.tasks['1.1']!.allowedPaths = ['packages/workflow-engine/src/**'];
+    guard.tasks['1.1']!.allowedPaths = [
+      'packages/workflow-engine/src/**',
+      'workflow/config.json',
+    ];
     const protectedPath = path.join(
       protectedRepository,
       'packages/workflow-engine/src/protected-demo.ts',
@@ -907,9 +910,19 @@ test('protected finalize becomes one exact non-retry Central Fail-Grant while sp
       changeId: CHANGE_ID,
       externalAuditRoot: externalAuditRoot(protectedRepository),
     });
+    const liveConfigPath = path.join(
+      protectedRepository,
+      'workflow/config.json',
+    );
+    const liveConfig = JSON.parse(
+      fs.readFileSync(liveConfigPath, 'utf8'),
+    ) as Record<string, unknown>;
+    delete liveConfig.taskAuthorization;
+    fs.writeFileSync(liveConfigPath, `${canonicalJson(liveConfig)}\n`, 'utf8');
     fs.writeFileSync(protectedPath, 'export const protectedDemo = 2;\n');
     const protectedChangedPaths = [
       'packages/workflow-engine/src/protected-demo.ts',
+      'workflow/config.json',
     ];
     const finalized = spawnSync(
       process.execPath,
@@ -971,7 +984,7 @@ test('protected finalize becomes one exact non-retry Central Fail-Grant while sp
       changedPaths: protectedChangedPaths,
       roles: ['control-plane'],
       matchedPatterns: ['packages/workflow-engine/src/**'],
-      unclassifiedScope: false,
+      unclassifiedScope: true,
     });
     assert.equal(protectedGrant.result.transitionAppliesOnDecision, true);
     assert.equal(

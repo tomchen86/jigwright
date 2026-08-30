@@ -50,7 +50,9 @@ import {
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
+  fingerprintRepositoryProjection,
   listChangedPaths,
+  runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import {
   assertChangeId,
@@ -126,9 +128,14 @@ import {
   loadTaskDiffDocumentationReviewCapture,
   type TaskDiffReviewCompletionGateOptions,
 } from './task-diff-review-lifecycle.ts';
-import { resolveTaskAuthorizationRequirement } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import {
+  parseTaskAuthorizationPolicyFromWorkflowConfig,
+  resolveTaskAuthorizationRequirementForPolicy,
+  type TaskAuthorizationRequirement,
+} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import type { ProtectedTaskApplyFinalizationParametersV1 } from '../../modules/authority/protected-task-apply-grant.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
+import { parsePathRoleRegistry } from '../../modules/source/path-role-registry.ts';
 
 export type CompleteTaskResult = {
   session: WorkflowSession;
@@ -610,12 +617,11 @@ function assertCurrentTaskMayUseOrdinaryFinalize(
     );
     return;
   }
-  const inspection = inspectSession(cwd, requestedSessionId);
   assertProtectedTaskApplyNotRequired(
-    inspection.git.repositoryRoot,
-    inspection.contract.config,
-    inspection.session,
-    inspection.changedPaths,
+    git.repositoryRoot,
+    config,
+    session,
+    listChangedPaths(git.repositoryRoot, session.baseline.head),
   );
 }
 
@@ -625,22 +631,19 @@ function assertProtectedTaskApplyNotRequired(
   session: WorkflowSession,
   changedPaths: readonly string[],
 ): void {
-  // Repositories without the conditional policy retain their historical
-  // lifecycle. Once configured, the actual implementation diff is the
-  // completion boundary: planning scope alone cannot mint Apply authority.
-  if (config.taskAuthorization === undefined) return;
   const engineOwnedPaths = new Set(
     session.implementationReconciliationPaths ?? [],
   );
   const taskAuthoredPaths = changedPaths.filter(
     (changedPath) => !engineOwnedPaths.has(changedPath),
   );
-  const requirement = resolveTaskAuthorizationRequirement(
+  const requirement = resolveTaskAuthorizationRequirementAtBaseline(
     repositoryRoot,
+    session.baseline.head,
     config,
     taskAuthoredPaths,
   );
-  if (!requirement.requiresMandate) return;
+  if (requirement === null || !requirement.requiresMandate) return;
   if (session.mandateBinding === undefined || session.mandateBinding === null) {
     throw workflowError(
       'TASK_MANDATE_REQUIRED',
@@ -662,7 +665,7 @@ function assertProtectedTaskApplyNotRequired(
   }
   throw workflowError(
     'PROTECTED_TASK_APPLY_REQUIRED',
-    'Ordinary task finalization cannot commit a diff that intersects protected repository paths.',
+    'Protected task finalization requires the exact Central Grant transition.',
     ExitCode.guard,
     {
       details: {
@@ -674,8 +677,63 @@ function assertProtectedTaskApplyNotRequired(
         matchedPatterns: requirement.matchedPatterns,
         unclassifiedScope: requirement.unclassifiedScope,
       },
-      recovery: `pnpm workflow abort ${session.sessionId} --reason protected-apply-required --json`,
+      recovery: `pnpm workflow finalize ${session.sessionId} --message "<subject>" --json`,
     },
+  );
+}
+
+function resolveTaskAuthorizationRequirementAtBaseline(
+  repositoryRoot: string,
+  baselineHead: string,
+  currentConfig: ReturnType<typeof loadWorkflowConfig>,
+  allowedPaths: readonly string[],
+): TaskAuthorizationRequirement | null {
+  let baselineConfig: unknown;
+  try {
+    baselineConfig = JSON.parse(
+      runGit(repositoryRoot, ['show', `${baselineHead}:workflow/config.json`]),
+    );
+  } catch {
+    throw baselineTaskAuthorizationInvalid(
+      'Baseline workflow configuration is unavailable or malformed.',
+    );
+  }
+  const baselinePolicy =
+    parseTaskAuthorizationPolicyFromWorkflowConfig(baselineConfig);
+  if (baselinePolicy === null) {
+    if (currentConfig.taskAuthorization !== undefined) {
+      throw baselineTaskAuthorizationInvalid(
+        'An uncommitted task authorization policy cannot reclassify the active session.',
+      );
+    }
+    return null;
+  }
+  try {
+    const registry = parsePathRoleRegistry(
+      JSON.parse(
+        runGit(repositoryRoot, [
+          'show',
+          `${baselineHead}:${baselinePolicy.pathRoleRegistry}`,
+        ]),
+      ),
+    );
+    return resolveTaskAuthorizationRequirementForPolicy(
+      baselinePolicy,
+      registry,
+      allowedPaths,
+    );
+  } catch {
+    throw baselineTaskAuthorizationInvalid(
+      'Baseline task authorization path-role registry is unavailable or malformed.',
+    );
+  }
+}
+
+function baselineTaskAuthorizationInvalid(message: string) {
+  return workflowError(
+    'TASK_AUTHORIZATION_POLICY_INVALID',
+    message,
+    ExitCode.guard,
   );
 }
 
@@ -723,19 +781,29 @@ export function inspectProtectedTaskApplyLifecycleState(
         'Protected Apply has no durable finalize transaction for this terminal session.',
       );
     }
-    const inspection = inspectSession(cwd, session.sessionId);
+    const context = loadActiveSessionContext(cwd, session.sessionId);
+    if (
+      context.git.head !== session.baseline.head ||
+      context.git.branch !== session.branch
+    ) {
+      throw protectedTaskApplyAuthorizationInvalid(
+        'The protected task repository identity changed before Grant creation.',
+      );
+    }
     const engineOwnedPaths = new Set(
       session.implementationReconciliationPaths ?? [],
     );
-    const changedPaths = inspection.changedPaths.filter(
-      (changedPath) => !engineOwnedPaths.has(changedPath),
-    );
-    const requirement = resolveTaskAuthorizationRequirement(
-      inspection.git.repositoryRoot,
-      inspection.contract.config,
+    const changedPaths = listChangedPaths(
+      context.git.repositoryRoot,
+      session.baseline.head,
+    ).filter((changedPath) => !engineOwnedPaths.has(changedPath));
+    const requirement = resolveTaskAuthorizationRequirementAtBaseline(
+      context.git.repositoryRoot,
+      session.baseline.head,
+      context.config,
       changedPaths,
     );
-    if (!requirement.requiresMandate) {
+    if (requirement === null || !requirement.requiresMandate) {
       throw protectedTaskApplyAuthorizationInvalid(
         'The current task diff does not require protected Apply authority.',
       );
@@ -754,8 +822,12 @@ export function inspectProtectedTaskApplyLifecycleState(
       stateFingerprint: protectedTaskApplyFingerprint({
         phase: 'pending',
         session,
-        repositoryFingerprint: inspection.fingerprint,
-        statusEntries: inspection.git.statusEntries,
+        repositoryFingerprint: fingerprintRepositoryProjection(
+          context.git.repositoryRoot,
+          session.baseline.head,
+          context.git.statusEntries,
+        ),
+        statusEntries: context.git.statusEntries,
         requirement,
         commitMessage,
         fullGate,
@@ -1219,6 +1291,7 @@ function completeTaskUnlocked(
   environment: NodeJS.ProcessEnv,
   options: TaskDiffReviewReplayOptions,
 ): CompleteTaskResult {
+  assertCurrentTaskMayUseOrdinaryFinalize(cwd, requestedSessionId);
   reconcileSessionChecksAfterLocalEngineAdoption(cwd, requestedSessionId, {
     environment,
   });

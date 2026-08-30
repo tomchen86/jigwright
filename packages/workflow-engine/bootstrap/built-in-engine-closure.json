@@ -343,7 +343,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/task-authorization-policy.ts",
       "mode": "100644",
-      "digest": "sha256:eead6a3801c69d1627dddde8a9cde49214a99466fb3bc017973eb54b3fcefaf6"
+      "digest": "sha256:a336b15aae8ec7be4c04fb1b5ab8c667e030712647c4f4d9c031e93a2cd3b86e"
     },
     {
       "path": "src/adapters/human/macos/human-gate-macos.ts",
@@ -658,7 +658,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:5ff5067559f4495c6c0f3fd8e202ed1105fd2405ef816a62a3161ca12dc68e30"
+      "digest": "sha256:f8b4304549bd110184003e1d1b8f8a1d1204dbd55cea98b4657d0828a149135b"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -668,7 +668,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:46ad1382336c9a98c64ae8fdc326157afd1879f959aeb2160f9f3b1e98dd1408"
+      "digest": "sha256:8714414fb7ea67db964a2f34eba8bbda91f9479af0dbcb4397bc9f287a63a16b"
     },
     {
       "path": "src/application/finalize/protected-task-apply-authorization.ts",
@@ -683,7 +683,7 @@
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:2f45583104d7d7fe208a2ac9d0e2519421944d1ea1597129872c856e7ab20624"
+      "digest": "sha256:5c9dcd74c6fbf12c1c209c2c9070739c394b6121f1a2694317b04c5a91fa4ff2"
     },
     {
       "path": "src/application/propose/plan-review-role-topology.ts",

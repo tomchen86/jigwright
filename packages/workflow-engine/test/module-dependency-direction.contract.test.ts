@@ -27,12 +27,12 @@ import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provi
 const EXPECTED_MAP_ROWS = 268;
 const EXPECTED_FROZEN_MAP_DIGEST =
   'sha256:f6f4396a96ab8c80a8ef7ab8d59ee41a5757b5c3509679a073b5b3b1e1917fd3';
-const EXPECTED_FROZEN_EDGE_COUNT = 822;
-const EXPECTED_ACTIVE_EDGE_COUNT = 747;
+const EXPECTED_FROZEN_EDGE_COUNT = 825;
+const EXPECTED_ACTIVE_EDGE_COUNT = 750;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
-  'sha256:8c4f041137faba9b4e67a7b06112884df743116c83a35c9b4e3bc2c1e1646200';
+  'sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:2badcbda960c1efecbd996c05ea57aa713ad94de80c8e279ff3f63ae2861e65b';
+  'sha256:59487b10af5a174852f681961ae1171068d36ea2e0f9aeb694e9ba9eb9f4698b';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';

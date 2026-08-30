@@ -76,6 +76,11 @@ import {
   productionChangeRoutingAuthorityPort,
 } from '../../composition-root/validated-contract-context.ts';
 import { assertChangeRoutingAdmission } from '../../modules/lifecycle/change-routing.ts';
+import {
+  readFinalizeTransaction,
+  type ProtectedTaskApplyAuthorizationBinding,
+} from '../../runtime/repository-transaction/finalize-transaction.ts';
+import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';
 
 type ValidatedChangeContract = ReturnType<
   typeof loadStableValidatedChangeContract
@@ -774,6 +779,8 @@ export function inspectSession(
     projectedTaskIds?: string[];
     projectionSourceDigest?: string;
     authorizedTransitionPaths?: string[];
+    /** Exact authenticated internal Grant binding; never accepted from argv. */
+    protectedApplyAuthorization?: ProtectedTaskApplyAuthorizationBinding;
   } = {},
 ): SessionInspection {
   const discovered = discoverRepository(cwd);
@@ -892,6 +899,11 @@ export function inspectSession(
     artifactDigests,
     relativeTasksPath,
     options.projectedTaskIds ?? [],
+    resolveAuthorizedArtifactPaths(
+      runtime.root,
+      session,
+      options.protectedApplyAuthorization,
+    ),
   );
 
   const changedPaths = listChangedPaths(
@@ -971,6 +983,7 @@ export function executeChecks(
   projectionSourceDigest?: string,
   authorizedTransitionPaths: string[] = [],
   evidenceMetadata: Readonly<Record<string, CheckEvidenceMetadata>> = {},
+  protectedApplyAuthorization?: ProtectedTaskApplyAuthorizationBinding,
 ): { checks: CheckEvidence[]; inspection: SessionInspection } {
   const requiredChecks = checkIds.map((checkId) => ({
     checkId,
@@ -1015,6 +1028,9 @@ export function executeChecks(
       projectedTaskIds,
       projectionSourceDigest,
       authorizedTransitionPaths,
+      ...(protectedApplyAuthorization === undefined
+        ? {}
+        : { protectedApplyAuthorization }),
     });
     if (
       fingerprintWorkingState(
@@ -1123,12 +1139,70 @@ function assertPinnedGit(git: GitState, session: WorkflowSession): void {
   }
 }
 
+function resolveAuthorizedArtifactPaths(
+  runtimeRoot: string,
+  session: WorkflowSession,
+  explicitAuthorization: ProtectedTaskApplyAuthorizationBinding | undefined,
+): string[] {
+  const transaction = readFinalizeTransaction(runtimeRoot, session.sessionId);
+  if (
+    explicitAuthorization !== undefined &&
+    transaction !== null &&
+    (transaction.protectedApply === undefined ||
+      canonicalJson(transaction.protectedApply) !==
+        canonicalJson(explicitAuthorization))
+  ) {
+    throw protectedTaskApplyInspectionAuthorizationInvalid(
+      'The requested protected Apply authorization does not own the durable finalize transaction.',
+    );
+  }
+  const authorization = transaction?.protectedApply ?? explicitAuthorization;
+  if (authorization === undefined) return [];
+  if (transaction !== null) {
+    if (
+      transaction.changeId !== session.changeId ||
+      transaction.taskId !== session.taskId ||
+      transaction.branch !== session.branch ||
+      canonicalJson(transaction.baseline) !== canonicalJson(session.baseline)
+    ) {
+      throw protectedTaskApplyInspectionAuthorizationInvalid(
+        'The protected Apply transaction does not own the current session state.',
+      );
+    }
+  }
+  const { parameters } = assertPreparedProtectedTaskApplyAuthorization(
+    runtimeRoot,
+    authorization,
+  );
+  if (
+    parameters.sessionId !== session.sessionId ||
+    parameters.changeId !== session.changeId ||
+    parameters.taskId !== session.taskId ||
+    parameters.branch !== session.branch ||
+    canonicalJson(parameters.baseline) !== canonicalJson(session.baseline)
+  ) {
+    throw protectedTaskApplyInspectionAuthorizationInvalid(
+      'The protected Apply Grant does not bind the current session state.',
+    );
+  }
+  return [...parameters.changedPaths];
+}
+
+function protectedTaskApplyInspectionAuthorizationInvalid(message: string) {
+  return workflowError(
+    'PROTECTED_TASK_APPLY_AUTHORIZATION_INVALID',
+    message,
+    ExitCode.guard,
+  );
+}
+
 function assertArtifactDrift(
   session: WorkflowSession,
   contract: ValidatedChangeContract,
   currentDigests: Record<string, string>,
   tasksPath: string,
   projectedTaskIds: string[],
+  authorizedArtifactPaths: string[],
 ): boolean {
   const task32BootstrapArtifactSet = isTask32BootstrapArtifactSet(
     session,
@@ -1144,6 +1218,7 @@ function assertArtifactDrift(
     if (session.artifacts[artifactPath] === currentDigests[artifactPath]) {
       continue;
     }
+    if (authorizedArtifactPaths.includes(artifactPath)) continue;
     if (
       task32BootstrapArtifactSet &&
       !Object.hasOwn(session.artifacts, artifactPath)

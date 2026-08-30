@@ -142,7 +142,11 @@ export function finalizeTaskUnlocked(
     }
   }
 
-  const initial = inspectSession(cwd, requestedSessionId);
+  const initial = inspectSession(cwd, requestedSessionId, {
+    ...(options.protectedApply === undefined
+      ? {}
+      : { protectedApplyAuthorization: options.protectedApply }),
+  });
   const session = initial.session;
   if (
     session.latestCheckReportId ||
@@ -299,6 +303,8 @@ function continueFinalizeTransaction(
         [...transaction.completedTaskIds],
         transaction.projectionSourceDigest,
         [...transaction.transitionPaths],
+        {},
+        transaction.protectedApply,
       );
       maybeInterrupt(options, 'checks-executed');
       if (
@@ -486,6 +492,9 @@ function applyPreparedFinalizeProjection(
     projectedTaskIds: [...transaction.completedTaskIds],
     projectionSourceDigest: transaction.projectionSourceDigest,
     authorizedTransitionPaths: [...transaction.transitionPaths],
+    ...(transaction.protectedApply === undefined
+      ? {}
+      : { protectedApplyAuthorization: transaction.protectedApply }),
   });
   assertProjectionBaseCurrent(projected.git, transaction, projectionPaths);
   const preview = previewExactStaging(
@@ -561,6 +570,9 @@ function inspectFinalizeTransaction(
     projectedTaskIds: [...transaction.completedTaskIds],
     projectionSourceDigest: transaction.projectionSourceDigest,
     authorizedTransitionPaths: [...transaction.transitionPaths],
+    ...(transaction.protectedApply === undefined
+      ? {}
+      : { protectedApplyAuthorization: transaction.protectedApply }),
   });
   if (
     JSON.stringify(inspection.changedPaths) !==

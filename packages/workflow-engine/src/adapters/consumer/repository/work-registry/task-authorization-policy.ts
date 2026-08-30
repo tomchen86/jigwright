@@ -3,12 +3,17 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../../../foundation/canonical-json/canonical-json.ts';
-import type { WorkflowConfig } from './contracts.ts';
+import {
+  isRecord,
+  isStringArray,
+} from '../../../../foundation/canonical-json/contract-values.ts';
+import type { TaskAuthorizationPolicy, WorkflowConfig } from './contracts.ts';
 import {
   ExitCode,
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
 import {
+  PATH_ROLES,
   parsePathRoleRegistry,
   resolvePathRole,
   type PathRole,
@@ -47,9 +52,19 @@ export function resolveTaskAuthorizationRequirement(
     repositoryRoot,
     config.taskAuthorization.pathRoleRegistry,
   );
-  const requiredRoles = new Set<PathRole>(
-    config.taskAuthorization.mandateRequiredRoles,
+  return resolveTaskAuthorizationRequirementForPolicy(
+    config.taskAuthorization,
+    registry,
+    allowedPaths,
   );
+}
+
+export function resolveTaskAuthorizationRequirementForPolicy(
+  policy: TaskAuthorizationPolicy,
+  registry: PathRoleRegistry,
+  allowedPaths: readonly string[],
+): TaskAuthorizationRequirement {
+  const requiredRoles = new Set<PathRole>(policy.mandateRequiredRoles);
   const normalizedAllowed = allowedPaths.map(normalizePolicyPath);
   const intersections = normalizedAllowed.flatMap((allowed) => {
     if (!allowed.endsWith('/**')) {
@@ -86,11 +101,56 @@ export function resolveTaskAuthorizationRequirement(
     matchedPatterns: Object.freeze(matchedPatterns),
     unclassifiedScope,
     policyDigest: digestPolicy({
-      policy: config.taskAuthorization,
+      policy,
       registry,
       allowedPaths: normalizedAllowed,
     }),
   });
+}
+
+export function parseTaskAuthorizationPolicyFromWorkflowConfig(
+  value: unknown,
+): TaskAuthorizationPolicy | null {
+  if (!isRecord(value) || value.schemaVersion !== 1) {
+    throw taskAuthorizationInvalid(
+      'Baseline workflow configuration is malformed.',
+    );
+  }
+  if (value.taskAuthorization === undefined) return null;
+  const policy = value.taskAuthorization;
+  if (
+    !isRecord(policy) ||
+    JSON.stringify(Object.keys(policy).sort()) !==
+      JSON.stringify(['mandateRequiredRoles', 'pathRoleRegistry']) ||
+    policy.pathRoleRegistry !== 'workflow/path-roles.json' ||
+    !isStringArray(policy.mandateRequiredRoles) ||
+    policy.mandateRequiredRoles.length === 0 ||
+    policy.mandateRequiredRoles.some(
+      (role) => !(PATH_ROLES as readonly string[]).includes(role),
+    ) ||
+    new Set(policy.mandateRequiredRoles).size !==
+      policy.mandateRequiredRoles.length ||
+    JSON.stringify(policy.mandateRequiredRoles) !==
+      JSON.stringify([...policy.mandateRequiredRoles].sort())
+  ) {
+    throw taskAuthorizationInvalid(
+      'Baseline task authorization policy is malformed.',
+    );
+  }
+  return Object.freeze({
+    pathRoleRegistry: policy.pathRoleRegistry,
+    mandateRequiredRoles: Object.freeze([
+      ...(policy.mandateRequiredRoles as PathRole[]),
+    ]) as unknown as PathRole[],
+  });
+}
+
+function taskAuthorizationInvalid(message: string) {
+  return workflowError(
+    'TASK_AUTHORIZATION_POLICY_INVALID',
+    message,
+    ExitCode.guard,
+  );
 }
 
 export function assertTaskMandateOptional(

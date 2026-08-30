@@ -1,8 +1,8 @@
 {
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
-  "frozenEdgeCount": 822,
-  "frozenIdentityDigest": "sha256:8c4f041137faba9b4e67a7b06112884df743116c83a35c9b4e3bc2c1e1646200",
+  "frozenEdgeCount": 825,
+  "frozenIdentityDigest": "sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -83,6 +83,10 @@
     "legacy.src-to-bootstrap": {
       "summary": "Pre-layout src-to-bootstrap coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
       "retirementPhase": "post-layout-bootstrap-contract-extraction"
+    },
+    "current.protected-apply-runtime": {
+      "summary": "Current protected Apply validates exact durable transaction and Grant records through existing runtime stores until application-owned ports replace those reads.",
+      "retirementPhase": "post-layout-application-port-inversion"
     },
     "investigation-v3-bootstrap": {
       "summary": "Direct Investigation v3 authority crosses existing module boundaries while publication, committed replay, and central failure recovery converge.",
@@ -2899,6 +2903,22 @@
       "status": "active"
     },
     {
+      "from": "packages/workflow-engine/src/application/finalize/protected-task-apply-authorization.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/finalize-transaction.ts",
+      "rule": "application-to-runtime",
+      "reasonId": "current.protected-apply-runtime",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/finalize/protected-task-apply-authorization.ts",
+      "to": "packages/workflow-engine/src/runtime/storage-journal/grant-store.ts",
+      "rule": "application-to-runtime",
+      "reasonId": "current.protected-apply-runtime",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
       "from": "packages/workflow-engine/src/application/finalize/task-diff-review-lifecycle.ts",
       "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts",
       "rule": "application-to-adapters",
@@ -3127,6 +3147,14 @@
       "to": "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts",
       "rule": "application-to-runtime",
       "reasonId": "legacy.application-to-runtime",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/finalize/verification.ts",
+      "to": "packages/workflow-engine/src/runtime/repository-transaction/finalize-transaction.ts",
+      "rule": "application-to-runtime",
+      "reasonId": "current.protected-apply-runtime",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "active"
     },
