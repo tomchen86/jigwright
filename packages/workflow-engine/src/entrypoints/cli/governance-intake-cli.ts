@@ -22,7 +22,6 @@ import {
   inspectWorkRegistry,
   linkSourceToChange,
   listWorkItems,
-  migrateLegacyIssues,
   prepareWorkItemPromotionSurvey,
   promoteWorkItem,
   recommendWorkItemPriorities,
@@ -239,17 +238,6 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (
       command === 'work-item' &&
-      args.length === 3 &&
-      args[0] === 'migrate-issues' &&
-      args[1] === '--at'
-    ) {
-      return {
-        action: 'migrate-issues',
-        ...migrateLegacyIssues(cwd, args[2]!),
-      };
-    }
-    if (
-      command === 'work-item' &&
       args.length === 1 &&
       args[0] === 'validate'
     ) {
@@ -291,7 +279,7 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright source <capture --input <source-envelope.json> | link-change <source-id> --change <change-id>> | jigwright finding add --session <session-id> --input <finding-envelope.json> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|migrate-issues|validate> ...',
+    'Usage: jigwright source <capture --input <source-envelope.json> | link-change <source-id> --change <change-id>> | jigwright finding add --session <session-id> --input <finding-envelope.json> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 

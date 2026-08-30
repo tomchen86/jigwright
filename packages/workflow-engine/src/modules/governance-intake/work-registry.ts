@@ -9,7 +9,6 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 import {
   repositoryConsumerPath,
-  repositoryDocumentConfiguration,
   repositoryWorkRegistryConfiguration,
 } from '../repository-consumer/repository-consumer-config.ts';
 
@@ -37,7 +36,7 @@ export type WorkItemV1 = Readonly<{
   title: string;
   interpretation: Readonly<{
     summary: string;
-    status: 'agent-derived' | 'maintainer-confirmed' | 'legacy-unknown';
+    status: 'agent-derived' | 'maintainer-confirmed';
   }>;
   aliases: readonly string[];
   sourceRefs: readonly `SRC-${string}`[];
@@ -833,80 +832,6 @@ export function reconcileArchivedWorkItems(
   };
 }
 
-export function migrateLegacyIssues(
-  repositoryRoot: string,
-  requestedMigratedAt: string,
-): { created: number; itemIds: string[] } {
-  const migratedAt = canonicalTimestamp(requestedMigratedAt);
-  const sourcePath = repositoryConsumerPath(
-    repositoryRoot,
-    repositoryDocumentConfiguration(repositoryRoot).issueSourcePath,
-  );
-  const value: unknown = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    !Array.isArray(value.issues)
-  ) {
-    throw registryInvalid('Legacy issue source is invalid.');
-  }
-  let created = 0;
-  const itemIds: string[] = [];
-  for (const raw of value.issues) {
-    const issue = parseLegacyIssue(raw);
-    const id = deterministicLegacyWorkItemId(issue.id);
-    itemIds.push(id);
-    const relativePath = path.posix.join(
-      repositoryWorkRegistryConfiguration(repositoryRoot).itemRoot,
-      migratedAt.slice(0, 4),
-      `${id}.yaml`,
-    );
-    const itemPath = path.join(repositoryRoot, ...relativePath.split('/'));
-    const exists = fs.existsSync(itemPath);
-    const closed = issue.status === 'done';
-    const item: WorkItemV1 = {
-      schemaVersion: 1,
-      id,
-      createdAt: migratedAt,
-      kind: legacyKind(issue.category),
-      stage: closed ? 'closed' : 'backlog',
-      lane: legacyLane(issue.priority, issue.status),
-      title: boundedText(issue.title, 160, 'title'),
-      interpretation: {
-        summary: boundedText(issue.notes, 2_000, 'summary'),
-        status: 'legacy-unknown',
-      },
-      aliases: [issue.id],
-      sourceRefs: [],
-      blockedBy: [],
-      changeRefs: [],
-      timeline: [
-        { at: migratedAt, event: 'created', changeId: null },
-        ...(closed
-          ? ([{ at: migratedAt, event: 'closed', changeId: null }] as const)
-          : []),
-      ],
-      closure: closed
-        ? { at: migratedAt, outcome: 'delivered', changeId: null }
-        : null,
-    };
-    if (exists) {
-      const current = parseWorkItem(
-        JSON.parse(fs.readFileSync(itemPath, 'utf8')),
-      );
-      if (current.id !== id || !current.aliases.includes(issue.id)) {
-        throw registryInvalid(
-          'Legacy issue migration conflicts with an existing Work Item.',
-        );
-      }
-    } else {
-      createCanonicalFile(itemPath, item);
-      created += 1;
-    }
-  }
-  return { created, itemIds: itemIds.sort() };
-}
-
 export function updateLegacyIssueCompatibilityAlias(
   repositoryRoot: string,
   requestedAlias: string,
@@ -1105,7 +1030,7 @@ function parseWorkItem(value: unknown): WorkItemV1 {
     !hasExactKeys(item.interpretation, ['status', 'summary']) ||
     boundedText(item.interpretation.summary, 2_000, 'summary') !==
       item.interpretation.summary ||
-    !['agent-derived', 'maintainer-confirmed', 'legacy-unknown'].includes(
+    !['agent-derived', 'maintainer-confirmed'].includes(
       item.interpretation.status,
     ) ||
     !Array.isArray(item.aliases) ||
@@ -1875,63 +1800,6 @@ function replaceTextFile(filePath: string, content: string): void {
   } finally {
     fs.rmSync(temporary, { force: true });
   }
-}
-
-type LegacyIssue = Readonly<{
-  id: string;
-  category: string;
-  title: string;
-  status: string;
-  priority: string;
-  notes: string;
-}>;
-
-function parseLegacyIssue(value: unknown): LegacyIssue {
-  if (
-    !isRecord(value) ||
-    typeof value.id !== 'string' ||
-    !/^ISS-[0-9]+$/.test(value.id) ||
-    typeof value.category !== 'string' ||
-    typeof value.title !== 'string' ||
-    typeof value.status !== 'string' ||
-    typeof value.priority !== 'string' ||
-    typeof value.notes !== 'string'
-  ) {
-    throw registryInvalid('Legacy issue is invalid.');
-  }
-  return value as LegacyIssue;
-}
-
-function deterministicLegacyWorkItemId(issueId: string): `WORK-${string}` {
-  const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-  const digest = crypto
-    .createHash('sha256')
-    .update(`legacy:${issueId}`)
-    .digest();
-  let value = BigInt(`0x${digest.subarray(0, 16).toString('hex')}`);
-  let encoded = '';
-  for (let index = 0; index < 26; index += 1) {
-    encoded = alphabet[Number(value & 31n)] + encoded;
-    value >>= 5n;
-  }
-  return workItemId(`WORK-${encoded}`);
-}
-
-function legacyKind(value: string): WorkItemKindV1 {
-  if (['feature', 'bug', 'improvement', 'chore', 'research'].includes(value)) {
-    return value as WorkItemKindV1;
-  }
-  return 'chore';
-}
-
-function legacyLane(priority: string, status: string): WorkItemLaneV1 {
-  if (status === 'icebox') return 'icebox';
-  const normalized = priority.toLowerCase();
-  if (normalized === 'now') return 'now';
-  if (normalized === 'next') return 'next';
-  if (normalized === 'later') return 'later';
-  if (normalized === 'icebox') return 'icebox';
-  return null;
 }
 
 function legacyPriorityLane(

@@ -24,7 +24,6 @@ import {
   applyWorkItemReview,
   createWorkItem,
   linkSourceToChange,
-  migrateLegacyIssues,
   inspectWorkRegistry,
   prepareWorkItemPromotionSurvey,
   promoteWorkItem,
@@ -1285,7 +1284,7 @@ test('archive reconciliation rejects a one-sided Work Item link before mutation'
   }
 });
 
-test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
+test('Work Registry refuses legacy Issue migration and provenance', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-migration-'),
   );
@@ -1311,15 +1310,36 @@ test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
         ],
       })}\n`,
     );
-    const migrated = migrateLegacyIssues(
-      repositoryRoot,
-      '2026-08-24T04:40:00.000Z',
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'work-item',
+          ['migrate-issues', '--at', '2026-08-24T04:40:00.000Z'],
+          repositoryRoot,
+        ),
+      (error: unknown) =>
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'GOVERNANCE_INTAKE_INVALID',
     );
-    assert.equal(migrated.created, 1);
-    const [item] = searchWorkItems(repositoryRoot, 'ISS-101');
-    assert.deepEqual(item?.aliases, ['ISS-101']);
-    assert.equal(item?.interpretation.status, 'legacy-unknown');
-    assert.equal(showWorkItem(repositoryRoot, 'ISS-101').id, item?.id);
+
+    const created = createWorkItem(
+      repositoryRoot,
+      {
+        schemaVersion: 1,
+        kind: 'bug',
+        lane: 'next',
+        title: 'Current Work Item',
+        summary: 'Current provenance remains explicit.',
+        sourceRefs: [],
+      },
+      {
+        now: () => '2026-08-24T04:40:00.000Z',
+        createId: () => 'WORK-01K39R0V000000000000000099',
+        aliases: ['ISS-101'],
+      },
+    );
     assert.deepEqual(
       dispatchIssueCommand(
         ['update', 'ISS-101', '--field', 'priority', '--value', 'Now'],
@@ -1330,7 +1350,7 @@ test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
         issueId: 'ISS-101',
         field: 'priority',
         canonical: 'work-registry',
-        workItemId: item?.id,
+        workItemId: created.item.id,
       },
     );
     assert.equal(showWorkItem(repositoryRoot, 'ISS-101').lane, 'now');
@@ -1342,7 +1362,7 @@ test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
           '--date',
           '2026-08-25',
           '--notes',
-          'Closed through the compatibility alias.',
+          'Closed through the current compatibility alias.',
         ],
         repositoryRoot,
       ),
@@ -1350,7 +1370,7 @@ test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
         action: 'close',
         issueId: 'ISS-101',
         canonical: 'work-registry',
-        workItemId: item?.id,
+        workItemId: created.item.id,
       },
     );
     assert.equal(showWorkItem(repositoryRoot, 'ISS-101').stage, 'closed');
@@ -1360,9 +1380,20 @@ test('legacy issues migrate with aliases and legacy-unknown provenance', () => {
         .valid,
       true,
     );
-    assert.equal(
-      migrateLegacyIssues(repositoryRoot, '2026-08-24T04:40:00.000Z').created,
-      0,
+
+    const itemPath = path.join(repositoryRoot, created.relativePath);
+    const legacy = JSON.parse(fs.readFileSync(itemPath, 'utf8')) as {
+      interpretation: { status: string };
+    };
+    legacy.interpretation.status = 'legacy-unknown';
+    fs.writeFileSync(itemPath, `${JSON.stringify(legacy)}\n`);
+    assert.throws(
+      () => validateWorkRegistry(repositoryRoot),
+      (error: unknown) =>
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'WORK_REGISTRY_INVALID',
     );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
