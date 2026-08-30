@@ -499,6 +499,46 @@ function buildManagedFixtureInvestigation(
   return verified.manifest;
 }
 
+export function prepareCurrentV3IntroductionFixture(
+  repository: string,
+  changeId = 'demo-change',
+): void {
+  const backupRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-current-v3-introduction-'),
+  );
+  const changePath = path.join(repository, 'openspec/changes', changeId);
+  const providerBindingPath = path.join(
+    repository,
+    'workflow/change-providers',
+    `${changeId}.json`,
+  );
+  const backupChangePath = path.join(backupRoot, changeId);
+  const backupProviderBindingPath = path.join(
+    backupRoot,
+    'change-provider.json',
+  );
+  const hasProviderBinding = fs.existsSync(providerBindingPath);
+  try {
+    fs.cpSync(changePath, backupChangePath, { recursive: true });
+    if (hasProviderBinding) {
+      fs.copyFileSync(providerBindingPath, backupProviderBindingPath);
+    }
+    fs.rmSync(changePath, { recursive: true, force: true });
+    fs.rmSync(providerBindingPath, { force: true });
+    fs.writeFileSync(path.join(repository, 'openspec/changes/.gitkeep'), '');
+    git(repository, ['add', '-A']);
+    git(repository, ['commit', '-m', 'Prepare absent current change']);
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    fs.cpSync(backupChangePath, changePath, { recursive: true });
+    if (hasProviderBinding) {
+      fs.mkdirSync(path.dirname(providerBindingPath), { recursive: true });
+      fs.copyFileSync(backupProviderBindingPath, providerBindingPath);
+    }
+  } finally {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  }
+}
+
 export function writeReadyV3ExemptChange(
   repository: string,
   changeId = 'demo-change',

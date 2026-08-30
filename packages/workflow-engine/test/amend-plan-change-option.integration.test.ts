@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -13,15 +13,16 @@ import {
 import {
   createFixtureRepository,
   git,
+  prepareCurrentV3IntroductionFixture,
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { commitCurrentFixtureTask } from './support/task-diff-review-fixture.ts';
 
-test('amend-plan accepts the normative --change option without dropping positional compatibility', () => {
+test('amend-plan requires the normative --change option and rejects the retired positional form', () => {
   const repository = createFixtureRepository();
   try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository);
     writeReadyV3ExemptChange(repository);
     commitPlanningTransition(repository, 'demo-change');
 
@@ -55,6 +56,45 @@ test('amend-plan accepts the normative --change option without dropping position
       ),
     );
     writeReadyV3ExemptChange(repository);
+
+    const headBeforeRetiredInvocation = git(repository, [
+      'rev-parse',
+      'HEAD',
+    ]).trim();
+    const proposalBeforeRetiredInvocation = fs.readFileSync(proposalPath);
+    const retiredInvocation = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'amend-plan',
+        'demo-change',
+        '--reason',
+        'archive-applicability-failure',
+        '--execution-impact',
+        'none',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(
+      retiredInvocation.status,
+      2,
+      `${retiredInvocation.stdout}${retiredInvocation.stderr}`,
+    );
+    assert.equal(
+      (JSON.parse(retiredInvocation.stderr) as { error: { code: string } })
+        .error.code,
+      'INVALID_USAGE',
+    );
+    assert.equal(
+      git(repository, ['rev-parse', 'HEAD']).trim(),
+      headBeforeRetiredInvocation,
+    );
+    assert.deepEqual(
+      fs.readFileSync(proposalPath),
+      proposalBeforeRetiredInvocation,
+    );
 
     const output = execFileSync(
       process.execPath,

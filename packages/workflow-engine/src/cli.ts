@@ -1711,29 +1711,22 @@ function dispatch(args: string[], cwd: string): CommandResult {
       // Both arguments are mandatory: an amendment that has not said why it
       // was needed, or whether the work already done still stands, has not
       // answered the questions the transition exists to ask.
-      const usesChangeOption = rest[0] === '--change';
-      const changeIdOffset = usesChangeOption ? 1 : 0;
-      const expectedArgumentCount = usesChangeOption ? 6 : 5;
-      requireArgumentCount(
-        command,
-        rest,
-        expectedArgumentCount,
-        expectedArgumentCount,
-      );
+      requireArgumentCount(command, rest, 6, 6);
       if (
-        rest[changeIdOffset + 1] !== '--reason' ||
-        rest[changeIdOffset + 3] !== '--execution-impact'
+        rest[0] !== '--change' ||
+        rest[2] !== '--reason' ||
+        rest[4] !== '--execution-impact'
       ) {
         throw usage(
-          'workflow amend-plan (--change <change-id>|<change-id>) --reason <code> --execution-impact <none|required>',
+          'workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required>',
         );
       }
       return {
         command,
         ok: true,
-        result: commitPlanAmendment(cwd, rest[changeIdOffset]!, {
-          reason: rest[changeIdOffset + 2]!,
-          executionImpact: rest[changeIdOffset + 4] as 'none' | 'required',
+        result: commitPlanAmendment(cwd, rest[1]!, {
+          reason: rest[3]!,
+          executionImpact: rest[5] as 'none' | 'required',
         }),
       };
     }

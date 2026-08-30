@@ -31,6 +31,7 @@ import {
   fixtureCurrentSchemaName,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   sourceRepositoryRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
@@ -663,6 +664,7 @@ test('amend-plan CLI exposes the completed-generation transition with exact prov
         '--experimental-strip-types',
         path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
         'amend-plan',
+        '--change',
         'demo-change',
         '--reason',
         'archive-applicability-failure',
@@ -742,7 +744,7 @@ for (const evidence of ['missing', 'ambiguous'] as const) {
 
 function plannedV2Fixture(): string {
   const repository = createFixtureRepository();
-  git(repository, ['checkout', '-b', 'work/demo-change']);
+  prepareCurrentV3IntroductionFixture(repository);
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
   return repository;
