@@ -1,7 +1,7 @@
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export type EngineProjectionTransition =
-  'archive' | 'completion' | 'issue' | 'plan' | 'rollback-completion';
+  'archive' | 'completion' | 'plan' | 'rollback-completion';
 
 export type EngineProjectionDefinition = {
   path: string;
@@ -24,7 +24,6 @@ const REGISTRY: readonly Readonly<{
     transitions: Object.freeze([
       'archive',
       'completion',
-      'issue',
       'plan',
       'rollback-completion',
     ] satisfies EngineProjectionTransition[]),
