@@ -1,7 +1,7 @@
 {
   "name": "@jigwright/agent-runtime",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "Provider execution and protocol adapters for Jigwright.",
   "type": "module",
   "files": [

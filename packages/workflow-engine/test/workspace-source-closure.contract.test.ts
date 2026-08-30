@@ -138,6 +138,22 @@ test('builds a deterministic frozen transitive workspace source graph', (t) => {
 
 test('publishes one unscoped Jigwright package and executable while retaining the workflow script alias', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  const publicPackageIdentities = fs
+    .readdirSync(path.join(repositoryRoot, 'packages'), {
+      withFileTypes: true,
+    })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) =>
+      JSON.parse(
+        fs.readFileSync(
+          path.join(repositoryRoot, 'packages', entry.name, 'package.json'),
+          'utf8',
+        ),
+      ),
+    )
+    .filter((manifest: { private?: unknown }) => manifest.private !== true)
+    .map((manifest: { name?: unknown }) => manifest.name)
+    .sort();
   const packageManifest = JSON.parse(
     fs.readFileSync(
       path.join(repositoryRoot, 'packages/workflow-engine/package.json'),
@@ -152,6 +168,7 @@ test('publishes one unscoped Jigwright package and executable while retaining th
     fs.readFileSync(path.join(repositoryRoot, 'package.json'), 'utf8'),
   ) as { scripts?: Record<string, string> };
 
+  assert.deepEqual(publicPackageIdentities, ['jigwright']);
   assert.equal(packageManifest.name, 'jigwright');
   assert.equal(packageManifest.private, false);
   assert.deepEqual(packageManifest.bin, {

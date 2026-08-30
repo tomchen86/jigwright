@@ -1,7 +1,7 @@
 {
   "name": "@jigwright/grants",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "Optional Grant contracts and lifecycle for Jigwright.",
   "type": "module",
   "files": [

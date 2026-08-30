@@ -1,7 +1,7 @@
 {
   "name": "@jigwright/openspec-adapter",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "OpenSpec integration adapter for Jigwright.",
   "type": "module",
   "files": [

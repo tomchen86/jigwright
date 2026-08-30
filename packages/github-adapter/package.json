@@ -1,7 +1,7 @@
 {
   "name": "@jigwright/github-adapter",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "Optional least-privilege GitHub integration for Jigwright.",
   "type": "module",
   "files": [

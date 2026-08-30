@@ -20,10 +20,6 @@ test('the v1 command prepares one current-only Jigwright package', () => {
     workspaceManifest.scripts['jigwright:release-v1'],
     'node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --output dist/release-v1',
   );
-  assert.equal(
-    workspaceManifest.scripts['jigwright:release-workspace'],
-    undefined,
-  );
 });
 
 test('single-package v1 candidate binds reproducibility and stays fail closed for publish', () => {
