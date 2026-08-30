@@ -26,45 +26,6 @@ const LOADER_PATH =
 const GENERATOR_PATH =
   'packages/workflow-engine/bootstrap/generate-protected-capabilities.ts';
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
-const ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES = [
-  'packages/agent-runtime/package.json',
-  'packages/agent-runtime/src/built-in-provider-definition.ts',
-  'packages/agent-runtime/src/index.ts',
-  'packages/agent-runtime/src/provider-definition-snapshot.ts',
-  'packages/core/package.json',
-  'packages/core/src/canonical-json.ts',
-  'packages/grants/package.json',
-  'packages/grants/src/grant-envelope-verifier.ts',
-  'packages/grants/src/grant-lifecycle.ts',
-  'packages/grants/src/role-context-sharing-degradation.ts',
-  'packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts',
-  'packages/workflow-engine/src/adapters/providers/built-in-provider-definition.ts',
-  'packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts',
-  'packages/workflow-engine/src/application/propose/plan-review-role-topology.ts',
-  'packages/workflow-engine/src/application/propose/role-context-sharing-plan-review.ts',
-  'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
-  'packages/workflow-engine/src/composition-root/role-context-sharing-grant-approval-production.ts',
-  'packages/workflow-engine/src/composition-root/role-context-sharing-grant-lifecycle-production.ts',
-  'packages/workflow-engine/src/composition-root/role-context-sharing-terminal-receipt-production.ts',
-  'packages/workflow-engine/src/composition-root/role-topology-resolution-production.ts',
-  'packages/workflow-engine/src/composition-root/validated-contract-context.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci-planning.ts',
-  'packages/workflow-engine/src/entrypoints/ci/ci.ts',
-  'packages/workflow-engine/src/entrypoints/cli/role-context-sharing-grant-cli.ts',
-  'packages/workflow-engine/src/modules/assurance/planning-assurance-validator.ts',
-  'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-  'packages/workflow-engine/src/modules/authority/role-context-sharing-consumed-replay.ts',
-  'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-lifecycle-port.ts',
-  'packages/workflow-engine/src/modules/authority/role-context-sharing-grant-verifier-port.ts',
-  'packages/workflow-engine/src/modules/authority/role-context-sharing-grant.ts',
-  'packages/workflow-engine/src/modules/provider-orchestration/agent-role-plan.ts',
-  'packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts',
-  'packages/workflow-engine/src/modules/provider-orchestration/role-topology-resolution.ts',
-  'packages/workflow-engine/src/runtime/repository-transaction/agent-role-plan-store.ts',
-  'packages/workflow-engine/src/runtime/storage-journal/role-context-sharing-store.ts',
-] as const;
-
 const R007_EQUIVALENT_PROTECTED_SOURCE_PATHS = [
   'packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts',
 ] as const;
@@ -107,6 +68,8 @@ function installTypedManifest(repository: string): string {
 function installTypedCompositionManifest(repository: string): string {
   const packageManifestPath: 'packages/grants/package.json' =
     'packages/grants/package.json';
+  const roleContextSharingSourcePath =
+    'packages/grants/src/role-context-sharing-degradation.ts';
   const sourcePaths = [
     packageManifestPath,
     'packages/grants/src/collaboration-grant-envelope-reader.ts',
@@ -127,6 +90,8 @@ function installTypedCompositionManifest(repository: string): string {
               './src/collaboration-grant-envelope-reader.ts',
             './grant-envelope-verifier': './src/grant-envelope-verifier.ts',
             './grant-lifecycle': './src/grant-lifecycle.ts',
+            './role-context-sharing-degradation':
+              './src/role-context-sharing-degradation.ts',
           },
         },
         null,
@@ -136,6 +101,7 @@ function installTypedCompositionManifest(repository: string): string {
     [sourcePaths[1], 'export const reader = true;\n'],
     [sourcePaths[2], 'export const verifier = true;\n'],
     [sourcePaths[3], 'export const lifecycle = true;\n'],
+    [roleContextSharingSourcePath, 'export const roleContext = true;\n'],
   ] as const) {
     const absolute = path.join(repository, filePath);
     fs.mkdirSync(path.dirname(absolute), { recursive: true });
@@ -146,7 +112,11 @@ function installTypedCompositionManifest(repository: string): string {
 
   const contentBase = git(repository, ['rev-parse', 'HEAD']).trim();
   const entrypoints = [LOADER_PATH];
-  const dependencies = [MANIFEST_PATH, ...sourcePaths].sort();
+  const dependencies = [
+    MANIFEST_PATH,
+    ...sourcePaths,
+    roleContextSharingSourcePath,
+  ].sort();
   const digests = computeProtectedCapabilityEntryDigests(
     repository,
     contentBase,
@@ -179,6 +149,19 @@ function installTypedCompositionManifest(repository: string): string {
     sourceDigest: zeroDigest,
     collaborationPolicyDigest: '1'.repeat(64),
     taskDiffReviewPolicyDigest: '2'.repeat(64),
+    roleContextSharingGrant: {
+      kind: 'role-context-sharing-grant-verifier-binding.v1' as const,
+      packageExport: './role-context-sharing-degradation' as const,
+      packageExportTarget: './src/role-context-sharing-degradation.ts' as const,
+      readerContractVersion:
+        'jigwright.role-context-sharing-grant-reader.v1' as const,
+      signatureNamespace: 'workflow.role-context-sharing-grant.v1' as const,
+      authorizedEffect: 'role-context-sharing-degradation' as const,
+      policyDigest: '3'.repeat(64),
+      sourcePaths: [packageManifestPath, roleContextSharingSourcePath],
+      sourceDigest: zeroDigest,
+      authorizationClosureDigest: zeroDigest,
+    },
     authorizationClosureDigest: zeroDigest,
     humanTrustRootsClosureDigest: zeroDigest,
     applyJournalClosureDigest: zeroDigest,
@@ -309,40 +292,34 @@ test('trust-base verifier composition is recomputed from pinned sources', () => 
   }
 });
 
-test('role-context-sharing composition binding is optional historically but exact when present', () => {
+test('protected manifest requires an exact role-context-sharing composition binding when the Grant verifier composition is present', () => {
   const current = JSON.parse(
     fs.readFileSync(path.join(SOURCE_REPOSITORY_ROOT, MANIFEST_PATH), 'utf8'),
   ) as Record<string, unknown> & {
     grantVerifierComposition: Record<string, unknown>;
   };
-  const historical = structuredClone(current);
-  delete historical.grantVerifierComposition.roleContextSharingGrant;
-  const parsedHistorical = parseProtectedCapabilitiesManifestSource(historical);
-  assert.equal(
-    parsedHistorical.grantVerifierComposition?.roleContextSharingGrant,
-    undefined,
+  const omitted = structuredClone(current);
+  const {
+    roleContextSharingGrant: _omittedBinding,
+    compositionDigest: _omittedCompositionDigest,
+    ...omittedCompositionPayload
+  } = omitted.grantVerifierComposition;
+  omitted.grantVerifierComposition = {
+    ...omittedCompositionPayload,
+    compositionDigest: `sha256:${crypto
+      .createHash('sha256')
+      .update(canonicalJson(omittedCompositionPayload))
+      .digest('hex')}`,
+  };
+  assert.throws(
+    () => parseProtectedCapabilitiesManifestSource(omitted),
+    (error) => isWorkflowError(error, 'PROTECTED_CAPABILITY_MANIFEST_INVALID'),
   );
 
-  const zeroDigest = `sha256:${'0'.repeat(64)}`;
-  const roleContextSharingGrant = {
-    kind: 'role-context-sharing-grant-verifier-binding.v1',
-    packageExport: './role-context-sharing-degradation',
-    packageExportTarget: './src/role-context-sharing-degradation.ts',
-    readerContractVersion: 'jigwright.role-context-sharing-grant-reader.v1',
-    signatureNamespace: 'workflow.role-context-sharing-grant.v1',
-    authorizedEffect: 'role-context-sharing-degradation',
-    policyDigest: '1'.repeat(64),
-    sourcePaths: [...ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES],
-    sourceDigest: zeroDigest,
-    authorizationClosureDigest: zeroDigest,
-  };
-  const present = structuredClone(historical);
-  present.grantVerifierComposition = {
-    ...present.grantVerifierComposition,
-    roleContextSharingGrant,
-  };
+  const roleContextSharingGrant = current.grantVerifierComposition
+    .roleContextSharingGrant as Record<string, unknown>;
   assert.deepEqual(
-    parseProtectedCapabilitiesManifestSource(present).grantVerifierComposition
+    parseProtectedCapabilitiesManifestSource(current).grantVerifierComposition
       ?.roleContextSharingGrant,
     roleContextSharingGrant,
   );
@@ -356,9 +333,9 @@ test('role-context-sharing composition binding is optional historically but exac
     assert.throws(
       () =>
         parseProtectedCapabilitiesManifestSource({
-          ...historical,
+          ...current,
           grantVerifierComposition: {
-            ...historical.grantVerifierComposition,
+            ...current.grantVerifierComposition,
             roleContextSharingGrant: invalid,
           },
         }),

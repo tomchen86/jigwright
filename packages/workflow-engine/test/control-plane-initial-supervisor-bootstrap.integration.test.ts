@@ -164,8 +164,8 @@ test('anti-lockout bootstrap rejects unknown Grant verifier composition keys', (
   }
 });
 
-test('anti-lockout bootstrap accepts only an exact optional role-context-sharing verifier binding', () => {
-  for (const variant of ['exact', 'partial', 'unknown'] as const) {
+test('anti-lockout bootstrap requires an exact role-context-sharing verifier binding when the Grant verifier composition is present', () => {
+  for (const variant of ['exact', 'omitted', 'partial', 'unknown'] as const) {
     const engineRoot = createSealedEnginePackage();
     const repository = createRepository(
       engineRoot,
@@ -176,6 +176,10 @@ test('anti-lockout bootstrap accepts only an exact optional role-context-sharing
         repository,
         (composition) => {
           if (variant === 'exact') return;
+          if (variant === 'omitted') {
+            delete composition.roleContextSharingGrant;
+            return;
+          }
           const binding = composition.roleContextSharingGrant as Record<
             string,
             unknown
@@ -1619,7 +1623,7 @@ function createFixtureProtectedManifest(
 function installFixtureGrantVerifierComposition(
   repository: string,
   mutate?: (composition: Record<string, unknown>) => void,
-  includeRoleContextSharing = false,
+  includeRoleContextSharing = true,
 ) {
   const packageBytes = `${JSON.stringify(
     {

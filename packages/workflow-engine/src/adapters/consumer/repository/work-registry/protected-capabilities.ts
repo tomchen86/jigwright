@@ -93,7 +93,7 @@ export type CollaborationGrantVerifierCompositionV1 = {
   sourceDigest: Sha256Digest;
   collaborationPolicyDigest: string;
   taskDiffReviewPolicyDigest: string;
-  roleContextSharingGrant?: RoleContextSharingGrantVerifierBindingV1;
+  roleContextSharingGrant: RoleContextSharingGrantVerifierBindingV1;
   authorizationClosureDigest: Sha256Digest;
   humanTrustRootsClosureDigest: Sha256Digest;
   applyJournalClosureDigest: Sha256Digest;
@@ -435,9 +435,8 @@ function projectCollaborationGrantVerifierComposition(
     Object.entries(REQUIRED_GRANTS_PACKAGE_EXPORTS).some(
       ([subpath, sourcePath]) => packageExports[subpath] !== sourcePath,
     ) ||
-    (reviewed.roleContextSharingGrant !== undefined &&
-      packageExports[reviewed.roleContextSharingGrant.packageExport] !==
-        reviewed.roleContextSharingGrant.packageExportTarget)
+    packageExports[reviewed.roleContextSharingGrant.packageExport] !==
+      reviewed.roleContextSharingGrant.packageExportTarget
   ) {
     throw protectedManifestInvalid(
       'The Collaboration Grant package identity is invalid.',
@@ -489,15 +488,12 @@ function projectCollaborationGrantVerifierComposition(
     }
     return entry.closureDigest;
   };
-  const roleContextSharingGrant =
-    reviewed.roleContextSharingGrant === undefined
-      ? undefined
-      : projectRoleContextSharingGrantVerifierBinding(
-          reviewed.roleContextSharingGrant,
-          authorization,
-          closure('authorization.verify'),
-          readSource,
-        );
+  const roleContextSharingGrant = projectRoleContextSharingGrantVerifierBinding(
+    reviewed.roleContextSharingGrant,
+    authorization,
+    closure('authorization.verify'),
+    readSource,
+  );
   const projectedWithoutDigest = {
     kind: reviewed.kind,
     packageName: reviewed.packageName,
@@ -518,9 +514,7 @@ function projectCollaborationGrantVerifierComposition(
     ),
     collaborationPolicyDigest: reviewed.collaborationPolicyDigest,
     taskDiffReviewPolicyDigest: reviewed.taskDiffReviewPolicyDigest,
-    ...(roleContextSharingGrant === undefined
-      ? {}
-      : { roleContextSharingGrant }),
+    roleContextSharingGrant,
     authorizationClosureDigest: closure('authorization.verify'),
     humanTrustRootsClosureDigest: closure('human.trust-roots'),
     applyJournalClosureDigest: closure('apply.journal'),
@@ -562,7 +556,7 @@ function parseCollaborationGrantVerifierComposition(
   ];
   if (
     !isRecord(value) ||
-    !hasAllowedExactKeys(value, keys, ['roleContextSharingGrant']) ||
+    !hasExactKeys(value, [...keys, 'roleContextSharingGrant']) ||
     value.kind !== 'collaboration-grant-verifier-composition.v1' ||
     value.packageName !== '@jigwright/grants' ||
     value.packageVersion !== '0.1.0' ||
@@ -599,12 +593,9 @@ function parseCollaborationGrantVerifierComposition(
     'grant verifier composition source paths',
     true,
   );
-  const roleContextSharingGrant =
-    value.roleContextSharingGrant === undefined
-      ? undefined
-      : parseRoleContextSharingGrantVerifierBinding(
-          value.roleContextSharingGrant,
-        );
+  const roleContextSharingGrant = parseRoleContextSharingGrantVerifierBinding(
+    value.roleContextSharingGrant,
+  );
   return {
     kind: value.kind,
     packageName: value.packageName,
@@ -620,9 +611,7 @@ function parseCollaborationGrantVerifierComposition(
     sourceDigest: value.sourceDigest as Sha256Digest,
     collaborationPolicyDigest: value.collaborationPolicyDigest as string,
     taskDiffReviewPolicyDigest: value.taskDiffReviewPolicyDigest as string,
-    ...(roleContextSharingGrant === undefined
-      ? {}
-      : { roleContextSharingGrant }),
+    roleContextSharingGrant,
     authorizationClosureDigest:
       value.authorizationClosureDigest as Sha256Digest,
     humanTrustRootsClosureDigest:

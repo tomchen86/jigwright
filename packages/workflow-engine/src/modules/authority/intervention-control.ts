@@ -1133,7 +1133,7 @@ export interface CollaborationGrantVerifierComposition {
   sourceDigest: Sha256Digest;
   collaborationPolicyDigest: string;
   taskDiffReviewPolicyDigest: string;
-  roleContextSharingGrant?: RoleContextSharingGrantVerifierBinding;
+  roleContextSharingGrant: RoleContextSharingGrantVerifierBinding;
   authorizationClosureDigest: Sha256Digest;
   humanTrustRootsClosureDigest: Sha256Digest;
   applyJournalClosureDigest: Sha256Digest;
@@ -1206,13 +1206,7 @@ function createCollaborationGrantVerifierComposition(
     'repairAuthority',
     'compositionDigest',
   ] as const;
-  const exactKeys =
-    value !== null &&
-    typeof value === 'object' &&
-    !Array.isArray(value) &&
-    Object.hasOwn(value, 'roleContextSharingGrant')
-      ? [...keys, 'roleContextSharingGrant']
-      : keys;
+  const exactKeys = [...keys, 'roleContextSharingGrant'];
   if (!hasExactObjectKeys(value, exactKeys)) {
     throw workflowError(
       'PROTECTED_CAPABILITY_MANIFEST_INVALID',
@@ -1312,14 +1306,11 @@ function createCollaborationGrantVerifierComposition(
       ExitCode.verification,
     );
   }
-  const roleContextSharingGrant =
-    record.roleContextSharingGrant === undefined
-      ? undefined
-      : createRoleContextSharingGrantVerifierBinding(
-          record.roleContextSharingGrant,
-          authorization,
-          closure('authorization.verify'),
-        );
+  const roleContextSharingGrant = createRoleContextSharingGrantVerifierBinding(
+    record.roleContextSharingGrant,
+    authorization,
+    closure('authorization.verify'),
+  );
   const payload = {
     kind: record.kind,
     packageName: record.packageName,
@@ -1335,9 +1326,7 @@ function createCollaborationGrantVerifierComposition(
     sourceDigest: record.sourceDigest,
     collaborationPolicyDigest: record.collaborationPolicyDigest,
     taskDiffReviewPolicyDigest: record.taskDiffReviewPolicyDigest,
-    ...(roleContextSharingGrant === undefined
-      ? {}
-      : { roleContextSharingGrant }),
+    roleContextSharingGrant,
     authorizationClosureDigest: record.authorizationClosureDigest,
     humanTrustRootsClosureDigest: record.humanTrustRootsClosureDigest,
     applyJournalClosureDigest: record.applyJournalClosureDigest,

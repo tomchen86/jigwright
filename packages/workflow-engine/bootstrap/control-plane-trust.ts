@@ -1771,10 +1771,7 @@ function validGrantVerifierCompositionShape(
     'verifierContractVersion',
     'verifierImplementation',
   ];
-  const exactKeys =
-    isRecord(value) && Object.hasOwn(value, 'roleContextSharingGrant')
-      ? [...keys, 'roleContextSharingGrant']
-      : keys;
+  const exactKeys = [...keys, 'roleContextSharingGrant'];
   if (
     !isRecord(value) ||
     !hasExactKeys(value, exactKeys) ||
@@ -1842,7 +1839,6 @@ function validGrantVerifierCompositionShape(
     return false;
   }
   if (
-    value.roleContextSharingGrant !== undefined &&
     !validRoleContextSharingGrantVerifierBinding(
       value.roleContextSharingGrant,
       authorization,
@@ -1948,7 +1944,6 @@ function bootstrapGrantVerifierCompositionSourcesMatch(
     return false;
   }
   const roleBinding = composition.roleContextSharingGrant;
-  if (roleBinding === undefined) return true;
   if (!isRecord(roleBinding) || !isRecord(packageValue.exports)) return false;
   if (
     packageValue.exports[roleBinding.packageExport as string] !==

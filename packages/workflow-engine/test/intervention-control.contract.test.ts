@@ -400,10 +400,7 @@ function protectedEntries(
   });
 }
 
-function grantVerifierComposition(
-  entries: ProtectedCapabilityEntry[],
-  includeRoleContextSharing = false,
-) {
+function grantVerifierComposition(entries: ProtectedCapabilityEntry[]) {
   const closure = (
     capability: (typeof REQUIRED_PROTECTED_CAPABILITIES)[number],
   ) => entries.find((entry) => entry.capability === capability)!.closureDigest;
@@ -440,7 +437,7 @@ function grantVerifierComposition(
     taskDiffReviewPolicyDigest: digest('fixture-task-diff-review-policy').slice(
       'sha256:'.length,
     ),
-    ...(includeRoleContextSharing ? { roleContextSharingGrant } : {}),
+    roleContextSharingGrant,
     authorizationClosureDigest: closure('authorization.verify'),
     humanTrustRootsClosureDigest: closure('human.trust-roots'),
     applyJournalClosureDigest: closure('apply.journal'),
@@ -454,17 +451,12 @@ function grantVerifierComposition(
   };
 }
 
-function protectedManifestInputWithComposition(
-  includeRoleContextSharing = false,
-) {
+function protectedManifestInputWithComposition() {
   const entries = protectedEntries(['packages/grants/package.json']);
   return {
     schemaVersion: 1 as const,
     manifestPath: 'workflow/protected-capabilities.json',
-    grantVerifierComposition: grantVerifierComposition(
-      entries,
-      includeRoleContextSharing,
-    ),
+    grantVerifierComposition: grantVerifierComposition(entries),
     entries,
   };
 }
@@ -542,8 +534,8 @@ test('intervention-control rejects unknown Grant verifier composition keys', () 
   );
 });
 
-test('intervention-control preserves only an exact optional role-context-sharing binding', () => {
-  const input = protectedManifestInputWithComposition(true);
+test('intervention-control requires an exact role-context-sharing binding when the Grant verifier composition is present', () => {
+  const input = protectedManifestInputWithComposition();
   const manifest = createProtectedCapabilityManifest(input);
   assert.deepEqual(
     manifest.grantVerifierComposition?.roleContextSharingGrant,
@@ -552,6 +544,22 @@ test('intervention-control preserves only an exact optional role-context-sharing
 
   const binding = input.grantVerifierComposition.roleContextSharingGrant;
   assert.ok(binding);
+  const {
+    roleContextSharingGrant: _omittedBinding,
+    compositionDigest: _omittedCompositionDigest,
+    ...omittedPayload
+  } = input.grantVerifierComposition;
+  assert.throws(
+    () =>
+      createProtectedCapabilityManifest({
+        ...input,
+        grantVerifierComposition: {
+          ...omittedPayload,
+          compositionDigest: digest(canonicalJson(omittedPayload)),
+        },
+      }),
+    hasCode('PROTECTED_CAPABILITY_MANIFEST_INVALID'),
+  );
   const { policyDigest: _policyDigest, ...partial } = binding;
   for (const invalid of [partial, { ...binding, unreviewedFallback: true }]) {
     assert.throws(
