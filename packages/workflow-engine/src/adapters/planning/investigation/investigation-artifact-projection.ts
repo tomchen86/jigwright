@@ -12,16 +12,10 @@ import {
   createInvestigationCoverageNode,
   createInvestigationDispositionNodes,
   deriveInvestigationHitNodes,
-  readInvestigationCoverageNode,
-  readInvestigationDispositionNode,
-  readInvestigationGroupNode,
   replayInvestigationGroupNodes,
   type InvestigationGroupReplayRecord,
 } from '../../../modules/investigation/domain/investigation-groups.ts';
-import {
-  assertInvestigationApplicability,
-  type SealedInvestigationApplicability,
-} from '../../../modules/investigation/domain/investigation-applicability.ts';
+import { assertInvestigationApplicability } from '../../../modules/investigation/domain/investigation-applicability.ts';
 import {
   scanInvestigationTree,
   type ScanInvestigationTerm,
@@ -55,7 +49,7 @@ type DispositionReplay = Readonly<{
   author: string;
 }>;
 
-export type GitBackedInvestigationReplay = Readonly<{
+type GitBackedInvestigationReplay = Readonly<{
   schemaVersion: 1;
   kind: 'git-backed-investigation-replay';
   baseline: Baseline;
@@ -67,130 +61,6 @@ export type GitBackedInvestigationReplay = Readonly<{
   dispositions: DispositionReplay[];
   coverageNodeId: string;
 }>;
-
-export type ProjectedInvestigationArtifact = Readonly<{
-  schemaVersion: 2;
-  kind: 'investigation-artifact';
-  changeId: string;
-  legacyMigration: false;
-  nodes: EvidenceNode[];
-  currentRefs: Record<string, string>;
-  applicability: SealedInvestigationApplicability;
-  roleResults?: unknown[];
-  replay: GitBackedInvestigationReplay;
-}>;
-
-/**
- * Replace deterministic investigation envelopes with a Git-backed replay
- * recipe. Provider judgments, WHY, review, authorization, and seal nodes remain
- * tracked verbatim; only facts reproducible from the pinned source tree and the
- * retained semantic decisions are omitted.
- */
-export function projectInvestigationArtifactForTracking(
-  repositoryRoot: string,
-  artifact: InvestigationArtifact,
-): InvestigationArtifact | ProjectedInvestigationArtifact {
-  const applicability = artifact.applicability;
-  if (
-    artifact.legacyMigration ||
-    applicability === undefined ||
-    applicability.kind !== 'sealed-investigation'
-  ) {
-    return artifact;
-  }
-
-  const termUnions = nodesOfType(artifact.nodes, 'investigation-term-union');
-  const scans = nodesOfType(artifact.nodes, 'investigation-term-scan');
-  const inventories = nodesOfType(
-    artifact.nodes,
-    'investigation-tree-inventory',
-  );
-  const groups = nodesOfType(artifact.nodes, 'investigation-group');
-  const dispositions = nodesOfType(artifact.nodes, 'investigation-disposition');
-  const coverages = nodesOfType(artifact.nodes, 'investigation-coverage');
-
-  // A converged artifact may retain more than one historical deterministic
-  // epoch. V1 remains the safe compatibility form until replay v2 gains an
-  // explicit multi-epoch recipe.
-  if (
-    termUnions.length !== 1 ||
-    scans.length === 0 ||
-    inventories.length !== 1 ||
-    coverages.length !== 1
-  ) {
-    return artifact;
-  }
-
-  try {
-    readInvestigationCoverageNode(coverages[0]!);
-    const replay: GitBackedInvestigationReplay = {
-      schemaVersion: 1,
-      kind: 'git-backed-investigation-replay',
-      baseline: { ...applicability.baseline },
-      fullNodeCount: artifact.nodes.length,
-      fullNodesDigest: digest(artifact.nodes),
-      termUnionNodeId: termUnions[0]!.nodeId,
-      scan: {
-        nodeIds: scans.map(({ nodeId }) => nodeId).sort(),
-        inventoryNodeId: inventories[0]!.nodeId,
-        policyDigest: scans[0]!.policyDigest,
-      },
-      groups: groups
-        .map((node) => {
-          const output = readInvestigationGroupNode(node);
-          return {
-            nodeId: node.nodeId,
-            policyDigest: node.policyDigest,
-            selector: output.selector,
-            hitIds: output.hitIds,
-            exceptions: output.exceptions,
-          };
-        })
-        .sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
-      dispositions: dispositions
-        .map((node) => {
-          const output = readInvestigationDispositionNode(node);
-          return {
-            nodeId: node.nodeId,
-            groupId: output.groupId,
-            classification: output.classification,
-            rationale: output.rationale,
-            author: output.author,
-          };
-        })
-        .sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
-      coverageNodeId: coverages[0]!.nodeId,
-    };
-    const projected: ProjectedInvestigationArtifact = {
-      schemaVersion: 2,
-      kind: 'investigation-artifact',
-      changeId: artifact.changeId,
-      legacyMigration: false,
-      nodes: artifact.nodes.filter(
-        ({ type }) => !REPLAYED_NODE_TYPES.has(type),
-      ),
-      currentRefs: { ...artifact.currentRefs },
-      applicability,
-      ...(artifact.roleResults === undefined
-        ? {}
-        : { roleResults: structuredClone(artifact.roleResults) }),
-      replay,
-    };
-    const materialized = materializeProjectedInvestigationArtifact(
-      repositoryRoot,
-      projected,
-      artifact.changeId,
-    );
-    if (canonicalJson(materialized) !== canonicalJson(artifact)) {
-      return artifact;
-    }
-    return projected;
-  } catch {
-    // Projection is an optional storage optimization. A valid full artifact
-    // remains the compatibility form whenever this recipe cannot reproduce it.
-    return artifact;
-  }
-}
 
 /** Materialize one tracked v2 projection into the existing in-memory v1 form. */
 export function materializeProjectedInvestigationArtifact(
@@ -508,10 +378,6 @@ function termsFromUnion(node: EvidenceNode): ScanInvestigationTerm[] {
       provenance: structuredClone(value.provenance),
     } as ScanInvestigationTerm;
   });
-}
-
-function nodesOfType(nodes: EvidenceNode[], type: string): EvidenceNode[] {
-  return nodes.filter((node) => node.type === type);
 }
 
 function digest(value: unknown): string {

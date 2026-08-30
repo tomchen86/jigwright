@@ -7,6 +7,7 @@ import test from 'node:test';
 
 import { createFixtureTrackedObjectReaderPort } from '../../fixture-adapter/src/fixture-tracked-object-reader.ts';
 
+import * as investigationArtifactProjection from '../src/adapters/planning/investigation/investigation-artifact-projection.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   parseHistoricalInvestigationArtifact,
@@ -22,11 +23,11 @@ import {
   createInvestigationDispositionNodes,
   deriveInvestigationGroupFacts,
   deriveInvestigationHitNodes,
+  readInvestigationDispositionNode,
   readInvestigationGroupNode,
   readInvestigationHitNode,
   type InvestigationGroupFacts,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
-import { projectInvestigationArtifactForTracking } from '../src/adapters/planning/investigation/investigation-artifact-projection.ts';
 import {
   deriveEngineFloor,
   derivePinnedDiffPathFacts,
@@ -1588,7 +1589,7 @@ test('domain grouping facts consume scanner facts without constructing evidence 
   }
 });
 
-test('Git-backed tracked projection replays deterministic evidence from the pinned tree', () => {
+test('historical Git-backed projection replays deterministic evidence from the pinned tree', () => {
   const repository = createScannerRepository();
   try {
     fs.writeFileSync(
@@ -1687,7 +1688,53 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       'compact-investigation',
     );
 
-    const projected = projectInvestigationArtifactForTracking(repository, full);
+    const projected = {
+      schemaVersion: 2,
+      kind: 'investigation-artifact',
+      changeId: full.changeId,
+      legacyMigration: false,
+      nodes: [termUnion],
+      currentRefs: { ...full.currentRefs },
+      applicability,
+      replay: {
+        schemaVersion: 1,
+        kind: 'git-backed-investigation-replay',
+        baseline,
+        fullNodeCount: full.nodes.length,
+        fullNodesDigest: digestCanonical(full.nodes),
+        termUnionNodeId: termUnion.nodeId,
+        scan: {
+          nodeIds: scan.nodes.map(({ nodeId }) => nodeId).sort(),
+          inventoryNodeId: scan.inventory.evidenceNode.nodeId,
+          policyDigest: scan.nodes[0]!.policyDigest,
+        },
+        groups: groupNodes
+          .map((node) => {
+            const output = readInvestigationGroupNode(node);
+            return {
+              nodeId: node.nodeId,
+              policyDigest: node.policyDigest,
+              selector: output.selector,
+              hitIds: output.hitIds,
+              exceptions: output.exceptions,
+            };
+          })
+          .sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
+        dispositions: dispositions
+          .map((node) => {
+            const output = readInvestigationDispositionNode(node);
+            return {
+              nodeId: node.nodeId,
+              groupId: output.groupId,
+              classification: output.classification,
+              rationale: output.rationale,
+              author: output.author,
+            };
+          })
+          .sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
+        coverageNodeId: coverage.nodeId,
+      },
+    };
     assert.equal(projected.schemaVersion, 2);
     assert.equal(
       projected.replay.groups.some(
@@ -1697,37 +1744,6 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
       true,
     );
     assert.equal(projected.nodes.length, 1);
-    assert.ok(
-      Buffer.byteLength(canonicalJson(projected)) <
-        Buffer.byteLength(canonicalJson(full)) / 2,
-    );
-
-    const historicalTermUnion = createEvidenceNode({
-      type: 'investigation-term-union',
-      nodeSchema: 'investigation.term-union.test.v1',
-      evaluator: 'investigation-projection-test.v1',
-      policyDigest: '3'.repeat(64),
-      exactInputDigests: {},
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'investigation.term-union-output.test.v1',
-      output: termUnion.output,
-      runtimeMetadata: {},
-    });
-    const multiEpoch = parseHistoricalInvestigationArtifact(
-      {
-        ...full,
-        nodes: [...full.nodes, historicalTermUnion].sort((left, right) =>
-          left.nodeId.localeCompare(right.nodeId),
-        ),
-      },
-      'compact-investigation',
-    );
-    assert.strictEqual(
-      projectInvestigationArtifactForTracking(repository, multiEpoch),
-      multiEpoch,
-    );
-
     fs.writeFileSync(
       path.join(repository, 'src/base.txt'),
       'uncommitted worktree bytes must never satisfy replay\n',
@@ -1799,15 +1815,15 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
     );
 
     const treeObjectBaseline = {
-      head: projected.applicability.baseline.tree,
-      tree: projected.applicability.baseline.tree,
+      head: baseline.tree,
+      tree: baseline.tree,
     };
     const treeObjectApplicability = createInvestigationApplicability({
       kind: 'sealed-investigation',
       baseline: treeObjectBaseline,
-      intentDigest: projected.applicability.intentDigest,
-      sealNodeId: projected.applicability.sealNodeId,
-      sealResultDigest: projected.applicability.sealResultDigest,
+      intentDigest: '2'.repeat(64),
+      sealNodeId: coverage.nodeId,
+      sealResultDigest: coverage.resultDigest,
     });
     const treeAsHead = {
       ...projected,
@@ -1831,6 +1847,14 @@ test('Git-backed tracked projection replays deterministic evidence from the pinn
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('the retired tracked projection authoring export is absent', () => {
+  assert.equal(
+    'projectInvestigationArtifactForTracking' in
+      investigationArtifactProjection,
+    false,
+  );
 });
 
 function createScannerRepository(): string {
