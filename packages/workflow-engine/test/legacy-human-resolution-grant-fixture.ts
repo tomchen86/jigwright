@@ -14,8 +14,12 @@ import {
   readActiveHumanResolutionJournal,
   readInvestigationSession,
   storeAvailableHumanResolutionGrant,
+  type HumanResolutionConsequences,
+  type HumanResolutionDecision,
+  type InvestigationResolutionState,
 } from '../src/runtime/storage-journal/investigation-session-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
+import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import {
   HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
   assertResolutionDecisionAvailable,
@@ -27,21 +31,41 @@ import {
   loadMaintainerPolicyForResolution,
   validateHumanResolutionGrantPayload,
   type HumanResolutionGrantEnvelope,
-  type HumanResolutionGrantIssueOptions,
-  type HumanResolutionGrantIssueResult,
   type HumanResolutionGrantPayload,
-  type HumanResolutionGrantRequest,
 } from '../src/modules/authority/maintainer-grant.ts';
 
+type LegacyHumanResolutionGrantRequest = {
+  investigationId: string;
+  decision: HumanResolutionDecision;
+  consequences: HumanResolutionConsequences;
+  rationale: string;
+  ttlMinutes?: number;
+};
+
+type LegacyHumanResolutionGrantIssueOptions = {
+  now?: Date;
+  grantId?: string;
+  signer?: MaintainerSignerProvider;
+};
+
+type LegacyHumanResolutionGrantIssueResult = {
+  grantId: string;
+  tagRef: string;
+  publishCommand: string;
+  availableTokenPath: string;
+  envelope: HumanResolutionGrantEnvelope;
+  state: InvestigationResolutionState;
+};
+
 /**
- * Historical-fixture constructor only. Production V1 issuance is deliberately
- * disabled; legacy verification and recovery tests still need exact old bytes.
+ * Historical-fixture constructor only. Production V1 issuance is
+ * retired; verification and recovery tests still need exact old bytes.
  */
 export function issueLegacyHumanResolutionGrantFixture(
   cwd: string,
-  request: HumanResolutionGrantRequest,
-  options: HumanResolutionGrantIssueOptions = {},
-): HumanResolutionGrantIssueResult {
+  request: LegacyHumanResolutionGrantRequest,
+  options: LegacyHumanResolutionGrantIssueOptions = {},
+): LegacyHumanResolutionGrantIssueResult {
   const repository = discoverRepository(cwd);
   const { policy, policyBlob } = loadMaintainerPolicyForResolution(
     repository.repositoryRoot,

@@ -18,9 +18,7 @@ import {
 } from '../src/runtime/storage-journal/investigation-session-store.ts';
 import {
   canonicalHumanResolutionGrantEnvelope,
-  issueHumanResolutionGrant,
   verifyHumanResolutionGrantEnvelope,
-  verifyLegacyHumanResolutionGrantEnvelopeReadOnly,
   type HumanResolutionGrantEnvelope,
 } from '../src/modules/authority/maintainer-grant.ts';
 import type { MaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
@@ -80,46 +78,6 @@ test('supersede admission requires a canonical semantic or product reason', () =
   );
 });
 
-test('production legacy human-resolution issuance is historical read-only', () => {
-  let signerTouched = false;
-  const signer: MaintainerSignerProvider = {
-    assertHumanPresent() {
-      signerTouched = true;
-    },
-    identity() {
-      signerTouched = true;
-      return 'fixture-maintainer';
-    },
-    sign() {
-      signerTouched = true;
-      return 'unreachable';
-    },
-    verify() {
-      signerTouched = true;
-    },
-  };
-
-  assert.throws(
-    () =>
-      issueHumanResolutionGrant(
-        '/path/that/must/not/be-read',
-        {
-          investigationId: 'investigation-read-only-fixture',
-          decision: { kind: 'abort', parameters: {} },
-          consequences: {
-            continuity: 'broken',
-            assurance: 'degraded',
-            claimsWaived: [],
-          },
-          rationale: 'Legacy issuance must remain disabled.',
-        },
-        { signer },
-      ),
-    (error) => isWorkflowError(error, 'LEGACY_GRANT_V1_NEW_SIGNING_DISABLED'),
-  );
-  assert.equal(signerTouched, false);
-});
-
 test('legacy human-resolution evidence remains verification-only', () => {
   const repository = createFixtureRepository();
   try {
@@ -158,7 +116,7 @@ test('legacy human-resolution evidence remains verification-only', () => {
   }
 });
 
-test('legacy signed supersede without a reason is verification-only', () => {
+test('current verification rejects a legacy signed supersede without a reason', () => {
   const signer = fixtureSigner();
   const current = grantEnvelope(supersedeDecision('workflow-replaced'));
   const legacy = structuredClone(current);
@@ -176,23 +134,6 @@ test('legacy signed supersede without a reason is verification-only', () => {
         signer,
       ),
     (error) => isWorkflowError(error, 'HUMAN_RESOLUTION_INVALID'),
-  );
-  assert.deepEqual(
-    verifyLegacyHumanResolutionGrantEnvelopeReadOnly(
-      '/fixture',
-      legacy,
-      {} as MaintainerPolicy,
-      signer,
-    ),
-    {
-      grantId: legacy.payload.grantId,
-      mode: 'historical-read-only',
-      signatureValid: true,
-    },
-  );
-  assert.equal(
-    signer.verifiedNamespaces.at(-1),
-    'workflow.human-resolution-grant.v1',
   );
 });
 

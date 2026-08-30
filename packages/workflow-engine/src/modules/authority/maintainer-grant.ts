@@ -98,28 +98,6 @@ export type MaintainerGrantEnvelope = {
   signature: string;
 };
 
-export type MaintainerGrantRequest = {
-  changeId: string;
-  paths: string[];
-  reason: string;
-  ttlMinutes?: number;
-  maxUses?: number;
-};
-
-export type MaintainerGrantIssueOptions = {
-  now?: Date;
-  grantId?: string;
-  signer?: MaintainerSignerProvider;
-};
-
-export type MaintainerGrantIssueResult = {
-  grantId: string;
-  tagRef: string;
-  publishCommand: string;
-  availableTokenPath: string;
-  envelope: MaintainerGrantEnvelope;
-};
-
 export type HumanResolutionGrantPayload = {
   version: 1;
   grantId: string;
@@ -141,29 +119,6 @@ export type HumanResolutionGrantPayload = {
 export type HumanResolutionGrantEnvelope = {
   payload: HumanResolutionGrantPayload;
   signature: string;
-};
-
-export type HumanResolutionGrantRequest = {
-  investigationId: string;
-  decision: HumanResolutionDecision;
-  consequences: HumanResolutionConsequences;
-  rationale: string;
-  ttlMinutes?: number;
-};
-
-export type HumanResolutionGrantIssueOptions = {
-  now?: Date;
-  grantId?: string;
-  signer?: MaintainerSignerProvider;
-};
-
-export type HumanResolutionGrantIssueResult = {
-  grantId: string;
-  tagRef: string;
-  publishCommand: string;
-  availableTokenPath: string;
-  envelope: HumanResolutionGrantEnvelope;
-  state: InvestigationResolutionState;
 };
 
 export type HumanResolutionGrantValidationOptions = {
@@ -456,30 +411,6 @@ export function parseMaintainerGrantEnvelope(
   }
 }
 
-export function issueMaintainerGrant(
-  _cwd: string,
-  _request: MaintainerGrantRequest,
-  _options: MaintainerGrantIssueOptions = {},
-): MaintainerGrantIssueResult {
-  throw workflowError(
-    'LEGACY_GRANT_V1_NEW_SIGNING_DISABLED',
-    'New V1 grant signing is disabled; V1 records are historical read-only evidence.',
-    ExitCode.guard,
-  );
-}
-
-export function issueHumanResolutionGrant(
-  _cwd: string,
-  _request: HumanResolutionGrantRequest,
-  _options: HumanResolutionGrantIssueOptions = {},
-): HumanResolutionGrantIssueResult {
-  throw workflowError(
-    'LEGACY_GRANT_V1_NEW_SIGNING_DISABLED',
-    'New V1 human-resolution grant signing is disabled; V1 records are historical read-only evidence.',
-    ExitCode.guard,
-  );
-}
-
 export function validateHumanResolutionGrantPayload(
   payload: HumanResolutionGrantPayload,
   policy: MaintainerPolicy,
@@ -718,34 +649,6 @@ export function verifyHumanResolutionGrantForRevocation(
     envelope.payload.signer,
     HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
   );
-}
-
-export function verifyLegacyHumanResolutionGrantEnvelopeReadOnly(
-  repositoryRoot: string,
-  envelope: HumanResolutionGrantEnvelope,
-  policy: MaintainerPolicy,
-  verifier?: MaintainerSignerProvider,
-): {
-  grantId: string;
-  mode: 'historical-read-only';
-  signatureValid: true;
-} {
-  assertMaintainerGrantId(envelope.payload.grantId);
-  assertLegacySupersedeHumanResolutionDecisionReadOnly(
-    envelope.payload.decision,
-  );
-  const signer = verifier ?? createInteractiveSshSigner(repositoryRoot, policy);
-  signer.verify(
-    canonicalHumanResolutionGrantPayload(envelope.payload),
-    envelope.signature,
-    envelope.payload.signer,
-    HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
-  );
-  return {
-    grantId: envelope.payload.grantId,
-    mode: 'historical-read-only',
-    signatureValid: true,
-  };
 }
 
 export function assertHumanResolutionAuditTag(

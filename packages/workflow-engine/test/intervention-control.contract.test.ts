@@ -24,7 +24,6 @@ import {
   protectedCapabilityClosureDigest,
   verifyControlPlaneGrant,
   verifyHarnessMaintenanceGrant,
-  verifyLegacyGrantV1ReadOnly,
   verifyWipCheckpoint,
   validateWorkflowSupersedeReason,
   type ControlPlaneGrantEnvelope,
@@ -887,7 +886,7 @@ test('minimal updater success finalizes only after self-test', () => {
   });
 });
 
-test('supersede rejects execution failures and legacy V1 grants are verification-only', () => {
+test('supersede rejects execution failures', () => {
   assert.deepEqual(validateWorkflowSupersedeReason('workflow-replaced'), {
     allowed: true,
     reason: 'workflow-replaced',
@@ -904,32 +903,4 @@ test('supersede rejects execution failures and legacy V1 grants are verification
     () => validateWorkflowSupersedeReason('mystery-reason'),
     hasCode('SUPERSEDE_REASON_UNSUPPORTED'),
   );
-
-  const signedPayload = '{"kind":"maintainer-grant.v1","grantId":"old-1"}';
-  const result = verifyLegacyGrantV1ReadOnly(
-    {
-      kind: 'legacy-grant-v1-audit.v1',
-      legacyKind: 'maintainer-grant.v1',
-      grantId: 'old-1',
-      signedPayload,
-      payloadDigest: digest(signedPayload),
-      signer: 'retired-maintainer@example.test',
-      signature: 'historical-signature',
-    },
-    {
-      verifyHumanSignature(payload, signature, signer, namespace) {
-        assert.equal(payload, signedPayload);
-        assert.equal(signature, 'historical-signature');
-        assert.equal(signer, 'retired-maintainer@example.test');
-        assert.equal(namespace, 'workflow.maintainer-grant.v1');
-        return true;
-      },
-    },
-  );
-  assert.deepEqual(result, {
-    grantId: 'old-1',
-    legacyKind: 'maintainer-grant.v1',
-    mode: 'historical-read-only',
-    signatureValid: true,
-  });
 });

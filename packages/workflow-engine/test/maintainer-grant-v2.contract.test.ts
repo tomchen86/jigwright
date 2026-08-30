@@ -2236,7 +2236,7 @@ test('v2 preflight CLI exposes the manifest without signing or writing grant sta
   }
 });
 
-test('CLI disables manual v2 issue and new v1 signing paths', () => {
+test('CLI disables manual v2 issue and requires an exact task binding', () => {
   const repository = prepareCandidate();
   const cli = path.join(
     sourceRepositoryRoot,
@@ -2259,25 +2259,6 @@ test('CLI disables manual v2 issue and new v1 signing paths', () => {
     assert.equal(
       (JSON.parse(manualV2.stderr) as { error: { code: string } }).error.code,
       'MAINTAINER_V2_MANUAL_ISSUE_DISABLED',
-    );
-
-    const legacyV1 = spawnSync(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        cli,
-        'maintainer',
-        'grant',
-        '--change',
-        'demo-change',
-        '--json',
-      ],
-      { cwd: repository, encoding: 'utf8' },
-    );
-    assert.equal(legacyV1.status, 10);
-    assert.equal(
-      (JSON.parse(legacyV1.stderr) as { error: { code: string } }).error.code,
-      'LEGACY_GRANT_V1_NEW_SIGNING_DISABLED',
     );
 
     const missingTaskBinding = spawnSync(

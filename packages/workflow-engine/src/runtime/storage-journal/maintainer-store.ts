@@ -118,37 +118,6 @@ export function maintainerGrantStorePaths(gitCommonDirectory: string) {
   };
 }
 
-export function storeAvailableMaintainerGrant(
-  gitCommonDirectory: string,
-  envelope: MaintainerGrantEnvelope,
-): string {
-  const paths = maintainerGrantStorePaths(gitCommonDirectory);
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) =>
-    storeAvailableMaintainerGrantUnderLifecycleLock(
-      gitCommonDirectory,
-      envelope,
-      assertOwned,
-    ),
-  );
-}
-
-export function storeAvailableMaintainerGrantUnderLifecycleLock(
-  gitCommonDirectory: string,
-  envelope: MaintainerGrantEnvelope,
-  assertOwned: () => void,
-): string {
-  const paths = maintainerGrantStorePaths(gitCommonDirectory);
-  const grantId = assertMaintainerGrantId(envelope.payload.grantId);
-  assertOwned();
-  ensureStoreDirectories(paths);
-  assertOwned();
-  assertNoGrantState(paths, grantId);
-  const target = grantPath(paths.available, grantId);
-  createPrivateFileAtomic(target, canonicalGrantEnvelope(envelope));
-  assertOwned();
-  return target;
-}
-
 /**
  * Stores a canonical envelope that has already been fully parsed, verified,
  * and signed by its version-specific grant service. Keeping the byte-oriented
@@ -317,18 +286,6 @@ export function readTerminalMaintainerGrant(
   const grantId = assertMaintainerGrantId(requestedGrantId);
   const paths = maintainerGrantStorePaths(gitCommonDirectory);
   return readTerminal(grantPath(paths.terminal, grantId), grantId);
-}
-
-export function revokeMaintainerGrant(
-  _gitCommonDirectory: string,
-  _requestedGrantId: string,
-  _now: Date = new Date(),
-): never {
-  throw workflowError(
-    'HUMAN_REVOCATION_API_REQUIRED',
-    'Legacy maintainer grant revocation requires the current-human audited API.',
-    ExitCode.guard,
-  );
 }
 
 export function revokeLegacyMaintainerGrant(
