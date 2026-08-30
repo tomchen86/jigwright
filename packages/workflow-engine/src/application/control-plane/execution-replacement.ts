@@ -348,16 +348,6 @@ export function executeGrantedReplacement(
     grant.payload.requestDigest,
   );
   if (
-    grant.payload.mandateBinding === undefined ||
-    request.mandateBinding === undefined
-  ) {
-    throw workflowError(
-      'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'An unbound execution-budget Grant cannot create a replacement Attempt.',
-      ExitCode.guard,
-    );
-  }
-  if (
     canonicalJson(request.requestedChanges) !==
       canonicalJson(grant.payload.allowedChanges) ||
     request.workflowId !== grant.payload.workflowId ||
@@ -640,13 +630,6 @@ function recoverReceipt(
   );
   if (receipt === undefined) {
     const mandateBinding = transaction.request.mandateBinding;
-    if (mandateBinding === undefined) {
-      throw workflowError(
-        'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-        'An unbound execution-budget request cannot create a replacement Attempt.',
-        ExitCode.guard,
-      );
-    }
     assertActiveTaskMandateBindingUnderLifecycleLock(
       repositoryRoot,
       mandateBinding,
@@ -1283,7 +1266,6 @@ function assertTransactionRecord(
       receipt.epoch !== value.epoch ||
       receipt.jobId !== value.jobId ||
       receipt.attemptId !== value.replacementAttemptId ||
-      request.mandateBinding === undefined ||
       canonicalJson(receipt.mandateBinding) !==
         canonicalJson(request.mandateBinding)
     ) {

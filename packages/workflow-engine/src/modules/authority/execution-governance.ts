@@ -61,8 +61,7 @@ export type ExecutionBudgetGrantRequest = {
   workflowId: string;
   epoch: number;
   jobId: string;
-  /** Absent only on persisted legacy requests, which are read-only. */
-  mandateBinding?: TaskMandateBinding;
+  mandateBinding: TaskMandateBinding;
   requestedChanges: ExecutionBudgetChange[];
   rationale: string;
   expiresAfterAttempts: number;
@@ -79,8 +78,7 @@ export type ExecutionBudgetGrantPayload = {
   workflowId: string;
   epoch: number;
   jobId: string;
-  /** Absent only on persisted legacy grants, which are read-only. */
-  mandateBinding?: TaskMandateBinding;
+  mandateBinding: TaskMandateBinding;
   allowedChanges: ExecutionBudgetChange[];
   maxUses: number;
   issuedAt: string;
@@ -115,15 +113,15 @@ export type ExecutionBudgetGrantAuthorization = Readonly<{
 }>;
 
 type ExecutionBudgetGrantRecord = {
-  schemaVersion: 1 | 2 | 3;
+  schemaVersion: 3;
   state: 'active' | 'consumed' | 'revoked';
   envelopeDigest: string;
   envelope: ExecutionBudgetGrantEnvelope;
   remainingUses: number;
   consumedAttemptIds: string[];
   receipts: ExecutionBudgetConsumeReceipt[];
-  revokedAt?: string | null;
-  revocationReason?: string | null;
+  revokedAt: string | null;
+  revocationReason: string | null;
 };
 
 export type ExecutionBudgetGrantAuditContext = Readonly<{
@@ -234,14 +232,10 @@ export function createExecutionBudgetGrantEnvelope(
     workflowId: request.workflowId,
     epoch: request.epoch,
     jobId: request.jobId,
-    ...(request.mandateBinding === undefined
-      ? {}
-      : {
-          mandateBinding: assertExecutionGrantMandateBinding(
-            request.mandateBinding,
-            invalidGrant,
-          ),
-        }),
+    mandateBinding: assertExecutionGrantMandateBinding(
+      request.mandateBinding,
+      invalidGrant,
+    ),
     allowedChanges: request.requestedChanges.map((change) =>
       cloneChange(change, invalidGrant),
     ),
@@ -684,16 +678,11 @@ function requireAuditedExecutionBudgetGrant(
     audit: ExecutionBudgetGrantAuditContext | undefined;
   },
 ): TaskMandateBinding {
-  const payloadBinding = envelope.payload.mandateBinding;
-  const requestBinding = input.request?.mandateBinding;
-  if (payloadBinding === undefined || requestBinding === undefined) {
-    throw workflowError(
-      'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'A legacy execution-budget request or grant without a Task Mandate binding is read-only.',
-      ExitCode.guard,
-    );
-  }
-  if (input.request === undefined || input.audit === undefined) {
+  if (
+    input.request === undefined ||
+    input.mandateBinding === undefined ||
+    input.audit === undefined
+  ) {
     throw workflowError(
       'EXECUTION_BUDGET_GRANT_AUDIT_REQUIRED',
       'Execution-budget authority requires its exact request and external audit context.',
@@ -701,6 +690,14 @@ function requireAuditedExecutionBudgetGrant(
     );
   }
   validateExecutionBudgetGrantRequest(input.request);
+  const payloadBinding = assertExecutionGrantMandateBinding(
+    envelope.payload.mandateBinding,
+    invalidGrant,
+  );
+  const requestBinding = assertExecutionGrantMandateBinding(
+    input.request.mandateBinding,
+    invalidGrantRequest,
+  );
   const binding = assertExecutionGrantMandateBinding(
     input.mandateBinding,
     invalidGrant,
@@ -744,18 +741,10 @@ function requireCurrentExecutionBudgetGrantBinding(
 function requireStoredExecutionBudgetGrantBinding(
   payload: ExecutionBudgetGrantPayload,
 ): TaskMandateBinding {
-  if (payload.mandateBinding === undefined) {
-    throw workflowError(
-      'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'A legacy execution-budget grant without a Task Mandate binding cannot be consumed or revoked.',
-      ExitCode.guard,
-    );
-  }
-  const binding = assertExecutionGrantMandateBinding(
+  return assertExecutionGrantMandateBinding(
     payload.mandateBinding,
     unsafeGrantStore,
   );
-  return binding;
 }
 
 function executionBudgetGrantRefusalBinding(
@@ -3625,13 +3614,14 @@ function retentionEvidenceNotFound(evidenceId: string): WorkflowError {
 function validateExecutionBudgetGrantRequest(
   value: unknown,
 ): asserts value is ExecutionBudgetGrantRequest {
-  const legacyKeys = [
+  const keys = [
     'schemaVersion',
     'kind',
     'requestId',
     'workflowId',
     'epoch',
     'jobId',
+    'mandateBinding',
     'requestedChanges',
     'rationale',
     'expiresAfterAttempts',
@@ -3639,7 +3629,7 @@ function validateExecutionBudgetGrantRequest(
   ];
   if (
     !isRecord(value) ||
-    !hasKeysEither(value, [legacyKeys, [...legacyKeys, 'mandateBinding']]) ||
+    !hasExactKeys(value, keys) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'execution-budget-grant-request'
   ) {
@@ -3649,12 +3639,7 @@ function validateExecutionBudgetGrantRequest(
   assertIdentity(value.workflowId, invalidGrantRequest, 'workflow ID');
   assertPositiveInteger(value.epoch, invalidGrantRequest, 'epoch');
   assertIdentity(value.jobId, invalidGrantRequest, 'job ID');
-  if (Object.prototype.hasOwnProperty.call(value, 'mandateBinding')) {
-    assertExecutionGrantMandateBinding(
-      value.mandateBinding,
-      invalidGrantRequest,
-    );
-  }
+  assertExecutionGrantMandateBinding(value.mandateBinding, invalidGrantRequest);
   validateChanges(value.requestedChanges, invalidGrantRequest);
   assertReason(value.rationale, invalidGrantRequest, 'rationale');
   assertBoundedInteger(
@@ -3670,7 +3655,7 @@ function validateExecutionBudgetGrantRequest(
 function validateExecutionBudgetGrantPayload(
   value: unknown,
 ): asserts value is ExecutionBudgetGrantPayload {
-  const legacyKeys = [
+  const keys = [
     'schemaVersion',
     'kind',
     'grantId',
@@ -3678,6 +3663,7 @@ function validateExecutionBudgetGrantPayload(
     'workflowId',
     'epoch',
     'jobId',
+    'mandateBinding',
     'allowedChanges',
     'maxUses',
     'issuedAt',
@@ -3685,7 +3671,7 @@ function validateExecutionBudgetGrantPayload(
   ];
   if (
     !isRecord(value) ||
-    !hasKeysEither(value, [legacyKeys, [...legacyKeys, 'mandateBinding']]) ||
+    !hasExactKeys(value, keys) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'execution-budget-grant.v1'
   ) {
@@ -3696,9 +3682,7 @@ function validateExecutionBudgetGrantPayload(
   assertIdentity(value.workflowId, invalidGrant, 'workflow ID');
   assertPositiveInteger(value.epoch, invalidGrant, 'epoch');
   assertIdentity(value.jobId, invalidGrant, 'job ID');
-  if (Object.prototype.hasOwnProperty.call(value, 'mandateBinding')) {
-    assertExecutionGrantMandateBinding(value.mandateBinding, invalidGrant);
-  }
+  assertExecutionGrantMandateBinding(value.mandateBinding, invalidGrant);
   validateChanges(value.allowedChanges, invalidGrant);
   assertBoundedInteger(
     value.maxUses,
@@ -3731,7 +3715,7 @@ function validateExecutionBudgetConsumeReceipt(
   value: unknown,
   payload?: ExecutionBudgetGrantPayload,
 ): asserts value is ExecutionBudgetConsumeReceipt {
-  const legacyKeys = [
+  const keys = [
     'schemaVersion',
     'kind',
     'receiptId',
@@ -3740,6 +3724,7 @@ function validateExecutionBudgetConsumeReceipt(
     'workflowId',
     'epoch',
     'jobId',
+    'mandateBinding',
     'attemptId',
     'useNumber',
     'remainingUses',
@@ -3747,7 +3732,7 @@ function validateExecutionBudgetConsumeReceipt(
   ];
   if (
     !isRecord(value) ||
-    !hasKeysEither(value, [legacyKeys, [...legacyKeys, 'mandateBinding']]) ||
+    !hasExactKeys(value, keys) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'execution-budget-consume-receipt'
   ) {
@@ -3759,9 +3744,7 @@ function validateExecutionBudgetConsumeReceipt(
   assertIdentity(value.workflowId, unsafeGrantStore, 'workflow ID');
   assertPositiveInteger(value.epoch, unsafeGrantStore, 'epoch');
   assertIdentity(value.jobId, unsafeGrantStore, 'job ID');
-  if (Object.prototype.hasOwnProperty.call(value, 'mandateBinding')) {
-    assertExecutionGrantMandateBinding(value.mandateBinding, unsafeGrantStore);
-  }
+  assertExecutionGrantMandateBinding(value.mandateBinding, unsafeGrantStore);
   assertIdentity(value.attemptId, unsafeGrantStore, 'attempt ID');
   assertBoundedInteger(
     value.useNumber,
@@ -3787,11 +3770,8 @@ function validateExecutionBudgetConsumeReceipt(
       value.workflowId !== payload.workflowId ||
       value.epoch !== payload.epoch ||
       value.jobId !== payload.jobId ||
-      (payload.mandateBinding === undefined
-        ? Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-        : !Object.prototype.hasOwnProperty.call(value, 'mandateBinding') ||
-          canonicalJson(value.mandateBinding) !==
-            canonicalJson(payload.mandateBinding)) ||
+      canonicalJson(value.mandateBinding) !==
+        canonicalJson(payload.mandateBinding) ||
       value.useNumber + value.remainingUses !== payload.maxUses)
   ) {
     throw unsafeGrantStore();
@@ -4600,7 +4580,14 @@ function canonicalGrantRecord(record: ExecutionBudgetGrantRecord): string {
 function validateGrantRecord(
   value: unknown,
 ): asserts value is ExecutionBudgetGrantRecord {
-  const legacyKeys = [
+  if (
+    isRecord(value) &&
+    typeof value.schemaVersion === 'number' &&
+    value.schemaVersion !== 3
+  ) {
+    throw unsupportedSchemaVersion(value.schemaVersion);
+  }
+  const currentKeys = [
     'schemaVersion',
     'state',
     'envelopeDigest',
@@ -4608,17 +4595,14 @@ function validateGrantRecord(
     'remainingUses',
     'consumedAttemptIds',
     'receipts',
+    'revokedAt',
+    'revocationReason',
   ];
-  const currentKeys = [...legacyKeys, 'revokedAt', 'revocationReason'];
   if (
     !isRecord(value) ||
-    !(
-      (value.schemaVersion === 1 && hasExactKeys(value, legacyKeys)) ||
-      ((value.schemaVersion === 2 || value.schemaVersion === 3) &&
-        hasExactKeys(value, currentKeys))
-    ) ||
-    !['active', 'consumed', 'revoked'].includes(String(value.state)) ||
-    (value.schemaVersion === 1 && value.state === 'revoked')
+    value.schemaVersion !== 3 ||
+    !hasExactKeys(value, currentKeys) ||
+    !['active', 'consumed', 'revoked'].includes(String(value.state))
   ) {
     throw unsafeGrantStore();
   }
@@ -4631,9 +4615,6 @@ function validateGrantRecord(
     throw unsafeGrantStore();
   }
   const payload = value.envelope.payload;
-  if (value.schemaVersion === 3 && payload.mandateBinding === undefined) {
-    throw unsafeGrantStore();
-  }
   assertBoundedInteger(
     value.remainingUses,
     0,
@@ -4653,25 +4634,19 @@ function validateGrantRecord(
   ) {
     throw unsafeGrantStore();
   }
-  if (value.schemaVersion === 2 || value.schemaVersion === 3) {
-    if (value.state === 'revoked') {
-      assertTimestamp(value.revokedAt, unsafeGrantStore, 'revokedAt');
-      assertReason(
-        value.revocationReason,
-        unsafeGrantStore,
-        'revocation reason',
-      );
-      const latestAuthorityAt =
-        value.receipts.at(-1)?.consumedAt ?? payload.issuedAt;
-      if (
-        new Date(value.revokedAt as string).getTime() <
-        new Date(latestAuthorityAt).getTime()
-      ) {
-        throw unsafeGrantStore();
-      }
-    } else if (value.revokedAt !== null || value.revocationReason !== null) {
+  if (value.state === 'revoked') {
+    assertTimestamp(value.revokedAt, unsafeGrantStore, 'revokedAt');
+    assertReason(value.revocationReason, unsafeGrantStore, 'revocation reason');
+    const latestAuthorityAt =
+      value.receipts.at(-1)?.consumedAt ?? payload.issuedAt;
+    if (
+      new Date(value.revokedAt as string).getTime() <
+      new Date(latestAuthorityAt).getTime()
+    ) {
       throw unsafeGrantStore();
     }
+  } else if (value.revokedAt !== null || value.revocationReason !== null) {
+    throw unsafeGrantStore();
   }
   const attemptIds = new Set<string>();
   for (let index = 0; index < value.receipts.length; index += 1) {
@@ -4709,7 +4684,8 @@ function readGrantRecord(filePath: string): ExecutionBudgetGrantRecord {
   } catch (error) {
     if (
       isWorkflowError(error) &&
-      error.code === 'EXECUTION_BUDGET_GRANT_STORE_UNSAFE'
+      (error.code === 'EXECUTION_BUDGET_GRANT_STORE_UNSAFE' ||
+        error.code === 'UNSUPPORTED_SCHEMA_VERSION')
     ) {
       throw error;
     }
@@ -5278,6 +5254,15 @@ function invalidGrant(message: string): WorkflowError {
     'EXECUTION_BUDGET_GRANT_INVALID',
     message,
     ExitCode.usage,
+  );
+}
+
+function unsupportedSchemaVersion(schemaVersion: number): WorkflowError {
+  return workflowError(
+    'UNSUPPORTED_SCHEMA_VERSION',
+    `Execution-budget grant record schema version ${schemaVersion} is unsupported; only schema version 3 is current.`,
+    ExitCode.guard,
+    { details: { schemaVersion, supportedSchemaVersion: 3 } },
   );
 }
 

@@ -71,13 +71,6 @@ export function issueExecutionBudgetGrant(
   const request = parseExecutionBudgetGrantRequest(
     canonicalExecutionBudgetGrantRequest(untrustedRequest),
   );
-  if (request.mandateBinding === undefined) {
-    throw workflowError(
-      'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'A legacy execution-budget request without a Task Mandate binding cannot be approved.',
-      ExitCode.guard,
-    );
-  }
   const repository = discoverRepository(cwd);
   const policy = parseMaintainerPolicy(
     JSON.parse(
@@ -284,13 +277,6 @@ export function revokeIssuedExecutionBudgetGrant(
       'EXECUTION_BUDGET_GRANT_SIGNATURE_INVALID',
       'Execution-budget grant signature verification failed before revocation.',
       ExitCode.verification,
-    );
-  }
-  if (payload.mandateBinding === undefined) {
-    throw workflowError(
-      'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'A legacy execution-budget grant without a Task Mandate binding is read-only.',
-      ExitCode.guard,
     );
   }
   const mandateBinding = payload.mandateBinding;

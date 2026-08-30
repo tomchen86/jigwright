@@ -343,47 +343,27 @@ test('audit failure leaves no available grant and exact retry recovers publicati
   });
 });
 
-test('legacy unbound requests remain readable but cannot issue new authority', () => {
-  withFixture(({ storeRoot, audit, binding }) => {
-    const legacy = parseExecutionBudgetGrantRequest(
-      `${JSON.stringify({
-        schemaVersion: 1,
-        kind: 'execution-budget-grant-request',
-        requestId: '33333333-3333-4333-8333-333333333333',
-        workflowId: 'workflow-a',
-        epoch: 4,
-        jobId: 'job-plan-review-004',
-        requestedChanges: [
-          { path: '/limits/timeoutMs', from: 300_000, to: 600_000 },
-        ],
-        rationale: 'Legacy persisted request without mandate binding.',
-        expiresAfterAttempts: 1,
-        createdAt: NOW.toISOString(),
-      })}\n`,
-    );
-    assert.equal(
-      canonicalExecutionBudgetGrantRequest(legacy).includes('mandateBinding'),
-      false,
-    );
-    const legacyEnvelope = createExecutionBudgetGrantEnvelope(legacy, {
-      grantId: GRANT_ID,
-      issuedAt: NOW,
-      issuer: 'fixture-maintainer',
-      maxUses: 1,
-      signature: 'fixture-signature',
-    });
-    assert.throws(
-      () =>
-        storeExecutionBudgetGrant(storeRoot, legacyEnvelope, {
-          request: legacy,
-          mandateBinding: binding,
-          audit,
-          verify() {},
-        }),
-      (error) =>
-        isWorkflowError(error, 'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY'),
-    );
-  });
+test('execution-budget request reader rejects an unbound legacy shape', () => {
+  assert.throws(
+    () =>
+      parseExecutionBudgetGrantRequest(
+        `${JSON.stringify({
+          schemaVersion: 1,
+          kind: 'execution-budget-grant-request',
+          requestId: '33333333-3333-4333-8333-333333333333',
+          workflowId: 'workflow-a',
+          epoch: 4,
+          jobId: 'job-plan-review-004',
+          requestedChanges: [
+            { path: '/limits/timeoutMs', from: 300_000, to: 600_000 },
+          ],
+          rationale: 'Retired persisted request without mandate binding.',
+          expiresAfterAttempts: 1,
+          createdAt: NOW.toISOString(),
+        })}\n`,
+      ),
+    (error) => isWorkflowError(error, 'EXECUTION_GRANT_REQUEST_INVALID'),
+  );
 });
 
 function cryptoDigest(value: string): string {

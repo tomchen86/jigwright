@@ -6,6 +6,8 @@ import path from 'node:path';
 import test from 'node:test';
 import { Worker } from 'node:worker_threads';
 
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+
 import {
   assemblePromptFromManifest,
   assessAttemptResultEligibility,
@@ -242,6 +244,48 @@ test('execution-budget grant uses domain-separated bytes and atomically consumes
         }),
       (error) => isWorkflowError(error, 'EXECUTION_BUDGET_GRANT_EXHAUSTED'),
     );
+  } finally {
+    fs.rmSync(fixture.root, { recursive: true, force: true });
+  }
+});
+
+test('execution-budget grant store rejects every non-current record schema', () => {
+  const fixture = grantStoreFixture('execution-grant-schema-');
+  try {
+    const grantRequest = request(fixture.binding);
+    const envelope = createExecutionBudgetGrantEnvelope(grantRequest, {
+      grantId: GRANT_ID,
+      issuedAt: NOW,
+      issuer: 'fixture-maintainer',
+      maxUses: 1,
+      signature: 'fixture-signature',
+    });
+    const recordPath = storeExecutionBudgetGrant(fixture.storeRoot, envelope, {
+      request: grantRequest,
+      mandateBinding: fixture.binding,
+      audit: fixture.audit,
+      verify() {},
+    });
+    const current = JSON.parse(fs.readFileSync(recordPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+
+    for (const schemaVersion of [1, 2, 4]) {
+      const nonCurrent: Record<string, unknown> = {
+        ...current,
+        schemaVersion,
+      };
+      if (schemaVersion === 1) {
+        delete nonCurrent.revokedAt;
+        delete nonCurrent.revocationReason;
+      }
+      fs.writeFileSync(recordPath, `${canonicalJson(nonCurrent)}\n`, 'utf8');
+      assert.throws(
+        () => inspectExecutionBudgetGrant(fixture.storeRoot, GRANT_ID),
+        (error) => isWorkflowError(error, 'UNSUPPORTED_SCHEMA_VERSION'),
+      );
+    }
   } finally {
     fs.rmSync(fixture.root, { recursive: true, force: true });
   }
