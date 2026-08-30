@@ -1,6 +1,6 @@
 # Current and Next Steps
 
-This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and structured issue data.
+This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records.
 
 ## Current Change
 
@@ -27,5 +27,4 @@ None.
 - [Roadmap](ROADMAP.md)
 - [Change records](../openspec/changes/)
 - [Base specifications](../openspec/specs/)
-- [Issue log](ISSUE_LOG.md)
 - [System architecture](architecture/ARCHITECTURE.md)
