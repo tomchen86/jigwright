@@ -12,6 +12,7 @@ import {
 
 const BASE_REPORT = {
   schemaVersion: 1 as const,
+  reportVersion: 3 as const,
   kind: 'planning-transition' as const,
   createdAt: '2026-08-04T00:00:00.000Z',
   changeId: 'demo-change',
@@ -26,6 +27,8 @@ const BASE_REPORT = {
   tree: 'c'.repeat(40),
   commitHash: 'd'.repeat(40),
   changedPaths: ['openspec/changes/demo-change/proposal.md'],
+  planningPaths: ['openspec/changes/demo-change/proposal.md'],
+  engineProjectionPaths: [],
   artifactDigests: {
     'openspec/changes/demo-change/proposal.md': 'e'.repeat(64),
   },
@@ -38,6 +41,14 @@ const BASE_REPORT = {
     validationValid: true as const,
   },
   planningAssurance: null,
+  amendment: null,
+  archiveApplicability: {
+    status: 'passed' as const,
+    validatedAt: '2026-08-04T00:00:00.000Z',
+    validatedBaseCommit: 'a'.repeat(40),
+    validatedBaseSpecDigests: {},
+    validatorVersion: 'spec-delta-preflight-v1',
+  },
 };
 
 function directory(): string {
@@ -67,18 +78,25 @@ test('a plan records the base its preflight was checked against', () => {
   );
 });
 
-test('a report written before the preflight existed reads as not-recorded', () => {
-  // The honest answer for a plan nobody checked is that nobody checked it.
-  // Defaulting to `passed` would let an archive failure look like drift.
+test('current planning reports reject pre-v3 fields instead of projecting them', () => {
   const root = directory();
-  const legacy = { ...BASE_REPORT };
+  const {
+    reportVersion: _reportVersion,
+    planningPaths: _planningPaths,
+    engineProjectionPaths: _engineProjectionPaths,
+    amendment: _amendment,
+    archiveApplicability: _archiveApplicability,
+    ...legacy
+  } = BASE_REPORT;
   const id = writeContentRecord(root, legacy);
-  const projected = readPlanningTransitionReport(root, id);
-  assert.deepEqual(projected.archiveApplicability, {
-    status: 'not-recorded',
-  });
-  assert.deepEqual(projected.planningPaths, BASE_REPORT.changedPaths);
-  assert.deepEqual(projected.engineProjectionPaths, []);
+  assert.throws(
+    () => readPlanningTransitionReport(root, id),
+    (error: unknown) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'PLANNING_REPORT_INVALID',
+  );
 });
 
 test('a version 3 report requires an exact disjoint planning/projection partition', () => {

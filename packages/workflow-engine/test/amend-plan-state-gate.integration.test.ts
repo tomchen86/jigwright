@@ -128,7 +128,7 @@ test('amend-plan admits a completed generation with exact task-commit evidence',
   }
 });
 
-test('a missing v2 amendment disposition is never projected as carry-forward evidence', () => {
+test('a non-current amendment report is never projected as carry-forward evidence', () => {
   const repository = plannedV2Fixture();
   try {
     completeTask(repository);
@@ -155,12 +155,10 @@ test('a missing v2 amendment disposition is never projected as carry-forward evi
     const legacy = { ...missingDisposition };
     delete legacy.reportVersion;
     const legacyId = writeContentRecord(reportsDirectory, legacy);
-    const legacyProjection = readPlanningTransitionReport(
-      reportsDirectory,
-      legacyId,
+    assert.throws(
+      () => readPlanningTransitionReport(reportsDirectory, legacyId),
+      (error: unknown) => isWorkflowError(error, 'PLANNING_REPORT_INVALID'),
     );
-    assert.equal(legacyProjection.reportVersion, 1);
-    assert.deepEqual(legacyProjection.amendment, { status: 'not-recorded' });
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -21,32 +21,29 @@ export type PlanningCarryForwardTaskEvidence = Readonly<{
   commitHash: string;
 }>;
 
-export type PlanningAmendmentRecord =
-  | null
-  | Readonly<{ status: 'not-recorded' }>
-  | Readonly<{
-      status: 'recorded';
-      reason: string;
-      executionImpact: 'none' | 'required';
-      rationale: string;
-      decisionDigest: string;
-      planningGeneration: string;
-      amendsPlanningGeneration: string;
-      planReview: string;
-      executionDisposition:
-        | Readonly<{
-            kind: 'carried-forward';
-            tasks: readonly PlanningCarryForwardTaskEvidence[];
-          }>
-        | Readonly<{
-            kind: 'reopened';
-            taskIds: readonly string[];
-          }>;
-    }>;
+export type PlanningAmendmentRecord = null | Readonly<{
+  status: 'recorded';
+  reason: string;
+  executionImpact: 'none' | 'required';
+  rationale: string;
+  decisionDigest: string;
+  planningGeneration: string;
+  amendsPlanningGeneration: string;
+  planReview: string;
+  executionDisposition:
+    | Readonly<{
+        kind: 'carried-forward';
+        tasks: readonly PlanningCarryForwardTaskEvidence[];
+      }>
+    | Readonly<{
+        kind: 'reopened';
+        taskIds: readonly string[];
+      }>;
+}>;
 
 export type PlanningTransitionReport = {
   schemaVersion: 1;
-  reportVersion: 1 | 2 | 3;
+  reportVersion: 3;
   kind: 'planning-transition';
   createdAt: string;
   changeId: string;
@@ -82,72 +79,38 @@ export type PlanningTransitionReport = {
     validationValid: true;
   };
   planningAssurance: InvestigationFirstPlanningAssuranceSummary | null;
-  /**
-   * Version 2 records the amendment decision and exact execution disposition.
-   * A version 1 amendment is projected as `not-recorded`; that compatibility
-   * marker is never accepted as carry-forward evidence for a new record.
-   */
+  /** Exact amendment decision and execution disposition for current reports. */
   amendment: PlanningAmendmentRecord;
   archiveApplicability: ArchiveApplicabilityRecord;
 };
 
 /**
- * What the plan-time archive preflight was checked against.
- *
- * Archive re-validates against whatever the base is when it runs; this record
- * says which base the plan was accepted over, so a later failure can be read
- * as drift rather than as a plan that was always wrong. A generation written
- * before the preflight existed reports `not-recorded` rather than a
- * reassuring `passed` it never earned.
+ * What the plan-time archive preflight was checked against. Archive
+ * re-validates against whatever the base is when it runs; this record says
+ * which base the plan was accepted over, so a later failure can be read as
+ * drift rather than as a plan that was always wrong.
  */
-export type ArchiveApplicabilityRecord =
-  | Readonly<{ status: 'not-recorded' }>
-  | Readonly<{
-      status: 'passed';
-      validatedAt: string;
-      validatedBaseCommit: string;
-      validatedBaseSpecDigests: Record<string, string>;
-      validatorVersion: string;
-    }>;
+export type ArchiveApplicabilityRecord = Readonly<{
+  status: 'passed';
+  validatedAt: string;
+  validatedBaseCommit: string;
+  validatedBaseSpecDigests: Record<string, string>;
+  validatorVersion: string;
+}>;
 
 export function writePlanningTransitionReport(
   directory: string,
-  report: PlanningTransitionInput,
+  report: PlanningTransitionReport,
 ): string {
-  // Normalized on the way in as well as out: a caller that predates a field
-  // should not have to know it exists to write a valid record.
-  const normalized = normalizeLegacyPlanningTransitionReport(report);
-  assertPlanningTransitionReport(normalized);
-  return writeContentRecord(directory, normalized);
+  assertPlanningTransitionReport(report);
+  return writeContentRecord(directory, report);
 }
-
-/** What a caller must supply; engine-defaulted fields may be omitted. */
-export type PlanningTransitionInput = Omit<
-  PlanningTransitionReport,
-  | 'amendment'
-  | 'archiveApplicability'
-  | 'engineProjectionPaths'
-  | 'planningPaths'
-  | 'reportVersion'
-> &
-  Partial<
-    Pick<
-      PlanningTransitionReport,
-      | 'amendment'
-      | 'archiveApplicability'
-      | 'engineProjectionPaths'
-      | 'planningPaths'
-      | 'reportVersion'
-    >
-  >;
 
 export function readPlanningTransitionReport(
   directory: string,
   reportId: string,
 ): PlanningTransitionReport {
-  const report = normalizeLegacyPlanningTransitionReport(
-    readContentRecord(directory, reportId),
-  );
+  const report = readContentRecord(directory, reportId);
   assertPlanningTransitionReport(report);
   return report;
 }
@@ -186,51 +149,6 @@ function isExactTrailerBlock(
   );
 }
 
-function normalizeLegacyPlanningTransitionReport(value: unknown): unknown {
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'planning-transition'
-  ) {
-    return value;
-  }
-  // Each field is defaulted only when it is genuinely absent. Filling a field
-  // that is already present would rewrite a real record with a placeholder,
-  // which is worse than the missing field it was meant to cover.
-  const normalized: Record<string, unknown> = { ...value };
-  if (!Object.hasOwn(value, 'reportVersion')) {
-    normalized.reportVersion = 1;
-  }
-  if (!Object.hasOwn(value, 'planningAssurance')) {
-    normalized.planningAssurance = null;
-  }
-  if (
-    (value.reportVersion === undefined || value.reportVersion === 1) &&
-    !Object.hasOwn(value, 'amendment')
-  ) {
-    normalized.amendment =
-      value.transition === 'amend-plan' ? { status: 'not-recorded' } : null;
-  }
-  if (!Object.hasOwn(value, 'archiveApplicability')) {
-    normalized.archiveApplicability = { status: 'not-recorded' };
-  }
-  if (
-    Number(normalized.reportVersion) < 3 &&
-    !Object.hasOwn(value, 'planningPaths')
-  ) {
-    normalized.planningPaths = Array.isArray(value.changedPaths)
-      ? [...value.changedPaths]
-      : value.changedPaths;
-  }
-  if (
-    Number(normalized.reportVersion) < 3 &&
-    !Object.hasOwn(value, 'engineProjectionPaths')
-  ) {
-    normalized.engineProjectionPaths = [];
-  }
-  return normalized;
-}
-
 function assertPlanningTransitionReport(
   value: unknown,
 ): asserts value is PlanningTransitionReport {
@@ -267,7 +185,7 @@ function assertPlanningTransitionReport(
   if (
     !hasExactKeys(value, exactKeys) ||
     value.schemaVersion !== 1 ||
-    ![1, 2, 3].includes(Number(value.reportVersion)) ||
+    value.reportVersion !== 3 ||
     value.kind !== 'planning-transition' ||
     !['plan', 'amend-plan'].includes(String(value.transition)) ||
     !['introduction', 'revision'].includes(String(value.transitionKind)) ||
@@ -306,11 +224,7 @@ function isAmendmentRecord(
 ): value is PlanningAmendmentRecord {
   if (report.transition === 'plan') return value === null;
   if (report.transition !== 'amend-plan' || !isRecord(value)) return false;
-  if (value.status === 'not-recorded') {
-    return report.reportVersion === 1 && hasExactKeys(value, ['status']);
-  }
   if (
-    ![2, 3].includes(Number(report.reportVersion)) ||
     value.status !== 'recorded' ||
     !hasExactKeys(value, [
       'amendsPlanningGeneration',
@@ -436,9 +350,6 @@ function isArchiveApplicability(
   value: unknown,
 ): value is ArchiveApplicabilityRecord {
   if (!isRecord(value)) return false;
-  if (value.status === 'not-recorded') {
-    return hasExactKeys(value, ['status']);
-  }
   return (
     value.status === 'passed' &&
     hasExactKeys(value, [
@@ -536,8 +447,8 @@ function isTaskProjection(
 ): value is PlanningTransitionReport['tasks'] {
   return (
     isRecord(value) &&
-    // A record written before amendments existed carries two keys; one that
-    // reopened work carries the named list as well.
+    // A plan transition carries two keys; an amendment that reopened work
+    // carries the named list as well.
     (hasExactKeys(value, ['after', 'before']) ||
       hasExactKeys(value, ['after', 'before', 'reopened'])) &&
     (value.before === null || isTaskStates(value.before)) &&
