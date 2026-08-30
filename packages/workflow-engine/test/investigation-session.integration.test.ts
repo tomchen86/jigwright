@@ -6839,6 +6839,33 @@ test('session loading rejects a checkpoint copied from another investigation', (
   }
 });
 
+test('session loading rejects persisted omission of both current revision clocks', () => {
+  const fixture = investigationFixture(
+    'invocation-session-revision-clock-omission',
+  );
+  try {
+    const started = startFixture(fixture);
+    const persistedPath = sessionPath(fixture, started.investigationId);
+    const persisted = JSON.parse(
+      fs.readFileSync(persistedPath, 'utf8'),
+    ) as Record<string, unknown>;
+    assert.equal(persisted.semanticRevision, started.semanticRevision);
+    assert.equal(persisted.lifecycleRevision, started.lifecycleRevision);
+    delete persisted.semanticRevision;
+    delete persisted.lifecycleRevision;
+    const poisonedBytes = Buffer.from(`${canonicalJson(persisted)}\n`, 'utf8');
+    fs.writeFileSync(persistedPath, poisonedBytes, { mode: 0o600 });
+
+    assert.throws(
+      () => readInvestigationSession(fixture.paths, started.investigationId),
+      (error) => isWorkflowError(error, 'INVESTIGATION_SESSION_INVALID'),
+    );
+    assert.deepEqual(fs.readFileSync(persistedPath), poisonedBytes);
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
 test('baseline drift and unsafe durable files fail closed', () => {
   const driftFixture = investigationFixture('invocation-baseline-drift');
   const modeFixture = investigationFixture('invocation-session-mode');

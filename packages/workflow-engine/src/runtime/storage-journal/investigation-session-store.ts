@@ -3860,21 +3860,14 @@ export function writeHumanResolutionReceipt(
 }
 
 function assertInvestigationSession(value: unknown): InvestigationSession {
-  const hasSemanticRevision =
-    isRecord(value) &&
-    Object.prototype.hasOwnProperty.call(value, 'semanticRevision');
-  const hasLifecycleRevision =
-    isRecord(value) &&
-    Object.prototype.hasOwnProperty.call(value, 'lifecycleRevision');
   if (
     !isRecord(value) ||
     !hasExactKeys(value, [
       'schemaVersion',
       'investigationId',
       'revision',
-      ...(hasSemanticRevision && hasLifecycleRevision
-        ? ['semanticRevision', 'lifecycleRevision']
-        : []),
+      'semanticRevision',
+      'lifecycleRevision',
       'state',
       'changeId',
       ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
@@ -3916,15 +3909,12 @@ function assertInvestigationSession(value: unknown): InvestigationSession {
     typeof value.investigationId !== 'string' ||
     !Number.isSafeInteger(value.revision) ||
     (value.revision as number) < 0 ||
-    hasSemanticRevision !== hasLifecycleRevision ||
-    (hasSemanticRevision &&
-      (!Number.isSafeInteger(value.semanticRevision) ||
-        (value.semanticRevision as number) < 0 ||
-        !Number.isSafeInteger(value.lifecycleRevision) ||
-        (value.lifecycleRevision as number) < 0 ||
-        (value.semanticRevision as number) >
-          (value.lifecycleRevision as number) ||
-        value.lifecycleRevision !== value.revision)) ||
+    !Number.isSafeInteger(value.semanticRevision) ||
+    (value.semanticRevision as number) < 0 ||
+    !Number.isSafeInteger(value.lifecycleRevision) ||
+    (value.lifecycleRevision as number) < 0 ||
+    (value.semanticRevision as number) > (value.lifecycleRevision as number) ||
+    value.lifecycleRevision !== value.revision ||
     typeof value.changeId !== 'string' ||
     (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
       !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
@@ -3970,15 +3960,7 @@ function assertInvestigationSession(value: unknown): InvestigationSession {
   ) {
     throw sessionInvalid();
   }
-  const session = (
-    hasSemanticRevision
-      ? value
-      : {
-          ...value,
-          semanticRevision: value.revision,
-          lifecycleRevision: value.revision,
-        }
-  ) as InvestigationSession;
+  const session = value as InvestigationSession;
   if (
     session.state !== deriveInvestigationSessionState(session) ||
     !milestonesBelongToSession(session)
