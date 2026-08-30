@@ -696,6 +696,7 @@ test('an engine-produced v3 blocker becomes a durable central challenge and stat
           claim: 'fresh-local-device-owner',
           proofDigest: `sha256:${'4'.repeat(64)}`,
           identity: null,
+          portableEvidence: null,
         },
       ],
       createdAt: stored.challenge.issuedAt,

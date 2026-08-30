@@ -100,6 +100,7 @@ test('v2 vectors anchor Central Grant challenge, ApprovalSubject, and registered
     parameterSchemaDigest: `sha256:${string}`;
     consequenceDigest: `sha256:${string}`;
     resolutionKind: 'non-retry';
+    allowedApprovalMethods: readonly ('human-presence' | 'ssh')[];
   };
   const definition: TransitionDefinition<{ resume: true }> = {
     transitionId: request.candidate.transitionId,

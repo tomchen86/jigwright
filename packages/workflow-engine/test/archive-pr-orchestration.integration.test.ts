@@ -1051,6 +1051,7 @@ function completePublicationGrant(
         claim: 'fresh-local-device-owner',
         proofDigest: digest('grant-proof'),
         identity: null,
+        portableEvidence: null,
       },
     ],
     createdAt: now.toISOString(),

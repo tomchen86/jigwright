@@ -112,15 +112,16 @@
         "registry": {
           "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
           "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-          "resolutionKind": "non-retry"
+          "resolutionKind": "non-retry",
+          "allowedApprovalMethods": ["human-presence", "ssh"]
         },
         "challengeId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
         "issuedAt": "2026-08-24T00:00:00.000Z",
         "expiresAt": "2026-08-24T00:10:00.000Z",
         "sessionNonce": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "challengeDigest": "sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b",
-        "choiceId": "sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d",
-        "approvalSubjectDigest": "sha256:3a76e9a588d1cbd3da226b1e26af17c813f867ef864131506a0d3a20b60c4ee3",
+        "challengeDigest": "sha256:58a6129429c8587b5dad7e6b4e1237700aca422c962164991f6f811f42f39c5f",
+        "choiceId": "sha256:bf8bac1fa6384b5a80c192e1e6e1c6bcf9d7b2e385498b6f30e04f0df5021afe",
+        "approvalSubjectDigest": "sha256:d8b07698ed8d396586a9b3b32e7c64c34dd52bf617adc0135de368daf40db63d",
         "grantRecord": {
           "schemaVersion": 1,
           "kind": "grant-record.v1",
@@ -141,7 +142,7 @@
             },
             "choices": [
               {
-                "choiceId": "sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d",
+                "choiceId": "sha256:bf8bac1fa6384b5a80c192e1e6e1c6bcf9d7b2e385498b6f30e04f0df5021afe",
                 "transitionId": "vector-transition",
                 "parameters": {
                   "resume": true
@@ -150,6 +151,7 @@
                 "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 "resolutionKind": "non-retry",
+                "allowedApprovalMethods": ["human-presence", "ssh"],
                 "allowedReasonCodes": ["approved-for-vector"],
                 "reasonRequired": true,
                 "proposedReason": "Continue the vector transition."
@@ -157,12 +159,12 @@
             ],
             "issuedAt": "2026-08-24T00:00:00.000Z",
             "expiresAt": "2026-08-24T00:10:00.000Z",
-            "challengeDigest": "sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b"
+            "challengeDigest": "sha256:58a6129429c8587b5dad7e6b4e1237700aca422c962164991f6f811f42f39c5f"
           },
           "recordedAt": "2026-08-24T00:00:00.000Z"
         },
-        "grantRecordCanonical": "{\"challenge\":{\"challengeDigest\":\"sha256:6d7b847c3c3c4495dbe759b64b49a47bac9e9306ae7b17f1dbae03cb6088a32b\",\"challengeId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"choices\":[{\"allowedReasonCodes\":[\"approved-for-vector\"],\"choiceId\":\"sha256:3d2ced6f99935dfe36aa50414ac80615235db28842055278e3ce56743e14855d\",\"consequenceDigest\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"parameterDigest\":\"sha256:0665d9c0c9b18ef7c608e4fafd182eda34bb11535093bace38b88653d9d5713f\",\"parameterSchemaDigest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"parameters\":{\"resume\":true},\"proposedReason\":\"Continue the vector transition.\",\"reasonRequired\":true,\"resolutionKind\":\"non-retry\",\"transitionId\":\"vector-transition\"}],\"expiresAt\":\"2026-08-24T00:10:00.000Z\",\"facts\":{\"reason\":\"fixture\"},\"factsDigest\":\"sha256:16364ed0baadddad793d8355c32d30688ac617752c60cf932ae5619554934437\",\"failureCode\":\"vector-blocked\",\"issuedAt\":\"2026-08-24T00:00:00.000Z\",\"kind\":\"grant-challenge.v1\",\"schemaVersion\":1,\"sourceModuleId\":\"vector-module\",\"stateBinding\":{\"digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"kind\":\"vector-state\"}},\"kind\":\"grant-record.v1\",\"recordedAt\":\"2026-08-24T00:00:00.000Z\",\"schemaVersion\":1,\"state\":\"pending\"}",
-        "grantRecordDigest": "sha256:da732ae5fa96227e7a167050c59b2c5b6608596ba1b46039ab3d84873aa5fb90"
+        "grantRecordCanonical": "{\"challenge\":{\"challengeDigest\":\"sha256:58a6129429c8587b5dad7e6b4e1237700aca422c962164991f6f811f42f39c5f\",\"challengeId\":\"aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa\",\"choices\":[{\"allowedApprovalMethods\":[\"human-presence\",\"ssh\"],\"allowedReasonCodes\":[\"approved-for-vector\"],\"choiceId\":\"sha256:bf8bac1fa6384b5a80c192e1e6e1c6bcf9d7b2e385498b6f30e04f0df5021afe\",\"consequenceDigest\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"parameterDigest\":\"sha256:0665d9c0c9b18ef7c608e4fafd182eda34bb11535093bace38b88653d9d5713f\",\"parameterSchemaDigest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\",\"parameters\":{\"resume\":true},\"proposedReason\":\"Continue the vector transition.\",\"reasonRequired\":true,\"resolutionKind\":\"non-retry\",\"transitionId\":\"vector-transition\"}],\"expiresAt\":\"2026-08-24T00:10:00.000Z\",\"facts\":{\"reason\":\"fixture\"},\"factsDigest\":\"sha256:16364ed0baadddad793d8355c32d30688ac617752c60cf932ae5619554934437\",\"failureCode\":\"vector-blocked\",\"issuedAt\":\"2026-08-24T00:00:00.000Z\",\"kind\":\"grant-challenge.v1\",\"schemaVersion\":1,\"sourceModuleId\":\"vector-module\",\"stateBinding\":{\"digest\":\"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\",\"kind\":\"vector-state\"}},\"kind\":\"grant-record.v1\",\"recordedAt\":\"2026-08-24T00:00:00.000Z\",\"schemaVersion\":1,\"state\":\"pending\"}",
+        "grantRecordDigest": "sha256:0b987ca4a9fa0da758a0210294ee40e36af3842724cfb978b6a3c6fbfc2bf85d"
       }
     ],
     "collaboration-grant-envelope": [
@@ -223,5 +225,5 @@
       }
     ]
   },
-  "vectorSetDigest": "sha256:dd6beaadb0251f63c816960ae235e046bd310168e275f3ef2576aad41dacb340"
+  "vectorSetDigest": "sha256:399029d0eb24c98862128980290153815beafa6d976a00e699b3cdb357f282c2"
 }

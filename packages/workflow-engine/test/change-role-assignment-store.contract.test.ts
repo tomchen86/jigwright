@@ -607,6 +607,7 @@ function roleAssignmentGrantProof(
     proofDigest: `sha256:${'9'.repeat(64)}`,
     verifiedAt: GRANT_NOW.toISOString(),
     identity: null,
+    portableEvidence: null,
   };
 }
 

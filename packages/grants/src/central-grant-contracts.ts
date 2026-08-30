@@ -9,16 +9,14 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import type {
-  CentralGrantChallengeV1,
-  CentralGrantChoiceV1,
+  CentralGrantChallengeV1 as CoreCentralGrantChallengeV1,
+  CentralGrantChoiceV1 as CoreCentralGrantChoiceV1,
   CentralGrantDigest,
 } from '@jigwright/core/central-grant-port';
 
 export type {
   CentralGrantChallengePortV1,
   CentralGrantChallengeRefV1,
-  CentralGrantChallengeV1,
-  CentralGrantChoiceV1,
   CentralGrantCompletedAuthorityRefV1,
   CentralGrantDigest,
   CentralGrantRequestInputV1,
@@ -40,6 +38,9 @@ const MODULE_IDENTITY = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*@[1-9][0-9]*$/;
 const MAX_CHALLENGE_TTL_MS = 30 * 60_000;
 const MAX_REASON_LENGTH = 2048;
 const MAX_DOCUMENT_BYTES = 1_048_576;
+const MAX_PORTABLE_PAYLOAD_BYTES = 65_536;
+const MAX_SIGNATURE_BYTES = 16_384;
+const SIGNATURE_NAMESPACE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 
 export const CENTRAL_GRANT_PUBLIC_CONTRACT_VERSION =
   'jigwright.central-grant.public.v1' as const;
@@ -55,6 +56,10 @@ export const APPROVAL_CLAIMS = [
 
 export type ApprovalClaim = (typeof APPROVAL_CLAIMS)[number];
 export type CentralGrantApprovalMethod = 'human-presence' | 'ssh';
+export type CentralGrantChoiceV1 =
+  CoreCentralGrantChoiceV1<CentralGrantApprovalMethod>;
+export type CentralGrantChallengeV1<TFacts = unknown> =
+  CoreCentralGrantChallengeV1<TFacts, CentralGrantApprovalMethod>;
 
 export type CentralGrantApprovalSubjectV1 = Readonly<{
   schemaVersion: 1;
@@ -100,6 +105,17 @@ export type CentralGrantProofModuleSummaryV1 = Readonly<{
   claim: ApprovalClaim;
   proofDigest: CentralGrantDigest;
   identity: string | null;
+  portableEvidence: CentralGrantSshPortableApprovalEvidenceV1 | null;
+}>;
+
+export type CentralGrantSshPortableApprovalEvidenceV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'grant-proof-ssh-portable-evidence.v1';
+  payload: string;
+  signature: string;
+  signatureNamespace: string;
+  identity: string;
+  verifiedAt: string;
 }>;
 
 export type CentralGrantAuditRecordV1 = Readonly<{
@@ -297,7 +313,7 @@ function assertPreparedFields(
     base.challenge,
     value.approvalSubject,
   );
-  const proofModules = assertProofModules(value.proofModules);
+  const proofModules = assertProofModules(value.proofModules, approvalSubject);
   assertProofMethod(approvalSubject, proofModules);
   const preparedAt = exactTimestamp(value.preparedAt);
   const issuedAt = exactTimestamp(base.challenge.issuedAt);
@@ -415,6 +431,7 @@ function assertChoice(value: unknown): CentralGrantChoiceV1 {
       'parameterSchemaDigest',
       'consequenceDigest',
       'resolutionKind',
+      'allowedApprovalMethods',
       'allowedReasonCodes',
       'reasonRequired',
       'proposedReason',
@@ -431,6 +448,7 @@ function assertChoice(value: unknown): CentralGrantChoiceV1 {
     !SHA256_DIGEST.test(value.consequenceDigest) ||
     (value.resolutionKind !== 'retry' &&
       value.resolutionKind !== 'non-retry') ||
+    !hasCanonicalApprovalMethods(value.allowedApprovalMethods) ||
     !Array.isArray(value.allowedReasonCodes) ||
     value.allowedReasonCodes.length < 1 ||
     !value.allowedReasonCodes.every(
@@ -456,6 +474,9 @@ function assertChoice(value: unknown): CentralGrantChoiceV1 {
     parameterSchemaDigest: value.parameterSchemaDigest as CentralGrantDigest,
     consequenceDigest: value.consequenceDigest as CentralGrantDigest,
     resolutionKind: value.resolutionKind as 'retry' | 'non-retry',
+    allowedApprovalMethods: Object.freeze([
+      ...value.allowedApprovalMethods,
+    ]) as readonly CentralGrantApprovalMethod[],
     allowedReasonCodes: Object.freeze([
       ...value.allowedReasonCodes,
     ]) as readonly string[],
@@ -539,6 +560,7 @@ function assertSubjectForChallenge(
   if (
     subject.challengeDigest !== challenge.challengeDigest ||
     choice === undefined ||
+    !choice.allowedApprovalMethods.includes(subject.approvalMethod) ||
     !choice.allowedReasonCodes.includes(subject.reasonCode) ||
     (choice.reasonRequired && subject.reason.length < 1) ||
     subject.stateDigest !== challenge.stateBinding.digest ||
@@ -551,6 +573,7 @@ function assertSubjectForChallenge(
 
 function assertProofModules(
   value: unknown[],
+  subject: CentralGrantApprovalSubjectV1,
 ): readonly CentralGrantProofModuleSummaryV1[] {
   if (value.length < 1) throw invalidDocument();
   const identities = new Set<string>();
@@ -564,6 +587,7 @@ function assertProofModules(
           'claim',
           'proofDigest',
           'identity',
+          'portableEvidence',
         ]) ||
         typeof candidate.moduleId !== 'string' ||
         !STABLE_ID.test(candidate.moduleId) ||
@@ -583,12 +607,32 @@ function assertProofModules(
       const identity = `${candidate.moduleId}@${candidate.version}:${candidate.claim}`;
       if (identities.has(identity)) throw invalidDocument();
       identities.add(identity);
+      const portableEvidence =
+        candidate.portableEvidence === null
+          ? null
+          : assertSshPortableApprovalEvidence(candidate.portableEvidence);
+      const isSshProof =
+        candidate.moduleId === 'grant-proof-ssh' &&
+        candidate.version === '1' &&
+        candidate.claim === 'ssh-signature';
+      if (
+        isSshProof
+          ? portableEvidence === null ||
+            candidate.identity !== portableEvidence.identity ||
+            candidate.proofDigest !== sha256(canonicalJson(portableEvidence)) ||
+            sha256(canonicalJson(subject)) !==
+              portableEvidenceApprovalSubjectDigest(portableEvidence)
+          : portableEvidence !== null
+      ) {
+        throw invalidDocument();
+      }
       return {
         moduleId: candidate.moduleId,
         version: candidate.version,
         claim: candidate.claim as ApprovalClaim,
         proofDigest: candidate.proofDigest as CentralGrantDigest,
         identity: candidate.identity,
+        portableEvidence,
       };
     }),
   );
@@ -602,11 +646,120 @@ function assertProofMethod(
   const proof = proofs[0]!;
   if (
     subject.approvalMethod === 'human-presence'
-      ? proof.claim !== 'fresh-local-device-owner' || proof.identity !== null
-      : proof.claim !== 'ssh-signature' || typeof proof.identity !== 'string'
+      ? proof.claim !== 'fresh-local-device-owner' ||
+        proof.identity !== null ||
+        proof.portableEvidence !== null
+      : proof.moduleId !== 'grant-proof-ssh' ||
+        proof.version !== '1' ||
+        proof.claim !== 'ssh-signature' ||
+        typeof proof.identity !== 'string' ||
+        proof.portableEvidence === null
   ) {
     throw invalidDocument();
   }
+}
+
+function assertSshPortableApprovalEvidence(
+  value: unknown,
+): CentralGrantSshPortableApprovalEvidenceV1 {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'payload',
+      'signature',
+      'signatureNamespace',
+      'identity',
+      'verifiedAt',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'grant-proof-ssh-portable-evidence.v1' ||
+    typeof value.payload !== 'string' ||
+    Buffer.byteLength(value.payload) > MAX_PORTABLE_PAYLOAD_BYTES ||
+    typeof value.signature !== 'string' ||
+    Buffer.byteLength(value.signature) < 1 ||
+    Buffer.byteLength(value.signature) > MAX_SIGNATURE_BYTES ||
+    /[\0\r]/u.test(value.signature) ||
+    typeof value.signatureNamespace !== 'string' ||
+    !SIGNATURE_NAMESPACE.test(value.signatureNamespace) ||
+    typeof value.identity !== 'string' ||
+    !IDENTITY.test(value.identity) ||
+    typeof value.verifiedAt !== 'string'
+  ) {
+    throw invalidDocument();
+  }
+  exactTimestamp(value.verifiedAt);
+  let payload: unknown;
+  try {
+    payload = JSON.parse(value.payload) as unknown;
+  } catch {
+    throw invalidDocument();
+  }
+  if (
+    !isRecord(payload) ||
+    !hasExactKeys(payload, [
+      'schemaVersion',
+      'kind',
+      'approvalSubject',
+      'approvalSubjectDigest',
+      'signerIdentity',
+    ]) ||
+    payload.schemaVersion !== 1 ||
+    payload.kind !== 'grant-proof-ssh-subject.v1' ||
+    typeof payload.approvalSubjectDigest !== 'string' ||
+    !SHA256_DIGEST.test(payload.approvalSubjectDigest) ||
+    typeof payload.signerIdentity !== 'string' ||
+    payload.signerIdentity !== value.identity
+  ) {
+    throw invalidDocument();
+  }
+  const subject = assertApprovalSubject(payload.approvalSubject);
+  if (
+    subject.approvalMethod !== 'ssh' ||
+    sha256(canonicalJson(subject)) !== payload.approvalSubjectDigest ||
+    value.payload !==
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'grant-proof-ssh-subject.v1',
+        approvalSubject: subject,
+        approvalSubjectDigest: payload.approvalSubjectDigest,
+        signerIdentity: payload.signerIdentity,
+      })
+  ) {
+    throw invalidDocument();
+  }
+  return freezeCanonical({
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload: value.payload,
+    signature: value.signature,
+    signatureNamespace: value.signatureNamespace,
+    identity: value.identity,
+    verifiedAt: value.verifiedAt,
+  });
+}
+
+function portableEvidenceApprovalSubjectDigest(
+  value: CentralGrantSshPortableApprovalEvidenceV1,
+): CentralGrantDigest {
+  const payload = JSON.parse(value.payload) as {
+    approvalSubjectDigest: CentralGrantDigest;
+  };
+  return payload.approvalSubjectDigest;
+}
+
+function hasCanonicalApprovalMethods(
+  value: unknown,
+): value is readonly CentralGrantApprovalMethod[] {
+  return (
+    Array.isArray(value) &&
+    (value.length === 1 || value.length === 2) &&
+    value.every((method) => method === 'human-presence' || method === 'ssh') &&
+    new Set(value).size === value.length &&
+    (value.length === 1 ||
+      (value[0] === 'human-presence' && value[1] === 'ssh'))
+  );
 }
 
 function assertOutcome(value: unknown): CentralGrantTransitionOutcomeV1 {

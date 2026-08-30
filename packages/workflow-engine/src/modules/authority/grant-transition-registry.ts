@@ -7,6 +7,7 @@ import {
 } from '../../foundation/errors/errors.ts';
 import type {
   ApprovalSubject,
+  GrantApprovalMethod,
   GrantChoice,
   StateBinding,
 } from './grant-core.ts';
@@ -67,6 +68,7 @@ export type TransitionDefinition<TParameters> = Readonly<{
   parameterSchemaDigest: `sha256:${string}`;
   consequenceDigest: `sha256:${string}`;
   resolutionKind: 'retry' | 'non-retry';
+  allowedApprovalMethods: readonly GrantApprovalMethod[];
   validateParameters(value: unknown): TParameters;
   renderTrustedChoice(parameters: TParameters): TrustedChoicePresentation;
   preparedDescendantTree?(
@@ -87,6 +89,7 @@ type TransitionRegistration = Readonly<{
   parameterSchemaDigest: `sha256:${string}`;
   consequenceDigest: `sha256:${string}`;
   resolutionKind: 'retry' | 'non-retry';
+  allowedApprovalMethods: readonly GrantApprovalMethod[];
   validateParameters(value: unknown): unknown;
   renderTrustedChoice(parameters: never): TrustedChoicePresentation;
   preparedDescendantTree?(parameters: never): PreparedGrantDescendantTreeV1;
@@ -104,6 +107,7 @@ export type RegisteredTransitionDefinition = Readonly<{
   parameterSchemaDigest: `sha256:${string}`;
   consequenceDigest: `sha256:${string}`;
   resolutionKind: 'retry' | 'non-retry';
+  allowedApprovalMethods: readonly GrantApprovalMethod[];
   validateParameters(value: unknown): unknown;
   renderTrustedChoice(parameters: unknown): TrustedChoicePresentation;
   preparedDescendantTree?(parameters: unknown): PreparedGrantDescendantTreeV1;
@@ -148,6 +152,9 @@ export function createTransitionRegistry(
         parameterSchemaDigest: candidate.parameterSchemaDigest,
         consequenceDigest: candidate.consequenceDigest,
         resolutionKind: candidate.resolutionKind,
+        allowedApprovalMethods: Object.freeze([
+          ...candidate.allowedApprovalMethods,
+        ]),
         validateParameters: (value: unknown) =>
           candidate.validateParameters(value),
         renderTrustedChoice: (parameters: unknown) =>
@@ -212,7 +219,11 @@ export function createTransitionRegistry(
       if (
         definition.parameterSchemaDigest !== choice.parameterSchemaDigest ||
         definition.consequenceDigest !== choice.consequenceDigest ||
-        definition.resolutionKind !== choice.resolutionKind
+        definition.resolutionKind !== choice.resolutionKind ||
+        !sameApprovalMethods(
+          definition.allowedApprovalMethods,
+          choice.allowedApprovalMethods,
+        )
       ) {
         throw transitionInvalid(
           'GRANT_TRANSITION_DEFINITION_CHANGED',
@@ -238,6 +249,7 @@ function assertDefinition(value: TransitionRegistration): void {
     !SHA256_DIGEST.test(value.parameterSchemaDigest) ||
     !SHA256_DIGEST.test(value.consequenceDigest) ||
     !['retry', 'non-retry'].includes(value.resolutionKind) ||
+    !hasCanonicalApprovalMethods(value.allowedApprovalMethods) ||
     typeof value.validateParameters !== 'function' ||
     typeof value.renderTrustedChoice !== 'function' ||
     (value.preparedDescendantTree !== undefined &&
@@ -250,6 +262,29 @@ function assertDefinition(value: TransitionRegistration): void {
       'A code-owned transition definition is malformed.',
     );
   }
+}
+
+function hasCanonicalApprovalMethods(
+  value: readonly GrantApprovalMethod[],
+): boolean {
+  return (
+    Array.isArray(value) &&
+    (value.length === 1 || value.length === 2) &&
+    value.every((method) => method === 'human-presence' || method === 'ssh') &&
+    new Set(value).size === value.length &&
+    (value.length === 1 ||
+      (value[0] === 'human-presence' && value[1] === 'ssh'))
+  );
+}
+
+function sameApprovalMethods(
+  left: readonly GrantApprovalMethod[],
+  right: readonly GrantApprovalMethod[],
+): boolean {
+  return (
+    left.length === right.length &&
+    left.every((method, index) => method === right[index])
+  );
 }
 
 function validatePresentation(

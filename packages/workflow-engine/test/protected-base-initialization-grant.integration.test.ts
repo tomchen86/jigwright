@@ -397,6 +397,7 @@ function successfulHumanPresenceSession(
           proofDigest: digest('human-presence-proof'),
           verifiedAt: NOW.toISOString(),
           identity: null,
+          portableEvidence: null,
         },
       ];
     },

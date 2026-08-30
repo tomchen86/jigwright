@@ -36,8 +36,11 @@ export type StateBinding = CentralGrantStateBindingV1;
 export type TransitionCandidate = CentralGrantTransitionCandidateV1;
 export type GrantRequestInput<TFacts = unknown> =
   CentralGrantRequestInputV1<TFacts>;
-export type GrantChoice = CentralGrantChoiceV1;
-export type GrantChallenge = CentralGrantChallengeV1;
+export type GrantChoice = CentralGrantChoiceV1<GrantApprovalMethod>;
+export type GrantChallenge = CentralGrantChallengeV1<
+  unknown,
+  GrantApprovalMethod
+>;
 export type GrantChallengeRef = CentralGrantChallengeRefV1;
 
 export type ApprovalSubject = Readonly<{
@@ -170,6 +173,12 @@ export function createApprovalSubject(
     throw grantInvalid(
       'GRANT_APPROVAL_METHOD_INVALID',
       'Selected grant approval method is unavailable.',
+    );
+  }
+  if (!choice.allowedApprovalMethods.includes(decision.approvalMethod)) {
+    throw grantInvalid(
+      'GRANT_APPROVAL_METHOD_NOT_ALLOWED',
+      'Selected grant approval method is not allowed for this transition.',
     );
   }
   if (
@@ -394,6 +403,9 @@ function createChoice(
     parameterSchemaDigest: normalized.definition.parameterSchemaDigest,
     consequenceDigest: normalized.definition.consequenceDigest,
     resolutionKind: normalized.definition.resolutionKind,
+    allowedApprovalMethods: Object.freeze([
+      ...normalized.definition.allowedApprovalMethods,
+    ]),
     allowedReasonCodes,
     reasonRequired: candidate.reasonRequired,
     proposedReason,
@@ -415,6 +427,7 @@ function assertGrantChoice(value: unknown): GrantChoice {
       'parameterSchemaDigest',
       'consequenceDigest',
       'resolutionKind',
+      'allowedApprovalMethods',
       'allowedReasonCodes',
       'reasonRequired',
       'proposedReason',
@@ -430,6 +443,7 @@ function assertGrantChoice(value: unknown): GrantChoice {
     typeof value.consequenceDigest !== 'string' ||
     !SHA256_DIGEST.test(value.consequenceDigest) ||
     !['retry', 'non-retry'].includes(String(value.resolutionKind)) ||
+    !hasCanonicalApprovalMethods(value.allowedApprovalMethods) ||
     !Array.isArray(value.allowedReasonCodes) ||
     value.allowedReasonCodes.length < 1 ||
     !value.allowedReasonCodes.every(
@@ -457,6 +471,9 @@ function assertGrantChoice(value: unknown): GrantChoice {
     parameterSchemaDigest: value.parameterSchemaDigest as `sha256:${string}`,
     consequenceDigest: value.consequenceDigest as `sha256:${string}`,
     resolutionKind: value.resolutionKind as 'retry' | 'non-retry',
+    allowedApprovalMethods: Object.freeze([
+      ...value.allowedApprovalMethods,
+    ]) as readonly GrantApprovalMethod[],
     allowedReasonCodes: Object.freeze([
       ...value.allowedReasonCodes,
     ]) as readonly string[],
@@ -473,6 +490,19 @@ function assertGrantChoice(value: unknown): GrantChoice {
     choiceId: value.choiceId as `sha256:${string}`,
     ...choicePayload,
   });
+}
+
+function hasCanonicalApprovalMethods(
+  value: unknown,
+): value is readonly GrantApprovalMethod[] {
+  return (
+    Array.isArray(value) &&
+    (value.length === 1 || value.length === 2) &&
+    value.every((method) => method === 'human-presence' || method === 'ssh') &&
+    new Set(value).size === value.length &&
+    (value.length === 1 ||
+      (value[0] === 'human-presence' && value[1] === 'ssh'))
+  );
 }
 
 function canonicalReason(value: string, required: boolean): string {

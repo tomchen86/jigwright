@@ -41,6 +41,10 @@ test('a domain module supplies facts and candidate IDs while the registry suppli
     PARAMETER_SCHEMA_DIGEST,
   );
   assert.equal(challenge.choices[0]?.consequenceDigest, CONSEQUENCE_DIGEST);
+  assert.deepEqual(challenge.choices[0]?.allowedApprovalMethods, [
+    'human-presence',
+    'ssh',
+  ]);
   assert.equal(
     challenge.choices[0]?.proposedReason,
     'The reviewer budget is exhausted and the investigation cannot continue.',
@@ -52,6 +56,45 @@ test('a domain module supplies facts and candidate IDs while the registry suppli
   assert.match(challenge.challengeDigest, /^sha256:[0-9a-f]{64}$/);
   assert.equal(Object.isFrozen(challenge), true);
   assert.equal(Object.isFrozen(challenge.choices), true);
+});
+
+test('the code-owned transition binds exact approval methods into the choice and subject', () => {
+  const registry = createTransitionRegistry([abortDefinition(['ssh'])]);
+  const challenge = createGrantChallenge(request(), registry, {
+    challengeId: '88888888-8888-4888-8888-888888888888',
+    now: NOW,
+    expiresAt: EXPIRES_AT,
+  });
+  assert.deepEqual(challenge.choices[0]?.allowedApprovalMethods, ['ssh']);
+  assert.throws(
+    () =>
+      createApprovalSubject(
+        challenge,
+        {
+          choiceId: challenge.choices[0]!.choiceId,
+          approvalMethod: 'human-presence',
+          reasonCode: 'cannot-complete-review',
+          reason: 'Try a method excluded by the exact transition.',
+          sessionNonce: 'nonce-88888888888888888888888888888888',
+        },
+        { now: NOW },
+      ),
+    (error) => isWorkflowError(error, 'GRANT_APPROVAL_METHOD_NOT_ALLOWED'),
+  );
+  assert.equal(
+    createApprovalSubject(
+      challenge,
+      {
+        choiceId: challenge.choices[0]!.choiceId,
+        approvalMethod: 'ssh',
+        reasonCode: 'cannot-complete-review',
+        reason: 'Use the only method admitted by the transition.',
+        sessionNonce: 'nonce-99999999999999999999999999999999',
+      },
+      { now: NOW },
+    ).approvalMethod,
+    'ssh',
+  );
 });
 
 test('the producer boundary rejects caller labels, callbacks, unknown transitions, and retry-only choices', () => {
@@ -242,12 +285,22 @@ function request(): GrantRequestInput {
 
 function abortDefinition(): TransitionDefinition<{
   terminalReason: string;
-}> {
+}>;
+function abortDefinition(
+  allowedApprovalMethods: readonly ('human-presence' | 'ssh')[],
+): TransitionDefinition<{ terminalReason: string }>;
+function abortDefinition(
+  allowedApprovalMethods: readonly ('human-presence' | 'ssh')[] = [
+    'human-presence',
+    'ssh',
+  ],
+): TransitionDefinition<{ terminalReason: string }> {
   return {
     transitionId: 'investigation.abort.v1',
     parameterSchemaDigest: PARAMETER_SCHEMA_DIGEST,
     consequenceDigest: CONSEQUENCE_DIGEST,
     resolutionKind: 'non-retry',
+    allowedApprovalMethods,
     validateParameters(value) {
       assert.deepEqual(value, {
         terminalReason: 'reviewer-terms-exhausted',
@@ -275,6 +328,7 @@ function retryDefinition(): TransitionDefinition<Record<string, never>> {
     parameterSchemaDigest: digest('4'),
     consequenceDigest: digest('5'),
     resolutionKind: 'retry',
+    allowedApprovalMethods: ['human-presence', 'ssh'],
     validateParameters(value) {
       assert.deepEqual(value, {});
       return {};

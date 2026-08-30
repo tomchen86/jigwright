@@ -4,9 +4,15 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import {
+  assertSshPortableApprovalEvidenceV1,
+  sshPortableApprovalEvidenceDigest,
+  type VerifiedApprovalProof,
+} from '../src/modules/authority/grant-approval.ts';
 import {
   createGrantCoordinatorKernel,
+  type GrantAuthenticationRequest,
   type GrantApprovalSession,
   type TrustedGrantPresentation,
 } from '../src/modules/authority/grant-coordinator.ts';
@@ -110,8 +116,8 @@ test('SSH is selected instead of local presence and records credential assurance
               sessionNonce: 'nonce-77777777777777777777777777777777',
             };
           },
-          async authenticate({ approvalSubjectDigest }) {
-            return [sshProof(approvalSubjectDigest)];
+          async authenticate(request) {
+            return [sshProof(request)];
           },
           async close() {},
         };
@@ -131,6 +137,118 @@ test('SSH is selected instead of local presence and records credential assurance
       presenceAssurance: 'not-asserted',
       proofModules: ['grant-proof-ssh@1'],
     });
+  });
+});
+
+test('a local-presence decision cannot reach authentication or prepare for an ssh-only transition', async () => {
+  await withRuntime(async (runtimeRoot) => {
+    let authenticated = false;
+    let effects = 0;
+    const definition = abortDefinition(
+      {
+        observe: () => binding('1'),
+        execute: () => {
+          effects += 1;
+        },
+      },
+      ['ssh'],
+    );
+    const coordinator = coordinatorFixture(runtimeRoot, definition, {
+      enableSsh: true,
+      openSession(presentation) {
+        assert.deepEqual(presentation.choices[0]?.allowedApprovalMethods, [
+          'ssh',
+        ]);
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              approvalMethod: 'human-presence',
+              reasonCode: 'cannot-complete-review',
+              reason: 'Try local presence against a portable-only transition.',
+              sessionNonce: 'nonce-12121212121212121212121212121212',
+            };
+          },
+          async authenticate() {
+            authenticated = true;
+            return [];
+          },
+          async close() {},
+        };
+      },
+    });
+    await coordinator.requestGrant(request());
+
+    await assert.rejects(coordinator.resolveChallenge(CHALLENGE_ID), (error) =>
+      isWorkflowError(error, 'GRANT_APPROVAL_METHOD_NOT_ALLOWED'),
+    );
+    assert.equal(authenticated, false);
+    assert.equal(effects, 0);
+    assert.equal(
+      readGrantRecord(grantStorePaths(runtimeRoot), CHALLENGE_ID).state,
+      'pending',
+    );
+  });
+});
+
+test('prepared SSH recovery preserves the exact portable proof evidence', async () => {
+  await withRuntime(async (runtimeRoot) => {
+    let state = binding('1');
+    let attempts = 0;
+    const definition = abortDefinition(
+      {
+        observe: () => state,
+        execute: () => {
+          attempts += 1;
+          if (attempts === 1) throw new Error('simulated portable crash');
+          state = binding('9');
+        },
+      },
+      ['ssh'],
+    );
+    const coordinator = coordinatorFixture(runtimeRoot, definition, {
+      enableSsh: true,
+      openSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              approvalMethod: 'ssh',
+              reasonCode: 'cannot-complete-review',
+              reason: 'Preserve portable proof across recovery.',
+              sessionNonce: 'nonce-13131313131313131313131313131313',
+            };
+          },
+          async authenticate(request) {
+            return [sshProof(request)];
+          },
+          async close() {},
+        };
+      },
+    });
+    await coordinator.requestGrant(request());
+    await assert.rejects(
+      coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated portable crash/u,
+    );
+    const prepared = readGrantRecord(
+      grantStorePaths(runtimeRoot),
+      CHALLENGE_ID,
+    );
+    assert.equal(prepared.state, 'prepared');
+    if (prepared.state !== 'prepared') assert.fail('expected prepared record');
+    const evidence = prepared.proofModules[0]?.portableEvidence;
+    assert.equal(evidence?.kind, 'grant-proof-ssh-portable-evidence.v1');
+
+    await coordinator.recoverChallenge(CHALLENGE_ID);
+    const terminal = readGrantRecord(
+      grantStorePaths(runtimeRoot),
+      CHALLENGE_ID,
+    );
+    assert.equal(terminal.state, 'completed');
+    if (terminal.state !== 'completed') assert.fail('expected terminal record');
+    assert.deepEqual(terminal.proofModules[0]?.portableEvidence, evidence);
+    assert.equal(attempts, 2);
   });
 });
 
@@ -1010,6 +1128,7 @@ function assertTrustedPresentation(
     transitionId: 'investigation.abort.v1',
     title: 'Abort investigation',
     consequences: ['The investigation becomes terminal.'],
+    allowedApprovalMethods: ['human-presence', 'ssh'],
     allowedReasonCodes: ['cannot-complete-review'],
     reasonRequired: true,
     proposedReason:
@@ -1017,15 +1136,22 @@ function assertTrustedPresentation(
   });
 }
 
-function abortDefinition(options: {
-  observe: () => StateBinding;
-  execute: (context: { operationId: string }) => void;
-}): TransitionDefinition<{ terminalReason: string }> {
+function abortDefinition(
+  options: {
+    observe: () => StateBinding;
+    execute: (context: { operationId: string }) => void;
+  },
+  allowedApprovalMethods: readonly ('human-presence' | 'ssh')[] = [
+    'human-presence',
+    'ssh',
+  ],
+): TransitionDefinition<{ terminalReason: string }> {
   return {
     transitionId: 'investigation.abort.v1',
     parameterSchemaDigest: digest('2'),
     consequenceDigest: digest('3'),
     resolutionKind: 'non-retry',
+    allowedApprovalMethods,
     validateParameters(value) {
       assert.deepEqual(value, { terminalReason: 'reviewer-terms-exhausted' });
       return value as { terminalReason: string };
@@ -1125,18 +1251,37 @@ function humanProof(subjectDigest: `sha256:${string}`): VerifiedApprovalProof {
     proofDigest: digest('4'),
     verifiedAt: NOW.toISOString(),
     identity: null,
+    portableEvidence: null,
   };
 }
 
-function sshProof(subjectDigest: `sha256:${string}`): VerifiedApprovalProof {
+function sshProof(request: GrantAuthenticationRequest): VerifiedApprovalProof {
+  const identity = 'fixture-maintainer';
+  const verifiedAt = NOW.toISOString();
+  const portableEvidence = assertSshPortableApprovalEvidenceV1({
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload: canonicalJson({
+      schemaVersion: 1,
+      kind: 'grant-proof-ssh-subject.v1',
+      approvalSubject: request.approvalSubject,
+      approvalSubjectDigest: request.approvalSubjectDigest,
+      signerIdentity: identity,
+    }),
+    signature: 'fixture-portable-signature',
+    signatureNamespace: 'jigwright.workflow.grant-proof.v1',
+    identity,
+    verifiedAt,
+  });
   return {
     moduleId: 'grant-proof-ssh',
     version: '1',
     claims: ['ssh-signature'],
-    approvalSubjectDigest: subjectDigest,
-    proofDigest: digest('7'),
-    verifiedAt: NOW.toISOString(),
-    identity: 'fixture-maintainer',
+    approvalSubjectDigest: request.approvalSubjectDigest,
+    proofDigest: sshPortableApprovalEvidenceDigest(portableEvidence),
+    verifiedAt,
+    identity,
+    portableEvidence,
   };
 }
 

@@ -1,3 +1,4 @@
+import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { ApprovalClaim, GrantPolicyV2 } from './grant-policy.ts';
@@ -7,10 +8,26 @@ import {
   GRANT_STABLE_ID as STABLE_ID,
   grantHasExactKeys as hasExactKeys,
   grantSameStrings as sameStrings,
+  grantSha256,
+  parseGrantTimestamp,
 } from './grant-primitives.ts';
-import type { GrantProofModuleSummary } from '../../runtime/storage-journal/grant-store.ts';
+import { approvalSubjectDigest, assertApprovalSubject } from './grant-core.ts';
 
 const MODULE_VERSION = /^[1-9][0-9]*$/;
+const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$/;
+const SIGNATURE_NAMESPACE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
+const MAX_PORTABLE_PAYLOAD_BYTES = 65_536;
+const MAX_SIGNATURE_BYTES = 16_384;
+
+export type SshPortableApprovalEvidenceV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'grant-proof-ssh-portable-evidence.v1';
+  payload: string;
+  signature: string;
+  signatureNamespace: string;
+  identity: string;
+  verifiedAt: string;
+}>;
 
 export type VerifiedApprovalProof = Readonly<{
   moduleId: string;
@@ -20,6 +37,16 @@ export type VerifiedApprovalProof = Readonly<{
   proofDigest: `sha256:${string}`;
   verifiedAt: string;
   identity: string | null;
+  portableEvidence: SshPortableApprovalEvidenceV1 | null;
+}>;
+
+export type GrantProofModuleSummary = Readonly<{
+  moduleId: string;
+  version: string;
+  claim: ApprovalClaim;
+  proofDigest: `sha256:${string}`;
+  identity: string | null;
+  portableEvidence: SshPortableApprovalEvidenceV1 | null;
 }>;
 
 export type EvaluatedApprovalProfile = Readonly<{
@@ -74,6 +101,17 @@ export function evaluateApprovalProfile(
     ) {
       throw approvalInvalid();
     }
+    if (
+      proof.portableEvidence !== null &&
+      (policy.optionalSsh === undefined ||
+        proof.portableEvidence.signatureNamespace !==
+          policy.optionalSsh.signatureNamespace ||
+        !policy.optionalSsh.trustedSigners.some(
+          ({ identity }) => identity === proof.portableEvidence?.identity,
+        ))
+    ) {
+      throw approvalInvalid();
+    }
     for (const claim of proof.claims) {
       if (claimed.has(claim)) throw approvalInvalid();
       claimed.add(claim);
@@ -83,6 +121,7 @@ export function evaluateApprovalProfile(
         claim,
         proofDigest: proof.proofDigest,
         identity: proof.identity,
+        portableEvidence: proof.portableEvidence,
       });
     }
   }
@@ -114,6 +153,7 @@ function assertVerifiedApprovalProof(value: unknown): VerifiedApprovalProof {
       'proofDigest',
       'verifiedAt',
       'identity',
+      'portableEvidence',
     ]) ||
     typeof value.moduleId !== 'string' ||
     !STABLE_ID.test(value.moduleId) ||
@@ -133,8 +173,7 @@ function assertVerifiedApprovalProof(value: unknown): VerifiedApprovalProof {
     typeof value.verifiedAt !== 'string' ||
     !(
       value.identity === null ||
-      (typeof value.identity === 'string' &&
-        /^[A-Za-z0-9][A-Za-z0-9._@+-]{0,127}$/.test(value.identity))
+      (typeof value.identity === 'string' && IDENTITY.test(value.identity))
     )
   ) {
     throw approvalInvalid();
@@ -146,7 +185,132 @@ function assertVerifiedApprovalProof(value: unknown): VerifiedApprovalProof {
   ) {
     throw approvalInvalid();
   }
-  return freezeCanonical(value) as unknown as VerifiedApprovalProof;
+  const portableEvidence =
+    value.portableEvidence === null
+      ? null
+      : assertSshPortableApprovalEvidenceV1(value.portableEvidence);
+  const isSshProof =
+    value.moduleId === 'grant-proof-ssh' &&
+    value.version === '1' &&
+    sameStrings(value.claims, ['ssh-signature']);
+  if (
+    isSshProof
+      ? portableEvidence === null ||
+        value.identity !== portableEvidence.identity ||
+        value.verifiedAt !== portableEvidence.verifiedAt ||
+        value.approvalSubjectDigest !==
+          sshPortableApprovalEvidenceSubjectDigest(portableEvidence) ||
+        value.proofDigest !==
+          sshPortableApprovalEvidenceDigest(portableEvidence)
+      : portableEvidence !== null
+  ) {
+    throw approvalInvalid();
+  }
+  return freezeCanonical({
+    moduleId: value.moduleId,
+    version: value.version,
+    claims: [...value.claims],
+    approvalSubjectDigest: value.approvalSubjectDigest,
+    proofDigest: value.proofDigest,
+    verifiedAt: verifiedAt.toISOString(),
+    identity: value.identity,
+    portableEvidence,
+  }) as unknown as VerifiedApprovalProof;
+}
+
+export function assertSshPortableApprovalEvidenceV1(
+  value: unknown,
+): SshPortableApprovalEvidenceV1 {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'payload',
+      'signature',
+      'signatureNamespace',
+      'identity',
+      'verifiedAt',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'grant-proof-ssh-portable-evidence.v1' ||
+    typeof value.payload !== 'string' ||
+    Buffer.byteLength(value.payload) > MAX_PORTABLE_PAYLOAD_BYTES ||
+    typeof value.signature !== 'string' ||
+    Buffer.byteLength(value.signature) < 1 ||
+    Buffer.byteLength(value.signature) > MAX_SIGNATURE_BYTES ||
+    /[\0\r]/.test(value.signature) ||
+    typeof value.signatureNamespace !== 'string' ||
+    !SIGNATURE_NAMESPACE.test(value.signatureNamespace) ||
+    typeof value.identity !== 'string' ||
+    !IDENTITY.test(value.identity) ||
+    typeof value.verifiedAt !== 'string' ||
+    parseGrantTimestamp(value.verifiedAt) === null
+  ) {
+    throw approvalInvalid();
+  }
+  let payload: unknown;
+  try {
+    payload = JSON.parse(value.payload) as unknown;
+  } catch {
+    throw approvalInvalid();
+  }
+  if (
+    !isRecord(payload) ||
+    !hasExactKeys(payload, [
+      'schemaVersion',
+      'kind',
+      'approvalSubject',
+      'approvalSubjectDigest',
+      'signerIdentity',
+    ]) ||
+    payload.schemaVersion !== 1 ||
+    payload.kind !== 'grant-proof-ssh-subject.v1' ||
+    typeof payload.approvalSubjectDigest !== 'string' ||
+    !SHA256_DIGEST.test(payload.approvalSubjectDigest) ||
+    typeof payload.signerIdentity !== 'string' ||
+    payload.signerIdentity !== value.identity
+  ) {
+    throw approvalInvalid();
+  }
+  const subject = assertApprovalSubject(payload.approvalSubject);
+  if (
+    subject.approvalMethod !== 'ssh' ||
+    approvalSubjectDigest(subject) !== payload.approvalSubjectDigest ||
+    canonicalJson({
+      schemaVersion: 1,
+      kind: 'grant-proof-ssh-subject.v1',
+      approvalSubject: subject,
+      approvalSubjectDigest: payload.approvalSubjectDigest,
+      signerIdentity: payload.signerIdentity,
+    }) !== value.payload
+  ) {
+    throw approvalInvalid();
+  }
+  return freezeCanonical({
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload: value.payload,
+    signature: value.signature,
+    signatureNamespace: value.signatureNamespace,
+    identity: value.identity,
+    verifiedAt: value.verifiedAt,
+  });
+}
+
+export function sshPortableApprovalEvidenceDigest(
+  value: SshPortableApprovalEvidenceV1,
+): `sha256:${string}` {
+  return grantSha256(canonicalJson(assertSshPortableApprovalEvidenceV1(value)));
+}
+
+export function sshPortableApprovalEvidenceSubjectDigest(
+  value: SshPortableApprovalEvidenceV1,
+): `sha256:${string}` {
+  const payload = JSON.parse(value.payload) as {
+    approvalSubjectDigest: `sha256:${string}`;
+  };
+  return payload.approvalSubjectDigest;
 }
 
 function approvalInvalid() {

@@ -64,6 +64,25 @@ test('optional SSH proof is interactive, identity-bearing, and bound to the exac
   assert.deepEqual(proof.claims, ['ssh-signature']);
   assert.equal(proof.identity, 'fixture-maintainer');
   assert.equal(proof.approvalSubjectDigest, subjectDigest);
+  assert.deepEqual(proof.portableEvidence, {
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload: canonicalJson({
+      schemaVersion: 1,
+      kind: 'grant-proof-ssh-subject.v1',
+      approvalSubject: subject,
+      approvalSubjectDigest: subjectDigest,
+      signerIdentity: 'fixture-maintainer',
+    }),
+    signature: 'fixture-signature',
+    signatureNamespace: 'jigwright.workflow.grant-proof.v1',
+    identity: 'fixture-maintainer',
+    verifiedAt: '2026-08-18T04:01:00.000Z',
+  });
+  assert.equal(
+    proof.proofDigest,
+    sha256(canonicalJson(proof.portableEvidence)),
+  );
   assert.equal(calls[0], 'interactive');
   assert.match(calls[1]!, /^sign:jigwright\.workflow\.grant-proof\.v1:/);
   assert.match(calls[2]!, /^verify:jigwright\.workflow\.grant-proof\.v1:/);

@@ -158,6 +158,7 @@ export function providerInvocationCancellationTransitionDefinitions(
         PROVIDER_INVOCATION_CANCELLATION_PARAMETER_SCHEMA_DIGEST,
       consequenceDigest: PROVIDER_INVOCATION_CANCELLATION_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertProviderInvocationCancellationParameters,
       renderTrustedChoice(
         parameters: ProviderInvocationCancellationParametersV1,

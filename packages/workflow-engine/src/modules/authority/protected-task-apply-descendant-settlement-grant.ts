@@ -188,6 +188,7 @@ export function protectedTaskApplyDescendantSettlementTransitionDefinitions(
       consequenceDigest:
         PROTECTED_TASK_APPLY_DESCENDANT_SETTLEMENT_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertSettlementParameters,
       renderTrustedChoice(
         parameters: ProtectedTaskApplyDescendantSettlementParametersV1,

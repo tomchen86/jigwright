@@ -34,20 +34,25 @@ export type CentralGrantChallengeRefV1 = Readonly<{
   challengeDigest: CentralGrantDigest;
 }>;
 
-export type CentralGrantChoiceV1 = Readonly<{
-  choiceId: CentralGrantDigest;
-  transitionId: string;
-  parameters: unknown;
-  parameterDigest: CentralGrantDigest;
-  parameterSchemaDigest: CentralGrantDigest;
-  consequenceDigest: CentralGrantDigest;
-  resolutionKind: 'retry' | 'non-retry';
-  allowedReasonCodes: readonly string[];
-  reasonRequired: boolean;
-  proposedReason: string;
-}>;
+export type CentralGrantChoiceV1<TApprovalMethod extends string = string> =
+  Readonly<{
+    choiceId: CentralGrantDigest;
+    transitionId: string;
+    parameters: unknown;
+    parameterDigest: CentralGrantDigest;
+    parameterSchemaDigest: CentralGrantDigest;
+    consequenceDigest: CentralGrantDigest;
+    resolutionKind: 'retry' | 'non-retry';
+    allowedApprovalMethods: readonly TApprovalMethod[];
+    allowedReasonCodes: readonly string[];
+    reasonRequired: boolean;
+    proposedReason: string;
+  }>;
 
-export type CentralGrantChallengeV1<TFacts = unknown> = Readonly<{
+export type CentralGrantChallengeV1<
+  TFacts = unknown,
+  TApprovalMethod extends string = string,
+> = Readonly<{
   schemaVersion: 1;
   kind: 'grant-challenge.v1';
   challengeId: string;
@@ -56,7 +61,7 @@ export type CentralGrantChallengeV1<TFacts = unknown> = Readonly<{
   facts: TFacts;
   factsDigest: CentralGrantDigest;
   stateBinding: CentralGrantStateBindingV1;
-  choices: readonly CentralGrantChoiceV1[];
+  choices: readonly CentralGrantChoiceV1<TApprovalMethod>[];
   issuedAt: string;
   expiresAt: string;
   challengeDigest: CentralGrantDigest;
@@ -93,6 +98,7 @@ export type CentralGrantTransitionDefinitionPortV1 = Readonly<{
   parameterSchemaDigest: CentralGrantDigest;
   consequenceDigest: CentralGrantDigest;
   resolutionKind: 'retry' | 'non-retry';
+  allowedApprovalMethods: readonly string[];
   validateParameters(value: unknown): unknown;
   observeState(
     parameters: unknown,

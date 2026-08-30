@@ -114,6 +114,7 @@ export function archivePullRequestGrantTransitionDefinitions(
         }),
       ),
       resolutionKind: 'non-retry',
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertArchiveGrantParameters,
       renderTrustedChoice(parameters: ArchivePullRequestGrantParametersV1) {
         const preparation = readArchivePublicationPreparation(

@@ -353,6 +353,7 @@ export function roleIndependenceContinuationTransitionDefinitions(
         ROLE_INDEPENDENCE_CONTINUATION_PARAMETER_SCHEMA_DIGEST,
       consequenceDigest: ROLE_INDEPENDENCE_CONTINUATION_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertRoleIndependenceContinuationParameters,
       renderTrustedChoice(candidate: RoleIndependenceContinuationParametersV1) {
         const parameters =

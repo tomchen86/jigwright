@@ -232,6 +232,7 @@ export function investigationV3GrantTransitionDefinitions(
       ),
       consequenceDigest: sha256(canonicalJson(renderStopChoice())),
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertStopParametersV3,
       renderTrustedChoice: renderStopChoice,
       observeState(parameters) {

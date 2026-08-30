@@ -178,6 +178,7 @@ export function protectedTaskApplyGrantTransitionDefinitions(
       parameterSchemaDigest: PROTECTED_TASK_APPLY_PARAMETER_SCHEMA_DIGEST,
       consequenceDigest: PROTECTED_TASK_APPLY_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertProtectedTaskApplyParameters,
       renderTrustedChoice(
         parameters: ProtectedTaskApplyFinalizationParametersV1,

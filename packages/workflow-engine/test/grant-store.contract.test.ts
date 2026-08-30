@@ -13,10 +13,15 @@ import {
 } from '@jigwright/grants/central-grant-contracts';
 
 import {
+  approvalSubjectDigest,
   createApprovalSubject,
   createGrantChallenge,
   type GrantChallenge,
 } from '../src/modules/authority/grant-core.ts';
+import {
+  assertSshPortableApprovalEvidenceV1,
+  sshPortableApprovalEvidenceDigest,
+} from '../src/modules/authority/grant-approval.ts';
 import {
   assertGrantLifecycleBarrier,
   grantStorePaths,
@@ -95,6 +100,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
           claim: 'fresh-local-device-owner',
           proofDigest: digest('8'),
           identity: null,
+          portableEvidence: null,
         },
       ],
       createdAt: NOW.toISOString(),
@@ -307,6 +313,41 @@ test('@jigwright/grants matches exact pending, prepared, completed, and failed l
   });
 });
 
+test('tampered portable SSH evidence makes the durable Grant record unreadable', () => {
+  withRuntime((runtimeRoot) => {
+    const paths = grantStorePaths(runtimeRoot);
+    const challenge = fixtureChallenge();
+    persistGrantChallenge(paths, challenge);
+    preparePublicSshRecord(
+      paths,
+      challenge,
+      '45454545-4545-4454-8454-454545454545',
+      'nonce-45454545454545454545454545454545',
+    );
+    const recordPath = path.join(
+      paths.records,
+      `${challenge.challengeId}.json`,
+    );
+    const tampered = JSON.parse(fs.readFileSync(recordPath, 'utf8')) as {
+      proofModules: Array<{
+        portableEvidence: { signature: string };
+      }>;
+    };
+    tampered.proofModules[0]!.portableEvidence.signature =
+      'tampered-portable-signature';
+    fs.writeFileSync(recordPath, `${canonicalJson(tampered)}\n`);
+
+    assert.throws(
+      () => readGrantRecord(paths, challenge.challengeId),
+      (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
+    );
+    assert.throws(
+      () => parseCanonicalGrantRecordV1(fs.readFileSync(recordPath, 'utf8')),
+      /malformed/u,
+    );
+  });
+});
+
 test('a symlink cannot become a grant store root', () => {
   withRuntime((runtimeRoot) => {
     const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'grant-outside-'));
@@ -358,6 +399,7 @@ test('the repository lifecycle lock honors a prepared Grant Core record', () => 
           claim: 'fresh-local-device-owner',
           proofDigest: digest('a'),
           identity: null,
+          portableEvidence: null,
         },
       ],
       createdAt: NOW.toISOString(),
@@ -465,6 +507,7 @@ function preparePublicRecord(
         claim: 'fresh-local-device-owner',
         proofDigest: digest('4'),
         identity: null,
+        portableEvidence: null,
       },
     ],
     createdAt: NOW.toISOString(),
@@ -488,6 +531,21 @@ function preparePublicSshRecord(
     },
     { now: NOW },
   );
+  const portableEvidence = assertSshPortableApprovalEvidenceV1({
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload: canonicalJson({
+      schemaVersion: 1,
+      kind: 'grant-proof-ssh-subject.v1',
+      approvalSubject: subject,
+      approvalSubjectDigest: approvalSubjectDigest(subject),
+      signerIdentity: 'maintainer',
+    }),
+    signature: 'fixture-portable-signature',
+    signatureNamespace: 'jigwright.workflow.grant-proof.v1',
+    identity: 'maintainer',
+    verifiedAt: NOW.toISOString(),
+  });
   return prepareGrantTransition(paths, {
     operationId,
     challenge,
@@ -497,8 +555,9 @@ function preparePublicSshRecord(
         moduleId: 'grant-proof-ssh',
         version: '1',
         claim: 'ssh-signature',
-        proofDigest: digest('5'),
+        proofDigest: sshPortableApprovalEvidenceDigest(portableEvidence),
         identity: 'maintainer',
+        portableEvidence,
       },
     ],
     createdAt: NOW.toISOString(),
@@ -565,6 +624,7 @@ function abortDefinition(): TransitionDefinition<{ terminalReason: string }> {
     parameterSchemaDigest: digest('2'),
     consequenceDigest: digest('3'),
     resolutionKind: 'non-retry',
+    allowedApprovalMethods: ['human-presence', 'ssh'],
     validateParameters(value) {
       assert.deepEqual(value, { terminalReason: 'reviewer-terms-exhausted' });
       return value as { terminalReason: string };

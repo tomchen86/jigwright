@@ -112,6 +112,7 @@ export function openMacOsHumanGateApprovalSession(
       if (
         selected === undefined ||
         !presentation.approvalMethods.includes(decision.approvalMethod) ||
+        !selected.allowedApprovalMethods.includes(decision.approvalMethod) ||
         !selected.allowedReasonCodes.includes(decision.reasonCode) ||
         (selected.reasonRequired && decision.reason.length < 1)
       ) {
@@ -282,6 +283,7 @@ export function verifyHumanGateProofDocument(
     proofDigest: grantSha256(canonicalJson(value)),
     verifiedAt: authenticatedAt.toISOString(),
     identity: null,
+    portableEvidence: null,
   });
 }
 

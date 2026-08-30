@@ -13,7 +13,12 @@ import {
   type ApprovalSubject,
   type GrantChallenge,
 } from '../../modules/authority/grant-core.ts';
-import type { ApprovalClaim } from '../../modules/authority/grant-policy.ts';
+import {
+  assertSshPortableApprovalEvidenceV1,
+  sshPortableApprovalEvidenceDigest,
+  sshPortableApprovalEvidenceSubjectDigest,
+  type GrantProofModuleSummary,
+} from '../../modules/authority/grant-approval.ts';
 import {
   freezeGrantCanonical,
   GRANT_SHA256_DIGEST,
@@ -43,13 +48,7 @@ export type GrantStorePaths = Readonly<{
   records: string;
 }>;
 
-export type GrantProofModuleSummary = Readonly<{
-  moduleId: string;
-  version: string;
-  claim: ApprovalClaim;
-  proofDigest: `sha256:${string}`;
-  identity: string | null;
-}>;
+export type { GrantProofModuleSummary } from '../../modules/authority/grant-approval.ts';
 
 export type GrantAuditRecord = Readonly<{
   approvalMethod: 'human-presence' | 'ssh';
@@ -298,7 +297,7 @@ export function prepareGrantTransition(
   ) {
     throw storeUnsafe();
   }
-  const proofModules = assertProofModules(input.proofModules);
+  const proofModules = assertProofModules(input.proofModules, subject);
   assertProofMethod(subject, proofModules);
   const filePath = grantRecordPath(paths, challenge.challengeId);
   const current = readGrantRecord(paths, challenge.challengeId);
@@ -498,7 +497,7 @@ function assertPreparedFields(
     base.challenge,
     value.approvalSubject,
   );
-  const proofModules = assertProofModules(value.proofModules);
+  const proofModules = assertProofModules(value.proofModules, subject);
   const preparedAt = parseGrantTimestamp(value.preparedAt);
   if (
     preparedAt === null ||
@@ -542,6 +541,7 @@ function assertSubjectForChallenge(
 
 function assertProofModules(
   value: unknown,
+  subject: ApprovalSubject,
 ): readonly GrantProofModuleSummary[] {
   if (!Array.isArray(value) || value.length < 1) throw storeUnsafe();
   const identities = new Set<string>();
@@ -555,6 +555,7 @@ function assertProofModules(
           'claim',
           'proofDigest',
           'identity',
+          'portableEvidence',
         ]) ||
         typeof candidate.moduleId !== 'string' ||
         !GRANT_STABLE_ID.test(candidate.moduleId) ||
@@ -575,12 +576,35 @@ function assertProofModules(
       const identity = `${candidate.moduleId}@${candidate.version}:${candidate.claim}`;
       if (identities.has(identity)) throw storeUnsafe();
       identities.add(identity);
+      const portableEvidence =
+        candidate.portableEvidence === null
+          ? null
+          : storeSafe(() =>
+              assertSshPortableApprovalEvidenceV1(candidate.portableEvidence),
+            );
+      const isSshProof =
+        candidate.moduleId === 'grant-proof-ssh' &&
+        candidate.version === '1' &&
+        candidate.claim === 'ssh-signature';
+      if (
+        isSshProof
+          ? portableEvidence === null ||
+            candidate.identity !== portableEvidence.identity ||
+            candidate.proofDigest !==
+              sshPortableApprovalEvidenceDigest(portableEvidence) ||
+            approvalSubjectDigest(subject) !==
+              sshPortableApprovalEvidenceSubjectDigest(portableEvidence)
+          : portableEvidence !== null
+      ) {
+        throw storeUnsafe();
+      }
       return {
         moduleId: candidate.moduleId,
         version: candidate.version,
         claim: candidate.claim,
         proofDigest: candidate.proofDigest as `sha256:${string}`,
         identity: candidate.identity,
+        portableEvidence,
       };
     }),
   );
@@ -594,8 +618,14 @@ function assertProofMethod(
   const proof = proofs[0]!;
   if (
     subject.approvalMethod === 'human-presence'
-      ? proof.claim !== 'fresh-local-device-owner' || proof.identity !== null
-      : proof.claim !== 'ssh-signature' || typeof proof.identity !== 'string'
+      ? proof.claim !== 'fresh-local-device-owner' ||
+        proof.identity !== null ||
+        proof.portableEvidence !== null
+      : proof.moduleId !== 'grant-proof-ssh' ||
+        proof.version !== '1' ||
+        proof.claim !== 'ssh-signature' ||
+        typeof proof.identity !== 'string' ||
+        proof.portableEvidence === null
   ) {
     throw storeUnsafe();
   }

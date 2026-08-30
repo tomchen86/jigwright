@@ -28,6 +28,7 @@ export function changeRoutingGrantTransitionDefinitions(
         CHANGE_ROUTING_CONTINUATION_PARAMETER_SCHEMA_DIGEST,
       consequenceDigest: CHANGE_ROUTING_CONTINUATION_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: parseContinuationParameters,
       renderTrustedChoice(parameters: ChangeRoutingContinuationParameters) {
         return Object.freeze({

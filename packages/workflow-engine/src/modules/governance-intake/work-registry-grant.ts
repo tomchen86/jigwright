@@ -162,6 +162,7 @@ export function workRegistryGrantTransitionDefinitions(
       ),
       consequenceDigest: grantSha256(canonicalJson(renderReviewChoice())),
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertReviewParameters,
       renderTrustedChoice: renderReviewChoice,
       observeState(parameters) {
@@ -198,6 +199,7 @@ export function workRegistryGrantTransitionDefinitions(
       ),
       consequenceDigest: grantSha256(canonicalJson(renderPromotionChoice())),
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertPromotionParameters,
       renderTrustedChoice: renderPromotionChoice,
       observeState(parameters) {

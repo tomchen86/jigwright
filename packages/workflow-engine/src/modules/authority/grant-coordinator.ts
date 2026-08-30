@@ -66,6 +66,7 @@ export type TrustedGrantChoicePresentation = Readonly<{
   transitionId: string;
   title: string;
   consequences: readonly string[];
+  allowedApprovalMethods: readonly GrantApprovalMethod[];
   allowedReasonCodes: readonly string[];
   reasonRequired: boolean;
   proposedReason: string;
@@ -214,6 +215,7 @@ export function createGrantCoordinatorKernel(
       let proofs: readonly VerifiedApprovalProof[];
       try {
         const decision = assertHumanDecision(await session.collectDecision());
+        assertDecisionApprovalMethodAllowed(challenge, decision);
         subject = createApprovalSubject(challenge, decision, {
           now: exactDate(now()),
         });
@@ -247,6 +249,10 @@ export function createGrantCoordinatorKernel(
             challenge,
             subject,
             options.registry,
+          );
+          assertTransitionApprovalMethodAllowed(
+            selected.definition,
+            subject.approvalMethod,
           );
           await assertExpectedState(
             selected.definition,
@@ -691,12 +697,45 @@ function trustedPresentation(
         transitionId: choice.transitionId,
         title: presentation.title,
         consequences: presentation.consequences,
+        allowedApprovalMethods: choice.allowedApprovalMethods,
         allowedReasonCodes: choice.allowedReasonCodes,
         reasonRequired: choice.reasonRequired,
         proposedReason: choice.proposedReason,
       };
     }),
   });
+}
+
+function assertDecisionApprovalMethodAllowed(
+  challenge: GrantChallenge,
+  decision: GrantHumanDecision,
+): void {
+  const choice = challenge.choices.find(
+    ({ choiceId }) => choiceId === decision.choiceId,
+  );
+  if (
+    choice === undefined ||
+    !choice.allowedApprovalMethods.includes(decision.approvalMethod)
+  ) {
+    throw workflowError(
+      'GRANT_APPROVAL_METHOD_NOT_ALLOWED',
+      'Selected grant approval method is not allowed for this transition.',
+      ExitCode.guard,
+    );
+  }
+}
+
+function assertTransitionApprovalMethodAllowed(
+  definition: RegisteredTransitionDefinition,
+  method: GrantApprovalMethod,
+): void {
+  if (!definition.allowedApprovalMethods.includes(method)) {
+    throw workflowError(
+      'GRANT_APPROVAL_METHOD_NOT_ALLOWED',
+      'Selected grant approval method is not allowed for this transition.',
+      ExitCode.guard,
+    );
+  }
 }
 
 function assertHumanDecision(value: unknown): GrantHumanDecision {

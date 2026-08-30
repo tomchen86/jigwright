@@ -159,6 +159,7 @@ export function changeRoleAssignmentGrantTransitionDefinitions(
         CHANGE_ROLE_ASSIGNMENT_GRANT_PARAMETER_SCHEMA_DIGEST,
       consequenceDigest: CHANGE_ROLE_ASSIGNMENT_GRANT_CONSEQUENCE_DIGEST,
       resolutionKind: 'non-retry' as const,
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertChangeRoleAssignmentGrantParameters,
       renderTrustedChoice(parameters: ChangeRoleAssignmentGrantParametersV1) {
         return Object.freeze({

@@ -1,16 +1,17 @@
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import type { VerifiedApprovalProof } from '../../../modules/authority/grant-approval.ts';
+import {
+  assertSshPortableApprovalEvidenceV1,
+  sshPortableApprovalEvidenceDigest,
+  type VerifiedApprovalProof,
+} from '../../../modules/authority/grant-approval.ts';
 import {
   approvalSubjectDigest,
   assertApprovalSubject,
 } from '../../../modules/authority/grant-core.ts';
 import type { GrantAuthenticationRequest } from '../../../modules/authority/grant-coordinator.ts';
 import type { GrantPolicyV2 } from '../../../modules/authority/grant-policy.ts';
-import {
-  copyGrantDate,
-  grantSha256,
-} from '../../../modules/authority/grant-primitives.ts';
+import { copyGrantDate } from '../../../modules/authority/grant-primitives.ts';
 import {
   createInteractiveSshSigner,
   type MaintainerSignerProvider,
@@ -87,21 +88,24 @@ export function collectSshApprovalProof(
   }
   signer.verify(payload, signature, identity, ssh.signatureNamespace);
   const verifiedAt = exactDate(options.now ?? new Date()).toISOString();
+  const portableEvidence = assertSshPortableApprovalEvidenceV1({
+    schemaVersion: 1,
+    kind: 'grant-proof-ssh-portable-evidence.v1',
+    payload,
+    signature,
+    signatureNamespace: ssh.signatureNamespace,
+    identity,
+    verifiedAt,
+  });
   return Object.freeze({
     moduleId: 'grant-proof-ssh',
     version: '1',
     claims: Object.freeze(['ssh-signature'] as const),
     approvalSubjectDigest: request.approvalSubjectDigest,
-    proofDigest: grantSha256(
-      canonicalJson({
-        schemaVersion: 1,
-        kind: 'grant-proof-ssh-evidence.v1',
-        payload,
-        signature,
-      }),
-    ),
+    proofDigest: sshPortableApprovalEvidenceDigest(portableEvidence),
     verifiedAt,
     identity,
+    portableEvidence,
   });
 }
 

@@ -115,6 +115,7 @@ export function protectedBaseInitializationGrantTransitionDefinitions(
         }),
       ),
       resolutionKind: 'non-retry',
+      allowedApprovalMethods: ['human-presence', 'ssh'] as const,
       validateParameters: assertProtectedBaseInitializationParameters,
       renderTrustedChoice(parameters: ProtectedBaseInitializationParametersV1) {
         return Object.freeze({

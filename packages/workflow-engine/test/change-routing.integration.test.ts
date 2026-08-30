@@ -356,6 +356,7 @@ test('manual or parked continuation requires one exact completed Central Grant t
                 proofDigest: `sha256:${'4'.repeat(64)}` as const,
                 verifiedAt: '2026-08-24T00:00:00.000Z',
                 identity: null,
+                portableEvidence: null,
               },
             ];
           },
