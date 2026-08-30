@@ -4239,7 +4239,7 @@ test('current incomplete v2 recovery journal fails closed without moving the ref
   }
 });
 
-test('legacy unbound v2 recovery journal parses read-only but cannot resume authority', () => {
+test('authority recovery rejects every non-current commit journal schema', () => {
   const repository = prepareCandidate();
   const auditRoot = externalAuditRoot(repository);
   const signed: string[] = [];
@@ -4254,8 +4254,8 @@ test('legacy unbound v2 recovery journal parses read-only but cannot resume auth
             taskId: TASK_ID,
             externalEffects: [],
             profileId: PROFILE_ID,
-            reason: 'Recover a durable legacy v2 journal after ref update',
-            message: 'Apply migrated audit candidate',
+            reason: 'Reject a non-current recovery journal after ref update',
+            message: 'Apply current recovery candidate',
           },
           {
             now: new Date('2026-08-03T09:00:00.000Z'),
@@ -4279,22 +4279,62 @@ test('legacy unbound v2 recovery journal parses read-only but cannot resume auth
       'workflow-engine/maintainer-grants/journals',
       `${reservation.reservationSessionId}.json`,
     );
-    const legacy = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as Record<
+    const current = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as Record<
       string,
       unknown
     >;
-    legacy.schemaVersion = 3;
-    delete legacy.mandateBinding;
-    fs.writeFileSync(journalPath, `${JSON.stringify(legacy)}\n`, {
-      mode: 0o600,
-    });
-
-    const normalized = readAuthorityCommitJournal(
-      gitCommonDirectory,
-      reservation.reservationSessionId,
-    );
-    assert.equal(Number(normalized.schemaVersion), 4);
-    assert.equal(normalized.mandateBinding, null);
+    const journalV3: Record<string, unknown> = {
+      ...current,
+      schemaVersion: 3,
+    };
+    delete journalV3.mandateBinding;
+    const journalV2: Record<string, unknown> = {
+      ...journalV3,
+      schemaVersion: 2,
+    };
+    for (const key of [
+      'poststateAuditRecordDigest',
+      'errorAuditRecordDigest',
+      'rollbackAuditRecordDigest',
+      'poststateVerifiedAt',
+      'rollbackStartedAt',
+      'rolledBackAt',
+    ]) {
+      delete journalV2[key];
+    }
+    const journalV1: Record<string, unknown> = {
+      ...journalV2,
+      schemaVersion: 1,
+    };
+    const earlyJournalV1: Record<string, unknown> = { ...journalV1 };
+    for (const key of [
+      'externalAuditRoot',
+      'auditRepositoryId',
+      'casAuditRecordDigest',
+      'consumeAuditRecordDigest',
+      'refUpdatedAt',
+      'consumedAt',
+    ]) {
+      delete earlyJournalV1[key];
+    }
+    for (const nonCurrent of [
+      earlyJournalV1,
+      journalV1,
+      journalV2,
+      journalV3,
+    ]) {
+      fs.writeFileSync(journalPath, `${JSON.stringify(nonCurrent)}\n`, {
+        mode: 0o600,
+      });
+      assert.throws(
+        () =>
+          readAuthorityCommitJournal(
+            gitCommonDirectory,
+            reservation.reservationSessionId!,
+          ),
+        (error: unknown) => isWorkflowError(error, 'AUTHORITY_JOURNAL_INVALID'),
+      );
+    }
     assert.throws(
       () =>
         recoverAuthorityCommit(
@@ -4303,7 +4343,7 @@ test('legacy unbound v2 recovery journal parses read-only but cannot resume auth
           new Date('2026-08-03T09:01:00.000Z'),
           { receiptSigner: signer },
         ),
-      (error) => isWorkflowError(error, 'AUTHORITY_JOURNAL_SESSION_MISMATCH'),
+      (error) => isWorkflowError(error, 'AUTHORITY_JOURNAL_INVALID'),
     );
     const scan = scanAuthorityAuditLedger({
       externalAuditRoot: auditRoot,

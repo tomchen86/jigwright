@@ -1186,13 +1186,10 @@ export function readAuthorityCommitJournal(
     if (raw !== `${JSON.stringify(value)}\n`) {
       throw new Error('invalid journal');
     }
-    const journal = isJournal(value)
-      ? value
-      : normalizeLegacyAuthorityCommitJournal(value);
-    if (journal === null || journal.sessionId !== sessionId) {
+    if (!isJournal(value) || value.sessionId !== sessionId) {
       throw new Error('invalid journal');
     }
-    return journal;
+    return value;
   } catch {
     throw recoveryError(
       'AUTHORITY_JOURNAL_INVALID',
@@ -2165,37 +2162,6 @@ const CURRENT_JOURNAL_KEYS = [
   'updatedAt',
 ].sort();
 
-const JOURNAL_V4_ADDED_KEYS = ['mandateBinding'];
-
-const JOURNAL_V3_KEYS = CURRENT_JOURNAL_KEYS.filter(
-  (key) => !JOURNAL_V4_ADDED_KEYS.includes(key),
-);
-
-const JOURNAL_V3_ADDED_KEYS = [
-  'poststateAuditRecordDigest',
-  'errorAuditRecordDigest',
-  'rollbackAuditRecordDigest',
-  'poststateVerifiedAt',
-  'rollbackStartedAt',
-  'rolledBackAt',
-];
-
-const JOURNAL_V2_KEYS = JOURNAL_V3_KEYS.filter(
-  (key) => !JOURNAL_V3_ADDED_KEYS.includes(key),
-);
-
-const LEGACY_JOURNAL_V1_KEYS = JOURNAL_V2_KEYS.filter(
-  (key) =>
-    ![
-      'externalAuditRoot',
-      'auditRepositoryId',
-      'casAuditRecordDigest',
-      'consumeAuditRecordDigest',
-      'refUpdatedAt',
-      'consumedAt',
-    ].includes(key),
-);
-
 function isJournal(value: unknown): value is AuthorityCommitJournal {
   if (!isRecord(value)) return false;
   return (
@@ -2226,86 +2192,6 @@ function isJournal(value: unknown): value is AuthorityCommitJournal {
       isTimestamp(value.rollbackStartedAt)) &&
     (value.rolledBackAt === null || isTimestamp(value.rolledBackAt))
   );
-}
-
-function normalizeLegacyAuthorityCommitJournal(
-  value: unknown,
-): AuthorityCommitJournal | null {
-  if (!isRecord(value)) return null;
-  if (
-    value.schemaVersion === 3 &&
-    hasExactKeys(value, JOURNAL_V3_KEYS) &&
-    hasValidJournalCore(value)
-  ) {
-    return normalizeJournalV3(value);
-  }
-  if (
-    (value.schemaVersion === 1 || value.schemaVersion === 2) &&
-    hasExactKeys(value, JOURNAL_V2_KEYS) &&
-    hasValidJournalCore(value)
-  ) {
-    return normalizeJournalV2(value);
-  }
-  if (
-    value.schemaVersion !== 1 ||
-    !hasExactKeys(value, LEGACY_JOURNAL_V1_KEYS) ||
-    !hasValidJournalCore(value) ||
-    ![
-      'preparing',
-      'commit-created',
-      'ref-updated',
-      'consumed',
-      'revoked',
-    ].includes(String(value.state))
-  ) {
-    return null;
-  }
-  const normalized = {
-    ...value,
-    schemaVersion: 4,
-    mandateBinding: null,
-    externalAuditRoot: null,
-    auditRepositoryId: null,
-    casAuditRecordDigest: null,
-    poststateAuditRecordDigest: null,
-    consumeAuditRecordDigest: null,
-    errorAuditRecordDigest: null,
-    rollbackAuditRecordDigest: null,
-    refUpdatedAt: null,
-    poststateVerifiedAt: null,
-    consumedAt: null,
-    rollbackStartedAt: null,
-    rolledBackAt: null,
-  };
-  return isJournal(normalized) ? normalized : null;
-}
-
-function normalizeJournalV2(
-  value: Record<string, unknown>,
-): AuthorityCommitJournal | null {
-  const normalized = {
-    ...value,
-    schemaVersion: 4,
-    mandateBinding: null,
-    poststateAuditRecordDigest: null,
-    errorAuditRecordDigest: null,
-    rollbackAuditRecordDigest: null,
-    poststateVerifiedAt: null,
-    rollbackStartedAt: null,
-    rolledBackAt: null,
-  };
-  return isJournal(normalized) ? normalized : null;
-}
-
-function normalizeJournalV3(
-  value: Record<string, unknown>,
-): AuthorityCommitJournal | null {
-  const normalized = {
-    ...value,
-    schemaVersion: 4,
-    mandateBinding: null,
-  };
-  return isJournal(normalized) ? normalized : null;
 }
 
 function isJournalTaskMandateBinding(value: unknown): boolean {
