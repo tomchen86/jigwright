@@ -208,9 +208,6 @@ function writeEmbeddedRuntime(
       return {
         name: value.name,
         sourceRoot: value.sourceRoot,
-        probe: './bootstrap/jigwright-cli.mjs',
-        optional: false,
-        fallbackSourceRoot: null,
         embeddedSourceRoot: null,
         sourceManifestBase64: fs
           .readFileSync(path.join(engineRoot, 'package.json'))
@@ -233,11 +230,6 @@ function writeEmbeddedRuntime(
     return {
       name: value.name,
       sourceRoot: value.sourceRoot,
-      probe: packageProbe(value.name),
-      optional:
-        value.name === '@jigwright/grants' ||
-        value.name === '@jigwright/github-adapter',
-      fallbackSourceRoot: null,
       embeddedSourceRoot,
       sourceManifestBase64: fs
         .readFileSync(path.join(source.packageRoot, 'package.json'))
@@ -579,20 +571,6 @@ function internalDirectoryName(name: string): string {
 
 function safePackageName(name: string): string {
   return name.replace(/^@/u, '').replaceAll('/', '-');
-}
-
-function packageProbe(name: string): string {
-  const probes: Readonly<Record<string, string>> = {
-    '@jigwright/agent-runtime': '@jigwright/agent-runtime',
-    '@jigwright/core': '@jigwright/core/canonical-json',
-    '@jigwright/github-adapter': '@jigwright/github-adapter',
-    '@jigwright/grants': '@jigwright/grants/grant-envelope-verifier',
-    '@jigwright/openspec-adapter': '@jigwright/openspec-adapter',
-  };
-  const probe = probes[name];
-  if (probe === undefined)
-    throw new Error(`Internal package probe is missing: ${name}`);
-  return probe;
 }
 
 function digestFile(filePath: string): Sha256Digest {

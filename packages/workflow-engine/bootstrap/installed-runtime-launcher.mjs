@@ -2,15 +2,12 @@ import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 const packageRoot = path.resolve(import.meta.dirname, '..');
 const runtimeManifestPath = fileURLToPath(
   new URL('./installed-runtime.json', import.meta.url),
 );
-const packageRequire = createRequire(import.meta.url);
-
 export function runInstalledJigwrightRuntime(
   argv,
   repositoryRoot = process.cwd(),
@@ -66,8 +63,7 @@ function materializePackages(runtimeRoot, descriptors) {
   const packages = new Map();
   for (const descriptor of descriptors) {
     assertDescriptor(descriptor);
-    const resolved = resolveRuntimePackage(descriptor);
-    const sourceRoot = resolved.sourceRoot;
+    const sourceRoot = runtimePackageSourceRoot(descriptor);
     const targetRoot = path.join(
       runtimeRoot,
       ...descriptor.sourceRoot.split('/'),
@@ -89,22 +85,19 @@ function materializePackages(runtimeRoot, descriptors) {
       Buffer.from(descriptor.sourceManifestBase64, 'base64'),
       { mode: 0o644 },
     );
-    packages.set(descriptor.name, {
-      targetRoot,
-      runtimeAvailable: resolved.runtimeAvailable,
-    });
+    packages.set(descriptor.name, targetRoot);
   }
   return packages;
 }
 
 function linkWorkspacePackages(packages) {
-  const scoped = [...packages.entries()].filter(
-    ([name, value]) => name.startsWith('@jigwright/') && value.runtimeAvailable,
+  const scoped = [...packages.entries()].filter(([name]) =>
+    name.startsWith('@jigwright/'),
   );
-  for (const { targetRoot: packagePath } of packages.values()) {
+  for (const packagePath of packages.values()) {
     const scopeRoot = path.join(packagePath, 'node_modules', '@jigwright');
     fs.mkdirSync(scopeRoot, { recursive: true });
-    for (const [name, { targetRoot }] of scoped) {
+    for (const [name, targetRoot] of scoped) {
       fs.symlinkSync(
         targetRoot,
         path.join(scopeRoot, name.slice('@jigwright/'.length)),
@@ -114,47 +107,11 @@ function linkWorkspacePackages(packages) {
   }
 }
 
-function resolveRuntimePackage(descriptor) {
+function runtimePackageSourceRoot(descriptor) {
   if (descriptor.name === 'jigwright') {
-    return { sourceRoot: packageRoot, runtimeAvailable: true };
+    return packageRoot;
   }
-  if (typeof descriptor.embeddedSourceRoot === 'string') {
-    return {
-      sourceRoot: path.join(packageRoot, descriptor.embeddedSourceRoot),
-      runtimeAvailable: true,
-    };
-  }
-  try {
-    return {
-      sourceRoot: resolveInstalledPackageRoot(
-        descriptor.name,
-        descriptor.probe,
-      ),
-      runtimeAvailable: true,
-    };
-  } catch (error) {
-    if (!descriptor.optional || descriptor.fallbackSourceRoot === null) {
-      throw error;
-    }
-    return {
-      sourceRoot: path.join(packageRoot, descriptor.fallbackSourceRoot),
-      runtimeAvailable: false,
-    };
-  }
-}
-
-function resolveInstalledPackageRoot(name, probe) {
-  let current = path.dirname(packageRequire.resolve(probe));
-  while (current !== path.dirname(current)) {
-    const manifestPath = path.join(current, 'package.json');
-    const stats = fs.lstatSync(manifestPath, { throwIfNoEntry: false });
-    if (stats?.isFile()) {
-      const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
-      if (manifest?.name === name) return fs.realpathSync(current);
-    }
-    current = path.dirname(current);
-  }
-  throw new Error(`Installed Jigwright package cannot be resolved: ${name}`);
+  return path.join(packageRoot, descriptor.embeddedSourceRoot);
 }
 
 function copyDirectory(source, target) {
@@ -174,25 +131,18 @@ function assertDescriptor(value) {
     value === null ||
     typeof value !== 'object' ||
     Array.isArray(value) ||
+    Object.keys(value).sort().join('\0') !==
+      ['embeddedSourceRoot', 'name', 'sourceManifestBase64', 'sourceRoot']
+        .sort()
+        .join('\0') ||
     typeof value.name !== 'string' ||
     typeof value.sourceRoot !== 'string' ||
-    typeof value.probe !== 'string' ||
-    typeof value.optional !== 'boolean' ||
-    !(
-      value.embeddedSourceRoot === undefined ||
-      value.embeddedSourceRoot === null ||
-      (typeof value.embeddedSourceRoot === 'string' &&
-        /^bootstrap\/installed-runtime-sources\/[a-z0-9-]+$/u.test(
+    (value.name === 'jigwright'
+      ? value.embeddedSourceRoot !== null
+      : typeof value.embeddedSourceRoot !== 'string' ||
+        !/^bootstrap\/installed-runtime-sources\/[a-z0-9-]+$/u.test(
           value.embeddedSourceRoot,
-        ))
-    ) ||
-    !(
-      value.fallbackSourceRoot === null ||
-      (typeof value.fallbackSourceRoot === 'string' &&
-        /^bootstrap\/installed-runtime-optional-sources\/[a-z0-9-]+$/u.test(
-          value.fallbackSourceRoot,
-        ))
-    ) ||
+        )) ||
     typeof value.sourceManifestBase64 !== 'string' ||
     !/^packages\/[a-z0-9-]+$/u.test(value.sourceRoot)
   ) {

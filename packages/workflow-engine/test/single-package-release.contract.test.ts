@@ -8,6 +8,44 @@ import test from 'node:test';
 
 import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
 
+test('installed runtime descriptors are exact embedded-only records', () => {
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-embedded-runtime-'),
+  );
+  try {
+    const outputRoot = path.join(scratch, 'release');
+    const artifact = buildSingleJigwrightPackage(process.cwd(), outputRoot, {
+      allowDirty: true,
+    });
+    const runtime = JSON.parse(
+      run('tar', [
+        '-xOzf',
+        path.join(outputRoot, artifact.tarball),
+        'package/bootstrap/installed-runtime.json',
+      ]),
+    ) as { packages: Record<string, unknown>[] };
+
+    for (const descriptor of runtime.packages) {
+      assert.deepEqual(Object.keys(descriptor).sort(), [
+        'embeddedSourceRoot',
+        'name',
+        'sourceManifestBase64',
+        'sourceRoot',
+      ]);
+      if (descriptor.name === 'jigwright') {
+        assert.equal(descriptor.embeddedSourceRoot, null);
+      } else {
+        assert.match(
+          String(descriptor.embeddedSourceRoot),
+          /^bootstrap\/installed-runtime-sources\/jigwright-[a-z0-9-]+$/u,
+        );
+      }
+    }
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
 test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
   const workspaceManifest = JSON.parse(
     fs.readFileSync(path.resolve('package.json'), 'utf8'),
