@@ -23,6 +23,18 @@ test('the public core package ships every T3 3.0 conformance domain', () => {
   assert.match(vectors.vectorSetDigest, /^sha256:[0-9a-f]{64}$/u);
 });
 
+test('the public corpus exposes only the current Collaboration Grant envelope domain', () => {
+  const vectors = loadWorkflowConformanceVectorsV2();
+  const domains = vectors.domains as Readonly<
+    Record<string, readonly Readonly<{ id: string }>[]>
+  >;
+  assert.deepEqual(
+    domains['collaboration-grant-envelope']?.map(({ id }) => id),
+    ['current-collaboration-grant-envelope'],
+  );
+  assert.equal(domains['legacy-ssh-envelope'], undefined);
+});
+
 test('the vector loader fails closed on same-shape byte drift', () => {
   const source = loadWorkflowConformanceVectorsV2();
   const directory = fs.mkdtempSync(

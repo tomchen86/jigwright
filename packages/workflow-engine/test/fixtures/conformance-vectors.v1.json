@@ -12,14 +12,7 @@
   "canonicalJson": [
     {
       "id": "primitives-and-array-order",
-      "input": [
-        null,
-        true,
-        false,
-        0,
-        0,
-        1.25
-      ],
+      "input": [null, true, false, 0, 0, 1.25],
       "canonical": "[null,true,false,0,0,1.25]",
       "sha256": "c9805a7cf1bc89624531145fabd3da94123465fe813aac7208939b32673f7cf0"
     },
@@ -134,46 +127,6 @@
     }
   ],
   "collaborationGrants": [
-    {
-      "id": "collaboration-grant-v1-legacy",
-      "contract": "collaboration-grant-v1",
-      "signatureNamespace": "workflow.collaboration-grant.v1",
-      "fixtureVerifier": "sha256-namespace-nul-payload-base64-armored.v1",
-      "payload": {
-        "version": 1,
-        "grantId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-        "repositoryId": "github:R_fixture",
-        "repositoryOrigin": "https://github.com/example/fixture.git",
-        "policyBlob": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "collaborationPolicyDigest": "bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4",
-        "changeId": "vector-change",
-        "taskId": null,
-        "baselineCommit": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-        "baselineTree": "cccccccccccccccccccccccccccccccccccccccc",
-        "targetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
-        "lifecyclePhase": "blind-survey",
-        "rolePair": {
-          "authorRole": "investigation-author",
-          "conflictingRole": "blind-surveyor"
-        },
-        "availableActor": {
-          "kind": "provider",
-          "providerId": "codex",
-          "assurance": "runtime-hint"
-        },
-        "degradedForm": "same-provider-fresh-session",
-        "authorizedEffect": "role-independence-degradation-only",
-        "reason": "No alternate provider is callable for this exact vector.",
-        "issuedAt": "2026-07-24T00:00:00.000Z",
-        "expiresAt": "2026-07-24T00:30:00.000Z",
-        "maxUses": 1,
-        "signer": "fixture-maintainer"
-      },
-      "canonicalPayloadUtf8Base64": "eyJ2ZXJzaW9uIjoxLCJncmFudElkIjoiYWFhYWFhYWEtYWFhYS00YWFhLThhYWEtYWFhYWFhYWFhYWFhIiwicmVwb3NpdG9yeUlkIjoiZ2l0aHViOlJfZml4dHVyZSIsInJlcG9zaXRvcnlPcmlnaW4iOiJodHRwczovL2dpdGh1Yi5jb20vZXhhbXBsZS9maXh0dXJlLmdpdCIsInBvbGljeUJsb2IiOiJhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhIiwiY29sbGFib3JhdGlvblBvbGljeURpZ2VzdCI6ImJiNjg5ODM5YmNhYTUyMTI5MzA1ODk3OGRjOGUzYTFlNzY2NmRkNDdiMmUyYzA3Y2RlYjYyMmZiYjFmYWQ3YjQiLCJjaGFuZ2VJZCI6InZlY3Rvci1jaGFuZ2UiLCJ0YXNrSWQiOm51bGwsImJhc2VsaW5lQ29tbWl0IjoiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYiIsImJhc2VsaW5lVHJlZSI6ImNjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2MiLCJ0YXJnZXREaWdlc3QiOiJkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkIiwibGlmZWN5Y2xlUGhhc2UiOiJibGluZC1zdXJ2ZXkiLCJyb2xlUGFpciI6eyJhdXRob3JSb2xlIjoiaW52ZXN0aWdhdGlvbi1hdXRob3IiLCJjb25mbGljdGluZ1JvbGUiOiJibGluZC1zdXJ2ZXlvciJ9LCJhdmFpbGFibGVBY3RvciI6eyJraW5kIjoicHJvdmlkZXIiLCJwcm92aWRlcklkIjoiY29kZXgiLCJhc3N1cmFuY2UiOiJydW50aW1lLWhpbnQifSwiZGVncmFkZWRGb3JtIjoic2FtZS1wcm92aWRlci1mcmVzaC1zZXNzaW9uIiwiYXV0aG9yaXplZEVmZmVjdCI6InJvbGUtaW5kZXBlbmRlbmNlLWRlZ3JhZGF0aW9uLW9ubHkiLCJyZWFzb24iOiJObyBhbHRlcm5hdGUgcHJvdmlkZXIgaXMgY2FsbGFibGUgZm9yIHRoaXMgZXhhY3QgdmVjdG9yLiIsImlzc3VlZEF0IjoiMjAyNi0wNy0yNFQwMDowMDowMC4wMDBaIiwiZXhwaXJlc0F0IjoiMjAyNi0wNy0yNFQwMDozMDowMC4wMDBaIiwibWF4VXNlcyI6MSwic2lnbmVyIjoiZml4dHVyZS1tYWludGFpbmVyIn0K",
-      "signature": "-----BEGIN SSH SIGNATURE-----\n3Sy1BBb6KsCha6JB1kDnNW5yGH9jQsqjMfvvvYYXCCw=\n-----END SSH SIGNATURE-----\n",
-      "canonicalEnvelopeUtf8Base64": "eyJwYXlsb2FkIjp7InZlcnNpb24iOjEsImdyYW50SWQiOiJhYWFhYWFhYS1hYWFhLTRhYWEtOGFhYS1hYWFhYWFhYWFhYWEiLCJyZXBvc2l0b3J5SWQiOiJnaXRodWI6Ul9maXh0dXJlIiwicmVwb3NpdG9yeU9yaWdpbiI6Imh0dHBzOi8vZ2l0aHViLmNvbS9leGFtcGxlL2ZpeHR1cmUuZ2l0IiwicG9saWN5QmxvYiI6ImFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWFhYWEiLCJjb2xsYWJvcmF0aW9uUG9saWN5RGlnZXN0IjoiYmI2ODk4MzliY2FhNTIxMjkzMDU4OTc4ZGM4ZTNhMWU3NjY2ZGQ0N2IyZTJjMDdjZGViNjIyZmJiMWZhZDdiNCIsImNoYW5nZUlkIjoidmVjdG9yLWNoYW5nZSIsInRhc2tJZCI6bnVsbCwiYmFzZWxpbmVDb21taXQiOiJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiYmJiIiwiYmFzZWxpbmVUcmVlIjoiY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjYyIsInRhcmdldERpZ2VzdCI6ImRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGRkZGQiLCJsaWZlY3ljbGVQaGFzZSI6ImJsaW5kLXN1cnZleSIsInJvbGVQYWlyIjp7ImF1dGhvclJvbGUiOiJpbnZlc3RpZ2F0aW9uLWF1dGhvciIsImNvbmZsaWN0aW5nUm9sZSI6ImJsaW5kLXN1cnZleW9yIn0sImF2YWlsYWJsZUFjdG9yIjp7ImtpbmQiOiJwcm92aWRlciIsInByb3ZpZGVySWQiOiJjb2RleCIsImFzc3VyYW5jZSI6InJ1bnRpbWUtaGludCJ9LCJkZWdyYWRlZEZvcm0iOiJzYW1lLXByb3ZpZGVyLWZyZXNoLXNlc3Npb24iLCJhdXRob3JpemVkRWZmZWN0Ijoicm9sZS1pbmRlcGVuZGVuY2UtZGVncmFkYXRpb24tb25seSIsInJlYXNvbiI6Ik5vIGFsdGVybmF0ZSBwcm92aWRlciBpcyBjYWxsYWJsZSBmb3IgdGhpcyBleGFjdCB2ZWN0b3IuIiwiaXNzdWVkQXQiOiIyMDI2LTA3LTI0VDAwOjAwOjAwLjAwMFoiLCJleHBpcmVzQXQiOiIyMDI2LTA3LTI0VDAwOjMwOjAwLjAwMFoiLCJtYXhVc2VzIjoxLCJzaWduZXIiOiJmaXh0dXJlLW1haW50YWluZXIifSwic2lnbmF0dXJlIjoiLS0tLS1CRUdJTiBTU0ggU0lHTkFUVVJFLS0tLS1cbjNTeTFCQmI2S3NDaGE2SkIxa0RuTlc1eUdIOWpRc3FqTWZ2dnZZWVhDQ3c9XG4tLS0tLUVORCBTU0ggU0lHTkFUVVJFLS0tLS1cbiJ9Cg==",
-      "envelopeSha256": "03d924fdc47a40e2f4851a2680aee38396c5f52b802b9f0f9c852ec7df6cdd4c"
-    },
     {
       "id": "collaboration-grant-v2-neutral",
       "contract": "collaboration-grant-v2-namespace",
@@ -380,5 +333,5 @@
       }
     }
   ],
-  "vectorSetDigest": "sha256:e6caa6473d5b67e2efa6982eb2776a2310e251a063f30fa9152d9c19534cea94"
+  "vectorSetDigest": "sha256:1aa7f59dd9a179f1d78150c7facc58e9f6fa110d6e06e4cc42b1ea3662831206"
 }

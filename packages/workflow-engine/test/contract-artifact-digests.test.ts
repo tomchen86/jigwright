@@ -17,7 +17,7 @@ import {
 } from './support/conformance-vectors.ts';
 
 const EXPECTED_VECTOR_SET_DIGEST =
-  'sha256:e6caa6473d5b67e2efa6982eb2776a2310e251a063f30fa9152d9c19534cea94';
+  'sha256:1aa7f59dd9a179f1d78150c7facc58e9f6fa110d6e06e4cc42b1ea3662831206';
 
 test('language-neutral canonical JSON and SHA-256 vectors match every landed implementation', async () => {
   const vectors = loadWorkflowConformanceVectors(import.meta.dirname);
@@ -46,6 +46,52 @@ test('language-neutral canonical JSON and SHA-256 vectors match every landed imp
   }
   for (const vector of vectors.sha256) {
     assert.equal(sha256(vector.utf8), vector.digest, vector.id);
+  }
+});
+
+test('workflow conformance fixtures reject retired Collaboration Grant payloads', () => {
+  const sourcePath = path.join(
+    import.meta.dirname,
+    'fixtures/conformance-vectors.v1.json',
+  );
+  const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8')) as {
+    collaborationGrants: Array<
+      Record<string, unknown> & { payload: Record<string, unknown> }
+    >;
+  };
+  const current = source.collaborationGrants[0];
+  assert.ok(current);
+  const retiredPayload: Record<string, unknown> = {
+    ...current.payload,
+    version: 1,
+  };
+  delete retiredPayload.signatureNamespace;
+  source.collaborationGrants = [
+    {
+      ...current,
+      id: 'collaboration-grant-v1-retired',
+      contract: 'collaboration-grant-v1',
+      signatureNamespace: 'workflow.collaboration-grant.v1',
+      payload: retiredPayload,
+    },
+  ];
+
+  const directory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-conformance-retired-')),
+  );
+  const fixtureDirectory = path.join(directory, 'fixtures');
+  fs.mkdirSync(fixtureDirectory);
+  fs.writeFileSync(
+    path.join(fixtureDirectory, 'conformance-vectors.v1.json'),
+    `${JSON.stringify(source)}\n`,
+  );
+  try {
+    assert.throws(
+      () => loadWorkflowConformanceVectors(directory),
+      /Collaboration-grant vector 1 is invalid/u,
+    );
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true });
   }
 });
 

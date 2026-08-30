@@ -11,6 +11,7 @@ import {
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
+  COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
 } from '../src/modules/authority/collaboration-grant.ts';
 import type { InvestigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import { createProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
@@ -815,7 +816,8 @@ function createCallerBinding(
   }
   const envelope = {
     payload: {
-      version: 1 as const,
+      version: 2 as const,
+      signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
       grantId: reservation.grantId,
       repositoryId: 'expense-app',
       repositoryOrigin: 'git@example.invalid:expense-app.git',

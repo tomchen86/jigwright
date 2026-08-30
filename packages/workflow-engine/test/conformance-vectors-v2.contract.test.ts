@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
@@ -19,7 +21,6 @@ import {
 } from '@jigwright/agent-runtime/harness-jsonl-v1';
 import {
   COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
-  COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   selectCollaborationGrantSignatureNamespaceV1,
 } from '@jigwright/grants/collaboration-grant-envelope-reader';
@@ -169,35 +170,188 @@ test('v2 vectors anchor Central Grant challenge, ApprovalSubject, and registered
   );
 });
 
-test('v2 vectors preserve the legacy SSH namespace reader without fallback', () => {
-  const vector = first('legacy-ssh-envelope');
+test('v2 vectors bind the current Collaboration Grant reader and reject retired payloads', () => {
+  const vector = firstRecord('collaboration-grant-envelope');
   assert.equal(
     COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1,
     vector.readerContractVersion,
   );
   assert.equal(
-    selectCollaborationGrantSignatureNamespaceV1({ version: 1 }),
-    vector.signatureNamespace,
-  );
-  assert.equal(
     selectCollaborationGrantSignatureNamespaceV1({
-      version: 2,
-      signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-    }),
-    vector.currentNamespace,
+      version: vector.payloadVersion,
+      signatureNamespace: vector.signatureNamespace,
+    } as never),
+    COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   );
   assert.equal(
-    COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
     vector.signatureNamespace,
+    COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   );
-  assert.throws(
-    () =>
-      selectCollaborationGrantSignatureNamespaceV1({
-        version: vector.unknownVersion,
-      } as never),
-    /unsupported/u,
+  assert.equal(vector.unsupportedVersionOutcome, 'reject');
+  for (const version of [vector.retiredVersion, vector.unknownVersion]) {
+    assert.throws(
+      () =>
+        selectCollaborationGrantSignatureNamespaceV1({
+          version,
+        } as never),
+      /unsupported/u,
+      String(version),
+    );
+  }
+});
+
+test('the tracked Collaboration Grant schema is exact current V2', () => {
+  const raw = fs.readFileSync(
+    path.join(
+      import.meta.dirname,
+      '../../../workflow/schemas/collaboration-grant.schema.json',
+    ),
+    'utf8',
+  );
+  const schema = JSON.parse(raw) as {
+    properties: {
+      payload: {
+        required: string[];
+        properties: Record<
+          string,
+          { const?: unknown; enum?: unknown[]; oneOf?: unknown[] }
+        >;
+        allOf: unknown[];
+      };
+    };
+    $defs: {
+      contentAdmission: {
+        properties: { kind: { enum: unknown[] } };
+      };
+    };
+  };
+  const payload = schema.properties.payload;
+  assert.deepEqual(payload.required, [
+    'version',
+    'signatureNamespace',
+    'grantId',
+    'repositoryId',
+    'repositoryOrigin',
+    'policyBlob',
+    'collaborationPolicyDigest',
+    'changeId',
+    'taskId',
+    'baselineCommit',
+    'baselineTree',
+    'targetDigest',
+    'lifecyclePhase',
+    'rolePair',
+    'availableActor',
+    'degradedForm',
+    'authorizedEffect',
+    'reason',
+    'issuedAt',
+    'expiresAt',
+    'maxUses',
+    'signer',
+  ]);
+  assert.equal(payload.properties.version?.const, 2);
+  assert.equal(
+    payload.properties.signatureNamespace?.const,
+    COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
+  );
+  assert.deepEqual(payload.properties.lifecyclePhase?.enum, [
+    'blind-survey',
+    'plan-review',
+    'task-diff-review',
+    'task-implementation',
+  ]);
+  assert.deepEqual(payload.properties.collaborationPolicyDigest?.enum, [
+    'bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4',
+    '70a46206375649f3d2bf07fff13b6d2dbf36c79c449ebd5e08dd8d95d1b14bbd',
+  ]);
+  assert.deepEqual(
+    (payload.allOf.slice(0, 4) as PhaseSchemaRule[]).map((rule) => ({
+      phase: rule.if.properties.lifecyclePhase.const,
+      policyDigest: rule.then.properties.collaborationPolicyDigest.const,
+      authorRole: rule.then.properties.rolePair.properties.authorRole.const,
+      conflictingRole:
+        rule.then.properties.rolePair.properties.conflictingRole.const,
+    })),
+    [
+      {
+        phase: 'blind-survey',
+        policyDigest:
+          'bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4',
+        authorRole: 'investigation-author',
+        conflictingRole: 'blind-surveyor',
+      },
+      {
+        phase: 'plan-review',
+        policyDigest:
+          'bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4',
+        authorRole: 'plan-author',
+        conflictingRole: 'plan-reviewer',
+      },
+      {
+        phase: 'task-diff-review',
+        policyDigest:
+          '70a46206375649f3d2bf07fff13b6d2dbf36c79c449ebd5e08dd8d95d1b14bbd',
+        authorRole: 'task-implementer',
+        conflictingRole: 'task-diff-reviewer',
+      },
+      {
+        phase: 'task-implementation',
+        policyDigest:
+          'bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4',
+        authorRole: 'red-author',
+        conflictingRole: 'task-implementer',
+      },
+    ],
+  );
+  const directHuman = (payload.allOf as DegradedFormSchemaRule[]).find(
+    (rule) => rule.if.properties.degradedForm?.const === 'direct-human-review',
+  );
+  assert.deepEqual(directHuman?.then.properties.lifecyclePhase?.enum, [
+    'plan-review',
+    'task-diff-review',
+  ]);
+  assert.deepEqual(schema.$defs.contentAdmission.properties.kind.enum, [
+    'blind-survey',
+    'plan-review',
+    'task-diff-review',
+    'task-implementation',
+  ]);
+  assert.doesNotMatch(raw, /workflow\.collaboration-grant\.v1/u);
+  assert.doesNotMatch(
+    raw,
+    /fead45158ecbb42192deddac55e7b0becc3d1daafa2347b14ab977080dd98f77/u,
   );
 });
+
+type PhaseSchemaRule = {
+  if: { properties: { lifecyclePhase: { const: string } } };
+  then: {
+    properties: {
+      collaborationPolicyDigest: { const: string };
+      rolePair: {
+        properties: {
+          authorRole: { const: string };
+          conflictingRole: { const: string };
+        };
+      };
+    };
+  };
+};
+
+type DegradedFormSchemaRule = {
+  if: { properties: { degradedForm?: { const: string } } };
+  then: { properties: { lifecyclePhase?: { enum: string[] } } };
+};
+
+function firstRecord(domain: string): Record<string, unknown> {
+  const domains = vectors.domains as Readonly<
+    Record<string, readonly Record<string, unknown>[]>
+  >;
+  const vector = domains[domain]?.[0];
+  assert.ok(vector, domain);
+  return vector;
+}
 
 test('v2 vectors anchor wrapper frames, engine receipt, and planning binding digest', () => {
   const protocol = first('agent-protocol-frame');

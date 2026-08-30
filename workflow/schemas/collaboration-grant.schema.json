@@ -10,6 +10,7 @@
       "additionalProperties": false,
       "required": [
         "version",
+        "signatureNamespace",
         "grantId",
         "repositoryId",
         "repositoryOrigin",
@@ -32,7 +33,10 @@
         "signer"
       ],
       "properties": {
-        "version": { "const": 1 },
+        "version": { "const": 2 },
+        "signatureNamespace": {
+          "const": "workflow.collaboration-grant.v2"
+        },
         "grantId": {
           "type": "string",
           "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
@@ -41,7 +45,10 @@
         "repositoryOrigin": { "type": "string", "minLength": 1 },
         "policyBlob": { "$ref": "#/$defs/objectOid" },
         "collaborationPolicyDigest": {
-          "const": "fead45158ecbb42192deddac55e7b0becc3d1daafa2347b14ab977080dd98f77"
+          "enum": [
+            "bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4",
+            "70a46206375649f3d2bf07fff13b6d2dbf36c79c449ebd5e08dd8d95d1b14bbd"
+          ]
         },
         "changeId": { "$ref": "#/$defs/changeId" },
         "taskId": {
@@ -51,7 +58,12 @@
         "baselineTree": { "$ref": "#/$defs/objectOid" },
         "targetDigest": { "$ref": "#/$defs/digest" },
         "lifecyclePhase": {
-          "enum": ["blind-survey", "plan-review"]
+          "enum": [
+            "blind-survey",
+            "plan-review",
+            "task-diff-review",
+            "task-implementation"
+          ]
         },
         "rolePair": {
           "oneOf": [
@@ -71,6 +83,24 @@
               "properties": {
                 "authorRole": { "const": "plan-author" },
                 "conflictingRole": { "const": "plan-reviewer" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["authorRole", "conflictingRole"],
+              "properties": {
+                "authorRole": { "const": "task-implementer" },
+                "conflictingRole": { "const": "task-diff-reviewer" }
+              }
+            },
+            {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["authorRole", "conflictingRole"],
+              "properties": {
+                "authorRole": { "const": "red-author" },
+                "conflictingRole": { "const": "task-implementer" }
               }
             }
           ]
@@ -148,6 +178,9 @@
           },
           "then": {
             "properties": {
+              "collaborationPolicyDigest": {
+                "const": "bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4"
+              },
               "rolePair": {
                 "properties": {
                   "authorRole": { "const": "investigation-author" },
@@ -166,10 +199,55 @@
           },
           "then": {
             "properties": {
+              "collaborationPolicyDigest": {
+                "const": "bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4"
+              },
               "rolePair": {
                 "properties": {
                   "authorRole": { "const": "plan-author" },
                   "conflictingRole": { "const": "plan-reviewer" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lifecyclePhase": { "const": "task-diff-review" }
+            },
+            "required": ["lifecyclePhase"]
+          },
+          "then": {
+            "properties": {
+              "collaborationPolicyDigest": {
+                "const": "70a46206375649f3d2bf07fff13b6d2dbf36c79c449ebd5e08dd8d95d1b14bbd"
+              },
+              "rolePair": {
+                "properties": {
+                  "authorRole": { "const": "task-implementer" },
+                  "conflictingRole": { "const": "task-diff-reviewer" }
+                }
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "lifecyclePhase": { "const": "task-implementation" }
+            },
+            "required": ["lifecyclePhase"]
+          },
+          "then": {
+            "properties": {
+              "collaborationPolicyDigest": {
+                "const": "bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4"
+              },
+              "rolePair": {
+                "properties": {
+                  "authorRole": { "const": "red-author" },
+                  "conflictingRole": { "const": "task-implementer" }
                 }
               }
             }
@@ -216,7 +294,9 @@
           },
           "then": {
             "properties": {
-              "lifecyclePhase": { "const": "plan-review" },
+              "lifecyclePhase": {
+                "enum": ["plan-review", "task-diff-review"]
+              },
               "availableActor": {
                 "properties": { "kind": { "const": "direct-human" } }
               }
@@ -261,7 +341,14 @@
       "additionalProperties": false,
       "required": ["kind", "nodeId", "resultDigest", "current"],
       "properties": {
-        "kind": { "enum": ["blind-survey", "plan-review"] },
+        "kind": {
+          "enum": [
+            "blind-survey",
+            "plan-review",
+            "task-diff-review",
+            "task-implementation"
+          ]
+        },
         "nodeId": { "$ref": "#/$defs/digest" },
         "resultDigest": { "$ref": "#/$defs/digest" },
         "current": { "const": true }

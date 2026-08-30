@@ -6,12 +6,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_POLICY_DIGEST,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-  LEGACY_COLLABORATION_GRANT_POLICY_DIGEST,
   canonicalCollaborationGrantPayload,
+  parseCollaborationGrantEnvelope,
   verifyCollaborationGrantCapability,
   type CollaborationGrantEnvelope,
   type CollaborationGrantPayload,
@@ -52,7 +53,7 @@ const POLICY: MaintainerPolicy = {
   ],
 };
 
-test('the production collaboration validator accepts current V2 and rejects historical V1 before verification', () => {
+test('the production collaboration boundary accepts current V2 and rejects retired V1 before verification', () => {
   const namespaces: string[] = [];
   const verifier = {
     verify(
@@ -68,7 +69,7 @@ test('the production collaboration validator accepts current V2 and rejects hist
     },
   };
 
-  const envelope = collaborationEnvelope(2);
+  const envelope = collaborationEnvelope();
   const capability = verifyCollaborationGrantCapability(envelope, POLICY, {
     now: NOW,
     expected: expectedBinding(envelope),
@@ -90,15 +91,29 @@ test('the production collaboration validator accepts current V2 and rejects hist
   assert.equal(Object.isFrozen(capability), true);
   assert.deepEqual(namespaces, [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE]);
 
-  const historical = collaborationEnvelope(1);
+  const retiredV1 = structuredClone(envelope) as unknown as {
+    payload: Record<string, unknown>;
+    signature: string;
+  };
+  retiredV1.payload.version = 1;
+  delete retiredV1.payload.signatureNamespace;
+  assert.throws(
+    () => parseCollaborationGrantEnvelope(`${JSON.stringify(retiredV1)}\n`),
+    (error) =>
+      error instanceof WorkflowError &&
+      error.code === 'COLLABORATION_GRANT_INVALID',
+  );
+  const retiredEnvelope = retiredV1 as unknown as CollaborationGrantEnvelope;
   assert.throws(
     () =>
-      verifyCollaborationGrantCapability(historical, POLICY, {
+      verifyCollaborationGrantCapability(retiredEnvelope, POLICY, {
         now: NOW,
-        expected: expectedBinding(historical),
+        expected: expectedBinding(retiredEnvelope),
         verifier,
       }),
-    /Collaboration grant envelope is invalid/u,
+    (error) =>
+      error instanceof WorkflowError &&
+      error.code === 'COLLABORATION_GRANT_INVALID',
   );
   assert.deepEqual(namespaces, [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE]);
 });
@@ -148,7 +163,12 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
       '@jigwright',
     );
     fs.mkdirSync(fixtureScope, { recursive: true });
-    for (const packageName of ['agent-runtime', 'core', 'openspec-adapter']) {
+    for (const packageName of [
+      'agent-runtime',
+      'core',
+      'github-adapter',
+      'openspec-adapter',
+    ]) {
       fs.symlinkSync(
         path.join(WORKSPACE_ROOT, 'packages', packageName),
         path.join(fixtureScope, packageName),
@@ -194,6 +214,8 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
 
     const reviewPath = path.join(fixtureRoot, 'review.json');
     fs.writeFileSync(reviewPath, '{}\n');
+    const archiveConfigPath = path.join(fixtureRoot, 'github-adapter.json');
+    fs.writeFileSync(archiveConfigPath, '{}\n');
     const fixturePreimage = fs
       .readdirSync(fixtureRoot, { recursive: true, encoding: 'utf8' })
       .sort();
@@ -226,6 +248,8 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
       [
         'request-archive-publication',
         `sha256:${'b'.repeat(64)}`,
+        '--config',
+        archiveConfigPath,
         '--reason',
         'Request the registered archive publication transition.',
       ],
@@ -266,16 +290,13 @@ test('@jigwright/grants is optional at install time while non-grant CLI loading 
   }
 });
 
-function collaborationEnvelope(version: 1 | 2): CollaborationGrantEnvelope {
+function collaborationEnvelope(): CollaborationGrantEnvelope {
   const common = {
     grantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
     repositoryId: POLICY.repository.id,
     repositoryOrigin: POLICY.repository.origin,
     policyBlob: 'a'.repeat(40),
-    collaborationPolicyDigest:
-      version === 1
-        ? LEGACY_COLLABORATION_GRANT_POLICY_DIGEST
-        : COLLABORATION_GRANT_POLICY_DIGEST,
+    collaborationPolicyDigest: COLLABORATION_GRANT_POLICY_DIGEST,
     changeId: 'package-grant-fixture',
     taskId: null,
     baselineCommit: 'b'.repeat(40),
@@ -299,14 +320,11 @@ function collaborationEnvelope(version: 1 | 2): CollaborationGrantEnvelope {
     maxUses: 1 as const,
     signer: 'fixture-maintainer',
   };
-  const payload: CollaborationGrantPayload =
-    version === 1
-      ? { version: 1, ...common }
-      : {
-          version: 2,
-          signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-          ...common,
-        };
+  const payload: CollaborationGrantPayload = {
+    version: 2,
+    signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
+    ...common,
+  };
   return { payload, signature: SIGNATURE };
 }
 

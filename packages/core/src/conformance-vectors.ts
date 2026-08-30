@@ -12,7 +12,7 @@ export const WORKFLOW_CONFORMANCE_DOMAIN_IDS_V2 = Object.freeze([
   'journal-record',
   'manifest-plan-review',
   'central-grant',
-  'legacy-ssh-envelope',
+  'collaboration-grant-envelope',
   'agent-protocol-frame',
   'planning-binding',
 ] as const);

@@ -7,19 +7,15 @@ import {
 
 export const COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1 =
   'jigwright.collaboration-grant-envelope-reader.v1' as const;
-export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE =
-  'workflow.collaboration-grant.v1' as const;
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE =
   'workflow.collaboration-grant.v2' as const;
 
 const MAX_ENVELOPE_BYTES = 32_768;
 
-export type VersionedCollaborationGrantPayload =
-  | Readonly<{ version: 1 }>
-  | Readonly<{
-      version: 2;
-      signatureNamespace: typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
-    }>;
+export type VersionedCollaborationGrantPayload = Readonly<{
+  version: 2;
+  signatureNamespace: typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
+}>;
 
 export type CollaborationGrantEnvelopeV1<
   Payload extends VersionedCollaborationGrantPayload,
@@ -31,7 +27,6 @@ export type CollaborationGrantEnvelopeV1<
 export type CollaborationGrantPayloadCodecV1<
   Payload extends VersionedCollaborationGrantPayload,
 > = Readonly<{
-  v1PayloadKeys: readonly string[];
   v2PayloadKeys: readonly string[];
   parsePayload(value: unknown): Payload;
   projectPayloadFields(payload: Payload): Readonly<Record<string, unknown>>;
@@ -83,14 +78,13 @@ export type ReadAndVerifyCollaborationGrantEnvelopeResultV1<
   envelope: CollaborationGrantEnvelopeV1<Payload>;
   verification: VerifiedGrantCapabilityV1<
     AuthorizedEffect,
-    | typeof COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE
-    | typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE
+    typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE
   >;
 }>;
 
 /**
- * Construct the exact historical Collaboration Grant signed bytes while the
- * domain codec retains ownership of payload semantics and nested projections.
+ * Construct the exact current Collaboration Grant signed bytes while the domain
+ * codec retains ownership of payload semantics and nested projections.
  */
 export function canonicalCollaborationGrantPayloadBytesV1<
   Payload extends VersionedCollaborationGrantPayload,
@@ -108,13 +102,11 @@ export function canonicalCollaborationGrantPayloadBytesV1<
   const fields = Object.fromEntries(
     keys.baseKeys.map((key) => [key, projected[key]]),
   );
-  return payload.version === 1
-    ? `${JSON.stringify({ version: 1, ...fields })}\n`
-    : `${JSON.stringify({
-        version: 2,
-        signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-        ...fields,
-      })}\n`;
+  return `${JSON.stringify({
+    version: 2,
+    signatureNamespace: COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
+    ...fields,
+  })}\n`;
 }
 
 export function canonicalCollaborationGrantEnvelopeBytesV1<
@@ -137,8 +129,8 @@ export function canonicalCollaborationGrantEnvelopeBytesV1<
 
 /**
  * Parse exact canonical envelope bytes. Version dispatch and namespace
- * selection happen before the domain parser, so unknown schemas cannot fall
- * through to a historical signature namespace.
+ * selection happen before the domain parser, so unsupported schemas cannot
+ * reach domain semantics or signature verification.
  */
 export function parseCollaborationGrantEnvelopeV1<
   Payload extends VersionedCollaborationGrantPayload,
@@ -197,22 +189,14 @@ export function parseCollaborationGrantEnvelopeV1<
 
 export function selectCollaborationGrantSignatureNamespaceV1(
   payload: VersionedCollaborationGrantPayload,
-):
-  | typeof COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE
-  | typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE {
-  if (
-    payload?.version === 1 &&
-    !Object.prototype.hasOwnProperty.call(payload, 'signatureNamespace')
-  ) {
-    return COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE;
-  }
+): typeof COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE {
   if (
     payload?.version === 2 &&
     payload.signatureNamespace === COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE
   ) {
     return COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
   }
-  if (payload?.version !== 1 && payload?.version !== 2) {
+  if (payload?.version !== 2) {
     throw readerError(
       'GRANT_PAYLOAD_VERSION_UNSUPPORTED',
       'Collaboration Grant payload version is unsupported.',
@@ -226,8 +210,7 @@ export function selectCollaborationGrantSignatureNamespaceV1(
 
 /**
  * Parse, run domain-owned semantic validation, and invoke exactly the verifier
- * selected by the signed payload version. No namespace retry or fallback is
- * attempted.
+ * selected by the signed payload. No namespace retry or fallback is attempted.
  */
 export function readAndVerifyCollaborationGrantEnvelopeV1<
   Payload extends VersionedCollaborationGrantPayload,
@@ -278,10 +261,7 @@ export function readAndVerifyCollaborationGrantEnvelopeV1<
     signer: request.signer(envelope.payload),
     signatureNamespace,
     authorizedEffect: request.authorizedEffect(envelope.payload),
-    allowedSignatureNamespaces: [
-      COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE,
-      COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-    ],
+    allowedSignatureNamespaces: [COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE],
     allowedAuthorizedEffects: request.allowedAuthorizedEffects,
     verifier: request.verifier,
   });
@@ -293,13 +273,10 @@ function assertCodec<Payload extends VersionedCollaborationGrantPayload>(
 ): Readonly<{ baseKeys: readonly string[] }> {
   if (
     !isPlainRecord(codec) ||
-    !isUniqueStringArray(codec.v1PayloadKeys) ||
     !isUniqueStringArray(codec.v2PayloadKeys) ||
     typeof codec.parsePayload !== 'function' ||
     typeof codec.projectPayloadFields !== 'function' ||
     typeof codec.validateSignature !== 'function' ||
-    codec.v1PayloadKeys[0] !== 'version' ||
-    codec.v1PayloadKeys.includes('signatureNamespace') ||
     codec.v2PayloadKeys[0] !== 'version' ||
     codec.v2PayloadKeys[1] !== 'signatureNamespace'
   ) {
@@ -308,57 +285,40 @@ function assertCodec<Payload extends VersionedCollaborationGrantPayload>(
       'Collaboration Grant payload codec is invalid.',
     );
   }
-  const v1Base = codec.v1PayloadKeys.slice(1);
   const v2Base = codec.v2PayloadKeys.slice(2);
-  if (
-    v1Base.length === 0 ||
-    v1Base.length !== v2Base.length ||
-    v1Base.some((key, index) => key !== v2Base[index])
-  ) {
+  if (v2Base.length === 0) {
     throw readerError(
       'GRANT_ENVELOPE_READER_INPUT_INVALID',
-      'Collaboration Grant payload codec versions do not share one exact field order.',
+      'Collaboration Grant payload codec has no domain fields.',
     );
   }
-  return Object.freeze({ baseKeys: Object.freeze(v1Base) });
+  return Object.freeze({ baseKeys: Object.freeze(v2Base) });
 }
 
 function assertVersionedPayloadShape(
   value: Readonly<Record<string, unknown>>,
   keys: Readonly<{ baseKeys: readonly string[] }>,
 ): void {
-  if (value.version === 1) {
-    if (!hasExactKeys(value, ['version', ...keys.baseKeys])) {
-      throw readerError(
-        'GRANT_ENVELOPE_SHAPE_INVALID',
-        'Historical Collaboration Grant payload keys are invalid.',
-      );
-    }
-    return;
+  if (value.version !== 2) {
+    throw readerError(
+      'GRANT_PAYLOAD_VERSION_UNSUPPORTED',
+      'Collaboration Grant payload version is unsupported.',
+    );
   }
-  if (value.version === 2) {
-    if (
-      value.signatureNamespace !== COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE
-    ) {
-      throw readerError(
-        'GRANT_SIGNATURE_NAMESPACE_INVALID',
-        'Current Collaboration Grant signature namespace is invalid.',
-      );
-    }
-    if (
-      !hasExactKeys(value, ['version', 'signatureNamespace', ...keys.baseKeys])
-    ) {
-      throw readerError(
-        'GRANT_ENVELOPE_SHAPE_INVALID',
-        'Current Collaboration Grant payload keys are invalid.',
-      );
-    }
-    return;
+  if (value.signatureNamespace !== COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE) {
+    throw readerError(
+      'GRANT_SIGNATURE_NAMESPACE_INVALID',
+      'Current Collaboration Grant signature namespace is invalid.',
+    );
   }
-  throw readerError(
-    'GRANT_PAYLOAD_VERSION_UNSUPPORTED',
-    'Collaboration Grant payload version is unsupported.',
-  );
+  if (
+    !hasExactKeys(value, ['version', 'signatureNamespace', ...keys.baseKeys])
+  ) {
+    throw readerError(
+      'GRANT_ENVELOPE_SHAPE_INVALID',
+      'Current Collaboration Grant payload keys are invalid.',
+    );
+  }
 }
 
 function parseDomainPayload<Payload extends VersionedCollaborationGrantPayload>(

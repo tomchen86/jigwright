@@ -1,8 +1,4 @@
-/**
- * Versioned Central Grant composition surface. Historical Collaboration/R-007
- * readers are published by @jigwright/grants only as read/verify/cleanup
- * adapters; this surface exposes no legacy issuance API.
- */
+/** Current Central Grant composition surface. */
 export * from '@jigwright/grants/central-grant-contracts';
 export * from '../../modules/authority/grant-approval.ts';
 export * from '../../modules/authority/grant-coordinator.ts';

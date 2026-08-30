@@ -8,7 +8,7 @@
     "record": "canonical-record-envelope.v1",
     "manifest-plan-review": "manifest-plan-review-exact-binding.v1",
     "central-grant": "central-grant-challenge-subject-transition.v1",
-    "legacy-ssh-envelope": "collaboration-grant-versioned-envelope.v1",
+    "collaboration-grant-envelope": "collaboration-grant-versioned-envelope.v1",
     "agent-protocol": "harness-jsonl-v1",
     "planning-binding": "planning-provider-binding-v1"
   },
@@ -104,9 +104,7 @@
             "parameters": {
               "resume": true
             },
-            "allowedReasonCodes": [
-              "approved-for-vector"
-            ],
+            "allowedReasonCodes": ["approved-for-vector"],
             "reasonRequired": true,
             "proposedReason": "Continue the vector transition."
           }
@@ -152,9 +150,7 @@
                 "parameterSchemaDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "consequenceDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
                 "resolutionKind": "non-retry",
-                "allowedReasonCodes": [
-                  "approved-for-vector"
-                ],
+                "allowedReasonCodes": ["approved-for-vector"],
                 "reasonRequired": true,
                 "proposedReason": "Continue the vector transition."
               }
@@ -169,15 +165,15 @@
         "grantRecordDigest": "sha256:da732ae5fa96227e7a167050c59b2c5b6608596ba1b46039ab3d84873aa5fb90"
       }
     ],
-    "legacy-ssh-envelope": [
+    "collaboration-grant-envelope": [
       {
-        "id": "legacy-collaboration-ssh-envelope",
-        "payloadVersion": 1,
-        "signatureNamespace": "workflow.collaboration-grant.v1",
+        "id": "current-collaboration-grant-envelope",
+        "payloadVersion": 2,
+        "signatureNamespace": "workflow.collaboration-grant.v2",
         "readerContractVersion": "jigwright.collaboration-grant-envelope-reader.v1",
-        "currentNamespace": "workflow.collaboration-grant.v2",
+        "retiredVersion": 1,
         "unknownVersion": 3,
-        "unknownVersionOutcome": "reject"
+        "unsupportedVersionOutcome": "reject"
       }
     ],
     "agent-protocol-frame": [
@@ -227,5 +223,5 @@
       }
     ]
   },
-  "vectorSetDigest": "sha256:48cd71a5df55afb013aab0b4cc312d9f1b54259ead96a77ee626f4fb6fe455e4"
+  "vectorSetDigest": "sha256:dd6beaadb0251f63c816960ae235e046bd310168e275f3ef2576aad41dacb340"
 }

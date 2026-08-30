@@ -30,10 +30,8 @@ export type ManagedTrailerConformanceVector = Readonly<{
 
 export type CollaborationGrantConformanceVector = Readonly<{
   id: string;
-  contract: 'collaboration-grant-v1' | 'collaboration-grant-v2-namespace';
-  signatureNamespace:
-    | 'workflow.collaboration-grant.v1'
-    | 'workflow.collaboration-grant.v2';
+  contract: 'collaboration-grant-v2-namespace';
+  signatureNamespace: 'workflow.collaboration-grant.v2';
   fixtureVerifier: 'sha256-namespace-nul-payload-base64-armored.v1';
   payload: Readonly<Record<string, unknown>>;
   canonicalPayloadUtf8Base64: string;
@@ -245,15 +243,14 @@ function parseCollaborationGrantVectors(
     ]);
     const contract = candidate.contract;
     const signatureNamespace = candidate.signatureNamespace;
-    const expectedNamespace =
-      contract === 'collaboration-grant-v1'
-        ? 'workflow.collaboration-grant.v1'
-        : 'workflow.collaboration-grant.v2';
+    const expectedNamespace = 'workflow.collaboration-grant.v2';
+    assertRecord(candidate.payload, `collaboration-grant payload ${index + 1}`);
     if (
       !isVectorId(candidate.id) ||
-      (contract !== 'collaboration-grant-v1' &&
-        contract !== 'collaboration-grant-v2-namespace') ||
+      contract !== 'collaboration-grant-v2-namespace' ||
       signatureNamespace !== expectedNamespace ||
+      candidate.payload.version !== 2 ||
+      candidate.payload.signatureNamespace !== expectedNamespace ||
       candidate.fixtureVerifier !==
         'sha256-namespace-nul-payload-base64-armored.v1' ||
       !isCanonicalBase64(candidate.canonicalPayloadUtf8Base64) ||
@@ -263,7 +260,6 @@ function parseCollaborationGrantVectors(
     ) {
       throw new Error(`Collaboration-grant vector ${index + 1} is invalid.`);
     }
-    assertRecord(candidate.payload, `collaboration-grant payload ${index + 1}`);
     return {
       id: candidate.id,
       contract,

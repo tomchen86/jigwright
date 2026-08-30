@@ -11,11 +11,9 @@ import { parseCollaborationGrantArguments } from '../src/entrypoints/cli/collabo
 import {
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_POLICY_DIGEST,
-  LEGACY_COLLABORATION_GRANT_POLICY_DIGEST,
   COLLABORATION_GRANT_RETAINED_OBLIGATIONS,
   COLLABORATION_GRANT_REPLAY_SCOPE,
   COLLABORATION_GRANT_RESIDUALS,
-  COLLABORATION_GRANT_SIGNATURE_NAMESPACE,
   DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
   canonicalCollaborationGrantEnvelope,
   canonicalCollaborationGrantPayload,
@@ -25,6 +23,7 @@ import {
   createDirectHumanReviewAttestation,
   directHumanReviewAttestationDigest,
   issueCollaborationGrant,
+  prepareCollaborationGrantIssue,
   parseCollaborationGrantEnvelope,
   parseDirectHumanReviewAttestation,
   assertUniqueCollaborationGrantUses,
@@ -665,27 +664,41 @@ test('collaboration issuance is canonical, domain-separated, and has no authorit
   }
 });
 
-test('production collaboration admission rejects historical V1 before signature verification', () => {
-  const envelope = legacyV1VectorEnvelope();
-  const namespaces: string[] = [];
-  const verifier = vectorSigner(namespaces);
-  assert.equal(
-    crypto
-      .createHash('sha256')
-      .update(canonicalCollaborationGrantEnvelope(envelope))
-      .digest('hex'),
-    '03d924fdc47a40e2f4851a2680aee38396c5f52b802b9f0f9c852ec7df6cdd4c',
-  );
-  assert.throws(
-    () =>
-      validateCollaborationGrantEnvelope(envelope, POLICY, {
-        now: NOW,
-        expected: expectedBinding(envelope),
-        verifier,
-      }),
-    (error) => isWorkflowError(error, 'COLLABORATION_GRANT_INVALID'),
-  );
-  assert.deepEqual(namespaces, []);
+test('production collaboration parser and store reject retired V1 without durable mutation', () => {
+  const repository = minimalCollaborationGrantRepository();
+  try {
+    const prepared = prepareCollaborationGrantIssue(
+      repository,
+      sameProviderRequest(repository),
+      { now: NOW, grantId: GRANT_ID, signer: fixtureSigner() },
+    );
+    const retiredV1 = structuredClone(prepared.envelope) as unknown as {
+      payload: Record<string, unknown>;
+      signature: string;
+    };
+    retiredV1.payload.version = 1;
+    delete retiredV1.payload.signatureNamespace;
+    const raw = `${JSON.stringify(retiredV1)}\n`;
+    const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+    const store = collaborationGrantStorePaths(gitCommonDirectory);
+    const before = snapshotGrantStore(store.root);
+
+    assert.throws(
+      () => parseCollaborationGrantEnvelope(raw),
+      (error) => isWorkflowError(error, 'COLLABORATION_GRANT_INVALID'),
+    );
+    assert.throws(
+      () =>
+        storeAvailableCollaborationGrant(
+          gitCommonDirectory,
+          retiredV1 as unknown as CollaborationGrantEnvelope,
+        ),
+      (error) => isWorkflowError(error, 'COLLABORATION_GRANT_INVALID'),
+    );
+    assert.deepEqual(snapshotGrantStore(store.root), before);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('portable current collaboration grant vector preserves namespace-V2 signed bytes', () => {
@@ -760,7 +773,7 @@ test('collaboration grant versions own one namespace without fallback or pre-val
       payload: Record<string, unknown>;
     };
     wrongNamespace.payload.signatureNamespace =
-      COLLABORATION_GRANT_SIGNATURE_NAMESPACE;
+      'workflow.collaboration-grant.v1';
     invalidCandidates.push(wrongNamespace);
 
     const futureVersion = structuredClone(issued.envelope) as unknown as {
@@ -809,26 +822,6 @@ test('collaboration grant versions own one namespace without fallback or pre-val
       );
       assert.equal(verifyCalls, 0);
     }
-
-    const legacy = legacyV1VectorEnvelope();
-    const invalidLegacy = {
-      ...legacy,
-      signature: fixtureSignature(
-        canonicalCollaborationGrantPayload(legacy.payload),
-        NEUTRAL_COLLABORATION_GRANT_NAMESPACE,
-      ),
-    };
-    const attemptedNamespaces: string[] = [];
-    assert.throws(
-      () =>
-        validateCollaborationGrantEnvelope(invalidLegacy, POLICY, {
-          now: NOW,
-          expected: expectedBinding(legacy),
-          verifier: fixtureSigner(attemptedNamespaces),
-        }),
-      (error) => isWorkflowError(error, 'COLLABORATION_GRANT_INVALID'),
-    );
-    assert.deepEqual(attemptedNamespaces, []);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -2119,46 +2112,6 @@ function expectedBinding(
     availableActor: payload.availableActor,
     degradedForm: payload.degradedForm,
     reason: payload.reason,
-  };
-}
-
-function legacyV1VectorEnvelope(): CollaborationGrantEnvelope {
-  const payload = {
-    version: 1 as const,
-    grantId: GRANT_ID,
-    repositoryId: POLICY.repository.id,
-    repositoryOrigin: POLICY.repository.origin,
-    policyBlob: 'a'.repeat(40),
-    collaborationPolicyDigest: LEGACY_COLLABORATION_GRANT_POLICY_DIGEST,
-    changeId: 'vector-change',
-    taskId: null,
-    baselineCommit: 'b'.repeat(40),
-    baselineTree: 'c'.repeat(40),
-    targetDigest: 'd'.repeat(64),
-    lifecyclePhase: 'blind-survey' as const,
-    rolePair: {
-      authorRole: 'investigation-author' as const,
-      conflictingRole: 'blind-surveyor' as const,
-    },
-    availableActor: {
-      kind: 'provider' as const,
-      providerId: 'codex' as const,
-      assurance: 'runtime-hint' as const,
-    },
-    degradedForm: 'same-provider-fresh-session' as const,
-    authorizedEffect: COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-    reason: 'No alternate provider is callable for this exact vector.',
-    issuedAt: NOW.toISOString(),
-    expiresAt: new Date(NOW.getTime() + 30 * 60_000).toISOString(),
-    maxUses: 1 as const,
-    signer: 'fixture-maintainer',
-  };
-  return {
-    payload,
-    signature: vectorSignature(
-      canonicalCollaborationGrantPayload(payload),
-      COLLABORATION_GRANT_SIGNATURE_NAMESPACE,
-    ),
   };
 }
 
