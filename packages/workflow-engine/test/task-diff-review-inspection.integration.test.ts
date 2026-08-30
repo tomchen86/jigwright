@@ -61,7 +61,6 @@ import {
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   listTaskDiffReviewLineageSupersessions,
-  listTaskDiffReviewSupersessions,
   taskDiffReviewLineageSupersessionPath,
 } from '../src/runtime/storage-journal/task-diff-review-store.ts';
 import {
@@ -911,18 +910,16 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
     );
     fs.writeFileSync(commonPath, commonBytes);
 
-    const supersessions = listTaskDiffReviewSupersessions(
-      runtime,
-      session.sessionId,
-    );
-    assert.equal(supersessions.length, 1);
     assert.equal(
-      supersessions[0]?.predecessorReviewRecordDigest,
-      firstResult.review.recordDigest,
-    );
-    assert.equal(
-      supersessions[0]?.supersededByDigest,
-      secondResult.review.recordDigest,
+      fs.existsSync(
+        path.join(
+          runtime.refs,
+          'task-diff-reviews',
+          session.sessionId,
+          'supersessions',
+        ),
+      ),
+      false,
     );
 
     fs.writeFileSync(

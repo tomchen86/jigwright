@@ -172,7 +172,6 @@ import {
 import {
   createTaskDiffFinalAssuranceBinding,
   createTaskDiffReviewLineageSupersession,
-  createTaskDiffReviewSupersession,
   createTaskDiffReviewContinuationReservation,
   createTaskDiffReviewContinuationResultBinding,
   createTaskDiffReviewReservation,
@@ -183,7 +182,6 @@ import {
   listAllTaskDiffReviewContinuationResultBindings,
   listTaskDiffReviewResultBindings,
   listTaskDiffReviewLineageSupersessions,
-  listTaskDiffReviewSupersessions,
   readTaskDiffFinalAssuranceBinding,
   readTaskDiffReviewContinuationReservation,
   readTaskDiffReviewContinuationResultBinding,
@@ -6141,9 +6139,8 @@ function loadTaskDiffReviewLineage(
   ) {
     throw taskDiffReviewPriorChallengeOpen();
   }
-  assertLegacyProviderSupersessionProjection(
+  assertTaskDiffReviewLineageSupersessionProjection(
     runtime,
-    context,
     entries,
     allowedMissingSupersession,
   );
@@ -6463,9 +6460,8 @@ function sameTaskDiffReviewLineage(
   );
 }
 
-function assertLegacyProviderSupersessionProjection(
+function assertTaskDiffReviewLineageSupersessionProjection(
   runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  context: ReturnType<typeof loadActiveSessionContext>,
   entries: readonly LoadedTaskDiffReviewLineageEntry[],
   allowedMissingSupersession: TaskDiffReviewSupersessionRecoveryTarget | null,
 ): void {
@@ -6519,23 +6515,6 @@ function assertLegacyProviderSupersessionProjection(
     }
     throw taskDiffReviewSupersessionReconciliationRequired();
   }
-  for (const relation of listTaskDiffReviewSupersessions(
-    runtime,
-    context.session.sessionId,
-  )) {
-    const predecessor = byReview.get(relation.predecessorReviewRecordDigest);
-    const successor = byReview.get(relation.supersededByDigest);
-    if (
-      predecessor === undefined ||
-      successor === undefined ||
-      predecessor.subject.subjectDigest !== relation.predecessorSubjectDigest ||
-      successor.subject.subjectDigest !== relation.supersededBySubjectDigest ||
-      canonicalJson(successor.reviewScope) !==
-        canonicalJson(relation.reviewScope)
-    ) {
-      throw taskDiffReviewLineageConflict();
-    }
-  }
 }
 
 function ensureTaskDiffReviewSupersession(
@@ -6587,15 +6566,6 @@ function ensureTaskDiffReviewSupersession(
     successorReview: binding.review,
     successorReviewScope: binding.review.reviewScope,
     successorReviewScopeDigest: binding.review.reviewScope.scopeDigest,
-  });
-  createTaskDiffReviewSupersession(runtime, {
-    sessionId: binding.sessionId,
-    predecessorSubjectDigest: predecessor.subjectDigest,
-    predecessorReviewRecordDigest: predecessor.reviewRecordDigest,
-    supersededBySubjectDigest: binding.subjectDigest,
-    supersededByDigest: binding.review.recordDigest,
-    reviewScope: scope,
-    createdAt: binding.createdAt,
   });
 }
 
