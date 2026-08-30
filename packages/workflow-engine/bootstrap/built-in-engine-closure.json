@@ -688,7 +688,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:11f2116d7ad266cc8315f9f03f56f6ce6208e9ec5055a6cf04c10a5f45fe08c7"
+      "digest": "sha256:b9b9085202620566ce5b18010307fc9595a4af1beff799d9145556c1bd8db868"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1333,7 +1333,7 @@
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:213b40a6bbc49a1113ec380a6146a7cb5715e22f87ea30ee8a7b741d9e6e8edd"
+      "digest": "sha256:ed5f06bd15f9c7409881e1f7d4fa06e0a4333a1693824965976cf3937394c804"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
