@@ -31,10 +31,13 @@ import {
   adoptCurrentTaskStrategyCorrection,
   adoptCurrentTaskStrategyImplementation,
   importTaskStrategyPatch,
-  inspectTaskStrategyPatchState,
   validateTaskStrategyPatch,
 } from '../src/application/execute-task/task-strategy-patch.ts';
-import { readTaskStrategyPatchCurrentBinding } from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
+import {
+  readTaskStrategyPatchCurrentBinding,
+  readTaskStrategyPatchImportReceipt,
+  readTaskStrategyPatchRecord,
+} from '../src/runtime/storage-journal/task-strategy-patch-store.ts';
 import {
   inspectTaskStrategyTransaction,
   sealTaskStrategyRed,
@@ -722,6 +725,10 @@ test('single-agent resume refuses frozen RED drift before minting a patch receip
       { AGENT: 'codex', WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH: '1' },
     );
     assert.equal(sealed.status, 0, sealed.stderr);
+    const transaction = inspectTaskStrategyTransaction(
+      repository,
+      session.sessionId,
+    )!;
 
     fs.writeFileSync(testPath, "throw new Error('weakened');\n");
     fs.mkdirSync(path.join(repository, 'src'), { recursive: true });
@@ -740,6 +747,7 @@ test('single-agent resume refuses frozen RED drift before minting a patch receip
       readTaskStrategyPatchCurrentBinding(
         loadInvestigationRuntimeContext(repository).runtime,
         session.sessionId,
+        transaction.red.candidateTree,
       ),
       null,
     );
@@ -807,6 +815,7 @@ test('single-agent local adoption replays every durable publication cut without 
         readTaskStrategyPatchCurrentBinding(
           loadInvestigationRuntimeContext(repository).runtime,
           session.sessionId,
+          replayed.record.sourceTree,
         )?.candidateTree,
         replayed.record.candidateTree,
       );
@@ -829,7 +838,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
       testPath,
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(repository, session.sessionId, {
+    const red = sealTaskStrategyRed(repository, session.sessionId, {
       explicitActor: 'codex',
       environment: {},
     });
@@ -854,6 +863,7 @@ test('single-agent reservation replay never resurrects implementation bytes reve
       readTaskStrategyPatchCurrentBinding(
         loadInvestigationRuntimeContext(repository).runtime,
         session.sessionId,
+        red.red.candidateTree,
       ),
       null,
     );
@@ -1616,13 +1626,15 @@ test('zero-provider caller patch imports only through an exact consumed collabor
       },
     );
     assert.equal(imported.state, 'patch-imported');
-    const patchState = inspectTaskStrategyPatchState(
-      repository,
+    const patchRecord = readTaskStrategyPatchRecord(
+      loadInvestigationRuntimeContext(repository).runtime,
       session.sessionId,
       sha256Buffer(patch),
+      red.red.candidateTree,
     );
-    assert.equal(patchState.record.implementer.providerId, null);
-    assert.equal(patchState.record.implementer.principalId, callerId);
+    assert.ok(patchRecord);
+    assert.equal(patchRecord.implementer.providerId, null);
+    assert.equal(patchRecord.implementer.principalId, callerId);
     assert.equal(
       inspectCollaborationGrants(
         fs.realpathSync(path.join(repository, '.git')),
@@ -2394,14 +2406,15 @@ test('patch import persists authority before mutation and exact replay reaches e
       /reservation-persisted/,
     );
     assert.equal(fs.existsSync(implementationPath), false);
-    assert.throws(
-      () =>
-        inspectTaskStrategyPatchState(
-          repository,
-          session.sessionId,
-          patchDigest,
-        ),
-      hasCode('TASK_STRATEGY_PATCH_NOT_FOUND'),
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    assert.equal(
+      readTaskStrategyPatchRecord(
+        runtime,
+        session.sessionId,
+        patchDigest,
+        red.red.candidateTree,
+      ),
+      null,
     );
     assert.throws(
       () =>
@@ -2413,13 +2426,22 @@ test('patch import persists authority before mutation and exact replay reaches e
         }),
       /record-persisted/,
     );
-    const prepared = inspectTaskStrategyPatchState(
-      repository,
+    const prepared = readTaskStrategyPatchRecord(
+      runtime,
       session.sessionId,
       patchDigest,
+      red.red.candidateTree,
     );
-    assert.equal(prepared.record.patchDigest, patchDigest);
-    assert.equal(prepared.receipt, null);
+    assert.equal(prepared?.patchDigest, patchDigest);
+    assert.equal(
+      readTaskStrategyPatchImportReceipt(
+        runtime,
+        session.sessionId,
+        patchDigest,
+        red.red.candidateTree,
+      ),
+      null,
+    );
 
     const imported = importTaskStrategyPatch(repository, session.sessionId, {
       patch,
@@ -2808,7 +2830,7 @@ test('a durable prepared patch reservation rejects a different patch before eith
   }
 });
 
-test('patch inspection rejects independently redigested reservation metadata', () => {
+test('patch replay rejects independently redigested reservation metadata', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(repository, 'demo-change', '1.1');
@@ -2838,6 +2860,8 @@ test('patch inspection rejects independently redigested reservation metadata', (
       runtimeRoot(repository),
       'investigations/refs/task-strategy-patches',
       session.sessionId,
+      'sources',
+      imported.record.sourceTree,
       'reservation.json',
     );
     const reservation = JSON.parse(
@@ -2854,11 +2878,11 @@ test('patch inspection rejects independently redigested reservation metadata', (
 
     assert.throws(
       () =>
-        inspectTaskStrategyPatchState(
-          repository,
-          session.sessionId,
-          imported.record.patchDigest,
-        ),
+        importTaskStrategyPatch(repository, session.sessionId, {
+          patch,
+          explicitActor: 'claude',
+          environment: {},
+        }),
       hasCode('TASK_STRATEGY_PATCH_STATE_CORRUPT'),
     );
   } finally {

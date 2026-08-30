@@ -97,13 +97,6 @@ export type TaskStrategyPatchValidation = Readonly<{
   implementer: TaskStrategyPatchImplementer;
 }>;
 
-export type TaskStrategyPatchState = Readonly<{
-  record: TaskStrategyPatchRecord;
-  reservation: TaskStrategyPatchReservation;
-  receipt: TaskStrategyPatchImportReceipt | null;
-  binding: TaskStrategyPatchCurrentBinding | null;
-}>;
-
 export type ImportedTaskStrategyPatch = Readonly<{
   record: TaskStrategyPatchRecord;
   reservation: TaskStrategyPatchReservation;
@@ -329,52 +322,6 @@ function validateTaskStrategyPatchWithAuthority(
     changes: Object.freeze(changes),
     implementer: Object.freeze(authority.implementer),
   });
-}
-
-export function inspectTaskStrategyPatchState(
-  cwd: string,
-  requestedSessionId: string,
-  requestedPatchDigest: string,
-): TaskStrategyPatchState {
-  const inspection = inspectSession(cwd, requestedSessionId);
-  const runtime = investigationRuntimePaths(
-    inspection.git.gitCommonDirectory,
-    inspection.contract.config.runtimeDirectory,
-  );
-  const record = readTaskStrategyPatchRecord(
-    runtime,
-    inspection.session.sessionId,
-    requestedPatchDigest,
-  );
-  if (record === null) {
-    throw workflowError(
-      'TASK_STRATEGY_PATCH_NOT_FOUND',
-      'No durable task strategy patch record exists for that digest.',
-      ExitCode.staleState,
-    );
-  }
-  const receipt = readTaskStrategyPatchImportReceipt(
-    runtime,
-    inspection.session.sessionId,
-    requestedPatchDigest,
-  );
-  const binding = readTaskStrategyPatchCurrentBinding(
-    runtime,
-    inspection.session.sessionId,
-  );
-  const reservation = readTaskStrategyPatchReservation(
-    runtime,
-    inspection.session.sessionId,
-  );
-  if (reservation === null) {
-    throw workflowError(
-      'TASK_STRATEGY_PATCH_STATE_CORRUPT',
-      'A durable patch record exists without its exact reservation.',
-      ExitCode.staleState,
-    );
-  }
-  assertPatchStateRelations(record, reservation, receipt, binding);
-  return Object.freeze({ record, reservation, receipt, binding });
 }
 
 export function importTaskStrategyPatch(

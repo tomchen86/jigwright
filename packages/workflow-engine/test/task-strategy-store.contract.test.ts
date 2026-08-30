@@ -321,7 +321,7 @@ test('provider strategy stores reject the superseded output schema identity', ()
   }
 });
 
-test('patch strategy stores preserve the legacy source tree and namespace later RED source trees', () => {
+test('patch strategy stores persist every record under its exact source tree', () => {
   const fixture = createRuntimeFixture();
   try {
     const first = createPatchFixture(fixture.paths, 'a', SOURCE_A, '4');
@@ -338,16 +338,14 @@ test('patch strategy stores preserve the legacy source tree and namespace later 
     const firstCurrent = createTaskStrategyPatchCurrentBinding(
       fixture.paths,
       first.current,
+      SOURCE_A,
     );
     const secondCurrent = createTaskStrategyPatchCurrentBinding(
       fixture.paths,
       second.current,
+      SOURCE_B,
     );
 
-    assert.equal(
-      readTaskStrategyPatchReservation(fixture.paths, SESSION_ID)?.sourceTree,
-      SOURCE_A,
-    );
     assert.equal(
       readTaskStrategyPatchReservation(fixture.paths, SESSION_ID, SOURCE_A)
         ?.reservationDigest,
@@ -391,6 +389,41 @@ test('patch strategy stores preserve the legacy source tree and namespace later 
           fixture.paths.refs,
           'task-strategy-patches',
           SESSION_ID,
+          'reservation.json',
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          'current.json',
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          `${first.reservation.patchDigest}.json`,
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          'sources',
+          SOURCE_A,
           'reservation.json',
         ),
       ),
@@ -476,6 +509,44 @@ test('identical correction patch bytes remain distinct across source trees', () 
         importedAt: '2026-08-13T00:09:00.000Z',
       },
       SOURCE_B,
+    );
+
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          `${patchDigest}.imported.json`,
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          'sources',
+          SOURCE_A,
+          `${patchDigest}.imported.json`,
+        ),
+      ),
+      true,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategy-patches',
+          SESSION_ID,
+          'sources',
+          SOURCE_B,
+          `${patchDigest}.imported.json`,
+        ),
+      ),
+      true,
     );
 
     assert.equal(

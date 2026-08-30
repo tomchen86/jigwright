@@ -137,24 +137,12 @@ export function persistTaskStrategyPatchRecord(
   value: TaskStrategyPatchRecord,
 ): TaskStrategyPatchRecord {
   const record = parsePatchRecord(value);
-  const legacyPath = patchRecordPath(
+  const target = sourcePatchRecordPath(
     paths,
     record.sessionId,
+    record.sourceTree,
     record.patchDigest,
   );
-  const legacy = readPatchRecordAt(paths, legacyPath);
-  if (legacy !== null && legacy.sessionId !== record.sessionId) {
-    throw stateCorrupt();
-  }
-  const target =
-    legacy === null || legacy.sourceTree === record.sourceTree
-      ? legacyPath
-      : sourcePatchRecordPath(
-          paths,
-          record.sessionId,
-          record.sourceTree,
-          record.patchDigest,
-        );
   createPrivateCanonicalJson(
     paths,
     target,
@@ -174,23 +162,11 @@ export function readTaskStrategyPatchRecord(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
   requestedPatchDigest: string,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchRecord | null {
   const sessionId = assertSessionId(requestedSessionId);
   const patchDigest = assertDigest(requestedPatchDigest);
-  const legacy = readPatchRecordAt(
-    paths,
-    patchRecordPath(paths, sessionId, patchDigest),
-  );
-  if (
-    legacy !== null &&
-    (legacy.sessionId !== sessionId || legacy.patchDigest !== patchDigest)
-  ) {
-    throw stateCorrupt();
-  }
-  if (expectedSourceTree === undefined) return legacy;
   const sourceTree = assertObjectId(expectedSourceTree);
-  if (legacy?.sourceTree === sourceTree) return legacy;
   const scoped = readPatchRecordAt(
     paths,
     sourcePatchRecordPath(paths, sessionId, sourceTree, patchDigest),
@@ -212,7 +188,7 @@ export function createTaskStrategyPatchImportReceipt(
     TaskStrategyPatchImportReceipt,
     'schemaVersion' | 'kind' | 'receiptDigest'
   >,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchImportReceipt {
   const body = {
     schemaVersion: 1 as const,
@@ -223,45 +199,26 @@ export function createTaskStrategyPatchImportReceipt(
     ...body,
     receiptDigest: sha256(canonicalJson(body)),
   });
-  const sourceTree =
-    expectedSourceTree === undefined
-      ? undefined
-      : assertObjectId(expectedSourceTree);
-  if (sourceTree !== undefined) {
-    const record = readTaskStrategyPatchRecord(
-      paths,
-      receipt.sessionId,
-      receipt.patchDigest,
-      sourceTree,
-    );
-    if (
-      record === null ||
-      record.recordDigest !== receipt.recordDigest ||
-      record.candidateTree !== receipt.candidateTree
-    ) {
-      throw stateCorrupt();
-    }
-  }
-  const legacyPath = patchReceiptPath(
+  const sourceTree = assertObjectId(expectedSourceTree);
+  const record = readTaskStrategyPatchRecord(
     paths,
     receipt.sessionId,
     receipt.patchDigest,
+    sourceTree,
   );
-  const legacy = readPatchReceiptAt(paths, legacyPath);
-  if (legacy !== null && legacy.sessionId !== receipt.sessionId) {
+  if (
+    record === null ||
+    record.recordDigest !== receipt.recordDigest ||
+    record.candidateTree !== receipt.candidateTree
+  ) {
     throw stateCorrupt();
   }
-  const target =
-    sourceTree === undefined ||
-    legacy === null ||
-    receiptSourceTree(paths, legacy) === sourceTree
-      ? legacyPath
-      : sourcePatchReceiptPath(
-          paths,
-          receipt.sessionId,
-          sourceTree,
-          receipt.patchDigest,
-        );
+  const target = sourcePatchReceiptPath(
+    paths,
+    receipt.sessionId,
+    sourceTree,
+    receipt.patchDigest,
+  );
   createPrivateCanonicalJson(
     paths,
     target,
@@ -281,25 +238,11 @@ export function readTaskStrategyPatchImportReceipt(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
   requestedPatchDigest: string,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchImportReceipt | null {
   const sessionId = assertSessionId(requestedSessionId);
   const patchDigest = assertDigest(requestedPatchDigest);
-  const legacy = readPatchReceiptAt(
-    paths,
-    patchReceiptPath(paths, sessionId, patchDigest),
-  );
-  if (
-    legacy !== null &&
-    (legacy.sessionId !== sessionId || legacy.patchDigest !== patchDigest)
-  ) {
-    throw stateCorrupt();
-  }
-  if (expectedSourceTree === undefined) return legacy;
   const sourceTree = assertObjectId(expectedSourceTree);
-  if (legacy !== null && receiptSourceTree(paths, legacy) === sourceTree) {
-    return legacy;
-  }
   const scoped = readPatchReceiptAt(
     paths,
     sourcePatchReceiptPath(paths, sessionId, sourceTree, patchDigest),
@@ -331,19 +274,11 @@ export function createTaskStrategyPatchReservation(
     ...body,
     reservationDigest: sha256(canonicalJson(body)),
   });
-  const legacyPath = reservationPath(paths, reservation.sessionId);
-  const legacy = readReservationAt(paths, legacyPath);
-  if (legacy !== null && legacy.sessionId !== reservation.sessionId) {
-    throw stateCorrupt();
-  }
-  const target =
-    legacy === null || legacy.sourceTree === reservation.sourceTree
-      ? legacyPath
-      : sourceReservationPath(
-          paths,
-          reservation.sessionId,
-          reservation.sourceTree,
-        );
+  const target = sourceReservationPath(
+    paths,
+    reservation.sessionId,
+    reservation.sourceTree,
+  );
   createPrivateCanonicalJson(
     paths,
     target,
@@ -365,14 +300,10 @@ export function createTaskStrategyPatchReservation(
 export function readTaskStrategyPatchReservation(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchReservation | null {
   const sessionId = assertSessionId(requestedSessionId);
-  const legacy = readReservationAt(paths, reservationPath(paths, sessionId));
-  if (legacy !== null && legacy.sessionId !== sessionId) throw stateCorrupt();
-  if (expectedSourceTree === undefined) return legacy;
   const sourceTree = assertObjectId(expectedSourceTree);
-  if (legacy?.sourceTree === sourceTree) return legacy;
   const scoped = readReservationAt(
     paths,
     sourceReservationPath(paths, sessionId, sourceTree),
@@ -392,7 +323,7 @@ export function createTaskStrategyPatchCurrentBinding(
     TaskStrategyPatchCurrentBinding,
     'schemaVersion' | 'kind' | 'bindingDigest'
   >,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchCurrentBinding {
   const body = {
     schemaVersion: 1 as const,
@@ -403,32 +334,18 @@ export function createTaskStrategyPatchCurrentBinding(
     ...body,
     bindingDigest: sha256(canonicalJson(body)),
   });
-  const legacyPath = currentBindingPath(paths, binding.sessionId);
-  const legacy = readCurrentBindingAt(paths, legacyPath);
-  if (legacy !== null && legacy.sessionId !== binding.sessionId) {
-    throw stateCorrupt();
-  }
-  const boundSourceTree =
-    expectedSourceTree === undefined
-      ? currentBindingSourceTree(paths, binding)
-      : assertObjectId(expectedSourceTree);
+  const boundSourceTree = assertObjectId(expectedSourceTree);
   if (
     currentBindingSourceTree(paths, binding, boundSourceTree) !==
     boundSourceTree
   ) {
     throw stateCorrupt();
   }
-  let target = legacyPath;
-  if (legacy !== null) {
-    const legacySourceTree = currentBindingSourceTree(paths, legacy);
-    if (legacySourceTree !== boundSourceTree) {
-      target = sourceCurrentBindingPath(
-        paths,
-        binding.sessionId,
-        boundSourceTree,
-      );
-    }
-  }
+  const target = sourceCurrentBindingPath(
+    paths,
+    binding.sessionId,
+    boundSourceTree,
+  );
   createPrivateCanonicalJson(
     paths,
     target,
@@ -441,7 +358,6 @@ export function createTaskStrategyPatchCurrentBinding(
     throw stateCorrupt();
   }
   if (
-    target !== legacyPath &&
     currentBindingSourceTree(paths, stored, boundSourceTree) !== boundSourceTree
   ) {
     throw stateCorrupt();
@@ -452,22 +368,10 @@ export function createTaskStrategyPatchCurrentBinding(
 export function readTaskStrategyPatchCurrentBinding(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): TaskStrategyPatchCurrentBinding | null {
   const sessionId = assertSessionId(requestedSessionId);
-  const legacy = readCurrentBindingAt(
-    paths,
-    currentBindingPath(paths, sessionId),
-  );
-  if (legacy !== null && legacy.sessionId !== sessionId) throw stateCorrupt();
-  if (expectedSourceTree === undefined) return legacy;
   const sourceTree = assertObjectId(expectedSourceTree);
-  if (
-    legacy !== null &&
-    currentBindingSourceTree(paths, legacy) === sourceTree
-  ) {
-    return legacy;
-  }
   const scoped = readCurrentBindingAt(
     paths,
     sourceCurrentBindingPath(paths, sessionId, sourceTree),
@@ -480,32 +384,6 @@ export function readTaskStrategyPatchCurrentBinding(
     throw stateCorrupt();
   }
   return scoped;
-}
-
-function patchRecordPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-  patchDigest: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-patches',
-    sessionId,
-    `${patchDigest}.json`,
-  );
-}
-
-function patchReceiptPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-  patchDigest: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-patches',
-    sessionId,
-    `${patchDigest}.imported.json`,
-  );
 }
 
 function sourcePatchRecordPath(
@@ -533,30 +411,6 @@ function sourcePatchReceiptPath(
     sessionId,
     sourceTree,
     `${assertDigest(patchDigest)}.imported.json`,
-  );
-}
-
-function currentBindingPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-patches',
-    sessionId,
-    'current.json',
-  );
-}
-
-function reservationPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-patches',
-    sessionId,
-    'reservation.json',
   );
 }
 
@@ -625,7 +479,7 @@ function readPatchReceiptAt(
 function receiptSourceTree(
   paths: InvestigationRuntimePaths,
   receipt: TaskStrategyPatchImportReceipt,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): string {
   const record = readTaskStrategyPatchRecord(
     paths,
@@ -656,7 +510,7 @@ function readCurrentBindingAt(
 function currentBindingSourceTree(
   paths: InvestigationRuntimePaths,
   binding: TaskStrategyPatchCurrentBinding,
-  expectedSourceTree?: string,
+  expectedSourceTree: string,
 ): string {
   const record = readTaskStrategyPatchRecord(
     paths,
