@@ -48,7 +48,7 @@ export function providerRetentionReceiptId(input) {
         currentEpoch: input.currentEpoch,
         requestDigest: input.requestDigest,
         manifestDigest: input.manifestDigest,
-        legacyRevision: input.legacyRevision,
+        invocationRevision: input.invocationRevision,
         terminalAt: input.terminalAt,
         artifacts: input.artifacts,
         executionRevision: input.executionRevision,
@@ -131,7 +131,7 @@ export function readCompleteProviderRetentionReceipt(paths, requestedInvocationI
     }
     if (receipt.requestDigest !== binding.requestDigest ||
         receipt.manifestDigest !== binding.manifestDigest ||
-        receipt.legacyRevision !== binding.legacyRevision ||
+        receipt.invocationRevision !== binding.invocationRevision ||
         receipt.terminalState !== binding.terminalState ||
         receipt.terminalAt !== binding.terminalAt) {
         throw receiptUnsafe();
@@ -176,7 +176,7 @@ function assertProviderRetentionReceipt(value) {
             'invocationId',
             'jobId',
             'kind',
-            'legacyRevision',
+            'invocationRevision',
             'manifestDigest',
             'preparedAt',
             'receiptDigest',
@@ -207,7 +207,7 @@ function assertProviderRetentionReceipt(value) {
             typeof value.acceptedAttemptId !== 'string') ||
         !isDigest(value.requestDigest) ||
         !isDigest(value.manifestDigest) ||
-        !isNonNegativeInteger(value.legacyRevision) ||
+        !isNonNegativeInteger(value.invocationRevision) ||
         (value.terminalState !== 'succeeded' && value.terminalState !== 'failed') ||
         !isTimestamp(value.terminalAt) ||
         !isPositiveInteger(value.ttlDays) ||
@@ -239,7 +239,7 @@ function assertProviderRetentionReceipt(value) {
             currentEpoch: value.currentEpoch,
             requestDigest: value.requestDigest,
             manifestDigest: value.manifestDigest,
-            legacyRevision: value.legacyRevision,
+            invocationRevision: value.invocationRevision,
             terminalAt: value.terminalAt,
             artifacts,
             executionRevision: value.executionRevision,

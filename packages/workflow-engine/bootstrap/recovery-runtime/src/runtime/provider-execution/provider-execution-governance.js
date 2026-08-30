@@ -11,7 +11,7 @@ const MAX_REPAIR_ERRORS = 64;
 const MAX_REPAIR_ERROR_MESSAGE_BYTES = 4_096;
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 /**
- * Replay and consume the legacy per-kind RepairBudget without publishing a
+ * Replay and consume the bounded per-kind RepairBudget without publishing a
  * replacement artifact. Retry callers run this before their durable
  * reservation/ref transition so a stricter semantic/schema budget cannot fail
  * after partial invocation files have appeared.
@@ -48,7 +48,7 @@ export function providerPromptContextStoreRoot(invocationDirectory) {
     return path.dirname(invocations);
 }
 /**
- * Materialize the provider's legacy input manifest as the sole item in an
+ * Materialize the provider input manifest as the sole item in an
  * exact durable epoch context. Replays verify the complete expected manifest;
  * they never discover or append evidence by walking historical storage.
  */
@@ -107,7 +107,7 @@ export function registerProviderRuntimeEvidence(storeRoot, input) {
         epoch: input.binding.epoch,
         attemptId: input.attemptId,
         invocationId: input.invocationId,
-        legacyRevision: input.legacyRevision,
+        invocationRevision: input.invocationRevision,
     })}\n`;
     storeDurableEvidence(storeRoot, {
         workflowId: input.binding.workflowId,

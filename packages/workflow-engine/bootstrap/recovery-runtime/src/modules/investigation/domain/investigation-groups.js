@@ -1476,29 +1476,6 @@ export function deriveClassGroupsWithContextFromFacts(input) {
         }))),
     }));
 }
-export function deriveClassGroupsWithContext(input) {
-    const windows = new Map();
-    for (const scanNode of input.scanNodes) {
-        const scan = readScanNode(scanNode, groupsInvalid);
-        for (const hit of scan.hits) {
-            windows.set(scanHitJoinKey(scan.termId, hit.path.rawBase64, hit.byteOffset, hit.byteLength), hit.contextWindow ?? null);
-        }
-    }
-    return input.groupNodes.map((node) => {
-        const group = readInvestigationGroupNode(node);
-        return Object.freeze({
-            groupId: group.groupId,
-            termId: group.selector.termId,
-            hits: Object.freeze(group.hits.map((hit) => Object.freeze({
-                path: hit.path.utf8 ?? `base64:${hit.path.rawBase64}`,
-                surface: hit.surface,
-                window: windows.get(scanHitJoinKey(hit.termId, hit.path.rawBase64, hit.byteOffset, hit.byteLength)) ?? null,
-                matchOffset: hit.byteOffset,
-                matchLength: hit.byteLength,
-            }))),
-        });
-    });
-}
 function scanHitJoinKey(termId, rawBase64, byteOffset, byteLength) {
     return `${termId} ${rawBase64} ${byteOffset} ${byteLength}`;
 }

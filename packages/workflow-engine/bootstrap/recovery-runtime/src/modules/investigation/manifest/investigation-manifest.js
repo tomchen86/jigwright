@@ -57,7 +57,6 @@ export const INVESTIGATION_V3_ATTEMPTED_TRANSITIONS = [
     'build-draft',
     'draft-seal',
     'authority-validation',
-    'historical-inspection',
     'publication',
 ];
 /**
@@ -233,32 +232,6 @@ export function validateForAuthority(input) {
     }
     catch (error) {
         return blocked('authority-validation', input.manifest, error);
-    }
-}
-export function inspectHistorical(input) {
-    try {
-        const manifest = parseFinalManifest(input.repositoryRoot, input.manifest);
-        return {
-            outcome: 'inspected',
-            authorityEligible: false,
-            manifestDigest: manifest.manifestDigest,
-        };
-    }
-    catch (error) {
-        const code = failureCode(error);
-        if (code === 'REPLAY_INPUT_MISSING' ||
-            code === 'REPLAY_CLOSURE_UNSUPPORTED') {
-            return {
-                outcome: 'historicalReplayUnavailable',
-                authorityEligible: false,
-                manifestDigest: isRecord(input.manifest) &&
-                    typeof input.manifest.manifestDigest === 'string'
-                    ? input.manifest.manifestDigest
-                    : null,
-                reasonCode: code,
-            };
-        }
-        return blocked('historical-inspection', input.manifest, error);
     }
 }
 function buildOrdinaryApplicability(repositoryRoot, state, parentIdentity) {

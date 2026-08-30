@@ -169,7 +169,7 @@ export function assertProviderInvocationEvidenceSnapshot(value) {
             'failureCode',
             'invocationId',
             'kind',
-            'legacyRevision',
+            'invocationRevision',
             'manifestDigest',
             'promptDigest',
             'rawOutputDigest',
@@ -184,8 +184,8 @@ export function assertProviderInvocationEvidenceSnapshot(value) {
         value.kind !== 'provider-invocation-evidence-snapshot' ||
         !Number.isSafeInteger(value.attempt) ||
         value.attempt < 1 ||
-        !Number.isSafeInteger(value.legacyRevision) ||
-        value.legacyRevision < 0 ||
+        !Number.isSafeInteger(value.invocationRevision) ||
+        value.invocationRevision < 0 ||
         !isDigest(value.requestDigest) ||
         !isDigest(value.manifestDigest) ||
         !isDigest(value.subjectDigest) ||

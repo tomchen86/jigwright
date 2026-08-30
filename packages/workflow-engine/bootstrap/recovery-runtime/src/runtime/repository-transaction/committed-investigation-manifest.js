@@ -46,11 +46,9 @@ export function readCommittedInvestigationManifestV3(input) {
     catch {
         throw committedInvalid('Committed investigation Manifest is not canonical UTF-8 JSON.');
     }
-    if (isSchema(value, 1)) {
-        throw workflowError('SCHEMA_V1_FORBIDDEN', 'Schema v1 investigation evidence is historical-only and cannot satisfy committed current authority.', ExitCode.guard);
-    }
-    if (isSchema(value, 2)) {
-        throw workflowError('PROJECTION_PIPELINE_FORBIDDEN', 'Schema v2 projected investigation evidence is historical-only and cannot satisfy committed current authority.', ExitCode.guard);
+    const schemaVersion = record(value)?.schemaVersion;
+    if (typeof schemaVersion === 'number' && schemaVersion !== 3) {
+        throw workflowError('UNSUPPORTED_SCHEMA_VERSION', `Committed investigation Manifest schema version ${schemaVersion} is unsupported; only schema version 3 is current.`, ExitCode.guard, { details: { schemaVersion, supportedSchemaVersion: 3 } });
     }
     if (text !== `${canonicalJson(value)}\n`) {
         throw workflowError('CI_COMMITTED_INVESTIGATION_NONCANONICAL', 'Committed investigation Manifest bytes are not the exact canonical JSON form.', ExitCode.guard, { details: { commit: input.commit, tree, path: manifestPath, blob } });
@@ -161,9 +159,6 @@ function record(value) {
     return value !== null && typeof value === 'object' && !Array.isArray(value)
         ? value
         : null;
-}
-function isSchema(value, schemaVersion) {
-    return record(value)?.schemaVersion === schemaVersion;
 }
 function committedInvalid(message) {
     return workflowError('CI_COMMITTED_INVESTIGATION_INVALID', message, ExitCode.guard);

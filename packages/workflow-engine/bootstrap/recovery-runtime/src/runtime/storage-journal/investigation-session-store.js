@@ -677,7 +677,7 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
             supersededSnapshot.terminalAt !== value.updatedAt ||
             supersededSnapshot.failureCode !==
                 (isRecord(value.failure) ? value.failure.code : null) ||
-            supersededSnapshot.legacyRevision !== value.revision)) {
+            supersededSnapshot.invocationRevision !== value.revision)) {
         throw providerInvocationUnsafe();
     }
     // Validate the exact private invocation closure here as well as when a
@@ -4270,7 +4270,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
             retentionReceipt = readCompleteProviderRetentionReceipt(paths, path.basename(directory), {
                 requestDigest: state.requestDigest,
                 manifestDigest: state.manifestDigest,
-                legacyRevision: state.revision,
+                invocationRevision: state.revision,
                 terminalState: state.state,
                 terminalAt: state.updatedAt,
             });

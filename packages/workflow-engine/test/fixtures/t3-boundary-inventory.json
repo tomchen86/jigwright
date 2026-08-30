@@ -18,9 +18,9 @@
     "workflowJsonFileCount": 1,
     "workflowJsonIdentityDigest": "sha256:f5c559245a025c2927015442c3d2828e75025b316bb3f6f558260b28810b6d59",
     "jsonSchemaIdHosts": {
-      "jigwright.local": 17
+      "jigwright.local": 16
     },
-    "jsonSchemaIdIdentityDigest": "sha256:45c42137167622850f4773f06c2a246c0ebdf9dfd3ee48b84c535d073b306b79"
+    "jsonSchemaIdIdentityDigest": "sha256:67bd859052ea34aa7e836625a4ef1f958d39876b14dfbb4c57b47943dfb97933"
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 178,

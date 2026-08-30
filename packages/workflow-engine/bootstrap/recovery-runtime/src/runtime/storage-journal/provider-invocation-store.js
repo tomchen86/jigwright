@@ -7,7 +7,7 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { resolvePlanReviewInvocationOwner, resolveTaskDiffReviewInvocationOwner, resolveTaskStrategyImplementationInvocationOwner, } from "./evidence-object-store.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertReadOnlyProbe, projectProviderInvocationExecution, } from "../../modules/provider-orchestration/execution-core.js";
-import { acceptLegacyProviderAttemptResult, materializeLegacyProviderExecutionJob, readExecutionJobState, } from "./execution-store.js";
+import { acceptProviderAttemptResult, materializeProviderExecutionJob, readExecutionJobState, } from "./execution-store.js";
 import { assertPrivateInvestigationDirectory, createPrivateCanonicalJson, ensurePrivateInvestigationDirectory, listProviderInvocationLifecycleProjections, privatePathExists, readHumanResolutionHead, readHumanResolutionNode, readPrivateCanonicalJson, scanProviderInvocationLifecycles, withPrivateRuntimeLock, writePrivateCanonicalJsonAtomic, } from "./investigation-session-store.js";
 import { assertDurableProviderExecutionBudgetAuthority as assertStoredProviderExecutionBudgetAuthority, createProviderExecutionBudgetAuthority, validateProviderExecutionBudgetAuthority, } from "../provider-execution/provider-execution-policy-authority.js";
 import { createProviderInvocationRequest, evaluateProviderProcess, } from "../../modules/provider-orchestration/provider-contracts.js";
@@ -324,7 +324,7 @@ export function createProviderInvocation(paths, input) {
                     request,
                 }).attempt.attemptId,
                 invocationId,
-                legacyRevision: effectiveRecord.revision,
+                invocationRevision: effectiveRecord.revision,
                 now: new Date(effectiveNow),
             });
         }
@@ -521,8 +521,9 @@ export function readProviderInvocationRuntimeReceipt(paths, requestedInvocationI
         execution.revision <= receipt.executionRevision ||
         attempt === undefined ||
         attempt.jobId !== receipt.executionJobId ||
-        attempt.legacyInvocation?.invocationId !== receipt.invocationId ||
-        attempt.legacyInvocation.legacyRevision !== receipt.terminalRevision ||
+        attempt.providerInvocation?.invocationId !== receipt.invocationId ||
+        attempt.providerInvocation.invocationRevision !==
+            receipt.terminalRevision ||
         ((receipt.schemaVersion === 2 || receipt.schemaVersion === 3) &&
             (receipt.protocolReceipt.invocationId !== receipt.invocationId ||
                 receipt.protocolReceipt.requestDigest !== receipt.requestDigest ||
@@ -882,8 +883,8 @@ export function prepareProviderInvocationAcceptanceBinding(paths, requestedInvoc
         execution.job.jobId !== projection.job.jobId ||
         execution.job.acceptedAttemptId !== null ||
         attempt === undefined ||
-        attempt.legacyInvocation?.invocationId !== invocationId ||
-        attempt.legacyInvocation.legacyRevision !== record.revision) {
+        attempt.providerInvocation?.invocationId !== invocationId ||
+        attempt.providerInvocation.invocationRevision !== record.revision) {
         throw providerAcceptanceBindingStale();
     }
     const repair = readProviderRepairAuthorityBinding(paths, record, request);
@@ -893,7 +894,7 @@ export function prepareProviderInvocationAcceptanceBinding(paths, requestedInvoc
         invocationId,
         requestDigest: request.requestDigest,
         ownerWorkflowId: record.investigationId,
-        legacyRevision: record.revision,
+        invocationRevision: record.revision,
         leaseGeneration: record.leaseGeneration,
         context,
         executionJobId: projection.job.jobId,
@@ -913,7 +914,7 @@ export function assertProviderInvocationAcceptanceBindingCurrent(paths, binding)
     const request = readProviderInvocationRequest(paths, binding.invocationId);
     if (record.investigationId !== binding.ownerWorkflowId ||
         record.requestDigest !== binding.requestDigest ||
-        record.revision !== binding.legacyRevision ||
+        record.revision !== binding.invocationRevision ||
         record.state !== 'leased' ||
         record.lease === null ||
         record.leaseGeneration !== binding.leaseGeneration ||
@@ -933,8 +934,8 @@ export function assertProviderInvocationAcceptanceBindingCurrent(paths, binding)
         execution.workflow.workflowId !== binding.ownerWorkflowId ||
         execution.job.acceptedAttemptId !== null ||
         attempt === undefined ||
-        attempt.legacyInvocation?.invocationId !== binding.invocationId ||
-        attempt.legacyInvocation.legacyRevision !== binding.legacyRevision) {
+        attempt.providerInvocation?.invocationId !== binding.invocationId ||
+        attempt.providerInvocation.invocationRevision !== binding.invocationRevision) {
         throw providerAcceptanceBindingStale();
     }
     assertProviderRepairAuthorityCurrent(paths, record, request, binding.repair);
@@ -1335,7 +1336,7 @@ export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(p
         throw workflowError('PROVIDER_COMPLETION_RECOVERY_STATE_MISSING', 'Completion recovery requires the exact accepted current Attempt result.', ExitCode.staleState);
     }
     return recoverProviderInvocationCompletionUnderLifecycleLock(paths, invocationId, {
-        expectedLegacyRevision: input.expectedRevision,
+        expectedInvocationRevision: input.expectedRevision,
         acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
     }, assertOwned);
 }
@@ -1346,8 +1347,8 @@ export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(p
  */
 export function recoverProviderInvocationCompletionUnderLifecycleLock(paths, requestedInvocationId, input, assertOwned) {
     const invocationId = assertInvocationId(requestedInvocationId);
-    if (!Number.isSafeInteger(input.expectedLegacyRevision) ||
-        input.expectedLegacyRevision < 0 ||
+    if (!Number.isSafeInteger(input.expectedInvocationRevision) ||
+        input.expectedInvocationRevision < 0 ||
         !isDigest(input.acceptedOutputDigest)) {
         throw invocationInvalid();
     }
@@ -1363,12 +1364,13 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(paths, req
             : null;
         if (current.state === 'succeeded' && current.result !== null) {
             const candidateMatches = candidate === null ||
-                (current.revision === candidate.expectedLegacyRevision + 1 &&
+                (current.revision === candidate.expectedInvocationRevision + 1 &&
                     canonicalJson(current.result) === canonicalJson(candidate.result) &&
                     canonicalJson(current.runtimeReceipt ?? null) ===
                         canonicalJson(candidate.runtimeReceipt ?? null));
-            const expectedRevisionMatches = current.revision === input.expectedLegacyRevision ||
-                candidate?.expectedLegacyRevision === input.expectedLegacyRevision;
+            const expectedRevisionMatches = current.revision === input.expectedInvocationRevision ||
+                candidate?.expectedInvocationRevision ===
+                    input.expectedInvocationRevision;
             if (candidateMatches &&
                 expectedRevisionMatches &&
                 current.result.outputDigest === input.acceptedOutputDigest) {
@@ -1384,11 +1386,12 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(paths, req
             current.lease === null ||
             candidate === null) {
             throw candidate === null && current.state === 'leased'
-                ? workflowError('PROVIDER_COMPLETION_RECOVERY_ARTIFACT_REQUIRED', 'Durable acceptance cannot repair legacy state without its exact completion candidate.', ExitCode.staleState)
+                ? workflowError('PROVIDER_COMPLETION_RECOVERY_ARTIFACT_REQUIRED', 'Durable acceptance cannot repair provider state without its exact completion candidate.', ExitCode.staleState)
                 : providerCompletionRecoveryConflict();
         }
-        if (current.revision !== input.expectedLegacyRevision ||
-            candidate.expectedLegacyRevision !== input.expectedLegacyRevision ||
+        if (current.revision !== input.expectedInvocationRevision ||
+            candidate.expectedInvocationRevision !==
+                input.expectedInvocationRevision ||
             candidate.leaseGeneration !== current.leaseGeneration ||
             candidate.leaseGeneration !== current.lease.generation ||
             candidate.leaseTokenDigest !== current.lease.tokenDigest ||
@@ -1426,7 +1429,7 @@ function persistProviderExecutionResult(paths, current, request, leaseGeneration
         record: current,
         request,
     });
-    const result = acceptLegacyProviderAttemptResult(paths, {
+    const result = acceptProviderAttemptResult(paths, {
         entries,
         attemptId: projection.attempt.attemptId,
         leaseGeneration,
@@ -1450,7 +1453,7 @@ function persistProviderCompletionCandidate(paths, input) {
         kind: 'provider-completion-candidate',
         invocationId: input.current.invocationId,
         requestDigest: input.request.requestDigest,
-        expectedLegacyRevision: input.current.revision,
+        expectedInvocationRevision: input.current.revision,
         leaseGeneration: input.leaseGeneration,
         leaseTokenDigest: sha256(input.leaseToken),
         result,
@@ -1480,7 +1483,7 @@ function readProviderCompletionCandidate(paths, invocationId, request) {
         !hasExactKeys(value, [
             'candidateDigest',
             'completedAt',
-            'expectedLegacyRevision',
+            'expectedInvocationRevision',
             'invocationId',
             'kind',
             'leaseGeneration',
@@ -1496,8 +1499,8 @@ function readProviderCompletionCandidate(paths, invocationId, request) {
         value.kind !== 'provider-completion-candidate' ||
         value.invocationId !== invocationId ||
         value.requestDigest !== request.requestDigest ||
-        !Number.isSafeInteger(value.expectedLegacyRevision) ||
-        value.expectedLegacyRevision < 0 ||
+        !Number.isSafeInteger(value.expectedInvocationRevision) ||
+        value.expectedInvocationRevision < 0 ||
         !Number.isSafeInteger(value.leaseGeneration) ||
         value.leaseGeneration < 1 ||
         !isDigest(value.leaseTokenDigest) ||
@@ -1512,7 +1515,7 @@ function readProviderCompletionCandidate(paths, invocationId, request) {
     if (runtimeReceipt !== undefined &&
         (runtimeReceipt.invocationId !== invocationId ||
             runtimeReceipt.requestDigest !== request.requestDigest ||
-            runtimeReceipt.leasedRevision !== value.expectedLegacyRevision ||
+            runtimeReceipt.leasedRevision !== value.expectedInvocationRevision ||
             runtimeReceipt.leaseGeneration !== value.leaseGeneration ||
             runtimeReceipt.terminalState !== 'succeeded')) {
         throw invocationUnsafe();
@@ -1530,7 +1533,7 @@ function readProviderCompletionCandidate(paths, invocationId, request) {
 }
 function materializeProviderExecutionState(paths, current, request) {
     const entries = providerExecutionEntries(paths, current, request);
-    materializeLegacyProviderExecutionJob(paths, entries);
+    materializeProviderExecutionJob(paths, entries);
     return entries;
 }
 function providerExecutionEntries(paths, current, request) {
@@ -1651,7 +1654,7 @@ function createAgentRuntimeCompletionReceipt(input) {
         input.acceptanceBinding.invocationId !== input.current.invocationId ||
         input.acceptanceBinding.requestDigest !== input.request.requestDigest ||
         input.acceptanceBinding.requestDigest !== input.current.requestDigest ||
-        input.acceptanceBinding.legacyRevision !== input.current.revision ||
+        input.acceptanceBinding.invocationRevision !== input.current.revision ||
         input.acceptanceBinding.leaseGeneration !== input.current.leaseGeneration) {
         throw providerAcceptanceBindingStale();
     }
@@ -1762,7 +1765,7 @@ function updateProviderInvocation(paths, invocationId, expectedRevision, transit
             throw providerCasMismatch(expectedRevision, current.revision);
         }
         // Re-admit the current durable Job/Attempt lineage before mutating the
-        // legacy state file. A missing/tampered repair sidecar must fail closed
+        // provider state file. A missing/tampered repair sidecar must fail closed
         // without leaving a lease or other partially applied lifecycle change.
         const request = readProviderInvocationRequest(paths, invocationId);
         const executionEntries = materializeProviderExecutionState(paths, current, request);
@@ -1770,7 +1773,7 @@ function updateProviderInvocation(paths, invocationId, expectedRevision, transit
         assertMonotonicInvocationTransition(current, next);
         writePrivateCanonicalJsonAtomic(paths, providerInvocationStatePath(paths, invocationId), next, invocationUnsafe);
         const updated = readProviderInvocation(paths, invocationId);
-        materializeLegacyProviderExecutionJob(paths, executionEntries.map((entry) => entry.record.invocationId === invocationId
+        materializeProviderExecutionJob(paths, executionEntries.map((entry) => entry.record.invocationId === invocationId
             ? { ...entry, record: updated, request }
             : entry));
         return updated;
@@ -2516,7 +2519,7 @@ function assertPlanReviewSnapshotFiles(paths, requestedInvocationId, manifest, k
         : readCompleteProviderRetentionReceipt(paths, record.invocationId, {
             requestDigest: record.requestDigest,
             manifestDigest: record.manifestDigest,
-            legacyRevision: record.revision,
+            invocationRevision: record.revision,
             terminalState: record.state,
             terminalAt: record.updatedAt,
         });
@@ -3510,8 +3513,8 @@ function assertProviderAcceptanceBinding(binding) {
         assertInvestigationId(binding.ownerWorkflowId) !==
             binding.ownerWorkflowId ||
         !isDigest(binding.requestDigest) ||
-        !Number.isSafeInteger(binding.legacyRevision) ||
-        binding.legacyRevision < 0 ||
+        !Number.isSafeInteger(binding.invocationRevision) ||
+        binding.invocationRevision < 0 ||
         !Number.isSafeInteger(binding.leaseGeneration) ||
         binding.leaseGeneration < 1 ||
         !Number.isSafeInteger(binding.executionRevision) ||
@@ -3546,7 +3549,7 @@ function resultInvalid() {
     return workflowError('PROVIDER_INVOCATION_RESULT_INVALID', 'Provider invocation result is not bound to its durable request.', ExitCode.verification);
 }
 function providerCompletionRecoveryConflict() {
-    return workflowError('PROVIDER_COMPLETION_RECOVERY_CONFLICT', 'Legacy provider state diverged from the exact durable completion candidate.', ExitCode.conflict);
+    return workflowError('PROVIDER_COMPLETION_RECOVERY_CONFLICT', 'Provider state diverged from the exact durable completion candidate.', ExitCode.conflict);
 }
 function providerCasMismatch(expected, observed) {
     return workflowError('PROVIDER_INVOCATION_CAS_MISMATCH', 'Provider invocation changed during compare-and-swap.', ExitCode.conflict, { details: { expectedRevision: expected, observedRevision: observed } });

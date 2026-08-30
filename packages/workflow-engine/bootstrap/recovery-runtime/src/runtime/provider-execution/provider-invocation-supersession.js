@@ -201,7 +201,7 @@ function assertPreparedSuccessorBinding(transaction, successorRecord, successorR
         snapshot.terminalStatus !== null ||
         snapshot.terminalAt !== null ||
         snapshot.failureCode !== null ||
-        snapshot.legacyRevision !== 0) {
+        snapshot.invocationRevision !== 0) {
         throw providerInvocationSupersessionUnsafe();
     }
     return admitted;
@@ -372,21 +372,21 @@ function assertSnapshotStableCurrent(paths, expected, record, request, terminalE
             current.terminalStatus !== expected.terminalStatus ||
             current.terminalAt !== expected.terminalAt ||
             current.failureCode !== expected.failureCode ||
-            current.legacyRevision !== expected.legacyRevision)) {
+            current.invocationRevision !== expected.invocationRevision)) {
         throw providerInvocationSupersessionUnsafe();
     }
     if (!terminalExact &&
         (expected.terminalStatus !== null ||
             expected.terminalAt !== null ||
             expected.failureCode !== null ||
-            expected.legacyRevision !== 0)) {
+            expected.invocationRevision !== 0)) {
         // The successor snapshot records its immutable prepared identity. Its
         // state/revision may advance after publication, but the snapshot itself
         // must never masquerade as terminal evidence.
         if (expected.terminalStatus !== null ||
             expected.terminalAt !== null ||
             expected.failureCode !== null ||
-            expected.legacyRevision !== 0) {
+            expected.invocationRevision !== 0) {
             throw providerInvocationSupersessionUnsafe();
         }
     }
@@ -420,7 +420,7 @@ function currentEvidenceSnapshot(paths, record, request, retainedFallback) {
             ? record.updatedAt
             : null,
         failureCode: record.state === 'failed' ? record.failure.code : null,
-        legacyRevision: record.revision,
+        invocationRevision: record.revision,
         createdAt: record.createdAt,
     });
 }
@@ -451,7 +451,7 @@ function artifactDigest(paths, record, name) {
     const receipt = readCompleteProviderRetentionReceipt(paths, record.invocationId, {
         requestDigest: record.requestDigest,
         manifestDigest: record.manifestDigest,
-        legacyRevision: record.revision,
+        invocationRevision: record.revision,
         terminalState: record.state,
         terminalAt: record.updatedAt,
     });
