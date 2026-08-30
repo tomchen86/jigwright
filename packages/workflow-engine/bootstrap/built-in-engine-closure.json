@@ -633,7 +633,7 @@
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
       "mode": "100644",
-      "digest": "sha256:7383964dc20d00e35272056b83048cb48e7bc95fbdc0be0bc873709f1dd38ba1"
+      "digest": "sha256:f8fa4223fc2238a74d99b28c002aea25c32557aa440084b5a4eefadc6dac391a"
     },
     {
       "path": "src/application/execute-task/update-base.ts",
@@ -1088,7 +1088,7 @@
     {
       "path": "src/modules/assurance/plan-review-validation.ts",
       "mode": "100644",
-      "digest": "sha256:2414b8dd4c705a4b395c48577e88ece0448cee5be71301658c9588abe8f500f6"
+      "digest": "sha256:e3ca2f05a50562ce9672854a7aad39420e440930cef7de90abcdcbd4f6ed62ac"
     },
     {
       "path": "src/modules/assurance/plan-review.ts",
@@ -2058,7 +2058,7 @@
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
       "mode": "100644",
-      "digest": "sha256:c00bb1b80fe51b2c80ab7f8e1a656f097d06a0626893ca2e45251454fd4809a8"
+      "digest": "sha256:00830a47117ef39ed97071d08252497b12d8b0416d3d7577a02019075981dfec"
     },
     {
       "path": "src/runtime/storage-journal/pre-merge-assurance-store.ts",
@@ -2148,12 +2148,12 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",
       "mode": "100644",
-      "digest": "sha256:4d3c0c0568677502b04983b46dbb72d2e55e59243274750a850030c6d02ad55d"
+      "digest": "sha256:9135c669e6e2cf17aae043e8f6c5779160079d52370f95ad5da721c02ecc0b51"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-store.ts",
       "mode": "100644",
-      "digest": "sha256:586de0cbcb009d3153296eaf441b82ad90d222ebbf731557c5a364c0dbebcc6e"
+      "digest": "sha256:ba8ff2f0b8f73e6d466a2968f2c25fd93c128f16659ec1326b1297d7515a1412"
     }
   ]
 }
