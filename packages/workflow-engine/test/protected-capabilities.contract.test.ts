@@ -690,324 +690,38 @@ test('protected generator refuses to synthesize a missing Grant verifier composi
       /reviewed protected manifest does not declare/i,
     );
     assert.equal(fs.readFileSync(manifestPath, 'utf8'), reviewedBytes);
-
-    const explicitMissing = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--initialize-collaboration-grant-verifier',
-    );
-    assert.notEqual(explicitMissing.status, 0);
-    assert.match(
-      `${explicitMissing.stdout}${explicitMissing.stderr}`,
-      /exact pre-migration shape/i,
-    );
-    assert.equal(fs.readFileSync(manifestPath, 'utf8'), reviewedBytes);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('protected generator initializes only the exact reviewed pre-migration Grant verifier composition', () => {
+test('protected generator exposes only current projection modes', () => {
   const repository = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'protected-grant-composition-initialize-'),
+    path.join(os.tmpdir(), 'protected-current-modes-only-'),
   );
   const generator = path.join(SOURCE_REPOSITORY_ROOT, GENERATOR_PATH);
-  const additionalSources = [
-    'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
-    'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
-  ];
+  const manifestPath = path.join(repository, MANIFEST_PATH);
+  const sentinel = '{"retired":"migration-input"}\n';
   try {
-    git(repository, ['init', '--quiet']);
-    git(repository, ['config', 'user.name', 'Workflow Test']);
-    git(repository, ['config', 'user.email', 'workflow@example.test']);
-    installTypedCompositionManifest(repository);
-    for (const sourcePath of additionalSources) {
-      const absolute = path.join(repository, sourcePath);
-      fs.mkdirSync(path.dirname(absolute), { recursive: true });
-      fs.writeFileSync(
-        absolute,
-        `export const fixture = ${JSON.stringify(sourcePath)};\n`,
-      );
-    }
-    const manifestPath = path.join(repository, MANIFEST_PATH);
-    const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: Record<string, unknown> & {
-        sourcePaths: string[];
-      };
-      entries: Array<{
-        capability: string;
-        dependencies: string[];
-      }>;
-    };
-    manifest.grantVerifierComposition.sourcePaths = [
-      ...manifest.grantVerifierComposition.sourcePaths,
-      ...additionalSources,
-    ].sort();
-    delete manifest.grantVerifierComposition.packageVersion;
-    delete manifest.grantVerifierComposition.verifierImplementation;
-    const authorization = manifest.entries.find(
-      ({ capability }) => capability === 'authorization.verify',
-    );
-    assert.ok(authorization);
-    authorization.dependencies = [
-      ...authorization.dependencies,
-      ...additionalSources,
-    ].sort();
-    fs.writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
-
-    const explicitMigration = runProtectedCapabilityGenerator(
-      generator,
-      repository,
+    fs.mkdirSync(path.dirname(manifestPath), { recursive: true });
+    fs.writeFileSync(manifestPath, sentinel);
+    for (const retiredMode of [
       '--initialize-collaboration-grant-verifier',
-    );
-    assert.equal(
-      explicitMigration.status,
-      0,
-      `${explicitMigration.stdout}${explicitMigration.stderr}`,
-    );
-    const initialized = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: {
-        packageVersion: string;
-        verifierImplementation: string;
-      };
-    };
-    assert.equal(initialized.grantVerifierComposition.packageVersion, '0.1.0');
-    assert.equal(
-      initialized.grantVerifierComposition.verifierImplementation,
-      'ssh-maintainer-policy.v1',
-    );
-
-    const repeatedMigration = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--initialize-collaboration-grant-verifier',
-    );
-    assert.notEqual(repeatedMigration.status, 0);
-    assert.match(
-      `${repeatedMigration.stdout}${repeatedMigration.stderr}`,
-      /exact pre-migration shape/i,
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('protected generator authorizes role-context-sharing only through the exact one-time migration', () => {
-  const repository = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'protected-role-context-composition-authorize-'),
-  );
-  const generator = path.join(SOURCE_REPOSITORY_ROOT, GENERATOR_PATH);
-  const additionalCollaborationSources = [
-    'packages/workflow-engine/src/composition-root/grant-verifier-composition.ts',
-    'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-    'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
-  ];
-  try {
-    git(repository, ['init', '--quiet']);
-    git(repository, ['config', 'user.name', 'Workflow Test']);
-    git(repository, ['config', 'user.email', 'workflow@example.test']);
-    installTypedCompositionManifest(repository);
-    for (const sourcePath of additionalCollaborationSources) {
-      const absolute = path.join(repository, sourcePath);
-      fs.mkdirSync(path.dirname(absolute), { recursive: true });
-      fs.writeFileSync(
-        absolute,
-        `export const fixture = ${JSON.stringify(sourcePath)};\n`,
-      );
-    }
-    for (const sourcePath of ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES) {
-      const absolute = path.join(repository, sourcePath);
-      if (fs.existsSync(absolute)) continue;
-      fs.mkdirSync(path.dirname(absolute), { recursive: true });
-      fs.writeFileSync(
-        absolute,
-        `export const fixture = ${JSON.stringify(sourcePath)};\n`,
-      );
-    }
-    const packagePath = path.join(repository, 'packages/grants/package.json');
-    const packageManifest = JSON.parse(
-      fs.readFileSync(packagePath, 'utf8'),
-    ) as {
-      exports: Record<string, string>;
-    };
-    packageManifest.exports['./role-context-sharing-degradation'] =
-      './src/role-context-sharing-degradation.ts';
-    fs.writeFileSync(
-      packagePath,
-      `${JSON.stringify(packageManifest, null, 2)}\n`,
-    );
-    const manifestPath = path.join(repository, MANIFEST_PATH);
-    const reviewed = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: { sourcePaths: string[] };
-      entries: Array<{ capability: string; dependencies: string[] }>;
-    };
-    reviewed.grantVerifierComposition.sourcePaths = [
-      ...new Set([
-        ...reviewed.grantVerifierComposition.sourcePaths,
-        ...additionalCollaborationSources,
-      ]),
-    ].sort();
-    const reviewedAuthorization = reviewed.entries.find(
-      ({ capability }) => capability === 'authorization.verify',
-    );
-    assert.ok(reviewedAuthorization);
-    reviewedAuthorization.dependencies = [
-      ...new Set([
-        ...reviewedAuthorization.dependencies,
-        ...additionalCollaborationSources,
-      ]),
-    ].sort();
-    fs.writeFileSync(manifestPath, `${JSON.stringify(reviewed, null, 2)}\n`);
-
-    const ordinary = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--write',
-    );
-    assert.equal(ordinary.status, 0, `${ordinary.stdout}${ordinary.stderr}`);
-    const before = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: Record<string, unknown>;
-    };
-    assert.equal(
-      'roleContextSharingGrant' in before.grantVerifierComposition,
-      false,
-    );
-
-    const authorized = runProtectedCapabilityGenerator(
-      generator,
-      repository,
       '--authorize-role-context-sharing-grant',
-    );
-    assert.equal(
-      authorized.status,
-      0,
-      `${authorized.stdout}${authorized.stderr}`,
-    );
-    const after = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: {
-        roleContextSharingGrant: {
-          sourcePaths: string[];
-          policyDigest: string;
-        };
-      };
-      entries: Array<{ capability: string; dependencies: string[] }>;
-    };
-    assert.deepEqual(
-      after.grantVerifierComposition.roleContextSharingGrant.sourcePaths,
-      ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES,
-    );
-    assert.match(
-      after.grantVerifierComposition.roleContextSharingGrant.policyDigest,
-      /^[0-9a-f]{64}$/,
-    );
-    const authorization = after.entries.find(
-      ({ capability }) => capability === 'authorization.verify',
-    );
-    assert.ok(authorization);
-    for (const sourcePath of ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES) {
-      assert.ok(authorization.dependencies.includes(sourcePath));
-    }
-
-    const terminalReceiptExpansionSources = new Set<string>([
-      'packages/workflow-engine/src/composition-root/role-context-sharing-terminal-receipt-production.ts',
-      'packages/workflow-engine/src/entrypoints/ci/ci-attestation.ts',
-      'packages/workflow-engine/src/entrypoints/ci/ci-planning.ts',
-      'packages/workflow-engine/src/entrypoints/ci/ci.ts',
-      'packages/workflow-engine/src/modules/authority/collaboration-grant.ts',
-    ]);
-    const legacy = JSON.parse(fs.readFileSync(manifestPath, 'utf8')) as {
-      grantVerifierComposition: {
-        roleContextSharingGrant: { sourcePaths: string[] };
-      };
-      entries: Array<{ capability: string; dependencies: string[] }>;
-    };
-    legacy.grantVerifierComposition.roleContextSharingGrant.sourcePaths =
-      ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES.filter(
-        (sourcePath) => !terminalReceiptExpansionSources.has(sourcePath),
+    ] as const) {
+      const result = runProtectedCapabilityGenerator(
+        generator,
+        repository,
+        retiredMode,
       );
-    assert.equal(
-      legacy.grantVerifierComposition.roleContextSharingGrant.sourcePaths
-        .length,
-      31,
-    );
-    const legacyAuthorization = legacy.entries.find(
-      ({ capability }) => capability === 'authorization.verify',
-    );
-    assert.ok(legacyAuthorization);
-    legacyAuthorization.dependencies = legacyAuthorization.dependencies.filter(
-      (sourcePath) =>
-        sourcePath !==
-        'packages/workflow-engine/src/composition-root/role-context-sharing-terminal-receipt-production.ts',
-    );
-    fs.writeFileSync(manifestPath, `${JSON.stringify(legacy, null, 2)}\n`);
-    const reprojectedLegacy = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--write',
-    );
-    assert.equal(
-      reprojectedLegacy.status,
-      0,
-      `${reprojectedLegacy.stdout}${reprojectedLegacy.stderr}`,
-    );
-    const expanded = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--authorize-role-context-sharing-grant',
-    );
-    assert.equal(expanded.status, 0, `${expanded.stdout}${expanded.stderr}`);
-    const expandedManifest = JSON.parse(
-      fs.readFileSync(manifestPath, 'utf8'),
-    ) as {
-      grantVerifierComposition: {
-        roleContextSharingGrant: { sourcePaths: string[] };
-      };
-      entries: Array<{ capability: string; dependencies: string[] }>;
-    };
-    assert.deepEqual(
-      expandedManifest.grantVerifierComposition.roleContextSharingGrant
-        .sourcePaths,
-      ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES,
-    );
-    assert.ok(
-      expandedManifest.entries
-        .find(({ capability }) => capability === 'authorization.verify')
-        ?.dependencies.includes(
-          'packages/workflow-engine/src/composition-root/role-context-sharing-terminal-receipt-production.ts',
-        ),
-    );
-
-    assert.doesNotThrow(() =>
-      loadProtectedCapabilitiesFromWorktree(repository),
-    );
-    const driftedSource = ROLE_CONTEXT_SHARING_COMPOSITION_SOURCES.find(
-      (sourcePath) =>
-        sourcePath.endsWith('/role-context-sharing-plan-review.ts'),
-    );
-    assert.ok(driftedSource);
-    fs.appendFileSync(
-      path.join(repository, driftedSource),
-      'export const unreviewedAuthorityDrift = true;\n',
-    );
-    assert.throws(
-      () => loadProtectedCapabilitiesFromWorktree(repository),
-      (error) =>
-        isWorkflowError(error, 'PROTECTED_CAPABILITY_CLOSURE_DIGEST_MISMATCH'),
-    );
-    fs.rmSync(path.join(repository, driftedSource));
-    assert.throws(() => loadProtectedCapabilitiesFromWorktree(repository));
-
-    const repeated = runProtectedCapabilityGenerator(
-      generator,
-      repository,
-      '--authorize-role-context-sharing-grant',
-    );
-    assert.notEqual(repeated.status, 0);
-    assert.match(
-      `${repeated.stdout}${repeated.stderr}`,
-      /exact pre-authorization shape/i,
-    );
+      assert.notEqual(result.status, 0, retiredMode);
+      assert.match(
+        `${result.stdout}${result.stderr}`,
+        /Usage: generate-protected-capabilities\.ts \[--check\|--write\]/u,
+        retiredMode,
+      );
+      assert.equal(fs.readFileSync(manifestPath, 'utf8'), sentinel);
+    }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
