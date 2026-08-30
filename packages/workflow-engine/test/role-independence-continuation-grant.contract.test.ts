@@ -9,7 +9,9 @@ import {
   assertRoleIndependenceContinuationParameters,
   authenticateRoleIndependenceContinuationActivation,
   createRoleIndependenceContinuationGrantRequest,
+  ROLE_INDEPENDENCE_CONTINUATION_PARENT_RELATION,
   ROLE_INDEPENDENCE_CONTINUATION_TRANSITION_ID,
+  roleIndependenceContinuationParentRelationshipFactsDigest,
   roleIndependenceContinuationParametersDigest,
   roleIndependenceContinuationStateBinding,
   roleIndependenceContinuationTransitionDefinitions,
@@ -17,6 +19,7 @@ import {
   type RoleIndependenceContinuationOwnerV1,
   type RoleIndependenceContinuationParametersV1,
 } from '../src/modules/authority/role-independence-continuation-grant.ts';
+import { createGrantParentBindingV1 } from '../src/modules/authority/grant-parent-binding.ts';
 import { grantSha256 } from '../src/modules/authority/grant-primitives.ts';
 
 test('strict parameters preserve every source-specific owner binding', () => {
@@ -72,6 +75,231 @@ test('request builder emits one exact non-retry Central transition candidate', (
   assert.deepEqual(request.facts.owner, observation.parameters.owner);
   assert.equal(request.facts.parametersDigest, observation.parametersDigest);
   assert.deepEqual(request.candidates[0]!.parameters, observation.parameters);
+  assert.deepEqual(Object.keys(request.facts).sort(), [
+    'assignmentDigest',
+    'author',
+    'callableProviderIds',
+    'kind',
+    'owner',
+    'parametersDigest',
+    'providerAvailabilityDigest',
+    'repositoryId',
+    'requestedDegradation',
+    'requiredIndependence',
+    'schemaVersion',
+    'sourceStateDigest',
+    'targetDigest',
+  ]);
+});
+
+test('request facts carry only an exact optional Central Grant parent binding', () => {
+  const observation = observed(parametersFor(owners()[3]!), null);
+  const parent = parentGrantBinding(observation.parameters);
+  const request = createRoleIndependenceContinuationGrantRequest(
+    observation,
+    'Authorize this exact protected TaskDiffReview descendant.',
+    parent,
+  );
+
+  assert.deepEqual(request.facts.parentGrantBinding, parent);
+  assert.deepEqual(Object.keys(request.facts).sort(), [
+    'assignmentDigest',
+    'author',
+    'callableProviderIds',
+    'kind',
+    'owner',
+    'parametersDigest',
+    'parentGrantBinding',
+    'providerAvailabilityDigest',
+    'repositoryId',
+    'requestedDegradation',
+    'requiredIndependence',
+    'schemaVersion',
+    'sourceStateDigest',
+    'targetDigest',
+  ]);
+  assert.throws(
+    () =>
+      createRoleIndependenceContinuationGrantRequest(
+        observation,
+        'A tampered parent binding cannot authorize a descendant.',
+        { ...parent, bindingDigest: shaDigest('f') },
+      ),
+    hasCode('GRANT_PARENT_BINDING_INVALID'),
+  );
+
+  for (const owner of owners().slice(0, 3)) {
+    const disallowed = observed(parametersFor(owner!), null);
+    assert.throws(
+      () =>
+        createRoleIndependenceContinuationGrantRequest(
+          disallowed,
+          'A non-TaskDiff owner cannot attach a protected Apply parent.',
+          parentGrantBinding(disallowed.parameters),
+        ),
+      hasCode('GRANT_PARENT_BINDING_INVALID'),
+    );
+  }
+  assert.throws(
+    () =>
+      createRoleIndependenceContinuationGrantRequest(
+        observation,
+        'A different relationship cannot authorize this descendant.',
+        parentGrantBinding(observation.parameters, {
+          relationKind: 'task.protected-apply.unrelated-descendant.v1',
+        }),
+      ),
+    hasCode('GRANT_PARENT_BINDING_INVALID'),
+  );
+  assert.throws(
+    () =>
+      createRoleIndependenceContinuationGrantRequest(
+        observation,
+        'Different relationship facts cannot authorize this descendant.',
+        parentGrantBinding(observation.parameters, {
+          relationshipFactsDigest: shaDigest('0'),
+        }),
+      ),
+    hasCode('GRANT_PARENT_BINDING_INVALID'),
+  );
+
+  const continuation = observed(parametersFor(owners()[4]!), null);
+  assert.deepEqual(
+    createRoleIndependenceContinuationGrantRequest(
+      continuation,
+      'Authorize this exact protected TaskDiffReview continuation descendant.',
+      parentGrantBinding(continuation.parameters),
+    ).facts.parentGrantBinding?.relationshipFactsDigest,
+    roleIndependenceContinuationParentRelationshipFactsDigest(
+      continuation.parameters,
+    ),
+  );
+});
+
+test('Central Grant is the sole authority for direct-human degradation', async () => {
+  const plan = parametersFor(owners()[1]!);
+  const parameters = assertRoleIndependenceContinuationParameters({
+    ...plan,
+    requestedDegradation: {
+      kind: 'direct-human-review',
+      participant: {
+        providerId: null,
+        sessionId: null,
+        principalId: 'direct-reviewer-1',
+        identityAssurance: 'self-declared',
+        engineSpawned: false,
+      },
+      stagedInputDigest: digest('b'),
+    },
+    callableProviderIds: [],
+  });
+  let observation = observed(parameters, null);
+  const definition = roleIndependenceContinuationTransitionDefinitions(
+    fakePort(
+      () => observation,
+      (activation) => {
+        observation = observed(parameters, activation);
+        return observation;
+      },
+    ),
+  )[0]!;
+
+  assert.deepEqual(definition.allowedApprovalMethods, [
+    'human-presence',
+    'ssh',
+  ]);
+  const trustedChoice = definition.renderTrustedChoice(parameters);
+  assert.match(
+    trustedChoice.consequences.join('\n'),
+    /completed Central Grant is the sole authority/u,
+  );
+  assert.match(
+    trustedChoice.consequences.join('\n'),
+    /source, provider availability, assignment, staged-input, staleness, structured-content, and natural-result validation/u,
+  );
+  assert.doesNotMatch(
+    trustedChoice.consequences.join('\n'),
+    /Task Mandate|Collaboration Grant|signed attestation/u,
+  );
+  assert.equal(Object.hasOwn(parameters, 'mandateBinding'), false);
+  assert.equal(Object.hasOwn(observation, 'mandateStateDigest'), false);
+  assert.equal(
+    Object.hasOwn(
+      createRoleIndependenceContinuationGrantRequest(
+        observation,
+        'Authorize the exact staged direct-human contribution.',
+      ).facts,
+      'mandateStateDigest',
+    ),
+    false,
+  );
+
+  let unrelatedMandateState = 'active';
+  const mandateIndependent = roleIndependenceContinuationTransitionDefinitions({
+    observe() {
+      void unrelatedMandateState;
+      return observation;
+    },
+    activate: definition.execute as never,
+  })[0]!;
+  const before = await mandateIndependent.observeState(parameters);
+  unrelatedMandateState = 'revoked';
+  assert.deepEqual(await mandateIndependent.observeState(parameters), before);
+
+  assert.throws(
+    () =>
+      assertRoleIndependenceContinuationParameters({
+        ...parameters,
+        mandateBinding: {
+          schemaVersion: 1,
+          mandateTaskId: '1.1',
+          mandateId: 'retired-second-authority',
+          mandateDigest: digest('f'),
+          changeId: 'demo-change',
+          externalAuditRoot: '/tmp/external-audit',
+        },
+      }),
+    hasCode('ROLE_INDEPENDENCE_CONTINUATION_GRANT_INVALID'),
+  );
+  assert.throws(
+    () =>
+      assertRoleIndependenceContinuationObservation({
+        ...observation,
+        mandateStateDigest: digest('d'),
+      }),
+    hasCode('ROLE_INDEPENDENCE_CONTINUATION_GRANT_INVALID'),
+  );
+  assert.throws(
+    () =>
+      assertRoleIndependenceContinuationParameters({
+        ...parameters,
+        requestedDegradation: {
+          ...parameters.requestedDegradation,
+          participant: {
+            ...parameters.requestedDegradation.participant,
+            identityAssurance: 'maintainer-signed',
+          },
+        },
+      }),
+    hasCode('ROLE_INDEPENDENCE_CONTINUATION_GRANT_INVALID'),
+  );
+
+  const context = executionContext(parameters);
+  const result = await definition.execute(context);
+  const authority = authenticateRoleIndependenceContinuationActivation(
+    observation,
+    {
+      contractVersion: 'central-grant-completed-authority-ref.v1',
+      challengeId: context.challengeId,
+      challengeDigest: context.approvalSubject.challengeDigest,
+      transitionId: ROLE_INDEPENDENCE_CONTINUATION_TRANSITION_ID,
+      operationId: context.operationId,
+      terminalOutcomeDigest: grantSha256(canonicalJson(result)),
+    },
+    context.approvalSubjectDigest,
+  );
+  assert.equal(result.outcome, 'completed');
+  assert.equal(authority.operationId, context.operationId);
 });
 
 test('state drift changes the binding and a refused observation cannot request or execute', async () => {
@@ -140,6 +368,22 @@ test('activation is idempotent for one Grant operation and authenticates against
   assert.equal(first.outcome, 'completed');
   assert.deepEqual(replay, first);
   assert.equal(activationCalls, 1);
+  assert.deepEqual(
+    Object.keys(first.details as Record<string, unknown>).sort(),
+    [
+      'assignmentDigest',
+      'degradedForm',
+      'kind',
+      'owner',
+      'parametersDigest',
+      'schemaVersion',
+      'targetDigest',
+    ],
+  );
+  assert.doesNotMatch(
+    canonicalJson(first),
+    /provider(?:Result|Succeeded)|review(?:Result|Satisfied)|challengeClosed/u,
+  );
 
   const authority: CentralGrantCompletedAuthorityRefV1 = Object.freeze({
     contractVersion: 'central-grant-completed-authority-ref.v1',
@@ -322,14 +566,6 @@ function parametersFor(
     providerPolicyDigest: digest('c'),
     providerRegistryDigest: digest('d'),
     assignmentDigest: digest('e'),
-    mandateBinding: {
-      schemaVersion: 1,
-      mandateTaskId: '1.1',
-      mandateId: 'mandate-demo-1',
-      mandateDigest: digest('f'),
-      changeId: 'demo-change',
-      externalAuditRoot: '/tmp/external-audit',
-    },
   };
 }
 
@@ -361,10 +597,34 @@ function observed(
     currentRepositoryTree: gitObject('a'),
     sourceStateDigest: digest('b'),
     providerAvailabilityDigest: digest('c'),
-    mandateStateDigest: digest('d'),
     competingAttemptDigest: null,
     applicability: { status: 'applicable' },
     activation,
+  });
+}
+
+function parentGrantBinding(
+  parameters: RoleIndependenceContinuationParametersV1,
+  overrides: Readonly<{
+    relationKind?: string;
+    relationshipFactsDigest?: `sha256:${string}`;
+  }> = {},
+) {
+  return createGrantParentBindingV1({
+    schemaVersion: 1,
+    kind: 'grant-parent-binding.v1',
+    relationKind:
+      overrides.relationKind ?? ROLE_INDEPENDENCE_CONTINUATION_PARENT_RELATION,
+    parentChallengeId: '44444444-4444-4444-8444-444444444444',
+    parentChallengeDigest: shaDigest('6'),
+    parentOperationId: '55555555-5555-4555-8555-555555555555',
+    parentApprovalSubjectDigest: shaDigest('7'),
+    parentStateBindingDigest: shaDigest('8'),
+    parentParametersDigest: shaDigest('9'),
+    parentPreparedRecordDigest: shaDigest('a'),
+    relationshipFactsDigest:
+      overrides.relationshipFactsDigest ??
+      roleIndependenceContinuationParentRelationshipFactsDigest(parameters),
   });
 }
 

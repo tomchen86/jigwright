@@ -12,6 +12,10 @@ import {
   type TransitionDefinition,
 } from './grant-transition-registry.ts';
 import {
+  assertGrantParentBindingV1,
+  type GrantParentBindingV1,
+} from './grant-parent-binding.ts';
+import {
   freezeGrantCanonical,
   GRANT_SHA256_DIGEST as SHA256_DIGEST,
   GRANT_STABLE_ID as STABLE_ID,
@@ -33,11 +37,12 @@ const ASSURANCE_LEVELS = Object.freeze([
   'self-declared',
   'runtime-hint',
   'adapter-assigned',
-  'maintainer-signed',
 ] as const);
 
 export const ROLE_INDEPENDENCE_CONTINUATION_TRANSITION_ID =
   'role-independence.activate-degraded-continuation.v1' as const;
+export const ROLE_INDEPENDENCE_CONTINUATION_PARENT_RELATION =
+  'task.protected-apply.role-independence-continuation.v1' as const;
 
 export type RoleIndependenceProviderId = (typeof PROVIDER_IDS)[number];
 export type RoleIndependenceActorAssurance = (typeof ASSURANCE_LEVELS)[number];
@@ -144,15 +149,6 @@ export type RoleIndependenceRequestedDegradationV1 =
       stagedInputDigest: string;
     }>;
 
-export type RoleIndependenceTaskMandateBindingV1 = Readonly<{
-  schemaVersion: 1;
-  mandateTaskId: string;
-  mandateId: string;
-  mandateDigest: string;
-  changeId: string;
-  externalAuditRoot: string;
-}>;
-
 export type RoleIndependenceContinuationParametersV1 = Readonly<{
   schemaVersion: 1;
   kind: 'role-independence-continuation-activation.v1';
@@ -171,7 +167,6 @@ export type RoleIndependenceContinuationParametersV1 = Readonly<{
   providerPolicyDigest: string;
   providerRegistryDigest: string;
   assignmentDigest: string;
-  mandateBinding: RoleIndependenceTaskMandateBindingV1 | null;
 }>;
 
 export type RoleIndependenceContinuationActivationV1 = Readonly<{
@@ -199,7 +194,6 @@ export type RoleIndependenceContinuationObservationV1 = Readonly<{
   currentRepositoryTree: string;
   sourceStateDigest: string;
   providerAvailabilityDigest: string;
-  mandateStateDigest: string | null;
   competingAttemptDigest: string | null;
   applicability: RoleIndependenceContinuationApplicabilityV1;
   activation: RoleIndependenceContinuationActivationV1 | null;
@@ -240,7 +234,7 @@ export type RoleIndependenceContinuationGrantFactsV1 = Readonly<{
   parametersDigest: `sha256:${string}`;
   sourceStateDigest: string;
   providerAvailabilityDigest: string;
-  mandateStateDigest: string | null;
+  parentGrantBinding?: GrantParentBindingV1;
 }>;
 
 export const ROLE_INDEPENDENCE_CONTINUATION_PARAMETER_SCHEMA_DIGEST =
@@ -259,7 +253,6 @@ export const ROLE_INDEPENDENCE_CONTINUATION_PARAMETER_SCHEMA_DIGEST =
         'providerPolicyDigest',
         'providerRegistryDigest',
         'assignmentDigest',
-        'mandateBinding',
       ],
       ownerKinds: [
         'propose-blind-survey',
@@ -282,9 +275,15 @@ export const ROLE_INDEPENDENCE_CONTINUATION_CONSEQUENCE_DIGEST = grantSha256(
     kind: 'role-independence-continuation-consequence.v1',
     effect: 'activate-one-exact-degraded-role-continuation',
     providerIndependence: 'explicitly-degraded',
+    soleAuthority: 'completed-central-grant',
+    otherAuthorityArtifactRequired: false,
+    sourceStateValidationBypass: false,
+    providerAvailabilityValidationBypass: false,
+    assignmentValidationBypass: false,
+    stagedInputValidationBypass: false,
     staleStateBypass: false,
     contentValidationBypass: false,
-    taskMandateBypass: false,
+    naturalResultFabrication: false,
     reusableForDifferentAttempt: false,
   }),
 );
@@ -292,6 +291,7 @@ export const ROLE_INDEPENDENCE_CONTINUATION_CONSEQUENCE_DIGEST = grantSha256(
 export function createRoleIndependenceContinuationGrantRequest(
   candidate: RoleIndependenceContinuationObservationV1,
   proposedReason: string,
+  parentGrantBinding: GrantParentBindingV1 | null = null,
 ): CentralGrantRequestInputV1<RoleIndependenceContinuationGrantFactsV1> {
   const observation = assertRoleIndependenceContinuationObservation(candidate);
   if (
@@ -307,6 +307,13 @@ export function createRoleIndependenceContinuationGrantRequest(
   }
   const reason = assertText(proposedReason, 'proposed reason', 2_048);
   const parameters = observation.parameters;
+  const parentBinding =
+    parentGrantBinding === null
+      ? null
+      : assertRoleIndependenceContinuationParentBinding(
+          parameters,
+          parentGrantBinding,
+        );
   const facts = Object.freeze({
     schemaVersion: 1 as const,
     kind: 'role-independence-continuation-grant-facts.v1' as const,
@@ -321,7 +328,7 @@ export function createRoleIndependenceContinuationGrantRequest(
     parametersDigest: observation.parametersDigest,
     sourceStateDigest: observation.sourceStateDigest,
     providerAvailabilityDigest: observation.providerAvailabilityDigest,
-    mandateStateDigest: observation.mandateStateDigest,
+    ...(parentBinding === null ? {} : { parentGrantBinding: parentBinding }),
   });
   return Object.freeze({
     sourceModuleId: 'role-independence-continuation',
@@ -362,8 +369,10 @@ export function roleIndependenceContinuationTransitionDefinitions(
           title: `Activate the exact ${ownerLabel(parameters.owner)} degraded continuation`,
           consequences: Object.freeze([
             `Use only ${parameters.requestedDegradation.kind} for assignment ${parameters.assignmentDigest}.`,
+            'The completed Central Grant is the sole authority for this exact degraded continuation; no other authority artifact is a precondition.',
             'Record provider independence as degraded; do not describe this continuation as provider-independent.',
-            'Do not bypass current source, Task Mandate, structured-content, or result validation.',
+            'Preserve exact source, provider availability, assignment, staged-input, staleness, structured-content, and natural-result validation.',
+            'Activation does not assert provider success, review satisfaction, or challenge closure.',
             'Any owner, participant, input, provider availability, or source-state change requires a fresh Central Grant.',
           ]),
         });
@@ -447,6 +456,25 @@ export function roleIndependenceContinuationParametersDigest(
   );
 }
 
+export function roleIndependenceContinuationParentRelationshipFactsDigest(
+  candidate: RoleIndependenceContinuationParametersV1,
+): `sha256:${string}` {
+  const parameters = assertRoleIndependenceContinuationParameters(candidate);
+  return grantSha256(
+    `workflow.role-independence-continuation-parent-relationship.v1\n${canonicalJson(
+      {
+        schemaVersion: 1,
+        kind: 'role-independence-continuation-parent-relationship.v1',
+        owner: parameters.owner,
+        targetDigest: parameters.targetDigest,
+        assignmentDigest: parameters.assignmentDigest,
+        parametersDigest:
+          roleIndependenceContinuationParametersDigest(parameters),
+      },
+    )}`,
+  );
+}
+
 export function assertRoleIndependenceContinuationParameters(
   value: unknown,
 ): RoleIndependenceContinuationParametersV1 {
@@ -465,7 +493,6 @@ export function assertRoleIndependenceContinuationParameters(
       'providerPolicyDigest',
       'providerRegistryDigest',
       'assignmentDigest',
-      'mandateBinding',
     ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'role-independence-continuation-activation.v1'
@@ -484,14 +511,7 @@ export function assertRoleIndependenceContinuationParameters(
   const providerPolicyDigest = assertDigest(value.providerPolicyDigest);
   const providerRegistryDigest = assertDigest(value.providerRegistryDigest);
   const assignmentDigest = assertDigest(value.assignmentDigest);
-  const mandateBinding = assertMandateBinding(value.mandateBinding);
-  if (
-    targetDigest !== ownerTargetDigest(owner) ||
-    (mandateBinding !== null &&
-      (mandateBinding.changeId !== ownerChangeId(owner) ||
-        (ownerTaskId(owner) !== null &&
-          mandateBinding.mandateTaskId !== ownerTaskId(owner))))
-  ) {
+  if (targetDigest !== ownerTargetDigest(owner)) {
     throw grantInvalid();
   }
   assertDegradationBinding(
@@ -513,7 +533,6 @@ export function assertRoleIndependenceContinuationParameters(
     providerPolicyDigest,
     providerRegistryDigest,
     assignmentDigest,
-    mandateBinding,
   });
 }
 
@@ -531,7 +550,6 @@ export function assertRoleIndependenceContinuationObservation(
       'currentRepositoryTree',
       'sourceStateDigest',
       'providerAvailabilityDigest',
-      'mandateStateDigest',
       'competingAttemptDigest',
       'applicability',
       'activation',
@@ -551,7 +569,6 @@ export function assertRoleIndependenceContinuationObservation(
   const providerAvailabilityDigest = assertDigest(
     value.providerAvailabilityDigest,
   );
-  const mandateStateDigest = assertOptionalDigest(value.mandateStateDigest);
   const competingAttemptDigest = assertOptionalDigest(
     value.competingAttemptDigest,
   );
@@ -560,7 +577,6 @@ export function assertRoleIndependenceContinuationObservation(
   if (
     parametersDigest !==
       roleIndependenceContinuationParametersDigest(parameters) ||
-    (parameters.mandateBinding === null) !== (mandateStateDigest === null) ||
     (activation !== null &&
       (activation.parametersDigest !== parametersDigest ||
         competingAttemptDigest !== null))
@@ -576,7 +592,6 @@ export function assertRoleIndependenceContinuationObservation(
     currentRepositoryTree,
     sourceStateDigest,
     providerAvailabilityDigest,
-    mandateStateDigest,
     competingAttemptDigest,
     applicability,
     activation,
@@ -961,37 +976,6 @@ function assertProviderIds(
   return Object.freeze([...value]);
 }
 
-function assertMandateBinding(
-  value: unknown,
-): RoleIndependenceTaskMandateBindingV1 | null {
-  if (value === null) return null;
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'mandateTaskId',
-      'mandateId',
-      'mandateDigest',
-      'changeId',
-      'externalAuditRoot',
-    ]) ||
-    value.schemaVersion !== 1
-  ) {
-    throw grantInvalid();
-  }
-  return Object.freeze({
-    schemaVersion: 1,
-    mandateTaskId: assertTaskId(value.mandateTaskId),
-    mandateId: assertText(value.mandateId, 'mandate ID'),
-    mandateDigest: assertDigest(value.mandateDigest),
-    changeId: assertChangeId(value.changeId),
-    externalAuditRoot: assertText(
-      value.externalAuditRoot,
-      'external audit root',
-    ),
-  });
-}
-
 function assertDegradationBinding(
   owner: RoleIndependenceContinuationOwnerV1,
   author: RoleIndependenceActorBindingV1,
@@ -1008,7 +992,6 @@ function assertDegradationBinding(
       participant.providerId !== author.providerId ||
       participant.sessionId === null ||
       participant.sessionId === author.sessionId ||
-      participant.identityAssurance === 'maintainer-signed' ||
       !participant.engineSpawned ||
       callableProviderIds.length !== 1 ||
       callableProviderIds[0] !== participant.providerId
@@ -1023,18 +1006,6 @@ function assertDegradationBinding(
     participant.sessionId !== null ||
     participant.principalId === null ||
     participant.engineSpawned
-  ) {
-    throw grantInvalid();
-  }
-  if (
-    degradation.kind === 'caller-supplied' &&
-    participant.identityAssurance === 'maintainer-signed'
-  ) {
-    throw grantInvalid();
-  }
-  if (
-    degradation.kind === 'direct-human-review' &&
-    participant.identityAssurance !== 'maintainer-signed'
   ) {
     throw grantInvalid();
   }
@@ -1111,6 +1082,27 @@ function assertActivation(
     approvalSubjectDigest: assertSha256Digest(value.approvalSubjectDigest),
     parametersDigest: assertSha256Digest(value.parametersDigest),
   });
+}
+
+function assertRoleIndependenceContinuationParentBinding(
+  parameters: RoleIndependenceContinuationParametersV1,
+  candidate: GrantParentBindingV1,
+): GrantParentBindingV1 {
+  const binding = assertGrantParentBindingV1(candidate);
+  if (
+    (parameters.owner.kind !== 'task-diff-review' &&
+      parameters.owner.kind !== 'task-diff-review-continuation') ||
+    binding.relationKind !== ROLE_INDEPENDENCE_CONTINUATION_PARENT_RELATION ||
+    binding.relationshipFactsDigest !==
+      roleIndependenceContinuationParentRelationshipFactsDigest(parameters)
+  ) {
+    throw workflowError(
+      'GRANT_PARENT_BINDING_INVALID',
+      'Role-independence continuation parent binding does not match the exact protected TaskDiffReview descendant.',
+      ExitCode.guard,
+    );
+  }
+  return binding;
 }
 
 function assertCompletedAuthority(
@@ -1204,24 +1196,6 @@ function ownerTargetDigest(owner: RoleIndependenceContinuationOwnerV1): string {
       return owner.subjectDigest;
     case 'task-diff-review-continuation':
       return owner.continuationTargetDigest;
-  }
-}
-
-function ownerChangeId(owner: RoleIndependenceContinuationOwnerV1): string {
-  return owner.changeId;
-}
-
-function ownerTaskId(
-  owner: RoleIndependenceContinuationOwnerV1,
-): string | null {
-  switch (owner.kind) {
-    case 'propose-blind-survey':
-    case 'propose-plan-review':
-      return null;
-    case 'task-strategy-implementation':
-    case 'task-diff-review':
-    case 'task-diff-review-continuation':
-      return owner.taskId;
   }
 }
 
