@@ -116,7 +116,7 @@ export type TaskStrategyRedRevisionJournalState = Readonly<{
   predecessor: Readonly<{
     transactionDigest: string;
     candidateTree: string;
-    currentRefDigest: string | null;
+    currentRefDigest: string;
   }>;
   binding: Readonly<{
     changeId: string;
@@ -718,12 +718,10 @@ function assertPreparedJournalPredecessor(
   }
   const current = readTaskStrategyCurrentRef(paths, journal.sessionId);
   if (
-    journal.predecessor.currentRefDigest === null
-      ? current !== null
-      : current === null ||
-        current.refDigest !== journal.predecessor.currentRefDigest ||
-        current.state !== 'red-sealed' ||
-        current.transactionDigest !== predecessor.recordDigest
+    current === null ||
+    current.refDigest !== journal.predecessor.currentRefDigest ||
+    current.state !== 'red-sealed' ||
+    current.transactionDigest !== predecessor.recordDigest
   ) {
     throw workflowError(
       'TASK_STRATEGY_CURRENT_REF_CAS_MISMATCH',
@@ -746,8 +744,9 @@ function assertCurrentRefTransition(
 ): void {
   if (current === null) {
     if (
-      next.state === 'red-sealed' &&
-      (next.predecessorTransactionDigest !== null || next.revisionId !== null)
+      next.state !== 'red-sealed' ||
+      next.predecessorTransactionDigest !== null ||
+      next.revisionId !== null
     ) {
       throw revisionStateCorrupt();
     }
@@ -951,7 +950,7 @@ function parsePredecessor(
     ]) ||
     !isDigest(value.transactionDigest) ||
     !isGitObjectId(value.candidateTree) ||
-    (value.currentRefDigest !== null && !isDigest(value.currentRefDigest))
+    !isDigest(value.currentRefDigest)
   ) {
     throw revisionStateCorrupt();
   }

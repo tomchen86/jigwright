@@ -267,7 +267,10 @@ function prepareRevisionJournalStateUnlocked(
   );
   if (
     predecessor === null ||
-    predecessor.recordDigest !== request.expectedTransactionDigest
+    predecessor.recordDigest !== request.expectedTransactionDigest ||
+    observedRef === null ||
+    observedRef.state !== 'red-sealed' ||
+    observedRef.transactionDigest !== predecessor.recordDigest
   ) {
     throw workflowError(
       'TASK_STRATEGY_RED_REVISION_STALE',
@@ -316,7 +319,7 @@ function prepareRevisionJournalStateUnlocked(
     predecessor: {
       transactionDigest: predecessor.recordDigest,
       candidateTree: predecessor.red.candidateTree,
-      currentRefDigest: observedRef?.refDigest ?? null,
+      currentRefDigest: observedRef.refDigest,
     },
     binding: {
       changeId: predecessor.changeId,
@@ -564,11 +567,9 @@ function assertJournalDurableRelations(
     journal.sessionId,
   );
   const predecessorCurrent =
-    journal.predecessor.currentRefDigest === null
-      ? current === null
-      : current?.refDigest === journal.predecessor.currentRefDigest &&
-        current.state === 'red-sealed' &&
-        current.transactionDigest === journal.predecessor.transactionDigest;
+    current?.refDigest === journal.predecessor.currentRefDigest &&
+    current.state === 'red-sealed' &&
+    current.transactionDigest === journal.predecessor.transactionDigest;
   const authoringCurrent =
     current?.refDigest === journal.authoringRef.refDigest &&
     current.state === 'red-authoring';

@@ -173,6 +173,88 @@ test('transaction readers do not infer currentness from the retired session sing
   }
 });
 
+test('current-ref CAS cannot bootstrap authoring from an orphan transaction', () => {
+  const fixture = createStoreFixture();
+  try {
+    const orphan = createContentAddressedTaskStrategyTransaction(
+      fixture.paths,
+      transactionInput('2'),
+    );
+    const request = parseTaskStrategyRedRevisionRequest({
+      schemaVersion: 1,
+      kind: 'task-strategy-red-revision-request',
+      sessionId: orphan.sessionId,
+      expectedTransactionDigest: orphan.recordDigest,
+      reason: 'An orphan transaction has no current revision authority.',
+    });
+    const authoring = createTaskStrategyCurrentRef({
+      sessionId: orphan.sessionId,
+      state: 'red-authoring',
+      transactionDigest: null,
+      predecessorTransactionDigest: orphan.recordDigest,
+      revisionId: taskStrategyRedRevisionId(request),
+      taskContractDigest: orphan.taskContractDigest,
+      updatedAt: '2026-08-13T00:00:01.000Z',
+    });
+
+    assert.throws(
+      () =>
+        compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
+          sessionId: orphan.sessionId,
+          expectedRefDigest: null,
+          next: authoring,
+        }),
+      hasCode('TASK_STRATEGY_RED_REVISION_STATE_CORRUPT'),
+    );
+    assert.equal(
+      readTaskStrategyCurrentRef(fixture.paths, orphan.sessionId),
+      null,
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('revision journals reject a missing predecessor current-ref digest', () => {
+  const fixture = createStoreFixture();
+  try {
+    const predecessor = createTaskStrategyTransaction(
+      fixture.paths,
+      transactionInput('3'),
+    );
+    const request = parseTaskStrategyRedRevisionRequest({
+      schemaVersion: 1,
+      kind: 'task-strategy-red-revision-request',
+      sessionId: predecessor.sessionId,
+      expectedTransactionDigest: predecessor.recordDigest,
+      reason: 'Bind the revision to the exact current sealed transaction.',
+    });
+    const prepared = createPreparedRevisionJournal(
+      fixture,
+      predecessor,
+      request,
+    );
+    const body = {
+      ...withoutDigest(prepared),
+      predecessor: {
+        ...prepared.predecessor,
+        currentRefDigest: null,
+      },
+    };
+
+    assert.throws(
+      () =>
+        parseTaskStrategyRedRevisionJournal({
+          ...body,
+          journalDigest: digest(body),
+        }),
+      hasCode('TASK_STRATEGY_RED_REVISION_STATE_CORRUPT'),
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
 test('successor transaction preparation is pure until exact persistence', () => {
   const fixture = createStoreFixture();
   try {
