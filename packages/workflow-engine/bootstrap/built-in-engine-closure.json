@@ -678,7 +678,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:599db121d250967080af45c49382be2602f72a043cae9d675d5743796dbd7b26"
+      "digest": "sha256:96559a7be3a3d333e13ba6175dc0eae9fe48bb8dd9731b62f9efae57501016e3"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -763,7 +763,7 @@
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:1f5b665fe4a7b7b81e104dad14a7ed8ca7efe654f34115b173e2a820ebccf664"
+      "digest": "sha256:5dad7404d16e26c9843a00abb045e72134b8ab993e120e2902db9cf51a34837c"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -793,7 +793,7 @@
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:5616c7fcde805c080e7fbb68e2106709f136f652a165aa68bd4f6f0f49e4118d"
+      "digest": "sha256:d355a1d71e94ec564a020d77877bce524f4a32574ebdc22049d0654ee1adde05"
     },
     {
       "path": "src/composition-root/governance-intake-production.ts",
@@ -803,7 +803,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:15775428837f2bffc3215bb68a487a724c859e53e4c98b4a484bca4755875eca"
+      "digest": "sha256:020190bf8939b440243ce4826fb39ec1daadbc1094ea2755992d61172ca2888a"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -1928,7 +1928,7 @@
     {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:f7a8fa98fc7872b27f1e84e25f341a22e5eb2a96cdeb37422a6164cf3b04beab"
+      "digest": "sha256:4c74c4c604485b4c341def6260e053d68ba1cc7582a9731ed9ef9a3c078a7272"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
@@ -1993,7 +1993,7 @@
     {
       "path": "src/runtime/storage-journal/grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:9bd717361f5002f50ad9138aabe2b24668dc652cafc2b63654f63e66c790c5fd"
+      "digest": "sha256:10d381f59c70e4f589ca0f0b6fcd02199cfc094c5280421f794c569569710e65"
     },
     {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:ae630e75d68df6ab15dede896aa80cb84f14a2ee49c8043d63f8dec1d845194f"
+      "digest": "sha256:4067b1f68e12287a6369bc4972b89bd2c70edf6f4ba612e6534284bc63af6ae3"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -688,7 +688,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-store.js",
       "mode": "100644",
-      "digest": "sha256:4570a222636ff79a18e752cd06b15186108eb678cd30b1f84eac575d3852623a"
+      "digest": "sha256:f34a0a6368f3cfe5ef76f4203b6d83f266f44774e271cfdec99606a2217a64fb"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-ledger.js",
@@ -728,7 +728,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/grant-store.js",
       "mode": "100644",
-      "digest": "sha256:267f5032dffb428d9538b3b91073f6365d8d2aa6bf1a7aea6fd115e6b54f39e6"
+      "digest": "sha256:857b27079d2208492def0934ace8c015515061ece3b9a191d56ea81894861b0a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-control-persistence.js",

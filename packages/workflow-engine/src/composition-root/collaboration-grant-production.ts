@@ -49,7 +49,7 @@ export function issueProductionCollaborationGrant(
         assertOwned,
       );
     },
-    { allowGrantChallengeId: parent.parentChallengeId },
+    { allowGrantChallengeIds: [parent.parentChallengeId] },
   );
   return { ...prepared, availableEnvelopePath };
 }

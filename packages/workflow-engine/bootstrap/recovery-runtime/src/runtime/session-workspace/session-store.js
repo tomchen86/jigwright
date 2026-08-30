@@ -140,7 +140,7 @@ export async function withRepositoryLifecycleOperationAsync(runtime, operation, 
     return result;
 }
 function acquireRepositoryLifecycleLease(runtime, options) {
-    assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeId ?? null);
+    assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
     assertHumanResolutionLifecycleBarrier(runtime.root, options.allowHumanResolutionGrantId ?? null, options.allowHumanResolutionChangeId ?? null);
     ensurePlainDirectory(runtime.operations);
     const lockPath = path.join(runtime.operations, 'repository-lifecycle.lock');
@@ -222,11 +222,11 @@ function acquireRepositoryLifecycleLease(runtime, options) {
         reclaimHumanResolutionJournalTemporaries(runtime.root, assertOwned);
         const assertLifecycleOwned = () => {
             assertOwned();
-            assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeId ?? null);
+            assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
             assertHumanResolutionLifecycleBarrier(runtime.root, options.allowHumanResolutionGrantId ?? null, options.allowHumanResolutionChangeId ?? null);
         };
         assertHumanResolutionLifecycleBarrier(runtime.root, options.allowHumanResolutionGrantId ?? null, options.allowHumanResolutionChangeId ?? null);
-        assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeId ?? null);
+        assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
         assertMaintainerReservationCompatibility(runtime, options.allowMaintainerGrantId);
         return { assertOwned: assertLifecycleOwned, release };
     }

@@ -558,7 +558,7 @@ function taskDiffReviewLifecycleOptions(
     context,
     requestedSessionId,
   );
-  return challengeId === null ? {} : { allowGrantChallengeId: challengeId };
+  return challengeId === null ? {} : { allowGrantChallengeIds: [challengeId] };
 }
 
 function assertTaskDiffReviewLifecycleGrantCurrent(
@@ -7032,6 +7032,56 @@ export type ProtectedTaskApplyTaskDiffGrantContinuation = Readonly<{
   parentChallengeId: string;
   subjectDigest: string;
 }>;
+
+export type ProtectedTaskApplyTaskDiffProviderGrantContinuation = Readonly<{
+  invocationId: string;
+  repositoryId: string;
+  changeId: string;
+  sessionId: string;
+  parentChallengeId: string;
+  subjectDigest: string;
+}>;
+
+export function deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+  cwd: string,
+  requestedInvocationId: string,
+): ProtectedTaskApplyTaskDiffProviderGrantContinuation | null {
+  const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+  const manifest = readProviderInvocationManifest(
+    runtime,
+    requestedInvocationId,
+  );
+  if (
+    manifest.kind !== 'task-diff-review-manifest' &&
+    manifest.kind !== 'task-diff-review-continuation-manifest'
+  ) {
+    return null;
+  }
+  const context = loadActiveSessionContext(cwd, manifest.sessionId);
+  const parentChallengeId = protectedTaskApplyReviewChallenge(
+    context,
+    manifest.sessionId,
+  );
+  if (parentChallengeId === null) return null;
+  const owner = assertTaskDiffReviewProviderOwnerCurrent(
+    cwd,
+    requestedInvocationId,
+  );
+  if (
+    owner.sessionId !== manifest.sessionId ||
+    owner.subject.subjectDigest !== manifest.subject.subjectDigest
+  ) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  return Object.freeze({
+    invocationId: requestedInvocationId,
+    repositoryId: manifest.repositoryId,
+    changeId: context.session.changeId,
+    sessionId: manifest.sessionId,
+    parentChallengeId,
+    subjectDigest: manifest.subject.subjectDigest,
+  });
+}
 
 export function deriveProtectedTaskApplyTaskDiffGrantContinuation(
   cwd: string,

@@ -1,6 +1,7 @@
 import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
+import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -69,6 +70,8 @@ import {
 } from './change-role-assignment-grant-production.ts';
 import {
   changeRoleAssignmentGrantTransitionDefinitions,
+  assertChangeRoleAssignmentGrantParameters,
+  CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID,
   createChangeRoleAssignmentGrantRequest,
 } from '../modules/provider-orchestration/change-role-assignment-grant.ts';
 import { resolveArchivePullRequestPublicationTarget } from './archive-pr-publication-production.ts';
@@ -81,6 +84,7 @@ import {
   protectedTaskApplyGrantTransitionDefinitions,
   type ProtectedTaskApplyFailureDetailsV1,
 } from '../modules/authority/protected-task-apply-grant.ts';
+import { deriveProtectedTaskApplyTaskDiffProviderGrantContinuation } from '../application/finalize/task-diff-review-lifecycle.ts';
 
 /**
  * Production composition root. Unlike the testable kernel, this surface does
@@ -112,13 +116,128 @@ export function createProductionGrantCoordinator(
       );
     },
     async withLifecycleOperation(challengeId, operation) {
-      const stored = readGrantRecord(paths, challengeId);
-      return withRepositoryLifecycleOperationAsync(runtime, operation, {
-        allowGrantChallengeId: challengeId,
-        ...humanResolutionLifecycleBinding(stored.challenge),
-      });
+      return withProductionGrantLifecycleOperation(
+        git.repositoryRoot,
+        challengeId,
+        operation,
+      );
     },
   });
+}
+
+export async function withProductionGrantLifecycleOperation<T>(
+  cwd: string,
+  challengeId: string,
+  operation: (assertOwned: () => void) => Promise<T>,
+): Promise<T> {
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const paths = grantStorePaths(runtime.root);
+  const stored = readGrantRecord(paths, challengeId);
+  const continuation = taskDiffRoleAssignmentGrantContinuation(
+    git.repositoryRoot,
+    stored.challenge,
+  );
+  const allowGrantChallengeIds = [
+    challengeId,
+    ...(continuation === null ? [] : [continuation.parentChallengeId]),
+  ];
+  return withRepositoryLifecycleOperationAsync(
+    runtime,
+    async (assertLifecycleOwned) => {
+      const assertExactContinuationOwned = () => {
+        assertLifecycleOwned();
+        const current = readGrantRecord(paths, challengeId);
+        if (
+          current.challenge.challengeDigest !==
+            stored.challenge.challengeDigest ||
+          canonicalJson(
+            taskDiffRoleAssignmentGrantContinuation(
+              git.repositoryRoot,
+              current.challenge,
+            ),
+          ) !== canonicalJson(continuation)
+        ) {
+          throw workflowError(
+            'GRANT_CONTINUATION_INVALID',
+            'The exact TaskDiffReview parent-child Grant continuation changed.',
+            ExitCode.staleState,
+          );
+        }
+      };
+      assertExactContinuationOwned();
+      return operation(assertExactContinuationOwned);
+    },
+    {
+      allowGrantChallengeIds,
+      ...humanResolutionLifecycleBinding(stored.challenge),
+    },
+  );
+}
+
+function taskDiffRoleAssignmentGrantContinuation(
+  repositoryRoot: string,
+  challenge: ReturnType<typeof readGrantRecord>['challenge'],
+) {
+  if (
+    challenge.sourceModuleId !== 'agent-runtime-role-assignment' ||
+    challenge.failureCode !== 'role-independence-grant-required'
+  ) {
+    return null;
+  }
+  if (
+    !isRecord(challenge.facts) ||
+    typeof challenge.facts.invocationId !== 'string' ||
+    typeof challenge.facts.changeId !== 'string' ||
+    challenge.choices.length !== 1 ||
+    challenge.choices[0]!.transitionId !==
+      CHANGE_ROLE_ASSIGNMENT_GRANT_TRANSITION_ID
+  ) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Role-assignment Grant continuation facts are malformed.',
+      ExitCode.guard,
+    );
+  }
+  const parameters = assertChangeRoleAssignmentGrantParameters(
+    challenge.choices[0]!.parameters,
+  );
+  if (
+    parameters.repositoryId !== challenge.facts.repositoryId ||
+    parameters.invocationId !== challenge.facts.invocationId ||
+    parameters.changeId !== challenge.facts.changeId ||
+    parameters.planningGeneration !== challenge.facts.planningGeneration ||
+    parameters.recordDigest !== challenge.facts.recordDigest ||
+    parameters.assignmentDigest !== challenge.facts.assignmentDigest ||
+    parameters.grantRequirementDigest !==
+      challenge.facts.grantRequirementDigest ||
+    canonicalJson(parameters.exactRolePairs) !==
+      canonicalJson(challenge.facts.exactRolePairs)
+  ) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Role-assignment Grant continuation does not match its exact invocation.',
+      ExitCode.guard,
+    );
+  }
+  const continuation =
+    deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
+      repositoryRoot,
+      parameters.invocationId,
+    );
+  if (
+    continuation !== null &&
+    (continuation.repositoryId !== parameters.repositoryId ||
+      continuation.changeId !== parameters.changeId)
+  ) {
+    throw workflowError(
+      'GRANT_CONTINUATION_INVALID',
+      'Role-assignment Grant continuation does not match its TaskDiffReview owner.',
+      ExitCode.guard,
+    );
+  }
+  return continuation;
 }
 
 function productionApprovalSession(

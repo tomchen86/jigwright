@@ -122,7 +122,7 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       (error) => isWorkflowError(error, 'GRANT_TRANSITION_RECOVERY_REQUIRED'),
     );
     assert.doesNotThrow(() =>
-      assertGrantLifecycleBarrier(runtimeRoot, challenge.challengeId),
+      assertGrantLifecycleBarrier(runtimeRoot, [challenge.challengeId]),
     );
 
     const completed = recordGrantTransitionOutcome(paths, {
@@ -179,6 +179,52 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
           createdAt: NOW.toISOString(),
         }),
       (error) => isWorkflowError(error, 'GRANT_CHALLENGE_UNAVAILABLE'),
+    );
+  });
+});
+
+test('an exact nested Grant allowance still blocks an unrelated prepared Grant', () => {
+  withRuntime((runtimeRoot) => {
+    const paths = grantStorePaths(runtimeRoot);
+    const parent = fixtureChallenge('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+    const child = fixtureChallenge('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+    for (const [challenge, operationId, sessionNonce] of [
+      [
+        parent,
+        '11111111-1111-4111-8111-111111111111',
+        'nonce-parent-1111111111111111111111111111',
+      ],
+      [
+        child,
+        '22222222-2222-4222-8222-222222222222',
+        'nonce-child-22222222222222222222222222222',
+      ],
+    ] as const) {
+      persistGrantChallenge(paths, challenge);
+      preparePublicRecord(paths, challenge, operationId, sessionNonce);
+    }
+    assert.doesNotThrow(() =>
+      assertGrantLifecycleBarrier(runtimeRoot, [
+        parent.challengeId,
+        child.challengeId,
+      ]),
+    );
+
+    const unrelated = fixtureChallenge('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+    persistGrantChallenge(paths, unrelated);
+    preparePublicRecord(
+      paths,
+      unrelated,
+      '33333333-3333-4333-8333-333333333333',
+      'nonce-unrelated-3333333333333333333333333',
+    );
+    assert.throws(
+      () =>
+        assertGrantLifecycleBarrier(runtimeRoot, [
+          parent.challengeId,
+          child.challengeId,
+        ]),
+      (error) => isWorkflowError(error, 'GRANT_TRANSITION_RECOVERY_REQUIRED'),
     );
   });
 });
@@ -323,7 +369,7 @@ test('the repository lifecycle lock honors a prepared Grant Core record', () => 
     );
     assert.doesNotThrow(() =>
       withRepositoryLifecycleOperation(runtime, () => undefined, {
-        allowGrantChallengeId: challenge.challengeId,
+        allowGrantChallengeIds: [challenge.challengeId],
       }),
     );
   });

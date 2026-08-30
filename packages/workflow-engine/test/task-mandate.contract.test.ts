@@ -38,6 +38,22 @@ import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
 import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
 import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
+import { withProductionGrantLifecycleOperation } from '../src/composition-root/grant-production.ts';
+import { readPinnedAgentRuntimePathRoleSource } from '../src/composition-root/change-role-assignment-production.ts';
+import {
+  createProductionChangeRoleAssignmentGrantPort,
+  observeCurrentChangeRoleAssignmentGrantForInvocation,
+} from '../src/composition-root/change-role-assignment-grant-production.ts';
+import {
+  changeRoleAssignmentGrantTransitionDefinitions,
+  createChangeRoleAssignmentGrantRequest,
+} from '../src/modules/provider-orchestration/change-role-assignment-grant.ts';
+import {
+  agentRolePlanV2Digest,
+  renderAgentRolePlanV2,
+  type AgentRolePlanBodyV2,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
@@ -45,6 +61,8 @@ import {
 import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
+import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
 import {
   claimProviderInvocation,
   failProviderInvocation,
@@ -228,6 +246,39 @@ function enableConditionalTaskAuthorization(
     loaderPath,
   ]);
   git(repository, ['commit', '-m', 'Enable conditional task authorization']);
+}
+
+function agentProviderConfigToml(): string {
+  const claude = resolveBuiltInProviderDefinitionSnapshot('claude', 'darwin')!;
+  const codex = resolveBuiltInProviderDefinitionSnapshot('codex', 'darwin')!;
+  return `schema_version = 2
+global_ranking = ["claude-main", "codex-main"]
+
+[[providers]]
+id = "claude-main"
+logical_provider_id = "claude"
+family = "claude"
+capabilities = ["fresh-session", "plan-review", "survey", "task-diff-review", "task-implementation"]
+trust_tier = "built-in-reviewed"
+enabled = true
+protocol = "${claude.protocol}"
+executable = "${claude.executableCandidates[0]}"
+
+[[providers]]
+id = "codex-main"
+logical_provider_id = "codex"
+family = "codex"
+capabilities = ["fresh-session", "plan-review", "survey", "task-diff-review", "task-implementation"]
+trust_tier = "built-in-reviewed"
+enabled = true
+protocol = "${codex.protocol}"
+executable = "${codex.executableCandidates[0]}"
+
+[provider_preferences]
+author = ["claude-main", "codex-main"]
+builder = ["claude-main", "codex-main"]
+reviewer = ["claude-main", "codex-main"]
+`;
 }
 
 function request(changeId = CHANGE_ID, maxInvocations = 1): TaskMandateRequest {
@@ -809,10 +860,59 @@ test('unclassified task scope remains ordinary unless policy explicitly protects
   }
 });
 
+test('AgentRuntime rejects a symlinked path-role registry in its immutable baseline', () => {
+  const repository = prepareRepository();
+  try {
+    enableConditionalTaskAuthorization(repository);
+    const registryPath = 'workflow/path-roles.json';
+    const registryTargetPath = 'path-roles-target.json';
+    fs.copyFileSync(
+      path.join(repository, registryPath),
+      path.join(repository, registryTargetPath),
+    );
+    fs.rmSync(path.join(repository, registryPath));
+    fs.symlinkSync(
+      `../${registryTargetPath}`,
+      path.join(repository, registryPath),
+    );
+    git(repository, ['add', registryPath, registryTargetPath]);
+    git(repository, ['commit', '-m', 'Link the path-role baseline fixture']);
+    assert.equal(
+      (
+        JSON.parse(
+          fs.readFileSync(path.join(repository, registryPath), 'utf8'),
+        ) as { kind: string }
+      ).kind,
+      'path-role-registry',
+    );
+
+    assert.throws(
+      () =>
+        readPinnedAgentRuntimePathRoleSource(
+          repository,
+          git(repository, ['rev-parse', 'HEAD']).trim(),
+        ),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_CURRENT_MANIFEST_REQUIRED',
+    );
+  } finally {
+    cleanupRepository(repository);
+  }
+});
+
 test('protected finalize becomes one exact Central Fail-Grant while deprecated split paths remain technically unsupported', async () => {
   const keyDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'task-mandate-cli-key-'),
   );
+  const providerDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'task-diff-role-grant-')),
+  );
+  const agentProviderConfigPath = path.join(
+    providerDirectory,
+    'agent-providers.toml',
+  );
+  fs.writeFileSync(agentProviderConfigPath, agentProviderConfigToml());
   const { privateKey, trustedSigner } = generateSigningKey(keyDirectory);
   const protectedRepository = prepareRepository(trustedSigner);
   const cli = path.join(
@@ -839,6 +939,52 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
       'commit',
       '-m',
       'Limit the protected review provider fixture',
+    ]);
+    const centralRolePolicyPath = path.join(
+      protectedRepository,
+      'workflow/role-provider-default.json',
+    );
+    fs.copyFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/role-provider-default.json'),
+      centralRolePolicyPath,
+    );
+    const centralRolePolicy = JSON.parse(
+      fs.readFileSync(centralRolePolicyPath, 'utf8'),
+    ) as { configurationDigest: string };
+    const roleOverrideBody: AgentRolePlanBodyV2 = {
+      schemaVersion: 2,
+      changeId: CHANGE_ID,
+      baseCentralConfigurationDigest: centralRolePolicy.configurationDigest,
+      roleLanes: [],
+      pairwiseRequirements: [
+        { pair: 'author-builder', required: 'session-independent' },
+        { pair: 'author-reviewer', required: 'session-independent' },
+        { pair: 'builder-reviewer', required: 'session-independent' },
+      ],
+      customWrapperPolicy: 'forbidden',
+      grantReferences: [],
+    };
+    const roleOverridePath = agentRolePlanV2Path(CHANGE_ID);
+    fs.mkdirSync(
+      path.dirname(path.join(protectedRepository, roleOverridePath)),
+      { recursive: true },
+    );
+    fs.writeFileSync(
+      path.join(protectedRepository, roleOverridePath),
+      renderAgentRolePlanV2({
+        ...roleOverrideBody,
+        planDigest: agentRolePlanV2Digest(roleOverrideBody),
+      }),
+    );
+    git(protectedRepository, [
+      'add',
+      'workflow/role-provider-default.json',
+      roleOverridePath,
+    ]);
+    git(protectedRepository, [
+      'commit',
+      '-m',
+      'Add below-floor protected review role policy',
     ]);
     const guardPath = path.join(
       protectedRepository,
@@ -1178,7 +1324,7 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
         return withRepositoryLifecycleOperationAsync(
           lifecycleRuntime,
           operation,
-          { allowGrantChallengeId: challengeId },
+          { allowGrantChallengeIds: [challengeId] },
         );
       },
     });
@@ -1273,6 +1419,142 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
       },
     );
     assert.equal(review.state, 'waiting-for-provider');
+    if (review.state !== 'waiting-for-provider') {
+      assert.fail('expected the exact protected TaskDiffReview invocation');
+    }
+    let runnerCalls = 0;
+    assert.throws(
+      () =>
+        runProviderWorker(protectedRepository, review.invocationId, {
+          agentProviderConfigPath,
+          platform: 'darwin',
+          runner() {
+            runnerCalls += 1;
+            return assert.fail(
+              'Below-floor preflight must not launch the provider.',
+            );
+          },
+        }),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_GRANT_REQUIRED' &&
+        error.details?.invocationId === review.invocationId,
+    );
+    assert.equal(runnerCalls, 0);
+    assert.equal(
+      readProviderInvocation(
+        investigationRuntimePaths(
+          repositoryState.gitCommonDirectory,
+          'workflow-engine',
+        ),
+        review.invocationId,
+      ).state,
+      'prepared',
+    );
+    const roleAssignmentOptions = {
+      configFilePath: agentProviderConfigPath,
+      platform: 'darwin' as const,
+    };
+    const roleAssignmentPort = createProductionChangeRoleAssignmentGrantPort(
+      protectedRepository,
+      roleAssignmentOptions,
+    );
+    const roleObservation =
+      observeCurrentChangeRoleAssignmentGrantForInvocation(
+        protectedRepository,
+        review.invocationId,
+        roleAssignmentOptions,
+      );
+    assert.equal(roleObservation.activation, null);
+    assert.deepEqual(roleObservation.exactRolePairs, [
+      'author-builder',
+      'author-reviewer',
+      'builder-reviewer',
+    ]);
+    const roleAssignmentCoordinator = createGrantCoordinatorKernel({
+      paths: grantStorePaths(lifecycleRuntime.root),
+      registry: createTransitionRegistry(
+        changeRoleAssignmentGrantTransitionDefinitions(roleAssignmentPort),
+      ),
+      policy: loadGrantPolicyV2(protectedRepository).policy,
+      openApprovalSession(presentation) {
+        return {
+          async collectDecision() {
+            return {
+              choiceId: presentation.choices[0]!.choiceId,
+              approvalMethod: 'human-presence' as const,
+              reasonCode: 'approve-exact-role-independence-exception',
+              reason: 'Approve only this exact TaskDiffReview role assignment.',
+              sessionNonce: 'nonce-66666666666666666666666666666666',
+            };
+          },
+          async authenticate(subject) {
+            return [
+              {
+                moduleId: 'human-gate-macos',
+                version: '1',
+                claims: ['fresh-local-device-owner'] as const,
+                approvalSubjectDigest: subject.approvalSubjectDigest,
+                proofDigest: `sha256:${'b'.repeat(64)}` as const,
+                verifiedAt: new Date().toISOString(),
+                identity: null,
+              },
+            ];
+          },
+          async close() {},
+        };
+      },
+      withLifecycleOperation(challengeId, operation) {
+        return withProductionGrantLifecycleOperation(
+          protectedRepository,
+          challengeId,
+          operation,
+        );
+      },
+    });
+    const roleAssignmentGrant = await roleAssignmentCoordinator.requestGrant(
+      createChangeRoleAssignmentGrantRequest(
+        roleObservation,
+        'Authorize the exact protected TaskDiffReview role assignment.',
+      ),
+    );
+    assert.equal(
+      readGrantRecord(
+        grantStorePaths(lifecycleRuntime.root),
+        roleAssignmentGrant.challengeId,
+      ).state,
+      'pending',
+    );
+    const roleAssignmentResult =
+      await roleAssignmentCoordinator.resolveChallenge(
+        roleAssignmentGrant.challengeId,
+      );
+    assert.equal(roleAssignmentResult.outcome, 'completed');
+    assert.equal(
+      readGrantRecord(
+        grantStorePaths(lifecycleRuntime.root),
+        roleAssignmentGrant.challengeId,
+      ).state,
+      'completed',
+    );
+    assert.equal(
+      observeCurrentChangeRoleAssignmentGrantForInvocation(
+        protectedRepository,
+        review.invocationId,
+        roleAssignmentOptions,
+      ).activation?.challengeId,
+      roleAssignmentGrant.challengeId,
+    );
+    assert.equal(
+      readProviderInvocation(
+        investigationRuntimePaths(
+          repositoryState.gitCommonDirectory,
+          'workflow-engine',
+        ),
+        review.invocationId,
+      ).state,
+      'prepared',
+    );
     assert.equal(
       readGrantRecord(
         grantStorePaths(lifecycleRuntime.root),
@@ -1283,6 +1565,7 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
   } finally {
     cleanupRepository(protectedRepository);
     fs.rmSync(keyDirectory, { recursive: true, force: true });
+    fs.rmSync(providerDirectory, { recursive: true, force: true });
   }
 });
 

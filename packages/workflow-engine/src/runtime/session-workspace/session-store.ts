@@ -234,7 +234,7 @@ export type RepositoryLifecycleOperationOptions = Readonly<{
   allowMaintainerGrantId?: string;
   allowHumanResolutionGrantId?: string;
   allowHumanResolutionChangeId?: string;
-  allowGrantChallengeId?: string;
+  allowGrantChallengeIds?: readonly string[];
 }>;
 
 type RepositoryLifecycleLease = Readonly<{
@@ -278,10 +278,7 @@ function acquireRepositoryLifecycleLease(
   runtime: ReturnType<typeof runtimePaths>,
   options: RepositoryLifecycleOperationOptions,
 ): RepositoryLifecycleLease {
-  assertGrantLifecycleBarrier(
-    runtime.root,
-    options.allowGrantChallengeId ?? null,
-  );
+  assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
   assertHumanResolutionLifecycleBarrier(
     runtime.root,
     options.allowHumanResolutionGrantId ?? null,
@@ -390,10 +387,7 @@ function acquireRepositoryLifecycleLease(
     reclaimHumanResolutionJournalTemporaries(runtime.root, assertOwned);
     const assertLifecycleOwned = () => {
       assertOwned();
-      assertGrantLifecycleBarrier(
-        runtime.root,
-        options.allowGrantChallengeId ?? null,
-      );
+      assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
       assertHumanResolutionLifecycleBarrier(
         runtime.root,
         options.allowHumanResolutionGrantId ?? null,
@@ -405,10 +399,7 @@ function acquireRepositoryLifecycleLease(
       options.allowHumanResolutionGrantId ?? null,
       options.allowHumanResolutionChangeId ?? null,
     );
-    assertGrantLifecycleBarrier(
-      runtime.root,
-      options.allowGrantChallengeId ?? null,
-    );
+    assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
     assertMaintainerReservationCompatibility(
       runtime,
       options.allowMaintainerGrantId,

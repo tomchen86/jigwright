@@ -122,9 +122,14 @@ export function recordGrantTransitionOutcome(paths, input) {
     replaceCanonicalRecord(grantRecordPath(paths, input.challengeId), current, terminal, input.challengeId);
     return terminal;
 }
-export function assertGrantLifecycleBarrier(runtimeRoot, allowedChallengeId) {
-    if (allowedChallengeId != null)
-        assertChallengeId(allowedChallengeId);
+export function assertGrantLifecycleBarrier(runtimeRoot, allowedChallengeIds = []) {
+    const allowed = new Set();
+    for (const challengeId of allowedChallengeIds) {
+        assertChallengeId(challengeId);
+        if (allowed.has(challengeId))
+            throw storeUnsafe();
+        allowed.add(challengeId);
+    }
     const root = path.join(path.resolve(runtimeRoot), 'grants-v2');
     const rootStats = fs.lstatSync(root, { throwIfNoEntry: false });
     if (rootStats === undefined)
@@ -148,7 +153,7 @@ export function assertGrantLifecycleBarrier(runtimeRoot, allowedChallengeId) {
         }
         const record = readCanonicalFile(path.join(paths.records, entry.name), assertGrantRecord);
         if (record.state === 'prepared' &&
-            record.challenge.challengeId !== allowedChallengeId) {
+            !allowed.has(record.challenge.challengeId)) {
             throw workflowError('GRANT_TRANSITION_RECOVERY_REQUIRED', `Prepared grant ${record.challenge.challengeId} must be recovered before another repository lifecycle operation.`, ExitCode.staleState);
         }
     }

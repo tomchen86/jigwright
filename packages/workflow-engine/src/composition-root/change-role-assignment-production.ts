@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
-import fs from 'node:fs';
 import path from 'node:path';
+import { TextDecoder } from 'node:util';
 
 import type {
   AgentProviderConfigSnapshot,
@@ -9,6 +9,7 @@ import type {
 } from '@jigwright/agent-runtime';
 
 import { loadChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { parseTaskAuthorizationPolicyFromWorkflowConfig } from '../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
@@ -26,6 +27,7 @@ import {
   type ChangeRoleAssignmentSessionCapabilityV1,
 } from '../modules/provider-orchestration/change-role-assignment.ts';
 import type { AgentRole } from '../modules/provider-orchestration/agent-role-plan.ts';
+import { parsePathRoleRegistry } from '../modules/source/path-role-registry.ts';
 import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,
@@ -52,7 +54,10 @@ import {
   assertPinnedCentralRoleProviderDefaultSnapshot,
   readPinnedCentralRoleProviderDefaultSnapshot,
 } from '../runtime/repository-transaction/central-role-provider-default-store.ts';
-import { discoverRepository } from '../runtime/repository-transaction/git.ts';
+import {
+  discoverRepository,
+  runGitBuffer,
+} from '../runtime/repository-transaction/git.ts';
 import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../runtime/storage-journal/change-role-assignment-store.ts';
 import {
   readCompletedChangeRoleAssignmentGrantAuthority,
@@ -71,6 +76,11 @@ const ROLE_BY_PURPOSE = Object.freeze({
   'task-diff-review': 'reviewer',
   'task-implementation': 'builder',
 } as const);
+
+const FULL_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
+const PINNED_POLICY_TREE_ENTRY =
+  /^(100644) blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u;
+const STRICT_UTF8 = new TextDecoder('utf-8', { fatal: true });
 
 export type CurrentAgentRuntimeAssignmentInputV1 = Readonly<{
   repositoryRoot: string;
@@ -189,7 +199,11 @@ function resolveCurrentAgentRuntimeAssignmentPreGrant(
 ): CurrentAgentRuntimeAssignmentPreGrantResolutionV1 {
   const repository = discoverRepository(input.repositoryRoot);
   const repositoryRoot = repository.repositoryRealPath;
-  const manifest = readCurrentManifestFacts(repositoryRoot, input.changeId);
+  const manifest = readCurrentManifestFacts(
+    repositoryRoot,
+    input.changeId,
+    input.request.baseCommit,
+  );
   const host = loadAgentProviderConfigFile(input.configFilePath, {
     platform: input.platform,
   });
@@ -292,24 +306,98 @@ function resolveCurrentAgentRuntimeAssignmentPreGrant(
 function readCurrentManifestFacts(
   repositoryRoot: string,
   changeId: string,
+  baselineCommit: string,
 ): CurrentManifestFacts {
   const contract = loadChangeContract(repositoryRoot, changeId);
   const investigation = contract.investigation;
-  const pathRoleRegistry = contract.config.taskAuthorization?.pathRoleRegistry;
-  if (
-    investigation?.manifest.schemaVersion !== 3 ||
-    typeof pathRoleRegistry !== 'string'
-  ) {
+  if (investigation?.manifest.schemaVersion !== 3) {
     throw assignmentFailure(
       'AGENT_RUNTIME_CURRENT_MANIFEST_REQUIRED',
       'AgentRuntime assignment requires one current authoritative Manifest v3.',
     );
   }
-  const pathRolePath = path.join(repositoryRoot, pathRoleRegistry);
+  const pathRoleSource = readPinnedAgentRuntimePathRoleSource(
+    repositoryRoot,
+    baselineCommit,
+  );
   return Object.freeze({
     manifestDigest: investigation.manifest.manifestDigest,
-    pathRoleSourceDigest: sha256(fs.readFileSync(pathRolePath)),
+    pathRoleSourceDigest: sha256(pathRoleSource),
   });
+}
+
+export function readPinnedAgentRuntimePathRoleSource(
+  repositoryRoot: string,
+  baselineCommit: string,
+): Buffer {
+  if (!FULL_OBJECT_ID.test(baselineCommit)) throw pinnedPathRoleInvalid();
+  let baselinePolicy: ReturnType<
+    typeof parseTaskAuthorizationPolicyFromWorkflowConfig
+  >;
+  try {
+    if (
+      !runGitBuffer(repositoryRoot, ['cat-file', '-t', baselineCommit]).equals(
+        Buffer.from('commit\n', 'utf8'),
+      )
+    ) {
+      throw new TypeError('baseline is not a commit');
+    }
+    const baselineConfig = JSON.parse(
+      STRICT_UTF8.decode(
+        readPinnedPolicyBlob(
+          repositoryRoot,
+          baselineCommit,
+          'workflow/config.json',
+        ),
+      ),
+    );
+    baselinePolicy =
+      parseTaskAuthorizationPolicyFromWorkflowConfig(baselineConfig);
+  } catch {
+    throw pinnedPathRoleInvalid();
+  }
+  if (baselinePolicy === null) throw pinnedPathRoleInvalid();
+  let pathRoleSource: Buffer;
+  try {
+    pathRoleSource = readPinnedPolicyBlob(
+      repositoryRoot,
+      baselineCommit,
+      baselinePolicy.pathRoleRegistry,
+    );
+    parsePathRoleRegistry(JSON.parse(STRICT_UTF8.decode(pathRoleSource)));
+  } catch {
+    throw pinnedPathRoleInvalid();
+  }
+  return pathRoleSource;
+}
+
+function readPinnedPolicyBlob(
+  repositoryRoot: string,
+  baselineCommit: string,
+  policyPath: string,
+): Buffer {
+  const listing = STRICT_UTF8.decode(
+    runGitBuffer(repositoryRoot, [
+      'ls-tree',
+      '-z',
+      '--full-tree',
+      baselineCommit,
+      '--',
+      `:(literal)${policyPath}`,
+    ]),
+  );
+  const entry = PINNED_POLICY_TREE_ENTRY.exec(listing);
+  if (entry === null || entry[3] !== policyPath) {
+    throw pinnedPathRoleInvalid();
+  }
+  return runGitBuffer(repositoryRoot, ['cat-file', 'blob', entry[2]!]);
+}
+
+function pinnedPathRoleInvalid() {
+  return assignmentFailure(
+    'AGENT_RUNTIME_CURRENT_MANIFEST_REQUIRED',
+    'AgentRuntime assignment requires one valid immutable baseline path-role policy in exact mode-100644 blobs.',
+  );
 }
 
 function currentDataAuthorization(
@@ -605,6 +693,7 @@ function assertSourcesCurrent(
   const currentManifest = readCurrentManifestFacts(
     input.repositoryRoot,
     input.changeId,
+    input.request.baseCommit,
   );
   const currentPolicy = loadAiAdapterPolicy(input.repositoryRoot);
   if (
