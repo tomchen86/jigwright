@@ -79,6 +79,20 @@ test('maintainer policy is a pinned workflow contract artifact', () => {
   assert.ok(artifacts.includes('workflow/schemas/grant-policy.schema.json'));
 });
 
+test('retired documentation closure activation is absent from current contract artifacts', () => {
+  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  const marker = path.join(
+    repositoryRoot,
+    'workflow/schemas/documentation-closure-v1.schema.json',
+  );
+
+  assert.equal(fs.existsSync(marker), false);
+  assert.equal(
+    workflowContractArtifactPaths(repositoryRoot).includes(marker),
+    false,
+  );
+});
+
 test('task authorization binds the one reviewed path-role registry artifact', () => {
   const repository = createFixtureRepository();
   try {
