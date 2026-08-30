@@ -3,12 +3,10 @@ import {
   beginHarnessIntervention,
   classifyProtectedCandidateImpact,
   createWipCheckpoint,
-  decideEngineAdoptionRecovery,
   prepareEngineAdoption,
   validateWorkflowSupersedeReason,
   verifyHarnessMaintenanceGrant,
   type EngineAdoptionJournal,
-  type EngineAdoptionRecoveryDecision,
   type EngineArtifact,
   type ExactControlPlaneChange,
   type HarnessInterventionRelationship,
@@ -51,10 +49,6 @@ type ParsedRequestCommand =
       request: Record<string, unknown>;
     }
   | {
-      command: 'engine-recover';
-      request: Record<string, unknown>;
-    }
-  | {
       command: 'control-plane-classify';
       request: Record<string, unknown>;
     };
@@ -77,11 +71,6 @@ export type InterventionControlDispatchResult =
   | {
       kind: 'engine-adopt';
       journal: EngineAdoptionJournal;
-      effectsPerformed: false;
-    }
-  | {
-      kind: 'engine-recover';
-      decision: EngineAdoptionRecoveryDecision;
       effectsPerformed: false;
     }
   | {
@@ -123,13 +112,6 @@ export function parseInterventionControlCommand(
     return {
       command: 'engine-adopt',
       request: parseRequestOnly(argv, 'engine adopt'),
-    };
-  }
-
-  if (argv[0] === 'engine' && argv[1] === 'recover') {
-    return {
-      command: 'engine-recover',
-      request: parseRequestOnly(argv, 'engine recover'),
     };
   }
 
@@ -187,8 +169,6 @@ export function dispatchInterventionControlCommand(
         return dispatchChangeIntervene(parsed);
       case 'engine-adopt':
         return dispatchEngineAdopt(parsed.request, dependencies);
-      case 'engine-recover':
-        return dispatchEngineRecover(parsed.request);
       case 'control-plane-classify':
         return dispatchControlPlaneClassify(parsed.request);
       case 'workflow-validate-supersede-reason':
@@ -313,19 +293,6 @@ function dispatchEngineAdopt(
     'Engine adopt request action must be prepare or transition.',
     ExitCode.usage,
   );
-}
-
-function dispatchEngineRecover(
-  request: Record<string, unknown>,
-): Extract<InterventionControlDispatchResult, { kind: 'engine-recover' }> {
-  assertExactKeys(request, ['journal'], 'INTERVENTION_CONTROL_REQUEST_INVALID');
-  return {
-    kind: 'engine-recover',
-    decision: decideEngineAdoptionRecovery(
-      request.journal as EngineAdoptionJournal,
-    ),
-    effectsPerformed: false,
-  };
 }
 
 function dispatchControlPlaneClassify(

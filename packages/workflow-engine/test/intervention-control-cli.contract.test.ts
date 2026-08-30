@@ -73,6 +73,16 @@ test('production parser rejects caller-supplied intervention and adoption JSON b
   }
 });
 
+test('production parser rejects caller-supplied engine recovery journals', () => {
+  const argv = ['engine', 'recover', '--request', json({ journal: {} })];
+  for (const invoke of [
+    () => parseInterventionControlCommand(argv),
+    () => dispatchInterventionControlCommand(argv),
+  ]) {
+    assert.throws(invoke, hasCode('INTERVENTION_CONTROL_COMMAND_UNSUPPORTED'));
+  }
+});
+
 function protectedEntries(): ProtectedCapabilityEntry[] {
   return REQUIRED_PROTECTED_CAPABILITIES.map((capability) => {
     const entrypoints = [`packages/bootstrap/${capability}.ts`];
