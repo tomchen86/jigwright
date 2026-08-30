@@ -8,7 +8,6 @@ import {
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
-  CONTROL_PLANE_SIGNATURE_NAMESPACE,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
   HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
@@ -16,7 +15,6 @@ import {
   advanceEngineAdoption,
   advanceMinimalUpdaterTransaction,
   beginHarnessIntervention,
-  canonicalControlPlaneGrantPayload,
   canonicalHarnessMaintenanceGrantPayload,
   classifyProtectedCandidateImpact,
   controlPlaneCandidateDigest,
@@ -29,15 +27,14 @@ import {
   prepareEngineAdoption,
   prepareMinimalUpdaterTransaction,
   protectedCapabilityClosureDigest,
-  verifyControlPlaneGrant,
   verifyHarnessMaintenanceGrant,
   verifyWipCheckpoint,
   validateWorkflowSupersedeReason,
-  type ControlPlaneGrantEnvelope,
   type ExactControlPlaneChange,
   type HarnessMaintenanceGrantEnvelope,
   type ParentChangeState,
   type ProtectedCapabilityEntry,
+  type VerifiedControlPlaneGrantV3,
 } from '../src/modules/authority/intervention-control.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
@@ -46,7 +43,6 @@ test('intervention signature namespaces use the Jigwright product identity', () 
   assert.deepEqual(
     [
       HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE,
-      CONTROL_PLANE_SIGNATURE_NAMESPACE,
       CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE,
       CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
       CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
@@ -55,7 +51,6 @@ test('intervention signature namespaces use the Jigwright product identity', () 
     ],
     [
       'jigwright.harness-maintenance-grant.v1',
-      'jigwright.control-plane-grant.v1',
       'jigwright.control-plane-independent-review.v1',
       'jigwright.control-plane-grant.v2',
       'jigwright.control-plane-independent-review.v2',
@@ -666,27 +661,15 @@ test('control-plane exact diffs use canonical code-unit ordering for case-sensit
   );
 });
 
-function exactControlPlaneChanges(
-  manifest: ReturnType<typeof createProtectedCapabilityManifest>,
-): ExactControlPlaneChange[] {
-  return [
-    {
-      path: manifest.entries[0].entrypoints[0],
-      beforeDigest: digest('control-before'),
-      afterDigest: digest('control-after'),
-    },
-  ];
-}
-
-function controlPlaneEnvelope(
-  beforeManifest: ReturnType<typeof createProtectedCapabilityManifest>,
-  afterManifest: ReturnType<typeof createProtectedCapabilityManifest>,
-  changes: ExactControlPlaneChange[],
-): ControlPlaneGrantEnvelope {
+function verifiedControlPlaneGrantV3(
+  beforeClosureDigest: ReturnType<typeof digest>,
+  afterClosureDigest: ReturnType<typeof digest>,
+  grantId = 'control-grant-3',
+): VerifiedControlPlaneGrantV3 {
   return {
     payload: {
-      kind: 'control-plane-grant.v1',
-      grantId: 'control-grant-1',
+      kind: 'control-plane-grant.v3',
+      grantId,
       mandateBinding: {
         schemaVersion: 1,
         parentTaskId: 'control-plane-task',
@@ -696,76 +679,49 @@ function controlPlaneEnvelope(
         externalAuditRoot: '/external/audit/control-plane',
       },
       repositoryId: 'github:example/expense-app',
-      candidateDigest: controlPlaneCandidateDigest(changes),
-      exactChanges: changes,
-      beforeClosureDigest: beforeManifest.manifestDigest,
-      afterClosureDigest: afterManifest.manifestDigest,
-      affectedCapabilities: [beforeManifest.entries[0].capability],
+      frozenCandidateBundleDigest: digest('frozen-candidate-bundle'),
+      candidateDigest: digest('control-plane-candidate'),
+      promotionMaterialDigest: digest('promotion-material'),
+      promotionBundleDigest: digest('promotion-bundle'),
+      promotionLineageDigest: digest('promotion-lineage'),
+      exactChanges: [
+        {
+          path: 'packages/workflow-engine/engine.mjs',
+          beforeDigest: digest('control-before'),
+          afterDigest: digest('control-after'),
+          beforeMode: '100644',
+          afterMode: '100644',
+        },
+      ],
+      beforeClosureDigest,
+      afterClosureDigest,
+      affectedCapabilities: [REQUIRED_PROTECTED_CAPABILITIES[0]!],
       behaviorChangeSummary: 'Promote the repaired engine verifier closure.',
       recoveryBundle: {
         bundleDigest: digest('recovery-bundle'),
-        previousClosureDigest: beforeManifest.manifestDigest,
+        previousClosureDigest: beforeClosureDigest,
         restartArtifactDigest: digest('restart-old-control-plane'),
         rollbackTestReportDigest: digest('rollback-test'),
       },
       independentReviewAttestationDigest: digest('independent-review'),
-      updaterVersion: 1,
+      updaterVersion: 3,
       oneShot: true,
       issuedAt: '2026-08-03T09:55:00.000Z',
       expiresAt: '2026-08-03T11:00:00.000Z',
       humanSigner: 'maintainer@example.test',
     },
     signature: 'control-plane-human-signature',
+    verifiedAt: NOW.toISOString(),
+    verification: 'human-signature-verified',
   };
 }
 
-test('Control-Plane Grant binds exact closures/diff and minimal updater rolls back purely', () => {
-  const beforeManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries(),
-  });
-  const changes = exactControlPlaneChanges(beforeManifest);
-  const changedEntries = protectedEntries();
-  changedEntries[0] = {
-    ...changedEntries[0],
-    contentDigest: changes[0].afterDigest!,
-    closureDigest: protectedCapabilityClosureDigest(
-      changedEntries[0].entrypoints,
-      changedEntries[0].dependencies,
-      changes[0].afterDigest!,
-    ),
-  };
-  const afterManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: changedEntries,
-  });
-  changes.push({
-    path: beforeManifest.manifestPath,
-    beforeDigest: beforeManifest.manifestDigest,
-    afterDigest: afterManifest.manifestDigest,
-  });
-  const envelope = controlPlaneEnvelope(beforeManifest, afterManifest, changes);
-  const signed: string[] = [];
-  const verifiedGrant = verifyControlPlaneGrant(envelope, {
-    now: NOW,
-    beforeManifest,
-    afterManifest,
-    changes,
-    consumedGrantIds: new Set(),
-    verifyHumanSignature(payload, signature, signer, namespace) {
-      signed.push(payload);
-      assert.equal(signature, 'control-plane-human-signature');
-      assert.equal(signer, 'maintainer@example.test');
-      assert.equal(namespace, 'jigwright.control-plane-grant.v1');
-      return true;
-    },
-  });
-  assert.equal(signed[0], canonicalControlPlaneGrantPayload(envelope.payload));
-  assert.equal(
-    verifiedGrant.payload.mandateBinding.parentTaskId,
-    'control-plane-task',
+test('minimal updater v3 rolls back purely', () => {
+  const beforeClosureDigest = digest('control-before-closure');
+  const afterClosureDigest = digest('control-after-closure');
+  const verifiedGrant = verifiedControlPlaneGrantV3(
+    beforeClosureDigest,
+    afterClosureDigest,
   );
 
   let tx = prepareMinimalUpdaterTransaction(verifiedGrant, {
@@ -782,7 +738,7 @@ test('Control-Plane Grant binds exact closures/diff and minimal updater rolls ba
   }
   assert.deepEqual(decideControlPlaneRecovery(tx), {
     action: 'rollback-with-recovery-bundle',
-    authoritativeClosureDigest: beforeManifest.manifestDigest,
+    authoritativeClosureDigest: beforeClosureDigest,
     terminal: false,
   });
   assert.throws(
@@ -804,95 +760,18 @@ test('Control-Plane Grant binds exact closures/diff and minimal updater rolls ba
   assert.equal(tx.state, 'ROLLED_BACK');
   assert.deepEqual(decideControlPlaneRecovery(tx), {
     action: 'none',
-    authoritativeClosureDigest: beforeManifest.manifestDigest,
+    authoritativeClosureDigest: beforeClosureDigest,
     terminal: true,
   });
-
-  const stale = controlPlaneEnvelope(beforeManifest, afterManifest, changes);
-  stale.payload.beforeClosureDigest = digest('wrong-before-closure');
-  assert.throws(
-    () =>
-      verifyControlPlaneGrant(stale, {
-        now: NOW,
-        beforeManifest,
-        afterManifest,
-        changes,
-        consumedGrantIds: new Set(),
-        verifyHumanSignature: () => true,
-      }),
-    hasCode('CONTROL_PLANE_BEFORE_CLOSURE_MISMATCH'),
-  );
-  assert.throws(
-    () =>
-      verifyControlPlaneGrant(envelope, {
-        now: NOW,
-        beforeManifest,
-        afterManifest,
-        changes,
-        consumedGrantIds: new Set(['control-grant-1']),
-        verifyHumanSignature: () => true,
-      }),
-    hasCode('CONTROL_PLANE_GRANT_ALREADY_CONSUMED'),
-  );
-  const malformedMandate = controlPlaneEnvelope(
-    beforeManifest,
-    afterManifest,
-    changes,
-  );
-  malformedMandate.payload.mandateBinding.externalAuditRoot = 'relative/audit';
-  assert.throws(
-    () =>
-      verifyControlPlaneGrant(malformedMandate, {
-        now: NOW,
-        beforeManifest,
-        afterManifest,
-        changes,
-        consumedGrantIds: new Set(),
-        verifyHumanSignature: () => true,
-      }),
-    hasCode('CONTROL_PLANE_TASK_MANDATE_BINDING_INVALID'),
-  );
 });
 
-test('minimal updater success finalizes only after self-test', () => {
-  const beforeManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries(),
-  });
-  const changes = exactControlPlaneChanges(beforeManifest);
-  const afterManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: 'workflow/protected-capabilities.json',
-    entries: protectedEntries().map((entry, index) =>
-      index === 0
-        ? {
-            ...entry,
-            contentDigest: changes[0].afterDigest!,
-            closureDigest: protectedCapabilityClosureDigest(
-              entry.entrypoints,
-              entry.dependencies,
-              changes[0].afterDigest!,
-            ),
-          }
-        : entry,
-    ),
-  });
-  changes.push({
-    path: beforeManifest.manifestPath,
-    beforeDigest: beforeManifest.manifestDigest,
-    afterDigest: afterManifest.manifestDigest,
-  });
-  const verified = verifyControlPlaneGrant(
-    controlPlaneEnvelope(beforeManifest, afterManifest, changes),
-    {
-      now: NOW,
-      beforeManifest,
-      afterManifest,
-      changes,
-      consumedGrantIds: new Set(),
-      verifyHumanSignature: () => true,
-    },
+test('minimal updater v3 finalizes only after self-test', () => {
+  const beforeClosureDigest = digest('control-before-closure');
+  const afterClosureDigest = digest('control-after-closure');
+  const verified = verifiedControlPlaneGrantV3(
+    beforeClosureDigest,
+    afterClosureDigest,
+    'control-grant-success-3',
   );
   let tx = prepareMinimalUpdaterTransaction(verified, {
     txId: 'control-update-success',
@@ -911,7 +790,7 @@ test('minimal updater success finalizes only after self-test', () => {
   assert.equal(tx.state, 'FINALIZED');
   assert.deepEqual(decideControlPlaneRecovery(tx), {
     action: 'none',
-    authoritativeClosureDigest: afterManifest.manifestDigest,
+    authoritativeClosureDigest: afterClosureDigest,
     terminal: true,
   });
 });

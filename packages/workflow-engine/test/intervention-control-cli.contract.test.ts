@@ -8,10 +8,8 @@ import {
 } from '../src/entrypoints/cli/intervention-control-cli.ts';
 import {
   REQUIRED_PROTECTED_CAPABILITIES,
-  controlPlaneCandidateDigest,
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
-  type ControlPlaneGrantEnvelope,
   type ExactControlPlaneChange,
   type ProtectedCapabilityEntry,
 } from '../src/modules/authority/intervention-control.ts';
@@ -128,44 +126,10 @@ function controlPlaneFixture() {
       afterDigest: afterManifest.manifestDigest,
     },
   ];
-  const envelope: ControlPlaneGrantEnvelope = {
-    payload: {
-      kind: 'control-plane-grant.v1',
-      grantId: 'control-grant-cli-1',
-      mandateBinding: {
-        schemaVersion: 1,
-        parentTaskId: 'control-plane-task',
-        mandateId: '55555555-5555-4555-8555-555555555555',
-        mandateDigest: '5'.repeat(64),
-        changeId: 'control-plane-change',
-        externalAuditRoot: '/external/audit/control-plane',
-      },
-      repositoryId: 'github:example/expense-app',
-      candidateDigest: controlPlaneCandidateDigest(changes),
-      exactChanges: changes,
-      beforeClosureDigest: beforeManifest.manifestDigest,
-      afterClosureDigest: afterManifest.manifestDigest,
-      affectedCapabilities: [beforeManifest.entries[0].capability],
-      behaviorChangeSummary: 'Update one protected verifier dependency.',
-      recoveryBundle: {
-        bundleDigest: digest('recovery-bundle'),
-        previousClosureDigest: beforeManifest.manifestDigest,
-        restartArtifactDigest: digest('restart-old-closure'),
-        rollbackTestReportDigest: digest('rollback-test-report'),
-      },
-      independentReviewAttestationDigest: digest('independent-review'),
-      updaterVersion: 1,
-      oneShot: true,
-      issuedAt: '2026-08-03T09:55:00.000Z',
-      expiresAt: '2026-08-03T11:00:00.000Z',
-      humanSigner: 'maintainer@example.test',
-    },
-    signature: 'human-control-signature',
-  };
-  return { beforeManifest, afterManifest, changes, envelope };
+  return { beforeManifest, afterManifest, changes };
 }
 
-test('control-plane classify and verify-grant remain read-only and require human verification', () => {
+test('control-plane classify remains read-only and legacy verify-grant is unsupported', () => {
   const fixture = controlPlaneFixture();
   const classification = dispatchInterventionControlCommand([
     'control-plane',
@@ -184,48 +148,15 @@ test('control-plane classify and verify-grant remain read-only and require human
   assert.equal(classification.impact.class, 'C');
   assert.equal(classification.effectsPerformed, false);
 
-  const verified = dispatchInterventionControlCommand(
-    [
-      'control-plane',
-      'verify-grant',
-      '--request',
-      json({
-        envelope: fixture.envelope,
-        beforeManifest: fixture.beforeManifest,
-        afterManifest: fixture.afterManifest,
-        changes: fixture.changes,
-      }),
-    ],
-    {
-      now: () => NOW,
-      consumedControlPlaneGrantIds: new Set(),
-      verifyHumanSignature(_payload, signature, _signer, namespace) {
-        assert.equal(signature, 'human-control-signature');
-        assert.equal(namespace, 'jigwright.control-plane-grant.v1');
-        return true;
-      },
-    },
-  );
-  assert.equal(verified.kind, 'control-plane-verify-grant');
-  if (verified.kind !== 'control-plane-verify-grant') {
-    assert.fail('Expected a verified Control-Plane Grant.');
-  }
-  assert.equal(verified.grant.verification, 'human-signature-verified');
-  assert.equal(verified.effectsPerformed, false);
-
   assert.throws(
     () =>
       dispatchInterventionControlCommand([
         'control-plane',
         'verify-grant',
         '--request',
-        json({
-          beforeManifest: fixture.beforeManifest,
-          afterManifest: fixture.afterManifest,
-          changes: fixture.changes,
-        }),
+        json({}),
       ]),
-    hasCode('INTERVENTION_CONTROL_HUMAN_SIGNED_ENVELOPE_REQUIRED'),
+    hasCode('INTERVENTION_CONTROL_COMMAND_UNSUPPORTED'),
   );
 });
 

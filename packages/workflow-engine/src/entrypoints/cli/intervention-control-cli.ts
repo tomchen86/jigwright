@@ -6,9 +6,7 @@ import {
   decideEngineAdoptionRecovery,
   prepareEngineAdoption,
   validateWorkflowSupersedeReason,
-  verifyControlPlaneGrant,
   verifyHarnessMaintenanceGrant,
-  type ControlPlaneGrantEnvelope,
   type EngineAdoptionJournal,
   type EngineAdoptionRecoveryDecision,
   type EngineArtifact,
@@ -18,7 +16,6 @@ import {
   type ParentChangeState,
   type ProtectedCandidateImpact,
   type ProtectedCapabilityManifest,
-  type VerifiedControlPlaneGrant,
   type WipCheckpoint,
   type WipCheckpointInput,
   type WorkflowSupersedeReason,
@@ -41,7 +38,6 @@ export type InterventionControlHumanSignatureVerifier = (
 export interface InterventionControlDispatcherDependencies {
   now?: () => Date;
   verifyHumanSignature?: InterventionControlHumanSignatureVerifier;
-  consumedControlPlaneGrantIds?: ReadonlySet<string>;
 }
 
 type ParsedRequestCommand =
@@ -60,10 +56,6 @@ type ParsedRequestCommand =
     }
   | {
       command: 'control-plane-classify';
-      request: Record<string, unknown>;
-    }
-  | {
-      command: 'control-plane-verify-grant';
       request: Record<string, unknown>;
     };
 
@@ -95,11 +87,6 @@ export type InterventionControlDispatchResult =
   | {
       kind: 'control-plane-classify';
       impact: ProtectedCandidateImpact;
-      effectsPerformed: false;
-    }
-  | {
-      kind: 'control-plane-verify-grant';
-      grant: VerifiedControlPlaneGrant;
       effectsPerformed: false;
     }
   | {
@@ -150,13 +137,6 @@ export function parseInterventionControlCommand(
     return {
       command: 'control-plane-classify',
       request: parseRequestOnly(argv, 'control-plane classify'),
-    };
-  }
-
-  if (argv[0] === 'control-plane' && argv[1] === 'verify-grant') {
-    return {
-      command: 'control-plane-verify-grant',
-      request: parseRequestOnly(argv, 'control-plane verify-grant'),
     };
   }
 
@@ -211,8 +191,6 @@ export function dispatchInterventionControlCommand(
         return dispatchEngineRecover(parsed.request);
       case 'control-plane-classify':
         return dispatchControlPlaneClassify(parsed.request);
-      case 'control-plane-verify-grant':
-        return dispatchControlPlaneVerifyGrant(parsed.request, dependencies);
       case 'workflow-validate-supersede-reason':
         return {
           kind: 'workflow-supersede-reason',
@@ -368,51 +346,6 @@ function dispatchControlPlaneClassify(
       afterManifest: request.afterManifest as ProtectedCapabilityManifest,
       changes: request.changes as ExactControlPlaneChange[],
     }),
-    effectsPerformed: false,
-  };
-}
-
-function dispatchControlPlaneVerifyGrant(
-  request: Record<string, unknown>,
-  dependencies: InterventionControlDispatcherDependencies,
-): Extract<
-  InterventionControlDispatchResult,
-  { kind: 'control-plane-verify-grant' }
-> {
-  if (!hasSignedEnvelope(request.envelope)) {
-    throw workflowError(
-      'INTERVENTION_CONTROL_HUMAN_SIGNED_ENVELOPE_REQUIRED',
-      'Control-plane verification requires a human-signed grant envelope.',
-      ExitCode.guard,
-    );
-  }
-  const verifyHumanSignature = requireHumanVerifier(dependencies);
-  if (dependencies.consumedControlPlaneGrantIds === undefined) {
-    throw workflowError(
-      'INTERVENTION_CONTROL_CONSUMPTION_STATE_REQUIRED',
-      'Control-plane verification requires trusted grant consumption state.',
-      ExitCode.guard,
-    );
-  }
-  assertExactKeys(
-    request,
-    ['afterManifest', 'beforeManifest', 'changes', 'envelope'],
-    'INTERVENTION_CONTROL_REQUEST_INVALID',
-  );
-  const grant = verifyControlPlaneGrant(
-    request.envelope as ControlPlaneGrantEnvelope,
-    {
-      now: dispatcherNow(dependencies),
-      beforeManifest: request.beforeManifest as ProtectedCapabilityManifest,
-      afterManifest: request.afterManifest as ProtectedCapabilityManifest,
-      changes: request.changes as ExactControlPlaneChange[],
-      consumedGrantIds: dependencies.consumedControlPlaneGrantIds,
-      verifyHumanSignature,
-    },
-  );
-  return {
-    kind: 'control-plane-verify-grant',
-    grant,
     effectsPerformed: false,
   };
 }

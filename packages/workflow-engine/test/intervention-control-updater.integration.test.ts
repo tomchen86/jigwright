@@ -19,7 +19,6 @@ import {
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
   REQUIRED_PROTECTED_CAPABILITIES,
-  type ControlPlaneGrantEnvelope,
   type ControlPlaneIndependentReviewAttestationEnvelope,
   type ExactControlPlaneChange,
   type ProtectedCapabilityEntry,

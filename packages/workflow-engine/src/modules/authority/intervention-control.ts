@@ -11,8 +11,6 @@ export type Sha256Digest = `sha256:${string}`;
 
 export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE =
   'jigwright.harness-maintenance-grant.v1';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE =
-  'jigwright.control-plane-grant.v1';
 export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE =
   'jigwright.control-plane-independent-review.v1';
 export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 =
@@ -1910,31 +1908,6 @@ function validateControlPlaneIndependentReviewAttestation(
   );
 }
 
-export interface ControlPlaneGrantPayload {
-  kind: 'control-plane-grant.v1';
-  grantId: string;
-  mandateBinding: ControlPlaneTaskMandateBinding;
-  repositoryId: string;
-  candidateDigest: Sha256Digest;
-  exactChanges: ExactControlPlaneChange[];
-  beforeClosureDigest: Sha256Digest;
-  afterClosureDigest: Sha256Digest;
-  affectedCapabilities: ProtectedCapability[];
-  behaviorChangeSummary: string;
-  recoveryBundle: {
-    bundleDigest: Sha256Digest;
-    previousClosureDigest: Sha256Digest;
-    restartArtifactDigest: Sha256Digest;
-    rollbackTestReportDigest: Sha256Digest;
-  };
-  independentReviewAttestationDigest: Sha256Digest;
-  updaterVersion: number;
-  oneShot: true;
-  issuedAt: string;
-  expiresAt: string;
-  humanSigner: string;
-}
-
 export interface ControlPlaneTaskMandateBinding {
   schemaVersion: 1;
   parentTaskId: string;
@@ -1995,228 +1968,6 @@ function invalidControlPlaneTaskMandateBinding() {
     'Control-Plane Grant requires an exact parent Task Mandate binding and absolute external audit root.',
     ExitCode.guard,
   );
-}
-
-export interface ControlPlaneGrantEnvelope {
-  payload: ControlPlaneGrantPayload;
-  signature: string;
-}
-
-export interface VerifiedControlPlaneGrant {
-  payload: ControlPlaneGrantPayload;
-  signature: string;
-  verifiedAt: string;
-  verification: 'human-signature-verified';
-}
-
-export function canonicalControlPlaneGrantPayload(
-  payload: ControlPlaneGrantPayload,
-): string {
-  return `${canonicalJson(payload)}\n`;
-}
-
-export function verifyControlPlaneGrant(
-  envelope: ControlPlaneGrantEnvelope,
-  context: {
-    now: Date;
-    beforeManifest: ProtectedCapabilityManifest;
-    afterManifest: ProtectedCapabilityManifest;
-    changes: ExactControlPlaneChange[];
-    consumedGrantIds: ReadonlySet<string>;
-    verifyHumanSignature: HumanSignatureVerifier;
-  },
-): VerifiedControlPlaneGrant {
-  const payload = envelope.payload;
-  if (
-    !hasExactObjectKeys(payload, [
-      'affectedCapabilities',
-      'afterClosureDigest',
-      'beforeClosureDigest',
-      'behaviorChangeSummary',
-      'candidateDigest',
-      'exactChanges',
-      'expiresAt',
-      'grantId',
-      'humanSigner',
-      'independentReviewAttestationDigest',
-      'issuedAt',
-      'kind',
-      'mandateBinding',
-      'oneShot',
-      'recoveryBundle',
-      'repositoryId',
-      'updaterVersion',
-    ]) ||
-    payload.kind !== 'control-plane-grant.v1' ||
-    payload.oneShot !== true
-  ) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_INVALID',
-      'Unknown or non-one-shot control-plane grant.',
-      ExitCode.guard,
-    );
-  }
-  const mandateBinding = normalizeControlPlaneTaskMandateBinding(
-    payload.mandateBinding,
-  );
-  for (const [value, label] of [
-    [payload.grantId, 'Grant id'],
-    [payload.repositoryId, 'Repository id'],
-    [payload.behaviorChangeSummary, 'Behavior change summary'],
-    [payload.humanSigner, 'Human signer'],
-    [envelope.signature, 'Signature'],
-  ] as const) {
-    assertNonEmpty(value, 'CONTROL_PLANE_GRANT_INVALID', label);
-  }
-  if (context.consumedGrantIds.has(payload.grantId)) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_ALREADY_CONSUMED',
-      'One-shot Control-Plane Grant has already been consumed.',
-      ExitCode.conflict,
-    );
-  }
-  verifyProtectedManifest(context.beforeManifest);
-  verifyProtectedManifest(context.afterManifest);
-  if (payload.beforeClosureDigest !== context.beforeManifest.manifestDigest) {
-    throw workflowError(
-      'CONTROL_PLANE_BEFORE_CLOSURE_MISMATCH',
-      'Control-Plane Grant is stale for the current protected closure.',
-      ExitCode.staleState,
-    );
-  }
-  if (payload.afterClosureDigest !== context.afterManifest.manifestDigest) {
-    throw workflowError(
-      'CONTROL_PLANE_AFTER_CLOSURE_MISMATCH',
-      'Control-Plane Grant does not bind the candidate protected closure.',
-      ExitCode.verification,
-    );
-  }
-  const exactChanges = normalizedExactChanges(context.changes);
-  if (!sameJson(payload.exactChanges, exactChanges)) {
-    throw workflowError(
-      'CONTROL_PLANE_EXACT_DIFF_MISMATCH',
-      'Control-Plane Grant exact diff differs from the candidate.',
-      ExitCode.verification,
-    );
-  }
-  const expectedCandidateDigest = controlPlaneCandidateDigest(exactChanges);
-  assertDigest(payload.candidateDigest, 'CONTROL_PLANE_GRANT_INVALID');
-  if (payload.candidateDigest !== expectedCandidateDigest) {
-    throw workflowError(
-      'CONTROL_PLANE_CANDIDATE_DIGEST_MISMATCH',
-      'Control-Plane Grant candidate digest mismatch.',
-      ExitCode.verification,
-    );
-  }
-  if (
-    context.beforeManifest.manifestDigest !==
-      context.afterManifest.manifestDigest &&
-    !exactChanges.some(
-      (change) =>
-        change.path === context.beforeManifest.manifestPath &&
-        change.beforeDigest === context.beforeManifest.manifestDigest &&
-        change.afterDigest === context.afterManifest.manifestDigest,
-    )
-  ) {
-    throw workflowError(
-      'CONTROL_PLANE_MANIFEST_DIFF_MISSING',
-      'Changed protected manifest is absent from the exact candidate diff.',
-      ExitCode.verification,
-    );
-  }
-  const impact = classifyProtectedCandidateImpact({
-    beforeManifest: context.beforeManifest,
-    afterManifest: context.afterManifest,
-    changes: exactChanges,
-  });
-  if (impact.class !== 'C') {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_NOT_REQUIRED',
-      'Candidate does not affect a protected capability.',
-      ExitCode.usage,
-    );
-  }
-  assertSortedUnique(
-    payload.affectedCapabilities,
-    'CONTROL_PLANE_GRANT_INVALID',
-  );
-  if (!sameJson(payload.affectedCapabilities, impact.affectedCapabilities)) {
-    throw workflowError(
-      'CONTROL_PLANE_CAPABILITY_IMPACT_MISMATCH',
-      'Control-Plane Grant affected capabilities are not exact.',
-      ExitCode.verification,
-    );
-  }
-  for (const digest of [
-    payload.beforeClosureDigest,
-    payload.afterClosureDigest,
-    payload.recoveryBundle.bundleDigest,
-    payload.recoveryBundle.previousClosureDigest,
-    payload.recoveryBundle.restartArtifactDigest,
-    payload.recoveryBundle.rollbackTestReportDigest,
-    payload.independentReviewAttestationDigest,
-  ]) {
-    assertDigest(digest, 'CONTROL_PLANE_GRANT_INVALID');
-  }
-  if (
-    payload.recoveryBundle.previousClosureDigest !== payload.beforeClosureDigest
-  ) {
-    throw workflowError(
-      'CONTROL_PLANE_RECOVERY_BUNDLE_MISMATCH',
-      'Recovery bundle does not restore the exact previous closure.',
-      ExitCode.verification,
-    );
-  }
-  if (
-    !Number.isSafeInteger(payload.updaterVersion) ||
-    payload.updaterVersion < 1
-  ) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_INVALID',
-      'Invalid minimal updater version.',
-      ExitCode.usage,
-    );
-  }
-  assertIsoTimestamp(payload.issuedAt, 'CONTROL_PLANE_GRANT_INVALID');
-  assertIsoTimestamp(payload.expiresAt, 'CONTROL_PLANE_GRANT_INVALID');
-  if (Date.parse(payload.expiresAt) <= Date.parse(payload.issuedAt)) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_INVALID',
-      'Control-plane grant expiry is invalid.',
-      ExitCode.usage,
-    );
-  }
-  if (context.now.getTime() >= Date.parse(payload.expiresAt)) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_EXPIRED',
-      'Control-Plane Grant has expired.',
-      ExitCode.staleState,
-    );
-  }
-  const signatureValid = verifyHumanSignatureSafely(
-    context.verifyHumanSignature,
-    canonicalControlPlaneGrantPayload(payload),
-    envelope.signature,
-    payload.humanSigner,
-    CONTROL_PLANE_SIGNATURE_NAMESPACE,
-  );
-  if (!signatureValid) {
-    throw workflowError(
-      'CONTROL_PLANE_GRANT_SIGNATURE_INVALID',
-      'Human Control-Plane Grant signature could not be verified.',
-      ExitCode.verification,
-    );
-  }
-  return freezeDeep({
-    payload: {
-      ...payload,
-      mandateBinding: { ...mandateBinding },
-      exactChanges: exactChanges.map((change) => ({ ...change })),
-    },
-    signature: envelope.signature,
-    verifiedAt: context.now.toISOString(),
-    verification: 'human-signature-verified',
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -4367,10 +4118,7 @@ function verifyMinimalUpdaterTransaction(tx: MinimalUpdaterTransaction): void {
 }
 
 export function prepareMinimalUpdaterTransaction(
-  grant:
-    | VerifiedControlPlaneGrant
-    | VerifiedControlPlaneGrantV2
-    | VerifiedControlPlaneGrantV3,
+  grant: VerifiedControlPlaneGrantV2 | VerifiedControlPlaneGrantV3,
   input: { txId: string; now: Date },
 ): MinimalUpdaterTransaction {
   assertNonEmpty(
