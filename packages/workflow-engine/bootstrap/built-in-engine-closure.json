@@ -633,7 +633,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:140abf6e6a60a1fce0b08b2da31d7fbdfdc1673c68d336f1728553653e1083f7"
+      "digest": "sha256:76345fe6b6ae6c3bf68aa0ebe3c8851cc94f9f68b1e9fbb4ff5c5e3b2f2e8412"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -643,7 +643,7 @@
     {
       "path": "src/application/finalize/projected-finalization.ts",
       "mode": "100644",
-      "digest": "sha256:8714414fb7ea67db964a2f34eba8bbda91f9479af0dbcb4397bc9f287a63a16b"
+      "digest": "sha256:e08675d4e845c8e5a73bca87585c2762f58b0fe8bbfc10215563bbbec4685626"
     },
     {
       "path": "src/application/finalize/protected-task-apply-authorization.ts",
@@ -653,7 +653,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:e07efa8b263dc15c560f6d3246f46e04186709941415182f80a132ddc6f71a4a"
+      "digest": "sha256:36c28d572858cdd4771febad7577cdac65f68e0a83c9e428d21ec94eced2caee"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -1883,7 +1883,7 @@
     {
       "path": "src/runtime/repository-transaction/finalize-transaction.ts",
       "mode": "100644",
-      "digest": "sha256:0e9bb3de143c237c9f8e45a6101986628e901674fba69764e4dafdb91aa572c3"
+      "digest": "sha256:07fe08967e1555479db2737f23fbb889f35a58ba1cea797269559d11576ba594"
     },
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
