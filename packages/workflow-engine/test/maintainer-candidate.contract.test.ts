@@ -8,7 +8,6 @@ import test from 'node:test';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   acceptApplyPrestate,
-  assertCandidateChecksFresh,
   assertCandidateV2ChecksFresh,
   buildImmutableCandidateBundleV2,
   canonicalImmutableCandidateBundle,
@@ -20,7 +19,6 @@ import {
   recordDurableRefGenerationTransitionUnderLifecycleLock,
   recordRefGenerationTransition,
   storeImmutableCandidateBundle,
-  type CandidateChecksAttestation,
   type CandidateChecksAttestationV3,
 } from '../src/modules/authority/maintainer-candidate.ts';
 import type { PatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
@@ -70,33 +68,29 @@ const manifest: PatchManifest = {
 
 function checks(
   completedAt = '2026-08-03T09:00:00.000Z',
-): CandidateChecksAttestation {
-  return {
-    schemaVersion: 2,
-    candidateTree: TREE,
-    patchDigest: manifest.patchDigest,
-    trustBaseCommit: OID_A,
-    checks: [
-      {
-        checkId: 'workflow-tests',
-        definitionDigest: '2'.repeat(64),
-        commandDigest: '3'.repeat(64),
-        runnerDigest: '4'.repeat(64),
-        environmentDigest: ENVIRONMENT,
-        resultDigest: '5'.repeat(64),
-        outcome: 'passed',
-        startedAt: '2026-08-03T08:59:00.000Z',
-        completedAt,
-        reuseClass: 'toolchain-dependent',
-        maxAgeMs: 86_400_000,
-        externalSnapshotDigest: null,
-        dependsOn: ['harness-engine', 'runner', 'source-tree'],
-      },
-    ],
-  };
+): CandidateChecksAttestationV3['checks'] {
+  return [
+    {
+      checkId: 'workflow-tests',
+      definitionDigest: '2'.repeat(64),
+      commandDigest: '3'.repeat(64),
+      runnerDigest: '4'.repeat(64),
+      environmentDigest: ENVIRONMENT,
+      resultDigest: '5'.repeat(64),
+      outcome: 'passed',
+      startedAt: '2026-08-03T08:59:00.000Z',
+      completedAt,
+      reuseClass: 'toolchain-dependent',
+      maxAgeMs: 86_400_000,
+      externalSnapshotDigest: null,
+      dependsOn: ['harness-engine', 'runner', 'source-tree'],
+    },
+  ];
 }
 
-function checksV3(): CandidateChecksAttestationV3 {
+function checksV3(
+  completedAt = '2026-08-03T09:00:00.000Z',
+): CandidateChecksAttestationV3 {
   return {
     schemaVersion: 3,
     candidateTree: TREE,
@@ -111,7 +105,7 @@ function checksV3(): CandidateChecksAttestationV3 {
       runnerDigests: { 'workflow-tests': '4'.repeat(64) },
       externalStateDigests: { 'workflow-tests': null },
     },
-    checks: checks().checks,
+    checks: checks(completedAt),
   };
 }
 
@@ -197,6 +191,12 @@ test('immutable candidate parser rejects retired V1 bundles', () => {
   );
 });
 
+test('candidate checks expose only current dependency-bound freshness verification', async () => {
+  const candidateModule =
+    await import('../src/modules/authority/maintainer-candidate.ts');
+  assert.equal('assertCandidateChecksFresh' in candidateModule, false);
+});
+
 test('immutable candidate store is private, content-addressed, canonical, and idempotent', () => {
   const gitCommonDirectory = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'immutable-candidate-store-')),
@@ -236,43 +236,31 @@ test('immutable candidate store is private, content-addressed, canonical, and id
   }
 });
 
-test('attestation freshness is anchored to original completion and selective dependencies', () => {
+test('current attestation freshness is anchored to original completion', () => {
+  const current = structuredClone(checksV3().dependencySnapshot);
   assert.doesNotThrow(() =>
-    assertCandidateChecksFresh(checks(), {
+    assertCandidateV2ChecksFresh(checksV3(), {
       now: new Date('2026-08-04T08:59:59.000Z'),
       candidateTree: TREE,
       patchDigest: manifest.patchDigest,
       trustBaseCommit: OID_A,
       requiredChecks: ['workflow-tests'],
       environmentDigest: ENVIRONMENT,
-      changedDependencies: [],
+      currentDependencySnapshot: current,
     }),
   );
   assert.throws(
     () =>
-      assertCandidateChecksFresh(checks(), {
+      assertCandidateV2ChecksFresh(checksV3(), {
         now: new Date('2026-08-04T09:00:01.000Z'),
         candidateTree: TREE,
         patchDigest: manifest.patchDigest,
         trustBaseCommit: OID_A,
         requiredChecks: ['workflow-tests'],
         environmentDigest: ENVIRONMENT,
-        changedDependencies: [],
+        currentDependencySnapshot: current,
       }),
     (error) => isWorkflowError(error, 'APPLY_ATTESTATION_STALE'),
-  );
-  assert.throws(
-    () =>
-      assertCandidateChecksFresh(checks(), {
-        now: new Date('2026-08-03T09:01:00.000Z'),
-        candidateTree: TREE,
-        patchDigest: manifest.patchDigest,
-        trustBaseCommit: OID_A,
-        requiredChecks: ['workflow-tests'],
-        environmentDigest: ENVIRONMENT,
-        changedDependencies: ['harness-engine'],
-      }),
-    (error) => isWorkflowError(error, 'APPLY_ATTESTATION_INVALIDATED'),
   );
 });
 
@@ -301,6 +289,22 @@ test('candidate v2 compares sealed dependency snapshots instead of caller change
         currentDependencySnapshot: {
           ...current,
           runnerDigests: { 'workflow-tests': '7'.repeat(64) },
+        },
+      }),
+    (error) => isWorkflowError(error, 'APPLY_ATTESTATION_INVALIDATED'),
+  );
+  assert.throws(
+    () =>
+      assertCandidateV2ChecksFresh(checksV3(), {
+        now: new Date('2026-08-03T09:01:00.000Z'),
+        candidateTree: TREE,
+        patchDigest: manifest.patchDigest,
+        trustBaseCommit: OID_A,
+        requiredChecks: ['workflow-tests'],
+        environmentDigest: ENVIRONMENT,
+        currentDependencySnapshot: {
+          ...current,
+          harnessEngineDigest: '7'.repeat(64),
         },
       }),
     (error) => isWorkflowError(error, 'APPLY_ATTESTATION_INVALIDATED'),

@@ -48,14 +48,6 @@ export type CandidateCheckAttestation = {
   dependsOn: CheckDependency[];
 };
 
-export type CandidateChecksAttestation = {
-  schemaVersion: 2;
-  candidateTree: string;
-  patchDigest: string;
-  trustBaseCommit: string;
-  checks: CandidateCheckAttestation[];
-};
-
 export type CandidateDependencySnapshot = {
   schemaVersion: 1;
   sourceTree: string;
@@ -1259,7 +1251,7 @@ function candidateStoreError(message: string) {
   );
 }
 
-export type CandidateCheckFreshnessOptions = {
+export type CandidateV2CheckFreshnessOptions = {
   now: Date;
   candidateTree: string;
   patchDigest: string;
@@ -1267,14 +1259,13 @@ export type CandidateCheckFreshnessOptions = {
   requiredChecks: string[];
   waivedFreshnessCheckIds?: string[];
   environmentDigest: string;
-  changedDependencies: CheckDependency[];
+  currentDependencySnapshot: CandidateDependencySnapshot;
 };
 
-export function assertCandidateChecksFresh(
-  raw: CandidateChecksAttestation,
-  options: CandidateCheckFreshnessOptions,
-): CandidateChecksAttestation {
-  const attestation = assertCandidateChecksAttestation(raw);
+function assertCurrentCandidateChecksFreshness(
+  attestation: CandidateChecksAttestationV3,
+  options: CandidateV2CheckFreshnessOptions,
+): void {
   const now = exactDate(options.now, 'attestation evaluation time').getTime();
   const requiredChecks = assertSortedUnique(
     options.requiredChecks,
@@ -1295,11 +1286,6 @@ export function assertCandidateChecksFresh(
     );
   }
   const waivedFreshness = new Set(waivedFreshnessCheckIds);
-  const changedDependencies = assertSortedUnique(
-    options.changedDependencies,
-    /^(?:source-tree|base-commit|harness-engine|policy|runner|external-state)$/,
-    'changed dependencies',
-  ) as CheckDependency[];
   if (
     attestation.candidateTree !== options.candidateTree ||
     attestation.patchDigest !== options.patchDigest ||
@@ -1316,16 +1302,6 @@ export function assertCandidateChecksFresh(
     );
   }
   for (const check of attestation.checks) {
-    if (
-      check.dependsOn.some((dependency) =>
-        changedDependencies.includes(dependency),
-      )
-    ) {
-      throw candidateError(
-        'APPLY_ATTESTATION_INVALIDATED',
-        `Check ${check.checkId} depends on state that changed.`,
-      );
-    }
     if (
       check.reuseClass === 'toolchain-dependent' &&
       check.environmentDigest !== options.environmentDigest
@@ -1347,15 +1323,7 @@ export function assertCandidateChecksFresh(
       );
     }
   }
-  return attestation;
 }
-
-export type CandidateV2CheckFreshnessOptions = Omit<
-  CandidateCheckFreshnessOptions,
-  'changedDependencies'
-> & {
-  currentDependencySnapshot: CandidateDependencySnapshot;
-};
 
 export function assertCandidateV2ChecksFresh(
   raw: CandidateChecksAttestationV3,
@@ -1367,16 +1335,7 @@ export function assertCandidateV2ChecksFresh(
     attestation.checks,
     false,
   );
-  assertCandidateChecksFresh(
-    {
-      schemaVersion: 2,
-      candidateTree: attestation.candidateTree,
-      patchDigest: attestation.patchDigest,
-      trustBaseCommit: attestation.trustBaseCommit,
-      checks: attestation.checks,
-    },
-    { ...options, changedDependencies: [] },
-  );
+  assertCurrentCandidateChecksFreshness(attestation, options);
   const sealed = attestation.dependencySnapshot;
   for (const check of attestation.checks) {
     const invalidated = check.dependsOn.some((dependency) => {
@@ -1411,19 +1370,24 @@ export function assertCandidateV2ChecksFresh(
   return attestation;
 }
 
-function assertCandidateChecksAttestation(
-  value: CandidateChecksAttestation,
-): CandidateChecksAttestation {
+type CandidateChecksFields = {
+  candidateTree: string;
+  patchDigest: string;
+  trustBaseCommit: string;
+  checks: CandidateCheckAttestation[];
+};
+
+function assertCandidateChecksFields(
+  value: CandidateChecksFields,
+): CandidateChecksFields {
   if (
     !isRecord(value) ||
     !hasExactKeys(value, [
-      'schemaVersion',
       'candidateTree',
       'patchDigest',
       'trustBaseCommit',
       'checks',
     ]) ||
-    value.schemaVersion !== 2 ||
     !OBJECT_ID.test(value.candidateTree) ||
     !DIGEST.test(value.patchDigest) ||
     !OBJECT_ID.test(value.trustBaseCommit) ||
@@ -1504,7 +1468,6 @@ function assertCandidateChecksAttestation(
     );
   }
   return {
-    schemaVersion: 2,
     candidateTree: value.candidateTree,
     patchDigest: value.patchDigest,
     trustBaseCommit: value.trustBaseCommit,
@@ -1533,8 +1496,7 @@ function assertCandidateChecksAttestationV3(
       'Candidate v2 checks attestation is malformed.',
     );
   }
-  const legacyShape = assertCandidateChecksAttestation({
-    schemaVersion: 2,
+  const fields = assertCandidateChecksFields({
     candidateTree: value.candidateTree,
     patchDigest: value.patchDigest,
     trustBaseCommit: value.trustBaseCommit,
@@ -1542,11 +1504,11 @@ function assertCandidateChecksAttestationV3(
   });
   const dependencySnapshot = assertCandidateDependencySnapshot(
     value.dependencySnapshot,
-    legacyShape.checks,
+    fields.checks,
   );
   if (
-    dependencySnapshot.sourceTree !== legacyShape.candidateTree ||
-    dependencySnapshot.baseCommit !== legacyShape.trustBaseCommit
+    dependencySnapshot.sourceTree !== fields.candidateTree ||
+    dependencySnapshot.baseCommit !== fields.trustBaseCommit
   ) {
     throw candidateError(
       'APPLY_ATTESTATION_BINDING_MISMATCH',
@@ -1555,11 +1517,11 @@ function assertCandidateChecksAttestationV3(
   }
   return {
     schemaVersion: 3,
-    candidateTree: legacyShape.candidateTree,
-    patchDigest: legacyShape.patchDigest,
-    trustBaseCommit: legacyShape.trustBaseCommit,
+    candidateTree: fields.candidateTree,
+    patchDigest: fields.patchDigest,
+    trustBaseCommit: fields.trustBaseCommit,
     dependencySnapshot,
-    checks: legacyShape.checks,
+    checks: fields.checks,
   };
 }
 

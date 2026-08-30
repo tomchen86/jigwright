@@ -64,7 +64,6 @@ import {
   readStoredCandidateHumanReadableSummary,
   readStoredImmutableCandidateBundle,
   storeImmutableCandidateBundle,
-  type CandidateChecksAttestation,
   type CandidateChecksAttestationV3,
 } from '../src/modules/authority/maintainer-candidate.ts';
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
@@ -416,9 +415,7 @@ function prepareCandidate(): string {
  * window as real time advances and silently stops testing staleness at all.
  * Deriving the time from the attestation keeps the assertion about expiry.
  */
-function afterEvidenceExpires(
-  attestation: CandidateChecksAttestation | CandidateChecksAttestationV3,
-): Date {
+function afterEvidenceExpires(attestation: CandidateChecksAttestationV3): Date {
   const expiries = attestation.checks.flatMap(({ completedAt, maxAgeMs }) =>
     maxAgeMs === null ? [] : [Date.parse(completedAt) + maxAgeMs],
   );
