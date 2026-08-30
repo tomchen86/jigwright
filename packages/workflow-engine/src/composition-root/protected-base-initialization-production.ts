@@ -76,23 +76,27 @@ export type PublishCompletedProtectedBaseInitializationInput = Readonly<{
 export function createProductionProtectedBaseInitializationPort(
   cwd: string,
 ): ProtectedBaseInitializationPort {
-  const repository = discoverRepository(cwd);
-  const config = loadWorkflowConfig(repository.repositoryRoot);
-  const policy = loadMaintainerPolicy(repository.repositoryRoot);
-  const protectedBranch = config.protectedBranches[0];
-  if (protectedBranch === undefined) {
-    throw workflowError(
-      'PROTECTED_BASE_CONFIGURATION_REQUIRED',
-      'Repository policy must configure one primary protected branch.',
-      ExitCode.guard,
-    );
-  }
-  return createGitProtectedBaseInitializationPort({
-    repositoryRoot: repository.repositoryRoot,
-    repositoryId: policy.repository.id,
-    canonicalOrigin: policy.repository.origin,
-    remoteName: 'origin',
-    protectedBranch,
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  return Object.freeze({
+    observe() {
+      const config = loadWorkflowConfig(repositoryRoot);
+      const policy = loadMaintainerPolicy(repositoryRoot);
+      const protectedBranch = config.protectedBranches[0];
+      if (protectedBranch === undefined) {
+        throw workflowError(
+          'PROTECTED_BASE_CONFIGURATION_REQUIRED',
+          'Repository policy must configure one primary protected branch.',
+          ExitCode.guard,
+        );
+      }
+      return createGitProtectedBaseInitializationPort({
+        repositoryRoot,
+        repositoryId: policy.repository.id,
+        canonicalOrigin: policy.repository.origin,
+        remoteName: 'origin',
+        protectedBranch,
+      }).observe();
+    },
   });
 }
 
