@@ -24,6 +24,19 @@ import {
 } from '../src/modules/authority/grant-policy.ts';
 import { isWorkflowError } from './fixture.ts';
 
+test('tracked SSH Grant proof namespace is Jigwright-owned', () => {
+  const tracked = JSON.parse(
+    fs.readFileSync(
+      new URL('../../../workflow/grant-policy.json', import.meta.url),
+      'utf8',
+    ),
+  ) as { optionalSsh: { signatureNamespace: string } };
+  assert.equal(
+    tracked.optionalSsh.signatureNamespace,
+    'jigwright.workflow.grant-proof.v1',
+  );
+});
+
 test('optional SSH proof is interactive, identity-bearing, and bound to the exact approval subject', () => {
   const subject = approvalSubject();
   const subjectDigest = approvalSubjectDigest(subject);
@@ -52,8 +65,8 @@ test('optional SSH proof is interactive, identity-bearing, and bound to the exac
   assert.equal(proof.identity, 'fixture-maintainer');
   assert.equal(proof.approvalSubjectDigest, subjectDigest);
   assert.equal(calls[0], 'interactive');
-  assert.match(calls[1]!, /^sign:expense-app\.workflow\.grant-proof\.v1:/);
-  assert.match(calls[2]!, /^verify:expense-app\.workflow\.grant-proof\.v1:/);
+  assert.match(calls[1]!, /^sign:jigwright\.workflow\.grant-proof\.v1:/);
+  assert.match(calls[2]!, /^verify:jigwright\.workflow\.grant-proof\.v1:/);
 
   assert.throws(
     () =>
@@ -124,7 +137,7 @@ test(
       ).match(/SHA256:[A-Za-z0-9+/]+/)?.[0];
       assert.ok(fingerprint);
       const signer = createInteractiveSshSigner(repository, {
-        signatureNamespace: 'expense-app.workflow.grant-proof.v1',
+        signatureNamespace: 'jigwright.workflow.grant-proof.v1',
         trustedSigners: [
           { identity: 'fixture-maintainer', publicKey, fingerprint },
         ],
@@ -185,7 +198,7 @@ function policy() {
         },
       ],
       optionalSsh: {
-        signatureNamespace: 'expense-app.workflow.grant-proof.v1',
+        signatureNamespace: 'jigwright.workflow.grant-proof.v1',
         trustedSigners: [
           {
             identity: 'fixture-maintainer',

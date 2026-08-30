@@ -1103,7 +1103,7 @@ function sshPolicyInput() {
       },
     ],
     optionalSsh: {
-      signatureNamespace: 'expense-app.workflow.grant-proof.v1',
+      signatureNamespace: 'jigwright.workflow.grant-proof.v1',
       trustedSigners: [
         {
           identity: 'fixture-maintainer',
