@@ -45,7 +45,7 @@ import {
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
 import type { InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
-import type { InvestigationWhyAnswer } from '../../adapters/planning/investigation/investigation-why.ts';
+import type { InvestigationWhyCheckpointAnswer } from '../../modules/investigation/manifest/investigation-why-domain.ts';
 import {
   INVESTIGATION_LIMITS,
   previewInvestigationTermUnion,
@@ -490,7 +490,7 @@ export type GroupDispositionsPayload = {
 };
 
 export type WhyAnswersPayload = {
-  answers: InvestigationWhyAnswer[];
+  answers: InvestigationWhyCheckpointAnswer[];
 };
 
 export type InvestigationCheckpointEnvelope =

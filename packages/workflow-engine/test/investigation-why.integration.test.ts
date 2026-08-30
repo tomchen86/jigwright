@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import type { InvestigationWhyOverlayV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
@@ -13,12 +14,18 @@ const END = '<!-- workflow:investigation-ledger:end v1 -->';
 const FENCE = '```';
 
 test('current WHY surface omits EvidenceNode v1 runtime and projector', async () => {
-  const [whyRuntime, projection] = await Promise.all([
-    import('../src/adapters/planning/investigation/investigation-why.ts'),
-    import('../src/modules/projection/investigation-design-projection.ts'),
-  ]);
+  const projection =
+    await import('../src/modules/projection/investigation-design-projection.ts');
 
-  assert.deepEqual(Object.keys(whyRuntime), []);
+  assert.equal(
+    fs.existsSync(
+      new URL(
+        '../src/adapters/planning/investigation/investigation-why.ts',
+        import.meta.url,
+      ),
+    ),
+    false,
+  );
   assert.equal('projectInvestigationLedger' in projection, false);
   assert.equal('validateInvestigationLedgerProjection' in projection, false);
   assert.equal(
