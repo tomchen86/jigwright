@@ -1128,7 +1128,7 @@
     {
       "path": "src/modules/assurance/task-diff-review.ts",
       "mode": "100644",
-      "digest": "sha256:ec69a181183a286ce9623d3d717a828f8256219706025ceb544ebb67d6cd6748"
+      "digest": "sha256:81f006a56c4be225bc1929c5e9f4381016d6e41eb75276e1ed7822cf8d3637e0"
     },
     {
       "path": "src/modules/assurance/task-execution-evidence.ts",
@@ -1823,7 +1823,7 @@
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
-      "digest": "sha256:bf13cd1f975e9ba2457620fd9a9668d2671176e86eca2016ae99b3e091b02281"
+      "digest": "sha256:9a487a10addd857a97319efd1e40364e599a65b8e435fbc584f19525aade7bfa"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",

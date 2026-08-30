@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:a94f1684a941f9eba9d8d4e18200a1c55e68010ae031ddab766345867a0f926e"
+      "digest": "sha256:90c604061e32f204ff6799c64185ac249293f9144f811d73e3408e7326ef3b77"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -303,7 +303,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/task-diff-review.js",
       "mode": "100644",
-      "digest": "sha256:ebb26f7052eafef5d2d9f5607b7f058b170a3959f4099a1d97e456ccdc0cb74a"
+      "digest": "sha256:6b836f0c3d64ab234d08d5f577f9292cf7600b2122c944885a824a83234ed8aa"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/authority-refusal-audit.js",
@@ -653,7 +653,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/provider-execution/provider-runner.js",
       "mode": "100644",
-      "digest": "sha256:3d7b397868dec8c6a135d92e40033a8dfb73b67a2d50609bb54e8fecb8c3c93d"
+      "digest": "sha256:e3d8bb50e15cfc34c938cf5184e9e4be58ce0f12933dcc64c81c686f5f81fefe"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/committed-investigation-manifest.js",

@@ -121,7 +121,7 @@ export function taskDiffReviewCandidateIdentityDigest(candidate) {
         kind: 'task-diff-review-candidate-identity.v1',
         candidateTree: subject.candidateTree,
         patchDigest: subject.patchDigest,
-        documentationRequirementDigest: subject.documentationRequirement?.requirementDigest ?? null,
+        documentationRequirementDigest: subject.documentationRequirement.requirementDigest,
     }));
 }
 /**
@@ -225,7 +225,7 @@ export function parseTaskDiffReviewScope(value) {
     return deepFreeze(record);
 }
 export function parseTaskDiffReviewSubject(value) {
-    const legacyKeys = [
+    const subjectKeys = [
         'schemaVersion',
         'kind',
         'subjectDigest',
@@ -247,12 +247,12 @@ export function parseTaskDiffReviewSubject(value) {
         'planningAssuranceDigest',
         'reviewPolicyDigest',
         'reviewRequirement',
+        'documentationRequirement',
         'requiredIndependence',
         'coverage',
     ];
-    const currentKeys = [...legacyKeys, 'documentationRequirement'];
     if (!isRecord(value) ||
-        (!hasExactKeys(value, legacyKeys) && !hasExactKeys(value, currentKeys)) ||
+        !hasExactKeys(value, subjectKeys) ||
         value.schemaVersion !== 1 ||
         value.kind !== 'task-diff-review-subject.v1' ||
         value.reviewPolicyDigest !== TASK_DIFF_REVIEW_POLICY_DIGEST ||
@@ -266,9 +266,7 @@ export function parseTaskDiffReviewSubject(value) {
         throw subjectInvalid();
     }
     const reviewRequirement = parseReviewRequirement(value.reviewRequirement);
-    const documentationRequirement = Object.hasOwn(value, 'documentationRequirement')
-        ? parseTaskDiffDocumentationClosureRequirement(value.documentationRequirement)
-        : undefined;
+    const documentationRequirement = parseTaskDiffDocumentationClosureRequirement(value.documentationRequirement);
     const subject = {
         schemaVersion: 1,
         kind: 'task-diff-review-subject.v1',
@@ -291,14 +289,12 @@ export function parseTaskDiffReviewSubject(value) {
         planningAssuranceDigest: normalizeDigest(value.planningAssuranceDigest),
         reviewPolicyDigest: TASK_DIFF_REVIEW_POLICY_DIGEST,
         reviewRequirement,
-        ...(documentationRequirement === undefined
-            ? {}
-            : { documentationRequirement }),
+        documentationRequirement,
         requiredIndependence: 'provider-independent',
         coverage: TASK_DIFF_REVIEW_COVERAGE,
     };
     if (subject.patchDigest !== patchDigest(transitions) ||
-        (documentationRequirement?.required === true &&
+        (documentationRequirement.required &&
             documentationRequirement.candidateTree !== subject.candidateTree) ||
         subject.subjectDigest !==
             sha256(canonicalJson(subjectWithoutDigest(subject)))) {
