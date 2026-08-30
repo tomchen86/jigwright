@@ -16,19 +16,10 @@ import {
   loadChangeContract,
   loadWorkflowConfig,
   parseExecutionArtifact,
-  parseHistoricalInvestigationArtifact,
   parsePlanReviewArtifact,
   parseTasks,
   workflowNamespaceConfig,
 } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  createConvergenceRecord,
-  createDescendantReuseProof,
-} from '../src/adapters/planning/investigation/evidence-convergence.ts';
-import {
-  currentParentEvidenceRef,
-  descendantReuseProofEvidenceRef,
-} from '../src/adapters/planning/investigation/evidence-reuse-path.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
@@ -58,8 +49,13 @@ import {
 
 if (import.meta.main) await import('./contracts-legacy-family.ts');
 
-test('the retired investigation parser alias is absent', () => {
-  assert.equal('parseInvestigationArtifact' in repositoryContracts, false);
+test('retired investigation readers are absent', () => {
+  for (const exportName of [
+    'parseInvestigationArtifact',
+    'parseHistoricalInvestigationArtifact',
+  ]) {
+    assert.equal(exportName in repositoryContracts, false, exportName);
+  }
 });
 
 test('maintainer policy is a pinned workflow contract artifact', () => {
@@ -1057,10 +1053,6 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
   try {
     const { investigation, execution, planReview } =
       writeManagedChangeArtifacts(repository);
-    assert.deepEqual(
-      parseHistoricalInvestigationArtifact(investigation, 'demo-change'),
-      investigation,
-    );
     const currentInvestigation = buildCurrentV3Investigation(repository);
     assert.equal(
       publishCurrentV3Investigation(repository, currentInvestigation).outcome,
@@ -1082,24 +1074,6 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
       planReview,
     );
 
-    const forgedInvestigation = structuredClone(investigation);
-    forgedInvestigation.nodes[0]!.resultDigest = 'f'.repeat(64);
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          forgedInvestigation,
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          { ...investigation, unexpected: true },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
     assert.throws(
       () =>
         parsePlanReviewArtifact(
@@ -1107,17 +1081,6 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
           'demo-change',
         ),
       (error) => isWorkflowError(error, 'INVALID_PLAN_REVIEW_ARTIFACT'),
-    );
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          {
-            ...investigation,
-            nodes: [investigation.nodes[0], investigation.nodes[0]],
-          },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
     );
     assert.throws(
       () =>
@@ -1130,172 +1093,6 @@ test('engine artifact validators reject noncanonical, forged, over-keyed, and sc
         ),
       (error) => isWorkflowError(error, 'INVALID_PLAN_REVIEW_ARTIFACT'),
     );
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          { ...investigation, legacyMigration: true },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
-    const namedMigration = {
-      ...investigation,
-      changeId: 'establish-investigation-first-planning',
-      legacyMigration: true,
-    };
-    assert.deepEqual(
-      parseHistoricalInvestigationArtifact(
-        namedMigration,
-        'establish-investigation-first-planning',
-      ),
-      namedMigration,
-    );
-    const orphan = createEvidenceNode({
-      type: 'fixture-orphan',
-      nodeSchema: 'fixture.orphan.v1',
-      evaluator: 'fixture.orphan.v1',
-      policyDigest: '6'.repeat(64),
-      exactInputDigests: {},
-      semanticParentResultDigests: { parent: '7'.repeat(64) },
-      provenanceParentNodeIds: { parent: '8'.repeat(64) },
-      outputSchema: 'fixture.orphan-output.v1',
-      output: { valid: false },
-      runtimeMetadata: {},
-    });
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          {
-            ...investigation,
-            nodes: [orphan],
-            currentRefs: { sealedInvestigation: orphan.nodeId },
-          },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
-    const parent = investigation.nodes[0]!;
-    const mismatchedRoles = createEvidenceNode({
-      type: 'fixture-child',
-      nodeSchema: 'fixture.child.v1',
-      evaluator: 'fixture.child.v1',
-      policyDigest: '6'.repeat(64),
-      exactInputDigests: {},
-      semanticParentResultDigests: { semantic: parent.resultDigest },
-      provenanceParentNodeIds: { provenance: parent.nodeId },
-      outputSchema: 'fixture.child-output.v1',
-      output: { valid: false },
-      runtimeMetadata: {},
-    });
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          {
-            ...investigation,
-            nodes: [parent, mismatchedRoles].sort((left, right) =>
-              left.nodeId.localeCompare(right.nodeId),
-            ),
-            currentRefs: { sealedInvestigation: mismatchedRoles.nodeId },
-          },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
-    const forgedParentResult = createEvidenceNode({
-      type: 'fixture-child',
-      nodeSchema: 'fixture.child.v1',
-      evaluator: 'fixture.child.v1',
-      policyDigest: '6'.repeat(64),
-      exactInputDigests: {},
-      semanticParentResultDigests: { parent: '7'.repeat(64) },
-      provenanceParentNodeIds: { parent: parent.nodeId },
-      outputSchema: 'fixture.child-output.v1',
-      output: { valid: false },
-      runtimeMetadata: {},
-    });
-    assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          {
-            ...investigation,
-            nodes: [parent, forgedParentResult].sort((left, right) =>
-              left.nodeId.localeCompare(right.nodeId),
-            ),
-            currentRefs: { sealedInvestigation: forgedParentResult.nodeId },
-          },
-          'demo-change',
-        ),
-      (error) => isWorkflowError(error, 'INVALID_INVESTIGATION_ARTIFACT'),
-    );
-    const oldParent = createEvidenceNode({
-      type: 'fixture-parent',
-      nodeSchema: 'fixture.parent.v1',
-      evaluator: 'fixture.parent.v1',
-      policyDigest: 'a'.repeat(64),
-      exactInputDigests: { source: 'b'.repeat(64) },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'fixture.parent-output.v1',
-      output: { equivalent: true },
-      runtimeMetadata: {},
-    });
-    const newParent = createEvidenceNode({
-      type: 'fixture-parent',
-      nodeSchema: 'fixture.parent.v1',
-      evaluator: 'fixture.parent.v1',
-      policyDigest: 'a'.repeat(64),
-      exactInputDigests: { source: 'c'.repeat(64) },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'fixture.parent-output.v1',
-      output: { equivalent: true },
-      runtimeMetadata: {},
-    });
-    const descendant = createEvidenceNode({
-      type: 'fixture-descendant',
-      nodeSchema: 'fixture.descendant.v1',
-      evaluator: 'fixture.descendant.v1',
-      policyDigest: 'd'.repeat(64),
-      exactInputDigests: {},
-      semanticParentResultDigests: { source: oldParent.resultDigest },
-      provenanceParentNodeIds: { source: oldParent.nodeId },
-      outputSchema: 'fixture.descendant-output.v1',
-      output: { valid: true },
-      runtimeMetadata: {},
-    });
-    const convergence = createConvergenceRecord({
-      oldParent,
-      newParent,
-      validatorVersion: 'evidence-currentness.v1',
-      runtimeMetadata: {},
-    });
-    const reuseProof = createDescendantReuseProof({
-      descendant,
-      parentRole: 'source',
-      oldParent,
-      newParent,
-      convergenceRecord: convergence,
-      validatorVersion: 'evidence-currentness.v1',
-      runtimeMetadata: {},
-    });
-    const artifactWithReuse = {
-      ...investigation,
-      nodes: [oldParent, newParent, descendant, convergence, reuseProof].sort(
-        (left, right) => left.nodeId.localeCompare(right.nodeId),
-      ),
-      currentRefs: {
-        sealedInvestigation: descendant.nodeId,
-        [currentParentEvidenceRef(descendant.nodeId, 'source')]:
-          newParent.nodeId,
-        [descendantReuseProofEvidenceRef(descendant.nodeId, 'source')]:
-          reuseProof.nodeId,
-      },
-    };
-    assert.deepEqual(
-      parseHistoricalInvestigationArtifact(artifactWithReuse, 'demo-change'),
-      artifactWithReuse,
-    );
-
     const expandedExecution = structuredClone(execution);
     expandedExecution.tasks['1.1']!.allowedPaths = ['outside/**'];
     const contract = loadChangeContract(repository, 'demo-change');

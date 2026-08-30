@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import test from 'node:test';
 
-import { parseHistoricalInvestigationArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { parsePlanReviewArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
@@ -15,7 +15,7 @@ import {
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 
-test('tracked evidence reuse requires an exact current-parent and proof ref pair', () => {
+test('tracked PlanReview evidence reuse requires an exact current-parent and proof ref pair', () => {
   const oldParent = createEvidenceNode({
     type: 'fixture-parent',
     nodeSchema: 'fixture.parent.v1',
@@ -86,11 +86,10 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
   ].sort((left, right) => left.nodeId.localeCompare(right.nodeId));
   const base = {
     schemaVersion: 1 as const,
-    kind: 'investigation-artifact' as const,
+    kind: 'plan-review-artifact' as const,
     changeId: 'demo-change',
-    legacyMigration: false,
     nodes,
-    currentRefs: { sealedInvestigation: descendant.nodeId },
+    currentRefs: { planReview: descendant.nodeId },
   };
   const roleDigest = crypto
     .createHash('sha256')
@@ -105,12 +104,8 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
     { ...base.currentRefs, [reuseProofRef]: reuseProof.nodeId },
   ]) {
     assert.throws(
-      () =>
-        parseHistoricalInvestigationArtifact(
-          { ...base, currentRefs },
-          'demo-change',
-        ),
-      (error) => workflowCode(error) === 'INVALID_INVESTIGATION_ARTIFACT',
+      () => parsePlanReviewArtifact({ ...base, currentRefs }, 'demo-change'),
+      (error) => workflowCode(error) === 'INVALID_PLAN_REVIEW_ARTIFACT',
     );
   }
 
@@ -122,10 +117,7 @@ test('tracked evidence reuse requires an exact current-parent and proof ref pair
       [reuseProofRef]: reuseProof.nodeId,
     },
   };
-  assert.deepEqual(
-    parseHistoricalInvestigationArtifact(current, 'demo-change'),
-    current,
-  );
+  assert.deepEqual(parsePlanReviewArtifact(current, 'demo-change'), current);
 });
 
 test('projection retains one old descendant only through a generated current reuse path', () => {
@@ -159,16 +151,12 @@ test('projection retains one old descendant only through a generated current reu
   );
   const artifact = {
     schemaVersion: 1 as const,
-    kind: 'investigation-artifact' as const,
+    kind: 'plan-review-artifact' as const,
     changeId: 'demo-change',
-    legacyMigration: false,
     nodes: projected.nodes,
     currentRefs: projected.currentRefs,
   };
-  assert.deepEqual(
-    parseHistoricalInvestigationArtifact(artifact, 'demo-change'),
-    artifact,
-  );
+  assert.deepEqual(parsePlanReviewArtifact(artifact, 'demo-change'), artifact);
 });
 
 function parentNode(source: string) {

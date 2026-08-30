@@ -13,10 +13,6 @@ import {
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
 import {
-  assertInvestigationApplicability,
-  type InvestigationApplicability,
-} from '../../../../modules/investigation/domain/investigation-applicability.ts';
-import {
   validateForAuthority,
   type InvestigationManifestV3,
 } from '../../../../modules/investigation/manifest/investigation-manifest.ts';
@@ -33,7 +29,6 @@ import {
   readCommittedInvestigationManifestV3,
   type ImmutableGitTreeInvestigationObservation,
 } from '../../../../runtime/repository-transaction/committed-investigation-manifest.ts';
-import { materializeProjectedInvestigationArtifact } from '../../../planning/investigation/investigation-artifact-projection.ts';
 import { workflowContractArtifactPaths } from './contract-artifacts.ts';
 import {
   isRecord,
@@ -279,18 +274,12 @@ export function isPlanningAssuranceBinding(
   );
 }
 
-export type EvidenceArtifactBundle = {
+export type PlanReviewArtifact = {
   schemaVersion: 1;
-  kind: 'investigation-artifact' | 'plan-review-artifact';
+  kind: 'plan-review-artifact';
   changeId: string;
   nodes: EvidenceNode[];
   currentRefs: Record<string, string>;
-};
-
-export type InvestigationArtifact = EvidenceArtifactBundle & {
-  kind: 'investigation-artifact';
-  legacyMigration: boolean;
-  applicability?: InvestigationApplicability;
   roleResults?: unknown[];
 };
 
@@ -314,11 +303,6 @@ export type CurrentInvestigationManifest = {
         contentDigest: string;
       }
     | ImmutableGitTreeInvestigationObservation;
-};
-
-export type PlanReviewArtifact = EvidenceArtifactBundle & {
-  kind: 'plan-review-artifact';
-  roleResults?: unknown[];
 };
 
 type ExecutionCommon = {
@@ -1405,91 +1389,19 @@ export function parseCurrentInvestigationManifest(
   };
 }
 
-/** Historical inspection only; never use this entrypoint for live authority. */
-export function parseHistoricalInvestigationArtifact(
-  value: unknown,
-  expectedChangeId: string,
-  options: { repositoryRoot?: string } = {},
-): InvestigationArtifact {
-  if (isRecord(value) && value.schemaVersion === 2) {
-    if (options.repositoryRoot === undefined) {
-      throw artifactInvalid(
-        'INVALID_INVESTIGATION_ARTIFACT',
-        'Git-backed investigation evidence requires its repository object database.',
-      );
-    }
-    return parseHistoricalInvestigationArtifact(
-      materializeProjectedInvestigationArtifact(
-        options.repositoryRoot,
-        value,
-        expectedChangeId,
-      ),
-      expectedChangeId,
-    );
-  }
-  const optionalKeys = optionalArtifactKeys(value, [
-    'applicability',
-    'roleResults',
-  ]);
-  const artifact = parseEvidenceArtifactBundle(
-    value,
-    expectedChangeId,
-    'investigation-artifact',
-    'INVALID_INVESTIGATION_ARTIFACT',
-    [
-      'changeId',
-      'currentRefs',
-      'kind',
-      'legacyMigration',
-      'nodes',
-      'schemaVersion',
-      ...optionalKeys,
-    ],
-  );
-  if (
-    !isRecord(value) ||
-    typeof value.legacyMigration !== 'boolean' ||
-    (value.legacyMigration &&
-      expectedChangeId !== 'establish-investigation-first-planning')
-  ) {
-    throw artifactInvalid(
-      'INVALID_INVESTIGATION_ARTIFACT',
-      'investigation.json does not match schema version 1.',
-    );
-  }
-  const applicability =
-    isRecord(value) && Object.hasOwn(value, 'applicability')
-      ? assertInvestigationApplicability(value.applicability)
-      : undefined;
-  const roleResults = parseOptionalRoleResults(value);
-  return {
-    ...artifact,
-    kind: 'investigation-artifact',
-    legacyMigration: value.legacyMigration,
-    ...(applicability ? { applicability } : {}),
-    ...(roleResults ? { roleResults } : {}),
-  };
-}
-
 export function parsePlanReviewArtifact(
   value: unknown,
   expectedChangeId: string,
 ): PlanReviewArtifact {
   const optionalKeys = optionalArtifactKeys(value, ['roleResults']);
-  const artifact = parseEvidenceArtifactBundle(
-    value,
-    expectedChangeId,
-    'plan-review-artifact',
-    'INVALID_PLAN_REVIEW_ARTIFACT',
-    [
-      'changeId',
-      'currentRefs',
-      'kind',
-      'nodes',
-      'schemaVersion',
-      ...optionalKeys,
-    ],
-  );
+  const artifact = parsePlanReviewEvidenceArtifact(value, expectedChangeId, [
+    'changeId',
+    'currentRefs',
+    'kind',
+    'nodes',
+    'schemaVersion',
+    ...optionalKeys,
+  ]);
   const roleResults = parseOptionalRoleResults(value);
   return {
     ...artifact,
@@ -1514,9 +1426,7 @@ function parseOptionalRoleResults(value: unknown): unknown[] | undefined {
   }
   if (!Array.isArray(value.roleResults) || value.roleResults.length === 0) {
     throw artifactInvalid(
-      value.kind === 'investigation-artifact'
-        ? 'INVALID_INVESTIGATION_ARTIFACT'
-        : 'INVALID_PLAN_REVIEW_ARTIFACT',
+      'INVALID_PLAN_REVIEW_ARTIFACT',
       'Tracked role results must be a non-empty array when present.',
     );
   }
@@ -1688,23 +1598,21 @@ export function parseExecutionArtifact(
   };
 }
 
-function parseEvidenceArtifactBundle(
+function parsePlanReviewEvidenceArtifact(
   value: unknown,
   expectedChangeId: string,
-  expectedKind: EvidenceArtifactBundle['kind'],
-  errorCode: 'INVALID_INVESTIGATION_ARTIFACT' | 'INVALID_PLAN_REVIEW_ARTIFACT',
   exactKeys: string[],
-): EvidenceArtifactBundle {
+): PlanReviewArtifact {
   const invalid = () =>
     artifactInvalid(
-      errorCode,
-      `${expectedKind} does not match schema version 1.`,
+      'INVALID_PLAN_REVIEW_ARTIFACT',
+      'plan-review-artifact does not match schema version 1.',
     );
   if (
     !isRecord(value) ||
     !hasExactKeys(value, exactKeys) ||
     value.schemaVersion !== 1 ||
-    value.kind !== expectedKind ||
+    value.kind !== 'plan-review-artifact' ||
     value.changeId !== expectedChangeId ||
     !Array.isArray(value.nodes) ||
     value.nodes.length === 0 ||
@@ -1758,7 +1666,7 @@ function parseEvidenceArtifactBundle(
   }
   return {
     schemaVersion: 1,
-    kind: expectedKind,
+    kind: 'plan-review-artifact',
     changeId: expectedChangeId,
     nodes,
     currentRefs,

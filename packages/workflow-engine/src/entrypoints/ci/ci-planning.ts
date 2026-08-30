@@ -19,7 +19,6 @@ import {
 import {
   loadCommittedChangeContract,
   loadWorkflowConfig,
-  parseHistoricalInvestigationArtifact,
   parsePlanReviewArtifact,
   parseTasks,
   readChangeSchemaName,
@@ -194,9 +193,10 @@ function investigationRoleResultsFromPlanningArtifact(
   changeId: string,
 ): unknown[] | undefined {
   if (!isRecord(parsed) || parsed.schemaVersion !== 3) {
-    return parseHistoricalInvestigationArtifact(parsed, changeId, {
-      repositoryRoot,
-    }).roleResults;
+    throw ciPlanningError(
+      'CI_PLANNING_GRANT_HISTORY_INVALID',
+      'Historical planning grant claims require a current v3 investigation Manifest.',
+    );
   }
   const authoring = isRecord(parsed.authoring) ? parsed.authoring : undefined;
   const validation = validateForAuthority({

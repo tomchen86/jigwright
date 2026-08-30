@@ -203,6 +203,31 @@ test('CI collects current v3 Manifest grant identities from semanticDelta', () =
   ]);
 });
 
+test('CI rejects retired investigation schemas in immutable planning history', async (t) => {
+  for (const schemaVersion of [1, 2] as const) {
+    await t.test(`schema version ${schemaVersion}`, () => {
+      const repository = createRepository();
+      try {
+        writeRetiredInvestigationArtifact(repository, schemaVersion);
+        commitPlan(repository);
+
+        assert.throws(
+          () =>
+            collectHistoricalCollaborationGrantUses(
+              repository,
+              git(repository, ['rev-parse', 'HEAD']).trim(),
+              CHANGE_ID,
+            ),
+          (error) =>
+            isWorkflowError(error, 'CI_PLANNING_GRANT_HISTORY_INVALID'),
+        );
+      } finally {
+        fs.rmSync(repository, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 test('CI collects a collaboration grant claimed by two historical plan transitions', () => {
   const repository = createRepository();
   try {
@@ -224,45 +249,6 @@ test('CI collects a collaboration grant claimed by two historical plan transitio
       grantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
       signedEnvelopeDigest: 'b'.repeat(64),
       transitionDigest: 'c'.repeat(64),
-    });
-    commitPlan(repository);
-
-    const uses = collectHistoricalCollaborationGrantUses(
-      repository,
-      git(repository, ['rev-parse', 'HEAD']).trim(),
-      CHANGE_ID,
-    );
-    assert.equal(uses.length, 2);
-    assert.throws(
-      () => assertUniqueCollaborationGrantUses(uses),
-      (error) => isWorkflowError(error, 'COLLABORATION_GRANT_USE_DUPLICATE'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('CI collects a blind-survey grant claimed by two historical plan transitions', () => {
-  const repository = createRepository();
-  try {
-    writeSurveyGrantClaim(repository, {
-      grantId: '11111111-1111-4111-8111-111111111111',
-      signedEnvelopeDigest: '2'.repeat(64),
-      transitionDigest: '3'.repeat(64),
-    });
-    commitPlan(repository);
-
-    writeSurveyGrantClaim(repository, {
-      grantId: '44444444-4444-4444-8444-444444444444',
-      signedEnvelopeDigest: '5'.repeat(64),
-      transitionDigest: '6'.repeat(64),
-    });
-    commit(repository, 'Record an alternate survey generation');
-
-    writeSurveyGrantClaim(repository, {
-      grantId: '11111111-1111-4111-8111-111111111111',
-      signedEnvelopeDigest: '2'.repeat(64),
-      transitionDigest: '3'.repeat(64),
     });
     commitPlan(repository);
 
@@ -485,6 +471,14 @@ test('CI collects a PlanReview grant from a current v3 plan transition', () => {
     assert.deepEqual(
       validateCiPlanningCommit(repository, plan.commitHash, 'demo-change')
         .collaborationGrantUses,
+      [reviewUse],
+    );
+    assert.deepEqual(
+      collectHistoricalCollaborationGrantUses(
+        repository,
+        plan.commitHash,
+        'demo-change',
+      ),
       [reviewUse],
     );
   } finally {
@@ -1209,14 +1203,7 @@ function writePlanReviewWithoutRole(repository: string): void {
   );
 }
 
-function writeSurveyGrantClaim(
-  repository: string,
-  use: {
-    grantId: string;
-    signedEnvelopeDigest: string;
-    transitionDigest: string;
-  },
-): void {
+function writeRetiredV1InvestigationArtifact(repository: string): void {
   const surveyNode = createEvidenceNode({
     type: 'fixture-blind-survey',
     nodeSchema: 'fixture.blind-survey.v1',
@@ -1239,9 +1226,40 @@ function writeSurveyGrantClaim(
       legacyMigration: false,
       nodes: [surveyNode],
       currentRefs: { blindSurvey: surveyNode.nodeId },
-      roleResults: [{ grantUse: use }],
+      roleResults: [
+        {
+          grantUse: {
+            grantId: '10101010-1010-4010-8010-101010101010',
+            signedEnvelopeDigest: '2'.repeat(64),
+            transitionDigest: '3'.repeat(64),
+          },
+        },
+      ],
     })}\n`,
   );
+}
+
+function writeRetiredInvestigationArtifact(
+  repository: string,
+  schemaVersion: 1 | 2,
+): void {
+  writeRetiredV1InvestigationArtifact(repository);
+  if (schemaVersion === 1) return;
+
+  const artifactPath = path.join(
+    repository,
+    `openspec/changes/${CHANGE_ID}/investigation.json`,
+  );
+  const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  artifact.schemaVersion = 2;
+  artifact.replay = {
+    schemaVersion: 1,
+    kind: 'git-backed-investigation-replay',
+  };
+  fs.writeFileSync(artifactPath, `${canonicalJson(artifact)}\n`);
 }
 
 function writeRoleContextSharingClaim(

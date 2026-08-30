@@ -3,19 +3,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  parseCurrentInvestigationManifest,
-  parseHistoricalInvestigationArtifact,
-} from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { parseCurrentInvestigationManifest } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { isWorkflowError } from './fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 
 const CHANGE_ID = 'reuse-evidence-generation-v3';
 const TARGET = 'src/reuse-evidence.ts';
 
-test('v3 semantic reuse is current Manifest authority while v1 lineage remains historical-only', () => {
+test('v3 semantic reuse is current Manifest authority', () => {
   const fixture = driveProposeToDispositions(CHANGE_ID, {
     files: {
       [TARGET]: 'export const ReuseEvidenceNeedle = true;\n',
@@ -92,41 +87,6 @@ test('v3 semantic reuse is current Manifest authority while v1 lineage remains h
           )?.coverage.semanticReuse
         : null,
       sealed.semanticReuse,
-    );
-
-    const legacyNode = createEvidenceNode({
-      type: 'fixture-investigation',
-      nodeSchema: 'fixture.investigation.v1',
-      evaluator: 'fixture.investigation.v1',
-      policyDigest: '1'.repeat(64),
-      exactInputDigests: { intent: '2'.repeat(64) },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: 'fixture.investigation-output.v1',
-      output: { sealed: true },
-      runtimeMetadata: {},
-    });
-    const historical = {
-      schemaVersion: 1 as const,
-      kind: 'investigation-artifact' as const,
-      changeId: CHANGE_ID,
-      legacyMigration: false,
-      nodes: [legacyNode],
-      currentRefs: { sealedInvestigation: legacyNode.nodeId },
-    };
-    assert.equal(
-      parseHistoricalInvestigationArtifact(historical, CHANGE_ID).currentRefs
-        .sealedInvestigation,
-      legacyNode.nodeId,
-    );
-    assert.throws(
-      () =>
-        parseCurrentInvestigationManifest(historical, CHANGE_ID, {
-          repositoryRoot: fixture.repository,
-          expectedRepositoryId: manifest.repositoryId,
-          artifactPath,
-        }),
-      (error) => isWorkflowError(error, 'SCHEMA_V1_FORBIDDEN'),
     );
   } finally {
     fixture.dispose();
