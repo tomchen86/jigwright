@@ -187,14 +187,15 @@ test('sealed RED state is canonical and digest-bound before any gate trusts it',
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    sealTaskStrategyRed(repository, session.sessionId, {
+    const transaction = sealTaskStrategyRed(repository, session.sessionId, {
       explicitActor: 'codex',
       environment: {},
     });
     const statePath = path.join(
       runtimeRoot(repository),
-      'investigations/refs/task-strategies',
-      `${session.sessionId}.json`,
+      'investigations/refs/task-strategy-transactions',
+      session.sessionId,
+      `${transaction.recordDigest}.json`,
     );
     const state = JSON.parse(fs.readFileSync(statePath, 'utf8')) as {
       red: { failureCategory: string };

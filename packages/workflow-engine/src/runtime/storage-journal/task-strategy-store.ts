@@ -21,7 +21,11 @@ import {
   isProviderId,
   type ProviderId,
 } from '../../modules/provider-orchestration/provider-registry.ts';
-import { readTaskStrategyCurrentRef } from './task-strategy-red-revision-store.ts';
+import {
+  compareAndSwapTaskStrategyCurrentRef,
+  createTaskStrategyCurrentRef,
+  readTaskStrategyCurrentRef,
+} from './task-strategy-red-revision-store.ts';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -80,27 +84,33 @@ export function createTaskStrategyTransaction(
   paths: InvestigationRuntimePaths,
   input: TaskStrategyTransactionInput,
 ): TaskStrategyTransaction {
-  const transaction = prepareTaskStrategyTransaction(input);
-  persistTaskStrategyTransaction(paths, transaction);
-  createPrivateCanonicalJson(
+  const transaction = persistTaskStrategyTransaction(
     paths,
-    legacyTaskStrategyTransactionPath(paths, transaction.sessionId),
-    transaction,
-    stateCorrupt,
-    'TASK_STRATEGY_TRANSACTION_CONFLICT',
+    prepareTaskStrategyTransaction(input),
   );
-  const stored = readLegacyTaskStrategyTransaction(
-    paths,
-    transaction.sessionId,
-  );
+  const initial = createTaskStrategyCurrentRef({
+    sessionId: transaction.sessionId,
+    state: 'red-sealed',
+    transactionDigest: transaction.recordDigest,
+    predecessorTransactionDigest: null,
+    revisionId: null,
+    taskContractDigest: transaction.taskContractDigest,
+    updatedAt: transaction.createdAt,
+  });
+  compareAndSwapTaskStrategyCurrentRef(paths, {
+    sessionId: transaction.sessionId,
+    expectedRefDigest: null,
+    next: initial,
+  });
+  const stored = readTaskStrategyTransaction(paths, transaction.sessionId);
   if (stored?.recordDigest !== transaction.recordDigest) throw stateCorrupt();
   return stored;
 }
 
 /**
- * Persist a successor RED transaction without replacing the legacy per-session
- * singleton. Revision currentness is published separately through the strict
- * current ref, so a crash can never destroy the predecessor transaction.
+ * Persist a successor RED transaction without publishing it as current.
+ * Revision currentness is published separately through the strict current ref,
+ * so a crash can never destroy the predecessor transaction.
  */
 export function createContentAddressedTaskStrategyTransaction(
   paths: InvestigationRuntimePaths,
@@ -162,9 +172,7 @@ export function readTaskStrategyTransaction(
 ): TaskStrategyTransaction | null {
   const sessionId = assertSessionId(requestedSessionId);
   const current = readTaskStrategyCurrentRef(paths, sessionId);
-  if (current === null) {
-    return readLegacyTaskStrategyTransaction(paths, sessionId);
-  }
+  if (current === null) return null;
   if (current.state === 'red-authoring') {
     const predecessor = readTaskStrategyTransactionByDigest(
       paths,
@@ -218,10 +226,7 @@ export function readTaskStrategyTransactionByDigest(
     sessionId,
     requestedRecordDigest,
   );
-  if (!privatePathExists(paths, target, stateCorrupt)) {
-    const legacy = readLegacyTaskStrategyTransaction(paths, sessionId);
-    return legacy?.recordDigest === requestedRecordDigest ? legacy : null;
-  }
+  if (!privatePathExists(paths, target, stateCorrupt)) return null;
   const transaction = parseTaskStrategyTransaction(
     readPrivateCanonicalJson(paths, target, stateCorrupt),
   );
@@ -232,27 +237,6 @@ export function readTaskStrategyTransactionByDigest(
     throw stateCorrupt();
   }
   return transaction;
-}
-
-export function readLegacyTaskStrategyTransaction(
-  paths: InvestigationRuntimePaths,
-  requestedSessionId: string,
-): TaskStrategyTransaction | null {
-  const sessionId = assertSessionId(requestedSessionId);
-  const target = legacyTaskStrategyTransactionPath(paths, sessionId);
-  if (!privatePathExists(paths, target, stateCorrupt)) return null;
-  const transaction = parseTaskStrategyTransaction(
-    readPrivateCanonicalJson(paths, target, stateCorrupt),
-  );
-  if (transaction.sessionId !== sessionId) throw stateCorrupt();
-  return transaction;
-}
-
-function legacyTaskStrategyTransactionPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(paths.refs, 'task-strategies', `${sessionId}.json`);
 }
 
 function contentAddressedTaskStrategyTransactionPath(

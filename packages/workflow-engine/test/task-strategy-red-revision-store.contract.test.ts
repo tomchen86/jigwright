@@ -7,7 +7,10 @@ import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import {
+  investigationRuntimePaths,
+  type InvestigationRuntimePaths,
+} from '../src/runtime/session-workspace/paths.ts';
 import {
   compareAndSwapTaskStrategyCurrentRef,
   createTaskStrategyCurrentRef,
@@ -41,6 +44,35 @@ test('current ref makes RED authoring effective-null while preserving the predec
       fixture.paths,
       transactionInput('1'),
     );
+    const initial = createTaskStrategyCurrentRef({
+      sessionId: predecessor.sessionId,
+      state: 'red-sealed',
+      transactionDigest: predecessor.recordDigest,
+      predecessorTransactionDigest: null,
+      revisionId: null,
+      taskContractDigest: predecessor.taskContractDigest,
+      updatedAt: predecessor.createdAt,
+    });
+    assert.deepEqual(
+      readTaskStrategyCurrentRef(fixture.paths, predecessor.sessionId),
+      initial,
+    );
+    assert.deepEqual(
+      createTaskStrategyTransaction(fixture.paths, transactionInput('1')),
+      predecessor,
+      'initial publication is exact-replay safe',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.paths.refs,
+          'task-strategies',
+          `${predecessor.sessionId}.json`,
+        ),
+      ),
+      false,
+      'initial RED sealing does not publish the retired session singleton',
+    );
     const request = parseTaskStrategyRedRevisionRequest({
       schemaVersion: 1,
       kind: 'task-strategy-red-revision-request',
@@ -62,7 +94,7 @@ test('current ref makes RED authoring effective-null while preserving the predec
     assert.deepEqual(
       compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
         sessionId: predecessor.sessionId,
-        expectedRefDigest: null,
+        expectedRefDigest: initial.refDigest,
         next: authoring,
       }),
       authoring,
@@ -107,15 +139,34 @@ test('current ref makes RED authoring effective-null while preserving the predec
       readTaskStrategyCurrentRef(fixture.paths, predecessor.sessionId),
       sealed,
     );
-    assert.ok(
-      fs.existsSync(
-        path.join(
-          fixture.paths.refs,
-          'task-strategies',
-          `${predecessor.sessionId}.json`,
-        ),
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('transaction readers do not infer currentness from the retired session singleton', () => {
+  const fixture = createStoreFixture();
+  try {
+    const legacy = prepareTaskStrategyTransaction(transactionInput('2'));
+    const legacyPath = path.join(
+      fixture.paths.refs,
+      'task-strategies',
+      `${legacy.sessionId}.json`,
+    );
+    fs.mkdirSync(path.dirname(legacyPath), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(legacyPath, `${canonicalJson(legacy)}\n`, { mode: 0o600 });
+
+    assert.equal(
+      readTaskStrategyTransaction(fixture.paths, legacy.sessionId),
+      null,
+    );
+    assert.equal(
+      readTaskStrategyTransactionByDigest(
+        fixture.paths,
+        legacy.sessionId,
+        legacy.recordDigest,
       ),
-      'the legacy v1 session singleton remains intact',
+      null,
     );
   } finally {
     fixture.dispose();
@@ -151,6 +202,10 @@ test('current-ref CAS is replay-safe and rejects a stale expected digest', () =>
       fixture.paths,
       transactionInput('3'),
     );
+    const initial = requireTaskStrategyCurrentRef(
+      fixture.paths,
+      predecessor.sessionId,
+    );
     const request = parseTaskStrategyRedRevisionRequest({
       schemaVersion: 1,
       kind: 'task-strategy-red-revision-request',
@@ -169,13 +224,13 @@ test('current-ref CAS is replay-safe and rejects a stale expected digest', () =>
     });
     compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
       sessionId: predecessor.sessionId,
-      expectedRefDigest: null,
+      expectedRefDigest: initial.refDigest,
       next,
     });
     assert.deepEqual(
       compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
         sessionId: predecessor.sessionId,
-        expectedRefDigest: null,
+        expectedRefDigest: initial.refDigest,
         next,
       }),
       next,
@@ -205,6 +260,10 @@ test('current-ref publication rejects an unavailable or non-current successor li
       fixture.paths,
       transactionInput('6'),
     );
+    const initial = requireTaskStrategyCurrentRef(
+      fixture.paths,
+      predecessor.sessionId,
+    );
     const revisionId = taskStrategyRedRevisionId(
       parseTaskStrategyRedRevisionRequest({
         schemaVersion: 1,
@@ -218,7 +277,7 @@ test('current-ref publication rejects an unavailable or non-current successor li
       () =>
         compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
           sessionId: predecessor.sessionId,
-          expectedRefDigest: null,
+          expectedRefDigest: initial.refDigest,
           next: createTaskStrategyCurrentRef({
             sessionId: predecessor.sessionId,
             state: 'red-authoring',
@@ -243,7 +302,7 @@ test('current-ref publication rejects an unavailable or non-current successor li
     });
     compareAndSwapTaskStrategyCurrentRef(fixture.paths, {
       sessionId: predecessor.sessionId,
-      expectedRefDigest: null,
+      expectedRefDigest: initial.refDigest,
       next: authoring,
     });
     const unrelated = createContentAddressedTaskStrategyTransaction(
@@ -287,6 +346,10 @@ test('revision request and phase journal are immutable, digest-bound, and atomic
     const predecessor = createTaskStrategyTransaction(
       fixture.paths,
       transactionInput('4'),
+    );
+    const initial = requireTaskStrategyCurrentRef(
+      fixture.paths,
+      predecessor.sessionId,
     );
     const request = parseTaskStrategyRedRevisionRequest({
       schemaVersion: 1,
@@ -335,7 +398,7 @@ test('revision request and phase journal are immutable, digest-bound, and atomic
       predecessor: {
         transactionDigest: predecessor.recordDigest,
         candidateTree: predecessor.red.candidateTree,
-        currentRefDigest: null,
+        currentRefDigest: initial.refDigest,
       },
       binding: {
         changeId: predecessor.changeId,
@@ -620,6 +683,10 @@ function createPreparedRevisionJournal(
   request: ReturnType<typeof parseTaskStrategyRedRevisionRequest>,
   beforeExtra: Readonly<Record<string, unknown>> = {},
 ): TaskStrategyRedRevisionJournal {
+  const current = requireTaskStrategyCurrentRef(
+    fixture.paths,
+    predecessor.sessionId,
+  );
   const persisted = persistTaskStrategyRedRevisionRequest(
     fixture.paths,
     request,
@@ -654,7 +721,7 @@ function createPreparedRevisionJournal(
     predecessor: {
       transactionDigest: predecessor.recordDigest,
       candidateTree: predecessor.red.candidateTree,
-      currentRefDigest: null,
+      currentRefDigest: current.refDigest,
     },
     binding: {
       changeId: predecessor.changeId,
@@ -685,6 +752,15 @@ function createPreparedRevisionJournal(
     createdAt: '2026-08-13T00:00:01.000Z',
     updatedAt: '2026-08-13T00:00:01.000Z',
   });
+}
+
+function requireTaskStrategyCurrentRef(
+  paths: InvestigationRuntimePaths,
+  sessionId: string,
+) {
+  const current = readTaskStrategyCurrentRef(paths, sessionId);
+  assert.ok(current);
+  return current;
 }
 
 function advanceJournalToCompleted(
