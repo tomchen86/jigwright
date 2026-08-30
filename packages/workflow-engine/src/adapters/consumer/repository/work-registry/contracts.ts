@@ -1016,13 +1016,7 @@ function loadChangeContractWithInvestigationSource(
 
   for (const [taskId, policy] of Object.entries(guard.tasks)) {
     assertTaskId(taskId);
-    validateTaskPolicy(
-      repositoryRoot,
-      taskId,
-      policy,
-      checks,
-      tasks.every(({ completed }) => completed),
-    );
+    validateTaskPolicy(repositoryRoot, taskId, policy, checks);
   }
 
   const missingPolicies = [...markdownTaskIds].filter(
@@ -2002,7 +1996,6 @@ function validateTaskPolicy(
   taskId: string,
   policy: TaskPolicy,
   checks: ChecksConfig,
-  allowCompletedLegacyProjectionScope: boolean,
 ): void {
   const normalizedPaths = policy.allowedPaths.map((policyPath) => {
     const normalized = normalizePolicyPath(policyPath);
@@ -2018,22 +2011,20 @@ function validateTaskPolicy(
     );
   }
 
-  if (!allowCompletedLegacyProjectionScope) {
-    const claimedProjectionPaths = engineProjectionDefinitions()
-      .map(({ path: projectionPath }) => projectionPath)
-      .filter((projectionPath) =>
-        normalizedPaths.some((allowedPath) =>
-          matchesAllowedPath(projectionPath, allowedPath),
-        ),
-      );
-    if (claimedProjectionPaths.length > 0) {
-      throw workflowError(
-        'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE',
-        `Task ${taskId} cannot claim engine-owned projection paths.`,
-        ExitCode.guard,
-        { details: { taskId, claimedProjectionPaths } },
-      );
-    }
+  const claimedProjectionPaths = engineProjectionDefinitions()
+    .map(({ path: projectionPath }) => projectionPath)
+    .filter((projectionPath) =>
+      normalizedPaths.some((allowedPath) =>
+        matchesAllowedPath(projectionPath, allowedPath),
+      ),
+    );
+  if (claimedProjectionPaths.length > 0) {
+    throw workflowError(
+      'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE',
+      `Task ${taskId} cannot claim engine-owned projection paths.`,
+      ExitCode.guard,
+      { details: { taskId, claimedProjectionPaths } },
+    );
   }
 
   const malformedChecks = policy.requiredChecks.filter(

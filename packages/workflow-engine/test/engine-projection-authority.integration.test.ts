@@ -101,7 +101,7 @@ test('document policy cannot invent an engine-owned completion projection', () =
   }
 });
 
-test('unfinished task guards cannot claim engine-owned projection paths', () => {
+test('task guards cannot claim engine-owned projection paths before or after completion', () => {
   const repository = createFixtureRepository();
   try {
     writeReadyV3ExemptChange(repository);
@@ -124,8 +124,14 @@ test('unfinished task guards cannot claim engine-owned projection paths', () => 
       tasksPath,
       fs.readFileSync(tasksPath, 'utf8').replace(/- \[ \]/g, '- [x]'),
     );
-    writeReadyV3ExemptChange(repository);
-    assert.doesNotThrow(() => loadChangeContract(repository, 'demo-change'));
+    assert.throws(
+      () => writeReadyV3ExemptChange(repository),
+      (error) => isWorkflowError(error, 'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE'),
+    );
+    assert.throws(
+      () => loadChangeContract(repository, 'demo-change'),
+      (error) => isWorkflowError(error, 'ENGINE_PROJECTION_PATH_IN_TASK_SCOPE'),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
