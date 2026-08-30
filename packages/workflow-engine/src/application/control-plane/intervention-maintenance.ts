@@ -131,17 +131,14 @@ export type MaintenanceGrantRevocationOptions = HumanRevocationOptions & {
 };
 
 export interface PersistedInterventionEngineArtifact {
-  kind:
-    | 'persisted-intervention-engine-artifact.v1'
-    | 'persisted-intervention-engine-artifact.v2';
+  kind: 'persisted-intervention-engine-artifact.v2';
   parentChangeId: string;
   interventionChangeId: string;
   checkpointId: Sha256Digest;
   artifact: EngineArtifact;
   executablePath: string;
-  /** Required when kind is v2; absent only on historical v1 records. */
-  workflowBindingDigest?: Sha256Digest;
-  workflowStatus?: 'repair-active';
+  workflowBindingDigest: Sha256Digest;
+  workflowStatus: 'repair-active';
   createdAt: string;
   recordDigest: Sha256Digest;
 }
@@ -859,25 +856,21 @@ export function readInterventionEngineArtifact(
   ) {
     throw artifactRecordCorrupt();
   }
-  if (record.kind === 'persisted-intervention-engine-artifact.v2') {
-    const sidecarWorkflow = readPersistedBootstrapSidecarWorkflow(
-      storageRoot,
-      record.parentChangeId,
-    );
-    if (
-      record.workflowStatus !== 'repair-active' ||
-      record.workflowBindingDigest === undefined ||
-      record.workflowBindingDigest !==
-        (sidecarWorkflow.workflowBinding.status === 'repair-active'
-          ? sidecarWorkflow.workflowBinding.workflowBindingDigest
-          : activeBootstrapMaintenanceWorkflowBindingDigest(
-              sidecarWorkflow.workflowBinding,
-            )) ||
-      (artifact.workflowBindingDigest !== undefined &&
-        artifact.workflowBindingDigest !== record.workflowBindingDigest)
-    ) {
-      throw artifactRecordCorrupt();
-    }
+  const sidecarWorkflow = readPersistedBootstrapSidecarWorkflow(
+    storageRoot,
+    record.parentChangeId,
+  );
+  if (
+    record.workflowBindingDigest !==
+      (sidecarWorkflow.workflowBinding.status === 'repair-active'
+        ? sidecarWorkflow.workflowBinding.workflowBindingDigest
+        : activeBootstrapMaintenanceWorkflowBindingDigest(
+            sidecarWorkflow.workflowBinding,
+          )) ||
+    (artifact.workflowBindingDigest !== undefined &&
+      artifact.workflowBindingDigest !== record.workflowBindingDigest)
+  ) {
+    throw artifactRecordCorrupt();
   }
   verifyArtifactExecutable(
     intervention.childWorkspace.childWorkspacePath,
@@ -900,12 +893,7 @@ export function preparePersistedEngineAdoptionFromArtifactRecord(
   dependencies: Parameters<typeof preparePersistedEngineAdoption>[2],
 ) {
   const record = readInterventionEngineArtifact(storageRoot, input.artifactId);
-  if (
-    record.kind !== 'persisted-intervention-engine-artifact.v2' ||
-    record.parentChangeId !== input.parentChangeId ||
-    record.workflowBindingDigest === undefined ||
-    record.workflowStatus !== 'repair-active'
-  ) {
+  if (record.parentChangeId !== input.parentChangeId) {
     throw workflowError(
       'INTERVENTION_ENGINE_ARTIFACT_WORKFLOW_BINDING_REQUIRED',
       'Engine adoption requires the exact persisted v2 artifact record for the active bootstrap-maintenance Workflow.',

@@ -17,7 +17,10 @@ import {
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
 import { resolveLocalEngineSelection } from '../bootstrap/control-plane-trust.ts';
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
-import { interventionEngineArtifactRecordPath } from '../src/runtime/storage-journal/intervention-engine-artifact-store.ts';
+import {
+  interventionEngineArtifactRecordPath,
+  readStoredInterventionEngineArtifact,
+} from '../src/runtime/storage-journal/intervention-engine-artifact-store.ts';
 import {
   advancePersistedEngineAdoption,
   persistedBootstrapSidecarSessionPath,
@@ -659,6 +662,53 @@ test('v2 adoption authority requires the exact persisted artifact record', () =>
     );
     assert.equal(projected?.evidenceDigest, persisted.recordDigest);
     assert.equal(projected?.readyAt, persisted.createdAt);
+  } finally {
+    value.cleanup();
+  }
+});
+
+test('artifact authority readers reject retired persisted V1 records', () => {
+  const value = fixture();
+  try {
+    captureAndMaterialize(value);
+    const persisted = buildArtifact(value);
+    const target = interventionEngineArtifactRecordPath(
+      value.stateRoot,
+      persisted.artifact.artifactId,
+    );
+    const legacyRecord = JSON.parse(fs.readFileSync(target, 'utf8')) as Record<
+      string,
+      any
+    >;
+    legacyRecord.kind = 'persisted-intervention-engine-artifact.v1';
+    delete legacyRecord.workflowBindingDigest;
+    delete legacyRecord.workflowStatus;
+    const { recordDigest: _recordDigest, ...legacyPayload } = legacyRecord;
+    legacyRecord.recordDigest = digest(canonicalJson(legacyPayload));
+    const legacyBytes = `${canonicalJson(legacyRecord)}\n`;
+    fs.writeFileSync(target, legacyBytes, { mode: 0o600 });
+
+    for (const read of [
+      () =>
+        readStoredInterventionEngineArtifact(
+          value.stateRoot,
+          persisted.artifact.artifactId,
+        ),
+      () =>
+        readInterventionEngineArtifact(
+          value.stateRoot,
+          persisted.artifact.artifactId,
+        ),
+    ]) {
+      assert.throws(
+        read,
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'INTERVENTION_ENGINE_ARTIFACT_RECORD_CORRUPT',
+      );
+    }
+    assert.equal(fs.readFileSync(target, 'utf8'), legacyBytes);
   } finally {
     value.cleanup();
   }

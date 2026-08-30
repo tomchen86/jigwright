@@ -13,16 +13,14 @@ import {
 const MAX_RECORD_BYTES = 4 * 1024 * 1024;
 
 export interface StoredInterventionEngineArtifact {
-  kind:
-    | 'persisted-intervention-engine-artifact.v1'
-    | 'persisted-intervention-engine-artifact.v2';
+  kind: 'persisted-intervention-engine-artifact.v2';
   parentChangeId: string;
   interventionChangeId: string;
   checkpointId: Sha256Digest;
   artifact: EngineArtifact;
   executablePath: string;
-  workflowBindingDigest?: Sha256Digest;
-  workflowStatus?: 'repair-active';
+  workflowBindingDigest: Sha256Digest;
+  workflowStatus: 'repair-active';
   createdAt: string;
   recordDigest: Sha256Digest;
 }
@@ -61,14 +59,11 @@ export function readStoredInterventionEngineArtifact(
   if (
     !isRecord(value) ||
     `${canonicalJson(value)}\n` !== raw ||
-    ![
-      'persisted-intervention-engine-artifact.v1',
-      'persisted-intervention-engine-artifact.v2',
-    ].includes(String(value.kind))
+    value.kind !== 'persisted-intervention-engine-artifact.v2'
   ) {
     throw artifactRecordCorrupt();
   }
-  const v1Keys = [
+  const keys = [
     'artifact',
     'checkpointId',
     'createdAt',
@@ -77,14 +72,11 @@ export function readStoredInterventionEngineArtifact(
     'kind',
     'parentChangeId',
     'recordDigest',
+    'workflowBindingDigest',
+    'workflowStatus',
   ];
   if (
-    !hasExactKeys(
-      value,
-      value.kind === 'persisted-intervention-engine-artifact.v2'
-        ? [...v1Keys, 'workflowBindingDigest', 'workflowStatus']
-        : v1Keys,
-    ) ||
+    !hasExactKeys(value, keys) ||
     !verifyRecordDigest(value) ||
     !isNonEmptyTrimmed(value.parentChangeId) ||
     !isNonEmptyTrimmed(value.interventionChangeId) ||
@@ -103,9 +95,8 @@ export function readStoredInterventionEngineArtifact(
   if (
     artifact.artifactId !== artifactId ||
     artifact.artifactId !== value.artifact.artifactId ||
-    (value.kind === 'persisted-intervention-engine-artifact.v2' &&
-      (!isDigest(value.workflowBindingDigest) ||
-        value.workflowStatus !== 'repair-active'))
+    !isDigest(value.workflowBindingDigest) ||
+    value.workflowStatus !== 'repair-active'
   ) {
     throw artifactRecordCorrupt();
   }
