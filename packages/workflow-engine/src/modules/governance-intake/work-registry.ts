@@ -832,127 +832,6 @@ export function reconcileArchivedWorkItems(
   };
 }
 
-export function updateLegacyIssueCompatibilityAlias(
-  repositoryRoot: string,
-  requestedAlias: string,
-  field: 'title' | 'status' | 'priority' | 'notes',
-  requestedValue: string,
-  now: () => string = () => new Date().toISOString(),
-): WorkItemV1 {
-  if (!/^ISS-[0-9]+$/.test(requestedAlias)) {
-    throw registryInvalid('Legacy issue alias is invalid.');
-  }
-  const item = showWorkItem(repositoryRoot, requestedAlias);
-  const itemPath = findWorkItemPath(repositoryRoot, item.id);
-  const before = fs.readFileSync(itemPath, 'utf8');
-  if (item.stage === 'closed') {
-    throw compatibilityUnsupported(
-      'A closed Work Item cannot be changed through the legacy issue alias.',
-    );
-  }
-  const at = canonicalTimestamp(now());
-  let next: WorkItemV1;
-  if (field === 'title') {
-    next = { ...item, title: boundedText(requestedValue, 160, 'title') };
-  } else if (field === 'notes') {
-    next = {
-      ...item,
-      interpretation: {
-        ...item.interpretation,
-        summary: boundedText(requestedValue, 2_000, 'summary'),
-      },
-    };
-  } else if (field === 'priority') {
-    const lane = legacyPriorityLane(requestedValue);
-    next = {
-      ...item,
-      lane,
-      timeline:
-        item.lane === lane
-          ? item.timeline
-          : [
-              ...item.timeline,
-              { at, event: 'prioritized' as const, changeId: null },
-            ],
-    };
-  } else if (requestedValue === 'icebox') {
-    next = {
-      ...item,
-      lane: 'icebox',
-      timeline:
-        item.lane === 'icebox'
-          ? item.timeline
-          : [
-              ...item.timeline,
-              { at, event: 'prioritized' as const, changeId: null },
-            ],
-    };
-  } else if (requestedValue === 'proposed') {
-    if (item.stage === 'active') {
-      throw compatibilityUnsupported(
-        'An active Work Item cannot be demoted through the legacy issue alias.',
-      );
-    }
-    next = item;
-  } else if (requestedValue === 'done') {
-    return closeLegacyIssueCompatibilityAlias(
-      repositoryRoot,
-      requestedAlias,
-      at.slice(0, 10),
-      item.interpretation.summary,
-    );
-  } else {
-    throw compatibilityUnsupported(
-      'Legacy in-progress and blocked states require canonical Work Item promotion or blocker review.',
-    );
-  }
-  replaceCanonicalFileExpected(itemPath, before, next);
-  return next;
-}
-
-export function closeLegacyIssueCompatibilityAlias(
-  repositoryRoot: string,
-  requestedAlias: string,
-  requestedDate: string,
-  requestedNotes: string,
-): WorkItemV1 {
-  if (!/^ISS-[0-9]+$/.test(requestedAlias)) {
-    throw registryInvalid('Legacy issue alias is invalid.');
-  }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) {
-    throw registryInvalid('Legacy issue closure date is invalid.');
-  }
-  const at = canonicalTimestamp(`${requestedDate}T00:00:00.000Z`);
-  const item = showWorkItem(repositoryRoot, requestedAlias);
-  const itemPath = findWorkItemPath(repositoryRoot, item.id);
-  const before = fs.readFileSync(itemPath, 'utf8');
-  if (item.stage === 'active' || item.changeRefs.length > 0) {
-    throw compatibilityUnsupported(
-      'A promoted Work Item closes only through archive reconciliation.',
-    );
-  }
-  if (item.stage === 'closed') {
-    if (item.closure?.at === at && item.closure.outcome === 'delivered') {
-      return item;
-    }
-    throw compatibilityUnsupported(
-      'A closed Work Item cannot be rewritten through the legacy issue alias.',
-    );
-  }
-  const next: WorkItemV1 = {
-    ...item,
-    stage: 'closed',
-    interpretation: {
-      ...item.interpretation,
-      summary: boundedText(requestedNotes, 2_000, 'summary'),
-    },
-    timeline: [...item.timeline, { at, event: 'closed', changeId: null }],
-    closure: { at, outcome: 'delivered', changeId: null },
-  };
-  replaceCanonicalFileExpected(itemPath, before, next);
-  return next;
-}
-
 export function validateWorkRegistry(repositoryRoot: string): {
   itemCount: number;
   sourceCount: number;
@@ -1802,16 +1681,6 @@ function replaceTextFile(filePath: string, content: string): void {
   }
 }
 
-function legacyPriorityLane(
-  value: string,
-): Exclude<WorkItemLaneV1, null | 'icebox'> {
-  const normalized = value.toLowerCase();
-  if (normalized === 'now' || normalized === 'next' || normalized === 'later') {
-    return normalized;
-  }
-  throw registryInvalid('Legacy issue priority is invalid.');
-}
-
 function boundedText(value: string, maximum: number, field: string): string {
   if (
     typeof value !== 'string' ||
@@ -1849,18 +1718,6 @@ function projectionDrift(message: string) {
     message,
     ExitCode.verification,
     { recovery: 'Run `pnpm workflow work-item render --json`.' },
-  );
-}
-
-function compatibilityUnsupported(message: string) {
-  return workflowError(
-    'WORK_REGISTRY_COMPATIBILITY_TRANSITION_REQUIRED',
-    message,
-    ExitCode.conflict,
-    {
-      recovery:
-        'Resolve the ISS alias with `pnpm workflow work-item show <ISS-id> --json`, then use the canonical reviewed Work Item transition.',
-    },
   );
 }
 

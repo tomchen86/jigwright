@@ -5,6 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { runCli } from '../src/cli.ts';
+import {
+  renderIssues,
+  writeIssueData,
+} from '../src/adapters/consumer/repository/documents/issues.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { withChangeTransitionAuthority } from '../src/runtime/session-workspace/planning-lock.ts';
 import { assertCompletionTaskIds } from '../src/runtime/storage-journal/report-validation.ts';
@@ -17,7 +22,10 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../src/runtime/session-workspace/session-store.ts';
-import { createFixtureRepository } from './fixture.ts';
+import {
+  createFixtureRepository,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
 
 const SESSION_ID = 'session-report-boundary-hardening';
 
@@ -167,7 +175,7 @@ test('the global JSON flag is accepted once at the terminal argv position', () =
   }
 });
 
-test('help omits the retired Work Registry migration command', () => {
+test('help omits retired Work Registry migration and Issue commands', () => {
   const originalWrite = process.stdout.write;
   let output = '';
   process.stdout.write = ((chunk: string | Uint8Array) => {
@@ -180,6 +188,89 @@ test('help omits the retired Work Registry migration command', () => {
     process.stdout.write = originalWrite;
   }
   assert.doesNotMatch(output, /\bmigrate-issues\b/);
+  assert.doesNotMatch(output, /pnpm workflow issue\b/);
+});
+
+test('retired Issue commands fail before mutation while Work Registry remains available', () => {
+  const repository = createFixtureRepository();
+  writeIssueData(repository, {
+    schemaVersion: 1,
+    lastUpdated: '2026-08-30',
+    issues: [],
+  });
+  renderIssues(repository);
+  writeReadyV3ExemptChange(repository);
+  renderHandoff(repository);
+  const managedPaths = [
+    'docs/issues/issues.yaml',
+    'docs/ISSUE_LOG.md',
+    'docs/CURRENT_AND_NEXT_STEPS.md',
+  ].map((relativePath) => path.join(repository, relativePath));
+  const before = new Map(
+    managedPaths.map((filePath) => [
+      filePath,
+      {
+        bytes: fs.readFileSync(filePath),
+        mode: fs.statSync(filePath).mode & 0o777,
+      },
+    ]),
+  );
+  const originalStdoutWrite = process.stdout.write;
+  const originalStderrWrite = process.stderr.write;
+  let stdout = '';
+  let stderr = '';
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    stdout += chunk.toString();
+    return true;
+  }) as typeof process.stdout.write;
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    const issueExitCode = runCli(
+      [
+        'issue',
+        'add',
+        '--id',
+        'ISS-199',
+        '--category',
+        'bug',
+        '--title',
+        'Retired command',
+        '--status',
+        'blocked',
+        '--priority',
+        'Now',
+        '--notes',
+        'This command must not mutate repository state.',
+        '--json',
+      ],
+      repository,
+    );
+    assert.equal(issueExitCode, ExitCode.usage);
+    assert.equal(
+      (JSON.parse(stderr) as { error: { code: string } }).error.code,
+      'INVALID_USAGE',
+    );
+    for (const [filePath, expected] of before) {
+      assert.deepEqual(fs.readFileSync(filePath), expected.bytes);
+      assert.equal(fs.statSync(filePath).mode & 0o777, expected.mode);
+    }
+
+    stdout = '';
+    stderr = '';
+    assert.equal(runCli(['work-item', 'list', '--json'], repository), 0);
+    assert.equal(
+      (JSON.parse(stdout) as { command: string }).command,
+      'work-item',
+    );
+    assert.equal(stderr, '');
+  } finally {
+    process.stdout.write = originalStdoutWrite;
+    process.stderr.write = originalStderrWrite;
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('a terminal JSON-looking option value is not consumed as output mode', () => {

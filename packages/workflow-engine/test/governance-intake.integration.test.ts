@@ -15,7 +15,6 @@ import {
 } from '../src/modules/governance-intake/work-registry-grant.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
 import { createWorkRegistryFailGrantResult } from '../src/cli.ts';
-import { dispatchIssueCommand } from '../src/entrypoints/cli/issue-cli.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
@@ -1340,52 +1339,14 @@ test('Work Registry refuses legacy Issue migration and provenance', () => {
         aliases: ['ISS-101'],
       },
     );
-    assert.deepEqual(
-      dispatchIssueCommand(
-        ['update', 'ISS-101', '--field', 'priority', '--value', 'Now'],
-        repositoryRoot,
-      ),
-      {
-        action: 'update',
-        issueId: 'ISS-101',
-        field: 'priority',
-        canonical: 'work-registry',
-        workItemId: created.item.id,
-      },
-    );
-    assert.equal(showWorkItem(repositoryRoot, 'ISS-101').lane, 'now');
-    assert.deepEqual(
-      dispatchIssueCommand(
-        [
-          'close',
-          'ISS-101',
-          '--date',
-          '2026-08-25',
-          '--notes',
-          'Closed through the current compatibility alias.',
-        ],
-        repositoryRoot,
-      ),
-      {
-        action: 'close',
-        issueId: 'ISS-101',
-        canonical: 'work-registry',
-        workItemId: created.item.id,
-      },
-    );
-    assert.equal(showWorkItem(repositoryRoot, 'ISS-101').stage, 'closed');
-    dispatchIssueCommand(['render'], repositoryRoot);
-    assert.equal(
-      (dispatchIssueCommand(['validate'], repositoryRoot) as { valid: boolean })
-        .valid,
-      true,
-    );
+    assert.equal(showWorkItem(repositoryRoot, 'ISS-101').id, created.item.id);
+    assert.equal(showWorkItem(repositoryRoot, 'ISS-101').lane, 'next');
 
     const itemPath = path.join(repositoryRoot, created.relativePath);
     const legacy = JSON.parse(fs.readFileSync(itemPath, 'utf8')) as {
       interpretation: { status: string };
     };
-    legacy.interpretation.status = 'legacy-unknown';
+    legacy.interpretation.status = 'unsupported';
     fs.writeFileSync(itemPath, `${JSON.stringify(legacy)}\n`);
     assert.throws(
       () => validateWorkRegistry(repositoryRoot),

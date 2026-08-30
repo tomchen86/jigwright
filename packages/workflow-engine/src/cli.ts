@@ -143,7 +143,6 @@ import {
   assertProtectedTaskApplyDescendantSettlementGrantRequiredDetails,
   type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
 } from './modules/authority/protected-task-apply-descendant-settlement-grant.ts';
-import { dispatchIssueCommand } from './entrypoints/cli/issue-cli.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
 import type {
   WorkItemReviewV1,
@@ -2725,15 +2724,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
           discoverRepository(cwd).repositoryRoot,
         ),
       };
-    case 'issue':
-      return {
-        command,
-        ok: true,
-        result: dispatchIssueCommand(
-          rest,
-          discoverRepository(cwd).repositoryRoot,
-        ),
-      };
     case 'source':
     case 'finding':
     case 'work-item':
@@ -4425,7 +4415,6 @@ function usageText(): string {
     '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>> [--json]',
     '  pnpm workflow finding add --session <session-id> --input <finding-envelope.json> [--json]',
     '  pnpm workflow work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ... [--json]',
-    '  pnpm workflow issue <add|update|close|render|validate> ... [--json]',
     '  pnpm workflow maintainer grant preflight --profile <profile-id> [--json]',
     '  pnpm workflow maintainer grant approve-and-apply --change <change-id> --task <mandate-task-id> --profile <profile-id> --reason <text> --message <subject> --effects-file <json|none> [--waivers-file <json|none>] [--json]',
     '  pnpm workflow maintainer grant reissue-and-apply --grant <prior-grant-id> --reason <text> [--ttl-minutes <positive-integer>] [--waivers-file <json|none>] [--json]',

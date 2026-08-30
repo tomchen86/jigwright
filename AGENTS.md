@@ -128,13 +128,8 @@ Managed lifecycle:
 - `pnpm workflow abort <session-id> --reason "Reason" --json`
 - `pnpm workflow archive <id> --json`
 
-Managed documents and issues:
+Managed documents:
 
-- `pnpm workflow issue add ... --json`
-- `pnpm workflow issue update <id> ... --json`
-- `pnpm workflow issue close <id> ... --json`
-- `pnpm workflow issue render --json`
-- `pnpm workflow issue validate --json`
 - `pnpm workflow documents validate --json`
 - `pnpm workflow handoff validate --json`
 - `pnpm workflow document-refresh propose ... --json`

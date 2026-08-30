@@ -7,6 +7,8 @@ import path from 'node:path';
 import test from 'node:test';
 
 import * as repositoryContracts from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import * as governanceIntakeProduction from '../src/composition-root/governance-intake-production.ts';
+import * as workRegistry from '../src/modules/governance-intake/work-registry.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   assertDisposableDatabase,
@@ -55,6 +57,28 @@ test('retired investigation readers are absent', () => {
     'parseHistoricalInvestigationArtifact',
   ]) {
     assert.equal(exportName in repositoryContracts, false, exportName);
+  }
+});
+
+test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
+  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        repositoryRoot,
+        'packages/workflow-engine/src/entrypoints/cli/issue-cli.ts',
+      ),
+    ),
+    false,
+  );
+  assert.deepEqual(Object.keys(governanceIntakeProduction), [
+    'renderGovernanceIntakeHandoff',
+  ]);
+  for (const exportName of [
+    'updateLegacyIssueCompatibilityAlias',
+    'closeLegacyIssueCompatibilityAlias',
+  ]) {
+    assert.equal(exportName in workRegistry, false, exportName);
   }
 });
 
@@ -457,11 +481,6 @@ test('agent guide documents the complete public workflow surface and source-size
     'pnpm workflow adapter evaluate',
     'pnpm workflow adapter availability-pilot',
     'pnpm workflow adapter verify-availability-pilot',
-    'pnpm workflow issue add',
-    'pnpm workflow issue update',
-    'pnpm workflow issue close',
-    'pnpm workflow issue render',
-    'pnpm workflow issue validate',
     'pnpm workflow maintainer grant',
     'pnpm workflow maintainer inspect',
     'pnpm workflow grant revoke',
@@ -485,6 +504,7 @@ test('agent guide documents the complete public workflow surface and source-size
   for (const command of commands) {
     assert.match(agents, new RegExp(command.replaceAll(' ', '\\s+')));
   }
+  assert.doesNotMatch(agents, /pnpm workflow issue\b/);
   assert.match(
     agents,
     /Legacy V1 issuance[\s\S]{0,160}public authority-session commands[\s\S]{0,160}entrypoints are absent[\s\S]{0,160}inspection parsers[\s\S]{0,40}cannot authorize[\s\S]{0,20}new[\s\S]{0,5}work/i,
