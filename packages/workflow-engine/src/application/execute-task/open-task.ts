@@ -91,15 +91,15 @@ export type OpenTaskPhase =
   'prepared' | 'plan-committed' | 'session-active' | 'completed';
 
 export type OpenTaskJournal = Readonly<{
-  schemaVersion: 1 | 2;
-  kind: 'open-task-transaction.v1' | 'open-task-transaction.v2';
+  schemaVersion: 2;
+  kind: 'open-task-transaction.v2';
   transactionId: string;
   phase: OpenTaskPhase;
   changeId: string;
   taskId: string;
   mandateTaskId: string | null;
   mandateBinding: TaskMandateBinding | null;
-  authorizationPolicyDigest?: string;
+  authorizationPolicyDigest: string;
   repositoryRoot: string;
   gitCommonDirectory: string;
   worktree: string;
@@ -1056,7 +1056,6 @@ function assertJournalTaskAuthorization(
   cwd: string,
   journal: OpenTaskJournal,
 ): void {
-  if (journal.schemaVersion === 1) return;
   const repository = discoverRepository(cwd);
   const contract = loadChangeContract(
     repository.repositoryRoot,
@@ -1195,13 +1194,7 @@ function createPreparedJournal(
     taskId: input.taskId,
     mandateTaskId: input.mandateTaskId,
     mandateBinding: structuredClone(input.mandateBinding),
-    authorizationPolicyDigest:
-      input.authorizationPolicyDigest ??
-      (() => {
-        throw openTaskUnsafe(
-          'Open-task authorization policy digest is missing.',
-        );
-      })(),
+    authorizationPolicyDigest: input.authorizationPolicyDigest,
     repositoryRoot: input.repositoryRoot,
     gitCommonDirectory: input.gitCommonDirectory,
     worktree: input.worktree,
@@ -1398,6 +1391,7 @@ function parseJournal(input: unknown): OpenTaskJournal {
   }
   if (!isRecord(value)) throw openTaskUnsafe('Open-task journal is malformed.');
   const commonKeys = [
+    'authorizationPolicyDigest',
     'baselineTree',
     'branch',
     'changeId',
@@ -1420,17 +1414,11 @@ function parseJournal(input: unknown): OpenTaskJournal {
     'transactionId',
     'worktree',
   ];
-  const schemaVersion = value.schemaVersion;
-  const expectedKeys = [
-    ...commonKeys,
-    ...(schemaVersion === 2 ? ['authorizationPolicyDigest'] : []),
-  ].sort();
+  const expectedKeys = commonKeys.sort();
   if (
     Object.keys(value).sort().join('\0') !== expectedKeys.join('\0') ||
-    (schemaVersion !== 1 && schemaVersion !== 2) ||
-    (schemaVersion === 1
-      ? value.kind !== 'open-task-transaction.v1'
-      : value.kind !== 'open-task-transaction.v2') ||
+    value.schemaVersion !== 2 ||
+    value.kind !== 'open-task-transaction.v2' ||
     (value.phase !== 'prepared' &&
       value.phase !== 'plan-committed' &&
       value.phase !== 'session-active' &&
@@ -1442,10 +1430,8 @@ function parseJournal(input: unknown): OpenTaskJournal {
     (value.mandateTaskId !== null &&
       (typeof value.mandateTaskId !== 'string' ||
         !MANDATE_TASK_ID.test(value.mandateTaskId))) ||
-    (schemaVersion === 1 && value.mandateTaskId === null) ||
-    (schemaVersion === 2 &&
-      (typeof value.authorizationPolicyDigest !== 'string' ||
-        !SHA256_PREFIX.test(value.authorizationPolicyDigest))) ||
+    typeof value.authorizationPolicyDigest !== 'string' ||
+    !SHA256_PREFIX.test(value.authorizationPolicyDigest) ||
     typeof value.repositoryRoot !== 'string' ||
     typeof value.gitCommonDirectory !== 'string' ||
     typeof value.worktree !== 'string' ||
@@ -1504,20 +1490,15 @@ function parseJournal(input: unknown): OpenTaskJournal {
     throw openTaskUnsafe('Open-task journal bindings are not exact.');
   }
   const journal: OpenTaskJournal = {
-    schemaVersion,
-    kind:
-      schemaVersion === 1
-        ? 'open-task-transaction.v1'
-        : 'open-task-transaction.v2',
+    schemaVersion: 2,
+    kind: 'open-task-transaction.v2',
     transactionId: value.transactionId,
     phase: value.phase,
     changeId,
     taskId,
     mandateTaskId: value.mandateTaskId,
     mandateBinding,
-    ...(schemaVersion === 2
-      ? { authorizationPolicyDigest: value.authorizationPolicyDigest as string }
-      : {}),
+    authorizationPolicyDigest: value.authorizationPolicyDigest,
     repositoryRoot: value.repositoryRoot,
     gitCommonDirectory: value.gitCommonDirectory,
     worktree: value.worktree,
@@ -1647,17 +1628,12 @@ function transactionDigest(
     .createHash('sha256')
     .update(
       canonicalJson({
-        schema:
-          value.schemaVersion === 2
-            ? 'open-task-transaction.v2'
-            : 'open-task-transaction.v1',
+        schema: 'open-task-transaction.v2',
         changeId: value.changeId,
         taskId: value.taskId,
         mandateTaskId: value.mandateTaskId,
         mandateBinding: value.mandateBinding,
-        ...(value.schemaVersion === 2
-          ? { authorizationPolicyDigest: value.authorizationPolicyDigest }
-          : {}),
+        authorizationPolicyDigest: value.authorizationPolicyDigest,
         repositoryRoot: value.repositoryRoot,
         gitCommonDirectory: value.gitCommonDirectory,
         worktree: value.worktree,

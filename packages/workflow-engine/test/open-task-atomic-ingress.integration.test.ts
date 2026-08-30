@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -78,6 +79,72 @@ test('ordinary open-task crash recovery preserves explicit no-mandate authority'
       ),
     );
     assert.equal(session.mandateBinding, undefined);
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('open-task journal reader rejects legacy V1 transactions', () => {
+  const fixture = prepareOpenTaskFixture('atomic-open-v1-journal');
+  try {
+    assert.throws(
+      () =>
+        openTask(
+          fixture.repository,
+          fixture.changeId,
+          '1.1',
+          fixture.mandate.taskId,
+          {
+            mandate: { signer: fixture.mandate.signer },
+            testCrashAfter: 'journal-prepared',
+          },
+        ),
+      /Simulated open-task interruption/u,
+    );
+    const prepared = readOpenTaskJournal(
+      fixture.repository,
+      fixture.changeId,
+      '1.1',
+    );
+    assert.ok(prepared);
+    const legacyJournal: Record<string, unknown> = structuredClone(prepared);
+    delete legacyJournal.authorizationPolicyDigest;
+    legacyJournal.schemaVersion = 1;
+    legacyJournal.kind = 'open-task-transaction.v1';
+    legacyJournal.transactionId = crypto
+      .createHash('sha256')
+      .update(
+        canonicalJson({
+          schema: 'open-task-transaction.v1',
+          changeId: prepared.changeId,
+          taskId: prepared.taskId,
+          mandateTaskId: prepared.mandateTaskId,
+          mandateBinding: prepared.mandateBinding,
+          repositoryRoot: prepared.repositoryRoot,
+          gitCommonDirectory: prepared.gitCommonDirectory,
+          worktree: prepared.worktree,
+          branch: prepared.branch,
+          parentCommit: prepared.parentCommit,
+          parentTree: prepared.parentTree,
+          planningCommit: prepared.planningCommit,
+          baselineTree: prepared.baselineTree,
+          reportId: prepared.reportId,
+          changedPaths: prepared.changedPaths,
+          sessionId: prepared.sessionId,
+          createdAt: prepared.createdAt,
+        }),
+      )
+      .digest('hex');
+    fs.writeFileSync(
+      openTaskJournalPath(fixture),
+      `${canonicalJson(legacyJournal)}\n`,
+      { mode: 0o600 },
+    );
+
+    assert.throws(
+      () => readOpenTaskJournal(fixture.repository, fixture.changeId, '1.1'),
+      (error) => isWorkflowError(error, 'OPEN_TASK_JOURNAL_CORRUPT'),
+    );
   } finally {
     fixture.dispose();
   }
