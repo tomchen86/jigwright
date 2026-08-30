@@ -487,6 +487,95 @@ export function completeProviderNativeSessionTurnV1(
   });
 }
 
+/**
+ * Persist a terminal fact for one already-published launch claim without
+ * re-running mutable admission policy. Claim creation remains the authority
+ * boundary; completion is exact, immutable execution evidence.
+ */
+export function completeClaimedProviderNativeSessionTurnV1(
+  paths: InvestigationRuntimePaths,
+  candidate: CompleteProviderNativeSessionTurnInputV1,
+): ProviderNativeSessionCompletionV1 {
+  const input = assertCompletionInput(candidate);
+  const claim = assertProviderNativeSessionClaimV1(
+    readBoundedCanonicalJson(
+      paths,
+      claimObjectPath(storePaths(paths), input.claimDigest),
+      MAX_OBJECT_BYTES,
+    ),
+  );
+  const scope = claim.scope;
+  if (
+    claim.claimDigest !== input.claimDigest ||
+    scope.changeId !== input.changeId ||
+    scope.planningGeneration !== input.planningGeneration ||
+    scope.assignmentRecordDigest !== input.assignmentRecordDigest ||
+    scope.sessionSlotId !== input.sessionSlotId
+  ) {
+    throw storeConflict();
+  }
+  return withScopeLock(paths, scope, () => {
+    const chain = readChainForScope(paths, scope);
+    const turnIndex = chain.turns.findIndex(
+      ({ claim: current }) => current.claimDigest === input.claimDigest,
+    );
+    if (turnIndex < 0) throw storeConflict();
+    const turn = chain.turns[turnIndex]!;
+    const binding = bindingForClaim(paths, chain, turnIndex);
+    const materialized = createProviderNativeSessionCompletionV1({
+      claim: turn.claim,
+      binding,
+      terminal: input.terminal,
+    });
+    if (turn.completion !== null) {
+      if (
+        turn.completion.completionDigest !==
+        materialized.completion.completionDigest
+      ) {
+        throw storeConflict();
+      }
+      return turn.completion;
+    }
+    if (turnIndex !== chain.turns.length - 1 || chain.state !== 'claimed') {
+      throw storeConflict();
+    }
+
+    const locations = storePaths(paths);
+    if (materialized.handle !== null) {
+      publishCanonicalCreateOnly(
+        paths,
+        scope.scopeKey,
+        handleObjectPath(locations, materialized.handle.handleDigest),
+        materialized.handle,
+        MAX_HANDLE_BYTES,
+      );
+    }
+    publishCanonicalCreateOnly(
+      paths,
+      scope.scopeKey,
+      completionObjectPath(locations, materialized.completion.completionDigest),
+      materialized.completion,
+      MAX_OBJECT_BYTES,
+    );
+    publishCanonicalCreateOnly(
+      paths,
+      scope.scopeKey,
+      completionRefPath(locations, scope.scopeKey, turn.claim.turn),
+      createCompletionRef(materialized.completion),
+      MAX_REF_BYTES,
+    );
+    const published = readChainForScope(paths, scope);
+    const publishedCompletion = published.turns[turnIndex]?.completion;
+    if (
+      publishedCompletion?.completionDigest !==
+      materialized.completion.completionDigest
+    ) {
+      throw storeInvalid();
+    }
+    return publishedCompletion;
+  });
+}
+
 /** Read and revalidate the complete immutable chain without exposing handles. */
 export function readProviderNativeSessionChainV1(
   paths: InvestigationRuntimePaths,

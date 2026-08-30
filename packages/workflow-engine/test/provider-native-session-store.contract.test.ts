@@ -51,6 +51,7 @@ import {
 import {
   claimProviderNativeSessionTurnV2,
   claimProviderNativeSessionTurnV1,
+  completeClaimedProviderNativeSessionTurnV1,
   completeProviderNativeSessionTurnV2,
   completeProviderNativeSessionTurnV1,
   inspectProviderNativeSessionChainV2,
@@ -1680,6 +1681,35 @@ test('V1 native-session claim, read, and completion reverify exact role-assignme
       readChain(state, verifyAssignmentAuthority).state,
       'resumable',
     );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('V1 native-session terminal fact persists from the immutable claim after authority drift', () => {
+  const state = fixture({ belowFloor: true });
+  try {
+    const claim = claimTurn(
+      state,
+      claimInput(state, null, 'below-floor-terminal-after-drift'),
+      () => undefined,
+    );
+    assert.ok(claim.binding);
+
+    const completion = completeClaimedProviderNativeSessionTurnV1(state.paths, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claim.claim.claimDigest,
+      terminal: successfulTerminal(
+        claim.binding!,
+        'provider-native-terminal-after-authority-drift',
+      ),
+    });
+
+    assert.equal(completion.claimDigest, claim.claim.claimDigest);
+    assert.equal(completion.disposition, 'usable');
   } finally {
     state.cleanup();
   }

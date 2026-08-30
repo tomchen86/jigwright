@@ -38,7 +38,10 @@ import {
   verifyPullRequestWithPreMergeAssurance,
 } from '../src/entrypoints/ci/pre-merge-assurance-git.ts';
 import { runCli } from '../src/cli.ts';
-import { startSession } from '../src/application/execute-task/session.ts';
+import {
+  abortSession,
+  startSession,
+} from '../src/application/execute-task/session.ts';
 import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   type TaskDiffReviewContinuationSubmission,
@@ -488,6 +491,69 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
     assert.equal(
       reconcileTaskDiffReview(fixture.repository, fixture.sessionId).state,
       'satisfied',
+    );
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('TaskDiffReview worker preserves terminal facts and releases its fence after owner termination', () => {
+  const fixture = createTaskDiffWorkerFixture('owner-terminated');
+  try {
+    const submission = validSubmission(
+      fixture.reviewedBlobObjectId,
+      fixture.riskPathDispositions,
+    );
+    const result = runProviderWorker(fixture.repository, fixture.invocationId, {
+      runner(input) {
+        abortSession(
+          fixture.repository,
+          fixture.sessionId,
+          'Terminate the owner after the provider was launched.',
+        );
+        return {
+          invocationId: fixture.invocationId,
+          providerId: input.providerId,
+          purpose: 'task-diff-review',
+          requestDigest: input.request.requestDigest,
+          semanticOutput: submission,
+          semanticOutputDigest: sha256(canonicalJson(submission)),
+          assurance: 'unchanged-governed-projection',
+          projection: {
+            unchanged: true,
+            changedCategories: [],
+            beforeDigest: '9'.repeat(64),
+            afterDigest: '9'.repeat(64),
+          },
+          sameUserProcessConfined: false,
+          residuals: [...PROVIDER_RUNNER_RESIDUALS],
+          executable: builtInProviderExecutableIdentityForTest(
+            input.providerId,
+          ),
+          elapsedMs: 8,
+          providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
+            input.providerId,
+          ),
+        };
+      },
+    });
+
+    assert.equal(result.state, 'succeeded');
+    assert.equal(
+      readProviderInvocation(fixture.runtime, fixture.invocationId).state,
+      'succeeded',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          fixture.runtime.locks,
+          `${fixture.invocationId}.worker-active`,
+        ),
+      ),
+      false,
+    );
+    assert.throws(() =>
+      reconcileTaskDiffReview(fixture.repository, fixture.sessionId),
     );
   } finally {
     fixture.dispose();

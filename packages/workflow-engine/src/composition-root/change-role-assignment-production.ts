@@ -65,6 +65,7 @@ import {
 } from '../runtime/storage-journal/change-role-assignment-grant-store.ts';
 import {
   claimProviderNativeSessionTurnV1,
+  completeClaimedProviderNativeSessionTurnV1,
   completeProviderNativeSessionTurnV1,
   readProviderNativeSessionChainV1,
 } from '../runtime/storage-journal/provider-native-session-store.ts';
@@ -845,42 +846,63 @@ function createNativeSessionTurnController(
       });
     },
     complete(turn) {
-      const completion = completeProviderNativeSessionTurnV1(
-        input.runtime,
-        {
-          changeId: record.changeId,
-          planningGeneration: record.planningGeneration,
-          assignmentRecordDigest: record.recordDigest,
-          sessionSlotId: slot.sessionSlotId,
-          claimDigest: turn.claimDigest,
-          terminal: turn.terminal,
-        },
-        (snapshot) =>
-          assertPinnedCentralRoleProviderDefaultSnapshot(
-            input.repositoryRoot,
-            snapshot,
-          ),
-        (snapshot) =>
-          assertPinnedAgentRolePlanV2Snapshot(input.repositoryRoot, snapshot),
-        (evidence) => verifyHostConfiguration(sources, evidence),
-        (evidence) =>
-          verifyProviderRegistry(
-            input,
-            sources,
-            initialAuthorization,
-            evidence,
-          ),
-        (snapshot) => verifyDataAuthorization(input, sources, snapshot),
-        (evidence) => verifySessionCapabilities(input, sources, evidence),
-        (context) => verifyProtectedContext(input, sources, context),
-        (assignment) =>
-          verifyCompletedAssignmentGrant(input, assignment, grantAuthority),
-      );
+      const terminalInput = {
+        changeId: record.changeId,
+        planningGeneration: record.planningGeneration,
+        assignmentRecordDigest: record.recordDigest,
+        sessionSlotId: slot.sessionSlotId,
+        claimDigest: turn.claimDigest,
+        terminal: turn.terminal,
+      } as const;
+      let completion;
+      try {
+        completion = completeProviderNativeSessionTurnV1(
+          input.runtime,
+          terminalInput,
+          (snapshot) =>
+            assertPinnedCentralRoleProviderDefaultSnapshot(
+              input.repositoryRoot,
+              snapshot,
+            ),
+          (snapshot) =>
+            assertPinnedAgentRolePlanV2Snapshot(input.repositoryRoot, snapshot),
+          (evidence) => verifyHostConfiguration(sources, evidence),
+          (evidence) =>
+            verifyProviderRegistry(
+              input,
+              sources,
+              initialAuthorization,
+              evidence,
+            ),
+          (snapshot) => verifyDataAuthorization(input, sources, snapshot),
+          (evidence) => verifySessionCapabilities(input, sources, evidence),
+          (context) => verifyProtectedContext(input, sources, context),
+          (assignment) =>
+            verifyCompletedAssignmentGrant(input, assignment, grantAuthority),
+        );
+      } catch (error) {
+        if (!isPostClaimTerminalCurrentnessChange(error)) throw error;
+        completion = completeClaimedProviderNativeSessionTurnV1(
+          input.runtime,
+          terminalInput,
+        );
+      }
       return Object.freeze({
         completionDigest: completion.completionDigest,
       });
     },
   });
+}
+
+function isPostClaimTerminalCurrentnessChange(error: unknown): boolean {
+  if (!(error instanceof Error) || !('code' in error)) return false;
+  return [
+    'AGENT_PROVIDER_CONFIG_FILE_STALE',
+    'AGENT_PROVIDER_CONFIG_FILE_UNAVAILABLE',
+    'AGENT_PROVIDER_CONFIG_FILE_UNSAFE',
+    'AGENT_RUNTIME_ASSIGNMENT_SOURCE_STALE',
+    'AGENT_RUNTIME_GRANT_REQUIRED',
+  ].includes(String(error.code));
 }
 
 function verifyCompletedAssignmentGrant(

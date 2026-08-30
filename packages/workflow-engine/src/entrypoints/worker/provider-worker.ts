@@ -64,13 +64,11 @@ import {
   completeProviderInvocationFromRunner,
   completeProviderInvocationFromRunnerUnderLifecycleLock,
   failProviderInvocation,
-  failProviderInvocationUnderLifecycleLock,
   prepareProviderInvocationAcceptanceBinding,
   providerCompletionCandidateExists,
   recoverProviderInvocationCompletion,
   recoverProviderInvocationCompletionForWorkerUnderLifecycleLock,
   releaseProviderInvocationWorkerFence,
-  releaseProviderInvocationWorkerFenceUnderLifecycleLock,
   readPlanReviewSnapshotRuntime,
   readProviderInvocation,
   readProviderInvocationRuntimeReceipt,
@@ -505,20 +503,6 @@ function runProviderWorkerWithExecution(
         ? {}
         : { runtimeProgress: runtimeProgress() }),
     };
-    if (taskDiffReviewOwner !== null) {
-      return withCurrentTaskDiffReviewProviderLifecycle(
-        cwd,
-        initial,
-        taskDiffReviewOwner.sessionId,
-        (assertOwned) =>
-          completeProviderInvocationFromRunnerUnderLifecycleLock(
-            context.runtime,
-            request.invocationId,
-            completion,
-            assertOwned,
-          ),
-      );
-    }
     if (taskStrategyImplementationOwner === null) {
       return completeProviderInvocationFromRunner(
         context.runtime,
@@ -566,24 +550,11 @@ function runProviderWorkerWithExecution(
           }),
       ...(repair === null ? {} : { repair }),
     };
-    return taskDiffReviewOwner === null
-      ? failProviderInvocation(
-          context.runtime,
-          request.invocationId,
-          failureInput,
-        )
-      : withCurrentTaskDiffReviewProviderLifecycle(
-          cwd,
-          initial,
-          taskDiffReviewOwner.sessionId,
-          (assertOwned) =>
-            failProviderInvocationUnderLifecycleLock(
-              context.runtime,
-              request.invocationId,
-              failureInput,
-              assertOwned,
-            ),
-        );
+    return failProviderInvocation(
+      context.runtime,
+      request.invocationId,
+      failureInput,
+    );
   };
   const renderTerminal = (
     terminal: ProviderInvocationRecord,
@@ -592,25 +563,10 @@ function runProviderWorkerWithExecution(
     return renderWorkerResult(terminal, true);
   };
   const releaseWorkerFence = () => {
-    if (taskDiffReviewOwner === null) {
-      releaseProviderInvocationWorkerFence(
-        context.runtime,
-        request.invocationId,
-        claim.workerFenceToken,
-      );
-      return;
-    }
-    withCurrentTaskDiffReviewProviderLifecycle(
-      cwd,
-      initial,
-      taskDiffReviewOwner.sessionId,
-      (assertOwned) =>
-        releaseProviderInvocationWorkerFenceUnderLifecycleLock(
-          context.runtime,
-          request.invocationId,
-          claim.workerFenceToken,
-          assertOwned,
-        ),
+    releaseProviderInvocationWorkerFence(
+      context.runtime,
+      request.invocationId,
+      claim.workerFenceToken,
     );
   };
   let releaseSynchronously = true;
