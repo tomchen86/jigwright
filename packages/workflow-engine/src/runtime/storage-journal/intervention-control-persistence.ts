@@ -227,9 +227,9 @@ export interface PersistedTransitionObservation {
 }
 
 export interface PersistedEngineAdoptionRecord {
-  kind: 'persisted-engine-adoption.v1' | 'persisted-engine-adoption.v2';
+  kind: 'persisted-engine-adoption.v2';
   journal: EngineAdoptionJournal;
-  /** Required for new production v2 authority; absent on legacy/substrate records. */
+  /** Present when adoption is prepared from a persisted artifact record. */
   artifactRecordDigest?: Sha256Digest;
   maintenanceGrantEnvelope: HarnessMaintenanceGrantEnvelope;
   grantEnvelopeDigest: Sha256Digest;
@@ -1615,9 +1615,7 @@ export function readPersistedEngineAdoption(
   );
   if (
     !isRecord(value) ||
-    !['persisted-engine-adoption.v1', 'persisted-engine-adoption.v2'].includes(
-      String(value.kind),
-    ) ||
+    value.kind !== 'persisted-engine-adoption.v2' ||
     !hasExactKeys(
       value,
       [
@@ -1678,7 +1676,6 @@ function assertPersistedAdoptionWorkflowBinding(
   record: PersistedEngineAdoptionRecord,
 ): PersistedBootstrapSidecarSessionV2 {
   if (
-    record.kind !== 'persisted-engine-adoption.v2' ||
     record.journal.workflowBindingDigest === undefined ||
     record.journal.workflowStatus !== 'repair-active'
   ) {

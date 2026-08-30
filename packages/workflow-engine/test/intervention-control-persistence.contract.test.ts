@@ -9,12 +9,15 @@ import {
   createEngineArtifact,
   type HarnessMaintenanceGrantEnvelope,
 } from '../src/modules/authority/intervention-control.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   advancePersistedEngineAdoption,
+  engineAdoptionRecordPath,
   interventionControlPersistencePaths,
   interventionRecordPath,
   persistInterventionPlan,
   preparePersistedEngineAdoption,
+  readPersistedEngineAdoption,
   readPersistedIntervention,
   recoverPersistedEngineAdoption,
   rollbackPersistedEngineAdoption,
@@ -370,6 +373,66 @@ test('adoption journal persists CAS transitions and crash recovery through rollb
         .decision.authoritativeEngineDigest,
       intervention.parent.engineBinding,
     );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('persisted adoption reader rejects retired V1 records without mutation', () => {
+  const fixture = temporaryFixture();
+  try {
+    const intervention = persistInterventionPlan(
+      fixture.storeRoot,
+      interventionInput(fixture),
+    );
+    const artifact = createEngineArtifact({
+      sourceChangeId: 'intervention-B',
+      sourceDigest: digest('source-retired-adoption-v1'),
+      executableDigest: digest('engine-retired-adoption-v1'),
+      protocolVersion: 3,
+      canReadSessionSchemas: ['v4'],
+      writesSessionSchema: 'v4',
+      policySchemaVersion: 2,
+      smokeReportDigest: digest('smoke-retired-adoption-v1'),
+    });
+    const prepared = preparePersistedEngineAdoption(
+      fixture.storeRoot,
+      {
+        txId: 'retired-adoption-v1',
+        parentChangeId: 'parent-A',
+        artifact,
+        maintenanceGrantEnvelope: maintenanceEnvelope(
+          intervention.parent.engineBinding,
+        ),
+        priorLocalAdoptions: 0,
+      },
+      {
+        now: () => NOW,
+        verifyHumanSignature: () => true,
+      },
+    );
+    assert.equal(prepared.kind, 'persisted-engine-adoption.v2');
+
+    const target = engineAdoptionRecordPath(
+      fixture.storeRoot,
+      prepared.journal.txId,
+    );
+    const retired = JSON.parse(fs.readFileSync(target, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    retired.kind = 'persisted-engine-adoption.v1';
+    delete retired.recordDigest;
+    retired.recordDigest = digest(canonicalJson(retired));
+    const retiredBytes = `${canonicalJson(retired)}\n`;
+    fs.writeFileSync(target, retiredBytes, { mode: 0o600 });
+
+    assert.throws(
+      () =>
+        readPersistedEngineAdoption(fixture.storeRoot, prepared.journal.txId),
+      hasCode('INTERVENTION_ADOPTION_RECORD_CORRUPT'),
+    );
+    assert.equal(fs.readFileSync(target, 'utf8'), retiredBytes);
   } finally {
     fixture.cleanup();
   }
