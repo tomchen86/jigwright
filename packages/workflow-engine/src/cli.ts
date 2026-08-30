@@ -4428,7 +4428,7 @@ function usageText(): string {
     '  pnpm workflow adapter verify-availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
     '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>> [--json]',
     '  pnpm workflow finding add --session <session-id> --input <finding-envelope.json> [--json]',
-    '  pnpm workflow work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|migrate-issues|validate> ... [--json]',
+    '  pnpm workflow work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ... [--json]',
     '  pnpm workflow issue <add|update|close|render|validate> ... [--json]',
     '  pnpm workflow maintainer grant preflight --profile <profile-id> [--json]',
     '  pnpm workflow maintainer grant approve-and-apply --change <change-id> --task <mandate-task-id> --profile <profile-id> --reason <text> --message <subject> --effects-file <json|none> [--waivers-file <json|none>] [--json]',
