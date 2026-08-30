@@ -9,6 +9,7 @@ import test from 'node:test';
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import {
@@ -25,6 +26,7 @@ import {
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   readPlanReviewTargetSnapshotNode,
+  type PlanReviewSubject,
 } from '../src/modules/assurance/plan-review.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
@@ -954,11 +956,11 @@ function createPlanReviewRolloverHistory(name: string) {
   const repository = createFixtureRepository();
   const runtime = loadInvestigationRuntimeContext(repository).runtime;
   const ready = writeReadyV3ExemptChange(repository);
-  const context = deriveInvestigationFirstPlanningSubject(
-    repository,
-    loadChangeContract(repository, CHANGE_ID),
-  );
-  const investigationId = `investigation-${name}`;
+  const contract = loadChangeContract(repository, CHANGE_ID);
+  assert.ok(contract.investigation);
+  const investigationManifest = contract.investigation.manifest;
+  const context = deriveInvestigationFirstPlanningSubject(repository, contract);
+  const investigationId = investigationManifest.investigationId;
   const assignment = {
     role: 'plan-reviewer' as const,
     providerId: 'claude' as const,
@@ -967,33 +969,19 @@ function createPlanReviewRolloverHistory(name: string) {
     requiredIndependence: 'provider-independent' as const,
     achievedIndependence: 'provider-independent' as const,
   };
-  const sealNodeId = sha256(`${name}-seal-node`);
-  const sealResultDigest = sha256(`${name}-seal-result`);
-  const materialization = createEvidenceNode({
-    type: 'propose-planning-materialization',
-    nodeSchema: 'workflow.propose-planning-materialization.v1',
-    evaluator: 'workflow-propose.v1',
-    policyDigest: PROPOSE_POLICY_DIGEST,
-    exactInputDigests: {
-      artifacts: sha256(canonicalJson({})),
-      baseline: sha256(canonicalJson(context.subject.investigationBaseline)),
-      seal: sealNodeId,
+  const materialization = writeCurrentPlanningMaterialization(
+    runtime,
+    investigationManifest,
+    context.subject.investigationBaseline,
+    {
+      'proposal.md': sha256(
+        fs.readFileSync(
+          path.join(repository, 'openspec/changes', CHANGE_ID, 'proposal.md'),
+          'utf8',
+        ),
+      ),
     },
-    semanticParentResultDigests: { seal: sealResultDigest },
-    provenanceParentNodeIds: { seal: sealNodeId },
-    outputSchema: 'workflow.propose-planning-materialization-output.v1',
-    output: {
-      investigationId,
-      changeId: CHANGE_ID,
-      revision: 0,
-      baseline: context.subject.investigationBaseline,
-      artifacts: {},
-      sealNodeId,
-      sealResultDigest,
-    },
-    runtimeMetadata: {},
-  });
-  writeEvidenceNode(runtime, materialization);
+  );
   const authorization = createEvidenceNode({
     type: 'plan-review-authorization',
     nodeSchema: 'workflow.plan-review-authorization.v1',
@@ -1128,6 +1116,76 @@ function createManifest(
     architectureQuestion: 'Which private provider runtime may be pruned?',
     capabilityProfile: 'repository-read-only',
   };
+}
+
+function writeCurrentPlanningMaterialization(
+  runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  manifest: InvestigationManifestV3,
+  baseline: PlanReviewSubject['investigationBaseline'],
+  artifacts: Record<string, string>,
+) {
+  const investigationTargetDigest =
+    manifest.investigationApproval.investigationTargetDigest;
+  const sessionSnapshotDigest = manifest.authoring.sessionSnapshotDigest;
+  const authority = createEvidenceNode({
+    type: 'investigation-manifest-authority',
+    nodeSchema: 'investigation.manifest-authority.v1',
+    evaluator: 'workflow-propose.manifest-authority.v1',
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    exactInputDigests: {
+      manifest: manifest.manifestDigest,
+      investigationTarget: investigationTargetDigest,
+      sessionSnapshot: sessionSnapshotDigest,
+    },
+    semanticParentResultDigests: {},
+    provenanceParentNodeIds: {},
+    outputSchema: 'investigation.manifest-authority-output.v1',
+    output: {
+      repositoryId: manifest.repositoryId,
+      changeId: manifest.changeId,
+      investigationId: manifest.investigationId,
+      sessionRevision: manifest.authoring.sessionRevision,
+      sessionSnapshotDigest,
+      manifestDigest: manifest.manifestDigest,
+      investigationTargetDigest,
+    },
+    runtimeMetadata: {},
+  });
+  const materialization = createEvidenceNode({
+    type: 'propose-planning-materialization',
+    nodeSchema: 'workflow.propose-planning-materialization.v3',
+    evaluator: 'workflow-propose.v1',
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    exactInputDigests: {
+      artifacts: sha256(canonicalJson(artifacts)),
+      baseline: sha256(canonicalJson(baseline)),
+      manifestAuthority: authority.nodeId,
+      manifest: manifest.manifestDigest,
+      investigationTarget: investigationTargetDigest,
+      sessionSnapshot: sessionSnapshotDigest,
+    },
+    semanticParentResultDigests: {
+      manifestAuthority: authority.resultDigest,
+    },
+    provenanceParentNodeIds: { manifestAuthority: authority.nodeId },
+    outputSchema: 'workflow.propose-planning-materialization-output.v3',
+    output: {
+      investigationId: manifest.investigationId,
+      changeId: manifest.changeId,
+      semanticRevision: manifest.authoring.sessionRevision,
+      baseline,
+      artifacts,
+      manifestAuthorityNodeId: authority.nodeId,
+      manifestAuthorityResultDigest: authority.resultDigest,
+      manifestDigest: manifest.manifestDigest,
+      investigationTargetDigest,
+      sessionSnapshotDigest,
+    },
+    runtimeMetadata: {},
+  });
+  writeEvidenceNode(runtime, authority);
+  writeEvidenceNode(runtime, materialization);
+  return materialization;
 }
 
 function createRequest(

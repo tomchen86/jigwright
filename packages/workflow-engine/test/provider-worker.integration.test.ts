@@ -17,6 +17,7 @@ import { createTransitionRegistry } from '../src/modules/authority/grant-transit
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
@@ -46,6 +47,7 @@ import {
 import {
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
+  type PlanReviewSubject,
 } from '../src/modules/assurance/plan-review.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import { createCurrentAgentRuntimeAssignmentV1 } from '../src/composition-root/change-role-assignment-production.ts';
@@ -1593,11 +1595,15 @@ test('below-floor current role assignment blocks worker claim and detached spawn
     git(repository, ['commit', '-m', 'Add below-floor role override']);
 
     const ready = writeReadyV3ExemptChange(repository, changeId);
+    const contract = loadChangeContract(repository, changeId);
+    assert.ok(contract.investigation);
+    const investigationManifest = contract.investigation.manifest;
     const planningContext = deriveInvestigationFirstPlanningSubject(
       repository,
-      loadChangeContract(repository, changeId),
+      contract,
     );
     const subject = planningContext.subject;
+    const investigationId = investigationManifest.investigationId;
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(
       locator.gitCommonDirectory,
@@ -1612,35 +1618,19 @@ test('below-floor current role assignment blocks worker claim and detached spawn
       requiredIndependence: 'provider-independent' as const,
       achievedIndependence: 'provider-independent' as const,
     };
-    const materialization = createEvidenceNode({
-      type: 'propose-planning-materialization',
-      nodeSchema: 'workflow.propose-planning-materialization.v1',
-      evaluator: 'workflow-propose.v1',
-      policyDigest: PROPOSE_POLICY_DIGEST,
-      exactInputDigests: {
-        artifacts: sha256(canonicalJson({})),
-        baseline: sha256(canonicalJson(subject.investigationBaseline)),
-        seal: sha256('below-floor-seal-node'),
+    const materialization = writeCurrentPlanningMaterialization(
+      runtime,
+      investigationManifest,
+      subject.investigationBaseline,
+      {
+        'proposal.md': sha256(
+          fs.readFileSync(
+            path.join(repository, 'openspec/changes', changeId, 'proposal.md'),
+            'utf8',
+          ),
+        ),
       },
-      semanticParentResultDigests: {
-        seal: sha256('below-floor-seal-result'),
-      },
-      provenanceParentNodeIds: {
-        seal: sha256('below-floor-seal-node'),
-      },
-      outputSchema: 'workflow.propose-planning-materialization-output.v1',
-      output: {
-        investigationId: 'investigation-plan-review-below-floor',
-        changeId,
-        revision: 0,
-        baseline: subject.investigationBaseline,
-        artifacts: {},
-        sealNodeId: sha256('below-floor-seal-node'),
-        sealResultDigest: sha256('below-floor-seal-result'),
-      },
-      runtimeMetadata: {},
-    });
-    writeEvidenceNode(runtime, materialization);
+    );
     const authorization = createEvidenceNode({
       type: 'plan-review-authorization',
       nodeSchema: 'workflow.plan-review-authorization.v1',
@@ -1722,7 +1712,7 @@ test('below-floor current role assignment blocks worker claim and detached spawn
       loadAiAdapterPolicy(repository),
     );
     createProviderInvocation(runtime, {
-      investigationId: 'investigation-plan-review-below-floor',
+      investigationId,
       changeId,
       attempt: 1,
       manifest,
@@ -2010,9 +2000,12 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
     git(repository, ['add', 'workflow/role-provider-default.json']);
     git(repository, ['commit', '-m', 'Add ordinary role provider defaults']);
     const ready = writeReadyV3ExemptChange(repository);
+    const contract = loadChangeContract(repository, 'demo-change');
+    assert.ok(contract.investigation);
+    const investigationManifest = contract.investigation.manifest;
     const context = deriveInvestigationFirstPlanningSubject(
       repository,
-      loadChangeContract(repository, 'demo-change'),
+      contract,
     );
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(
@@ -2020,7 +2013,7 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
       'workflow-engine',
     );
     const invocationId = 'invocation-plan-review-worker';
-    const investigationId = 'investigation-plan-review-worker';
+    const investigationId = investigationManifest.investigationId;
     const assignment = {
       role: 'plan-reviewer' as const,
       providerId: 'claude' as const,
@@ -2029,34 +2022,24 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
       requiredIndependence: 'provider-independent' as const,
       achievedIndependence: 'provider-independent' as const,
     };
-    const artifacts = {};
-    const sealNodeId = sha256('plan-review-worker-seal-node');
-    const sealResultDigest = sha256('plan-review-worker-seal-result');
-    const materialization = createEvidenceNode({
-      type: 'propose-planning-materialization',
-      nodeSchema: 'workflow.propose-planning-materialization.v1',
-      evaluator: 'workflow-propose.v1',
-      policyDigest: PROPOSE_POLICY_DIGEST,
-      exactInputDigests: {
-        artifacts: sha256(canonicalJson(artifacts)),
-        baseline: sha256(canonicalJson(context.subject.investigationBaseline)),
-        seal: sealNodeId,
+    const materialization = writeCurrentPlanningMaterialization(
+      runtime,
+      investigationManifest,
+      context.subject.investigationBaseline,
+      {
+        'proposal.md': sha256(
+          fs.readFileSync(
+            path.join(
+              repository,
+              'openspec/changes',
+              'demo-change',
+              'proposal.md',
+            ),
+            'utf8',
+          ),
+        ),
       },
-      semanticParentResultDigests: { seal: sealResultDigest },
-      provenanceParentNodeIds: { seal: sealNodeId },
-      outputSchema: 'workflow.propose-planning-materialization-output.v1',
-      output: {
-        investigationId,
-        changeId: 'demo-change',
-        revision: 0,
-        baseline: context.subject.investigationBaseline,
-        artifacts,
-        sealNodeId,
-        sealResultDigest,
-      },
-      runtimeMetadata: {},
-    });
-    writeEvidenceNode(runtime, materialization);
+    );
     const authorization = createEvidenceNode({
       type: 'plan-review-authorization',
       nodeSchema: 'workflow.plan-review-authorization.v1',
@@ -2412,6 +2395,76 @@ function intent() {
     explicitConfigKeys: [],
     renamePairs: [],
   };
+}
+
+function writeCurrentPlanningMaterialization(
+  runtime: ReturnType<typeof investigationRuntimePaths>,
+  manifest: InvestigationManifestV3,
+  baseline: PlanReviewSubject['investigationBaseline'],
+  artifacts: Record<string, string>,
+) {
+  const investigationTargetDigest =
+    manifest.investigationApproval.investigationTargetDigest;
+  const sessionSnapshotDigest = manifest.authoring.sessionSnapshotDigest;
+  const authority = createEvidenceNode({
+    type: 'investigation-manifest-authority',
+    nodeSchema: 'investigation.manifest-authority.v1',
+    evaluator: 'workflow-propose.manifest-authority.v1',
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    exactInputDigests: {
+      manifest: manifest.manifestDigest,
+      investigationTarget: investigationTargetDigest,
+      sessionSnapshot: sessionSnapshotDigest,
+    },
+    semanticParentResultDigests: {},
+    provenanceParentNodeIds: {},
+    outputSchema: 'investigation.manifest-authority-output.v1',
+    output: {
+      repositoryId: manifest.repositoryId,
+      changeId: manifest.changeId,
+      investigationId: manifest.investigationId,
+      sessionRevision: manifest.authoring.sessionRevision,
+      sessionSnapshotDigest,
+      manifestDigest: manifest.manifestDigest,
+      investigationTargetDigest,
+    },
+    runtimeMetadata: {},
+  });
+  const materialization = createEvidenceNode({
+    type: 'propose-planning-materialization',
+    nodeSchema: 'workflow.propose-planning-materialization.v3',
+    evaluator: 'workflow-propose.v1',
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    exactInputDigests: {
+      artifacts: sha256(canonicalJson(artifacts)),
+      baseline: sha256(canonicalJson(baseline)),
+      manifestAuthority: authority.nodeId,
+      manifest: manifest.manifestDigest,
+      investigationTarget: investigationTargetDigest,
+      sessionSnapshot: sessionSnapshotDigest,
+    },
+    semanticParentResultDigests: {
+      manifestAuthority: authority.resultDigest,
+    },
+    provenanceParentNodeIds: { manifestAuthority: authority.nodeId },
+    outputSchema: 'workflow.propose-planning-materialization-output.v3',
+    output: {
+      investigationId: manifest.investigationId,
+      changeId: manifest.changeId,
+      semanticRevision: manifest.authoring.sessionRevision,
+      baseline,
+      artifacts,
+      manifestAuthorityNodeId: authority.nodeId,
+      manifestAuthorityResultDigest: authority.resultDigest,
+      manifestDigest: manifest.manifestDigest,
+      investigationTargetDigest,
+      sessionSnapshotDigest,
+    },
+    runtimeMetadata: {},
+  });
+  writeEvidenceNode(runtime, authority);
+  writeEvidenceNode(runtime, materialization);
+  return materialization;
 }
 
 function lowerAdapterLimits(repository: string): void {

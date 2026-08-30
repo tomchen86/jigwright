@@ -6407,39 +6407,176 @@ test('publication recovery reclaims receipt publication temps before and after a
   }
 });
 
+test('ordinary planning materialization admission rejects retired V1 and V2 receipts without rewriting quarantine evidence', () => {
+  for (const version of [1, 2] as const) {
+    const fixture = investigationFixture(
+      `invocation-retired-materialization-v${version}`,
+    );
+    try {
+      const started = startFixture(fixture);
+      const artifacts = {};
+      const sealNodeId = sha256(`retired-materialization-v${version}-seal`);
+      const sealResultDigest = sha256(
+        `retired-materialization-v${version}-seal-result`,
+      );
+      const materialization = createEvidenceNode({
+        type: 'propose-planning-materialization',
+        nodeSchema: `workflow.propose-planning-materialization.v${version}`,
+        evaluator: 'workflow-propose.v1',
+        policyDigest: PROPOSE_POLICY_DIGEST,
+        exactInputDigests: {
+          artifacts: sha256(canonicalJson(artifacts)),
+          baseline: sha256(canonicalJson(started.baseline)),
+          seal: sealNodeId,
+        },
+        semanticParentResultDigests: { seal: sealResultDigest },
+        provenanceParentNodeIds: { seal: sealNodeId },
+        outputSchema: `workflow.propose-planning-materialization-output.v${version}`,
+        output: {
+          changeId: started.changeId,
+          investigationId: started.investigationId,
+          ...(version === 1
+            ? { revision: started.revision }
+            : { semanticRevision: started.semanticRevision }),
+          baseline: started.baseline,
+          artifacts,
+          sealNodeId,
+          sealResultDigest,
+        },
+        runtimeMetadata: {},
+      });
+      writeEvidenceNode(fixture.paths, materialization);
+      const evidencePath = path.join(
+        fixture.paths.refs,
+        `${started.changeId}.json`,
+      );
+      fs.writeFileSync(
+        evidencePath,
+        canonicalJson({
+          schemaVersion: 1,
+          changeId: started.changeId,
+          refs: {
+            'propose/planning-materialization': materialization.nodeId,
+          },
+        }),
+        { mode: 0o600 },
+      );
+      const objectPath = path.join(
+        fixture.paths.objects,
+        materialization.nodeId.slice(0, 2),
+        `${materialization.nodeId}.json`,
+      );
+      const exactEvidence = fs.readFileSync(evidencePath);
+      const exactObject = fs.readFileSync(objectPath);
+
+      assert.throws(
+        () =>
+          readInvestigationEvidenceRefsClosure(fixture.paths, started.changeId),
+        (error) => isWorkflowError(error, 'EVIDENCE_REF_INVALID'),
+      );
+      assert.throws(
+        () =>
+          inspectInvestigationResolutionState(
+            fixture.paths,
+            started.investigationId,
+            'fixture',
+          ),
+        (error) => isWorkflowError(error, 'EVIDENCE_REF_INVALID'),
+      );
+      const quarantined = inspectInvestigationQuarantineState(
+        fixture.paths,
+        started.investigationId,
+        'fixture',
+      );
+      assert.equal(quarantined.envelope.evidenceRefs, null);
+      assert.equal(quarantined.envelope.evidenceRefsClosureDigest, null);
+      assert.notEqual(quarantined.envelope.evidenceRefsDigest, null);
+      assert.notEqual(quarantined.envelope.ambiguityDigest, null);
+      assert.deepEqual(
+        quarantined.availableResolutions.map(({ kind }) => kind),
+        ['quarantine'],
+      );
+      assert.deepEqual(fs.readFileSync(evidencePath), exactEvidence);
+      assert.deepEqual(fs.readFileSync(objectPath), exactObject);
+    } finally {
+      fs.rmSync(fixture.repository, { recursive: true, force: true });
+    }
+  }
+});
+
 test('current materialization survives repeated lifecycle revisions but not a semantic milestone revision', () => {
   const fixture = investigationFixture(
     'invocation-semantic-materialization-revision',
   );
   try {
     const started = startFixture(fixture);
-    const artifacts = {};
-    const sealNodeId = sha256('semantic-materialization-seal');
-    const sealResultDigest = sha256('semantic-materialization-seal-result');
+    const artifacts = {
+      'proposal.md': sha256('semantic-materialization-proposal'),
+    };
+    const manifestDigest = sha256('semantic-materialization-manifest');
+    const investigationTargetDigest = sha256(
+      'semantic-materialization-investigation-target',
+    );
+    const sessionSnapshotDigest = sha256(`${canonicalJson(started)}\n`);
+    const manifestAuthority = createEvidenceNode({
+      type: 'investigation-manifest-authority',
+      nodeSchema: 'investigation.manifest-authority.v1',
+      evaluator: 'workflow-propose.manifest-authority.v1',
+      policyDigest: PROPOSE_POLICY_DIGEST,
+      exactInputDigests: {
+        manifest: manifestDigest,
+        investigationTarget: investigationTargetDigest,
+        sessionSnapshot: sessionSnapshotDigest,
+      },
+      semanticParentResultDigests: {},
+      provenanceParentNodeIds: {},
+      outputSchema: 'investigation.manifest-authority-output.v1',
+      output: {
+        repositoryId: 'fixture',
+        changeId: started.changeId,
+        investigationId: started.investigationId,
+        sessionRevision: started.revision,
+        sessionSnapshotDigest,
+        manifestDigest,
+        investigationTargetDigest,
+      },
+      runtimeMetadata: {},
+    });
     const materialization = createEvidenceNode({
       type: 'propose-planning-materialization',
-      nodeSchema: 'workflow.propose-planning-materialization.v2',
+      nodeSchema: 'workflow.propose-planning-materialization.v3',
       evaluator: 'workflow-propose.v1',
       policyDigest: PROPOSE_POLICY_DIGEST,
       exactInputDigests: {
         artifacts: sha256(canonicalJson(artifacts)),
         baseline: sha256(canonicalJson(started.baseline)),
-        seal: sealNodeId,
+        manifestAuthority: manifestAuthority.nodeId,
+        manifest: manifestDigest,
+        investigationTarget: investigationTargetDigest,
+        sessionSnapshot: sessionSnapshotDigest,
       },
-      semanticParentResultDigests: { seal: sealResultDigest },
-      provenanceParentNodeIds: { seal: sealNodeId },
-      outputSchema: 'workflow.propose-planning-materialization-output.v2',
+      semanticParentResultDigests: {
+        manifestAuthority: manifestAuthority.resultDigest,
+      },
+      provenanceParentNodeIds: {
+        manifestAuthority: manifestAuthority.nodeId,
+      },
+      outputSchema: 'workflow.propose-planning-materialization-output.v3',
       output: {
         changeId: started.changeId,
         investigationId: started.investigationId,
         semanticRevision: started.semanticRevision,
         baseline: started.baseline,
         artifacts,
-        sealNodeId,
-        sealResultDigest,
+        manifestAuthorityNodeId: manifestAuthority.nodeId,
+        manifestAuthorityResultDigest: manifestAuthority.resultDigest,
+        manifestDigest,
+        investigationTargetDigest,
+        sessionSnapshotDigest,
       },
       runtimeMetadata: {},
     });
+    writeEvidenceNode(fixture.paths, manifestAuthority);
     writeEvidenceNode(fixture.paths, materialization);
     fs.writeFileSync(
       path.join(fixture.paths.refs, `${started.changeId}.json`),
@@ -6481,6 +6618,18 @@ test('current materialization survives repeated lifecycle revisions but not a se
     assert.equal(
       secondLifecycle.lifecycleRevision,
       started.lifecycleRevision + 2,
+    );
+    const closure = readInvestigationEvidenceRefsClosure(
+      fixture.paths,
+      started.changeId,
+    );
+    assert.deepEqual(
+      closure.entries.map(({ refName }) => refName),
+      ['propose/planning-materialization'],
+    );
+    assert.deepEqual(
+      closure.entries[0]?.dependencies.map(({ role }) => role),
+      ['manifest-authority'],
     );
     const valid = inspectInvestigationResolutionState(
       fixture.paths,
@@ -6527,7 +6676,7 @@ test('current materialization survives repeated lifecycle revisions but not a se
   }
 });
 
-test('quarantine retires a legacy materialization whose monolithic session revision changed', () => {
+test('quarantine preserves exact retired materialization evidence through Grant-authorized recovery', () => {
   const fixture = investigationFixture(
     'invocation-quarantine-stale-materialization',
   );
@@ -6579,36 +6728,11 @@ test('quarantine retires a legacy materialization whose monolithic session revis
       }),
       { mode: 0o600 },
     );
-    const advanced = compareAndSwapInvestigationSession(
-      fixture.paths,
-      started.investigationId,
-      started.revision,
-      (current) => ({
-        ...current,
-        revision: current.revision + 1,
-        updatedAt: new Date(
-          Date.parse(current.updatedAt) + 1_000,
-        ).toISOString(),
-      }),
+    assert.throws(
+      () =>
+        readInvestigationEvidenceRefsClosure(fixture.paths, started.changeId),
+      (error) => isWorkflowError(error, 'EVIDENCE_REF_INVALID'),
     );
-    const structuralClosure = readInvestigationEvidenceRefsClosure(
-      fixture.paths,
-      started.changeId,
-    );
-    assert.equal(structuralClosure.entries.length, 1);
-    assert.equal(
-      structuralClosure.owners['propose/planning-materialization'],
-      started.investigationId,
-    );
-    assert.equal(
-      (
-        readEvidenceNode(fixture.paths, materialization.nodeId).output as {
-          revision: number;
-        }
-      ).revision,
-      started.revision,
-    );
-    assert.equal(advanced.revision, started.revision + 1);
 
     const origin = 'https://github.com/example/fixture.git';
     git(fixture.repository, ['remote', 'add', 'origin', origin]);
@@ -6667,7 +6791,7 @@ test('quarantine retires a legacy materialization whose monolithic session revis
           kind: 'quarantine',
           parameters: {
             reason:
-              'The persisted materialization no longer matches the durable session revision.',
+              'The persisted materialization uses a retired ordinary receipt schema.',
           },
         },
         {

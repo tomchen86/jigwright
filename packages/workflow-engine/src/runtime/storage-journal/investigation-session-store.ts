@@ -7054,51 +7054,22 @@ function assertMaterializationMatchesOwnerSession(
   session: InvestigationSession | ProposeExemptionSession,
 ): void {
   const output = node.output;
-  const exemption =
-    'kind' in session && session.kind === 'propose-exemption-session';
-  const manifestReceipt =
-    !exemption &&
-    node.nodeSchema === 'workflow.propose-planning-materialization.v3' &&
-    node.outputSchema === 'workflow.propose-planning-materialization-output.v3';
-  if (manifestReceipt) {
-    if ('kind' in session) {
-      throw humanResolutionStateInvalid();
-    }
+  if (!('kind' in session)) {
     assertManifestMaterializationMatchesOwnerSession(paths, node, session);
     return;
   }
-  const expectedType = exemption
-    ? 'propose-exemption-planning-materialization'
-    : 'propose-planning-materialization';
-  const semanticReceipt =
-    !exemption &&
-    node.nodeSchema === 'workflow.propose-planning-materialization.v2' &&
-    node.outputSchema === 'workflow.propose-planning-materialization-output.v2';
-  const legacyReceipt =
-    !exemption &&
-    node.nodeSchema === 'workflow.propose-planning-materialization.v1' &&
-    node.outputSchema === 'workflow.propose-planning-materialization-output.v1';
   const revisionMatches =
-    isRecord(output) &&
-    (exemption
-      ? output.revision === session.revision
-      : semanticReceipt
-        ? 'semanticRevision' in session &&
-          output.semanticRevision === session.semanticRevision
-        : legacyReceipt && output.revision === session.revision);
+    isRecord(output) && output.revision === session.revision;
   if (
-    node.type !== expectedType ||
-    (!exemption && !semanticReceipt && !legacyReceipt) ||
+    node.type !== 'propose-exemption-planning-materialization' ||
     !isRecord(output) ||
     output.investigationId !== session.investigationId ||
     output.changeId !== session.changeId ||
     !revisionMatches ||
     !isRecord(output.baseline) ||
     canonicalJson(output.baseline) !== canonicalJson(session.baseline) ||
-    (exemption &&
-      (output.applicabilityNodeId !== session.applicabilityNode.nodeId ||
-        output.applicabilityResultDigest !==
-          session.applicabilityNode.resultDigest))
+    output.applicabilityNodeId !== session.applicabilityNode.nodeId ||
+    output.applicabilityResultDigest !== session.applicabilityNode.resultDigest
   ) {
     throw humanResolutionStateInvalid();
   }

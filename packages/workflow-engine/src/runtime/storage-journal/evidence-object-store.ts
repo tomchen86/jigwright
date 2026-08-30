@@ -1094,139 +1094,84 @@ function assertPlanningMaterializationOwnership(
     throw refInvalid();
   }
   if (node.type === 'propose-planning-materialization') {
-    const manifestReceipt =
-      node.nodeSchema === 'workflow.propose-planning-materialization.v3' &&
-      node.outputSchema ===
-        'workflow.propose-planning-materialization-output.v3';
-    if (manifestReceipt) {
-      assertProposeEvidenceNode(node, {
-        type: 'propose-planning-materialization',
-        nodeSchema: node.nodeSchema,
-        outputSchema: node.outputSchema,
-        exactInputKeys: [
-          'artifacts',
-          'baseline',
-          'manifestAuthority',
-          'manifest',
-          'investigationTarget',
-          'sessionSnapshot',
-        ],
-        provenanceKeys: ['manifestAuthority'],
-        semanticKeys: ['manifestAuthority'],
-      });
-      if (
-        !hasExactKeys(output, [
-          'investigationId',
-          'changeId',
-          'semanticRevision',
-          'baseline',
-          'artifacts',
-          'manifestAuthorityNodeId',
-          'manifestAuthorityResultDigest',
-          'manifestDigest',
-          'investigationTargetDigest',
-          'sessionSnapshotDigest',
-        ]) ||
-        output.changeId !== expectedChangeId ||
-        !isInvestigationOwner(output.investigationId) ||
-        !Number.isSafeInteger(output.semanticRevision) ||
-        Number(output.semanticRevision) < 0 ||
-        !isBaseline(output.baseline) ||
-        !isDigestRecord(output.artifacts) ||
-        !isDigest(output.manifestAuthorityNodeId) ||
-        !isDigest(output.manifestAuthorityResultDigest) ||
-        !isDigest(output.manifestDigest) ||
-        !isDigest(output.investigationTargetDigest) ||
-        !isDigest(output.sessionSnapshotDigest) ||
-        node.exactInputDigests.artifacts !==
-          sha256(canonicalJson(output.artifacts)) ||
-        node.exactInputDigests.baseline !==
-          sha256(canonicalJson(output.baseline)) ||
-        node.exactInputDigests.manifestAuthority !==
-          output.manifestAuthorityNodeId ||
-        node.exactInputDigests.manifest !== output.manifestDigest ||
-        node.exactInputDigests.investigationTarget !==
-          output.investigationTargetDigest ||
-        node.exactInputDigests.sessionSnapshot !==
-          output.sessionSnapshotDigest ||
-        node.provenanceParentNodeIds.manifestAuthority !==
-          output.manifestAuthorityNodeId ||
-        node.semanticParentResultDigests.manifestAuthority !==
-          output.manifestAuthorityResultDigest
-      ) {
-        throw refInvalid();
-      }
-      const authority = readManifestAuthorityDependency(
-        paths,
-        output.manifestAuthorityNodeId,
-        output.manifestAuthorityResultDigest,
-        {
-          changeId: output.changeId,
-          investigationId: output.investigationId,
-          manifestDigest: output.manifestDigest,
-          investigationTargetDigest: output.investigationTargetDigest,
-          sessionSnapshotDigest: output.sessionSnapshotDigest,
-        },
-      );
-      return Object.freeze({
-        ownerInvestigationId: output.investigationId,
-        dependencies: Object.freeze([authority]),
-      });
-    }
-    const semanticReceipt =
-      node.nodeSchema === 'workflow.propose-planning-materialization.v2' &&
-      node.outputSchema ===
-        'workflow.propose-planning-materialization-output.v2';
-    const legacyReceipt =
-      node.nodeSchema === 'workflow.propose-planning-materialization.v1' &&
-      node.outputSchema ===
-        'workflow.propose-planning-materialization-output.v1';
-    if (!semanticReceipt && !legacyReceipt) {
+    if (
+      node.nodeSchema !== 'workflow.propose-planning-materialization.v3' ||
+      node.outputSchema !==
+        'workflow.propose-planning-materialization-output.v3'
+    ) {
       throw refInvalid();
     }
     assertProposeEvidenceNode(node, {
       type: 'propose-planning-materialization',
       nodeSchema: node.nodeSchema,
       outputSchema: node.outputSchema,
-      exactInputKeys: ['artifacts', 'baseline', 'seal'],
-      provenanceKeys: ['seal'],
-      semanticKeys: ['seal'],
+      exactInputKeys: [
+        'artifacts',
+        'baseline',
+        'manifestAuthority',
+        'manifest',
+        'investigationTarget',
+        'sessionSnapshot',
+      ],
+      provenanceKeys: ['manifestAuthority'],
+      semanticKeys: ['manifestAuthority'],
     });
     if (
       !hasExactKeys(output, [
         'investigationId',
         'changeId',
-        semanticReceipt ? 'semanticRevision' : 'revision',
+        'semanticRevision',
         'baseline',
         'artifacts',
-        'sealNodeId',
-        'sealResultDigest',
+        'manifestAuthorityNodeId',
+        'manifestAuthorityResultDigest',
+        'manifestDigest',
+        'investigationTargetDigest',
+        'sessionSnapshotDigest',
       ]) ||
       output.changeId !== expectedChangeId ||
       !isInvestigationOwner(output.investigationId) ||
-      !Number.isSafeInteger(
-        semanticReceipt ? output.semanticRevision : output.revision,
-      ) ||
-      Number(semanticReceipt ? output.semanticRevision : output.revision) < 0 ||
+      !Number.isSafeInteger(output.semanticRevision) ||
+      Number(output.semanticRevision) < 0 ||
       !isBaseline(output.baseline) ||
       !isDigestRecord(output.artifacts) ||
-      !isDigest(output.sealNodeId) ||
-      !isDigest(output.sealResultDigest) ||
+      !isDigest(output.manifestAuthorityNodeId) ||
+      !isDigest(output.manifestAuthorityResultDigest) ||
+      !isDigest(output.manifestDigest) ||
+      !isDigest(output.investigationTargetDigest) ||
+      !isDigest(output.sessionSnapshotDigest) ||
       node.exactInputDigests.artifacts !==
         sha256(canonicalJson(output.artifacts)) ||
       node.exactInputDigests.baseline !==
         sha256(canonicalJson(output.baseline)) ||
-      node.exactInputDigests.seal !== output.sealNodeId ||
-      node.provenanceParentNodeIds.seal !== output.sealNodeId ||
-      node.semanticParentResultDigests.seal !== output.sealResultDigest
+      node.exactInputDigests.manifestAuthority !==
+        output.manifestAuthorityNodeId ||
+      node.exactInputDigests.manifest !== output.manifestDigest ||
+      node.exactInputDigests.investigationTarget !==
+        output.investigationTargetDigest ||
+      node.exactInputDigests.sessionSnapshot !== output.sessionSnapshotDigest ||
+      node.provenanceParentNodeIds.manifestAuthority !==
+        output.manifestAuthorityNodeId ||
+      node.semanticParentResultDigests.manifestAuthority !==
+        output.manifestAuthorityResultDigest
     ) {
       throw refInvalid();
     }
+    const authority = readManifestAuthorityDependency(
+      paths,
+      output.manifestAuthorityNodeId,
+      output.manifestAuthorityResultDigest,
+      {
+        changeId: output.changeId,
+        investigationId: output.investigationId,
+        manifestDigest: output.manifestDigest,
+        investigationTargetDigest: output.investigationTargetDigest,
+        sessionSnapshotDigest: output.sessionSnapshotDigest,
+      },
+    );
     return Object.freeze({
       ownerInvestigationId: output.investigationId,
-      // The seal is deterministically reconstructed from the investigation
-      // session graph and is intentionally not stored in the evidence CAS.
-      dependencies: Object.freeze([]),
+      dependencies: Object.freeze([authority]),
     });
   }
 
