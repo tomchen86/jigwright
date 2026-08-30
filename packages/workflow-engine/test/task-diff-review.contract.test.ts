@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import test from 'node:test';
 
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   createTaskDiffDocumentationClosureRequirement,
   createTaskDiffReviewSubject,
@@ -38,11 +40,31 @@ test('TaskDiffReview subject canonicalizes exact blob and mode transitions witho
   assert.equal(subject.reviewPolicyDigest, TASK_DIFF_REVIEW_POLICY_DIGEST);
   assert.match(subject.patchDigest, /^[0-9a-f]{64}$/);
   assert.match(subject.subjectDigest, /^[0-9a-f]{64}$/);
+  assert.equal(subject.documentationRequirement.required, false);
   assert.equal(Object.hasOwn(subject, 'createdAt'), false);
   assert.equal(Object.hasOwn(subject, 'sessionId'), false);
   assert.deepEqual(
     parseTaskDiffReviewSubject(structuredClone(subject)),
     subject,
+  );
+});
+
+test('TaskDiffReview persisted subjects reject the pre-documentation-closure omission shape', () => {
+  const current = createTaskDiffReviewSubject(subjectInput());
+  const oldBody = structuredClone(current) as Record<string, unknown>;
+  delete oldBody.documentationRequirement;
+  delete oldBody.subjectDigest;
+  const oldSubject = {
+    ...oldBody,
+    subjectDigest: crypto
+      .createHash('sha256')
+      .update(canonicalJson(oldBody))
+      .digest('hex'),
+  };
+
+  assert.throws(
+    () => parseTaskDiffReviewSubject(oldSubject),
+    hasCode('TASK_DIFF_REVIEW_SUBJECT_INVALID'),
   );
 });
 

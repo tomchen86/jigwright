@@ -146,8 +146,7 @@ export type TaskDiffReviewSubject = Readonly<{
   planningAssuranceDigest: string;
   reviewPolicyDigest: string;
   reviewRequirement: TaskDiffReviewRequirement;
-  /** Absent only on durable subjects created before documentation closure. */
-  documentationRequirement?: TaskDiffDocumentationClosureRequirement;
+  documentationRequirement: TaskDiffDocumentationClosureRequirement;
   requiredIndependence: 'provider-independent';
   coverage: typeof TASK_DIFF_REVIEW_COVERAGE;
 }>;
@@ -303,7 +302,7 @@ export function taskDiffReviewCandidateIdentityDigest(
       candidateTree: subject.candidateTree,
       patchDigest: subject.patchDigest,
       documentationRequirementDigest:
-        subject.documentationRequirement?.requirementDigest ?? null,
+        subject.documentationRequirement.requirementDigest,
     }),
   );
 }
@@ -431,7 +430,7 @@ export function parseTaskDiffReviewScope(value: unknown): TaskDiffReviewScope {
 export function parseTaskDiffReviewSubject(
   value: unknown,
 ): TaskDiffReviewSubject {
-  const legacyKeys = [
+  const subjectKeys = [
     'schemaVersion',
     'kind',
     'subjectDigest',
@@ -453,13 +452,13 @@ export function parseTaskDiffReviewSubject(
     'planningAssuranceDigest',
     'reviewPolicyDigest',
     'reviewRequirement',
+    'documentationRequirement',
     'requiredIndependence',
     'coverage',
   ];
-  const currentKeys = [...legacyKeys, 'documentationRequirement'];
   if (
     !isRecord(value) ||
-    (!hasExactKeys(value, legacyKeys) && !hasExactKeys(value, currentKeys)) ||
+    !hasExactKeys(value, subjectKeys) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'task-diff-review-subject.v1' ||
     value.reviewPolicyDigest !== TASK_DIFF_REVIEW_POLICY_DIGEST ||
@@ -476,14 +475,9 @@ export function parseTaskDiffReviewSubject(
     throw subjectInvalid();
   }
   const reviewRequirement = parseReviewRequirement(value.reviewRequirement);
-  const documentationRequirement = Object.hasOwn(
-    value,
-    'documentationRequirement',
-  )
-    ? parseTaskDiffDocumentationClosureRequirement(
-        value.documentationRequirement,
-      )
-    : undefined;
+  const documentationRequirement = parseTaskDiffDocumentationClosureRequirement(
+    value.documentationRequirement,
+  );
   const subject: TaskDiffReviewSubject = {
     schemaVersion: 1,
     kind: 'task-diff-review-subject.v1',
@@ -506,15 +500,13 @@ export function parseTaskDiffReviewSubject(
     planningAssuranceDigest: normalizeDigest(value.planningAssuranceDigest),
     reviewPolicyDigest: TASK_DIFF_REVIEW_POLICY_DIGEST,
     reviewRequirement,
-    ...(documentationRequirement === undefined
-      ? {}
-      : { documentationRequirement }),
+    documentationRequirement,
     requiredIndependence: 'provider-independent',
     coverage: TASK_DIFF_REVIEW_COVERAGE,
   };
   if (
     subject.patchDigest !== patchDigest(transitions) ||
-    (documentationRequirement?.required === true &&
+    (documentationRequirement.required &&
       documentationRequirement.candidateTree !== subject.candidateTree) ||
     subject.subjectDigest !==
       sha256(canonicalJson(subjectWithoutDigest(subject)))
