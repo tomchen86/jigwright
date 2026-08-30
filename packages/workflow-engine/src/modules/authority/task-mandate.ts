@@ -41,8 +41,6 @@ import {
   withRepositoryLifecycleOperation,
 } from '../../runtime/session-workspace/session-store.ts';
 
-export const TASK_MANDATE_SIGNATURE_NAMESPACE =
-  'HARNESS_TASK_MANDATE_V1' as const;
 export const TASK_MANDATE_SIGNATURE_NAMESPACE_V2 =
   'HARNESS_TASK_MANDATE_V2' as const;
 export const TASK_MANDATE_INACTIVITY_DAYS = 14;
@@ -81,10 +79,6 @@ const PAYLOAD_KEYS = [
   'issuedAt',
   'signer',
 ] as const;
-const LEGACY_PAYLOAD_KEYS = PAYLOAD_KEYS.filter(
-  (key) => key !== 'changeId' && key !== 'externalAuditRoot',
-);
-
 export type TaskMandateDataType = (typeof DATA_TYPES)[number];
 
 export type TaskMandateProviderDeclaration = {
@@ -145,20 +139,6 @@ export type TaskMandateEnvelope = {
   signature: string;
 };
 
-type LegacyTaskMandatePayload = Omit<
-  TaskMandatePayload,
-  'kind' | 'changeId' | 'externalAuditRoot'
-> & {
-  kind: 'task-mandate.v1';
-};
-
-type LegacyTaskMandateEnvelope = {
-  payload: LegacyTaskMandatePayload;
-  signature: string;
-};
-
-type AnyTaskMandateEnvelope = TaskMandateEnvelope | LegacyTaskMandateEnvelope;
-
 export type TaskMandateProviderUsage = {
   invocations: number;
   budget: number;
@@ -197,26 +177,11 @@ type TaskMandateRecord = {
   envelope: TaskMandateEnvelope;
 };
 
-type LegacyTaskMandateRecord = {
-  schemaVersion: 1;
-  state: 'active' | 'revoked';
-  mandateId: string;
-  taskId: string;
-  lastActivityAt: string;
-  providerUsage: Partial<Record<ProviderId, TaskMandateProviderUsage>>;
-  revokedAt: string | null;
-  revocationReason: string | null;
-  envelope: LegacyTaskMandateEnvelope;
-};
-
-type AnyTaskMandateRecord = TaskMandateRecord | LegacyTaskMandateRecord;
-
 export type TaskMandateInspection = {
   mandateId: string;
-  changeId?: string;
-  externalAuditRoot?: string;
+  changeId: string;
+  externalAuditRoot: string;
   taskId: string;
-  legacyReadOnly: boolean;
   state: 'active' | 'expired' | 'revoked';
   intent: string;
   baseCommit: string;
@@ -552,7 +517,6 @@ export function withActiveTaskMandateBinding<T>(
       record.envelope,
       options.signer,
     );
-    assertProductionTaskMandateRecord(record);
     const auditNow = exactDate(options.now ?? new Date());
     assertRecordActive(record, auditNow);
     appendTaskMandateAuthorizationAudit(
@@ -587,7 +551,6 @@ export function authorizeTaskMandateOperation(
       record.envelope,
       options.signer,
     );
-    assertProductionTaskMandateRecord(record);
     const now = exactDate(options.now ?? new Date());
     const refusalBinding = taskMandateRefusalBinding(
       repository.repositoryRoot,
@@ -694,7 +657,6 @@ export function assertActiveTaskMandateBindingUnderLifecycleLock(
     record.envelope,
     options.signer,
   );
-  assertProductionTaskMandateRecord(record);
   const bindingNow = exactDate(options.now ?? new Date());
   assertRecordActive(record, bindingNow);
   assertExactTaskMandateBinding(record, exactBinding);
@@ -764,7 +726,6 @@ function recordTaskMandateProviderInvocationLocked(
     record.envelope,
     options.signer,
   );
-  assertProductionTaskMandateRecord(record);
   const invocationNow = exactDate(options.now ?? new Date());
   assertRecordActive(record, invocationNow);
   assertExactTaskMandateBinding(record, exactBinding);
@@ -809,7 +770,6 @@ function authorizeTaskMandateProviderReservationLocked(
     record.envelope,
     options.signer,
   );
-  assertProductionTaskMandateRecord(record);
   const now = exactDate(options.now ?? new Date());
   assertRecordActive(record, now);
   assertExactTaskMandateBinding(record, exactBinding);
@@ -921,7 +881,6 @@ export function revokeTaskMandate(
       record.envelope,
       options.signer,
     );
-    assertProductionTaskMandateRecord(record);
     const now = exactDate(options.now ?? new Date());
     const refusalBinding = taskMandateRefusalBinding(
       repository.repositoryRoot,
@@ -971,21 +930,21 @@ export function revokeTaskMandate(
 }
 
 export function canonicalTaskMandatePayload(
-  payload: TaskMandatePayload | LegacyTaskMandatePayload,
+  payload: TaskMandatePayload,
 ): string {
-  validateAnyTaskMandatePayload(payload);
+  validateTaskMandatePayload(payload);
   return `${canonicalJson(payload)}\n`;
 }
 
 export function canonicalTaskMandateEnvelope(
-  envelope: AnyTaskMandateEnvelope,
+  envelope: TaskMandateEnvelope,
 ): string {
-  validateAnyTaskMandatePayload(envelope.payload);
+  validateTaskMandatePayload(envelope.payload);
   assertSignature(envelope.signature);
   return `${canonicalJson(envelope)}\n`;
 }
 
-export function parseTaskMandateEnvelope(raw: string): AnyTaskMandateEnvelope {
+export function parseTaskMandateEnvelope(raw: string): TaskMandateEnvelope {
   try {
     if (typeof raw !== 'string' || raw.length > 1_048_576) {
       throw new Error('invalid envelope size');
@@ -995,22 +954,15 @@ export function parseTaskMandateEnvelope(raw: string): AnyTaskMandateEnvelope {
       !isRecord(value) ||
       !hasExactKeys(value, ['payload', 'signature']) ||
       !isRecord(value.payload) ||
-      (!hasExactKeys(value.payload, PAYLOAD_KEYS) &&
-        !hasExactKeys(value.payload, LEGACY_PAYLOAD_KEYS)) ||
+      !hasExactKeys(value.payload, PAYLOAD_KEYS) ||
       typeof value.signature !== 'string'
     ) {
       throw new Error('invalid envelope shape');
     }
-    const envelope =
-      value.payload.kind === 'task-mandate.v1'
-        ? {
-            payload: parseLegacyTaskMandatePayload(value.payload),
-            signature: value.signature,
-          }
-        : {
-            payload: parseTaskMandatePayload(value.payload),
-            signature: value.signature,
-          };
+    const envelope = {
+      payload: parseTaskMandatePayload(value.payload),
+      signature: value.signature,
+    };
     assertSignature(envelope.signature);
     if (canonicalTaskMandateEnvelope(envelope) !== raw) {
       throw new Error('noncanonical envelope');
@@ -1122,42 +1074,6 @@ function parseTaskMandatePayload(
   return payload;
 }
 
-function parseLegacyTaskMandatePayload(
-  value: Record<string, unknown>,
-): LegacyTaskMandatePayload {
-  if (value.kind !== 'task-mandate.v1') {
-    throw new Error('invalid legacy task mandate kind');
-  }
-  const migrated = parseTaskMandatePayload({
-    ...value,
-    kind: 'task-mandate.v2',
-    changeId: 'legacy-read-only',
-    externalAuditRoot: '/legacy-read-only',
-  });
-  const {
-    changeId: _legacyChangePlaceholder,
-    externalAuditRoot: _legacyAuditPlaceholder,
-    ...legacy
-  } = migrated;
-  return { ...legacy, kind: 'task-mandate.v1' };
-}
-
-function validateAnyTaskMandatePayload(
-  payload: TaskMandatePayload | LegacyTaskMandatePayload,
-): void {
-  if (payload.kind === 'task-mandate.v2') {
-    validateTaskMandatePayload(payload);
-    return;
-  }
-  const migrated = {
-    ...payload,
-    kind: 'task-mandate.v2' as const,
-    changeId: 'legacy-read-only',
-    externalAuditRoot: '/legacy-read-only',
-  };
-  validateTaskMandatePayload(migrated);
-}
-
 function validateTaskMandatePayload(payload: TaskMandatePayload): void {
   if (
     payload.kind !== 'task-mandate.v2' ||
@@ -1191,7 +1107,7 @@ function validateTaskMandatePayload(payload: TaskMandatePayload): void {
 
 function validateTaskMandateEnvelopeForRepository(
   repositoryRoot: string,
-  envelope: AnyTaskMandateEnvelope,
+  envelope: TaskMandateEnvelope,
   providedSigner?: MaintainerSignerProvider,
 ): void {
   const payload = envelope.payload;
@@ -1216,9 +1132,7 @@ function validateTaskMandateEnvelopeForRepository(
       ExitCode.staleState,
     );
   }
-  if (payload.kind === 'task-mandate.v2') {
-    scanAuthorityAuditLedger(taskMandateAuditScope(repositoryRoot, payload));
-  }
+  scanAuthorityAuditLedger(taskMandateAuditScope(repositoryRoot, payload));
   const signer =
     providedSigner ?? createInteractiveSshSigner(repositoryRoot, base.policy);
   try {
@@ -1226,9 +1140,7 @@ function validateTaskMandateEnvelopeForRepository(
       canonicalTaskMandatePayload(payload),
       envelope.signature,
       payload.signer,
-      payload.kind === 'task-mandate.v2'
-        ? TASK_MANDATE_SIGNATURE_NAMESPACE_V2
-        : TASK_MANDATE_SIGNATURE_NAMESPACE,
+      TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
     );
   } catch (error) {
     if (isPostApprovalAdmissionFailure(error)) throw error;
@@ -1444,7 +1356,7 @@ function cloneProviderDeclarations(
 }
 
 function inspectRecord(
-  record: AnyTaskMandateRecord,
+  record: TaskMandateRecord,
   now: Date,
 ): TaskMandateInspection {
   assertRecordClock(record, now);
@@ -1456,14 +1368,9 @@ function inspectRecord(
         : 'active';
   return {
     mandateId: record.mandateId,
-    ...(record.schemaVersion === 2
-      ? {
-          changeId: record.changeId,
-          externalAuditRoot: record.externalAuditRoot,
-        }
-      : {}),
+    changeId: record.changeId,
+    externalAuditRoot: record.externalAuditRoot,
     taskId: record.taskId,
-    legacyReadOnly: record.schemaVersion === 1,
     state,
     intent: record.envelope.payload.intent,
     baseCommit: record.envelope.payload.baseCommit,
@@ -1484,7 +1391,7 @@ function inspectRecord(
   };
 }
 
-function assertRecordActive(record: AnyTaskMandateRecord, now: Date): void {
+function assertRecordActive(record: TaskMandateRecord, now: Date): void {
   assertRecordClock(record, now);
   if (record.state === 'revoked') {
     throw workflowError(
@@ -1502,14 +1409,14 @@ function assertRecordActive(record: AnyTaskMandateRecord, now: Date): void {
   }
 }
 
-function assertRecordClock(record: AnyTaskMandateRecord, now: Date): void {
+function assertRecordClock(record: TaskMandateRecord, now: Date): void {
   const lastActivity = exactTimestamp(record.lastActivityAt);
   if (lastActivity === undefined || lastActivity > now.getTime() + 30_000) {
     throw unsafeStore();
   }
 }
 
-function isInactive(record: AnyTaskMandateRecord, now: Date): boolean {
+function isInactive(record: TaskMandateRecord, now: Date): boolean {
   const lastActivity = exactTimestamp(record.lastActivityAt);
   if (lastActivity === undefined) throw unsafeStore();
   return (
@@ -1545,7 +1452,7 @@ function ensureStore(paths: ReturnType<typeof taskMandateStorePaths>): void {
 function readTaskRecord(
   paths: ReturnType<typeof taskMandateStorePaths>,
   taskId: string,
-): AnyTaskMandateRecord {
+): TaskMandateRecord {
   const active = taskRecordPath(paths.active, taskId);
   const terminal = taskRecordPath(paths.terminal, taskId);
   if (fs.existsSync(active))
@@ -1560,30 +1467,13 @@ function readTaskRecord(
   );
 }
 
-function canonicalTaskMandateRecord(record: AnyTaskMandateRecord): string {
+function canonicalTaskMandateRecord(record: TaskMandateRecord): string {
   return `${canonicalJson(record)}\n`;
 }
 
 function parseCurrentTaskMandateRecord(raw: string): TaskMandateRecord {
-  const record = parseTaskMandateRecordForHistoricalCleanup(raw);
-  if (record.schemaVersion !== 2) {
-    throw unsafeStore();
-  }
-  return record;
-}
-
-/**
- * Inert parser retained for audited historical evidence and terminal cleanup.
- * Production task-mandate admission must use parseCurrentTaskMandateRecord.
- */
-function parseTaskMandateRecordForHistoricalCleanup(
-  raw: string,
-): AnyTaskMandateRecord {
   try {
     const value = JSON.parse(raw) as unknown;
-    if (isRecord(value) && value.schemaVersion === 1) {
-      return parseLegacyTaskMandateRecord(raw, value);
-    }
     if (
       !isRecord(value) ||
       !hasExactKeys(value, [
@@ -1614,13 +1504,9 @@ function parseTaskMandateRecordForHistoricalCleanup(
     ) {
       throw new Error('invalid record shape');
     }
-    const envelope = parseTaskMandateEnvelope(
+    const productionEnvelope = parseTaskMandateEnvelope(
       `${canonicalJson(value.envelope)}\n`,
     );
-    if (envelope.payload.kind !== 'task-mandate.v2') {
-      throw new Error('v2 record contains a legacy envelope');
-    }
-    const productionEnvelope = envelope as TaskMandateEnvelope;
     const providerUsage: Partial<
       Record<ProviderId, StoredTaskMandateProviderUsage>
     > = {};
@@ -1719,111 +1605,6 @@ function parseTaskMandateRecordForHistoricalCleanup(
     if (isWorkflowFailure(error)) throw error;
     throw unsafeStore();
   }
-}
-
-function parseLegacyTaskMandateRecord(
-  raw: string,
-  value: Record<string, unknown>,
-): LegacyTaskMandateRecord {
-  if (
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'state',
-      'mandateId',
-      'taskId',
-      'lastActivityAt',
-      'providerUsage',
-      'revokedAt',
-      'revocationReason',
-      'envelope',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    (value.state !== 'active' && value.state !== 'revoked') ||
-    typeof value.mandateId !== 'string' ||
-    typeof value.taskId !== 'string' ||
-    typeof value.lastActivityAt !== 'string' ||
-    !isRecord(value.providerUsage) ||
-    (value.revokedAt !== null && typeof value.revokedAt !== 'string') ||
-    (value.revocationReason !== null &&
-      typeof value.revocationReason !== 'string') ||
-    !isRecord(value.envelope)
-  ) {
-    throw new Error('invalid legacy record shape');
-  }
-  const envelope = parseTaskMandateEnvelope(
-    `${canonicalJson(value.envelope)}\n`,
-  );
-  if (envelope.payload.kind !== 'task-mandate.v1') {
-    throw new Error('legacy record contains a non-legacy envelope');
-  }
-  const legacyEnvelope = envelope as LegacyTaskMandateEnvelope;
-  const providerUsage: Partial<Record<ProviderId, TaskMandateProviderUsage>> =
-    {};
-  for (const [providerId, usage] of Object.entries(value.providerUsage)) {
-    if (
-      !isProviderId(providerId) ||
-      !isRecord(usage) ||
-      !hasExactKeys(usage, ['invocations', 'budget']) ||
-      typeof usage.invocations !== 'number' ||
-      !Number.isInteger(usage.invocations) ||
-      usage.invocations < 0 ||
-      typeof usage.budget !== 'number' ||
-      !Number.isFinite(usage.budget) ||
-      usage.budget < 0
-    ) {
-      throw new Error('invalid legacy provider usage');
-    }
-    providerUsage[providerId] = {
-      invocations: usage.invocations,
-      budget: usage.budget,
-    };
-  }
-  const record: LegacyTaskMandateRecord = {
-    schemaVersion: 1,
-    state: value.state,
-    mandateId: value.mandateId,
-    taskId: value.taskId,
-    lastActivityAt: value.lastActivityAt,
-    providerUsage,
-    revokedAt: value.revokedAt,
-    revocationReason: value.revocationReason,
-    envelope: legacyEnvelope,
-  };
-  const issuedAt = exactTimestamp(envelope.payload.issuedAt);
-  const lastActivityAt = exactTimestamp(record.lastActivityAt);
-  const declaredProviders = Object.keys(
-    envelope.payload.preparation.providerCalls,
-  ).sort();
-  const usageProviders = Object.keys(record.providerUsage).sort();
-  if (
-    record.mandateId !== envelope.payload.mandateId ||
-    record.taskId !== envelope.payload.taskId ||
-    issuedAt === undefined ||
-    lastActivityAt === undefined ||
-    lastActivityAt < issuedAt ||
-    JSON.stringify(declaredProviders) !== JSON.stringify(usageProviders) ||
-    declaredProviders.some((providerId) => {
-      const declaration =
-        envelope.payload.preparation.providerCalls[providerId as ProviderId];
-      const usage = record.providerUsage[providerId as ProviderId];
-      return (
-        !declaration ||
-        !usage ||
-        usage.invocations > declaration.maxInvocations ||
-        (declaration.maxBudget !== null && usage.budget > declaration.maxBudget)
-      );
-    }) ||
-    (record.state === 'active' &&
-      (record.revokedAt !== null || record.revocationReason !== null)) ||
-    (record.state === 'revoked' &&
-      (exactTimestamp(record.revokedAt ?? '') === undefined ||
-        exactTimestamp(record.revokedAt ?? '')! < lastActivityAt ||
-        !record.revocationReason)) ||
-    canonicalTaskMandateRecord(record) !== raw
-  ) {
-    throw new Error('invalid legacy record binding');
-  }
-  return record;
 }
 
 function taskMandateAuditScope(
@@ -2291,18 +2072,6 @@ function assertTaskMandateChange(
     throw workflowError(
       'TASK_MANDATE_CHANGE_MISMATCH',
       `Task mandate ${record.taskId} is bound to another change.`,
-      ExitCode.guard,
-    );
-  }
-}
-
-function assertProductionTaskMandateRecord(
-  record: AnyTaskMandateRecord,
-): asserts record is TaskMandateRecord {
-  if (record.schemaVersion !== 2) {
-    throw workflowError(
-      'TASK_MANDATE_LEGACY_READ_ONLY',
-      'A legacy task mandate without an exact change binding is read-only.',
       ExitCode.guard,
     );
   }

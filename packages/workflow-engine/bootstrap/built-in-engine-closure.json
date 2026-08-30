@@ -1333,7 +1333,7 @@
     {
       "path": "src/modules/authority/task-mandate.ts",
       "mode": "100644",
-      "digest": "sha256:309e7bbf595ae6dbf41168b54b906ada11cce9b50ec994e6549a7d96ffab887c"
+      "digest": "sha256:5d7ba33384e86a45fac77060df6d3037b110e99d06bda7a2cbe2bc28814fcea0"
     },
     {
       "path": "src/modules/authority/task-revision-approval.ts",
@@ -1993,7 +1993,7 @@
     {
       "path": "src/runtime/storage-journal/collaboration-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:849ec0a0a4cfd08b387523fbf14031b38299b4f2a9d346fe344eed02b4e83640"
+      "digest": "sha256:3411748cc0388804efc4a832fe138d11442a989f32b5744985d901851ac132bb"
     },
     {
       "path": "src/runtime/storage-journal/content-record-store.ts",

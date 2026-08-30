@@ -1278,11 +1278,7 @@ export function revokeCollaborationGrant(
           signer: options.verifier ?? options.signer,
         },
       );
-      if (
-        mandate.legacyReadOnly ||
-        mandate.changeId !== payload.changeId ||
-        mandate.externalAuditRoot === undefined
-      ) {
+      if (mandate.changeId !== payload.changeId) {
         throw workflowError(
           'HUMAN_REVOCATION_BINDING_INVALID',
           'Collaboration revocation task mandate binding is unavailable or different.',

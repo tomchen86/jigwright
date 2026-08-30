@@ -104,7 +104,6 @@ import {
   inspectTaskMandate,
   parseTaskMandateEnvelope,
   revokeTaskMandate,
-  TASK_MANDATE_SIGNATURE_NAMESPACE,
   TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
   type TaskMandateEnvelope,
   type TaskMandateRequest,
@@ -352,13 +351,7 @@ function fakeSigner(signed: string[]): MaintainerSignerProvider {
     verify(payload, _signature, identity, namespace) {
       assert.equal(signed.includes(payload), true);
       assert.equal(identity, 'fixture-maintainer');
-      assert.equal(
-        [
-          TASK_MANDATE_SIGNATURE_NAMESPACE,
-          TASK_MANDATE_SIGNATURE_NAMESPACE_V2,
-        ].includes(namespace as typeof TASK_MANDATE_SIGNATURE_NAMESPACE),
-        true,
-      );
+      assert.equal(namespace, TASK_MANDATE_SIGNATURE_NAMESPACE_V2);
     },
   };
 }
@@ -501,7 +494,7 @@ test('task mandate signs a safe preparation-only contract without changing HEAD'
   }
 });
 
-test('current mandate reader rejects a canonical V1 record', () => {
+test('current mandate parser and store reject canonical V1 bytes', () => {
   const repository = prepareRepository();
   const signed: string[] = [];
   const signer = fakeSigner(signed);
@@ -526,7 +519,10 @@ test('current mandate reader rejects a canonical V1 record', () => {
     )) {
       delete usage.reservations;
     }
-    signed.push(`${canonicalJson(legacy.envelope.payload)}\n`);
+    assert.throws(
+      () => parseTaskMandateEnvelope(`${canonicalJson(legacy.envelope)}\n`),
+      (error) => isWorkflowError(error, 'TASK_MANDATE_INVALID'),
+    );
     fs.writeFileSync(authorized.recordPath, `${canonicalJson(legacy)}\n`);
 
     assert.throws(

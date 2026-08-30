@@ -14,7 +14,6 @@ import { createInteractiveSshSigner, } from "../../adapters/signing/ssh/maintain
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 import { assertChangeId } from "../../runtime/session-workspace/paths.js";
 import { runtimePaths, withRepositoryLifecycleOperation, } from "../../runtime/session-workspace/session-store.js";
-export const TASK_MANDATE_SIGNATURE_NAMESPACE = 'HARNESS_TASK_MANDATE_V1';
 export const TASK_MANDATE_SIGNATURE_NAMESPACE_V2 = 'HARNESS_TASK_MANDATE_V2';
 export const TASK_MANDATE_INACTIVITY_DAYS = 14;
 const TASK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -49,7 +48,6 @@ const PAYLOAD_KEYS = [
     'issuedAt',
     'signer',
 ];
-const LEGACY_PAYLOAD_KEYS = PAYLOAD_KEYS.filter((key) => key !== 'changeId' && key !== 'externalAuditRoot');
 export function parseTaskMandateRequest(value) {
     if (!isRecord(value) ||
         !hasExactKeys(value, ['changeId', 'taskId', 'intent', 'providerCalls']) ||
@@ -201,7 +199,6 @@ export function withActiveTaskMandateBinding(cwd, requestedTaskId, options, oper
     return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
         const record = readTaskRecord(paths, taskId);
         validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, record.envelope, options.signer);
-        assertProductionTaskMandateRecord(record);
         const auditNow = exactDate(options.now ?? new Date());
         assertRecordActive(record, auditNow);
         appendTaskMandateAuthorizationAudit(repository.repositoryRoot, record, auditNow);
@@ -217,7 +214,6 @@ export function authorizeTaskMandateOperation(cwd, requestedTaskId, operation, o
     return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
         const record = readTaskRecord(paths, taskId);
         validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, record.envelope, options.signer);
-        assertProductionTaskMandateRecord(record);
         const now = exactDate(options.now ?? new Date());
         const refusalBinding = taskMandateRefusalBinding(repository.repositoryRoot, record, 'task-mandate.operation', {
             changeId,
@@ -265,7 +261,6 @@ export function assertActiveTaskMandateBindingUnderLifecycleLock(cwd, binding, a
     assertOwned();
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, record.envelope, options.signer);
-    assertProductionTaskMandateRecord(record);
     const bindingNow = exactDate(options.now ?? new Date());
     assertRecordActive(record, bindingNow);
     assertExactTaskMandateBinding(record, exactBinding);
@@ -290,7 +285,6 @@ function recordTaskMandateProviderInvocationLocked(repositoryRoot, paths, exactB
     const input = assertProviderInvocationAuditInput(rawInput);
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(repositoryRoot, record.envelope, options.signer);
-    assertProductionTaskMandateRecord(record);
     const invocationNow = exactDate(options.now ?? new Date());
     assertRecordActive(record, invocationNow);
     assertExactTaskMandateBinding(record, exactBinding);
@@ -309,7 +303,6 @@ function recordTaskMandateProviderInvocationLocked(repositoryRoot, paths, exactB
 function authorizeTaskMandateProviderReservationLocked(repositoryRoot, paths, exactBinding, reservationId, operation, options, assertOwned) {
     const record = readTaskRecord(paths, exactBinding.mandateTaskId);
     validateTaskMandateEnvelopeForRepository(repositoryRoot, record.envelope, options.signer);
-    assertProductionTaskMandateRecord(record);
     const now = exactDate(options.now ?? new Date());
     assertRecordActive(record, now);
     assertExactTaskMandateBinding(record, exactBinding);
@@ -374,7 +367,6 @@ export function revokeTaskMandate(cwd, requestedTaskId, options) {
         }
         const record = readTaskRecord(paths, taskId);
         validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, record.envelope, options.signer);
-        assertProductionTaskMandateRecord(record);
         const now = exactDate(options.now ?? new Date());
         const refusalBinding = taskMandateRefusalBinding(repository.repositoryRoot, record, 'task-mandate.revoke', { reasonDigest: authorityRefusalDigest(reason) });
         return withAuthorityRefusalAudit(refusalBinding, { now }, () => {
@@ -400,11 +392,11 @@ export function revokeTaskMandate(cwd, requestedTaskId, options) {
     });
 }
 export function canonicalTaskMandatePayload(payload) {
-    validateAnyTaskMandatePayload(payload);
+    validateTaskMandatePayload(payload);
     return `${canonicalJson(payload)}\n`;
 }
 export function canonicalTaskMandateEnvelope(envelope) {
-    validateAnyTaskMandatePayload(envelope.payload);
+    validateTaskMandatePayload(envelope.payload);
     assertSignature(envelope.signature);
     return `${canonicalJson(envelope)}\n`;
 }
@@ -417,20 +409,14 @@ export function parseTaskMandateEnvelope(raw) {
         if (!isRecord(value) ||
             !hasExactKeys(value, ['payload', 'signature']) ||
             !isRecord(value.payload) ||
-            (!hasExactKeys(value.payload, PAYLOAD_KEYS) &&
-                !hasExactKeys(value.payload, LEGACY_PAYLOAD_KEYS)) ||
+            !hasExactKeys(value.payload, PAYLOAD_KEYS) ||
             typeof value.signature !== 'string') {
             throw new Error('invalid envelope shape');
         }
-        const envelope = value.payload.kind === 'task-mandate.v1'
-            ? {
-                payload: parseLegacyTaskMandatePayload(value.payload),
-                signature: value.signature,
-            }
-            : {
-                payload: parseTaskMandatePayload(value.payload),
-                signature: value.signature,
-            };
+        const envelope = {
+            payload: parseTaskMandatePayload(value.payload),
+            signature: value.signature,
+        };
         assertSignature(envelope.signature);
         if (canonicalTaskMandateEnvelope(envelope) !== raw) {
             throw new Error('noncanonical envelope');
@@ -536,32 +522,6 @@ function parseTaskMandatePayload(value) {
     validateTaskMandatePayload(payload);
     return payload;
 }
-function parseLegacyTaskMandatePayload(value) {
-    if (value.kind !== 'task-mandate.v1') {
-        throw new Error('invalid legacy task mandate kind');
-    }
-    const migrated = parseTaskMandatePayload({
-        ...value,
-        kind: 'task-mandate.v2',
-        changeId: 'legacy-read-only',
-        externalAuditRoot: '/legacy-read-only',
-    });
-    const { changeId: _legacyChangePlaceholder, externalAuditRoot: _legacyAuditPlaceholder, ...legacy } = migrated;
-    return { ...legacy, kind: 'task-mandate.v1' };
-}
-function validateAnyTaskMandatePayload(payload) {
-    if (payload.kind === 'task-mandate.v2') {
-        validateTaskMandatePayload(payload);
-        return;
-    }
-    const migrated = {
-        ...payload,
-        kind: 'task-mandate.v2',
-        changeId: 'legacy-read-only',
-        externalAuditRoot: '/legacy-read-only',
-    };
-    validateTaskMandatePayload(migrated);
-}
 function validateTaskMandatePayload(payload) {
     if (payload.kind !== 'task-mandate.v2' ||
         !MANDATE_ID.test(payload.mandateId) ||
@@ -601,14 +561,10 @@ function validateTaskMandateEnvelopeForRepository(repositoryRoot, envelope, prov
         !base.policy.trustedSigners.some(({ identity }) => identity === payload.signer)) {
         throw workflowError('TASK_MANDATE_REPOSITORY_MISMATCH', 'Task mandate no longer matches this repository identity or trust base.', ExitCode.staleState);
     }
-    if (payload.kind === 'task-mandate.v2') {
-        scanAuthorityAuditLedger(taskMandateAuditScope(repositoryRoot, payload));
-    }
+    scanAuthorityAuditLedger(taskMandateAuditScope(repositoryRoot, payload));
     const signer = providedSigner ?? createInteractiveSshSigner(repositoryRoot, base.policy);
     try {
-        signer.verify(canonicalTaskMandatePayload(payload), envelope.signature, payload.signer, payload.kind === 'task-mandate.v2'
-            ? TASK_MANDATE_SIGNATURE_NAMESPACE_V2
-            : TASK_MANDATE_SIGNATURE_NAMESPACE);
+        signer.verify(canonicalTaskMandatePayload(payload), envelope.signature, payload.signer, TASK_MANDATE_SIGNATURE_NAMESPACE_V2);
     }
     catch (error) {
         if (isPostApprovalAdmissionFailure(error))
@@ -766,14 +722,9 @@ function inspectRecord(record, now) {
             : 'active';
     return {
         mandateId: record.mandateId,
-        ...(record.schemaVersion === 2
-            ? {
-                changeId: record.changeId,
-                externalAuditRoot: record.externalAuditRoot,
-            }
-            : {}),
+        changeId: record.changeId,
+        externalAuditRoot: record.externalAuditRoot,
         taskId: record.taskId,
-        legacyReadOnly: record.schemaVersion === 1,
         state,
         intent: record.envelope.payload.intent,
         baseCommit: record.envelope.payload.baseCommit,
@@ -849,22 +800,8 @@ function canonicalTaskMandateRecord(record) {
     return `${canonicalJson(record)}\n`;
 }
 function parseCurrentTaskMandateRecord(raw) {
-    const record = parseTaskMandateRecordForHistoricalCleanup(raw);
-    if (record.schemaVersion !== 2) {
-        throw unsafeStore();
-    }
-    return record;
-}
-/**
- * Inert parser retained for audited historical evidence and terminal cleanup.
- * Production task-mandate admission must use parseCurrentTaskMandateRecord.
- */
-function parseTaskMandateRecordForHistoricalCleanup(raw) {
     try {
         const value = JSON.parse(raw);
-        if (isRecord(value) && value.schemaVersion === 1) {
-            return parseLegacyTaskMandateRecord(raw, value);
-        }
         if (!isRecord(value) ||
             !hasExactKeys(value, [
                 'schemaVersion',
@@ -893,11 +830,7 @@ function parseTaskMandateRecordForHistoricalCleanup(raw) {
             !isRecord(value.envelope)) {
             throw new Error('invalid record shape');
         }
-        const envelope = parseTaskMandateEnvelope(`${canonicalJson(value.envelope)}\n`);
-        if (envelope.payload.kind !== 'task-mandate.v2') {
-            throw new Error('v2 record contains a legacy envelope');
-        }
-        const productionEnvelope = envelope;
+        const productionEnvelope = parseTaskMandateEnvelope(`${canonicalJson(value.envelope)}\n`);
         const providerUsage = {};
         for (const [providerId, usage] of Object.entries(value.providerUsage)) {
             if (!isProviderId(providerId) ||
@@ -978,93 +911,6 @@ function parseTaskMandateRecordForHistoricalCleanup(raw) {
             throw error;
         throw unsafeStore();
     }
-}
-function parseLegacyTaskMandateRecord(raw, value) {
-    if (!hasExactKeys(value, [
-        'schemaVersion',
-        'state',
-        'mandateId',
-        'taskId',
-        'lastActivityAt',
-        'providerUsage',
-        'revokedAt',
-        'revocationReason',
-        'envelope',
-    ]) ||
-        value.schemaVersion !== 1 ||
-        (value.state !== 'active' && value.state !== 'revoked') ||
-        typeof value.mandateId !== 'string' ||
-        typeof value.taskId !== 'string' ||
-        typeof value.lastActivityAt !== 'string' ||
-        !isRecord(value.providerUsage) ||
-        (value.revokedAt !== null && typeof value.revokedAt !== 'string') ||
-        (value.revocationReason !== null &&
-            typeof value.revocationReason !== 'string') ||
-        !isRecord(value.envelope)) {
-        throw new Error('invalid legacy record shape');
-    }
-    const envelope = parseTaskMandateEnvelope(`${canonicalJson(value.envelope)}\n`);
-    if (envelope.payload.kind !== 'task-mandate.v1') {
-        throw new Error('legacy record contains a non-legacy envelope');
-    }
-    const legacyEnvelope = envelope;
-    const providerUsage = {};
-    for (const [providerId, usage] of Object.entries(value.providerUsage)) {
-        if (!isProviderId(providerId) ||
-            !isRecord(usage) ||
-            !hasExactKeys(usage, ['invocations', 'budget']) ||
-            typeof usage.invocations !== 'number' ||
-            !Number.isInteger(usage.invocations) ||
-            usage.invocations < 0 ||
-            typeof usage.budget !== 'number' ||
-            !Number.isFinite(usage.budget) ||
-            usage.budget < 0) {
-            throw new Error('invalid legacy provider usage');
-        }
-        providerUsage[providerId] = {
-            invocations: usage.invocations,
-            budget: usage.budget,
-        };
-    }
-    const record = {
-        schemaVersion: 1,
-        state: value.state,
-        mandateId: value.mandateId,
-        taskId: value.taskId,
-        lastActivityAt: value.lastActivityAt,
-        providerUsage,
-        revokedAt: value.revokedAt,
-        revocationReason: value.revocationReason,
-        envelope: legacyEnvelope,
-    };
-    const issuedAt = exactTimestamp(envelope.payload.issuedAt);
-    const lastActivityAt = exactTimestamp(record.lastActivityAt);
-    const declaredProviders = Object.keys(envelope.payload.preparation.providerCalls).sort();
-    const usageProviders = Object.keys(record.providerUsage).sort();
-    if (record.mandateId !== envelope.payload.mandateId ||
-        record.taskId !== envelope.payload.taskId ||
-        issuedAt === undefined ||
-        lastActivityAt === undefined ||
-        lastActivityAt < issuedAt ||
-        JSON.stringify(declaredProviders) !== JSON.stringify(usageProviders) ||
-        declaredProviders.some((providerId) => {
-            const declaration = envelope.payload.preparation.providerCalls[providerId];
-            const usage = record.providerUsage[providerId];
-            return (!declaration ||
-                !usage ||
-                usage.invocations > declaration.maxInvocations ||
-                (declaration.maxBudget !== null && usage.budget > declaration.maxBudget));
-        }) ||
-        (record.state === 'active' &&
-            (record.revokedAt !== null || record.revocationReason !== null)) ||
-        (record.state === 'revoked' &&
-            (exactTimestamp(record.revokedAt ?? '') === undefined ||
-                exactTimestamp(record.revokedAt ?? '') < lastActivityAt ||
-                !record.revocationReason)) ||
-        canonicalTaskMandateRecord(record) !== raw) {
-        throw new Error('invalid legacy record binding');
-    }
-    return record;
 }
 function taskMandateAuditScope(repositoryRoot, payload) {
     return {
@@ -1451,11 +1297,6 @@ function assertTaskMandateBinding(value) {
 function assertTaskMandateChange(record, changeId) {
     if (record.changeId !== changeId) {
         throw workflowError('TASK_MANDATE_CHANGE_MISMATCH', `Task mandate ${record.taskId} is bound to another change.`, ExitCode.guard);
-    }
-}
-function assertProductionTaskMandateRecord(record) {
-    if (record.schemaVersion !== 2) {
-        throw workflowError('TASK_MANDATE_LEGACY_READ_ONLY', 'A legacy task mandate without an exact change binding is read-only.', ExitCode.guard);
     }
 }
 function assertExactTaskMandateBinding(record, binding) {
