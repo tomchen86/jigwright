@@ -9,7 +9,6 @@ import {
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   digestArtifacts,
-  loadChangeContract,
   loadWorkflowConfig,
   parseTasks,
   type TaskPolicy,
@@ -893,7 +892,7 @@ export function inspectSession(
     options.projectedTaskIds ?? [],
     options.projectionSourceDigest,
   );
-  const bootstrapArtifactUpgrade = assertArtifactDrift(
+  assertArtifactDrift(
     session,
     contract,
     artifactDigests,
@@ -947,18 +946,9 @@ export function inspectSession(
     );
   }
 
-  const inspectedSession = bootstrapArtifactUpgrade
-    ? persistBootstrapArtifactUpgrade(
-        sessionPath,
-        session,
-        contract,
-        artifactDigests,
-      )
-    : session;
-
   return {
     git,
-    session: inspectedSession,
+    session,
     contract,
     policy,
     artifactDigests,
@@ -1203,13 +1193,7 @@ function assertArtifactDrift(
   tasksPath: string,
   projectedTaskIds: string[],
   authorizedArtifactPaths: string[],
-): boolean {
-  const task32BootstrapArtifactSet = isTask32BootstrapArtifactSet(
-    session,
-    contract,
-    tasksPath,
-    projectedTaskIds,
-  );
+): void {
   const allPaths = new Set([
     ...Object.keys(session.artifacts),
     ...Object.keys(currentDigests),
@@ -1219,12 +1203,6 @@ function assertArtifactDrift(
       continue;
     }
     if (authorizedArtifactPaths.includes(artifactPath)) continue;
-    if (
-      task32BootstrapArtifactSet &&
-      !Object.hasOwn(session.artifacts, artifactPath)
-    ) {
-      continue;
-    }
     if (artifactPath === 'workflow/config.json') {
       throw artifactsChanged();
     }
@@ -1251,104 +1229,6 @@ function assertArtifactDrift(
       throw artifactsChanged();
     }
   }
-  return task32BootstrapArtifactSet;
-}
-
-function persistBootstrapArtifactUpgrade(
-  sessionPath: string,
-  session: WorkflowSession,
-  contract: ValidatedChangeContract,
-  artifactDigests: Record<string, string>,
-): WorkflowSession {
-  if (!sameStringRecord(contract.artifactDigests, artifactDigests)) {
-    throw workflowError(
-      'OPENSPEC_CHANGE_STATE_CHANGED',
-      'Managed change inputs changed before the bootstrap session could be upgraded.',
-      ExitCode.staleState,
-    );
-  }
-  const current = readSessionFile(sessionPath);
-  if (JSON.stringify(current) !== JSON.stringify(session)) {
-    throw workflowError(
-      'SESSION_CHANGED_DURING_CHECK',
-      'The active session changed before its artifact contract could be upgraded.',
-      ExitCode.staleState,
-    );
-  }
-  const upgraded: WorkflowSession = {
-    ...session,
-    artifacts: { ...artifactDigests },
-  };
-  writeJsonAtomic(sessionPath, upgraded);
-  if (
-    JSON.stringify(readSessionFile(sessionPath)) !== JSON.stringify(upgraded)
-  ) {
-    throw workflowError(
-      'SESSION_WRITE_VERIFICATION_FAILED',
-      'The upgraded session artifact contract could not be verified.',
-      ExitCode.staleState,
-    );
-  }
-  return upgraded;
-}
-
-function isTask32BootstrapArtifactSet(
-  session: WorkflowSession,
-  contract: ValidatedChangeContract,
-  tasksPath: string,
-  projectedTaskIds: string[],
-): boolean {
-  if (
-    session.changeId !== 'integrate-openspec-with-workflow' ||
-    session.taskId !== '3.2'
-  ) {
-    return false;
-  }
-  const bootstrapModule =
-    'packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts';
-  const baselinePaths = runGit(session.repositoryRoot, [
-    'ls-tree',
-    '-r',
-    '--name-only',
-    '-z',
-    session.baseline.head,
-    '--',
-    `:(literal)${bootstrapModule}`,
-  ]);
-  if (baselinePaths !== '') {
-    return false;
-  }
-
-  const legacyArtifacts = loadChangeContract(
-    session.repositoryRoot,
-    session.changeId,
-  ).artifactDigests;
-  const sessionPaths = Object.keys(session.artifacts).sort(compareText);
-  const legacyPaths = Object.keys(legacyArtifacts).sort(compareText);
-  if (JSON.stringify(sessionPaths) !== JSON.stringify(legacyPaths)) {
-    return false;
-  }
-  return legacyPaths.every(
-    (artifactPath) =>
-      (artifactPath === tasksPath && projectedTaskIds.length > 0) ||
-      session.artifacts[artifactPath] === legacyArtifacts[artifactPath],
-  );
-}
-
-function compareText(left: string, right: string): number {
-  return Buffer.from(left).compare(Buffer.from(right));
-}
-
-function sameStringRecord(
-  left: Record<string, string>,
-  right: Record<string, string>,
-): boolean {
-  const leftKeys = Object.keys(left).sort(compareText);
-  const rightKeys = Object.keys(right).sort(compareText);
-  return (
-    JSON.stringify(leftKeys) === JSON.stringify(rightKeys) &&
-    leftKeys.every((key) => left[key] === right[key])
-  );
 }
 
 function assertTaskProjection(

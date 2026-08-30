@@ -9,6 +9,7 @@ import {
   finishSession,
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import {
   abortSession,
   checkSession,
@@ -274,6 +275,84 @@ test('check rejects a forged legacy artifact map with imported runtime drift', (
   }
 });
 
+test('check rejects the exact historical task 3.2 artifact map without upgrading private session state', () => {
+  const repository = createFixtureRepository();
+  const outputDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'managed-change-historical-session-'),
+  );
+  const markerPath = path.join(outputDirectory, 'check-ran');
+  const changeId = 'integrate-openspec-with-workflow';
+  try {
+    configureChecks(
+      repository,
+      {
+        marker: {
+          command: ['node', 'scripts/write-file.mjs', markerPath],
+          destructiveDatabase: false,
+        },
+      },
+      ['marker'],
+    );
+    renameFixtureChange(repository, changeId, '3.2');
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    prepareCurrentChange(repository, changeId);
+    const session = startSession(repository, changeId, '3.2');
+    const privateRuntimeRoot = runtimeRoot(repository);
+    const sessionPath = path.join(
+      privateRuntimeRoot,
+      'sessions',
+      `${session.sessionId}.json`,
+    );
+    const persisted = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as {
+      artifacts: Record<string, string>;
+    };
+    const historicalArtifacts = loadChangeContract(
+      repository,
+      changeId,
+    ).artifactDigests;
+    const bootstrapModule =
+      'packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts';
+    assert.equal(Object.hasOwn(historicalArtifacts, bootstrapModule), false);
+    assert.notDeepEqual(historicalArtifacts, persisted.artifacts);
+    persisted.artifacts = historicalArtifacts;
+    const historicalSessionBytes = `${JSON.stringify(persisted, null, 2)}\n`;
+    fs.writeFileSync(sessionPath, historicalSessionBytes);
+    assert.deepEqual(
+      getSession(repository, session.sessionId).artifacts,
+      historicalArtifacts,
+    );
+
+    const privateStateBefore = snapshotPrivateFiles(privateRuntimeRoot);
+    const refsBefore = git(repository, [
+      'for-each-ref',
+      '--format=%(refname)%09%(objectname)',
+    ]);
+    const worktreeBefore = git(repository, ['status', '--porcelain=v2', '-z']);
+    assert.throws(
+      () => checkSession(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
+    );
+
+    assert.equal(fs.readFileSync(sessionPath, 'utf8'), historicalSessionBytes);
+    assert.deepEqual(
+      snapshotPrivateFiles(privateRuntimeRoot),
+      privateStateBefore,
+    );
+    assert.equal(
+      git(repository, ['for-each-ref', '--format=%(refname)%09%(objectname)']),
+      refsBefore,
+    );
+    assert.equal(
+      git(repository, ['status', '--porcelain=v2', '-z']),
+      worktreeBefore,
+    );
+    assert.equal(fs.existsSync(markerPath), false);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(outputDirectory, { recursive: true, force: true });
+  }
+});
+
 test('an unmanaged schema cannot enter current lifecycle state', () => {
   const repository = createFixtureRepository();
   try {
@@ -400,3 +479,74 @@ test('finish rolls back exact staging when readiness changes after staging', () 
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+function renameFixtureChange(
+  repository: string,
+  changeId: string,
+  taskId: string,
+): void {
+  const oldChangeId = 'demo-change';
+  const oldTaskId = '1.1';
+  const oldDirectory = path.join(repository, 'openspec/changes', oldChangeId);
+  const changeDirectory = path.join(repository, 'openspec/changes', changeId);
+  fs.renameSync(oldDirectory, changeDirectory);
+  for (const relativePath of [
+    '.openspec.yaml',
+    'proposal.md',
+    'design.md',
+    'tasks.md',
+    'guard.json',
+    'specs/demo/spec.md',
+  ]) {
+    const artifactPath = path.join(changeDirectory, relativePath);
+    fs.writeFileSync(
+      artifactPath,
+      fs
+        .readFileSync(artifactPath, 'utf8')
+        .replaceAll(oldChangeId, changeId)
+        .replaceAll(oldTaskId, taskId),
+    );
+  }
+  const oldProviderBindingPath = path.join(
+    repository,
+    'workflow/change-providers',
+    `${oldChangeId}.json`,
+  );
+  const providerBindingPath = path.join(
+    repository,
+    'workflow/change-providers',
+    `${changeId}.json`,
+  );
+  fs.renameSync(oldProviderBindingPath, providerBindingPath);
+  fs.writeFileSync(
+    providerBindingPath,
+    fs
+      .readFileSync(providerBindingPath, 'utf8')
+      .replaceAll(oldChangeId, changeId),
+  );
+  git(repository, ['add', '-A']);
+  git(repository, ['commit', '-m', 'Prepare historical managed change']);
+}
+
+function snapshotPrivateFiles(root: string): Record<string, string> {
+  const files: Array<[string, string]> = [];
+  walk(root, '');
+  return Object.fromEntries(files);
+
+  function walk(directory: string, prefix: string): void {
+    for (const entry of fs
+      .readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      const entryPath = path.join(directory, entry.name);
+      const relativePath = path.join(prefix, entry.name);
+      if (entry.isDirectory()) {
+        walk(entryPath, relativePath);
+      } else {
+        files.push([
+          relativePath.split(path.sep).join('/'),
+          fs.readFileSync(entryPath).toString('base64'),
+        ]);
+      }
+    }
+  }
+}
