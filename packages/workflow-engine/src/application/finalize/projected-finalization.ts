@@ -663,9 +663,7 @@ function createCheckReport(
       inspection.contract.checks,
       requiredChecks,
     ),
-    ...(transaction.schemaVersion === 2
-      ? { checkEscalation: transaction.checkEscalation ?? null }
-      : {}),
+    checkEscalation: transaction.checkEscalation,
     ...classifyProjectionPaths(
       inspection.changedPaths,
       [transaction.taskProjectionPath],
@@ -796,7 +794,7 @@ function resultFrom(
     finishReportId: transaction.finishReportId,
     completedTaskIds: [...transaction.completedTaskIds],
     requiredChecks: transactionRequiredChecks(transaction, session),
-    checkEscalation: transaction.checkEscalation ?? null,
+    checkEscalation: transaction.checkEscalation,
     stagedPaths: [...transaction.changedPaths],
     tree: transaction.candidateTree,
   };
@@ -804,21 +802,15 @@ function resultFrom(
 
 export function transactionRequiredChecks(
   transaction: FinalizeTransaction,
-  session: Pick<WorkflowSession, 'requiredChecks'>,
+  _session: Pick<WorkflowSession, 'requiredChecks'>,
 ): string[] {
-  return [
-    ...(transaction.schemaVersion === 2 && transaction.requiredChecks
-      ? transaction.requiredChecks
-      : session.requiredChecks),
-  ];
+  return [...transaction.requiredChecks];
 }
 
 export function transactionReportCheckEscalation(
   transaction: FinalizeTransaction,
-): FinalizeCheckEscalation | undefined {
-  return transaction.schemaVersion === 2
-    ? (transaction.checkEscalation ?? null)
-    : undefined;
+): FinalizeCheckEscalation {
+  return transaction.checkEscalation;
 }
 
 function assertExplicitCheckRequestMatches(

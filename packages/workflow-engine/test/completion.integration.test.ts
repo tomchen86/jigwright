@@ -25,7 +25,10 @@ import {
   writeImmutableReport,
   type WorkflowReport,
 } from '../src/runtime/storage-journal/report-store.ts';
-import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
+import {
+  createFinalizeTransaction,
+  readFinalizeTransaction,
+} from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../src/modules/assurance/finalize-check-policy.ts';
 import { writeJsonAtomic } from '../src/runtime/session-workspace/session-store.ts';
 import {
@@ -48,6 +51,40 @@ import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture
 function createFixtureRepository(): string {
   return createBareFixtureRepository();
 }
+
+test('finalize transaction creation rejects retired V1 records', () => {
+  assert.throws(
+    () =>
+      createFinalizeTransaction({
+        schemaVersion: 1,
+        kind: 'projected-finalize-transaction.v1',
+        sessionId:
+          'session-20260831000000000-00000000-0000-4000-8000-000000000000',
+        changeId: 'demo-change',
+        taskId: '1.1',
+        repositoryRoot: '/tmp/jigwright-finalize-v1',
+        gitCommonDirectory: '/tmp/jigwright-finalize-v1/.git',
+        branch: 'work/demo-change',
+        baseline: { head: 'a'.repeat(40), tree: 'b'.repeat(40) },
+        completedTaskIds: ['1.1'],
+        reconciledTasks: [],
+        taskProjectionPath: 'openspec/changes/demo-change/tasks.md',
+        projectionMutations: [
+          {
+            path: 'openspec/changes/demo-change/tasks.md',
+            before: '- [ ] 1.1 Demo\n',
+            after: '- [x] 1.1 Demo\n',
+          },
+        ],
+        projectionSourceDigest: 'c'.repeat(64),
+        projectionBaseFingerprint: 'd'.repeat(64),
+        transitionPaths: [],
+        previousIndexTree: 'e'.repeat(40),
+        createdAt: '2026-08-31T00:00:00.000Z',
+      } as never),
+    (error: unknown) => isWorkflowError(error, 'FINALIZE_TRANSACTION_INVALID'),
+  );
+});
 
 test('explicit full-gate escalation substitutes only reviewed covered checks and does not impersonate terminal state', () => {
   const tasks = [
@@ -487,9 +524,11 @@ test('finalize adds terminal policy checks only when its projection closes the t
     );
     assert.equal(reviewRequired.status, 13, reviewRequired.stderr);
     assert.equal(
-      (JSON.parse(reviewRequired.stderr.trim().split('\n').at(-1) ?? '') as {
-        error: { code: string };
-      }).error.code,
+      (
+        JSON.parse(reviewRequired.stderr.trim().split('\n').at(-1) ?? '') as {
+          error: { code: string };
+        }
+      ).error.code,
       'TASK_DIFF_REVIEW_REQUIRED',
     );
     assert.match(
@@ -1209,10 +1248,7 @@ function prepareCurrentV3Change(
   options: { additionalPendingTask?: boolean } = {},
 ): void {
   if (options.additionalPendingTask) {
-    const changeRoot = path.join(
-      repository,
-      'openspec/changes/demo-change',
-    );
+    const changeRoot = path.join(repository, 'openspec/changes/demo-change');
     fs.appendFileSync(
       path.join(changeRoot, 'tasks.md'),
       '\n- [ ] 1.2 Keep the fixture change open\n',

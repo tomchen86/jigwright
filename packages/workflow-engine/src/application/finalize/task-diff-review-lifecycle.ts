@@ -5647,10 +5647,7 @@ export function inspectTaskDiffReviewSubject(
     inspection,
     checkedTransaction.checkReportId,
   );
-  const requiredChecks =
-    transaction.schemaVersion === 2 && transaction.requiredChecks
-      ? [...transaction.requiredChecks]
-      : [...inspection.session.requiredChecks];
+  const requiredChecks = [...transaction.requiredChecks];
   assertInspectionReport(
     checkReport,
     inspection,
@@ -5667,10 +5664,7 @@ export function inspectTaskDiffReviewSubject(
   if (
     checkReport.candidateTree !== checkedTransaction.candidateTree ||
     checkReport.finalizeProfile !== 'projected-single-pass-ordinary-failure' ||
-    checkReport.checkEscalation !==
-      (transaction.schemaVersion === 2
-        ? (transaction.checkEscalation ?? null)
-        : undefined)
+    checkReport.checkEscalation !== transaction.checkEscalation
   ) {
     throw candidateDiverged();
   }

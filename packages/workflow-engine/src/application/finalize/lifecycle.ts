@@ -2168,7 +2168,7 @@ function finalizeResultFromTransaction(
     finishReportId: transaction.finishReportId,
     completedTaskIds: [...transaction.completedTaskIds],
     requiredChecks: transactionRequiredChecks(transaction, session),
-    checkEscalation: transaction.checkEscalation ?? null,
+    checkEscalation: transaction.checkEscalation,
     stagedPaths: [...transaction.changedPaths],
     tree: transaction.candidateTree,
   };
