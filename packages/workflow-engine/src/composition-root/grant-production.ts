@@ -124,6 +124,8 @@ import {
   createProductionProviderInvocationCancellationGrantPort,
   observeCurrentProviderInvocationCancellationRequest,
 } from './provider-invocation-cancellation-grant-production.ts';
+import { gitAuthorityCandidateApplyGrantTransitionDefinitions } from '../modules/authority/git-authority-candidate-apply-grant.ts';
+import { createProductionGitAuthorityCandidateApplyPort } from './git-authority-candidate-apply-production.ts';
 
 const TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION =
   'task.protected-apply.task-diff-role-assignment.v1' as const;
@@ -445,6 +447,8 @@ export function createProductionWorkflowGrantCoordinator(
     createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
   const providerInvocationCancellation =
     createProductionProviderInvocationCancellationGrantPort(cwd);
+  const gitAuthorityCandidateApply =
+    createProductionGitAuthorityCandidateApplyPort(cwd);
   const coordinator = createProductionGrantCoordinator(
     cwd,
     createTransitionRegistry([
@@ -463,6 +467,9 @@ export function createProductionWorkflowGrantCoordinator(
       ),
       ...providerInvocationCancellationTransitionDefinitions(
         providerInvocationCancellation,
+      ),
+      ...gitAuthorityCandidateApplyGrantTransitionDefinitions(
+        gitAuthorityCandidateApply,
       ),
     ]),
   );
