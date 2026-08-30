@@ -528,7 +528,7 @@
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:27996def8216bac0adc468adb0ea74fc11ec8d5608c74a6137a5fddc19cba5b6"
+      "digest": "sha256:598dc4ee529c747c41585d61e8edc2d74a14e5cabf5742235b9f7251ebb2e79a"
     },
     {
       "path": "src/application/control-plane/human-revocation.ts",
@@ -988,7 +988,7 @@
     {
       "path": "src/entrypoints/cli/execution-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:e50b1bdcf77657859bc61de71a6debadbf214e2ec8b9d5a657b0a0a2a70ef6d1"
+      "digest": "sha256:474ce5ecfc71767b2b89b4d0e4652d86faa3da661ec71168a595bb8bb56111d7"
     },
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
@@ -1188,7 +1188,7 @@
     {
       "path": "src/modules/authority/execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:a4bcb8fc2c0fdd7371a30c05a1ae1b2cde4eadf621c4a204168e28b446904687"
+      "digest": "sha256:3c44514821fd18399aa73fc3939b0bb9db14c5ee7a5fa0ac3d37df8ba2df8d28"
     },
     {
       "path": "src/modules/authority/external-effect-grant.ts",
