@@ -426,6 +426,32 @@ test('committed local adoption fails closed for artifact, binding, and journal t
   }
 });
 
+test('bootstrap launch rejects retired persisted V1 adoption without mutating it', async () => {
+  const value = await fixture(true);
+  try {
+    value.complete();
+    const target = adoptionPath(value.stateRoot, value.txId);
+    rewriteCanonicalRecord(target, (record) => {
+      record.kind = 'persisted-engine-adoption.v1';
+      delete record.artifactRecordDigest;
+      const journal = record.journal as Record<string, unknown>;
+      delete journal.workflowBindingDigest;
+      delete journal.workflowStatus;
+      delete journal.journalDigest;
+      journal.journalDigest = digest(canonicalJson(journal));
+    });
+    const retiredBytes = fs.readFileSync(target, 'utf8');
+
+    const launched = runWorkflowLauncher(value.repository, ['--help']);
+    assert.notEqual(launched.status, 0);
+    assert.equal(launched.stdout, '');
+    assert.match(launched.stderr, /WORKFLOW_LOCAL_ADOPTION_JOURNAL_CORRUPT/);
+    assert.equal(fs.readFileSync(target, 'utf8'), retiredBytes);
+  } finally {
+    value.cleanup();
+  }
+});
+
 test('sealed harness-bootstrap runtime remains usable when the mutable E1 src tree is broken', async () => {
   const value = await fixture(true);
   const isolatedPackage = fs.mkdtempSync(

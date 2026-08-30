@@ -388,17 +388,16 @@ interface BootstrapAdoptionJournal {
   toEngineDigest: Sha256Digest;
   artifactId: Sha256Digest;
   sessionSchema: string;
-  workflowBindingDigest?: Sha256Digest;
-  workflowStatus?: 'repair-active';
+  workflowBindingDigest: Sha256Digest;
+  workflowStatus: 'repair-active';
   state: BootstrapAdoptionState;
   history: Array<{ state: BootstrapAdoptionState; at: string }>;
   journalDigest: Sha256Digest;
 }
 
 interface BootstrapLocalAdoptionRecord {
-  schemaVersion: 1 | 2;
   journal: BootstrapAdoptionJournal;
-  artifactRecordDigest: Sha256Digest | null;
+  artifactRecordDigest: Sha256Digest;
 }
 
 const TERMINAL_HISTORIES = {
@@ -1317,14 +1316,11 @@ export function resolveLocalEngineSelection(
   const adoption = readLocalAdoptionJournal(adoptionPath, binding.txId);
   const journal = adoption.journal;
   assertLocalBindingJournalIdentity(paths, binding, journal);
-
-  if (adoption.schemaVersion === 2) {
-    assertLocalAdoptionWorkflowBinding(
-      paths,
-      journal,
-      adoption.artifactRecordDigest,
-    );
-  }
+  assertLocalAdoptionWorkflowBinding(
+    paths,
+    journal,
+    adoption.artifactRecordDigest,
+  );
 
   if (journal.state === 'ENGINE_BINDING_ROLLED_BACK') {
     assertTerminalRolledBackBinding(binding, journal);
@@ -1336,13 +1332,6 @@ export function resolveLocalEngineSelection(
       'WORKFLOW_LOCAL_ADOPTION_INCOMPLETE',
       'Local engine adoption is not terminal; use harness-bootstrap to inspect or recover it.',
       14,
-    );
-  }
-  if (adoption.schemaVersion === 1) {
-    throw trustError(
-      'WORKFLOW_LOCAL_ADOPTION_WORKFLOW_BINDING_REQUIRED',
-      'Historical V1 local adoption metadata is readable but cannot authorize an engine launch.',
-      13,
     );
   }
   assertTerminalCommittedBinding(binding, journal);
@@ -3605,6 +3594,7 @@ function readLocalAdoptionJournal(
 ): BootstrapLocalAdoptionRecord {
   const value = readCanonicalPrivateRecord(filePath, localJournalCorrupt);
   const recordKeys = [
+    'artifactRecordDigest',
     'createdAt',
     'effectsPerformed',
     'grantEnvelopeDigest',
@@ -3615,18 +3605,10 @@ function readLocalAdoptionJournal(
     'recordDigest',
     'updatedAt',
   ];
-  if (!isRecord(value)) throw localJournalCorrupt();
-  const schemaVersion = value.kind === 'persisted-engine-adoption.v2' ? 2 : 1;
   if (
-    !hasExactKeys(
-      value,
-      schemaVersion === 2
-        ? [...recordKeys, 'artifactRecordDigest']
-        : recordKeys,
-    ) ||
-    !['persisted-engine-adoption.v1', 'persisted-engine-adoption.v2'].includes(
-      String(value.kind),
-    ) ||
+    !isRecord(value) ||
+    !hasExactKeys(value, recordKeys) ||
+    value.kind !== 'persisted-engine-adoption.v2' ||
     value.effectsPerformed !== false ||
     !verifyRecordDigest(value) ||
     !isDigest(value.grantEnvelopeDigest) ||
@@ -3637,7 +3619,7 @@ function readLocalAdoptionJournal(
     !isCanonicalIso(value.updatedAt) ||
     Date.parse(value.updatedAt) < Date.parse(value.createdAt) ||
     !isRecord(value.journal) ||
-    (schemaVersion === 2 && !isDigest(value.artifactRecordDigest))
+    !isDigest(value.artifactRecordDigest)
   ) {
     throw localJournalCorrupt();
   }
@@ -3656,14 +3638,11 @@ function readLocalAdoptionJournal(
     'state',
     'toEngineDigest',
     'txId',
+    'workflowBindingDigest',
+    'workflowStatus',
   ];
   if (
-    !hasExactKeys(
-      value.journal,
-      schemaVersion === 2
-        ? [...journalKeys, 'workflowBindingDigest', 'workflowStatus']
-        : journalKeys,
-    ) ||
+    !hasExactKeys(value.journal, journalKeys) ||
     journal.kind !== 'engine-adoption-journal.v1' ||
     journal.txId !== txId ||
     !isNonEmptyTrimmed(journal.txId) ||
@@ -3675,29 +3654,25 @@ function readLocalAdoptionJournal(
     !isDigest(journal.fromEngineDigest) ||
     !isDigest(journal.toEngineDigest) ||
     !isDigest(journal.artifactId) ||
-    (schemaVersion === 2 &&
-      (!isDigest(journal.workflowBindingDigest) ||
-        journal.workflowStatus !== 'repair-active')) ||
+    !isDigest(journal.workflowBindingDigest) ||
+    journal.workflowStatus !== 'repair-active' ||
     !verifyJournalDigest(value.journal) ||
     !validAdoptionHistory(journal.state, journal.history)
   ) {
     throw localJournalCorrupt();
   }
   return {
-    schemaVersion,
     journal,
-    artifactRecordDigest:
-      schemaVersion === 2 ? (value.artifactRecordDigest as Sha256Digest) : null,
+    artifactRecordDigest: value.artifactRecordDigest as Sha256Digest,
   };
 }
 
 function assertLocalAdoptionWorkflowBinding(
   paths: BootstrapPaths,
   journal: BootstrapAdoptionJournal,
-  artifactRecordDigest: Sha256Digest | null,
+  artifactRecordDigest: Sha256Digest,
 ): void {
   if (
-    artifactRecordDigest === null ||
     !isDigest(journal.workflowBindingDigest) ||
     journal.workflowStatus !== 'repair-active'
   ) {
