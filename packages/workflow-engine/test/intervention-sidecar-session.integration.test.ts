@@ -7,6 +7,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import * as interventionControlPersistence from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import {
   capturePersistedWipIntervention,
   executePersistedAdoptionStep,
@@ -473,6 +474,16 @@ test('current sidecar Workflow durably repairs every post-authority crash window
   }
 });
 
+test('retired V1 sidecar reader is absent from the current persistence surface', () => {
+  assert.equal(
+    Object.prototype.hasOwnProperty.call(
+      interventionControlPersistence,
+      'readPersistedBootstrapSidecarSession',
+    ),
+    false,
+  );
+});
+
 test('current sidecar lookup rejects a valid V1 session record', () => {
   const value = fixture();
   try {
@@ -510,13 +521,14 @@ test('current sidecar lookup rejects a valid V1 session record', () => {
       ...legacyPayload,
       recordDigest: digest(canonicalJson(legacyPayload)),
     };
+    const legacyBytes = `${canonicalJson(legacy)}\n`;
     const sidecarFile = path.join(
       interventionControlPersistencePaths(value.stateRoot).sidecarSessions,
       fs.readdirSync(
         interventionControlPersistencePaths(value.stateRoot).sidecarSessions,
       )[0]!,
     );
-    fs.writeFileSync(sidecarFile, `${canonicalJson(legacy)}\n`, {
+    fs.writeFileSync(sidecarFile, legacyBytes, {
       mode: 0o600,
     });
 
@@ -531,6 +543,7 @@ test('current sidecar lookup rejects a valid V1 session record', () => {
         'code' in error &&
         error.code === 'INTERVENTION_SIDECAR_SESSION_CORRUPT',
     );
+    assert.equal(fs.readFileSync(sidecarFile, 'utf8'), legacyBytes);
   } finally {
     value.cleanup();
   }
