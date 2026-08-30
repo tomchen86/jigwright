@@ -51,6 +51,7 @@ import {
   createFixtureRepository,
   git,
   installFakeOpenSpec,
+  prepareCurrentV3IntroductionFixture,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
@@ -478,7 +479,8 @@ test('portable fixture completes all ten local scenarios from an exact tarball',
 
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
-    git(repository, ['checkout', '-b', 'changes/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+    git(repository, ['branch', '-m', 'changes/demo-change']);
     writeReadyV3ExemptChange(repository);
     const validation = runCli(repository, [
       'validate-change',
