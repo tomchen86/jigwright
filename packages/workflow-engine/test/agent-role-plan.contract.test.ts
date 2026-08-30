@@ -13,16 +13,11 @@ import {
   renderCentralRoleProviderDefault,
 } from '../src/modules/provider-orchestration/central-role-provider-default.ts';
 import {
-  agentRolePlanDigest,
   agentRolePlanV2Digest,
   createAgentRolePlanV2Snapshot,
-  parseAgentRolePlan,
   parseAgentRolePlanV2,
-  renderAgentRolePlan,
   renderAgentRolePlanV2,
-  type AgentRolePlanBodyV1,
   type AgentRolePlanBodyV2,
-  type AgentRolePlanV1,
   type AgentRolePlanV2,
   type CurrentAgentRolePlan,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
@@ -33,9 +28,7 @@ import {
 } from '../src/modules/source/planning-role-policy-paths.ts';
 import {
   assertPinnedAgentRolePlanV2Snapshot,
-  readCurrentAgentRolePlan,
   readCurrentAgentRolePlanV2,
-  readPinnedAgentRolePlan,
   readPinnedAgentRolePlanV2,
   readPinnedAgentRolePlanV2Snapshot,
 } from '../src/runtime/repository-transaction/agent-role-plan-store.ts';
@@ -48,7 +41,6 @@ import {
 } from './fixture.ts';
 
 const CHANGE_ID = 'demo-change';
-const PLANNING_GENERATION = 'a'.repeat(64);
 
 function centralConfiguration() {
   return createCentralRoleProviderDefault({
@@ -83,13 +75,13 @@ function centralConfiguration() {
 
 const CENTRAL_CONFIGURATION_DIGEST = centralConfiguration().configurationDigest;
 
-function planBody(
-  overrides: Partial<AgentRolePlanBodyV1> = {},
-): AgentRolePlanBodyV1 {
+function planBodyV2(
+  overrides: Partial<AgentRolePlanBodyV2> = {},
+): AgentRolePlanBodyV2 {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     changeId: CHANGE_ID,
-    planningGeneration: PLANNING_GENERATION,
+    baseCentralConfigurationDigest: CENTRAL_CONFIGURATION_DIGEST,
     roleLanes: [
       {
         role: 'author',
@@ -121,31 +113,6 @@ function planBody(
   };
 }
 
-function plan(overrides: Partial<AgentRolePlanBodyV1> = {}): AgentRolePlanV1 {
-  const body = planBody(overrides);
-  return { ...body, planDigest: agentRolePlanDigest(body) };
-}
-
-function parseObject(value: unknown): AgentRolePlanV1 {
-  return parseAgentRolePlan(
-    `${JSON.stringify(value, null, 2)}\n`,
-    CHANGE_ID,
-    PLANNING_GENERATION,
-  );
-}
-
-function planBodyV2(
-  overrides: Partial<AgentRolePlanBodyV2> = {},
-): AgentRolePlanBodyV2 {
-  const { planningGeneration: _planningGeneration, ...body } = planBody();
-  return {
-    ...body,
-    schemaVersion: 2,
-    baseCentralConfigurationDigest: CENTRAL_CONFIGURATION_DIGEST,
-    ...overrides,
-  };
-}
-
 function planV2(overrides: Partial<AgentRolePlanBodyV2> = {}): AgentRolePlanV2 {
   const body = planBodyV2(overrides);
   return { ...body, planDigest: agentRolePlanV2Digest(body) };
@@ -167,13 +134,6 @@ function planPath(repository: string): string {
   return path.join(repository, 'workflow', 'agent-plans', `${CHANGE_ID}.json`);
 }
 
-function writePlan(repository: string, value = plan()): string {
-  const destination = planPath(repository);
-  fs.mkdirSync(path.dirname(destination), { recursive: true });
-  fs.writeFileSync(destination, renderAgentRolePlan(value));
-  return destination;
-}
-
 function writePlanV2(repository: string, value = planV2()): string {
   const destination = planPath(repository);
   fs.mkdirSync(path.dirname(destination), { recursive: true });
@@ -189,91 +149,6 @@ function writeCentralConfiguration(repository: string): void {
     renderCentralRoleProviderDefault(centralConfiguration()),
   );
 }
-
-test('agent-role plan v1 is canonical, self-digested, and deeply frozen', () => {
-  const value = plan();
-  const document = renderAgentRolePlan(value);
-  const parsed = parseAgentRolePlan(document, CHANGE_ID, PLANNING_GENERATION);
-
-  assert.deepEqual(parsed, value);
-  assert.equal(renderAgentRolePlan(parsed), document);
-  assert.equal(parsed.planDigest, agentRolePlanDigest(planBody()));
-  assert.equal(Object.isFrozen(parsed), true);
-  assert.equal(Object.isFrozen(parsed.roleLanes), true);
-  assert.equal(Object.isFrozen(parsed.roleLanes[0]), true);
-  assert.equal(
-    Object.isFrozen(parsed.roleLanes[0]?.allowedProviderFamilies),
-    true,
-  );
-  assert.equal(Object.isFrozen(parsed.pairwiseRequirements), true);
-  assert.equal(Object.isFrozen(parsed.pairwiseRequirements[0]), true);
-  assert.equal(Object.isFrozen(parsed.grantReferences), true);
-
-  assert.throws(
-    () =>
-      parseAgentRolePlan(
-        `${document.trimEnd()} \n`,
-        CHANGE_ID,
-        PLANNING_GENERATION,
-      ),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-});
-
-test('agent-role plan rejects unknown versions, stale identity, and malformed requirements', () => {
-  const value = plan();
-  assert.throws(
-    () => parseObject({ ...value, schemaVersion: 2 }),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_VERSION_UNSUPPORTED'),
-  );
-  assert.throws(
-    () =>
-      parseAgentRolePlan(
-        renderAgentRolePlan(value),
-        'other-change',
-        PLANNING_GENERATION,
-      ),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-  assert.throws(
-    () =>
-      parseAgentRolePlan(renderAgentRolePlan(value), CHANGE_ID, 'b'.repeat(64)),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-  assert.throws(
-    () => parseObject({ ...value, planDigest: 'b'.repeat(64) }),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-  assert.throws(
-    () =>
-      parseObject({
-        ...value,
-        roleLanes: [value.roleLanes[0], value.roleLanes[0]],
-      }),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-  assert.throws(
-    () =>
-      parseObject({
-        ...value,
-        pairwiseRequirements: [
-          value.pairwiseRequirements[0],
-          value.pairwiseRequirements[0],
-        ],
-      }),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-  assert.throws(
-    () =>
-      parseObject({
-        ...value,
-        pairwiseRequirements: [
-          { pair: 'author-author', required: 'principal-independent' },
-        ],
-      }),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
-  );
-});
 
 test('agent-role plan v2 closes over the central configuration without a self-referential planning generation', () => {
   const value: CurrentAgentRolePlan = planV2();
@@ -291,14 +166,32 @@ test('agent-role plan v2 closes over the central configuration without a self-re
   assert.equal(Object.isFrozen(parsed.roleLanes), true);
   assert.equal(Object.isFrozen(parsed.pairwiseRequirements), true);
 
-  assert.throws(
-    () => parseAgentRolePlan(document, CHANGE_ID, PLANNING_GENERATION),
-    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_VERSION_UNSUPPORTED'),
+  assert.equal(renderAgentRolePlanV2(parsed), document);
+  assert.equal(Object.isFrozen(parsed.roleLanes[0]), true);
+  assert.equal(
+    Object.isFrozen(parsed.roleLanes[0]?.allowedProviderFamilies),
+    true,
   );
+  assert.equal(Object.isFrozen(parsed.pairwiseRequirements[0]), true);
+  assert.equal(Object.isFrozen(parsed.grantReferences), true);
   assert.throws(
     () =>
       parseAgentRolePlanV2(
-        renderAgentRolePlan(plan()),
+        document.trimEnd().concat(' ', String.fromCharCode(10)),
+        CHANGE_ID,
+        CENTRAL_CONFIGURATION_DIGEST,
+      ),
+    (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+  );
+  const schemaOneDocument = JSON.stringify(
+    { schemaVersion: 1 },
+    null,
+    2,
+  ).concat(String.fromCharCode(10));
+  assert.throws(
+    () =>
+      parseAgentRolePlanV2(
+        schemaOneDocument,
         CHANGE_ID,
         CENTRAL_CONFIGURATION_DIGEST,
       ),
@@ -325,10 +218,34 @@ test('agent-role plan v2 rejects central drift, stale digests, and embedded auth
     () => parseObjectV2({ ...value, signedGrant: 'not-override-intent' }),
     (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
   );
+  for (const malformed of [
+    {
+      ...value,
+      roleLanes: [value.roleLanes[0], value.roleLanes[0]],
+    },
+    {
+      ...value,
+      pairwiseRequirements: [
+        value.pairwiseRequirements[0],
+        value.pairwiseRequirements[0],
+      ],
+    },
+    {
+      ...value,
+      pairwiseRequirements: [
+        { pair: 'author-author', required: 'principal-independent' },
+      ],
+    },
+  ]) {
+    assert.throws(
+      () => parseObjectV2(malformed),
+      (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
+    );
+  }
 });
 
 test('agent-role plan cannot carry execution or credential authority', () => {
-  const value = plan();
+  const value = planV2();
   for (const [field, injected] of [
     ['executable', '/usr/local/bin/claude'],
     ['argv', ['--dangerously-skip-permissions']],
@@ -336,13 +253,13 @@ test('agent-role plan cannot carry execution or credential authority', () => {
     ['credentials', { path: '/tmp/provider-token' }],
   ] as const) {
     assert.throws(
-      () => parseObject({ ...value, [field]: injected }),
+      () => parseObjectV2({ ...value, [field]: injected }),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
       field,
     );
     assert.throws(
       () =>
-        parseObject({
+        parseObjectV2({
           ...value,
           roleLanes: [
             { ...value.roleLanes[0], [field]: injected },
@@ -366,7 +283,7 @@ test('agent-role plan cannot carry execution or credential authority', () => {
   ]) {
     assert.throws(
       () =>
-        parseObject({
+        parseObjectV2({
           ...value,
           roleLanes: [roleLane, ...value.roleLanes.slice(1)],
         }),
@@ -374,7 +291,8 @@ test('agent-role plan cannot carry execution or credential authority', () => {
     );
   }
   assert.throws(
-    () => parseObject({ ...value, grantReferences: ['secret/provider-token'] }),
+    () =>
+      parseObjectV2({ ...value, grantReferences: ['secret/provider-token'] }),
     (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
   );
 });
@@ -383,21 +301,33 @@ test('current agent-role plan reader returns null for absence and rejects unsafe
   const repository = temporaryRepository();
   try {
     assert.equal(
-      readCurrentAgentRolePlan(repository, CHANGE_ID, PLANNING_GENERATION),
+      readCurrentAgentRolePlanV2(
+        repository,
+        CHANGE_ID,
+        CENTRAL_CONFIGURATION_DIGEST,
+      ),
       null,
     );
     fs.mkdirSync(path.dirname(planPath(repository)), { recursive: true });
     assert.equal(
-      readCurrentAgentRolePlan(repository, CHANGE_ID, PLANNING_GENERATION),
+      readCurrentAgentRolePlanV2(
+        repository,
+        CHANGE_ID,
+        CENTRAL_CONFIGURATION_DIGEST,
+      ),
       null,
     );
-    writePlan(repository);
+    writePlanV2(repository);
     assert.deepEqual(
-      readCurrentAgentRolePlan(repository, CHANGE_ID, PLANNING_GENERATION),
-      plan(),
+      readCurrentAgentRolePlanV2(
+        repository,
+        CHANGE_ID,
+        CENTRAL_CONFIGURATION_DIGEST,
+      ),
+      planV2(),
     );
     assert.throws(
-      () => readCurrentAgentRolePlan(repository, CHANGE_ID, 'b'.repeat(64)),
+      () => readCurrentAgentRolePlanV2(repository, CHANGE_ID, 'b'.repeat(64)),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
   } finally {
@@ -421,14 +351,14 @@ test('current agent-role plan reader returns null for absence and rejects unsafe
   ]) {
     const unsafeRepository = temporaryRepository();
     try {
-      const destination = writePlan(unsafeRepository);
+      const destination = writePlanV2(unsafeRepository);
       mutate(unsafeRepository, destination);
       assert.throws(
         () =>
-          readCurrentAgentRolePlan(
+          readCurrentAgentRolePlanV2(
             unsafeRepository,
             CHANGE_ID,
-            PLANNING_GENERATION,
+            CENTRAL_CONFIGURATION_DIGEST,
           ),
         (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
       );
@@ -449,35 +379,35 @@ test('pinned agent-role plan reader accepts only an exact bounded 100644 blob', 
     git(repository, ['commit', '-q', '-m', 'Create fixture']);
     const absentCommit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.equal(
-      readPinnedAgentRolePlan(
+      readPinnedAgentRolePlanV2(
         repository,
         absentCommit,
         CHANGE_ID,
-        PLANNING_GENERATION,
+        CENTRAL_CONFIGURATION_DIGEST,
       ),
       null,
     );
 
-    writePlan(repository);
+    writePlanV2(repository);
     git(repository, ['add', `workflow/agent-plans/${CHANGE_ID}.json`]);
     git(repository, ['commit', '-q', '-m', 'Add optional agent plan']);
     const validCommit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.deepEqual(
-      readPinnedAgentRolePlan(
+      readPinnedAgentRolePlanV2(
         repository,
         validCommit,
         CHANGE_ID,
-        PLANNING_GENERATION,
+        CENTRAL_CONFIGURATION_DIGEST,
       ),
-      plan(),
+      planV2(),
     );
     assert.throws(
       () =>
-        readPinnedAgentRolePlan(
+        readPinnedAgentRolePlanV2(
           repository,
           'HEAD',
           CHANGE_ID,
-          PLANNING_GENERATION,
+          CENTRAL_CONFIGURATION_DIGEST,
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
@@ -491,11 +421,11 @@ test('pinned agent-role plan reader accepts only an exact bounded 100644 blob', 
     const executableCommit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.throws(
       () =>
-        readPinnedAgentRolePlan(
+        readPinnedAgentRolePlanV2(
           repository,
           executableCommit,
           CHANGE_ID,
-          PLANNING_GENERATION,
+          CENTRAL_CONFIGURATION_DIGEST,
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
@@ -507,11 +437,11 @@ test('pinned agent-role plan reader accepts only an exact bounded 100644 blob', 
     const symlinkCommit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.throws(
       () =>
-        readPinnedAgentRolePlan(
+        readPinnedAgentRolePlanV2(
           repository,
           symlinkCommit,
           CHANGE_ID,
-          PLANNING_GENERATION,
+          CENTRAL_CONFIGURATION_DIGEST,
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
@@ -523,11 +453,11 @@ test('pinned agent-role plan reader accepts only an exact bounded 100644 blob', 
     const invalidUtf8Commit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.throws(
       () =>
-        readPinnedAgentRolePlan(
+        readPinnedAgentRolePlanV2(
           repository,
           invalidUtf8Commit,
           CHANGE_ID,
-          PLANNING_GENERATION,
+          CENTRAL_CONFIGURATION_DIGEST,
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );
@@ -538,11 +468,11 @@ test('pinned agent-role plan reader accepts only an exact bounded 100644 blob', 
     const oversizedCommit = git(repository, ['rev-parse', 'HEAD']).trim();
     assert.throws(
       () =>
-        readPinnedAgentRolePlan(
+        readPinnedAgentRolePlanV2(
           repository,
           oversizedCommit,
           CHANGE_ID,
-          PLANNING_GENERATION,
+          CENTRAL_CONFIGURATION_DIGEST,
         ),
       (error) => isWorkflowError(error, 'AGENT_ROLE_PLAN_INVALID'),
     );

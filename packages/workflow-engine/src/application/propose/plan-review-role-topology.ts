@@ -41,7 +41,7 @@ export function resolvePlanReviewRoleTopology(
       ExitCode.verification,
     );
   }
-  const { changeOverride, providerRegistry } =
+  const { baseCentralConfigurationDigest, changeOverride, providerRegistry } =
     dependencies.readResolutionSnapshot({
       repositoryRoot: input.repositoryRoot,
       changeId: input.changeId,
@@ -85,6 +85,7 @@ export function resolvePlanReviewRoleTopology(
     changeId: input.changeId,
     planningGeneration: input.planningGeneration,
     centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+    baseCentralConfigurationDigest,
     changeOverride,
     providerRegistry,
     actualPlacements: [

@@ -3,11 +3,11 @@ import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
-  agentRolePlanDigest,
+  agentRolePlanV2Digest,
   type AgentRole,
   type AgentRoleIndependenceRequirement,
   type AgentRolePair,
-  type AgentRolePlanV1,
+  type AgentRolePlanV2,
   type AgentPairwiseRequirementV1,
 } from './agent-role-plan.ts';
 
@@ -62,7 +62,8 @@ export type RoleTopologyResolutionSnapshotRequestV1 = Readonly<{
 }>;
 
 export type RoleTopologyResolutionSnapshotV1 = Readonly<{
-  changeOverride: AgentRolePlanV1 | null;
+  baseCentralConfigurationDigest: string | null;
+  changeOverride: AgentRolePlanV2 | null;
   providerRegistry: RoleTopologyProviderRegistryV1;
 }>;
 
@@ -118,8 +119,9 @@ export type RoleTopologyResolutionV1 = Readonly<{
 export type ResolveRoleTopologyInputV1 = Readonly<{
   changeId: string;
   planningGeneration: string;
+  baseCentralConfigurationDigest: string | null;
   centralConfiguration: CentralRoleTopologyConfigurationV1;
-  changeOverride: AgentRolePlanV1 | null;
+  changeOverride: AgentRolePlanV2 | null;
   providerRegistry: RoleTopologyProviderRegistryV1;
   actualPlacements: readonly ActualRolePlacementV1[];
 }>;
@@ -188,7 +190,7 @@ export function resolveRoleTopologyV1(
   const changeOverride = assertChangeOverride(
     input.changeOverride,
     input.changeId,
-    input.planningGeneration,
+    input.baseCentralConfigurationDigest,
   );
 
   const centralByPair = new Map(
@@ -428,24 +430,33 @@ function assertActualPlacements(
 }
 
 function assertChangeOverride(
-  value: AgentRolePlanV1 | null,
+  value: AgentRolePlanV2 | null,
   changeId: string,
-  planningGeneration: string,
-): AgentRolePlanV1 | null {
-  if (value === null) return null;
+  baseCentralConfigurationDigest: string | null,
+): AgentRolePlanV2 | null {
+  if (value === null) {
+    if (baseCentralConfigurationDigest !== null) {
+      throw topologyInvalid(
+        'Per-change role-topology override identity is stale or invalid.',
+      );
+    }
+    return null;
+  }
   const body = {
     schemaVersion: value.schemaVersion,
     changeId: value.changeId,
-    planningGeneration: value.planningGeneration,
+    baseCentralConfigurationDigest: value.baseCentralConfigurationDigest,
     roleLanes: value.roleLanes,
     pairwiseRequirements: value.pairwiseRequirements,
     customWrapperPolicy: value.customWrapperPolicy,
     grantReferences: value.grantReferences,
   } as const;
   if (
+    baseCentralConfigurationDigest === null ||
+    !DIGEST.test(baseCentralConfigurationDigest) ||
     value.changeId !== changeId ||
-    value.planningGeneration !== planningGeneration ||
-    value.planDigest !== agentRolePlanDigest(body)
+    value.baseCentralConfigurationDigest !== baseCentralConfigurationDigest ||
+    value.planDigest !== agentRolePlanV2Digest(body)
   ) {
     throw topologyInvalid(
       'Per-change role-topology override identity is stale or invalid.',

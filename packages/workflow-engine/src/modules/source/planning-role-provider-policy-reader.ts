@@ -36,10 +36,10 @@ export type CurrentPlanningRoleOverridePolicy = Readonly<{
  * without crossing into runtime storage. This is a pure read-side policy
  * projection: it grants no provider, session, or execution authority.
  */
-export function readCurrentPlanningRoleOverridePolicy(
+export function readCurrentPlanningAgentRolePlanV2(
   repositoryRoot: string,
   changeId: string,
-): CurrentPlanningRoleOverridePolicy | null {
+): AgentRolePlanV2 | null {
   const overridePath = agentRolePlanV2Path(changeId);
   const overrideBytes = readCurrentPolicyBytes(repositoryRoot, overridePath, {
     kind: 'agent-role-plan',
@@ -47,22 +47,48 @@ export function readCurrentPlanningRoleOverridePolicy(
   });
   if (overrideBytes === null) return null;
 
-  const central = readCurrentCentralRoleProviderDefaultPolicy(repositoryRoot);
-  const override = parseCurrentAgentRolePlanV2(
+  const centralBytes =
+    readCurrentCentralRoleProviderDefaultPolicyBytes(repositoryRoot);
+  const central = parseCurrentCentralRoleProviderDefaultPolicy(centralBytes);
+  const revalidatedOverrideBytes = readCurrentPolicyBytes(
+    repositoryRoot,
+    overridePath,
+    { kind: 'agent-role-plan', optional: true },
+  );
+  const revalidatedCentralBytes =
+    readCurrentCentralRoleProviderDefaultPolicyBytes(repositoryRoot);
+  if (
+    revalidatedOverrideBytes === null ||
+    !overrideBytes.equals(revalidatedOverrideBytes) ||
+    !centralBytes.equals(revalidatedCentralBytes)
+  ) {
+    throw agentRolePlanInvalid(
+      'Agent-role plan or central role/provider default changed while their exact pair was read.',
+    );
+  }
+  return parseCurrentAgentRolePlanV2(
     overrideBytes,
     changeId,
     central.configurationDigest,
   );
+}
+
+export function readCurrentPlanningRoleOverridePolicy(
+  repositoryRoot: string,
+  changeId: string,
+): CurrentPlanningRoleOverridePolicy | null {
+  const override = readCurrentPlanningAgentRolePlanV2(repositoryRoot, changeId);
+  if (override === null) return null;
   return Object.freeze({
-    path: overridePath,
-    baseCentralConfigurationDigest: central.configurationDigest,
+    path: agentRolePlanV2Path(changeId),
+    baseCentralConfigurationDigest: override.baseCentralConfigurationDigest,
     planDigest: override.planDigest,
   });
 }
 
-function readCurrentCentralRoleProviderDefaultPolicy(
+function readCurrentCentralRoleProviderDefaultPolicyBytes(
   repositoryRoot: string,
-): CentralRoleProviderDefaultV1 {
+): Buffer {
   const bytes = readCurrentPolicyBytes(
     repositoryRoot,
     CENTRAL_ROLE_PROVIDER_DEFAULT_PATH,
@@ -77,6 +103,12 @@ function readCurrentCentralRoleProviderDefaultPolicy(
       'Central role/provider default is unavailable.',
     );
   }
+  return bytes;
+}
+
+function parseCurrentCentralRoleProviderDefaultPolicy(
+  bytes: Uint8Array,
+): CentralRoleProviderDefaultV1 {
   try {
     return parseCentralRoleProviderDefault(decodePolicyBytes(bytes));
   } catch {

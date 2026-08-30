@@ -41,8 +41,8 @@ import {
   validateInvestigationFirstPlanningReadiness,
 } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
-  agentRolePlanDigest,
-  type AgentRolePlanBodyV1,
+  agentRolePlanV2Digest,
+  type AgentRolePlanBodyV2,
 } from '../src/modules/provider-orchestration/agent-role-plan.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
@@ -191,10 +191,11 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
   ]).trim();
   const planningGeneration = '1'.repeat(64);
   const providerDefinitionDigest = '2'.repeat(64);
-  const rolePlanBody: AgentRolePlanBodyV1 = {
-    schemaVersion: 1,
+  const baseCentralConfigurationDigest = '0'.repeat(64);
+  const rolePlanBody: AgentRolePlanBodyV2 = {
+    schemaVersion: 2,
     changeId: 'r007-plan-review',
-    planningGeneration,
+    baseCentralConfigurationDigest,
     roleLanes: [],
     pairwiseRequirements: [
       { pair: 'author-reviewer', required: 'session-independent' },
@@ -205,10 +206,11 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
   const roleTopology = resolveRoleTopologyV1({
     changeId: rolePlanBody.changeId,
     planningGeneration,
+    baseCentralConfigurationDigest,
     centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
     changeOverride: {
       ...rolePlanBody,
-      planDigest: agentRolePlanDigest(rolePlanBody),
+      planDigest: agentRolePlanV2Digest(rolePlanBody),
     },
     providerRegistry: {
       schemaVersion: 1,

@@ -1,7 +1,7 @@
 import { resolveBuiltInProviderDefinitionSnapshot } from '../adapters/providers/built-in-provider-definition.ts';
 import { listBuiltInProviders } from '../modules/provider-orchestration/provider-registry.ts';
 import type { RoleTopologyResolutionDependencyPortV1 } from '../modules/provider-orchestration/role-topology-resolution.ts';
-import { readCurrentAgentRolePlan } from '../runtime/repository-transaction/agent-role-plan-store.ts';
+import { readCurrentPlanningAgentRolePlanV2 } from '../modules/source/planning-role-provider-policy-reader.ts';
 
 /**
  * Bind the application-owned topology port to the current repository reader
@@ -29,12 +29,14 @@ export function createProductionRoleTopologyResolutionPort(
         .sort((left, right) =>
           left.logicalProviderId.localeCompare(right.logicalProviderId),
         );
+      const changeOverride = readCurrentPlanningAgentRolePlanV2(
+        request.repositoryRoot,
+        request.changeId,
+      );
       return Object.freeze({
-        changeOverride: readCurrentAgentRolePlan(
-          request.repositoryRoot,
-          request.changeId,
-          request.planningGeneration,
-        ),
+        baseCentralConfigurationDigest:
+          changeOverride?.baseCentralConfigurationDigest ?? null,
+        changeOverride,
         providerRegistry: Object.freeze({
           schemaVersion: 1 as const,
           policyDigest: request.providerPolicyDigest,

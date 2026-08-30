@@ -38,21 +38,6 @@ export type AgentPairwiseRequirementV1 = Readonly<{
   required: AgentRoleIndependenceRequirement;
 }>;
 
-export type AgentRolePlanBodyV1 = Readonly<{
-  schemaVersion: 1;
-  changeId: string;
-  planningGeneration: string;
-  roleLanes: readonly AgentRoleLaneV1[];
-  pairwiseRequirements: readonly AgentPairwiseRequirementV1[];
-  customWrapperPolicy: AgentCustomWrapperPolicy;
-  grantReferences: readonly string[];
-}>;
-
-export type AgentRolePlanV1 = AgentRolePlanBodyV1 &
-  Readonly<{
-    planDigest: string;
-  }>;
-
 export type AgentRolePlanBodyV2 = Readonly<{
   schemaVersion: 2;
   changeId: string;
@@ -84,23 +69,7 @@ export type AgentRolePlanV2SnapshotVerifierPort = (
   snapshot: AgentRolePlanV2Snapshot,
 ) => AgentRolePlanV2Snapshot;
 
-/** Historical V1 remains readable, while newly authored overrides are V2. */
-export type AgentRolePlan = AgentRolePlanV1 | AgentRolePlanV2;
 export type CurrentAgentRolePlan = AgentRolePlanV2;
-
-export type AgentRolePlanReaderPort = Readonly<{
-  readCurrent(
-    repositoryRoot: string,
-    changeId: string,
-    planningGeneration: string,
-  ): AgentRolePlanV1 | null;
-  readPinned(
-    repositoryRoot: string,
-    commit: string,
-    changeId: string,
-    planningGeneration: string,
-  ): AgentRolePlanV1 | null;
-}>;
 
 export type AgentRolePlanV2ReaderPort = Readonly<{
   readCurrent(
@@ -115,57 +84,6 @@ export type AgentRolePlanV2ReaderPort = Readonly<{
     baseCentralConfigurationDigest: string,
   ): AgentRolePlanV2 | null;
 }>;
-
-export function agentRolePlanDigest(value: AgentRolePlanBodyV1): string {
-  const body = assertAgentRolePlanBody(
-    value,
-    value.changeId,
-    value.planningGeneration,
-  );
-  return digestBody(body);
-}
-
-export function renderAgentRolePlan(value: AgentRolePlanV1): string {
-  const plan = assertAgentRolePlan(
-    value,
-    value.changeId,
-    value.planningGeneration,
-  );
-  return `${JSON.stringify(plan, null, 2)}\n`;
-}
-
-export function parseAgentRolePlan(
-  source: string,
-  expectedChangeId: string,
-  expectedPlanningGeneration: string,
-): AgentRolePlanV1 {
-  let value: unknown;
-  try {
-    value = JSON.parse(source);
-  } catch {
-    throw planInvalid('Agent-role plan must be valid JSON.');
-  }
-  if (
-    isRecord(value) &&
-    Object.hasOwn(value, 'schemaVersion') &&
-    value.schemaVersion !== 1
-  ) {
-    throw workflowError(
-      'AGENT_ROLE_PLAN_VERSION_UNSUPPORTED',
-      'Agent-role plan schema version is not supported.',
-      ExitCode.verification,
-    );
-  }
-  const plan = assertAgentRolePlan(
-    value,
-    expectedChangeId,
-    expectedPlanningGeneration,
-  );
-  if (source !== renderAgentRolePlan(plan)) {
-    throw planInvalid('Agent-role plan must use the canonical JSON encoding.');
-  }
-  return plan;
-}
 
 export function agentRolePlanV2Digest(value: AgentRolePlanBodyV2): string {
   const body = assertAgentRolePlanBodyV2(
@@ -324,107 +242,6 @@ function materializeAgentRolePlanV2Snapshot(
       .createHash('sha256')
       .update(`workflow.agent-role-plan-v2-snapshot.v1\n${canonicalJson(body)}`)
       .digest('hex'),
-  });
-}
-
-function assertAgentRolePlan(
-  value: unknown,
-  expectedChangeId: string,
-  expectedPlanningGeneration: string,
-): AgentRolePlanV1 {
-  if (!isRecord(value)) {
-    throw planInvalid('Agent-role plan must be one object.');
-  }
-  assertExactKeys(value, [
-    'changeId',
-    'customWrapperPolicy',
-    'grantReferences',
-    'pairwiseRequirements',
-    'planDigest',
-    'planningGeneration',
-    'roleLanes',
-    'schemaVersion',
-  ]);
-  const body = assertAgentRolePlanBody(
-    {
-      schemaVersion: value.schemaVersion,
-      changeId: value.changeId,
-      planningGeneration: value.planningGeneration,
-      roleLanes: value.roleLanes,
-      pairwiseRequirements: value.pairwiseRequirements,
-      customWrapperPolicy: value.customWrapperPolicy,
-      grantReferences: value.grantReferences,
-    },
-    expectedChangeId,
-    expectedPlanningGeneration,
-  );
-  if (
-    typeof value.planDigest !== 'string' ||
-    !DIGEST.test(value.planDigest) ||
-    value.planDigest !== digestBody(body)
-  ) {
-    throw planInvalid('Agent-role plan digest does not match its exact body.');
-  }
-  return Object.freeze({ ...body, planDigest: value.planDigest });
-}
-
-function assertAgentRolePlanBody(
-  value: unknown,
-  expectedChangeId: string,
-  expectedPlanningGeneration: string,
-): AgentRolePlanBodyV1 {
-  if (
-    !CHANGE_ID.test(expectedChangeId) ||
-    expectedChangeId === 'archive' ||
-    !DIGEST.test(expectedPlanningGeneration) ||
-    !isRecord(value)
-  ) {
-    throw planInvalid('Agent-role plan identity is invalid.');
-  }
-  assertExactKeys(value, [
-    'changeId',
-    'customWrapperPolicy',
-    'grantReferences',
-    'pairwiseRequirements',
-    'planningGeneration',
-    'roleLanes',
-    'schemaVersion',
-  ]);
-  if (
-    value.schemaVersion !== 1 ||
-    value.changeId !== expectedChangeId ||
-    value.planningGeneration !== expectedPlanningGeneration ||
-    !Array.isArray(value.roleLanes) ||
-    value.roleLanes.length > ROLE_ORDER.length ||
-    !Array.isArray(value.pairwiseRequirements) ||
-    value.pairwiseRequirements.length > ROLE_PAIR_ORDER.length ||
-    !isCustomWrapperPolicy(value.customWrapperPolicy)
-  ) {
-    throw planInvalid('Agent-role plan fields are invalid.');
-  }
-
-  const roleLanes = value.roleLanes.map(assertRoleLane);
-  assertCanonicalEnumOrder(
-    roleLanes.map(({ role }) => role),
-    ROLE_ORDER,
-  );
-  const pairwiseRequirements = value.pairwiseRequirements.map(
-    assertPairwiseRequirement,
-  );
-  assertCanonicalEnumOrder(
-    pairwiseRequirements.map(({ pair }) => pair),
-    ROLE_PAIR_ORDER,
-  );
-  const grantReferences = assertCanonicalLogicalIds(value.grantReferences);
-
-  return Object.freeze({
-    schemaVersion: 1,
-    changeId: value.changeId,
-    planningGeneration: value.planningGeneration,
-    roleLanes: Object.freeze(roleLanes),
-    pairwiseRequirements: Object.freeze(pairwiseRequirements),
-    customWrapperPolicy: value.customWrapperPolicy,
-    grantReferences,
   });
 }
 
@@ -606,14 +423,6 @@ function assertCanonicalEnumOrder<T extends string>(
     }
     previous = current;
   }
-}
-
-function digestBody(value: AgentRolePlanBodyV1): string {
-  return crypto
-    .createHash('sha256')
-    .update('agent-role-plan-v1\0')
-    .update(canonicalJson(value))
-    .digest('hex');
 }
 
 function digestBodyV2(value: AgentRolePlanBodyV2): string {
