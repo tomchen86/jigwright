@@ -20,7 +20,10 @@ import {
 } from '../../fixture-adapter/src/portability-profile.ts';
 import { createFixtureRepositoryConsumerPortV1 } from '../../fixture-adapter/src/repository-consumer.ts';
 import { createFakeArchivePullRequestRemote } from '@jigwright/github-adapter';
-import { buildSingleJigwrightPackage } from '../../../scripts/build-single-jigwright-package.ts';
+import {
+  prepareCurrentJigwrightV1ReleaseCandidate,
+  type CurrentJigwrightV1ReleaseCandidate,
+} from '../../../scripts/prepare-current-jigwright-v1-release.ts';
 import {
   discoverArchivePullRequestCandidate,
   openArchivePullRequest,
@@ -330,7 +333,7 @@ test('consumer paths canonicalize a symlinked repository root while remaining co
   }
 });
 
-test('portable fixture completes all ten local scenarios from an exact tarball', (t) => {
+test('installed tarball drives the current CLI over a seeded v3 consumer with explicit deterministic seams', (t) => {
   const installed = installSingleJigwrightFixture();
   const previousPackageRoot = cliPackageRoot;
   const previousEntrypoint = cliEntrypoint;
@@ -346,77 +349,97 @@ test('portable fixture completes all ten local scenarios from an exact tarball',
     /node_modules\/jigwright$/u,
     'the portability lifecycle must invoke an exact installed tarball',
   );
+  assert.equal(
+    installed.adoption.release.digest,
+    installed.releaseDigest,
+    'the clean-consumer adoption must use the exact installed release',
+  );
+  assert.deepEqual(installed.adoption.install, {
+    networkPolicy: 'offline-exact-local-tarball',
+    packageManager: 'npm',
+    lifecycleScriptsDenied: true,
+    lockfileVerified: true,
+    publicPackageIdentities: ['jigwright'],
+    package: {
+      name: 'jigwright',
+      version: installed.adoption.release.version,
+      digest: installed.releaseDigest,
+    },
+  });
+  assert.equal(installed.adoption.bootstrap.init.status, 'initialized');
+  assert.deepEqual(installed.adoption.bootstrap.repeatedInit, {
+    exitCode: 12,
+    errorClass: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
+  });
+  assert.equal(installed.adoption.bootstrap.guide, 'workflow-command-guide.v1');
+  assert.deepEqual(installed.adoption.publicSurfaces, {
+    manifestV3: true,
+    planReview: true,
+    centralGrant: true,
+  });
+  assert.equal(installed.adoption.consumer.clean, true);
   const repository = createFixtureRepository();
   try {
+    const initialized = runCli(repository, ['init']) as {
+      result: {
+        kind: string;
+        status: string;
+        path: string;
+        digest: string;
+      };
+    };
+    assert.deepEqual(initialized.result, {
+      kind: 'jigwright-init-result.v1',
+      status: 'initialized',
+      path: 'workflow/jigwright-profile.json',
+      digest: initialized.result.digest,
+    });
+    assert.match(initialized.result.digest, /^sha256:[a-f0-9]{64}$/u);
     configurePortableConsumer(repository);
     assertNeutralPlanningProvider(repository);
     const scenarioReport = JSON.parse(
       fs.readFileSync(scenarioReportPath, 'utf8'),
     ) as {
       schemaVersion: number;
-      covered: string[];
-      gate6Contracts: string[];
-      targetedEvidence: string[];
+      realTarball: string[];
+      installedCliSeededCurrentV3: string[];
+      seamBacked: string[];
       status: string[];
       deferred: Array<{ scenario: string; reason: string }>;
     };
-    assert.equal(scenarioReport.schemaVersion, 2);
-    assert.deepEqual(scenarioReport.covered, [
-      'exact-local-package-install',
-      'plan-lifecycle',
-      'task-lifecycle',
+    assert.equal(scenarioReport.schemaVersion, 3);
+    assert.deepEqual(scenarioReport.realTarball, [
+      'strict-clean-source-release-candidate',
+      'offline-exact-local-tarball-install',
+      'fresh-consumer-init',
+      'repeated-init-refusal',
+      'installed-guide',
+      'installed-public-exports',
+    ]);
+    assert.deepEqual(scenarioReport.installedCliSeededCurrentV3, [
+      'validate-change',
+      'plan-commit',
+      'open-task',
+      'review-diff',
+      'finalize',
+      'archive',
+    ]);
+    assert.deepEqual(scenarioReport.seamBacked, [
+      'seeded-current-v3-repository',
+      'source-authored-planning-evidence',
+      'injected-provider-runner',
       'routing-blocked-focus',
       'two-worktree-third-refusal',
       'managed-intake-promotion',
       'merge-rebase-update-base',
-      'archive-idempotency',
       'fake-remote-archive-pull-request',
-      'immutable-commit-object-replay',
-    ]);
-    assert.deepEqual(scenarioReport.gate6Contracts, [
-      'manifest-v3-direct-writer-and-validation',
-      'authority-ownership-non-duplication',
-      'central-grant-prepared-recovery',
-      'method-agnostic-approval-outcome',
-      'trusted-human-decision-only',
-      'legacy-ssh-read-only',
-      'below-floor-no-local-r007-store',
-      'dual-worktree-state-drift-refusal',
-      'negative-expense-app-coupling-matrix',
-    ]);
-    assert.deepEqual(scenarioReport.targetedEvidence, [
-      'packages/workflow-engine/test/local-adoption.contract.test.ts',
-      'packages/workflow-engine/test/portability-mvp.integration.test.ts',
-      'packages/workflow-engine/test/investigation-manifest-v3.test.ts',
-      'packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts',
-      'packages/workflow-engine/test/grant-coordinator.contract.test.ts',
-      'packages/workflow-engine/test/grant-store.contract.test.ts',
-      'packages/workflow-engine/test/grant-core.contract.test.ts',
-      'packages/workflow-engine/test/grant-approval.contract.test.ts',
-      'packages/workflow-engine/test/grant-policy.contract.test.ts',
-      'packages/workflow-engine/test/human-grant-cli.contract.test.ts',
-      'packages/workflow-engine/test/human-gate-macos.contract.test.ts',
-      'packages/workflow-engine/test/grant-proof-ssh.contract.test.ts',
-      'packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts',
-      'packages/workflow-engine/test/change-role-assignment-record.contract.test.ts',
-      'packages/workflow-engine/test/change-role-assignment-store.contract.test.ts',
-      'packages/workflow-engine/test/provider-native-session.contract.test.ts',
-      'packages/workflow-engine/test/provider-native-session-store.contract.test.ts',
-      'packages/fixture-adapter/test/package-boundary.contract.test.ts',
+      'raw-git-immutable-commit-object-replay',
     ]);
     assert.deepEqual(scenarioReport.status, [
       'implementation-ready',
       'real-pilot-pending',
       'full-gate-pending',
     ]);
-    for (const evidencePath of scenarioReport.targetedEvidence) {
-      assert.equal(
-        fs
-          .statSync(path.resolve(sourcePackageRoot, '../..', evidencePath))
-          .isFile(),
-        true,
-      );
-    }
     assert.equal(
       scenarioReport.deferred.some(
         ({ scenario }) => scenario === 'real-protected-remote-pilot',
@@ -595,19 +618,22 @@ test('portable fixture completes all ten local scenarios from an exact tarball',
 
 function installSingleJigwrightFixture(): Readonly<{
   packageRoot: string;
+  releaseDigest: `sha256:${string}`;
+  adoption: CurrentJigwrightV1ReleaseCandidate['adoption'];
   dispose(): void;
 }> {
   const scratch = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-portable-install-'),
   );
   try {
-    const releaseRoot = path.join(scratch, 'release');
-    const artifact = buildSingleJigwrightPackage(
+    const releaseRoot = path.join(scratch, 'release-candidate');
+    const candidate = prepareCurrentJigwrightV1ReleaseCandidate(
       path.resolve(import.meta.dirname, '../../..'),
       releaseRoot,
-      { allowDirty: true },
     );
+    const artifact = candidate.release;
     assert.equal(artifact.name, 'jigwright');
+    assert.equal(artifact.source.dirty, false);
     const consumerRoot = path.join(scratch, 'consumer');
     fs.mkdirSync(consumerRoot);
     writeJson(path.join(consumerRoot, 'package.json'), {
@@ -624,7 +650,7 @@ function installSingleJigwrightFixture(): Readonly<{
         '--no-audit',
         '--no-fund',
         '--package-lock=false',
-        path.join(releaseRoot, artifact.tarball),
+        path.join(releaseRoot, 'package', artifact.tarball),
       ],
       {
         cwd: consumerRoot,
@@ -641,6 +667,8 @@ function installSingleJigwrightFixture(): Readonly<{
     );
     return Object.freeze({
       packageRoot,
+      releaseDigest: artifact.digest,
+      adoption: candidate.adoption,
       dispose() {
         fs.rmSync(scratch, { recursive: true, force: true });
       },

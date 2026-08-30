@@ -1,48 +1,32 @@
 {
-  "schemaVersion": 2,
+  "schemaVersion": 3,
   "kind": "jigwright-portability-mvp-scenarios",
-  "covered": [
-    "exact-local-package-install",
-    "plan-lifecycle",
-    "task-lifecycle",
+  "realTarball": [
+    "strict-clean-source-release-candidate",
+    "offline-exact-local-tarball-install",
+    "fresh-consumer-init",
+    "repeated-init-refusal",
+    "installed-guide",
+    "installed-public-exports"
+  ],
+  "installedCliSeededCurrentV3": [
+    "validate-change",
+    "plan-commit",
+    "open-task",
+    "review-diff",
+    "finalize",
+    "archive"
+  ],
+  "seamBacked": [
+    "seeded-current-v3-repository",
+    "source-authored-planning-evidence",
+    "injected-provider-runner",
     "routing-blocked-focus",
     "two-worktree-third-refusal",
     "managed-intake-promotion",
     "merge-rebase-update-base",
-    "archive-idempotency",
     "fake-remote-archive-pull-request",
-    "immutable-commit-object-replay"
-  ],
-  "gate6Contracts": [
-    "manifest-v3-direct-writer-and-validation",
-    "authority-ownership-non-duplication",
-    "central-grant-prepared-recovery",
-    "method-agnostic-approval-outcome",
-    "trusted-human-decision-only",
-    "legacy-ssh-read-only",
-    "below-floor-no-local-r007-store",
-    "dual-worktree-state-drift-refusal",
-    "negative-expense-app-coupling-matrix"
-  ],
-  "targetedEvidence": [
-    "packages/workflow-engine/test/local-adoption.contract.test.ts",
-    "packages/workflow-engine/test/portability-mvp.integration.test.ts",
-    "packages/workflow-engine/test/investigation-manifest-v3.test.ts",
-    "packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts",
-    "packages/workflow-engine/test/grant-coordinator.contract.test.ts",
-    "packages/workflow-engine/test/grant-store.contract.test.ts",
-    "packages/workflow-engine/test/grant-core.contract.test.ts",
-    "packages/workflow-engine/test/grant-approval.contract.test.ts",
-    "packages/workflow-engine/test/grant-policy.contract.test.ts",
-    "packages/workflow-engine/test/human-grant-cli.contract.test.ts",
-    "packages/workflow-engine/test/human-gate-macos.contract.test.ts",
-    "packages/workflow-engine/test/grant-proof-ssh.contract.test.ts",
-    "packages/workflow-engine/test/role-context-sharing-plan-review.integration.test.ts",
-    "packages/workflow-engine/test/change-role-assignment-record.contract.test.ts",
-    "packages/workflow-engine/test/change-role-assignment-store.contract.test.ts",
-    "packages/workflow-engine/test/provider-native-session.contract.test.ts",
-    "packages/workflow-engine/test/provider-native-session-store.contract.test.ts",
-    "packages/fixture-adapter/test/package-boundary.contract.test.ts"
+    "raw-git-immutable-commit-object-replay"
   ],
   "status": ["implementation-ready", "real-pilot-pending", "full-gate-pending"],
   "deferred": [
