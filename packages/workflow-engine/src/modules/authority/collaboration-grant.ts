@@ -328,6 +328,11 @@ export type CollaborationGrantIssueResult = {
   envelope: CollaborationGrantEnvelope;
 };
 
+export type PreparedCollaborationGrantIssue = Omit<
+  CollaborationGrantIssueResult,
+  'availableEnvelopePath'
+>;
+
 export type CollaborationGrantValidationOptions = {
   now: Date;
   expected: CollaborationGrantExpectedBinding;
@@ -595,6 +600,20 @@ export function issueCollaborationGrant(
   options: CollaborationGrantIssueOptions = {},
 ): CollaborationGrantIssueResult {
   const repository = discoverRepository(cwd);
+  const prepared = prepareCollaborationGrantIssue(cwd, request, options);
+  const availableEnvelopePath = storeAvailableCollaborationGrant(
+    repository.gitCommonDirectory,
+    prepared.envelope,
+  );
+  return { ...prepared, availableEnvelopePath };
+}
+
+export function prepareCollaborationGrantIssue(
+  cwd: string,
+  request: CollaborationGrantRequest,
+  options: CollaborationGrantIssueOptions = {},
+): PreparedCollaborationGrantIssue {
+  const repository = discoverRepository(cwd);
   const baselineCommit = exactRepositoryCommit(
     repository.repositoryRoot,
     request.baselineCommit,
@@ -725,11 +744,7 @@ export function issueCollaborationGrant(
     throw collaborationSignatureInvalid(error);
   }
   const envelope = deepFreeze({ payload, signature });
-  const availableEnvelopePath = storeAvailableCollaborationGrant(
-    repository.gitCommonDirectory,
-    envelope,
-  );
-  return { grantId, availableEnvelopePath, envelope };
+  return { grantId, envelope };
 }
 
 /**

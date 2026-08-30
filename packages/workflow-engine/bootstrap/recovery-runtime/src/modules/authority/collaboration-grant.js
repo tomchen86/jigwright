@@ -274,6 +274,12 @@ export function parseCollaborationGrantEnvelope(raw) {
 }
 export function issueCollaborationGrant(cwd, request, options = {}) {
     const repository = discoverRepository(cwd);
+    const prepared = prepareCollaborationGrantIssue(cwd, request, options);
+    const availableEnvelopePath = storeAvailableCollaborationGrant(repository.gitCommonDirectory, prepared.envelope);
+    return { ...prepared, availableEnvelopePath };
+}
+export function prepareCollaborationGrantIssue(cwd, request, options = {}) {
+    const repository = discoverRepository(cwd);
     const baselineCommit = exactRepositoryCommit(repository.repositoryRoot, request.baselineCommit);
     const baselineTree = runGit(repository.repositoryRoot, [
         'rev-parse',
@@ -367,8 +373,7 @@ export function issueCollaborationGrant(cwd, request, options = {}) {
         throw collaborationSignatureInvalid(error);
     }
     const envelope = deepFreeze({ payload, signature });
-    const availableEnvelopePath = storeAvailableCollaborationGrant(repository.gitCommonDirectory, envelope);
-    return { grantId, availableEnvelopePath, envelope };
+    return { grantId, envelope };
 }
 /**
  * Sign exact direct-human review content separately from the grant that permits

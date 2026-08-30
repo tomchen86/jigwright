@@ -678,7 +678,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:3839ec8efdd5b34a6ccf143b2ac1e9b3f350ad72ee6414fa956e331f98dc6957"
+      "digest": "sha256:599db121d250967080af45c49382be2602f72a043cae9d675d5743796dbd7b26"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -789,6 +789,11 @@
       "path": "src/composition-root/check-registry-production.ts",
       "mode": "100644",
       "digest": "sha256:bcd9796bc7476a6be51055a9301b05d0b364b7bb25aa2ee6ba0d68516e7699ff"
+    },
+    {
+      "path": "src/composition-root/collaboration-grant-production.ts",
+      "mode": "100644",
+      "digest": "sha256:5616c7fcde805c080e7fbb68e2106709f136f652a165aa68bd4f6f0f49e4118d"
     },
     {
       "path": "src/composition-root/governance-intake-production.ts",
@@ -973,7 +978,7 @@
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:1e50411128c555021582a133b25e528b0bc0f65706ee63ef5ac74832b9ac73ca"
+      "digest": "sha256:5038867bbd44486619fdd5c4f2ca0fcd850c72193e2f918ec294286856f51a8b"
     },
     {
       "path": "src/entrypoints/cli/document-refresh-cli.ts",
@@ -1173,7 +1178,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:3393ed8f0e6144b27d0889ea612d618f27f9beb88f4ab1deeb7fa5e6510d7adb"
+      "digest": "sha256:99684472bda202a22d1add0f1f29a8adea19eb512d98e5bcb89775f213be07eb"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1958,7 +1963,7 @@
     {
       "path": "src/runtime/storage-journal/collaboration-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:ecca68a01a73da44459cb2c6ca7031c7f5859b1e89865c0d820c4bb87e82a293"
+      "digest": "sha256:849ec0a0a4cfd08b387523fbf14031b38299b4f2a9d346fe344eed02b4e83640"
     },
     {
       "path": "src/runtime/storage-journal/content-record-store.ts",

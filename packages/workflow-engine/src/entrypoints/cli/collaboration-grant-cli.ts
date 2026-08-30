@@ -1,11 +1,11 @@
 import {
-  issueCollaborationGrant,
   type CollaborationAvailableActor,
   type CollaborationDegradedForm,
   type CollaborationGrantRequest,
   type CollaborationLifecyclePhase,
   type CollaborationRolePair,
 } from '../../modules/authority/collaboration-grant.ts';
+import { issueProductionCollaborationGrant } from '../../composition-root/collaboration-grant-production.ts';
 import {
   listCollaborationGrantInspections,
   readCollaborationGrantInspection,
@@ -39,7 +39,7 @@ export function dispatchCollaborationGrantCommand(
   switch (args[0]) {
     case 'collaboration-grant': {
       const request = parseCollaborationGrantArguments(args, cwd);
-      const issued = issueCollaborationGrant(cwd, request);
+      const issued = issueProductionCollaborationGrant(cwd, request);
       return {
         action: 'collaboration-grant',
         ok: true,

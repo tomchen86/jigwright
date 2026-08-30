@@ -30,16 +30,20 @@ export function collaborationGrantStorePaths(gitCommonDirectory) {
 }
 export function storeAvailableCollaborationGrant(gitCommonDirectory, envelope) {
     const paths = collaborationGrantStorePaths(gitCommonDirectory);
+    return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => storeAvailableCollaborationGrantUnderLifecycleLock(gitCommonDirectory, envelope, assertOwned));
+}
+export function storeAvailableCollaborationGrantUnderLifecycleLock(gitCommonDirectory, envelope, assertOwned) {
+    const paths = collaborationGrantStorePaths(gitCommonDirectory);
     const parsed = parseCollaborationGrantEnvelope(canonicalCollaborationGrantEnvelope(envelope));
     const grantId = assertCollaborationGrantId(parsed.payload.grantId);
-    return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-        ensureStoreDirectories(paths);
-        assertOwned();
-        assertNoState(paths, grantId);
-        const target = statePath(paths.available, grantId);
-        createPrivateFileAtomic(target, canonicalCollaborationGrantEnvelope(parsed));
-        return target;
-    });
+    assertOwned();
+    ensureStoreDirectories(paths);
+    assertOwned();
+    assertNoState(paths, grantId);
+    const target = statePath(paths.available, grantId);
+    createPrivateFileAtomic(target, canonicalCollaborationGrantEnvelope(parsed));
+    assertOwned();
+    return target;
 }
 /**
  * Verify and atomically reserve one exact grant against repository facts.

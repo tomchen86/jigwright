@@ -37,6 +37,7 @@ import { createTransitionRegistry } from '../src/modules/authority/grant-transit
 import { loadGrantPolicyV2 } from '../src/modules/authority/grant-policy.ts';
 import { protectedTaskApplyGrantTransitionDefinitions } from '../src/modules/authority/protected-task-apply-grant.ts';
 import { createProductionProtectedTaskApplyGrantPort } from '../src/composition-root/protected-task-apply-grant-production.ts';
+import { issueProductionCollaborationGrant } from '../src/composition-root/collaboration-grant-production.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
@@ -44,7 +45,6 @@ import {
 import { readFinalizeTransaction } from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { beginTaskDiffReview } from '../src/application/finalize/task-diff-review-lifecycle.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from '../src/application/finalize/protected-task-apply-authorization.ts';
-import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   claimProviderInvocation,
   failProviderInvocation,
@@ -79,6 +79,7 @@ import {
 } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import {
   createFixtureRepository,
+  authoritativeCollaborationGrantVerifierForTest,
   git,
   isWorkflowError,
   runtimeRoot,
@@ -808,7 +809,7 @@ test('unclassified task scope remains ordinary unless policy explicitly protects
   }
 });
 
-test('protected finalize becomes one exact Central Fail-Grant while deprecated split paths cannot bypass it', async () => {
+test('protected finalize becomes one exact Central Fail-Grant while deprecated split paths remain technically unsupported', async () => {
   const keyDirectory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'task-mandate-cli-key-'),
   );
@@ -820,6 +821,25 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
   );
   try {
     enableConditionalTaskAuthorization(protectedRepository, 'control-plane');
+    const adapterPolicyPath = path.join(
+      protectedRepository,
+      'workflow/ai-adapter-policy.json',
+    );
+    const adapterPolicy = JSON.parse(
+      fs.readFileSync(adapterPolicyPath, 'utf8'),
+    ) as { providers: { claude: { enabled: boolean } } };
+    adapterPolicy.providers.claude.enabled = false;
+    fs.writeFileSync(
+      adapterPolicyPath,
+      `${JSON.stringify(adapterPolicy, null, 2)}\n`,
+      'utf8',
+    );
+    git(protectedRepository, ['add', adapterPolicyPath]);
+    git(protectedRepository, [
+      'commit',
+      '-m',
+      'Limit the protected review provider fixture',
+    ]);
     const guardPath = path.join(
       protectedRepository,
       'openspec/changes/demo-change/guard.json',
@@ -1196,51 +1216,63 @@ test('protected finalize becomes one exact Central Fail-Grant while deprecated s
         error instanceof WorkflowError &&
         error.code === 'PROTECTED_TASK_APPLY_AUTHORIZATION_INVALID',
     );
-    const review = beginTaskDiffReview(
+    const pausedReview = beginTaskDiffReview(
       protectedRepository,
       output.session.sessionId,
       { explicitActor: 'codex', environment: {} },
     );
-    assert.equal(review.state, 'waiting-for-provider');
-    if (review.state !== 'waiting-for-provider') {
-      assert.fail('expected the protected TaskDiffReview provider reservation');
+    assert.equal(pausedReview.state, 'collaboration-grant-required');
+    if (
+      pausedReview.state !== 'collaboration-grant-required' ||
+      pausedReview.inputSchema.grantRequest === null
+    ) {
+      assert.fail('expected the exact protected TaskDiffReview Grant request');
     }
-    const failedReview = runProviderWorker(
+    const collaborationNow = new Date();
+    assert.throws(
+      () =>
+        issueProductionCollaborationGrant(
+          protectedRepository,
+          {
+            ...pausedReview.inputSchema.grantRequest!,
+            reason: 'A caller cannot substitute the exact engine reason.',
+          },
+          {
+            grantId: 'cccccccc-cccc-4ccc-8ccc-cccccccccccc',
+            now: collaborationNow,
+            signer: realSigningProvider(privateKey),
+          },
+        ),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'PROTECTED_TASK_APPLY_REVIEW_AUTHORIZATION_INVALID',
+    );
+    const collaborationGrant = issueProductionCollaborationGrant(
       protectedRepository,
-      review.invocationId,
+      pausedReview.inputSchema.grantRequest,
       {
-        runner() {
-          throw workflowError(
-            'PROVIDER_RATE_LIMIT',
-            'The protected TaskDiffReview provider failed after its lease.',
-            ExitCode.verification,
-          );
+        grantId: 'dddddddd-dddd-4ddd-8ddd-dddddddddddd',
+        now: collaborationNow,
+        signer: realSigningProvider(privateKey),
+      },
+    );
+    assert.equal(fs.existsSync(collaborationGrant.availableEnvelopePath), true);
+    const review = beginTaskDiffReview(
+      protectedRepository,
+      output.session.sessionId,
+      {
+        explicitActor: 'codex',
+        environment: {},
+        collaborationGrant: {
+          grantId: collaborationGrant.grantId,
+          now: new Date(collaborationNow.getTime() + 1_000),
+          verifier: authoritativeCollaborationGrantVerifierForTest(
+            realSigningProvider(privateKey),
+          ),
         },
       },
     );
-    assert.equal(failedReview.state, 'failed');
-    assert.equal(
-      readProviderInvocation(
-        investigationRuntimePaths(
-          repositoryState.gitCommonDirectory,
-          'workflow-engine',
-        ),
-        review.invocationId,
-      ).state,
-      'failed',
-    );
-    assert.equal(
-      fs.existsSync(
-        path.join(
-          investigationRuntimePaths(
-            repositoryState.gitCommonDirectory,
-            'workflow-engine',
-          ).locks,
-          `${review.invocationId}.worker-active`,
-        ),
-      ),
-      false,
-    );
+    assert.equal(review.state, 'waiting-for-provider');
     assert.equal(
       readGrantRecord(
         grantStorePaths(lifecycleRuntime.root),

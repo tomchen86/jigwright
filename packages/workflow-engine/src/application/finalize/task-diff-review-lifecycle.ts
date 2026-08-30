@@ -110,6 +110,7 @@ import {
   type RoleParticipant,
 } from '../../modules/provider-orchestration/role-scheduler.ts';
 import {
+  listActiveWorkflowSessionIds,
   withRepositoryLifecycleOperation,
   withSessionOperation,
   type RepositoryLifecycleOperationOptions,
@@ -7026,6 +7027,180 @@ function createNewTaskDiffReviewReservation(
   });
 }
 
+export type ProtectedTaskApplyTaskDiffGrantContinuation = Readonly<{
+  sessionId: string;
+  parentChallengeId: string;
+  subjectDigest: string;
+}>;
+
+export function deriveProtectedTaskApplyTaskDiffGrantContinuation(
+  cwd: string,
+  request: CollaborationGrantRequest,
+): ProtectedTaskApplyTaskDiffGrantContinuation | null {
+  if (request.lifecyclePhase !== 'task-diff-review') return null;
+  const lifecycle = loadInvestigationRuntimeContext(cwd);
+  let matched: ProtectedTaskApplyTaskDiffGrantContinuation | null = null;
+  for (const sessionId of listActiveWorkflowSessionIds(
+    lifecycle.lifecycleRuntime,
+  )) {
+    const context = loadActiveSessionContext(cwd, sessionId);
+    if (
+      context.session.changeId !== request.changeId ||
+      context.session.taskId !== request.taskId ||
+      context.session.baseline.head !== request.baselineCommit ||
+      context.session.baseline.tree !== request.baselineTree
+    ) {
+      continue;
+    }
+    const subject = inspectTaskDiffReviewSubject(cwd, sessionId);
+    if (subject.subjectDigest !== request.targetDigest) continue;
+    const parentChallengeId = protectedTaskApplyReviewChallenge(
+      context,
+      sessionId,
+    );
+    if (parentChallengeId === null) return null;
+    assertCurrentProtectedTaskDiffCollaborationGrantRequest(
+      context,
+      subject,
+      request,
+    );
+    if (matched !== null) {
+      throw protectedTaskApplyReviewAuthorizationInvalid();
+    }
+    matched = Object.freeze({
+      sessionId,
+      parentChallengeId,
+      subjectDigest: subject.subjectDigest,
+    });
+  }
+  return matched;
+}
+
+function assertCurrentProtectedTaskDiffCollaborationGrantRequest(
+  context: ReturnType<typeof loadActiveSessionContext>,
+  subject: TaskDiffReviewSubject,
+  request: CollaborationGrantRequest,
+): void {
+  const policy = baselineAdapterPolicy(
+    context.git.repositoryRoot,
+    context.session.baseline.head,
+  );
+  const callableProviderIds = (['codex', 'claude'] as const).filter(
+    (providerId) => policy.policy.providers[providerId].enabled,
+  );
+  const sameProvider = taskDiffReviewGrantRequestForProvider({
+    context,
+    subject,
+    availableActor: request.availableActor,
+    callableProviderIds,
+  });
+  if (
+    sameProvider !== null &&
+    canonicalJson(sameProvider) === canonicalJson(request)
+  ) {
+    return;
+  }
+
+  const maintainerPolicy = parseBaselineJson(
+    context.git.repositoryRoot,
+    context.session.baseline.head,
+    'workflow/maintainer-policy.json',
+    parseMaintainerPolicy,
+  );
+  if (request.targetDigest === subject.subjectDigest) {
+    if (!isExternalTaskDiffGrantRequest(request)) {
+      throw protectedTaskApplyReviewAuthorizationInvalid();
+    }
+    if (
+      policy.policy.providers.codex.enabled ||
+      policy.policy.providers.claude.enabled ||
+      !subject.reviewRequirement.required
+    ) {
+      throw protectedTaskApplyReviewAuthorizationInvalid();
+    }
+    assertExternalTaskDiffGrantRequestCore(
+      request,
+      externalTaskDiffGrantCore(context, subject, maintainerPolicy),
+    );
+    return;
+  }
+
+  const runtime = loadInvestigationRuntimeContext(
+    context.git.repositoryRoot,
+  ).runtime;
+  const status = inspectTaskDiffReviewStatus(
+    context.git.repositoryRoot,
+    context.session.sessionId,
+  );
+  if (!('review' in status) || !('response' in status)) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  const targetDigest = taskDiffExternalContinuationTargetDigest({
+    subjectDigest: status.review.subjectDigest,
+    reviewRecordDigest: status.review.recordDigest,
+    responseDigest: status.response.responseDigest,
+  });
+  if (request.targetDigest !== targetDigest) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  if (!isExternalTaskDiffGrantRequest(request)) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+  assertExternalTaskDiffContinuationProviderShortage(
+    context,
+    runtime,
+    context.session.sessionId,
+    status.review,
+  );
+  assertExternalTaskDiffGrantRequestCore(
+    request,
+    externalTaskDiffContinuationGrantCore(
+      context,
+      subject,
+      targetDigest,
+      maintainerPolicy,
+    ),
+  );
+}
+
+function assertExternalTaskDiffGrantRequestCore(
+  request: CollaborationGrantRequest,
+  expected: CollaborationGrantSelectionCoreBinding,
+): void {
+  const actual: CollaborationGrantSelectionCoreBinding = {
+    repositoryId: expected.repositoryId,
+    repositoryOrigin: expected.repositoryOrigin,
+    policyBlob: expected.policyBlob,
+    collaborationPolicyDigest: collaborationPolicyDigestForPhase(
+      request.lifecyclePhase,
+    ),
+    changeId: request.changeId,
+    taskId: request.taskId,
+    baselineCommit: request.baselineCommit,
+    baselineTree: request.baselineTree,
+    targetDigest: request.targetDigest,
+    lifecyclePhase: request.lifecyclePhase,
+    rolePair: request.rolePair,
+  };
+  if (
+    canonicalJson(actual) !== canonicalJson(expected) ||
+    !isExternalTaskDiffGrantRequest(request)
+  ) {
+    throw protectedTaskApplyReviewAuthorizationInvalid();
+  }
+}
+
+function isExternalTaskDiffGrantRequest(
+  request: CollaborationGrantRequest,
+): boolean {
+  return (
+    (request.degradedForm === 'caller-supplied' &&
+      request.availableActor.kind === 'caller') ||
+    (request.degradedForm === 'direct-human-review' &&
+      request.availableActor.kind === 'direct-human')
+  );
+}
+
 function taskDiffReviewGrantRequest(input: {
   context: ReturnType<typeof loadActiveSessionContext>;
   subject: TaskDiffReviewSubject;
@@ -7042,6 +7217,31 @@ function taskDiffReviewGrantRequest(input: {
   ) {
     return null;
   }
+  return taskDiffReviewGrantRequestForProvider({
+    context: input.context,
+    subject: input.subject,
+    availableActor: {
+      kind: 'provider',
+      providerId,
+      assurance: input.implementationActor.identityAssurance,
+    },
+    callableProviderIds: input.callableProviderIds,
+  });
+}
+
+function taskDiffReviewGrantRequestForProvider(input: {
+  context: ReturnType<typeof loadActiveSessionContext>;
+  subject: TaskDiffReviewSubject;
+  availableActor: CollaborationGrantRequest['availableActor'];
+  callableProviderIds: readonly ProviderId[];
+}): CollaborationGrantRequest | null {
+  if (
+    input.availableActor.kind !== 'provider' ||
+    input.callableProviderIds.length !== 1 ||
+    input.callableProviderIds[0] !== input.availableActor.providerId
+  ) {
+    return null;
+  }
   return {
     changeId: input.context.session.changeId,
     taskId: input.context.session.taskId,
@@ -7053,11 +7253,7 @@ function taskDiffReviewGrantRequest(input: {
       authorRole: 'task-implementer',
       conflictingRole: 'task-diff-reviewer',
     },
-    availableActor: {
-      kind: 'provider',
-      providerId,
-      assurance: input.implementationActor.identityAssurance,
-    },
+    availableActor: input.availableActor,
     degradedForm: 'same-provider-fresh-session',
     reason:
       'No provider-independent TaskDiffReview reviewer is enabled for this exact candidate.',

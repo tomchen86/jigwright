@@ -285,21 +285,33 @@ export function storeAvailableCollaborationGrant(
   envelope: CollaborationGrantEnvelope,
 ): string {
   const paths = collaborationGrantStorePaths(gitCommonDirectory);
+  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) =>
+    storeAvailableCollaborationGrantUnderLifecycleLock(
+      gitCommonDirectory,
+      envelope,
+      assertOwned,
+    ),
+  );
+}
+
+export function storeAvailableCollaborationGrantUnderLifecycleLock(
+  gitCommonDirectory: string,
+  envelope: CollaborationGrantEnvelope,
+  assertOwned: () => void,
+): string {
+  const paths = collaborationGrantStorePaths(gitCommonDirectory);
   const parsed = parseCollaborationGrantEnvelope(
     canonicalCollaborationGrantEnvelope(envelope),
   );
   const grantId = assertCollaborationGrantId(parsed.payload.grantId);
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    ensureStoreDirectories(paths);
-    assertOwned();
-    assertNoState(paths, grantId);
-    const target = statePath(paths.available, grantId);
-    createPrivateFileAtomic(
-      target,
-      canonicalCollaborationGrantEnvelope(parsed),
-    );
-    return target;
-  });
+  assertOwned();
+  ensureStoreDirectories(paths);
+  assertOwned();
+  assertNoState(paths, grantId);
+  const target = statePath(paths.available, grantId);
+  createPrivateFileAtomic(target, canonicalCollaborationGrantEnvelope(parsed));
+  assertOwned();
+  return target;
 }
 
 /**

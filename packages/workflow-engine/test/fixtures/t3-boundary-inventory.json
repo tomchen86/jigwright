@@ -23,9 +23,9 @@
     "jsonSchemaIdIdentityDigest": "sha256:45c42137167622850f4773f06c2a246c0ebdf9dfd3ee48b84c535d073b306b79"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 177,
+    "sourceOccurrences": 178,
     "sourceFileCount": 59,
-    "sourceIdentityDigest": "sha256:28d1a1950646b14a8330a0d0e6a3c216bf56e70b0ee4dab2b3ceafd07755a05c",
+    "sourceIdentityDigest": "sha256:d88c060333bbb69f76c4cad1cdcad384b915efc8b3fee147c62ae4094d0cbd6a",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",

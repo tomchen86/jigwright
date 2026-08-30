@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:31c3e0f72455ae835c7f5dbe5c2dd1b6f2e281c08d592561059da3d6753f58e6"
+      "digest": "sha256:ae630e75d68df6ab15dede896aa80cb84f14a2ee49c8043d63f8dec1d845194f"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -323,7 +323,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant.js",
       "mode": "100644",
-      "digest": "sha256:69b69f31682469eb1f71b2c6f5ccfa5174ff228668845e801e8f7f3b9b6ec856"
+      "digest": "sha256:dd309f528d118a5b4eaa2837e8f0c7d08e32b96c84953741bd74d94a95cb06ff"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant.js",
@@ -703,7 +703,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/collaboration-grant-store.js",
       "mode": "100644",
-      "digest": "sha256:1ebedba9479e1fe8b5f860002c87467765455801f34f4862fc5cca2b97ac55a6"
+      "digest": "sha256:a946adbafbc9480ab3ab8593da307dae0ce4fe17988f83544421eb1b6a1b4619"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/content-record-store.js",
