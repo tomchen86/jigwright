@@ -4,7 +4,6 @@
   "grantPolicyPath": "workflow/grant-policy.json",
   "protectedCapabilitiesPath": "workflow/protected-capabilities.json",
   "recoveryClosurePath": "packages/workflow-engine/bootstrap/built-in-engine-closure.json",
-  "providerAvailabilityRecordPath": "workflow/provider-availability-pilots/c-availability-2026-08-15.json",
   "humanGateBinaryPath": "packages/workflow-engine/native/human-gate-macos/bin/human-gate",
   "humanGateSourcePath": "packages/workflow-engine/native/human-gate-macos/client/main.swift"
 }

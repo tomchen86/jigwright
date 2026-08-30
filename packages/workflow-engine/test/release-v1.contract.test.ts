@@ -22,6 +22,22 @@ test('the v1 command prepares one current-only Jigwright package', () => {
   );
 });
 
+test('release bindings do not claim consumer pilot evidence while the real pilot is pending', () => {
+  const bindings = readJson(path.resolve('release/v1/bindings.json')) as Record<
+    string,
+    unknown
+  >;
+  assert.equal('providerAvailabilityRecordPath' in bindings, false);
+  assert.equal(
+    fs.existsSync(
+      path.resolve(
+        'workflow/provider-availability-pilots/c-availability-2026-08-15.json',
+      ),
+    ),
+    false,
+  );
+});
+
 test('single-package v1 candidate binds reproducibility and stays fail closed for publish', () => {
   const outputRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-current-v1-release-'),
