@@ -1,4 +1,3 @@
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
@@ -36,7 +35,10 @@ import {
 export type { WorkItemReviewV1 } from '../modules/governance-intake/work-registry.ts';
 import type { InvestigationManifestPublicationFailure } from '../runtime/managed-documents/transaction/investigation-publication.ts';
 import { readCurrentInvestigationV3FailureObservation } from '../runtime/storage-journal/investigation-v3-failure-store.ts';
-import { loadGrantPolicyV2 } from '../modules/authority/grant-policy.ts';
+import {
+  parseGrantPolicyV2Document,
+  type GrantPolicyV2,
+} from '../modules/authority/grant-policy.ts';
 import {
   grantStorePaths,
   grantRecordDigest,
@@ -124,8 +126,16 @@ import {
   createProductionProviderInvocationCancellationGrantPort,
   observeCurrentProviderInvocationCancellationRequest,
 } from './provider-invocation-cancellation-grant-production.ts';
-import { gitAuthorityCandidateApplyGrantTransitionDefinitions } from '../modules/authority/git-authority-candidate-apply-grant.ts';
-import { createProductionGitAuthorityCandidateApplyPort } from './git-authority-candidate-apply-production.ts';
+import {
+  assertGitAuthorityCandidateApplyParameters,
+  gitAuthorityCandidateApplyGrantTransitionDefinitions,
+  type GitAuthorityCandidateApplyParametersV1,
+} from '../modules/authority/git-authority-candidate-apply-grant.ts';
+import {
+  createProductionGitAuthorityCandidateApplyPort,
+  readProductionGitBaseAuthorityContext,
+  readProductionGitAuthorityCandidateBaseGrantPolicyDocument,
+} from './git-authority-candidate-apply-production.ts';
 
 const TASK_DIFF_ROLE_ASSIGNMENT_PARENT_RELATION =
   'task.protected-apply.task-diff-role-assignment.v1' as const;
@@ -139,13 +149,30 @@ export function createProductionGrantCoordinator(
   cwd: string,
   registry: TransitionRegistry,
 ): GrantCoordinator {
-  assertOptionalGrantsPackageAvailable();
   const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  return createProductionGrantCoordinatorWithAuthorityContext(
+    git.repositoryRoot,
+    registry,
+    productionGrantAuthorityAtCommit(git.repositoryRoot, git.head),
+    true,
+  );
+}
+
+function createProductionGrantCoordinatorWithAuthorityContext(
+  cwd: string,
+  registry: TransitionRegistry,
+  exactAuthorityContext: Readonly<{
+    runtimeDirectory: string;
+    policy: GrantPolicyV2;
+  }>,
+  preserveParentContinuations: boolean,
+): GrantCoordinator {
+  const git = discoverRepository(cwd);
+  const runtimeDirectory = exactAuthorityContext.runtimeDirectory;
+  const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
   ensurePlainDirectory(runtime.root);
   const paths = grantStorePaths(runtime.root);
-  const policy = loadGrantPolicyV2(git.repositoryRoot).policy;
+  const policy = exactAuthorityContext.policy;
 
   return createGrantCoordinatorKernel({
     paths,
@@ -160,10 +187,16 @@ export function createProductionGrantCoordinator(
       );
     },
     async withLifecycleOperation(challengeId, operation) {
+      if (!preserveParentContinuations) {
+        return withRepositoryLifecycleOperationAsync(runtime, operation, {
+          allowGrantChallengeIds: [challengeId],
+        });
+      }
       return withProductionGrantLifecycleOperation(
         git.repositoryRoot,
         challengeId,
         operation,
+        runtimeDirectory,
       );
     },
   });
@@ -173,15 +206,20 @@ export async function withProductionGrantLifecycleOperation<T>(
   cwd: string,
   challengeId: string,
   operation: (assertOwned: () => void) => Promise<T>,
+  exactRuntimeDirectory?: string,
 ): Promise<T> {
   const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const runtimeDirectory =
+    exactRuntimeDirectory ??
+    productionGrantAuthorityAtCommit(git.repositoryRoot, git.head)
+      .runtimeDirectory;
+  const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
   const paths = grantStorePaths(runtime.root);
   const stored = readGrantRecord(paths, challengeId);
   const taskDiffContinuation = taskDiffRoleAssignmentGrantContinuation(
     git.repositoryRoot,
     stored.challenge,
+    runtimeDirectory,
   );
   const recoveryContinuation = protectedTaskApplyRecoveryParentContinuation(
     git.repositoryRoot,
@@ -225,6 +263,7 @@ export async function withProductionGrantLifecycleOperation<T>(
             taskDiffRoleAssignmentGrantContinuation(
               git.repositoryRoot,
               current.challenge,
+              runtimeDirectory,
             ) ??
               protectedTaskApplyRecoveryParentContinuation(
                 git.repositoryRoot,
@@ -255,6 +294,7 @@ export async function withProductionGrantLifecycleOperation<T>(
 function taskDiffRoleAssignmentGrantContinuation(
   repositoryRoot: string,
   challenge: ReturnType<typeof readGrantRecord>['challenge'],
+  exactRuntimeDirectory: string,
 ) {
   if (
     challenge.sourceModuleId !== 'agent-runtime-role-assignment' ||
@@ -325,6 +365,7 @@ function taskDiffRoleAssignmentGrantContinuation(
     repositoryRoot,
     continuation,
     parentBinding,
+    exactRuntimeDirectory,
   );
   return continuation;
 }
@@ -334,10 +375,12 @@ function createTaskDiffRoleAssignmentParentBinding(
   continuation: NonNullable<
     ReturnType<typeof deriveProtectedTaskApplyTaskDiffProviderGrantContinuation>
   >,
+  exactRuntimeDirectory: string,
 ): GrantParentBindingV1 {
   const parent = readRepositoryGrantRecord(
     repositoryRoot,
     continuation.parentChallengeId,
+    exactRuntimeDirectory,
   );
   const choice = parent.challenge.choices[0];
   if (
@@ -373,11 +416,13 @@ function assertTaskDiffRoleAssignmentParentBinding(
     ReturnType<typeof deriveProtectedTaskApplyTaskDiffProviderGrantContinuation>
   >,
   candidate: GrantParentBindingV1,
+  exactRuntimeDirectory: string,
 ): void {
   const binding = assertGrantParentBindingV1(candidate);
   const expected = createTaskDiffRoleAssignmentParentBinding(
     repositoryRoot,
     continuation,
+    exactRuntimeDirectory,
   );
   if (canonicalJson(binding) !== canonicalJson(expected)) {
     throw workflowError(
@@ -408,16 +453,16 @@ function taskDiffRoleAssignmentRelationshipFactsDigest(
 function readRepositoryGrantRecord(
   repositoryRoot: string,
   challengeId: string,
+  exactRuntimeDirectory: string,
 ) {
   const git = discoverRepository(repositoryRoot);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const runtime = runtimePaths(git.gitCommonDirectory, exactRuntimeDirectory);
   return readGrantRecord(grantStorePaths(runtime.root), challengeId);
 }
 
 function productionApprovalSession(
   humanGate: GrantApprovalSession,
-  policy: ReturnType<typeof loadGrantPolicyV2>['policy'],
+  policy: GrantPolicyV2,
   repositoryRoot: string,
 ): GrantApprovalSession {
   return Object.freeze({
@@ -436,8 +481,15 @@ export function createProductionWorkflowGrantCoordinator(
   cwd: string,
 ): GrantCoordinator {
   assertOptionalGrantsPackageAvailable();
-  const runtimeRoot =
-    loadInvestigationRuntimeContext(cwd).lifecycleRuntime.root;
+  const git = discoverRepository(cwd);
+  const authority = productionGrantAuthorityAtCommit(
+    git.repositoryRoot,
+    git.head,
+  );
+  const runtimeRoot = runtimePaths(
+    git.gitCommonDirectory,
+    authority.runtimeDirectory,
+  ).root;
   const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
   const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
   const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(cwd);
@@ -447,9 +499,7 @@ export function createProductionWorkflowGrantCoordinator(
     createProductionProtectedTaskApplyDescendantSettlementGrantPort(cwd);
   const providerInvocationCancellation =
     createProductionProviderInvocationCancellationGrantPort(cwd);
-  const gitAuthorityCandidateApply =
-    createProductionGitAuthorityCandidateApplyPort(cwd);
-  const coordinator = createProductionGrantCoordinator(
+  const coordinator = createProductionGrantCoordinatorWithAuthorityContext(
     cwd,
     createTransitionRegistry([
       ...investigationV3GrantTransitionDefinitions(cwd),
@@ -468,17 +518,60 @@ export function createProductionWorkflowGrantCoordinator(
       ...providerInvocationCancellationTransitionDefinitions(
         providerInvocationCancellation,
       ),
-      ...gitAuthorityCandidateApplyGrantTransitionDefinitions(
-        gitAuthorityCandidateApply,
-      ),
     ]),
+    authority,
+    true,
   );
-  return coordinateProtectedTaskApplyRecoveryParent(cwd, coordinator);
+  return coordinateProtectedTaskApplyRecoveryParent(
+    cwd,
+    coordinator,
+    authority.runtimeDirectory,
+  );
+}
+
+export function createProductionGitAuthorityCandidateApplyGrantCoordinator(
+  cwd: string,
+  parametersValue: GitAuthorityCandidateApplyParametersV1,
+): GrantCoordinator {
+  const parameters =
+    assertGitAuthorityCandidateApplyParameters(parametersValue);
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const policy = parseGrantPolicyV2Document(
+    readProductionGitAuthorityCandidateBaseGrantPolicyDocument(
+      repositoryRoot,
+      parameters,
+    ),
+  ).policy;
+  const port = createProductionGitAuthorityCandidateApplyPort(repositoryRoot);
+  return createProductionGrantCoordinatorWithAuthorityContext(
+    repositoryRoot,
+    createTransitionRegistry(
+      gitAuthorityCandidateApplyGrantTransitionDefinitions(port),
+    ),
+    {
+      runtimeDirectory:
+        parameters.baseAuthorityContext.workflowConfig.runtimeDirectory,
+      policy,
+    },
+    false,
+  );
+}
+
+function productionGrantAuthorityAtCommit(
+  cwd: string,
+  commit: string,
+): Readonly<{ runtimeDirectory: string; policy: GrantPolicyV2 }> {
+  const loaded = readProductionGitBaseAuthorityContext(cwd, commit);
+  return Object.freeze({
+    runtimeDirectory: loaded.context.workflowConfig.runtimeDirectory,
+    policy: parseGrantPolicyV2Document(loaded.grantPolicyDocument).policy,
+  });
 }
 
 export function coordinateProtectedTaskApplyRecoveryParent(
   cwd: string,
   coordinator: GrantCoordinator,
+  exactRuntimeDirectory?: string,
 ): GrantCoordinator {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
   const complete = async (
@@ -486,11 +579,11 @@ export function coordinateProtectedTaskApplyRecoveryParent(
     operation: () => ReturnType<GrantCoordinator['resolveChallenge']>,
   ) => {
     const git = discoverRepository(repositoryRoot);
-    const config = loadWorkflowConfig(git.repositoryRoot);
-    const runtime = runtimePaths(
-      git.gitCommonDirectory,
-      config.runtimeDirectory,
-    );
+    const runtimeDirectory =
+      exactRuntimeDirectory ??
+      productionGrantAuthorityAtCommit(git.repositoryRoot, git.head)
+        .runtimeDirectory;
+    const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
     const paths = grantStorePaths(runtime.root);
     const before = readGrantRecord(paths, challengeId);
     const reference = protectedTaskApplyRecoveryParentReference(
@@ -619,8 +712,11 @@ export async function requestChangeRoleAssignmentGrant(
 ) {
   const git = discoverRepository(cwd);
   const repositoryRoot = git.repositoryRoot;
-  const config = loadWorkflowConfig(repositoryRoot);
-  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  const runtimeDirectory = productionGrantAuthorityAtCommit(
+    repositoryRoot,
+    git.head,
+  ).runtimeDirectory;
+  const runtime = runtimePaths(git.gitCommonDirectory, runtimeDirectory);
   const initialContinuation =
     deriveProtectedTaskApplyTaskDiffProviderGrantContinuation(
       repositoryRoot,
@@ -648,6 +744,7 @@ export async function requestChangeRoleAssignmentGrant(
           : createTaskDiffRoleAssignmentParentBinding(
               repositoryRoot,
               continuation,
+              runtimeDirectory,
             );
       const observation = observeCurrentChangeRoleAssignmentGrantForInvocation(
         repositoryRoot,
@@ -668,6 +765,7 @@ export async function requestChangeRoleAssignmentGrant(
           repositoryRoot,
           continuation,
           parentBinding,
+          runtimeDirectory,
         );
       }
       return result;

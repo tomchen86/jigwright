@@ -1,22 +1,29 @@
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
+import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import {
   ExitCode,
   WorkflowError,
   workflowError,
 } from '../foundation/errors/errors.ts';
-import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   approvalSubjectDigest,
   type ApprovalSubject,
 } from '../modules/authority/grant-core.ts';
 import {
   assertGitAuthorityCandidateApplyParameters,
+  assertGitAuthorityCandidateBaseAuthorityContext,
+  createGitAuthorityCandidateBaseAuthorityContext,
   gitAuthorityCandidateApplyParametersDigest,
   GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID,
   type GitAuthorityCandidateApplyFailureV1,
   type GitAuthorityCandidateApplyObservationV1,
   type GitAuthorityCandidateApplyParametersV1,
   type GitAuthorityCandidateApplyPort,
+  type GitAuthorityCandidateBaseAuthorityContextV1,
 } from '../modules/authority/git-authority-candidate-apply-grant.ts';
 import {
   parseImmutableGitCandidate,
@@ -24,18 +31,17 @@ import {
   type ImmutableGitCandidateV1,
 } from '../modules/authority/immutable-git-candidate.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
+import { ensurePlainDirectory } from '../runtime/repository-transaction/filesystem-safety.ts';
 import {
   discoverRepository,
   fingerprintWorkingState,
-  listChangedPaths,
   runGit,
+  runGitBuffer,
   runGitWithEnvironment,
 } from '../runtime/repository-transaction/git.ts';
 import {
   commitFacts,
   resolveCommitIdentity,
-  rollbackExactStaging,
-  stageExactPaths,
   updateManagedRef,
 } from '../runtime/repository-transaction/git-transitions.ts';
 import {
@@ -47,10 +53,11 @@ import {
 import {
   advanceGitAuthorityCandidateApplyJournal,
   createGitAuthorityCandidateApplyJournal,
+  gitAuthorityCandidateApplyStorePaths,
   gitAuthorityCandidateApplyJournalObservation,
   readGitAuthorityCandidateApplyJournal,
   readOptionalGitAuthorityCandidateApplyJournal,
-  type GitAuthorityCandidateApplyJournalV1,
+  type GitAuthorityCandidateApplyJournalV2,
 } from '../runtime/storage-journal/git-authority-candidate-apply-store.ts';
 import { investigationRuntimePaths } from '../runtime/session-workspace/paths.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
@@ -59,6 +66,8 @@ import type { TransitionObservationContext } from '../modules/authority/grant-tr
 export type GitAuthorityCandidateApplyCrashPoint =
   | 'prepared'
   | 'index-publication'
+  | 'index-publication-recorded'
+  | 'index-lock-acquired'
   | 'commit-object'
   | 'ref-update'
   | 'terminal';
@@ -66,6 +75,10 @@ export type GitAuthorityCandidateApplyCrashPoint =
 export type ProductionGitAuthorityCandidateApplyOptions = Readonly<{
   /** Direct integration seam; production composition never provides it. */
   testAfterCrashPoint?: (point: GitAuthorityCandidateApplyCrashPoint) => void;
+  /** Direct concurrency seam immediately before the standard index lock. */
+  testBeforeIndexPublicationLock?: () => void;
+  /** Direct concurrency seam while the operation owns the standard lock. */
+  testAfterIndexPublicationLock?: () => void;
 }>;
 
 export function createProductionGitAuthorityCandidateApplyParameters(
@@ -85,11 +98,17 @@ export function createProductionGitAuthorityCandidateApplyParameters(
   );
   const timestamp = new Date(options.now ?? new Date());
   if (Number.isNaN(timestamp.getTime())) throw parametersInvalid();
+  const baseAuthorityContext =
+    createProductionGitAuthorityCandidateBaseAuthorityContext(
+      repositoryRoot,
+      candidate,
+    );
   return assertGitAuthorityCandidateApplyParameters({
     schemaVersion: 1,
     kind: 'git-authority-candidate-apply-parameters.v1',
     candidate,
     candidateDigest: candidate.candidateDigest,
+    baseAuthorityContext,
     commitSubject,
     commitIdentity: {
       name: identity.GIT_AUTHOR_NAME,
@@ -104,16 +123,6 @@ export function createProductionGitAuthorityCandidateApplyPort(
   options: ProductionGitAuthorityCandidateApplyOptions = {},
 ): GitAuthorityCandidateApplyPort {
   const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  const runtime = investigationRuntimePaths(
-    git.gitCommonDirectory,
-    config.runtimeDirectory,
-  );
-  const lifecycleRuntime = runtimePaths(
-    git.gitCommonDirectory,
-    config.runtimeDirectory,
-  );
-  const grantRuntimeRoot = lifecycleRuntime.root;
   const repositoryRoot = git.repositoryRoot;
 
   return Object.freeze({
@@ -123,7 +132,15 @@ export function createProductionGitAuthorityCandidateApplyPort(
     ) {
       const parameters =
         assertGitAuthorityCandidateApplyParameters(parametersValue);
+      const { runtime, grantRuntimeRoot } = authorityRuntime(
+        git.gitCommonDirectory,
+        repositoryRoot,
+        parameters,
+      );
       if (context?.operationId === null || context === undefined) {
+        assertSafeIndexMode(
+          readExactIndexSnapshot(exactGitIndexPath(repositoryRoot)).mode,
+        );
         verifyImmutableGitCandidateAgainstRepository(
           repositoryRoot,
           parameters.candidate,
@@ -156,6 +173,11 @@ export function createProductionGitAuthorityCandidateApplyPort(
       const parameters = assertGitAuthorityCandidateApplyParameters(
         context.parameters,
       );
+      const { runtime, grantRuntimeRoot } = authorityRuntime(
+        git.gitCommonDirectory,
+        repositoryRoot,
+        parameters,
+      );
       if (
         approvalSubjectDigest(context.approvalSubject) !==
         context.approvalSubjectDigest
@@ -181,6 +203,10 @@ export function createProductionGitAuthorityCandidateApplyPort(
       );
       if (journal === null) {
         context.assertLifecycleOwned();
+        const indexMode = readExactIndexSnapshot(
+          exactGitIndexPath(repositoryRoot),
+        ).mode;
+        assertSafeIndexMode(indexMode);
         journal = createGitAuthorityCandidateApplyJournal(runtime, {
           parameters,
           challengeId: context.challengeId,
@@ -194,6 +220,7 @@ export function createProductionGitAuthorityCandidateApplyPort(
             context.approvalSubjectDigest,
             preparedRecordDigest,
           ),
+          indexMode,
         });
         options.testAfterCrashPoint?.('prepared');
       }
@@ -214,21 +241,11 @@ export function createProductionGitAuthorityCandidateApplyPort(
         }
         try {
           if (current.phase === 'prepared') {
-            ensureExactIndexPublication(repositoryRoot, parameters.candidate);
-            options.testAfterCrashPoint?.('index-publication');
-            journal = advanceGitAuthorityCandidateApplyJournal(
-              runtime,
-              journal,
-              {
-                phase: 'index-published',
-                commitHash: null,
-                failure: null,
-              },
+            assertExactPreRefGitState(
+              repositoryRoot,
+              parameters.candidate,
+              journal.indexMode,
             );
-            continue;
-          }
-          if (current.phase === 'index-published') {
-            assertExactIndexPublished(repositoryRoot, parameters.candidate);
             const commitHash = createExactCommitObject(
               repositoryRoot,
               parameters,
@@ -247,7 +264,11 @@ export function createProductionGitAuthorityCandidateApplyPort(
             continue;
           }
           if (current.phase === 'commit-created') {
-            assertExactIndexPublished(repositoryRoot, parameters.candidate);
+            assertExactPreRefGitState(
+              repositoryRoot,
+              parameters.candidate,
+              journal.indexMode,
+            );
             assertExactCommitObject(
               repositoryRoot,
               parameters,
@@ -276,6 +297,7 @@ export function createProductionGitAuthorityCandidateApplyPort(
               repositoryRoot,
               parameters,
               current.commitHash!,
+              journal.indexMode,
             );
             options.testAfterCrashPoint?.('ref-update');
             journal = advanceGitAuthorityCandidateApplyJournal(
@@ -290,10 +312,44 @@ export function createProductionGitAuthorityCandidateApplyPort(
             continue;
           }
           if (current.phase === 'ref-updated') {
-            assertExactTerminalGitState(
+            assertExactCommitObject(
+              repositoryRoot,
+              parameters,
+              journal.commitMessage,
+              current.commitHash!,
+            );
+            ensureExactIndexPublicationAfterRef(
+              runtime,
               repositoryRoot,
               parameters,
               current.commitHash!,
+              context.operationId,
+              journal.indexMode,
+              options,
+            );
+            options.testAfterCrashPoint?.('index-publication');
+            journal = advanceGitAuthorityCandidateApplyJournal(
+              runtime,
+              journal,
+              {
+                phase: 'index-published',
+                commitHash: current.commitHash,
+                failure: null,
+              },
+            );
+            options.testAfterCrashPoint?.('index-publication-recorded');
+            continue;
+          }
+          if (current.phase === 'index-published') {
+            // The durable index-published entry is written only after the
+            // exact ref/index/worktree poststate has been verified. Later Git
+            // drift is a subsequent event and cannot rewrite this natural
+            // completed result during Grant terminal recovery.
+            removeExactIndexPublicationWitness(
+              runtime,
+              repositoryRoot,
+              parameters.candidate,
+              context.operationId,
             );
             journal = advanceGitAuthorityCandidateApplyJournal(
               runtime,
@@ -321,6 +377,184 @@ export function createProductionGitAuthorityCandidateApplyPort(
       }
     },
   });
+}
+
+export function createProductionGitAuthorityCandidateBaseAuthorityContext(
+  cwd: string,
+  candidateValue: ImmutableGitCandidateV1,
+): GitAuthorityCandidateBaseAuthorityContextV1 {
+  const candidate = parseImmutableGitCandidate(candidateValue);
+  return readProductionGitBaseAuthorityContext(cwd, candidate.expectedOldCommit)
+    .context;
+}
+
+export function readProductionGitBaseAuthorityContext(
+  cwd: string,
+  baseCommit: string,
+): Readonly<{
+  context: GitAuthorityCandidateBaseAuthorityContextV1;
+  grantPolicyDocument: string;
+}> {
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const workflowConfig = readExactRegularBlob(
+    repositoryRoot,
+    baseCommit,
+    'workflow/config.json',
+  );
+  const grantPolicy = readExactRegularBlob(
+    repositoryRoot,
+    baseCommit,
+    'workflow/grant-policy.json',
+  );
+  const context = createGitAuthorityCandidateBaseAuthorityContext({
+    schemaVersion: 1,
+    kind: 'git-authority-candidate-base-authority-context.v1',
+    baseCommit,
+    workflowConfig: {
+      path: 'workflow/config.json',
+      objectId: workflowConfig.objectId,
+      mode: '100644',
+      contentDigest: workflowConfig.contentDigest,
+      runtimeDirectory: parseBaseRuntimeDirectory(workflowConfig.document),
+    },
+    grantPolicy: {
+      path: 'workflow/grant-policy.json',
+      objectId: grantPolicy.objectId,
+      mode: '100644',
+      contentDigest: grantPolicy.contentDigest,
+    },
+  });
+  return Object.freeze({
+    context,
+    grantPolicyDocument: grantPolicy.document,
+  });
+}
+
+export function readProductionGitAuthorityCandidateBaseGrantPolicyDocument(
+  cwd: string,
+  parametersValue: GitAuthorityCandidateApplyParametersV1,
+): string {
+  const parameters =
+    assertGitAuthorityCandidateApplyParameters(parametersValue);
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const observed = readExactRegularBlob(
+    repositoryRoot,
+    parameters.candidate.expectedOldCommit,
+    parameters.baseAuthorityContext.grantPolicy.path,
+  );
+  const expected = parameters.baseAuthorityContext.grantPolicy;
+  if (
+    observed.objectId !== expected.objectId ||
+    observed.contentDigest !== expected.contentDigest
+  ) {
+    throw authorityContextChanged();
+  }
+  assertExactBaseWorkflowConfig(repositoryRoot, parameters);
+  return observed.document;
+}
+
+function authorityRuntime(
+  gitCommonDirectory: string,
+  repositoryRoot: string,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+) {
+  assertExactBaseWorkflowConfig(repositoryRoot, parameters);
+  const runtimeDirectory =
+    parameters.baseAuthorityContext.workflowConfig.runtimeDirectory;
+  const runtime = investigationRuntimePaths(
+    gitCommonDirectory,
+    runtimeDirectory,
+  );
+  return {
+    runtime,
+    grantRuntimeRoot: runtimePaths(gitCommonDirectory, runtimeDirectory).root,
+  };
+}
+
+function assertExactBaseWorkflowConfig(
+  repositoryRoot: string,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+): void {
+  const expected = assertGitAuthorityCandidateBaseAuthorityContext(
+    parameters.baseAuthorityContext,
+    parameters.candidate.expectedOldCommit,
+  ).workflowConfig;
+  const observed = readExactRegularBlob(
+    repositoryRoot,
+    parameters.candidate.expectedOldCommit,
+    expected.path,
+  );
+  if (
+    observed.objectId !== expected.objectId ||
+    observed.contentDigest !== expected.contentDigest ||
+    parseBaseRuntimeDirectory(observed.document) !== expected.runtimeDirectory
+  ) {
+    throw authorityContextChanged();
+  }
+}
+
+function readExactRegularBlob(
+  repositoryRoot: string,
+  commit: string,
+  filePath: 'workflow/config.json' | 'workflow/grant-policy.json',
+): Readonly<{
+  objectId: string;
+  contentDigest: `sha256:${string}`;
+  document: string;
+}> {
+  const listing = exactUtf8(
+    runGitBuffer(repositoryRoot, ['ls-tree', '-z', commit, '--', filePath]),
+  );
+  const match = /^100644 blob ([0-9a-f]{40}|[0-9a-f]{64})\t([^\0]+)\0$/u.exec(
+    listing,
+  );
+  if (match?.[2] !== filePath) throw authorityContextChanged();
+  const objectId = match[1]!;
+  const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', objectId]);
+  const observedObjectId = exactUtf8(
+    runGitBuffer(repositoryRoot, ['hash-object', '--stdin'], { input: bytes }),
+  ).trim();
+  if (observedObjectId !== objectId) throw authorityContextChanged();
+  return Object.freeze({
+    objectId,
+    contentDigest: grantSha256(bytes),
+    document: exactUtf8(bytes),
+  });
+}
+
+function parseBaseRuntimeDirectory(document: string): string {
+  let value: unknown;
+  try {
+    value = JSON.parse(document) as unknown;
+  } catch {
+    throw authorityContextChanged();
+  }
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== 1 ||
+    typeof value.runtimeDirectory !== 'string' ||
+    value.runtimeDirectory.length === 0 ||
+    value.runtimeDirectory !== value.runtimeDirectory.normalize('NFC') ||
+    value.runtimeDirectory.startsWith('/') ||
+    value.runtimeDirectory.endsWith('/') ||
+    value.runtimeDirectory
+      .split('/')
+      .some(
+        (segment) => segment === '' || segment === '.' || segment === '..',
+      ) ||
+    /[\0\\]/u.test(value.runtimeDirectory)
+  ) {
+    throw authorityContextChanged();
+  }
+  return value.runtimeDirectory;
+}
+
+function exactUtf8(value: Buffer): string {
+  const decoded = value.toString('utf8');
+  if (!Buffer.from(decoded, 'utf8').equals(value)) {
+    throw authorityContextChanged();
+  }
+  return decoded;
 }
 
 function pendingObservation(
@@ -374,7 +608,7 @@ function readExactPreparedGrant(
 }
 
 function assertJournalBinding(
-  journal: GitAuthorityCandidateApplyJournalV1,
+  journal: GitAuthorityCandidateApplyJournalV2,
   parameters: GitAuthorityCandidateApplyParametersV1,
   challengeId: string,
   operationId: string,
@@ -411,10 +645,18 @@ function assertJournalBinding(
   }
 }
 
-function ensureExactIndexPublication(
+function assertExactPreRefGitState(
   repositoryRoot: string,
   candidate: ImmutableGitCandidateV1,
+  expectedIndexMode: number,
 ): void {
+  const indexMode = readExactIndexSnapshot(
+    exactGitIndexPath(repositoryRoot),
+  ).mode;
+  if (indexMode !== expectedIndexMode) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  assertSafeIndexMode(expectedIndexMode);
   const ref = readRef(repositoryRoot, candidate.targetRef);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
   const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
@@ -424,62 +666,469 @@ function ensureExactIndexPublication(
   ) {
     throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_REF_CHANGED');
   }
-  if (indexTree === candidate.resultTree) {
-    assertExactIndexPublished(repositoryRoot, candidate);
-    return;
-  }
   if (indexTree !== candidate.indexTree) {
     throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
   }
   verifyImmutableGitCandidateAgainstRepository(repositoryRoot, candidate);
-  stageExactPaths(
-    repositoryRoot,
-    candidate.expectedOldCommit,
-    candidate.manifest.files.map(({ path: filePath }) => filePath),
-    {
-      expectedTree: candidate.resultTree,
-      expectedPreviousIndexTree: candidate.indexTree,
-    },
-  );
-  assertExactIndexPublished(repositoryRoot, candidate);
 }
 
-function assertExactIndexPublished(
+function ensureExactIndexPublicationAfterRef(
+  runtime: ReturnType<typeof investigationRuntimePaths>,
   repositoryRoot: string,
-  candidate: ImmutableGitCandidateV1,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+  commitHash: string,
+  operationId: string,
+  expectedIndexMode: number,
+  options: ProductionGitAuthorityCandidateApplyOptions,
 ): void {
-  const expectedPaths = candidate.manifest.files
-    .map(({ path: filePath }) => filePath)
-    .sort(compareCanonicalUtf8);
+  options.testBeforeIndexPublicationLock?.();
+  publishExactIndexUnderStandardLock(
+    runtime,
+    repositoryRoot,
+    parameters,
+    commitHash,
+    operationId,
+    expectedIndexMode,
+    options,
+  );
+  assertExactTerminalGitState(
+    repositoryRoot,
+    parameters,
+    commitHash,
+    expectedIndexMode,
+  );
+}
+
+function publishExactIndexUnderStandardLock(
+  runtime: ReturnType<typeof investigationRuntimePaths>,
+  repositoryRoot: string,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+  commitHash: string,
+  operationId: string,
+  expectedIndexMode: number,
+  options: ProductionGitAuthorityCandidateApplyOptions,
+): void {
+  const candidate = parameters.candidate;
+  const indexPath = exactGitIndexPath(repositoryRoot);
+  const lockPath = `${indexPath}.lock`;
+  const witnessPath = exactIndexPublicationWitnessPath(runtime, operationId);
+  const observedWitness = fs.lstatSync(witnessPath, {
+    throwIfNoEntry: false,
+  });
+  const observedIndex = fs.lstatSync(indexPath, { throwIfNoEntry: false });
+  if (
+    observedWitness !== undefined &&
+    sameFile(observedIndex, observedWitness)
+  ) {
+    const witness = ensureExactIndexPublicationWitness(
+      repositoryRoot,
+      witnessPath,
+      candidate.resultTree,
+      expectedIndexMode,
+    );
+    const publishedIndex = readExactIndexSnapshot(indexPath, [2]);
+    if (
+      !sameFile(publishedIndex, witness) ||
+      publishedIndex.mode !== witness.mode ||
+      !publishedIndex.bytes.equals(witness.bytes)
+    ) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    return;
+  }
+
+  const preLockOriginal = readExactIndexSnapshot(indexPath);
+  if (preLockOriginal.mode !== expectedIndexMode) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  assertSafeIndexMode(expectedIndexMode);
+  const witness = ensureExactIndexPublicationWitness(
+    repositoryRoot,
+    witnessPath,
+    candidate.resultTree,
+    expectedIndexMode,
+  );
+  let preserveOwnedLockForCrash = false;
+  let completed = false;
+  try {
+    let observedLock = fs.lstatSync(lockPath, { throwIfNoEntry: false });
+    if (observedLock === undefined) {
+      try {
+        fs.linkSync(witnessPath, lockPath);
+        fsyncDirectory(path.dirname(lockPath));
+      } catch (error) {
+        if (!isNodeError(error) || error.code !== 'EEXIST') throw error;
+      }
+      observedLock = fs.lstatSync(lockPath, { throwIfNoEntry: false });
+    }
+    const linkedWitness = readExactIndexSnapshot(witnessPath, [2]);
+    if (
+      !sameFile(observedLock, linkedWitness) ||
+      !linkedWitness.bytes.equals(witness.bytes)
+    ) {
+      if (observedLock !== undefined && !sameFile(observedLock, witness)) {
+        throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+      }
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    options.testAfterIndexPublicationLock?.();
+    try {
+      options.testAfterCrashPoint?.('index-lock-acquired');
+    } catch (error) {
+      preserveOwnedLockForCrash = true;
+      throw error;
+    }
+
+    const original = readExactIndexSnapshot(indexPath);
+    const observedTree = indexTreeFromBytes(repositoryRoot, original.bytes);
+    if (
+      !sameFile(original, preLockOriginal) ||
+      !original.bytes.equals(preLockOriginal.bytes) ||
+      original.mode !== preLockOriginal.mode ||
+      (observedTree !== candidate.indexTree &&
+        observedTree !== candidate.resultTree)
+    ) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    assertExactRefAndWorktree(repositoryRoot, parameters, commitHash);
+    if (observedTree === candidate.resultTree) {
+      completed = true;
+      removeExactIndexPublicationWitness(
+        runtime,
+        repositoryRoot,
+        candidate,
+        operationId,
+      );
+      return;
+    }
+
+    const exactLinkedWitness = readExactIndexSnapshot(witnessPath, [2]);
+    if (!exactLinkedWitness.bytes.equals(witness.bytes)) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    assertExactRefAndWorktree(repositoryRoot, parameters, commitHash);
+    if (
+      !sameFile(fs.lstatSync(indexPath, { throwIfNoEntry: false }), original) ||
+      !sameFile(
+        fs.lstatSync(lockPath, { throwIfNoEntry: false }),
+        exactLinkedWitness,
+      )
+    ) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    fs.renameSync(lockPath, indexPath);
+    fsyncDirectory(path.dirname(indexPath));
+    const exactPublishedIndex = fs.lstatSync(indexPath, {
+      throwIfNoEntry: false,
+    });
+    if (!sameFile(exactPublishedIndex, exactLinkedWitness)) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    completed = true;
+  } finally {
+    if (!completed && !preserveOwnedLockForCrash) {
+      removeExactIndexPublicationWitness(
+        runtime,
+        repositoryRoot,
+        candidate,
+        operationId,
+      );
+    }
+  }
+}
+
+function assertExactRefEffectBeforeIndex(
+  repositoryRoot: string,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+  commitHash: string,
+  allowPublishedIndex: boolean,
+): void {
+  const candidate = parameters.candidate;
+  assertExactRefAndWorktree(repositoryRoot, parameters, commitHash);
+  const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
+  if (
+    indexTree !== candidate.indexTree &&
+    (!allowPublishedIndex || indexTree !== candidate.resultTree)
+  ) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_POSTSTATE_CHANGED');
+  }
+}
+
+function assertExactRefAndWorktree(
+  repositoryRoot: string,
+  parameters: GitAuthorityCandidateApplyParametersV1,
+  commitHash: string,
+): void {
+  const candidate = parameters.candidate;
   const ref = readRef(repositoryRoot, candidate.targetRef);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
-  const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
-  const changedPaths = listChangedPaths(
+  const headTree = runGit(repositoryRoot, ['rev-parse', 'HEAD^{tree}']).trim();
+  const worktreeMatchesResult = worktreeMatchesTree(
     repositoryRoot,
-    candidate.expectedOldCommit,
-  ).sort(compareCanonicalUtf8);
-  const unstaged = nulPaths(
-    runGit(repositoryRoot, ['diff', '--name-only', '-z', '--']),
+    candidate.resultTree,
   );
-  const staged = nulPaths(
-    runGit(repositoryRoot, [
-      'diff',
-      '--cached',
-      '--name-only',
-      '-z',
-      candidate.expectedOldCommit,
-      '--',
-    ]),
-  );
+  if (ref !== commitHash || head !== commitHash) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_REF_CHANGED');
+  }
+  if (headTree !== candidate.resultTree || !worktreeMatchesResult) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_POSTSTATE_CHANGED');
+  }
+}
+
+type ExactIndexSnapshot = Readonly<{
+  bytes: Buffer;
+  dev: number;
+  ino: number;
+  mode: number;
+}>;
+
+function exactIndexPublicationWitnessPath(
+  runtime: ReturnType<typeof investigationRuntimePaths>,
+  operationId: string,
+): string {
   if (
-    ref !== candidate.expectedOldCommit ||
-    head !== candidate.expectedOldCommit ||
-    indexTree !== candidate.resultTree ||
-    canonicalJson(changedPaths) !== canonicalJson(expectedPaths) ||
-    canonicalJson(staged) !== canonicalJson(expectedPaths) ||
-    unstaged.length !== 0
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/u.test(
+      operationId,
+    )
+  ) {
+    throw operationInvalid();
+  }
+  const directory = path.join(
+    gitAuthorityCandidateApplyStorePaths(runtime).indexPublications,
+    operationId,
+  );
+  return path.join(directory, 'candidate.index');
+}
+
+function ensureExactIndexPublicationWitness(
+  repositoryRoot: string,
+  witnessPath: string,
+  resultTree: string,
+  indexMode: number,
+): ExactIndexSnapshot {
+  assertSafeIndexMode(indexMode);
+  const expectedBytes = indexBytesForTree(repositoryRoot, resultTree);
+  ensurePlainDirectory(path.dirname(witnessPath));
+  const observed = fs.lstatSync(witnessPath, { throwIfNoEntry: false });
+  if (observed === undefined) {
+    let descriptor: number | undefined;
+    try {
+      descriptor = fs.openSync(
+        witnessPath,
+        fs.constants.O_RDWR |
+          fs.constants.O_CREAT |
+          fs.constants.O_EXCL |
+          noFollowFlag(),
+        indexMode,
+      );
+      fs.fchmodSync(descriptor, indexMode);
+      fs.writeFileSync(descriptor, expectedBytes);
+      fs.fsyncSync(descriptor);
+    } catch (error) {
+      if (!isNodeError(error) || error.code !== 'EEXIST') throw error;
+    } finally {
+      if (descriptor !== undefined) fs.closeSync(descriptor);
+    }
+    fsyncDirectory(path.dirname(witnessPath));
+  }
+  const witness = readExactIndexSnapshot(witnessPath, [1, 2]);
+  if (
+    witness.mode !== indexMode ||
+    !witness.bytes.equals(expectedBytes) ||
+    indexTreeFromBytes(repositoryRoot, witness.bytes) !== resultTree
   ) {
     throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  return witness;
+}
+
+function removeExactIndexPublicationWitness(
+  runtime: ReturnType<typeof investigationRuntimePaths>,
+  repositoryRoot: string,
+  candidate: ImmutableGitCandidateV1,
+  operationId: string,
+): void {
+  const witnessPath = exactIndexPublicationWitnessPath(runtime, operationId);
+  const observed = fs.lstatSync(witnessPath, { throwIfNoEntry: false });
+  if (observed === undefined) return;
+  const witness = readExactIndexSnapshot(witnessPath, [1, 2]);
+  if (
+    !witness.bytes.equals(
+      indexBytesForTree(repositoryRoot, candidate.resultTree),
+    ) ||
+    indexTreeFromBytes(repositoryRoot, witness.bytes) !== candidate.resultTree
+  ) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  const lockPath = `${exactGitIndexPath(repositoryRoot)}.lock`;
+  const lock = fs.lstatSync(lockPath, { throwIfNoEntry: false });
+  if (sameFile(lock, witness)) {
+    fs.unlinkSync(lockPath);
+    fsyncDirectory(path.dirname(lockPath));
+  }
+  const repeated = fs.lstatSync(witnessPath, { throwIfNoEntry: false });
+  if (!sameFile(repeated, witness)) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  fs.unlinkSync(witnessPath);
+  fsyncDirectory(path.dirname(witnessPath));
+}
+
+function exactGitIndexPath(repositoryRoot: string): string {
+  const raw = runGit(repositoryRoot, [
+    'rev-parse',
+    '--path-format=absolute',
+    '--git-path',
+    'index',
+  ]);
+  const resolved = raw.trim();
+  if (
+    raw !== `${resolved}\n` ||
+    !path.isAbsolute(resolved) ||
+    path.normalize(resolved) !== resolved ||
+    fs.realpathSync(path.dirname(resolved)) !== path.dirname(resolved)
+  ) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  return resolved;
+}
+
+function readExactIndexSnapshot(
+  indexPath: string,
+  allowedLinkCounts: readonly number[] = [1],
+): ExactIndexSnapshot {
+  const before = fs.lstatSync(indexPath, { throwIfNoEntry: false });
+  if (
+    !before?.isFile() ||
+    before.isSymbolicLink() ||
+    !allowedLinkCounts.includes(before.nlink)
+  ) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+  const descriptor = fs.openSync(
+    indexPath,
+    fs.constants.O_RDONLY | noFollowFlag(),
+  );
+  try {
+    const opened = fs.fstatSync(descriptor);
+    if (
+      !opened.isFile() ||
+      !allowedLinkCounts.includes(opened.nlink) ||
+      !sameFile(before, opened)
+    ) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    const bytes = fs.readFileSync(descriptor);
+    const after = fs.lstatSync(indexPath, { throwIfNoEntry: false });
+    if (!sameFile(after, opened) || opened.size !== bytes.length) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    return Object.freeze({
+      bytes,
+      dev: opened.dev,
+      ino: opened.ino,
+      mode: opened.mode & 0o7777,
+    });
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function indexBytesForTree(repositoryRoot: string, tree: string): Buffer {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'git-authority-apply-index-'),
+  );
+  const indexPath = path.join(temporaryDirectory, 'index');
+  const environment = { GIT_INDEX_FILE: indexPath };
+  try {
+    runGitWithEnvironment(repositoryRoot, ['read-tree', tree], environment);
+    if (
+      runGitWithEnvironment(
+        repositoryRoot,
+        ['write-tree'],
+        environment,
+      ).trim() !== tree
+    ) {
+      throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+    }
+    return fs.readFileSync(indexPath);
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+function indexTreeFromBytes(repositoryRoot: string, bytes: Buffer): string {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'git-authority-apply-index-'),
+  );
+  const indexPath = path.join(temporaryDirectory, 'index');
+  try {
+    fs.writeFileSync(indexPath, bytes, { flag: 'wx', mode: 0o600 });
+    return runGitWithEnvironment(repositoryRoot, ['write-tree'], {
+      GIT_INDEX_FILE: indexPath,
+    }).trim();
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+}
+
+function sameFile(
+  observed: Pick<fs.Stats, 'dev' | 'ino'> | undefined,
+  expected: Pick<fs.Stats, 'dev' | 'ino'> | ExactIndexSnapshot,
+): boolean {
+  return (
+    observed !== undefined &&
+    observed.dev === expected.dev &&
+    observed.ino === expected.ino
+  );
+}
+
+function noFollowFlag(): number {
+  return process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW;
+}
+
+function assertSafeIndexMode(mode: number): void {
+  if (
+    !Number.isInteger(mode) ||
+    (mode & 0o600) !== 0o600 ||
+    (mode & 0o7111) !== 0 ||
+    (mode & 0o002) !== 0
+  ) {
+    throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED');
+  }
+}
+
+function fsyncDirectory(directory: string): void {
+  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
+  try {
+    fs.fsyncSync(descriptor);
+  } finally {
+    fs.closeSync(descriptor);
+  }
+}
+
+function isNodeError(error: unknown): error is NodeJS.ErrnoException {
+  return error instanceof Error && 'code' in error;
+}
+
+function worktreeMatchesTree(repositoryRoot: string, tree: string): boolean {
+  const temporaryDirectory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'git-authority-apply-index-'),
+  );
+  const environment = {
+    GIT_INDEX_FILE: path.join(temporaryDirectory, 'index'),
+  };
+  try {
+    runGitWithEnvironment(repositoryRoot, ['read-tree', tree], environment);
+    return (
+      runGitWithEnvironment(
+        repositoryRoot,
+        ['status', '--porcelain=v2', '-z', '--untracked-files=all'],
+        environment,
+      ).length === 0
+    );
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
   }
 }
 
@@ -560,38 +1209,59 @@ function ensureExactRefUpdate(
   repositoryRoot: string,
   parameters: GitAuthorityCandidateApplyParametersV1,
   commitHash: string,
+  expectedIndexMode: number,
 ): void {
   const current = readRef(repositoryRoot, parameters.candidate.targetRef);
   if (current === commitHash) {
-    assertExactTerminalGitState(repositoryRoot, parameters, commitHash);
+    assertExactRefEffectBeforeIndex(
+      repositoryRoot,
+      parameters,
+      commitHash,
+      false,
+    );
     return;
   }
   if (current !== parameters.candidate.expectedOldCommit) {
     throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_REF_CHANGED');
   }
-  assertExactIndexPublished(repositoryRoot, parameters.candidate);
+  assertExactPreRefGitState(
+    repositoryRoot,
+    parameters.candidate,
+    expectedIndexMode,
+  );
   updateManagedRef(
     repositoryRoot,
     parameters.candidate.expectedOldCommit,
     commitHash,
     parameters.candidate.targetRef,
   );
-  assertExactTerminalGitState(repositoryRoot, parameters, commitHash);
+  assertExactRefEffectBeforeIndex(
+    repositoryRoot,
+    parameters,
+    commitHash,
+    false,
+  );
 }
 
 function assertExactTerminalGitState(
   repositoryRoot: string,
   parameters: GitAuthorityCandidateApplyParametersV1,
   commitHash: string,
+  expectedIndexMode: number,
 ): void {
   const discovered = discoverRepository(repositoryRoot);
   const ref = readRef(repositoryRoot, parameters.candidate.targetRef);
   const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
+  const indexMode = readExactIndexSnapshot(
+    exactGitIndexPath(repositoryRoot),
+    [1, 2],
+  ).mode;
   if (
     discovered.head !== commitHash ||
     discovered.tree !== parameters.candidate.resultTree ||
     ref !== commitHash ||
     indexTree !== parameters.candidate.resultTree ||
+    indexMode !== expectedIndexMode ||
     discovered.statusEntries.length !== 0
   ) {
     throw gitStateChanged('GIT_AUTHORITY_CANDIDATE_APPLY_POSTSTATE_CHANGED');
@@ -602,23 +1272,16 @@ function recordNaturalFailure(
   runtime: ReturnType<typeof investigationRuntimePaths>,
   repositoryRoot: string,
   parameters: GitAuthorityCandidateApplyParametersV1,
-  journal: GitAuthorityCandidateApplyJournalV1,
+  journal: GitAuthorityCandidateApplyJournalV2,
   error: WorkflowError,
-): GitAuthorityCandidateApplyJournalV1 {
+): GitAuthorityCandidateApplyJournalV2 {
   const current = journal.entries.at(-1)!;
-  const ref = readRef(repositoryRoot, parameters.candidate.targetRef);
-  const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
-  if (
-    ref === parameters.candidate.expectedOldCommit &&
-    indexTree === parameters.candidate.resultTree
-  ) {
-    rollbackExactStaging(
-      repositoryRoot,
-      parameters.candidate.indexTree,
-      parameters.candidate.resultTree,
-      error,
-    );
-  }
+  removeExactIndexPublicationWitness(
+    runtime,
+    repositoryRoot,
+    parameters.candidate,
+    journal.operationId,
+  );
   const commitHash = current.commitHash;
   const failure: GitAuthorityCandidateApplyFailureV1 = Object.freeze({
     schemaVersion: 1,
@@ -674,13 +1337,17 @@ function observedGitStateDigest(
   targetRef: string,
 ): `sha256:${string}` {
   const discovered = discoverRepository(repositoryRoot);
+  const indexTree = indexTreeFromBytes(
+    repositoryRoot,
+    readExactIndexSnapshot(exactGitIndexPath(repositoryRoot)).bytes,
+  );
   return grantSha256(
     `workflow.git-authority-candidate-apply-observed-state.v1\n${canonicalJson({
       head: discovered.head,
       tree: discovered.tree,
       targetRef,
       targetRefValue: readRef(repositoryRoot, targetRef),
-      indexTree: runGit(repositoryRoot, ['write-tree']).trim(),
+      indexTree,
       worktreeStateDigest: grantSha256(
         fingerprintWorkingState(
           repositoryRoot,
@@ -751,6 +1418,14 @@ function parametersInvalid() {
     'GIT_AUTHORITY_CANDIDATE_APPLY_PARAMETERS_INVALID',
     'Exact Git authority candidate Apply parameters are invalid.',
     ExitCode.guard,
+  );
+}
+
+function authorityContextChanged() {
+  return workflowError(
+    'GIT_AUTHORITY_CANDIDATE_APPLY_AUTHORITY_CONTEXT_CHANGED',
+    'The exact base Git authority context is missing, unsafe, or changed.',
+    ExitCode.staleState,
   );
 }
 

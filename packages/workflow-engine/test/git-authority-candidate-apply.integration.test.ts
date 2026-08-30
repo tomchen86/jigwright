@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ensurePlainDirectory } from '../src/runtime/repository-transaction/filesystem-safety.ts';
@@ -16,10 +17,18 @@ import {
 import type { VerifiedApprovalProof } from '../src/modules/authority/grant-approval.ts';
 import {
   codeOwnedApprovalModuleRegistry,
+  GRANT_PROOF_SSH_V1_CONFIGURATION_DIGEST,
   HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
   parseGrantPolicyV2,
+  parseGrantPolicyV2Document,
 } from '../src/modules/authority/grant-policy.ts';
 import {
+  approvalSubjectDigest,
+  createApprovalSubject,
+} from '../src/modules/authority/grant-core.ts';
+import { collectSshApprovalProof } from '../src/adapters/signing/ssh/grant-proof-ssh.ts';
+import {
+  assertGitAuthorityCandidateApplyParameters,
   createGitAuthorityCandidateApplyGrantRequest,
   gitAuthorityCandidateApplyGrantTransitionDefinitions,
 } from '../src/modules/authority/git-authority-candidate-apply-grant.ts';
@@ -31,6 +40,7 @@ import { createTransitionRegistry } from '../src/modules/authority/grant-transit
 import {
   createProductionGitAuthorityCandidateApplyParameters,
   createProductionGitAuthorityCandidateApplyPort,
+  readProductionGitAuthorityCandidateBaseGrantPolicyDocument,
   type GitAuthorityCandidateApplyCrashPoint,
 } from '../src/composition-root/git-authority-candidate-apply-production.ts';
 import {
@@ -46,9 +56,14 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
+import {
+  createProductionGitAuthorityCandidateApplyGrantCoordinator,
+  createProductionGrantCoordinator,
+  createProductionWorkflowGrantCoordinator,
+} from '../src/composition-root/grant-production.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 
-const NOW = new Date('2026-08-31T01:00:00.000Z');
+const NOW = new Date('2026-08-30T00:00:00.000Z');
 const CHALLENGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OPERATION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
@@ -74,6 +89,11 @@ function fixture(
   crashPoint?: GitAuthorityCandidateApplyCrashPoint,
   policyScenario: PolicyScenario = 'deletion',
   includeCrossPlanePaths = false,
+  addCandidateControlledGrantSigner = false,
+  resultConfig: 'unchanged' | 'runtime-changed' | 'deleted' = 'unchanged',
+  baseSshAuthority = false,
+  testBeforeIndexPublicationLock?: () => void,
+  testAfterIndexPublicationLock?: () => void,
 ) {
   const repository = fs.realpathSync(createFixtureRepository());
   const checksPath = path.join(repository, 'workflow/checks.json');
@@ -87,7 +107,12 @@ function fixture(
     '.git/git-authority-candidate-check-ran',
   ];
   writeJson(checksPath, checks);
+  writeJson(
+    path.join(repository, 'workflow/grant-policy.json'),
+    baseSshAuthority ? baseSshGrantPolicyInput() : policyInput(),
+  );
   git(repository, ['add', '--', 'workflow/checks.json']);
+  git(repository, ['add', '--', 'workflow/grant-policy.json']);
   git(repository, ['commit', '-m', 'Configure non-executed candidate check']);
   const policyPath = path.join(repository, 'workflow/maintainer-policy.json');
   let baselinePolicy = JSON.parse(
@@ -113,6 +138,24 @@ function fixture(
     git(repository, ['commit', '-m', 'Prepare sealed policy baseline']);
   }
   const baseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+  if (addCandidateControlledGrantSigner) {
+    writeJson(
+      path.join(repository, 'workflow/grant-policy.json'),
+      attackerGrantPolicyInput(),
+    );
+  }
+  const workflowConfigPath = path.join(repository, 'workflow/config.json');
+  if (resultConfig === 'deleted') {
+    fs.unlinkSync(workflowConfigPath);
+  } else if (resultConfig === 'runtime-changed') {
+    const config = JSON.parse(
+      fs.readFileSync(workflowConfigPath, 'utf8'),
+    ) as Record<string, unknown>;
+    writeJson(workflowConfigPath, {
+      ...config,
+      runtimeDirectory: 'candidate-selected-runtime',
+    });
+  }
   if (policyScenario === 'deletion') {
     fs.unlinkSync(policyPath);
   } else if (policyScenario === 'sealed-rollback') {
@@ -143,6 +186,13 @@ function fixture(
     expectedOldCommit: baseCommit,
     observeCheckIds: ['fixture'],
   });
+  const indexPath = git(repository, [
+    'rev-parse',
+    '--path-format=absolute',
+    '--git-path',
+    'index',
+  ]).trim();
+  const indexMode = fs.statSync(indexPath).mode & 0o7777;
   const discovered = discoverRepository(repository);
   const lifecycleRuntime = runtimePaths(
     discovered.gitCommonDirectory,
@@ -155,6 +205,12 @@ function fixture(
   ensurePlainDirectory(lifecycleRuntime.root);
   const grantPaths = grantStorePaths(lifecycleRuntime.root);
   const port = createProductionGitAuthorityCandidateApplyPort(repository, {
+    ...(testBeforeIndexPublicationLock === undefined
+      ? {}
+      : { testBeforeIndexPublicationLock }),
+    ...(testAfterIndexPublicationLock === undefined
+      ? {}
+      : { testAfterIndexPublicationLock }),
     ...(crashPoint === undefined
       ? {}
       : {
@@ -201,11 +257,422 @@ function fixture(
     coordinator,
     grantPaths,
     investigationRuntime,
+    indexPath,
+    indexMode,
     dispose() {
       fs.rmSync(repository, { recursive: true, force: true });
     },
   };
 }
+
+test('production Central Grant authenticates an Apply candidate against its exact base policy', async () => {
+  const current = fixture(undefined, 'deletion', false, true);
+  try {
+    assert.deepEqual(
+      (
+        JSON.parse(
+          git(current.repository, [
+            'show',
+            `${current.baseCommit}:workflow/grant-policy.json`,
+          ]),
+        ) as { profiles: Record<string, unknown> }
+      ).profiles,
+      { 'local-presence': { requiredClaims: ['fresh-local-device-owner'] } },
+    );
+    assert.equal(
+      (
+        JSON.parse(
+          fs.readFileSync(
+            path.join(current.repository, 'workflow/grant-policy.json'),
+            'utf8',
+          ),
+        ) as { optionalSsh?: unknown }
+      ).optionalSsh !== undefined,
+      true,
+    );
+    const before = repositorySnapshot(current.repository);
+    const production =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        current.parameters,
+      );
+    const requested = await production.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'The candidate-controlled signer must not become authority.',
+      ),
+    );
+    assert.deepEqual(
+      production.inspectChallenge(requested.challengeId).approvalMethods,
+      ['human-presence'],
+    );
+    assert.deepEqual(repositorySnapshot(current.repository), before);
+    assert.equal(
+      readOptionalGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ),
+      null,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('production base authority ignores real Git replacement refs', async () => {
+  const current = fixture(
+    undefined,
+    'deletion',
+    false,
+    true,
+    'runtime-changed',
+  );
+  try {
+    const replacementCommit = git(current.repository, [
+      'commit-tree',
+      current.candidate.resultTree,
+      '-m',
+      'Attacker replacement authority context',
+    ]).trim();
+    git(current.repository, ['replace', current.baseCommit, replacementCommit]);
+    assert.equal(
+      (
+        JSON.parse(
+          git(current.repository, [
+            'show',
+            `${current.baseCommit}:workflow/config.json`,
+          ]),
+        ) as { runtimeDirectory: string }
+      ).runtimeDirectory,
+      'candidate-selected-runtime',
+    );
+    assert.equal(
+      (
+        JSON.parse(
+          git(current.repository, [
+            'show',
+            `${current.baseCommit}:workflow/grant-policy.json`,
+          ]),
+        ) as { optionalSsh?: unknown }
+      ).optionalSsh !== undefined,
+      true,
+    );
+
+    const replacementBoundCandidate = buildImmutableGitCandidate(
+      current.repository,
+      {
+        targetRef: 'refs/heads/main',
+        expectedOldCommit: current.baseCommit,
+        observeCheckIds: ['fixture'],
+      },
+    );
+    const parameters = createProductionGitAuthorityCandidateApplyParameters(
+      current.repository,
+      replacementBoundCandidate,
+      'Grant: Reject replacement authority',
+      { now: NOW },
+    );
+    assert.equal(
+      parameters.baseAuthorityContext.workflowConfig.runtimeDirectory,
+      'workflow-engine',
+    );
+    const port = createProductionGitAuthorityCandidateApplyPort(
+      current.repository,
+    );
+    const production =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        parameters,
+      );
+    const requested = await production.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        port,
+        parameters,
+        'Replacement-provided signer and runtime must not become authority.',
+      ),
+    );
+    assert.deepEqual(
+      production.inspectChallenge(requested.challengeId).approvalMethods,
+      ['human-presence'],
+    );
+    assert.equal(
+      readGrantRecord(current.grantPaths, requested.challengeId).state,
+      'pending',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          current.repository,
+          '.git/candidate-selected-runtime/grants-v2',
+        ),
+      ),
+      false,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('production SSH proof rejects a signer added only by the candidate result', async () => {
+  const current = fixture(
+    undefined,
+    'deletion',
+    false,
+    true,
+    'unchanged',
+    true,
+  );
+  try {
+    const production =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        current.parameters,
+      );
+    const requested = await production.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Only a signer trusted by the base policy may approve.',
+      ),
+    );
+    const presentation = production.inspectChallenge(requested.challengeId);
+    assert.deepEqual(presentation.approvalMethods, ['human-presence', 'ssh']);
+    const subject = createApprovalSubject(
+      presentation.challenge,
+      {
+        choiceId: presentation.choices[0]!.choiceId,
+        approvalMethod: 'ssh',
+        reasonCode: 'approve-exact-git-authority-candidate',
+        reason: 'Attempt candidate-controlled SSH authority.',
+        sessionNonce: 'nonce-candidate-attacker-000000000000000001',
+      },
+      { now: new Date(presentation.challenge.issuedAt) },
+    );
+    const policy = parseGrantPolicyV2Document(
+      readProductionGitAuthorityCandidateBaseGrantPolicyDocument(
+        current.repository,
+        current.parameters,
+      ),
+    ).policy;
+    let signed = false;
+    assert.throws(
+      () =>
+        collectSshApprovalProof(
+          policy,
+          {
+            approvalSubject: subject,
+            approvalSubjectDigest: approvalSubjectDigest(subject),
+          },
+          {
+            now: new Date(presentation.challenge.issuedAt),
+            signer: {
+              assertHumanPresent() {},
+              identity: () => 'candidate-attacker',
+              sign() {
+                signed = true;
+                return 'candidate-controlled-signature';
+              },
+              verify() {},
+            },
+          },
+        ),
+      (error) => isWorkflowError(error, 'GRANT_SSH_PROOF_INVALID'),
+    );
+    assert.equal(signed, false);
+    assert.equal(
+      readOptionalGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ),
+      null,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('ordinary production coordinator ignores dirty Grant policy and runtime redirection', async () => {
+  const current = fixture(
+    undefined,
+    'deletion',
+    false,
+    true,
+    'runtime-changed',
+  );
+  try {
+    const production = createProductionGrantCoordinator(
+      current.repository,
+      createTransitionRegistry(
+        gitAuthorityCandidateApplyGrantTransitionDefinitions(current.port),
+      ),
+    );
+    const requested = await production.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Dirty authority configuration must remain a fact only.',
+      ),
+    );
+    assert.deepEqual(
+      production.inspectChallenge(requested.challengeId).approvalMethods,
+      ['human-presence'],
+    );
+    assert.equal(
+      readGrantRecord(current.grantPaths, requested.challengeId).state,
+      'pending',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          current.repository,
+          '.git/candidate-selected-runtime/grants-v2',
+        ),
+      ),
+      false,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('generic and Git Apply production coordinators omit the optional Collaboration package veto', () => {
+  assert.doesNotMatch(
+    createProductionGrantCoordinator.toString(),
+    /assertOptionalGrantsPackageAvailable/u,
+  );
+  assert.doesNotMatch(
+    createProductionGitAuthorityCandidateApplyGrantCoordinator.toString(),
+    /assertOptionalGrantsPackageAvailable/u,
+  );
+  assert.match(
+    createProductionWorkflowGrantCoordinator.toString(),
+    /assertOptionalGrantsPackageAvailable/u,
+  );
+});
+
+test('Central Apply remains pre-cutover with no repository journal artifacts', () => {
+  const workspaceRoot = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../../..',
+  );
+  const repository = discoverRepository(workspaceRoot);
+  const config = JSON.parse(
+    fs.readFileSync(path.join(workspaceRoot, 'workflow/config.json'), 'utf8'),
+  ) as { runtimeDirectory: string };
+  for (const storeName of [
+    'git-authority-candidate-apply-v1',
+    'git-authority-candidate-apply-v2',
+  ]) {
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          repository.gitCommonDirectory,
+          config.runtimeDirectory,
+          storeName,
+        ),
+      ),
+      false,
+      storeName,
+    );
+  }
+  const ciDirectory = path.join(
+    workspaceRoot,
+    'packages/workflow-engine/src/entrypoints/ci',
+  );
+  const cutoverSources = [
+    path.join(workspaceRoot, 'packages/workflow-engine/src/cli.ts'),
+    ...fs
+      .readdirSync(ciDirectory)
+      .filter((entry) => entry.endsWith('.ts'))
+      .map((entry) => path.join(ciDirectory, entry)),
+  ]
+    .map((filePath) => fs.readFileSync(filePath, 'utf8'))
+    .join('\n');
+  assert.doesNotMatch(
+    cutoverSources,
+    /createProductionGitAuthorityCandidateApplyGrantCoordinator|git\.authority-candidate\.apply\.v1/u,
+  );
+});
+
+test('Apply parameters reject digest-self-consistent unsafe base runtime paths', () => {
+  const current = fixture();
+  try {
+    for (const runtimeDirectory of [
+      'foo/./bar',
+      '.git/authority',
+      './workflow-engine',
+      'workflow-*',
+      'C:\\workflow-engine',
+      ' workflow-engine',
+      'workflow-engine\u0000tail',
+    ]) {
+      const forged = structuredClone(current.parameters) as unknown as Record<
+        string,
+        unknown
+      > & {
+        baseAuthorityContext: Record<string, unknown> & {
+          workflowConfig: Record<string, unknown>;
+          contextDigest: string;
+        };
+      };
+      forged.baseAuthorityContext.workflowConfig.runtimeDirectory =
+        runtimeDirectory;
+      const { contextDigest: _contextDigest, ...body } =
+        forged.baseAuthorityContext;
+      forged.baseAuthorityContext.contextDigest = sha256(
+        `workflow.git-authority-candidate-base-authority-context.v1\n${canonicalJson(
+          body,
+        )}`,
+      );
+      assert.throws(
+        () => assertGitAuthorityCandidateApplyParameters(forged),
+        (error) =>
+          isWorkflowError(
+            error,
+            'GIT_AUTHORITY_CANDIDATE_APPLY_PARAMETERS_INVALID',
+          ),
+        runtimeDirectory,
+      );
+    }
+  } finally {
+    current.dispose();
+  }
+});
+
+test('Apply authority context rejects a symlink Grant policy in the exact base commit', () => {
+  const repository = fs.realpathSync(createFixtureRepository());
+  try {
+    const grantPolicyPath = path.join(repository, 'workflow/grant-policy.json');
+    fs.symlinkSync('../candidate-controlled-policy.json', grantPolicyPath);
+    git(repository, ['add', '--', 'workflow/grant-policy.json']);
+    git(repository, ['commit', '-m', 'Commit unsafe Grant policy link']);
+    const baseCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+    fs.unlinkSync(path.join(repository, 'workflow/maintainer-policy.json'));
+    const candidate = buildImmutableGitCandidate(repository, {
+      targetRef: 'refs/heads/main',
+      expectedOldCommit: baseCommit,
+    });
+    const before = repositorySnapshot(repository);
+    assert.throws(
+      () =>
+        createProductionGitAuthorityCandidateApplyParameters(
+          repository,
+          candidate,
+          'Reject unsafe base Grant policy mode',
+          { now: NOW },
+        ),
+      (error) =>
+        isWorkflowError(
+          error,
+          'GIT_AUTHORITY_CANDIDATE_APPLY_AUTHORITY_CONTEXT_CHANGED',
+        ),
+    );
+    assert.deepEqual(repositorySnapshot(repository), before);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 function writeJson(filePath: string, value: unknown): void {
   fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
@@ -267,6 +734,10 @@ test('real Central Grant applies policy deletion as an exact fact without a seco
     );
     assert.equal(git(current.repository, ['status', '--porcelain']), '');
     assert.equal(
+      fs.statSync(current.indexPath).mode & 0o7777,
+      current.indexMode,
+    );
+    assert.equal(
       fs.existsSync(
         path.join(current.repository, '.git/git-authority-candidate-check-ran'),
       ),
@@ -281,10 +752,10 @@ test('real Central Grant applies policy deletion as an exact fact without a seco
       journal.entries.map(({ phase }) => phase),
       [
         'prepared',
-        'index-published',
         'commit-created',
         'ref-update-prepared',
         'ref-updated',
+        'index-published',
         'completed',
       ],
     );
@@ -315,6 +786,130 @@ test('real Central Grant applies policy deletion as an exact fact without a seco
       ).journalDigest,
       journal.journalDigest,
     );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('Apply refuses an unsafe executable Git index mode before publishing a ref effect', async () => {
+  const current = fixture();
+  try {
+    const unsafeMode = 0o755;
+    fs.chmodSync(current.indexPath, unsafeMode);
+    const beforeIndex = fs.readFileSync(current.indexPath);
+
+    assert.throws(
+      () =>
+        createGitAuthorityCandidateApplyGrantRequest(
+          current.port,
+          current.parameters,
+          'An unsafe index mode must fail before the exact ref consequence.',
+        ),
+      (error) =>
+        isWorkflowError(error, 'GIT_AUTHORITY_CANDIDATE_APPLY_INDEX_CHANGED'),
+    );
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      current.baseCommit,
+    );
+    assert.deepEqual(fs.readFileSync(current.indexPath), beforeIndex);
+    assert.equal(fs.statSync(current.indexPath).mode & 0o7777, unsafeMode);
+    assert.equal(
+      readOptionalGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ),
+      null,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('current Apply journal reader rejects digest-valid V1 bytes without mutating Git state', async () => {
+  const current = fixture('prepared');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Create only the current journal before testing the retired format.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated prepared crash/u,
+    );
+    const currentJournal = readGitAuthorityCandidateApplyJournal(
+      current.investigationRuntime,
+      OPERATION_ID,
+    );
+    const currentEntry = currentJournal.entries[0]!;
+    const legacyEntryBody = {
+      revision: currentEntry.revision,
+      phase: currentEntry.phase,
+      previousEntryDigest: currentEntry.previousEntryDigest,
+      commitHash: currentEntry.commitHash,
+      failure: currentEntry.failure,
+    };
+    const legacyEntry = {
+      ...legacyEntryBody,
+      entryDigest: sha256(
+        `workflow.git-authority-candidate-apply-journal-entry.v1\n${canonicalJson(
+          legacyEntryBody,
+        )}`,
+      ),
+    };
+    const legacyBody = {
+      schemaVersion: 1,
+      kind: 'git-authority-candidate-apply-journal.v1',
+      parameters: currentJournal.parameters,
+      parametersDigest: currentJournal.parametersDigest,
+      challengeId: currentJournal.challengeId,
+      operationId: currentJournal.operationId,
+      approvalSubject: currentJournal.approvalSubject,
+      approvalMethod: currentJournal.approvalMethod,
+      approvalSubjectDigest: currentJournal.approvalSubjectDigest,
+      preparedGrantRecordDigest: currentJournal.preparedGrantRecordDigest,
+      commitMessage: currentJournal.commitMessage,
+      entries: [legacyEntry],
+    };
+    const legacyBytes = `${canonicalJson({
+      ...legacyBody,
+      journalDigest: sha256(
+        `workflow.git-authority-candidate-apply-journal.v1\n${canonicalJson(
+          legacyBody,
+        )}`,
+      ),
+    })}\n`;
+    const journalPath = path.join(
+      current.investigationRuntime.root,
+      'git-authority-candidate-apply-v2',
+      'journals',
+      `${OPERATION_ID}.json`,
+    );
+    fs.writeFileSync(journalPath, legacyBytes);
+    const beforeRef = git(current.repository, [
+      'rev-parse',
+      'refs/heads/main',
+    ]).trim();
+    const beforeIndex = fs.readFileSync(current.indexPath);
+
+    assert.throws(
+      () =>
+        readGitAuthorityCandidateApplyJournal(
+          current.investigationRuntime,
+          OPERATION_ID,
+        ),
+      (error) =>
+        isWorkflowError(error, 'GIT_AUTHORITY_CANDIDATE_APPLY_JOURNAL_INVALID'),
+    );
+    assert.equal(fs.readFileSync(journalPath, 'utf8'), legacyBytes);
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      beforeRef,
+    );
+    assert.deepEqual(fs.readFileSync(current.indexPath), beforeIndex);
   } finally {
     current.dispose();
   }
@@ -396,7 +991,9 @@ test('Central Grant Apply uses the candidate UTF-8 order for BMP and supplementa
 test('durable exact Apply recovers every effect crash window without duplicate commits or result rewriting', async () => {
   for (const crashPoint of [
     'prepared',
+    'index-lock-acquired',
     'index-publication',
+    'index-publication-recorded',
     'commit-object',
     'ref-update',
     'terminal',
@@ -417,6 +1014,11 @@ test('durable exact Apply recovers every effect crash window without duplicate c
       assert.equal(
         readGrantRecord(current.grantPaths, CHALLENGE_ID).state,
         'prepared',
+      );
+      assert.equal(
+        fs.statSync(current.indexPath).mode & 0o7777,
+        current.indexMode,
+        crashPoint,
       );
 
       const recoveryPort = createProductionGitAuthorityCandidateApplyPort(
@@ -468,9 +1070,233 @@ test('durable exact Apply recovers every effect crash window without duplicate c
         git(current.repository, ['rev-parse', 'HEAD']).trim(),
         commitHash,
       );
+      assert.equal(
+        fs.statSync(current.indexPath).mode & 0o7777,
+        current.indexMode,
+        crashPoint,
+      );
     } finally {
       current.dispose();
     }
+  }
+});
+
+test('post-rename recovery rejects mode drift against the durable original index mode', async () => {
+  const current = fixture('index-publication');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve the exact index publication mode before recovery.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated index-publication crash/u,
+    );
+    const operationCommit = git(current.repository, [
+      'rev-parse',
+      'HEAD',
+    ]).trim();
+    assert.equal(
+      readGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ).entries.at(-1)?.phase,
+      'ref-updated',
+    );
+    const driftMode =
+      current.indexMode === 0o664 ? 0o644 : current.indexMode | 0o020;
+    assert.notEqual(driftMode, current.indexMode);
+    fs.chmodSync(current.indexPath, driftMode);
+    assert.equal(fs.statSync(current.indexPath).mode & 0o7777, driftMode);
+
+    const restarted =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        current.parameters,
+      );
+    const recovered = await restarted.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'failed');
+    assert.equal(recovered.recovered, true);
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      operationCommit,
+    );
+    const journal = readGitAuthorityCandidateApplyJournal(
+      current.investigationRuntime,
+      OPERATION_ID,
+    );
+    assert.equal(journal.indexMode, current.indexMode);
+    assert.equal(journal.entries.at(-1)?.phase, 'failed');
+    assert.equal(journal.entries.at(-1)?.commitHash, operationCommit);
+    assert.equal(
+      journal.entries.at(-1)?.failure?.code,
+      'git-authority-candidate-apply-index-changed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('prepared recovery rejects safe index mode drift before publishing a ref effect', async () => {
+  const current = fixture('prepared');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Bind the exact original index mode before any Git effect.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated prepared crash/u,
+    );
+    const driftMode =
+      current.indexMode === 0o664 ? 0o644 : current.indexMode | 0o020;
+    assert.notEqual(driftMode, current.indexMode);
+    fs.chmodSync(current.indexPath, driftMode);
+
+    const restarted =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        current.parameters,
+      );
+    const recovered = await restarted.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'failed');
+    assert.equal(recovered.recovered, true);
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      current.baseCommit,
+    );
+    const journal = readGitAuthorityCandidateApplyJournal(
+      current.investigationRuntime,
+      OPERATION_ID,
+    );
+    assert.equal(journal.indexMode, current.indexMode);
+    assert.equal(journal.entries.at(-1)?.phase, 'failed');
+    assert.equal(journal.entries.at(-1)?.commitHash, null);
+    assert.equal(
+      journal.entries.at(-1)?.failure?.code,
+      'git-authority-candidate-apply-index-changed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('fresh production recovery keeps the exact base runtime after the result changes or deletes workflow config', async () => {
+  for (const resultConfig of ['runtime-changed', 'deleted'] as const) {
+    const current = fixture(
+      'ref-update',
+      'deletion',
+      false,
+      false,
+      resultConfig,
+    );
+    try {
+      await current.coordinator.requestGrant(
+        createGitAuthorityCandidateApplyGrantRequest(
+          current.port,
+          current.parameters,
+          `Approve exact ${resultConfig} config consequence.`,
+        ),
+      );
+      await assert.rejects(
+        current.coordinator.resolveChallenge(CHALLENGE_ID),
+        /simulated ref-update crash/,
+      );
+      assert.notEqual(
+        git(current.repository, ['rev-parse', 'HEAD']).trim(),
+        current.baseCommit,
+      );
+      if (resultConfig === 'deleted') {
+        assert.equal(
+          fs.existsSync(path.join(current.repository, 'workflow/config.json')),
+          false,
+        );
+      } else {
+        assert.equal(
+          (
+            JSON.parse(
+              fs.readFileSync(
+                path.join(current.repository, 'workflow/config.json'),
+                'utf8',
+              ),
+            ) as { runtimeDirectory: string }
+          ).runtimeDirectory,
+          'candidate-selected-runtime',
+        );
+      }
+
+      const restarted =
+        createProductionGitAuthorityCandidateApplyGrantCoordinator(
+          current.repository,
+          current.parameters,
+        );
+      const beforeRecovery = readGrantRecord(current.grantPaths, CHALLENGE_ID);
+      assert.equal(beforeRecovery.state, 'prepared', resultConfig);
+      if (beforeRecovery.state !== 'prepared') {
+        assert.fail('expected prepared Grant before fresh recovery');
+      }
+      assert.equal(beforeRecovery.operationId, OPERATION_ID, resultConfig);
+      const recovered = await restarted.recoverChallenge(CHALLENGE_ID);
+      assert.equal(recovered.outcome, 'completed', resultConfig);
+      assert.equal(recovered.recovered, true, resultConfig);
+      assert.equal(
+        readGrantRecord(current.grantPaths, CHALLENGE_ID).state,
+        'completed',
+        resultConfig,
+      );
+      assert.equal(
+        readGitAuthorityCandidateApplyJournal(
+          current.investigationRuntime,
+          OPERATION_ID,
+        ).entries.at(-1)?.phase,
+        'completed',
+        resultConfig,
+      );
+    } finally {
+      current.dispose();
+    }
+  }
+});
+
+test('terminal Apply recovery preserves its natural result after the candidate changes Grant policy', async () => {
+  const current = fixture(undefined, 'deletion', false, true);
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve exact policy consequence under the base authority.',
+      ),
+    );
+    const completed = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(completed.outcome, 'completed');
+    assert.equal(
+      (
+        JSON.parse(
+          fs.readFileSync(
+            path.join(current.repository, 'workflow/grant-policy.json'),
+            'utf8',
+          ),
+        ) as { optionalSsh?: unknown }
+      ).optionalSsh !== undefined,
+      true,
+    );
+    const restarted =
+      createProductionGitAuthorityCandidateApplyGrantCoordinator(
+        current.repository,
+        current.parameters,
+      );
+    const recovered = await restarted.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'completed');
+    assert.equal(recovered.recovered, true);
+  } finally {
+    current.dispose();
   }
 });
 
@@ -564,6 +1390,445 @@ test('prepared Apply records branch CAS drift as a natural failed result without
   }
 });
 
+test('pre-publication recovery preserves foreign same-tree staging after a foreign ref advance', async () => {
+  const current = fixture('commit-object');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve the exact commit before a foreign ref and index advance.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated commit-object crash/,
+    );
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.indexTree,
+    );
+    git(current.repository, ['add', '-A', '--']);
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.resultTree,
+    );
+    const baseTree = git(current.repository, [
+      'show',
+      '-s',
+      '--format=%T',
+      current.baseCommit,
+    ]).trim();
+    const foreignCommit = git(current.repository, [
+      'commit-tree',
+      baseTree,
+      '-p',
+      current.baseCommit,
+      '-m',
+      'Foreign branch and same-tree index advance before publication',
+    ]).trim();
+    git(current.repository, [
+      'update-ref',
+      'refs/heads/main',
+      foreignCommit,
+      current.baseCommit,
+    ]);
+
+    const recoveryPort = createProductionGitAuthorityCandidateApplyPort(
+      current.repository,
+    );
+    const recoveryCoordinator = createGrantCoordinatorKernel({
+      paths: current.grantPaths,
+      registry: createTransitionRegistry(
+        gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
+      ),
+      policy: parseGrantPolicyV2(policyInput(), {
+        registry: codeOwnedApprovalModuleRegistry(),
+      }),
+      now: () => new Date(NOW),
+      randomUUID: () => crypto.randomUUID(),
+      openApprovalSession: successfulHumanSession,
+      async withLifecycleOperation(challengeId, operation) {
+        const discovered = discoverRepository(current.repository);
+        return withRepositoryLifecycleOperationAsync(
+          runtimePaths(discovered.gitCommonDirectory, 'workflow-engine'),
+          operation,
+          { allowGrantChallengeIds: [challengeId] },
+        );
+      },
+    });
+    const recovered = await recoveryCoordinator.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'failed');
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      foreignCommit,
+    );
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.resultTree,
+    );
+    assert.equal(
+      readGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ).entries.at(-1)?.failure?.code,
+      'git-authority-candidate-apply-ref-changed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('post-ref pre-index recovery records the partial effect and preserves foreign staging', async () => {
+  const current = fixture('ref-update');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve the exact ref update before unrelated index drift.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated ref-update crash/,
+    );
+    const operationCommit = git(current.repository, [
+      'rev-parse',
+      'HEAD',
+    ]).trim();
+    assert.notEqual(operationCommit, current.baseCommit);
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.indexTree,
+    );
+    fs.writeFileSync(
+      path.join(current.repository, 'foreign-index-change.txt'),
+      'foreign staging\n',
+    );
+    git(current.repository, ['add', '--', 'foreign-index-change.txt']);
+    const foreignIndexTree = git(current.repository, ['write-tree']).trim();
+    assert.notEqual(foreignIndexTree, current.candidate.resultTree);
+    const baseTree = git(current.repository, [
+      'show',
+      '-s',
+      '--format=%T',
+      current.baseCommit,
+    ]).trim();
+    const foreignCommit = git(current.repository, [
+      'commit-tree',
+      baseTree,
+      '-p',
+      operationCommit,
+      '-m',
+      'Foreign ref and index advance',
+    ]).trim();
+    git(current.repository, [
+      'update-ref',
+      'refs/heads/main',
+      foreignCommit,
+      operationCommit,
+    ]);
+
+    const recoveryPort = createProductionGitAuthorityCandidateApplyPort(
+      current.repository,
+    );
+    const recoveryCoordinator = createGrantCoordinatorKernel({
+      paths: current.grantPaths,
+      registry: createTransitionRegistry(
+        gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
+      ),
+      policy: parseGrantPolicyV2(policyInput(), {
+        registry: codeOwnedApprovalModuleRegistry(),
+      }),
+      now: () => new Date(NOW),
+      randomUUID: () => crypto.randomUUID(),
+      openApprovalSession: successfulHumanSession,
+      async withLifecycleOperation(challengeId, operation) {
+        const discovered = discoverRepository(current.repository);
+        return withRepositoryLifecycleOperationAsync(
+          runtimePaths(discovered.gitCommonDirectory, 'workflow-engine'),
+          operation,
+          { allowGrantChallengeIds: [challengeId] },
+        );
+      },
+    });
+    const recovered = await recoveryCoordinator.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'failed');
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      foreignCommit,
+    );
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      foreignIndexTree,
+    );
+    const journal = readGitAuthorityCandidateApplyJournal(
+      current.investigationRuntime,
+      OPERATION_ID,
+    );
+    assert.equal(journal.entries.at(-1)?.phase, 'failed');
+    assert.equal(journal.entries.at(-1)?.commitHash, operationCommit);
+    assert.equal(
+      journal.entries.at(-1)?.failure?.code,
+      'git-authority-candidate-apply-ref-changed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('index publication rechecks foreign staging under the standard Git lock', async () => {
+  let foreignIndexTree = '';
+  let current: ReturnType<typeof fixture>;
+  current = fixture(
+    undefined,
+    'deletion',
+    false,
+    false,
+    'unchanged',
+    false,
+    () => {
+      fs.writeFileSync(
+        path.join(current.repository, 'foreign-index-race.txt'),
+        'foreign staging between observation and index lock\n',
+      );
+      git(current.repository, ['add', '--', 'foreign-index-race.txt']);
+      foreignIndexTree = git(current.repository, ['write-tree']).trim();
+    },
+  );
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve exact publication without overwriting a foreign index race.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'failed');
+    assert.notEqual(foreignIndexTree, '');
+    assert.notEqual(foreignIndexTree, current.candidate.resultTree);
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      foreignIndexTree,
+    );
+    const journal = readGitAuthorityCandidateApplyJournal(
+      current.investigationRuntime,
+      OPERATION_ID,
+    );
+    assert.equal(journal.entries.at(-1)?.phase, 'failed');
+    assert.equal(
+      journal.entries.at(-1)?.failure?.code,
+      'git-authority-candidate-apply-index-changed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('owned index lock blocks a foreign Git publication and preserves its worktree bytes', async () => {
+  let foreignAttemptStatus: number | null = null;
+  let current: ReturnType<typeof fixture>;
+  current = fixture(
+    undefined,
+    'deletion',
+    false,
+    false,
+    'unchanged',
+    false,
+    undefined,
+    () => {
+      fs.writeFileSync(
+        path.join(current.repository, 'foreign-after-lock.txt'),
+        'foreign worktree bytes after index lock\n',
+      );
+      foreignAttemptStatus = spawnSync(
+        'git',
+        ['add', '--', 'foreign-after-lock.txt'],
+        {
+          cwd: current.repository,
+          encoding: 'utf8',
+          shell: false,
+        },
+      ).status;
+    },
+  );
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve publication while preserving a foreign locked attempt.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'failed');
+    assert.notEqual(foreignAttemptStatus, 0);
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.indexTree,
+    );
+    assert.equal(
+      fs.readFileSync(
+        path.join(current.repository, 'foreign-after-lock.txt'),
+        'utf8',
+      ),
+      'foreign worktree bytes after index lock\n',
+    );
+    assert.equal(
+      fs.existsSync(path.join(current.repository, '.git/index.lock')),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          current.investigationRuntime.root,
+          'git-authority-candidate-apply-v2',
+          'index-publications',
+          OPERATION_ID,
+          'candidate.index',
+        ),
+      ),
+      false,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('foreign pre-existing index lock is never removed by Apply', async () => {
+  const foreignLockBytes = 'foreign index lock owner\n';
+  let current: ReturnType<typeof fixture>;
+  current = fixture(
+    undefined,
+    'deletion',
+    false,
+    false,
+    'unchanged',
+    false,
+    () => {
+      fs.writeFileSync(
+        path.join(current.repository, '.git/index.lock'),
+        foreignLockBytes,
+        { flag: 'wx', mode: 0o600 },
+      );
+    },
+  );
+  const beforeIndex = fs.readFileSync(current.indexPath);
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve without adopting or deleting a foreign Git lock.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'failed');
+    assert.equal(
+      fs.readFileSync(path.join(current.repository, '.git/index.lock'), 'utf8'),
+      foreignLockBytes,
+    );
+    assert.deepEqual(fs.readFileSync(current.indexPath), beforeIndex);
+    assert.equal(
+      fs.statSync(current.indexPath).mode & 0o7777,
+      current.indexMode,
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('durable terminal checkpoint fixes the natural result before later foreign ref drift', async () => {
+  const current = fixture('terminal');
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve the exact terminal result before a later foreign ref event.',
+      ),
+    );
+    await assert.rejects(
+      current.coordinator.resolveChallenge(CHALLENGE_ID),
+      /simulated terminal crash/,
+    );
+    const operationCommit = git(current.repository, [
+      'rev-parse',
+      'HEAD',
+    ]).trim();
+    assert.equal(
+      readGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ).entries.at(-1)?.phase,
+      'completed',
+    );
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.resultTree,
+    );
+    const foreignCommit = git(current.repository, [
+      'commit-tree',
+      current.candidate.resultTree,
+      '-p',
+      operationCommit,
+      '-m',
+      'Foreign ref event after the exact durable terminal checkpoint',
+    ]).trim();
+    git(current.repository, [
+      'update-ref',
+      'refs/heads/main',
+      foreignCommit,
+      operationCommit,
+    ]);
+
+    const recoveryPort = createProductionGitAuthorityCandidateApplyPort(
+      current.repository,
+    );
+    const recoveryCoordinator = createGrantCoordinatorKernel({
+      paths: current.grantPaths,
+      registry: createTransitionRegistry(
+        gitAuthorityCandidateApplyGrantTransitionDefinitions(recoveryPort),
+      ),
+      policy: parseGrantPolicyV2(policyInput(), {
+        registry: codeOwnedApprovalModuleRegistry(),
+      }),
+      now: () => new Date(NOW),
+      randomUUID: () => crypto.randomUUID(),
+      openApprovalSession: successfulHumanSession,
+      async withLifecycleOperation(challengeId, operation) {
+        const discovered = discoverRepository(current.repository);
+        return withRepositoryLifecycleOperationAsync(
+          runtimePaths(discovered.gitCommonDirectory, 'workflow-engine'),
+          operation,
+          { allowGrantChallengeIds: [challengeId] },
+        );
+      },
+    });
+    const recovered = await recoveryCoordinator.recoverChallenge(CHALLENGE_ID);
+    assert.equal(recovered.outcome, 'completed');
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      foreignCommit,
+    );
+    assert.equal(
+      git(current.repository, ['write-tree']).trim(),
+      current.candidate.resultTree,
+    );
+    assert.equal(
+      readGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ).entries.at(-1)?.phase,
+      'completed',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
 test('forged check observations and post-challenge Git drift fail closed without an Apply journal or Git publication', async () => {
   const forgedFixture = fixture();
   try {
@@ -609,7 +1874,7 @@ test('forged check observations and post-challenge Git drift fail closed without
       fs.existsSync(
         path.join(
           forgedFixture.investigationRuntime.root,
-          'git-authority-candidate-apply-v1',
+          'git-authority-candidate-apply-v2',
         ),
       ),
       false,
@@ -712,6 +1977,66 @@ function policyInput() {
         configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
       },
     ],
+  };
+}
+
+function attackerGrantPolicyInput() {
+  return {
+    ...policyInput(),
+    profiles: {
+      ...policyInput().profiles,
+      ssh: { requiredClaims: ['ssh-signature'] },
+    },
+    approvalModules: [
+      ...policyInput().approvalModules,
+      {
+        moduleId: 'grant-proof-ssh',
+        version: '1',
+        allowedClaims: ['ssh-signature'],
+        configurationDigest: GRANT_PROOF_SSH_V1_CONFIGURATION_DIGEST,
+      },
+    ],
+    optionalSsh: {
+      signatureNamespace: 'jigwright.workflow.grant-proof.v1',
+      trustedSigners: [
+        {
+          identity: 'candidate-attacker',
+          publicKey:
+            'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns',
+          fingerprint: 'SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U',
+        },
+      ],
+    },
+  };
+}
+
+function baseSshGrantPolicyInput() {
+  return {
+    ...policyInput(),
+    profiles: {
+      ...policyInput().profiles,
+      ssh: { requiredClaims: ['ssh-signature'] },
+    },
+    approvalModules: [
+      ...policyInput().approvalModules,
+      {
+        moduleId: 'grant-proof-ssh',
+        version: '1',
+        allowedClaims: ['ssh-signature'],
+        configurationDigest: GRANT_PROOF_SSH_V1_CONFIGURATION_DIGEST,
+      },
+    ],
+    optionalSsh: {
+      signatureNamespace: 'jigwright.workflow.grant-proof.v1',
+      trustedSigners: [
+        {
+          identity: 'base-trusted',
+          publicKey:
+            'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns',
+          fingerprint: 'SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U',
+        },
+      ],
+    },
   };
 }
 

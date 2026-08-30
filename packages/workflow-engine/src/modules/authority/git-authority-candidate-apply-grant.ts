@@ -2,6 +2,10 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
+  normalizeExactRepositoryPath,
+  normalizePolicyPath,
+} from '../../foundation/repository-path/repository-path.ts';
+import {
   parseImmutableGitCandidate,
   type ImmutableGitCandidateV1,
 } from './immutable-git-candidate.ts';
@@ -33,11 +37,32 @@ export type GitAuthorityCandidateCommitIdentityV1 = Readonly<{
   email: string;
 }>;
 
+export type GitAuthorityCandidateBaseAuthorityContextV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'git-authority-candidate-base-authority-context.v1';
+  baseCommit: string;
+  workflowConfig: Readonly<{
+    path: 'workflow/config.json';
+    objectId: string;
+    mode: '100644';
+    contentDigest: `sha256:${string}`;
+    runtimeDirectory: string;
+  }>;
+  grantPolicy: Readonly<{
+    path: 'workflow/grant-policy.json';
+    objectId: string;
+    mode: '100644';
+    contentDigest: `sha256:${string}`;
+  }>;
+  contextDigest: `sha256:${string}`;
+}>;
+
 export type GitAuthorityCandidateApplyParametersV1 = Readonly<{
   schemaVersion: 1;
   kind: 'git-authority-candidate-apply-parameters.v1';
   candidate: ImmutableGitCandidateV1;
   candidateDigest: `sha256:${string}`;
+  baseAuthorityContext: GitAuthorityCandidateBaseAuthorityContextV1;
   commitSubject: string;
   commitIdentity: GitAuthorityCandidateCommitIdentityV1;
   commitTimestamp: string;
@@ -97,6 +122,7 @@ export const GIT_AUTHORITY_CANDIDATE_APPLY_PARAMETER_SCHEMA_DIGEST =
       required: [
         'candidate',
         'candidateDigest',
+        'baseAuthorityContext',
         'commitSubject',
         'commitIdentity',
         'commitTimestamp',
@@ -141,6 +167,7 @@ export function createGitAuthorityCandidateApplyGrantRequest(
       expectedOldTree: parameters.candidate.expectedOldTree,
       resultTree: parameters.candidate.resultTree,
       candidateDigest: parameters.candidateDigest,
+      baseAuthorityContext: parameters.baseAuthorityContext,
       manifestDigest: parameters.candidate.manifestDigest,
       policyObservations: parameters.candidate.policyObservations,
       policyObservationsDigest: parameters.candidate.policyObservationsDigest,
@@ -287,6 +314,7 @@ export function assertGitAuthorityCandidateApplyParameters(
       'kind',
       'candidate',
       'candidateDigest',
+      'baseAuthorityContext',
       'commitSubject',
       'commitIdentity',
       'commitTimestamp',
@@ -303,6 +331,10 @@ export function assertGitAuthorityCandidateApplyParameters(
     throw parametersInvalid();
   }
   const candidate = safelyParseCandidate(value.candidate);
+  const baseAuthorityContext = assertGitAuthorityCandidateBaseAuthorityContext(
+    value.baseAuthorityContext,
+    candidate.expectedOldCommit,
+  );
   const commitIdentity = assertCommitIdentity(value.commitIdentity);
   if (value.candidateDigest !== candidate.candidateDigest) {
     throw parametersInvalid();
@@ -312,10 +344,153 @@ export function assertGitAuthorityCandidateApplyParameters(
     kind: 'git-authority-candidate-apply-parameters.v1',
     candidate,
     candidateDigest: value.candidateDigest as `sha256:${string}`,
+    baseAuthorityContext,
     commitSubject: value.commitSubject,
     commitIdentity,
     commitTimestamp: value.commitTimestamp,
   });
+}
+
+export function createGitAuthorityCandidateBaseAuthorityContext(
+  value: Omit<GitAuthorityCandidateBaseAuthorityContextV1, 'contextDigest'>,
+): GitAuthorityCandidateBaseAuthorityContextV1 {
+  const body = {
+    schemaVersion: value.schemaVersion,
+    kind: value.kind,
+    baseCommit: value.baseCommit,
+    workflowConfig: value.workflowConfig,
+    grantPolicy: value.grantPolicy,
+  };
+  return assertGitAuthorityCandidateBaseAuthorityContext(
+    {
+      ...body,
+      contextDigest: grantSha256(
+        `workflow.git-authority-candidate-base-authority-context.v1\n${canonicalJson(
+          body,
+        )}`,
+      ),
+    },
+    value.baseCommit,
+  );
+}
+
+export function assertGitAuthorityCandidateBaseAuthorityContext(
+  value: unknown,
+  expectedBaseCommit?: string,
+): GitAuthorityCandidateBaseAuthorityContextV1 {
+  if (
+    !isRecord(value) ||
+    !grantHasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'baseCommit',
+      'workflowConfig',
+      'grantPolicy',
+      'contextDigest',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'git-authority-candidate-base-authority-context.v1' ||
+    typeof value.baseCommit !== 'string' ||
+    !COMMIT_OID.test(value.baseCommit) ||
+    (expectedBaseCommit !== undefined &&
+      value.baseCommit !== expectedBaseCommit) ||
+    typeof value.contextDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.contextDigest)
+  ) {
+    throw parametersInvalid();
+  }
+  const workflowConfig = assertWorkflowConfigAuthorityBinding(
+    value.workflowConfig,
+  );
+  const grantPolicy = assertGrantPolicyAuthorityBinding(value.grantPolicy);
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'git-authority-candidate-base-authority-context.v1' as const,
+    baseCommit: value.baseCommit,
+    workflowConfig,
+    grantPolicy,
+  };
+  if (
+    value.contextDigest !==
+    grantSha256(
+      `workflow.git-authority-candidate-base-authority-context.v1\n${canonicalJson(
+        body,
+      )}`,
+    )
+  ) {
+    throw parametersInvalid();
+  }
+  return Object.freeze({
+    ...body,
+    contextDigest: value.contextDigest as `sha256:${string}`,
+  });
+}
+
+function assertWorkflowConfigAuthorityBinding(
+  value: unknown,
+): GitAuthorityCandidateBaseAuthorityContextV1['workflowConfig'] {
+  if (
+    !isRecord(value) ||
+    !grantHasExactKeys(value, [
+      'path',
+      'objectId',
+      'mode',
+      'contentDigest',
+      'runtimeDirectory',
+    ]) ||
+    value.path !== 'workflow/config.json' ||
+    typeof value.objectId !== 'string' ||
+    !COMMIT_OID.test(value.objectId) ||
+    value.mode !== '100644' ||
+    typeof value.contentDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.contentDigest) ||
+    typeof value.runtimeDirectory !== 'string' ||
+    !isExactRuntimeDirectory(value.runtimeDirectory)
+  ) {
+    throw parametersInvalid();
+  }
+  return Object.freeze({
+    path: 'workflow/config.json',
+    objectId: value.objectId,
+    mode: '100644',
+    contentDigest: value.contentDigest as `sha256:${string}`,
+    runtimeDirectory: value.runtimeDirectory,
+  });
+}
+
+function assertGrantPolicyAuthorityBinding(
+  value: unknown,
+): GitAuthorityCandidateBaseAuthorityContextV1['grantPolicy'] {
+  if (
+    !isRecord(value) ||
+    !grantHasExactKeys(value, ['path', 'objectId', 'mode', 'contentDigest']) ||
+    value.path !== 'workflow/grant-policy.json' ||
+    typeof value.objectId !== 'string' ||
+    !COMMIT_OID.test(value.objectId) ||
+    value.mode !== '100644' ||
+    typeof value.contentDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.contentDigest)
+  ) {
+    throw parametersInvalid();
+  }
+  return Object.freeze({
+    path: 'workflow/grant-policy.json',
+    objectId: value.objectId,
+    mode: '100644',
+    contentDigest: value.contentDigest as `sha256:${string}`,
+  });
+}
+
+function isExactRuntimeDirectory(value: string): boolean {
+  if (Buffer.byteLength(value) > 512) return false;
+  try {
+    return (
+      normalizePolicyPath(value) === value &&
+      normalizeExactRepositoryPath(value) === value
+    );
+  } catch {
+    return false;
+  }
 }
 
 export function assertGitAuthorityCandidateApplyObservation(
@@ -412,9 +587,9 @@ export function assertGitAuthorityCandidateApplyObservation(
         value.journalDigest === null)) ||
     (phase === 'completed' &&
       (value.commitHash === null || failure !== null)) ||
-    ((phase === 'prepared' || phase === 'index-published') &&
-      value.commitHash !== null) ||
+    (phase === 'prepared' && value.commitHash !== null) ||
     ([
+      'index-published',
       'commit-created',
       'ref-update-prepared',
       'ref-updated',

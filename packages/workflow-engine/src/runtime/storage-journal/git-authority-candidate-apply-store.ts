@@ -34,7 +34,7 @@ import {
 
 const COMMIT_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
 
-export type GitAuthorityCandidateApplyJournalEntryV1 = Readonly<{
+export type GitAuthorityCandidateApplyJournalEntryV2 = Readonly<{
   revision: number;
   phase: Exclude<GitAuthorityCandidateApplyPhase, 'pending'>;
   previousEntryDigest: `sha256:${string}` | null;
@@ -43,9 +43,9 @@ export type GitAuthorityCandidateApplyJournalEntryV1 = Readonly<{
   entryDigest: `sha256:${string}`;
 }>;
 
-export type GitAuthorityCandidateApplyJournalV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'git-authority-candidate-apply-journal.v1';
+export type GitAuthorityCandidateApplyJournalV2 = Readonly<{
+  schemaVersion: 2;
+  kind: 'git-authority-candidate-apply-journal.v2';
   parameters: GitAuthorityCandidateApplyParametersV1;
   parametersDigest: `sha256:${string}`;
   challengeId: string;
@@ -55,20 +55,26 @@ export type GitAuthorityCandidateApplyJournalV1 = Readonly<{
   approvalSubjectDigest: `sha256:${string}`;
   preparedGrantRecordDigest: `sha256:${string}`;
   commitMessage: string;
-  entries: readonly GitAuthorityCandidateApplyJournalEntryV1[];
+  indexMode: number;
+  entries: readonly GitAuthorityCandidateApplyJournalEntryV2[];
   journalDigest: `sha256:${string}`;
 }>;
 
 export type GitAuthorityCandidateApplyStorePaths = Readonly<{
   root: string;
   journals: string;
+  indexPublications: string;
 }>;
 
 export function gitAuthorityCandidateApplyStorePaths(
   runtime: InvestigationRuntimePaths,
 ): GitAuthorityCandidateApplyStorePaths {
-  const root = path.join(runtime.root, 'git-authority-candidate-apply-v1');
-  return Object.freeze({ root, journals: path.join(root, 'journals') });
+  const root = path.join(runtime.root, 'git-authority-candidate-apply-v2');
+  return Object.freeze({
+    root,
+    journals: path.join(root, 'journals'),
+    indexPublications: path.join(root, 'index-publications'),
+  });
 }
 
 export function createGitAuthorityCandidateApplyJournal(
@@ -80,8 +86,9 @@ export function createGitAuthorityCandidateApplyJournal(
     approvalSubject: ApprovalSubject;
     preparedGrantRecordDigest: `sha256:${string}`;
     commitMessage: string;
+    indexMode: number;
   }>,
-): GitAuthorityCandidateApplyJournalV1 {
+): GitAuthorityCandidateApplyJournalV2 {
   const parameters = assertGitAuthorityCandidateApplyParameters(
     input.parameters,
   );
@@ -94,14 +101,15 @@ export function createGitAuthorityCandidateApplyJournal(
     input.commitMessage.length === 0 ||
     Buffer.byteLength(input.commitMessage) > 16_384 ||
     !input.commitMessage.endsWith('\n') ||
-    input.commitMessage.includes('\0')
+    input.commitMessage.includes('\0') ||
+    !isSafeIndexMode(input.indexMode)
   ) {
     throw journalInvalid();
   }
   const entry = createEntry(0, 'prepared', null, null, null);
   const body = {
-    schemaVersion: 1 as const,
-    kind: 'git-authority-candidate-apply-journal.v1' as const,
+    schemaVersion: 2 as const,
+    kind: 'git-authority-candidate-apply-journal.v2' as const,
     parameters,
     parametersDigest: gitAuthorityCandidateApplyParametersDigest(parameters),
     challengeId: input.challengeId,
@@ -111,6 +119,7 @@ export function createGitAuthorityCandidateApplyJournal(
     approvalSubjectDigest: approvalSubjectDigest(approvalSubject),
     preparedGrantRecordDigest: input.preparedGrantRecordDigest,
     commitMessage: input.commitMessage,
+    indexMode: input.indexMode,
     entries: Object.freeze([entry]),
   };
   const journal = assertGitAuthorityCandidateApplyJournal({
@@ -130,7 +139,7 @@ export function createGitAuthorityCandidateApplyJournal(
 export function readOptionalGitAuthorityCandidateApplyJournal(
   runtime: InvestigationRuntimePaths,
   operationId: string,
-): GitAuthorityCandidateApplyJournalV1 | null {
+): GitAuthorityCandidateApplyJournalV2 | null {
   if (!GRANT_UUID_V4.test(operationId)) throw journalInvalid();
   const filePath = journalPath(runtime, operationId);
   const observed = fs.lstatSync(filePath, { throwIfNoEntry: false });
@@ -143,7 +152,7 @@ export function readOptionalGitAuthorityCandidateApplyJournal(
 export function readGitAuthorityCandidateApplyJournal(
   runtime: InvestigationRuntimePaths,
   operationId: string,
-): GitAuthorityCandidateApplyJournalV1 {
+): GitAuthorityCandidateApplyJournalV2 {
   const journal = readOptionalGitAuthorityCandidateApplyJournal(
     runtime,
     operationId,
@@ -151,7 +160,7 @@ export function readGitAuthorityCandidateApplyJournal(
   if (journal === null) {
     throw workflowError(
       'GIT_AUTHORITY_CANDIDATE_APPLY_JOURNAL_MISSING',
-      'The exact Git authority Apply journal is missing.',
+      'The exact current-v2 Git authority Apply journal is missing.',
       ExitCode.staleState,
     );
   }
@@ -160,13 +169,13 @@ export function readGitAuthorityCandidateApplyJournal(
 
 export function advanceGitAuthorityCandidateApplyJournal(
   runtime: InvestigationRuntimePaths,
-  currentValue: GitAuthorityCandidateApplyJournalV1,
+  currentValue: GitAuthorityCandidateApplyJournalV2,
   update: Readonly<{
     phase: Exclude<GitAuthorityCandidateApplyPhase, 'pending' | 'prepared'>;
     commitHash: string | null;
     failure: GitAuthorityCandidateApplyFailureV1 | null;
   }>,
-): GitAuthorityCandidateApplyJournalV1 {
+): GitAuthorityCandidateApplyJournalV2 {
   const current = assertGitAuthorityCandidateApplyJournal(currentValue);
   const observed = readGitAuthorityCandidateApplyJournal(
     runtime,
@@ -200,6 +209,7 @@ export function advanceGitAuthorityCandidateApplyJournal(
     approvalSubjectDigest: current.approvalSubjectDigest,
     preparedGrantRecordDigest: current.preparedGrantRecordDigest,
     commitMessage: current.commitMessage,
+    indexMode: current.indexMode,
     entries: Object.freeze([...current.entries, entry]),
   };
   const next = assertGitAuthorityCandidateApplyJournal({
@@ -216,7 +226,7 @@ export function advanceGitAuthorityCandidateApplyJournal(
 }
 
 export function gitAuthorityCandidateApplyJournalObservation(
-  value: GitAuthorityCandidateApplyJournalV1,
+  value: GitAuthorityCandidateApplyJournalV2,
 ): GitAuthorityCandidateApplyObservationV1 {
   const journal = assertGitAuthorityCandidateApplyJournal(value);
   const current = journal.entries.at(-1)!;
@@ -242,7 +252,7 @@ export function gitAuthorityCandidateApplyJournalObservation(
 
 export function assertGitAuthorityCandidateApplyJournal(
   value: unknown,
-): GitAuthorityCandidateApplyJournalV1 {
+): GitAuthorityCandidateApplyJournalV2 {
   if (
     !isRecord(value) ||
     !grantHasExactKeys(value, [
@@ -257,11 +267,12 @@ export function assertGitAuthorityCandidateApplyJournal(
       'approvalSubjectDigest',
       'preparedGrantRecordDigest',
       'commitMessage',
+      'indexMode',
       'entries',
       'journalDigest',
     ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'git-authority-candidate-apply-journal.v1' ||
+    value.schemaVersion !== 2 ||
+    value.kind !== 'git-authority-candidate-apply-journal.v2' ||
     typeof value.parametersDigest !== 'string' ||
     !GRANT_SHA256_DIGEST.test(value.parametersDigest) ||
     typeof value.challengeId !== 'string' ||
@@ -279,6 +290,7 @@ export function assertGitAuthorityCandidateApplyJournal(
     Buffer.byteLength(value.commitMessage) > 16_384 ||
     !value.commitMessage.endsWith('\n') ||
     value.commitMessage.includes('\0') ||
+    !isSafeIndexMode(value.indexMode) ||
     !Array.isArray(value.entries) ||
     value.entries.length === 0 ||
     value.entries.length > 16 ||
@@ -311,8 +323,8 @@ export function assertGitAuthorityCandidateApplyJournal(
     throw journalInvalid();
   }
   const body = {
-    schemaVersion: 1 as const,
-    kind: 'git-authority-candidate-apply-journal.v1' as const,
+    schemaVersion: 2 as const,
+    kind: 'git-authority-candidate-apply-journal.v2' as const,
     parameters,
     parametersDigest: value.parametersDigest as `sha256:${string}`,
     challengeId: value.challengeId,
@@ -323,6 +335,7 @@ export function assertGitAuthorityCandidateApplyJournal(
     preparedGrantRecordDigest:
       value.preparedGrantRecordDigest as `sha256:${string}`,
     commitMessage: value.commitMessage,
+    indexMode: value.indexMode,
     entries: Object.freeze(entries),
   };
   if (value.journalDigest !== journalDigest(body)) throw journalInvalid();
@@ -335,7 +348,7 @@ export function assertGitAuthorityCandidateApplyJournal(
 function assertEntry(
   value: unknown,
   expectedRevision: number,
-): GitAuthorityCandidateApplyJournalEntryV1 {
+): GitAuthorityCandidateApplyJournalEntryV2 {
   if (
     !isRecord(value) ||
     !grantHasExactKeys(value, [
@@ -373,9 +386,9 @@ function assertEntry(
   >;
   const failure = value.failure === null ? null : assertFailure(value.failure);
   if (
-    ((phase === 'prepared' || phase === 'index-published') &&
-      value.commitHash !== null) ||
+    (phase === 'prepared' && value.commitHash !== null) ||
     ([
+      'index-published',
       'commit-created',
       'ref-update-prepared',
       'ref-updated',
@@ -433,14 +446,14 @@ function createEntry(
   previousEntryDigest: `sha256:${string}` | null,
   commitHash: string | null,
   failure: GitAuthorityCandidateApplyFailureV1 | null,
-): GitAuthorityCandidateApplyJournalEntryV1 {
+): GitAuthorityCandidateApplyJournalEntryV2 {
   const body = { revision, phase, previousEntryDigest, commitHash, failure };
   return Object.freeze({ ...body, entryDigest: entryDigest(body) });
 }
 
 function entryDigest(value: unknown): `sha256:${string}` {
   return grantSha256(
-    `workflow.git-authority-candidate-apply-journal-entry.v1\n${canonicalJson(
+    `workflow.git-authority-candidate-apply-journal-entry.v2\n${canonicalJson(
       value,
     )}`,
   );
@@ -448,7 +461,17 @@ function entryDigest(value: unknown): `sha256:${string}` {
 
 function journalDigest(value: unknown): `sha256:${string}` {
   return grantSha256(
-    `workflow.git-authority-candidate-apply-journal.v1\n${canonicalJson(value)}`,
+    `workflow.git-authority-candidate-apply-journal.v2\n${canonicalJson(value)}`,
+  );
+}
+
+function isSafeIndexMode(value: unknown): value is number {
+  return (
+    typeof value === 'number' &&
+    Number.isInteger(value) &&
+    (value & 0o600) === 0o600 &&
+    (value & 0o7111) === 0 &&
+    (value & 0o002) === 0
   );
 }
 
@@ -466,11 +489,11 @@ function isAllowedPhaseTransition(
   if (next === 'failed')
     return previous !== 'completed' && previous !== 'failed';
   return (
-    (previous === 'prepared' && next === 'index-published') ||
-    (previous === 'index-published' && next === 'commit-created') ||
+    (previous === 'prepared' && next === 'commit-created') ||
     (previous === 'commit-created' && next === 'ref-update-prepared') ||
     (previous === 'ref-update-prepared' && next === 'ref-updated') ||
-    (previous === 'ref-updated' && next === 'completed')
+    (previous === 'ref-updated' && next === 'index-published') ||
+    (previous === 'index-published' && next === 'completed')
   );
 }
 
@@ -488,7 +511,7 @@ function journalPath(
 function journalInvalid() {
   return workflowError(
     'GIT_AUTHORITY_CANDIDATE_APPLY_JOURNAL_INVALID',
-    'The exact Git authority Apply journal is invalid or unsafe.',
+    'The exact current-v2 Git authority Apply journal is invalid or unsafe.',
     ExitCode.guard,
   );
 }
