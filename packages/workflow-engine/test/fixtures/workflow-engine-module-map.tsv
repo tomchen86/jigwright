@@ -146,7 +146,6 @@ packages/workflow-engine/src/maintainer-manifest.ts	packages/workflow-engine/src
 packages/workflow-engine/src/maintainer-policy.ts	packages/workflow-engine/src/modules/authority/maintainer-policy.ts	MOVE
 packages/workflow-engine/src/maintainer-recovery.ts	packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts	MOVE
 packages/workflow-engine/src/maintainer-report.ts	packages/workflow-engine/src/runtime/storage-journal/maintainer-report.ts	MOVE
-packages/workflow-engine/src/maintainer-revoke.ts	packages/workflow-engine/src/application/control-plane/maintainer-revoke.ts	MOVE
 packages/workflow-engine/src/maintainer-session.ts	packages/workflow-engine/src/application/control-plane/maintainer-session.ts	MOVE
 packages/workflow-engine/src/maintainer-signer.ts	packages/workflow-engine/src/adapters/signing/ssh/maintainer-signer.ts	MOVE
 packages/workflow-engine/src/maintainer-store.ts	packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts	MOVE

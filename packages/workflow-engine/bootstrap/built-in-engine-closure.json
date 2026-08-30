@@ -38,7 +38,7 @@
     {
       "path": "node_modules/@jigwright/agent-runtime/package.json",
       "mode": "100644",
-      "digest": "sha256:d44a771372fc41771610521b3da95848a3e9590fd8fb028b13e393d116b68caf"
+      "digest": "sha256:c7b9ed9c78a0aa25f12c2fca206afe9ac75f9c59fb12d66a94e068e00fe8bb42"
     },
     {
       "path": "node_modules/@jigwright/agent-runtime/src/agent-provider-config.ts",
@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:4e6c192185236f6c5353fbb398751545b61490df57001484301ba04e3b44a9c9"
+      "digest": "sha256:5cb6e9666b212992f2dc482875efd8598af704c59d4767512e0c69377306a27c"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -198,7 +198,7 @@
     {
       "path": "node_modules/@jigwright/github-adapter/package.json",
       "mode": "100644",
-      "digest": "sha256:fa02854a80aab6d260e1f594df10b3fcb1d02ff07155e2f7e861dc05de479995"
+      "digest": "sha256:96998220e7bc8aab6f1f7b44f7ae686abccae5188612843fbe7984d6b5194d41"
     },
     {
       "path": "node_modules/@jigwright/github-adapter/src/archive-pull-request.ts",
@@ -213,12 +213,12 @@
     {
       "path": "node_modules/@jigwright/grants/package.json",
       "mode": "100644",
-      "digest": "sha256:e855e9d54a72c68745a080d703c38446ba40f94b90bc9c5337d71bc8f8f06bfe"
+      "digest": "sha256:66949dbb7ef813670ba13b301bf9e6bbf5fcfe0557e3980aa8cf128deec3d1b7"
     },
     {
       "path": "node_modules/@jigwright/grants/src/central-grant-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:da9b831c48fa3feb16f310bc6f89b75779cc46ce9ffb4dd41a276289bcf7e718"
+      "digest": "sha256:82c623975172ef9968b5cf4497836a6276d029f54bdd2021d827dea502d36afa"
     },
     {
       "path": "node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.ts",
@@ -248,7 +248,7 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/package.json",
       "mode": "100644",
-      "digest": "sha256:6e1cf3c5ed669cd8c98a01324d169051b39827ed4ebd9aac089a942810b89df8"
+      "digest": "sha256:47f3debf5c246d3fa3b783f41c7aecb1bb04852db7ceb347e10589e866f52613"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/archive-projection.ts",
@@ -263,12 +263,12 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/planning-provider.ts",
       "mode": "100644",
-      "digest": "sha256:f4478e2795ea460c8ed16506767bb5bab66fb46545444d2a4217e948c8095874"
+      "digest": "sha256:b5db9fc1295fa4a8d2a6d7a8455ba934629ce9ade6e1afabcd597d0de656b9ad"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/provider-binding.ts",
       "mode": "100644",
-      "digest": "sha256:764fc0f40f01828c128d4fc62abdb54b98c243f1bfe90fbc3bafbbb7cdeaf630"
+      "digest": "sha256:3652a3a98190f0eee8818e7a289e45af0d5738fa12a34262ddcd3ed78ed1f782"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/validation-payload.ts",
@@ -388,7 +388,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
       "mode": "100644",
-      "digest": "sha256:52c1d4d45146bb5a0b6b90747fd0e8ea608f0f8c081fd7228a274832e4ac9a1a"
+      "digest": "sha256:ea4697435ce0e09e5ebdcb3bc8f4642b16efc417309d4a8e436d18fc0391f446"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-adapter.ts",
@@ -543,7 +543,7 @@
     {
       "path": "src/application/control-plane/human-revocation.ts",
       "mode": "100644",
-      "digest": "sha256:3748432476a5cef5b250e8fbf62134051e9a57a5037248ad037286d95aadb108"
+      "digest": "sha256:62ebdf08b339030328bdb2f382e0dfea8ab61c212827bb05ded1dce4d860c799"
     },
     {
       "path": "src/application/control-plane/intervention-control-bootstrap.ts",
@@ -584,11 +584,6 @@
       "path": "src/application/control-plane/maintainer-recovery.ts",
       "mode": "100644",
       "digest": "sha256:8953739230a2396d86e0f0db32a65e3901e1cc6b869d26ae5bca8dc4bfddfa1b"
-    },
-    {
-      "path": "src/application/control-plane/maintainer-revoke.ts",
-      "mode": "100644",
-      "digest": "sha256:6ab60a59cff944273742d645670b77db7c46ae2a8b5943477313d727f9db5398"
     },
     {
       "path": "src/application/control-plane/maintainer-session.ts",
@@ -688,7 +683,7 @@
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
       "mode": "100644",
-      "digest": "sha256:4d85cdfe72ee40395b0368ee81cafbabc65478f74ac50d05e3c985146ec3c4f7"
+      "digest": "sha256:20b9731d1d838c87555cda8c6761f52e853c430bf9cfc95e0e27a16e4571a9c7"
     },
     {
       "path": "src/application/propose/planning-transition.ts",
@@ -893,7 +888,7 @@
     {
       "path": "src/composition-root/role-topology-resolution-production.ts",
       "mode": "100644",
-      "digest": "sha256:395836bfa9eb087de8d19b3c912069bf71fa4d539d7a2a49ae5041fa95616568"
+      "digest": "sha256:3e874f1a1b396ef46411cbead70dec595a29be5b056e3ed9c51a8ae20269014b"
     },
     {
       "path": "src/composition-root/validated-contract-context.ts",
@@ -938,7 +933,7 @@
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:b81b48f0902a32717f2832247462c4811a8c4ff8881fe4bf04cdc93bd4773a49"
+      "digest": "sha256:45a63bdffbd6a1d3ce4a6c7db08d9190bd381344c7bb3cce6ca3081daefd16ae"
     },
     {
       "path": "src/entrypoints/ci/ci-routing.ts",
@@ -1253,7 +1248,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:9e8ec34ba30bf8a031447d1bf5f621215eb3af81c65ca244d8fb85d01868a183"
+      "digest": "sha256:3b3086d462280787dfbf6e2bc3b7eecddbb6e65159572cce3bd518e2e29ee3db"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
@@ -1268,7 +1263,7 @@
     {
       "path": "src/modules/authority/maintainer-grant.ts",
       "mode": "100644",
-      "digest": "sha256:6c7e72b2cd962f99c19e85b7ae2ad879be208bf133ae74a793e2fc44e58e98b8"
+      "digest": "sha256:a59c3a42cb7250df6d24e371e0a371c65893e456d872694e55577d592593dbd3"
     },
     {
       "path": "src/modules/authority/maintainer-manifest.ts",
@@ -1558,7 +1553,7 @@
     {
       "path": "src/modules/provider-orchestration/agent-role-plan.ts",
       "mode": "100644",
-      "digest": "sha256:b26f173bb6266fecff277207fb69c395819ddfc4337f859fdeec6c8726e750e6"
+      "digest": "sha256:f9b731d16bc2d0215fb94fc9a7b642ec48ca6b415808f202d26c4177e98e5054"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
@@ -1628,7 +1623,7 @@
     {
       "path": "src/modules/provider-orchestration/role-topology-resolution.ts",
       "mode": "100644",
-      "digest": "sha256:49e130bcae422ad2429d6b3636d5b1a88a3b82882021ead31be75f23c7f1febd"
+      "digest": "sha256:705ea607f68e7076f9b26453f1f9cde3a03bc4cdc8e5fb094331d02a47699885"
     },
     {
       "path": "src/modules/provider-orchestration/task-strategy-provider-contract.ts",
@@ -1673,7 +1668,7 @@
     {
       "path": "src/modules/source/planning-role-provider-policy-reader.ts",
       "mode": "100644",
-      "digest": "sha256:c18a3067cfca1867470c5b77e6d5773ed6f59c93db281adf62930b4337059b60"
+      "digest": "sha256:22db9a9be40a8d38bba0e79edad3f844fb25f8978b56b458d1d003033591af3e"
     },
     {
       "path": "src/modules/why-knowledge/implementation-reconciliation-policy.ts",
@@ -1808,7 +1803,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:d516900c94bef42b3c8c66597513468ad9cd8c1f68c0f7cbc4c2f55119108caa"
+      "digest": "sha256:9f964e00a3f0e41c27f2551352e484aa80329b0f88e2ff0b30309914990fe4e8"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
@@ -1863,7 +1858,7 @@
     {
       "path": "src/runtime/repository-transaction/agent-role-plan-store.ts",
       "mode": "100644",
-      "digest": "sha256:5514200f7b4f894dfe0ebfea90d9e59de92de9931057b307d8fc8573e0a4b39f"
+      "digest": "sha256:725a6e6ec5228b0e75572eaa8243010bac9a3ca4cb3efe3cd6834405a2aa5623"
     },
     {
       "path": "src/runtime/repository-transaction/archive-delta-verifier.ts",
@@ -1963,7 +1958,7 @@
     {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:4c74c4c604485b4c341def6260e053d68ba1cc7582a9731ed9ef9a3c078a7272"
+      "digest": "sha256:77dda657a4cc5dd634a049f65089bcef4a450f32860cf7e3960bbd95cedda7a1"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
@@ -2063,7 +2058,7 @@
     {
       "path": "src/runtime/storage-journal/maintainer-store.ts",
       "mode": "100644",
-      "digest": "sha256:2106ec172c4792de64c80ef6e7e2ed1e05da014186704f93a8899e3c5254e3da"
+      "digest": "sha256:7e365270c8e24ee35ad9f6c31d8d87ceefd63fa30f772e7766c13fc1f278f344"
     },
     {
       "path": "src/runtime/storage-journal/planning-report.ts",

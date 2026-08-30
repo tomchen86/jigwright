@@ -24,15 +24,15 @@ import {
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
 import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 
-const EXPECTED_MAP_ROWS = 268;
+const EXPECTED_MAP_ROWS = 267;
 const EXPECTED_FROZEN_MAP_DIGEST =
-  'sha256:f6f4396a96ab8c80a8ef7ab8d59ee41a5757b5c3509679a073b5b3b1e1917fd3';
+  'sha256:8aa0c563b86b5bec9c68dd6235390cb73b189a2e9ec4ed5856e8ab6df9647292';
 const EXPECTED_FROZEN_EDGE_COUNT = 825;
-const EXPECTED_ACTIVE_EDGE_COUNT = 750;
+const EXPECTED_ACTIVE_EDGE_COUNT = 747;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:664f176a395cf956e19563d8450e8aef9bfabb4c37b10bcdd174489c875070b1';
+  'sha256:a412644cf94c757f4b52e67408c5d274e2c0af1acb2fdabe7b3a9c9092b5d638';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';

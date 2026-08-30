@@ -2372,31 +2372,3 @@ export function validateWorkflowSupersedeReason(reason) {
     }
     throw workflowError('SUPERSEDE_REASON_UNSUPPORTED', 'Supersede requires an explicit workflow-replacement reason.', ExitCode.usage);
 }
-export function verifyLegacyGrantV1ReadOnly(record, context) {
-    if (record.kind !== 'legacy-grant-v1-audit.v1' ||
-        record.legacyKind !== 'maintainer-grant.v1') {
-        throw workflowError('LEGACY_GRANT_V1_INVALID', 'Unknown legacy grant audit record.', ExitCode.usage);
-    }
-    for (const [value, label] of [
-        [record.grantId, 'Grant id'],
-        [record.signedPayload, 'Signed payload'],
-        [record.signer, 'Signer'],
-        [record.signature, 'Signature'],
-    ]) {
-        assertNonEmpty(value, 'LEGACY_GRANT_V1_INVALID', label);
-    }
-    assertDigest(record.payloadDigest, 'LEGACY_GRANT_V1_INVALID');
-    if (sha256(record.signedPayload) !== record.payloadDigest) {
-        throw workflowError('LEGACY_GRANT_V1_PAYLOAD_DIGEST_MISMATCH', 'Historical grant payload digest mismatch.', ExitCode.verification);
-    }
-    const signatureValid = verifyHumanSignatureSafely(context.verifyHumanSignature, record.signedPayload, record.signature, record.signer, 'workflow.maintainer-grant.v1');
-    if (!signatureValid) {
-        throw workflowError('LEGACY_GRANT_V1_SIGNATURE_INVALID', 'Historical V1 grant signature could not be verified.', ExitCode.verification);
-    }
-    return freezeDeep({
-        grantId: record.grantId,
-        legacyKind: record.legacyKind,
-        mode: 'historical-read-only',
-        signatureValid: true,
-    });
-}

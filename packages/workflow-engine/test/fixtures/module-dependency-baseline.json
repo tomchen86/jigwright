@@ -1612,7 +1612,7 @@
       "rule": "application-to-runtime",
       "reasonId": "legacy.application-to-runtime",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
@@ -6628,7 +6628,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts",
@@ -6636,7 +6636,7 @@
       "rule": "runtime-to-application",
       "reasonId": "legacy.runtime-to-application",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/propose-exemption-store.ts",

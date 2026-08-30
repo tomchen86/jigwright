@@ -29,7 +29,6 @@
       "packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts",
       "packages/workflow-engine/src/application/control-plane/maintainer-attestation.ts",
       "packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts",
-      "packages/workflow-engine/src/application/control-plane/maintainer-revoke.ts",
       "packages/workflow-engine/src/application/control-plane/maintainer-session.ts",
       "packages/workflow-engine/src/application/execute-task/session.ts",
       "packages/workflow-engine/src/application/finalize/verification.ts",

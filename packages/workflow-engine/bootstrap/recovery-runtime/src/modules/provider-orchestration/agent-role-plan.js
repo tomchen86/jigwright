@@ -12,33 +12,6 @@ const ROLE_PAIR_ORDER = [
     'author-reviewer',
     'builder-reviewer',
 ];
-export function agentRolePlanDigest(value) {
-    const body = assertAgentRolePlanBody(value, value.changeId, value.planningGeneration);
-    return digestBody(body);
-}
-export function renderAgentRolePlan(value) {
-    const plan = assertAgentRolePlan(value, value.changeId, value.planningGeneration);
-    return `${JSON.stringify(plan, null, 2)}\n`;
-}
-export function parseAgentRolePlan(source, expectedChangeId, expectedPlanningGeneration) {
-    let value;
-    try {
-        value = JSON.parse(source);
-    }
-    catch {
-        throw planInvalid('Agent-role plan must be valid JSON.');
-    }
-    if (isRecord(value) &&
-        Object.hasOwn(value, 'schemaVersion') &&
-        value.schemaVersion !== 1) {
-        throw workflowError('AGENT_ROLE_PLAN_VERSION_UNSUPPORTED', 'Agent-role plan schema version is not supported.', ExitCode.verification);
-    }
-    const plan = assertAgentRolePlan(value, expectedChangeId, expectedPlanningGeneration);
-    if (source !== renderAgentRolePlan(plan)) {
-        throw planInvalid('Agent-role plan must use the canonical JSON encoding.');
-    }
-    return plan;
-}
 export function agentRolePlanV2Digest(value) {
     const body = assertAgentRolePlanBodyV2(value, value.changeId, value.baseCentralConfigurationDigest);
     return digestBodyV2(body);
@@ -148,77 +121,6 @@ function materializeAgentRolePlanV2Snapshot(value) {
             .createHash('sha256')
             .update(`workflow.agent-role-plan-v2-snapshot.v1\n${canonicalJson(body)}`)
             .digest('hex'),
-    });
-}
-function assertAgentRolePlan(value, expectedChangeId, expectedPlanningGeneration) {
-    if (!isRecord(value)) {
-        throw planInvalid('Agent-role plan must be one object.');
-    }
-    assertExactKeys(value, [
-        'changeId',
-        'customWrapperPolicy',
-        'grantReferences',
-        'pairwiseRequirements',
-        'planDigest',
-        'planningGeneration',
-        'roleLanes',
-        'schemaVersion',
-    ]);
-    const body = assertAgentRolePlanBody({
-        schemaVersion: value.schemaVersion,
-        changeId: value.changeId,
-        planningGeneration: value.planningGeneration,
-        roleLanes: value.roleLanes,
-        pairwiseRequirements: value.pairwiseRequirements,
-        customWrapperPolicy: value.customWrapperPolicy,
-        grantReferences: value.grantReferences,
-    }, expectedChangeId, expectedPlanningGeneration);
-    if (typeof value.planDigest !== 'string' ||
-        !DIGEST.test(value.planDigest) ||
-        value.planDigest !== digestBody(body)) {
-        throw planInvalid('Agent-role plan digest does not match its exact body.');
-    }
-    return Object.freeze({ ...body, planDigest: value.planDigest });
-}
-function assertAgentRolePlanBody(value, expectedChangeId, expectedPlanningGeneration) {
-    if (!CHANGE_ID.test(expectedChangeId) ||
-        expectedChangeId === 'archive' ||
-        !DIGEST.test(expectedPlanningGeneration) ||
-        !isRecord(value)) {
-        throw planInvalid('Agent-role plan identity is invalid.');
-    }
-    assertExactKeys(value, [
-        'changeId',
-        'customWrapperPolicy',
-        'grantReferences',
-        'pairwiseRequirements',
-        'planningGeneration',
-        'roleLanes',
-        'schemaVersion',
-    ]);
-    if (value.schemaVersion !== 1 ||
-        value.changeId !== expectedChangeId ||
-        value.planningGeneration !== expectedPlanningGeneration ||
-        !Array.isArray(value.roleLanes) ||
-        value.roleLanes.length > ROLE_ORDER.length ||
-        !Array.isArray(value.pairwiseRequirements) ||
-        value.pairwiseRequirements.length > ROLE_PAIR_ORDER.length ||
-        !isCustomWrapperPolicy(value.customWrapperPolicy)) {
-        throw planInvalid('Agent-role plan fields are invalid.');
-    }
-    const roleLanes = value.roleLanes.map(assertRoleLane);
-    assertCanonicalEnumOrder(roleLanes.map(({ role }) => role), ROLE_ORDER);
-    const pairwiseRequirements = value.pairwiseRequirements.map(assertPairwiseRequirement);
-    assertCanonicalEnumOrder(pairwiseRequirements.map(({ pair }) => pair), ROLE_PAIR_ORDER);
-    const grantReferences = assertCanonicalLogicalIds(value.grantReferences);
-    return Object.freeze({
-        schemaVersion: 1,
-        changeId: value.changeId,
-        planningGeneration: value.planningGeneration,
-        roleLanes: Object.freeze(roleLanes),
-        pairwiseRequirements: Object.freeze(pairwiseRequirements),
-        customWrapperPolicy: value.customWrapperPolicy,
-        grantReferences,
     });
 }
 function assertAgentRolePlanV2(value, expectedChangeId, expectedBaseCentralConfigurationDigest) {
@@ -351,13 +253,6 @@ function assertCanonicalEnumOrder(values, canonicalOrder) {
         }
         previous = current;
     }
-}
-function digestBody(value) {
-    return crypto
-        .createHash('sha256')
-        .update('agent-role-plan-v1\0')
-        .update(canonicalJson(value))
-        .digest('hex');
 }
 function digestBodyV2(value) {
     return crypto
