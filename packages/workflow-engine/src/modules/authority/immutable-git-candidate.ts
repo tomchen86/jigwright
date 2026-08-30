@@ -157,7 +157,7 @@ export function buildImmutableGitCandidate(
     initial.repositoryRoot,
     request.expectedOldCommit,
   );
-  const changedPaths = listChangedPaths(
+  const changedPaths = canonicalChangedPaths(
     initial.repositoryRoot,
     request.expectedOldCommit,
   );
@@ -437,7 +437,7 @@ export function verifyImmutableGitCandidateAgainstRepository(
   ) {
     throw candidateDrift();
   }
-  const changedPaths = listChangedPaths(
+  const changedPaths = canonicalChangedPaths(
     repository.repositoryRoot,
     candidate.expectedOldCommit,
   );
@@ -1276,6 +1276,15 @@ function compareObservation(
 
 function compareCanonicalUtf8(left: string, right: string): number {
   return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
+}
+
+function canonicalChangedPaths(
+  repositoryRoot: string,
+  baselineHead: string,
+): string[] {
+  return listChangedPaths(repositoryRoot, baselineHead).sort(
+    compareCanonicalUtf8,
+  );
 }
 
 function assertCheckIds(value: readonly string[]): readonly string[] {

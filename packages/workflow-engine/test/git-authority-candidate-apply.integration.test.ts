@@ -73,6 +73,7 @@ type PolicyScenario =
 function fixture(
   crashPoint?: GitAuthorityCandidateApplyCrashPoint,
   policyScenario: PolicyScenario = 'deletion',
+  includeCrossPlanePaths = false,
 ) {
   const repository = fs.realpathSync(createFixtureRepository());
   const checksPath = path.join(repository, 'workflow/checks.json');
@@ -128,6 +129,14 @@ function fixture(
       ...baselinePolicy,
       requiredChecks: baselinePolicy.requiredChecks.slice(1),
     });
+  }
+  if (includeCrossPlanePaths) {
+    fs.mkdirSync(path.join(repository, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(repository, 'src/\ue000.txt'), 'bmp-private\n');
+    fs.writeFileSync(
+      path.join(repository, 'src/\ud83d\ude00.txt'),
+      'supplementary\n',
+    );
   }
   const candidate = buildImmutableGitCandidate(repository, {
     targetRef: 'refs/heads/main',
@@ -348,6 +357,39 @@ test('Central Grant applies sealed rollback, immutable-path removal, and require
     } finally {
       current.dispose();
     }
+  }
+});
+
+test('Central Grant Apply uses the candidate UTF-8 order for BMP and supplementary Unicode paths', async () => {
+  const current = fixture(undefined, 'deletion', true);
+  try {
+    assert.deepEqual(
+      current.candidate.manifest.files.map(({ path: filePath }) => filePath),
+      [
+        'src/\ue000.txt',
+        'src/\ud83d\ude00.txt',
+        'workflow/maintainer-policy.json',
+      ],
+    );
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Approve the exact cross-plane Unicode candidate.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'completed');
+    assert.equal(git(current.repository, ['status', '--porcelain']), '');
+    assert.equal(
+      readGitAuthorityCandidateApplyJournal(
+        current.investigationRuntime,
+        OPERATION_ID,
+      ).entries.at(-1)?.phase,
+      'completed',
+    );
+  } finally {
+    current.dispose();
   }
 });
 

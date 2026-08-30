@@ -448,16 +448,16 @@ function assertExactIndexPublished(
   repositoryRoot: string,
   candidate: ImmutableGitCandidateV1,
 ): void {
-  const expectedPaths = candidate.manifest.files.map(
-    ({ path: filePath }) => filePath,
-  );
+  const expectedPaths = candidate.manifest.files
+    .map(({ path: filePath }) => filePath)
+    .sort(compareCanonicalUtf8);
   const ref = readRef(repositoryRoot, candidate.targetRef);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
   const indexTree = runGit(repositoryRoot, ['write-tree']).trim();
   const changedPaths = listChangedPaths(
     repositoryRoot,
     candidate.expectedOldCommit,
-  );
+  ).sort(compareCanonicalUtf8);
   const unstaged = nulPaths(
     runGit(repositoryRoot, ['diff', '--name-only', '-z', '--']),
   );
@@ -701,7 +701,13 @@ function readRef(repositoryRoot: string, targetRef: string): string {
 }
 
 function nulPaths(value: string): readonly string[] {
-  return Object.freeze(value.split('\0').filter(Boolean).sort());
+  return Object.freeze(
+    value.split('\0').filter(Boolean).sort(compareCanonicalUtf8),
+  );
+}
+
+function compareCanonicalUtf8(left: string, right: string): number {
+  return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
 }
 
 function isNaturalGitStateFailure(error: unknown): error is WorkflowError {
