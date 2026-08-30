@@ -645,7 +645,7 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
     );
   }
   const packageBytes = `${JSON.stringify(
-    { name: 'sealed-producer-engine', private: true, type: 'module' },
+    { name: 'jigwright', private: true, type: 'module' },
     null,
     2,
   )}\n`;
@@ -670,9 +670,16 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
   fs.mkdirSync(path.dirname(protectedLoaderPath), { recursive: true });
   fs.writeFileSync(protectedLoaderPath, protectedLoaderBytes);
   const manifest = {
-    kind: 'built-in-engine-closure-manifest.v1',
+    kind: 'built-in-engine-closure-manifest.v2',
     entrypoint: 'src/cli.ts',
-    scope: 'package-json-and-all-src-typescript',
+    scope: 'workspace-runtime-source-closure',
+    packages: [
+      {
+        name: 'jigwright',
+        sourceRoot: 'packages/workflow-engine',
+        closureRoot: '.',
+      },
+    ],
     files: [
       {
         path: 'package.json',

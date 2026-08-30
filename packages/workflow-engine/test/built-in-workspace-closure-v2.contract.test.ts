@@ -8,8 +8,6 @@ import test from 'node:test';
 import { pathToFileURL } from 'node:url';
 
 const WORKFLOW_ENGINE_ROOT = path.resolve(import.meta.dirname, '..');
-const V1_RENDERER_FIXTURE_DIGEST =
-  '191e605cedd3b4d52e1367f416a43664d3e4d9cb326b8d4709753149d8b578c8';
 
 type Digest = `sha256:${string}`;
 
@@ -38,6 +36,7 @@ interface TestSurface {
     manifestDigest: Digest;
     files: ClosureFile[];
   };
+  verifyClosureManifest(value: unknown): Record<string, unknown>;
   builtInSupervisorExecutableSource(
     builtInClosureDigest: Digest,
     controlPlaneClosureDigest: Digest,
@@ -82,7 +81,7 @@ test('V2 control-plane closure maps workspace sources, materializes bare imports
   const fixture = createWorkspaceClosureFixture();
   try {
     const surface = await loadInstrumentedControlPlane(fixture.root);
-    assertV1RendererBytesUnchanged(surface, fixture.bootstrapRuntimeFiles);
+    assertRetiredV1ManifestRejected(surface);
 
     const closure = surface.verifiedBuiltInEngineClosure(
       fixture.workflowEngineRoot,
@@ -337,7 +336,7 @@ function createWorkspaceClosureFixture(): {
   );
   fs.writeFileSync(
     path.join(workflowBootstrap, 'control-plane-trust.ts'),
-    `${productionSource}\nexport { assertBuiltInClosureTrackedAtProvenance, bootstrapPaths, builtInSupervisorExecutableSource, createBuiltInControlPlaneEngineArtifact, materializeBuiltInClosure, verifiedBuiltInEngineClosure };\n`,
+    `${productionSource}\nexport { assertBuiltInClosureTrackedAtProvenance, bootstrapPaths, builtInSupervisorExecutableSource, createBuiltInControlPlaneEngineArtifact, materializeBuiltInClosure, verifiedBuiltInEngineClosure, verifyClosureManifest };\n`,
     { mode: 0o644 },
   );
 
@@ -396,33 +395,27 @@ async function loadInstrumentedControlPlane(
   )) as unknown as TestSurface;
 }
 
-function assertV1RendererBytesUnchanged(
-  surface: TestSurface,
-  bootstrapRuntimeFiles: Array<{
-    path: string;
-    mode: '100644';
-    digest: Digest;
-    bytes: Buffer;
-  }>,
-): void {
-  const descriptors = bootstrapRuntimeFiles.map((entry, index) => ({
-    ...entry,
-    digest: `sha256:${String(index + 3).repeat(64)}` as Digest,
-  }));
-  const rendered = surface.builtInSupervisorExecutableSource(
-    `sha256:${'1'.repeat(64)}`,
-    `sha256:${'2'.repeat(64)}`,
-    {
-      kind: 'built-in-engine-closure-manifest.v1',
-      entrypoint: 'src/cli.ts',
-      scope: 'package-json-and-all-src-typescript',
-      files: [],
-    },
-    descriptors,
-  );
-  assert.equal(
-    crypto.createHash('sha256').update(rendered).digest('hex'),
-    V1_RENDERER_FIXTURE_DIGEST,
+function assertRetiredV1ManifestRejected(surface: TestSurface): void {
+  assert.throws(
+    () =>
+      surface.verifyClosureManifest({
+        kind: 'built-in-engine-closure-manifest.v1',
+        entrypoint: 'src/cli.ts',
+        scope: 'package-json-and-all-src-typescript',
+        files: [
+          {
+            path: 'package.json',
+            mode: '100644',
+            digest: `sha256:${'1'.repeat(64)}`,
+          },
+          {
+            path: 'src/cli.ts',
+            mode: '100644',
+            digest: `sha256:${'2'.repeat(64)}`,
+          },
+        ],
+      }),
+    hasCode('WORKFLOW_BUILT_IN_ENGINE_CLOSURE_MISMATCH'),
   );
 }
 

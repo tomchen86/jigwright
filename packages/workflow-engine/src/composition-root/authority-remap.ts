@@ -1309,13 +1309,9 @@ function readWorkspaceSourceRoots(
   }
   if (
     !isRecord(value) ||
-    (value.kind !== 'built-in-engine-closure-manifest.v1' &&
-      value.kind !== 'built-in-engine-closure-manifest.v2')
+    value.kind !== 'built-in-engine-closure-manifest.v2'
   ) {
     throw remapInvalid(`${BUILT_IN_CLOSURE_PATH} has an unsupported version.`);
-  }
-  if (value.kind === 'built-in-engine-closure-manifest.v1') {
-    return ['packages/workflow-engine'];
   }
   if (
     value.scope !== 'workspace-runtime-source-closure' ||

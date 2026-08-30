@@ -154,17 +154,6 @@ interface BootstrapPaths {
   localArtifacts: string;
 }
 
-interface BuiltInClosureManifestV1 {
-  kind: 'built-in-engine-closure-manifest.v1';
-  entrypoint: string;
-  scope: 'package-json-and-all-src-typescript';
-  files: Array<{
-    path: string;
-    mode: '100644' | '100755';
-    digest: Sha256Digest;
-  }>;
-}
-
 interface BuiltInClosurePackageV2 {
   name: string;
   sourceRoot: string;
@@ -183,8 +172,7 @@ interface BuiltInClosureManifestV2 {
   }>;
 }
 
-type BuiltInClosureManifest =
-  BuiltInClosureManifestV1 | BuiltInClosureManifestV2;
+type BuiltInClosureManifest = BuiltInClosureManifestV2;
 
 interface VerifiedBuiltInEngineClosure {
   manifest: BuiltInClosureManifest;
@@ -1382,15 +1370,10 @@ function verifiedBuiltInEngineClosure(
   const manifest = verifyClosureManifest(value);
   assertLiveClosureInventory(packageRoot, manifest);
 
+  const repositoryRoot = repositoryRootForWorkspaceClosure(packageRoot);
   const files = manifest.files.map((entry) => {
     const repositoryPath = closureRepositoryPath(manifest, entry.path);
-    const absolute =
-      manifest.kind === 'built-in-engine-closure-manifest.v1'
-        ? path.join(packageRoot, ...entry.path.split('/'))
-        : path.join(
-            repositoryRootForWorkspaceClosure(packageRoot),
-            ...repositoryPath.split('/'),
-          );
+    const absolute = path.join(repositoryRoot, ...repositoryPath.split('/'));
     const expectedMode = entry.mode === '100755' ? 0o755 : 0o644;
     const bytes = readClosureFile(absolute, expectedMode);
     if (rawDigest(bytes) !== entry.digest) throw builtInClosureMismatch();
@@ -6377,259 +6360,12 @@ function builtInSupervisorExecutableSource(
   manifest: BuiltInClosureManifest,
   bootstrapRuntimeFiles: VerifiedProtectedCapabilityManifest['bootstrapRuntimeFiles'],
 ): string {
-  return manifest.kind === 'built-in-engine-closure-manifest.v1'
-    ? builtInSupervisorExecutableSourceV1(
-        builtInClosureDigest,
-        controlPlaneClosureDigest,
-        manifest.entrypoint,
-        bootstrapRuntimeFiles,
-      )
-    : builtInSupervisorExecutableSourceV2(
-        builtInClosureDigest,
-        controlPlaneClosureDigest,
-        manifest,
-        bootstrapRuntimeFiles,
-      );
-}
-
-function builtInSupervisorExecutableSourceV1(
-  builtInClosureDigest: Sha256Digest,
-  controlPlaneClosureDigest: Sha256Digest,
-  entrypoint: string,
-  bootstrapRuntimeFiles: VerifiedProtectedCapabilityManifest['bootstrapRuntimeFiles'],
-): string {
-  const runtimeDescriptors = bootstrapRuntimeFiles.map(
-    ({ path: filePath, mode, digest }) => ({
-      path: filePath,
-      mode,
-      digest,
-    }),
+  return builtInSupervisorExecutableSourceV2(
+    builtInClosureDigest,
+    controlPlaneClosureDigest,
+    manifest,
+    bootstrapRuntimeFiles,
   );
-  if (
-    !isDigest(builtInClosureDigest) ||
-    !isDigest(controlPlaneClosureDigest) ||
-    !safeClosurePath(entrypoint) ||
-    runtimeDescriptors.length !== BUILT_IN_BOOTSTRAP_RUNTIME_PATHS.length ||
-    runtimeDescriptors.some(
-      (entry, index) =>
-        entry.path !==
-          BUILT_IN_BOOTSTRAP_RUNTIME_PATHS[index].slice(
-            'packages/workflow-engine/'.length,
-          ) ||
-        (entry.mode !== '100644' && entry.mode !== '100755') ||
-        !isDigest(entry.digest),
-    ) ||
-    /[\s\0\r\n]/.test(process.execPath)
-  ) {
-    throw builtInClosureMismatch();
-  }
-  return `#!${process.execPath}
-'use strict';
-const childProcess = require('node:child_process');
-const crypto = require('node:crypto');
-const fs = require('node:fs');
-const path = require('node:path');
-const BUILT_IN_CLOSURE_DIGEST = ${JSON.stringify(builtInClosureDigest)};
-const CONTROL_PLANE_CLOSURE_DIGEST = ${JSON.stringify(controlPlaneClosureDigest)};
-const ENTRYPOINT = ${JSON.stringify(entrypoint)};
-const BOOTSTRAP_RUNTIME_FILES = ${JSON.stringify(runtimeDescriptors)};
-const SOURCE_CHANGE_ID = 'repository-default-built-in';
-const PROTOCOL_VERSION = ${BUILT_IN_PROTOCOL_VERSION};
-const SESSION_SCHEMA = ${JSON.stringify(BUILT_IN_SESSION_SCHEMA)};
-const POLICY_SCHEMA_VERSION = ${BUILT_IN_POLICY_SCHEMA_VERSION};
-const PRIVATE_DIRECTORY_MODE = 0o700;
-const PRIVATE_FILE_MODE = 0o600;
-const PRIVATE_EXECUTABLE_MODE = 0o500;
-const MAX_BYTES = ${MAX_CLOSURE_FILE_BYTES};
-
-function digest(value) {
-  return 'sha256:' + crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function canonical(value) {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value);
-  if (Array.isArray(value)) return '[' + value.map(canonical).join(',') + ']';
-  return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonical(value[key])).join(',') + '}';
-}
-
-function exactKeys(value, keys) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value) &&
-    JSON.stringify(Object.keys(value).sort()) === JSON.stringify([...keys].sort());
-}
-
-function assertDirectory(directory) {
-  const stats = fs.lstatSync(directory);
-  if (!stats.isDirectory() || stats.isSymbolicLink() ||
-      (stats.mode & 0o777) !== PRIVATE_DIRECTORY_MODE ||
-      fs.realpathSync(directory) !== directory) throw new Error('unsafe directory');
-}
-
-function readPrivateFile(filePath, mode) {
-  const stats = fs.lstatSync(filePath);
-  if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1 ||
-      (stats.mode & 0o777) !== mode || stats.size < 1 || stats.size > MAX_BYTES ||
-      fs.realpathSync(filePath) !== filePath) throw new Error('unsafe file');
-  const descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-  try {
-    const opened = fs.fstatSync(descriptor);
-    const bytes = fs.readFileSync(descriptor);
-    if (opened.dev !== stats.dev || opened.ino !== stats.ino ||
-        opened.size !== stats.size || bytes.length !== stats.size) throw new Error('changed file');
-    return bytes;
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function safePath(value) {
-  return typeof value === 'string' && value.length > 0 && value === value.normalize('NFC') &&
-    !path.isAbsolute(value) && !value.includes('\\\\') && !/[*?[\\]{}]/.test(value) &&
-    value.split('/').every((part) => part.length > 0 && part !== '.' && part !== '..');
-}
-
-function listTypescriptFiles(packageRoot, directory) {
-  assertDirectory(directory);
-  const files = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const absolute = path.join(directory, entry.name);
-    if (entry.isSymbolicLink()) throw new Error('indirect closure');
-    if (entry.isDirectory()) files.push(...listTypescriptFiles(packageRoot, absolute));
-    else if (entry.isFile() && entry.name.endsWith('.ts')) {
-      files.push(path.relative(packageRoot, absolute).split(path.sep).join('/'));
-    }
-  }
-  return files.sort();
-}
-
-function listAllFiles(packageRoot, directory) {
-  assertDirectory(directory);
-  const files = [];
-  for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
-    const absolute = path.join(directory, entry.name);
-    if (entry.isSymbolicLink()) throw new Error('indirect closure');
-    if (entry.isDirectory()) files.push(...listAllFiles(packageRoot, absolute));
-    else if (entry.isFile()) files.push(path.relative(packageRoot, absolute).split(path.sep).join('/'));
-    else throw new Error('unsupported closure entry');
-  }
-  return files.sort();
-}
-
-function verifyClosure() {
-  const artifactRoot = fs.realpathSync(__dirname);
-  if (artifactRoot !== __dirname) throw new Error('indirect artifact');
-  assertDirectory(artifactRoot);
-  const closureRoot = path.join(artifactRoot, 'closure');
-  assertDirectory(closureRoot);
-  const manifestBytes = readPrivateFile(
-    path.join(artifactRoot, 'built-in-engine-closure.json'),
-    PRIVATE_FILE_MODE,
-  );
-  if (digest(manifestBytes) !== BUILT_IN_CLOSURE_DIGEST) throw new Error('manifest digest');
-  const manifest = JSON.parse(manifestBytes.toString('utf8'));
-  if (JSON.stringify(manifest, null, 2) + '\\n' !== manifestBytes.toString('utf8') ||
-      !exactKeys(manifest, ['entrypoint', 'files', 'kind', 'scope']) ||
-      manifest.kind !== 'built-in-engine-closure-manifest.v1' ||
-      manifest.entrypoint !== ENTRYPOINT ||
-      manifest.scope !== 'package-json-and-all-src-typescript' ||
-      !Array.isArray(manifest.files) || manifest.files.length === 0) {
-    throw new Error('manifest shape');
-  }
-  const listed = [];
-  for (const entry of manifest.files) {
-    if (!exactKeys(entry, ['digest', 'mode', 'path']) || !safePath(entry.path) ||
-        (entry.path !== 'package.json' && !(entry.path.startsWith('src/') && entry.path.endsWith('.ts'))) ||
-        (entry.mode !== '100644' && entry.mode !== '100755') ||
-        !/^sha256:[0-9a-f]{64}$/.test(entry.digest)) throw new Error('manifest entry');
-    const target = path.join(closureRoot, ...entry.path.split('/'));
-    if (path.resolve(target) !== target || !target.startsWith(closureRoot + path.sep)) throw new Error('escaped closure');
-    if (digest(readPrivateFile(target, PRIVATE_FILE_MODE)) !== entry.digest) throw new Error('closure digest');
-    listed.push(entry.path);
-  }
-  const sorted = [...new Set(listed)].sort();
-  if (JSON.stringify(listed) !== JSON.stringify(sorted) ||
-      !listed.includes('package.json') || !listed.includes(ENTRYPOINT) ||
-      JSON.stringify(listTypescriptFiles(closureRoot, path.join(closureRoot, 'src'))) !==
-        JSON.stringify(listed.filter((value) => value.startsWith('src/')))) {
-    throw new Error('closure inventory');
-  }
-  for (const entry of BOOTSTRAP_RUNTIME_FILES) {
-    if (!exactKeys(entry, ['digest', 'mode', 'path']) || !safePath(entry.path) ||
-        !entry.path.startsWith('bootstrap/') ||
-        (entry.mode !== '100644' && entry.mode !== '100755') ||
-        !/^sha256:[0-9a-f]{64}$/.test(entry.digest)) throw new Error('bootstrap runtime entry');
-    const target = path.join(closureRoot, ...entry.path.split('/'));
-    if (digest(readPrivateFile(target, PRIVATE_FILE_MODE)) !== entry.digest) {
-      throw new Error('bootstrap runtime digest');
-    }
-  }
-  const completeInventory = [...listed, ...BOOTSTRAP_RUNTIME_FILES.map((entry) => entry.path)].sort();
-  if (JSON.stringify(listAllFiles(closureRoot, closureRoot)) !== JSON.stringify(completeInventory)) {
-    throw new Error('complete closure inventory');
-  }
-  const selfBytes = readPrivateFile(__filename, PRIVATE_EXECUTABLE_MODE);
-  const executableDigest = digest(selfBytes);
-  const selfTest = {
-    kind: 'control-plane-self-test.v1',
-    healthy: true,
-    closureDigest: CONTROL_PLANE_CLOSURE_DIGEST,
-  };
-  const artifactPayload = {
-    kind: 'engine-artifact.v1',
-    sourceChangeId: SOURCE_CHANGE_ID,
-    sourceDigest: BUILT_IN_CLOSURE_DIGEST,
-    executableDigest,
-    protocolVersion: PROTOCOL_VERSION,
-    canReadSessionSchemas: [SESSION_SCHEMA],
-    writesSessionSchema: SESSION_SCHEMA,
-    policySchemaVersion: POLICY_SCHEMA_VERSION,
-    smokeReportDigest: digest(canonical(selfTest)),
-  };
-  const artifact = { ...artifactPayload, artifactId: digest(canonical(artifactPayload)) };
-  const artifactBytes = readPrivateFile(
-    path.join(artifactRoot, 'engine-artifact.json'),
-    PRIVATE_FILE_MODE,
-  );
-  const observedArtifact = JSON.parse(artifactBytes.toString('utf8'));
-  if (canonical(observedArtifact) + '\\n' !== artifactBytes.toString('utf8') ||
-      canonical(observedArtifact) !== canonical(artifact)) throw new Error('artifact metadata');
-  return { closureRoot, selfTest };
-}
-
-try {
-  const verified = verifyClosure();
-  if (process.argv.length === 3 && process.argv[2] === '--control-plane-restart-probe') {
-    process.stdout.write(JSON.stringify({
-      kind: 'control-plane-restart.v1',
-      ready: true,
-      closureDigest: CONTROL_PLANE_CLOSURE_DIGEST,
-    }) + '\\n');
-    process.exit(0);
-  }
-  if (process.argv.length === 3 && process.argv[2] === '--control-plane-self-test') {
-    process.stdout.write(JSON.stringify(verified.selfTest) + '\\n');
-    process.exit(0);
-  }
-  const entrypointPath = path.join(verified.closureRoot, ...ENTRYPOINT.split('/'));
-  const result = childProcess.spawnSync(
-    process.execPath,
-    ['--experimental-strip-types', entrypointPath, ...process.argv.slice(2)],
-    { cwd: process.cwd(), env: process.env, stdio: 'inherit', windowsHide: true },
-  );
-  if (result.error !== undefined) throw result.error;
-  if (result.signal !== null) {
-    process.kill(process.pid, result.signal);
-    process.exit(1);
-  }
-  process.exit(result.status ?? 1);
-} catch (error) {
-  process.stderr.write(JSON.stringify({
-    kind: 'control-plane-bootstrap-artifact-error.v1',
-    code: 'CONTROL_PLANE_BOOTSTRAP_ARTIFACT_MISMATCH',
-    message: error instanceof Error ? error.message : String(error),
-  }) + '\\n');
-  process.exit(13);
-}
-`;
 }
 
 function builtInSupervisorExecutableSourceV2(
@@ -7024,54 +6760,10 @@ function runRestartProbe(
 }
 
 function verifyClosureManifest(value: unknown): BuiltInClosureManifest {
-  if (isRecord(value) && value.kind === 'built-in-engine-closure-manifest.v1') {
-    return verifyClosureManifestV1(value);
-  }
   if (isRecord(value) && value.kind === 'built-in-engine-closure-manifest.v2') {
     return verifyClosureManifestV2(value);
   }
   throw builtInClosureMismatch();
-}
-
-function verifyClosureManifestV1(
-  value: Record<string, unknown>,
-): BuiltInClosureManifestV1 {
-  if (
-    !hasExactKeys(value, ['entrypoint', 'files', 'kind', 'scope']) ||
-    value.kind !== 'built-in-engine-closure-manifest.v1' ||
-    value.entrypoint !== 'src/cli.ts' ||
-    value.scope !== 'package-json-and-all-src-typescript' ||
-    !Array.isArray(value.files) ||
-    value.files.length === 0
-  ) {
-    throw builtInClosureMismatch();
-  }
-  const files = value.files;
-  for (const entry of files) {
-    if (
-      !isRecord(entry) ||
-      !hasExactKeys(entry, ['digest', 'mode', 'path']) ||
-      !safeClosurePath(entry.path) ||
-      (entry.path !== 'package.json' &&
-        !(entry.path.startsWith('src/') && entry.path.endsWith('.ts'))) ||
-      (entry.mode !== '100644' && entry.mode !== '100755') ||
-      !isDigest(entry.digest)
-    ) {
-      throw builtInClosureMismatch();
-    }
-  }
-  const paths = files.map((entry) => String(entry.path));
-  const sorted = [...new Set(paths)].sort((left, right) =>
-    left < right ? -1 : left > right ? 1 : 0,
-  );
-  if (
-    canonicalJson(paths) !== canonicalJson(sorted) ||
-    !paths.includes(String(value.entrypoint)) ||
-    !paths.includes('package.json')
-  ) {
-    throw builtInClosureMismatch();
-  }
-  return value as unknown as BuiltInClosureManifestV1;
 }
 
 function verifyClosureManifestV2(
@@ -7208,9 +6900,6 @@ function closureRepositoryPath(
   manifest: BuiltInClosureManifest,
   artifactPath: string,
 ): string {
-  if (manifest.kind === 'built-in-engine-closure-manifest.v1') {
-    return `packages/workflow-engine/${artifactPath}`;
-  }
   const match = closurePackageForPath(manifest.packages, artifactPath);
   if (match === null) throw builtInClosureMismatch();
   return `${match.descriptor.sourceRoot}/${match.relativePath}`;
@@ -7234,22 +6923,6 @@ function assertLiveClosureInventory(
   packageRoot: string,
   manifest: BuiltInClosureManifest,
 ): void {
-  if (manifest.kind === 'built-in-engine-closure-manifest.v1') {
-    const observedTypescript = listPackageTypescriptFiles(
-      packageRoot,
-      path.join(packageRoot, 'src'),
-    );
-    const expectedTypescript = manifest.files
-      .map((entry) => entry.path)
-      .filter((entry) => entry.startsWith('src/'));
-    if (
-      canonicalJson(observedTypescript) !== canonicalJson(expectedTypescript)
-    ) {
-      throw builtInClosureMismatch();
-    }
-    return;
-  }
-
   const repositoryRoot = repositoryRootForWorkspaceClosure(packageRoot);
   const observed = manifest.packages
     .flatMap((descriptor) => {
@@ -7292,7 +6965,6 @@ function assertTrackedClosureInventory(
   manifest: BuiltInClosureManifest,
   tree: BootstrapProtectedTreeEntry[],
 ): void {
-  if (manifest.kind === 'built-in-engine-closure-manifest.v1') return;
   const observed = manifest.packages
     .flatMap((descriptor) => {
       const packageJson = `${descriptor.sourceRoot}/package.json`;
@@ -7318,7 +6990,6 @@ function assertWorkspaceDependencyClosure(
   manifest: BuiltInClosureManifest,
   files: VerifiedBuiltInEngineClosure['files'],
 ): void {
-  if (manifest.kind === 'built-in-engine-closure-manifest.v1') return;
   const byName = new Map(
     manifest.packages.map((descriptor) => [descriptor.name, descriptor]),
   );

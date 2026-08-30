@@ -1115,6 +1115,60 @@ test('workspace package source moves use the pinned v2 closure roots for regener
   }
 });
 
+test('authority remap rejects retired V1 closure metadata at the pinned base', () => {
+  const repository = createFixtureRepository();
+  try {
+    removeFixtureActiveGuard(repository);
+    const from = 'packages/core/src/legacy.ts';
+    const to = 'packages/core/src/modules/legacy.ts';
+    write(repository, from, 'export const legacy = true;\n');
+    write(
+      repository,
+      'packages/workflow-engine/bootstrap/built-in-engine-closure.json',
+      `${JSON.stringify({
+        kind: 'built-in-engine-closure-manifest.v1',
+        entrypoint: 'src/cli.ts',
+        scope: 'package-json-and-all-src-typescript',
+        files: [],
+      })}\n`,
+    );
+    writeMaintainerPolicy(repository, (policy) => {
+      policy.bootstrapEligiblePaths = ['packages/**'];
+      policy.sealedImmutablePaths = [];
+    });
+    writeMaintainerProfiles(repository, {
+      implementationPaths: ['packages/**'],
+    });
+    commitAll(repository, 'Install retired closure metadata');
+    const baseCommit = head(repository);
+    move(repository, from, to);
+    commitAll(repository, 'Move workspace source mechanically');
+
+    assert.throws(
+      () =>
+        projectAuthorityRemap({
+          repositoryRoot: repository,
+          baseCommit,
+          moveCommit: head(repository),
+          renamePairs: [{ from, to }],
+          authorityPlan: {
+            changeId: 'retired-closure-remap',
+            taskId: '1.1',
+            profileId: 'remap-profile',
+            reason: 'Reject retired closure metadata before source remap.',
+            message: 'Reject retired closure metadata',
+          },
+        }),
+      (error) =>
+        error instanceof Error &&
+        isWorkflowError(error, 'AUTHORITY_REMAP_INVALID') &&
+        error.message.includes('unsupported version'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('protected closure member moves require regeneration even when they are outside engine src', () => {
   const repository = createFixtureRepository();
   try {
