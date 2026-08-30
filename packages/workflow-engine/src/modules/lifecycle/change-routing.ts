@@ -152,7 +152,7 @@ export type ChangeRoutingInspection = Readonly<{
 }>;
 
 export type ChangeRoutingAdmission = Readonly<{
-  role: 'legacy-single' | 'primary' | 'concurrent';
+  role: 'single' | 'primary' | 'concurrent';
   worksetDigest: string;
   concurrencyEnabled: boolean;
 }>;
@@ -569,7 +569,7 @@ export function assertChangeRoutingAdmission(
     );
     if (active.length <= 1) {
       return Object.freeze({
-        role: 'legacy-single' as const,
+        role: 'single' as const,
         worksetDigest: routingWorksetDigest(null, []),
         concurrencyEnabled: false,
       });

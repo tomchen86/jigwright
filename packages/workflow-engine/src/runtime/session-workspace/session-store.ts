@@ -36,7 +36,7 @@ export type TaskSessionResourceLease = Readonly<{
 
 export type TaskSessionIsolationBinding = Readonly<{
   schemaVersion: 1;
-  routingRole: 'legacy-single' | 'primary' | 'concurrent';
+  routingRole: 'single' | 'primary' | 'concurrent';
   routingWorksetDigest: `sha256:${string}`;
   concurrencyEnabled: boolean;
   worktreeDigest: `sha256:${string}`;
@@ -1382,9 +1382,7 @@ function isTaskSessionIsolationBinding(
         .sort()
         .join('\0') ||
     value.schemaVersion !== 1 ||
-    !['legacy-single', 'primary', 'concurrent'].includes(
-      String(value.routingRole),
-    ) ||
+    !['single', 'primary', 'concurrent'].includes(String(value.routingRole)) ||
     typeof value.concurrencyEnabled !== 'boolean' ||
     !isSha256Digest(value.routingWorksetDigest) ||
     !isSha256Digest(value.worktreeDigest) ||

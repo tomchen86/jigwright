@@ -226,6 +226,33 @@ test('current lifecycle rejects a non-managed schema directly', () => {
   }
 });
 
+test('current single-writer sessions use a neutral routing identity and reject the retired value', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(repository, 'demo-change', '1.1');
+    assert.equal(started.isolation?.routingRole, 'single');
+
+    const sessionPath = path.join(
+      runtimeRoot(repository),
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as {
+      isolation: { routingRole: string };
+    };
+    stored.isolation.routingRole = 'legacy-single';
+    fs.writeFileSync(sessionPath, `${JSON.stringify(stored, null, 2)}\n`);
+    assert.throws(
+      () => getSession(repository, started.sessionId),
+      (error) => isWorkflowError(error, 'INVALID_SESSION'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('v3 sessions and every task report pin the exact planning assurance', () => {
   const repository = createFixtureRepository();
   try {
