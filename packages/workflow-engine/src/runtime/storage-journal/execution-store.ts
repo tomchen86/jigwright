@@ -60,7 +60,7 @@ const EXECUTION_STATE_FILE = /^[0-9a-f]{64}\.json$/;
 export type ProviderExecutionEntry = Readonly<{
   record: ProviderInvocationRecord;
   request: ProviderInvocationRequest;
-  retryAccounting?: ProviderRetryAccountingSnapshot | null;
+  retryAccounting: ProviderRetryAccountingSnapshot;
   retryReplacement?: Readonly<{
     attemptId: string;
     retryMode: Exclude<RetryMode, 'none' | 'new-context'>;
@@ -563,7 +563,7 @@ type PreparedProviderEntries = Readonly<{
     ProviderExecutionEntry & {
       projection: ProviderInvocationProjection;
       repairLineage: ProviderRepairLineage | null;
-      retryAccounting: ProviderRetryAccountingSnapshot | null;
+      retryAccounting: ProviderRetryAccountingSnapshot;
     }
   >;
 }>;
@@ -577,24 +577,22 @@ function prepareProviderEntries(
       'Provider execution materialization requires a bounded non-empty history.',
     );
   }
+  if (input.some(({ retryAccounting }) => retryAccounting == null)) {
+    throw executionProjectionConflict(
+      'Provider execution materialization requires exact retry accounting for every Attempt.',
+    );
+  }
   let entries: PreparedProviderEntries['entries'];
   try {
     entries = input
-      .map(
-        ({
-          record,
-          request,
-          retryAccounting = null,
-          retryReplacement = null,
-        }) => ({
-          record,
-          request,
-          projection: projectProviderInvocationExecution({ record, request }),
-          repairLineage: readProviderRepairLineage(paths, record, request),
-          retryAccounting,
-          retryReplacement,
-        }),
-      )
+      .map(({ record, request, retryAccounting, retryReplacement = null }) => ({
+        record,
+        request,
+        projection: projectProviderInvocationExecution({ record, request }),
+        repairLineage: readProviderRepairLineage(paths, record, request),
+        retryAccounting,
+        retryReplacement,
+      }))
       .sort(
         (left, right) =>
           left.record.attempt - right.record.attempt ||
@@ -659,13 +657,10 @@ function buildProviderExecutionState(
     );
   }
   assertInvocationProjectionMonotonic(prepared, current);
-  const frozenRetryPolicy =
-    firstEntry.retryAccounting === null
-      ? (current?.job.retryPolicy ?? first.job.retryPolicy)
-      : providerRetryPolicyFromAccounting(
-          firstEntry.retryAccounting.retryPolicy,
-          firstEntry.record.createdAt,
-        );
+  const frozenRetryPolicy = providerRetryPolicyFromAccounting(
+    firstEntry.retryAccounting.retryPolicy,
+    firstEntry.record.createdAt,
+  );
 
   const currentResults = new Map(
     (current?.results ?? []).map((result) => [result.attemptId, result]),
@@ -687,17 +682,13 @@ function buildProviderExecutionState(
   for (let index = 0; index < prepared.entries.length; index += 1) {
     const entry = prepared.entries[index]!;
     const projected = entry.projection.attempt;
-    const chargedProjection =
-      entry.retryAccounting === null
-        ? projected
-        : assertAttemptRecord({
-            ...projected,
-            runtimeMs: entry.retryAccounting.attemptReservation.runtimeMs,
-            providerCostMicros:
-              entry.retryAccounting.attemptReservation.providerCostMicros,
-            providerTokens:
-              entry.retryAccounting.attemptReservation.providerTokens,
-          });
+    const chargedProjection = assertAttemptRecord({
+      ...projected,
+      runtimeMs: entry.retryAccounting.attemptReservation.runtimeMs,
+      providerCostMicros:
+        entry.retryAccounting.attemptReservation.providerCostMicros,
+      providerTokens: entry.retryAccounting.attemptReservation.providerTokens,
+    });
     const previous = attempts.at(-1);
     const previousEntry = prepared.entries[index - 1];
     const hasAdjacentPrevious =

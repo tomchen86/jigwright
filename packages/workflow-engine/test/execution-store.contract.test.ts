@@ -38,6 +38,7 @@ import {
   providerInvocationManifestDigest,
   prepareProviderInvocationAcceptanceBinding,
   readProviderInvocation,
+  readProviderExecutionPolicySnapshot,
   readProviderInvocationRequest,
   recoverProviderInvocationCompletion,
   storeProviderExecutionPolicySnapshot,
@@ -90,11 +91,22 @@ test('provider creation materializes a private canonical execution aggregate wit
     assert.equal(fs.statSync(stores.root).mode & 0o777, 0o700);
     assert.equal(fs.statSync(stores.jobs).mode & 0o777, 0o700);
     assert.equal(fs.statSync(statePath).mode & 0o777, 0o600);
+    const beforeAccountingOmission = fs.readFileSync(statePath, 'utf8');
     assert.throws(
       () =>
-        materializeProviderExecutionJob(runtime, [{ record, request }], {
-          expectedRevision: 1,
-        }),
+        materializeProviderExecutionJob(runtime, [
+          { record, request } as never,
+        ]),
+      (error) => isWorkflowError(error, 'EXECUTION_STORE_PROJECTION_CONFLICT'),
+    );
+    assert.equal(fs.readFileSync(statePath, 'utf8'), beforeAccountingOmission);
+    assert.throws(
+      () =>
+        materializeProviderExecutionJob(
+          runtime,
+          [executionEntryForTest(runtime, record, request)],
+          { expectedRevision: 1 },
+        ),
       (error) => isWorkflowError(error, 'EXECUTION_STORE_CAS_MISMATCH'),
     );
 
@@ -207,9 +219,11 @@ test('store-owned execution snapshots keep synchronous callbacks inside the exac
         assert.equal(snapshot.job.jobId, jobId);
         assert.throws(
           () =>
-            materializeProviderExecutionJob(runtime, [{ record, request }], {
-              expectedRevision: snapshot.revision,
-            }),
+            materializeProviderExecutionJob(
+              runtime,
+              [executionEntryForTest(runtime, record, request)],
+              { expectedRevision: snapshot.revision },
+            ),
           (error) =>
             isWorkflowError(error, 'EXECUTION_STORE_OPERATION_CONFLICT'),
         );
@@ -556,11 +570,12 @@ test('validator failure reloads as a bounded repair Attempt and missing durable 
     assert.throws(
       () =>
         materializeProviderExecutionJob(runtime, [
-          {
-            record: readProviderInvocation(runtime, firstRequest.invocationId),
-            request: firstRequest,
-          },
-          { record: second, request: secondRequest },
+          executionEntryForTest(
+            runtime,
+            readProviderInvocation(runtime, firstRequest.invocationId),
+            firstRequest,
+          ),
+          executionEntryForTest(runtime, second, secondRequest),
         ]),
       (error) => isWorkflowError(error, 'PROVIDER_REPAIR_LINEAGE_REQUIRED'),
     );
@@ -571,11 +586,12 @@ test('validator failure reloads as a bounded repair Attempt and missing durable 
     fs.writeFileSync(lineagePath, durableLineage, { mode: 0o600 });
     assert.equal(
       materializeProviderExecutionJob(runtime, [
-        {
-          record: readProviderInvocation(runtime, firstRequest.invocationId),
-          request: firstRequest,
-        },
-        { record: second, request: secondRequest },
+        executionEntryForTest(
+          runtime,
+          readProviderInvocation(runtime, firstRequest.invocationId),
+          firstRequest,
+        ),
+        executionEntryForTest(runtime, second, secondRequest),
       ]).attempts[1]?.retryMode,
       'repair',
     );
@@ -692,6 +708,19 @@ function createDirectProviderInvocation(
     loadAiAdapterPolicy(repository),
   );
   return createProviderInvocation(runtime, input);
+}
+
+function executionEntryForTest(
+  runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  record: ReturnType<typeof readProviderInvocation>,
+  request: ProviderInvocationRequest,
+) {
+  return {
+    record,
+    request,
+    retryAccounting: readProviderExecutionPolicySnapshot(runtime, request)
+      .accounting,
+  };
 }
 
 function createRepairRequest(
