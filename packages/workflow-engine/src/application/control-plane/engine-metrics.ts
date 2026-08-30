@@ -1,4 +1,3 @@
-import crypto from 'node:crypto';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -13,8 +12,6 @@ import {
   type ExecutionJobInspection,
 } from '../../runtime/provider-execution/execution-runtime.ts';
 import {
-  assertHumanResolutionConsequences,
-  assertLegacySupersedeHumanResolutionDecisionReadOnly,
   privatePathExists,
   readHumanResolutionNode,
   readPrivateCanonicalJson,
@@ -49,7 +46,7 @@ export type EngineGovernanceMetricsSource = Readonly<{
   }>[];
   supersedeReasons: readonly Readonly<{
     workflowId: string;
-    reason: WorkflowSupersedeReason | 'legacy-unknown';
+    reason: WorkflowSupersedeReason;
   }>[];
 }>;
 
@@ -134,7 +131,7 @@ export function computeEngineMetrics(
   inspections: readonly ExecutionJobInspection[],
   storage: ProviderRetentionMetrics,
   generatedAt: string,
-  governanceSource?: EngineGovernanceMetricsSource,
+  governanceSource: EngineGovernanceMetricsSource,
 ): EngineMetricsSnapshot {
   const now = exactTimestamp(generatedAt);
   if (storage.measuredAt !== now) {
@@ -207,9 +204,6 @@ export function computeEngineMetrics(
   let directRefusalCount = 0;
   for (const inspection of jobs) {
     const latest = inspection.latestFailure;
-    if (governanceSource === undefined && latest?.decision.requiredGrant) {
-      requestIds.add(latest.decision.requiredGrant.requestId);
-    }
     if (
       latest !== null &&
       latest.failure.retryClass !== 'terminal' &&
@@ -335,38 +329,10 @@ export function computeEngineMetrics(
 
 function normalizeGovernanceSource(
   jobs: readonly ExecutionJobInspection[],
-  source: EngineGovernanceMetricsSource | undefined,
+  source: EngineGovernanceMetricsSource,
 ): EngineGovernanceMetricsSource {
-  if (source === undefined) {
-    const attemptsByGrant = new Map<string, string[]>();
-    for (const { attempts } of jobs) {
-      for (const attempt of attempts) {
-        if (attempt.grantId === null) continue;
-        const consumedAttemptIds = attemptsByGrant.get(attempt.grantId) ?? [];
-        consumedAttemptIds.push(attempt.attemptId);
-        attemptsByGrant.set(attempt.grantId, consumedAttemptIds);
-      }
-    }
-    return {
-      grantRequestDigests: [...attemptsByGrant.keys()].map(
-        (grantId) => `inferred-from-grant:${grantId}`,
-      ),
-      issuedGrants: [...attemptsByGrant.entries()].map(
-        ([grantId, consumedAttemptIds]) => ({
-          grantId,
-          requestDigest: `inferred-from-grant:${grantId}`,
-          consumedAttemptIds,
-        }),
-      ),
-      supersedeReasons: [...uniqueWorkflows(jobs).values()]
-        .filter(({ status }) => status === 'superseded')
-        .map(({ workflowId }) => ({
-          workflowId,
-          reason: 'legacy-unknown' as const,
-        })),
-    };
-  }
   if (
+    !isRecord(source) ||
     !Array.isArray(source.grantRequestDigests) ||
     !Array.isArray(source.issuedGrants) ||
     !Array.isArray(source.supersedeReasons) ||
@@ -407,12 +373,7 @@ function normalizeGovernanceSource(
     if (
       typeof entry?.workflowId !== 'string' ||
       entry.workflowId.length === 0 ||
-      !(
-        entry.reason === 'legacy-unknown' ||
-        WORKFLOW_SUPERSEDE_REASONS.includes(
-          entry.reason as WorkflowSupersedeReason,
-        )
-      ) ||
+      !WORKFLOW_SUPERSEDE_REASONS.includes(entry.reason) ||
       !supersededWorkflowIds.has(entry.workflowId) ||
       reasonWorkflowIds.has(entry.workflowId)
     ) {
@@ -457,7 +418,7 @@ function collectSupersedeReasons(
 ): EngineGovernanceMetricsSource['supersedeReasons'] {
   const observations: Array<{
     workflowId: string;
-    reason: WorkflowSupersedeReason | 'legacy-unknown';
+    reason: WorkflowSupersedeReason;
   }> = [];
   for (const workflow of workflows.values()) {
     if (workflow.status !== 'superseded') continue;
@@ -477,12 +438,12 @@ function collectSupersedeReasons(
 export function inspectEngineSupersedeReason(
   paths: InvestigationRuntimePaths,
   requestedWorkflowId: string,
-): WorkflowSupersedeReason | 'legacy-unknown' {
+): WorkflowSupersedeReason {
   const workflowId = assertMetricsInvestigationId(requestedWorkflowId);
   const resolutionRoot = path.join(paths.root, 'human-resolutions');
   const refPath = path.join(resolutionRoot, 'refs', `${workflowId}.json`);
   if (!privatePathExists(paths, refPath, metricsStoreUnsafe)) {
-    return 'legacy-unknown';
+    throw metricsStoreUnsafe();
   }
   const ref = readPrivateCanonicalJson(paths, refPath, metricsStoreUnsafe);
   if (
@@ -505,24 +466,14 @@ export function inspectEngineSupersedeReason(
     }
     return node.decision.parameters.reason;
   } catch (error) {
-    const nodePath = path.join(resolutionRoot, 'nodes', `${nodeId}.json`);
-    let legacy: unknown;
-    try {
-      legacy = readPrivateCanonicalJson(paths, nodePath, metricsStoreUnsafe);
-    } catch {
-      throw metricsStoreUnsafe();
+    if (
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'ENGINE_METRICS_STORE_UNSAFE'
+    ) {
+      throw error;
     }
-    if (!isVerifiedLegacySupersedeNode(legacy, nodeId, workflowId)) {
-      if (
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'ENGINE_METRICS_STORE_UNSAFE'
-      ) {
-        throw error;
-      }
-      throw metricsStoreUnsafe();
-    }
-    return 'legacy-unknown';
+    throw metricsStoreUnsafe();
   }
 }
 
@@ -534,81 +485,6 @@ function assertMetricsInvestigationId(value: string): string {
       'A superseded execution Workflow is not a bound Investigation.',
     );
   }
-}
-
-function isVerifiedLegacySupersedeNode(
-  value: unknown,
-  expectedNodeId: string,
-  workflowId: string,
-): boolean {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'nodeId',
-      'target',
-      'expected',
-      'decision',
-      'consequences',
-      'grantId',
-      'grantDigest',
-      'previousResolutionNodeId',
-      'createdAt',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'human-resolution-node' ||
-    value.nodeId !== expectedNodeId ||
-    !isRecord(value.target) ||
-    !hasExactKeys(value.target, ['workflowKind', 'changeId', 'workflowId']) ||
-    value.target.workflowKind !== 'investigation' ||
-    value.target.workflowId !== workflowId ||
-    typeof value.target.changeId !== 'string' ||
-    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.target.changeId) ||
-    !isRecord(value.expected) ||
-    !hasExactKeys(value.expected, [
-      'reasonCode',
-      'blockedTransition',
-      'stateDigest',
-      'currentRefDigest',
-    ]) ||
-    !isBoundedText(value.expected.reasonCode, 256) ||
-    !isBoundedText(value.expected.blockedTransition, 256) ||
-    !isRawDigest(value.expected.stateDigest) ||
-    (value.expected.currentRefDigest !== null &&
-      !isRawDigest(value.expected.currentRefDigest)) ||
-    typeof value.grantId !== 'string' ||
-    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
-      value.grantId,
-    ) ||
-    !isRawDigest(value.grantDigest) ||
-    (value.previousResolutionNodeId !== null &&
-      !isRawDigest(value.previousResolutionNodeId)) ||
-    typeof value.createdAt !== 'string' ||
-    !isExactTimestamp(value.createdAt)
-  ) {
-    return false;
-  }
-  try {
-    assertLegacySupersedeHumanResolutionDecisionReadOnly(value.decision);
-    const consequences = assertHumanResolutionConsequences(value.consequences);
-    if (consequences.continuity !== 'broken') return false;
-  } catch {
-    return false;
-  }
-  const { nodeId: _nodeId, ...semantic } = value;
-  return (
-    expectedNodeId ===
-    crypto
-      .createHash('sha256')
-      .update(
-        canonicalJson({
-          schema: 'human-resolution-node.v1',
-          node: semantic,
-        }),
-      )
-      .digest('hex')
-  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -628,20 +504,6 @@ function hasExactKeys(
 
 function isRawDigest(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{64}$/.test(value);
-}
-
-function isBoundedText(value: unknown, maxBytes: number): value is string {
-  return (
-    typeof value === 'string' &&
-    value.trim() === value &&
-    value.length > 0 &&
-    Buffer.byteLength(value, 'utf8') <= maxBytes
-  );
-}
-
-function isExactTimestamp(value: string): boolean {
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) && new Date(parsed).toISOString() === value;
 }
 
 function metricsStoreUnsafe() {

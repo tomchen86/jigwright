@@ -100,6 +100,17 @@ test('engine metrics derive resilience, speed, governance, and storage measures'
     [first, second, third],
     storageMetrics(),
     NOW,
+    {
+      grantRequestDigests: [DIGEST],
+      issuedGrants: [
+        {
+          grantId: 'grant-timeout',
+          requestDigest: DIGEST,
+          consumedAttemptIds: ['a-3'],
+        },
+      ],
+      supersedeReasons: [],
+    },
   );
 
   assert.deepEqual(metrics.metrics.attempt_failure_recovered_rate, {
@@ -167,10 +178,25 @@ test('engine metrics retain historical wait time and count one stage per replace
     'history-3',
   );
 
-  const metrics = computeEngineMetrics([observed], storageMetrics(), NOW);
+  const metrics = computeEngineMetrics(
+    [observed],
+    storageMetrics(),
+    NOW,
+    { grantRequestDigests: [], issuedGrants: [], supersedeReasons: [] },
+  );
 
   assert.equal(metrics.metrics.stages_recomputed_per_retry, 1);
   assert.equal(metrics.metrics.workflow_blocked_hours, 1.5);
+});
+
+test('engine metrics refuse a missing governance observation source', () => {
+  assert.throws(
+    () => computeEngineMetrics([], storageMetrics(), NOW, undefined as never),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'ENGINE_METRICS_INVALID',
+  );
 });
 
 test('engine governance metrics count issued-but-unused grants in the success denominator', () => {
@@ -217,7 +243,7 @@ test('engine governance metrics count issued-but-unused grants in the success de
   assert.equal(metrics.metrics.human_actions_per_recoverable_failure, 2);
 });
 
-test('engine governance metrics use canonical supersede reasons and isolate legacy unknowns', () => {
+test('engine governance metrics require canonical supersede reasons', () => {
   const canonical = inspection(
     'job-canonical-supersede',
     'plan-review',
@@ -233,8 +259,30 @@ test('engine governance metrics use canonical supersede reasons and isolate lega
   );
   legacy.workflow.status = 'superseded';
 
+  assert.throws(
+    () =>
+      computeEngineMetrics([canonical, legacy], storageMetrics(), NOW, {
+        grantRequestDigests: [],
+        issuedGrants: [],
+        supersedeReasons: [
+          {
+            workflowId: canonical.workflow.workflowId,
+            reason: 'workflow-replaced',
+          },
+          {
+            workflowId: legacy.workflow.workflowId,
+            reason: 'legacy-unknown' as never,
+          },
+        ],
+      }),
+    (error: unknown) =>
+      error instanceof Error &&
+      'code' in error &&
+      error.code === 'ENGINE_METRICS_INVALID',
+  );
+
   const metrics = computeEngineMetrics(
-    [canonical, legacy],
+    [canonical],
     storageMetrics(),
     NOW,
     {
@@ -245,16 +293,10 @@ test('engine governance metrics use canonical supersede reasons and isolate lega
           workflowId: canonical.workflow.workflowId,
           reason: 'workflow-replaced',
         },
-        {
-          workflowId: legacy.workflow.workflowId,
-          reason: 'legacy-unknown',
-        },
       ],
     },
   );
-
   assert.deepEqual(metrics.metrics.supersede_by_reason, {
-    'legacy-unknown': 1,
     'workflow-replaced': 1,
   });
 });
@@ -329,7 +371,7 @@ test('production metrics enumerate issued unused grants and durable replacement 
   }
 });
 
-test('metrics read canonical supersede reasons and only classify verified legacy nodes as unknown', () => {
+test('metrics read canonical supersede reasons and reject legacy nodes', () => {
   const repository = createFixtureRepository();
   try {
     const { runtime } = loadInvestigationRuntimeContext(repository);
@@ -392,9 +434,12 @@ test('metrics read canonical supersede reasons and only classify verified legacy
       })}\n`,
       { mode: 0o600 },
     );
-    assert.equal(
-      inspectEngineSupersedeReason(runtime, legacyWorkflowId),
-      'legacy-unknown',
+    assert.throws(
+      () => inspectEngineSupersedeReason(runtime, legacyWorkflowId),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'ENGINE_METRICS_STORE_UNSAFE',
     );
 
     const malformed = structuredClone(legacyNode);
