@@ -18,10 +18,7 @@ import {
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
   CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
 } from '../src/modules/authority/intervention-control.ts';
-import {
-  produceControlPlaneApprovalCandidateV2,
-  produceControlPlaneApprovalCandidateV3,
-} from '../src/application/control-plane/control-plane-promotion-producer.ts';
+import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import {
   createControlPlaneSupervisorHistoryAnchor,
   readControlPlaneSupervisorHistory,
@@ -35,7 +32,10 @@ import {
   readPersistedControlPlaneApprovalCandidateCurrent,
   readPersistedControlPlaneApprovalCandidateV3,
 } from '../src/application/control-plane/intervention-control-updater.ts';
-import { readPersistedControlPlaneUpdate } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
+import {
+  controlPlaneUpdateRecordPath,
+  readPersistedControlPlaneUpdate,
+} from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import { dispatchProductionControlPlaneUpdaterCommand } from '../src/entrypoints/cli/intervention-control-updater-cli.ts';
 import {
   CONTROL_PLANE_FIXTURE_GRANT_SIGNER,
@@ -72,6 +72,29 @@ test('current control-plane approval admission rejects retired candidate schemas
       {
         code: 'CONTROL_PLANE_APPROVAL_CANDIDATE_UNSUPPORTED_SCHEMA',
       },
+    );
+  } finally {
+    fixture.cleanup();
+  }
+});
+
+test('current control-plane recovery rejects retired update schemas before parsing', async () => {
+  const fixture = await setupControlPlaneProducerFixture();
+  try {
+    const grantId = 'retired-control-plane-update-v2';
+    const updatePath = controlPlaneUpdateRecordPath(fixture.stateRoot, grantId);
+    fs.mkdirSync(path.dirname(updatePath), { recursive: true, mode: 0o700 });
+    fs.writeFileSync(
+      updatePath,
+      `${canonicalJson({
+        kind: 'persisted-control-plane-update.v2',
+      })}\n`,
+      { mode: 0o600 },
+    );
+
+    assert.throws(
+      () => readPersistedControlPlaneUpdate(fixture.stateRoot, grantId),
+      { code: 'INTERVENTION_CONTROL_UPDATE_UNSUPPORTED_SCHEMA' },
     );
   } finally {
     fixture.cleanup();
@@ -140,7 +163,7 @@ test('promotion lineage substrate binds the exact append-only supervisor predece
 test('successor review and grant signatures bind the exact promotion lineage', async () => {
   const fixture = await setupControlPlaneProducerFixture();
   try {
-    const produced = produceControlPlaneApprovalCandidateV2(
+    const produced = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(fixture.repository),
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,

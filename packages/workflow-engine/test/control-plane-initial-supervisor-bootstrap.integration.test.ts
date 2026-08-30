@@ -27,23 +27,13 @@ import {
   type RecoveryQuarantineGrantPayload,
 } from '../src/recovery-quarantine.ts';
 import {
-  controlPlaneCandidateDigest,
-  controlPlaneIndependentReviewAttestationDigest,
   createEngineArtifact,
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
   REQUIRED_PROTECTED_CAPABILITIES,
-  type ControlPlaneIndependentReviewAttestationEnvelope,
-  type ExactControlPlaneChange,
   type ProtectedCapabilityEntry,
 } from '../src/modules/authority/intervention-control.ts';
-import {
-  createControlPlanePromotionBundle,
-  createControlPlaneRecoveryBundle,
-  initializeControlPlaneSupervisorState,
-  persistControlPlaneApprovalCandidate,
-  preflightControlPlaneApprovalCandidate,
-} from '../src/application/control-plane/intervention-control-updater.ts';
+import { initializeControlPlaneSupervisorState } from '../src/application/control-plane/intervention-control-updater.ts';
 import { loadProtectedCapabilitiesFromTrustBase } from '../src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 import {
   bootstrapInterventionStateRoot,
@@ -284,8 +274,6 @@ test('sealed launcher initializes generation-one supervisor from the verified bu
     const replay = runInitialize(engineRoot, repository);
     assert.equal(replay.status, 0, replay.stderr);
     assert.equal(fs.readFileSync(statePath, 'utf8'), firstBytes);
-
-    assertFirstPromotionPreflight(repository, firstState.activeArtifact);
   } finally {
     fs.rmSync(engineRoot, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
@@ -1102,11 +1090,8 @@ test('initial supervisor journal reconciles exact crash residues and rejects mal
   }
 });
 
-test('finalized V2 selection remains durable years after its admission grant expired', async () => {
-  const fixture = await setupFinalizedControlPlanePromotionFixture({
-    reviewedAt: '2000-01-01T00:00:00.000Z',
-    grantIssuedAt: '2000-01-01T00:02:00.000Z',
-  });
+test('finalized current selection remains durable after its admission grant expired', async () => {
+  const fixture = await setupFinalizedControlPlanePromotionFixture();
   try {
     assert.equal(
       Date.parse(fixture.record.envelope.payload.expiresAt) < Date.now(),
@@ -1125,76 +1110,7 @@ test('finalized V2 selection remains durable years after its admission grant exp
   }
 });
 
-test('first V2 promotion selects its exact generation-three rollback terminal', async () => {
-  const fixture = await setupFinalizedControlPlanePromotionFixture();
-  try {
-    const bundle = readJsonRecord(
-      onlyPrivateJsonFile(
-        path.join(fixture.stateRoot, 'control-plane-promotion-bundles'),
-      ),
-    );
-    const material = recordField(bundle, 'material');
-    const recovery = recordField(material, 'recoveryBundle');
-    const restartArtifact = recordField(recovery, 'restartArtifact');
-
-    const updatePath = onlyPrivateJsonFile(
-      path.join(fixture.stateRoot, 'control-updates'),
-    );
-    const update = readJsonRecord(updatePath);
-    const transaction = recordField(update, 'transaction');
-    const history = transaction.history as Array<Record<string, unknown>>;
-    const observations = update.observations as Array<Record<string, unknown>>;
-    assert.equal(Array.isArray(history), true);
-    assert.equal(Array.isArray(observations), true);
-    history.at(-2)!.state = 'ROLLBACK_REQUIRED';
-    history.at(-1)!.state = 'ROLLED_BACK';
-    observations.at(-2)!.toState = 'ROLLBACK_REQUIRED';
-    observations.at(-2)!.eventKind = 'self-tests-failed';
-    observations.at(-1)!.fromState = 'ROLLBACK_REQUIRED';
-    observations.at(-1)!.toState = 'ROLLED_BACK';
-    observations.at(-1)!.eventKind = 'rollback-completed';
-    transaction.state = 'ROLLED_BACK';
-    transaction.journalDigest = recordDigest(transaction, 'journalDigest');
-    update.recordDigest = recordDigest(update, 'recordDigest');
-    writeJsonRecord(updatePath, update);
-
-    const supervisorPath = path.join(
-      fixture.stateRoot,
-      'control-plane-supervisor.json',
-    );
-    const supervisor = readJsonRecord(supervisorPath);
-    supervisor.generation = 3;
-    supervisor.activeArtifact = {
-      artifactId: restartArtifact.artifactId,
-      executableDigest: restartArtifact.executableDigest,
-      closureDigest: transaction.beforeClosureDigest,
-      executablePath: path.join(
-        fixture.stateRoot,
-        'control-plane-artifacts',
-        String(restartArtifact.artifactId).slice('sha256:'.length),
-        'engine',
-      ),
-    };
-    const transition = recordField(supervisor, 'transition');
-    transition.phase = 'rollback-restored';
-    supervisor.recordDigest = recordDigest(supervisor, 'recordDigest');
-    writeJsonRecord(supervisorPath, supervisor);
-
-    const selected = resolveControlPlaneEngineSelection(
-      fixture.stateRoot,
-      CONTROL_PLANE_FIXTURE_REPOSITORY_ID,
-    );
-    assert.equal(selected?.generation, 3);
-    assert.equal(
-      selected?.activeArtifact.artifactId,
-      restartArtifact.artifactId,
-    );
-  } finally {
-    fixture.cleanup();
-  }
-});
-
-test('finalized V2 selection rejects fully redigested but untrusted review and grant signatures', async () => {
+test('finalized current selection rejects fully redigested but untrusted review and grant signatures', async () => {
   const fixture = await setupFinalizedControlPlanePromotionFixture();
   try {
     const bundlePath = onlyPrivateJsonFile(
@@ -1226,7 +1142,7 @@ test('finalized V2 selection rejects fully redigested but untrusted review and g
   }
 });
 
-test('first V2 promotion rejects forged supervisor generations and additional authority-update inventory', async () => {
+test('current promotion rejects forged supervisor generations and additional authority-update inventory', async () => {
   const forgedGeneration = await setupFinalizedControlPlanePromotionFixture();
   try {
     const supervisorPath = path.join(
@@ -1260,7 +1176,7 @@ test('first V2 promotion rejects forged supervisor generations and additional au
   }
 });
 
-test('finalized V2 selection rejects nonterminal history and unsafe private candidate storage', async () => {
+test('finalized current selection rejects nonterminal history and unsafe private candidate storage', async () => {
   const nonterminal = await setupFinalizedControlPlanePromotionFixture();
   try {
     const updatePath = onlyPrivateJsonFile(
@@ -1835,187 +1751,6 @@ function installFixtureGrantVerifierComposition(
 
 function protectedManifest(repository: string) {
   return loadProtectedCapabilitiesFromTrustBase(repository, 'HEAD');
-}
-
-function assertFirstPromotionPreflight(
-  repository: string,
-  activeArtifact: {
-    artifactId: string;
-    closureDigest: string;
-    executableDigest: string;
-    executablePath: string;
-  },
-): void {
-  const storageRoot = stateRoot(repository);
-  const beforeManifest = protectedManifest(repository);
-  const changedEntries = structuredClone(beforeManifest.entries);
-  const changedIndex = changedEntries.findIndex(
-    (entry) => entry.capability === 'control-plane.update',
-  );
-  const changedContentDigest = digest('first-promotion-control-plane');
-  changedEntries[changedIndex] = {
-    ...changedEntries[changedIndex],
-    contentDigest: changedContentDigest,
-    closureDigest: protectedCapabilityClosureDigest(
-      changedEntries[changedIndex].entrypoints,
-      changedEntries[changedIndex].dependencies,
-      changedContentDigest,
-    ),
-  };
-  const afterManifest = createProtectedCapabilityManifest({
-    schemaVersion: 1,
-    manifestPath: beforeManifest.manifestPath,
-    entries: changedEntries,
-  });
-  const restartArtifact = readBuiltInControlPlaneEngineArtifact(storageRoot);
-  assert.equal(restartArtifact.artifactId, activeArtifact.artifactId);
-  assert.equal(
-    restartArtifact.executableDigest,
-    activeArtifact.executableDigest,
-  );
-  const restartExecutable = fs.readFileSync(activeArtifact.executablePath);
-  const candidateSource = Buffer.from(
-    `#!/usr/bin/env node\nprocess.stdout.write('{}\\n');\n`,
-  );
-  const candidateArtifact = createEngineArtifact({
-    sourceChangeId: 'first-global-promotion',
-    sourceDigest: digest('first-global-promotion-source'),
-    executableDigest: digest(candidateSource),
-    protocolVersion: 3,
-    canReadSessionSchemas: ['v4'],
-    writesSessionSchema: 'v4',
-    policySchemaVersion: 2,
-    smokeReportDigest: digest('first-global-promotion-smoke'),
-  });
-  const executablePath = 'packages/workflow-engine/bootstrap/engine';
-  const beforeManifestBytes = Buffer.from(
-    canonicalJson(withoutManifestDigest(beforeManifest)),
-  );
-  const afterManifestBytes = Buffer.from(
-    canonicalJson(withoutManifestDigest(afterManifest)),
-  );
-  const exactChanges: ExactControlPlaneChange[] = [
-    {
-      path: executablePath,
-      beforeDigest: restartArtifact.executableDigest,
-      afterDigest: candidateArtifact.executableDigest,
-    },
-    {
-      path: beforeManifest.manifestPath,
-      beforeDigest: beforeManifest.manifestDigest,
-      afterDigest: afterManifest.manifestDigest,
-    },
-  ].sort((left, right) => left.path.localeCompare(right.path));
-  const mandateBinding = {
-    schemaVersion: 1 as const,
-    parentTaskId: 'initial-supervisor-first-promotion',
-    mandateId: '22222222-2222-4222-8222-222222222222',
-    mandateDigest: '2'.repeat(64),
-    changeId: 'first-global-promotion',
-    externalAuditRoot: path.join(repository, 'external-audit'),
-  };
-  const rollbackReport = Buffer.from('initial supervisor rollback verified\n');
-  const recoveryBundle = createControlPlaneRecoveryBundle({
-    repositoryId: 'github:R_bootstrap_fixture',
-    previousClosureDigest: beforeManifest.manifestDigest,
-    restartArtifact,
-    restartExecutablePath: executablePath,
-    previousFiles: [
-      {
-        path: executablePath,
-        mode: '100755' as const,
-        contentBase64: restartExecutable.toString('base64'),
-        contentDigest: restartArtifact.executableDigest,
-      },
-      {
-        path: beforeManifest.manifestPath,
-        mode: '100644' as const,
-        contentBase64: beforeManifestBytes.toString('base64'),
-        contentDigest: beforeManifest.manifestDigest,
-      },
-    ].sort((left, right) => left.path.localeCompare(right.path)),
-    rollbackTestReportBase64: rollbackReport.toString('base64'),
-    rollbackTestReportDigest: digest(rollbackReport),
-  });
-  const candidateDigest = controlPlaneCandidateDigest(exactChanges);
-  const independentReviewAttestation: ControlPlaneIndependentReviewAttestationEnvelope =
-    {
-      payload: {
-        kind: 'control-plane-independent-review.v1',
-        repositoryId: 'github:R_bootstrap_fixture',
-        candidateDigest,
-        beforeClosureDigest: beforeManifest.manifestDigest,
-        afterClosureDigest: afterManifest.manifestDigest,
-        recoveryBundleDigest: recoveryBundle.bundleDigest,
-        affectedCapabilities: ['adoption.journal', 'control-plane.update'],
-        verdict: 'approved',
-        reviewedAt: '2026-08-10T09:50:00.000Z',
-        reviewSummary: 'Verified the first exact repository-default promotion.',
-        reviewer: 'reviewer@example.test',
-      },
-      signature: 'first-promotion-review-signature',
-    };
-  const bundle = createControlPlanePromotionBundle({
-    mandateBinding,
-    repositoryId: 'github:R_bootstrap_fixture',
-    candidateDigest,
-    beforeClosureDigest: beforeManifest.manifestDigest,
-    afterClosureDigest: afterManifest.manifestDigest,
-    exactChanges,
-    candidateArtifact,
-    candidateExecutablePath: executablePath,
-    candidateFiles: [
-      {
-        path: executablePath,
-        mode: '100755' as const,
-        contentBase64: candidateSource.toString('base64'),
-        contentDigest: candidateArtifact.executableDigest,
-      },
-      {
-        path: afterManifest.manifestPath,
-        mode: '100644' as const,
-        contentBase64: afterManifestBytes.toString('base64'),
-        contentDigest: afterManifest.manifestDigest,
-      },
-    ].sort((left, right) => left.path.localeCompare(right.path)),
-    recoveryBundle,
-    independentReviewAttestation,
-  });
-  assert.equal(
-    controlPlaneIndependentReviewAttestationDigest(
-      independentReviewAttestation,
-    ).startsWith('sha256:'),
-    true,
-  );
-  const persisted = persistControlPlaneApprovalCandidate(
-    storageRoot,
-    {
-      txId: 'initial-supervisor-first-promotion-tx',
-      mandateBinding,
-      beforeManifest,
-      afterManifest,
-      bundle,
-    },
-    new Date('2026-08-10T09:55:00.000Z'),
-  );
-  const preflight = preflightControlPlaneApprovalCandidate(
-    storageRoot,
-    persisted.candidateId,
-    {
-      grantId: 'initial-supervisor-first-promotion-grant',
-      humanSigner: 'maintainer@example.test',
-      issuedAt: '2026-08-10T10:00:00.000Z',
-      verifyHumanSignature: () => true,
-    },
-  );
-  assert.equal(
-    preflight.supervisor.activeArtifact.artifactId,
-    artifactId(activeArtifact),
-  );
-  assert.equal(
-    preflight.supervisor.activeArtifact.closureDigest,
-    beforeManifest.manifestDigest,
-  );
 }
 
 function withoutManifestDigest<T extends { manifestDigest: string }>(

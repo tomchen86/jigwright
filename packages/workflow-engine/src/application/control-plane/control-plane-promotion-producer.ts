@@ -23,21 +23,16 @@ import {
   runGitBuffer,
 } from '../../runtime/repository-transaction/git.ts';
 import {
-  canonicalControlPlaneIndependentReviewAttestationPayloadV2,
   canonicalControlPlaneIndependentReviewAttestationPayloadV3,
   classifyProtectedCandidateImpactV2,
-  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
   CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
   controlPlaneCandidateDigestV2,
   controlPlanePromotionMaterialDigest,
-  createControlPlanePromotionBundleV2,
   createControlPlanePromotionBundleV3,
   createControlPlanePromotionLineage,
   createControlPlanePromotionMaterial,
   createControlPlaneRecoveryBundleMaterial,
   normalizeControlPlaneTaskMandateBinding,
-  type ControlPlaneIndependentReviewAttestationEnvelopeV2,
-  type ControlPlaneIndependentReviewAttestationPayloadV2,
   type ControlPlaneIndependentReviewAttestationEnvelopeV3,
   type ControlPlaneIndependentReviewAttestationPayloadV3,
   type ControlPlanePromotionFileMaterial,
@@ -58,13 +53,10 @@ import {
   type PersistenceHumanSignatureVerifier,
 } from '../../runtime/storage-journal/intervention-control-persistence.ts';
 import {
-  findPersistedControlPlaneApprovalCandidateV2ByMaterialDigestAndReviewer,
   findPersistedControlPlaneApprovalCandidateV3ByMaterialLineageAndReviewer,
-  persistControlPlaneApprovalCandidateV2,
   persistControlPlaneApprovalCandidateV3,
   readPersistedControlPlaneApprovalCandidateCurrent,
   readControlPlaneSupervisorState,
-  type PersistedControlPlaneApprovalCandidateV2,
   type PersistedControlPlaneApprovalCandidateV3,
 } from './intervention-control-updater.ts';
 import { readInterventionEngineArtifact } from './intervention-maintenance.ts';
@@ -94,8 +86,7 @@ interface DerivedFrozenCandidate {
   afterFiles: ControlPlanePromotionFileMaterial[];
 }
 
-export interface ControlPlanePromotionReviewSummaryV2 {
-  kind: 'control-plane-promotion-review-summary.v2';
+interface ControlPlanePromotionReviewSummaryBase {
   repositoryId: string;
   frozenCandidateBundleDigest: Sha256Digest;
   promotionMaterialDigest: Sha256Digest;
@@ -112,24 +103,9 @@ export interface ControlPlanePromotionReviewSummaryV2 {
   humanReadable: string;
 }
 
-export interface ControlPlanePromotionProducerDependencies {
-  now?: () => Date;
-  reviewSigner: MaintainerSignerProvider;
-  verifyHumanSignature: PersistenceHumanSignatureVerifier;
-  presentReviewSummary: (summary: ControlPlanePromotionReviewSummaryV2) => void;
-}
-
-export interface ControlPlanePromotionProducerResultV2 {
-  kind: 'control-plane-promotion-producer-result.v2';
-  action: 'produce-control-plane-approval-candidate';
-  replayed: boolean;
-  candidate: PersistedControlPlaneApprovalCandidateV2;
-  summary: ControlPlanePromotionReviewSummaryV2;
-}
-
 export interface ControlPlanePromotionReviewSummaryV3 extends Omit<
-  ControlPlanePromotionReviewSummaryV2,
-  'kind' | 'humanReadable'
+  ControlPlanePromotionReviewSummaryBase,
+  'humanReadable'
 > {
   kind: 'control-plane-promotion-review-summary.v3';
   promotionLineageDigest: Sha256Digest;
@@ -141,10 +117,10 @@ export interface ControlPlanePromotionReviewSummaryV3 extends Omit<
   humanReadable: string;
 }
 
-export interface ControlPlanePromotionProducerDependenciesV3 extends Omit<
-  ControlPlanePromotionProducerDependencies,
-  'presentReviewSummary'
-> {
+export interface ControlPlanePromotionProducerDependenciesV3 {
+  now?: () => Date;
+  reviewSigner: MaintainerSignerProvider;
+  verifyHumanSignature: PersistenceHumanSignatureVerifier;
   presentReviewSummary: (summary: ControlPlanePromotionReviewSummaryV3) => void;
 }
 
@@ -154,355 +130,6 @@ export interface ControlPlanePromotionProducerResultV3 {
   replayed: boolean;
   candidate: PersistedControlPlaneApprovalCandidateV3;
   summary: ControlPlanePromotionReviewSummaryV3;
-}
-
-/**
- * Produce the complete material-bound global promotion candidate from durable
- * repository state. The caller can name only a stored frozen candidate; Git
- * bytes, modes, closures, EngineArtifacts, executable provenance, rollback
- * evidence, review payload, and transaction identity are all recomputed here.
- */
-export function produceControlPlaneApprovalCandidateV2(
-  requestedRepositoryRoot: string,
-  stateRoot: string,
-  requestedCandidateBundleDigest: string,
-  dependencies: ControlPlanePromotionProducerDependencies,
-): ControlPlanePromotionProducerResultV2 {
-  requireProducerDependencies(dependencies);
-  const repository = discoverRepository(requestedRepositoryRoot);
-  if (
-    !path.isAbsolute(requestedRepositoryRoot) ||
-    path.resolve(requestedRepositoryRoot) !== requestedRepositoryRoot ||
-    fs.realpathSync(requestedRepositoryRoot) !== requestedRepositoryRoot ||
-    requestedRepositoryRoot !== repository.repositoryRealPath ||
-    repository.statusEntries.length !== 0
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_REPOSITORY_NOT_CLEAN',
-      'Control-plane promotion material must be produced from the exact clean repository root.',
-      ExitCode.conflict,
-    );
-  }
-  assertProducerStateRoot(repository.gitCommonDirectory, stateRoot);
-  const candidate = readStoredImmutableCandidateBundle(
-    repository.gitCommonDirectory,
-    requestedCandidateBundleDigest,
-  );
-  assertFrozenCandidatePrestate(repository, candidate);
-  assertStoredCandidateSupportingArtifacts(
-    repository.gitCommonDirectory,
-    candidate.mandateBinding.changeId,
-    candidate,
-  );
-  const derived = deriveFrozenCandidate(repository.repositoryRoot, candidate);
-  const beforeManifest = loadProtectedCapabilitiesFromTrustBase(
-    repository.repositoryRoot,
-    candidate.expectedOldCommit,
-  );
-  const afterManifest = loadProtectedCapabilitiesFromTrustBase(
-    repository.repositoryRoot,
-    candidate.candidateCommit,
-  );
-  const impact = classifyProtectedCandidateImpactV2({
-    beforeManifest,
-    afterManifest,
-    changes: derived.exactChanges,
-  });
-  if (impact.class !== 'C') {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_CLASSIFICATION_MISMATCH',
-      'The frozen candidate does not recompute as a Class-C protected-capability change.',
-      ExitCode.verification,
-    );
-  }
-
-  const supervisor = readControlPlaneSupervisorState(stateRoot);
-  if (
-    supervisor.generation !== 1 ||
-    supervisor.transition !== null ||
-    supervisor.repositoryId !== candidate.repositoryId ||
-    supervisor.activeArtifact.closureDigest !== beforeManifest.manifestDigest
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_INITIAL_SUPERVISOR_MISMATCH',
-      'The producer requires the exact generation-one supervisor selecting the candidate trust base.',
-      ExitCode.staleState,
-    );
-  }
-  const restartArtifact = readBuiltInControlPlaneEngineArtifact(stateRoot);
-  if (
-    restartArtifact.artifactId !== supervisor.activeArtifact.artifactId ||
-    restartArtifact.executableDigest !==
-      supervisor.activeArtifact.executableDigest
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_RECOVERY_ARTIFACT_MISMATCH',
-      'The built-in recovery EngineArtifact differs from generation one.',
-      ExitCode.verification,
-    );
-  }
-
-  const sidecar = findPersistedBootstrapSidecarSessionForIntervention(
-    stateRoot,
-    candidate.mandateBinding.changeId,
-  );
-  if (sidecar.artifacts.length !== 1) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_ARTIFACT_SELECTION_AMBIGUOUS',
-      'A frozen global promotion requires exactly one durable sidecar EngineArtifact; caller-selected artifacts are forbidden.',
-      ExitCode.conflict,
-    );
-  }
-  const sidecarArtifact = sidecar.artifacts[0]!;
-  const candidateArtifactRecord = readInterventionEngineArtifact(
-    stateRoot,
-    sidecarArtifact.artifactId,
-  );
-  if (
-    sidecarArtifact.evidenceDigest !== candidateArtifactRecord.recordDigest ||
-    sidecarArtifact.sourceDigest !==
-      candidateArtifactRecord.artifact.sourceDigest ||
-    sidecarArtifact.executableDigest !==
-      candidateArtifactRecord.artifact.executableDigest ||
-    candidateArtifactRecord.interventionChangeId !==
-      candidate.mandateBinding.changeId
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_ARTIFACT_BINDING_MISMATCH',
-      'The durable sidecar does not bind the exact candidate EngineArtifact record.',
-      ExitCode.verification,
-    );
-  }
-  const expectedArtifactSourceDigest = frozenCandidateSourceDigest(
-    candidate.expectedOldCommit,
-    derived.exactChanges,
-  );
-  if (
-    candidateArtifactRecord.artifact.sourceDigest !==
-    expectedArtifactSourceDigest
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_PRODUCER_ARTIFACT_SOURCE_MISMATCH',
-      'The candidate EngineArtifact source snapshot does not match the exact frozen Class-C diff.',
-      ExitCode.verification,
-    );
-  }
-
-  const candidateExecutable = readStableExecutable(
-    candidateArtifactRecord.executablePath,
-    candidateArtifactRecord.artifact.executableDigest,
-  );
-  const restartExecutable = readStableExecutable(
-    supervisor.activeArtifact.executablePath,
-    restartArtifact.executableDigest,
-  );
-  const candidateSelfTest = runControlPlaneProbe(
-    candidateArtifactRecord.executablePath,
-    candidateArtifactRecord.artifact.executableDigest,
-    '--control-plane-self-test',
-    {
-      kind: 'control-plane-self-test.v1',
-      property: 'healthy',
-      closureDigest: afterManifest.manifestDigest,
-    },
-  );
-  const restartProbe = runControlPlaneProbe(
-    supervisor.activeArtifact.executablePath,
-    restartArtifact.executableDigest,
-    '--control-plane-restart-probe',
-    {
-      kind: 'control-plane-restart.v1',
-      property: 'ready',
-      closureDigest: beforeManifest.manifestDigest,
-    },
-  );
-  assertExecutableUnchanged(
-    candidateArtifactRecord.executablePath,
-    candidateExecutable,
-    candidateArtifactRecord.artifact.executableDigest,
-  );
-  assertExecutableUnchanged(
-    supervisor.activeArtifact.executablePath,
-    restartExecutable,
-    restartArtifact.executableDigest,
-  );
-  const rollbackReport = Buffer.from(
-    `${canonicalJson({
-      kind: 'control-plane-rollback-test-report.v2',
-      candidate: {
-        artifactId: candidateArtifactRecord.artifact.artifactId,
-        executableDigest: candidateArtifactRecord.artifact.executableDigest,
-        expectedClosureDigest: afterManifest.manifestDigest,
-        response: candidateSelfTest,
-      },
-      recovery: {
-        artifactId: restartArtifact.artifactId,
-        executableDigest: restartArtifact.executableDigest,
-        expectedClosureDigest: beforeManifest.manifestDigest,
-        response: restartProbe,
-      },
-    })}\n`,
-  );
-  const rollbackTestReportDigest = rawDigest(rollbackReport);
-  const recoveryBundle = createControlPlaneRecoveryBundleMaterial({
-    repositoryId: candidate.repositoryId,
-    previousClosureDigest: beforeManifest.manifestDigest,
-    restartArtifact,
-    restartExecutableBase64: restartExecutable.toString('base64'),
-    restartExecutableProvenanceDigest: supervisor.recordDigest,
-    previousFiles: derived.beforeFiles,
-    rollbackTestReportBase64: rollbackReport.toString('base64'),
-    rollbackTestReportDigest,
-  });
-  const mandateBinding = normalizeControlPlaneTaskMandateBinding({
-    schemaVersion: candidate.mandateBinding.schemaVersion,
-    parentTaskId: candidate.mandateBinding.mandateTaskId,
-    mandateId: candidate.mandateBinding.mandateId,
-    mandateDigest: candidate.mandateBinding.mandateDigest,
-    changeId: candidate.mandateBinding.changeId,
-    externalAuditRoot: candidate.mandateBinding.externalAuditRoot,
-  });
-  const behaviorChangeSummary =
-    `Frozen Class-C candidate ${candidate.candidateBundleDigest} changes ` +
-    `${derived.exactChanges.length} exact Git paths and affects ` +
-    `${impact.affectedCapabilities.join(', ')}.`;
-  const material = createControlPlanePromotionMaterial({
-    mandateBinding,
-    repositoryId: candidate.repositoryId,
-    frozenCandidateBundleDigest: prefixedCandidateDigest(
-      candidate.candidateBundleDigest,
-    ),
-    candidateDigest: controlPlaneCandidateDigestV2(derived.exactChanges),
-    beforeClosureDigest: beforeManifest.manifestDigest,
-    afterClosureDigest: afterManifest.manifestDigest,
-    affectedCapabilities: impact.affectedCapabilities,
-    behaviorChangeSummary,
-    exactChanges: derived.exactChanges,
-    candidateArtifact: candidateArtifactRecord.artifact,
-    candidateExecutableBase64: candidateExecutable.toString('base64'),
-    candidateExecutableProvenanceDigest: candidateArtifactRecord.recordDigest,
-    candidateFiles: derived.afterFiles,
-    recoveryBundle,
-  });
-  const promotionMaterialDigest = controlPlanePromotionMaterialDigest(material);
-  const summary = promotionReviewSummary(
-    material,
-    promotionMaterialDigest,
-    rollbackTestReportDigest,
-  );
-  // Reading the configured public identity is non-authorizing and lets an
-  // exact prior ceremony replay without another prompt or signature. New
-  // ceremonies re-read it after human presence to detect provider drift.
-  const replayReviewer = reviewerIdentity(dependencies.reviewSigner.identity());
-  const existing =
-    findPersistedControlPlaneApprovalCandidateV2ByMaterialDigestAndReviewer(
-      stateRoot,
-      promotionMaterialDigest,
-      replayReviewer,
-    );
-  if (existing !== null) {
-    const review = existing.bundle.independentReviewAttestation;
-    if (
-      !verifySignatureSafely(
-        dependencies.verifyHumanSignature,
-        canonicalControlPlaneIndependentReviewAttestationPayloadV2(
-          review.payload,
-        ),
-        review.signature,
-        replayReviewer,
-        CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-      )
-    ) {
-      throw producerError(
-        'CONTROL_PLANE_REVIEW_SIGNATURE_INVALID',
-        'The persisted independent review signature could not be verified for replay.',
-        ExitCode.verification,
-      );
-    }
-    return Object.freeze({
-      kind: 'control-plane-promotion-producer-result.v2' as const,
-      action: 'produce-control-plane-approval-candidate' as const,
-      replayed: true,
-      candidate: existing,
-      summary,
-    });
-  }
-
-  // The exact unsigned material is displayed before any signing operation.
-  dependencies.presentReviewSummary(summary);
-  dependencies.reviewSigner.assertHumanPresent();
-  const reviewer = reviewerIdentity(dependencies.reviewSigner.identity());
-  if (reviewer !== replayReviewer) {
-    throw producerError(
-      'CONTROL_PLANE_REVIEWER_IDENTITY_DRIFT',
-      'The configured reviewer identity changed during the review ceremony.',
-      ExitCode.staleState,
-    );
-  }
-  const reviewedAt = producerNow(dependencies).toISOString();
-  const reviewPayload: ControlPlaneIndependentReviewAttestationPayloadV2 = {
-    kind: 'control-plane-independent-review.v2',
-    repositoryId: material.repositoryId,
-    frozenCandidateBundleDigest: material.frozenCandidateBundleDigest,
-    candidateDigest: material.candidateDigest,
-    promotionMaterialDigest,
-    beforeClosureDigest: material.beforeClosureDigest,
-    afterClosureDigest: material.afterClosureDigest,
-    recoveryBundleDigest: material.recoveryBundle.bundleDigest,
-    affectedCapabilities: [...material.affectedCapabilities],
-    verdict: 'approved',
-    reviewedAt,
-    reviewSummary:
-      'Independent reviewer approved the exact frozen promotion, executable provenance, and rollback-test evidence.',
-    reviewer,
-  };
-  const signature = dependencies.reviewSigner
-    .sign(
-      canonicalControlPlaneIndependentReviewAttestationPayloadV2(reviewPayload),
-      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-    )
-    .trim();
-  if (
-    !verifySignatureSafely(
-      dependencies.verifyHumanSignature,
-      canonicalControlPlaneIndependentReviewAttestationPayloadV2(reviewPayload),
-      signature,
-      reviewer,
-      CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-    )
-  ) {
-    throw producerError(
-      'CONTROL_PLANE_REVIEW_SIGNATURE_INVALID',
-      'The independently produced review signature could not be verified.',
-      ExitCode.verification,
-    );
-  }
-  const review: ControlPlaneIndependentReviewAttestationEnvelopeV2 = {
-    payload: reviewPayload,
-    signature,
-  };
-  const bundle = createControlPlanePromotionBundleV2({
-    material,
-    independentReviewAttestation: review,
-  });
-  const persisted = persistControlPlaneApprovalCandidateV2(
-    stateRoot,
-    {
-      txId: `control-plane-promotion-${bundle.bundleDigest.slice('sha256:'.length)}`,
-      mandateBinding,
-      beforeManifest,
-      afterManifest,
-      bundle,
-    },
-    new Date(reviewedAt),
-  );
-  return Object.freeze({
-    kind: 'control-plane-promotion-producer-result.v2' as const,
-    action: 'produce-control-plane-approval-candidate' as const,
-    replayed: false,
-    candidate: persisted,
-    summary,
-  });
 }
 
 /**
@@ -762,7 +389,7 @@ export function produceControlPlaneApprovalCandidateV3(
     candidateTrustCommit: candidate.candidateCommit,
   });
   const promotionMaterialDigest = controlPlanePromotionMaterialDigest(material);
-  const baseSummary = promotionReviewSummary(
+  const baseSummary = promotionReviewSummaryBase(
     material,
     promotionMaterialDigest,
     rollbackTestReportDigest,
@@ -1354,11 +981,11 @@ function runControlPlaneProbe(
   return response as Record<string, unknown>;
 }
 
-function promotionReviewSummary(
+function promotionReviewSummaryBase(
   material: ReturnType<typeof createControlPlanePromotionMaterial>,
   promotionMaterialDigest: Sha256Digest,
   rollbackTestReportDigest: Sha256Digest,
-): ControlPlanePromotionReviewSummaryV2 {
+): ControlPlanePromotionReviewSummaryBase {
   const humanReadable = [
     'Independent control-plane promotion review',
     `Repository: ${material.repositoryId}`,
@@ -1376,7 +1003,6 @@ function promotionReviewSummary(
     `Behavior change: ${material.behaviorChangeSummary}`,
   ].join('\n');
   return Object.freeze({
-    kind: 'control-plane-promotion-review-summary.v2' as const,
     repositoryId: material.repositoryId,
     frozenCandidateBundleDigest: material.frozenCandidateBundleDigest,
     promotionMaterialDigest,

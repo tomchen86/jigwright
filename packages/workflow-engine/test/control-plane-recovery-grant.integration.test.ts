@@ -23,24 +23,25 @@ import {
 } from '../src/modules/authority/control-plane-recovery-grant.ts';
 import { runHarnessBootstrapCli } from '../src/harness-bootstrap.ts';
 import {
-  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-  CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
+  CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3,
+  CONTROL_PLANE_SIGNATURE_NAMESPACE_V3,
   controlPlaneCandidateDigestV2,
-  controlPlaneIndependentReviewAttestationDigestV2,
+  controlPlaneIndependentReviewAttestationDigestV3,
   controlPlanePromotionMaterialDigest,
-  createControlPlanePromotionBundleV2,
+  createControlPlanePromotionBundleV3,
+  createControlPlanePromotionLineage,
   createControlPlanePromotionMaterial,
   createControlPlaneRecoveryBundleMaterial,
   createEngineArtifact,
   createProtectedCapabilityManifest,
   protectedCapabilityClosureDigest,
   REQUIRED_PROTECTED_CAPABILITIES,
-  type ControlPlaneGrantEnvelopeV2,
-  type ControlPlaneIndependentReviewAttestationEnvelopeV2,
+  type ControlPlaneGrantEnvelopeV3,
+  type ControlPlaneIndependentReviewAttestationEnvelopeV3,
   type ExactControlPlaneChangeV2,
   type ProtectedCapabilityEntry,
 } from '../src/modules/authority/intervention-control.ts';
-import { produceControlPlaneApprovalCandidateV2 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
+import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import { dispatchProductionControlPlaneUpdaterCommand } from '../src/entrypoints/cli/intervention-control-updater-cli.ts';
 import {
   persistInterventionPlan,
@@ -52,11 +53,15 @@ import {
   executeControlPlaneRecoveryRollback,
   initializeControlPlaneSupervisorState,
   preflightControlPlaneRecoveryRollback,
-  prepareControlPlanePromotionV2,
+  prepareControlPlanePromotionV3,
   readControlPlaneSupervisorState,
   type ControlPlaneUpdaterAuditRecord,
   type ControlPlaneRecoveryExecutorDependencies,
 } from '../src/application/control-plane/intervention-control-updater.ts';
+import {
+  appendControlPlaneSupervisorHistoryRecord,
+  createControlPlaneSupervisorHistoryAnchor,
+} from '../src/runtime/storage-journal/control-plane-supervisor-history.ts';
 import {
   CONTROL_PLANE_FIXTURE_GRANT_SIGNER,
   CONTROL_PLANE_FIXTURE_REVIEWER,
@@ -466,14 +471,54 @@ function fixture(options: { oldRestartable?: boolean | 'once' } = {}) {
     ].sort((left, right) => left.path.localeCompare(right.path)),
     recoveryBundle,
   });
-  const independentReviewAttestation: ControlPlaneIndependentReviewAttestationEnvelopeV2 =
+  const supervisor = initializeControlPlaneSupervisorState(storageRoot, {
+    repositoryId: REPOSITORY_ID,
+    closureDigest: beforeManifest.manifestDigest,
+    artifact: oldArtifact,
+    executableBase64: Buffer.from(oldSource).toString('base64'),
+    now: NOW,
+  });
+  const activeTrustCommit = childProcess
+    .execFileSync('git', ['-C', repositoryRoot, 'rev-parse', 'HEAD'], {
+      encoding: 'utf8',
+    })
+    .trim();
+  const anchor = createControlPlaneSupervisorHistoryAnchor({
+    repositoryId: REPOSITORY_ID,
+    generation: supervisor.generation,
+    supervisorRecordDigest: supervisor.recordDigest,
+    activeArtifact: {
+      artifactId: supervisor.activeArtifact.artifactId,
+      executableDigest: supervisor.activeArtifact.executableDigest,
+      closureDigest: supervisor.activeArtifact.closureDigest,
+    },
+    activeTrustCommit,
+    authority: {
+      kind: 'initial-bootstrap-anchor.v1',
+      initialBootstrapPublishedDigest: digest('fixture-initial-bootstrap'),
+    },
+    recordedAt: NOW.toISOString(),
+  });
+  appendControlPlaneSupervisorHistoryRecord(storageRoot, anchor);
+  const lineage = createControlPlanePromotionLineage({
+    historyAnchorDigest: anchor.recordDigest,
+    previousTerminalRecordDigest: anchor.recordDigest,
+    previousSupervisorRecordDigest: supervisor.recordDigest,
+    previousGeneration: supervisor.generation,
+    candidateGeneration: supervisor.generation + 1,
+    rollbackGeneration: supervisor.generation + 2,
+    previousActiveTrustCommit: activeTrustCommit,
+    candidateTrustCommit: activeTrustCommit,
+  });
+  const independentReviewAttestation: ControlPlaneIndependentReviewAttestationEnvelopeV3 =
     {
       payload: {
-        kind: 'control-plane-independent-review.v2',
+        kind: 'control-plane-independent-review.v3',
         repositoryId: REPOSITORY_ID,
         frozenCandidateBundleDigest: material.frozenCandidateBundleDigest,
         candidateDigest: material.candidateDigest,
         promotionMaterialDigest: controlPlanePromotionMaterialDigest(material),
+        promotionLineageDigest: lineage.lineageDigest,
         beforeClosureDigest: beforeManifest.manifestDigest,
         afterClosureDigest: afterManifest.manifestDigest,
         recoveryBundleDigest: recoveryBundle.bundleDigest,
@@ -486,19 +531,21 @@ function fixture(options: { oldRestartable?: boolean | 'once' } = {}) {
       },
       signature: 'independent-review-signature',
     };
-  const promotionBundle = createControlPlanePromotionBundleV2({
+  const promotionBundle = createControlPlanePromotionBundleV3({
     material,
+    lineage,
     independentReviewAttestation,
   });
-  const envelope: ControlPlaneGrantEnvelopeV2 = {
+  const envelope: ControlPlaneGrantEnvelopeV3 = {
     payload: {
-      kind: 'control-plane-grant.v2',
+      kind: 'control-plane-grant.v3',
       grantId: 'control-promotion-broken-current',
       mandateBinding,
       repositoryId: material.repositoryId,
       frozenCandidateBundleDigest: material.frozenCandidateBundleDigest,
       candidateDigest: material.candidateDigest,
       promotionMaterialDigest: promotionBundle.promotionMaterialDigest,
+      promotionLineageDigest: promotionBundle.promotionLineageDigest,
       promotionBundleDigest: promotionBundle.bundleDigest,
       exactChanges: changes,
       beforeClosureDigest: beforeManifest.manifestDigest,
@@ -513,10 +560,10 @@ function fixture(options: { oldRestartable?: boolean | 'once' } = {}) {
         rollbackTestReportDigest: recoveryBundle.rollbackTestReportDigest,
       },
       independentReviewAttestationDigest:
-        controlPlaneIndependentReviewAttestationDigestV2(
+        controlPlaneIndependentReviewAttestationDigestV3(
           independentReviewAttestation,
         ),
-      updaterVersion: 2,
+      updaterVersion: 3,
       oneShot: true,
       issuedAt: '2026-08-03T09:59:00.000Z',
       expiresAt: '2026-08-03T10:04:00.000Z',
@@ -524,13 +571,6 @@ function fixture(options: { oldRestartable?: boolean | 'once' } = {}) {
     },
     signature: 'control-plane-human-signature',
   };
-  initializeControlPlaneSupervisorState(storageRoot, {
-    repositoryId: envelope.payload.repositoryId,
-    closureDigest: beforeManifest.manifestDigest,
-    artifact: oldArtifact,
-    executableBase64: Buffer.from(oldSource).toString('base64'),
-    now: NOW,
-  });
   return {
     repositoryRoot,
     storageRoot,
@@ -554,7 +594,7 @@ async function sealedBrokenFixture() {
   try {
     const reviewCalls = { present: 0, human: 0, sign: 0 };
     const grantCalls = { human: 0, sign: 0 };
-    const produced = produceControlPlaneApprovalCandidateV2(
+    const produced = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(value.repository),
       value.stateRoot,
       value.frozen.candidateBundleDigest,
@@ -580,7 +620,7 @@ async function sealedBrokenFixture() {
       ),
       testHooks: {
         afterAtomicSwitch() {
-          throw new Error('simulated crash after selecting signed V2 E2');
+          throw new Error('simulated crash after selecting signed current E2');
         },
       },
     };
@@ -597,11 +637,11 @@ async function sealedBrokenFixture() {
           dependencies,
           fs.realpathSync(value.repository),
         ),
-      /simulated crash after selecting signed V2 E2/,
+      /simulated crash after selecting signed current E2/,
     );
     const grantId = `control-plane-approval-${produced.candidate.candidateId.slice('sha256:'.length)}`;
     const record = readPersistedControlPlaneUpdate(value.stateRoot, grantId);
-    assert.equal(record.kind, 'persisted-control-plane-update.v2');
+    assert.equal(record.kind, 'persisted-control-plane-update.v3');
     assert.equal(record.transaction.state, 'RECOVERY_VERIFIED');
     assert.equal(
       readControlPlaneSupervisorState(value.stateRoot).activeArtifact
@@ -631,7 +671,7 @@ async function sealedBrokenFixture() {
 
 function prepareBrokenCurrentClosure(value: ReturnType<typeof fixture>): void {
   const audit: ControlPlaneUpdaterAuditRecord[] = [];
-  prepareControlPlanePromotionV2(
+  prepareControlPlanePromotionV3(
     value.storageRoot,
     {
       txId: 'promotion-crash-before-candidate-validation',
@@ -687,13 +727,13 @@ function controlDependencies(
       if (controlVerifier !== undefined) {
         return controlVerifier(payload, signature, signer, namespace);
       }
-      if (namespace === CONTROL_PLANE_SIGNATURE_NAMESPACE_V2) {
+      if (namespace === CONTROL_PLANE_SIGNATURE_NAMESPACE_V3) {
         return (
           signature === 'control-plane-human-signature' &&
           signer === 'maintainer@example.test'
         );
       }
-      if (namespace === CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2) {
+      if (namespace === CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3) {
         return (
           signature === 'independent-review-signature' &&
           signer === 'reviewer@example.test'
@@ -1128,10 +1168,7 @@ test('Recovery Grant rejects unknown fields, excessive TTL, expiry, and stale ex
     );
 
     for (const [signature, signedNamespace] of [
-      [
-        'maintenance-grant-signature',
-        'workflow.maintainer-grant.v1',
-      ],
+      ['maintenance-grant-signature', 'workflow.maintainer-grant.v1'],
       ['task-mandate-signature', 'HARNESS_TASK_MANDATE_V1'],
     ] as const) {
       const wrongDomainReplay = structuredClone(envelope);

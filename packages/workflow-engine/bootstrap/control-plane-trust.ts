@@ -15,10 +15,7 @@ const MAX_CLOSURE_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_PROMOTION_FILE_BYTES = 16 * 1024 * 1024;
 const MAX_PROMOTION_TOTAL_BYTES = 64 * 1024 * 1024;
 const MAX_PROMOTION_BUNDLE_BYTES = 192 * 1024 * 1024;
-const CONTROL_PLANE_GRANT_V2_MAX_TTL_MS = 5 * 60 * 1000;
-const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-grant.v2';
-const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 =
-  'jigwright.control-plane-independent-review.v2';
+const CONTROL_PLANE_GRANT_MAX_TTL_MS = 5 * 60 * 1000;
 const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-grant.v3';
 const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 =
   'jigwright.control-plane-independent-review.v3';
@@ -264,22 +261,10 @@ interface BootstrapSupervisorHistoryArtifact {
   closureDigest: Sha256Digest;
 }
 
-type BootstrapSupervisorHistoryAnchorAuthority =
-  | {
-      kind: 'initial-bootstrap-anchor.v1';
-      initialBootstrapPublishedDigest: Sha256Digest;
-    }
-  | {
-      kind: 'legacy-v2-terminal-anchor.v1';
-      initialBootstrapPublishedDigest: Sha256Digest;
-      grantId: string;
-      txId: string;
-      terminalState: 'FINALIZED' | 'ROLLED_BACK';
-      updateRecordDigest: Sha256Digest;
-      transactionJournalDigest: Sha256Digest;
-      grantEnvelopeDigest: Sha256Digest;
-      promotionBundleDigest: Sha256Digest;
-    };
+interface BootstrapSupervisorHistoryAnchorAuthority {
+  kind: 'initial-bootstrap-anchor.v1';
+  initialBootstrapPublishedDigest: Sha256Digest;
+}
 
 interface BootstrapSupervisorHistoryAnchor {
   kind: 'control-plane-supervisor-history-anchor.v1';
@@ -4180,14 +4165,6 @@ function assertTerminalSelection(
     `${identityFileName('control-update', transition.grantId)}.json`,
   );
   const value = readCanonicalPrivateRecord(recordPath);
-  if (isRecord(value) && value.kind === 'persisted-control-plane-update.v2') {
-    try {
-      assertTerminalSelectionV2(paths, supervisor, value);
-    } catch {
-      throw supervisorNotTerminal();
-    }
-    return;
-  }
   if (isRecord(value) && value.kind === 'persisted-control-plane-update.v3') {
     try {
       assertTerminalSelectionV3(paths, supervisor, value);
@@ -4196,218 +4173,7 @@ function assertTerminalSelection(
     }
     return;
   }
-  // V1 records remain historical audit data, but their signed shape does not
-  // carry the immutable candidate and bootstrap lineage required to execute an
-  // artifact. Treating a self-digested V1 record as launch authority would
-  // permit a discriminator downgrade around the V2 verifier.
   throw supervisorNotTerminal();
-}
-
-function assertTerminalSelectionV2(
-  paths: BootstrapPaths,
-  supervisor: BootstrapControlPlaneSupervisorState,
-  record: Record<string, unknown>,
-  options: { allowSuccessorInventory?: boolean } = {},
-): void {
-  if (options.allowSuccessorInventory !== true) {
-    assertSingleV2ControlUpdateInventory(paths, supervisor);
-  }
-  const initialAnchor = assertPromotionHasValidInitialBootstrapAnchor(
-    paths,
-    supervisor.repositoryId,
-  );
-  const initialProvenance = initialAnchor.provenance;
-  const transition = supervisor.transition;
-  if (
-    transition === null ||
-    !hasExactKeys(record, [
-      'afterManifest',
-      'beforeManifest',
-      'changes',
-      'createdAt',
-      'effectsPerformed',
-      'envelope',
-      'grantState',
-      'kind',
-      'observations',
-      'recordDigest',
-      'transaction',
-      'updatedAt',
-    ]) ||
-    record.kind !== 'persisted-control-plane-update.v2' ||
-    record.grantState !== 'consumed' ||
-    record.effectsPerformed !== false ||
-    !verifyRecordDigest(record) ||
-    !isCanonicalIso(record.createdAt) ||
-    !isCanonicalIso(record.updatedAt) ||
-    Date.parse(record.updatedAt) < Date.parse(record.createdAt) ||
-    !isRecord(record.transaction) ||
-    !isRecord(record.envelope) ||
-    !isRecord(record.beforeManifest) ||
-    !isRecord(record.afterManifest) ||
-    !Array.isArray(record.changes) ||
-    !Array.isArray(record.observations)
-  ) {
-    throw supervisorNotTerminal();
-  }
-
-  const transaction = record.transaction;
-  if (
-    !hasExactKeys(transaction, [
-      'afterClosureDigest',
-      'beforeClosureDigest',
-      'candidateDigest',
-      'grantId',
-      'history',
-      'journalDigest',
-      'kind',
-      'recoveryBundleDigest',
-      'state',
-      'txId',
-      'updaterVersion',
-    ]) ||
-    transaction.kind !== 'minimal-control-plane-updater.v1' ||
-    transaction.updaterVersion !== 2 ||
-    transaction.grantId !== transition.grantId ||
-    transaction.txId !== transition.txId ||
-    !isNonEmptyTrimmed(transaction.grantId) ||
-    !isNonEmptyTrimmed(transaction.txId) ||
-    !isDigest(transaction.candidateDigest) ||
-    !isDigest(transaction.beforeClosureDigest) ||
-    !isDigest(transaction.afterClosureDigest) ||
-    !isDigest(transaction.recoveryBundleDigest) ||
-    !verifyJournalDigest(transaction) ||
-    !validTerminalHistory(transaction.state, transaction.history) ||
-    !validTerminalObservationsV2(
-      transaction.history,
-      record.observations,
-      record.createdAt,
-      record.updatedAt,
-    ) ||
-    transaction.beforeClosureDigest !==
-      initialAnchor.activeArtifact.closureDigest
-  ) {
-    throw supervisorNotTerminal();
-  }
-
-  const beforeManifest = record.beforeManifest;
-  const afterManifest = record.afterManifest;
-  const changes = record.changes;
-  if (
-    !validProtectedCapabilityManifestV2(beforeManifest) ||
-    !validProtectedCapabilityManifestV2(afterManifest) ||
-    !validExactChangesV2(changes) ||
-    beforeManifest.manifestDigest !== transaction.beforeClosureDigest ||
-    afterManifest.manifestDigest !== transaction.afterClosureDigest ||
-    (beforeManifest.manifestDigest !== afterManifest.manifestDigest &&
-      !changes.some((change) => change.path === beforeManifest.manifestPath))
-  ) {
-    throw supervisorNotTerminal();
-  }
-
-  const envelope = record.envelope;
-  if (
-    !hasExactKeys(envelope, ['payload', 'signature']) ||
-    !isRecord(envelope.payload) ||
-    !validBoundedSignature(envelope.signature)
-  ) {
-    throw supervisorNotTerminal();
-  }
-  const payload = envelope.payload;
-  if (
-    !validControlPlaneGrantPayloadV2(payload) ||
-    payload.grantId !== transition.grantId ||
-    payload.repositoryId !== supervisor.repositoryId ||
-    payload.candidateDigest !== transaction.candidateDigest ||
-    payload.beforeClosureDigest !== transaction.beforeClosureDigest ||
-    payload.afterClosureDigest !== transaction.afterClosureDigest ||
-    payload.recoveryBundle.bundleDigest !== transaction.recoveryBundleDigest ||
-    payload.updaterVersion !== transaction.updaterVersion ||
-    canonicalJson(payload.exactChanges) !== canonicalJson(changes) ||
-    Date.parse(payload.issuedAt) > Date.parse(record.createdAt)
-  ) {
-    throw supervisorNotTerminal();
-  }
-
-  assertPrivateDirectory(paths.bundles, 'CONTROL_PLANE_STATE_UNSAFE');
-  const bundlePath = path.join(
-    paths.bundles,
-    `${identityFileName('control-plane-promotion', transition.grantId)}.json`,
-  );
-  const bundle = readCanonicalPrivateRecord(
-    bundlePath,
-    supervisorNotTerminal,
-    MAX_PROMOTION_BUNDLE_BYTES,
-  );
-  if (
-    !isRecord(bundle) ||
-    !validPromotionBundleV2(bundle, payload, beforeManifest, afterManifest)
-  ) {
-    throw supervisorNotTerminal();
-  }
-  const material = bundle.material;
-  const expectedOldCommit = assertV2PromotionHumanSignatures(
-    paths,
-    initialProvenance,
-    material,
-    bundle.independentReviewAttestation,
-    payload,
-    envelope.signature,
-    beforeManifest,
-  );
-  if (expectedOldCommit !== initialProvenance.headOid) {
-    throw supervisorNotTerminal();
-  }
-
-  const impact = affectedCapabilitiesForV2(
-    beforeManifest,
-    afterManifest,
-    changes,
-  );
-  if (
-    impact === null ||
-    canonicalJson(impact) !== canonicalJson(payload.affectedCapabilities) ||
-    canonicalJson(payload.affectedCapabilities) !==
-      canonicalJson(material.affectedCapabilities)
-  ) {
-    throw supervisorNotTerminal();
-  }
-
-  const candidateArtifact = material.candidateArtifact;
-  const restartArtifact = material.recoveryBundle.restartArtifact;
-  assertMaterializedPromotionArtifact(
-    paths,
-    candidateArtifact,
-    material.candidateExecutableBase64,
-  );
-  assertMaterializedPromotionArtifact(
-    paths,
-    restartArtifact,
-    material.recoveryBundle.restartExecutableBase64,
-  );
-
-  const candidateSelected =
-    transition.phase === 'candidate-selected' &&
-    transaction.state === 'FINALIZED' &&
-    supervisor.generation === 2 &&
-    supervisor.activeArtifact.artifactId === candidateArtifact.artifactId &&
-    supervisor.activeArtifact.executableDigest ===
-      candidateArtifact.executableDigest &&
-    supervisor.activeArtifact.closureDigest === transaction.afterClosureDigest;
-  const rollbackRestored =
-    transition.phase === 'rollback-restored' &&
-    transaction.state === 'ROLLED_BACK' &&
-    supervisor.generation === 3 &&
-    supervisor.activeArtifact.artifactId === restartArtifact.artifactId &&
-    supervisor.activeArtifact.executableDigest ===
-      restartArtifact.executableDigest &&
-    supervisor.activeArtifact.closureDigest === transaction.beforeClosureDigest;
-  if (!candidateSelected && !rollbackRestored) {
-    throw supervisorNotTerminal();
-  }
-  if (options.allowSuccessorInventory !== true) {
-    assertSingleV2ControlUpdateInventory(paths, supervisor);
-  }
 }
 
 function assertTerminalSelectionV3(
@@ -4440,15 +4206,8 @@ function assertTerminalSelectionV3(
   ) {
     throw supervisorNotTerminal();
   }
-  const initialProvenance = assertBootstrapHistoryAnchor(
-    paths,
-    history.anchor,
-    supervisor,
-  );
+  const initialProvenance = assertBootstrapHistoryAnchor(paths, history.anchor);
   const expectedGrantIds = new Set<string>();
-  if (history.anchor.authority.kind === 'legacy-v2-terminal-anchor.v1') {
-    expectedGrantIds.add(history.anchor.authority.grantId);
-  }
   let index = 1;
   while (index < history.records.length) {
     const predecessor = history.records[index - 1]!;
@@ -5020,32 +4779,7 @@ function parseBootstrapHistoryAnchorAuthority(
     }
     return value as unknown as BootstrapSupervisorHistoryAnchorAuthority;
   }
-  if (
-    value.kind !== 'legacy-v2-terminal-anchor.v1' ||
-    !hasExactKeys(value, [
-      'grantEnvelopeDigest',
-      'grantId',
-      'initialBootstrapPublishedDigest',
-      'kind',
-      'promotionBundleDigest',
-      'terminalState',
-      'transactionJournalDigest',
-      'txId',
-      'updateRecordDigest',
-    ]) ||
-    (value.terminalState !== 'FINALIZED' &&
-      value.terminalState !== 'ROLLED_BACK') ||
-    !isNonEmptyTrimmed(value.grantId) ||
-    !isNonEmptyTrimmed(value.txId) ||
-    !isDigest(value.initialBootstrapPublishedDigest) ||
-    !isDigest(value.updateRecordDigest) ||
-    !isDigest(value.transactionJournalDigest) ||
-    !isDigest(value.grantEnvelopeDigest) ||
-    !isDigest(value.promotionBundleDigest)
-  ) {
-    throw supervisorNotTerminal();
-  }
-  return value as unknown as BootstrapSupervisorHistoryAnchorAuthority;
+  throw supervisorNotTerminal();
 }
 
 function validBootstrapHistoryArtifact(
@@ -5160,7 +4894,6 @@ function isGitObjectId(value: unknown): value is string {
 function assertBootstrapHistoryAnchor(
   paths: BootstrapPaths,
   anchor: BootstrapSupervisorHistoryAnchor,
-  currentSupervisor: BootstrapControlPlaneSupervisorState,
 ): InitialSupervisorProvenance {
   const initial = assertPromotionHasValidInitialBootstrapAnchor(
     paths,
@@ -5178,140 +4911,22 @@ function assertBootstrapHistoryAnchor(
   ) {
     throw supervisorNotTerminal();
   }
-  if (anchor.authority.kind === 'initial-bootstrap-anchor.v1') {
-    if (
-      anchor.generation !== 1 ||
-      anchor.supervisorRecordDigest !== published.supervisorRecordDigest ||
-      canonicalJson(anchor.activeArtifact) !==
-        canonicalJson({
-          artifactId: published.activeArtifact.artifactId,
-          executableDigest: published.activeArtifact.executableDigest,
-          closureDigest: published.activeArtifact.closureDigest,
-        }) ||
-      anchor.activeTrustCommit !== published.provenance.headOid ||
-      anchor.recordedAt !== published.initializedAt ||
-      anchor.authority.initialBootstrapPublishedDigest !==
-        published.recordDigest
-    ) {
-      throw supervisorNotTerminal();
-    }
-    return published.provenance;
-  }
-
-  const authority = anchor.authority;
-  const recordPath = path.join(
-    paths.controlUpdates,
-    `${identityFileName('control-update', authority.grantId)}.json`,
-  );
-  const record = readCanonicalPrivateRecord(recordPath);
-  const syntheticSupervisor: BootstrapControlPlaneSupervisorState = {
-    kind: 'control-plane-supervisor-state.v1',
-    repositoryId: anchor.repositoryId,
-    activeArtifact: {
-      ...anchor.activeArtifact,
-      executablePath: currentSupervisor.activeArtifact.executablePath,
-    },
-    generation: anchor.generation,
-    transition: {
-      grantId: authority.grantId,
-      txId: authority.txId,
-      phase:
-        authority.terminalState === 'FINALIZED'
-          ? 'candidate-selected'
-          : 'rollback-restored',
-    },
-    updatedAt: anchor.recordedAt,
-    recordDigest: anchor.supervisorRecordDigest,
-  };
-  if (!isRecord(record)) throw supervisorNotTerminal();
-  assertTerminalSelectionV2(paths, syntheticSupervisor, record, {
-    allowSuccessorInventory: true,
-  });
-  const transaction = record.transaction;
-  const envelope = record.envelope;
   if (
-    !isRecord(transaction) ||
-    !isRecord(envelope) ||
-    !isRecord(envelope.payload)
-  ) {
-    throw supervisorNotTerminal();
-  }
-  const bundle = readCanonicalPrivateRecord(
-    path.join(
-      paths.bundles,
-      `${identityFileName('control-plane-promotion', authority.grantId)}.json`,
-    ),
-    supervisorNotTerminal,
-    MAX_PROMOTION_BUNDLE_BYTES,
-  );
-  if (!isRecord(bundle) || !isRecord(bundle.material)) {
-    throw supervisorNotTerminal();
-  }
-  const material = bundle.material;
-  const candidate = readFrozenControlPlaneCandidate(
-    paths,
-    initial.provenance,
-    material,
-    record.beforeManifest as Record<string, unknown>,
-  );
-  const selectedArtifact =
-    authority.terminalState === 'FINALIZED'
-      ? material.candidateArtifact
-      : isRecord(material.recoveryBundle)
-        ? material.recoveryBundle.restartArtifact
-        : null;
-  const expectedTrustCommit =
-    authority.terminalState === 'FINALIZED'
-      ? candidate.candidateCommit
-      : initial.provenance.headOid;
-  const expectedGeneration = authority.terminalState === 'FINALIZED' ? 2 : 3;
-  if (
-    !validEngineArtifactV2(selectedArtifact) ||
-    authority.initialBootstrapPublishedDigest !== published.recordDigest ||
-    authority.terminalState !== transaction.state ||
-    authority.updateRecordDigest !== record.recordDigest ||
-    authority.transactionJournalDigest !== transaction.journalDigest ||
-    authority.grantEnvelopeDigest !== canonicalDigest(envelope) ||
-    authority.promotionBundleDigest !== bundle.bundleDigest ||
-    authority.txId !== transaction.txId ||
-    envelope.payload.grantId !== authority.grantId ||
-    anchor.generation !== expectedGeneration ||
-    anchor.recordedAt !== record.updatedAt ||
-    anchor.activeTrustCommit !== expectedTrustCommit ||
+    anchor.generation !== 1 ||
+    anchor.supervisorRecordDigest !== published.supervisorRecordDigest ||
     canonicalJson(anchor.activeArtifact) !==
       canonicalJson({
-        artifactId: selectedArtifact.artifactId,
-        executableDigest: selectedArtifact.executableDigest,
-        closureDigest:
-          authority.terminalState === 'FINALIZED'
-            ? transaction.afterClosureDigest
-            : transaction.beforeClosureDigest,
-      })
+        artifactId: published.activeArtifact.artifactId,
+        executableDigest: published.activeArtifact.executableDigest,
+        closureDigest: published.activeArtifact.closureDigest,
+      }) ||
+    anchor.activeTrustCommit !== published.provenance.headOid ||
+    anchor.recordedAt !== published.initializedAt ||
+    anchor.authority.initialBootstrapPublishedDigest !== published.recordDigest
   ) {
     throw supervisorNotTerminal();
   }
-  return initial.provenance;
-}
-
-function assertSingleV2ControlUpdateInventory(
-  paths: BootstrapPaths,
-  supervisor: BootstrapControlPlaneSupervisorState,
-): void {
-  // V2 does not sign a previous-supervisor digest or expected supervisor
-  // generation. Until that lineage exists, only the single generation-one
-  // promotion (or its immediate rollback) is independently reconstructible.
-  const grantId = supervisor.transition?.grantId;
-  if (grantId === undefined) throw supervisorNotTerminal();
-  const expectedName = `${identityFileName('control-update', grantId)}.json`;
-  const entries = fs.readdirSync(paths.controlUpdates, { withFileTypes: true });
-  if (
-    entries.length !== 1 ||
-    entries[0]?.name !== expectedName ||
-    !entries[0]?.isFile() ||
-    entries[0]?.isSymbolicLink()
-  ) {
-    throw supervisorNotTerminal();
-  }
+  return published.provenance;
 }
 
 function assertPromotionHasValidInitialBootstrapAnchor(
@@ -5348,82 +4963,6 @@ interface BootstrapTrustedSigner {
   identity: string;
   publicKey: string;
   fingerprint: string;
-}
-
-function assertV2PromotionHumanSignatures(
-  paths: BootstrapPaths,
-  initialProvenance: InitialSupervisorProvenance,
-  material: Record<string, unknown>,
-  reviewEnvelope: Record<string, unknown>,
-  grantPayload: ReturnType<typeof assertedGrantPayloadV2>,
-  grantSignature: string,
-  beforeManifest: Record<string, unknown>,
-): string {
-  if (
-    !isRecord(reviewEnvelope.payload) ||
-    typeof reviewEnvelope.signature !== 'string' ||
-    !isRecord(material.mandateBinding) ||
-    !isDigest(material.frozenCandidateBundleDigest)
-  ) {
-    throw supervisorNotTerminal();
-  }
-  const candidate = readFrozenControlPlaneCandidate(
-    paths,
-    initialProvenance,
-    material,
-    beforeManifest,
-  );
-  const policy = readBootstrapMaintainerPolicyAt(
-    initialProvenance.packageRoot,
-    candidate.expectedOldCommit,
-    grantPayload.repositoryId,
-  );
-  const reviewPayload = reviewEnvelope.payload;
-  if (
-    !isNonEmptyTrimmed(reviewPayload.reviewer) ||
-    reviewPayload.reviewer === grantPayload.humanSigner
-  ) {
-    throw supervisorNotTerminal();
-  }
-  const reviewer = policy.trustedSigners.find(
-    (signer) => signer.identity === reviewPayload.reviewer,
-  );
-  const grantSigner = policy.trustedSigners.find(
-    (signer) => signer.identity === grantPayload.humanSigner,
-  );
-  if (reviewer === undefined || grantSigner === undefined) {
-    throw supervisorNotTerminal();
-  }
-  verifyBootstrapSshSignature(
-    `${canonicalJson(reviewPayload)}\n`,
-    reviewEnvelope.signature,
-    reviewer,
-    CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2,
-  );
-  verifyBootstrapSshSignature(
-    `${canonicalJson(grantPayload)}\n`,
-    grantSignature,
-    grantSigner,
-    CONTROL_PLANE_SIGNATURE_NAMESPACE_V2,
-  );
-
-  const worktreeRoot = path.dirname(
-    path.dirname(initialProvenance.packageRoot),
-  );
-  const remoteTip = readBootstrapRemoteBaseOid(
-    worktreeRoot,
-    initialProvenance.remoteBaseRef,
-  );
-  if (
-    !bootstrapCommitIsAncestor(
-      worktreeRoot,
-      candidate.expectedOldCommit,
-      remoteTip,
-    )
-  ) {
-    throw supervisorNotTerminal();
-  }
-  return candidate.expectedOldCommit;
 }
 
 function assertV3PromotionHumanSignatures(
@@ -5942,101 +5481,6 @@ function validTerminalObservationsV2(
   });
 }
 
-function validControlPlaneGrantPayloadV2(
-  payload: Record<string, unknown>,
-): payload is Record<string, unknown> & {
-  affectedCapabilities: string[];
-  afterClosureDigest: Sha256Digest;
-  beforeClosureDigest: Sha256Digest;
-  candidateDigest: Sha256Digest;
-  exactChanges: Array<Record<string, unknown>>;
-  expiresAt: string;
-  grantId: string;
-  humanSigner: string;
-  independentReviewAttestationDigest: Sha256Digest;
-  issuedAt: string;
-  mandateBinding: Record<string, unknown>;
-  promotionBundleDigest: Sha256Digest;
-  promotionMaterialDigest: Sha256Digest;
-  recoveryBundle: Record<string, unknown> & {
-    bundleDigest: Sha256Digest;
-  };
-  repositoryId: string;
-  updaterVersion: 2;
-} {
-  if (
-    !hasExactKeys(payload, [
-      'affectedCapabilities',
-      'afterClosureDigest',
-      'beforeClosureDigest',
-      'behaviorChangeSummary',
-      'candidateDigest',
-      'exactChanges',
-      'expiresAt',
-      'frozenCandidateBundleDigest',
-      'grantId',
-      'humanSigner',
-      'independentReviewAttestationDigest',
-      'issuedAt',
-      'kind',
-      'mandateBinding',
-      'oneShot',
-      'promotionBundleDigest',
-      'promotionMaterialDigest',
-      'recoveryBundle',
-      'repositoryId',
-      'updaterVersion',
-    ]) ||
-    payload.kind !== 'control-plane-grant.v2' ||
-    payload.oneShot !== true ||
-    payload.updaterVersion !== 2 ||
-    !isNonEmptyTrimmed(payload.grantId) ||
-    !isNonEmptyTrimmed(payload.repositoryId) ||
-    !isNonEmptyTrimmed(payload.behaviorChangeSummary) ||
-    !isNonEmptyTrimmed(payload.humanSigner) ||
-    !validTaskMandateBindingV2(payload.mandateBinding) ||
-    !validExactChangesV2(payload.exactChanges) ||
-    !validAffectedCapabilitiesV2(payload.affectedCapabilities) ||
-    !isDigest(payload.frozenCandidateBundleDigest) ||
-    !isDigest(payload.candidateDigest) ||
-    !isDigest(payload.promotionMaterialDigest) ||
-    !isDigest(payload.promotionBundleDigest) ||
-    !isDigest(payload.beforeClosureDigest) ||
-    !isDigest(payload.afterClosureDigest) ||
-    !isDigest(payload.independentReviewAttestationDigest) ||
-    payload.candidateDigest !==
-      canonicalDigest({
-        kind: 'control-plane-candidate.v2',
-        changes: payload.exactChanges,
-      }) ||
-    !isCanonicalIso(payload.issuedAt) ||
-    !isCanonicalIso(payload.expiresAt)
-  ) {
-    return false;
-  }
-  const lifetime = Date.parse(payload.expiresAt) - Date.parse(payload.issuedAt);
-  if (lifetime <= 0 || lifetime > CONTROL_PLANE_GRANT_V2_MAX_TTL_MS) {
-    return false;
-  }
-  if (
-    !isRecord(payload.recoveryBundle) ||
-    !hasExactKeys(payload.recoveryBundle, [
-      'bundleDigest',
-      'previousClosureDigest',
-      'restartArtifactDigest',
-      'rollbackTestReportDigest',
-    ]) ||
-    !isDigest(payload.recoveryBundle.bundleDigest) ||
-    !isDigest(payload.recoveryBundle.previousClosureDigest) ||
-    !isDigest(payload.recoveryBundle.restartArtifactDigest) ||
-    !isDigest(payload.recoveryBundle.rollbackTestReportDigest) ||
-    payload.recoveryBundle.previousClosureDigest !== payload.beforeClosureDigest
-  ) {
-    return false;
-  }
-  return true;
-}
-
 function validControlPlaneGrantPayloadV3(
   payload: Record<string, unknown>,
 ): payload is Record<string, unknown> & {
@@ -6085,17 +5529,54 @@ function validControlPlaneGrantPayloadV3(
       'updaterVersion',
     ]) ||
     payload.kind !== 'control-plane-grant.v3' ||
+    payload.oneShot !== true ||
     payload.updaterVersion !== 3 ||
-    !isDigest(payload.promotionLineageDigest)
+    !isNonEmptyTrimmed(payload.grantId) ||
+    !isNonEmptyTrimmed(payload.repositoryId) ||
+    !isNonEmptyTrimmed(payload.behaviorChangeSummary) ||
+    !isNonEmptyTrimmed(payload.humanSigner) ||
+    !validTaskMandateBindingV2(payload.mandateBinding) ||
+    !validExactChangesV2(payload.exactChanges) ||
+    !validAffectedCapabilitiesV2(payload.affectedCapabilities) ||
+    !isDigest(payload.frozenCandidateBundleDigest) ||
+    !isDigest(payload.candidateDigest) ||
+    !isDigest(payload.promotionMaterialDigest) ||
+    !isDigest(payload.promotionBundleDigest) ||
+    !isDigest(payload.promotionLineageDigest) ||
+    !isDigest(payload.beforeClosureDigest) ||
+    !isDigest(payload.afterClosureDigest) ||
+    !isDigest(payload.independentReviewAttestationDigest) ||
+    payload.candidateDigest !==
+      canonicalDigest({
+        kind: 'control-plane-candidate.v2',
+        changes: payload.exactChanges,
+      }) ||
+    !isCanonicalIso(payload.issuedAt) ||
+    !isCanonicalIso(payload.expiresAt)
   ) {
     return false;
   }
-  const { promotionLineageDigest: _lineageDigest, ...rest } = payload;
-  return validControlPlaneGrantPayloadV2({
-    ...rest,
-    kind: 'control-plane-grant.v2',
-    updaterVersion: 2,
-  });
+  const lifetime = Date.parse(payload.expiresAt) - Date.parse(payload.issuedAt);
+  if (lifetime <= 0 || lifetime > CONTROL_PLANE_GRANT_MAX_TTL_MS) {
+    return false;
+  }
+  if (
+    !isRecord(payload.recoveryBundle) ||
+    !hasExactKeys(payload.recoveryBundle, [
+      'bundleDigest',
+      'previousClosureDigest',
+      'restartArtifactDigest',
+      'rollbackTestReportDigest',
+    ]) ||
+    !isDigest(payload.recoveryBundle.bundleDigest) ||
+    !isDigest(payload.recoveryBundle.previousClosureDigest) ||
+    !isDigest(payload.recoveryBundle.restartArtifactDigest) ||
+    !isDigest(payload.recoveryBundle.rollbackTestReportDigest) ||
+    payload.recoveryBundle.previousClosureDigest !== payload.beforeClosureDigest
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function assertedGrantPayloadV3(value: Record<string, unknown>): Record<
@@ -6309,88 +5790,9 @@ function validIndependentReviewV3(
   );
 }
 
-function validPromotionBundleV2(
-  bundle: Record<string, unknown>,
-  grant: ReturnType<typeof assertedGrantPayloadV2>,
-  beforeManifest: Record<string, unknown>,
-  afterManifest: Record<string, unknown>,
-): bundle is Record<string, unknown> & {
-  independentReviewAttestation: Record<string, unknown>;
-  material: Record<string, unknown> & {
-    affectedCapabilities: string[];
-    candidateArtifact: Record<string, unknown>;
-    candidateExecutableBase64: string;
-    recoveryBundle: Record<string, unknown> & {
-      restartArtifact: Record<string, unknown>;
-      restartExecutableBase64: string;
-    };
-  };
-} {
-  if (
-    !hasExactKeys(bundle, [
-      'bundleDigest',
-      'independentReviewAttestation',
-      'kind',
-      'material',
-      'promotionMaterialDigest',
-    ]) ||
-    bundle.kind !== 'control-plane-promotion-bundle.v2' ||
-    !isRecord(bundle.material) ||
-    !isRecord(bundle.independentReviewAttestation) ||
-    !isDigest(bundle.promotionMaterialDigest) ||
-    !isDigest(bundle.bundleDigest)
-  ) {
-    return false;
-  }
-  const { bundleDigest, ...bundlePayload } = bundle;
-  if (
-    canonicalDigest(bundlePayload) !== bundleDigest ||
-    canonicalDigest(bundle.material) !== bundle.promotionMaterialDigest ||
-    bundle.bundleDigest !== grant.promotionBundleDigest ||
-    bundle.promotionMaterialDigest !== grant.promotionMaterialDigest ||
-    !validPromotionMaterialV2(
-      bundle.material,
-      grant,
-      beforeManifest,
-      afterManifest,
-    ) ||
-    !validIndependentReviewV2(
-      bundle.independentReviewAttestation,
-      bundle.material,
-      bundle.promotionMaterialDigest,
-      grant,
-    )
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function assertedGrantPayloadV2(value: Record<string, unknown>): Record<
-  string,
-  unknown
-> & {
-  affectedCapabilities: string[];
-  afterClosureDigest: Sha256Digest;
-  beforeClosureDigest: Sha256Digest;
-  candidateDigest: Sha256Digest;
-  exactChanges: Array<Record<string, unknown>>;
-  humanSigner: string;
-  independentReviewAttestationDigest: Sha256Digest;
-  issuedAt: string;
-  mandateBinding: Record<string, unknown>;
-  promotionBundleDigest: Sha256Digest;
-  promotionMaterialDigest: Sha256Digest;
-  recoveryBundle: Record<string, unknown>;
-  repositoryId: string;
-} {
-  if (!validControlPlaneGrantPayloadV2(value)) throw supervisorNotTerminal();
-  return value;
-}
-
 function validPromotionMaterialV2(
   material: Record<string, unknown>,
-  grant: ReturnType<typeof assertedGrantPayloadV2>,
+  grant: ReturnType<typeof assertedGrantPayloadV3>,
   beforeManifest: Record<string, unknown>,
   afterManifest: Record<string, unknown>,
 ): boolean {
@@ -6481,7 +5883,7 @@ function validRecoveryMaterialV2(
   changes: Array<Record<string, unknown>>,
   repositoryId: string,
   beforeClosureDigest: Sha256Digest,
-  grant: ReturnType<typeof assertedGrantPayloadV2>,
+  grant: ReturnType<typeof assertedGrantPayloadV3>,
 ): recovery is Record<string, unknown> & {
   restartArtifact: Record<string, unknown>;
   restartExecutableBase64: string;
@@ -6535,60 +5937,6 @@ function validRecoveryMaterialV2(
       recovery.restartArtifact.executableDigest &&
     grant.recoveryBundle.rollbackTestReportDigest ===
       recovery.rollbackTestReportDigest
-  );
-}
-
-function validIndependentReviewV2(
-  envelope: Record<string, unknown>,
-  material: Record<string, unknown>,
-  materialDigest: Sha256Digest,
-  grant: ReturnType<typeof assertedGrantPayloadV2>,
-): boolean {
-  if (
-    !hasExactKeys(envelope, ['payload', 'signature']) ||
-    !isRecord(envelope.payload) ||
-    !validBoundedSignature(envelope.signature)
-  ) {
-    return false;
-  }
-  const review = envelope.payload;
-  return (
-    hasExactKeys(review, [
-      'affectedCapabilities',
-      'afterClosureDigest',
-      'beforeClosureDigest',
-      'candidateDigest',
-      'frozenCandidateBundleDigest',
-      'kind',
-      'promotionMaterialDigest',
-      'recoveryBundleDigest',
-      'repositoryId',
-      'reviewSummary',
-      'reviewedAt',
-      'reviewer',
-      'verdict',
-    ]) &&
-    review.kind === 'control-plane-independent-review.v2' &&
-    review.verdict === 'approved' &&
-    isNonEmptyTrimmed(review.repositoryId) &&
-    isNonEmptyTrimmed(review.reviewSummary) &&
-    isNonEmptyTrimmed(review.reviewer) &&
-    isCanonicalIso(review.reviewedAt) &&
-    validAffectedCapabilitiesV2(review.affectedCapabilities) &&
-    review.repositoryId === material.repositoryId &&
-    review.frozenCandidateBundleDigest ===
-      material.frozenCandidateBundleDigest &&
-    review.candidateDigest === material.candidateDigest &&
-    review.promotionMaterialDigest === materialDigest &&
-    review.beforeClosureDigest === material.beforeClosureDigest &&
-    review.afterClosureDigest === material.afterClosureDigest &&
-    isRecord(material.recoveryBundle) &&
-    review.recoveryBundleDigest === material.recoveryBundle.bundleDigest &&
-    canonicalJson(review.affectedCapabilities) ===
-      canonicalJson(material.affectedCapabilities) &&
-    canonicalDigest(envelope) === grant.independentReviewAttestationDigest &&
-    Date.parse(review.reviewedAt) <= Date.parse(grant.issuedAt) &&
-    review.reviewer !== grant.humanSigner
   );
 }
 

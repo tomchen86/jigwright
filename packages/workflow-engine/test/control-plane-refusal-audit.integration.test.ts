@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { deriveAuthorityAuditRepositoryId } from '../src/runtime/storage-journal/authority-audit-ledger.ts';
 import { verifyAuthorityAuditEvents } from '../src/runtime/storage-journal/authority-audit-service.ts';
-import { produceControlPlaneApprovalCandidateV2 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
+import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -33,7 +33,7 @@ test('verified control-plane pre-switch refusal is audited once while unverified
   });
   const auditWorktree = addDetachedAuditWorktree(fixture.repository);
   try {
-    const produced = produceControlPlaneApprovalCandidateV2(
+    const produced = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(fixture.repository),
       fixture.stateRoot,
       fixture.frozen.candidateBundleDigest,

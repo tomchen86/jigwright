@@ -20,7 +20,6 @@ import { persistInterventionPlan } from '../src/runtime/storage-journal/interven
 import { dispatchProductionControlPlaneUpdaterCommand } from '../src/entrypoints/cli/intervention-control-updater-cli.ts';
 import {
   readControlPlaneSupervisorState,
-  type ControlPlaneApprovalSummaryV2,
   type ControlPlaneApprovalSummaryV3,
 } from '../src/application/control-plane/intervention-control-updater.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
@@ -271,16 +270,6 @@ export async function setupFinalizedControlPlanePromotionFixture(
       },
     );
     const approvalSummaries: ControlPlaneApprovalSummaryV3[] = [];
-    const updaterDependencies = controlPlaneFixtureUpdaterDependencies(
-      fixture.frozen,
-      fixture.signing.signer(CONTROL_PLANE_FIXTURE_GRANT_SIGNER, grantCalls),
-      fixture.signing.verifier,
-      [],
-      new Date(options.grantIssuedAt ?? '2026-08-10T10:05:00.000Z'),
-    );
-    updaterDependencies.presentApprovalSummaryV3 = (summary) => {
-      approvalSummaries.push(summary);
-    };
     const promoted = dispatchProductionControlPlaneUpdaterCommand(
       [
         'approve-and-apply',
@@ -289,7 +278,13 @@ export async function setupFinalizedControlPlanePromotionFixture(
         fixture.frozen.mandateBinding.mandateTaskId,
       ],
       fixture.stateRoot,
-      updaterDependencies,
+      controlPlaneFixtureUpdaterDependencies(
+        fixture.frozen,
+        fixture.signing.signer(CONTROL_PLANE_FIXTURE_GRANT_SIGNER, grantCalls),
+        fixture.signing.verifier,
+        approvalSummaries,
+        new Date(options.grantIssuedAt ?? '2026-08-10T10:05:00.000Z'),
+      ),
       fs.realpathSync(fixture.repository),
     );
     assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v3');
@@ -415,7 +410,7 @@ export function controlPlaneFixtureUpdaterDependencies(
   frozen: ReturnType<typeof freezeClassCCandidate>,
   approvalSigner: MaintainerSignerProvider,
   verifyHumanSignature: ControlPlaneFixtureSigning['verifier'],
-  summaries: ControlPlaneApprovalSummaryV2[] = [],
+  summaries: ControlPlaneApprovalSummaryV3[] = [],
   now = new Date('2026-08-10T10:05:00.000Z'),
 ) {
   const mandateBinding = {
@@ -431,10 +426,9 @@ export function controlPlaneFixtureUpdaterDependencies(
     consumedGrantIds: new Set<string>(),
     verifyHumanSignature,
     approvalSigner,
-    presentApprovalSummaryV2(summary: ControlPlaneApprovalSummaryV2) {
+    presentApprovalSummaryV3(summary: ControlPlaneApprovalSummaryV3) {
       summaries.push(summary);
     },
-    presentApprovalSummaryV3(_summary: ControlPlaneApprovalSummaryV3) {},
     resolveTaskMandateBinding() {
       return mandateBinding;
     },

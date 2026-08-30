@@ -12,7 +12,6 @@ import {
   initializeLocalEngineBinding,
   materializeInterventionChildWorktree,
 } from '../src/application/control-plane/intervention-control-bootstrap.ts';
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { createEngineArtifact } from '../src/modules/authority/intervention-control.ts';
 import { preparePersistedEngineAdoption } from '../src/runtime/storage-journal/intervention-control-persistence.ts';
 import { persistInterventionEngineArtifact } from '../src/application/control-plane/intervention-maintenance.ts';
@@ -68,7 +67,9 @@ async function fixture(healthy: boolean) {
   );
   const localLaunchMarker = path.join(root, 'local-engine-started');
   const stateRoot = controlPlane.stateRoot;
-  const globalArtifact = installTerminalV2RollbackFixture(controlPlane);
+  const globalArtifact = {
+    executableDigest: controlPlane.supervisor.activeArtifact.executableDigest,
+  };
   git(repository, ['checkout', '-b', 'work/parent-A']);
 
   const sessionSnapshotPath = path.join(stateRoot, 'parent-session.json');
@@ -229,125 +230,6 @@ async function fixture(healthy: boolean) {
       fs.rmSync(root, { recursive: true, force: true });
     },
   };
-}
-
-type FinalizedControlPlaneFixture = Awaited<
-  ReturnType<typeof setupFinalizedControlPlanePromotionFixture>
->;
-
-function installTerminalV2RollbackFixture(
-  fixture: FinalizedControlPlaneFixture,
-): { executableDigest: `sha256:${string}` } {
-  const bundle = readPrivateRecord(
-    onlyPrivateJsonFile(
-      path.join(fixture.stateRoot, 'control-plane-promotion-bundles'),
-    ),
-  );
-  const material = requireRecordField(bundle, 'material');
-  const recovery = requireRecordField(material, 'recoveryBundle');
-  const restartArtifact = requireRecordField(recovery, 'restartArtifact');
-
-  const updatePath = onlyPrivateJsonFile(
-    path.join(fixture.stateRoot, 'control-updates'),
-  );
-  const update = readPrivateRecord(updatePath);
-  const transaction = requireRecordField(update, 'transaction');
-  assert.equal(Array.isArray(transaction.history), true);
-  assert.equal(Array.isArray(update.observations), true);
-  const history = transaction.history as Array<Record<string, unknown>>;
-  const observations = update.observations as Array<Record<string, unknown>>;
-  history.at(-2)!.state = 'ROLLBACK_REQUIRED';
-  history.at(-1)!.state = 'ROLLED_BACK';
-  observations.at(-2)!.toState = 'ROLLBACK_REQUIRED';
-  observations.at(-2)!.eventKind = 'self-tests-failed';
-  observations.at(-1)!.fromState = 'ROLLBACK_REQUIRED';
-  observations.at(-1)!.toState = 'ROLLED_BACK';
-  observations.at(-1)!.eventKind = 'rollback-completed';
-  transaction.state = 'ROLLED_BACK';
-  transaction.journalDigest = recomputeDigest(transaction, 'journalDigest');
-  update.recordDigest = recomputeDigest(update, 'recordDigest');
-  writePrivateRecord(updatePath, update);
-
-  const supervisorPath = path.join(
-    fixture.stateRoot,
-    'control-plane-supervisor.json',
-  );
-  const supervisor = readPrivateRecord(supervisorPath);
-  const artifactId = exactDigest(restartArtifact.artifactId);
-  const executableDigest = exactDigest(restartArtifact.executableDigest);
-  supervisor.generation = 3;
-  supervisor.activeArtifact = {
-    artifactId,
-    executableDigest,
-    closureDigest: exactDigest(transaction.beforeClosureDigest),
-    executablePath: path.join(
-      fixture.stateRoot,
-      'control-plane-artifacts',
-      artifactId.slice('sha256:'.length),
-      'engine',
-    ),
-  };
-  const transition = requireRecordField(supervisor, 'transition');
-  transition.phase = 'rollback-restored';
-  supervisor.recordDigest = recomputeDigest(supervisor, 'recordDigest');
-  writePrivateRecord(supervisorPath, supervisor);
-  return { executableDigest };
-}
-
-function onlyPrivateJsonFile(directory: string): string {
-  const entries = fs.readdirSync(directory, { withFileTypes: true });
-  assert.equal(entries.length, 1);
-  assert.equal(entries[0]?.isFile(), true);
-  assert.equal(entries[0]?.isSymbolicLink(), false);
-  assert.match(entries[0]?.name ?? '', /^[0-9a-f]{64}\.json$/);
-  return path.join(directory, entries[0]!.name);
-}
-
-function readPrivateRecord(filePath: string): Record<string, unknown> {
-  const value = JSON.parse(fs.readFileSync(filePath, 'utf8')) as unknown;
-  assert.equal(
-    typeof value === 'object' && value !== null && !Array.isArray(value),
-    true,
-  );
-  return value as Record<string, unknown>;
-}
-
-function requireRecordField(
-  value: Record<string, unknown>,
-  field: string,
-): Record<string, unknown> {
-  const fieldValue = value[field];
-  assert.equal(
-    typeof fieldValue === 'object' &&
-      fieldValue !== null &&
-      !Array.isArray(fieldValue),
-    true,
-  );
-  return fieldValue as Record<string, unknown>;
-}
-
-function recomputeDigest(
-  value: Record<string, unknown>,
-  field: string,
-): `sha256:${string}` {
-  const payload = { ...value };
-  delete payload[field];
-  return digest(canonicalJson(payload));
-}
-
-function writePrivateRecord(
-  filePath: string,
-  value: Record<string, unknown>,
-): void {
-  fs.writeFileSync(filePath, `${canonicalJson(value)}\n`, { mode: 0o600 });
-}
-
-function exactDigest(value: unknown): `sha256:${string}` {
-  assert.equal(
-    typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value),
-    true,
-  );
-  return value as `sha256:${string}`;
 }
 
 test('durable intervention fence blocks before E1/E2 and routes sealed status and recovery', async () => {

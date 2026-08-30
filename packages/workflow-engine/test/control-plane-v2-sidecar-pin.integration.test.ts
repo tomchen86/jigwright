@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { produceControlPlaneApprovalCandidateV2 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
+import { produceControlPlaneApprovalCandidateV3 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import { interventionEngineArtifactRecordPath } from '../src/runtime/storage-journal/intervention-engine-artifact-store.ts';
 import {
   persistedBootstrapSidecarSessionPath,
@@ -34,7 +34,7 @@ async function fixture() {
   const value = await setupControlPlaneProducerFixture();
   const reviewCalls = { human: 0, sign: 0 };
   const grantCalls = { human: 0, sign: 0 };
-  const produced = produceControlPlaneApprovalCandidateV2(
+  const produced = produceControlPlaneApprovalCandidateV3(
     fs.realpathSync(value.repository),
     value.stateRoot,
     value.frozen.candidateBundleDigest,
@@ -69,7 +69,7 @@ async function fixture() {
   return { ...value, produced, dependencies, argv, grantId, artifactPath };
 }
 
-test('V2 missing artifact authority at RECOVERY_VERIFIED fails before supervisor switch', async () => {
+test('current missing artifact authority at RECOVERY_VERIFIED fails before supervisor switch', async () => {
   const value = await fixture();
   try {
     const removedPath = `${value.artifactPath}.removed`;
@@ -119,7 +119,7 @@ test('V2 missing artifact authority at RECOVERY_VERIFIED fails before supervisor
   }
 });
 
-test('V2 signed provenance rejects a coherent replacement artifact record', async () => {
+test('current signed provenance rejects a coherent replacement artifact record', async () => {
   const value = await fixture();
   try {
     const replacement = JSON.parse(
@@ -175,7 +175,7 @@ test('V2 signed provenance rejects a coherent replacement artifact record', asyn
   }
 });
 
-test('V2 FINALIZED replay cannot succeed without its pinned artifact record', async () => {
+test('current FINALIZED replay cannot succeed without its pinned artifact record', async () => {
   const value = await fixture();
   const removedPath = `${value.artifactPath}.removed`;
   try {
@@ -232,7 +232,7 @@ test('V2 FINALIZED replay cannot succeed without its pinned artifact record', as
   }
 });
 
-test('V2 rollback terminalizes the exact reserved sidecar pin', async () => {
+test('current rollback terminalizes the exact reserved sidecar pin', async () => {
   const value = await fixture();
   try {
     const dependencies = {
@@ -252,7 +252,7 @@ test('V2 rollback terminalizes the exact reserved sidecar pin', async () => {
       fs.realpathSync(value.repository),
     );
     if (rolledBack.record === null) {
-      assert.fail('V2 rollback must retain its durable update record.');
+      assert.fail('Current rollback must retain its durable update record.');
     }
     assert.equal(rolledBack.record.transaction.state, 'ROLLED_BACK');
     assert.equal(

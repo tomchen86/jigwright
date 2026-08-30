@@ -4,12 +4,12 @@ import test from 'node:test';
 
 import { resolveControlPlaneEngineSelection } from '../bootstrap/control-plane-trust.ts';
 import {
-  produceControlPlaneApprovalCandidateV2,
-  type ControlPlanePromotionReviewSummaryV2,
+  produceControlPlaneApprovalCandidateV3,
+  type ControlPlanePromotionReviewSummaryV3,
 } from '../src/application/control-plane/control-plane-promotion-producer.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { dispatchProductionControlPlaneUpdaterCommand } from '../src/entrypoints/cli/intervention-control-updater-cli.ts';
-import type { ControlPlaneApprovalSummaryV2 } from '../src/application/control-plane/intervention-control-updater.ts';
+import type { ControlPlaneApprovalSummaryV3 } from '../src/application/control-plane/intervention-control-updater.ts';
 import {
   CONTROL_PLANE_FIXTURE_GRANT_SIGNER as GRANT_SIGNER,
   CONTROL_PLANE_FIXTURE_REPOSITORY_ID as REPOSITORY_ID,
@@ -19,7 +19,7 @@ import {
   setupControlPlaneProducerFixture as setupProducerFixture,
 } from './control-plane-promotion-fixture.ts';
 
-test('clean frozen Class-C candidate produces exact reviewed material and existing updater consumes V2', async () => {
+test('clean frozen Class-C candidate produces exact current reviewed material and updater consumes V3', async () => {
   const fixture = await setupProducerFixture();
   const {
     repository,
@@ -32,10 +32,10 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
   } = fixture;
   try {
     const reviewCalls = { present: 0, human: 0, sign: 0 };
-    const reviewSummaries: ControlPlanePromotionReviewSummaryV2[] = [];
+    const reviewSummaries: ControlPlanePromotionReviewSummaryV3[] = [];
     const reviewer = signing.signer(REVIEWER, reviewCalls);
     const verifyHumanSignature = signing.verifier;
-    const produced = produceControlPlaneApprovalCandidateV2(
+    const produced = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(repository),
       stateRoot,
       frozen.candidateBundleDigest,
@@ -52,7 +52,7 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
     assert.equal(produced.replayed, false);
     assert.equal(
       produced.candidate.kind,
-      'persisted-control-plane-approval-candidate.v2',
+      'persisted-control-plane-approval-candidate.v3',
     );
     assert.equal(
       produced.candidate.bundle.material.frozenCandidateBundleDigest,
@@ -91,12 +91,12 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
           .rollbackTestReportBase64,
         'base64',
       ).toString('utf8'),
-      /control-plane-rollback-test-report\.v2/,
+      /control-plane-rollback-test-report\.v3/,
     );
     assert.deepEqual(reviewCalls, { present: 1, human: 1, sign: 1 });
     assert.equal(reviewSummaries.length, 1);
 
-    const replayed = produceControlPlaneApprovalCandidateV2(
+    const replayed = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(repository),
       stateRoot,
       frozen.candidateBundleDigest,
@@ -139,7 +139,7 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
     assert.equal(sameIdentityCalls.sign, 0);
 
     const replacementReviewCalls = { present: 0, human: 0, sign: 0 };
-    const independentlyReviewed = produceControlPlaneApprovalCandidateV2(
+    const independentlyReviewed = produceControlPlaneApprovalCandidateV3(
       fs.realpathSync(repository),
       stateRoot,
       frozen.candidateBundleDigest,
@@ -164,7 +164,7 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
     });
 
     const grantCalls = { present: 0, human: 0, sign: 0 };
-    const approvalSummaries: ControlPlaneApprovalSummaryV2[] = [];
+    const approvalSummaries: ControlPlaneApprovalSummaryV3[] = [];
     const dependencies = updaterDependencies(
       frozen,
       signing.signer(REVIEWER, grantCalls),
@@ -183,8 +183,8 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
       fs.realpathSync(repository),
     );
     assert.equal(promoted.action, 'approve-and-apply');
-    assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v2');
-    assert.equal(promoted.record?.transaction.updaterVersion, 2);
+    assert.equal(promoted.record?.kind, 'persisted-control-plane-update.v3');
+    assert.equal(promoted.record?.transaction.updaterVersion, 3);
     assert.equal(promoted.record?.transaction.state, 'FINALIZED');
     assert.match(
       promoted.record?.envelope.signature ?? '',
@@ -198,7 +198,7 @@ test('clean frozen Class-C candidate produces exact reviewed material and existi
     assert.equal(approvalSummaries.length, 1);
 
     // This is the immutable bootstrap consumer gate: the ordinary launcher
-    // must select the artifact from the finalized V2 terminal record.
+    // must select the artifact from the finalized current terminal record.
     const launcherSelection = resolveControlPlaneEngineSelection(
       stateRoot,
       REPOSITORY_ID,
@@ -220,7 +220,7 @@ test('producer rejects a sidecar EngineArtifact whose source is not the frozen c
   try {
     assert.throws(
       () =>
-        produceControlPlaneApprovalCandidateV2(
+        produceControlPlaneApprovalCandidateV3(
           fs.realpathSync(fixture.repository),
           fixture.stateRoot,
           fixture.frozen.candidateBundleDigest,
@@ -247,7 +247,7 @@ test('producer rejects a caller-selected state store before reading or signing',
   try {
     assert.throws(
       () =>
-        produceControlPlaneApprovalCandidateV2(
+        produceControlPlaneApprovalCandidateV3(
           fs.realpathSync(fixture.repository),
           `${fixture.stateRoot}-other-repository`,
           fixture.frozen.candidateBundleDigest,

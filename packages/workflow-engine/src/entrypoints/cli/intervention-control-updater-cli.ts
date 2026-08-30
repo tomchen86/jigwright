@@ -16,8 +16,6 @@ import {
   readControlPlaneSupervisorState,
   recoverControlPlanePromotion,
   type ControlPlaneApprovalPreflightV3,
-  type ControlPlaneApprovalSummary,
-  type ControlPlaneApprovalSummaryV2,
   type ControlPlaneApprovalSummaryV3,
   type PersistedControlPlaneApprovalCandidateV3,
   type ControlPlaneSupervisorState,
@@ -26,7 +24,6 @@ import {
 import {
   readPersistedControlPlaneUpdate,
   type PersistedControlPlaneUpdateRecord,
-  type PersistedControlPlaneUpdateRecordV1,
 } from '../../runtime/storage-journal/intervention-control-persistence.ts';
 import type {
   ControlPlaneGrantEnvelopeV3,
@@ -57,27 +54,12 @@ export interface ControlPlaneUpdaterCliResult {
   effectsPerformed: boolean;
 }
 
-export interface LegacyControlPlaneUpdaterCliResult extends Omit<
-  ControlPlaneUpdaterCliResult,
-  'record'
-> {
-  record: PersistedControlPlaneUpdateRecordV1 | null;
-}
-
 export interface ControlPlaneUpdaterCliDependencies extends ControlPlaneUpdaterDependencies {
   approvalSigner?: MaintainerSignerProvider;
-  /** Legacy read-only presenter; new approval admission is v2-only. */
-  presentApprovalSummary?: (summary: ControlPlaneApprovalSummary) => void;
-  presentApprovalSummaryV2?: (summary: ControlPlaneApprovalSummaryV2) => void;
   presentApprovalSummaryV3?: (summary: ControlPlaneApprovalSummaryV3) => void;
   resolveTaskMandateBinding?: (
     parentTaskId: string,
   ) => ControlPlaneTaskMandateBinding;
-}
-
-export interface LegacyControlPlaneUpdaterCliDependencies extends ControlPlaneUpdaterCliDependencies {
-  presentApprovalSummary: (summary: ControlPlaneApprovalSummary) => void;
-  presentApprovalSummaryV2?: never;
 }
 
 export function controlPlaneTaskMandateBindingFromTaskMandate(
@@ -360,77 +342,6 @@ function approveAndApplyControlPlaneCandidateV3(input: {
   });
 }
 
-/**
- * Legacy compatibility surface is read-only for new approval admission. It
- * can inspect or recover only a durable v1 transaction and never signs one.
- */
-export function dispatchControlPlaneUpdaterCommand(
-  argv: readonly string[],
-  stateRoot: string,
-  dependencies: LegacyControlPlaneUpdaterCliDependencies,
-  requestBaseDirectory?: string,
-): LegacyControlPlaneUpdaterCliResult;
-export function dispatchControlPlaneUpdaterCommand(
-  argv: readonly string[],
-  stateRoot: string,
-  dependencies: ControlPlaneUpdaterCliDependencies,
-  requestBaseDirectory?: string,
-): ControlPlaneUpdaterCliResult;
-export function dispatchControlPlaneUpdaterCommand(
-  argv: readonly string[],
-  stateRoot: string,
-  dependencies: ControlPlaneUpdaterCliDependencies,
-  requestBaseDirectory = process.cwd(),
-): ControlPlaneUpdaterCliResult {
-  if (argv[0] === 'approve-and-apply') {
-    throw legacyControlPlaneCandidateReadOnly();
-  }
-  if (argv[0] === 'status' && argv.length === 2 && isNonEmpty(argv[1])) {
-    const record = requireLegacyControlPlaneUpdateRecord(
-      readPersistedControlPlaneUpdate(stateRoot, argv[1]),
-    );
-    return legacyResult({
-      action: 'status',
-      grantId: argv[1],
-      stateRoot,
-      record,
-      supervisor: readControlPlaneSupervisorState(stateRoot),
-      effectsPerformed: false,
-    });
-  }
-  if (argv[0] === 'recover' && argv.length === 2 && isNonEmpty(argv[1])) {
-    requireLegacyControlPlaneUpdateRecord(
-      readPersistedControlPlaneUpdate(stateRoot, argv[1]),
-    );
-    if (!dependencies.revalidateTaskMandateBinding) {
-      throw workflowError(
-        'CONTROL_PLANE_TASK_MANDATE_VALIDATOR_REQUIRED',
-        'Legacy control-plane recovery requires a durable Task Mandate revalidator.',
-        ExitCode.unsafeEnvironment,
-      );
-    }
-    const recovered = recoverControlPlanePromotion(
-      stateRoot,
-      argv[1],
-      dependencies,
-    );
-    return legacyResult({
-      action: 'recover',
-      grantId: argv[1],
-      stateRoot,
-      record: requireLegacyControlPlaneUpdateRecord(recovered.record),
-      supervisor: recovered.supervisor,
-      effectsPerformed: true,
-    });
-  }
-  return dispatchProductionControlPlaneUpdaterCommand(
-    argv,
-    stateRoot,
-    dependencies,
-    requestBaseDirectory,
-  );
-}
-
 export function controlPlaneUpdaterUsage(): string {
   return [
     'Usage: pnpm workflow control-plane <command> [--json]',
@@ -552,31 +463,6 @@ function result(
   input: Omit<ControlPlaneUpdaterCliResult, 'kind'>,
 ): ControlPlaneUpdaterCliResult {
   return { kind: 'control-plane-updater-cli-result.v1', ...input };
-}
-
-function legacyResult(
-  input: Omit<LegacyControlPlaneUpdaterCliResult, 'kind'>,
-): LegacyControlPlaneUpdaterCliResult {
-  return { kind: 'control-plane-updater-cli-result.v1', ...input };
-}
-
-function requireLegacyControlPlaneUpdateRecord(
-  record: PersistedControlPlaneUpdateRecord,
-): PersistedControlPlaneUpdateRecordV1 {
-  if (record.kind !== 'persisted-control-plane-update.v1') {
-    throw legacyControlPlaneCandidateReadOnly();
-  }
-  return record;
-}
-
-function legacyControlPlaneCandidateReadOnly(): ReturnType<
-  typeof workflowError
-> {
-  return workflowError(
-    'CONTROL_PLANE_APPROVAL_CANDIDATE_LEGACY_READ_ONLY',
-    'The legacy updater surface cannot admit, sign, or operate on a V2 approval candidate.',
-    ExitCode.guard,
-  );
 }
 
 function assertProductionControlPlaneStateRoot(
