@@ -693,7 +693,7 @@ function createPlanningTarget(
       path: `${changeRoot}/investigation.json`,
       schemaDigest: digestFile(
         repositoryRoot,
-        'workflow/schemas/investigation-artifact.schema.json',
+        'workflow/schemas/investigation-manifest-v3.schema.json',
       ),
       value: manifest,
     },

@@ -250,7 +250,7 @@ export function createFixtureRepository(
   for (const schemaName of [
     'guard.schema.json',
     'execution-artifact.schema.json',
-    'investigation-artifact.schema.json',
+    'investigation-manifest-v3.schema.json',
     'plan-review-artifact.schema.json',
   ]) {
     fs.copyFileSync(
@@ -328,18 +328,7 @@ export function writeManagedChangeArtifacts(
     path.join(changeDirectory, '.openspec.yaml'),
     `schema: ${currentSchemaName}\ncreated: 2026-07-15\n`,
   );
-  const investigationNode = createEvidenceNode({
-    type: 'fixture-investigation',
-    nodeSchema: 'fixture.investigation.v1',
-    evaluator: 'fixture.investigation.v1',
-    policyDigest: '1'.repeat(64),
-    exactInputDigests: { intent: '2'.repeat(64) },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'fixture.investigation-output.v1',
-    output: { sealed: true },
-    runtimeMetadata: {},
-  });
+  const investigation = buildManagedFixtureInvestigation(repository, changeId);
   const reviewNode = createEvidenceNode({
     type: 'fixture-plan-review',
     nodeSchema: 'fixture.plan-review.v1',
@@ -352,14 +341,6 @@ export function writeManagedChangeArtifacts(
     output: { verdict: 'advisory-approve' },
     runtimeMetadata: {},
   });
-  const investigation = {
-    schemaVersion: 1 as const,
-    kind: 'investigation-artifact' as const,
-    changeId,
-    legacyMigration: false,
-    nodes: [investigationNode],
-    currentRefs: { sealedInvestigation: investigationNode.nodeId },
-  };
   const execution = {
     schemaVersion: 1 as const,
     kind: 'execution-artifact' as const,
@@ -394,7 +375,7 @@ export function writeManagedChangeArtifacts(
     );
   }
   for (const schemaName of [
-    'investigation-artifact.schema.json',
+    'investigation-manifest-v3.schema.json',
     'execution-artifact.schema.json',
     'plan-review-artifact.schema.json',
   ]) {
@@ -417,6 +398,105 @@ export function fixtureCurrentSchemaName(repository: string): string {
       ),
     ) as { planning: { currentSchemaName: string } }
   ).planning.currentSchemaName;
+}
+
+function buildManagedFixtureInvestigation(
+  repository: string,
+  changeId: string,
+): InvestigationManifestV3 {
+  const config = JSON.parse(
+    fs.readFileSync(path.join(repository, 'workflow/config.json'), 'utf8'),
+  ) as { repositoryName: string };
+  const baseline = {
+    commitOid: git(repository, ['rev-parse', 'HEAD']).trim(),
+    treeOid: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
+  };
+  const investigationId = `investigation-${changeId}-managed-fixture`;
+  const sessionRevision = 1;
+  const sessionSnapshotDigest = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJson({
+        schema: 'fixture-managed-investigation-session.v1',
+        repositoryId: config.repositoryName,
+        changeId,
+        investigationId,
+        baseline,
+      }),
+    )
+    .digest('hex');
+  const built = buildInvestigationManifestDraft({
+    repositoryRoot: repository,
+    state: {
+      schemaVersion: 1,
+      applicabilityKind: 'exemption',
+      repositoryId: config.repositoryName,
+      changeId,
+      investigationId,
+      normalizedIntent: {
+        schemaVersion: 1,
+        summary: 'Prepare one current v3 managed-change fixture.',
+        explicitPaths: ['docs/example.md'],
+        explicitSymbols: [],
+        explicitConfigKeys: [],
+        renamePairs: [],
+      },
+      authoring: { sessionRevision, sessionSnapshotDigest },
+      exemption: {
+        category: 'documentation-only',
+        baseline,
+        declaredPaths: ['docs/example.md'],
+        declaredChangeClasses: ['documentation-only'],
+        rationale: 'The managed-change fixture is documentation-only.',
+        semanticAuthor: {
+          id: 'fixture-owner',
+          provenance: 'fixture-managed-investigation-author',
+        },
+        nonTrivialBehaviorReliance: 'none-declared',
+        researchBudgetMinutes: null,
+      },
+    },
+  });
+  if (built.outcome !== 'built') {
+    throw new Error(
+      `Managed fixture v3 Manifest build failed: ${built.blocker.failureCode}`,
+    );
+  }
+  const sealed = sealInvestigationManifestDraft({
+    draft: built.draft,
+    approval: {
+      semanticAuthor: {
+        id: 'fixture-owner',
+        provenance: 'fixture-managed-investigation-approval',
+      },
+      approvalProvenanceDigest: crypto
+        .createHash('sha256')
+        .update(`fixture-managed-investigation-approval\0${changeId}`)
+        .digest('hex'),
+    },
+  });
+  if (sealed.outcome !== 'sealed') {
+    throw new Error(
+      `Managed fixture v3 Manifest seal failed: ${sealed.blocker.failureCode}`,
+    );
+  }
+  const verified = validateForAuthority({
+    repositoryRoot: repository,
+    manifest: sealed.manifest,
+    expected: {
+      repositoryId: config.repositoryName,
+      changeId,
+      investigationId,
+      sessionRevision,
+      sessionSnapshotDigest,
+    },
+  });
+  if (verified.outcome !== 'verified') {
+    throw new Error(
+      `Managed fixture v3 Manifest validation failed: ${verified.blocker.failureCode}`,
+    );
+  }
+  return verified.manifest;
 }
 
 export function writeReadyV3ExemptChange(

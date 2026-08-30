@@ -618,29 +618,30 @@ test('provider requests admit only ordinary or granted same-provider assignments
   );
 });
 
-test('tracked planning schemas expose every admitted role-result form', () => {
-  for (const relativePath of [
-    '../../../workflow/schemas/investigation-artifact.schema.json',
-    '../../../workflow/schemas/plan-review-artifact.schema.json',
-  ]) {
-    const schema = JSON.parse(
-      fs.readFileSync(new URL(relativePath, import.meta.url), 'utf8'),
-    ) as {
-      $defs: {
-        admittedRoleResult: {
-          properties: { form: { enum: string[] } };
-          allOf: unknown[];
-        };
+test('the tracked PlanReview schema exposes every admitted role-result form', () => {
+  const schema = JSON.parse(
+    fs.readFileSync(
+      new URL(
+        '../../../workflow/schemas/plan-review-artifact.schema.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  ) as {
+    $defs: {
+      admittedRoleResult: {
+        properties: { form: { enum: string[] } };
+        allOf: unknown[];
       };
     };
-    assert.deepEqual(schema.$defs.admittedRoleResult.properties.form.enum, [
-      'ordinary-provider',
-      'granted-same-provider',
-      'granted-caller-supplied',
-      'direct-human-attestation',
-    ]);
-    assert.equal(schema.$defs.admittedRoleResult.allOf.length, 4);
-  }
+  };
+  assert.deepEqual(schema.$defs.admittedRoleResult.properties.form.enum, [
+    'ordinary-provider',
+    'granted-same-provider',
+    'granted-caller-supplied',
+    'direct-human-attestation',
+  ]);
+  assert.equal(schema.$defs.admittedRoleResult.allOf.length, 4);
 });
 
 test('deterministic fake process accepts only a fully bound structured result', () => {

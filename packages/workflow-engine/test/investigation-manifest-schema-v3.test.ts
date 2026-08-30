@@ -5,6 +5,35 @@ import test from 'node:test';
 
 import { sourceRepositoryRoot } from './fixture.ts';
 
+test('the current v3 Manifest schema is the only tracked investigation schema', () => {
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        sourceRepositoryRoot,
+        'workflow/schemas/investigation-artifact.schema.json',
+      ),
+    ),
+    false,
+  );
+
+  const schema = JSON.parse(
+    fs.readFileSync(
+      path.join(
+        sourceRepositoryRoot,
+        'workflow/schemas/investigation-manifest-v3.schema.json',
+      ),
+      'utf8',
+    ),
+  ) as {
+    properties: {
+      schemaVersion: { const: number };
+      kind: { const: string };
+    };
+  };
+  assert.equal(schema.properties.schemaVersion.const, 3);
+  assert.equal(schema.properties.kind.const, 'manifest-first-investigation');
+});
+
 test('the standalone v3 Manifest schema is closed and resolves every local definition', () => {
   const schema = JSON.parse(
     fs.readFileSync(

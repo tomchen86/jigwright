@@ -115,8 +115,16 @@ test('archive eligibility rejects a historical v1 investigation on the current-v
   const repository = createFixtureRepository();
   try {
     writeManagedChangeArtifacts(repository);
+    fs.writeFileSync(
+      path.join(repository, 'openspec/changes/demo-change/investigation.json'),
+      `${canonicalJson({
+        schemaVersion: 1,
+        kind: 'investigation-artifact',
+        changeId: 'demo-change',
+      })}\n`,
+    );
     git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Record v2 archive fixture']);
+    git(repository, ['commit', '-m', 'Record v1 archive fixture']);
     git(repository, ['checkout', '-b', 'work/archive-demo']);
 
     assert.throws(
