@@ -182,13 +182,13 @@ function prepareWorkflow(changeId: string) {
     record.createdAt,
   );
   assert.ok(binding);
-  // The pruning pass looks a pin up by the Attempt's identity, not the legacy
+  // The pruning pass looks a pin up by the Attempt's identity, not the provider
   // invocation's, so the test has to name the same thing the engine will.
   const attemptId = listExecutionJobStates(runtimeContext.runtime)
     .flatMap(({ attempts }) => attempts)
     .find(
       (attempt) =>
-        attempt.legacyInvocation?.invocationId === projection.invocationId,
+        attempt.providerInvocation?.invocationId === projection.invocationId,
     )?.attemptId;
   assert.ok(attemptId);
   return {

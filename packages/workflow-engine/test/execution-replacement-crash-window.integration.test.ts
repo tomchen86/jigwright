@@ -283,7 +283,7 @@ function inspectExecutionJobForInvocation(
 ): string {
   const job = listExecutionJobs(repository).find((candidate) =>
     candidate.attempts.some(
-      (attempt) => attempt.legacyInvocation?.invocationId === invocationId,
+      (attempt) => attempt.providerInvocation?.invocationId === invocationId,
     ),
   );
   assert.ok(job);

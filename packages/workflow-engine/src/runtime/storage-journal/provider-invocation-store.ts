@@ -27,10 +27,10 @@ import {
   type RetryMode,
 } from '../../modules/provider-orchestration/execution-core.ts';
 import {
-  acceptLegacyProviderAttemptResult,
-  materializeLegacyProviderExecutionJob,
+  acceptProviderAttemptResult,
+  materializeProviderExecutionJob,
   readExecutionJobState,
-  type LegacyProviderExecutionEntry,
+  type ProviderExecutionEntry,
 } from './execution-store.ts';
 import {
   assertPrivateInvestigationDirectory,
@@ -448,7 +448,7 @@ type ProviderCompletionCandidate = Readonly<{
   kind: 'provider-completion-candidate';
   invocationId: string;
   requestDigest: string;
-  expectedLegacyRevision: number;
+  expectedInvocationRevision: number;
   leaseGeneration: number;
   leaseTokenDigest: string;
   result: ProviderProcessResult;
@@ -923,7 +923,7 @@ export function createProviderInvocation(
             request,
           }).attempt.attemptId,
           invocationId,
-          legacyRevision: effectiveRecord.revision,
+          invocationRevision: effectiveRecord.revision,
           now: new Date(effectiveNow),
         });
       }
@@ -1250,8 +1250,9 @@ export function readProviderInvocationRuntimeReceipt(
     execution.revision <= receipt.executionRevision ||
     attempt === undefined ||
     attempt.jobId !== receipt.executionJobId ||
-    attempt.legacyInvocation?.invocationId !== receipt.invocationId ||
-    attempt.legacyInvocation.legacyRevision !== receipt.terminalRevision ||
+    attempt.providerInvocation?.invocationId !== receipt.invocationId ||
+    attempt.providerInvocation.invocationRevision !==
+      receipt.terminalRevision ||
     ((receipt.schemaVersion === 2 || receipt.schemaVersion === 3) &&
       (receipt.protocolReceipt.invocationId !== receipt.invocationId ||
         receipt.protocolReceipt.requestDigest !== receipt.requestDigest ||
@@ -1841,8 +1842,8 @@ export function prepareProviderInvocationAcceptanceBinding(
     execution.job.jobId !== projection.job.jobId ||
     execution.job.acceptedAttemptId !== null ||
     attempt === undefined ||
-    attempt.legacyInvocation?.invocationId !== invocationId ||
-    attempt.legacyInvocation.legacyRevision !== record.revision
+    attempt.providerInvocation?.invocationId !== invocationId ||
+    attempt.providerInvocation.invocationRevision !== record.revision
   ) {
     throw providerAcceptanceBindingStale();
   }
@@ -1853,7 +1854,7 @@ export function prepareProviderInvocationAcceptanceBinding(
     invocationId,
     requestDigest: request.requestDigest,
     ownerWorkflowId: record.investigationId,
-    legacyRevision: record.revision,
+    invocationRevision: record.revision,
     leaseGeneration: record.leaseGeneration,
     context,
     executionJobId: projection.job.jobId,
@@ -1878,7 +1879,7 @@ export function assertProviderInvocationAcceptanceBindingCurrent(
   if (
     record.investigationId !== binding.ownerWorkflowId ||
     record.requestDigest !== binding.requestDigest ||
-    record.revision !== binding.legacyRevision ||
+    record.revision !== binding.invocationRevision ||
     record.state !== 'leased' ||
     record.lease === null ||
     record.leaseGeneration !== binding.leaseGeneration ||
@@ -1902,8 +1903,8 @@ export function assertProviderInvocationAcceptanceBindingCurrent(
     execution.workflow.workflowId !== binding.ownerWorkflowId ||
     execution.job.acceptedAttemptId !== null ||
     attempt === undefined ||
-    attempt.legacyInvocation?.invocationId !== binding.invocationId ||
-    attempt.legacyInvocation.legacyRevision !== binding.legacyRevision
+    attempt.providerInvocation?.invocationId !== binding.invocationId ||
+    attempt.providerInvocation.invocationRevision !== binding.invocationRevision
   ) {
     throw providerAcceptanceBindingStale();
   }
@@ -2725,7 +2726,7 @@ export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(
     paths,
     invocationId,
     {
-      expectedLegacyRevision: input.expectedRevision,
+      expectedInvocationRevision: input.expectedRevision,
       acceptedOutputDigest: result.outputDigest.replace(/^sha256:/u, ''),
     },
     assertOwned,
@@ -2741,15 +2742,15 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
   input: {
-    expectedLegacyRevision: number;
+    expectedInvocationRevision: number;
     acceptedOutputDigest: string;
   },
   assertOwned: () => void,
 ): ProviderCompletionRecovery {
   const invocationId = assertInvocationId(requestedInvocationId);
   if (
-    !Number.isSafeInteger(input.expectedLegacyRevision) ||
-    input.expectedLegacyRevision < 0 ||
+    !Number.isSafeInteger(input.expectedInvocationRevision) ||
+    input.expectedInvocationRevision < 0 ||
     !isDigest(input.acceptedOutputDigest)
   ) {
     throw invocationInvalid();
@@ -2782,13 +2783,14 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
       if (current.state === 'succeeded' && current.result !== null) {
         const candidateMatches =
           candidate === null ||
-          (current.revision === candidate.expectedLegacyRevision + 1 &&
+          (current.revision === candidate.expectedInvocationRevision + 1 &&
             canonicalJson(current.result) === canonicalJson(candidate.result) &&
             canonicalJson(current.runtimeReceipt ?? null) ===
               canonicalJson(candidate.runtimeReceipt ?? null));
         const expectedRevisionMatches =
-          current.revision === input.expectedLegacyRevision ||
-          candidate?.expectedLegacyRevision === input.expectedLegacyRevision;
+          current.revision === input.expectedInvocationRevision ||
+          candidate?.expectedInvocationRevision ===
+            input.expectedInvocationRevision;
         if (
           candidateMatches &&
           expectedRevisionMatches &&
@@ -2811,14 +2813,15 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
         throw candidate === null && current.state === 'leased'
           ? workflowError(
               'PROVIDER_COMPLETION_RECOVERY_ARTIFACT_REQUIRED',
-              'Durable acceptance cannot repair legacy state without its exact completion candidate.',
+              'Durable acceptance cannot repair provider state without its exact completion candidate.',
               ExitCode.staleState,
             )
           : providerCompletionRecoveryConflict();
       }
       if (
-        current.revision !== input.expectedLegacyRevision ||
-        candidate.expectedLegacyRevision !== input.expectedLegacyRevision ||
+        current.revision !== input.expectedInvocationRevision ||
+        candidate.expectedInvocationRevision !==
+          input.expectedInvocationRevision ||
         candidate.leaseGeneration !== current.leaseGeneration ||
         candidate.leaseGeneration !== current.lease.generation ||
         candidate.leaseTokenDigest !== current.lease.tokenDigest ||
@@ -2878,7 +2881,7 @@ function persistProviderExecutionResult(
     record: current,
     request,
   });
-  const result = acceptLegacyProviderAttemptResult(paths, {
+  const result = acceptProviderAttemptResult(paths, {
     entries,
     attemptId: projection.attempt.attemptId,
     leaseGeneration,
@@ -2920,7 +2923,7 @@ function persistProviderCompletionCandidate(
     kind: 'provider-completion-candidate' as const,
     invocationId: input.current.invocationId,
     requestDigest: input.request.requestDigest,
-    expectedLegacyRevision: input.current.revision,
+    expectedInvocationRevision: input.current.revision,
     leaseGeneration: input.leaseGeneration,
     leaseTokenDigest: sha256(input.leaseToken),
     result,
@@ -2981,7 +2984,7 @@ function readProviderCompletionCandidate(
     !hasExactKeys(value, [
       'candidateDigest',
       'completedAt',
-      'expectedLegacyRevision',
+      'expectedInvocationRevision',
       'invocationId',
       'kind',
       'leaseGeneration',
@@ -2997,8 +3000,8 @@ function readProviderCompletionCandidate(
     value.kind !== 'provider-completion-candidate' ||
     value.invocationId !== invocationId ||
     value.requestDigest !== request.requestDigest ||
-    !Number.isSafeInteger(value.expectedLegacyRevision) ||
-    (value.expectedLegacyRevision as number) < 0 ||
+    !Number.isSafeInteger(value.expectedInvocationRevision) ||
+    (value.expectedInvocationRevision as number) < 0 ||
     !Number.isSafeInteger(value.leaseGeneration) ||
     (value.leaseGeneration as number) < 1 ||
     !isDigest(value.leaseTokenDigest) ||
@@ -3018,7 +3021,7 @@ function readProviderCompletionCandidate(
     runtimeReceipt !== undefined &&
     (runtimeReceipt.invocationId !== invocationId ||
       runtimeReceipt.requestDigest !== request.requestDigest ||
-      runtimeReceipt.leasedRevision !== value.expectedLegacyRevision ||
+      runtimeReceipt.leasedRevision !== value.expectedInvocationRevision ||
       runtimeReceipt.leaseGeneration !== value.leaseGeneration ||
       runtimeReceipt.terminalState !== 'succeeded')
   ) {
@@ -3040,9 +3043,9 @@ function materializeProviderExecutionState(
   paths: InvestigationRuntimePaths,
   current: ProviderInvocationRecord,
   request: ProviderInvocationRequest,
-): LegacyProviderExecutionEntry[] {
+): ProviderExecutionEntry[] {
   const entries = providerExecutionEntries(paths, current, request);
-  materializeLegacyProviderExecutionJob(paths, entries);
+  materializeProviderExecutionJob(paths, entries);
   return entries;
 }
 
@@ -3050,7 +3053,7 @@ function providerExecutionEntries(
   paths: InvestigationRuntimePaths,
   current: ProviderInvocationRecord,
   request: ProviderInvocationRequest,
-): LegacyProviderExecutionEntry[] {
+): ProviderExecutionEntry[] {
   const currentProjection = projectProviderInvocationExecution({
     record: current,
     request,
@@ -3061,7 +3064,7 @@ function providerExecutionEntries(
         entry.investigationId === current.investigationId &&
         entry.purpose === current.purpose,
     )
-    .map((entry): LegacyProviderExecutionEntry => {
+    .map((entry): ProviderExecutionEntry => {
       if (entry.invocationId === current.invocationId) {
         return providerExecutionEntry(paths, current, request);
       }
@@ -3104,7 +3107,7 @@ function providerExecutionHistory(
   purpose: ProviderInvocationRecord['purpose'],
   beforeAttempt: number,
   currentRequest: ProviderInvocationRequest,
-): LegacyProviderExecutionEntry[] {
+): ProviderExecutionEntry[] {
   const scan = scanProviderInvocationLifecycles(paths);
   const currentUnsafe = scan.unsafeInvocations.filter(
     ({ invocationId }) => invocationId === currentRequest.invocationId,
@@ -3280,7 +3283,7 @@ function createAgentRuntimeCompletionReceipt(input: {
     input.acceptanceBinding.invocationId !== input.current.invocationId ||
     input.acceptanceBinding.requestDigest !== input.request.requestDigest ||
     input.acceptanceBinding.requestDigest !== input.current.requestDigest ||
-    input.acceptanceBinding.legacyRevision !== input.current.revision ||
+    input.acceptanceBinding.invocationRevision !== input.current.revision ||
     input.acceptanceBinding.leaseGeneration !== input.current.leaseGeneration
   ) {
     throw providerAcceptanceBindingStale();
@@ -3430,7 +3433,7 @@ function updateProviderInvocation(
         throw providerCasMismatch(expectedRevision, current.revision);
       }
       // Re-admit the current durable Job/Attempt lineage before mutating the
-      // legacy state file. A missing/tampered repair sidecar must fail closed
+      // provider state file. A missing/tampered repair sidecar must fail closed
       // without leaving a lease or other partially applied lifecycle change.
       const request = readProviderInvocationRequest(paths, invocationId);
       const executionEntries = materializeProviderExecutionState(
@@ -3447,7 +3450,7 @@ function updateProviderInvocation(
         invocationUnsafe,
       );
       const updated = readProviderInvocation(paths, invocationId);
-      materializeLegacyProviderExecutionJob(
+      materializeProviderExecutionJob(
         paths,
         executionEntries.map((entry) =>
           entry.record.invocationId === invocationId
@@ -3466,7 +3469,7 @@ function providerExecutionEntry(
   paths: InvestigationRuntimePaths,
   record: ProviderInvocationRecord,
   request: ProviderInvocationRequest,
-): LegacyProviderExecutionEntry {
+): ProviderExecutionEntry {
   // A record written before execution policy snapshots existed reserved no
   // attempt budget, which is exactly what a null accounting already means to
   // the retry ladder in execution-store. Reading a snapshot that was never
@@ -4363,7 +4366,7 @@ function assertPlanReviewSnapshotFiles(
       : readCompleteProviderRetentionReceipt(paths, record.invocationId, {
           requestDigest: record.requestDigest,
           manifestDigest: record.manifestDigest,
-          legacyRevision: record.revision,
+          invocationRevision: record.revision,
           terminalState: record.state,
           terminalAt: record.updatedAt,
         });
@@ -5655,8 +5658,8 @@ function assertProviderAcceptanceBinding(
     assertInvestigationId(binding.ownerWorkflowId) !==
       binding.ownerWorkflowId ||
     !isDigest(binding.requestDigest) ||
-    !Number.isSafeInteger(binding.legacyRevision) ||
-    binding.legacyRevision < 0 ||
+    !Number.isSafeInteger(binding.invocationRevision) ||
+    binding.invocationRevision < 0 ||
     !Number.isSafeInteger(binding.leaseGeneration) ||
     binding.leaseGeneration < 1 ||
     !Number.isSafeInteger(binding.executionRevision) ||
@@ -5730,7 +5733,7 @@ function resultInvalid() {
 function providerCompletionRecoveryConflict() {
   return workflowError(
     'PROVIDER_COMPLETION_RECOVERY_CONFLICT',
-    'Legacy provider state diverged from the exact durable completion candidate.',
+    'Provider state diverged from the exact durable completion candidate.',
     ExitCode.conflict,
   );
 }

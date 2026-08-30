@@ -53,11 +53,11 @@ import {
 
 const EXECUTION_JOB_ID = /^[a-z0-9][a-z0-9._:-]{0,255}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const LEGACY_DIGEST = /^[0-9a-f]{64}$/;
-const MAX_LEGACY_ATTEMPTS = 1_000;
+const UNPREFIXED_DIGEST = /^[0-9a-f]{64}$/;
+const MAX_PROVIDER_ATTEMPTS = 1_000;
 const EXECUTION_STATE_FILE = /^[0-9a-f]{64}\.json$/;
 
-export type LegacyProviderExecutionEntry = Readonly<{
+export type ProviderExecutionEntry = Readonly<{
   record: ProviderInvocationRecord;
   request: ProviderInvocationRequest;
   retryAccounting?: ProviderRetryAccountingSnapshot | null;
@@ -98,7 +98,7 @@ export function providerRetryPolicyFromAccounting(
   });
 }
 
-export function decideLegacyExecutionFailure(input: {
+export function decideProviderExecutionFailure(input: {
   workflow: WorkflowRecord;
   job: JobRecord;
   attempt: AttemptRecord;
@@ -153,7 +153,7 @@ export function decideLegacyExecutionFailure(input: {
   ];
   const requiredGrant = createExecutionBudgetGrantRequest({
     requestId: deterministicUuid({
-      kind: 'legacy-execution-budget-request',
+      kind: 'provider-execution-budget-request.v1',
       jobId: input.job.jobId,
       attemptId: input.attempt.attemptId,
       failureFingerprint: failure.fingerprint,
@@ -188,12 +188,12 @@ export type DurableExecutionJobState = Readonly<{
   attempts: AttemptRecord[];
   results: AttemptResult[];
   reconciliationReceipts: ExecutionReconciliationReceipt[];
-  legacyProjection: {
-    kind: 'provider-invocation-v1';
+  invocationProjection: {
+    kind: 'provider-invocation-projection.v1';
     completeHistory: boolean;
     invocations: Array<{
       invocationId: string;
-      legacyRevision: number;
+      invocationRevision: number;
       attemptId: string;
     }>;
   };
@@ -201,12 +201,12 @@ export type DurableExecutionJobState = Readonly<{
 
 export type ExecutionReconciliationReceipt = Readonly<{
   schemaVersion: 1;
-  kind: 'legacy-provider-execution-reconciliation';
+  kind: 'provider-execution-reconciliation.v1';
   receiptId: string;
   jobId: string;
   triggerInvocationId: string;
   expectedExecutionRevision: number;
-  expectedLegacyRevision: number;
+  expectedInvocationRevision: number;
   resultingExecutionRevision: number;
   beforeStateDigest: string;
   afterProjectionDigest: string;
@@ -340,35 +340,29 @@ export function listExecutionJobStates(
   }
 }
 
-/**
- * Materialize all legacy invocation attempts for exactly one semantic Job.
- * The aggregate is one private canonical file so revision checks, attempt
- * lineage, and accepted-result state change under a single atomic rename.
- */
-export function materializeLegacyProviderExecutionJob(
+/** Materialize all current provider invocations for one semantic Job. */
+export function materializeProviderExecutionJob(
   paths: InvestigationRuntimePaths,
-  entries: readonly LegacyProviderExecutionEntry[],
+  entries: readonly ProviderExecutionEntry[],
   options: { expectedRevision?: number | null } = {},
 ): DurableExecutionJobState {
-  const prepared = prepareLegacyEntries(paths, entries);
+  const prepared = prepareProviderEntries(paths, entries);
   return withExecutionJobLock(paths, prepared.jobId, () => {
     const current = readExecutionJobStateUnlocked(paths, prepared.jobId);
     assertExpectedRevision(current, options.expectedRevision);
-    const candidate = buildLegacyExecutionState(prepared, current);
+    const candidate = buildProviderExecutionState(prepared, current);
     return persistExecutionJobState(paths, current, candidate);
   });
 }
 
 /**
- * Submit a fenced legacy Attempt result against the durable Job aggregate.
- * The current acceptedAttemptId is read and changed beneath the same lock. A
- * later valid result therefore persists as late-duplicate instead of replacing
- * the winner or being silently discarded.
+ * Submit a fenced provider Attempt result against the durable Job aggregate.
+ * The winner changes beneath the same lock; a later result is a late duplicate.
  */
-export function acceptLegacyProviderAttemptResult(
+export function acceptProviderAttemptResult(
   paths: InvestigationRuntimePaths,
   input: {
-    entries: readonly LegacyProviderExecutionEntry[];
+    entries: readonly ProviderExecutionEntry[];
     attemptId: string;
     leaseGeneration: number;
     leaseToken: string;
@@ -377,17 +371,17 @@ export function acceptLegacyProviderAttemptResult(
     expectedRevision?: number;
   },
 ): DurableAttemptResultAcceptance {
-  const prepared = prepareLegacyEntries(paths, input.entries);
+  const prepared = prepareProviderEntries(paths, input.entries);
   return withExecutionJobLock(paths, prepared.jobId, () => {
     const current = readExecutionJobStateUnlocked(paths, prepared.jobId);
     assertExpectedRevision(current, input.expectedRevision);
-    const materialized = buildLegacyExecutionState(prepared, current);
+    const materialized = buildProviderExecutionState(prepared, current);
     const attemptIndex = materialized.attempts.findIndex(
       ({ attemptId }) => attemptId === input.attemptId,
     );
     if (attemptIndex < 0) {
       throw executionProjectionConflict(
-        'The submitted legacy Attempt is not part of the projected Job.',
+        'The submitted provider Attempt is not part of the projected Job.',
       );
     }
     const outputDigest = normalizeDigest(input.outputDigest);
@@ -449,33 +443,33 @@ export function acceptLegacyProviderAttemptResult(
   });
 }
 
-export function reconcileLegacyProviderExecutionJob(
+export function reconcileProviderExecutionJob(
   paths: InvestigationRuntimePaths,
   input: {
-    entries: readonly LegacyProviderExecutionEntry[];
+    entries: readonly ProviderExecutionEntry[];
     triggerInvocationId: string;
     expectedExecutionRevision: number;
-    expectedLegacyRevision: number;
+    expectedInvocationRevision: number;
   },
 ): DurableExecutionReconciliation {
-  const prepared = prepareLegacyEntries(paths, input.entries);
+  const prepared = prepareProviderEntries(paths, input.entries);
   const trigger = prepared.entries.find(
     ({ record }) => record.invocationId === input.triggerInvocationId,
   );
   if (
     trigger === undefined ||
-    !Number.isSafeInteger(input.expectedLegacyRevision) ||
-    input.expectedLegacyRevision < 0 ||
-    trigger.record.revision !== input.expectedLegacyRevision
+    !Number.isSafeInteger(input.expectedInvocationRevision) ||
+    input.expectedInvocationRevision < 0 ||
+    trigger.record.revision !== input.expectedInvocationRevision
   ) {
     throw workflowError(
-      'EXECUTION_RECONCILIATION_LEGACY_REVISION_MISMATCH',
-      'The trigger invocation does not have the expected legacy revision.',
+      'EXECUTION_RECONCILIATION_INVOCATION_REVISION_MISMATCH',
+      'The trigger invocation does not have the expected revision.',
       ExitCode.staleState,
       {
         details: {
-          expectedLegacyRevision: input.expectedLegacyRevision,
-          observedLegacyRevision: trigger?.record.revision ?? null,
+          expectedInvocationRevision: input.expectedInvocationRevision,
+          observedInvocationRevision: trigger?.record.revision ?? null,
         },
       },
     );
@@ -484,7 +478,7 @@ export function reconcileLegacyProviderExecutionJob(
     jobId: prepared.jobId,
     triggerInvocationId: input.triggerInvocationId,
     expectedExecutionRevision: input.expectedExecutionRevision,
-    expectedLegacyRevision: input.expectedLegacyRevision,
+    expectedInvocationRevision: input.expectedInvocationRevision,
   });
   return withExecutionJobLock(paths, prepared.jobId, () => {
     const current = readExecutionJobStateUnlocked(paths, prepared.jobId);
@@ -503,7 +497,7 @@ export function reconcileLegacyProviderExecutionJob(
       return deepFreeze({ state: current, receipt: replay, replayed: true });
     }
     assertExpectedRevision(current, input.expectedExecutionRevision);
-    const materialized = buildLegacyExecutionState(prepared, current);
+    const materialized = buildProviderExecutionState(prepared, current);
     if (materialized.job.acceptedAttemptId !== current.job.acceptedAttemptId) {
       throw workflowError(
         'EXECUTION_RECONCILIATION_WINNER_CHANGE_REJECTED',
@@ -512,28 +506,30 @@ export function reconcileLegacyProviderExecutionJob(
       );
     }
     const currentSources = new Map(
-      current.legacyProjection.invocations.map((source) => [
+      current.invocationProjection.invocations.map((source) => [
         source.invocationId,
-        source.legacyRevision,
+        source.invocationRevision,
       ]),
     );
-    const reconciledInvocationIds = materialized.legacyProjection.invocations
-      .filter(
-        (source) =>
-          currentSources.get(source.invocationId) !== source.legacyRevision,
-      )
-      .map(({ invocationId }) => invocationId)
-      .sort();
+    const reconciledInvocationIds =
+      materialized.invocationProjection.invocations
+        .filter(
+          (source) =>
+            currentSources.get(source.invocationId) !==
+            source.invocationRevision,
+        )
+        .map(({ invocationId }) => invocationId)
+        .sort();
     const resultingExecutionRevision = current.revision + 1;
     const receipt = assertExecutionReconciliationReceipt(
       {
         schemaVersion: 1,
-        kind: 'legacy-provider-execution-reconciliation',
+        kind: 'provider-execution-reconciliation.v1',
         receiptId,
         jobId: prepared.jobId,
         triggerInvocationId: input.triggerInvocationId,
         expectedExecutionRevision: input.expectedExecutionRevision,
-        expectedLegacyRevision: input.expectedLegacyRevision,
+        expectedInvocationRevision: input.expectedInvocationRevision,
         resultingExecutionRevision,
         beforeStateDigest: durableExecutionStateDigest(current),
         afterProjectionDigest: durableExecutionProjectionDigest(materialized),
@@ -561,10 +557,10 @@ export function reconcileLegacyProviderExecutionJob(
   });
 }
 
-type PreparedLegacyEntries = Readonly<{
+type PreparedProviderEntries = Readonly<{
   jobId: string;
   entries: Array<
-    LegacyProviderExecutionEntry & {
+    ProviderExecutionEntry & {
       projection: ProviderInvocationProjection;
       repairLineage: ProviderRepairLineage | null;
       retryAccounting: ProviderRetryAccountingSnapshot | null;
@@ -572,16 +568,16 @@ type PreparedLegacyEntries = Readonly<{
   >;
 }>;
 
-function prepareLegacyEntries(
+function prepareProviderEntries(
   paths: InvestigationRuntimePaths,
-  input: readonly LegacyProviderExecutionEntry[],
-): PreparedLegacyEntries {
-  if (input.length < 1 || input.length > MAX_LEGACY_ATTEMPTS) {
+  input: readonly ProviderExecutionEntry[],
+): PreparedProviderEntries {
+  if (input.length < 1 || input.length > MAX_PROVIDER_ATTEMPTS) {
     throw executionProjectionConflict(
-      'Legacy execution materialization requires a bounded non-empty history.',
+      'Provider execution materialization requires a bounded non-empty history.',
     );
   }
-  let entries: PreparedLegacyEntries['entries'];
+  let entries: PreparedProviderEntries['entries'];
   try {
     entries = input
       .map(
@@ -606,7 +602,7 @@ function prepareLegacyEntries(
       );
   } catch (error) {
     throw executionProjectionConflict(
-      'Legacy invocation history cannot be projected into execution records.',
+      'Provider invocation history cannot be projected into execution records.',
       error,
     );
   }
@@ -630,7 +626,7 @@ function prepareLegacyEntries(
       entry.projection.job.requestDigest !== first.projection.job.requestDigest
     ) {
       throw executionProjectionConflict(
-        'Legacy invocation history has duplicate Attempts or conflicting semantic identity.',
+        'Provider invocation history has duplicate Attempts or conflicting semantic identity.',
       );
     }
   }
@@ -640,8 +636,8 @@ function prepareLegacyEntries(
   });
 }
 
-function buildLegacyExecutionState(
-  prepared: PreparedLegacyEntries,
+function buildProviderExecutionState(
+  prepared: PreparedProviderEntries,
   current: DurableExecutionJobState | null,
 ): DurableExecutionJobState {
   const firstEntry = prepared.entries[0]!;
@@ -659,10 +655,10 @@ function buildLegacyExecutionState(
       current.job.requestDigest !== first.job.requestDigest)
   ) {
     throw executionProjectionConflict(
-      'Durable execution state conflicts with the legacy semantic identity.',
+      'Durable execution state conflicts with the provider semantic identity.',
     );
   }
-  assertLegacyProjectionMonotonic(prepared, current);
+  assertInvocationProjectionMonotonic(prepared, current);
   const frozenRetryPolicy =
     firstEntry.retryAccounting === null
       ? (current?.job.retryPolicy ?? first.job.retryPolicy)
@@ -752,7 +748,7 @@ function buildLegacyExecutionState(
         lineage.contextDigest !== first.job.contextDigest
       ) {
         throw executionProjectionConflict(
-          'Durable repair lineage does not bind adjacent legacy Attempts.',
+          'Durable repair lineage does not bind adjacent provider Attempts.',
         );
       }
       const priorRepairCount = attempts.filter(
@@ -796,7 +792,7 @@ function buildLegacyExecutionState(
         providerCostMicros: chargedProjection.providerCostMicros,
         providerTokens: chargedProjection.providerTokens,
         retention: projected.retention,
-        legacyInvocation: projected.legacyInvocation,
+        providerInvocation: projected.providerInvocation,
         createdAt: projected.createdAt,
         updatedAt: projected.updatedAt,
       });
@@ -808,7 +804,7 @@ function buildLegacyExecutionState(
         replacementBinding.environmentDigest !== projected.environmentDigest
       ) {
         throw executionProjectionConflict(
-          'Durable retry replacement does not bind adjacent legacy Attempts.',
+          'Durable retry replacement does not bind adjacent provider Attempts.',
         );
       }
       const replacement = createReplacementAttempt({
@@ -855,7 +851,7 @@ function buildLegacyExecutionState(
         providerCostMicros: chargedProjection.providerCostMicros,
         providerTokens: chargedProjection.providerTokens,
         retention: projected.retention,
-        legacyInvocation: projected.legacyInvocation,
+        providerInvocation: projected.providerInvocation,
         createdAt: projected.createdAt,
         updatedAt: projected.updatedAt,
       });
@@ -905,14 +901,14 @@ function buildLegacyExecutionState(
       continue;
     }
     const attempt = attempts[index]!;
-    const legacyOutputDigest = normalizeDigest(
+    const providerOutputDigest = normalizeDigest(
       entry.record.result.outputDigest,
     );
     const existingResult = results.get(attempt.attemptId);
     if (existingResult !== undefined) {
-      if (existingResult.outputDigest !== legacyOutputDigest) {
+      if (existingResult.outputDigest !== providerOutputDigest) {
         throw executionProjectionConflict(
-          'Legacy and durable Attempt result digests diverge.',
+          'Provider invocation and durable Attempt result digests diverge.',
         );
       }
       continue;
@@ -921,7 +917,7 @@ function buildLegacyExecutionState(
       attempt.attemptId,
       createAttemptResult(
         attempt,
-        legacyOutputDigest,
+        providerOutputDigest,
         attempt.attemptId === acceptedAttemptId ? 'accepted' : 'late-duplicate',
         entry.record.updatedAt,
       ),
@@ -967,7 +963,7 @@ function buildLegacyExecutionState(
       job,
       attempt: latestAttempt,
       failure: latestAttempt.failure,
-      decision: decideLegacyExecutionFailure({
+      decision: decideProviderExecutionFailure({
         workflow,
         job,
         attempt: latestAttempt,
@@ -987,22 +983,22 @@ function buildLegacyExecutionState(
     attempts,
     results: orderedResults,
     reconciliationReceipts: current?.reconciliationReceipts ?? [],
-    legacyProjection: {
-      kind: 'provider-invocation-v1',
+    invocationProjection: {
+      kind: 'provider-invocation-projection.v1',
       completeHistory: attempts.every(
         ({ attemptNumber }, index) => attemptNumber === index + 1,
       ),
       invocations: prepared.entries.map(({ record, projection }) => ({
         invocationId: record.invocationId,
-        legacyRevision: record.revision,
+        invocationRevision: record.revision,
         attemptId: projection.attempt.attemptId,
       })),
     },
   });
 }
 
-function assertLegacyProjectionMonotonic(
-  prepared: PreparedLegacyEntries,
+function assertInvocationProjectionMonotonic(
+  prepared: PreparedProviderEntries,
   current: DurableExecutionJobState | null,
 ): void {
   if (current === null) return;
@@ -1012,11 +1008,11 @@ function assertLegacyProjectionMonotonic(
       record.revision,
     ]),
   );
-  for (const prior of current.legacyProjection.invocations) {
+  for (const prior of current.invocationProjection.invocations) {
     const nextRevision = incoming.get(prior.invocationId);
-    if (nextRevision === undefined || nextRevision < prior.legacyRevision) {
+    if (nextRevision === undefined || nextRevision < prior.invocationRevision) {
       throw executionProjectionConflict(
-        'Legacy execution projection is missing history or moved backwards.',
+        'Provider invocation projection is missing history or moved backwards.',
       );
     }
   }
@@ -1092,7 +1088,7 @@ function assertDurableExecutionJobState(
     !hasExactKeys(value, [
       'attempts',
       'job',
-      'legacyProjection',
+      'invocationProjection',
       'reconciliationReceipts',
       'results',
       'revision',
@@ -1104,18 +1100,18 @@ function assertDurableExecutionJobState(
     (value.revision as number) < 0 ||
     !Array.isArray(value.attempts) ||
     value.attempts.length < 1 ||
-    value.attempts.length > MAX_LEGACY_ATTEMPTS ||
+    value.attempts.length > MAX_PROVIDER_ATTEMPTS ||
     !Array.isArray(value.results) ||
     !Array.isArray(value.reconciliationReceipts) ||
-    !isRecord(value.legacyProjection) ||
-    !hasExactKeys(value.legacyProjection, [
+    !isRecord(value.invocationProjection) ||
+    !hasExactKeys(value.invocationProjection, [
       'completeHistory',
       'invocations',
       'kind',
     ]) ||
-    value.legacyProjection.kind !== 'provider-invocation-v1' ||
-    typeof value.legacyProjection.completeHistory !== 'boolean' ||
-    !Array.isArray(value.legacyProjection.invocations)
+    value.invocationProjection.kind !== 'provider-invocation-projection.v1' ||
+    typeof value.invocationProjection.completeHistory !== 'boolean' ||
+    !Array.isArray(value.invocationProjection.invocations)
   ) {
     throw executionStoreUnsafe();
   }
@@ -1140,14 +1136,14 @@ function assertDurableExecutionJobState(
     job.epoch !== workflow.currentEpoch ||
     job.contextDigest !== workflow.contextDigest ||
     job.attemptCount !== attempts.at(-1)!.attemptNumber ||
-    value.legacyProjection.invocations.length !== attempts.length
+    value.invocationProjection.invocations.length !== attempts.length
   ) {
     throw executionStoreUnsafe();
   }
   const attemptIds = new Set<string>();
   for (let index = 0; index < attempts.length; index += 1) {
     const attempt = attempts[index]!;
-    const source = value.legacyProjection.invocations[index];
+    const source = value.invocationProjection.invocations[index];
     if (
       attemptIds.has(attempt.attemptId) ||
       (index > 0 &&
@@ -1162,12 +1158,17 @@ function assertDurableExecutionJobState(
           ? attempts[index - 1]!.attemptId
           : null) ||
       !isRecord(source) ||
-      !hasExactKeys(source, ['attemptId', 'invocationId', 'legacyRevision']) ||
+      !hasExactKeys(source, [
+        'attemptId',
+        'invocationId',
+        'invocationRevision',
+      ]) ||
       source.attemptId !== attempt.attemptId ||
-      source.invocationId !== attempt.legacyInvocation?.invocationId ||
-      source.legacyRevision !== attempt.legacyInvocation?.legacyRevision ||
-      !Number.isSafeInteger(source.legacyRevision) ||
-      (source.legacyRevision as number) < 0
+      source.invocationId !== attempt.providerInvocation?.invocationId ||
+      source.invocationRevision !==
+        attempt.providerInvocation?.invocationRevision ||
+      !Number.isSafeInteger(source.invocationRevision) ||
+      (source.invocationRevision as number) < 0
     ) {
       throw executionStoreUnsafe();
     }
@@ -1217,7 +1218,7 @@ function assertDurableExecutionJobState(
         (index > 0 &&
           receipt.receiptId <= reconciliationReceipts[index - 1]!.receiptId),
     ) ||
-    value.legacyProjection.completeHistory !==
+    value.invocationProjection.completeHistory !==
       attempts.every(
         ({ attemptNumber }, index) => attemptNumber === index + 1,
       ) ||
@@ -1235,13 +1236,13 @@ function assertDurableExecutionJobState(
     attempts,
     results,
     reconciliationReceipts,
-    legacyProjection: {
-      kind: 'provider-invocation-v1',
-      completeHistory: value.legacyProjection.completeHistory,
-      invocations: value.legacyProjection.invocations.map((source) => ({
+    invocationProjection: {
+      kind: 'provider-invocation-projection.v1',
+      completeHistory: value.invocationProjection.completeHistory,
+      invocations: value.invocationProjection.invocations.map((source) => ({
         invocationId: String((source as Record<string, unknown>).invocationId),
-        legacyRevision: Number(
-          (source as Record<string, unknown>).legacyRevision,
+        invocationRevision: Number(
+          (source as Record<string, unknown>).invocationRevision,
         ),
         attemptId: String((source as Record<string, unknown>).attemptId),
       })),
@@ -1300,7 +1301,7 @@ function assertExecutionReconciliationReceipt(
       'afterProjectionDigest',
       'beforeStateDigest',
       'expectedExecutionRevision',
-      'expectedLegacyRevision',
+      'expectedInvocationRevision',
       'jobId',
       'kind',
       'receiptId',
@@ -1311,7 +1312,7 @@ function assertExecutionReconciliationReceipt(
       'triggerInvocationId',
     ]) ||
     value.schemaVersion !== 1 ||
-    value.kind !== 'legacy-provider-execution-reconciliation' ||
+    value.kind !== 'provider-execution-reconciliation.v1' ||
     value.jobId !== expectedJobId ||
     typeof value.receiptId !== 'string' ||
     !DIGEST.test(value.receiptId) ||
@@ -1319,8 +1320,8 @@ function assertExecutionReconciliationReceipt(
     !EXECUTION_JOB_ID.test(value.triggerInvocationId) ||
     !Number.isSafeInteger(value.expectedExecutionRevision) ||
     (value.expectedExecutionRevision as number) < 0 ||
-    !Number.isSafeInteger(value.expectedLegacyRevision) ||
-    (value.expectedLegacyRevision as number) < 0 ||
+    !Number.isSafeInteger(value.expectedInvocationRevision) ||
+    (value.expectedInvocationRevision as number) < 0 ||
     !Number.isSafeInteger(value.resultingExecutionRevision) ||
     value.resultingExecutionRevision !==
       (value.expectedExecutionRevision as number) + 1 ||
@@ -1349,7 +1350,7 @@ function assertExecutionReconciliationReceipt(
     jobId: expectedJobId,
     triggerInvocationId: value.triggerInvocationId,
     expectedExecutionRevision: value.expectedExecutionRevision as number,
-    expectedLegacyRevision: value.expectedLegacyRevision as number,
+    expectedInvocationRevision: value.expectedInvocationRevision as number,
   });
   if (value.receiptId !== expectedReceiptId) throw executionStoreUnsafe();
   return deepFreeze(structuredClone(value) as ExecutionReconciliationReceipt);
@@ -1359,21 +1360,21 @@ function reconciliationReceiptId(input: {
   jobId: string;
   triggerInvocationId: string;
   expectedExecutionRevision: number;
-  expectedLegacyRevision: number;
+  expectedInvocationRevision: number;
 }): string {
   return digestCanonical({
     schemaVersion: 1,
-    kind: 'legacy-provider-execution-reconciliation-request',
+    kind: 'provider-execution-reconciliation-request.v1',
     ...input,
   });
 }
 
 function assertReconciliationReplay(
   current: DurableExecutionJobState,
-  prepared: PreparedLegacyEntries,
+  prepared: PreparedProviderEntries,
   receipt: ExecutionReconciliationReceipt,
 ): void {
-  const materialized = buildLegacyExecutionState(prepared, current);
+  const materialized = buildProviderExecutionState(prepared, current);
   if (
     current.revision < receipt.resultingExecutionRevision ||
     current.job.acceptedAttemptId !== receipt.acceptedAttemptId ||
@@ -1400,7 +1401,7 @@ function durableExecutionProjectionDigest(
     job: state.job,
     attempts: state.attempts,
     results: state.results,
-    legacyProjection: state.legacyProjection,
+    invocationProjection: state.invocationProjection,
   });
 }
 
@@ -1466,8 +1467,8 @@ function assertExecutionJobId(value: string): string {
 
 function normalizeDigest(value: string): string {
   if (DIGEST.test(value)) return value;
-  if (LEGACY_DIGEST.test(value)) return `sha256:${value}`;
-  throw executionProjectionConflict('Legacy result digest is invalid.');
+  if (UNPREFIXED_DIGEST.test(value)) return `sha256:${value}`;
+  throw executionProjectionConflict('Provider result digest is invalid.');
 }
 
 function isPromiseLike(value: unknown): boolean {

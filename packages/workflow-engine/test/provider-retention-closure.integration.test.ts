@@ -310,8 +310,8 @@ function preparePrunableProviderRuntime(changeId: string) {
     const attempt = listExecutionJobStates(runtimeContext.runtime)
       .flatMap(({ attempts }) => attempts)
       .find(
-        ({ legacyInvocation }) =>
-          legacyInvocation?.invocationId === prunableInvocationId,
+        ({ providerInvocation }) =>
+          providerInvocation?.invocationId === prunableInvocationId,
       );
     assert.ok(attempt);
     const replacementRecord = readProviderInvocation(

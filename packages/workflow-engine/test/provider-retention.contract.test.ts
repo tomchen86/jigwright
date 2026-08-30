@@ -1352,7 +1352,7 @@ function candidatePath(
 function pinAttempt(fixture: Fixture, invocationId: string): void {
   const state = readExecutionJobState(fixture.runtime, fixture.jobId);
   assert.ok(state);
-  const source = state.legacyProjection.invocations.find(
+  const source = state.invocationProjection.invocations.find(
     (entry) => entry.invocationId === invocationId,
   );
   assert.ok(source);

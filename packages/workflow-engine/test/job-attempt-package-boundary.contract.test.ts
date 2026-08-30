@@ -98,3 +98,51 @@ test('partial extraction leaves execution-store as the sole aggregate transition
     false,
   );
 });
+
+test('current provider Job and Attempt runtime has no legacy projection surface', () => {
+  const sources = [
+    [
+      'execution-core.ts',
+      /projectLegacyProviderInvocation|legacyInvocation|legacyAttempt|legacyRevision/u,
+    ],
+    ['provider-retry-decision.ts', /failedLegacyRevision/u],
+    [
+      'execution-store.ts',
+      /LegacyProviderExecutionEntry|decideLegacyExecutionFailure|materializeLegacyProviderExecutionJob|acceptLegacyProviderAttemptResult|reconcileLegacyProviderExecutionJob|legacyProjection|expectedLegacyRevision/u,
+    ],
+    [
+      'execution-runtime.ts',
+      /LegacyReplacement|LegacyProjection|prepareLegacyReplacement|previewLegacyReplacementGrantDelta|inspectLegacyExecutionJobSource|authorizeLegacyReplacement|authorizeProviderReplacement|legacyExecutionPolicy|legacyRetryPolicy|legacyEnvironmentDigest/u,
+    ],
+    [
+      'provider-invocation-store.ts',
+      /LegacyProviderExecutionEntry|materializeLegacyProviderExecutionJob|acceptLegacyProviderAttemptResult|expectedLegacyRevision|legacyRevision/u,
+    ],
+  ] as const;
+
+  for (const [file, retiredSurface] of sources) {
+    const sourcePath =
+      file === 'execution-core.ts' || file === 'provider-retry-decision.ts'
+        ? path.join(
+            repositoryRoot,
+            'packages/workflow-engine/src/modules/provider-orchestration',
+            file,
+          )
+        : file === 'execution-runtime.ts'
+          ? path.join(
+              repositoryRoot,
+              'packages/workflow-engine/src/runtime/provider-execution',
+              file,
+            )
+          : path.join(
+              repositoryRoot,
+              'packages/workflow-engine/src/runtime/storage-journal',
+              file,
+            );
+    assert.doesNotMatch(
+      fs.readFileSync(sourcePath, 'utf8'),
+      retiredSurface,
+      file,
+    );
+  }
+});

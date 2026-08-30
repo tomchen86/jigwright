@@ -1499,7 +1499,7 @@ export function readProviderInvocationLifecycleProjection(
       supersededSnapshot.terminalAt !== value.updatedAt ||
       supersededSnapshot.failureCode !==
         (isRecord(value.failure) ? value.failure.code : null) ||
-      supersededSnapshot.legacyRevision !== value.revision)
+      supersededSnapshot.invocationRevision !== value.revision)
   ) {
     throw providerInvocationUnsafe();
   }
@@ -6800,7 +6800,7 @@ function digestPrivateDirectoryEntries(
         {
           requestDigest: state.requestDigest,
           manifestDigest: state.manifestDigest,
-          legacyRevision: state.revision as number,
+          invocationRevision: state.revision as number,
           terminalState: state.state,
           terminalAt: state.updatedAt,
         },

@@ -6,10 +6,9 @@ import test from 'node:test';
 
 import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
 import {
-  authorizeLegacyReplacement,
   inspectExecutionJob,
   listExecutionJobs,
-  prepareLegacyReplacement,
+  prepareProviderReplacement,
 } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { requestExecutionReplacement } from '../src/application/control-plane/execution-replacement.ts';
 import { canonicalExecutionBudgetGrantRequest } from '../src/modules/authority/execution-governance.ts';
@@ -117,7 +116,7 @@ test('300 to 600 is one provider Job with replacement Attempt lineage and one ac
       path.join(runtime.invocations, first.invocationId, 'state.json'),
       'utf8',
     );
-    const preview = prepareLegacyReplacement(repository, jobId, {
+    const preview = prepareProviderReplacement(repository, jobId, {
       timeoutMs: 600_000,
       now: '2026-08-03T09:06:00.000Z',
     });
@@ -536,7 +535,10 @@ test('runtime inspection uses stable errors for invalid and absent Job IDs', () 
     );
     assert.throws(
       () =>
-        inspectExecutionJob(repository, `job-provider-survey-${'0'.repeat(32)}`),
+        inspectExecutionJob(
+          repository,
+          `job-provider-survey-${'0'.repeat(32)}`,
+        ),
       (error) => isWorkflowError(error, 'EXECUTION_RUNTIME_JOB_NOT_FOUND'),
     );
   } finally {
@@ -576,7 +578,7 @@ test('runtime inspection refuses a provider invocation without its durable Job a
   }
 });
 
-test('unmandated provider Job cannot mint new execution-budget authority', () => {
+test('unmandated provider Job exposes no execution-budget Grant request', () => {
   const repository = createFixtureRepository();
   try {
     const context = loadInvestigationRuntimeContext(repository);
@@ -608,27 +610,13 @@ test('unmandated provider Job cannot mint new execution-budget authority', () =>
     const grantRequest = inspection?.latestFailure?.decision.requiredGrant;
     assert.ok(inspection);
     assert.equal(grantRequest, undefined);
-
-    assert.throws(
-      () =>
-        authorizeLegacyReplacement(repository, inspection.job.jobId, {
-          grantId: '33333333-3333-4333-8333-333333333333',
-          timeoutMs: 600_000,
-          now: '2026-08-03T12:16:00.000Z',
-        }),
-      (error) =>
-        isWorkflowError(
-          error,
-          'EXECUTION_RUNTIME_PREVIEW_AUTHORIZATION_DISABLED',
-        ),
-    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
 type ExecutionJobResult = ReturnType<typeof inspectExecutionJob>;
-type ReplacementResult = ReturnType<typeof prepareLegacyReplacement>;
+type ReplacementResult = ReturnType<typeof prepareProviderReplacement>;
 
 function runWorkflowCli(repository: string, args: string[]) {
   return spawnSync(
@@ -652,7 +640,7 @@ function createManifest(repository: string): BlindSurveyManifest {
     baseTree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
     normalizedIntent: {
       schemaVersion: 1,
-      summary: 'Inspect legacy provider retries through one stable Job.',
+      summary: 'Inspect provider retries through one stable Job.',
       explicitPaths: [
         'packages/workflow-engine/src/runtime/provider-execution/execution-runtime.ts',
       ],
@@ -661,7 +649,7 @@ function createManifest(repository: string): BlindSurveyManifest {
       renamePairs: [],
     },
     architectureQuestion:
-      'How should legacy provider retries retain stable execution identity?',
+      'How should provider retries retain stable execution identity?',
     capabilityProfile: 'repository-read-only',
   };
 }

@@ -416,7 +416,7 @@ function assertPreparedSuccessorBinding(
     snapshot.terminalStatus !== null ||
     snapshot.terminalAt !== null ||
     snapshot.failureCode !== null ||
-    snapshot.legacyRevision !== 0
+    snapshot.invocationRevision !== 0
   ) {
     throw providerInvocationSupersessionUnsafe();
   }
@@ -753,7 +753,7 @@ function assertSnapshotStableCurrent(
       current.terminalStatus !== expected.terminalStatus ||
       current.terminalAt !== expected.terminalAt ||
       current.failureCode !== expected.failureCode ||
-      current.legacyRevision !== expected.legacyRevision)
+      current.invocationRevision !== expected.invocationRevision)
   ) {
     throw providerInvocationSupersessionUnsafe();
   }
@@ -762,7 +762,7 @@ function assertSnapshotStableCurrent(
     (expected.terminalStatus !== null ||
       expected.terminalAt !== null ||
       expected.failureCode !== null ||
-      expected.legacyRevision !== 0)
+      expected.invocationRevision !== 0)
   ) {
     // The successor snapshot records its immutable prepared identity. Its
     // state/revision may advance after publication, but the snapshot itself
@@ -771,7 +771,7 @@ function assertSnapshotStableCurrent(
       expected.terminalStatus !== null ||
       expected.terminalAt !== null ||
       expected.failureCode !== null ||
-      expected.legacyRevision !== 0
+      expected.invocationRevision !== 0
     ) {
       throw providerInvocationSupersessionUnsafe();
     }
@@ -816,7 +816,7 @@ function currentEvidenceSnapshot(
         ? record.updatedAt
         : null,
     failureCode: record.state === 'failed' ? record.failure!.code : null,
-    legacyRevision: record.revision,
+    invocationRevision: record.revision,
     createdAt: record.createdAt,
   });
 }
@@ -878,7 +878,7 @@ function artifactDigest(
     {
       requestDigest: record.requestDigest,
       manifestDigest: record.manifestDigest,
-      legacyRevision: record.revision,
+      invocationRevision: record.revision,
       terminalState: record.state,
       terminalAt: record.updatedAt,
     },

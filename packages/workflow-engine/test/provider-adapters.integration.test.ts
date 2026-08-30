@@ -1364,7 +1364,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
       invocationId: request.invocationId,
       requestDigest: request.requestDigest,
       ownerWorkflowId: 'workflow-runtime-v1',
-      legacyRevision: 1,
+      invocationRevision: 1,
       leaseGeneration: 1,
       context: {
         ownerWorkflowId: 'workflow-runtime-v1',
@@ -3471,7 +3471,7 @@ function bindRunnerInputToInvestigationOwner(
     invocationId: input.request.invocationId,
     requestDigest: input.request.requestDigest,
     ownerWorkflowId,
-    legacyRevision: 1,
+    invocationRevision: 1,
     leaseGeneration: 1,
     context,
     executionJobId: `job-provider-concurrency-${input.request.invocationId}`,

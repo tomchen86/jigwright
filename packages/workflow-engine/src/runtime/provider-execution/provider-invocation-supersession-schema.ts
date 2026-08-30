@@ -25,7 +25,7 @@ export type ProviderInvocationEvidenceSnapshot = Readonly<{
   terminalStatus: 'succeeded' | 'failed' | null;
   terminalAt: string | null;
   failureCode: string | null;
-  legacyRevision: number;
+  invocationRevision: number;
   createdAt: string;
   evidenceDigest: string;
 }>;
@@ -406,7 +406,7 @@ export function assertProviderInvocationEvidenceSnapshot(
       'failureCode',
       'invocationId',
       'kind',
-      'legacyRevision',
+      'invocationRevision',
       'manifestDigest',
       'promptDigest',
       'rawOutputDigest',
@@ -421,8 +421,8 @@ export function assertProviderInvocationEvidenceSnapshot(
     value.kind !== 'provider-invocation-evidence-snapshot' ||
     !Number.isSafeInteger(value.attempt) ||
     (value.attempt as number) < 1 ||
-    !Number.isSafeInteger(value.legacyRevision) ||
-    (value.legacyRevision as number) < 0 ||
+    !Number.isSafeInteger(value.invocationRevision) ||
+    (value.invocationRevision as number) < 0 ||
     !isDigest(value.requestDigest) ||
     !isDigest(value.manifestDigest) ||
     !isDigest(value.subjectDigest) ||

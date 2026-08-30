@@ -58,7 +58,7 @@ export type ProviderRetentionReceipt = Readonly<{
   acceptedAttemptId: string | null;
   requestDigest: string;
   manifestDigest: string;
-  legacyRevision: number;
+  invocationRevision: number;
   terminalState: 'succeeded' | 'failed';
   terminalAt: string;
   ttlDays: number;
@@ -72,7 +72,7 @@ export type ProviderRetentionReceipt = Readonly<{
 export type ProviderRetentionReceiptBinding = Readonly<{
   requestDigest: string;
   manifestDigest: string;
-  legacyRevision: number;
+  invocationRevision: number;
   terminalState: 'succeeded' | 'failed';
   terminalAt: string;
 }>;
@@ -127,7 +127,7 @@ export function providerRetentionReceiptId(
     | 'currentEpoch'
     | 'requestDigest'
     | 'manifestDigest'
-    | 'legacyRevision'
+    | 'invocationRevision'
     | 'terminalAt'
     | 'artifacts'
     | 'executionRevision'
@@ -147,7 +147,7 @@ export function providerRetentionReceiptId(
       currentEpoch: input.currentEpoch,
       requestDigest: input.requestDigest,
       manifestDigest: input.manifestDigest,
-      legacyRevision: input.legacyRevision,
+      invocationRevision: input.invocationRevision,
       terminalAt: input.terminalAt,
       artifacts: input.artifacts,
       executionRevision: input.executionRevision,
@@ -247,7 +247,7 @@ export function readCompleteProviderRetentionReceipt(
   if (
     receipt.requestDigest !== binding.requestDigest ||
     receipt.manifestDigest !== binding.manifestDigest ||
-    receipt.legacyRevision !== binding.legacyRevision ||
+    receipt.invocationRevision !== binding.invocationRevision ||
     receipt.terminalState !== binding.terminalState ||
     receipt.terminalAt !== binding.terminalAt
   ) {
@@ -308,7 +308,7 @@ function assertProviderRetentionReceipt(
       'invocationId',
       'jobId',
       'kind',
-      'legacyRevision',
+      'invocationRevision',
       'manifestDigest',
       'preparedAt',
       'receiptDigest',
@@ -339,7 +339,7 @@ function assertProviderRetentionReceipt(
       typeof value.acceptedAttemptId !== 'string') ||
     !isDigest(value.requestDigest) ||
     !isDigest(value.manifestDigest) ||
-    !isNonNegativeInteger(value.legacyRevision) ||
+    !isNonNegativeInteger(value.invocationRevision) ||
     (value.terminalState !== 'succeeded' && value.terminalState !== 'failed') ||
     !isTimestamp(value.terminalAt) ||
     !isPositiveInteger(value.ttlDays) ||
@@ -375,7 +375,7 @@ function assertProviderRetentionReceipt(
       currentEpoch: value.currentEpoch as number,
       requestDigest: value.requestDigest,
       manifestDigest: value.manifestDigest,
-      legacyRevision: value.legacyRevision as number,
+      invocationRevision: value.invocationRevision as number,
       terminalAt: value.terminalAt,
       artifacts,
       executionRevision: value.executionRevision as number,

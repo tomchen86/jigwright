@@ -16,8 +16,8 @@ import {
 } from '../../modules/authority/execution-governance.ts';
 import {
   inspectExecutionJob,
-  inspectLegacyExecutionJobSource,
-  previewLegacyReplacementGrantDelta,
+  inspectProviderExecutionJobSource,
+  previewProviderReplacementGrantDelta,
 } from '../../runtime/provider-execution/execution-runtime.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
@@ -191,7 +191,7 @@ export function requestExecutionReplacement(
     context.lifecycleRuntime,
     (assertOwned) => {
       const inspection = inspectExecutionJob(cwd, requestedJobId);
-      const source = inspectLegacyExecutionJobSource(cwd, requestedJobId);
+      const source = inspectProviderExecutionJobSource(cwd, requestedJobId);
       if (
         source.record.purpose === 'task-diff-review' ||
         source.record.purpose === 'task-implementation'
@@ -208,10 +208,14 @@ export function requestExecutionReplacement(
       ) {
         throw replacementNotGrantable();
       }
-      const preview = previewLegacyReplacementGrantDelta(cwd, requestedJobId, {
-        timeoutMs: input.timeoutMs,
-        now: previous.updatedAt,
-      });
+      const preview = previewProviderReplacementGrantDelta(
+        cwd,
+        requestedJobId,
+        {
+          timeoutMs: input.timeoutMs,
+          now: previous.updatedAt,
+        },
+      );
       const providerPolicy = loadAiAdapterPolicy(context.git.repositoryRoot);
       const changes = mergeExactChanges([
         ...grantBase.requestedChanges,
@@ -328,7 +332,7 @@ export function executeGrantedReplacement(
     throw grantMismatch('Execution-budget grant belongs to another Job.');
   }
   if (
-    inspectLegacyExecutionJobSource(cwd, requestedJobId).record.purpose ===
+    inspectProviderExecutionJobSource(cwd, requestedJobId).record.purpose ===
     'task-diff-review'
   ) {
     throw replacementNotGrantable();
@@ -349,7 +353,7 @@ export function executeGrantedReplacement(
   ) {
     throw workflowError(
       'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-      'A legacy unbound execution-budget grant cannot create a replacement Attempt.',
+      'An unbound execution-budget Grant cannot create a replacement Attempt.',
       ExitCode.guard,
     );
   }
@@ -441,7 +445,7 @@ export function executeGrantedReplacement(
       }
 
       const inspection = inspectExecutionJob(cwd, requestedJobId);
-      const source = inspectLegacyExecutionJobSource(cwd, requestedJobId);
+      const source = inspectProviderExecutionJobSource(cwd, requestedJobId);
       const failedAttempt = inspection.attempts.at(-1);
       if (
         inspection.workflow.workflowId !== request.workflowId ||
@@ -639,7 +643,7 @@ function recoverReceipt(
     if (mandateBinding === undefined) {
       throw workflowError(
         'EXECUTION_BUDGET_GRANT_LEGACY_READ_ONLY',
-        'A legacy unbound execution-budget request cannot create a replacement Attempt.',
+        'An unbound execution-budget request cannot create a replacement Attempt.',
         ExitCode.guard,
       );
     }

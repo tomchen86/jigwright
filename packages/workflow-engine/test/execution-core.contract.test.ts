@@ -18,7 +18,7 @@ import {
   parseAttemptRecord,
   parseJobRecord,
   parseWorkflowRecord,
-  projectLegacyProviderInvocation,
+  projectProviderInvocationRecord,
   type EnvironmentSnapshot,
   type ExecutionPolicySnapshot,
   type JobRecord,
@@ -173,12 +173,12 @@ test('300 to 600 creates a replacement Attempt without changing semantic identit
   assert.equal(replacement.job.status, 'queued');
 });
 
-test('legacy ProviderInvocationRecord preserves its attempt lineage', () => {
-  const legacy: ProviderInvocationRecord = {
+test('ProviderInvocationRecord preserves its attempt lineage', () => {
+  const invocation: ProviderInvocationRecord = {
     schemaVersion: 1,
-    invocationId: 'invocation-legacy-9',
-    investigationId: 'investigation-legacy',
-    changeId: 'legacy-change',
+    invocationId: 'invocation-current-9',
+    investigationId: 'investigation-current',
+    changeId: 'current-change',
     attempt: 9,
     revision: 3,
     state: 'failed',
@@ -198,8 +198,8 @@ test('legacy ProviderInvocationRecord preserves its attempt lineage', () => {
     updatedAt: LATER,
   };
   const projection: ProviderInvocationProjection =
-    projectLegacyProviderInvocation({
-      record: legacy,
+    projectProviderInvocationRecord({
+      record: invocation,
       epoch: 1,
       contractVersion: 1,
       contextDigest: digest('3'),
@@ -209,24 +209,24 @@ test('legacy ProviderInvocationRecord preserves its attempt lineage', () => {
       retryPolicy: createJob().job.retryPolicy,
     });
 
-  assert.equal(projection.workflow.workflowId, legacy.investigationId);
+  assert.equal(projection.workflow.workflowId, invocation.investigationId);
   assert.equal(projection.job.attemptCount, 9);
   assert.equal(projection.attempt.attemptNumber, 9);
   assert.equal(
-    projection.attempt.legacyInvocation?.invocationId,
-    legacy.invocationId,
+    projection.attempt.providerInvocation?.invocationId,
+    invocation.invocationId,
   );
-  assert.equal(projection.attempt.legacyInvocation?.legacyAttempt, 9);
+  assert.equal(projection.attempt.providerInvocation?.invocationAttempt, 9);
   assert.equal(projection.attempt.status, 'timed-out');
   assert.equal(projection.job.status, 'waiting-retry');
 });
 
-test('legacy retry invocations project into one stable Job', () => {
+test('retry invocations project into one stable Job', () => {
   const first: ProviderInvocationRecord = {
     schemaVersion: 1,
-    invocationId: 'invocation-legacy-1',
-    investigationId: 'investigation-legacy',
-    changeId: 'legacy-change',
+    invocationId: 'invocation-current-1',
+    investigationId: 'investigation-current',
+    changeId: 'current-change',
     attempt: 1,
     revision: 2,
     state: 'failed',
@@ -247,7 +247,7 @@ test('legacy retry invocations project into one stable Job', () => {
   };
   const second: ProviderInvocationRecord = {
     ...first,
-    invocationId: 'invocation-legacy-2',
+    invocationId: 'invocation-current-2',
     attempt: 2,
     revision: 0,
     requestDigest: '3'.repeat(64),
@@ -255,7 +255,7 @@ test('legacy retry invocations project into one stable Job', () => {
     createdAt: LATER,
   };
   const project = (record: ProviderInvocationRecord) =>
-    projectLegacyProviderInvocation({
+    projectProviderInvocationRecord({
       record,
       epoch: 1,
       contractVersion: 1,

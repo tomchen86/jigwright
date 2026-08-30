@@ -849,8 +849,8 @@ function scheduleProbeRetry(
   const context = loadInvestigationRuntimeContext(cwd);
   const state = readExecutionJobState(context.runtime, jobId);
   const failedAttempt = state?.attempts.find(
-    ({ legacyInvocation }) =>
-      legacyInvocation?.invocationId === failed.invocationId,
+    ({ providerInvocation }) =>
+      providerInvocation?.invocationId === failed.invocationId,
   );
   if (state === null || state === undefined || failedAttempt === undefined) {
     throw providerRetryScheduleUnsafe();
@@ -995,12 +995,12 @@ function createReplacementSchedule(
   );
   const state = readExecutionJobState(context.runtime, jobId);
   const failedAttempt = state?.attempts.find(
-    ({ legacyInvocation }) =>
-      legacyInvocation?.invocationId === failed.invocationId,
+    ({ providerInvocation }) =>
+      providerInvocation?.invocationId === failed.invocationId,
   );
   const replacementAttempt = state?.attempts.find(
-    ({ legacyInvocation }) =>
-      legacyInvocation?.invocationId === replacement.invocationId,
+    ({ providerInvocation }) =>
+      providerInvocation?.invocationId === replacement.invocationId,
   );
   if (
     state === null ||

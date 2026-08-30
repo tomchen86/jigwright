@@ -73,7 +73,7 @@ export type ProviderInvocationAcceptanceBinding = Readonly<{
   invocationId: string;
   requestDigest: string;
   ownerWorkflowId: string;
-  legacyRevision: number;
+  invocationRevision: number;
   leaseGeneration: number;
   context: ProviderPromptContextBinding;
   executionJobId: string;

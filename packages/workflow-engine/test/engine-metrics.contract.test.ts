@@ -178,12 +178,11 @@ test('engine metrics retain historical wait time and count one stage per replace
     'history-3',
   );
 
-  const metrics = computeEngineMetrics(
-    [observed],
-    storageMetrics(),
-    NOW,
-    { grantRequestDigests: [], issuedGrants: [], supersedeReasons: [] },
-  );
+  const metrics = computeEngineMetrics([observed], storageMetrics(), NOW, {
+    grantRequestDigests: [],
+    issuedGrants: [],
+    supersedeReasons: [],
+  });
 
   assert.equal(metrics.metrics.stages_recomputed_per_retry, 1);
   assert.equal(metrics.metrics.workflow_blocked_hours, 1.5);
@@ -281,21 +280,16 @@ test('engine governance metrics require canonical supersede reasons', () => {
       error.code === 'ENGINE_METRICS_INVALID',
   );
 
-  const metrics = computeEngineMetrics(
-    [canonical],
-    storageMetrics(),
-    NOW,
-    {
-      grantRequestDigests: [],
-      issuedGrants: [],
-      supersedeReasons: [
-        {
-          workflowId: canonical.workflow.workflowId,
-          reason: 'workflow-replaced',
-        },
-      ],
-    },
-  );
+  const metrics = computeEngineMetrics([canonical], storageMetrics(), NOW, {
+    grantRequestDigests: [],
+    issuedGrants: [],
+    supersedeReasons: [
+      {
+        workflowId: canonical.workflow.workflowId,
+        reason: 'workflow-replaced',
+      },
+    ],
+  });
   assert.deepEqual(metrics.metrics.supersede_by_reason, {
     'workflow-replaced': 1,
   });
@@ -697,7 +691,7 @@ function attempt(
     providerCostMicros: 0,
     providerTokens: 0,
     retention: status === 'late-duplicate' ? 'debug' : 'active',
-    legacyInvocation: null,
+    providerInvocation: null,
     createdAt: updatedAt,
     updatedAt,
     ...overrides,

@@ -143,7 +143,7 @@ export type ProviderRetentionEligibilityInput = Readonly<{
   cutoffAt: string;
   /**
    * A human pin recorded in the durable governance catalog. An Attempt's own
-   * retention is projected from its legacy invocation and never carries a pin,
+   * retention is projected from its provider invocation and never carries a pin,
    * so the catalog is the only place a maintainer's decision can be read from.
    */
   humanPinned?: boolean;
@@ -240,7 +240,7 @@ export function classifyProviderRetentionEligibility(
   ) {
     return 'current-attempt';
   }
-  // An old epoch is no longer current even if a legacy projection still calls
+  // An old epoch is no longer current even if an invocation projection still calls
   // its retention "active". The accepted Result/core stays durable, while its
   // private raw runtime becomes TTL-eligible rather than permanent by accident.
   if (
@@ -339,7 +339,7 @@ export function inspectProviderRetentionMetrics(
         }
         const denial = classifyProviderRetentionEligibility({
           invocationState: record.state,
-          historyComplete: binding.state.legacyProjection.completeHistory,
+          historyComplete: binding.state.invocationProjection.completeHistory,
           attemptEpoch: binding.context.epoch,
           currentEpoch: binding.context.currentEpoch,
           retention: binding.attempt.retention,
@@ -437,7 +437,7 @@ export function assertProviderRuntimeEvidencePinnableUnderLifecycleLock(
             'epoch',
             'invocationId',
             'kind',
-            'legacyRevision',
+            'invocationRevision',
             'workflowId',
           ].sort(),
         )
@@ -458,8 +458,8 @@ export function assertProviderRuntimeEvidencePinnableUnderLifecycleLock(
     typeof descriptor.invocationId !== 'string' ||
     !Number.isSafeInteger(descriptor.epoch) ||
     descriptor.epoch !== record.epoch ||
-    !Number.isSafeInteger(descriptor.legacyRevision) ||
-    (descriptor.legacyRevision as number) < 0 ||
+    !Number.isSafeInteger(descriptor.invocationRevision) ||
+    (descriptor.invocationRevision as number) < 0 ||
     record.itemIdentity !== `attempt:${descriptor.attemptId}` ||
     record.evidenceId !== providerRuntimeEvidenceId(descriptor.attemptId)
   ) {
@@ -482,7 +482,7 @@ export function assertProviderRuntimeEvidencePinnableUnderLifecycleLock(
     binding.context.workflowId !== record.workflowId ||
     binding.context.epoch !== record.epoch ||
     binding.attempt.attemptId !== descriptor.attemptId ||
-    binding.attempt.legacyInvocation?.invocationId !== descriptor.invocationId
+    binding.attempt.providerInvocation?.invocationId !== descriptor.invocationId
   ) {
     throw runtimeUnsafe();
   }
@@ -502,7 +502,7 @@ export function assertProviderRuntimeEvidencePinnableUnderLifecycleLock(
 
 /**
  * Run one bounded physical retention pass. Eligibility comes only from the
- * exact durable Job/Attempt projection; legacy state that cannot prove its
+ * exact durable Job/Attempt projection; incomplete state that cannot prove its
  * current, epoch, and pin status is retained with an explicit deny reason.
  */
 export function pruneProviderRuntime(
@@ -664,14 +664,14 @@ function decideCandidate(
     state.job.epoch > state.workflow.currentEpoch ||
     attempt.workflowId !== state.workflow.workflowId ||
     context.epoch > context.currentEpoch ||
-    attempt.legacyInvocation?.invocationId !== record.invocationId ||
-    attempt.legacyInvocation.legacyRevision !== record.revision
+    attempt.providerInvocation?.invocationId !== record.invocationId ||
+    attempt.providerInvocation.invocationRevision !== record.revision
   ) {
     return deny(record.invocationId, 'schema-currentness-unknown');
   }
   const policyDenial = classifyProviderRetentionEligibility({
     invocationState: record.state,
-    historyComplete: state.legacyProjection.completeHistory,
+    historyComplete: state.invocationProjection.completeHistory,
     attemptEpoch: context.epoch,
     currentEpoch: context.currentEpoch,
     retention: attempt.retention,
@@ -855,7 +855,7 @@ function prepareReceipt(
     invocationId: binding.record.invocationId,
     requestDigest: binding.record.requestDigest,
     manifestDigest: binding.record.manifestDigest,
-    legacyRevision: binding.record.revision,
+    invocationRevision: binding.record.revision,
     terminalAt: binding.record.updatedAt,
     artifacts,
     workflowId: binding.context.workflowId,
@@ -893,7 +893,7 @@ function prepareReceipt(
     acceptedAttemptId: binding.state.job.acceptedAttemptId,
     requestDigest: binding.record.requestDigest,
     manifestDigest: binding.record.manifestDigest,
-    legacyRevision: binding.record.revision,
+    invocationRevision: binding.record.revision,
     terminalState: binding.record.state,
     terminalAt: binding.record.updatedAt,
     ttlDays,
@@ -1007,7 +1007,7 @@ function cleanupCompletedReceipt(
     // Keep the empty, exact runtime directory as a non-authoritative physical
     // marker. If the external complete receipt disappears, the ordinary
     // scanner observes an incomplete runtime closure and fails closed even for
-    // legacy/failure records that do not carry runtimeObservation.
+    // terminal failure records that do not carry runtimeObservation.
   }
   const reviewRoot = path.join(
     paths.invocations,
@@ -1114,7 +1114,7 @@ function assertReceiptBinding(
     receipt.acceptedAttemptId !== binding.state.job.acceptedAttemptId ||
     receipt.requestDigest !== record.requestDigest ||
     receipt.manifestDigest !== record.manifestDigest ||
-    receipt.legacyRevision !== record.revision ||
+    receipt.invocationRevision !== record.revision ||
     receipt.terminalState !== record.state ||
     receipt.terminalAt !== record.updatedAt ||
     Date.parse(receipt.terminalAt) > Date.parse(receipt.cutoffAt)
@@ -1141,7 +1141,7 @@ function readInvocationBinding(
     const projected = projectProviderInvocationExecution({ record, request });
     const state = readExecutionJobState(paths, projected.job.jobId);
     if (state === null) return undefined;
-    const sources = state.legacyProjection.invocations.filter(
+    const sources = state.invocationProjection.invocations.filter(
       ({ invocationId }) => invocationId === record.invocationId,
     );
     if (sources.length !== 1) return undefined;
@@ -1151,10 +1151,10 @@ function readInvocationBinding(
     );
     if (
       attempts.length !== 1 ||
-      source.legacyRevision !== record.revision ||
+      source.invocationRevision !== record.revision ||
       attempts[0]!.attemptId !== projected.attempt.attemptId ||
-      attempts[0]!.legacyInvocation?.invocationId !== record.invocationId ||
-      attempts[0]!.legacyInvocation?.legacyRevision !== record.revision
+      attempts[0]!.providerInvocation?.invocationId !== record.invocationId ||
+      attempts[0]!.providerInvocation?.invocationRevision !== record.revision
     ) {
       return undefined;
     }

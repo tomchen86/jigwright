@@ -20,7 +20,7 @@ import type { ProviderInvocationRecord } from '../../runtime/storage-journal/pro
 import type { TaskMandateBinding } from '../authority/task-mandate.ts';
 
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
-const LEGACY_DIGEST = /^[0-9a-f]{64}$/;
+const UNPREFIXED_DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const IDENTIFIER = /^[a-z0-9][a-z0-9._:-]{0,255}$/;
 const MAX_RECORD_BYTES = 1_048_576;
@@ -104,7 +104,7 @@ export type JobRecord = {
   jobId: string;
   workflowId: string;
   epoch: number;
-  /** Absent only on read-only projections of legacy unmandated invocations. */
+  /** Absent on planning-only invocations that do not execute a managed Task. */
   mandateBinding?: TaskMandateBinding;
   stage: string;
   contextDigest: string;
@@ -220,10 +220,10 @@ export type AttemptRecord = {
   providerCostMicros: number;
   providerTokens: number;
   retention: AttemptRetention;
-  legacyInvocation: {
+  providerInvocation: {
     invocationId: string;
-    legacyAttempt: number;
-    legacyRevision: number;
+    invocationAttempt: number;
+    invocationRevision: number;
   } | null;
   createdAt: string;
   updatedAt: string;
@@ -347,11 +347,7 @@ export function providerExecutionEnvironmentDigest(
   });
 }
 
-/**
- * Compatibility projection used by the live provider lifecycle while the
- * persisted invocation schema remains V1. All retry invocations for one
- * investigation/stage project to the same Job; each invocation is one Attempt.
- */
+/** Project one current provider invocation into its durable Job and Attempt. */
 export function projectProviderInvocationExecution(input: {
   record: ProviderInvocationRecord;
   request: ProviderInvocationRequest;
@@ -373,7 +369,7 @@ export function projectProviderInvocationExecution(input: {
   const deadline = new Date(
     Date.parse(record.createdAt) + 14 * 24 * 60 * 60 * 1_000,
   ).toISOString();
-  return projectLegacyProviderInvocation({
+  return projectProviderInvocationRecord({
     record,
     epoch: 1,
     contractVersion: 1,
@@ -505,7 +501,7 @@ export function createExecutionJob(input: {
     providerCostMicros: 0,
     providerTokens: 0,
     retention: 'active',
-    legacyInvocation: null,
+    providerInvocation: null,
     createdAt,
     updatedAt: createdAt,
   };
@@ -704,7 +700,7 @@ export function createReplacementAttempt(input: {
     providerCostMicros: 0,
     providerTokens: 0,
     retention: 'active',
-    legacyInvocation: null,
+    providerInvocation: null,
     createdAt,
     updatedAt: createdAt,
   };
@@ -1548,7 +1544,7 @@ export function classifyEnvironmentDrift(
   return deepFreeze({ class: 'non-semantic', changedFields });
 }
 
-export function projectLegacyProviderInvocation(input: {
+export function projectProviderInvocationRecord(input: {
   record: ProviderInvocationRecord;
   epoch: number;
   contractVersion: number;
@@ -1569,8 +1565,8 @@ export function projectLegacyProviderInvocation(input: {
     !['prepared', 'leased', 'succeeded', 'failed'].includes(record.state)
   ) {
     throw executionError(
-      'LEGACY_INVOCATION_INVALID',
-      'The legacy ProviderInvocationRecord cannot be projected safely.',
+      'PROVIDER_INVOCATION_PROJECTION_INVALID',
+      'The ProviderInvocationRecord cannot be projected safely.',
       ExitCode.guard,
     );
   }
@@ -1585,7 +1581,7 @@ export function projectLegacyProviderInvocation(input: {
   const executionPolicy = assertExecutionPolicy(input.executionPolicy);
   if (executionPolicy.provider !== record.providerId) {
     throw executionInvalid(
-      'Legacy projection provider policy does not match the record.',
+      'Provider projection policy does not match the invocation record.',
     );
   }
   const createdAt = assertTimestamp(record.createdAt);
@@ -1594,10 +1590,9 @@ export function projectLegacyProviderInvocation(input: {
     `attempt-provider-${record.invocationId}`,
     'attemptId',
   );
-  // A legacy retry used a fresh invocationId for each process. Binding Job
-  // identity to invocationId would therefore turn an attempt retry into a new
-  // logical Job. The investigation/stage pair is the stable legacy semantic
-  // identity; a digest keeps the projected identifier bounded and canonical.
+  // Each retry receives a fresh invocationId. Binding Job identity to that ID
+  // would turn an Attempt retry into a new logical Job, so the stable semantic
+  // identity is the investigation/stage pair plus the exact manifest digest.
   const jobIdentityDigest = digestCanonical({
     kind: 'provider-job',
     workflowId,
@@ -1620,7 +1615,7 @@ export function projectLegacyProviderInvocation(input: {
     stage: assertIdentifier(record.purpose, 'stage'),
     contextDigest,
     // The provider request includes execution details and invocation identity;
-    // the manifest is the immutable semantic input shared by legacy retries.
+    // the manifest is the immutable semantic input shared by current retries.
     inputDigest: normalizeDigest(record.manifestDigest),
     outputContractDigest: digestCanonical({
       kind: 'provider-output-contract',
@@ -1648,10 +1643,10 @@ export function projectLegacyProviderInvocation(input: {
     semanticSpec,
   });
   const attemptRequestDigest = normalizeDigest(record.requestDigest);
-  const status = legacyAttemptStatus(record);
+  const status = providerAttemptStatus(record);
   const acceptedAttemptId = status === 'succeeded' ? attemptId : null;
-  const jobStatus = legacyJobStatus(record);
-  const failure = legacyFailure(
+  const jobStatus = providerJobStatus(record);
+  const failure = providerFailure(
     record,
     semanticSpec.inputDigest,
     input.environmentDigest,
@@ -1732,10 +1727,10 @@ export function projectLegacyProviderInvocation(input: {
     providerCostMicros: 0,
     providerTokens: 0,
     retention: status === 'succeeded' ? 'active' : 'debug',
-    legacyInvocation: {
+    providerInvocation: {
       invocationId: assertIdentifier(record.invocationId, 'invocationId'),
-      legacyAttempt: record.attempt,
-      legacyRevision: record.revision,
+      invocationAttempt: record.attempt,
+      invocationRevision: record.revision,
     },
     createdAt,
     updatedAt,
@@ -1815,7 +1810,7 @@ export function assertWorkflowRecord(value: unknown): WorkflowRecord {
 export function assertJobRecord(value: JobRecord): JobRecord;
 export function assertJobRecord(value: unknown): JobRecord;
 export function assertJobRecord(value: unknown): JobRecord {
-  const legacyKeys = [
+  const baseKeys = [
     'acceptedAttemptId',
     'attemptCount',
     'contextDigest',
@@ -1837,7 +1832,7 @@ export function assertJobRecord(value: unknown): JobRecord {
   ];
   if (
     !isPlainObject(value) ||
-    !hasKeysEither(value, [legacyKeys, [...legacyKeys, 'mandateBinding']]) ||
+    !hasKeysEither(value, [baseKeys, [...baseKeys, 'mandateBinding']]) ||
     value.schemaVersion !== 2 ||
     !JOB_STATUSES.has(value.status as JobStatus)
   ) {
@@ -1895,7 +1890,7 @@ export function requireExecutionJobMandateBinding(
   if (job.mandateBinding === undefined) {
     throw executionError(
       'EXECUTION_JOB_MANDATE_REQUIRED',
-      'A legacy Execution Job without a durable Task Mandate binding is read-only.',
+      'An Execution Job without a durable Task Mandate binding is read-only.',
       ExitCode.guard,
     );
   }
@@ -1922,7 +1917,7 @@ export function assertAttemptRecord(value: unknown): AttemptRecord {
       'jobId',
       'lease',
       'leaseGeneration',
-      'legacyInvocation',
+      'providerInvocation',
       'policySnapshot',
       'provider',
       'providerCostMicros',
@@ -1995,7 +1990,7 @@ export function assertAttemptRecord(value: unknown): AttemptRecord {
   assertNonnegativeInteger(value.runtimeMs, 'runtimeMs');
   assertNonnegativeInteger(value.providerCostMicros, 'providerCostMicros');
   assertNonnegativeInteger(value.providerTokens, 'providerTokens');
-  assertLegacyInvocation(value.legacyInvocation);
+  assertProviderInvocationProjection(value.providerInvocation);
   assertTimestamp(value.createdAt);
   assertTimestamp(value.updatedAt);
   if (
@@ -2384,17 +2379,24 @@ function assertAttemptLease(value: unknown, generation: number): void {
   }
 }
 
-function assertLegacyInvocation(value: unknown): void {
+function assertProviderInvocationProjection(value: unknown): void {
   if (value === null) return;
   if (
     !isPlainObject(value) ||
-    !hasExactKeys(value, ['invocationId', 'legacyAttempt', 'legacyRevision'])
+    !hasExactKeys(value, [
+      'invocationId',
+      'invocationAttempt',
+      'invocationRevision',
+    ])
   ) {
-    throw executionInvalid('Legacy invocation projection is invalid.');
+    throw executionInvalid('Provider invocation projection is invalid.');
   }
-  assertIdentifier(value.invocationId, 'legacy invocationId');
-  assertPositiveInteger(value.legacyAttempt, 'legacy attempt');
-  assertNonnegativeInteger(value.legacyRevision, 'legacy revision');
+  assertIdentifier(value.invocationId, 'provider invocationId');
+  assertPositiveInteger(value.invocationAttempt, 'provider invocation attempt');
+  assertNonnegativeInteger(
+    value.invocationRevision,
+    'provider invocation revision',
+  );
 }
 
 function assertExecutionBudgetGrantRequest(
@@ -2624,11 +2626,13 @@ function composeAttemptRequestDigest(input: {
   });
 }
 
-function legacyAttemptStatus(record: ProviderInvocationRecord): AttemptStatus {
+function providerAttemptStatus(
+  record: ProviderInvocationRecord,
+): AttemptStatus {
   if (record.state === 'prepared') return 'created';
   if (record.state === 'leased') return 'leased';
   if (record.state === 'succeeded') return 'succeeded';
-  if (isLegacyCancellationFailure(record)) return 'cancelled';
+  if (isProviderCancellationFailure(record)) return 'cancelled';
   if (record.failure?.code.toUpperCase().includes('TIMEOUT') === true) {
     return 'timed-out';
   }
@@ -2643,17 +2647,17 @@ function legacyAttemptStatus(record: ProviderInvocationRecord): AttemptStatus {
     : 'failed-terminal';
 }
 
-function legacyJobStatus(record: ProviderInvocationRecord): JobStatus {
+function providerJobStatus(record: ProviderInvocationRecord): JobStatus {
   if (record.state === 'prepared') return 'queued';
   if (record.state === 'leased') return 'running';
   if (record.state === 'succeeded') return 'succeeded';
-  if (isLegacyCancellationFailure(record)) return 'cancelled';
+  if (isProviderCancellationFailure(record)) return 'cancelled';
   return record.failure?.kind === 'retryable'
     ? 'waiting-retry'
     : 'failed-terminal';
 }
 
-function isLegacyCancellationFailure(
+function isProviderCancellationFailure(
   record: ProviderInvocationRecord,
 ): boolean {
   return (
@@ -2662,7 +2666,7 @@ function isLegacyCancellationFailure(
   );
 }
 
-function legacyFailure(
+function providerFailure(
   record: ProviderInvocationRecord,
   inputDigest: string,
   environmentDigest: string,
@@ -2670,10 +2674,10 @@ function legacyFailure(
   if (record.failure === null) return null;
   const code = /^[A-Z][A-Z0-9_]{1,127}$/.test(record.failure.code)
     ? record.failure.code
-    : 'LEGACY_PROVIDER_FAILURE';
+    : 'PROVIDER_FAILURE_UNCLASSIFIED';
   const classification =
     record.failure.executionKind === undefined
-      ? classifyLegacyProviderFailure(code, record.failure.kind)
+      ? classifyProviderFailure(code, record.failure.kind)
       : classifyExecutionFailure({
           kind: record.failure.executionKind,
           stage: record.purpose,
@@ -2699,7 +2703,7 @@ function legacyFailure(
   });
 }
 
-function classifyLegacyProviderFailure(
+function classifyProviderFailure(
   code: string,
   kind: 'retryable' | 'repository-reconciliation-required',
 ): Pick<FailureDescriptor, 'source' | 'retryClass' | 'sideEffectState'> {
@@ -2910,7 +2914,7 @@ function isSafeRepositoryRelativePath(value: string): boolean {
 
 function normalizeDigest(value: string): string {
   if (DIGEST.test(value)) return value;
-  if (LEGACY_DIGEST.test(value)) return `sha256:${value}`;
+  if (UNPREFIXED_DIGEST.test(value)) return `sha256:${value}`;
   throw executionInvalid('Digest is invalid.');
 }
 

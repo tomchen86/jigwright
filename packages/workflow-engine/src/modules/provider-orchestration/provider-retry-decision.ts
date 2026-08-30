@@ -116,12 +116,12 @@ export function authorizeAutomaticProviderRetry(
   const state = readExecutionJobState(paths, projection.job.jobId);
   if (
     state === null ||
-    !state.legacyProjection.completeHistory ||
-    state.attempts.length !== state.legacyProjection.invocations.length
+    !state.invocationProjection.completeHistory ||
+    state.attempts.length !== state.invocationProjection.invocations.length
   ) {
     throw retryAccountingRequired();
   }
-  const failedSource = state.legacyProjection.invocations.find(
+  const failedSource = state.invocationProjection.invocations.find(
     ({ invocationId }) => invocationId === input.failed.invocationId,
   );
   const failedAttempt = state.attempts.find(
@@ -129,13 +129,14 @@ export function authorizeAutomaticProviderRetry(
   );
   if (
     failedSource === undefined ||
-    failedSource.legacyRevision !== input.failed.revision ||
+    failedSource.invocationRevision !== input.failed.revision ||
     failedSource.attemptId !== projection.attempt.attemptId ||
     failedAttempt === undefined ||
     failedAttempt.failure === null ||
-    failedAttempt.legacyInvocation?.invocationId !==
+    failedAttempt.providerInvocation?.invocationId !==
       input.failed.invocationId ||
-    failedAttempt.legacyInvocation.legacyRevision !== input.failed.revision ||
+    failedAttempt.providerInvocation.invocationRevision !==
+      input.failed.revision ||
     state.job.jobId !== projection.job.jobId ||
     state.workflow.workflowId !== projection.workflow.workflowId
   ) {
@@ -153,7 +154,10 @@ export function authorizeAutomaticProviderRetry(
     invocationId: string;
     accountingDigest: string;
   }> = [];
-  for (const [index, source] of state.legacyProjection.invocations.entries()) {
+  for (const [
+    index,
+    source,
+  ] of state.invocationProjection.invocations.entries()) {
     const request = readProviderInvocationRequest(paths, source.invocationId);
     const snapshot = readProviderExecutionPolicySnapshot(paths, request);
     if (snapshot.accounting === null) {
@@ -164,8 +168,9 @@ export function authorizeAutomaticProviderRetry(
     );
     if (
       attempt === undefined ||
-      attempt.legacyInvocation?.invocationId !== source.invocationId ||
-      attempt.legacyInvocation.legacyRevision !== source.legacyRevision ||
+      attempt.providerInvocation?.invocationId !== source.invocationId ||
+      attempt.providerInvocation.invocationRevision !==
+        source.invocationRevision ||
       attempt.runtimeMs !== snapshot.accounting.attemptReservation.runtimeMs ||
       attempt.providerCostMicros !==
         snapshot.accounting.attemptReservation.providerCostMicros ||
@@ -254,7 +259,7 @@ export function authorizeAutomaticProviderRetry(
     executionJobId: state.job.jobId,
     executionRevision: state.revision,
     failedAttemptId: failedAttempt.attemptId,
-    failedLegacyRevision: input.failed.revision,
+    failedInvocationRevision: input.failed.revision,
     replacementRequestDigest: input.replacementRequest.requestDigest,
     accountingEvidence,
     cumulativeRuntimeMs,
@@ -283,7 +288,7 @@ export function authorizeAutomaticProviderRetry(
     nextReservation,
     evaluatedAt,
     evidenceDigest,
-    sourceInvocationIds: state.legacyProjection.invocations.map(
+    sourceInvocationIds: state.invocationProjection.invocations.map(
       ({ invocationId }) => invocationId,
     ),
   });

@@ -126,7 +126,7 @@ type ProviderExecutionEntry = Readonly<{
 }>;
 
 /**
- * Replay and consume the legacy per-kind RepairBudget without publishing a
+ * Replay and consume the bounded per-kind RepairBudget without publishing a
  * replacement artifact. Retry callers run this before their durable
  * reservation/ref transition so a stricter semantic/schema budget cannot fail
  * after partial invocation files have appeared.
@@ -195,7 +195,7 @@ export function providerPromptContextStoreRoot(
 }
 
 /**
- * Materialize the provider's legacy input manifest as the sole item in an
+ * Materialize the provider input manifest as the sole item in an
  * exact durable epoch context. Replays verify the complete expected manifest;
  * they never discover or append evidence by walking historical storage.
  */
@@ -274,7 +274,7 @@ export function registerProviderRuntimeEvidence(
     binding: ProviderPromptContextBinding;
     attemptId: string;
     invocationId: string;
-    legacyRevision: number;
+    invocationRevision: number;
     now: Date;
   },
 ): Readonly<{ evidenceId: string; created: boolean }> {
@@ -292,7 +292,7 @@ export function registerProviderRuntimeEvidence(
     epoch: input.binding.epoch,
     attemptId: input.attemptId,
     invocationId: input.invocationId,
-    legacyRevision: input.legacyRevision,
+    invocationRevision: input.invocationRevision,
   })}\n`;
   storeDurableEvidence(storeRoot, {
     workflowId: input.binding.workflowId,

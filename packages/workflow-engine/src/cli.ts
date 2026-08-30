@@ -105,7 +105,7 @@ import {
 import {
   inspectExecutionJob,
   listExecutionJobs,
-  prepareLegacyReplacement,
+  prepareProviderReplacement,
 } from './runtime/provider-execution/execution-runtime.ts';
 import { pruneProviderRuntime } from './runtime/provider-execution/provider-retention.ts';
 import {
@@ -2189,7 +2189,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
           command,
           action: 'retry-preview',
           ok: true,
-          result: prepareLegacyReplacement(cwd, rest[1]!, { timeoutMs }),
+          result: prepareProviderReplacement(cwd, rest[1]!, { timeoutMs }),
         };
       }
       throw executionJobUsage();

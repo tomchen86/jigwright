@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   createReplacementAttempt,
-  projectLegacyProviderInvocation,
+  projectProviderInvocationExecution,
   type AttemptRecord,
   type ChangedField,
   type ExecutionPolicySnapshot,
@@ -11,18 +11,13 @@ import {
   type JobRecord,
   type ProviderInvocationProjection,
   type RetryDecision,
-  type RetryPolicy,
   type WorkflowRecord,
 } from '../../modules/provider-orchestration/execution-core.ts';
 import {
-  decideLegacyExecutionFailure,
+  decideProviderExecutionFailure,
   readExecutionJobState,
   type DurableExecutionJobState,
 } from '../storage-journal/execution-store.ts';
-import {
-  type ExecutionBudgetConsumeReceipt,
-  type GrantRequest,
-} from '../../modules/authority/execution-governance.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { listProviderInvocationLifecycleProjections } from '../storage-journal/investigation-session-store.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
@@ -39,10 +34,6 @@ import type { ProviderInvocationRequest } from '../../modules/provider-orchestra
 
 const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
 const MAX_PROVIDER_TIMEOUT_MS = 3_600_000;
-const LEGACY_EPOCH = 1;
-const LEGACY_CONTRACT_VERSION = 1;
-const LEGACY_MAX_ATTEMPTS = 4;
-const RETRY_DEADLINE = '9999-12-31T23:59:59.999Z';
 
 export type ExecutionResultView = {
   attemptId: string;
@@ -72,7 +63,7 @@ export type ExecutionJobInspection = {
   latestFailure: ExecutionFailureView | null;
 };
 
-export type LegacyReplacementPreview = {
+export type ProviderReplacementPreview = {
   schemaVersion: 1;
   workflowId: string;
   epoch: number;
@@ -88,14 +79,7 @@ export type LegacyReplacementPreview = {
   grantId: string | null;
 };
 
-export type AuthorizedLegacyReplacement = {
-  schemaVersion: 1;
-  grantRequest: GrantRequest;
-  preview: LegacyReplacementPreview;
-  receipt: ExecutionBudgetConsumeReceipt;
-};
-
-type LegacyProjectionEntry = {
+type ProviderProjectionEntry = {
   record: ProviderInvocationRecord;
   request: ProviderInvocationRequest;
   outputSchema: ProviderOutputSchemaGeneration;
@@ -105,8 +89,8 @@ type LegacyProjectionEntry = {
 
 export function listExecutionJobs(cwd: string): ExecutionJobInspection[] {
   const runtime = loadInvestigationRuntimeContext(cwd).runtime;
-  const entries = readLegacyProjectionEntries(cwd);
-  const grouped = new Map<string, LegacyProjectionEntry[]>();
+  const entries = readProviderProjectionEntries(cwd);
+  const grouped = new Map<string, ProviderProjectionEntry[]>();
   for (const entry of entries) {
     const jobId = entry.projection.job.jobId;
     const group = grouped.get(jobId) ?? [];
@@ -145,11 +129,11 @@ export function inspectExecutionJob(
   return inspection;
 }
 
-export function prepareLegacyReplacement(
+export function prepareProviderReplacement(
   cwd: string,
   requestedJobId: string,
   input: { timeoutMs: number; now?: string },
-): LegacyReplacementPreview {
+): ProviderReplacementPreview {
   const inspection = inspectExecutionJob(cwd, requestedJobId);
   if (inspection.latestFailure?.decision.requiredGrant !== undefined) {
     throw workflowError(
@@ -163,20 +147,16 @@ export function prepareLegacyReplacement(
       },
     );
   }
-  return buildLegacyReplacementPreview(inspection, input, null);
+  return buildProviderReplacementPreview(inspection, input, null);
 }
 
-/**
- * Build the exact replacement projection used by a future grant request. This
- * is read-only: unlike the deprecated authorization helper it never consumes a
- * grant or manufactures a receipt for a preview identity.
- */
-export function previewLegacyReplacementGrantDelta(
+/** Build the read-only replacement delta used by an exact Grant request. */
+export function previewProviderReplacementGrantDelta(
   cwd: string,
   requestedJobId: string,
   input: { timeoutMs: number; now?: string },
-): LegacyReplacementPreview {
-  return buildLegacyReplacementPreview(
+): ProviderReplacementPreview {
+  return buildProviderReplacementPreview(
     inspectExecutionJob(cwd, requestedJobId),
     input,
     null,
@@ -184,12 +164,12 @@ export function previewLegacyReplacementGrantDelta(
   );
 }
 
-export function inspectLegacyExecutionJobSource(
+export function inspectProviderExecutionJobSource(
   cwd: string,
   requestedJobId: string,
-): LegacyProjectionEntry {
+): ProviderProjectionEntry {
   const jobId = assertRuntimeJobId(requestedJobId);
-  const entries = readLegacyProjectionEntries(cwd)
+  const entries = readProviderProjectionEntries(cwd)
     .filter(({ projection }) => projection.job.jobId === jobId)
     .sort((left, right) => left.record.attempt - right.record.attempt);
   const latest = entries.at(-1);
@@ -203,24 +183,12 @@ export function inspectLegacyExecutionJobSource(
   return deepFreeze(structuredClone(latest));
 }
 
-export function authorizeLegacyReplacement(
-  _cwd: string,
-  _requestedJobId: string,
-  _input: { grantId: string; timeoutMs: number; now?: string },
-): AuthorizedLegacyReplacement {
-  throw workflowError(
-    'EXECUTION_RUNTIME_PREVIEW_AUTHORIZATION_DISABLED',
-    'Preview authorization is disabled; persist a retry request and dispatch the real replacement with job retry.',
-    ExitCode.guard,
-  );
-}
-
-function buildLegacyReplacementPreview(
+function buildProviderReplacementPreview(
   inspection: ExecutionJobInspection,
   input: { timeoutMs: number; now?: string },
   grantId: string | null,
   pendingGrant = false,
-): LegacyReplacementPreview {
+): ProviderReplacementPreview {
   const previous = inspection.attempts.at(-1);
   if (
     previous === undefined ||
@@ -230,7 +198,7 @@ function buildLegacyReplacementPreview(
   ) {
     throw workflowError(
       'EXECUTION_RUNTIME_REPLACEMENT_NOT_ALLOWED',
-      'The latest legacy Attempt is not eligible for replacement.',
+      'The latest provider Attempt is not eligible for replacement.',
       ExitCode.guard,
     );
   }
@@ -286,7 +254,7 @@ function buildLegacyReplacementPreview(
   });
 }
 
-function readLegacyProjectionEntries(cwd: string): LegacyProjectionEntry[] {
+function readProviderProjectionEntries(cwd: string): ProviderProjectionEntry[] {
   const context = loadInvestigationRuntimeContext(cwd);
   let records: Array<{
     record: ProviderInvocationRecord;
@@ -317,33 +285,22 @@ function readLegacyProjectionEntries(cwd: string): LegacyProjectionEntry[] {
   } catch (error) {
     throw workflowError(
       'EXECUTION_RUNTIME_STORE_UNSAFE',
-      'Legacy provider invocation state cannot be inspected safely.',
+      'Provider invocation state cannot be inspected safely.',
       ExitCode.staleState,
       { details: { cause: errorMessage(error) } },
     );
   }
   return records.map(({ record, request, outputSchema, residuals }) => {
     try {
-      const executionPolicy = legacyExecutionPolicy(request);
-      const projection = projectLegacyProviderInvocation({
+      const projection = projectProviderInvocationExecution({
         record,
-        epoch: LEGACY_EPOCH,
-        contractVersion: LEGACY_CONTRACT_VERSION,
-        contextDigest: normalizeDigest(record.manifestDigest),
-        engineBinding: digestCanonical({
-          kind: 'legacy-execution-engine-binding',
-          schemaVersion: 1,
-        }),
-        executionPolicy,
-        environmentDigest: legacyEnvironmentDigest(request),
-        semanticJobIdentityDigest: normalizeDigest(record.manifestDigest),
-        retryPolicy: legacyRetryPolicy(request.providerId),
+        request,
       });
       return { record, request, outputSchema, residuals, projection };
     } catch (error) {
       throw workflowError(
         'EXECUTION_RUNTIME_PROJECTION_INVALID',
-        `Legacy invocation ${record.invocationId} cannot be projected.`,
+        `Provider invocation ${record.invocationId} cannot be projected.`,
         ExitCode.guard,
         { details: { cause: errorMessage(error) } },
       );
@@ -353,7 +310,7 @@ function readLegacyProjectionEntries(cwd: string): LegacyProjectionEntry[] {
 
 function aggregateDurableJob(
   state: DurableExecutionJobState,
-  input: LegacyProjectionEntry[],
+  input: ProviderProjectionEntry[],
 ): ExecutionJobInspection {
   const entries = [...input].sort(
     (left, right) =>
@@ -361,21 +318,21 @@ function aggregateDurableJob(
       left.record.invocationId.localeCompare(right.record.invocationId),
   );
   if (
-    entries.length !== state.legacyProjection.invocations.length ||
+    entries.length !== state.invocationProjection.invocations.length ||
     state.job.jobId !== entries[0]?.projection.job.jobId
   ) {
     throw runtimeConflict(
-      'Durable execution state does not cover the current legacy Job history.',
+      'Durable execution state does not cover the current provider Job history.',
     );
   }
   const entriesByInvocation = new Map(
     entries.map((entry) => [entry.record.invocationId, entry]),
   );
-  for (const source of state.legacyProjection.invocations) {
+  for (const source of state.invocationProjection.invocations) {
     const entry = entriesByInvocation.get(source.invocationId);
     if (
       entry === undefined ||
-      entry.record.revision !== source.legacyRevision ||
+      entry.record.revision !== source.invocationRevision ||
       entry.projection.attempt.attemptId !== source.attemptId ||
       entry.projection.job.jobId !== state.job.jobId ||
       entry.projection.workflow.workflowId !== state.workflow.workflowId ||
@@ -385,7 +342,7 @@ function aggregateDurableJob(
         canonicalJson(state.job.semanticSpec)
     ) {
       throw runtimeConflict(
-        'Durable execution state is stale or conflicts with its legacy projection.',
+        'Durable execution state is stale or conflicts with its provider projection.',
       );
     }
   }
@@ -395,25 +352,25 @@ function aggregateDurableJob(
   const results = state.results.map((result): ExecutionResultView => {
     const attempt = attemptsById.get(result.attemptId);
     if (
-      attempt?.legacyInvocation === null ||
-      attempt?.legacyInvocation === undefined ||
+      attempt?.providerInvocation === null ||
+      attempt?.providerInvocation === undefined ||
       result.acceptance === 'stale'
     ) {
       throw runtimeConflict(
-        'Durable provider result is not a compatible legacy result.',
+        'Durable provider result is not compatible with its invocation.',
       );
     }
     const entry = entriesByInvocation.get(
-      attempt.legacyInvocation.invocationId,
+      attempt.providerInvocation.invocationId,
     );
     if (entry === undefined) {
       throw runtimeConflict(
-        'Durable provider result has no legacy invocation to classify.',
+        'Durable provider result has no invocation to classify.',
       );
     }
     return {
       attemptId: result.attemptId,
-      invocationId: attempt.legacyInvocation.invocationId,
+      invocationId: attempt.providerInvocation.invocationId,
       acceptance: result.acceptance,
       outputDigest: result.outputDigest,
       outputSchema: entry.outputSchema,
@@ -429,7 +386,7 @@ function aggregateDurableJob(
       : {
           attemptId: latestFailedAttempt.attemptId,
           failure: latestFailedAttempt.failure,
-          decision: retryDecisionForLegacyFailure({
+          decision: retryDecisionForProviderFailure({
             workflow: state.workflow,
             job: state.job,
             attempt: latestFailedAttempt,
@@ -461,55 +418,13 @@ function projectAgentRuntimeStatus(
   return 'failed';
 }
 
-function retryDecisionForLegacyFailure(input: {
+function retryDecisionForProviderFailure(input: {
   workflow: WorkflowRecord;
   job: JobRecord;
   attempt: AttemptRecord;
   attempts: AttemptRecord[];
 }): RetryDecision {
-  return decideLegacyExecutionFailure(input);
-}
-
-function legacyExecutionPolicy(
-  request: ProviderInvocationRequest,
-): ExecutionPolicySnapshot {
-  return {
-    schemaVersion: 1,
-    provider: request.providerId,
-    timeoutMs: request.limits.timeoutMs,
-    maxOutputBytes: request.limits.aggregateOutputBytes,
-    workerClass: 'legacy-provider',
-    backoffMs: 0,
-    processEnvironment: {},
-    concurrency: 1,
-    transientToolConfig: {},
-  };
-}
-
-function legacyRetryPolicy(providerId: string): RetryPolicy {
-  return {
-    maxAttempts: LEGACY_MAX_ATTEMPTS,
-    maxCumulativeRuntimeMs: LEGACY_MAX_ATTEMPTS * MAX_PROVIDER_TIMEOUT_MS,
-    maxProviderCostMicros: 0,
-    maxProviderTokens: 0,
-    maxSameFailureFingerprint: 2,
-    maxRepairAttempts: 2,
-    deadline: RETRY_DEADLINE,
-    providerLimits: { [providerId]: LEGACY_MAX_ATTEMPTS },
-  };
-}
-
-function legacyEnvironmentDigest(request: ProviderInvocationRequest): string {
-  return digestCanonical({
-    kind: 'legacy-provider-environment',
-    schemaVersion: 1,
-    provider: request.providerId,
-    workerClass: 'legacy-provider',
-  });
-}
-
-function normalizeDigest(value: string): string {
-  return value.startsWith('sha256:') ? value : `sha256:${value}`;
+  return decideProviderExecutionFailure(input);
 }
 
 function digestCanonical(value: unknown): string {

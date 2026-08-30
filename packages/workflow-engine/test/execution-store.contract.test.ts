@@ -9,11 +9,11 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import { inspectExecutionJob } from '../src/runtime/provider-execution/execution-runtime.ts';
 import {
-  acceptLegacyProviderAttemptResult,
+  acceptProviderAttemptResult,
   executionJobStatePath,
   executionStorePaths,
   listExecutionJobStates,
-  materializeLegacyProviderExecutionJob,
+  materializeProviderExecutionJob,
   readExecutionJobState,
   withExecutionJobStateSnapshot,
 } from '../src/runtime/storage-journal/execution-store.ts';
@@ -76,11 +76,11 @@ test('provider creation materializes a private canonical execution aggregate wit
     assert.equal(stored.job.jobId, projection.job.jobId);
     assert.equal(stored.attempts[0]!.attemptId, projection.attempt.attemptId);
     assert.deepEqual(stored.results, []);
-    assert.equal(stored.legacyProjection.completeHistory, true);
-    assert.deepEqual(stored.legacyProjection.invocations, [
+    assert.equal(stored.invocationProjection.completeHistory, true);
+    assert.deepEqual(stored.invocationProjection.invocations, [
       {
         invocationId: request.invocationId,
-        legacyRevision: 0,
+        invocationRevision: 0,
         attemptId: projection.attempt.attemptId,
       },
     ]);
@@ -92,7 +92,7 @@ test('provider creation materializes a private canonical execution aggregate wit
     assert.equal(fs.statSync(statePath).mode & 0o777, 0o600);
     assert.throws(
       () =>
-        materializeLegacyProviderExecutionJob(runtime, [{ record, request }], {
+        materializeProviderExecutionJob(runtime, [{ record, request }], {
           expectedRevision: 1,
         }),
       (error) => isWorkflowError(error, 'EXECUTION_STORE_CAS_MISMATCH'),
@@ -110,6 +110,62 @@ test('provider creation materializes a private canonical execution aggregate wit
       unknown: true,
     };
     fs.writeFileSync(statePath, `${canonicalJson(withUnknownField)}\n`, 'utf8');
+    assert.throws(
+      () => readExecutionJobState(runtime, projection.job.jobId),
+      (error) => isWorkflowError(error, 'EXECUTION_STORE_UNSAFE'),
+    );
+
+    const currentState = JSON.parse(canonicalBytes) as Record<string, unknown>;
+    const retiredProjectionState = structuredClone(currentState);
+    const currentProjection = retiredProjectionState.invocationProjection as {
+      completeHistory: boolean;
+      invocations: Array<{
+        invocationId: string;
+        invocationRevision: number;
+        attemptId: string;
+      }>;
+    };
+    retiredProjectionState.legacyProjection = {
+      kind: 'provider-invocation-v1',
+      completeHistory: currentProjection.completeHistory,
+      invocations: currentProjection.invocations.map(
+        ({ invocationId, invocationRevision, attemptId }) => ({
+          invocationId,
+          legacyRevision: invocationRevision,
+          attemptId,
+        }),
+      ),
+    };
+    delete retiredProjectionState.invocationProjection;
+    fs.writeFileSync(
+      statePath,
+      `${canonicalJson(retiredProjectionState)}\n`,
+      'utf8',
+    );
+    assert.throws(
+      () => readExecutionJobState(runtime, projection.job.jobId),
+      (error) => isWorkflowError(error, 'EXECUTION_STORE_UNSAFE'),
+    );
+
+    const retiredAttemptState = structuredClone(currentState);
+    const retiredAttempt = (
+      retiredAttemptState.attempts as Array<Record<string, unknown>>
+    )[0]!;
+    const currentInvocation = retiredAttempt.providerInvocation as Record<
+      string,
+      unknown
+    >;
+    retiredAttempt.legacyInvocation = {
+      invocationId: currentInvocation.invocationId,
+      legacyAttempt: currentInvocation.invocationAttempt,
+      legacyRevision: currentInvocation.invocationRevision,
+    };
+    delete retiredAttempt.providerInvocation;
+    fs.writeFileSync(
+      statePath,
+      `${canonicalJson(retiredAttemptState)}\n`,
+      'utf8',
+    );
     assert.throws(
       () => readExecutionJobState(runtime, projection.job.jobId),
       (error) => isWorkflowError(error, 'EXECUTION_STORE_UNSAFE'),
@@ -151,11 +207,9 @@ test('store-owned execution snapshots keep synchronous callbacks inside the exac
         assert.equal(snapshot.job.jobId, jobId);
         assert.throws(
           () =>
-            materializeLegacyProviderExecutionJob(
-              runtime,
-              [{ record, request }],
-              { expectedRevision: snapshot.revision },
-            ),
+            materializeProviderExecutionJob(runtime, [{ record, request }], {
+              expectedRevision: snapshot.revision,
+            }),
           (error) =>
             isWorkflowError(error, 'EXECUTION_STORE_OPERATION_CONFLICT'),
         );
@@ -253,12 +307,12 @@ test('durable result CAS keeps the first completion and records the loser as lat
     const stored = readExecutionJobState(runtime, projection.job.jobId);
     assert.ok(stored);
     const firstAttempt = stored.attempts.find(
-      ({ legacyInvocation }) =>
-        legacyInvocation?.invocationId === requests[0]!.invocationId,
+      ({ providerInvocation }) =>
+        providerInvocation?.invocationId === requests[0]!.invocationId,
     );
     const secondAttempt = stored.attempts.find(
-      ({ legacyInvocation }) =>
-        legacyInvocation?.invocationId === requests[1]!.invocationId,
+      ({ providerInvocation }) =>
+        providerInvocation?.invocationId === requests[1]!.invocationId,
     );
     assert.ok(firstAttempt);
     assert.ok(secondAttempt);
@@ -349,7 +403,7 @@ test('recovery repairs a provider lease after durable acceptance crash exactly o
       failure: {
         kind: 'retryable' as const,
         code: 'PROVIDER_PROCESS_CRASH',
-        message: 'A conflicting terminal state won the legacy CAS.',
+        message: 'A conflicting terminal state won the invocation CAS.',
       },
       updatedAt: '2026-08-03T10:47:01.000Z',
     };
@@ -501,7 +555,7 @@ test('validator failure reloads as a bounded repair Attempt and missing durable 
     );
     assert.throws(
       () =>
-        materializeLegacyProviderExecutionJob(runtime, [
+        materializeProviderExecutionJob(runtime, [
           {
             record: readProviderInvocation(runtime, firstRequest.invocationId),
             request: firstRequest,
@@ -516,7 +570,7 @@ test('validator failure reloads as a bounded repair Attempt and missing durable 
     );
     fs.writeFileSync(lineagePath, durableLineage, { mode: 0o600 });
     assert.equal(
-      materializeLegacyProviderExecutionJob(runtime, [
+      materializeProviderExecutionJob(runtime, [
         {
           record: readProviderInvocation(runtime, firstRequest.invocationId),
           request: firstRequest,

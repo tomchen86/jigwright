@@ -152,7 +152,7 @@ test('an expired provider lease schedules one freshly fenced replacement Attempt
     assert.equal(state.attempts[1]?.status, 'leased');
     assert.equal(state.attempts[1]?.retryOf, state.attempts[0]?.attemptId);
     assert.equal(
-      state.attempts[1]?.legacyInvocation?.invocationId,
+      state.attempts[1]?.providerInvocation?.invocationId,
       replacement.invocationId,
     );
   } finally {
