@@ -156,7 +156,7 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
@@ -316,7 +316,7 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts",
@@ -324,7 +324,7 @@
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/investigation/investigation-grant-transitions.ts",
@@ -5852,7 +5852,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-scanner.ts",
@@ -5860,7 +5860,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-scanner.ts",

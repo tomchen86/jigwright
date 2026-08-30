@@ -111,7 +111,6 @@ packages/workflow-engine/src/intervention-control.ts	packages/workflow-engine/sr
 packages/workflow-engine/src/intervention-engine-artifact-store.ts	packages/workflow-engine/src/runtime/storage-journal/intervention-engine-artifact-store.ts	MOVE
 packages/workflow-engine/src/intervention-maintenance.ts	packages/workflow-engine/src/application/control-plane/intervention-maintenance.ts	MOVE
 packages/workflow-engine/src/investigation-applicability.ts	packages/workflow-engine/src/modules/investigation/domain/investigation-applicability.ts	MOVE
-packages/workflow-engine/src/investigation-artifact-projection.ts	packages/workflow-engine/src/adapters/planning/investigation/investigation-artifact-projection.ts	MOVE
 packages/workflow-engine/src/investigation-design-projection.ts	packages/workflow-engine/src/modules/projection/investigation-design-projection.ts	MOVE
 packages/workflow-engine/src/investigation-domain.ts	packages/workflow-engine/src/modules/investigation/domain/investigation-domain.ts	MOVE
 packages/workflow-engine/src/investigation-floor.ts	packages/workflow-engine/src/modules/investigation/domain/investigation-floor.ts	MOVE

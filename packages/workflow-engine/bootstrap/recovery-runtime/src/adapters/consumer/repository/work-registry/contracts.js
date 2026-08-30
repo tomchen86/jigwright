@@ -4,12 +4,10 @@ import path from 'node:path';
 import { createWorkflowNamespaceConfig, } from '@jigwright/core/workflow-namespace';
 import { canonicalJson } from "../../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../../../foundation/errors/errors.js";
-import { assertInvestigationApplicability, } from "../../../../modules/investigation/domain/investigation-applicability.js";
 import { validateForAuthority, } from "../../../../modules/investigation/manifest/investigation-manifest.js";
 import { investigationManifestPublicationNamespace, readBoundInvestigationManifestPublicationRef, } from "../../../../runtime/managed-documents/transaction/investigation-publication.js";
 import { discoverRepository, fingerprintWorkingState, runGitBuffer, } from "../../../../runtime/repository-transaction/git.js";
 import { readCommittedInvestigationManifestV3, } from "../../../../runtime/repository-transaction/committed-investigation-manifest.js";
-import { materializeProjectedInvestigationArtifact } from "../../../planning/investigation/investigation-artifact-projection.js";
 import { workflowContractArtifactPaths } from "./contract-artifacts.js";
 import { isRecord, isStringArray, } from "../../../../foundation/canonical-json/contract-values.js";
 import { assertStoredEvidenceNode, } from "../../../planning/investigation/evidence-node.js";
@@ -750,50 +748,9 @@ export function parseCurrentInvestigationManifest(value, expectedChangeId, obser
         },
     };
 }
-/** Historical inspection only; never use this entrypoint for live authority. */
-export function parseHistoricalInvestigationArtifact(value, expectedChangeId, options = {}) {
-    if (isRecord(value) && value.schemaVersion === 2) {
-        if (options.repositoryRoot === undefined) {
-            throw artifactInvalid('INVALID_INVESTIGATION_ARTIFACT', 'Git-backed investigation evidence requires its repository object database.');
-        }
-        return parseHistoricalInvestigationArtifact(materializeProjectedInvestigationArtifact(options.repositoryRoot, value, expectedChangeId), expectedChangeId);
-    }
-    const optionalKeys = optionalArtifactKeys(value, [
-        'applicability',
-        'roleResults',
-    ]);
-    const artifact = parseEvidenceArtifactBundle(value, expectedChangeId, 'investigation-artifact', 'INVALID_INVESTIGATION_ARTIFACT', [
-        'changeId',
-        'currentRefs',
-        'kind',
-        'legacyMigration',
-        'nodes',
-        'schemaVersion',
-        ...optionalKeys,
-    ]);
-    if (!isRecord(value) ||
-        typeof value.legacyMigration !== 'boolean' ||
-        (value.legacyMigration &&
-            expectedChangeId !== 'establish-investigation-first-planning')) {
-        throw artifactInvalid('INVALID_INVESTIGATION_ARTIFACT', 'investigation.json does not match schema version 1.');
-    }
-    const applicability = isRecord(value) && Object.hasOwn(value, 'applicability')
-        ? assertInvestigationApplicability(value.applicability)
-        : undefined;
-    const roleResults = parseOptionalRoleResults(value);
-    return {
-        ...artifact,
-        kind: 'investigation-artifact',
-        legacyMigration: value.legacyMigration,
-        ...(applicability ? { applicability } : {}),
-        ...(roleResults ? { roleResults } : {}),
-    };
-}
-/** @deprecated Historical-only compatibility alias. */
-export const parseInvestigationArtifact = parseHistoricalInvestigationArtifact;
 export function parsePlanReviewArtifact(value, expectedChangeId) {
     const optionalKeys = optionalArtifactKeys(value, ['roleResults']);
-    const artifact = parseEvidenceArtifactBundle(value, expectedChangeId, 'plan-review-artifact', 'INVALID_PLAN_REVIEW_ARTIFACT', [
+    const artifact = parsePlanReviewEvidenceArtifact(value, expectedChangeId, [
         'changeId',
         'currentRefs',
         'kind',
@@ -819,9 +776,7 @@ function parseOptionalRoleResults(value) {
         return undefined;
     }
     if (!Array.isArray(value.roleResults) || value.roleResults.length === 0) {
-        throw artifactInvalid(value.kind === 'investigation-artifact'
-            ? 'INVALID_INVESTIGATION_ARTIFACT'
-            : 'INVALID_PLAN_REVIEW_ARTIFACT', 'Tracked role results must be a non-empty array when present.');
+        throw artifactInvalid('INVALID_PLAN_REVIEW_ARTIFACT', 'Tracked role results must be a non-empty array when present.');
     }
     return structuredClone(value.roleResults);
 }
@@ -938,12 +893,12 @@ export function parseExecutionArtifact(value, expectedChangeId, tasks, guard, ch
         tasks: parsedTasks,
     };
 }
-function parseEvidenceArtifactBundle(value, expectedChangeId, expectedKind, errorCode, exactKeys) {
-    const invalid = () => artifactInvalid(errorCode, `${expectedKind} does not match schema version 1.`);
+function parsePlanReviewEvidenceArtifact(value, expectedChangeId, exactKeys) {
+    const invalid = () => artifactInvalid('INVALID_PLAN_REVIEW_ARTIFACT', 'plan-review-artifact does not match schema version 1.');
     if (!isRecord(value) ||
         !hasExactKeys(value, exactKeys) ||
         value.schemaVersion !== 1 ||
-        value.kind !== expectedKind ||
+        value.kind !== 'plan-review-artifact' ||
         value.changeId !== expectedChangeId ||
         !Array.isArray(value.nodes) ||
         value.nodes.length === 0 ||
@@ -986,7 +941,7 @@ function parseEvidenceArtifactBundle(value, expectedChangeId, expectedKind, erro
     }
     return {
         schemaVersion: 1,
-        kind: expectedKind,
+        kind: 'plan-review-artifact',
         changeId: expectedChangeId,
         nodes,
         currentRefs,

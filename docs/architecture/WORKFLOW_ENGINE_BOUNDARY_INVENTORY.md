@@ -11,24 +11,23 @@ disagree, code is authoritative.
 
 The production `jigwright boundary inventory --check` command parses TypeScript
 and JavaScript syntax rather than counting comments. Its primary-source
-baseline is 174 direct `workflow/*.json` literal occurrences in 56 files,
+baseline is 178 direct `workflow/*.json` literal occurrences in 60 files,
 covering 11 unique paths.
-AST provenance separately freezes three split `path.join`/`path.resolve` sites
+AST provenance separately freezes four split `path.join`/`path.resolve` sites
 and one workflow-root directory enumeration. Bootstrap TypeScript contributes
 nine direct references in three files, and root tooling scripts contribute one.
-The generated recovery projection contains 30 direct references in 11 files
+The generated recovery projection contains 34 direct references in 13 files
 and three split path joins in three files; these are pinned separately from the
 primary extraction workload.
 
-The legacy signature/record namespace `expense-app.workflow.*` occurs 31 times
-in 18 primary TypeScript files, twice in one bootstrap TypeScript file, 19
-times in 11 generated recovery JavaScript files, and five times in five
-workflow JSON artifacts. JSON Schema `$id` values are a separate compatibility surface: 17
-`expense-app.local`, one `expense.local`, and one `example.local`; the complete
+The retired signature/record namespace `expense-app.workflow.*` has zero
+occurrences in primary TypeScript, bootstrap TypeScript, generated recovery
+JavaScript, and workflow JSON artifacts. JSON Schema `$id` values are a
+separate surface: all 15 tracked schemas use `jigwright.local`; the complete
 URI identities, not only host counts, are frozen.
 
 Top-level workflow artifacts contain a different path surface. Across
-`workflow/*.json`, 1,284 string leaves in seven files are equal to
+`workflow/*.json`, 1,261 string leaves in six files are equal to
 `packages/workflow-engine` or begin with that package prefix. This scope
 includes authority-sensitive policies and generated test shards; it does not
 label every value as authority. Their file, JSON Pointer, and raw value
@@ -54,13 +53,13 @@ reviewed provider profiles.
 
 <!-- coupling:availability-pilot -->
 
-### Availability pilot — landed
+### Availability pilot — partial
 
-The Codex/Claude pilot and verifier already own an exact-baseline,
-policy-bound availability decision. Its record is empirical read-only evidence;
-it does not prove structural availability, a future SLA, or actual cost. A
-generic probe may feed this verifier but must not create a second decision
-authority.
+The Codex/Claude verifier owns the exact-baseline, policy-bound availability
+decision format. Consumer pilot evidence is not carried into Jigwright; the
+real Jigwright pilot remains an explicit operational gate. A generic probe may
+feed the verifier but must not create a second decision authority or convert a
+pending pilot into an inferred pass.
 
 <!-- coupling:central-grant-shadow-authority -->
 
@@ -79,7 +78,7 @@ The generic exact-envelope verifier, exact historical/current envelope reader,
 and one-use reserve/consume/expire/revoke lifecycle reducer are extracted to
 `@jigwright/grants` and are used by Collaboration Grant. The exact
 role-independence-only scope, TTL, durable bytes, and error mapping remain
-intact. Expense-specific payload semantics, locking, durable schema, and
+intact. Workflow-specific payload semantics, locking, durable schema, and
 storage remain in the engine; no broader blanket grant was introduced.
 
 <!-- coupling:data-egress-authorization -->
@@ -169,13 +168,13 @@ engine.
 
 <!-- coupling:recovery-mirror -->
 
-### Recovery mirror — partial
+### Recovery mirror — landed
 
 The recovery generator now compiles the reachable workspace source closure and
 projects dependency packages into path-stable runtime locations while
-retaining exact `--check`/`--write` tree comparison. The generated recovery
-bytes are intentionally deferred to the final one-shot regeneration, so this
-surface remains partial rather than claimed complete.
+retaining exact `--check`/`--write` tree comparison. The combined current-only
+source closure and dependency packages have been regenerated together; stale
+investigation replay and consumer namespace bytes are absent.
 
 <!-- coupling:role-assurance -->
 

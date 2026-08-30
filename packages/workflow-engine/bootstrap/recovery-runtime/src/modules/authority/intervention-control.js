@@ -2,13 +2,13 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson, compareCanonicalStrings, } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE = 'expense-app.harness-maintenance-grant.v1';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE = 'expense-app.control-plane-grant.v1';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE = 'expense-app.control-plane-independent-review.v1';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 = 'expense-app.control-plane-grant.v2';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 = 'expense-app.control-plane-independent-review.v2';
-export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 = 'expense-app.control-plane-grant.v3';
-export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 = 'expense-app.control-plane-independent-review.v3';
+export const HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE = 'jigwright.harness-maintenance-grant.v1';
+export const CONTROL_PLANE_SIGNATURE_NAMESPACE = 'jigwright.control-plane-grant.v1';
+export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE = 'jigwright.control-plane-independent-review.v1';
+export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-grant.v2';
+export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2 = 'jigwright.control-plane-independent-review.v2';
+export const CONTROL_PLANE_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-grant.v3';
+export const CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3 = 'jigwright.control-plane-independent-review.v3';
 function verifyHumanSignatureSafely(verifier, payload, signature, signer, namespace) {
     try {
         return verifier(payload, signature, signer, namespace);

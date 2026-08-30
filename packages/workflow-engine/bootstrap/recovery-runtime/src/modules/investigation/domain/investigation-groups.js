@@ -2,28 +2,7 @@ import crypto from 'node:crypto';
 import { SCAN_HIT_MAX_CONTEXT_BYTES, } from "./investigation-scanner.js";
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../../foundation/errors/errors.js";
-import { assertStoredEvidenceNode, createEvidenceNode, } from "../../../adapters/planning/investigation/evidence-node.js";
-import { assertMutationClassPolicy, assertPathIdentity, classifyMutationPath, MUTATION_CLASSES, } from "../../source/mutation-class-policy.js";
-const EVALUATOR = 'investigation-groups.v1';
-const HIT_TYPE = 'investigation-hit';
-const HIT_SCHEMA = 'investigation.hit.v1';
-const HIT_OUTPUT_SCHEMA = 'investigation.hit-output.v1';
-const GROUP_TYPE = 'investigation-group';
-const GROUP_SCHEMA = 'investigation.group.v1';
-const GROUP_OUTPUT_SCHEMA = 'investigation.group-output.v1';
-const DISPOSITION_TYPE = 'investigation-disposition';
-const DISPOSITION_SCHEMA = 'investigation.disposition.v1';
-const DISPOSITION_OUTPUT_SCHEMA = 'investigation.disposition-output.v1';
-const COVERAGE_TYPE = 'investigation-coverage';
-const COVERAGE_SCHEMA = 'investigation.coverage.v1';
-const COVERAGE_OUTPUT_SCHEMA = 'investigation.coverage-output.v1';
-const SCAN_TYPE = 'investigation-term-scan';
-const SCAN_SCHEMA = 'investigation.term-scan.v1';
-const SCAN_OUTPUT_SCHEMA = 'investigation.term-scan-output.v1';
-const INVENTORY_TYPE = 'investigation-tree-inventory';
-const INVENTORY_SCHEMA = 'investigation.tree-inventory.v1';
-const INVENTORY_OUTPUT_SCHEMA = 'investigation.tree-inventory-output.v1';
-const SCANNER_EVALUATOR = 'investigation-scanner.v1';
+import { assertMutationClassPolicy, assertPathIdentity, classifyMutationPath, } from "../../source/mutation-class-policy.js";
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const GIT_MODES = new Set(['100644', '100755', '120000', '160000']);
@@ -37,14 +16,6 @@ const SCAN_SKIP_REASONS = new Set([
     'sensitive-suppressed',
     'total-budget',
     'unsupported',
-]);
-const MUTATION_CLASS_SET = new Set(MUTATION_CLASSES);
-const DISPOSITION_CLASSIFICATIONS = new Set([
-    'load-bearing',
-    'test-or-mirror',
-    'generated',
-    'incidental-reference',
-    'irrelevant',
 ]);
 const RELATIONSHIP_KINDS = new Set(['generated', 'mirror']);
 const HIT_KEYS = [
@@ -90,10 +61,8 @@ function assertContextWindow(value, invalid) {
     };
 }
 /**
- * Derive mechanical Hit and Group facts directly from the scanner domain
- * result. This is the manifest-first path: it neither accepts nor constructs a
- * generic evidence envelope. Historical artifact materialization uses the
- * narrower replay primitives below and cannot author a new v2 grouping.
+ * Derive mechanical Hit and Group facts directly from the current scanner domain
+ * result without constructing a generic evidence envelope.
  */
 export function deriveInvestigationGroupFacts(input) {
     const { scanFacts } = input;
@@ -126,16 +95,16 @@ export function deriveInvestigationGroupFacts(input) {
     }
     const accumulators = new Map();
     for (const record of hitRecords) {
-        const legacySelector = baseSelectorFor(record.summary.termId, record.summary, context);
+        const baseSelector = baseSelectorFor(record.summary.termId, record.summary, context);
         const selector = {
-            termId: legacySelector.termId,
-            rootId: legacySelector.rootId,
-            extension: legacySelector.extension,
-            mutationClass: legacySelector.mutationClass,
-            relationshipId: legacySelector.relationshipId,
+            termId: baseSelector.termId,
+            rootId: baseSelector.rootId,
+            extension: baseSelector.extension,
+            mutationClass: baseSelector.mutationClass,
+            relationshipId: baseSelector.relationshipId,
             splitId: null,
         };
-        const key = legacySelector.selectorId;
+        const key = baseSelector.selectorId;
         let group = accumulators.get(key);
         if (group === undefined) {
             group = { key, selector, members: new Map() };
@@ -176,323 +145,6 @@ export function deriveInvestigationGroupFacts(input) {
             .map(({ summary }) => summary)
             .sort((left, right) => left.hitKey < right.hitKey ? -1 : left.hitKey > right.hitKey ? 1 : 0),
         groups,
-    };
-}
-/**
- * Replay the deterministic hit envelopes from stored scan semantics. Hit
- * identity depends only on the scan, term, pinned tree, and exact byte locator;
- * grouping policy is intentionally not an input.
- */
-export function deriveInvestigationHitNodes(scanNodes) {
-    return deriveInvestigationHitRecords(scanNodes)
-        .map(({ node }) => node)
-        .sort(byNodeId);
-}
-/**
- * Materialize exact group envelopes from their compact selectors and hit
- * membership. The replay records must form a one-to-one partition of the
- * supplied hits, and each expected node ID must match recomputation.
- */
-export function replayInvestigationGroupNodes(input) {
-    const hitsById = new Map();
-    for (const node of input.hitNodes) {
-        const summary = readInvestigationHitNode(node);
-        if (hitsById.has(node.nodeId)) {
-            throw groupsInvalid(`Duplicate hit node: ${node.nodeId}`);
-        }
-        hitsById.set(node.nodeId, { hitId: node.nodeId, node, summary });
-    }
-    const covered = new Set();
-    const replayed = input.groups.map((record) => {
-        if (typeof record.nodeId !== 'string' ||
-            !DIGEST_PATTERN.test(record.nodeId) ||
-            typeof record.policyDigest !== 'string' ||
-            !DIGEST_PATTERN.test(record.policyDigest)) {
-            throw groupsInvalid('Group replay identity is malformed.');
-        }
-        const selector = assertGroupSelector(record.selector, groupsInvalid);
-        const hitIds = assertSortedUniqueIds(record.hitIds, DIGEST_PATTERN, groupsInvalid);
-        const exceptions = assertExceptionArray(record.exceptions, groupsInvalid);
-        const members = new Map();
-        for (const hitId of hitIds) {
-            const hit = hitsById.get(hitId);
-            if (!hit || covered.has(hitId)) {
-                throw groupsInvalid('Group replay does not partition the current hit nodes exactly.');
-            }
-            covered.add(hitId);
-            members.set(hitId, hit);
-        }
-        const node = buildGroupNode({ selector, members, exceptions }, record.policyDigest);
-        if (node.nodeId !== record.nodeId) {
-            throw groupsInvalid('Group replay node ID does not match recomputation.');
-        }
-        readInvestigationGroupNode(node);
-        return node;
-    });
-    if (covered.size !== hitsById.size) {
-        throw groupsInvalid('Group replay does not cover every current hit node exactly once.');
-    }
-    return replayed.sort(byNodeId);
-}
-/**
- * Bind one typed disposition to every current group exactly once. A duplicate
- * group input, and a missing, duplicate, unknown, invalid-classification, or
- * blank answer fails closed. Each disposition binds the group selector, blobs,
- * hit coverage, any split exceptions, and the exact semantic answer. Editing an
- * answer changes that disposition's identity and only its descendants.
- */
-export function createInvestigationDispositionNodes(input) {
-    const groupsById = new Map();
-    for (const node of input.groupNodes) {
-        const output = readInvestigationGroupNode(node);
-        if (groupsById.has(output.groupId)) {
-            throw dispositionsInvalid(`Duplicate group node: ${output.groupId}`);
-        }
-        groupsById.set(output.groupId, { node, output });
-    }
-    const seenGroupIds = new Set();
-    const nodes = [];
-    for (const answer of input.dispositions) {
-        assertDispositionAnswer(answer);
-        const group = groupsById.get(answer.groupId);
-        if (!group) {
-            throw dispositionsInvalid(`Unknown disposition group: ${answer.groupId}`);
-        }
-        if (seenGroupIds.has(answer.groupId)) {
-            throw dispositionsInvalid(`Group dispositioned more than once: ${answer.groupId}`);
-        }
-        seenGroupIds.add(answer.groupId);
-        nodes.push(buildDispositionNode(group, answer));
-    }
-    if (seenGroupIds.size !== groupsById.size) {
-        throw dispositionsInvalid('Every current group requires exactly one disposition.');
-    }
-    return nodes.sort(byNodeId);
-}
-/**
- * Bind the coverage summary for one investigation: effective terms, zero-hit
- * terms, hit identities, and disposition nodes. Every set-like input is
- * canonically sorted before roles are assigned, so input order cannot change the
- * node. `effectiveTermIds` must be exactly the scanned term set, and every scan
- * plus the inventory must share one pinned tree digest and scanner policy; any
- * mismatch fails closed.
- */
-export function createInvestigationCoverageNode(input) {
-    const inventory = assertInventoryNode(input.inventoryNode);
-    const scans = input.scanNodes.map((node) => readScanNode(node, coverageInvalid));
-    let treeDigest = null;
-    let scannerPolicy = null;
-    for (const scan of scans) {
-        if (treeDigest === null) {
-            treeDigest = scan.treeDigest;
-            scannerPolicy = scan.policyDigest;
-        }
-        else if (scan.treeDigest !== treeDigest ||
-            scan.policyDigest !== scannerPolicy) {
-            throw coverageInvalid('Scans disagree on the pinned tree or scanner policy.');
-        }
-    }
-    if (treeDigest === null || scannerPolicy === null) {
-        throw coverageInvalid('Coverage requires at least one scan node.');
-    }
-    if (inventory.exactInputDigests.tree !== treeDigest ||
-        inventory.policyDigest !== scannerPolicy) {
-        throw coverageInvalid('Inventory must share the scan tree digest and scanner policy.');
-    }
-    const scanTermIds = scans.map((scan) => scan.termId);
-    const effective = [...input.effectiveTermIds].sort();
-    if (canonicalJson(effective) !== canonicalJson([...scanTermIds].sort())) {
-        throw coverageInvalid('Effective term set does not match the scanned term set.');
-    }
-    const termsWithHits = new Set();
-    const provenance = { inventory: inventory.nodeId };
-    const semantic = {
-        inventory: inventory.resultDigest,
-    };
-    const sortedScans = scans.map((scan) => scan.node).sort(byNodeId);
-    sortedScans.forEach((node, index) => {
-        provenance[`scan-${index}`] = node.nodeId;
-        semantic[`scan-${index}`] = node.resultDigest;
-    });
-    const sortedHits = [...input.hitNodes].sort(byNodeId);
-    sortedHits.forEach((node, index) => {
-        termsWithHits.add(readInvestigationHitNode(node).termId);
-        provenance[`hit-${index}`] = node.nodeId;
-        semantic[`hit-${index}`] = node.resultDigest;
-    });
-    const sortedGroups = [...input.groupNodes].sort(byNodeId);
-    sortedGroups.forEach((node, index) => {
-        try {
-            readInvestigationGroupNode(node);
-        }
-        catch {
-            throw coverageInvalid('Coverage contains a malformed group node.');
-        }
-        provenance[`group-${index}`] = node.nodeId;
-        semantic[`group-${index}`] = node.resultDigest;
-    });
-    const sortedDispositions = [...input.dispositionNodes].sort(byNodeId);
-    sortedDispositions.forEach((node, index) => {
-        try {
-            readInvestigationDispositionNode(node);
-        }
-        catch {
-            throw coverageInvalid('Coverage contains a malformed disposition node.');
-        }
-        provenance[`disposition-${index}`] = node.nodeId;
-        semantic[`disposition-${index}`] = node.resultDigest;
-    });
-    const zeroHitTermIds = scanTermIds
-        .filter((termId) => !termsWithHits.has(termId))
-        .sort();
-    return createEvidenceNode({
-        type: COVERAGE_TYPE,
-        nodeSchema: COVERAGE_SCHEMA,
-        evaluator: EVALUATOR,
-        policyDigest: scannerPolicy,
-        exactInputDigests: {},
-        semanticParentResultDigests: semantic,
-        provenanceParentNodeIds: provenance,
-        outputSchema: COVERAGE_OUTPUT_SCHEMA,
-        output: {
-            effectiveTermIds: effective,
-            zeroHitTermIds,
-            hitIds: sortedHits.map((node) => node.nodeId),
-            groupIds: sortedGroups.map((node) => node.nodeId),
-            dispositionNodeIds: sortedDispositions.map((node) => node.nodeId),
-        },
-        runtimeMetadata: {},
-    });
-}
-export function readInvestigationHitNode(node) {
-    const validated = assertNodeIdentity(node, HIT_TYPE, HIT_SCHEMA, EVALUATOR, HIT_OUTPUT_SCHEMA, groupsInvalid);
-    const output = assertExactKeys(validated.output, ['termId', 'path', 'sourceObject', 'surface', 'byteOffset', 'byteLength'], groupsInvalid);
-    if (typeof output.termId !== 'string') {
-        throw groupsInvalid('Hit node term ID is malformed.');
-    }
-    assertNodeRoles(validated, ['hit', 'term', 'tree'], ['scan'], groupsInvalid);
-    return assertHitSummaryFields(output, validated.nodeId, output.termId, groupsInvalid);
-}
-export function readInvestigationGroupNode(node) {
-    const validated = assertNodeIdentity(node, GROUP_TYPE, GROUP_SCHEMA, EVALUATOR, GROUP_OUTPUT_SCHEMA, groupsInvalid);
-    const output = assertExactKeys(validated.output, ['groupId', 'selector', 'hitIds', 'hits', 'sourceObjects', 'exceptions'], groupsInvalid);
-    if (typeof output.groupId !== 'string' ||
-        !DIGEST_PATTERN.test(output.groupId)) {
-        throw groupsInvalid('Group node group ID is malformed.');
-    }
-    const selector = assertGroupSelector(output.selector, groupsInvalid);
-    if (output.groupId !== selector.selectorId) {
-        throw groupsInvalid('Group ID does not match its selector.');
-    }
-    const hitIds = assertSortedUniqueIds(output.hitIds, DIGEST_PATTERN, groupsInvalid);
-    const hits = assertArray(output.hits, groupsInvalid).map((entry) => assertHitSummary(entry, groupsInvalid));
-    const sourceObjects = assertSourceObjectArray(output.sourceObjects, groupsInvalid);
-    const exceptions = assertExceptionArray(output.exceptions, groupsInvalid);
-    assertNodeRoles(validated, ['exceptions', 'selector'], hitIds.map((_, index) => `hit-${index}`), groupsInvalid);
-    if (validated.exactInputDigests.selector !== selector.selectorId ||
-        validated.exactInputDigests.exceptions !== groupExceptionsDigest(exceptions)) {
-        throw groupsInvalid('Group exact inputs do not match its selector and exceptions.');
-    }
-    if (canonicalJson(hits.map((entry) => entry.hitId)) !== canonicalJson(hitIds)) {
-        throw groupsInvalid('Group hit summaries do not match its hit IDs.');
-    }
-    if (canonicalJson(sourceObjects) !==
-        canonicalJson(dedupeSourceObjects(hits.map((entry) => entry.sourceObject)))) {
-        throw groupsInvalid('Group source objects do not match its covered hit summaries.');
-    }
-    if (exceptions.some((exception) => !hitIds.includes(exception.hitId) ||
-        selector.splitId === null ||
-        exception.splitId !== selector.splitId) ||
-        (selector.splitId === null && exceptions.length > 0) ||
-        (selector.splitId !== null && exceptions.length === 0)) {
-        throw groupsInvalid('Group exceptions do not match its split selector.');
-    }
-    return {
-        groupId: output.groupId,
-        selector,
-        hitIds,
-        hits,
-        sourceObjects,
-        exceptions,
-    };
-}
-export function readInvestigationDispositionNode(node) {
-    const validated = assertNodeIdentity(node, DISPOSITION_TYPE, DISPOSITION_SCHEMA, EVALUATOR, DISPOSITION_OUTPUT_SCHEMA, dispositionsInvalid);
-    const output = assertExactKeys(validated.output, [
-        'groupId',
-        'classification',
-        'rationale',
-        'author',
-        'coveredHitIds',
-        'sourceObjects',
-        'selectorEvidence',
-        'exceptions',
-    ], dispositionsInvalid);
-    if (typeof output.groupId !== 'string' ||
-        !DIGEST_PATTERN.test(output.groupId) ||
-        typeof output.classification !== 'string' ||
-        !DISPOSITION_CLASSIFICATIONS.has(output.classification) ||
-        typeof output.rationale !== 'string' ||
-        output.rationale.trim().length === 0 ||
-        typeof output.author !== 'string' ||
-        output.author.trim().length === 0) {
-        throw dispositionsInvalid('Disposition node output is malformed.');
-    }
-    const coveredHitIds = assertSortedUniqueIds(output.coveredHitIds, DIGEST_PATTERN, dispositionsInvalid);
-    const sourceObjects = assertSourceObjectArray(output.sourceObjects, dispositionsInvalid);
-    const selectorEvidence = assertGroupSelector(output.selectorEvidence, dispositionsInvalid);
-    const exceptions = assertExceptionArray(output.exceptions, dispositionsInvalid);
-    assertNodeRoles(validated, ['answer'], ['group'], dispositionsInvalid);
-    if (validated.exactInputDigests.answer !==
-        dispositionAnswerDigest({
-            groupId: output.groupId,
-            classification: output.classification,
-            rationale: output.rationale,
-            author: output.author,
-        })) {
-        throw dispositionsInvalid('Disposition exact input does not match its semantic answer.');
-    }
-    return {
-        groupId: output.groupId,
-        classification: output.classification,
-        rationale: output.rationale,
-        author: output.author,
-        coveredHitIds,
-        sourceObjects,
-        selectorEvidence,
-        exceptions,
-    };
-}
-export function readInvestigationCoverageNode(node) {
-    const validated = assertNodeIdentity(node, COVERAGE_TYPE, COVERAGE_SCHEMA, EVALUATOR, COVERAGE_OUTPUT_SCHEMA, coverageInvalid);
-    const output = assertExactKeys(validated.output, [
-        'effectiveTermIds',
-        'zeroHitTermIds',
-        'hitIds',
-        'groupIds',
-        'dispositionNodeIds',
-    ], coverageInvalid);
-    const effectiveTermIds = assertSortedUniqueIds(output.effectiveTermIds, DIGEST_PATTERN, coverageInvalid);
-    const zeroHitTermIds = assertSortedUniqueIds(output.zeroHitTermIds, DIGEST_PATTERN, coverageInvalid);
-    const hitIds = assertSortedUniqueIds(output.hitIds, DIGEST_PATTERN, coverageInvalid);
-    const groupIds = assertSortedUniqueIds(output.groupIds, DIGEST_PATTERN, coverageInvalid);
-    const dispositionNodeIds = assertSortedUniqueIds(output.dispositionNodeIds, DIGEST_PATTERN, coverageInvalid);
-    if (zeroHitTermIds.some((termId) => !effectiveTermIds.includes(termId))) {
-        throw coverageInvalid('Zero-hit terms must be a subset of effective terms.');
-    }
-    assertNodeRoles(validated, [], [
-        'inventory',
-        ...effectiveTermIds.map((_, index) => `scan-${index}`),
-        ...hitIds.map((_, index) => `hit-${index}`),
-        ...groupIds.map((_, index) => `group-${index}`),
-        ...dispositionNodeIds.map((_, index) => `disposition-${index}`),
-    ], coverageInvalid);
-    return {
-        effectiveTermIds,
-        zeroHitTermIds,
-        hitIds,
-        groupIds,
-        dispositionNodeIds,
     };
 }
 function normalizeContext(mutationPolicy, declaredRoots, reviewedRelationships) {
@@ -621,77 +273,6 @@ function relationshipFor(rawBase64, context) {
     }
     return null;
 }
-function deriveInvestigationHitRecords(scanNodes) {
-    const records = [];
-    const seenTermIds = new Set();
-    let sharedTreeDigest = null;
-    let sharedPolicyDigest = null;
-    for (const scanNode of scanNodes) {
-        const scan = readScanNode(scanNode, groupsInvalid);
-        if (seenTermIds.has(scan.termId)) {
-            throw groupsInvalid(`Duplicate scan term: ${scan.termId}`);
-        }
-        seenTermIds.add(scan.termId);
-        if (sharedTreeDigest === null) {
-            sharedTreeDigest = scan.treeDigest;
-            sharedPolicyDigest = scan.policyDigest;
-        }
-        else if (scan.treeDigest !== sharedTreeDigest ||
-            scan.policyDigest !== sharedPolicyDigest) {
-            throw groupsInvalid('Scans must share one pinned tree and scanner policy.');
-        }
-        for (const hit of scan.hits) {
-            records.push(buildHitRecord(scan.termId, hit, scan.node));
-        }
-    }
-    return records;
-}
-function buildHitRecord(termId, hit, scanNode) {
-    const locatorDigest = sha256(canonicalJson({
-        schema: 'investigation.hit-locator.v1',
-        path: hit.path,
-        surface: hit.surface,
-        byteOffset: hit.byteOffset,
-        byteLength: hit.byteLength,
-        sourceObject: hit.sourceObject,
-    }));
-    const node = createEvidenceNode({
-        type: HIT_TYPE,
-        nodeSchema: HIT_SCHEMA,
-        evaluator: EVALUATOR,
-        policyDigest: scanNode.policyDigest,
-        exactInputDigests: {
-            hit: locatorDigest,
-            term: scanNode.exactInputDigests.term,
-            tree: scanNode.exactInputDigests.tree,
-        },
-        semanticParentResultDigests: { scan: scanNode.resultDigest },
-        provenanceParentNodeIds: { scan: scanNode.nodeId },
-        outputSchema: HIT_OUTPUT_SCHEMA,
-        output: {
-            termId,
-            path: hit.path,
-            sourceObject: hit.sourceObject,
-            surface: hit.surface,
-            byteOffset: hit.byteOffset,
-            byteLength: hit.byteLength,
-        },
-        runtimeMetadata: {},
-    });
-    return {
-        hitId: node.nodeId,
-        node,
-        summary: {
-            hitId: node.nodeId,
-            termId,
-            path: hit.path,
-            sourceObject: hit.sourceObject,
-            surface: hit.surface,
-            byteOffset: hit.byteOffset,
-            byteLength: hit.byteLength,
-        },
-    };
-}
 function buildInvestigationHitFact(treeDigest, scanPolicyDigest, termId, hit) {
     const fields = {
         termId,
@@ -708,84 +289,6 @@ function buildInvestigationHitFact(treeDigest, scanPolicyDigest, termId, hit) {
         ...fields,
     }));
     return { hitKey, ...fields };
-}
-function buildGroupNode(group, groupingPolicyDigest) {
-    const members = [...group.members.values()].sort((left, right) => left.hitId < right.hitId ? -1 : left.hitId > right.hitId ? 1 : 0);
-    const provenance = {};
-    const semantic = {};
-    members.forEach((member, index) => {
-        provenance[`hit-${index}`] = member.hitId;
-        semantic[`hit-${index}`] = member.node.resultDigest;
-    });
-    const sourceObjects = dedupeSourceObjects(members.map((member) => member.summary.sourceObject));
-    const exceptions = [...group.exceptions].sort((left, right) => left.exceptionId < right.exceptionId
-        ? -1
-        : left.exceptionId > right.exceptionId
-            ? 1
-            : 0);
-    return createEvidenceNode({
-        type: GROUP_TYPE,
-        nodeSchema: GROUP_SCHEMA,
-        evaluator: EVALUATOR,
-        policyDigest: groupingPolicyDigest,
-        exactInputDigests: {
-            exceptions: groupExceptionsDigest(exceptions),
-            selector: group.selector.selectorId,
-        },
-        semanticParentResultDigests: semantic,
-        provenanceParentNodeIds: provenance,
-        outputSchema: GROUP_OUTPUT_SCHEMA,
-        output: {
-            groupId: group.selector.selectorId,
-            selector: group.selector,
-            hitIds: members.map((member) => member.hitId),
-            hits: members.map((member) => member.summary),
-            sourceObjects,
-            exceptions,
-        },
-        runtimeMetadata: {},
-    });
-}
-function buildDispositionNode(group, answer) {
-    assertDispositionAnswer(answer);
-    return createEvidenceNode({
-        type: DISPOSITION_TYPE,
-        nodeSchema: DISPOSITION_SCHEMA,
-        evaluator: EVALUATOR,
-        policyDigest: group.node.policyDigest,
-        exactInputDigests: { answer: dispositionAnswerDigest(answer) },
-        semanticParentResultDigests: { group: group.node.resultDigest },
-        provenanceParentNodeIds: { group: group.node.nodeId },
-        outputSchema: DISPOSITION_OUTPUT_SCHEMA,
-        output: {
-            groupId: group.output.groupId,
-            classification: answer.classification,
-            rationale: answer.rationale,
-            author: answer.author,
-            coveredHitIds: group.output.hitIds,
-            sourceObjects: group.output.sourceObjects,
-            selectorEvidence: group.output.selector,
-            exceptions: group.output.exceptions,
-        },
-        runtimeMetadata: {},
-    });
-}
-function groupExceptionsDigest(exceptions) {
-    return sha256(canonicalJson({
-        schema: 'investigation.group-exceptions.v1',
-        exceptions,
-    }));
-}
-function dispositionAnswerDigest(answer) {
-    return sha256(canonicalJson({
-        schema: 'investigation.disposition-answer.v1',
-        answer: {
-            groupId: answer.groupId,
-            classification: answer.classification,
-            rationale: answer.rationale,
-            author: answer.author,
-        },
-    }));
 }
 function dedupeSourceObjects(sourceObjects) {
     const byId = new Map();
@@ -805,70 +308,8 @@ function dedupeSourceObjects(sourceObjects) {
             ? 1
             : 0);
 }
-function readScanNode(node, invalid) {
-    const validated = assertStoredEvidenceNode(node, invalid);
-    if (validated.type !== SCAN_TYPE ||
-        validated.nodeSchema !== SCAN_SCHEMA ||
-        validated.evaluator !== SCANNER_EVALUATOR ||
-        validated.outputSchema !== SCAN_OUTPUT_SCHEMA) {
-        throw invalid('Scan node identity is not a scanner term-scan node.');
-    }
-    assertNodeRoles(validated, ['term', 'tree'], [], invalid);
-    const term = validated.exactInputDigests.term;
-    const tree = validated.exactInputDigests.tree;
-    if (typeof term !== 'string' || typeof tree !== 'string') {
-        throw invalid('Scan node is missing its term or tree digest.');
-    }
-    const output = assertExactKeys(validated.output, ['termId', 'hits'], invalid);
-    if (typeof output.termId !== 'string' ||
-        !DIGEST_PATTERN.test(output.termId)) {
-        throw invalid('Scan node is missing a term ID.');
-    }
-    const hits = assertArray(output.hits, invalid).map((hit) => parseHit(hit, invalid));
-    return {
-        node: validated,
-        termId: output.termId,
-        hits,
-        treeDigest: tree,
-        policyDigest: validated.policyDigest,
-    };
-}
-function assertInventoryNode(node) {
-    const validated = assertStoredEvidenceNode(node, coverageInvalid);
-    if (validated.type !== INVENTORY_TYPE ||
-        validated.nodeSchema !== INVENTORY_SCHEMA ||
-        validated.evaluator !== SCANNER_EVALUATOR ||
-        validated.outputSchema !== INVENTORY_OUTPUT_SCHEMA) {
-        throw coverageInvalid('Inventory node identity is not a scanner inventory.');
-    }
-    assertNodeRoles(validated, ['tree'], [], coverageInvalid);
-    const output = assertExactKeys(validated.output, ['skippedObjects'], coverageInvalid);
-    for (const entry of assertArray(output.skippedObjects, coverageInvalid)) {
-        const skipped = assertExactKeys(entry, ['path', 'objectId', 'objectType', 'mode', 'byteSize', 'reason'], coverageInvalid);
-        assertFilePathIdentity(skipped.path, coverageInvalid);
-        if (typeof skipped.objectId !== 'string' ||
-            !GIT_OBJECT_ID_PATTERN.test(skipped.objectId) ||
-            typeof skipped.objectType !== 'string' ||
-            skipped.objectType.length === 0 ||
-            typeof skipped.mode !== 'string' ||
-            !GIT_MODES.has(skipped.mode) ||
-            (skipped.byteSize !== null &&
-                (!Number.isSafeInteger(skipped.byteSize) ||
-                    skipped.byteSize < 0)) ||
-            typeof skipped.reason !== 'string' ||
-            !SCAN_SKIP_REASONS.has(skipped.reason)) {
-            throw coverageInvalid('Inventory skipped object is malformed.');
-        }
-    }
-    return validated;
-}
-/** Exposed so the two accepted hit shapes can be pinned by contract tests. */
-export function parseHitForTest(value) {
-    return parseHit(value, investigationDagInvalid);
-}
 function parseHit(value, invalid) {
-    // Two accepted shapes: scans recorded before context windows existed carry
-    // five keys, and must keep validating exactly as they did.
+    // Context windows are optional scan facts, so both exact key sets are valid.
     const hit = hasOnlyKeys(value, HIT_KEYS_WITH_CONTEXT)
         ? assertExactKeys(value, [...HIT_KEYS_WITH_CONTEXT], invalid)
         : assertExactKeys(value, [...HIT_KEYS], invalid);
@@ -891,45 +332,6 @@ function parseHit(value, invalid) {
         ...(hit.contextWindow === undefined
             ? {}
             : { contextWindow: assertContextWindow(hit.contextWindow, invalid) }),
-    };
-}
-function assertHitSummary(value, invalid) {
-    const record = assertExactKeys(value, [
-        'hitId',
-        'termId',
-        'path',
-        'sourceObject',
-        'surface',
-        'byteOffset',
-        'byteLength',
-    ], invalid);
-    if (typeof record.hitId !== 'string' ||
-        !DIGEST_PATTERN.test(record.hitId) ||
-        typeof record.termId !== 'string') {
-        throw invalid('Hit summary identity is malformed.');
-    }
-    return assertHitSummaryFields(record, record.hitId, record.termId, invalid);
-}
-function assertHitSummaryFields(record, hitId, termId, invalid) {
-    const path = assertFilePathIdentity(record.path, invalid);
-    const sourceObject = assertSourceObject(record.sourceObject, invalid);
-    if (!DIGEST_PATTERN.test(termId) ||
-        (record.surface !== 'path' && record.surface !== 'content') ||
-        !Number.isSafeInteger(record.byteOffset) ||
-        record.byteOffset < 0 ||
-        !Number.isSafeInteger(record.byteLength) ||
-        record.byteLength <= 0 ||
-        (record.surface === 'content' && sourceObject.skipReason !== null)) {
-        throw invalid('Hit summary fields are malformed.');
-    }
-    return {
-        hitId,
-        termId,
-        path,
-        sourceObject,
-        surface: record.surface,
-        byteOffset: record.byteOffset,
-        byteLength: record.byteLength,
     };
 }
 function assertSourceObject(value, invalid) {
@@ -968,121 +370,6 @@ function assertSourceObject(value, invalid) {
         byteSize: record.byteSize,
         contentSha256: record.contentSha256,
         skipReason: record.skipReason,
-    };
-}
-function assertSourceObjectArray(value, invalid) {
-    const sourceObjects = assertArray(value, invalid).map((entry) => assertSourceObject(entry, invalid));
-    for (let index = 1; index < sourceObjects.length; index += 1) {
-        if (sourceObjects[index - 1].objectId >= sourceObjects[index].objectId) {
-            throw invalid('Source objects must be sorted and unique.');
-        }
-    }
-    return sourceObjects;
-}
-function assertGroupSelector(value, invalid) {
-    const record = assertExactKeys(value, [
-        'selectorId',
-        'termId',
-        'rootId',
-        'extension',
-        'mutationClass',
-        'relationshipId',
-        'splitId',
-    ], invalid);
-    if (typeof record.selectorId !== 'string' ||
-        !DIGEST_PATTERN.test(record.selectorId) ||
-        typeof record.termId !== 'string' ||
-        typeof record.rootId !== 'string' ||
-        typeof record.mutationClass !== 'string' ||
-        !MUTATION_CLASS_SET.has(record.mutationClass) ||
-        (record.relationshipId !== null &&
-            typeof record.relationshipId !== 'string') ||
-        (record.splitId !== null && typeof record.splitId !== 'string')) {
-        throw invalid('Group selector is malformed.');
-    }
-    const extension = assertEmbeddedPathIdentity(record.extension, invalid);
-    const selector = {
-        selectorId: record.selectorId,
-        termId: record.termId,
-        rootId: record.rootId,
-        extension,
-        mutationClass: record.mutationClass,
-        relationshipId: record.relationshipId,
-        splitId: record.splitId,
-    };
-    if (!DIGEST_PATTERN.test(selector.termId) ||
-        selector.rootId.length === 0 ||
-        (selector.relationshipId !== null &&
-            selector.relationshipId.length === 0) ||
-        (selector.splitId !== null && selector.splitId.length === 0) ||
-        selector.selectorId !==
-            selectorId({
-                termId: selector.termId,
-                rootId: selector.rootId,
-                extension: selector.extension,
-                mutationClass: selector.mutationClass,
-                relationshipId: selector.relationshipId,
-                splitId: selector.splitId,
-            })) {
-        throw invalid('Group selector identity is inconsistent.');
-    }
-    return selector;
-}
-function assertExceptionArray(value, invalid) {
-    const exceptions = assertArray(value, invalid).map((entry) => {
-        const record = assertExactKeys(entry, [
-            'exceptionId',
-            'hitId',
-            'baseSelectorId',
-            'splitId',
-            'rationale',
-            'author',
-        ], invalid);
-        if (typeof record.exceptionId !== 'string' ||
-            record.exceptionId.length === 0 ||
-            typeof record.hitId !== 'string' ||
-            !DIGEST_PATTERN.test(record.hitId) ||
-            typeof record.baseSelectorId !== 'string' ||
-            !DIGEST_PATTERN.test(record.baseSelectorId) ||
-            typeof record.splitId !== 'string' ||
-            record.splitId.length === 0 ||
-            typeof record.rationale !== 'string' ||
-            record.rationale.trim().length === 0 ||
-            typeof record.author !== 'string' ||
-            record.author.trim().length === 0) {
-            throw invalid('Group exception is malformed.');
-        }
-        return {
-            exceptionId: record.exceptionId,
-            hitId: record.hitId,
-            baseSelectorId: record.baseSelectorId,
-            splitId: record.splitId,
-            rationale: record.rationale,
-            author: record.author,
-        };
-    });
-    for (let index = 1; index < exceptions.length; index += 1) {
-        if (exceptions[index - 1].exceptionId >= exceptions[index].exceptionId) {
-            throw invalid('Group exceptions must be sorted and unique.');
-        }
-    }
-    return exceptions;
-}
-function assertEmbeddedPathIdentity(value, invalid) {
-    const record = assertExactKeys(value, ['rawBase64', 'utf8'], invalid);
-    if (record.rawBase64 === '') {
-        if (record.utf8 !== '') {
-            throw invalid('Empty extension identity is inconsistent.');
-        }
-        return { rawBase64: '', utf8: '' };
-    }
-    const identity = assertPathIdentity(record, invalid);
-    if (identity.raw.includes(0x2f) || identity.raw[0] !== 0x2e) {
-        throw invalid('Extension identity is malformed.');
-    }
-    return {
-        rawBase64: identity.raw.toString('base64'),
-        utf8: identity.utf8,
     };
 }
 function assertFilePathIdentity(value, invalid) {
@@ -1133,46 +420,6 @@ function rawExtension(path) {
 function selectorId(fields) {
     return sha256(canonicalJson({ schema: 'investigation.selector.v1', ...fields }));
 }
-function assertDispositionAnswer(answer) {
-    const record = assertExactKeys(answer, ['groupId', 'classification', 'rationale', 'author'], dispositionsInvalid);
-    if (typeof record.groupId !== 'string' ||
-        typeof record.classification !== 'string' ||
-        typeof record.rationale !== 'string' ||
-        typeof record.author !== 'string') {
-        throw dispositionsInvalid('Disposition answer is malformed.');
-    }
-    if (!DISPOSITION_CLASSIFICATIONS.has(record.classification)) {
-        throw dispositionsInvalid(`Invalid disposition classification: ${record.classification}`);
-    }
-    if (record.rationale.trim().length === 0) {
-        throw dispositionsInvalid('Disposition rationale must be non-empty.');
-    }
-    if (record.author.trim().length === 0) {
-        throw dispositionsInvalid('Disposition author is required.');
-    }
-}
-function assertNodeIdentity(node, type, nodeSchema, evaluator, outputSchema, invalid) {
-    const validated = assertStoredEvidenceNode(node, invalid);
-    if (validated.type !== type ||
-        validated.nodeSchema !== nodeSchema ||
-        validated.evaluator !== evaluator ||
-        validated.outputSchema !== outputSchema) {
-        throw invalid('Evidence node identity does not match the expected schema.');
-    }
-    return validated;
-}
-function assertNodeRoles(node, exactInputRoles, parentRoles, invalid) {
-    const expectedInputs = [...exactInputRoles].sort();
-    const expectedParents = [...parentRoles].sort();
-    const actualInputs = Object.keys(node.exactInputDigests).sort();
-    const actualSemantic = Object.keys(node.semanticParentResultDigests).sort();
-    const actualProvenance = Object.keys(node.provenanceParentNodeIds).sort();
-    if (canonicalJson(actualInputs) !== canonicalJson(expectedInputs) ||
-        canonicalJson(actualSemantic) !== canonicalJson(expectedParents) ||
-        canonicalJson(actualProvenance) !== canonicalJson(expectedParents)) {
-        throw invalid('Evidence node input or parent roles are unexpected.');
-    }
-}
 function assertExactKeys(output, keys, invalid) {
     if (typeof output !== 'object' || output === null || Array.isArray(output)) {
         throw invalid('Evidence node output is malformed.');
@@ -1181,32 +428,9 @@ function assertExactKeys(output, keys, invalid) {
     const own = Object.keys(record);
     if (own.length !== keys.length ||
         !keys.every((key) => Object.prototype.hasOwnProperty.call(record, key))) {
-        throw invalid('Evidence node output keys are unexpected.');
+        throw invalid('Investigation grouping input keys are unexpected.');
     }
     return record;
-}
-function assertArray(value, invalid) {
-    if (!Array.isArray(value)) {
-        throw invalid('Expected an array value.');
-    }
-    return value;
-}
-function assertSortedUniqueIds(value, pattern, invalid) {
-    const array = assertArray(value, invalid);
-    let previous = null;
-    for (const item of array) {
-        if (typeof item !== 'string' || (pattern !== null && !pattern.test(item))) {
-            throw invalid('Identifier array element is malformed.');
-        }
-        if (previous !== null && item <= previous) {
-            throw invalid('Identifier array is not sorted and unique.');
-        }
-        previous = item;
-    }
-    return array;
-}
-function byNodeId(left, right) {
-    return left.nodeId < right.nodeId ? -1 : left.nodeId > right.nodeId ? 1 : 0;
 }
 function sha256(value) {
     return crypto.createHash('sha256').update(value).digest('hex');
@@ -1214,20 +438,11 @@ function sha256(value) {
 function groupsInvalid(message = 'Investigation grouping input is malformed.') {
     return workflowError('INVESTIGATION_GROUPS_INVALID', message, ExitCode.usage);
 }
-function dispositionsInvalid(message = 'Investigation disposition input is malformed.') {
-    return workflowError('INVESTIGATION_DISPOSITIONS_INVALID', message, ExitCode.usage);
-}
-function coverageInvalid(message = 'Investigation coverage input is malformed.') {
-    return workflowError('INVESTIGATION_COVERAGE_INVALID', message, ExitCode.usage);
-}
-function investigationDagInvalid(message = 'Investigation evidence DAG is invalid.') {
-    return workflowError('INVESTIGATION_EVIDENCE_DAG_INVALID', message, ExitCode.usage);
-}
 /**
  * Rejoins each group's hits with the context windows their scans recorded.
  *
- * A group node summarises its hits without their windows, and a hit node never
- * carried one, so neither can answer whether a class predicate describes what
+ * A mechanical group fact summarises its hits without their windows, so it
+ * cannot answer whether a class predicate describes what
  * the search actually found. The scans still hold that text, and the join is
  * exact: a hit is the same hit when its term, path, and byte range agree.
  *

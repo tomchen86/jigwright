@@ -298,7 +298,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/check-registry-adapter.ts",
       "mode": "100644",
-      "digest": "sha256:7c00e7f1f47629c2e07a0a03efb2f9e11dd5b3d26812776111295eb2591f09e1"
+      "digest": "sha256:bd3115e75e4fd83aa319a2143d3f721cfc37602ccecfd94d0b471b8fa2f19d46"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/check-runner.ts",
@@ -313,7 +313,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:7eff1ac33411cc973e0a65b1dac005d9d765bc13d8e7ab1f31418c4b5680599b"
+      "digest": "sha256:34c4f71bf21ec1538bac90b9cb06ca32de06a2acdc2bd207372ac35c1d70974a"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -368,12 +368,7 @@
     {
       "path": "src/adapters/planning/investigation/evidence-reuse-path.ts",
       "mode": "100644",
-      "digest": "sha256:2d1b92c6a7bd3acc33a455373615fbb32ad97e352bcab3e6f0c51a2ea0769045"
-    },
-    {
-      "path": "src/adapters/planning/investigation/investigation-artifact-projection.ts",
-      "mode": "100644",
-      "digest": "sha256:314c7660e3a88343997858e555737d1d3ea4d251ab0e94db08a964e6acd16ec4"
+      "digest": "sha256:41bf219405ce9a9fd42b8fc4c9d3a58fc38939e810d496f2503f962ff8560f12"
     },
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
@@ -628,7 +623,7 @@
     {
       "path": "src/application/execute-task/task-strategy-patch.ts",
       "mode": "100644",
-      "digest": "sha256:d5baf3db9eed6e1dc6ea81709a46763eaeefa122840a83dd82e7ca06f01de78f"
+      "digest": "sha256:d4c6e9a787a05ee15d721629d77c7691508fb442114b6041143724468735ccfc"
     },
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
@@ -778,7 +773,7 @@
     {
       "path": "src/composition-root/check-registry-production.ts",
       "mode": "100644",
-      "digest": "sha256:bcd9796bc7476a6be51055a9301b05d0b364b7bb25aa2ee6ba0d68516e7699ff"
+      "digest": "sha256:322267bfede40d3b498a18d6798c0a1cec9fbab0ae9a20af404723fc346b8f69"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -928,7 +923,7 @@
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:45a63bdffbd6a1d3ce4a6c7db08d9190bd381344c7bb3cce6ca3081daefd16ae"
+      "digest": "sha256:d5c6003ff250a7e54c8d3eb8efe27cbd890803b1326ade63f05ebe127ada83af"
     },
     {
       "path": "src/entrypoints/ci/ci-routing.ts",
@@ -1093,7 +1088,7 @@
     {
       "path": "src/modules/assurance/plan-review.ts",
       "mode": "100644",
-      "digest": "sha256:bd33caa2465303728e7596e60ceca85756e07b3160d36da5d27998b8c1550dfe"
+      "digest": "sha256:b20b18ab8084c9a621e90df417336b306153b625cd6659880c1f8758ca8d37cc"
     },
     {
       "path": "src/modules/assurance/plan-target.ts",
@@ -1103,7 +1098,7 @@
     {
       "path": "src/modules/assurance/planning-assurance-validator.ts",
       "mode": "100644",
-      "digest": "sha256:025bc620d164367fe56832a3e0b3cd161605a7d383de5267b5075376e6b27168"
+      "digest": "sha256:246b7018cebd8cd49cca1402b1975690557a8d9273e2a895f73746cb9466bd8f"
     },
     {
       "path": "src/modules/assurance/pre-merge-assurance.ts",
@@ -1243,7 +1238,7 @@
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:3b3086d462280787dfbf6e2bc3b7eecddbb6e65159572cce3bd518e2e29ee3db"
+      "digest": "sha256:4c013ebc9fd0af91f429905a98e5d2d9bbbf16a52401a87fc1ef196fa1309f6b"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
@@ -1408,7 +1403,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-groups.ts",
       "mode": "100644",
-      "digest": "sha256:ddaa245ebbe3803330aa9303b263ce6cf7dfd592a8e96decd1b803b3928c6c60"
+      "digest": "sha256:38cb5a37b538d708ef6117be626c3e83e79ada8c30ac9db9e9cee175a9224c41"
     },
     {
       "path": "src/modules/investigation/domain/investigation-roots.ts",
@@ -1418,7 +1413,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-scanner.ts",
       "mode": "100644",
-      "digest": "sha256:cb3657a7e84e39e598582046bc8cd40f0f3868b742a7e40b97ab926548697a66"
+      "digest": "sha256:9e813dc92df7be22679267d97f575f6ef206069bd3d30fa49f7e09f47c823453"
     },
     {
       "path": "src/modules/investigation/domain/investigation-terms.ts",
@@ -1683,7 +1678,7 @@
     {
       "path": "src/modules/why-knowledge/semantic-ledger.ts",
       "mode": "100644",
-      "digest": "sha256:c63779b25c7f828c1be986c00355c36891557b5a7b9f114b0b2683d519fa873b"
+      "digest": "sha256:0acf5717c5052608ca118abfaf063559db18b672661f5d8a1f5f461d907a7015"
     },
     {
       "path": "src/modules/why-knowledge/semantic-manifest-reuse.ts",
@@ -2138,12 +2133,12 @@
     {
       "path": "src/runtime/storage-journal/task-strategy-patch-store.ts",
       "mode": "100644",
-      "digest": "sha256:ace191d58a386940ac9bbff81f2147b9203e2b18b8309b6edef236e38f30fb43"
+      "digest": "sha256:788c480cb423e84eb76c428c9931f359f2cb048d69cc2e35e1fff7ac6dbac47a"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-provider-store.ts",
       "mode": "100644",
-      "digest": "sha256:07917816d8f60011f155db89ec8239280a76e667f57d06996e3df2bc35f63152"
+      "digest": "sha256:2d73600963e46a170b3134f6b09d05b1df38b6b7a19907a960c893a0467e2bc4"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",
