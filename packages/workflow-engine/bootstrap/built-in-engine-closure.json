@@ -908,12 +908,12 @@
     {
       "path": "src/entrypoints/ci/ci-historical-contract.ts",
       "mode": "100644",
-      "digest": "sha256:be75d357034fc5ddf2f8d6ed33d120a5a1dc0d44dbcb2703cf4e84e45b4b0e0a"
+      "digest": "sha256:8293a0c3c727220029e589be6286f173728ebd09a8e74046fb396934afd569c1"
     },
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:d5c6003ff250a7e54c8d3eb8efe27cbd890803b1326ade63f05ebe127ada83af"
+      "digest": "sha256:04901d39dfaabdfd9f6aad2baa427c0dea4452b19b772d7dd6ffa2c44034a6d6"
     },
     {
       "path": "src/entrypoints/ci/ci-routing.ts",
@@ -1228,7 +1228,7 @@
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
       "mode": "100644",
-      "digest": "sha256:19cde69776152915caea7806db934957aba11dda8f689500aad5099a311340f0"
+      "digest": "sha256:fcbd1f2fba0d4dd95530c113c52b9ef6820ee3829dad9c7fdf39d2a987cbfcfa"
     },
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
