@@ -629,13 +629,10 @@ function readRawPatch(
     }
     files.push({ path: normalized, operation, before, after });
   }
-  files.sort((left, right) => left.path.localeCompare(right.path));
+  files.sort((left, right) => compareCanonicalUtf8(left.path, right.path));
   if (
-    files.some(
-      (file, index) =>
-        index > 0 &&
-        file.path.toLowerCase() <= files[index - 1]!.path.toLowerCase(),
-    )
+    new Set(files.map(({ path: filePath }) => filePath.toLowerCase())).size !==
+    files.length
   ) {
     throw candidateObjectInvalid();
   }
@@ -854,8 +851,10 @@ function assertPatchManifest(value: unknown): ImmutableGitPatchManifestV1 {
     files.some(
       (file, index) =>
         index > 0 &&
-        file.path.toLowerCase() <= files[index - 1]!.path.toLowerCase(),
-    )
+        compareCanonicalUtf8(file.path, files[index - 1]!.path) <= 0,
+    ) ||
+    new Set(files.map(({ path: filePath }) => filePath.toLowerCase())).size !==
+      files.length
   ) {
     throw candidateInvalid();
   }
@@ -1262,7 +1261,9 @@ function removedStrings(
   if (!before || !after) return Object.freeze([]);
   const afterSet = new Set(after);
   return Object.freeze(
-    [...new Set(before.filter((entry) => !afterSet.has(entry)))].sort(),
+    [...new Set(before.filter((entry) => !afterSet.has(entry)))].sort(
+      compareCanonicalUtf8,
+    ),
   );
 }
 
@@ -1270,7 +1271,11 @@ function compareObservation(
   left: ImmutableGitPolicyObservation,
   right: ImmutableGitPolicyObservation,
 ): number {
-  return left.kind.localeCompare(right.kind);
+  return compareCanonicalUtf8(left.kind, right.kind);
+}
+
+function compareCanonicalUtf8(left: string, right: string): number {
+  return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
 }
 
 function assertCheckIds(value: readonly string[]): readonly string[] {

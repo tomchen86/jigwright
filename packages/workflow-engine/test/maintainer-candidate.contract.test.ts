@@ -172,6 +172,10 @@ function neutralCandidateDigest(value: string): string {
   return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
+function compareUtf8(left: string, right: string): number {
+  return Buffer.compare(Buffer.from(left, 'utf8'), Buffer.from(right, 'utf8'));
+}
+
 function candidateRepositorySnapshot(repository: string) {
   return {
     refs: gitForCandidate(repository, [
@@ -341,6 +345,60 @@ test('neutral immutable Git candidates observe grantable policy mutations withou
   }
   assert.equal(candidateDigests.size, scenarios.length);
   assert.equal(observationDigests.size, scenarios.length);
+});
+
+test('neutral immutable Git candidates use locale-independent UTF-8 ordering for Unicode paths and observations', () => {
+  const fixture = createNeutralCandidateFixture(
+    'unicode-ordering',
+    neutralPolicy({
+      phase: 'sealed',
+      sealedImmutablePaths: ['packages/**', 'workflow/**'],
+      requiredChecks: ['candidate-fail', 'candidate-pass'],
+    }),
+  );
+  try {
+    const sourceDirectory = path.join(fixture.repository, 'src');
+    fs.mkdirSync(sourceDirectory, { recursive: true });
+    for (const name of ['Z.txt', 'a.txt', 'Å.txt', 'Ω.txt', '𐐀.txt']) {
+      fs.writeFileSync(path.join(sourceDirectory, name), `${name}\n`);
+    }
+    const current = JSON.parse(
+      fs.readFileSync(fixture.policyPath, 'utf8'),
+    ) as NeutralPolicy;
+    writeCandidateJson(fixture.policyPath, {
+      ...current,
+      phase: 'bootstrap',
+      sealedImmutablePaths: ['workflow/**'],
+      requiredChecks: ['candidate-pass'],
+    });
+
+    const candidate = buildImmutableGitCandidate(fixture.repository, {
+      targetRef: 'refs/heads/main',
+      expectedOldCommit: fixture.baseCommit,
+    });
+    const expectedPaths = [
+      'workflow/maintainer-policy.json',
+      'src/Z.txt',
+      'src/a.txt',
+      'src/Å.txt',
+      'src/Ω.txt',
+      'src/𐐀.txt',
+    ].sort(compareUtf8);
+    assert.deepEqual(
+      candidate.manifest.files.map(({ path: filePath }) => filePath),
+      expectedPaths,
+    );
+    assert.deepEqual(
+      candidate.policyObservations.map(({ kind }) => kind),
+      candidate.policyObservations.map(({ kind }) => kind).sort(compareUtf8),
+    );
+    assert.deepEqual(
+      parseImmutableGitCandidate(canonicalImmutableGitCandidate(candidate)),
+      candidate,
+    );
+  } finally {
+    fixture.dispose();
+  }
 });
 
 test('neutral candidate rejects malformed facts, drift, symlinks, and preserves isolated preview state on interruption', () => {
