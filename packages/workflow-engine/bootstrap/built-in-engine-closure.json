@@ -1933,7 +1933,7 @@
     {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:d0f79ceafe5723021e5b6b54c5ed6f01b8a6987a6e464f1ede2461393cb1ed5b"
+      "digest": "sha256:716b2364c60f136751af136a1d33e1c1a136fb4a18f830e3df09b318f1ce3929"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",

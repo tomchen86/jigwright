@@ -820,9 +820,9 @@ function isWorkflowSession(value) {
         !isSha256Digest(value.checkEvidenceEngineDigest)) {
         return false;
     }
-    if (value.planningAssurance !== undefined &&
-        value.planningAssurance !== null &&
-        !isPlanningAssuranceBinding(value.planningAssurance)) {
+    if (!Object.hasOwn(value, 'planningAssurance') ||
+        (value.planningAssurance !== null &&
+            !isPlanningAssuranceBinding(value.planningAssurance))) {
         return false;
     }
     if (value.revisionLeaseId !== undefined &&
