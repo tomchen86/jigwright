@@ -45,7 +45,7 @@ test('core CheckRegistry contract stays type-only and consumer-neutral', () => {
   );
 });
 
-test('expense adapter pins the landed registry DTOs to the public contract', () => {
+test('repository adapter pins the landed registry DTOs to the public contract', () => {
   const adapterSource = fs.readFileSync(
     path.join(
       repositoryRoot,

@@ -23,7 +23,7 @@ type CheckRegistryContractIsExact = AssertTrue<
   AssertBidirectionalExact<ChecksConfig, CheckRegistryV1>
 >;
 
-export const expenseAppCheckRegistryPort: CheckRegistryPortV1 = {
+export const workflowCheckRegistryPort: CheckRegistryPortV1 = {
   contractVersion: 'jigwright.check-registry-port.v1',
   load(repositoryRoot: string): CheckRegistryV1 {
     return loadChecksConfig(repositoryRoot);

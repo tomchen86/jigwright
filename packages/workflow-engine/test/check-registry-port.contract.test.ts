@@ -4,13 +4,13 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { expenseAppCheckRegistryPort } from '../src/adapters/consumer/repository/work-registry/check-registry-adapter.ts';
+import * as checkRegistryAdapter from '../src/adapters/consumer/repository/work-registry/check-registry-adapter.ts';
 import { resolveRequiredCiChecks } from '../src/entrypoints/ci/ci-checks.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { fixtureCheckRegistryPort } from '../../fixture-adapter/src/fixture-check-registry.ts';
 
-test('expense adapter wraps the landed workflow checks registry', (t) => {
-  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'expense-checks-'));
+test('repository adapter wraps the landed workflow checks registry without a consumer alias', (t) => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'workflow-checks-'));
   fs.mkdirSync(path.join(root, 'workflow'));
   fs.writeFileSync(
     path.join(root, 'workflow/checks.json'),
@@ -26,7 +26,8 @@ test('expense adapter wraps the landed workflow checks registry', (t) => {
   );
   t.after(() => fs.rmSync(root, { recursive: true, force: true }));
 
-  assert.deepEqual(expenseAppCheckRegistryPort.load(root), {
+  assert.equal('expenseAppCheckRegistryPort' in checkRegistryAdapter, false);
+  assert.deepEqual(checkRegistryAdapter.workflowCheckRegistryPort.load(root), {
     schemaVersion: 1,
     checks: {
       'fixture-smoke': {
