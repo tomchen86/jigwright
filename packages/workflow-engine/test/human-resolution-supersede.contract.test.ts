@@ -39,6 +39,7 @@ import {
   parseHumanRevocationAuthorization,
   type HumanRevocationAuthorization,
 } from '../src/application/control-plane/human-revocation.ts';
+import { maintainerGrantStorePaths } from '../src/runtime/storage-journal/maintainer-store.ts';
 
 const EXECUTION_FAILURE_REASONS = [
   'provider-timeout',
@@ -200,7 +201,7 @@ test('human-resolution revocation requires current human presence and preserves 
   }
 });
 
-test('human revocation rejects a missing signature namespace', () => {
+test('human revocation rejects retired subjects and a missing signature namespace', () => {
   const authorization: HumanRevocationAuthorization = {
     payload: {
       schemaVersion: 1,
@@ -235,6 +236,25 @@ test('human revocation rejects a missing signature namespace', () => {
     () =>
       parseHumanRevocationAuthorization(`${canonicalJson(namespaceLess)}\n`),
     (error) => isWorkflowError(error, 'HUMAN_REVOCATION_INVALID'),
+  );
+  const retiredSubject = structuredClone(authorization) as unknown as {
+    payload: { subjectKind: string };
+  };
+  retiredSubject.payload.subjectKind = 'legacy-maintainer-grant';
+  assert.throws(
+    () =>
+      parseHumanRevocationAuthorization(`${canonicalJson(retiredSubject)}\n`),
+    (error) => isWorkflowError(error, 'HUMAN_REVOCATION_INVALID'),
+  );
+});
+
+test('current maintainer grant storage exposes no retired revocation authorization surface', () => {
+  assert.equal(
+    Object.hasOwn(
+      maintainerGrantStorePaths('/tmp/jigwright-current-grants.git'),
+      'revocationAuthorizations',
+    ),
+    false,
   );
 });
 

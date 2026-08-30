@@ -26,7 +26,6 @@ import {
 const SHA256 = /^sha256:[0-9a-f]{64}$/;
 const SUBJECT = /^[A-Za-z0-9][A-Za-z0-9._:@/+-]{0,255}$/;
 const SUBJECT_KINDS = [
-  'legacy-maintainer-grant',
   'human-resolution-grant',
   'collaboration-grant',
   'harness-maintenance-grant',

@@ -4,17 +4,12 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
-import { discoverRepository, runGit } from '../repository-transaction/git.ts';
 import {
   assertMaintainerGrantId,
   canonicalGrantEnvelope,
-  canonicalGrantPayload,
   parseMaintainerGrantEnvelope,
-  validateGrantPayload,
   type MaintainerGrantEnvelope,
 } from '../../modules/authority/maintainer-grant.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import { createInteractiveSshSigner } from '../../adapters/signing/ssh/maintainer-signer.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
   isMaintainerGrantV2Envelope,
@@ -26,15 +21,6 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../session-workspace/session-store.ts';
-import {
-  assertHumanRevocationAuthorization,
-  authorizeHumanRevocation,
-  canonicalHumanRevocationAuthorization,
-  digestHumanRevocationSubject,
-  type HumanRevocationAuthorization,
-  type HumanRevocationOptions,
-} from '../../application/control-plane/human-revocation.ts';
-
 export type AnyMaintainerGrantEnvelope =
   MaintainerGrantEnvelope | MaintainerGrantV2Envelope;
 
@@ -57,15 +43,6 @@ export type MaintainerTerminalRecord = {
   reason: string;
   recordedAt: string;
   envelope: AnyMaintainerGrantEnvelope;
-  revocationAuthorization?: HumanRevocationAuthorization;
-};
-
-export type LegacyMaintainerGrantRevocationTarget = {
-  state: 'available' | 'reserved' | MaintainerTerminalRecord['state'];
-  envelope: MaintainerGrantEnvelope;
-  sessionId: string | null;
-  terminalReason: string | null;
-  terminalAuthorization: HumanRevocationAuthorization | null;
 };
 
 export type MaintainerGrantInspection = {
@@ -114,7 +91,6 @@ export function maintainerGrantStorePaths(gitCommonDirectory: string) {
     terminal: path.join(root, 'terminal'),
     journals: path.join(root, 'journals'),
     sessions: path.join(root, 'sessions'),
-    revocationAuthorizations: path.join(root, 'revocation-authorizations'),
   };
 }
 
@@ -235,18 +211,6 @@ function assertExecutableGrantVersion(
   }
 }
 
-function assertLegacyGrantVersion(
-  envelope: AnyMaintainerGrantEnvelope,
-): asserts envelope is MaintainerGrantEnvelope {
-  if (isMaintainerGrantV2Envelope(envelope)) {
-    throw workflowError(
-      'LEGACY_GRANT_V1_REQUIRED',
-      'The legacy revocation path cannot terminalize an Apply Grant v2 envelope.',
-      ExitCode.guard,
-    );
-  }
-}
-
 export function readReservedMaintainerGrant(
   gitCommonDirectory: string,
   requestedGrantId: string,
@@ -286,200 +250,6 @@ export function readTerminalMaintainerGrant(
   const grantId = assertMaintainerGrantId(requestedGrantId);
   const paths = maintainerGrantStorePaths(gitCommonDirectory);
   return readTerminal(grantPath(paths.terminal, grantId), grantId);
-}
-
-export function revokeLegacyMaintainerGrant(
-  cwd: string,
-  requestedGrantId: string,
-  options: HumanRevocationOptions,
-): MaintainerGrantInspection {
-  const repository = discoverRepository(cwd);
-  const paths = maintainerGrantStorePaths(repository.gitCommonDirectory);
-  return withRepositoryLifecycleOperation(
-    paths.runtime,
-    (assertOwned) => {
-      const target =
-        readLegacyMaintainerGrantRevocationTargetUnderLifecycleLock(
-          repository.gitCommonDirectory,
-          requestedGrantId,
-          assertOwned,
-        );
-      const payload = target.envelope.payload;
-      const historicalPolicy = parseMaintainerPolicy(
-        JSON.parse(
-          runGit(repository.repositoryRoot, [
-            'show',
-            `${payload.baseCommit}:workflow/maintainer-policy.json`,
-          ]),
-        ),
-      );
-      const historicalPolicyBlob = runGit(repository.repositoryRoot, [
-        'rev-parse',
-        `${payload.baseCommit}:workflow/maintainer-policy.json`,
-      ]).trim();
-      validateGrantPayload(payload, historicalPolicy, {
-        now: options.now ?? new Date(),
-        expectedBase: payload.baseCommit,
-        expectedPolicyBlob: historicalPolicyBlob,
-        allowExpired: true,
-      });
-      const historicalVerifier =
-        options.verifier ??
-        createInteractiveSshSigner(repository.repositoryRoot, historicalPolicy);
-      historicalVerifier.verify(
-        canonicalGrantPayload(payload),
-        target.envelope.signature,
-        payload.signer,
-        historicalPolicy.signatureNamespace,
-      );
-      const authorization = authorizeHumanRevocation(
-        repository.repositoryRoot,
-        {
-          subjectKind: 'legacy-maintainer-grant',
-          grantId: payload.grantId,
-          grantDigest: digestHumanRevocationSubject(
-            canonicalGrantEnvelope(target.envelope),
-          ),
-          repositoryId: payload.repositoryId,
-          repositoryOrigin: payload.repositoryOrigin,
-          changeId: payload.changeId,
-          taskId: null,
-          workflowId: null,
-          audit: null,
-        },
-        options,
-        path.join(paths.revocationAuthorizations, `${payload.grantId}.json`),
-        target.terminalAuthorization,
-      );
-      assertOwned();
-      return terminallyRevokeLegacyMaintainerGrantUnderLifecycleLock(
-        repository.gitCommonDirectory,
-        payload.grantId,
-        authorization,
-        assertOwned,
-      );
-    },
-    { allowMaintainerGrantId: requestedGrantId },
-  );
-}
-
-function readLegacyMaintainerGrantRevocationTargetUnderLifecycleLock(
-  gitCommonDirectory: string,
-  requestedGrantId: string,
-  assertOwned: () => void,
-): LegacyMaintainerGrantRevocationTarget {
-  const grantId = assertMaintainerGrantId(requestedGrantId);
-  const paths = maintainerGrantStorePaths(gitCommonDirectory);
-  assertOwned();
-  ensureStoreDirectories(paths);
-  const availablePath = grantPath(paths.available, grantId);
-  const reservedPath = grantPath(paths.reserved, grantId);
-  const terminalPath = grantPath(paths.terminal, grantId);
-  const present = [availablePath, reservedPath, terminalPath].filter((entry) =>
-    fs.existsSync(entry),
-  );
-  if (present.length === 0) throw grantNotFound(grantId);
-  if (present.length !== 1) throw ambiguousGrant(grantId);
-  if (present[0] === availablePath) {
-    const envelope = readAvailableGrant(availablePath, grantId);
-    assertLegacyGrantVersion(envelope);
-    return {
-      state: 'available',
-      envelope,
-      sessionId: null,
-      terminalReason: null,
-      terminalAuthorization: null,
-    };
-  }
-  if (present[0] === reservedPath) {
-    const reservation = readReservationOrInterrupted(reservedPath, grantId);
-    assertLegacyGrantVersion(reservation.envelope);
-    return {
-      state: 'reserved',
-      envelope: reservation.envelope,
-      sessionId: reservation.sessionId ?? null,
-      terminalReason: null,
-      terminalAuthorization: null,
-    };
-  }
-  const terminal = readTerminal(terminalPath, grantId);
-  assertLegacyGrantVersion(terminal.envelope);
-  return {
-    state: terminal.state,
-    envelope: terminal.envelope,
-    sessionId: terminal.sessionId,
-    terminalReason: terminal.reason,
-    terminalAuthorization: terminal.revocationAuthorization ?? null,
-  };
-}
-
-function terminallyRevokeLegacyMaintainerGrantUnderLifecycleLock(
-  gitCommonDirectory: string,
-  requestedGrantId: string,
-  authorization: HumanRevocationAuthorization,
-  assertOwned: () => void,
-): MaintainerGrantInspection {
-  const grantId = assertMaintainerGrantId(requestedGrantId);
-  const checked = assertHumanRevocationAuthorization(authorization);
-  if (
-    checked.payload.subjectKind !== 'legacy-maintainer-grant' ||
-    checked.payload.grantId !== grantId
-  ) {
-    throw workflowError(
-      'HUMAN_REVOCATION_CONFLICT',
-      'Legacy maintainer grant revocation authorization is bound elsewhere.',
-      ExitCode.conflict,
-    );
-  }
-  const paths = maintainerGrantStorePaths(gitCommonDirectory);
-  const target = readLegacyMaintainerGrantRevocationTargetUnderLifecycleLock(
-    gitCommonDirectory,
-    grantId,
-    assertOwned,
-  );
-  if (target.state === 'revoked') {
-    if (
-      target.terminalReason !== checked.payload.reason ||
-      target.terminalAuthorization === null ||
-      canonicalHumanRevocationAuthorization(target.terminalAuthorization) !==
-        canonicalHumanRevocationAuthorization(checked)
-    ) {
-      throw workflowError(
-        'HUMAN_REVOCATION_CONFLICT',
-        'Legacy maintainer grant already has a different revocation tombstone.',
-        ExitCode.conflict,
-      );
-    }
-    return inspectTerminal(
-      readTerminal(grantPath(paths.terminal, grantId), grantId),
-    );
-  }
-  if (target.state !== 'available' && target.state !== 'reserved') {
-    throw workflowError(
-      'HUMAN_REVOCATION_STATE_INVALID',
-      'Only active legacy maintainer grant authority can be revoked.',
-      ExitCode.guard,
-    );
-  }
-  const terminal: MaintainerTerminalRecord = {
-    schemaVersion: 1,
-    state: 'revoked',
-    grantId,
-    sessionId: target.sessionId,
-    commitHash: null,
-    reason: checked.payload.reason,
-    recordedAt: checked.payload.revokedAt,
-    envelope: target.envelope,
-    revocationAuthorization: checked,
-  };
-  assertOwned();
-  createPrivateFileAtomic(
-    grantPath(paths.terminal, grantId),
-    serializeRecord(terminal),
-  );
-  cleanupNonterminalCopies(paths, grantId, target.envelope);
-  assertOwned();
-  return inspectTerminal(terminal);
 }
 
 export function readMaintainerGrantV2RevocationTargetUnderLifecycleLock(
@@ -1131,10 +901,6 @@ function readTerminal(
   grantId: string,
 ): MaintainerTerminalRecord {
   const value = parseRecord(readPrivateFile(filePath));
-  const hasAuthorization = Object.prototype.hasOwnProperty.call(
-    value,
-    'revocationAuthorization',
-  );
   if (
     !hasExactKeys(value, [
       'schemaVersion',
@@ -1145,7 +911,6 @@ function readTerminal(
       'reason',
       'recordedAt',
       'envelope',
-      ...(hasAuthorization ? ['revocationAuthorization'] : []),
     ]) ||
     value.schemaVersion !== 1 ||
     !['revoked', 'consumed', 'expired', 'invalidated', 'failed'].includes(
@@ -1166,25 +931,7 @@ function readTerminal(
   if (envelope.payload.grantId !== grantId) {
     throw ambiguousGrant(grantId);
   }
-  let revocationAuthorization: HumanRevocationAuthorization | undefined;
-  if (hasAuthorization) {
-    revocationAuthorization = assertHumanRevocationAuthorization(
-      value.revocationAuthorization,
-    );
-    if (
-      value.state !== 'revoked' ||
-      revocationAuthorization.payload.grantId !== grantId ||
-      revocationAuthorization.payload.reason !== value.reason ||
-      revocationAuthorization.payload.revokedAt !== value.recordedAt
-    ) {
-      throw ambiguousGrant(grantId);
-    }
-  }
-  return {
-    ...value,
-    envelope,
-    ...(revocationAuthorization ? { revocationAuthorization } : {}),
-  } as MaintainerTerminalRecord;
+  return { ...value, envelope } as MaintainerTerminalRecord;
 }
 
 function cleanupNonterminalCopies(
@@ -1248,7 +995,6 @@ function ensureStoreDirectories(
     paths.terminal,
     paths.journals,
     paths.sessions,
-    paths.revocationAuthorizations,
   ]) {
     const existed = fs.existsSync(directory);
     ensurePlainDirectory(directory);
