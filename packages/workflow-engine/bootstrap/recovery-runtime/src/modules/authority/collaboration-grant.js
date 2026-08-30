@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, isCollaborationGrantEnvelopeReaderError, isSignedAttestationEnvelopeReaderError, parseCollaborationGrantEnvelopeV1, readAndVerifyCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, readAndVerifySignedAttestationEnvelopeV1, } from "./optional-grants-package.js";
+import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, isCollaborationGrantEnvelopeReaderError, isSignedAttestationEnvelopeReaderError, parseCollaborationGrantEnvelopeV1, readAndVerifyCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, readAndVerifySignedAttestationEnvelopeV1, } from "./optional-grants-package.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { discoverRepository, runGit, } from "../../runtime/repository-transaction/git.js";
 import { parseMaintainerPolicy, } from "./maintainer-policy.js";
@@ -10,10 +10,7 @@ import { collaborationGrantStorePaths, storeAvailableCollaborationGrant, } from 
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 import { assertChangeId, assertTaskId, } from "../../runtime/session-workspace/paths.js";
 export { ROLE_CONTEXT_SHARING_ELIGIBILITY_CONTRACT_VERSION_V1, ROLE_CONTEXT_SHARING_POLICY, ROLE_CONTEXT_SHARING_POLICY_DIGEST, executeRoleContextSharingGrantTransitionV1, verifyRoleContextSharingGrantCapability, } from "./role-context-sharing-grant.js";
-export const COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE;
 export const COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE = PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE;
-/** Historical compatibility alias. New grants are issued as V2. */
-export const COLLABORATION_GRANT_SIGNATURE_NAMESPACE = COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE;
 export const DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE = 'workflow.direct-human-review.v1';
 export const COLLABORATION_GRANT_AUTHORIZED_EFFECT = 'role-independence-degradation-only';
 export const COLLABORATION_GRANT_REPLAY_SCOPE = 'repository-common-dir-local';
@@ -45,10 +42,6 @@ export const COLLABORATION_GRANT_POLICY_DIGEST = crypto
     .createHash('sha256')
     .update(JSON.stringify(COLLABORATION_GRANT_POLICY))
     .digest('hex');
-export const LEGACY_COLLABORATION_GRANT_POLICY_DIGEST = crypto
-    .createHash('sha256')
-    .update(JSON.stringify(COLLABORATION_GRANT_POLICY))
-    .digest('hex');
 export const TASK_DIFF_REVIEW_COLLABORATION_POLICY = deepFreeze({
     schemaVersion: 1,
     policyId: 'workflow.collaboration-policy.task-diff-review.v1',
@@ -62,10 +55,6 @@ export const TASK_DIFF_REVIEW_COLLABORATION_POLICY = deepFreeze({
     trustCriticalDirectHumanRequiredPhases: [],
 });
 export const TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
-    .createHash('sha256')
-    .update(JSON.stringify(TASK_DIFF_REVIEW_COLLABORATION_POLICY))
-    .digest('hex');
-export const LEGACY_TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST = crypto
     .createHash('sha256')
     .update(JSON.stringify(TASK_DIFF_REVIEW_COLLABORATION_POLICY))
     .digest('hex');
@@ -86,8 +75,9 @@ const FULL_OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const DIGEST = /^[0-9a-f]{64}$/;
 const GRANT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const IDENTITY = /^[A-Za-z0-9][A-Za-z0-9._@:+/-]{0,127}$/;
-const V1_PAYLOAD_KEYS = [
+const COLLABORATION_GRANT_PAYLOAD_KEYS = [
     'version',
+    'signatureNamespace',
     'grantId',
     'repositoryId',
     'repositoryOrigin',
@@ -109,11 +99,6 @@ const V1_PAYLOAD_KEYS = [
     'maxUses',
     'signer',
 ];
-const V2_PAYLOAD_KEYS = [
-    'version',
-    'signatureNamespace',
-    ...V1_PAYLOAD_KEYS.slice(1),
-];
 const DIRECT_HUMAN_PAYLOAD_KEYS = [
     'version',
     'grantId',
@@ -126,8 +111,7 @@ const DIRECT_HUMAN_PAYLOAD_KEYS = [
     'signer',
 ];
 const COLLABORATION_GRANT_PAYLOAD_CODEC = {
-    v1PayloadKeys: V1_PAYLOAD_KEYS,
-    v2PayloadKeys: V2_PAYLOAD_KEYS,
+    v2PayloadKeys: COLLABORATION_GRANT_PAYLOAD_KEYS,
     parsePayload(value) {
         assertCollaborationPayloadShape(value);
         return value;
@@ -564,7 +548,7 @@ export function validateCollaborationGrantPayload(payload, policy, options) {
     if (payload.repositoryId !== policy.repository.id ||
         payload.repositoryOrigin !== policy.repository.origin ||
         payload.policyBlob !== options.expectedPolicyBlob ||
-        !isKnownCollaborationPolicyDigestForPhase(payload.collaborationPolicyDigest, payload.lifecyclePhase, payload.version === 1) ||
+        !isKnownCollaborationPolicyDigestForPhase(payload.collaborationPolicyDigest, payload.lifecyclePhase) ||
         !policy.trustedSigners.some(({ identity }) => identity === payload.signer) ||
         payload.maxUses !== 1 ||
         policy.maxUses !== 1) {
@@ -648,10 +632,8 @@ function assertCollaborationPayloadShape(candidate) {
     }
     const payload = candidate;
     if (!hasExactCollaborationPayloadKeys(payload) ||
-        (payload.version !== 1 && payload.version !== 2) ||
-        (payload.version === 2 &&
-            payload.signatureNamespace !==
-                COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE) ||
+        payload.version !== 2 ||
+        payload.signatureNamespace !== COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE ||
         typeof payload.grantId !== 'string' ||
         !GRANT_ID.test(payload.grantId) ||
         typeof payload.repositoryId !== 'string' ||
@@ -706,13 +688,8 @@ export function collaborationPolicyDigestForPhase(phase) {
         ? TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST
         : COLLABORATION_GRANT_POLICY_DIGEST;
 }
-export function isKnownCollaborationPolicyDigestForPhase(digest, phase, legacyOnly = false) {
-    const legacy = phase === 'task-diff-review'
-        ? LEGACY_TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST
-        : LEGACY_COLLABORATION_GRANT_POLICY_DIGEST;
-    if (legacyOnly)
-        return digest === legacy;
-    return (digest === legacy || digest === collaborationPolicyDigestForPhase(phase));
+export function isKnownCollaborationPolicyDigestForPhase(digest, phase) {
+    return digest === collaborationPolicyDigestForPhase(phase);
 }
 function collaborationPermittedForms(phase) {
     return phase === 'task-diff-review'
@@ -953,13 +930,7 @@ function hasExactDataKeys(value, expected) {
         actual.every((entry, index) => entry === keys[index]));
 }
 function hasExactCollaborationPayloadKeys(value) {
-    if (value.version === 1) {
-        return hasExactDataKeys(value, V1_PAYLOAD_KEYS);
-    }
-    if (value.version === 2) {
-        return hasExactDataKeys(value, V2_PAYLOAD_KEYS);
-    }
-    return false;
+    return hasExactDataKeys(value, COLLABORATION_GRANT_PAYLOAD_KEYS);
 }
 function deepFreeze(value) {
     if (value && typeof value === 'object' && !Object.isFrozen(value)) {

@@ -74,8 +74,8 @@ shadow store and parity authority are retired.
 
 ### Collaboration Grant — partial
 
-The generic exact-envelope verifier, exact historical/current envelope reader,
-and one-use reserve/consume/expire/revoke lifecycle reducer are extracted to
+The generic exact-envelope verifier, exact current envelope reader, and one-use
+reserve/consume/expire/revoke lifecycle reducer are extracted to
 `@jigwright/grants` and are used by Collaboration Grant. The exact
 role-independence-only scope, TTL, durable bytes, and error mapping remain
 intact. Workflow-specific payload semantics, locking, durable schema, and
@@ -199,15 +199,17 @@ the later distribution phase.
 `workflow/config.json` owns only the consumer namespace. New boundary records
 carry the neutral `workflow.<kind>.vN` schema separately from
 `consumerNamespace`; the current schema admission API has no configurable
-legacy prefix or schema-selection fallback. Exact historical signed namespaces
-remain isolated in their dedicated readers until those readers are retired.
+legacy prefix or schema-selection fallback. The Collaboration Grant reader
+admits only its neutral current V2 namespace; unsupported payload versions
+cannot reach domain semantics or signature verification.
 
 ## Conformance and command surfaces
 
 `packages/core/conformance/workflow-conformance-v2.json` is the authenticated,
 language-neutral nine-domain corpus for canonical JSON, digest identity,
 managed trailers, journal records, Manifest/PlanReview binding, Central Grant,
-legacy SSH envelopes, agent protocol frames and planning bindings. The
+current Collaboration Grant envelopes, agent protocol frames and planning
+bindings. The
 `jigwright boundary vectors --check` production command authenticates the
 corpus before a fixture or second implementation consumes it.
 

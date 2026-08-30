@@ -1,7 +1,7 @@
 {
   "kind": "jigwright.workflow.t3-boundary-inventory.v1",
   "schemaVersion": 1,
-  "observedAtCommit": "1a2bf9357b45254e1614efb6a09fefe38e207da1",
+  "observedAtCommit": "8431dcbb99651cc2b5da975fb38a905981408c89",
   "architectureDocument": "docs/architecture/WORKFLOW_ENGINE_BOUNDARY_INVENTORY.md",
   "namespaceBaseline": {
     "legacyPrefix": "expense-app.workflow.",
@@ -125,7 +125,7 @@
       "id": "collaboration-grant",
       "plane": "grants",
       "state": "partial",
-      "t3Disposition": "The generic verifier, historical/current envelope reader, and one-use lifecycle reducer are extracted to optional @jigwright/grants modules behind one lazy fail-closed loader; expense-specific semantics, durable schema, locks, and storage remain in the engine.",
+      "t3Disposition": "The generic verifier, exact current envelope reader, and one-use lifecycle reducer are extracted to optional @jigwright/grants modules behind one lazy fail-closed loader; workflow-specific semantics, durable schema, locks, and storage remain in the engine.",
       "evidence": [
         {
           "path": "packages/grants/src/grant-envelope-verifier.ts",
@@ -139,8 +139,8 @@
         {
           "path": "packages/grants/src/collaboration-grant-envelope-reader.ts",
           "contains": [
-            "COLLABORATION_GRANT_V1_SIGNATURE_NAMESPACE",
             "COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE",
+            "version: 2;",
             "export function parseCollaborationGrantEnvelopeV1<",
             "export function readAndVerifyCollaborationGrantEnvelopeV1<"
           ]
@@ -471,13 +471,13 @@
       "id": "schema-signature-namespace",
       "plane": "contracts-and-history",
       "state": "partial",
-      "t3Disposition": "@jigwright/grants dispatches exact historical V1 and neutral current V2 Collaboration Grant namespaces without fallback; every JSON Schema host is neutral, while remaining consumer-specific record namespaces stay reader-only and historical records are never re-signed.",
+      "t3Disposition": "@jigwright/grants admits only the neutral current V2 Collaboration Grant namespace without fallback; unsupported payload versions cannot reach domain semantics or signature verification, and every JSON Schema host remains neutral.",
       "evidence": [
         {
           "path": "packages/grants/src/collaboration-grant-envelope-reader.ts",
           "contains": [
-            "'workflow.collaboration-grant.v1' as const",
             "'workflow.collaboration-grant.v2' as const",
+            "unsupported schemas cannot",
             "No namespace retry or fallback is"
           ]
         },

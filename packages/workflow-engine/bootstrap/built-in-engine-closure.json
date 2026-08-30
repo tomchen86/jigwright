@@ -118,7 +118,7 @@
     {
       "path": "node_modules/@jigwright/core/src/conformance-vectors.ts",
       "mode": "100644",
-      "digest": "sha256:7fe0912f5f0f5a7a1dff6406568707c3759d4cef20e29b248143ed92e572e2ed"
+      "digest": "sha256:51c33bcafb47d3200a4d0abe78dbae2cd50b7660d6560fcf83dd987016dc9871"
     },
     {
       "path": "node_modules/@jigwright/core/src/contract-values.ts",
@@ -223,7 +223,7 @@
     {
       "path": "node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.ts",
       "mode": "100644",
-      "digest": "sha256:eb8b1d34914e18ef50104a76a3055f689982b250e197cc3e86c391222ad76882"
+      "digest": "sha256:229184e174436d039b3051f60ed92299d215b4adcff47acdc74387551fdc171e"
     },
     {
       "path": "node_modules/@jigwright/grants/src/grant-envelope-verifier.ts",
@@ -688,7 +688,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:c71ac13824957e65fccebadb7d0a3301ca1462ba22b8c49e1809e63af5649c83"
+      "digest": "sha256:11f2116d7ad266cc8315f9f03f56f6ce6208e9ec5055a6cf04c10a5f45fe08c7"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -833,7 +833,7 @@
     {
       "path": "src/composition-root/public/central-grant.ts",
       "mode": "100644",
-      "digest": "sha256:a4109b55051f2b931dfd6d72e01cafb2fbfafaa3596ffe19c804af3a44ba6961"
+      "digest": "sha256:d1404c9ba79029e401c99f16dcebb0de2c74de8691a117d84885a8f22db0dcad"
     },
     {
       "path": "src/composition-root/public/manifest-v3.ts",
@@ -1163,7 +1163,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:99684472bda202a22d1add0f1f29a8adea19eb512d98e5bcb89775f213be07eb"
+      "digest": "sha256:8771490f2f2bcf63627e9ffc0133210e881b2bc552a4b929c672abf10e6ebe05"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1258,7 +1258,7 @@
     {
       "path": "src/modules/authority/optional-grants-package.ts",
       "mode": "100644",
-      "digest": "sha256:71dcebf1c1c61c4c45a1f05959295117092e3c6e641ffee703f919bb8bf3ac74"
+      "digest": "sha256:696cb82cd72625eca0029f16397ae1c49974a07e7cff77dac345e6b2da5df0df"
     },
     {
       "path": "src/modules/authority/protected-base-initialization-grant.ts",
