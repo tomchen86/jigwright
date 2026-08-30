@@ -83,11 +83,11 @@ export type PlanReviewTargetSnapshotArtifact = {
 };
 
 export type PlanReviewMigrationContract = {
-  legacyMigration: boolean;
+  legacyMigration: false;
   preservedPaths: string[];
   replaceablePaths: string[];
   engineManagedPaths: string[];
-  guardSemanticDigest: string | null;
+  guardSemanticDigest: null;
 };
 
 export type PlanReviewTargetSnapshot = {
@@ -3056,13 +3056,13 @@ function assertTargetSnapshotMigrationContract(
       'engineManagedPaths',
       'guardSemanticDigest',
     ]) ||
-    typeof value.legacyMigration !== 'boolean' ||
-    (value.guardSemanticDigest !== null && !isDigest(value.guardSemanticDigest))
+    value.legacyMigration !== false ||
+    value.guardSemanticDigest !== null
   ) {
     throw targetSnapshotInvalid();
   }
-  const expected = {
-    legacyMigration: value.legacyMigration,
+  const expected: PlanReviewMigrationContract = {
+    legacyMigration: false,
     preservedPaths: artifacts
       .filter(({ mutability }) => mutability === 'preserved-byte-identical')
       .map(({ path }) => path),
@@ -3072,7 +3072,7 @@ function assertTargetSnapshotMigrationContract(
     engineManagedPaths: artifacts
       .filter(({ mutability }) => mutability === 'engine-managed')
       .map(({ path }) => path),
-    guardSemanticDigest: value.guardSemanticDigest as string | null,
+    guardSemanticDigest: null,
   };
   if (
     canonicalJson(value.preservedPaths) !==
@@ -3081,9 +3081,7 @@ function assertTargetSnapshotMigrationContract(
       canonicalJson(expected.replaceablePaths) ||
     canonicalJson(value.engineManagedPaths) !==
       canonicalJson(expected.engineManagedPaths) ||
-    (!value.legacyMigration &&
-      (expected.preservedPaths.length > 0 ||
-        expected.guardSemanticDigest !== null))
+    expected.preservedPaths.length > 0
   ) {
     throw targetSnapshotInvalid();
   }

@@ -9,6 +9,7 @@ import {
   createEvidenceNode,
   type EvidenceNode,
 } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   projectPlanReviewTerms,
@@ -1694,6 +1695,57 @@ test('provider results require an immutable target snapshot binding', () => {
         targetSnapshotNode: fakeSnapshotNode,
       }),
     (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+});
+
+test('PlanReview target snapshots reject the retired legacy-migration mode', () => {
+  const currentNode = reviewContext().targetSnapshotNode;
+  const currentSnapshot = readPlanReviewTargetSnapshotNode(currentNode);
+  assert.equal(currentSnapshot.migration.legacyMigration, false);
+  assert.equal(currentSnapshot.migration.guardSemanticDigest, null);
+
+  const legacySnapshot = structuredClone(currentSnapshot);
+  (
+    legacySnapshot.migration as unknown as {
+      legacyMigration: boolean;
+    }
+  ).legacyMigration = true;
+  const {
+    schemaVersion: _schemaVersion,
+    snapshotDigest: _snapshotDigest,
+    ...legacyFields
+  } = legacySnapshot;
+  legacySnapshot.snapshotDigest = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJson({
+        schema: 'workflow.plan-review-target-snapshot.v1',
+        ...legacyFields,
+      }),
+    )
+    .digest('hex');
+  const legacyNode = createEvidenceNode({
+    type: currentNode.type,
+    nodeSchema: currentNode.nodeSchema,
+    evaluator: currentNode.evaluator,
+    policyDigest: currentNode.policyDigest,
+    exactInputDigests: {
+      ...currentNode.exactInputDigests,
+      migration: crypto
+        .createHash('sha256')
+        .update(canonicalJson(legacySnapshot.migration))
+        .digest('hex'),
+    },
+    semanticParentResultDigests: currentNode.semanticParentResultDigests,
+    provenanceParentNodeIds: currentNode.provenanceParentNodeIds,
+    outputSchema: currentNode.outputSchema,
+    output: legacySnapshot,
+    runtimeMetadata: currentNode.runtimeMetadata,
+  });
+
+  assert.throws(
+    () => readPlanReviewTargetSnapshotNode(legacyNode),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_TARGET_SNAPSHOT_INVALID'),
   );
 });
 
