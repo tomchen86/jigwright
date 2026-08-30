@@ -508,7 +508,7 @@
     {
       "path": "src/application/control-plane/control-plane-promotion-producer.ts",
       "mode": "100644",
-      "digest": "sha256:a290f4efc364aad4ad2fda1da87cadc418c8e0c1e2ea1ac4d75dc025bb843f4f"
+      "digest": "sha256:fe2fceab060c35b9d4210a1d4902fd9296ce2e142d33d46248ab1a1fbf12afb8"
     },
     {
       "path": "src/application/control-plane/engine-metrics.ts",
@@ -543,7 +543,7 @@
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:5ac0eb72ee2de0c68efe3dc21cdd216067f1f3d3d9efd6317910c7c9aae47715"
+      "digest": "sha256:514fa83c1f48d6098ac10f6eea5773d876edda43b9a5c4026639c0bcafbe9c16"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -568,7 +568,7 @@
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:e88661d0a718de66c9c5617b3ec89f7d542e31d20a93b7c9d93ea801dac6fffd"
+      "digest": "sha256:1eda964d6ca5d1e69524b1b942b013fca9e84d34e828f60ff9ce3c1a0cbb50c4"
     },
     {
       "path": "src/application/execute-task/open-task.ts",
@@ -1228,12 +1228,12 @@
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
       "mode": "100644",
-      "digest": "sha256:e487eee9669febebd4a52ce057121be8876e0e52720adc9cf38c96315682b23b"
+      "digest": "sha256:19cde69776152915caea7806db934957aba11dda8f689500aad5099a311340f0"
     },
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:5fdd3bd2a1c27cea4815c39cbdce7a1f91ee602d7a8b12e1efb13d528791599a"
+      "digest": "sha256:28aa2392b385cfb53c5f21c808443ac45b3a81832586bb84912cd1562d028250"
     },
     {
       "path": "src/modules/authority/maintainer-grant.ts",
