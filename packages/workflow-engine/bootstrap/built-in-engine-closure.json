@@ -303,7 +303,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:34c4f71bf21ec1538bac90b9cb06ca32de06a2acdc2bd207372ac35c1d70974a"
+      "digest": "sha256:a4315d6d3441efd1b45f6d187b6c8c3586d8254d616760b3d1523a4e0a8e8ac8"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -688,7 +688,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:b9b9085202620566ce5b18010307fc9595a4af1beff799d9145556c1bd8db868"
+      "digest": "sha256:1230beb98ab0707a24f7de5487dbbcd17b367d452c39e6321dba41746a4594dc"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",

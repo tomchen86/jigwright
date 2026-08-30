@@ -511,7 +511,7 @@ function loadChangeContractWithInvestigationSource(repositoryRootInput, requeste
     const guardTaskIds = new Set(Object.keys(guard.tasks));
     for (const [taskId, policy] of Object.entries(guard.tasks)) {
         assertTaskId(taskId);
-        validateTaskPolicy(repositoryRoot, taskId, policy, checks, tasks.every(({ completed }) => completed));
+        validateTaskPolicy(repositoryRoot, taskId, policy, checks);
     }
     const missingPolicies = [...markdownTaskIds].filter((taskId) => !guardTaskIds.has(taskId));
     const unknownPolicies = [...guardTaskIds].filter((taskId) => !markdownTaskIds.has(taskId));
@@ -1181,7 +1181,7 @@ function isExclusiveResourceSet(value) {
         new Set(value).size === value.length &&
         JSON.stringify(value) === JSON.stringify([...value].sort()));
 }
-function validateTaskPolicy(repositoryRoot, taskId, policy, checks, allowCompletedLegacyProjectionScope) {
+function validateTaskPolicy(repositoryRoot, taskId, policy, checks) {
     const normalizedPaths = policy.allowedPaths.map((policyPath) => {
         const normalized = normalizePolicyPath(policyPath);
         assertPolicyPathInsideRepository(repositoryRoot, normalized);
@@ -1190,13 +1190,11 @@ function validateTaskPolicy(repositoryRoot, taskId, policy, checks, allowComplet
     if (new Set(normalizedPaths).size !== normalizedPaths.length) {
         throw workflowError('DUPLICATE_ALLOWED_PATH', `Task ${taskId} contains duplicate allowed paths.`, ExitCode.guard);
     }
-    if (!allowCompletedLegacyProjectionScope) {
-        const claimedProjectionPaths = engineProjectionDefinitions()
-            .map(({ path: projectionPath }) => projectionPath)
-            .filter((projectionPath) => normalizedPaths.some((allowedPath) => matchesAllowedPath(projectionPath, allowedPath)));
-        if (claimedProjectionPaths.length > 0) {
-            throw workflowError('ENGINE_PROJECTION_PATH_IN_TASK_SCOPE', `Task ${taskId} cannot claim engine-owned projection paths.`, ExitCode.guard, { details: { taskId, claimedProjectionPaths } });
-        }
+    const claimedProjectionPaths = engineProjectionDefinitions()
+        .map(({ path: projectionPath }) => projectionPath)
+        .filter((projectionPath) => normalizedPaths.some((allowedPath) => matchesAllowedPath(projectionPath, allowedPath)));
+    if (claimedProjectionPaths.length > 0) {
+        throw workflowError('ENGINE_PROJECTION_PATH_IN_TASK_SCOPE', `Task ${taskId} cannot claim engine-owned projection paths.`, ExitCode.guard, { details: { taskId, claimedProjectionPaths } });
     }
     const malformedChecks = policy.requiredChecks.filter((checkId) => !CHECK_ID_PATTERN.test(checkId));
     if (malformedChecks.length > 0) {
