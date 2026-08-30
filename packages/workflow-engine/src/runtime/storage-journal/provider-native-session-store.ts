@@ -46,10 +46,7 @@ import {
   deriveProviderNativeSessionScopeV1,
   providerNativeSessionProtocolBindingV2,
 } from '../../modules/provider-orchestration/provider-native-session.ts';
-import {
-  inspectHistoricalChangeRoleAssignmentRecordV1,
-  readChangeRoleAssignmentRecordV1,
-} from './change-role-assignment-store.ts';
+import { readChangeRoleAssignmentRecordV1 } from './change-role-assignment-store.ts';
 import {
   assertPrivateInvestigationDirectory,
   ensurePrivateInvestigationDirectory,
@@ -207,20 +204,6 @@ export type ProviderNativeSessionChainV2 = Readonly<{
   }>[];
 }>;
 
-export type ProviderNativeSessionHistoricalDiagnosticV2 = Readonly<{
-  schemaVersion: 2;
-  kind: 'provider-native-session-historical-diagnostic.v2';
-  outcome: 'absent' | 'inspected';
-  authorityEligible: false;
-  transitionEligible: false;
-  operationalWrites: false;
-  recoveryPerformed: false;
-  assignmentAssurance: 'store-owned-structural-record';
-  attemptCurrentness: 'not-observed';
-  publicationRecovery: 'not-applied';
-  chain: ProviderNativeSessionChainV2;
-}>;
-
 type ProviderNativeSessionClaimRefV2 = Readonly<{
   schemaVersion: 2;
   kind: 'provider-native-session-claim-ref.v2';
@@ -262,11 +245,6 @@ type V2PublicationRecoveryTarget = Readonly<{
   digest: string | null;
   scopeKey: string | null;
   turn: number | null;
-}>;
-
-type V2RecoveryDirectorySnapshot = Readonly<{
-  identity: fs.Stats | null;
-  names: readonly string[];
 }>;
 
 type PublicationRecoveryTarget = Readonly<{
@@ -976,61 +954,6 @@ export function readProviderNativeSessionChainV2(
   });
 }
 
-/**
- * Observe immutable historical V2 evidence from a store-owned structurally
- * validated assignment. It performs no locks, recovery, verifier callbacks,
- * or writes and cannot authorize any transition.
- */
-export function inspectProviderNativeSessionChainV2(
-  paths: InvestigationRuntimePaths,
-  requestedChangeId: string,
-  requestedPlanningGeneration: string,
-  requestedAssignmentRecordDigest: string,
-  requestedSessionSlotId: string,
-): ProviderNativeSessionHistoricalDiagnosticV2 {
-  const identity = assertChainIdentity({
-    changeId: requestedChangeId,
-    planningGeneration: requestedPlanningGeneration,
-    assignmentRecordDigest: requestedAssignmentRecordDigest,
-    sessionSlotId: requestedSessionSlotId,
-  });
-  const assignmentObservation = inspectHistoricalChangeRoleAssignmentRecordV1(
-    paths,
-    identity.changeId,
-    identity.planningGeneration,
-  );
-  if (assignmentObservation === null) throw storeInvalid();
-  if (
-    assignmentObservation.record.recordDigest !==
-    identity.assignmentRecordDigest
-  ) {
-    throw storeConflict();
-  }
-  const observed = projectScopeWithRoles(
-    assignmentObservation.record,
-    identity.sessionSlotId,
-  );
-  const locations = storePathsV2(paths);
-  const recoveryBefore = readV2RecoveryDirectorySnapshot(paths, locations);
-  const chain = readChainForScopeV2(paths, observed, false);
-  const recoveryAfter = readV2RecoveryDirectorySnapshot(paths, locations);
-  assertSameV2RecoveryDirectorySnapshot(recoveryBefore, recoveryAfter);
-  return deepFreeze({
-    schemaVersion: 2 as const,
-    kind: 'provider-native-session-historical-diagnostic.v2' as const,
-    outcome:
-      chain.state === 'empty' ? ('absent' as const) : ('inspected' as const),
-    authorityEligible: false as const,
-    transitionEligible: false as const,
-    operationalWrites: false as const,
-    recoveryPerformed: false as const,
-    assignmentAssurance: 'store-owned-structural-record' as const,
-    attemptCurrentness: 'not-observed' as const,
-    publicationRecovery: 'not-applied' as const,
-    chain,
-  });
-}
-
 type ProviderNativeSessionObservedScopeV2 = Readonly<{
   scope: ProviderNativeSessionScopeV1;
   roleLanes: readonly ('author' | 'builder' | 'reviewer')[];
@@ -1465,78 +1388,6 @@ function storePathsV2(paths: InvestigationRuntimePaths) {
     attempts: path.join(root, 'attempts', 'sha256'),
     recovery: path.join(root, 'recovery', 'sha256'),
   });
-}
-
-function readV2RecoveryDirectorySnapshot(
-  paths: InvestigationRuntimePaths,
-  locations: ReturnType<typeof storePathsV2>,
-): V2RecoveryDirectorySnapshot {
-  const directory = locations.recovery;
-  const before = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (before === undefined) {
-    // This is an optimistic ordinary-writer observation, not a hostile
-    // namespace fence. The result remains explicitly non-authorizing.
-    assertPrivateInvestigationDirectory(
-      paths,
-      path.dirname(directory),
-      storeInvalid,
-    );
-    if (fs.lstatSync(directory, { throwIfNoEntry: false }) !== undefined) {
-      throw storeOperationConflict();
-    }
-    return Object.freeze({ identity: null, names: Object.freeze([]) });
-  }
-  assertPrivateInvestigationDirectory(paths, directory, storeInvalid);
-  const firstName = readFirstDirectoryName(directory);
-  if (firstName !== null) {
-    if (/^[0-9a-f]{64}\.publish\.tmp$/u.test(firstName)) {
-      throw storeOperationConflict();
-    }
-    throw storeInvalid();
-  }
-  const after = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (after === undefined || !sameStableFile(before, after)) {
-    throw storeOperationConflict();
-  }
-  return Object.freeze({ identity: before, names: Object.freeze([]) });
-}
-
-function assertSameV2RecoveryDirectorySnapshot(
-  before: V2RecoveryDirectorySnapshot,
-  after: V2RecoveryDirectorySnapshot,
-): void {
-  if (
-    (before.identity === null) !== (after.identity === null) ||
-    (before.identity !== null &&
-      after.identity !== null &&
-      !sameStableFile(before.identity, after.identity)) ||
-    canonicalJson(before.names) !== canonicalJson(after.names)
-  ) {
-    throw storeOperationConflict();
-  }
-}
-
-function readFirstDirectoryName(directory: string): string | null {
-  let handle: fs.Dir | undefined;
-  let operationError: Error | null = null;
-  let name: string | null = null;
-  try {
-    handle = fs.opendirSync(directory);
-    name = handle.readSync()?.name ?? null;
-  } catch (error) {
-    operationError = normalizePublicationOperationError(error);
-  }
-  let cleanupError: Error | null = null;
-  if (handle !== undefined) {
-    try {
-      handle.closeSync();
-    } catch {
-      cleanupError = storeInvalid();
-    }
-  }
-  if (operationError !== null) throw operationError;
-  if (cleanupError !== null) throw cleanupError;
-  return name;
 }
 
 function claimObjectPathV2(
