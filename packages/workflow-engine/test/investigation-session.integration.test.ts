@@ -6979,6 +6979,70 @@ test('baseline drift and unsafe durable files fail closed', () => {
   }
 });
 
+test('quarantine classifies a current provider invocation missing its required execution policy snapshot as an unsafe observation', () => {
+  const fixture = investigationFixture('invocation-policy-snapshot-required');
+  try {
+    const started = startFixture(fixture);
+    const invocationDirectory = path.join(
+      fixture.paths.invocations,
+      started.providerInvocationId,
+    );
+    const policySnapshotPath = path.join(
+      invocationDirectory,
+      'execution-policy.json',
+    );
+    const exactInvocationFiles = new Map(
+      ['manifest.json', 'request.json', 'state.json'].map(
+        (name) =>
+          [
+            name,
+            fs.readFileSync(path.join(invocationDirectory, name)),
+          ] as const,
+      ),
+    );
+    fs.rmSync(policySnapshotPath);
+
+    assert.throws(
+      () =>
+        inspectInvestigationResolutionState(
+          fixture.paths,
+          started.investigationId,
+          fixture.blindManifest.repositoryId,
+        ),
+      (error) =>
+        isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+    );
+
+    const quarantine = inspectInvestigationQuarantineState(
+      fixture.paths,
+      started.investigationId,
+      fixture.blindManifest.repositoryId,
+    );
+    const invocation = quarantine.envelope.providerInvocationDigests.find(
+      ({ invocationId }) => invocationId === started.providerInvocationId,
+    );
+    assert.ok(invocation);
+    assert.deepEqual(
+      invocation.files.map(({ name }) => name),
+      ['unsafe-observation'],
+    );
+    assert.notEqual(quarantine.envelope.ambiguityDigest, null);
+    assert.deepEqual(
+      quarantine.availableResolutions.map(({ kind }) => kind),
+      ['quarantine'],
+    );
+    assert.equal(fs.existsSync(policySnapshotPath), false);
+    for (const [name, exactBytes] of exactInvocationFiles) {
+      assert.deepEqual(
+        fs.readFileSync(path.join(invocationDirectory, name)),
+        exactBytes,
+      );
+    }
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
 test('provider leases expire, fence stale workers, and never persist raw tokens', () => {
   const fixture = investigationFixture('invocation-lease');
   try {
