@@ -848,6 +848,20 @@ test('documentation entry point is a project overview and archive policy remains
       'utf8',
     ),
   ) as { documents: Record<string, unknown> };
+  const documentPolicySchema = JSON.parse(
+    fs.readFileSync(
+      path.join(repositoryRoot, 'workflow/schemas/document-policy.schema.json'),
+      'utf8',
+    ),
+  ) as {
+    properties: {
+      documents: {
+        additionalProperties: {
+          properties: { enforcement: { enum: string[] } };
+        };
+      };
+    };
+  };
 
   assert.match(readme, /^# Jigwright Documentation$/m);
   assert.match(readme, /current-v3/i);
@@ -866,6 +880,22 @@ test('documentation entry point is a project overview and archive policy remains
   assert.ok(documentPolicy.documents['docs/ROADMAP.md']);
   assert.ok(documentPolicy.documents['openspec/specs/**']);
   assert.ok(documentPolicy.documents['openspec/changes/**']);
+  assert.equal(documentPolicy.documents['docs/REQUIREMENT_LOG.md'], undefined);
+  assert.equal(documentPolicy.documents['docs/UPDATE_CHECKLIST.md'], undefined);
+  assert.equal(
+    documentPolicySchema.properties.documents.additionalProperties.properties.enforcement.enum.includes(
+      'planned-supersession',
+    ),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(path.join(repositoryRoot, 'docs/REQUIREMENT_LOG.md')),
+    false,
+  );
+  assert.equal(
+    fs.existsSync(path.join(repositoryRoot, 'docs/UPDATE_CHECKLIST.md')),
+    false,
+  );
 });
 
 test('parseTasks reads ordered checkbox tasks', () => {

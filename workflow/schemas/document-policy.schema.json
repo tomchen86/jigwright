@@ -26,7 +26,7 @@
             ]
           },
           "enforcement": {
-            "enum": ["planned", "planned-supersession", "active"]
+            "enum": ["planned", "active"]
           },
           "source": { "type": "string", "minLength": 1 },
           "validator": { "type": "string", "minLength": 1 },

@@ -34,14 +34,6 @@
       "source": "docs/work-registry/items/**",
       "validator": "work-registry"
     },
-    "docs/REQUIREMENT_LOG.md": {
-      "mode": "reference",
-      "enforcement": "planned-supersession"
-    },
-    "docs/UPDATE_CHECKLIST.md": {
-      "mode": "reference",
-      "enforcement": "planned-supersession"
-    },
     "docs/WORKFLOW.md": {
       "mode": "curated",
       "enforcement": "planned"
