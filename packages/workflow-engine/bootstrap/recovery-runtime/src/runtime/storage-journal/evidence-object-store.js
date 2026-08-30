@@ -60,10 +60,7 @@ export function writeEvidenceNode(paths, node) {
         assertExactEvidencePublicationAlias(publishAlias, publishAliasStats, contentBytes, 1);
         fsyncDirectory(objectDirectory);
         existing = inspectEvidenceObjectFinal(objectPath, contentBytes);
-        if (existing === 'legacy-prefix') {
-            publishLegacyEvidenceRepairClaim(objectPath, publishAlias, contentBytes);
-        }
-        else if (existing === 'absent') {
+        if (existing === 'absent') {
             try {
                 fs.linkSync(publishAlias, objectPath);
             }
@@ -1617,7 +1614,6 @@ function evidencePublicationAlias(objectPath) {
     return `${objectPath}.${process.pid}.${crypto.randomUUID()}.publish.tmp`;
 }
 function inspectEvidenceObjectFinal(objectPath, exactContent) {
-    recoverLegacyEvidenceRepairClaim(objectPath, exactContent);
     const stats = fs.lstatSync(objectPath, { throwIfNoEntry: false });
     if (!stats) {
         return 'absent';
@@ -1633,133 +1629,7 @@ function inspectEvidenceObjectFinal(objectPath, exactContent) {
     if (observed.bytes.equals(exactContent)) {
         return 'exact';
     }
-    if (isStrictBufferPrefix(observed.bytes, exactContent)) {
-        return 'legacy-prefix';
-    }
     throw objectCollision(path.basename(objectPath, '.json'));
-}
-function publishLegacyEvidenceRepairClaim(objectPath, publishAlias, exactContent) {
-    const claimPath = `${objectPath}.legacy-prefix-repair`;
-    try {
-        fs.linkSync(publishAlias, claimPath);
-        fsyncDirectory(path.dirname(objectPath));
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'EEXIST') {
-            throw error;
-        }
-    }
-    const claimStats = fs.lstatSync(claimPath, { throwIfNoEntry: false });
-    if (!claimStats) {
-        throw objectUnsafe();
-    }
-    const claim = readStablePrivateFile(claimPath, [claimStats.nlink], objectUnsafe);
-    if (!claim.bytes.equals(exactContent)) {
-        throw objectCollision(path.basename(objectPath, '.json'));
-    }
-    recoverLegacyEvidenceRepairClaim(objectPath, exactContent);
-}
-function recoverLegacyEvidenceRepairClaim(objectPath, exactContent) {
-    const claimPath = `${objectPath}.legacy-prefix-repair`;
-    let claimStats = fs.lstatSync(claimPath, { throwIfNoEntry: false });
-    if (!claimStats) {
-        return;
-    }
-    let claim = readStablePrivateFile(claimPath, [claimStats.nlink], objectUnsafe);
-    if (!claim.bytes.equals(exactContent)) {
-        throw objectCollision(path.basename(objectPath, '.json'));
-    }
-    if (claim.stats.nlink === 2) {
-        const finalStats = fs.lstatSync(objectPath, {
-            throwIfNoEntry: false,
-        });
-        if (finalStats?.dev === claim.stats.dev &&
-            finalStats.ino === claim.stats.ino) {
-            const final = readStablePrivateFile(objectPath, [2], objectUnsafe);
-            if (!final.bytes.equals(exactContent)) {
-                throw objectUnsafe();
-            }
-            fs.unlinkSync(claimPath);
-            fsyncDirectory(path.dirname(objectPath));
-            return;
-        }
-        const linkedAliases = listEvidencePublicationAliases(objectPath).filter((alias) => {
-            const stats = fs.lstatSync(alias.aliasPath, {
-                throwIfNoEntry: false,
-            });
-            return stats?.dev === claim.stats.dev && stats.ino === claim.stats.ino;
-        });
-        if (linkedAliases.length !== 1) {
-            throw objectUnsafe();
-        }
-        const linkedAlias = readStablePrivateFile(linkedAliases[0].aliasPath, [2], objectUnsafe);
-        if (!linkedAlias.bytes.equals(exactContent)) {
-            throw objectUnsafe();
-        }
-        fs.unlinkSync(linkedAliases[0].aliasPath);
-        fsyncDirectory(path.dirname(objectPath));
-        claimStats = fs.lstatSync(claimPath);
-        claim = readStablePrivateFile(claimPath, [1], objectUnsafe);
-    }
-    if (claim.stats.nlink !== 1 || claimStats.nlink !== 1) {
-        throw objectUnsafe();
-    }
-    const finalStats = fs.lstatSync(objectPath, { throwIfNoEntry: false });
-    if (finalStats) {
-        const final = readStablePrivateFile(objectPath, [finalStats.nlink], objectUnsafe);
-        if (final.bytes.equals(exactContent)) {
-            fs.unlinkSync(claimPath);
-            fsyncDirectory(path.dirname(objectPath));
-            return;
-        }
-        if (final.stats.nlink !== 1 ||
-            !isStrictBufferPrefix(final.bytes, exactContent)) {
-            throw objectCollision(path.basename(objectPath, '.json'));
-        }
-        try {
-            fs.unlinkSync(objectPath);
-            fsyncDirectory(path.dirname(objectPath));
-        }
-        catch (error) {
-            if (!isNodeError(error) || error.code !== 'ENOENT') {
-                throw error;
-            }
-        }
-    }
-    try {
-        fs.linkSync(claimPath, objectPath);
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'EEXIST') {
-            throw error;
-        }
-    }
-    fsyncDirectory(path.dirname(objectPath));
-    const currentClaimStats = fs.lstatSync(claimPath, {
-        throwIfNoEntry: false,
-    });
-    if (!currentClaimStats) {
-        assertExactEvidenceObjectFinal(objectPath, exactContent);
-        return;
-    }
-    const published = readStablePrivateFile(objectPath, [2], objectUnsafe);
-    const currentClaim = readStablePrivateFile(claimPath, [2], objectUnsafe);
-    if (!published.bytes.equals(exactContent) ||
-        !currentClaim.bytes.equals(exactContent) ||
-        published.stats.dev !== currentClaim.stats.dev ||
-        published.stats.ino !== currentClaim.stats.ino) {
-        throw objectUnsafe();
-    }
-    try {
-        fs.unlinkSync(claimPath);
-        fsyncDirectory(path.dirname(objectPath));
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'ENOENT') {
-            throw error;
-        }
-        assertExactEvidenceObjectFinal(objectPath, exactContent);
-    }
 }
 function resolveLinkedEvidenceObjectFinal(objectPath, exactContent) {
     const initial = fs.lstatSync(objectPath, { throwIfNoEntry: false });

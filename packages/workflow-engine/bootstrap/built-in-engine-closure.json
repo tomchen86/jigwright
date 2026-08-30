@@ -1998,7 +1998,7 @@
     {
       "path": "src/runtime/storage-journal/evidence-object-store.ts",
       "mode": "100644",
-      "digest": "sha256:9a3a7f61ef004618687713167548a6880d9008d763090fd274ff3670e4b0cf0a"
+      "digest": "sha256:c78c09eec3be63003817e33dd2a77c199578fc0730363eb1c23e1b66e2aad3c2"
     },
     {
       "path": "src/runtime/storage-journal/execution-store.ts",
