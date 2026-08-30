@@ -5,7 +5,9 @@ import {
   SCAN_HIT_MAX_CONTEXT_BYTES,
   hitContextWindow,
 } from '../src/modules/investigation/domain/investigation-scanner.ts';
-import { parseHitForTest } from '../src/modules/investigation/domain/investigation-groups.ts';
+import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
+import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
+import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
 
 function content(text: string): Buffer {
   return Buffer.from(text, 'utf8');
@@ -72,62 +74,52 @@ test('a hit reported beyond the content has no window rather than a wrong one', 
   assert.equal(hitContextWindow(haystack, 0, 0), null);
 });
 
-test('a scan recorded before context windows existed still validates', () => {
-  // Every investigation already in the repository has five-key hits. If the
-  // parser stopped accepting them, adding this field would silently invalidate
-  // every sealed investigation rather than extending the format.
-  const legacy = {
-    path: { rawBase64: 'YS50cw==', utf8: 'a.ts' },
-    sourceObject: {
-      objectId: 'a'.repeat(40),
-      objectType: 'blob',
-      mode: '100644',
-      byteSize: 10,
-      contentSha256: 'b'.repeat(64),
-      skipReason: null,
-    },
-    surface: 'content',
-    byteOffset: 0,
-    byteLength: 3,
+test('a window claiming more than the cap is refused by current grouping', () => {
+  const treeDigest = '1'.repeat(64);
+  const term = {
+    ...normalizeInvestigationTerm({ kind: 'literal-content', value: 'hit' }),
+    provenance: [],
   };
-  const parsedLegacy = parseHitForTest(legacy);
-  assert.equal(parsedLegacy.contextWindow, undefined);
-
-  const withWindow = parseHitForTest({
-    ...legacy,
-    contextWindow: {
-      rawBase64: Buffer.from('const x = 1;').toString('base64'),
-      utf8: 'const x = 1;',
-      byteOffset: 0,
-      byteLength: 12,
-      truncated: false,
-    },
-  });
-  assert.equal(withWindow.contextWindow?.utf8, 'const x = 1;');
-});
-
-test('a window claiming more than the cap is refused', () => {
   assert.throws(() =>
-    parseHitForTest({
-      path: { rawBase64: 'YS50cw==', utf8: 'a.ts' },
-      sourceObject: {
-        objectId: 'a'.repeat(40),
-        objectType: 'blob',
-        mode: '100644',
-        byteSize: 10,
-        contentSha256: 'b'.repeat(64),
-        skipReason: null,
+    deriveInvestigationGroupFacts({
+      scanFacts: {
+        schemaVersion: 1,
+        kind: 'investigation-scan-facts',
+        treeDigest,
+        policyDigest: '2'.repeat(64),
+        inventory: { treeDigest, skippedObjects: [] },
+        terms: [
+          {
+            term,
+            hits: [
+              {
+                path: { rawBase64: 'YS50cw==', utf8: 'a.ts' },
+                sourceObject: {
+                  objectId: 'a'.repeat(40),
+                  objectType: 'blob',
+                  mode: '100644',
+                  byteSize: 10,
+                  contentSha256: 'b'.repeat(64),
+                  skipReason: null,
+                },
+                surface: 'content',
+                byteOffset: 0,
+                byteLength: 3,
+                contextWindow: {
+                  rawBase64: 'AA==',
+                  utf8: null,
+                  byteOffset: 0,
+                  byteLength: SCAN_HIT_MAX_CONTEXT_BYTES + 1,
+                  truncated: false,
+                },
+              },
+            ],
+          },
+        ],
       },
-      surface: 'content',
-      byteOffset: 0,
-      byteLength: 3,
-      contextWindow: {
-        rawBase64: 'AA==',
-        utf8: null,
-        byteOffset: 0,
-        byteLength: SCAN_HIT_MAX_CONTEXT_BYTES + 1,
-        truncated: false,
-      },
+      mutationPolicy: createMutationClassPolicy({ rules: [] }),
+      declaredRoots: [{ rootId: 'repository', path: '' }],
+      reviewedRelationships: [],
     }),
   );
 });

@@ -7,7 +7,7 @@ import test from 'node:test';
 
 import { INVESTIGATION_LIMITS } from '../src/modules/investigation/domain/investigation-terms.ts';
 import {
-  scanInvestigationTree,
+  scanInvestigationTreeFacts,
   type ScanInvestigationTerm,
 } from '../src/modules/investigation/domain/investigation-scanner.ts';
 import { normalizeInvestigationTerm } from '../src/modules/investigation/domain/investigation-terms.ts';
@@ -57,14 +57,14 @@ test('a ceiling still refuses the scan by default', () => {
   // completeness it does not have, so refusing remains the default.
   const root = repository();
   try {
-    const result = scanInvestigationTree({
+    const result = scanInvestigationTreeFacts({
       repositoryRoot: root,
       treeOid: tree(root),
       terms: [term()],
       limits: { ...INVESTIGATION_LIMITS, maxHitsPerTerm: 2 },
     });
     assert.equal(result.outcome, 'requires-narrowing');
-    assert.deepEqual(result.nodes, []);
+    assert.equal('facts' in result, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -75,7 +75,7 @@ test('a caller may accept saturation and is told exactly which terms', () => {
   // investigation with nothing usable and no remedy the caller could apply.
   const root = repository();
   try {
-    const result = scanInvestigationTree({
+    const result = scanInvestigationTreeFacts({
       repositoryRoot: root,
       treeOid: tree(root),
       terms: [term()],
@@ -84,7 +84,10 @@ test('a caller may accept saturation and is told exactly which terms', () => {
     });
     assert.equal(result.outcome, 'ready');
     if (result.outcome !== 'ready') return;
-    assert.ok(result.nodes.length > 0, 'evidence should be produced');
+    assert.ok(
+      result.facts.terms.some(({ hits }) => hits.length > 0),
+      'scan facts should be produced',
+    );
     assert.deepEqual(result.saturatedTermIds, [term().termId]);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
@@ -96,7 +99,7 @@ test('accepting saturation does not accept anything else', () => {
   // limit is not merely incomplete, it is unsound, and no opt-in covers that.
   const root = repository();
   try {
-    const result = scanInvestigationTree({
+    const result = scanInvestigationTreeFacts({
       repositoryRoot: root,
       treeOid: tree(root),
       terms: [term()],
@@ -108,7 +111,7 @@ test('accepting saturation does not accept anything else', () => {
       allowSaturatedTerms: true,
     });
     assert.equal(result.outcome, 'requires-narrowing');
-    assert.deepEqual(result.nodes, []);
+    assert.equal('facts' in result, false);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
@@ -117,7 +120,7 @@ test('accepting saturation does not accept anything else', () => {
 test('a scan with room to spare reports no saturation at all', () => {
   const root = repository();
   try {
-    const result = scanInvestigationTree({
+    const result = scanInvestigationTreeFacts({
       repositoryRoot: root,
       treeOid: tree(root),
       terms: [term()],

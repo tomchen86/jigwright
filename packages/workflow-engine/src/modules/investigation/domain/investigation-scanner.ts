@@ -8,10 +8,6 @@ import type {
 } from '@jigwright/core/tracked-object-reader-port';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
-import {
-  createEvidenceNode,
-  type EvidenceNode,
-} from '../../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   assertInvestigationLimits,
@@ -30,20 +26,12 @@ import {
   type TrackedTreeSnapshot,
 } from '../../../runtime/repository-transaction/tracked-tree-reader.ts';
 
-const NODE_TYPE = 'investigation-term-scan';
-const NODE_SCHEMA = 'investigation.term-scan.v1';
-const NODE_EVALUATOR = 'investigation-scanner.v1';
-const OUTPUT_SCHEMA = 'investigation.term-scan-output.v1';
-const INVENTORY_NODE_TYPE = 'investigation-tree-inventory';
-const INVENTORY_NODE_SCHEMA = 'investigation.tree-inventory.v1';
-const INVENTORY_OUTPUT_SCHEMA = 'investigation.tree-inventory-output.v1';
 const POLICY_SCHEMA = 'investigation-scan-policy.v1';
-const TERM_DIGEST_SCHEMA = 'investigation-term-input-v1';
 
 /**
  * A sealed term as consumed by the scanner: its normalized identity plus the
- * retained union provenance. Provenance never affects node identity; the node is
- * bound to the semantic term, the pinned tree, and the effective scan policy.
+ * retained union provenance. The normalized identity remains independent of
+ * provenance while the facts retain the exact sources that contributed it.
  */
 export type ScanInvestigationTerm = NormalizedInvestigationTerm & {
   provenance: InvestigationTermProvenance[];
@@ -159,10 +147,7 @@ export type InvestigationScanTermFacts = {
   hits: ScanHit[];
 };
 
-/**
- * Deterministic scanner output before any legacy evidence envelope is built.
- * This is the scanner boundary consumed by the manifest-first v3 writer.
- */
+/** Deterministic scanner output consumed by the manifest-first v3 writer. */
 export type InvestigationScanFacts = {
   schemaVersion: 1;
   kind: 'investigation-scan-facts';
@@ -170,12 +155,6 @@ export type InvestigationScanFacts = {
   policyDigest: string;
   inventory: ScanInventoryFacts;
   terms: InvestigationScanTermFacts[];
-};
-
-export type ScanInventory = {
-  treeDigest: string;
-  skippedObjects: readonly ScanSkippedObject[];
-  evidenceNode: EvidenceNode;
 };
 
 export type ScanViolation = {
@@ -187,29 +166,6 @@ export type ScanViolation = {
     | 'SCAN_WORK_LIMIT_EXCEEDED';
   termId?: string;
 };
-
-export type ReadyScanResult = {
-  outcome: 'ready';
-  nodes: EvidenceNode[];
-  inventory: ScanInventory;
-  /**
-   * Terms whose hits were truncated at their ceiling. Present only when the
-   * caller accepted saturation; their semantic domain may not be compressed
-   * into a class disposition, because a truncated term cannot show that the
-   * members it did find are all of them.
-   */
-  saturatedTermIds?: string[];
-};
-
-export type NarrowingScanResult = {
-  outcome: 'requires-narrowing';
-  nodes: [];
-  inventory: ScanInventory;
-  violations: ScanViolation[];
-  terms: ScanInvestigationTerm[];
-};
-
-export type InvestigationScanResult = ReadyScanResult | NarrowingScanResult;
 
 export type ReadyScanFactsResult = {
   outcome: 'ready';
@@ -230,15 +186,13 @@ export type InvestigationScanFactsResult =
 
 /**
  * Deterministically scan every sealed term against the pinned Git-tracked tree
- * and emit one independent EvidenceNode per term, sorted by term ID so caller
- * order is irrelevant. Each node is bound to the semantic term, the pinned tree
- * digest, and the effective (lower-only) scan policy — not term provenance. The
- * scanner reads only the pinned object graph — never task `allowedPaths`,
- * working-tree files, recognized environment files, a shell, or the caller PATH
- * — and matches exact literal bytes with no regex. Each supplied term is
- * revalidated by recomputation; a forged term field or duplicate term ID fails
- * closed. A per-term, aggregate, work, or scanned-byte overage returns typed
- * `requires-narrowing` with the original terms and no partial nodes.
+ * and emit one independent fact set per term, sorted by term ID so caller order
+ * is irrelevant. The scanner reads only the pinned object graph — never task
+ * `allowedPaths`, working-tree files, recognized environment files, a shell, or
+ * the caller PATH — and matches exact literal bytes with no regex. Each supplied
+ * term is revalidated by recomputation; a forged term field or duplicate term
+ * ID fails closed. A per-term, aggregate, work, or scanned-byte overage returns
+ * typed `requires-narrowing` with the original terms and no partial facts.
  */
 export function scanInvestigationTreeFacts(request: {
   repositoryRoot: string;
@@ -385,22 +339,6 @@ export function scanInvestigationTreeFacts(request: {
   };
 }
 
-/**
- * Compatibility adapter for the schema-v2 shadow authority. New manifest
- * construction consumes `scanInvestigationTreeFacts` directly and never needs
- * these generic evidence envelopes.
- */
-export function scanInvestigationTree(request: {
-  repositoryRoot: string;
-  treeOid: string;
-  terms: ScanInvestigationTerm[];
-  limits?: InvestigationLimits;
-  allowSaturatedTerms?: boolean;
-  trackedObjectReader?: TrackedObjectReaderPortV1;
-}): InvestigationScanResult {
-  return adaptInvestigationScanFactsResult(scanInvestigationTreeFacts(request));
-}
-
 function readTrackedTreeForScan(
   reader: TrackedObjectReaderPortV1,
   request: Parameters<TrackedObjectReaderPortV1['readPinnedTree']>[0],
@@ -471,42 +409,6 @@ function isTrackedObjectSnapshot(
     value.totalScannedBlobBytes >= 0 &&
     typeof value.budgetExceeded === 'boolean'
   );
-}
-
-/**
- * Build the temporary schema-v2 evidence view from one already-computed domain
- * scan. Shadow mode calls this adapter so v2 and v3 observe the same scanner
- * execution instead of independently reopening Git and merely hoping that two
- * executions had equivalent inputs.
- */
-export function adaptInvestigationScanFactsResult(
-  result: InvestigationScanFactsResult,
-): InvestigationScanResult {
-  if (result.outcome !== 'ready') {
-    return {
-      outcome: 'requires-narrowing',
-      nodes: [],
-      inventory: adaptInventoryFacts(result.inventory, result.policyDigest),
-      violations: result.violations,
-      terms: result.terms,
-    };
-  }
-  const { facts } = result;
-  const nodes = facts.terms
-    .map(({ term, hits }) =>
-      buildScanNode(term, hits, facts.treeDigest, facts.policyDigest),
-    )
-    .sort((left, right) =>
-      scanNodeTermId(left) < scanNodeTermId(right) ? -1 : 1,
-    );
-  return {
-    outcome: 'ready',
-    nodes,
-    inventory: adaptInventoryFacts(facts.inventory, facts.policyDigest),
-    ...(result.saturatedTermIds === undefined
-      ? {}
-      : { saturatedTermIds: [...result.saturatedTermIds] }),
-  };
 }
 
 function assertScanTerms(terms: ScanInvestigationTerm[]): void {
@@ -703,54 +605,6 @@ function sortHits(hits: ScanHit[]): ScanHit[] {
   });
 }
 
-function buildScanNode(
-  term: ScanInvestigationTerm,
-  hits: ScanHit[],
-  treeDigest: string,
-  policyDigest: string,
-): EvidenceNode {
-  const output = {
-    termId: term.termId,
-    // The window travels with the hit it describes. A class predicate is a
-    // claim about what the search found, and it can only be rechecked later if
-    // the evidence carries the text the claim was made against; keeping the
-    // window in memory alone left every such claim unverifiable.
-    hits: hits.map((hit) => ({
-      path: { rawBase64: hit.path.rawBase64, utf8: hit.path.utf8 },
-      sourceObject: hit.sourceObject,
-      surface: hit.surface,
-      byteOffset: hit.byteOffset,
-      byteLength: hit.byteLength,
-      ...(hit.contextWindow === undefined
-        ? {}
-        : { contextWindow: hit.contextWindow }),
-    })),
-  };
-  return createEvidenceNode({
-    type: NODE_TYPE,
-    nodeSchema: NODE_SCHEMA,
-    evaluator: NODE_EVALUATOR,
-    policyDigest,
-    exactInputDigests: {
-      term: sha256(
-        canonicalJson({
-          schema: TERM_DIGEST_SCHEMA,
-          termId: term.termId,
-          kind: term.kind,
-          value: term.value,
-          matching: term.matching,
-        }),
-      ),
-      tree: treeDigest,
-    },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: OUTPUT_SCHEMA,
-    output,
-    runtimeMetadata: {},
-  });
-}
-
 function buildInventoryFacts(
   snapshot: TrackedTreeSnapshot,
 ): ScanInventoryFacts {
@@ -770,28 +624,6 @@ function buildInventoryFacts(
   };
 }
 
-function adaptInventoryFacts(
-  facts: ScanInventoryFacts,
-  policyDigest: string,
-): ScanInventory {
-  return {
-    treeDigest: facts.treeDigest,
-    skippedObjects: structuredClone(facts.skippedObjects),
-    evidenceNode: createEvidenceNode({
-      type: INVENTORY_NODE_TYPE,
-      nodeSchema: INVENTORY_NODE_SCHEMA,
-      evaluator: NODE_EVALUATOR,
-      policyDigest,
-      exactInputDigests: { tree: facts.treeDigest },
-      semanticParentResultDigests: {},
-      provenanceParentNodeIds: {},
-      outputSchema: INVENTORY_OUTPUT_SCHEMA,
-      output: { skippedObjects: facts.skippedObjects },
-      runtimeMetadata: {},
-    }),
-  };
-}
-
 function computePolicyDigest(limits: InvestigationLimits): string {
   return sha256(
     canonicalJson({
@@ -806,10 +638,6 @@ function computePolicyDigest(limits: InvestigationLimits): string {
       },
     }),
   );
-}
-
-function scanNodeTermId(node: EvidenceNode): string {
-  return (node.output as { termId: string }).termId;
 }
 
 function compareViolations(left: ScanViolation, right: ScanViolation): number {

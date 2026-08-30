@@ -7,7 +7,7 @@ import test from 'node:test';
 import { createFixtureTrackedObjectReaderPort } from '../../fixture-adapter/src/fixture-tracked-object-reader.ts';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { canonicalEvidenceNodeEnvelope } from '../src/adapters/planning/investigation/evidence-node.ts';
+import * as investigationScanner from '../src/modules/investigation/domain/investigation-scanner.ts';
 import { deriveInvestigationGroupFacts } from '../src/modules/investigation/domain/investigation-groups.ts';
 import {
   deriveEngineFloor,
@@ -16,10 +16,7 @@ import {
   type EngineFloorFacts,
 } from '../src/modules/investigation/domain/investigation-floor.ts';
 import {
-  adaptInvestigationScanFactsResult,
   scanInvestigationTreeFacts,
-  scanInvestigationTree,
-  type InvestigationScanResult,
   type ScanSkippedObject,
 } from '../src/modules/investigation/domain/investigation-scanner.ts';
 import {
@@ -39,6 +36,15 @@ import {
 } from '../src/runtime/repository-transaction/tracked-tree-reader.ts';
 import { createMutationClassPolicy } from '../src/modules/source/mutation-class-policy.ts';
 import { git, isWorkflowError } from './fixture.ts';
+
+test('current scanner exports no historical EvidenceNode shadow adapter', () => {
+  for (const retiredExport of [
+    'scanInvestigationTree',
+    'adaptInvestigationScanFactsResult',
+  ]) {
+    assert.equal(retiredExport in investigationScanner, false, retiredExport);
+  }
+});
 
 test('domain scanner consumes the public tracked-object reader port without Git', () => {
   const treeOid = 'f'.repeat(40);
@@ -346,19 +352,6 @@ test('investigation applicability admits only exact reviewed low-risk exemptions
   });
   assert.equal(sealed.kind, 'sealed-investigation');
   assert.notEqual(sealed.applicabilityDigest, eligible.applicabilityDigest);
-
-  const trackedSchema = JSON.parse(
-    fs.readFileSync(
-      new URL(
-        '../../../workflow/schemas/investigation-artifact.schema.json',
-        import.meta.url,
-      ),
-      'utf8',
-    ),
-  ) as {
-    $defs: { investigationApplicability: { oneOf: unknown[] } };
-  };
-  assert.equal(trackedSchema.$defs.investigationApplicability.oneOf.length, 2);
 });
 
 test('term preview reports source and effective overage without dropping proposals', () => {
@@ -703,7 +696,7 @@ test('pinned scan ignores index, worktree, untracked, ignored, caller PATH, and 
       kind: 'literal-content',
       value: 'committed-needle',
     });
-    const result = scanInvestigationTree({
+    const result = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [{ ...term, provenance: [] }],
@@ -712,7 +705,7 @@ test('pinned scan ignores index, worktree, untracked, ignored, caller PATH, and 
     if (result.outcome !== 'ready') {
       assert.fail('expected a ready pinned scan');
     }
-    assert.equal(result.nodes.length, 1);
+    assert.equal(result.facts.terms.length, 1);
     const output = scanOutput(result, term.termId);
     assert.deepEqual(
       output.hits.map((hit) => hit.path.utf8),
@@ -720,7 +713,7 @@ test('pinned scan ignores index, worktree, untracked, ignored, caller PATH, and 
     );
     assert.equal(output.hits[0]?.surface, 'content');
     assert.equal(fs.existsSync(marker), false);
-    const serialized = JSON.stringify(result.nodes);
+    const serialized = JSON.stringify(result.facts);
     assert.equal(serialized.includes('worktree-only'), false);
     assert.equal(serialized.includes('index-only'), false);
     assert.equal(serialized.includes('untracked-only'), false);
@@ -939,7 +932,7 @@ test(
         'RAW_CREDENTIAL_SENTINEL',
       );
       const sensitivePathTerm = termWithProvenance('literal-path', '.env');
-      const scan = scanInvestigationTree({
+      const scan = scanInvestigationTreeFacts({
         repositoryRoot: repository,
         treeOid: treeOid(repository),
         terms: [secretTerm, rawSecretTerm, sensitivePathTerm],
@@ -979,7 +972,7 @@ test(
         ['vendor/submodule', 'submodule'],
       ] as const) {
         let skipRecord: ScanSkippedObject | undefined;
-        for (const entry of scan.inventory.skippedObjects) {
+        for (const entry of scan.facts.inventory.skippedObjects) {
           if (entry.path.utf8 === skippedPath) {
             skipRecord = entry;
             break;
@@ -989,26 +982,7 @@ test(
         assert.match(skipRecord?.objectId ?? '', /^[0-9a-f]{40,64}$/);
         assert.match(skipRecord?.mode ?? '', /^[0-7]{6}$/);
       }
-      assert.equal(
-        scan.nodes[0]?.exactInputDigests.tree,
-        scan.inventory.treeDigest,
-      );
-      assert.equal(
-        scan.inventory.evidenceNode.type,
-        'investigation-tree-inventory',
-      );
-      assert.equal(
-        scan.inventory.evidenceNode.exactInputDigests.tree,
-        scan.inventory.treeDigest,
-      );
-      assert.deepEqual(
-        (
-          scan.inventory.evidenceNode.output as {
-            skippedObjects: ScanSkippedObject[];
-          }
-        ).skippedObjects,
-        scan.inventory.skippedObjects,
-      );
+      assert.equal(scan.facts.treeDigest, scan.facts.inventory.treeDigest);
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }
@@ -1035,22 +1009,22 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     const pathTerm = termWithProvenance('literal-path', 'docs/a.*b.md');
     const zero = termWithProvenance('symbol', 'DefinitelyMissingSymbol');
 
-    const onlyContent = scanInvestigationTree({
+    const onlyContent = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [content],
     });
-    const all = scanInvestigationTree({
+    const all = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [zero, pathTerm, content],
     });
-    const reordered = scanInvestigationTree({
+    const reordered = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [content, pathTerm, zero],
     });
-    const reprovenanced = scanInvestigationTree({
+    const reprovenanced = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [
@@ -1080,34 +1054,19 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     ) {
       assert.fail('expected ready literal scans');
     }
-    assert.equal(all.nodes.length, 3);
-    assert.equal(
-      canonicalEvidenceNodeEnvelope(
-        onlyContent.nodes.find(
-          (node) =>
-            (node.output as { termId: string }).termId === content.termId,
-        )!,
-      ),
-      canonicalEvidenceNodeEnvelope(
-        all.nodes.find(
-          (node) =>
-            (node.output as { termId: string }).termId === content.termId,
-        )!,
-      ),
-    );
-    assert.equal(
-      canonicalEvidenceNodeEnvelope(onlyContent.nodes[0]!),
-      canonicalEvidenceNodeEnvelope(reprovenanced.nodes[0]!),
+    assert.equal(all.facts.terms.length, 3);
+    assert.deepEqual(
+      scanOutput(onlyContent, content.termId),
+      scanOutput(all, content.termId),
     );
     assert.deepEqual(
-      all.nodes.map(canonicalEvidenceNodeEnvelope),
-      reordered.nodes.map(canonicalEvidenceNodeEnvelope),
+      scanOutput(onlyContent, content.termId),
+      scanOutput(reprovenanced, content.termId),
     );
+    assert.deepEqual(scanOutputs(all), scanOutputs(reordered));
     assert.deepEqual(
-      all.nodes.map((node) => (node.output as { termId: string }).termId),
-      [...all.nodes]
-        .map((node) => (node.output as { termId: string }).termId)
-        .sort(),
+      all.facts.terms.map(({ term }) => term.termId),
+      [...all.facts.terms].map(({ term }) => term.termId).sort(),
     );
 
     const contentOutput = scanOutput(all, content.termId);
@@ -1160,7 +1119,7 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     assert.deepEqual(scanOutput(all, zero.termId).hits, []);
 
     const overlap = termWithProvenance('literal-content', 'ZXZ');
-    const overlapResult = scanInvestigationTree({
+    const overlapResult = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [overlap],
@@ -1182,19 +1141,7 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
       ],
     );
 
-    for (const node of all.nodes) {
-      assert.deepEqual(node.semanticParentResultDigests, {});
-      assert.deepEqual(node.provenanceParentNodeIds, {});
-      assert.deepEqual(Object.keys(node.exactInputDigests).sort(), [
-        'term',
-        'tree',
-      ]);
-      assert.match(node.exactInputDigests.tree!, /^[0-9a-f]{64}$/);
-      assert.notEqual(node.exactInputDigests.tree, pinnedTree);
-      assert.deepEqual(node.runtimeMetadata, {});
-    }
-
-    const loweredPolicy = scanInvestigationTree({
+    const loweredPolicy = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: pinnedTree,
       terms: [content],
@@ -1207,25 +1154,17 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     if (loweredPolicy.outcome !== 'ready') {
       assert.fail('expected ready lower-policy scan');
     }
-    assert.equal(
-      loweredPolicy.nodes[0]!.resultDigest,
-      onlyContent.nodes[0]!.resultDigest,
+    assert.deepEqual(
+      scanOutput(loweredPolicy, content.termId),
+      scanOutput(onlyContent, content.termId),
     );
     assert.notEqual(
-      loweredPolicy.nodes[0]!.policyDigest,
-      onlyContent.nodes[0]!.policyDigest,
+      loweredPolicy.facts.policyDigest,
+      onlyContent.facts.policyDigest,
     );
-    assert.notEqual(
-      loweredPolicy.nodes[0]!.nodeId,
-      onlyContent.nodes[0]!.nodeId,
-    );
-    assert.equal(
-      loweredPolicy.inventory.evidenceNode.resultDigest,
-      onlyContent.inventory.evidenceNode.resultDigest,
-    );
-    assert.notEqual(
-      loweredPolicy.inventory.evidenceNode.nodeId,
-      onlyContent.inventory.evidenceNode.nodeId,
+    assert.deepEqual(
+      loweredPolicy.facts.inventory,
+      onlyContent.facts.inventory,
     );
 
     fs.writeFileSync(
@@ -1233,7 +1172,7 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
       Buffer.from([0x00, 0x01]),
     );
     commitAll(repository, 'Add skipped object without a term hit');
-    const changedInventory = scanInvestigationTree({
+    const changedInventory = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: [zero],
@@ -1242,22 +1181,15 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     if (changedInventory.outcome !== 'ready') {
       assert.fail('expected ready scan after inventory-only change');
     }
-    const oldZeroNode = all.nodes.find(
-      (node) => (node.output as { termId: string }).termId === zero.termId,
-    )!;
-    assert.equal(
-      changedInventory.nodes[0]!.resultDigest,
-      oldZeroNode.resultDigest,
+    assert.deepEqual(
+      scanOutput(changedInventory, zero.termId),
+      scanOutput(all, zero.termId),
     );
-    assert.notEqual(changedInventory.nodes[0]!.nodeId, oldZeroNode.nodeId);
-    assert.notEqual(
-      changedInventory.inventory.evidenceNode.resultDigest,
-      all.inventory.evidenceNode.resultDigest,
-    );
+    assert.notDeepEqual(changedInventory.facts.inventory, all.facts.inventory);
 
     assert.throws(
       () =>
-        scanInvestigationTree({
+        scanInvestigationTreeFacts({
           repositoryRoot: repository,
           treeOid: pinnedTree,
           terms: [content, content],
@@ -1266,7 +1198,7 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     );
     assert.throws(
       () =>
-        scanInvestigationTree({
+        scanInvestigationTreeFacts({
           repositoryRoot: repository,
           treeOid: pinnedTree,
           terms: [{ ...content, termId: '0'.repeat(64) }],
@@ -1275,7 +1207,7 @@ test('literal scans are deterministic, per-term independent, and include zero-hi
     );
     assert.throws(
       () =>
-        scanInvestigationTree({
+        scanInvestigationTreeFacts({
           repositoryRoot: repository,
           treeOid: pinnedTree,
           terms: [content, pathTerm],
@@ -1304,7 +1236,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     );
     commitAll(repository, 'Add bounded scan fixture');
     const term = termWithProvenance('literal-content', 'needle');
-    const hitLimited = scanInvestigationTree({
+    const hitLimited = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: [term],
@@ -1317,14 +1249,14 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     if (hitLimited.outcome !== 'requires-narrowing') {
       assert.fail('expected hit-limit narrowing');
     }
-    assert.deepEqual(hitLimited.nodes, []);
+    assert.equal('facts' in hitLimited, false);
     assert.deepEqual(
       hitLimited.violations.map(({ code }) => code),
       ['TERM_HIT_LIMIT_EXCEEDED'],
     );
     assert.deepEqual(hitLimited.terms, [term]);
 
-    const aggregateLimited = scanInvestigationTree({
+    const aggregateLimited = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: [term],
@@ -1338,13 +1270,13 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     if (aggregateLimited.outcome !== 'requires-narrowing') {
       assert.fail('expected aggregate-hit narrowing');
     }
-    assert.deepEqual(aggregateLimited.nodes, []);
+    assert.equal('facts' in aggregateLimited, false);
     assert.deepEqual(
       aggregateLimited.violations.map(({ code }) => code).sort(),
       ['HIT_DISPOSITION_WORK_LIMIT_EXCEEDED', 'TOTAL_HIT_LIMIT_EXCEEDED'],
     );
 
-    const byteLimited = scanInvestigationTree({
+    const byteLimited = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: [term],
@@ -1357,7 +1289,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     if (byteLimited.outcome !== 'requires-narrowing') {
       assert.fail('expected byte-limit narrowing');
     }
-    assert.deepEqual(byteLimited.nodes, []);
+    assert.equal('facts' in byteLimited, false);
     assert.equal(
       byteLimited.violations.some(
         ({ code }) => code === 'SCANNED_BYTE_LIMIT_EXCEEDED',
@@ -1371,7 +1303,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
       true,
     );
 
-    const workLimited = scanInvestigationTree({
+    const workLimited = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: Array.from({ length: 64 }, (_, index) =>
@@ -1386,7 +1318,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     if (workLimited.outcome !== 'requires-narrowing') {
       assert.fail('expected deterministic work-limit narrowing');
     }
-    assert.deepEqual(workLimited.nodes, []);
+    assert.equal('facts' in workLimited, false);
     assert.equal(
       workLimited.violations.some(
         ({ code }) => code === 'SCAN_WORK_LIMIT_EXCEEDED',
@@ -1394,7 +1326,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
       true,
     );
 
-    const denseHitLimited = scanInvestigationTree({
+    const denseHitLimited = scanInvestigationTreeFacts({
       repositoryRoot: repository,
       treeOid: treeOid(repository),
       terms: [termWithProvenance('literal-content', 'x')],
@@ -1413,7 +1345,7 @@ test('scan preview fails boundedly without emitting partial evidence', () => {
     );
     assert.throws(
       () =>
-        scanInvestigationTree({
+        scanInvestigationTreeFacts({
           repositoryRoot: repository,
           treeOid: treeOid(repository),
           terms: [term],
@@ -1442,7 +1374,7 @@ test('operational CPU timeout aborts without returning semantic evidence', (t) =
           }) as typeof originalCpuUsage);
     assert.throws(
       () =>
-        scanInvestigationTree({
+        scanInvestigationTreeFacts({
           repositoryRoot: repository,
           treeOid: treeOid(repository),
           terms: [termWithProvenance('literal-content', 'base')],
@@ -1454,7 +1386,7 @@ test('operational CPU timeout aborts without returning semantic evidence', (t) =
   }
 });
 
-test('domain scanner facts contain no generic evidence envelopes and preserve legacy scan semantics', () => {
+test('domain scanner facts contain no generic evidence envelopes', () => {
   const repository = createScannerRepository();
   try {
     fs.writeFileSync(
@@ -1487,30 +1419,6 @@ test('domain scanner facts contain no generic evidence envelopes and preserve le
     ]) {
       assert.equal(serializedFacts.includes(`"${forbidden}"`), false);
     }
-
-    const legacy = adaptInvestigationScanFactsResult(domain);
-    assert.equal(legacy.outcome, 'ready');
-    if (legacy.outcome !== 'ready') {
-      assert.fail('expected legacy scan adapter');
-    }
-    assert.equal(
-      legacy.inventory.treeDigest,
-      domain.facts.inventory.treeDigest,
-    );
-    assert.deepEqual(
-      legacy.inventory.skippedObjects,
-      domain.facts.inventory.skippedObjects,
-    );
-    assert.deepEqual(
-      legacy.nodes.map((node) => ({
-        termId: (node.output as { termId: string }).termId,
-        hits: (node.output as { hits: unknown[] }).hits,
-      })),
-      domain.facts.terms.map(({ term, hits }) => ({
-        termId: term.termId,
-        hits,
-      })),
-    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -1693,14 +1601,29 @@ type ScanOutput = {
 };
 
 function scanOutput(
-  result: Extract<InvestigationScanResult, { outcome: 'ready' }>,
+  result: Extract<
+    ReturnType<typeof scanInvestigationTreeFacts>,
+    { outcome: 'ready' }
+  >,
   termId: string,
 ): ScanOutput {
-  const node = result.nodes.find(
-    (candidate) => (candidate.output as { termId: string }).termId === termId,
+  const termFacts = result.facts.terms.find(
+    (candidate) => candidate.term.termId === termId,
   );
-  assert.ok(node, `missing scan node for ${termId}`);
-  return node.output as ScanOutput;
+  assert.ok(termFacts, `missing scan facts for ${termId}`);
+  return { termId: termFacts.term.termId, hits: termFacts.hits };
+}
+
+function scanOutputs(
+  result: Extract<
+    ReturnType<typeof scanInvestigationTreeFacts>,
+    { outcome: 'ready' }
+  >,
+): ScanOutput[] {
+  return result.facts.terms.map(({ term, hits }) => ({
+    termId: term.termId,
+    hits,
+  }));
 }
 
 function restoreEnvironment(name: string, value: string | undefined): void {

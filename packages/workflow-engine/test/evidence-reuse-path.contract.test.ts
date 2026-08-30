@@ -3,17 +3,19 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 
 import { parsePlanReviewArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import * as evidenceReusePath from '../src/adapters/planning/investigation/evidence-reuse-path.ts';
 import {
   createConvergenceRecord,
   createDescendantReuseProof,
 } from '../src/adapters/planning/investigation/evidence-convergence.ts';
-import {
-  currentParentEvidenceRef,
-  descendantReuseProofEvidenceRef,
-  projectConvergedEvidenceGraph,
-} from '../src/adapters/planning/investigation/evidence-reuse-path.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
+
+test('evidence reuse production surface exports only the PlanReview validator', () => {
+  assert.deepEqual(Object.keys(evidenceReusePath), [
+    'validateTrackedEvidenceReusePaths',
+  ]);
+});
 
 test('tracked PlanReview evidence reuse requires an exact current-parent and proof ref pair', () => {
   const oldParent = createEvidenceNode({
@@ -119,79 +121,6 @@ test('tracked PlanReview evidence reuse requires an exact current-parent and pro
   };
   assert.deepEqual(parsePlanReviewArtifact(current, 'demo-change'), current);
 });
-
-test('projection retains one old descendant only through a generated current reuse path', () => {
-  const oldParent = parentNode('b'.repeat(64));
-  const newParent = parentNode('c'.repeat(64));
-  const oldDescendant = descendantNode(oldParent);
-  const recomputedDescendant = descendantNode(newParent);
-
-  const projected = projectConvergedEvidenceGraph({
-    previousNodes: [oldParent, oldDescendant].sort(byNodeId),
-    previousCurrentRefs: { sealedInvestigation: oldDescendant.nodeId },
-    nextNodes: [newParent, recomputedDescendant].sort(byNodeId),
-    nextCurrentRefs: { sealedInvestigation: recomputedDescendant.nodeId },
-  });
-
-  assert.equal(projected.currentRefs.sealedInvestigation, oldDescendant.nodeId);
-  assert.deepEqual(projected.reusedDescendantNodeIds, [oldDescendant.nodeId]);
-  assert.equal(projected.convergenceNodeIds.length, 1);
-  assert.equal(projected.reuseProofNodeIds.length, 1);
-  assert.equal(
-    projected.currentRefs[
-      currentParentEvidenceRef(oldDescendant.nodeId, 'source')
-    ],
-    newParent.nodeId,
-  );
-  assert.equal(
-    projected.currentRefs[
-      descendantReuseProofEvidenceRef(oldDescendant.nodeId, 'source')
-    ],
-    projected.reuseProofNodeIds[0],
-  );
-  const artifact = {
-    schemaVersion: 1 as const,
-    kind: 'plan-review-artifact' as const,
-    changeId: 'demo-change',
-    nodes: projected.nodes,
-    currentRefs: projected.currentRefs,
-  };
-  assert.deepEqual(parsePlanReviewArtifact(artifact, 'demo-change'), artifact);
-});
-
-function parentNode(source: string) {
-  return createEvidenceNode({
-    type: 'fixture-parent',
-    nodeSchema: 'fixture.parent.v1',
-    evaluator: 'fixture.parent.v1',
-    policyDigest: 'a'.repeat(64),
-    exactInputDigests: { source },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'fixture.parent-output.v1',
-    output: { equivalent: true },
-    runtimeMetadata: {},
-  });
-}
-
-function descendantNode(parent: ReturnType<typeof parentNode>) {
-  return createEvidenceNode({
-    type: 'fixture-descendant',
-    nodeSchema: 'fixture.descendant.v1',
-    evaluator: 'fixture.descendant.v1',
-    policyDigest: 'd'.repeat(64),
-    exactInputDigests: { requirement: 'e'.repeat(64) },
-    semanticParentResultDigests: { source: parent.resultDigest },
-    provenanceParentNodeIds: { source: parent.nodeId },
-    outputSchema: 'fixture.descendant-output.v1',
-    output: { valid: true },
-    runtimeMetadata: {},
-  });
-}
-
-function byNodeId(left: { nodeId: string }, right: { nodeId: string }): number {
-  return left.nodeId.localeCompare(right.nodeId);
-}
 
 function workflowCode(error: unknown): string | null {
   return error instanceof WorkflowError ? error.code : null;

@@ -3,23 +3,10 @@ import crypto from 'node:crypto';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { validateClosedEvidenceDag } from '../src/adapters/planning/investigation/evidence-currentness.ts';
+import * as investigationGroups from '../src/modules/investigation/domain/investigation-groups.ts';
 import {
-  createEvidenceNode,
-  type EvidenceNode,
-} from '../src/adapters/planning/investigation/evidence-node.ts';
-import {
-  createInvestigationCoverageNode,
-  createInvestigationDispositionNodes,
   deriveInvestigationGroupFacts,
-  deriveInvestigationHitNodes,
-  readInvestigationCoverageNode,
-  readInvestigationDispositionNode,
-  readInvestigationGroupNode,
-  readInvestigationHitNode,
-  replayInvestigationGroupNodes,
   type DeclaredInvestigationRoot,
-  type InvestigationGroupFacts,
   type ReviewedPathRelationship,
 } from '../src/modules/investigation/domain/investigation-groups.ts';
 import type { InvestigationScanFacts } from '../src/modules/investigation/domain/investigation-scanner.ts';
@@ -34,6 +21,22 @@ import { isWorkflowError } from './fixture.ts';
 
 const POLICY_DIGEST = '1'.repeat(64);
 const TREE_DIGEST = '2'.repeat(64);
+
+test('current grouping exports no historical EvidenceNode replay surface', () => {
+  for (const retiredExport of [
+    'deriveInvestigationHitNodes',
+    'replayInvestigationGroupNodes',
+    'createInvestigationDispositionNodes',
+    'createInvestigationCoverageNode',
+    'readInvestigationHitNode',
+    'readInvestigationGroupNode',
+    'readInvestigationDispositionNode',
+    'readInvestigationCoverageNode',
+    'parseHitForTest',
+  ]) {
+    assert.equal(retiredExport in investigationGroups, false, retiredExport);
+  }
+});
 
 test('mutation classes remain explicit raw-path-safe grouping metadata', () => {
   const policy = mutationPolicy();
@@ -347,120 +350,6 @@ test('zero-hit and unrelated terms preserve current grouping identities', () => 
   );
 });
 
-test('historical replay primitives remain closed and truth-preserving', () => {
-  const context = groupingContext();
-  const term = investigationTerm('replay');
-  const zero = investigationTerm('replay-zero');
-  const hits = [hit('src/a.ts', 0), hit('src/b.ts', 1)];
-  const facts = scanFacts([
-    { term, hits },
-    { term: zero, hits: [] },
-  ]);
-  const grouping = deriveInvestigationGroupFacts({
-    scanFacts: facts,
-    ...context,
-  });
-  const scanNodes = [scanNode(term.termId, hits), scanNode(zero.termId, [])];
-  const hitNodes = deriveInvestigationHitNodes(scanNodes);
-  const groupNodes = createHistoricalGroupFixtures(grouping, hitNodes);
-  const dispositions = createInvestigationDispositionNodes({
-    groupNodes,
-    dispositions: groupNodes.map((node) => ({
-      groupId: readInvestigationGroupNode(node).groupId,
-      classification: 'load-bearing',
-      rationale: 'The historical fixture remains load-bearing.',
-      author: 'replay-test',
-    })),
-  });
-  const inventory = inventoryNode();
-  const coverage = createInvestigationCoverageNode({
-    effectiveTermIds: [term.termId, zero.termId],
-    scanNodes,
-    inventoryNode: inventory,
-    hitNodes,
-    groupNodes,
-    dispositionNodes: dispositions,
-  });
-  assert.deepEqual(readInvestigationCoverageNode(coverage).zeroHitTermIds, [
-    zero.termId,
-  ]);
-  assert.equal(dispositions.length, groupNodes.length);
-  for (const disposition of dispositions) {
-    const output = readInvestigationDispositionNode(disposition);
-    assert.ok(
-      groupNodes.some(
-        (node) => readInvestigationGroupNode(node).groupId === output.groupId,
-      ),
-    );
-  }
-
-  const records = groupNodes.map((node) => {
-    const output = readInvestigationGroupNode(node);
-    return {
-      nodeId: node.nodeId,
-      policyDigest: node.policyDigest,
-      selector: output.selector,
-      hitIds: output.hitIds,
-      exceptions: output.exceptions,
-    };
-  });
-  assert.deepEqual(
-    replayInvestigationGroupNodes({ hitNodes, groups: records }).map(
-      ({ nodeId }) => nodeId,
-    ),
-    groupNodes.map(({ nodeId }) => nodeId),
-  );
-  assert.throws(
-    () =>
-      replayInvestigationGroupNodes({
-        hitNodes,
-        groups: [
-          { ...records[0]!, nodeId: 'f'.repeat(64) },
-          ...records.slice(1),
-        ],
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-  assert.throws(
-    () =>
-      replayInvestigationGroupNodes({
-        hitNodes: hitNodes.slice(1),
-        groups: records,
-      }),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-
-  const nodes = [
-    ...scanNodes,
-    inventory,
-    ...hitNodes,
-    ...groupNodes,
-    ...dispositions,
-    coverage,
-  ];
-  const forward = validateClosedEvidenceDag(nodes);
-  const reverse = validateClosedEvidenceDag([...nodes].reverse());
-  assert.deepEqual(reverse, forward);
-  assert.equal(forward.topologicalNodeIds.at(-1), coverage.nodeId);
-  assert.throws(
-    () =>
-      validateClosedEvidenceDag(
-        nodes.filter(({ nodeId }) => nodeId !== hitNodes[0]!.nodeId),
-      ),
-    (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
-  );
-
-  const wrongTypedScan = createEvidenceNode({
-    ...nodeInput(scanNodes[0]!),
-    type: 'not-an-investigation-scan',
-    output: scanNodes[0]!.output,
-  });
-  assert.throws(
-    () => deriveInvestigationHitNodes([wrongTypedScan]),
-    (error) => isWorkflowError(error, 'INVESTIGATION_GROUPS_INVALID'),
-  );
-});
-
 function mutationPolicy(): MutationClassPolicy {
   return createMutationClassPolicy({
     rules: [
@@ -577,93 +466,6 @@ function scanFacts(
   };
 }
 
-function createHistoricalGroupFixtures(
-  grouping: InvestigationGroupFacts,
-  hitNodes: EvidenceNode[],
-): EvidenceNode[] {
-  return grouping.groups
-    .map((group) => {
-      const expected = new Set(
-        group.hits.map(({ hitKey: _hitKey, ...value }) => canonicalJson(value)),
-      );
-      const members = hitNodes
-        .filter((node) => {
-          const { hitId: _hitId, ...value } = readInvestigationHitNode(node);
-          return expected.has(canonicalJson(value));
-        })
-        .sort((left, right) => left.nodeId.localeCompare(right.nodeId));
-      assert.equal(members.length, group.hits.length);
-      const provenanceParentNodeIds: Record<string, string> = {};
-      const semanticParentResultDigests: Record<string, string> = {};
-      members.forEach((member, index) => {
-        provenanceParentNodeIds[`hit-${index}`] = member.nodeId;
-        semanticParentResultDigests[`hit-${index}`] = member.resultDigest;
-      });
-      const selector = { selectorId: group.key, ...group.selector };
-      return createEvidenceNode({
-        type: 'investigation-group',
-        nodeSchema: 'investigation.group.v1',
-        evaluator: 'investigation-groups.v1',
-        policyDigest: grouping.groupingPolicyDigest,
-        exactInputDigests: {
-          exceptions: sha256(
-            canonicalJson({
-              schema: 'investigation.group-exceptions.v1',
-              exceptions: [],
-            }),
-          ),
-          selector: group.key,
-        },
-        semanticParentResultDigests,
-        provenanceParentNodeIds,
-        outputSchema: 'investigation.group-output.v1',
-        output: {
-          groupId: group.key,
-          selector,
-          hitIds: members.map(({ nodeId }) => nodeId),
-          hits: members.map(readInvestigationHitNode),
-          sourceObjects: group.sourceObjects,
-          exceptions: [],
-        },
-        runtimeMetadata: {},
-      });
-    })
-    .sort((left, right) => left.nodeId.localeCompare(right.nodeId));
-}
-
-function scanNode(
-  termId: string,
-  hits: Array<ReturnType<typeof hit>>,
-): EvidenceNode {
-  return createEvidenceNode({
-    type: 'investigation-term-scan',
-    nodeSchema: 'investigation.term-scan.v1',
-    evaluator: 'investigation-scanner.v1',
-    policyDigest: POLICY_DIGEST,
-    exactInputDigests: { term: sha256(`term:${termId}`), tree: TREE_DIGEST },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'investigation.term-scan-output.v1',
-    output: { termId, hits },
-    runtimeMetadata: {},
-  });
-}
-
-function inventoryNode(): EvidenceNode {
-  return createEvidenceNode({
-    type: 'investigation-tree-inventory',
-    nodeSchema: 'investigation.tree-inventory.v1',
-    evaluator: 'investigation-scanner.v1',
-    policyDigest: POLICY_DIGEST,
-    exactInputDigests: { tree: TREE_DIGEST },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'investigation.tree-inventory-output.v1',
-    output: { skippedObjects: [] },
-    runtimeMetadata: {},
-  });
-}
-
 function hit(
   filePath: string,
   byteOffset: number,
@@ -692,20 +494,6 @@ function pathIdentity(filePath: string): {
   return {
     rawBase64: Buffer.from(filePath, 'utf8').toString('base64'),
     utf8: filePath,
-  };
-}
-
-function nodeInput(node: EvidenceNode) {
-  return {
-    type: node.type,
-    nodeSchema: node.nodeSchema,
-    evaluator: node.evaluator,
-    policyDigest: node.policyDigest,
-    exactInputDigests: node.exactInputDigests,
-    semanticParentResultDigests: node.semanticParentResultDigests,
-    provenanceParentNodeIds: node.provenanceParentNodeIds,
-    outputSchema: node.outputSchema,
-    runtimeMetadata: node.runtimeMetadata,
   };
 }
 

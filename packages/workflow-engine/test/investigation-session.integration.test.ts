@@ -36,7 +36,6 @@ import {
   reclaimDeadPreparedLock,
 } from '../src/runtime/repository-transaction/filesystem-safety.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
-import { readInvestigationGroupNode } from '../src/modules/investigation/domain/investigation-groups.ts';
 import {
   createInvestigationCheckpointEnvelope,
   discardHumanResolutionGrantPublication,
