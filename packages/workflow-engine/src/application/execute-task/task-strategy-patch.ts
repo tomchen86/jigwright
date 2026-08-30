@@ -120,13 +120,13 @@ type CallerTaskStrategyPatchInput = Readonly<{
 type ProviderTaskStrategyPatchValidationInput = Readonly<{
   patch: string | Buffer;
   implementationReservationDigest: string;
-  implementationSubjectDigest?: string;
+  implementationSubjectDigest: string;
 }>;
 
 type ProviderTaskStrategyPatchImportInput = Readonly<{
   patch: string | Buffer;
   implementationResultBindingDigest: string;
-  implementationSubjectDigest?: string;
+  implementationSubjectDigest: string;
   testCrashAfter?: TaskStrategyPatchCrashPhase;
 }>;
 

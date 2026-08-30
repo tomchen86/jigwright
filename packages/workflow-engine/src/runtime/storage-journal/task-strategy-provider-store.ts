@@ -437,7 +437,6 @@ export function createTaskStrategyImplementationReservation(
   });
   return createSubjectScopedRecord(
     paths,
-    reservationPath(paths, reservation.sessionId),
     subjectReservationPath(
       paths,
       reservation.sessionId,
@@ -455,12 +454,11 @@ export function createTaskStrategyImplementationReservation(
 export function readTaskStrategyImplementationReservation(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSubjectDigest?: string,
+  expectedSubjectDigest: string,
 ): TaskStrategyImplementationReservation | null {
   const sessionId = assertSessionId(requestedSessionId);
   return readSubjectScopedRecord(
     paths,
-    reservationPath(paths, sessionId),
     expectedSubjectDigest,
     (subjectDigest) => subjectReservationPath(paths, sessionId, subjectDigest),
     parseTaskStrategyImplementationReservation,
@@ -696,7 +694,6 @@ export function createTaskStrategyImplementationResultBinding(
   });
   return createSubjectScopedRecord(
     paths,
-    resultPath(paths, binding.sessionId),
     subjectResultPath(paths, binding.sessionId, binding.subjectDigest),
     binding,
     parseTaskStrategyImplementationResultBinding,
@@ -710,12 +707,11 @@ export function createTaskStrategyImplementationResultBinding(
 export function readTaskStrategyImplementationResultBinding(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSubjectDigest?: string,
+  expectedSubjectDigest: string,
 ): TaskStrategyImplementationResultBinding | null {
   const sessionId = assertSessionId(requestedSessionId);
   return readSubjectScopedRecord(
     paths,
-    resultPath(paths, sessionId),
     expectedSubjectDigest,
     (subjectDigest) => subjectResultPath(paths, sessionId, subjectDigest),
     parseTaskStrategyImplementationResultBinding,
@@ -743,7 +739,6 @@ export function createTaskStrategyCallerImplementationBinding(
   });
   return createSubjectScopedRecord(
     paths,
-    callerResultPath(paths, binding.sessionId),
     subjectCallerResultPath(paths, binding.sessionId, binding.subjectDigest),
     binding,
     parseTaskStrategyCallerImplementationBinding,
@@ -757,12 +752,11 @@ export function createTaskStrategyCallerImplementationBinding(
 export function readTaskStrategyCallerImplementationBinding(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSubjectDigest?: string,
+  expectedSubjectDigest: string,
 ): TaskStrategyCallerImplementationBinding | null {
   const sessionId = assertSessionId(requestedSessionId);
   return readSubjectScopedRecord(
     paths,
-    callerResultPath(paths, sessionId),
     expectedSubjectDigest,
     (subjectDigest) => subjectCallerResultPath(paths, sessionId, subjectDigest),
     parseTaskStrategyCallerImplementationBinding,
@@ -790,7 +784,6 @@ export function createTaskStrategyCallerImplementationReservation(
   });
   return createSubjectScopedRecord(
     paths,
-    callerReservationPath(paths, reservation.sessionId),
     subjectCallerReservationPath(
       paths,
       reservation.sessionId,
@@ -808,12 +801,11 @@ export function createTaskStrategyCallerImplementationReservation(
 export function readTaskStrategyCallerImplementationReservation(
   paths: InvestigationRuntimePaths,
   requestedSessionId: string,
-  expectedSubjectDigest?: string,
+  expectedSubjectDigest: string,
 ): TaskStrategyCallerImplementationReservation | null {
   const sessionId = assertSessionId(requestedSessionId);
   return readSubjectScopedRecord(
     paths,
-    callerReservationPath(paths, sessionId),
     expectedSubjectDigest,
     (subjectDigest) =>
       subjectCallerReservationPath(paths, sessionId, subjectDigest),
@@ -821,54 +813,6 @@ export function readTaskStrategyCallerImplementationReservation(
     (value) => value.subjectDigest,
     sessionId,
     (value) => value.sessionId,
-  );
-}
-
-function reservationPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-implementations',
-    sessionId,
-    'reservation.json',
-  );
-}
-
-function resultPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-implementations',
-    sessionId,
-    'result.json',
-  );
-}
-
-function callerResultPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-implementations',
-    sessionId,
-    'caller-result.json',
-  );
-}
-
-function callerReservationPath(
-  paths: InvestigationRuntimePaths,
-  sessionId: string,
-): string {
-  return path.join(
-    paths.refs,
-    'task-strategy-implementations',
-    sessionId,
-    'caller-reservation.json',
   );
 }
 
@@ -932,7 +876,6 @@ function subjectScopedPath(
 
 function createSubjectScopedRecord<T>(
   paths: InvestigationRuntimePaths,
-  legacyPath: string,
   scopedPath: string,
   value: T,
   parse: (value: unknown) => T,
@@ -941,17 +884,15 @@ function createSubjectScopedRecord<T>(
   sessionIdOf: (value: T) => string,
   collisionCode: string,
 ): T {
-  const legacy = readRecordAt(paths, legacyPath, parse);
-  if (legacy !== null && sessionIdOf(legacy) !== expectedSessionId) {
-    throw stateCorrupt();
-  }
   const expectedSubjectDigest = assertDigest(subjectDigestOf(value));
-  const target =
-    legacy === null || subjectDigestOf(legacy) === expectedSubjectDigest
-      ? legacyPath
-      : scopedPath;
-  createPrivateCanonicalJson(paths, target, value, stateCorrupt, collisionCode);
-  const stored = readRecordAt(paths, target, parse);
+  createPrivateCanonicalJson(
+    paths,
+    scopedPath,
+    value,
+    stateCorrupt,
+    collisionCode,
+  );
+  const stored = readRecordAt(paths, scopedPath, parse);
   if (
     stored === null ||
     sessionIdOf(stored) !== expectedSessionId ||
@@ -964,23 +905,14 @@ function createSubjectScopedRecord<T>(
 
 function readSubjectScopedRecord<T>(
   paths: InvestigationRuntimePaths,
-  legacyPath: string,
-  requestedSubjectDigest: string | undefined,
+  requestedSubjectDigest: string,
   scopedPath: (subjectDigest: string) => string,
   parse: (value: unknown) => T,
   subjectDigestOf: (value: T) => string,
   expectedSessionId: string,
   sessionIdOf: (value: T) => string,
 ): T | null {
-  const legacy = readRecordAt(paths, legacyPath, parse);
-  if (legacy !== null && sessionIdOf(legacy) !== expectedSessionId) {
-    throw stateCorrupt();
-  }
-  if (requestedSubjectDigest === undefined) return legacy;
   const expectedSubjectDigest = assertDigest(requestedSubjectDigest);
-  if (legacy !== null && subjectDigestOf(legacy) === expectedSubjectDigest) {
-    return legacy;
-  }
   const scoped = readRecordAt(paths, scopedPath(expectedSubjectDigest), parse);
   if (
     scoped !== null &&

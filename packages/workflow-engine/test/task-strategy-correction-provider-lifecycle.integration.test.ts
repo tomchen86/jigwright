@@ -109,6 +109,8 @@ for (const crashCut of [
           runtime.refs,
           'task-strategy-implementations',
           session.sessionId,
+          'subjects',
+          initialWaiting.subject.subjectDigest,
           'result.json',
         );
         assertProjectionRejectsMissingAuthorityArtifact(

@@ -53,7 +53,7 @@ const SOURCE_A = '1'.repeat(40);
 const SOURCE_B = '2'.repeat(40);
 const SOURCE_UNKNOWN = '3'.repeat(40);
 
-test('provider strategy stores preserve the legacy subject and namespace later RED subjects', () => {
+test('provider strategy stores persist every record under its exact subject', () => {
   const fixture = createRuntimeFixture();
   try {
     const first = createProviderFixture(fixture, 'a');
@@ -94,11 +94,6 @@ test('provider strategy stores preserve the legacy subject and namespace later R
       second.caller,
     );
 
-    assert.equal(
-      readTaskStrategyImplementationReservation(fixture.paths, SESSION_ID)
-        ?.subject.subjectDigest,
-      first.subject.subjectDigest,
-    );
     assert.equal(
       readTaskStrategyImplementationReservation(
         fixture.paths,
@@ -172,30 +167,41 @@ test('provider strategy stores preserve the legacy subject and namespace later R
       null,
     );
 
-    assert.equal(
-      fs.existsSync(
-        path.join(
-          fixture.paths.refs,
-          'task-strategy-implementations',
-          SESSION_ID,
-          'reservation.json',
+    for (const filename of [
+      'reservation.json',
+      'result.json',
+      'caller-reservation.json',
+      'caller-result.json',
+    ]) {
+      assert.equal(
+        fs.existsSync(
+          path.join(
+            fixture.paths.refs,
+            'task-strategy-implementations',
+            SESSION_ID,
+            filename,
+          ),
         ),
-      ),
-      true,
-    );
-    assert.equal(
-      fs.existsSync(
-        path.join(
-          fixture.paths.refs,
-          'task-strategy-implementations',
-          SESSION_ID,
-          'subjects',
-          second.subject.subjectDigest,
-          'reservation.json',
-        ),
-      ),
-      true,
-    );
+        false,
+        `retired session singleton remains absent: ${filename}`,
+      );
+      for (const subject of [first.subject, second.subject]) {
+        assert.equal(
+          fs.existsSync(
+            path.join(
+              fixture.paths.refs,
+              'task-strategy-implementations',
+              SESSION_ID,
+              'subjects',
+              subject.subjectDigest,
+              filename,
+            ),
+          ),
+          true,
+          `exact subject record is durable: ${subject.subjectDigest}/${filename}`,
+        );
+      }
+    }
 
     assert.throws(
       () =>
@@ -204,6 +210,42 @@ test('provider strategy stores preserve the legacy subject and namespace later R
           createdAt: '2026-08-13T01:00:00.000Z',
         }),
       hasCode('TASK_STRATEGY_IMPLEMENTATION_RESERVATION_CONFLICT'),
+    );
+  } finally {
+    fs.rmSync(fixture.base, { recursive: true, force: true });
+  }
+});
+
+test('provider strategy readers ignore a retired session singleton', () => {
+  const fixture = createRuntimeFixture();
+  try {
+    const current = createProviderFixture(fixture, 'a');
+    createTaskStrategyImplementationReservation(
+      fixture.paths,
+      current.reservation,
+    );
+    const directory = path.join(
+      fixture.paths.refs,
+      'task-strategy-implementations',
+      SESSION_ID,
+    );
+    fs.renameSync(
+      path.join(
+        directory,
+        'subjects',
+        current.subject.subjectDigest,
+        'reservation.json',
+      ),
+      path.join(directory, 'reservation.json'),
+    );
+
+    assert.equal(
+      readTaskStrategyImplementationReservation(
+        fixture.paths,
+        SESSION_ID,
+        current.subject.subjectDigest,
+      ),
+      null,
     );
   } finally {
     fs.rmSync(fixture.base, { recursive: true, force: true });

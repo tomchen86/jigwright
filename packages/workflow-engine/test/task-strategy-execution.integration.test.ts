@@ -422,6 +422,8 @@ test('cross-agent RED schedules one provider-independent implementation reservat
       runtimeRoot(repository),
       'investigations/refs/task-strategy-implementations',
       session.sessionId,
+      'subjects',
+      waiting.subject.subjectDigest,
       'result.json',
     );
     const resultBinding = JSON.parse(
@@ -1324,6 +1326,8 @@ test('cross-agent implementation shortage pauses on the existing typed collabora
           runtimeRoot(repository),
           'investigations/refs/task-strategy-implementations',
           session.sessionId,
+          'subjects',
+          paused.subject.subjectDigest,
           'reservation.json',
         ),
       ),
@@ -1465,11 +1469,18 @@ test('task implementation reservation rejects independently redigested replay me
       explicitActor: 'codex',
       environment: {},
     });
-    beginTaskStrategyImplementation(repository, session.sessionId);
+    const waiting = beginTaskStrategyImplementation(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(waiting.state, 'waiting-for-provider');
+    if (waiting.state !== 'waiting-for-provider') return;
     const reservationPath = path.join(
       runtimeRoot(repository),
       'investigations/refs/task-strategy-implementations',
       session.sessionId,
+      'subjects',
+      waiting.subject.subjectDigest,
       'reservation.json',
     );
     const reservation = JSON.parse(
@@ -1627,6 +1638,8 @@ test('zero-provider caller patch imports only through an exact consumed collabor
       runtimeRoot(repository),
       'investigations/refs/task-strategy-implementations',
       session.sessionId,
+      'subjects',
+      paused.subject.subjectDigest,
       'caller-result.json',
     );
     const heldCallerResultPath = `${callerResultPath}.held`;
