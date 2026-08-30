@@ -57,6 +57,7 @@ import {
   showAuthorityAuditTask,
   verifyAuthorityAuditEvents,
 } from '../src/runtime/storage-journal/authority-audit-service.ts';
+import { openMaintainerCheckJournal } from '../src/runtime/storage-journal/maintainer-check-journal.ts';
 import {
   buildImmutableCandidateBundleV2,
   readDurableRefGenerationLedger,
@@ -590,6 +591,52 @@ test('preapproval checks durably resume after interruption without rerunning com
     assert.equal(journal.checks.length, 2);
     assert.deepEqual(journal.finalAttestation, resumed);
   });
+});
+
+test('preapproval check journal rejects retired V1 identities', () => {
+  const repository = createFixtureRepository();
+  try {
+    const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+    assert.throws(
+      () =>
+        openMaintainerCheckJournal(
+          gitCommonDirectory,
+          {
+            schemaVersion: 1,
+            repositoryId: 'github:R_fixture',
+            repositoryRealPath: fs.realpathSync(repository),
+            trustBaseCommit: git(repository, ['rev-parse', 'HEAD']).trim(),
+            policyDigest: 'a'.repeat(64),
+            profileId: PROFILE_ID,
+            profileVersion: 1,
+            patchDigest: 'b'.repeat(64),
+            candidateStateDigest: 'c'.repeat(64),
+            environmentDigest: 'd'.repeat(64),
+            requiredChecks: [
+              {
+                checkId: 'fixture',
+                definitionDigest: 'e'.repeat(64),
+                runner: 'node',
+                runnerDigest: 'f'.repeat(64),
+                destructiveDatabase: false,
+                databaseIdentity: null,
+              },
+            ],
+          } as never,
+          new Date('2026-08-03T08:00:00.000Z'),
+        ),
+      (error: unknown) =>
+        isWorkflowError(error, 'MAINTAINER_CHECK_JOURNAL_INVALID'),
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(gitCommonDirectory, 'workflow-engine/maintainer-checks'),
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('preapproval check resume never reuses evidence after candidate drift', () => {

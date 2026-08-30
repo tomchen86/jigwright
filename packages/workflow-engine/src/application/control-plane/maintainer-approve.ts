@@ -80,7 +80,6 @@ import {
   maintainerChecksEnvironmentDigest,
   preflightMaintainerGrantV2,
   validateMaintainerEvidenceWaivers,
-  type MaintainerChecksAttestation,
   type MaintainerChecksAttestationV2,
   type MaintainerEvidenceWaiver,
   type MaintainerGrantV2Envelope,
@@ -1646,7 +1645,7 @@ function assertHarnessEngineUnchanged(
 }
 
 function assertExactChecksAttestation(
-  attestation: MaintainerChecksAttestation,
+  attestation: MaintainerChecksAttestationV2,
   identity: MaintainerCheckJournalIdentity,
 ): asserts attestation is MaintainerChecksAttestationV2 {
   if (

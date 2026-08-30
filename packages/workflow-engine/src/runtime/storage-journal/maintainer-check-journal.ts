@@ -8,7 +8,6 @@ import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
 import type {
-  MaintainerChecksAttestation,
   MaintainerChecksAttestationV2,
   MaintainerPreapprovalCheck,
 } from '../../modules/authority/maintainer-grant-v2.ts';
@@ -20,7 +19,7 @@ const CHECK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 export const MAINTAINER_CHECK_RESUME_MAX_AGE_MS = 48 * 60 * 60 * 1_000;
 
 export type MaintainerCheckJournalIdentity = {
-  schemaVersion: 1 | 2;
+  schemaVersion: 2;
   repositoryId: string;
   repositoryRealPath: string;
   trustBaseCommit: string;
@@ -30,7 +29,7 @@ export type MaintainerCheckJournalIdentity = {
   patchDigest: string;
   candidateStateDigest: string;
   environmentDigest: string;
-  harnessEngineDigest?: string;
+  harnessEngineDigest: string;
   requiredChecks: Array<{
     checkId: string;
     definitionDigest: string;
@@ -38,9 +37,9 @@ export type MaintainerCheckJournalIdentity = {
     runnerDigest: string;
     destructiveDatabase: boolean;
     databaseIdentity: string | null;
-    dependsOn?: CheckDependency[];
-    externalSnapshotDigest?: string | null;
-    externalMaxAgeMs?: number | null;
+    dependsOn: CheckDependency[];
+    externalSnapshotDigest: string | null;
+    externalMaxAgeMs: number | null;
   }>;
 };
 
@@ -53,7 +52,7 @@ export type MaintainerCheckJournal = {
   createdAt: string;
   updatedAt: string;
   checks: MaintainerPreapprovalCheck[];
-  finalAttestation: MaintainerChecksAttestation | null;
+  finalAttestation: MaintainerChecksAttestationV2 | null;
 };
 
 export function maintainerCheckIdentityDigest(
@@ -149,7 +148,7 @@ export function appendMaintainerCheckEvidence(
 export function completeMaintainerCheckJournal(
   filePath: string,
   journal: MaintainerCheckJournal,
-  attestation: MaintainerChecksAttestation,
+  attestation: MaintainerChecksAttestationV2,
   now: Date,
 ): MaintainerCheckJournal {
   if (
@@ -262,7 +261,7 @@ function assertIdentity(identity: MaintainerCheckJournalIdentity): void {
   const identityKeys = [
     'candidateStateDigest',
     'environmentDigest',
-    ...(identity.schemaVersion === 2 ? ['harnessEngineDigest'] : []),
+    'harnessEngineDigest',
     'patchDigest',
     'policyDigest',
     'profileId',
@@ -275,7 +274,7 @@ function assertIdentity(identity: MaintainerCheckJournalIdentity): void {
   ].sort();
   if (
     Object.keys(identity).sort().join(',') !== identityKeys.join(',') ||
-    (identity.schemaVersion !== 1 && identity.schemaVersion !== 2) ||
+    identity.schemaVersion !== 2 ||
     !/^github:[A-Za-z0-9_.:-]+$/.test(identity.repositoryId) ||
     !path.isAbsolute(identity.repositoryRealPath) ||
     !isExactRealPath(identity.repositoryRealPath) ||
@@ -287,16 +286,13 @@ function assertIdentity(identity: MaintainerCheckJournalIdentity): void {
     !DIGEST.test(identity.patchDigest) ||
     !DIGEST.test(identity.candidateStateDigest) ||
     !DIGEST.test(identity.environmentDigest) ||
-    (identity.schemaVersion === 2 &&
-      (typeof identity.harnessEngineDigest !== 'string' ||
-        !DIGEST.test(identity.harnessEngineDigest))) ||
+    typeof identity.harnessEngineDigest !== 'string' ||
+    !DIGEST.test(identity.harnessEngineDigest) ||
     identity.requiredChecks.length === 0 ||
     identity.requiredChecks.some(
       (check, index) =>
         Object.keys(check).sort().join(',') !==
-          (identity.schemaVersion === 1
-            ? 'checkId,databaseIdentity,definitionDigest,destructiveDatabase,runner,runnerDigest'
-            : 'checkId,databaseIdentity,definitionDigest,dependsOn,destructiveDatabase,externalMaxAgeMs,externalSnapshotDigest,runner,runnerDigest') ||
+          'checkId,databaseIdentity,definitionDigest,dependsOn,destructiveDatabase,externalMaxAgeMs,externalSnapshotDigest,runner,runnerDigest' ||
         !CHECK_ID.test(check.checkId) ||
         !DIGEST.test(check.definitionDigest) ||
         typeof check.runner !== 'string' ||
@@ -307,22 +303,21 @@ function assertIdentity(identity: MaintainerCheckJournalIdentity): void {
           ? typeof check.databaseIdentity !== 'string' ||
             check.databaseIdentity.length === 0
           : check.databaseIdentity !== null) ||
-        (identity.schemaVersion === 2 &&
-          (!Array.isArray(check.dependsOn) ||
-            check.dependsOn.length === 0 ||
-            check.dependsOn.some(
-              (dependency, dependencyIndex) =>
-                !/^(?:source-tree|base-commit|harness-engine|policy|runner|external-state)$/.test(
-                  dependency,
-                ) || check.dependsOn!.indexOf(dependency) !== dependencyIndex,
-            ) ||
-            (check.dependsOn.includes('external-state')
-              ? typeof check.externalSnapshotDigest !== 'string' ||
-                !DIGEST.test(check.externalSnapshotDigest) ||
-                !Number.isSafeInteger(check.externalMaxAgeMs) ||
-                Number(check.externalMaxAgeMs) < 1
-              : check.externalSnapshotDigest !== null ||
-                check.externalMaxAgeMs !== null))) ||
+        !Array.isArray(check.dependsOn) ||
+        check.dependsOn.length === 0 ||
+        check.dependsOn.some(
+          (dependency, dependencyIndex) =>
+            !/^(?:source-tree|base-commit|harness-engine|policy|runner|external-state)$/.test(
+              dependency,
+            ) || check.dependsOn.indexOf(dependency) !== dependencyIndex,
+        ) ||
+        (check.dependsOn.includes('external-state')
+          ? typeof check.externalSnapshotDigest !== 'string' ||
+            !DIGEST.test(check.externalSnapshotDigest) ||
+            !Number.isSafeInteger(check.externalMaxAgeMs) ||
+            Number(check.externalMaxAgeMs) < 1
+          : check.externalSnapshotDigest !== null ||
+            check.externalMaxAgeMs !== null) ||
         identity.requiredChecks.findIndex(
           (candidate) => candidate.checkId === check.checkId,
         ) !== index,
@@ -388,24 +383,20 @@ function assertCheck(
 }
 
 function attestationMatchesIdentity(
-  attestation: MaintainerChecksAttestation,
+  attestation: MaintainerChecksAttestationV2,
   identity: MaintainerCheckJournalIdentity,
 ): boolean {
   return (
     Object.keys(attestation).sort().join(',') ===
-      (identity.schemaVersion === 1
-        ? 'candidateStateDigest,checks,environmentDigest,patchDigest,policyDigest,schemaVersion,trustBaseCommit'
-        : 'candidateStateDigest,checks,environmentDigest,harnessEngineDigest,patchDigest,policyDigest,schemaVersion,trustBaseCommit') &&
-    attestation.schemaVersion === identity.schemaVersion &&
+      'candidateStateDigest,checks,environmentDigest,harnessEngineDigest,patchDigest,policyDigest,schemaVersion,trustBaseCommit' &&
+    attestation.schemaVersion === 2 &&
     attestation.trustBaseCommit === identity.trustBaseCommit &&
     attestation.policyDigest === identity.policyDigest &&
     attestation.patchDigest === identity.patchDigest &&
     attestation.candidateStateDigest === identity.candidateStateDigest &&
     attestation.environmentDigest === identity.environmentDigest &&
     attestation.checks.length === identity.requiredChecks.length &&
-    (identity.schemaVersion === 1 ||
-      (attestation as MaintainerChecksAttestationV2).harnessEngineDigest ===
-        identity.harnessEngineDigest)
+    attestation.harnessEngineDigest === identity.harnessEngineDigest
   );
 }
 

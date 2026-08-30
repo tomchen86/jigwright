@@ -131,19 +131,13 @@ type MaintainerChecksAttestationCommon = {
   checks: MaintainerPreapprovalCheck[];
 };
 
-export type MaintainerChecksAttestationV1 =
-  MaintainerChecksAttestationCommon & {
-    schemaVersion: 1;
-  };
-
 export type MaintainerChecksAttestationV2 =
   MaintainerChecksAttestationCommon & {
     schemaVersion: 2;
     harnessEngineDigest: string;
   };
 
-export type MaintainerChecksAttestation =
-  MaintainerChecksAttestationV1 | MaintainerChecksAttestationV2;
+export type MaintainerChecksAttestation = MaintainerChecksAttestationV2;
 
 export type MaintainerGrantV2Payload = {
   version: 2;
@@ -167,7 +161,7 @@ export type MaintainerGrantV2Payload = {
   requiredChecks: string[];
   evidenceWaivers: MaintainerEvidenceWaiver[];
   checkDependencies: CapabilityProfile['checkDependencies'];
-  checksAttestation: MaintainerChecksAttestation | null;
+  checksAttestation: MaintainerChecksAttestationV2 | null;
   checksAttestationDigest: string | null;
   candidateBundle: ImmutableCandidateBundleV2 | null;
   candidateBundleDigest: string | null;
@@ -207,7 +201,7 @@ export type MaintainerGrantV2IssueRequest = {
   reason: string;
   manifest: PatchManifest;
   ttlMinutes?: number;
-  checksAttestation?: MaintainerChecksAttestation;
+  checksAttestation?: MaintainerChecksAttestationV2;
   candidateBundle?: ImmutableCandidateBundleV2;
   evidenceWaivers?: MaintainerEvidenceWaiver[];
 };
@@ -1167,8 +1161,8 @@ function assertApplyCandidateRequest(
   }
   if (request.checksAttestation.schemaVersion !== 2) {
     throw workflowError(
-      'APPLY_CANDIDATE_LEGACY_READ_ONLY',
-      'Legacy checks are historical read-only evidence.',
+      'APPLY_ATTESTATION_INVALID',
+      'Apply Grant checks must use the current attestation schema.',
       ExitCode.guard,
     );
   }
@@ -1176,7 +1170,7 @@ function assertApplyCandidateRequest(
 
 function candidateChecksAreExact(
   candidate: ImmutableCandidateBundleV2,
-  attestation: MaintainerChecksAttestation,
+  attestation: MaintainerChecksAttestationV2,
 ): boolean {
   const candidateChecks = candidate.checksAttestation.checks;
   return (
@@ -1200,7 +1194,6 @@ function candidateChecksAreExact(
         candidateCheck.completedAt === grantCheck.completedAt
       );
     }) &&
-    attestation.schemaVersion === 2 &&
     candidate.checksAttestation.dependencySnapshot.harnessEngineDigest ===
       attestation.harnessEngineDigest
   );
@@ -1208,8 +1201,7 @@ function candidateChecksAreExact(
 
 function parseMaintainerChecksAttestation(
   raw: Record<string, unknown>,
-): MaintainerChecksAttestation {
-  const schemaVersion = raw.schemaVersion;
+): MaintainerChecksAttestationV2 {
   const attestationKeys = [
     'schemaVersion',
     'trustBaseCommit',
@@ -1218,11 +1210,11 @@ function parseMaintainerChecksAttestation(
     'candidateStateDigest',
     'environmentDigest',
     'checks',
-    ...(schemaVersion === 2 ? ['harnessEngineDigest'] : []),
+    'harnessEngineDigest',
   ];
   if (
     !hasExactKeys(raw, attestationKeys) ||
-    (schemaVersion !== 1 && schemaVersion !== 2) ||
+    raw.schemaVersion !== 2 ||
     typeof raw.trustBaseCommit !== 'string' ||
     !COMMIT_OID.test(raw.trustBaseCommit) ||
     typeof raw.policyDigest !== 'string' ||
@@ -1233,9 +1225,8 @@ function parseMaintainerChecksAttestation(
     !DIGEST.test(raw.candidateStateDigest) ||
     typeof raw.environmentDigest !== 'string' ||
     !DIGEST.test(raw.environmentDigest) ||
-    (schemaVersion === 2 &&
-      (typeof raw.harnessEngineDigest !== 'string' ||
-        !DIGEST.test(raw.harnessEngineDigest))) ||
+    typeof raw.harnessEngineDigest !== 'string' ||
+    !DIGEST.test(raw.harnessEngineDigest) ||
     !Array.isArray(raw.checks) ||
     raw.checks.length === 0
   ) {
@@ -1304,13 +1295,11 @@ function parseMaintainerChecksAttestation(
     environmentDigest: raw.environmentDigest,
     checks,
   };
-  return schemaVersion === 1
-    ? { schemaVersion: 1, ...common }
-    : {
-        schemaVersion: 2,
-        ...common,
-        harnessEngineDigest: raw.harnessEngineDigest as string,
-      };
+  return {
+    schemaVersion: 2,
+    ...common,
+    harnessEngineDigest: raw.harnessEngineDigest,
+  };
 }
 
 function loadV2TrustContext(cwd: string, expectedBase?: string) {
