@@ -89,6 +89,39 @@ test('ordinary propose production is v3-only outside shared session and evidence
   assert.match(source, /\bderiveInvestigationGroupFacts\b/u);
 });
 
+test('current-v3 production no longer exports historical EvidenceNode replay wrappers', () => {
+  for (const [relativePath, retiredExports] of [
+    [
+      '../src/modules/assurance/plan-review-coverage.ts',
+      [
+        'createPlanReviewCoverageRequirementNode',
+        'createGlobalPlanReviewCoverageRequirementNode',
+        'readPlanReviewCoverageRequirementNode',
+        'assertPlanReviewCoverageRequirementSatisfied',
+      ],
+    ],
+    [
+      '../src/modules/why-knowledge/implementation-reconciliation.ts',
+      [
+        'createImplementationReconciliationRequirementNode',
+        'readImplementationReconciliationRequirementNode',
+      ],
+    ],
+  ] as const) {
+    const source = fs.readFileSync(
+      path.join(import.meta.dirname, relativePath),
+      'utf8',
+    );
+    for (const retiredExport of retiredExports) {
+      assert.equal(
+        source.includes(`export function ${retiredExport}`),
+        false,
+        `${relativePath} must not retain ${retiredExport}`,
+      );
+    }
+  }
+});
+
 test('production-scale v3 measures compact persisted bytes with authority replay', (context) => {
   const repository = createRepository();
   try {

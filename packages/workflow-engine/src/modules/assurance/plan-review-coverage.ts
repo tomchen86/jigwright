@@ -2,11 +2,6 @@ import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
-import {
-  assertStoredEvidenceNode,
-  createEvidenceNode,
-  type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { PlanReviewReport } from './plan-review.ts';
 import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
@@ -28,27 +23,9 @@ import {
   type InvestigationPlanReviewCoverageTargetBindingV3,
 } from '../investigation/manifest/investigation-manifest.ts';
 
-const NODE_TYPE = 'plan-review-coverage-requirement';
-const NODE_SCHEMA = 'workflow.plan-review-coverage-requirement.v1';
-const NODE_EVALUATOR = 'workflow.plan-review-coverage-requirement.v1';
-const OUTPUT_SCHEMA = 'workflow.plan-review-coverage-requirement-output.v1';
-const GLOBAL_NODE_SCHEMA = 'workflow.plan-review-coverage-requirement.v2';
-const GLOBAL_NODE_EVALUATOR = 'workflow.plan-review-coverage-requirement.v2';
-const GLOBAL_OUTPUT_SCHEMA =
-  'workflow.plan-review-coverage-requirement-output.v2';
 const HEX64 = /^[0-9a-f]{64}$/;
 const PREFIXED_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const GIT_OBJECT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-
-export const PLAN_REVIEW_COVERAGE_POLICY_DIGEST = sha256(
-  canonicalJson({
-    schemaVersion: 1,
-    kind: 'plan-review-coverage-policy',
-    activation: 'semantic-ledger-carry',
-    sampling: 'review-coverage.v1',
-    evidence: 'exact-repository-location',
-  }),
-);
 
 export const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST = sha256(
   canonicalJson({
@@ -67,45 +44,6 @@ export const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST = sha256(
     ],
   }),
 );
-
-export type PlannedMutationCoverageInput = Readonly<{
-  path: string;
-  targetDigest: string;
-}>;
-
-export type CarriedLedgerCoverageInput = Readonly<{
-  path: string;
-  targetDigest: string;
-  subjectId: string;
-  ledgerEntryId: string;
-}>;
-
-export type PlanReviewCoverageTargetBinding = Readonly<{
-  targetId: string;
-  source: 'planned-mutation' | 'carried-ledger-subject';
-  path: string;
-  targetDigest: string;
-  evidenceKind: 'repository-location';
-  stratum: 'planned-mutation' | 'production-consumer';
-  reusedFromLedger: boolean;
-  subjectId: string | null;
-  ledgerEntryId: string | null;
-}>;
-
-export type LegacyPlanReviewCoverageRequirement = Readonly<{
-  schemaVersion: 1;
-  kind: 'plan-review-coverage-requirement';
-  changeId: string;
-  baselineCommit: string;
-  baselineTree: string;
-  coverageTier: CoverageTier;
-  sealedSamplingSeed: string;
-  coveragePolicyDigest: string;
-  manifest: CoverageManifest;
-  requiredTargetIds: readonly string[];
-  targetBindings: readonly PlanReviewCoverageTargetBinding[];
-  semanticReuse: ReuseCoverageRecord;
-}>;
 
 export type GlobalPlanReviewCoverageTargetInput = Readonly<{
   source:
@@ -153,13 +91,8 @@ export type GlobalPlanReviewCoverageRequirement = Readonly<{
   }>;
 }>;
 
-export type PlanReviewCoverageRequirement =
-  LegacyPlanReviewCoverageRequirement | GlobalPlanReviewCoverageRequirement;
-
 /**
- * Build the current global v3 requirement as a strict domain payload. Ordinary
- * Manifest authoring uses this directly; the EvidenceNode wrapper remains for
- * historical v2 readers and callers only.
+ * Build the current global v3 requirement as a strict domain payload.
  */
 export function buildGlobalPlanReviewCoverageRequirement(input: {
   investigationId: string;
@@ -210,411 +143,8 @@ export function buildGlobalPlanReviewCoverageRequirement(input: {
 }
 
 /**
- * Seal the review cost created by semantic reuse. This v1 activation is
- * deliberately narrow: it exists only when the investigation actually
- * carries at least one ledger subject, and adds every explicit planned
- * mutation alongside those carried subjects. Historical PlanReview v2
- * artifacts with no such carry remain readable.
- */
-export function createPlanReviewCoverageRequirementNode(input: {
-  changeId: string;
-  baseline: { head: string; tree: string };
-  coverageTier: CoverageTier;
-  sealedSamplingSeed: string;
-  assessmentNode: EvidenceNode;
-  plannedMutations: readonly PlannedMutationCoverageInput[];
-  carriedSubjects: readonly CarriedLedgerCoverageInput[];
-  semanticReuse: ReuseCoverageRecord;
-}): EvidenceNode {
-  assertIdentityInputs(input);
-  const planned = input.plannedMutations.map((entry) =>
-    normalizeTargetBinding({
-      source: 'planned-mutation',
-      path: entry.path,
-      targetDigest: entry.targetDigest,
-      subjectId: null,
-      ledgerEntryId: null,
-    }),
-  );
-  const carried = input.carriedSubjects.map((entry) =>
-    normalizeTargetBinding({
-      source: 'carried-ledger-subject',
-      path: entry.path,
-      targetDigest: entry.targetDigest,
-      subjectId: entry.subjectId,
-      ledgerEntryId: entry.ledgerEntryId,
-    }),
-  );
-  const targetBindings = canonicalBindings([...planned, ...carried]);
-  assertReuseMatchesBindings(input.semanticReuse, targetBindings);
-  const manifest = buildCoverageManifest(
-    input.coverageTier,
-    targetBindings.map(
-      ({ targetId, stratum, reusedFromLedger }): ReviewTarget => ({
-        targetId,
-        stratum,
-        reusedFromLedger,
-      }),
-    ),
-  );
-  const requiredTargetIds = requiredReviewSet(
-    manifest,
-    input.sealedSamplingSeed,
-    PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-  );
-  const output: LegacyPlanReviewCoverageRequirement = Object.freeze({
-    schemaVersion: 1,
-    kind: 'plan-review-coverage-requirement',
-    changeId: input.changeId,
-    baselineCommit: input.baseline.head,
-    baselineTree: input.baseline.tree,
-    coverageTier: input.coverageTier,
-    sealedSamplingSeed: input.sealedSamplingSeed,
-    coveragePolicyDigest: PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-    manifest,
-    requiredTargetIds,
-    targetBindings: Object.freeze(targetBindings),
-    semanticReuse: input.semanticReuse,
-  });
-  const canonicalPlannedMutations = targetBindings
-    .filter(({ source }) => source === 'planned-mutation')
-    .map(({ path: targetPath, targetDigest }) => ({
-      path: targetPath,
-      targetDigest,
-    }));
-  return createEvidenceNode({
-    type: NODE_TYPE,
-    nodeSchema: NODE_SCHEMA,
-    evaluator: NODE_EVALUATOR,
-    policyDigest: PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-    exactInputDigests: {
-      baseline: sha256(canonicalJson(input.baseline)),
-      plannedMutations: sha256(canonicalJson(canonicalPlannedMutations)),
-      sealedSamplingSeed: sha256(input.sealedSamplingSeed),
-      semanticReuse: sha256(canonicalJson(input.semanticReuse)),
-    },
-    semanticParentResultDigests: {
-      assessment: input.assessmentNode.resultDigest,
-    },
-    provenanceParentNodeIds: { assessment: input.assessmentNode.nodeId },
-    outputSchema: OUTPUT_SCHEMA,
-    output,
-    runtimeMetadata: {},
-  });
-}
-
-/**
- * Seal the complete R6 review population for a newly-created investigation.
- * Semantic reuse may change the depth owed by the author, but never whether a
- * target is visible to review. The engine therefore records every target and
- * every cost/risk/freshness field before the provider receives its snapshot.
- */
-export function createGlobalPlanReviewCoverageRequirementNode(input: {
-  investigationId: string;
-  changeId: string;
-  baseline: { head: string; tree: string };
-  coverageTier: CoverageTier;
-  sealedSamplingSeed: string;
-  assessmentNode: EvidenceNode;
-  targets: readonly GlobalPlanReviewCoverageTargetInput[];
-  semanticReuse: ReuseCoverageRecord;
-}): EvidenceNode {
-  if (
-    input.assessmentNode.type !== 'assurance-assessment' ||
-    !isRecord(input.assessmentNode.output) ||
-    input.assessmentNode.output.coverageTier !== input.coverageTier
-  ) {
-    throw coverageInvalid();
-  }
-  const output = buildGlobalPlanReviewCoverageRequirement(input);
-  const targetBindings = output.targetBindings;
-  return createEvidenceNode({
-    type: NODE_TYPE,
-    nodeSchema: GLOBAL_NODE_SCHEMA,
-    evaluator: GLOBAL_NODE_EVALUATOR,
-    policyDigest: GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-    exactInputDigests: {
-      baseline: sha256(canonicalJson(input.baseline)),
-      coveragePopulation: sha256(canonicalJson(targetBindings)),
-      investigation: sha256(input.investigationId),
-      sealedSamplingSeed: sha256(input.sealedSamplingSeed),
-      semanticReuse: sha256(canonicalJson(input.semanticReuse)),
-    },
-    semanticParentResultDigests: {
-      assessment: input.assessmentNode.resultDigest,
-    },
-    provenanceParentNodeIds: { assessment: input.assessmentNode.nodeId },
-    outputSchema: GLOBAL_OUTPUT_SCHEMA,
-    output,
-    runtimeMetadata: {},
-  });
-}
-
-/** Revalidate the immutable node and all derived target/sample identities. */
-export function readPlanReviewCoverageRequirementNode(
-  candidate: EvidenceNode,
-): PlanReviewCoverageRequirement {
-  const node = assertStoredEvidenceNode(candidate, coverageInvalid);
-  if (node.nodeSchema === GLOBAL_NODE_SCHEMA) {
-    return readGlobalPlanReviewCoverageRequirementNode(node);
-  }
-  if (
-    node.type !== NODE_TYPE ||
-    node.nodeSchema !== NODE_SCHEMA ||
-    node.evaluator !== NODE_EVALUATOR ||
-    node.policyDigest !== PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
-    node.outputSchema !== OUTPUT_SCHEMA ||
-    !hasExactKeys(node.exactInputDigests, [
-      'baseline',
-      'plannedMutations',
-      'sealedSamplingSeed',
-      'semanticReuse',
-    ]) ||
-    !hasExactKeys(node.semanticParentResultDigests, ['assessment']) ||
-    !hasExactKeys(node.provenanceParentNodeIds, ['assessment']) ||
-    Object.keys(node.runtimeMetadata).length !== 0
-  ) {
-    throw coverageInvalid();
-  }
-  const value = node.output;
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'changeId',
-      'baselineCommit',
-      'baselineTree',
-      'coverageTier',
-      'sealedSamplingSeed',
-      'coveragePolicyDigest',
-      'manifest',
-      'requiredTargetIds',
-      'targetBindings',
-      'semanticReuse',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'plan-review-coverage-requirement' ||
-    typeof value.changeId !== 'string' ||
-    value.changeId.length === 0 ||
-    typeof value.baselineCommit !== 'string' ||
-    !GIT_OBJECT.test(value.baselineCommit) ||
-    typeof value.baselineTree !== 'string' ||
-    !GIT_OBJECT.test(value.baselineTree) ||
-    !isCoverageTier(value.coverageTier) ||
-    typeof value.sealedSamplingSeed !== 'string' ||
-    !HEX64.test(value.sealedSamplingSeed) ||
-    value.coveragePolicyDigest !== PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
-    !Array.isArray(value.targetBindings) ||
-    !Array.isArray(value.requiredTargetIds)
-  ) {
-    throw coverageInvalid();
-  }
-  const targetBindings = canonicalBindings(
-    value.targetBindings.map(assertTargetBinding),
-  );
-  if (canonicalJson(targetBindings) !== canonicalJson(value.targetBindings)) {
-    throw coverageInvalid();
-  }
-  const semanticReuse = assertReuseCoverage(value.semanticReuse);
-  assertReuseMatchesBindings(semanticReuse, targetBindings);
-  const manifest = buildCoverageManifest(
-    value.coverageTier,
-    targetBindings.map(({ targetId, stratum, reusedFromLedger }) => ({
-      targetId,
-      stratum,
-      reusedFromLedger,
-    })),
-  );
-  const requiredTargetIds = requiredReviewSet(
-    manifest,
-    value.sealedSamplingSeed,
-    PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-  );
-  if (
-    canonicalJson(manifest) !== canonicalJson(value.manifest) ||
-    canonicalJson(requiredTargetIds) !==
-      canonicalJson(value.requiredTargetIds) ||
-    node.exactInputDigests.baseline !==
-      sha256(
-        canonicalJson({ head: value.baselineCommit, tree: value.baselineTree }),
-      ) ||
-    node.exactInputDigests.plannedMutations !==
-      sha256(
-        canonicalJson(
-          targetBindings
-            .filter(({ source }) => source === 'planned-mutation')
-            .map(({ path: targetPath, targetDigest }) => ({
-              path: targetPath,
-              targetDigest,
-            })),
-        ),
-      ) ||
-    node.exactInputDigests.sealedSamplingSeed !==
-      sha256(value.sealedSamplingSeed) ||
-    node.exactInputDigests.semanticReuse !==
-      sha256(canonicalJson(semanticReuse))
-  ) {
-    throw coverageInvalid();
-  }
-  return deepFreeze({
-    schemaVersion: 1,
-    kind: 'plan-review-coverage-requirement',
-    changeId: value.changeId,
-    baselineCommit: value.baselineCommit,
-    baselineTree: value.baselineTree,
-    coverageTier: value.coverageTier,
-    sealedSamplingSeed: value.sealedSamplingSeed,
-    coveragePolicyDigest: PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-    manifest,
-    requiredTargetIds,
-    targetBindings,
-    semanticReuse,
-  });
-}
-
-function readGlobalPlanReviewCoverageRequirementNode(
-  node: EvidenceNode,
-): GlobalPlanReviewCoverageRequirement {
-  if (
-    node.type !== NODE_TYPE ||
-    node.nodeSchema !== GLOBAL_NODE_SCHEMA ||
-    node.evaluator !== GLOBAL_NODE_EVALUATOR ||
-    node.policyDigest !== GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
-    node.outputSchema !== GLOBAL_OUTPUT_SCHEMA ||
-    !hasExactKeys(node.exactInputDigests, [
-      'baseline',
-      'coveragePopulation',
-      'investigation',
-      'sealedSamplingSeed',
-      'semanticReuse',
-    ]) ||
-    !hasExactKeys(node.semanticParentResultDigests, ['assessment']) ||
-    !hasExactKeys(node.provenanceParentNodeIds, ['assessment']) ||
-    Object.keys(node.runtimeMetadata).length !== 0
-  ) {
-    throw coverageInvalid();
-  }
-  const value = node.output;
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'activation',
-      'investigationId',
-      'changeId',
-      'baselineCommit',
-      'baselineTree',
-      'coverageTier',
-      'sealedSamplingSeed',
-      'coveragePolicyDigest',
-      'manifest',
-      'requiredTargetIds',
-      'targetBindings',
-      'semanticReuse',
-      'costProfile',
-    ]) ||
-    value.schemaVersion !== 2 ||
-    value.kind !== 'plan-review-coverage-requirement' ||
-    value.activation !== 'global' ||
-    typeof value.investigationId !== 'string' ||
-    value.investigationId.length === 0 ||
-    typeof value.changeId !== 'string' ||
-    value.changeId.length === 0 ||
-    typeof value.baselineCommit !== 'string' ||
-    !GIT_OBJECT.test(value.baselineCommit) ||
-    typeof value.baselineTree !== 'string' ||
-    !GIT_OBJECT.test(value.baselineTree) ||
-    !isCoverageTier(value.coverageTier) ||
-    typeof value.sealedSamplingSeed !== 'string' ||
-    !HEX64.test(value.sealedSamplingSeed) ||
-    value.coveragePolicyDigest !== GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
-    !Array.isArray(value.targetBindings) ||
-    !Array.isArray(value.requiredTargetIds)
-  ) {
-    throw coverageInvalid();
-  }
-  const targetBindings = canonicalGlobalBindings(
-    value.targetBindings.map(assertGlobalTargetBinding),
-  );
-  if (canonicalJson(targetBindings) !== canonicalJson(value.targetBindings)) {
-    throw coverageInvalid();
-  }
-  const semanticReuse = assertReuseCoverage(value.semanticReuse, true);
-  assertGlobalReuseMatchesBindings(semanticReuse, targetBindings);
-  const manifest = buildCoverageManifest(
-    value.coverageTier,
-    targetBindings.map(({ targetId, stratum, reusedFromLedger }) => ({
-      targetId,
-      stratum,
-      reusedFromLedger,
-    })),
-  );
-  const requiredTargetIds = requiredReviewSet(
-    manifest,
-    value.sealedSamplingSeed,
-    GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-  );
-  const costProfile = globalCostProfile(targetBindings);
-  if (
-    canonicalJson(manifest) !== canonicalJson(value.manifest) ||
-    canonicalJson(requiredTargetIds) !==
-      canonicalJson(value.requiredTargetIds) ||
-    canonicalJson(costProfile) !== canonicalJson(value.costProfile) ||
-    node.exactInputDigests.baseline !==
-      sha256(
-        canonicalJson({ head: value.baselineCommit, tree: value.baselineTree }),
-      ) ||
-    node.exactInputDigests.coveragePopulation !==
-      sha256(canonicalJson(targetBindings)) ||
-    node.exactInputDigests.investigation !== sha256(value.investigationId) ||
-    node.exactInputDigests.sealedSamplingSeed !==
-      sha256(value.sealedSamplingSeed) ||
-    node.exactInputDigests.semanticReuse !==
-      sha256(canonicalJson(semanticReuse))
-  ) {
-    throw coverageInvalid();
-  }
-  return deepFreeze({
-    schemaVersion: 2,
-    kind: 'plan-review-coverage-requirement',
-    activation: 'global',
-    investigationId: value.investigationId,
-    changeId: value.changeId,
-    baselineCommit: value.baselineCommit,
-    baselineTree: value.baselineTree,
-    coverageTier: value.coverageTier,
-    sealedSamplingSeed: value.sealedSamplingSeed,
-    coveragePolicyDigest: GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
-    manifest,
-    requiredTargetIds,
-    targetBindings,
-    semanticReuse,
-    costProfile,
-  });
-}
-
-/**
- * Enforce the engine-owned required set only after ordinary PlanReview
- * validation has proved every citation against the immutable snapshot/tree.
- */
-export function assertPlanReviewCoverageRequirementSatisfied(input: {
-  repositoryRoot: string;
-  requirementNode: EvidenceNode;
-  review: PlanReviewReport;
-  expectedChangeId: string;
-  expectedBaseline: { head: string; tree: string };
-}): void {
-  const requirement = readPlanReviewCoverageRequirementNode(
-    input.requirementNode,
-  );
-  assertCoverageRequirementSatisfied({ ...input, requirement });
-}
-
-/**
- * Enforce the same exact required-target and delta checks from the current v3
- * Manifest requirement, without manufacturing a historical EvidenceNode.
+ * Enforce the current-v3 required-target and delta checks after ordinary
+ * PlanReview validation proves every citation against the immutable snapshot.
  */
 export function assertInvestigationPlanReviewCoverageRequirementSatisfied(input: {
   repositoryRoot: string;
@@ -642,8 +172,7 @@ export function assertInvestigationPlanReviewCoverageRequirementSatisfied(input:
 
 function assertCoverageRequirementSatisfied(input: {
   repositoryRoot: string;
-  requirement:
-    PlanReviewCoverageRequirement | InvestigationPlanReviewCoveragePayloadV3;
+  requirement: InvestigationPlanReviewCoveragePayloadV3;
   review: PlanReviewReport;
   expectedChangeId: string;
   expectedBaseline: { head: string; tree: string };
@@ -699,12 +228,8 @@ function assertCoverageRequirementSatisfied(input: {
 
 function currentTargetDigest(
   repositoryRoot: string,
-  requirement:
-    PlanReviewCoverageRequirement | InvestigationPlanReviewCoveragePayloadV3,
-  binding:
-    | PlanReviewCoverageTargetBinding
-    | GlobalPlanReviewCoverageTargetBinding
-    | InvestigationPlanReviewCoverageTargetBindingV3,
+  requirement: InvestigationPlanReviewCoveragePayloadV3,
+  binding: InvestigationPlanReviewCoverageTargetBindingV3,
 ): string {
   if (!binding.reusedFromLedger) {
     const content = readFileAtCommit(
@@ -750,116 +275,6 @@ function reviewEvidence(review: PlanReviewReport): Array<{
       ? [{ kind: entry.kind, path: entry.path }]
       : [],
   );
-}
-
-function normalizeTargetBinding(input: {
-  source: PlanReviewCoverageTargetBinding['source'];
-  path: string;
-  targetDigest: string;
-  subjectId: string | null;
-  ledgerEntryId: string | null;
-}): PlanReviewCoverageTargetBinding {
-  let targetPath: string;
-  try {
-    targetPath = normalizeExactRepositoryPath(input.path);
-  } catch {
-    throw coverageInvalid();
-  }
-  if (
-    targetPath !== input.path ||
-    !PREFIXED_DIGEST.test(input.targetDigest) ||
-    (input.source === 'planned-mutation'
-      ? input.subjectId !== null || input.ledgerEntryId !== null
-      : typeof input.subjectId !== 'string' ||
-        input.subjectId.length === 0 ||
-        typeof input.ledgerEntryId !== 'string' ||
-        !PREFIXED_DIGEST.test(input.ledgerEntryId))
-  ) {
-    throw coverageInvalid();
-  }
-  const targetId = coverageTargetId(input);
-  return Object.freeze({
-    targetId,
-    source: input.source,
-    path: targetPath,
-    targetDigest: input.targetDigest,
-    evidenceKind: 'repository-location',
-    stratum:
-      input.source === 'planned-mutation'
-        ? 'planned-mutation'
-        : 'production-consumer',
-    reusedFromLedger: input.source === 'carried-ledger-subject',
-    subjectId: input.subjectId,
-    ledgerEntryId: input.ledgerEntryId,
-  });
-}
-
-function assertTargetBinding(value: unknown): PlanReviewCoverageTargetBinding {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'targetId',
-      'source',
-      'path',
-      'targetDigest',
-      'evidenceKind',
-      'stratum',
-      'reusedFromLedger',
-      'subjectId',
-      'ledgerEntryId',
-    ]) ||
-    typeof value.targetId !== 'string' ||
-    (value.source !== 'planned-mutation' &&
-      value.source !== 'carried-ledger-subject') ||
-    typeof value.path !== 'string' ||
-    typeof value.targetDigest !== 'string' ||
-    value.evidenceKind !== 'repository-location' ||
-    (value.subjectId !== null && typeof value.subjectId !== 'string') ||
-    (value.ledgerEntryId !== null && typeof value.ledgerEntryId !== 'string')
-  ) {
-    throw coverageInvalid();
-  }
-  const rebuilt = normalizeTargetBinding({
-    source: value.source,
-    path: value.path,
-    targetDigest: value.targetDigest,
-    subjectId: value.subjectId,
-    ledgerEntryId: value.ledgerEntryId,
-  });
-  if (canonicalJson(rebuilt) !== canonicalJson(value)) {
-    throw coverageInvalid();
-  }
-  return rebuilt;
-}
-
-function canonicalBindings(
-  bindings: readonly PlanReviewCoverageTargetBinding[],
-): PlanReviewCoverageTargetBinding[] {
-  const sorted = [...bindings].sort((left, right) =>
-    left.targetId.localeCompare(right.targetId),
-  );
-  if (
-    sorted.length === 0 ||
-    new Set(sorted.map(({ targetId }) => targetId)).size !== sorted.length
-  ) {
-    throw coverageInvalid();
-  }
-  return sorted;
-}
-
-function coverageTargetId(input: {
-  source: PlanReviewCoverageTargetBinding['source'];
-  path: string;
-  targetDigest: string;
-  subjectId: string | null;
-  ledgerEntryId: string | null;
-}): string {
-  return `review-target:${sha256(
-    canonicalJson({
-      schema: 'plan-review-target-binding.v1',
-      ...input,
-    }),
-  )}`;
 }
 
 function normalizeGlobalTargetBinding(
@@ -933,56 +348,6 @@ function normalizeGlobalTargetBinding(
     ...normalized,
     evidenceKind: 'planning-or-repository-location',
   });
-}
-
-function assertGlobalTargetBinding(
-  value: unknown,
-): GlobalPlanReviewCoverageTargetBinding {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'targetId',
-      'source',
-      'path',
-      'targetDigest',
-      'evidenceKind',
-      'stratum',
-      'reusedFromLedger',
-      'subjectId',
-      'ledgerEntryId',
-      'invariants',
-      'riskFactors',
-      'freshness',
-      'evidenceMode',
-      'degradedExtraction',
-      'cost',
-    ]) ||
-    typeof value.targetId !== 'string' ||
-    value.evidenceKind !== 'planning-or-repository-location' ||
-    !Array.isArray(value.invariants) ||
-    !Array.isArray(value.riskFactors)
-  ) {
-    throw coverageInvalid();
-  }
-  const rebuilt = normalizeGlobalTargetBinding({
-    source: value.source as GlobalPlanReviewCoverageTargetInput['source'],
-    path: value.path as string,
-    targetDigest: value.targetDigest as string,
-    stratum: value.stratum as ReviewTarget['stratum'],
-    reusedFromLedger: value.reusedFromLedger as boolean,
-    subjectId: value.subjectId as string | null,
-    ledgerEntryId: value.ledgerEntryId as string | null,
-    invariants: value.invariants as string[],
-    riskFactors: value.riskFactors as string[],
-    freshness: value.freshness as string,
-    evidenceMode: value.evidenceMode as 'bounded-context' | 'full-blob',
-    degradedExtraction: value.degradedExtraction as boolean,
-    cost: value.cost as { rawBytes: number; reviewUnits: number },
-  });
-  if (canonicalJson(rebuilt) !== canonicalJson(value)) {
-    throw coverageInvalid();
-  }
-  return rebuilt;
 }
 
 function canonicalGlobalBindings(
@@ -1086,55 +451,6 @@ function isReviewStratum(value: unknown): value is ReviewTarget['stratum'] {
     'cli-or-integration',
     'cross-module',
   ].includes(value as ReviewTarget['stratum']);
-}
-
-function assertIdentityInputs(input: {
-  changeId: string;
-  baseline: { head: string; tree: string };
-  coverageTier: CoverageTier;
-  sealedSamplingSeed: string;
-  assessmentNode: EvidenceNode;
-  carriedSubjects: readonly CarriedLedgerCoverageInput[];
-  semanticReuse: ReuseCoverageRecord;
-}): void {
-  if (
-    input.changeId.length === 0 ||
-    !GIT_OBJECT.test(input.baseline.head) ||
-    !GIT_OBJECT.test(input.baseline.tree) ||
-    !isCoverageTier(input.coverageTier) ||
-    !HEX64.test(input.sealedSamplingSeed) ||
-    input.carriedSubjects.length === 0 ||
-    input.assessmentNode.type !== 'assurance-assessment' ||
-    !isRecord(input.assessmentNode.output) ||
-    input.assessmentNode.output.coverageTier !== input.coverageTier
-  ) {
-    throw coverageInvalid();
-  }
-  assertReuseCoverage(input.semanticReuse);
-}
-
-function assertReuseMatchesBindings(
-  value: ReuseCoverageRecord,
-  bindings: readonly PlanReviewCoverageTargetBinding[],
-): void {
-  const carried = bindings.filter(
-    ({ source }) => source === 'carried-ledger-subject',
-  );
-  if (
-    value.carriedCount === 0 ||
-    value.carriedCount !== carried.length ||
-    value.carried.length !== carried.length ||
-    value.carried.some(
-      ({ subjectId, ledgerEntryId }) =>
-        !carried.some(
-          (binding) =>
-            binding.subjectId === subjectId &&
-            binding.ledgerEntryId === ledgerEntryId,
-        ),
-    )
-  ) {
-    throw coverageInvalid();
-  }
 }
 
 function assertReuseCoverage(

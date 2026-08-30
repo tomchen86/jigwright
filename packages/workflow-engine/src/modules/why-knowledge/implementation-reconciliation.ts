@@ -4,14 +4,8 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type { CurrentInvestigationManifest } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  assertStoredEvidenceNode,
-  createEvidenceNode,
-  type EvidenceNode,
-} from '../../adapters/planning/investigation/evidence-node.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
-import { readInvestigationWhyNode } from '../../adapters/planning/investigation/investigation-why.ts';
 import {
   assertInvestigationRequirementV3,
   type InvestigationWhyOverlayV3,
@@ -65,13 +59,8 @@ import {
   type SessionInspection,
 } from '../../application/finalize/verification.ts';
 
-const REQUIREMENT_TYPE = 'implementation-reconciliation-requirement';
-const REQUIREMENT_NODE_SCHEMA =
-  'workflow.implementation-reconciliation-requirement.v1';
-const REQUIREMENT_EVALUATOR =
-  'workflow.implementation-reconciliation-requirement.v1';
-const REQUIREMENT_OUTPUT_SCHEMA =
-  'workflow.implementation-reconciliation-requirement-output.v1';
+const CURRENT_REQUIREMENT_KIND =
+  'implementation-reconciliation-requirement' as const;
 const RECONCILIATION_REPORT_KIND = 'implementation-reconciliation';
 const REPORT_SCHEMA = 'workflow.implementation-reconciliation-report.v2';
 const CURRENT_REQUIREMENT_ID = 'implementation-reconciliation';
@@ -138,9 +127,7 @@ export type CurrentImplementationReconciliationRequirement = Readonly<{
 
 /**
  * Build the current v3 planning requirement directly from Manifest-domain WHY
- * overlays. This is the ordinary authoring path; it deliberately has no
- * EvidenceNode input or output. The node wrapper below remains only for
- * historical v2 evidence replay.
+ * overlays.
  */
 export function buildImplementationReconciliationRequirement(input: {
   changeId: string;
@@ -164,76 +151,6 @@ export function buildImplementationReconciliationRequirement(input: {
     whyByPath.set(plannedPath, overlay.protectedInvariant);
   }
   return buildImplementationReconciliationPayload(input, whyByPath);
-}
-
-/**
- * Seal the planning-time side of the WHY session. Explicit target paths are
- * the mutation claims; WHY evidence supplies the invariant promised for a
- * matching existing file. A path that will be created is still a valid claim
- * and deliberately starts with no invented invariant.
- */
-export function createImplementationReconciliationRequirementNode(input: {
-  changeId: string;
-  baseline: { head: string; tree: string };
-  intent: NormalizedChangeIntent;
-  whyNodes: readonly EvidenceNode[];
-}): EvidenceNode {
-  const whyByPath = new Map<
-    string,
-    { node: EvidenceNode; invariant: string }
-  >();
-  for (const node of input.whyNodes) {
-    const why = readInvestigationWhyNode(node);
-    if (why.path.utf8 === null) {
-      throw reconciliationInvalid(
-        'Implementation reconciliation requires UTF-8 planning paths.',
-      );
-    }
-    const plannedPath = normalizeExactRepositoryPath(why.path.utf8);
-    if (whyByPath.has(plannedPath)) {
-      throw reconciliationInvalid(
-        `Implementation reconciliation received duplicate WHY evidence for ${plannedPath}.`,
-      );
-    }
-    whyByPath.set(plannedPath, {
-      node,
-      invariant: why.protectedInvariant,
-    });
-  }
-  const output = buildImplementationReconciliationPayload(
-    input,
-    new Map(
-      [...whyByPath].map(([plannedPath, why]) => [plannedPath, why.invariant]),
-    ),
-  );
-  const baseline = output.baseline;
-  const plannedMutations = output.plannedMutations;
-  const parents = plannedMutations
-    .map(({ path: plannedPath }) => whyByPath.get(plannedPath)?.node)
-    .filter((node): node is EvidenceNode => node !== undefined)
-    .sort((left, right) => left.nodeId.localeCompare(right.nodeId));
-  const semanticParentResultDigests: Record<string, string> = {};
-  const provenanceParentNodeIds: Record<string, string> = {};
-  parents.forEach((node, index) => {
-    semanticParentResultDigests[`why-${index}`] = node.resultDigest;
-    provenanceParentNodeIds[`why-${index}`] = node.nodeId;
-  });
-  return createEvidenceNode({
-    type: REQUIREMENT_TYPE,
-    nodeSchema: REQUIREMENT_NODE_SCHEMA,
-    evaluator: REQUIREMENT_EVALUATOR,
-    policyDigest: IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
-    exactInputDigests: {
-      baseline: sha256(canonicalJson(baseline)),
-      intent: sha256(canonicalJson(input.intent)),
-      plannedMutations: sha256(canonicalJson(plannedMutations)),
-    },
-    semanticParentResultDigests,
-    provenanceParentNodeIds,
-    outputSchema: REQUIREMENT_OUTPUT_SCHEMA,
-    output,
-    runtimeMetadata: {},
-  });
 }
 
 function buildImplementationReconciliationPayload(
@@ -278,75 +195,9 @@ function buildImplementationReconciliationPayload(
   });
 }
 
-export function readImplementationReconciliationRequirementNode(
-  candidate: EvidenceNode,
-): ImplementationReconciliationRequirement {
-  const node = assertStoredEvidenceNode(candidate, () =>
-    reconciliationInvalid('Implementation reconciliation evidence is invalid.'),
-  );
-  if (
-    node.type !== REQUIREMENT_TYPE ||
-    node.nodeSchema !== REQUIREMENT_NODE_SCHEMA ||
-    node.evaluator !== REQUIREMENT_EVALUATOR ||
-    node.policyDigest !== IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST ||
-    node.outputSchema !== REQUIREMENT_OUTPUT_SCHEMA ||
-    !hasExactKeys(node.exactInputDigests, [
-      'baseline',
-      'intent',
-      'plannedMutations',
-    ]) ||
-    Object.keys(node.runtimeMetadata).length !== 0
-  ) {
-    throw reconciliationInvalid(
-      'Implementation reconciliation evidence identity is invalid.',
-    );
-  }
-  const value = node.output;
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'changeId',
-      'baseline',
-      'policyDigest',
-      'plannedMutations',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'implementation-reconciliation-requirement' ||
-    value.policyDigest !== IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST ||
-    typeof value.changeId !== 'string' ||
-    !Array.isArray(value.plannedMutations)
-  ) {
-    throw reconciliationInvalid(
-      'Implementation reconciliation requirement output is invalid.',
-    );
-  }
-  const baseline = assertBaseline(value.baseline);
-  const plannedMutations = canonicalPlannedMutations(value.plannedMutations);
-  if (
-    node.exactInputDigests.baseline !== sha256(canonicalJson(baseline)) ||
-    node.exactInputDigests.plannedMutations !==
-      sha256(canonicalJson(plannedMutations))
-  ) {
-    throw reconciliationInvalid(
-      'Implementation reconciliation requirement inputs are inconsistent.',
-    );
-  }
-  return deepFreeze({
-    schemaVersion: 1,
-    kind: 'implementation-reconciliation-requirement',
-    changeId: value.changeId,
-    baseline,
-    policyDigest: IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
-    plannedMutations,
-  });
-}
-
 /**
  * Resolve the single active v3 structured requirement from an already
- * authority-validated current Manifest. Historical EvidenceNode readers above
- * are compatibility helpers only and never participate in this boundary.
+ * authority-validated current Manifest.
  */
 export function readCurrentImplementationReconciliationRequirement(
   investigation: CurrentInvestigationManifest,
@@ -430,7 +281,7 @@ function readCurrentRequirementPayload(
       'plannedMutations',
     ]) ||
     value.schemaVersion !== 1 ||
-    value.kind !== REQUIREMENT_TYPE ||
+    value.kind !== CURRENT_REQUIREMENT_KIND ||
     typeof value.changeId !== 'string' ||
     value.policyDigest !== IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST ||
     !Array.isArray(value.plannedMutations)
@@ -442,7 +293,7 @@ function readCurrentRequirementPayload(
   const plannedMutations = canonicalPlannedMutations(value.plannedMutations);
   return deepFreeze({
     schemaVersion: 1,
-    kind: REQUIREMENT_TYPE,
+    kind: CURRENT_REQUIREMENT_KIND,
     changeId: assertBoundedText(value.changeId, 'change ID', 512),
     baseline: assertBaseline(value.baseline),
     policyDigest: IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
