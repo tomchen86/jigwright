@@ -6,7 +6,11 @@ import {
   type CheckDefinition,
   type ParsedTask,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
 import {
   assertChangeId,
   assertTaskId,
@@ -45,22 +49,23 @@ export function loadHistoricalTaskAuthority(
     planReviewPath,
   );
   if (governingPlanCommit === null) {
-    throw ciContractError(
-      'CI_TASK_CURRENT_PLAN_REQUIRED',
-      'Task authority requires an immutable current-v3 governing plan commit.',
-    );
+    throw currentPlanRequiredError();
   }
-  const planning = validateCiPlanningCommit(
-    repositoryRoot,
-    governingPlanCommit,
-    changeId,
-    changeRoot,
-  );
-  if (planning.planningAssurance === null) {
-    throw ciContractError(
-      'CI_TASK_CURRENT_PLAN_REQUIRED',
-      'Task authority requires an immutable current-v3 governing plan commit.',
+  try {
+    validateCiPlanningCommit(
+      repositoryRoot,
+      governingPlanCommit,
+      changeId,
+      changeRoot,
     );
+  } catch (error) {
+    if (
+      error instanceof WorkflowError &&
+      error.code === 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'
+    ) {
+      throw currentPlanRequiredError();
+    }
+    throw error;
   }
   const tasksPath = `${changeRoot}/${changeId}/tasks.md`;
   const tasksContent = requiredFile(repositoryRoot, commit, tasksPath);
@@ -267,4 +272,11 @@ function isStringArray(value: unknown): value is string[] {
 
 function ciContractError(code: string, message: string) {
   return workflowError(code, message, ExitCode.verification);
+}
+
+function currentPlanRequiredError(): WorkflowError {
+  return ciContractError(
+    'CI_TASK_CURRENT_PLAN_REQUIRED',
+    'Task authority requires an immutable current-v3 governing plan commit.',
+  );
 }

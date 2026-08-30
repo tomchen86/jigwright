@@ -25,6 +25,7 @@ import {
   isWorkflowError,
   runtimeRoot,
   sourceRepositoryRoot,
+  syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
@@ -708,6 +709,22 @@ test('workflow assurance CI is read-only and policy paths have owners', () => {
 
 function createFixtureRepository(): string {
   const repository = createLegacyFixtureRepository();
+  const packageSchemaFixtureCommit = git(repository, [
+    'rev-parse',
+    'HEAD',
+  ]).trim();
+  const changePath = 'openspec/changes/demo-change';
+  const providerPath = 'workflow/change-providers/demo-change.json';
+  git(repository, ['rm', '-r', '--', changePath, providerPath]);
+  git(repository, ['commit', '--amend', '--no-edit']);
+  syncOriginMain(repository);
+  git(repository, [
+    'checkout',
+    packageSchemaFixtureCommit,
+    '--',
+    changePath,
+    providerPath,
+  ]);
   writeReadyV3ExemptChange(repository);
   git(repository, ['add', '.']);
   git(repository, [

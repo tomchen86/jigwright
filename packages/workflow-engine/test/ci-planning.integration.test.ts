@@ -24,6 +24,7 @@ import {
   collectHistoricalCollaborationGrantUses,
   validateCiPlanningCommit,
 } from '../src/entrypoints/ci/ci-planning.ts';
+import { loadHistoricalTaskAuthority } from '../src/entrypoints/ci/ci-historical-contract.ts';
 import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import {
@@ -51,7 +52,7 @@ import {
   sourceRepositoryRoot,
 } from './fixture.ts';
 
-const CHANGE_ID = 'planned-change';
+const CHANGE_ID = 'demo-change';
 
 function overrideCentralConfiguration(
   ranking: readonly string[] = ['claude', 'codex'],
@@ -206,7 +207,7 @@ test('CI collects current v3 Manifest grant identities from semanticDelta', () =
 test('CI rejects retired investigation schemas in immutable planning history', async (t) => {
   for (const schemaVersion of [1, 2] as const) {
     await t.test(`schema version ${schemaVersion}`, () => {
-      const repository = createRepository();
+      const repository = prepareCurrentV3IntroductionRepository();
       try {
         writeRetiredInvestigationArtifact(repository, schemaVersion);
         commitPlan(repository);
@@ -229,7 +230,7 @@ test('CI rejects retired investigation schemas in immutable planning history', a
 });
 
 test('CI collects a collaboration grant claimed by two historical plan transitions', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
     writeGrantClaim(repository, {
       grantId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
@@ -268,7 +269,7 @@ test('CI collects a collaboration grant claimed by two historical plan transitio
 });
 
 test('CI rejects one R-007 signed envelope claimed by two historical plan transitions', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   const grantId = '91919191-9191-4191-8191-919191919191';
   try {
     writeRoleContextSharingClaim(repository, grantId);
@@ -299,7 +300,7 @@ test('CI rejects one R-007 signed envelope claimed by two historical plan transi
 });
 
 test('CI rejects two distinct R-007 grants that claim one exact terminal use', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
     writeRoleContextSharingClaim(
       repository,
@@ -334,7 +335,7 @@ test('CI rejects two distinct R-007 grants that claim one exact terminal use', (
 });
 
 test('CI keeps a side-branch grant claim hidden by a TREESAME merge', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
     writePlanReviewWithoutRole(repository);
     commit(repository, 'Record the common planning evidence');
@@ -385,7 +386,7 @@ test('CI keeps a side-branch grant claim hidden by a TREESAME merge', () => {
 });
 
 test('CI accepts distinct grants across managed planning transitions', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
     writeGrantClaim(repository, {
       grantId: '12121212-1212-4121-8121-121212121212',
@@ -412,55 +413,32 @@ test('CI accepts distinct grants across managed planning transitions', () => {
   }
 });
 
-test('CI treats package-schema and role-free planning history as zero grant claims', async (t) => {
-  await t.test('package-schema plan without evidence artifacts', () => {
-    const repository = createRepository();
-    try {
-      writePlanningTree(repository);
-      commitPlan(repository);
-      assert.deepEqual(
-        collectHistoricalCollaborationGrantUses(
-          repository,
-          git(repository, ['rev-parse', 'HEAD']).trim(),
-          CHANGE_ID,
-        ),
-        [],
-      );
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
-  });
-
-  await t.test('tracked artifact without role results', () => {
-    const repository = createRepository();
-    try {
-      writePlanReviewWithoutRole(repository);
-      commitPlan(repository);
-      assert.deepEqual(
-        collectHistoricalCollaborationGrantUses(
-          repository,
-          git(repository, ['rev-parse', 'HEAD']).trim(),
-          CHANGE_ID,
-        ),
-        [],
-      );
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
-  });
+test('CI treats current role-free planning history as zero grant claims', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
+  try {
+    writePlanReviewWithoutRole(repository);
+    commitPlan(repository);
+    assert.deepEqual(
+      collectHistoricalCollaborationGrantUses(
+        repository,
+        git(repository, ['rev-parse', 'HEAD']).trim(),
+        CHANGE_ID,
+      ),
+      [],
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('CI collects a PlanReview grant from a current v3 plan transition', () => {
-  const repository = createFixtureRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   const reviewUse = {
     grantId: '67676767-6767-4676-8676-676767676767',
     signedEnvelopeDigest: '8'.repeat(64),
     transitionDigest: '9'.repeat(64),
   };
   try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-    writeReadyV3ExemptChange(repository);
-    refreshFixturePlanReview(repository);
     appendSyntheticGrantRoleResult(
       repository,
       'plan-review.json',
@@ -487,7 +465,9 @@ test('CI collects a PlanReview grant from a current v3 plan transition', () => {
 });
 
 test('CI replays a configured current schema from immutable consumer config', () => {
-  const repository = createFixtureRepository();
+  const repository = prepareCurrentV3IntroductionRepository({
+    currentSchemaName: 'orbit-spec-v1',
+  });
   try {
     const consumerPath = path.join(
       repository,
@@ -501,44 +481,6 @@ test('CI replays a configured current schema from immutable consumer config', ()
         currentSchemaName: string;
       };
     };
-    consumer.planning.requiredSchemaNames = ['spec-driven', 'orbit-spec-v1'];
-    consumer.planning.supportedSchemaNames = ['spec-driven', 'orbit-spec-v1'];
-    consumer.planning.managedSchemaNames = ['orbit-spec-v1'];
-    consumer.planning.currentSchemaName = 'orbit-spec-v1';
-    fs.writeFileSync(consumerPath, `${JSON.stringify(consumer, null, 2)}\n`);
-    const openSpecConfigPath = path.join(repository, 'openspec/config.yaml');
-    fs.writeFileSync(
-      openSpecConfigPath,
-      fs
-        .readFileSync(openSpecConfigPath, 'utf8')
-        .replace(/^schema: jigwright$/m, 'schema: orbit-spec-v1'),
-    );
-    fs.cpSync(
-      path.join(repository, 'openspec/schemas/jigwright'),
-      path.join(repository, 'openspec/schemas/orbit-spec-v1'),
-      { recursive: true },
-    );
-    const namedSchemaPath = path.join(
-      repository,
-      'openspec/schemas/orbit-spec-v1/schema.yaml',
-    );
-    fs.writeFileSync(
-      namedSchemaPath,
-      fs
-        .readFileSync(namedSchemaPath, 'utf8')
-        .replace(/^name: jigwright$/m, 'name: orbit-spec-v1'),
-    );
-    git(repository, [
-      'add',
-      'workflow/repository-consumer.json',
-      'openspec/config.yaml',
-      'openspec/schemas/orbit-spec-v1',
-    ]);
-    git(repository, ['commit', '-m', 'Select Orbit current schema']);
-    git(repository, ['checkout', '-b', 'work/demo-change']);
-
-    writeReadyV3ExemptChange(repository, 'demo-change', 'orbit-spec-v1');
-    refreshFixturePlanReview(repository);
     const plan = commitPlanningTransition(repository, 'demo-change');
     const replay = validateCiPlanningCommit(
       repository,
@@ -633,28 +575,85 @@ test('CI committed v3 replay rejects a stale PlanReview without private-ref fall
   }
 });
 
-test('CI accepts an exact planning introduction reconstructed from Git', () => {
-  const repository = createRepository();
+test('CI refuses package-schema planning history before provider or task replay', () => {
+  const repository = createPackageSchemaRepository();
   try {
-    writePlanningTree(repository);
-    writeProviderBinding(repository);
-    const commit = commitPlan(repository);
+    writePackageSchemaPlanningTree(repository, '- [x] 1.1 Already complete');
+    const plan = commitPlan(repository);
 
-    assert.deepEqual(validateCiPlanningCommit(repository, commit, CHANGE_ID), {
-      changeId: CHANGE_ID,
-      kind: 'introduction',
-      beforeTasks: undefined,
-      afterTasks: [{ id: '1.1', completed: false }],
-      changedPaths: [
-        ...planningPaths(CHANGE_ID),
-        `workflow/change-providers/${CHANGE_ID}.json`,
-      ].sort(),
-      // The retained package graph declares no managed investigation-first
-      // evidence, so replay reports no semantic assurance.
-      schemaName: 'spec-driven',
-      planningAssurance: null,
-      collaborationGrantUses: [],
-    });
+    assert.throws(
+      () => validateCiPlanningCommit(repository, plan, CHANGE_ID),
+      (error) => isWorkflowError(error, 'OPENSPEC_MANAGED_SCHEMA_REQUIRED'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('CI rejects a current-schema parent missing a required artifact even when the revision repairs it', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
+  const changeId = CHANGE_ID;
+  try {
+    commitPlanningTransition(repository, changeId);
+
+    fs.rmSync(
+      path.join(repository, 'openspec/changes', changeId, 'execution.json'),
+    );
+    commit(repository, 'Admit incomplete current planning tree');
+
+    writeReadyV3ExemptChange(repository, changeId);
+    refreshFixturePlanReview(repository);
+    const revision = commitPlanningTransition(repository, changeId);
+
+    assert.throws(
+      () => validateCiPlanningCommit(repository, revision.commitHash, changeId),
+      (error) => isWorkflowError(error, 'CI_PLANNING_TREE_INVALID'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('CI accepts an exact planning introduction reconstructed from Git', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
+  try {
+    const plan = commitPlanningTransition(repository, CHANGE_ID);
+    const replay = validateCiPlanningCommit(
+      repository,
+      plan.commitHash,
+      CHANGE_ID,
+    );
+
+    assert.equal(replay.changeId, CHANGE_ID);
+    assert.equal(replay.kind, 'introduction');
+    assert.equal(replay.beforeTasks, undefined);
+    assert.deepEqual(replay.afterTasks, [{ id: '1.1', completed: false }]);
+    assert.deepEqual(replay.changedPaths, plan.changedPaths);
+    assert.equal(replay.schemaName, 'jigwright');
+    assert.equal(
+      replay.planningAssurance?.planningGenerationId,
+      plan.planningAssurance?.planningGenerationId,
+    );
+    assert.deepEqual(replay.collaborationGrantUses, []);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('CI replays task authority from an immutable current-schema planning introduction', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
+  try {
+    const plan = commitPlanningTransition(repository, CHANGE_ID);
+
+    const authority = loadHistoricalTaskAuthority(
+      repository,
+      plan.commitHash,
+      CHANGE_ID,
+      '1.1',
+    );
+
+    assert.equal(authority.taskId, '1.1');
+    assert.deepEqual(authority.requiredChecks, ['fixture']);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -796,38 +795,34 @@ test('CI fails closed when a committed central configuration drifts from the v2 
 });
 
 test('CI replays an explicit planning-provider binding from the planning commit', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
-    writeProviderBinding(repository);
-    const plan = commitPlan(repository);
+    const plan = commitPlanningTransition(repository, CHANGE_ID);
 
-    const result = validateCiPlanningCommit(repository, plan, CHANGE_ID);
-    assert.equal(result.kind, 'introduction');
-    assert.deepEqual(
-      result.changedPaths,
-      [
-        ...planningPaths(CHANGE_ID),
-        `workflow/change-providers/${CHANGE_ID}.json`,
-      ].sort(),
+    const result = validateCiPlanningCommit(
+      repository,
+      plan.commitHash,
+      CHANGE_ID,
     );
+    assert.equal(result.kind, 'introduction');
+    assert.deepEqual(result.changedPaths, plan.changedPaths);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('CI refuses a forged planning-provider v1 migration', () => {
-  const repository = createRepository();
+test('CI refuses changing the exact planning-provider binding', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
-    writeProviderBinding(repository);
-    commitPlan(repository);
+    commitPlanningTransition(repository, CHANGE_ID);
 
     writeProviderBinding(repository, { providerId: 'spectra' });
     fs.appendFileSync(
       path.join(changeDirectory(repository), 'proposal.md'),
-      '\nForged provider migration.\n',
+      '\nForged provider replacement.\n',
     );
+    writeReadyV3ExemptChange(repository, CHANGE_ID);
+    refreshFixturePlanReview(repository);
     const revision = commitPlan(repository);
     assert.throws(
       () => validateCiPlanningCommit(repository, revision, CHANGE_ID),
@@ -839,9 +834,10 @@ test('CI refuses a forged planning-provider v1 migration', () => {
 });
 
 test('CI refuses a planning introduction without its explicit provider binding', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository({
+    includeProviderBinding: false,
+  });
   try {
-    writePlanningTree(repository);
     const plan = commitPlan(repository);
     assert.throws(
       () => validateCiPlanningCommit(repository, plan, CHANGE_ID),
@@ -853,19 +849,16 @@ test('CI refuses a planning introduction without its explicit provider binding',
 });
 
 test('CI accepts a revision that reorders and removes unfinished tasks', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository({
+    tasks: [
+      '- [ ] 1.1 First task',
+      '- [ ] 1.2 Removable task',
+      '- [ ] 1.3 Completed task',
+    ].join('\n'),
+  });
   try {
-    writePlanningTree(
-      repository,
-      [
-        '- [ ] 1.1 First task',
-        '- [ ] 1.2 Removable task',
-        '- [ ] 1.3 Completed task',
-      ].join('\n'),
-    );
-    writeProviderBinding(repository);
-    commitPlan(repository);
-    writeTasks(
+    commitPlanningTransition(repository, CHANGE_ID);
+    writeCurrentTasksAndGuard(
       repository,
       [
         '- [ ] 1.1 First task',
@@ -875,7 +868,7 @@ test('CI accepts a revision that reorders and removes unfinished tasks', () => {
     );
     commit(repository, 'Complete fixture task');
 
-    writeTasks(
+    writeCurrentTasksAndGuard(
       repository,
       [
         '- [x] 1.3 Completed task',
@@ -887,32 +880,33 @@ test('CI accepts a revision that reorders and removes unfinished tasks', () => {
       path.join(changeDirectory(repository), 'design.md'),
       '\nRevision.\n',
     );
-    const revision = commitPlan(repository);
-
-    assert.deepEqual(
-      validateCiPlanningCommit(repository, revision, CHANGE_ID),
-      {
-        changeId: CHANGE_ID,
-        kind: 'revision',
-        beforeTasks: [
-          { id: '1.1', completed: false },
-          { id: '1.2', completed: false },
-          { id: '1.3', completed: true },
-        ],
-        afterTasks: [
-          { id: '1.3', completed: true },
-          { id: '1.1', completed: false },
-          { id: '2.1', completed: false },
-        ],
-        changedPaths: [
-          `openspec/changes/${CHANGE_ID}/design.md`,
-          `openspec/changes/${CHANGE_ID}/tasks.md`,
-        ],
-        schemaName: 'spec-driven',
-        planningAssurance: null,
-        collaborationGrantUses: [],
-      },
+    writeReadyV3ExemptChange(repository, CHANGE_ID);
+    refreshFixturePlanReview(repository);
+    const revision = commitPlanningTransition(repository, CHANGE_ID);
+    const replay = validateCiPlanningCommit(
+      repository,
+      revision.commitHash,
+      CHANGE_ID,
     );
+
+    assert.equal(replay.kind, 'revision');
+    assert.deepEqual(replay.beforeTasks, [
+      { id: '1.1', completed: false },
+      { id: '1.2', completed: false },
+      { id: '1.3', completed: true },
+    ]);
+    assert.deepEqual(replay.afterTasks, [
+      { id: '1.3', completed: true },
+      { id: '1.1', completed: false },
+      { id: '2.1', completed: false },
+    ]);
+    assert.deepEqual(replay.changedPaths, revision.changedPaths);
+    assert.equal(replay.schemaName, 'jigwright');
+    assert.equal(
+      replay.planningAssurance?.planningGenerationId,
+      revision.planningAssurance?.planningGenerationId,
+    );
+    assert.deepEqual(replay.collaborationGrantUses, []);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -920,10 +914,10 @@ test('CI accepts a revision that reorders and removes unfinished tasks', () => {
 
 test('CI rejects a checked task in a planning introduction or revision', async (t) => {
   await t.test('introduction', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository({
+      tasks: '- [x] 1.1 Already complete',
+    });
     try {
-      writePlanningTree(repository, '- [x] 1.1 Already complete');
-      writeProviderBinding(repository);
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
@@ -935,12 +929,12 @@ test('CI rejects a checked task in a planning introduction or revision', async (
   });
 
   await t.test('revision', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository();
     try {
-      writePlanningTree(repository);
-      writeProviderBinding(repository);
-      commitPlan(repository);
-      writeTasks(repository, '- [x] 1.1 Illegally completed');
+      commitPlanningTransition(repository, CHANGE_ID);
+      writeCurrentTasksAndGuard(repository, '- [x] 1.1 Illegally completed');
+      writeReadyV3ExemptChange(repository, CHANGE_ID);
+      refreshFixturePlanReview(repository);
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
@@ -963,9 +957,8 @@ test('CI rejects code, base specs, archives, and another change in a plan', asyn
 
   for (const [label, extraPath] of cases) {
     await t.test(label, () => {
-      const repository = createRepository();
+      const repository = prepareCurrentV3IntroductionRepository();
       try {
-        writePlanningTree(repository);
         write(repository, extraPath, `${label}\n`);
         const commitHash = commitPlan(repository);
         assert.throws(
@@ -981,16 +974,15 @@ test('CI rejects code, base specs, archives, and another change in a plan', asyn
 
 test('CI rejects symlink and executable planning artifacts from the Git tree', async (t) => {
   await t.test('symlink', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository();
     try {
-      writePlanningTree(repository);
       const designPath = path.join(changeDirectory(repository), 'design.md');
       fs.rmSync(designPath);
       fs.symlinkSync('proposal.md', designPath);
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
-        (error) => isWorkflowError(error, 'CI_PLANNING_TREE_UNSAFE'),
+        (error) => isWorkflowError(error, 'CI_COMMITTED_CHECKOUT_INVALID'),
       );
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
@@ -998,14 +990,13 @@ test('CI rejects symlink and executable planning artifacts from the Git tree', a
   });
 
   await t.test('executable', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository();
     try {
-      writePlanningTree(repository);
       fs.chmodSync(path.join(changeDirectory(repository), 'design.md'), 0o755);
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
-        (error) => isWorkflowError(error, 'CI_PLANNING_TREE_UNSAFE'),
+        (error) => isWorkflowError(error, 'CI_COMMITTED_CHECKOUT_INVALID'),
       );
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
@@ -1015,14 +1006,13 @@ test('CI rejects symlink and executable planning artifacts from the Git tree', a
 
 test('CI rejects an incomplete planning tree and a non-canonical plan message', async (t) => {
   await t.test('missing required artifact', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository();
     try {
-      writePlanningTree(repository);
-      fs.rmSync(path.join(changeDirectory(repository), 'guard.json'));
+      fs.rmSync(path.join(changeDirectory(repository), 'execution.json'));
       const commitHash = commitPlan(repository);
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
-        (error) => isWorkflowError(error, 'CI_PLANNING_TREE_INVALID'),
+        (error) => isWorkflowError(error, 'MISSING_CHANGE_ARTIFACT'),
       );
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
@@ -1030,9 +1020,8 @@ test('CI rejects an incomplete planning tree and a non-canonical plan message', 
   });
 
   await t.test('wrong subject', () => {
-    const repository = createRepository();
+    const repository = prepareCurrentV3IntroductionRepository();
     try {
-      writePlanningTree(repository);
       const commitHash = commitPlan(repository, 'Revise plan');
       assert.throws(
         () => validateCiPlanningCommit(repository, commitHash, CHANGE_ID),
@@ -1045,14 +1034,15 @@ test('CI rejects an incomplete planning tree and a non-canonical plan message', 
 });
 
 test('CI rejects a merge commit even when it uses the plan message', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
+    commitPlanningTransition(repository, CHANGE_ID);
     git(repository, ['checkout', '-b', 'side']);
     write(repository, 'side.txt', 'side\n');
     commit(repository, 'Add side branch');
-    git(repository, ['checkout', 'main']);
-    writePlanningTree(repository);
-    commitPlan(repository);
+    git(repository, ['checkout', `work/${CHANGE_ID}`]);
+    write(repository, 'main.txt', 'main\n');
+    commit(repository, 'Advance planning branch');
     git(repository, [
       'merge',
       '--no-ff',
@@ -1073,7 +1063,7 @@ test('CI rejects a merge commit even when it uses the plan message', () => {
   }
 });
 
-function createRepository(): string {
+function createPackageSchemaRepository(): string {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'workflow-ci-planning-'),
   );
@@ -1095,7 +1085,7 @@ function createRepository(): string {
   return repository;
 }
 
-function writePlanningTree(
+function writePackageSchemaPlanningTree(
   repository: string,
   tasks = '- [ ] 1.1 Demo task',
 ): void {
@@ -1109,6 +1099,106 @@ function writePlanningTree(
     repository,
     `${prefix}/specs/demo/spec.md`,
     '# Delta\n\n## ADDED Requirements\n',
+  );
+}
+
+function prepareCurrentV3IntroductionRepository(
+  options: {
+    currentSchemaName?: string;
+    includeProviderBinding?: boolean;
+    tasks?: string;
+  } = {},
+): string {
+  const repository = createFixtureRepository();
+  const backupRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'ci-current-v3-introduction-'),
+  );
+  const changePath = path.join(repository, 'openspec/changes', CHANGE_ID);
+  const backupPath = path.join(backupRoot, CHANGE_ID);
+  try {
+    fs.cpSync(changePath, backupPath, { recursive: true });
+    fs.rmSync(changePath, { recursive: true, force: true });
+    fs.rmSync(
+      path.join(repository, `workflow/change-providers/${CHANGE_ID}.json`),
+      { force: true },
+    );
+    write(
+      repository,
+      'openspec/changes/other-change/keep.md',
+      'Unrelated baseline change container.\n',
+    );
+    if (options.currentSchemaName !== undefined) {
+      configureFixtureCurrentSchema(repository, options.currentSchemaName);
+    }
+    commit(repository, 'Prepare absent current change');
+
+    git(repository, ['checkout', '-b', `work/${CHANGE_ID}`]);
+    fs.cpSync(backupPath, changePath, { recursive: true });
+    if (options.tasks !== undefined) {
+      writeCurrentTasksAndGuard(repository, options.tasks);
+    }
+    writeReadyV3ExemptChange(repository, CHANGE_ID, options.currentSchemaName);
+    writePlanningProviderBindingForChange(repository, CHANGE_ID);
+    refreshFixturePlanReview(repository);
+    if (options.includeProviderBinding === false) {
+      fs.rmSync(
+        path.join(repository, `workflow/change-providers/${CHANGE_ID}.json`),
+      );
+    }
+    return repository;
+  } catch (error) {
+    fs.rmSync(repository, { recursive: true, force: true });
+    throw error;
+  } finally {
+    fs.rmSync(backupRoot, { recursive: true, force: true });
+  }
+}
+
+function configureFixtureCurrentSchema(
+  repository: string,
+  currentSchemaName: string,
+): void {
+  const consumerPath = path.join(
+    repository,
+    'workflow/repository-consumer.json',
+  );
+  const consumer = JSON.parse(fs.readFileSync(consumerPath, 'utf8')) as {
+    planning: {
+      requiredSchemaNames: string[];
+      supportedSchemaNames: string[];
+      managedSchemaNames: string[];
+      currentSchemaName: string;
+    };
+  };
+  consumer.planning.requiredSchemaNames = ['spec-driven', currentSchemaName];
+  consumer.planning.supportedSchemaNames = ['spec-driven', currentSchemaName];
+  consumer.planning.managedSchemaNames = [currentSchemaName];
+  consumer.planning.currentSchemaName = currentSchemaName;
+  fs.writeFileSync(consumerPath, `${JSON.stringify(consumer, null, 2)}\n`);
+
+  const openSpecConfigPath = path.join(repository, 'openspec/config.yaml');
+  fs.writeFileSync(
+    openSpecConfigPath,
+    fs
+      .readFileSync(openSpecConfigPath, 'utf8')
+      .replace(/^schema: jigwright$/m, `schema: ${currentSchemaName}`),
+  );
+  fs.cpSync(
+    path.join(repository, 'openspec/schemas/jigwright'),
+    path.join(repository, 'openspec/schemas', currentSchemaName),
+    { recursive: true },
+  );
+  const namedSchemaPath = path.join(
+    repository,
+    'openspec/schemas',
+    currentSchemaName,
+    'schema.yaml',
+  );
+  fs.writeFileSync(
+    namedSchemaPath,
+    fs
+      .readFileSync(namedSchemaPath, 'utf8')
+      .replace(/^name: jigwright$/m, `name: ${currentSchemaName}`),
   );
 }
 
@@ -1141,6 +1231,28 @@ function writeTasks(repository: string, tasks: string): void {
     `openspec/changes/${CHANGE_ID}/tasks.md`,
     `# Tasks\n\n${tasks}\n`,
   );
+}
+
+function writeCurrentTasksAndGuard(repository: string, tasks: string): void {
+  writeTasks(repository, tasks);
+  const taskIds = [...tasks.matchAll(/^- \[[ x]\] (\d+(?:\.\d+)*)\b/gm)].map(
+    (match) => match[1]!,
+  );
+  assert.equal(new Set(taskIds).size, taskIds.length);
+  assert.equal(taskIds.length > 0, true);
+  const guardPath = path.join(changeDirectory(repository), 'guard.json');
+  const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+    schemaVersion: 1;
+    changeId: string;
+    tasks: Record<string, { allowedPaths: string[]; requiredChecks: string[] }>;
+  };
+  guard.tasks = Object.fromEntries(
+    taskIds.map((taskId) => [
+      taskId,
+      { allowedPaths: ['src/**'], requiredChecks: ['fixture'] },
+    ]),
+  );
+  fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
 }
 
 function writeGrantClaim(
@@ -1398,18 +1510,6 @@ function write(
   const filePath = path.join(repository, relativePath);
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   fs.writeFileSync(filePath, content);
-}
-
-function planningPaths(changeId: string): string[] {
-  const prefix = `openspec/changes/${changeId}`;
-  return [
-    `${prefix}/.openspec.yaml`,
-    `${prefix}/design.md`,
-    `${prefix}/guard.json`,
-    `${prefix}/proposal.md`,
-    `${prefix}/specs/demo/spec.md`,
-    `${prefix}/tasks.md`,
-  ];
 }
 
 function writeReadyV3ExemptChange(
@@ -1792,48 +1892,57 @@ function refreshFixturePlanReview(repository: string): void {
 }
 
 test('CI accepts a revision that deletes non-canonical planning noise', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
-    writeProviderBinding(repository);
+    commitPlanningTransition(repository, CHANGE_ID);
     const noisePath = path.join(
       changeDirectory(repository),
       'requirement-audit.md',
     );
-    fs.writeFileSync(noisePath, 'Bootstrap-era audit noise.\n');
-    commit(repository, 'Add bootstrap noise');
+    fs.writeFileSync(noisePath, 'Non-canonical planning noise.\n');
+    commit(repository, 'Add non-canonical planning noise');
     fs.rmSync(noisePath);
     fs.appendFileSync(
       path.join(changeDirectory(repository), 'design.md'),
       '\nNoise retired.\n',
     );
-    const revision = commitPlan(repository);
+    writeReadyV3ExemptChange(repository, CHANGE_ID);
+    refreshFixturePlanReview(repository);
+    const revision = commitPlanningTransition(repository, CHANGE_ID);
 
-    const result = validateCiPlanningCommit(repository, revision, CHANGE_ID);
+    const result = validateCiPlanningCommit(
+      repository,
+      revision.commitHash,
+      CHANGE_ID,
+    );
     assert.equal(result.kind, 'revision');
-    assert.deepEqual(result.changedPaths, [
-      `openspec/changes/${CHANGE_ID}/design.md`,
-      `openspec/changes/${CHANGE_ID}/requirement-audit.md`,
-    ]);
+    assert.deepEqual(result.changedPaths, revision.changedPaths);
+    assert.equal(
+      result.changedPaths.includes(
+        `openspec/changes/${CHANGE_ID}/requirement-audit.md`,
+      ),
+      true,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('CI rejects corrupt package-schema metadata before provider replay', () => {
-  const repository = createRepository();
+test('CI rejects corrupt current-schema metadata before provider replay', () => {
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
+    commitPlanningTransition(repository, CHANGE_ID);
     const metadataPath = path.join(
       changeDirectory(repository),
       '.openspec.yaml',
     );
     fs.writeFileSync(
       metadataPath,
-      'schema: spec-driven\ncreated: 2026-07-24\ncorrupt: true\n',
+      'schema: jigwright\ncreated: 2026-07-24\ncorrupt: true\n',
     );
-    commit(repository, 'Admit corrupt bootstrap metadata');
-    fs.writeFileSync(metadataPath, 'schema: spec-driven\n');
+    commit(repository, 'Admit corrupt current metadata');
+    writeReadyV3ExemptChange(repository, CHANGE_ID);
+    refreshFixturePlanReview(repository);
     const revision = commitPlan(repository);
 
     assert.throws(
@@ -1846,11 +1955,11 @@ test('CI rejects corrupt package-schema metadata before provider replay', () => 
 });
 
 test('CI still rejects a revision whose before tree stays incomplete', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
-    fs.rmSync(path.join(changeDirectory(repository), '.openspec.yaml'));
-    commit(repository, 'Admit bootstrap tree without metadata');
+    commitPlanningTransition(repository, CHANGE_ID);
+    fs.rmSync(path.join(changeDirectory(repository), 'execution.json'));
+    commit(repository, 'Admit incomplete current planning tree');
     fs.appendFileSync(
       path.join(changeDirectory(repository), 'design.md'),
       '\nRevision without repair.\n',
@@ -1859,7 +1968,7 @@ test('CI still rejects a revision whose before tree stays incomplete', () => {
 
     assert.throws(
       () => validateCiPlanningCommit(repository, revision, CHANGE_ID),
-      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_TREE_UNSAFE'),
+      (error) => isWorkflowError(error, 'MISSING_CHANGE_ARTIFACT'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -1867,10 +1976,12 @@ test('CI still rejects a revision whose before tree stays incomplete', () => {
 });
 
 test('CI rejects a planning tree with duplicate entries', () => {
-  const repository = createRepository();
+  const repository = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(repository);
-    const introduction = commitPlan(repository);
+    const introduction = commitPlanningTransition(
+      repository,
+      CHANGE_ID,
+    ).commitHash;
 
     const prefix = `openspec/changes/${CHANGE_ID}`;
     const forgedBlob = execFileSync(
@@ -1927,10 +2038,11 @@ test('CI rejects a planning tree with duplicate entries', () => {
 });
 
 test('CI still rejects added or escaping non-canonical planning paths', () => {
-  const added = createRepository();
+  const added = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(added);
-    commitPlan(added);
+    commitPlanningTransition(added, CHANGE_ID);
+    writeReadyV3ExemptChange(added, CHANGE_ID);
+    refreshFixturePlanReview(added);
     fs.writeFileSync(
       path.join(changeDirectory(added), 'requirement-audit.md'),
       'New noise.\n',
@@ -1944,9 +2056,9 @@ test('CI still rejects added or escaping non-canonical planning paths', () => {
     fs.rmSync(added, { recursive: true, force: true });
   }
 
-  const escaping = createRepository();
+  const escaping = prepareCurrentV3IntroductionRepository();
   try {
-    writePlanningTree(escaping);
+    commitPlanningTransition(escaping, CHANGE_ID);
     const outsidePath = path.join(
       escaping,
       'openspec/changes/other-change-note.md',
@@ -1958,6 +2070,8 @@ test('CI still rejects added or escaping non-canonical planning paths', () => {
       path.join(changeDirectory(escaping), 'design.md'),
       '\nRevision.\n',
     );
+    writeReadyV3ExemptChange(escaping, CHANGE_ID);
+    refreshFixturePlanReview(escaping);
     const escapeCommit = commitPlan(escaping);
     assert.throws(
       () => validateCiPlanningCommit(escaping, escapeCommit, CHANGE_ID),

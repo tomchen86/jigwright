@@ -21,7 +21,7 @@ import {
   loadWorkflowConfig,
   parsePlanReviewArtifact,
   parseTasks,
-  readChangeSchemaName,
+  readManagedSchemaName,
   repositoryCurrentSchemaName,
   type ChangeContract,
   type ManagedSchemaName,
@@ -72,7 +72,7 @@ export type CiPlanningCommitValidation = {
   afterTasks: PlanningTaskState[];
   changedPaths: string[];
   schemaName: ManagedSchemaName;
-  planningAssurance: InvestigationFirstPlanningAssuranceSummary | null;
+  planningAssurance: InvestigationFirstPlanningAssuranceSummary;
   collaborationGrantUses: readonly CiCollaborationGrantUse[];
 };
 
@@ -499,10 +499,9 @@ export function validateCiPlanningCommit(
     readFileAtCommit(repositoryRoot, facts.hash, rolePolicyPaths.policyPath) !==
     undefined;
   if (
-    (replay.schemaName !== replay.currentSchemaName && rolePolicyPresent) ||
-    (kind === 'introduction' &&
-      rolePolicyPresent &&
-      !rolePolicyPaths.policyChanged)
+    kind === 'introduction' &&
+    rolePolicyPresent &&
+    !rolePolicyPaths.policyChanged
   ) {
     throw ciPlanningError(
       'CI_PLANNING_ROLE_POLICY_INVALID',
@@ -513,7 +512,6 @@ export function validateCiPlanningCommit(
     normalizedChangeRoot,
     changeId,
     afterEntries,
-    [],
     [],
     replay.schemaName,
     replay.currentSchemaName,
@@ -544,18 +542,6 @@ export function validateCiPlanningCommit(
       );
     }
   } else {
-    const beforePaths = new Set(beforeEntries.map(({ path }) => path));
-    const repairedPaths = requiredArtifactPaths(
-      normalizedChangeRoot,
-      changeId,
-      replay.schemaName,
-      replay.currentSchemaName,
-    ).filter(
-      (requiredPath) =>
-        !beforePaths.has(requiredPath) &&
-        afterPaths.has(requiredPath) &&
-        planningPaths.includes(requiredPath),
-    );
     const parentSchema = replayPlanningSchema(
       repositoryRoot,
       facts.parents[0],
@@ -566,9 +552,6 @@ export function validateCiPlanningCommit(
       changeId,
       beforeEntries,
       deletedPaths,
-      repairedPaths,
-      // The parent tree carries the schema it was committed under, which is
-      // deliberately allowed to precede a legacy-to-v2 migration commit.
       parentSchema.schemaName,
       parentSchema.currentSchemaName,
     );
@@ -603,19 +586,17 @@ export function validateCiPlanningCommit(
       'An amendment that says the work must be redone has to reopen it; completed tasks are still marked done.',
     );
   }
-  if (replay.planningAssurance !== null) {
-    createArchiveApplicabilityProjection({
-      repositoryRoot,
-      changeRoot: normalizedChangeRoot,
-      changeId,
-      baselineCommit: facts.parents[0],
-      sourceCommit: facts.hash,
-      activeArtifactPaths: afterEntries.map(
-        ({ path: artifactPath }) => artifactPath,
-      ),
-      source: 'commit',
-    });
-  }
+  createArchiveApplicabilityProjection({
+    repositoryRoot,
+    changeRoot: normalizedChangeRoot,
+    changeId,
+    baselineCommit: facts.parents[0],
+    sourceCommit: facts.hash,
+    activeArtifactPaths: afterEntries.map(
+      ({ path: artifactPath }) => artifactPath,
+    ),
+    source: 'commit',
+  });
   return {
     changeId,
     kind,
@@ -634,7 +615,7 @@ function assertCommittedAmendmentProvenance(
   parentCommit: string,
   amendmentCommit: string,
   amendment: AmendPlanManagedTrailers,
-  planningAssurance: InvestigationFirstPlanningAssuranceSummary | null,
+  planningAssurance: InvestigationFirstPlanningAssuranceSummary,
 ): void {
   let priorGeneration: string | null;
   try {
@@ -663,7 +644,6 @@ function assertCommittedAmendmentProvenance(
     reviewedDecision = null;
   }
   if (
-    planningAssurance === null ||
     priorGeneration === null ||
     reviewedDecision === null ||
     reviewedDecision.executionImpact !== amendment.executionImpact ||
@@ -682,8 +662,8 @@ function assertCommittedAmendmentProvenance(
 type PlanningTreeReplay = {
   schemaName: ManagedSchemaName;
   currentSchemaName: ManagedSchemaName;
-  manifestBaseline: { commitOid: string; treeOid: string } | null;
-  planningAssurance: InvestigationFirstPlanningAssuranceSummary | null;
+  manifestBaseline: { commitOid: string; treeOid: string };
+  planningAssurance: InvestigationFirstPlanningAssuranceSummary;
   collaborationGrantUses: readonly CiCollaborationGrantUse[];
 };
 
@@ -700,19 +680,14 @@ function replayPlanningTree(
   engineProjectionPaths: readonly string[],
 ): PlanningTreeReplay {
   return withPlanningWorktree(repositoryRoot, commit, (worktree) => {
-    const schemaName = resolveReplayedSchemaName(worktree, changeId);
     const currentSchemaName = repositoryCurrentSchemaName(worktree);
+    const schemaName = resolveReplayedSchemaName(
+      worktree,
+      changeId,
+      currentSchemaName,
+    );
     if (engineProjectionPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md')) {
       validateHandoffForChange(worktree, changeId);
-    }
-    if (schemaName !== currentSchemaName) {
-      return {
-        schemaName,
-        currentSchemaName,
-        manifestBaseline: null,
-        planningAssurance: null,
-        collaborationGrantUses: [],
-      };
     }
     const contract = loadCommittedChangeContract(
       worktree,
@@ -745,13 +720,10 @@ function assertPlanningAssuranceBaseline(
   parentCommit: string,
   replay: PlanningTreeReplay,
 ): void {
-  if (replay.schemaName !== replay.currentSchemaName) return;
-  const assuranceBaseline = replay.planningAssurance?.investigationBaseline;
+  const assuranceBaseline = replay.planningAssurance.investigationBaseline;
   const manifestBaseline = replay.manifestBaseline;
   const parent = commitFacts(repositoryRoot, parentCommit);
   if (
-    assuranceBaseline === undefined ||
-    manifestBaseline === null ||
     assuranceBaseline.head !== parent.hash ||
     assuranceBaseline.tree !== parent.tree ||
     manifestBaseline.commitOid !== parent.hash ||
@@ -764,7 +736,7 @@ function assertPlanningAssuranceBaseline(
         expectedParentCommit: parent.hash,
         expectedParentTree: parent.tree,
         observedManifestBaseline: manifestBaseline,
-        observedPlanningAssuranceBaseline: assuranceBaseline ?? null,
+        observedPlanningAssuranceBaseline: assuranceBaseline,
       },
     );
   }
@@ -775,10 +747,17 @@ function replayPlanningSchema(
   commit: string,
   changeId: string,
 ): Pick<PlanningTreeReplay, 'schemaName' | 'currentSchemaName'> {
-  return withPlanningWorktree(repositoryRoot, commit, (worktree) => ({
-    schemaName: resolveReplayedSchemaName(worktree, changeId),
-    currentSchemaName: repositoryCurrentSchemaName(worktree),
-  }));
+  return withPlanningWorktree(repositoryRoot, commit, (worktree) => {
+    const currentSchemaName = repositoryCurrentSchemaName(worktree);
+    return {
+      schemaName: resolveReplayedSchemaName(
+        worktree,
+        changeId,
+        currentSchemaName,
+      ),
+      currentSchemaName,
+    };
+  });
 }
 
 /**
@@ -790,12 +769,20 @@ function replayPlanningSchema(
 function resolveReplayedSchemaName(
   worktree: string,
   changeId: string,
+  currentSchemaName: ManagedSchemaName,
 ): ManagedSchemaName {
   const changeRoot = loadWorkflowConfig(worktree).changeRoot;
-  return readChangeSchemaName(
+  const schemaName = readManagedSchemaName(
     worktree,
     path.join(worktree, changeRoot, changeId, '.openspec.yaml'),
   );
+  if (schemaName !== currentSchemaName) {
+    throw ciPlanningError(
+      'OPENSPEC_MANAGED_SCHEMA_REQUIRED',
+      'Managed changes must declare the repository-configured current schema.',
+    );
+  }
+  return schemaName;
 }
 
 /**
@@ -864,16 +851,11 @@ function requiredArtifactPaths(
   ];
 }
 
-/**
- * A required artifact may be absent only from a revision's before tree, and
- * only when that same revision adds it (bootstrap-era tree repair).
- */
 function assertCompletePlanningTree(
   changeRoot: string,
   changeId: string,
   entries: TreeEntry[],
   toleratedDeletedPaths: readonly string[] = [],
-  toleratedMissingPaths: readonly string[] = [],
   schemaName: ManagedSchemaName,
   currentSchemaName: ManagedSchemaName,
 ): void {
@@ -894,11 +876,7 @@ function assertCompletePlanningTree(
     currentSchemaName,
   );
   if (
-    required.some(
-      (requiredPath) =>
-        !paths.includes(requiredPath) &&
-        !toleratedMissingPaths.includes(requiredPath),
-    ) ||
+    required.some((requiredPath) => !paths.includes(requiredPath)) ||
     !paths.some(
       (filePath) =>
         filePath.startsWith(`${prefix}/specs/`) &&
