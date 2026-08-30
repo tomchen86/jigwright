@@ -73,8 +73,7 @@ export type WorkflowSession = {
   requiredCheckDigests?: Record<string, string>;
   /** Engine identity against which the current durable check evidence ran. */
   checkEvidenceEngineDigest?: `sha256:${string}`;
-  /** Optional only for sessions created before this binding was introduced. */
-  planningAssurance?: PlanningAssuranceBinding | null;
+  planningAssurance: PlanningAssuranceBinding | null;
   /** Current same-session planning-authority lease while execution is paused. */
   revisionLeaseId?: string;
   /** Immutable post-implementation semantic reconciliation authority. */
@@ -1295,9 +1294,9 @@ function isWorkflowSession(value: unknown): value is WorkflowSession {
     return false;
   }
   if (
-    value.planningAssurance !== undefined &&
-    value.planningAssurance !== null &&
-    !isPlanningAssuranceBinding(value.planningAssurance)
+    !Object.hasOwn(value, 'planningAssurance') ||
+    (value.planningAssurance !== null &&
+      !isPlanningAssuranceBinding(value.planningAssurance))
   ) {
     return false;
   }
