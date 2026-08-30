@@ -1,5 +1,5 @@
 export type WorkflowGuidanceStatus =
-  'preferred' | 'compatible' | 'deprecated' | 'read-only' | 'recovery';
+  'preferred' | 'compatible' | 'read-only' | 'recovery';
 
 export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'guide',
@@ -18,7 +18,6 @@ export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'authority-plan',
   'finalize',
   'finalize-recover',
-  'finalize-task',
   'rollback-completion',
   'commit',
   'abort',
@@ -30,13 +29,6 @@ export const MANAGED_WORKFLOW_COMMAND_IDS = [
 export type ManagedWorkflowCommandId =
   (typeof MANAGED_WORKFLOW_COMMAND_IDS)[number];
 
-export type WorkflowCommandDeprecation = Readonly<{
-  phase: 1;
-  replacementCommandId: ManagedWorkflowCommandId;
-  replacement: string;
-  reason: string;
-}>;
-
 export type WorkflowCommandGuidance = Readonly<{
   id: ManagedWorkflowCommandId;
   usage: readonly string[];
@@ -45,7 +37,6 @@ export type WorkflowCommandGuidance = Readonly<{
   preconditions: readonly string[];
   consequences: readonly string[];
   successors: readonly ManagedWorkflowCommandId[];
-  deprecation?: WorkflowCommandDeprecation;
 }>;
 
 export type WorkflowGuidanceCatalog = Readonly<{
@@ -351,29 +342,6 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     successors: ['status', 'finalize'],
   },
   {
-    id: 'finalize-task',
-    route: ['finalize-task'],
-    usage: ['pnpm workflow finalize-task <session-id> [--json]'],
-    status: 'deprecated',
-    purpose:
-      'Compatibility surface for the projected-finalize transaction without commit.',
-    preconditions: [
-      'The session satisfies the same gates as the preferred finalize command.',
-      'The actual implementation diff does not require protected Apply authority.',
-    ],
-    consequences: [
-      'Runs the same durable projected-finalize transaction and leaves commit separate.',
-    ],
-    successors: ['commit'],
-    deprecation: {
-      phase: 1,
-      replacementCommandId: 'finalize',
-      replacement: FINALIZE_REPLACEMENT,
-      reason:
-        'New callers use one durable finalization and commit transaction; finalize-task remains a compatibility surface.',
-    },
-  },
-  {
     id: 'rollback-completion',
     route: ['rollback-completion'],
     usage: [
@@ -441,8 +409,7 @@ export function createManagedWorkflowCommandRegistry(
       entry.usage.length === 0 ||
       entry.usage.some((line) => !line.startsWith('pnpm workflow ')) ||
       !entry.purpose ||
-      entry.consequences.length === 0 ||
-      (entry.status === 'deprecated') !== (entry.deprecation !== undefined)
+      entry.consequences.length === 0
     ) {
       throw new Error(`Managed workflow command is invalid: ${entry.id}`);
     }
@@ -463,12 +430,6 @@ export function createManagedWorkflowCommandRegistry(
     if (unknownSuccessor !== undefined) {
       throw new Error(
         `Managed workflow command ${entry.id} has unknown successor: ${unknownSuccessor}`,
-      );
-    }
-    const replacementCommandId = entry.deprecation?.replacementCommandId;
-    if (replacementCommandId !== undefined && !byId.has(replacementCommandId)) {
-      throw new Error(
-        `Managed workflow command ${entry.id} has unknown replacement: ${replacementCommandId}`,
       );
     }
   }
@@ -543,9 +504,6 @@ function freezeDefinition(
     preconditions: Object.freeze([...value.preconditions]),
     consequences: Object.freeze([...value.consequences]),
     successors: Object.freeze([...value.successors]),
-    ...(value.deprecation
-      ? { deprecation: Object.freeze({ ...value.deprecation }) }
-      : {}),
   });
 }
 
@@ -560,9 +518,6 @@ function projectGuidance(
     preconditions: entry.preconditions,
     consequences: entry.consequences,
     successors: entry.successors,
-    ...(entry.deprecation === undefined
-      ? {}
-      : { deprecation: entry.deprecation }),
   });
 }
 

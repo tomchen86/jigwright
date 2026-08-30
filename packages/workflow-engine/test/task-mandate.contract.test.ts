@@ -1269,7 +1269,7 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       commitMessage: 'Update protected demo',
       stateBindingDigest: grant.challenge.stateBinding.digest,
     });
-    for (const compatibleCommand of ['finalize-task', 'complete-task']) {
+    for (const compatibleCommand of ['complete-task']) {
       const bypass = spawnSync(
         process.execPath,
         [

@@ -5473,8 +5473,8 @@ export function assertTaskDiffReviewCompletionGateSatisfied(
               : { candidateTree: options.candidateTree }),
           },
           recovery: projected
-            ? `Run pnpm workflow rollback-completion ${context.session.sessionId} --reason "TaskDiffReview required" --json, then run pnpm workflow finalize-task ${context.session.sessionId} --json.`
-            : `Run pnpm workflow finalize-task ${context.session.sessionId} --json, complete the returned review-diff recovery, then retry the same command.`,
+            ? `Run pnpm workflow rollback-completion ${context.session.sessionId} --reason "TaskDiffReview required" --json, then run pnpm workflow finalize ${context.session.sessionId} --message "<subject>" --json.`
+            : `Run pnpm workflow finalize ${context.session.sessionId} --message "<subject>" --json, complete the returned review-diff recovery, then retry the same command.`,
         },
       );
     }

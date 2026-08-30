@@ -1738,7 +1738,7 @@ function assertInvestigationFirstProposeContract(
   assert.doesNotMatch(
     content,
     /pnpm workflow finalize-task/,
-    message('retains the deprecated finalize-task handoff'),
+    message('retains the retired finalize-task handoff'),
   );
   assert.doesNotMatch(
     content,

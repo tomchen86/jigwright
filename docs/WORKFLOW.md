@@ -61,11 +61,12 @@ For a long full gate, report:
 - Full log: <exact stdout log path>
 - Failures: pnpm workflow:test:failures
 
-After `pnpm workflow open-task`, the standalone completion lifecycle uses
-`pnpm workflow check`, `pnpm workflow complete-task`, `pnpm workflow finish`,
-and `pnpm workflow commit`. `pnpm workflow finalize-task` remains a
-compatibility entry into projected finalization. Neither route can bypass the
-full gate.
+After `pnpm workflow open-task`, the compatible standalone completion lifecycle
+uses `pnpm workflow check`, `pnpm workflow complete-task`, `pnpm workflow
+finish`, and `pnpm workflow commit`. The preferred `pnpm workflow finalize`
+transaction projects, checks, stages, and commits the same candidate without a
+separate projected-finalize command. The longer route and preferred transaction
+cannot bypass the full gate.
 
 Use `pnpm workflow status`, `pnpm workflow abort`, and `pnpm workflow
 rollback-completion` only for their documented recovery states. Use `pnpm

@@ -29,8 +29,8 @@ const GUIDED_FINALIZE_COMMAND = workflowCommandGuidance('finalize')
 const GUIDED_OPEN_TASK_COMMAND = workflowCommandGuidance(
   'open-task',
 ).usage[0]!.replace('[--json]', '--json');
-const DEPRECATED_FINALIZE_TASK_COMMAND =
-  workflowCommandGuidance('finalize-task').usage[0]!;
+const RETIRED_FINALIZE_TASK_COMMAND =
+  'pnpm workflow finalize-task <session-id> [--json]';
 const OVERLAY_POLICY = [
   'planning-only',
   'pnpm-exec-openspec',
@@ -552,7 +552,7 @@ function investigationFirstProposeAsset(source: string): string {
     `   ${GUIDED_FINALIZE_COMMAND}`,
     '   ```',
     '',
-    '   The preferred transaction checks the implementation + checkbox + handoff prospective tree once, stages only that identical checked tree, and creates its managed commit without rerunning required checks. Only a caught ordinary failure receives exact projection rollback. Deprecated and compatible surfaces remain discoverable through the same catalog. New callers do not compose a separate finalize-task and commit path.',
+    '   The preferred transaction checks the implementation + checkbox + handoff prospective tree once, stages only that identical checked tree, and creates its managed commit without rerunning required checks. Only a caught ordinary failure receives exact projection rollback. Recovery and compatible surfaces remain discoverable through the same catalog. Callers do not compose a separate projected-finalize and commit path.',
     '',
     '## Applicability and assurance boundaries',
     '',
@@ -658,7 +658,7 @@ export function verifyOpenSpecPlanningAssetContent(
         content.includes('`renamePairs`') &&
         content.includes('`from`') &&
         content.includes('`to`') &&
-        !content.includes(DEPRECATED_FINALIZE_TASK_COMMAND) &&
+        !content.includes(RETIRED_FINALIZE_TASK_COMMAND) &&
         !/(?:all artifacts generated|generate all artifacts in one step|generated? in one step)/i.test(
           content,
         ) &&

@@ -10,7 +10,6 @@ import {
   resolveManagedWorkflowCommand,
 } from '../catalog/managed-workflow-command-registry.ts';
 export type {
-  WorkflowCommandDeprecation,
   WorkflowCommandGuidance,
   WorkflowGuidanceCatalog,
   WorkflowGuidanceStatus,
@@ -595,7 +594,6 @@ function sessionIdFromInvocation(
     'finish',
     'finalize',
     'finalize-recover',
-    'finalize-task',
     'rollback-completion',
     'commit',
     'abort',

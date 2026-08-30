@@ -535,7 +535,7 @@ test('public guidance exposes the investigation-first and repeated managed-task 
     assert.match(surface, /pnpm workflow propose/);
     assert.match(surface, /pnpm workflow open-task/);
     assert.match(surface, /pnpm workflow finalize <session-id>/);
-    assert.match(surface, /pnpm workflow finalize-task/);
+    assert.doesNotMatch(surface, /pnpm workflow finalize-task/);
   }
   assert.match(workflow, /propose → \[ open-task → finalize \]×N → archive/);
   assert.match(
@@ -570,7 +570,7 @@ test('public guidance exposes the investigation-first and repeated managed-task 
   }
   assert.match(
     workflow,
-    /Compatibility lifecycle[\s\S]{0,240}check[\s\S]{0,120}complete-task[\s\S]{0,120}finish/i,
+    /compatible standalone completion lifecycle[\s\S]{0,240}check[\s\S]{0,120}complete-task[\s\S]{0,120}finish/i,
   );
   assert.match(
     workflow,

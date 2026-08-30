@@ -1275,8 +1275,10 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
       hasCode('TASK_DIFF_REVIEW_CHALLENGE_OPEN'),
     );
     const refusedFinalize = runCli(repository, [
-      'finalize-task',
+      'finalize',
       session.sessionId,
+      '--message',
+      'Complete reviewed task',
       '--json',
     ]);
     assert.equal(refusedFinalize.status, 13, refusedFinalize.stderr);

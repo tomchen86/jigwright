@@ -16,7 +16,12 @@ import {
   MANAGED_WORKFLOW_COMMAND_REGISTRY,
   resolveManagedWorkflowCommandRoute,
 } from '../src/modules/guidance/catalog/managed-workflow-command-registry.ts';
-import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../src/foundation/errors/errors.ts';
+import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
 import { reviseTask } from '../src/application/revise/task-revision.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
@@ -122,14 +127,12 @@ test('workflow guide exposes one versioned advisory catalog with finalize as the
     workflowCommandGuidance('open-task').preconditions.join('\n'),
     /protected task scope requires/u,
   );
-  assert.deepEqual(workflowCommandGuidance('finalize-task').deprecation, {
-    phase: 1,
-    replacementCommandId: 'finalize',
-    replacement:
-      'pnpm workflow finalize <session-id> --message <subject> [--full-gate] [--json]',
-    reason:
-      'New callers use one durable finalization and commit transaction; finalize-task remains a compatibility surface.',
-  });
+  assert.equal(
+    MANAGED_WORKFLOW_COMMAND_REGISTRY.entries.some(
+      ({ id }) => (id as string) === 'finalize-task',
+    ),
+    false,
+  );
   assert.equal(
     new Set(WORKFLOW_GUIDANCE_CATALOG.commands.map(({ id }) => id)).size,
     WORKFLOW_GUIDANCE_CATALOG.commands.length,
@@ -350,7 +353,7 @@ test('error recovery emits one exact executable command and never treats advisor
         ExitCode.staleState,
         { recovery: 'Inspect it, then decide what to do.' },
       ),
-      ['finalize-task', sessionId],
+      ['finalize', sessionId, '--message', 'Complete exact task'],
     ),
     `pnpm workflow finalize-recover ${sessionId} --json`,
   );
@@ -425,7 +428,7 @@ test('JSON errors default to a literal read-only guide command', () => {
   assert.equal(output.error.recovery, 'pnpm workflow guide --json');
 });
 
-test('deprecated finalize-task and preferred finalize resume one durable transaction without rerunning checks', () => {
+test('retired finalize-task cannot mutate while preferred finalize resumes one durable transaction', () => {
   const repository = createFixtureRepository();
   const counterPath = path.join(repository, '.git', 'guidance-finalize-count');
   try {
@@ -454,23 +457,39 @@ test('deprecated finalize-task and preferred finalize resume one durable transac
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
-    const compatibility = runCli(repository, [
+    const beforeRetiredCommand = snapshotRepositoryObservation(repository);
+    const retired = runCli(repository, [
       'finalize-task',
       session.sessionId,
       '--json',
     ]);
+    assert.equal(retired.status, ExitCode.usage, retired.stderr);
     assert.equal(
-      compatibility.status,
-      ExitCode.verification,
-      compatibility.stderr,
+      (JSON.parse(retired.stderr) as { error: { code: string } }).error.code,
+      'INVALID_USAGE',
     );
-    const compatibilityError = JSON.parse(compatibility.stderr) as {
-      error: {
-        code: string;
-        details: { transactionId: string; candidateTree: string };
-      };
-    };
-    assert.equal(compatibilityError.error.code, 'TASK_DIFF_REVIEW_REQUIRED');
+    assert.deepEqual(
+      snapshotRepositoryObservation(repository),
+      beforeRetiredCommand,
+    );
+    assert.equal(fs.existsSync(counterPath), false);
+
+    let transactionId: string | undefined;
+    let candidateTree: string | undefined;
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error: unknown) => {
+        if (
+          !(error instanceof WorkflowError) ||
+          error.code !== 'TASK_DIFF_REVIEW_REQUIRED'
+        ) {
+          return false;
+        }
+        transactionId = String(error.details?.transactionId);
+        candidateTree = String(error.details?.candidateTree);
+        return true;
+      },
+    );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     assert.equal(getSession(repository, session.sessionId).state, 'active');
     satisfyCurrentTaskDiffReview(repository, session.sessionId);
@@ -488,14 +507,8 @@ test('deprecated finalize-task and preferred finalize resume one durable transac
       tree: string;
       commitHash: string;
     };
-    assert.equal(
-      preferredResult.transactionId,
-      compatibilityError.error.details.transactionId,
-    );
-    assert.equal(
-      preferredResult.tree,
-      compatibilityError.error.details.candidateTree,
-    );
+    assert.equal(preferredResult.transactionId, transactionId);
+    assert.equal(preferredResult.tree, candidateTree);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     assert.equal(getSession(repository, session.sessionId).state, 'committed');
     assert.equal(

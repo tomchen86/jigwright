@@ -121,7 +121,6 @@ Managed lifecycle:
 - `pnpm workflow check <session-id> --json`
 - `pnpm workflow complete-task <session-id> --json`
 - `pnpm workflow finish <session-id> --json`
-- `pnpm workflow finalize-task <session-id> --json`
 - `pnpm workflow rollback-completion <session-id> --json`
 - `pnpm workflow commit <session-id> --message "Subject" --json`
 - `pnpm workflow abort <session-id> --reason "Reason" --json`

@@ -46,7 +46,7 @@ The wrapper gathers evidence, obtains exact PlanReview, materializes the governe
    pnpm workflow finalize <session-id> --message "Imperative subject" --json
    ```
 
-   The preferred transaction checks the implementation + checkbox + handoff prospective tree once, stages only that identical checked tree, and creates its managed commit without rerunning required checks. Only a caught ordinary failure receives exact projection rollback. Deprecated and compatible surfaces remain discoverable through the same catalog. New callers do not compose a separate finalize-task and commit path.
+   The preferred transaction checks the implementation + checkbox + handoff prospective tree once, stages only that identical checked tree, and creates its managed commit without rerunning required checks. Only a caught ordinary failure receives exact projection rollback. Recovery and compatible surfaces remain discoverable through the same catalog. Callers do not compose a separate projected-finalize and commit path.
 
 ## Applicability and assurance boundaries
 

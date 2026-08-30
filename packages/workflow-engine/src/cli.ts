@@ -227,7 +227,6 @@ import {
   commitSession,
   completeTask,
   finalizeSession,
-  finalizeTask,
   findTaskCommits,
   finishSession,
   inspectFinalizeRecoveryStatus,
@@ -3278,17 +3277,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
       }
       throw taskDiffReviewUsage();
     }
-    case 'finalize-task':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        deprecation: workflowCommandGuidance(command).deprecation,
-        result: finalizeTask(cwd, rest[0], process.env, {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          onCheckEscalation: announceFinalizeCheckEscalation,
-        }),
-      };
     case 'rollback-completion': {
       const sessionId = rest[0];
       const reason = optionValue(rest.slice(1), '--reason');

@@ -323,37 +323,12 @@ test('projected single-pass finalize checks and stages one exact final tree', ()
     const session = startSession(repository, 'demo-change', '1.1');
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
-    const cliPath = path.resolve(import.meta.dirname, '../src/cli.ts');
-    const reviewRequired = spawnSync(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        cliPath,
-        'finalize-task',
-        session.sessionId,
-        '--json',
-      ],
-      { cwd: repository, encoding: 'utf8' },
-    );
-    assert.equal(reviewRequired.status, 13, reviewRequired.stderr);
-    assert.equal(
-      (JSON.parse(reviewRequired.stderr) as { error: { code: string } }).error
-        .code,
-      'TASK_DIFF_REVIEW_REQUIRED',
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'TASK_DIFF_REVIEW_REQUIRED'),
     );
     satisfyCurrentTaskDiffReview(repository, session.sessionId);
-    const cliOutput = execFileSync(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        cliPath,
-        'finalize-task',
-        session.sessionId,
-        '--json',
-      ],
-      { cwd: repository, encoding: 'utf8' },
-    );
-    const finalized = JSON.parse(cliOutput).result;
+    const finalized = finalizeTask(repository, session.sessionId);
 
     assert.equal(finalized.assurance, 'projected-single-pass-ordinary-failure');
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
