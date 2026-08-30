@@ -57,7 +57,7 @@ test('provider policy and retry readers contain no V1 cleanup parsers', () => {
 
   assert.doesNotMatch(
     invocationStore,
-    /Provider(?:ExecutionPolicySnapshot|RetryReservation)V1|ForHistoricalCleanup|parseLegacyAiAdapterPolicyDocument/u,
+    /Provider(?:ExecutionPolicySnapshot|RetryReservation)V1|ForHistoricalCleanup|parseLegacyAiAdapterPolicyDocument|snapshotRecorded|before execution policy snapshots existed/u,
   );
   assert.doesNotMatch(
     adapterPolicy,

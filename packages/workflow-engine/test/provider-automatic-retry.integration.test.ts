@@ -123,6 +123,57 @@ test('worker persists Retry-After, creates one cheap replacement, and dispatches
   }
 });
 
+test('replacement worker rejects a prior Attempt without its exact execution policy snapshot', () => {
+  const fixture = startWorkerFixture('worker-rejects-missing-prior-policy');
+  try {
+    runProviderWorker(fixture.repository, fixture.invocationId, {
+      runner() {
+        throw workflowError(
+          'PROVIDER_RATE_LIMIT',
+          'The provider asked the worker to retry immediately.',
+          ExitCode.verification,
+          { details: { retryAfterMs: 0 } },
+        );
+      },
+      automaticRetry: { enabled: true },
+    });
+    const replacement = requiredSchedule(
+      fixture.repository,
+      fixture.invocationId,
+    ).replacementInvocationId;
+    fs.rmSync(
+      path.join(
+        fixture.runtime.invocations,
+        fixture.invocationId,
+        'execution-policy.json',
+      ),
+    );
+
+    let runnerCalled = false;
+    assert.throws(
+      () =>
+        runProviderWorker(fixture.repository, replacement, {
+          runner() {
+            runnerCalled = true;
+            throw workflowError(
+              'PROVIDER_LAUNCH_FAILED',
+              'The fixture runner must remain unreachable.',
+              ExitCode.verification,
+            );
+          },
+          automaticRetry: { enabled: false },
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+    );
+    assert.equal(runnerCalled, false);
+  } finally {
+    fixture.dispose();
+  }
+});
+
 test('replacement role-assignment Fail-Grant reaches the caller and resumes the same schedule after approval', () => {
   const fixture = startWorkerFixture('worker-auto-role-grant');
   try {
