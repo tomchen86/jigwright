@@ -787,7 +787,7 @@ test('structured investigation exemption starts a durable planning branch withou
   }
 });
 
-test('fake-backed propose composes breadth and depth before materializing an uncommitted planning draft', () => {
+test('fake-backed propose composes breadth and depth before materializing an uncommitted planning draft', async (t) => {
   const repository = createFixtureRepository();
   const reviewAuthority = installPlanReviewAuthority(repository);
   const changeId = 'fresh-investigation';
@@ -2166,6 +2166,124 @@ test('fake-backed propose composes breadth and depth before materializing an unc
         group.paths.includes('src/investigation-target.ts'),
       ),
     );
+    const firstReviewerSession = readInvestigationSession(
+      reviewerRuntime,
+      reopened.investigation!.investigationId,
+    );
+    assert.notEqual(
+      firstReviewerSession.milestones.reviewerTermSourceNodeId,
+      null,
+    );
+    const firstReviewerSource = readEvidenceNode(
+      reviewerRuntime,
+      firstReviewerSession.milestones.reviewerTermSourceNodeId!,
+    );
+    const retiredReviewerSourceOutput = structuredClone(
+      firstReviewerSource.output,
+    ) as Record<string, unknown>;
+    delete retiredReviewerSourceOutput.previousReviewerTermSourceNodeId;
+    delete retiredReviewerSourceOutput.authorizationResolutionNodeId;
+    const retiredReviewerSource = createEvidenceNode({
+      type: firstReviewerSource.type,
+      nodeSchema: 'investigation.reviewer-term-source.v2',
+      evaluator: 'workflow-propose.reviewer-term-source.v2',
+      policyDigest: firstReviewerSource.policyDigest,
+      exactInputDigests: firstReviewerSource.exactInputDigests,
+      semanticParentResultDigests:
+        firstReviewerSource.semanticParentResultDigests,
+      provenanceParentNodeIds: firstReviewerSource.provenanceParentNodeIds,
+      outputSchema: 'investigation.reviewer-term-source-output.v2',
+      output: retiredReviewerSourceOutput,
+      runtimeMetadata: firstReviewerSource.runtimeMetadata,
+    });
+    writeEvidenceNode(reviewerRuntime, retiredReviewerSource);
+    const retiredReviewerSession = compareAndSwapInvestigationSession(
+      reviewerRuntime,
+      firstReviewerSession.investigationId,
+      firstReviewerSession.revision,
+      (current) => ({
+        ...current,
+        revision: current.revision + 1,
+        milestones: {
+          ...current.milestones,
+          reviewerTermSourceNodeId: retiredReviewerSource.nodeId,
+          groupDispositions: null,
+          whyAnswers: null,
+        },
+        updatedAt: new Date(Date.parse(current.updatedAt) + 1).toISOString(),
+      }),
+    );
+    const retiredReviewerSourcePath = path.join(
+      reviewerRuntime.objects,
+      retiredReviewerSource.nodeId.slice(0, 2),
+      `${retiredReviewerSource.nodeId}.json`,
+    );
+    const reviewerSessionPath = path.join(
+      reviewerRuntime.sessions,
+      `${retiredReviewerSession.investigationId}.json`,
+    );
+    const reviewerRefNames = fs.readdirSync(reviewerRuntime.refs).sort();
+    const reviewerRefBytes = reviewerRefNames.map((name) =>
+      fs.readFileSync(path.join(reviewerRuntime.refs, name)),
+    );
+    const retiredReviewerSourceBytes = fs.readFileSync(
+      retiredReviewerSourcePath,
+    );
+    const retiredReviewerSessionBytes = fs.readFileSync(reviewerSessionPath);
+
+    await t.test(
+      'reviewer-term source loading rejects an authentic retired V2 envelope without fallback or rewrite',
+      () => {
+        assert.throws(
+          () =>
+            getProposeStatus(
+              repository,
+              retiredReviewerSession.investigationId,
+            ),
+          (error: unknown) =>
+            isWorkflowError(error, 'UNSUPPORTED_SCHEMA_VERSION'),
+        );
+        assert.deepEqual(
+          fs.readFileSync(retiredReviewerSourcePath),
+          retiredReviewerSourceBytes,
+        );
+        assert.deepEqual(
+          fs.readFileSync(reviewerSessionPath),
+          retiredReviewerSessionBytes,
+        );
+        assert.deepEqual(
+          fs.readdirSync(reviewerRuntime.refs).sort(),
+          reviewerRefNames,
+        );
+        assert.deepEqual(
+          reviewerRefNames.map((name) =>
+            fs.readFileSync(path.join(reviewerRuntime.refs, name)),
+          ),
+          reviewerRefBytes,
+        );
+      },
+    );
+    const restoredReviewerSession = compareAndSwapInvestigationSession(
+      reviewerRuntime,
+      retiredReviewerSession.investigationId,
+      retiredReviewerSession.revision,
+      (current) => ({
+        ...current,
+        revision: current.revision + 1,
+        milestones: {
+          ...current.milestones,
+          reviewerTermSourceNodeId: firstReviewerSource.nodeId,
+          groupDispositions: null,
+          whyAnswers: null,
+        },
+        updatedAt: new Date(Date.parse(current.updatedAt) + 1).toISOString(),
+      }),
+    );
+    const restoredReopened = getProposeStatus(
+      repository,
+      restoredReviewerSession.investigationId,
+    );
+    assert.equal(restoredReopened.state, 'awaiting-group-dispositions');
     const reviewerReopenRefs = readInvestigationEvidenceRefsClosure(
       reviewerRuntime,
       changeId,
@@ -2209,10 +2327,10 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       createInvestigationCheckpointEnvelope(
         getInvestigationStatus(
           repository,
-          reopened.investigation!.investigationId,
+          restoredReopened.investigation!.investigationId,
         ),
         {
-          dispositions: reopened.work!.groups.map((group) => ({
+          dispositions: restoredReopened.work!.groups.map((group) => ({
             groupId: group.groupId,
             classification: 'load-bearing' as const,
             rationale: 'The reviewer-expanded group remains load-bearing.',

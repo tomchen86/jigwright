@@ -7044,156 +7044,22 @@ function readReviewerTermSource(
   }
   const sourceNode = readEvidenceNode(paths, nodeId);
   if (
-    sourceNode.nodeSchema === 'investigation.reviewer-term-source.v3' ||
-    sourceNode.evaluator === 'workflow-propose.reviewer-term-source.v3'
-  ) {
-    return readReviewerTermSourceV3(paths, sourceNode, session);
-  }
-  const output = sourceNode.output;
-  if (
-    sourceNode.type !== 'investigation-reviewer-term-source' ||
-    sourceNode.nodeSchema !== 'investigation.reviewer-term-source.v2' ||
-    sourceNode.evaluator !== 'workflow-propose.reviewer-term-source.v2' ||
-    sourceNode.policyDigest !== PROPOSE_POLICY_DIGEST ||
-    !isRecord(output) ||
-    !hasExactKeys(output, [
-      'investigationId',
-      'baseline',
-      'providerResultNode',
-      'reviewNode',
-      'roleResult',
-      'terms',
-      'priorGroupDispositions',
-      'priorWhyAnswers',
-    ]) ||
-    !isRecord(output.providerResultNode) ||
-    !isRecord(output.reviewNode) ||
-    !isRecord(output.roleResult) ||
-    !isRecord(output.priorGroupDispositions) ||
-    !isRecord(output.priorWhyAnswers) ||
-    !hasExactKeys(output.priorGroupDispositions, [
-      'envelopeDigest',
-      'contributionDigest',
-      'envelope',
-    ]) ||
-    !hasExactKeys(output.priorWhyAnswers, [
-      'envelopeDigest',
-      'contributionDigest',
-      'envelope',
-    ]) ||
-    !Array.isArray(output.terms)
+    sourceNode.type === 'investigation-reviewer-term-source' &&
+    sourceNode.nodeSchema !== 'investigation.reviewer-term-source.v3'
   ) {
     throw workflowError(
-      'INVESTIGATION_REVIEWER_TERM_SOURCE_INVALID',
-      'Reviewer-term source evidence is malformed.',
-      ExitCode.staleState,
+      'UNSUPPORTED_SCHEMA_VERSION',
+      `Reviewer-term source schema ${sourceNode.nodeSchema} is unsupported; only investigation.reviewer-term-source.v3 is current.`,
+      ExitCode.guard,
+      {
+        details: {
+          schema: sourceNode.nodeSchema,
+          supportedSchema: 'investigation.reviewer-term-source.v3',
+        },
+      },
     );
   }
-  const embeddedProviderResultNode = output.providerResultNode as EvidenceNode;
-  const reviewNode = output.reviewNode as EvidenceNode;
-  const roleResult = output.roleResult as AdmittedRoleResult;
-  const rawPriorGroupDispositions = output.priorGroupDispositions as Record<
-    string,
-    unknown
-  >;
-  const rawPriorWhyAnswers = output.priorWhyAnswers as Record<string, unknown>;
-  const priorGroupEnvelope = assertInvestigationCheckpointEnvelope(
-    rawPriorGroupDispositions.envelope,
-  );
-  const priorWhyEnvelope = assertInvestigationCheckpointEnvelope(
-    rawPriorWhyAnswers.envelope,
-  );
-  const priorGroupDispositions: StoredInvestigationCheckpoint = {
-    envelopeDigest: String(rawPriorGroupDispositions.envelopeDigest),
-    contributionDigest: String(rawPriorGroupDispositions.contributionDigest),
-    envelope: priorGroupEnvelope,
-  };
-  const priorWhyAnswers: StoredInvestigationCheckpoint = {
-    envelopeDigest: String(rawPriorWhyAnswers.envelopeDigest),
-    contributionDigest: String(rawPriorWhyAnswers.contributionDigest),
-    envelope: priorWhyEnvelope,
-  };
-  const review = readPlanReviewNode(reviewNode);
-  const { providerResultNode, targetSnapshotNode } =
-    readReviewerTermProviderResult(paths, embeddedProviderResultNode, review);
-  const terms = output.terms as Array<{
-    kind: 'literal-content' | 'literal-path' | 'symbol' | 'config-key';
-    value: string;
-  }>;
-  if (
-    output.investigationId !== session.investigationId ||
-    !isBaseline(output.baseline) ||
-    canonicalJson(output.baseline) !== canonicalJson(session.baseline) ||
-    canonicalJson(terms) !== canonicalJson(review.proposedTerms) ||
-    providerResultNode.nodeId !== review.providerResultNodeId ||
-    providerResultNode.resultDigest !== review.providerResultResultDigest ||
-    roleResult.content.nodeId !== reviewNode.nodeId ||
-    roleResult.content.resultDigest !== reviewNode.resultDigest ||
-    sourceNode.exactInputDigests.baseline !==
-      sha256(canonicalJson(output.baseline)) ||
-    sourceNode.exactInputDigests.terms !== sha256(canonicalJson(terms)) ||
-    sourceNode.exactInputDigests.roleResult !== roleResult.resultDigest ||
-    priorGroupDispositions.envelopeDigest !==
-      sourceNode.exactInputDigests.priorGroupDispositions ||
-    priorWhyAnswers.envelopeDigest !==
-      sourceNode.exactInputDigests.priorWhyAnswers ||
-    priorGroupDispositions.envelopeDigest !==
-      sha256(canonicalJson(priorGroupEnvelope)) ||
-    priorWhyAnswers.envelopeDigest !==
-      sha256(canonicalJson(priorWhyEnvelope)) ||
-    priorGroupDispositions.contributionDigest !==
-      checkpointContributionDigest(priorGroupEnvelope) ||
-    priorWhyAnswers.contributionDigest !==
-      checkpointContributionDigest(priorWhyEnvelope) ||
-    priorGroupDispositions.envelope.kind !== 'group-dispositions' ||
-    priorWhyAnswers.envelope.kind !== 'why-answers' ||
-    priorGroupEnvelope.investigationId !== output.investigationId ||
-    priorWhyEnvelope.investigationId !== output.investigationId ||
-    priorGroupEnvelope.changeId !== session.changeId ||
-    priorWhyEnvelope.changeId !== session.changeId ||
-    priorGroupEnvelope.intentDigest !== session.intentDigest ||
-    priorWhyEnvelope.intentDigest !== session.intentDigest ||
-    priorGroupEnvelope.blindManifestDigest !== session.blindManifestDigest ||
-    priorWhyEnvelope.blindManifestDigest !== session.blindManifestDigest ||
-    canonicalJson(priorGroupEnvelope.baseline) !==
-      canonicalJson(output.baseline) ||
-    canonicalJson(priorWhyEnvelope.baseline) !==
-      canonicalJson(output.baseline) ||
-    sourceNode.provenanceParentNodeIds.review !== reviewNode.nodeId ||
-    sourceNode.semanticParentResultDigests.review !== reviewNode.resultDigest ||
-    sourceNode.provenanceParentNodeIds.providerResult !==
-      providerResultNode.nodeId ||
-    sourceNode.semanticParentResultDigests.providerResult !==
-      providerResultNode.resultDigest ||
-    providerResultNode.exactInputDigests.targetSnapshot !==
-      targetSnapshotNode.nodeId ||
-    providerResultNode.semanticParentResultDigests.targetSnapshot !==
-      targetSnapshotNode.resultDigest
-  ) {
-    throw workflowError(
-      'INVESTIGATION_REVIEWER_TERM_SOURCE_INVALID',
-      'Reviewer-term source evidence no longer matches its review and admitted role result.',
-      ExitCode.staleState,
-    );
-  }
-  return {
-    sourceNode,
-    providerResultNode,
-    reviewNode,
-    targetSnapshotNode,
-    evidenceNodes: [
-      ...(targetSnapshotNode === null ? [] : [targetSnapshotNode]),
-      providerResultNode,
-      reviewNode,
-      sourceNode,
-    ],
-    roleResult,
-    terms,
-    priorGroupDispositions,
-    priorWhyAnswers,
-    sourceNodeIds: [sourceNode.nodeId],
-    reopenCount: 1,
-  };
+  return readReviewerTermSourceV3(paths, sourceNode, session);
 }
 
 function readReviewerTermSourceV3(
