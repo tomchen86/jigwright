@@ -477,7 +477,6 @@ export const INVESTIGATION_V3_ATTEMPTED_TRANSITIONS = [
   'build-draft',
   'draft-seal',
   'authority-validation',
-  'historical-inspection',
   'publication',
 ] as const;
 
@@ -775,50 +774,6 @@ export function validateForAuthority(input: {
     };
   } catch (error) {
     return blocked('authority-validation', input.manifest, error);
-  }
-}
-
-export function inspectHistorical(input: {
-  repositoryRoot: string;
-  manifest: unknown;
-}):
-  | {
-      outcome: 'inspected';
-      authorityEligible: false;
-      manifestDigest: string;
-    }
-  | {
-      outcome: 'historicalReplayUnavailable';
-      authorityEligible: false;
-      manifestDigest: string | null;
-      reasonCode: string;
-    }
-  | { outcome: 'blocked'; blocker: InvestigationV3Blocker } {
-  try {
-    const manifest = parseFinalManifest(input.repositoryRoot, input.manifest);
-    return {
-      outcome: 'inspected',
-      authorityEligible: false,
-      manifestDigest: manifest.manifestDigest,
-    };
-  } catch (error) {
-    const code = failureCode(error);
-    if (
-      code === 'REPLAY_INPUT_MISSING' ||
-      code === 'REPLAY_CLOSURE_UNSUPPORTED'
-    ) {
-      return {
-        outcome: 'historicalReplayUnavailable',
-        authorityEligible: false,
-        manifestDigest:
-          isRecord(input.manifest) &&
-          typeof input.manifest.manifestDigest === 'string'
-            ? input.manifest.manifestDigest
-            : null,
-        reasonCode: code,
-      };
-    }
-    return blocked('historical-inspection', input.manifest, error);
   }
 }
 

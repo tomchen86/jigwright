@@ -6,7 +6,6 @@ export {
   INVESTIGATION_MANIFEST_V3_KIND,
   INVESTIGATION_MANIFEST_V3_SCHEMA_VERSION,
   buildInvestigationManifestDraft,
-  inspectHistorical,
   sealInvestigationManifestDraft,
   validateDraftForSeal,
   validateForAuthority,

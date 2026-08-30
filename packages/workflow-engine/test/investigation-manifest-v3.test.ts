@@ -13,7 +13,7 @@ import { deriveInvestigationGroupFacts } from '../src/modules/investigation/doma
 import {
   buildInvestigationManifestDraft,
   createInvestigationV3Blocker,
-  inspectHistorical,
+  INVESTIGATION_V3_ATTEMPTED_TRANSITIONS,
   sealInvestigationManifestDraft,
   validateDraftForSeal,
   validateForAuthority,
@@ -50,6 +50,18 @@ import {
   writeInvestigationV3FailureObservation,
 } from '../src/runtime/storage-journal/investigation-v3-failure-store.ts';
 import { createFixtureRepository, git } from './fixture.ts';
+
+test('public Manifest v3 surface omits historical inspection', async () => {
+  const publicSurface =
+    await import('../src/composition-root/public/manifest-v3.ts');
+  assert.equal('inspectHistorical' in publicSurface, false);
+  assert.equal(
+    INVESTIGATION_V3_ATTEMPTED_TRANSITIONS.includes(
+      'historical-inspection' as never,
+    ),
+    false,
+  );
+});
 
 test('ordinary v3 is built directly, sealed separately, and replayed from pinned Git', () => {
   const repository = createRepository();
@@ -128,15 +140,6 @@ test('ordinary v3 is built directly, sealed separately, and replayed from pinned
     }
     assert.equal(authority.outcome, 'verified');
     assert.equal(authority.manifestDigest, sealed.manifest.manifestDigest);
-
-    const historical = inspectHistorical({
-      repositoryRoot: repository,
-      manifest: sealed.manifest,
-    });
-    assert.equal(historical.outcome, 'inspected');
-    if (historical.outcome === 'inspected') {
-      assert.equal(historical.authorityEligible, false);
-    }
 
     const overKeyed = structuredClone(sealed.manifest) as unknown as Record<
       string,
