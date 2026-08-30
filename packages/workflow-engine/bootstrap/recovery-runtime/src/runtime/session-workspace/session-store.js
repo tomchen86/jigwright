@@ -690,9 +690,6 @@ function parseManagedSessionLock(content) {
         return null;
     }
     const keys = Object.keys(value).sort();
-    if (keys.join('\0') === ['changeId', 'sessionId', 'taskId'].join('\0')) {
-        return value;
-    }
     if (keys.join('\0') !==
         ['changeId', 'ownerToken', 'pid', 'sessionId', 'taskId'].join('\0') ||
         typeof value.ownerToken !== 'string' ||

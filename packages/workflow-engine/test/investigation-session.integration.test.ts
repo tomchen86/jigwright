@@ -145,6 +145,7 @@ import {
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import { installPlanReviewAuthority } from './plan-review-authority-fixture.ts';
 import {
+  assertOwnedLock,
   releaseOwnedLock,
   runtimePaths as workflowRuntimePaths,
   withRepositoryLifecycleOperation,
@@ -5021,6 +5022,54 @@ test('managed task start reclaims dead locks bound to terminal sessions', () => 
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }
+  }
+});
+
+test('managed session locks reject unversioned markers without releasing them', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    writeReadyV3ExemptChange(repository);
+    commitPlanningTransition(repository, 'demo-change');
+    const started = startSession(repository, 'demo-change', '1.1');
+    const repositoryState = discoverRepository(repository);
+    const runtime = workflowRuntimePaths(
+      repositoryState.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const lockPath = path.join(runtime.locks, 'demo-change.lock');
+
+    assertOwnedLock(
+      lockPath,
+      started.sessionId,
+      started.changeId,
+      started.taskId,
+    );
+
+    const unversionedMarker = `${JSON.stringify({
+      sessionId: started.sessionId,
+      changeId: started.changeId,
+      taskId: started.taskId,
+    })}\n`;
+    fs.writeFileSync(lockPath, unversionedMarker, 'utf8');
+
+    assert.throws(
+      () =>
+        assertOwnedLock(
+          lockPath,
+          started.sessionId,
+          started.changeId,
+          started.taskId,
+        ),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.throws(
+      () => releaseOwnedLock(lockPath, started.sessionId),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.equal(fs.readFileSync(lockPath, 'utf8'), unversionedMarker);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

@@ -1107,6 +1107,8 @@ function parseManagedSessionLock(content: string): {
   sessionId: string;
   changeId: string;
   taskId: string;
+  ownerToken: string;
+  pid: number;
 } | null {
   let value: unknown;
   try {
@@ -1124,13 +1126,6 @@ function parseManagedSessionLock(content: string): {
     return null;
   }
   const keys = Object.keys(value).sort();
-  if (keys.join('\0') === ['changeId', 'sessionId', 'taskId'].join('\0')) {
-    return value as {
-      sessionId: string;
-      changeId: string;
-      taskId: string;
-    };
-  }
   if (
     keys.join('\0') !==
       ['changeId', 'ownerToken', 'pid', 'sessionId', 'taskId'].join('\0') ||
@@ -1145,6 +1140,8 @@ function parseManagedSessionLock(content: string): {
     sessionId: string;
     changeId: string;
     taskId: string;
+    ownerToken: string;
+    pid: number;
   };
 }
 
