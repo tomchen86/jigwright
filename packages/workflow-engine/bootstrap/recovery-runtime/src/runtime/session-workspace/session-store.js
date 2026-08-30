@@ -888,7 +888,7 @@ function isTaskSessionIsolationBinding(value) {
                 .sort()
                 .join('\0') ||
         value.schemaVersion !== 1 ||
-        !['legacy-single', 'primary', 'concurrent'].includes(String(value.routingRole)) ||
+        !['single', 'primary', 'concurrent'].includes(String(value.routingRole)) ||
         typeof value.concurrencyEnabled !== 'boolean' ||
         !isSha256Digest(value.routingWorksetDigest) ||
         !isSha256Digest(value.worktreeDigest) ||

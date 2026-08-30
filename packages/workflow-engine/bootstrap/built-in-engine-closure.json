@@ -1473,7 +1473,7 @@
     {
       "path": "src/modules/lifecycle/change-routing.ts",
       "mode": "100644",
-      "digest": "sha256:28b8c7dfd03b948870a7fd6d8196b5a07a3f6b7734bcb6b7ee781fc4317c1128"
+      "digest": "sha256:e571dbaaec06158de14803675ec428f7d16f2cc1e727e57fab70581638bd9494"
     },
     {
       "path": "src/modules/lifecycle/context-manifest-contract.ts",
@@ -1948,7 +1948,7 @@
     {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:77dda657a4cc5dd634a049f65089bcef4a450f32860cf7e3960bbd95cedda7a1"
+      "digest": "sha256:d0f79ceafe5723021e5b6b54c5ed6f01b8a6987a6e464f1ede2461393cb1ed5b"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
