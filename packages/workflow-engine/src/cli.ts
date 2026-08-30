@@ -3443,20 +3443,20 @@ function doctor(cwd: string): CommandResult {
   } else if (config.protectedBranches.includes(git.branch)) {
     warnings.push({
       code: 'PROTECTED_BRANCH',
-      message: `Current branch ${git.branch} is protected; session start will fail.`,
+      message: `Current branch ${git.branch} is protected; task session activation will fail.`,
     });
   }
   if (git.statusEntries.length > 0) {
     warnings.push({
       code: 'DIRTY_WORKTREE',
-      message: `Worktree has ${git.statusEntries.length} staged, unstaged, or untracked status entries; session start will fail.`,
+      message: `Worktree has ${git.statusEntries.length} staged, unstaged, or untracked status entries; task session activation will fail.`,
     });
   }
   if (!fs.existsSync(path.join(git.repositoryRoot, 'openspec/specs'))) {
     warnings.push({
       code: 'NO_BASE_SPECS',
       message:
-        'openspec/specs does not exist yet; migrate accepted legacy requirements before retiring REQUIREMENT_LOG.md.',
+        'openspec/specs does not exist yet; create the current managed base specifications before planning changes.',
     });
   }
   for (const diagnostic of openspec.diagnostics) {

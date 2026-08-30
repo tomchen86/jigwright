@@ -44,6 +44,10 @@ test('retired start command is absent and fails before repository mutation', () 
     ),
     false,
   );
+  const cliSource = fs.readFileSync(cliPath, 'utf8');
+  assert.doesNotMatch(cliSource, /session start will fail/u);
+  assert.doesNotMatch(cliSource, /migrate accepted legacy requirements/u);
+  assert.doesNotMatch(cliSource, /REQUIREMENT_LOG/u);
 
   const repository = createFixtureRepository();
   try {
