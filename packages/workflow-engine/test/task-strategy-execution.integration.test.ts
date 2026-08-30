@@ -2950,7 +2950,11 @@ function createCrossAgentFixture(
       maintainerPolicy.repository.origin,
     ]);
     git(repository, ['add', 'workflow/maintainer-policy.json']);
-    git(repository, ['commit', '-m', 'Configure fixture maintainer policy']);
+    if (
+      git(repository, ['diff', '--cached', '--name-only']).trim().length > 0
+    ) {
+      git(repository, ['commit', '-m', 'Configure fixture maintainer policy']);
+    }
   }
   if (!providers.codex || !providers.claude) {
     const providerPolicyPath = path.join(
