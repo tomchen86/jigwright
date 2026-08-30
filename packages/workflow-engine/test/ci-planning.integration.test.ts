@@ -844,15 +844,9 @@ test('CI refuses a forged planning-provider v1 migration', () => {
   }
 });
 
-test('CI keeps planning-provider activation monotonic after its marker is deleted', () => {
+test('CI refuses a planning introduction without its explicit provider binding', () => {
   const repository = createRepository();
-  const marker = 'workflow/schemas/planning-provider-binding.schema.json';
   try {
-    write(repository, marker, '{}\n');
-    commit(repository, 'Activate planning-provider bindings');
-    fs.rmSync(path.join(repository, marker));
-    commit(repository, 'Attempt to erase planning-provider activation');
-
     writePlanningTree(repository);
     const plan = commitPlan(repository);
     assert.throws(

@@ -173,9 +173,7 @@ export function createOpenSpecProviderBindingResolverV1(
         'Planning-provider migration is not supported by binding contract v1.',
       );
     }
-    if (candidateRaw !== null) {
-      assertPlanningProviderV1Migration(previous.binding, candidateRaw);
-    }
+    assertPlanningProviderV1Migration(previous.binding, candidateRaw);
     const candidate = resolveHistorical(
       reader,
       repositoryRoot,

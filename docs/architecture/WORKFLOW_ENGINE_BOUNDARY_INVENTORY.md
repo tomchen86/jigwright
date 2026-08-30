@@ -128,11 +128,11 @@ workspace dependencies. The fixture adapter consumes only public contracts.
 
 ### Planning-provider binding — partial
 
-The v1 binding contract, digest, current and pinned readers, history check,
+The v1 binding contract, digest, current and pinned explicit readers,
 composition wiring, archive retention, and explicit migration refusal are
-landed. No tracked per-change `workflow/change-providers` document has yet
-activated that path; path absence and workflow-document content are checked
-independently.
+landed. Every managed current or pinned planning tree requires its exact
+per-change `workflow/change-providers` document; no inference or activation
+marker path remains.
 
 <!-- coupling:policy-path-literals -->
 

@@ -531,9 +531,7 @@ export function validateCiPlanningCommit(
     );
     const expectedIntroductionPaths = [
       ...afterEntries.map(({ path: artifactPath }) => artifactPath),
-      ...(planningProvider.source === 'explicit'
-        ? [planningProviderBindingPath(changeId)]
-        : []),
+      planningProviderBindingPath(changeId),
       ...(rolePolicyPaths.policyChanged ? [rolePolicyPaths.policyPath] : []),
     ].sort();
     if (

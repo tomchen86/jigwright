@@ -249,9 +249,7 @@ function inspectSnapshot(
     path.join(repositoryRoot, 'pnpm-lock.yaml'),
     path.join(repositoryRoot, 'pnpm-workspace.yaml'),
     ...runtimeFiles,
-    ...(planningProvider.artifactPath === null
-      ? []
-      : [path.join(repositoryRoot, planningProvider.artifactPath)]),
+    path.join(repositoryRoot, planningProvider.artifactPath),
   ]);
   const artifactDigests = digestArtifacts(repositoryRoot, artifactPaths);
   const artifactModes = Object.fromEntries(
