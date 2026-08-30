@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,6 +22,12 @@ import {
   storeImmutableCandidateBundle,
   type CandidateChecksAttestationV3,
 } from '../src/modules/authority/maintainer-candidate.ts';
+import {
+  buildImmutableGitCandidate,
+  canonicalImmutableGitCandidate,
+  parseImmutableGitCandidate,
+  verifyImmutableGitCandidateAgainstRepository,
+} from '../src/modules/authority/immutable-git-candidate.ts';
 import type { PatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
 import { canonicalPatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
 import { isWorkflowError } from './fixture.ts';
@@ -38,6 +45,509 @@ const mandateBinding = {
   changeId: 'demo-change',
   externalAuditRoot: path.join(os.tmpdir(), 'candidate-audit-root'),
 };
+
+type NeutralPolicy = {
+  schemaVersion: 1;
+  repository: { id: string; origin: string };
+  phase: 'bootstrap' | 'sealed';
+  auditTagPrefix: string;
+  signatureNamespace: string;
+  maxTtlMinutes: 30;
+  maxUses: 1;
+  bootstrapEligiblePaths: string[];
+  sealedImmutablePaths: string[];
+  requiredChecks: string[];
+  trustedSigners: Array<{
+    identity: string;
+    publicKey: string;
+    fingerprint: string;
+  }>;
+};
+
+function neutralPolicy(overrides: Partial<NeutralPolicy> = {}): NeutralPolicy {
+  return {
+    schemaVersion: 1,
+    repository: {
+      id: 'github:R_neutral_candidate',
+      origin: 'https://github.com/example/neutral-candidate.git',
+    },
+    phase: 'bootstrap',
+    auditTagPrefix: 'refs/tags/maintainer-grants/',
+    signatureNamespace: 'workflow.maintainer-grant.v1',
+    maxTtlMinutes: 30,
+    maxUses: 1,
+    bootstrapEligiblePaths: ['packages/**', 'workflow/**'],
+    sealedImmutablePaths: [],
+    requiredChecks: ['candidate-fail', 'candidate-pass'],
+    trustedSigners: [
+      {
+        identity: 'fixture-maintainer',
+        publicKey: 'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFixture',
+        fingerprint: 'SHA256:fixturefixturefixturefixture',
+      },
+    ],
+    ...overrides,
+  };
+}
+
+function createNeutralCandidateFixture(
+  label: string,
+  policy: NeutralPolicy,
+): {
+  repository: string;
+  policyPath: string;
+  baseCommit: string;
+  dispose(): void;
+} {
+  const repository = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), `neutral-candidate-${label}-`)),
+  );
+  gitForCandidate(repository, ['init', '-b', 'main']);
+  gitForCandidate(repository, [
+    'config',
+    'user.email',
+    'candidate@example.test',
+  ]);
+  gitForCandidate(repository, ['config', 'user.name', 'Candidate Test']);
+  fs.mkdirSync(path.join(repository, 'workflow'), { recursive: true });
+  fs.mkdirSync(path.join(repository, 'checks'), { recursive: true });
+  const policyPath = path.join(repository, 'workflow/maintainer-policy.json');
+  writeCandidateJson(policyPath, policy);
+  writeCandidateJson(path.join(repository, 'workflow/checks.json'), {
+    schemaVersion: 1,
+    checks: {
+      'candidate-fail': {
+        command: ['node', 'checks/fail.mjs'],
+        destructiveDatabase: false,
+      },
+      'candidate-mutate': {
+        command: ['node', 'checks/mutate.mjs'],
+        destructiveDatabase: false,
+      },
+      'candidate-pass': {
+        command: ['node', 'checks/pass.mjs'],
+        destructiveDatabase: false,
+      },
+    },
+  });
+  fs.writeFileSync(
+    path.join(repository, 'checks/pass.mjs'),
+    "process.stdout.write('candidate-pass\\n');\n",
+  );
+  fs.writeFileSync(
+    path.join(repository, 'checks/fail.mjs'),
+    "process.stderr.write('candidate-fail\\n'); process.exitCode = 7;\n",
+  );
+  fs.writeFileSync(
+    path.join(repository, 'checks/mutate.mjs'),
+    "await import('node:fs').then(({writeFileSync}) => writeFileSync('.git/pre-grant-check-ran', 'unsafe\\n'));\n",
+  );
+  gitForCandidate(repository, ['add', '--', 'workflow', 'checks']);
+  gitForCandidate(repository, ['commit', '-m', 'Create candidate fixture']);
+  return {
+    repository,
+    policyPath,
+    baseCommit: gitForCandidate(repository, ['rev-parse', 'HEAD']).trim(),
+    dispose: () => fs.rmSync(repository, { recursive: true, force: true }),
+  };
+}
+
+function writeCandidateJson(filePath: string, value: unknown): void {
+  fs.writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function gitForCandidate(repository: string, args: string[]): string {
+  const result = spawnSync('git', args, {
+    cwd: repository,
+    encoding: 'utf8',
+    shell: false,
+  });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr}`);
+  }
+  return result.stdout;
+}
+
+function neutralCandidateDigest(value: string): string {
+  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
+}
+
+function candidateRepositorySnapshot(repository: string) {
+  return {
+    refs: gitForCandidate(repository, [
+      'for-each-ref',
+      '--format=%(refname) %(objectname)',
+    ]),
+    indexTree: gitForCandidate(repository, ['write-tree']).trim(),
+    status: gitForCandidate(repository, [
+      'status',
+      '--porcelain=v2',
+      '-z',
+      '--untracked-files=all',
+    ]),
+    storeExists: fs.existsSync(path.join(repository, '.git/workflow-engine')),
+  };
+}
+
+test('neutral immutable Git candidates observe grantable policy mutations without acting as authority', () => {
+  const scenarios: Array<{
+    name: string;
+    policy: NeutralPolicy;
+    mutate(fixture: ReturnType<typeof createNeutralCandidateFixture>): void;
+    observationKind: string;
+  }> = [
+    {
+      name: 'policy-deletion',
+      policy: neutralPolicy(),
+      mutate: ({ policyPath }) => fs.unlinkSync(policyPath),
+      observationKind: 'policy-file-deletion.v1',
+    },
+    {
+      name: 'sealed-rollback',
+      policy: neutralPolicy({
+        phase: 'sealed',
+        sealedImmutablePaths: ['workflow/**'],
+      }),
+      mutate: ({ policyPath }) => {
+        const current = JSON.parse(
+          fs.readFileSync(policyPath, 'utf8'),
+        ) as NeutralPolicy;
+        writeCandidateJson(policyPath, { ...current, phase: 'bootstrap' });
+      },
+      observationKind: 'policy-sealed-phase-rollback.v1',
+    },
+    {
+      name: 'immutable-path-removal',
+      policy: neutralPolicy({
+        phase: 'sealed',
+        sealedImmutablePaths: ['packages/**', 'workflow/**'],
+      }),
+      mutate: ({ policyPath }) => {
+        const current = JSON.parse(
+          fs.readFileSync(policyPath, 'utf8'),
+        ) as NeutralPolicy;
+        writeCandidateJson(policyPath, {
+          ...current,
+          sealedImmutablePaths: ['workflow/**'],
+        });
+      },
+      observationKind: 'policy-sealed-immutable-path-removal.v1',
+    },
+    {
+      name: 'required-check-removal',
+      policy: neutralPolicy(),
+      mutate: ({ policyPath }) => {
+        const current = JSON.parse(
+          fs.readFileSync(policyPath, 'utf8'),
+        ) as NeutralPolicy;
+        writeCandidateJson(policyPath, {
+          ...current,
+          requiredChecks: ['candidate-pass'],
+        });
+      },
+      observationKind: 'policy-required-check-removal.v1',
+    },
+  ];
+  const candidateDigests = new Set<string>();
+  const observationDigests = new Set<string>();
+  for (const scenario of scenarios) {
+    const fixture = createNeutralCandidateFixture(
+      scenario.name,
+      scenario.policy,
+    );
+    try {
+      scenario.mutate(fixture);
+      const before = candidateRepositorySnapshot(fixture.repository);
+      const candidate = buildImmutableGitCandidate(fixture.repository, {
+        targetRef: 'refs/heads/main',
+        expectedOldCommit: fixture.baseCommit,
+        observeCheckIds: ['candidate-pass', 'candidate-fail'],
+      });
+      const after = candidateRepositorySnapshot(fixture.repository);
+
+      assert.deepEqual(after, before);
+      assert.equal(candidate.expectedOldCommit, fixture.baseCommit);
+      assert.equal(candidate.repositoryId, 'github:R_neutral_candidate');
+      assert.equal(
+        candidate.repositoryOrigin,
+        'https://github.com/example/neutral-candidate.git',
+      );
+      assert.equal(candidate.expectedOldTree, candidate.indexTree);
+      assert.notEqual(candidate.resultTree, candidate.expectedOldTree);
+      assert.deepEqual(
+        candidate.manifest.files.map(({ path: filePath }) => filePath),
+        ['workflow/maintainer-policy.json'],
+      );
+      assert.deepEqual(
+        candidate.policyObservations.map(({ kind }) => kind),
+        [scenario.observationKind],
+      );
+      assert.deepEqual(
+        candidate.checkObservations.map(({ checkId, definition, runner }) => ({
+          checkId,
+          definition,
+          runner,
+        })),
+        [
+          {
+            checkId: 'candidate-fail',
+            definition: {
+              command: ['node', 'checks/fail.mjs'],
+              destructiveDatabase: false,
+            },
+            runner: 'node',
+          },
+          {
+            checkId: 'candidate-pass',
+            definition: {
+              command: ['node', 'checks/pass.mjs'],
+              destructiveDatabase: false,
+            },
+            runner: 'node',
+          },
+        ],
+      );
+      assert.equal(
+        candidate.checkObservations.every(
+          (observation) =>
+            !('outcome' in observation) &&
+            !('exitCode' in observation) &&
+            !('stdoutDigest' in observation) &&
+            !('stderrDigest' in observation) &&
+            /^[0-9a-f]{64}$/u.test(observation.runnerDigest),
+        ),
+        true,
+      );
+      assert.equal('mandateBinding' in candidate, false);
+      assert.equal('grant' in candidate, false);
+      assert.equal('signature' in candidate, false);
+      assert.equal('candidateCommit' in candidate, false);
+      assert.deepEqual(
+        parseImmutableGitCandidate(canonicalImmutableGitCandidate(candidate)),
+        candidate,
+      );
+      assert.deepEqual(
+        verifyImmutableGitCandidateAgainstRepository(
+          fixture.repository,
+          candidate,
+        ),
+        candidate,
+      );
+      candidateDigests.add(candidate.candidateDigest);
+      observationDigests.add(candidate.policyObservationsDigest);
+    } finally {
+      fixture.dispose();
+    }
+  }
+  assert.equal(candidateDigests.size, scenarios.length);
+  assert.equal(observationDigests.size, scenarios.length);
+});
+
+test('neutral candidate rejects malformed facts, drift, symlinks, and preserves isolated preview state on interruption', () => {
+  const fixture = createNeutralCandidateFixture('drift', neutralPolicy());
+  try {
+    const current = JSON.parse(
+      fs.readFileSync(fixture.policyPath, 'utf8'),
+    ) as NeutralPolicy;
+    writeCandidateJson(fixture.policyPath, {
+      ...current,
+      requiredChecks: ['candidate-pass'],
+    });
+    const candidate = buildImmutableGitCandidate(fixture.repository, {
+      targetRef: 'refs/heads/main',
+      expectedOldCommit: fixture.baseCommit,
+    });
+    const malformed = structuredClone(candidate) as unknown as {
+      manifest: { files: Array<{ after: { sha256: string } }> };
+    };
+    malformed.manifest.files[0]!.after.sha256 = `sha256:${'0'.repeat(64)}`;
+    assert.throws(
+      () => parseImmutableGitCandidate(`${canonicalJson(malformed)}\n`),
+      (error) => isWorkflowError(error, 'IMMUTABLE_GIT_CANDIDATE_INVALID'),
+    );
+
+    writeCandidateJson(fixture.policyPath, {
+      ...current,
+      requiredChecks: ['candidate-fail'],
+    });
+    assert.throws(
+      () =>
+        verifyImmutableGitCandidateAgainstRepository(
+          fixture.repository,
+          candidate,
+        ),
+      (error) => isWorkflowError(error, 'IMMUTABLE_GIT_CANDIDATE_DRIFT'),
+    );
+  } finally {
+    fixture.dispose();
+  }
+
+  const unrecognizedPolicyFixture = createNeutralCandidateFixture(
+    'unrecognized-policy',
+    neutralPolicy(),
+  );
+  try {
+    fs.writeFileSync(
+      unrecognizedPolicyFixture.policyPath,
+      '{"phase":"sealed","requiredChecks":\n',
+    );
+    const before = candidateRepositorySnapshot(
+      unrecognizedPolicyFixture.repository,
+    );
+    const candidate = buildImmutableGitCandidate(
+      unrecognizedPolicyFixture.repository,
+      {
+        targetRef: 'refs/heads/main',
+        expectedOldCommit: unrecognizedPolicyFixture.baseCommit,
+        observeCheckIds: ['candidate-mutate'],
+      },
+    );
+    assert.deepEqual(
+      candidate.policyObservations.map(({ kind }) => kind),
+      ['policy-bytes-unrecognized.v1'],
+    );
+    assert.deepEqual(
+      candidate.checkObservations.map(({ checkId }) => checkId),
+      ['candidate-mutate'],
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          unrecognizedPolicyFixture.repository,
+          '.git/pre-grant-check-ran',
+        ),
+      ),
+      false,
+    );
+    const forged = structuredClone(candidate) as unknown as Record<
+      string,
+      unknown
+    > & {
+      checkObservations: Array<Record<string, unknown>>;
+      checkObservationsDigest: string;
+      candidateDigest: string;
+    };
+    const forgedObservation = forged.checkObservations[0]!;
+    forgedObservation.runnerDigest = '0'.repeat(64);
+    const forgedObservationBody = { ...forgedObservation };
+    delete forgedObservationBody.observationDigest;
+    forgedObservation.observationDigest = neutralCandidateDigest(
+      canonicalJson(forgedObservationBody),
+    );
+    forged.checkObservationsDigest = neutralCandidateDigest(
+      canonicalJson(forged.checkObservations),
+    );
+    const { candidateDigest: _forgedCandidateDigest, ...forgedCandidateBody } =
+      forged;
+    forged.candidateDigest = neutralCandidateDigest(
+      canonicalJson(forgedCandidateBody),
+    );
+    const parsedForgery = parseImmutableGitCandidate(
+      `${canonicalJson(forged)}\n`,
+    );
+    assert.throws(
+      () =>
+        verifyImmutableGitCandidateAgainstRepository(
+          unrecognizedPolicyFixture.repository,
+          parsedForgery,
+        ),
+      (error) => isWorkflowError(error, 'IMMUTABLE_GIT_CANDIDATE_DRIFT'),
+    );
+    assert.deepEqual(
+      candidateRepositorySnapshot(unrecognizedPolicyFixture.repository),
+      before,
+    );
+    assert.deepEqual(
+      verifyImmutableGitCandidateAgainstRepository(
+        unrecognizedPolicyFixture.repository,
+        candidate,
+      ),
+      candidate,
+    );
+  } finally {
+    unrecognizedPolicyFixture.dispose();
+  }
+
+  const bootstrapPathFixture = createNeutralCandidateFixture(
+    'bootstrap-path-removal',
+    neutralPolicy({ sealedImmutablePaths: ['workflow/**'] }),
+  );
+  try {
+    const current = JSON.parse(
+      fs.readFileSync(bootstrapPathFixture.policyPath, 'utf8'),
+    ) as NeutralPolicy;
+    writeCandidateJson(bootstrapPathFixture.policyPath, {
+      ...current,
+      sealedImmutablePaths: [],
+    });
+    const candidate = buildImmutableGitCandidate(
+      bootstrapPathFixture.repository,
+      {
+        targetRef: 'refs/heads/main',
+        expectedOldCommit: bootstrapPathFixture.baseCommit,
+      },
+    );
+    assert.deepEqual(candidate.policyObservations, []);
+  } finally {
+    bootstrapPathFixture.dispose();
+  }
+
+  const symlinkFixture = createNeutralCandidateFixture(
+    'symlink',
+    neutralPolicy(),
+  );
+  try {
+    fs.unlinkSync(symlinkFixture.policyPath);
+    fs.symlinkSync('../checks/pass.mjs', symlinkFixture.policyPath);
+    assert.throws(
+      () =>
+        buildImmutableGitCandidate(symlinkFixture.repository, {
+          targetRef: 'refs/heads/main',
+          expectedOldCommit: symlinkFixture.baseCommit,
+        }),
+      (error) => isWorkflowError(error, 'IMMUTABLE_GIT_CANDIDATE_PATH_UNSAFE'),
+    );
+  } finally {
+    symlinkFixture.dispose();
+  }
+
+  const crashFixture = createNeutralCandidateFixture(
+    'preview-crash',
+    neutralPolicy(),
+  );
+  try {
+    const current = JSON.parse(
+      fs.readFileSync(crashFixture.policyPath, 'utf8'),
+    ) as NeutralPolicy;
+    writeCandidateJson(crashFixture.policyPath, {
+      ...current,
+      requiredChecks: ['candidate-pass'],
+    });
+    const before = candidateRepositorySnapshot(crashFixture.repository);
+    assert.throws(
+      () =>
+        buildImmutableGitCandidate(
+          crashFixture.repository,
+          {
+            targetRef: 'refs/heads/main',
+            expectedOldCommit: crashFixture.baseCommit,
+          },
+          {
+            testAfterPreview: () => {
+              throw new Error('interrupt after isolated preview');
+            },
+          },
+        ),
+      /interrupt after isolated preview/u,
+    );
+    assert.deepEqual(
+      candidateRepositorySnapshot(crashFixture.repository),
+      before,
+    );
+  } finally {
+    crashFixture.dispose();
+  }
+});
 
 const manifestBody: PatchManifest = {
   schema: 'maintainer-patch-manifest.v2',
