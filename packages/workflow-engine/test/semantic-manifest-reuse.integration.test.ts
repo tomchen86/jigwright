@@ -5,7 +5,6 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import type { InvestigationFullBlobManifestEntry } from '../src/adapters/planning/investigation/investigation-why.ts';
 import { createLedgerEntry } from '../src/modules/why-knowledge/semantic-ledger.ts';
 import {
   updateLedgerIndex,
@@ -15,6 +14,7 @@ import {
   applyLedgerToFullBlobManifest,
   recordReuseCoverage,
   reviewTargetsFromManifestReuse,
+  type FullBlobReuseEntry,
 } from '../src/modules/why-knowledge/semantic-manifest-reuse.ts';
 import {
   buildCoverageManifest,
@@ -33,32 +33,17 @@ function repository(): string {
   );
 }
 
-function manifestEntry(
-  filePath: string,
-  content: string,
-): InvestigationFullBlobManifestEntry {
+function manifestEntry(filePath: string, content: string): FullBlobReuseEntry {
   return {
     manifestEntryId: hex(`${filePath}:${content}`),
     path: {
       rawBase64: Buffer.from(filePath).toString('base64'),
       utf8: filePath,
     },
-    treeDigest: hex('tree'),
     blob: {
-      objectId: 'a'.repeat(40),
-      objectType: 'blob',
-      mode: '100644',
-      byteSize: Buffer.byteLength(content),
       contentSha256: hex(content),
-      lineCount: content.split('\n').length,
     },
-    coveredHitIds: [],
-    matchedTermIds: [],
-    groupIds: [],
-    dispositionNodeIds: [],
-    relevantLocations: [],
-    relationshipsToChange: [],
-  } as unknown as InvestigationFullBlobManifestEntry;
+  };
 }
 
 function seed(root: string, filePath: string, content: string) {

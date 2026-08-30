@@ -991,10 +991,10 @@ test('closed DAG validation is topological and rejects missing parents, collisio
     (error) => isWorkflowError(error, 'INVESTIGATION_EVIDENCE_DAG_INVALID'),
   );
 
-  const futureWhyNode = createEvidenceNode({
-    type: 'investigation-why',
-    nodeSchema: 'investigation.why.v1',
-    evaluator: 'investigation-why.v1',
+  const futureEvidenceNode = createEvidenceNode({
+    type: 'future-evidence',
+    nodeSchema: 'future.evidence.v1',
+    evaluator: 'future-evidence.v1',
     policyDigest: POLICY_DIGEST,
     exactInputDigests: { blob: TREE_DIGEST },
     semanticParentResultDigests: {
@@ -1003,39 +1003,39 @@ test('closed DAG validation is topological and rejects missing parents, collisio
     provenanceParentNodeIds: {
       disposition: dispositions[0]!.nodeId,
     },
-    outputSchema: 'investigation.why-output.v1',
-    output: { why: 'Preserves a load-bearing invariant.' },
+    outputSchema: 'future.evidence-output.v1',
+    output: { observation: 'Preserves a load-bearing invariant.' },
     runtimeMetadata: {},
   });
   const extendedOrder = validateClosedEvidenceDag([
     ...nodes,
-    futureWhyNode,
+    futureEvidenceNode,
   ]).topologicalNodeIds;
-  assert.ok(extendedOrder.includes(futureWhyNode.nodeId));
+  assert.ok(extendedOrder.includes(futureEvidenceNode.nodeId));
   assert.ok(
     extendedOrder.indexOf(dispositions[0]!.nodeId) <
-      extendedOrder.indexOf(futureWhyNode.nodeId),
+      extendedOrder.indexOf(futureEvidenceNode.nodeId),
   );
 
-  const forgedWhyParentResult = createEvidenceNode({
-    ...nodeInput(futureWhyNode),
+  const forgedFutureParentResult = createEvidenceNode({
+    ...nodeInput(futureEvidenceNode),
     semanticParentResultDigests: {
       disposition: 'f'.repeat(64),
     },
-    output: futureWhyNode.output,
+    output: futureEvidenceNode.output,
   });
   assert.throws(
-    () => validateClosedEvidenceDag([...nodes, forgedWhyParentResult]),
+    () => validateClosedEvidenceDag([...nodes, forgedFutureParentResult]),
     (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
   );
 
-  const missingWhySemanticParent = createEvidenceNode({
-    ...nodeInput(futureWhyNode),
+  const missingFutureSemanticParent = createEvidenceNode({
+    ...nodeInput(futureEvidenceNode),
     semanticParentResultDigests: {},
-    output: futureWhyNode.output,
+    output: futureEvidenceNode.output,
   });
   assert.throws(
-    () => validateClosedEvidenceDag([...nodes, missingWhySemanticParent]),
+    () => validateClosedEvidenceDag([...nodes, missingFutureSemanticParent]),
     (error) => isWorkflowError(error, 'EVIDENCE_DAG_INVALID'),
   );
 

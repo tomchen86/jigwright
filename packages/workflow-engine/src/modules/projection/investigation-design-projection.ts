@@ -1,52 +1,11 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import type { EvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
-import {
-  readInvestigationWhyNode,
-  type InvestigationWhyOutput,
-} from '../../adapters/planning/investigation/investigation-why.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 
 const START = '<!-- workflow:investigation-ledger:start v1 -->';
 const END = '<!-- workflow:investigation-ledger:end v1 -->';
 const MARKER_NAMESPACE = '<!-- workflow:investigation-ledger:';
-
-/**
- * Replace the single managed investigation-ledger region with a freshly rendered
- * table derived from the WHY evidence, preserving every authored byte outside the
- * region. The exact v1 markers own the region; marker-like text inside Markdown
- * code fences is ignored, and a missing, duplicate, nested, reversed, or
- * malformed marker fails closed. All dynamic content is HTML-escaped so semantic
- * text can neither forge a marker nor inject Markdown structure — which also
- * keeps the projection idempotent.
- */
-export function projectInvestigationLedger(
-  design: string,
-  whyNodes: EvidenceNode[],
-): string {
-  const region = locateLedgerRegion(design);
-  const prefix = design.slice(0, region.start);
-  const suffix = design.slice(region.end);
-  return `${prefix}${renderLedgerRegion(whyNodes)}${suffix}`;
-}
-
-/**
- * Confirm the projection's managed region is exactly the region a fresh render of
- * the same WHY evidence would produce, byte for byte, with every authored byte
- * outside it preserved. Any edit to the region, or a malformed marker, fails
- * closed.
- */
-export function validateInvestigationLedgerProjection(
-  projected: string,
-  whyNodes: EvidenceNode[],
-): { valid: true; rowCount: number } {
-  const reprojected = projectInvestigationLedger(projected, whyNodes);
-  if (reprojected !== projected) {
-    throw ledgerInvalid('Projection does not match the rendered ledger.');
-  }
-  return { valid: true, rowCount: whyNodes.length };
-}
 
 /**
  * Replace the managed ledger with the compact Manifest-v3 WHY representation.
@@ -119,21 +78,6 @@ function locateLedgerRegion(design: string): LedgerRegion {
   return { start: lines[startLine]!.start, end: end.start + END.length };
 }
 
-function renderLedgerRegion(whyNodes: EvidenceNode[]): string {
-  const rows = whyNodes
-    .map(readInvestigationWhyNode)
-    .sort((left, right) =>
-      Buffer.compare(
-        Buffer.from(left.path.rawBase64, 'base64'),
-        Buffer.from(right.path.rawBase64, 'base64'),
-      ),
-    )
-    .map((why, index) => renderRow(why, index));
-  return rows.length > 0
-    ? `${START}\n\n${rows.join('\n\n')}\n\n${END}`
-    : `${START}\n\n${END}`;
-}
-
 function renderManifestLedgerRegion(
   whyOverlays: readonly InvestigationWhyOverlayV3[],
 ): string {
@@ -148,32 +92,6 @@ function renderManifestLedgerRegion(
   return rows.length > 0
     ? `${START}\n\n${rows.join('\n\n')}\n\n${END}`
     : `${START}\n\n${END}`;
-}
-
-function renderRow(why: InvestigationWhyOutput, index: number): string {
-  return [
-    `### Load-bearing file ${index + 1}`,
-    '',
-    `- Manifest entry ID: ${renderValue(why.manifestEntryId)}`,
-    `- Path identity: ${renderValue(why.path)}`,
-    `- Tree digest: ${renderValue(why.treeDigest)}`,
-    `- Blob: ${renderValue(why.blob)}`,
-    `- Covered hit IDs: ${renderValue(why.coveredHitIds)}`,
-    `- Matched term IDs: ${renderValue(why.matchedTermIds)}`,
-    `- Group IDs: ${renderValue(why.groupIds)}`,
-    `- Disposition node IDs: ${renderValue(why.dispositionNodeIds)}`,
-    `- Relevant locations: ${renderValue(why.relevantLocations)}`,
-    `- Relationships to change: ${renderValue(why.relationshipsToChange)}`,
-    `- Why: ${renderValue(why.why)}`,
-    `- Protected invariant: ${renderValue(why.protectedInvariant)}`,
-    `- Reviewer question: ${renderValue(why.reviewerQuestion)}`,
-    `- Answer: ${renderValue(why.answer)}`,
-    `- Semantic author: ${renderValue(why.semanticAuthor)}`,
-    `- Read complete: ${renderValue(why.readComplete)}`,
-    `- Semantic assurance: ${renderValue(
-      why.semanticAssurance,
-    )} — actor-attested, not engine-verified`,
-  ].join('\n');
 }
 
 function renderManifestRow(
