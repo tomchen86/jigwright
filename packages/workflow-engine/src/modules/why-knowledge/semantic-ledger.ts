@@ -140,7 +140,18 @@ export function dependencySetDigest(
 export function createLedgerEntry(input: LedgerEntryInput): LedgerEntry {
   if (
     !isPlainRecord(input) ||
-    !hasLedgerInputKeys(input) ||
+    !hasExactKeys(input, [
+      'binding',
+      'kind',
+      'policyDigest',
+      'provenance',
+      'schemaVersion',
+      'semanticDependencies',
+      'status',
+      'subject',
+      'supersedes',
+      'why',
+    ]) ||
     input.schemaVersion !== 1 ||
     input.kind !== 'semantic-ledger-entry' ||
     !['current', 'superseded', 'tombstone'].includes(input.status)
@@ -365,29 +376,6 @@ function hasExactKeys(
 ): boolean {
   return (
     Object.keys(value).sort().join('\0') === [...expected].sort().join('\0')
-  );
-}
-
-function hasLedgerInputKeys(value: Record<string, unknown>): boolean {
-  const required = [
-    'binding',
-    'kind',
-    'policyDigest',
-    'provenance',
-    'schemaVersion',
-    'semanticDependencies',
-    'status',
-    'subject',
-    'supersedes',
-    'why',
-  ];
-  // Legacy callers use a validated entry as a construction template. Accept
-  // only its two derived fields here and always discard/recompute them above;
-  // assertLedgerEntry and persisted store reads remain strict exact-schema.
-  const allowed = new Set([...required, 'dependencySetDigest', 'entryId']);
-  return (
-    required.every((key) => Object.hasOwn(value, key)) &&
-    Object.keys(value).every((key) => allowed.has(key))
   );
 }
 

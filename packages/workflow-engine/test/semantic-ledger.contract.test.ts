@@ -88,6 +88,13 @@ test('a claimed entry identity is recomputed, never believed', () => {
   assert.deepEqual(assertLedgerEntry({ ...ENTRY }), ENTRY);
 });
 
+test('entry creation rejects a persisted entry as an input template', () => {
+  assert.throws(
+    () => createLedgerEntry({ ...ENTRY } as never),
+    (error) => isWorkflowError(error, 'SEMANTIC_LEDGER_INVALID'),
+  );
+});
+
 test('dependency order does not change the dependency digest', () => {
   const forward = dependencySetDigest([
     { relation: 'a', subjectId: 'x', entryId: `sha256:${'6'.repeat(64)}` },

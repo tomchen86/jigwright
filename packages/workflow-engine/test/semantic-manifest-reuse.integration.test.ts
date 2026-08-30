@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { createLedgerEntry } from '../src/modules/why-knowledge/semantic-ledger.ts';
+import {
+  createLedgerEntry,
+  type LedgerEntryInput,
+} from '../src/modules/why-knowledge/semantic-ledger.ts';
 import {
   updateLedgerIndex,
   writeLedgerEntry,
@@ -123,7 +126,7 @@ test('a blob whose bytes moved is owed again however small the change', () => {
 
 test('a path with more than one subject is never carried on one of them', () => {
   const root = repository();
-  const first = createLedgerEntry({
+  const firstInput: LedgerEntryInput = {
     schemaVersion: 1,
     kind: 'semantic-ledger-entry',
     subject: { subjectId: 'seeded.one', kind: 'symbol', path: 'src/a.ts' },
@@ -145,9 +148,10 @@ test('a path with more than one subject is never carried on one of them', () => 
     provenance: { changeId: 'seed', createdAtCommit: 'b'.repeat(40) },
     supersedes: null,
     status: 'current',
-  } as never);
+  };
+  const first = createLedgerEntry(firstInput);
   const second = createLedgerEntry({
-    ...first,
+    ...firstInput,
     subject: { subjectId: 'seeded.two', kind: 'symbol', path: 'src/a.ts' },
     why: {
       responsibility: 'The other thing in this file.',
@@ -155,7 +159,7 @@ test('a path with more than one subject is never carried on one of them', () => 
       failureModes: [],
       reviewerQuestions: [],
     },
-  } as never);
+  });
   writeLedgerEntry(root, first);
   writeLedgerEntry(root, second);
   updateLedgerIndex(root, [first, second]);
