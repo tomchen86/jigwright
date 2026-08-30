@@ -293,7 +293,7 @@
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:53fbba6192bbe2f7889d7852541c4ed7dd1be4c5058b622e3e4d0b334d55fd52"
+      "digest": "sha256:56c69f344413cc11304b0370494171cad7fbf3e24529430fde5bce5c01ef3913"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/check-registry-adapter.ts",
@@ -698,7 +698,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:90d08651801781c0c8156ae9546b372277958f20f78149a02ed2b8592dbba300"
+      "digest": "sha256:c71ac13824957e65fccebadb7d0a3301ca1462ba22b8c49e1809e63af5649c83"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -783,7 +783,7 @@
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:421442b83c69f8eb76d173c194a0154fe708f0d08081351d2d86c47899214384"
+      "digest": "sha256:f6e112d8e24b6569d5640b58139c5ecc3540ca3c920509022a180f5060ca03f0"
     },
     {
       "path": "src/composition-root/grant-production.ts",
@@ -1014,11 +1014,6 @@
       "path": "src/entrypoints/cli/intervention-control-updater-cli.ts",
       "mode": "100644",
       "digest": "sha256:2964e96b0dcb0db1187352c16a3375fecb8e6a288a1fa3a57e880bb39c20d2bd"
-    },
-    {
-      "path": "src/entrypoints/cli/issue-cli.ts",
-      "mode": "100644",
-      "digest": "sha256:e1b7c64f61dc5e8241667dff3536a5a05a10397b94951a3a4ea19e657273c30d"
     },
     {
       "path": "src/entrypoints/cli/role-context-sharing-grant-cli.ts",
@@ -1343,7 +1338,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:284f29e413296a98c2410f0787525e6788158c4d22b1dcd8739488e34e10a5a0"
+      "digest": "sha256:973c7d375971ca27fdd6a69931367c24e0b382c74ff5610d065d1447de8508fa"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1473,7 +1468,7 @@
     {
       "path": "src/modules/lifecycle/change-routing.ts",
       "mode": "100644",
-      "digest": "sha256:e571dbaaec06158de14803675ec428f7d16f2cc1e727e57fab70581638bd9494"
+      "digest": "sha256:d3020385926997085b08d1f9bb5e907f5d10801768b1c7b064026fecf05a9198"
     },
     {
       "path": "src/modules/lifecycle/context-manifest-contract.ts",

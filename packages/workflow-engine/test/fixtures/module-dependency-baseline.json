@@ -4788,7 +4788,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/issue-cli.ts",
@@ -4796,7 +4796,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/issue-cli.ts",
@@ -4804,7 +4804,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/hooks/hooks.ts",
@@ -5996,7 +5996,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/lifecycle/change-routing.ts",

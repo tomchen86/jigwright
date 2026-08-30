@@ -1,7 +1,7 @@
 {
   "kind": "jigwright.workflow.t3-boundary-inventory.v1",
   "schemaVersion": 1,
-  "observedAtCommit": "270145b44c03ac70394806a4c591e04a7f336e4b",
+  "observedAtCommit": "1a2bf9357b45254e1614efb6a09fefe38e207da1",
   "architectureDocument": "docs/architecture/WORKFLOW_ENGINE_BOUNDARY_INVENTORY.md",
   "namespaceBaseline": {
     "legacyPrefix": "expense-app.workflow.",
@@ -51,9 +51,9 @@
       "workflow/repository-consumer.json",
       "workflow/role-provider-default.json"
     ],
-    "splitPathJoinOccurrences": 4,
-    "splitPathJoinFileCount": 4,
-    "splitPathJoinIdentityDigest": "sha256:e3ae0f3c21929e77f7e255107d0cc6333152b64f646e18bc32ffe162836fe9b9",
+    "splitPathJoinOccurrences": 3,
+    "splitPathJoinFileCount": 3,
+    "splitPathJoinIdentityDigest": "sha256:92fb63cb08331dff67bc5d839ba2eb9225e495fec22df3c8674e6dc21990a4ec",
     "dynamicDirectoryOccurrences": 1,
     "dynamicDirectoryFileCount": 1,
     "dynamicDirectoryIdentityDigest": "sha256:736dfa179a68623f188b12dfa6f2b62e1e5a1b04ee099e0fd777362f1ee45c7a"
