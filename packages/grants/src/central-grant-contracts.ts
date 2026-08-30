@@ -96,7 +96,6 @@ export type GrantPolicyV2 = Readonly<{
       fingerprint: string;
     }>[];
   }>;
-  legacyVerification: Readonly<{ maintainerPolicyV1: 'read-only' }>;
 }>;
 
 export type CentralGrantProofModuleSummaryV1 = Readonly<{

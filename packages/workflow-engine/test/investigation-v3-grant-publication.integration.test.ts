@@ -1247,7 +1247,6 @@ function createRepository(): string {
         configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
       },
     ],
-    legacyVerification: { maintainerPolicyV1: 'read-only' },
   });
   writeJson(repository, 'docs/example.md', { fixture: true });
   git(repository, ['add', '--', 'workflow', 'docs/example.md']);

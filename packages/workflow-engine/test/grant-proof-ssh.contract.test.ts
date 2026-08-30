@@ -227,7 +227,6 @@ function policy() {
           },
         ],
       },
-      legacyVerification: { maintainerPolicyV1: 'read-only' },
     },
     { registry: codeOwnedApprovalModuleRegistry() },
   );

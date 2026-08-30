@@ -168,9 +168,6 @@ function localPresencePolicyInput() {
         configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
       },
     ],
-    legacyVerification: {
-      maintainerPolicyV1: 'read-only',
-    },
   };
 }
 

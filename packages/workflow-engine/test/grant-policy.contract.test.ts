@@ -21,6 +21,7 @@ import {
   type ApprovalClaim,
   type GrantPolicyV2,
 } from '../src/modules/authority/grant-policy.ts';
+import { parseGrantPolicyV2Document as parsePublicGrantPolicyV2Document } from '../src/composition-root/public/central-grant.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('tracked GrantPolicyV2 defaults to local presence and offers SSH separately', () => {
@@ -87,9 +88,92 @@ test('GrantPolicyV2 defaults to local human presence without requiring SSH confi
     'fresh-local-device-owner',
   ]);
   assert.equal(policy.optionalSsh, undefined);
-  assert.deepEqual(policy.legacyVerification, {
-    maintainerPolicyV1: 'read-only',
-  });
+});
+
+test('GrantPolicy current contract rejects retired legacy verification in the engine parser', () => {
+  const registry = codeOwnedApprovalModuleRegistry();
+  const policy = parseGrantPolicyV2(policyInput(), { registry });
+
+  assert.deepEqual(Object.keys(policy).sort(), [
+    'approvalModules',
+    'defaultProfile',
+    'profiles',
+    'schemaVersion',
+  ]);
+  assert.throws(
+    () =>
+      parseGrantPolicyV2(
+        {
+          ...policyInput(),
+          legacyVerification: { maintainerPolicyV1: 'read-only' },
+        },
+        { registry },
+      ),
+    (error) => isWorkflowError(error, 'GRANT_POLICY_INVALID'),
+  );
+});
+
+test('GrantPolicy current contract rejects retired legacy verification in the public parser', () => {
+  const parsed = parsePublicGrantPolicyV2Document(
+    JSON.stringify(policyInput()),
+  ).policy;
+
+  assert.deepEqual(Object.keys(parsed).sort(), [
+    'approvalModules',
+    'defaultProfile',
+    'profiles',
+    'schemaVersion',
+  ]);
+  assert.throws(
+    () =>
+      parsePublicGrantPolicyV2Document(
+        JSON.stringify({
+          ...policyInput(),
+          legacyVerification: { maintainerPolicyV1: 'read-only' },
+        }),
+      ),
+    (error) => isWorkflowError(error, 'GRANT_POLICY_INVALID'),
+  );
+});
+
+test('GrantPolicy current contract has exact tracked config and schema keys', () => {
+  const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  const policyDocument = fs.readFileSync(
+    path.join(repositoryRoot, 'workflow/grant-policy.json'),
+    'utf8',
+  );
+  const schemaDocument = fs.readFileSync(
+    path.join(repositoryRoot, 'workflow/schemas/grant-policy.schema.json'),
+    'utf8',
+  );
+  const policy = JSON.parse(policyDocument) as Record<string, unknown>;
+  const schema = JSON.parse(schemaDocument) as {
+    required: string[];
+    properties: Record<string, unknown>;
+  };
+
+  assert.deepEqual(Object.keys(policy).sort(), [
+    'approvalModules',
+    'defaultProfile',
+    'optionalSsh',
+    'profiles',
+    'schemaVersion',
+  ]);
+  assert.deepEqual(schema.required, [
+    'schemaVersion',
+    'defaultProfile',
+    'profiles',
+    'approvalModules',
+  ]);
+  assert.deepEqual(Object.keys(schema.properties).sort(), [
+    'approvalModules',
+    'defaultProfile',
+    'optionalSsh',
+    'profiles',
+    'schemaVersion',
+  ]);
+  assert.doesNotMatch(policyDocument, /legacyVerification|maintainerPolicyV1/u);
+  assert.doesNotMatch(schemaDocument, /legacyVerification|maintainerPolicyV1/u);
 });
 
 test('SSH is an explicit alternative method while local presence remains the default', () => {
@@ -177,9 +261,6 @@ function policyInput() {
         configurationDigest: HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
       },
     ],
-    legacyVerification: {
-      maintainerPolicyV1: 'read-only',
-    },
   };
 }
 

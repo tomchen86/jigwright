@@ -79,9 +79,6 @@ export type GrantPolicyV2 = Readonly<{
       fingerprint: string;
     }>[];
   }>;
-  legacyVerification: Readonly<{
-    maintainerPolicyV1: 'read-only';
-  }>;
 }>;
 
 export function approvalMethodsForPolicy(
@@ -183,23 +180,14 @@ export function parseGrantPolicyV2(
     !isRecord(value) ||
     !hasAllowedExactKeys(
       value,
-      [
-        'schemaVersion',
-        'defaultProfile',
-        'profiles',
-        'approvalModules',
-        'legacyVerification',
-      ],
+      ['schemaVersion', 'defaultProfile', 'profiles', 'approvalModules'],
       ['optionalSsh'],
     ) ||
     value.schemaVersion !== 2 ||
     value.defaultProfile !== 'local-presence' ||
     !isRecord(value.profiles) ||
     !Array.isArray(value.approvalModules) ||
-    value.approvalModules.length < 1 ||
-    !isRecord(value.legacyVerification) ||
-    !hasExactKeys(value.legacyVerification, ['maintainerPolicyV1']) ||
-    value.legacyVerification.maintainerPolicyV1 !== 'read-only'
+    value.approvalModules.length < 1
   ) {
     throw policyInvalid('GRANT_POLICY_INVALID', 'Grant policy is malformed.');
   }
@@ -259,7 +247,6 @@ export function parseGrantPolicyV2(
     profiles,
     approvalModules,
     ...(optionalSsh === undefined ? {} : { optionalSsh }),
-    legacyVerification: { maintainerPolicyV1: 'read-only' },
   });
 }
 

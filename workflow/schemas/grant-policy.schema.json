@@ -8,8 +8,7 @@
     "schemaVersion",
     "defaultProfile",
     "profiles",
-    "approvalModules",
-    "legacyVerification"
+    "approvalModules"
   ],
   "properties": {
     "schemaVersion": { "const": 2 },
@@ -28,15 +27,7 @@
       "minItems": 1,
       "items": { "$ref": "#/$defs/approvalModule" }
     },
-    "optionalSsh": { "$ref": "#/$defs/optionalSsh" },
-    "legacyVerification": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["maintainerPolicyV1"],
-      "properties": {
-        "maintainerPolicyV1": { "const": "read-only" }
-      }
-    }
+    "optionalSsh": { "$ref": "#/$defs/optionalSsh" }
   },
   "$defs": {
     "approvalClaim": {

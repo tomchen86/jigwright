@@ -32,8 +32,5 @@
         "fingerprint": "SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U"
       }
     ]
-  },
-  "legacyVerification": {
-    "maintainerPolicyV1": "read-only"
   }
 }
