@@ -452,7 +452,7 @@
       "rule": "adapter-to-runtime",
       "reasonId": "legacy.adapter-to-runtime",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/planning/investigation/legacy-plan-migration.ts",
@@ -6108,7 +6108,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/projection/investigation-design-projection.ts",
@@ -6116,7 +6116,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/projection/investigation-design-projection.ts",
@@ -6580,7 +6580,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:e47656bdea7e810ba0a66be785f8542661a683b259ea3ca47a8c2363ac63cfd9"
+      "digest": "sha256:3a62fc124e9d1b3c54ccb78ace55bf1248e49c59758e7409d429adbe09a52f9f"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -209,11 +209,6 @@
       "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/investigation-artifact-projection.js",
       "mode": "100644",
       "digest": "sha256:f901c347d5ac5c5a6ae5ae378ffa79f20c4711bb0f0530d92327a3ddbd3cede1"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/investigation-why.js",
-      "mode": "100644",
-      "digest": "sha256:39b387a1c43a7161dead27902abeefb76cc565b997772dbbe749fb9b182e57bd"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/providers/built-in-provider-definition.js",
@@ -479,6 +474,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-materializer.js",
       "mode": "100644",
       "digest": "sha256:d5b690e8459aa0f461853cbf8ac9efcb7b46fbc56531de10f8f2cde069012ac9"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-why-domain.js",
+      "mode": "100644",
+      "digest": "sha256:7f8660ffb37ee0b07394250b64425e18d18156f31b9af8470544ffdd0f2d7fd6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/lifecycle/context-manifest-contract.js",

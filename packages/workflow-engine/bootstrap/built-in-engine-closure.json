@@ -381,11 +381,6 @@
       "digest": "sha256:2a0c29b2f7cf250efd0b6f2cb4f8ea759ec4fc3d5e248f47dce4ce3fb307ae17"
     },
     {
-      "path": "src/adapters/planning/investigation/investigation-why.ts",
-      "mode": "100644",
-      "digest": "sha256:0532fc5861d3d76469ae9412d2876290e78bae2349c8114001d8d47b2d3a0260"
-    },
-    {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
       "mode": "100644",
       "digest": "sha256:ea4697435ce0e09e5ebdcb3bc8f4642b16efc417309d4a8e436d18fc0391f446"
@@ -1538,7 +1533,7 @@
     {
       "path": "src/modules/projection/investigation-design-projection.ts",
       "mode": "100644",
-      "digest": "sha256:4c6dd47fff1c07830f9a8b15c6d989487265a879af686006f09e4f2e1c4ba65b"
+      "digest": "sha256:331465e73eff6204770b6c427a5c4953fe130635988d90b70e1cfe972a10cb5d"
     },
     {
       "path": "src/modules/projection/investigation-term-projection.ts",
@@ -2038,7 +2033,7 @@
     {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:fffb3478566e1ecd98fcbd918d83c4b401d1cbda09c4392b11610ce1a992b09c"
+      "digest": "sha256:21ed786faf046b782071a29dd0031e10badc93c40629eed3f24bd2570a073d5c"
     },
     {
       "path": "src/runtime/storage-journal/investigation-v3-failure-store.ts",

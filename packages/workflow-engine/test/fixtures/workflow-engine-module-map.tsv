@@ -128,7 +128,6 @@ packages/workflow-engine/src/investigation-terms.ts	packages/workflow-engine/src
 packages/workflow-engine/src/investigation-v3-failure-source.ts	packages/workflow-engine/src/modules/investigation/seal/investigation-v3-failure-source.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/investigation-v3-grant.ts	packages/workflow-engine/src/modules/investigation/seal/investigation-v3-grant.ts	MOVE_PRIMARY_OWNER_MIXED
 packages/workflow-engine/src/investigation-why-domain.ts	packages/workflow-engine/src/modules/investigation/manifest/investigation-why-domain.ts	MOVE
-packages/workflow-engine/src/investigation-why.ts	packages/workflow-engine/src/adapters/planning/investigation/investigation-why.ts	MOVE
 packages/workflow-engine/src/issue-cli.ts	packages/workflow-engine/src/entrypoints/cli/issue-cli.ts	MOVE
 packages/workflow-engine/src/issue-renderer.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issue-renderer.ts	MOVE
 packages/workflow-engine/src/issues.ts	packages/workflow-engine/src/adapters/consumer/repository/documents/issues.ts	MOVE
