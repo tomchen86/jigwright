@@ -21,6 +21,7 @@ import { projectProviderInvocationExecution } from '../src/modules/provider-orch
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import {
   compareAndSwapEvidenceRefsDocument,
+  computeInvestigationEvidenceRefsClosure,
   readEvidenceNode,
   readInvestigationEvidenceRefsClosure,
   writeEvidenceNode,
@@ -85,6 +86,7 @@ import {
   inspectInvestigationQuarantineState,
   inspectInvestigationResolutionState,
   inspectStoredHumanResolutionGrants,
+  listProviderInvocationLifecycleProjections,
   readHumanResolutionJournal,
   readInvestigationSession,
   storeAvailableHumanResolutionGrant,
@@ -1268,17 +1270,68 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       topologyRuntime,
       topologyRefs['propose/plan-review-request']!,
     );
+    assert.equal(
+      topologyReservation.nodeSchema,
+      'workflow.plan-review-request-reservation.v3',
+    );
+    assert.equal(
+      topologyReservation.outputSchema,
+      'workflow.plan-review-request-reservation-output.v3',
+    );
+    assert.deepEqual(
+      Object.keys(topologyReservation.exactInputDigests).sort(),
+      ['manifest', 'request', 'subject', 'targetSnapshot'],
+    );
+    assert.deepEqual(Object.keys(topologyReservation.provenanceParentNodeIds), [
+      'authorization',
+    ]);
+    assert.deepEqual(
+      Object.keys(topologyReservation.semanticParentResultDigests),
+      ['authorization'],
+    );
+    assert.equal(
+      (topologyReservation.output as { retry: unknown }).retry,
+      null,
+    );
+    for (const retiredVersion of [1, 2] as const) {
+      const retiredReservation = createEvidenceNode({
+        type: topologyReservation.type,
+        nodeSchema: `workflow.plan-review-request-reservation.v${retiredVersion}`,
+        evaluator: topologyReservation.evaluator,
+        policyDigest: topologyReservation.policyDigest,
+        exactInputDigests: { ...topologyReservation.exactInputDigests },
+        semanticParentResultDigests: {
+          ...topologyReservation.semanticParentResultDigests,
+        },
+        provenanceParentNodeIds: {
+          ...topologyReservation.provenanceParentNodeIds,
+        },
+        outputSchema: `workflow.plan-review-request-reservation-output.v${retiredVersion}`,
+        output: topologyReservation.output,
+        runtimeMetadata: {},
+      });
+      writeEvidenceNode(topologyRuntime, retiredReservation);
+      assert.throws(
+        () =>
+          computeInvestigationEvidenceRefsClosure(topologyRuntime, changeId, {
+            'propose/planning-materialization':
+              topologyRefs['propose/planning-materialization']!,
+            'propose/plan-review-request': retiredReservation.nodeId,
+          }),
+        (error) => isWorkflowError(error, 'EVIDENCE_REF_INVALID'),
+      );
+    }
     const topologyAuthorization = readEvidenceNode(
       topologyRuntime,
       topologyReservation.provenanceParentNodeIds.authorization!,
     );
     assert.equal(
       topologyAuthorization.nodeSchema,
-      'workflow.plan-review-authorization.v2',
+      'workflow.plan-review-authorization.v3',
     );
     assert.equal(
       topologyAuthorization.outputSchema,
-      'workflow.plan-review-authorization-output.v2',
+      'workflow.plan-review-authorization-output.v3',
     );
     const topologyAuthorizationOutput = topologyAuthorization.output as {
       roleTopology: {
@@ -1298,6 +1351,145 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     assert.equal(
       topologyAuthorizationOutput.roleTopology.actualRolePairs[0]?.achieved,
       'provider-independent',
+    );
+    assert.equal(
+      topologyAuthorization.exactInputDigests.roleTopology,
+      crypto
+        .createHash('sha256')
+        .update(canonicalJson(topologyAuthorizationOutput.roleTopology))
+        .digest('hex'),
+    );
+    const initialReviewInvocationId = materialized.planReview!.invocationId;
+    const initialReviewInvocationDirectory = path.join(
+      topologyRuntime.invocations,
+      initialReviewInvocationId,
+    );
+    const initialPolicyBytes = fs.readFileSync(
+      path.join(initialReviewInvocationDirectory, 'execution-policy.json'),
+    );
+    for (const entry of fs.readdirSync(initialReviewInvocationDirectory)) {
+      if (entry !== 'execution-policy.json') {
+        fs.rmSync(path.join(initialReviewInvocationDirectory, entry), {
+          recursive: true,
+          force: true,
+        });
+      }
+    }
+    const recoveredInitialReview = resumePropose(
+      repository,
+      changeId,
+      planningInput,
+    );
+    assert.equal(
+      recoveredInitialReview.planReview?.invocationId,
+      initialReviewInvocationId,
+    );
+    assert.deepEqual(
+      fs.readFileSync(
+        path.join(initialReviewInvocationDirectory, 'execution-policy.json'),
+      ),
+      initialPolicyBytes,
+    );
+    assert.deepEqual(fs.readdirSync(initialReviewInvocationDirectory).sort(), [
+      'execution-policy.json',
+      'manifest.json',
+      'request.json',
+      'review-root',
+      'state.json',
+    ]);
+    const initialReservationOutput = topologyReservation.output as Record<
+      string,
+      unknown
+    >;
+    const initialReviewRequest =
+      initialReservationOutput.request as ProviderInvocationRequest;
+    const {
+      schemaVersion: _initialRequestSchemaVersion,
+      roleAssignmentDigest: _initialRoleAssignmentDigest,
+      requestDigest: _initialRequestDigest,
+      ...initialReviewRequestInput
+    } = initialReviewRequest;
+    const poisonedRecoveryRequest = createProviderInvocationRequest({
+      ...initialReviewRequestInput,
+      invocationId: 'invocation-plan-review-poisoned-v3',
+      nonce: 'plan-review-poisoned-v3-nonce-000000000001',
+    });
+    storeProviderExecutionPolicySnapshot(
+      topologyRuntime,
+      poisonedRecoveryRequest,
+      loadAiAdapterPolicy(repository),
+    );
+    const poisonedRecoveryReservation = createEvidenceNode({
+      type: topologyReservation.type,
+      nodeSchema: topologyReservation.nodeSchema,
+      evaluator: topologyReservation.evaluator,
+      policyDigest: topologyReservation.policyDigest,
+      exactInputDigests: {
+        ...topologyReservation.exactInputDigests,
+        request: poisonedRecoveryRequest.requestDigest,
+      },
+      semanticParentResultDigests: {
+        ...topologyReservation.semanticParentResultDigests,
+      },
+      provenanceParentNodeIds: {
+        ...topologyReservation.provenanceParentNodeIds,
+      },
+      outputSchema: topologyReservation.outputSchema,
+      output: {
+        ...initialReservationOutput,
+        request: poisonedRecoveryRequest,
+      },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(topologyRuntime, poisonedRecoveryReservation);
+    const poisonedRecoveryChangeId = 'poisoned-plan-review-recovery';
+    const poisonedRecoveryRefs = compareAndSwapEvidenceRefsDocument(
+      topologyRuntime,
+      {
+        changeId: poisonedRecoveryChangeId,
+        expectedDigest: null,
+        nextRefs: {
+          'propose/plan-review-request': poisonedRecoveryReservation.nodeId,
+        },
+      },
+    );
+    const poisonedRecoveryRefsPath = path.join(
+      topologyRuntime.refs,
+      `${poisonedRecoveryChangeId}.json`,
+    );
+    const poisonedRecoveryPolicyPath = path.join(
+      topologyRuntime.invocations,
+      poisonedRecoveryRequest.invocationId,
+      'execution-policy.json',
+    );
+    const poisonedRecoveryRefsBytes = fs.readFileSync(poisonedRecoveryRefsPath);
+    const poisonedRecoveryPolicyBytes = fs.readFileSync(
+      poisonedRecoveryPolicyPath,
+    );
+    assert.throws(
+      () => listProviderInvocationLifecycleProjections(topologyRuntime),
+      (error) =>
+        isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+    );
+    assert.deepEqual(
+      fs.readFileSync(poisonedRecoveryRefsPath),
+      poisonedRecoveryRefsBytes,
+    );
+    assert.deepEqual(
+      fs.readFileSync(poisonedRecoveryPolicyPath),
+      poisonedRecoveryPolicyBytes,
+    );
+    compareAndSwapEvidenceRefsDocument(topologyRuntime, {
+      changeId: poisonedRecoveryChangeId,
+      expectedDigest: poisonedRecoveryRefs.digest,
+      nextRefs: null,
+    });
+    fs.rmSync(
+      path.join(
+        topologyRuntime.invocations,
+        poisonedRecoveryRequest.invocationId,
+      ),
+      { recursive: true, force: true },
     );
     const durableWrapperStatus = getProposeStatus(
       repository,

@@ -20,7 +20,10 @@ import { loadChangeContract } from '../src/adapters/consumer/repository/work-reg
 import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
+import {
+  resolvePlanReviewInvocationOwner,
+  writeEvidenceNode,
+} from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
 import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
@@ -45,8 +48,10 @@ import {
   withRepositoryLifecycleOperationAsync,
 } from '../src/runtime/session-workspace/session-store.ts';
 import {
+  createPlanReviewTargetSnapshotNode,
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
+  readPlanReviewTargetSnapshotNode,
   type PlanReviewSubject,
 } from '../src/modules/assurance/plan-review.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
@@ -1631,33 +1636,91 @@ test('below-floor current role assignment blocks worker claim and detached spawn
         ),
       },
     );
+    const targetSnapshotNode = createPlanReviewTargetSnapshotNode({
+      changeId,
+      changePrefix: `openspec/changes/${changeId}`,
+      subject,
+      materializationNode: materialization,
+      artifacts: new Map([
+        [
+          'proposal.md',
+          fs.readFileSync(
+            path.join(repository, 'openspec/changes', changeId, 'proposal.md'),
+          ),
+        ],
+      ]),
+    });
+    writeEvidenceNode(runtime, targetSnapshotNode);
     const authorization = createEvidenceNode({
       type: 'plan-review-authorization',
-      nodeSchema: 'workflow.plan-review-authorization.v1',
+      nodeSchema: 'workflow.plan-review-authorization.v3',
       evaluator: 'workflow-propose.v1',
       policyDigest: PROPOSE_POLICY_DIGEST,
       exactInputDigests: {
         assignment: sha256(canonicalJson(assignment)),
         generation: subject.planningGenerationId,
         grantAuthorization: sha256(canonicalJson(null)),
+        roleTopology: sha256(canonicalJson(null)),
         subject: subject.subjectDigest,
+        targetSnapshot: targetSnapshotNode.nodeId,
       },
       semanticParentResultDigests: {
         materialization: materialization.resultDigest,
+        targetSnapshot: targetSnapshotNode.resultDigest,
       },
       provenanceParentNodeIds: {
         materialization: materialization.nodeId,
+        targetSnapshot: targetSnapshotNode.nodeId,
       },
-      outputSchema: 'workflow.plan-review-authorization-output.v1',
+      outputSchema: 'workflow.plan-review-authorization-output.v3',
       output: {
         subject,
         assignment,
-        author: { id: 'fixture-author' },
+        author: {
+          providerId: 'codex',
+          sessionId: 'fixture-author-session',
+          principalId: 'fixture-author',
+          identityAssurance: 'adapter-assigned',
+          engineSpawned: false,
+        },
         grantAuthorization: null,
+        roleTopology: null,
       },
       runtimeMetadata: {},
     });
     writeEvidenceNode(runtime, authorization);
+    for (const retiredVersion of [1, 2] as const) {
+      const retiredAuthorization = createEvidenceNode({
+        type: authorization.type,
+        nodeSchema: `workflow.plan-review-authorization.v${retiredVersion}`,
+        evaluator: authorization.evaluator,
+        policyDigest: authorization.policyDigest,
+        exactInputDigests: { ...authorization.exactInputDigests },
+        semanticParentResultDigests: {
+          ...authorization.semanticParentResultDigests,
+        },
+        provenanceParentNodeIds: {
+          ...authorization.provenanceParentNodeIds,
+        },
+        outputSchema: `workflow.plan-review-authorization-output.v${retiredVersion}`,
+        output: authorization.output,
+        runtimeMetadata: {},
+      });
+      writeEvidenceNode(runtime, retiredAuthorization);
+      assert.throws(
+        () =>
+          resolvePlanReviewInvocationOwner(runtime, {
+            changeId,
+            subject,
+            assignment,
+            authorizationNodeId: retiredAuthorization.nodeId,
+          }),
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'EVIDENCE_REF_INVALID',
+      );
+    }
     const manifest: PlanReviewManifest = {
       schemaVersion: 1,
       kind: 'plan-review-manifest',
@@ -1667,6 +1730,7 @@ test('below-floor current role assignment blocks worker claim and detached spawn
       baseTree: locator.tree,
       subject,
       capabilityProfile: 'repository-read-only',
+      planningTarget: readPlanReviewTargetSnapshotNode(targetSnapshotNode),
     };
     const request = createProviderInvocationRequest({
       invocationId,
@@ -1717,6 +1781,14 @@ test('below-floor current role assignment blocks worker claim and detached spawn
       attempt: 1,
       manifest,
       request,
+      planReviewSnapshotFiles: [
+        {
+          snapshotFile: '0000.artifact',
+          content: fs.readFileSync(
+            path.join(repository, 'openspec/changes', changeId, 'proposal.md'),
+          ),
+        },
+      ],
     });
 
     let runnerCalls = 0;
@@ -1849,6 +1921,7 @@ test('below-floor current role assignment blocks worker claim and detached spawn
               proofDigest: `sha256:${sha256('below-floor-human-proof')}`,
               verifiedAt: grantNow.toISOString(),
               identity: null,
+              portableEvidence: null,
             };
             return [proof];
           },
@@ -2040,29 +2113,60 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
         ),
       },
     );
+    const targetSnapshotNode = createPlanReviewTargetSnapshotNode({
+      changeId: 'demo-change',
+      changePrefix: 'openspec/changes/demo-change',
+      subject: context.subject,
+      materializationNode: materialization,
+      artifacts: new Map([
+        [
+          'proposal.md',
+          fs.readFileSync(
+            path.join(
+              repository,
+              'openspec/changes',
+              'demo-change',
+              'proposal.md',
+            ),
+          ),
+        ],
+      ]),
+    });
+    writeEvidenceNode(runtime, targetSnapshotNode);
     const authorization = createEvidenceNode({
       type: 'plan-review-authorization',
-      nodeSchema: 'workflow.plan-review-authorization.v1',
+      nodeSchema: 'workflow.plan-review-authorization.v3',
       evaluator: 'workflow-propose.v1',
       policyDigest: PROPOSE_POLICY_DIGEST,
       exactInputDigests: {
         assignment: sha256(canonicalJson(assignment)),
         generation: context.subject.planningGenerationId,
         grantAuthorization: sha256(canonicalJson(null)),
+        roleTopology: sha256(canonicalJson(null)),
         subject: context.subject.subjectDigest,
+        targetSnapshot: targetSnapshotNode.nodeId,
       },
       semanticParentResultDigests: {
         materialization: materialization.resultDigest,
+        targetSnapshot: targetSnapshotNode.resultDigest,
       },
       provenanceParentNodeIds: {
         materialization: materialization.nodeId,
+        targetSnapshot: targetSnapshotNode.nodeId,
       },
-      outputSchema: 'workflow.plan-review-authorization-output.v1',
+      outputSchema: 'workflow.plan-review-authorization-output.v3',
       output: {
         subject: context.subject,
         assignment,
-        author: { id: 'fixture-author' },
+        author: {
+          providerId: 'codex',
+          sessionId: 'fixture-author-session',
+          principalId: 'fixture-author',
+          identityAssurance: 'adapter-assigned',
+          engineSpawned: false,
+        },
         grantAuthorization: null,
+        roleTopology: null,
       },
       runtimeMetadata: {},
     });
@@ -2076,6 +2180,7 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
       baseTree: locator.tree,
       subject: context.subject,
       capabilityProfile: 'repository-read-only',
+      planningTarget: readPlanReviewTargetSnapshotNode(targetSnapshotNode),
     };
     const request = createProviderInvocationRequest({
       invocationId,
@@ -2120,6 +2225,19 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
       attempt: 1,
       manifest,
       request,
+      planReviewSnapshotFiles: [
+        {
+          snapshotFile: '0000.artifact',
+          content: fs.readFileSync(
+            path.join(
+              repository,
+              'openspec/changes',
+              'demo-change',
+              'proposal.md',
+            ),
+          ),
+        },
+      ],
     });
     const submission = {
       schemaVersion: 2 as const,
@@ -2365,6 +2483,7 @@ async function beginExactProviderCancellationGrant(
             )}`,
             verifiedAt: grantNow.toISOString(),
             identity: null,
+            portableEvidence: null,
           };
           return [proof];
         },

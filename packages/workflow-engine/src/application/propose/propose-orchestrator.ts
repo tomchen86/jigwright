@@ -3572,14 +3572,10 @@ function assertExactPlanReviewRetryReplay(
   reservation: PlanReviewReservation,
   input: PlanReviewRetryEnvelope,
 ): void {
-  if (
-    reservation.retry === null ||
-    reservation.retry.retryDecision === null ||
-    reservation.retry.executionPolicySnapshot === null
-  ) {
+  if (reservation.retry === null) {
     throw workflowError(
       'PLAN_REVIEW_RETRY_DECISION_EVIDENCE_REQUIRED',
-      'A historical PlanReview retry reservation without decision evidence cannot authorize provider work.',
+      'A malformed current PlanReview retry reservation cannot authorize provider work.',
       ExitCode.guard,
     );
   }
@@ -3613,7 +3609,6 @@ function assertExactPlanReviewRetryReplay(
     reservation.retry.executionPolicySnapshot,
   );
   if (
-    reservation.retry === null ||
     reservation.subject.subjectDigest !== input.subjectDigest ||
     reservation.subject.planningGenerationId !== input.planningGenerationId ||
     reservation.retry.previousReservationNodeId !==
@@ -5547,16 +5542,17 @@ function renderMaterializedProposeOutput(
       inputSchema:
         grantRequirement === null
           ? null
-          : grantRequirement.kind === 'legacy-collaboration-grant'
+          : grantRequirement.kind === 'collaboration'
             ? {
                 schemaVersion: 1,
                 kind: 'collaboration-grant-selection',
                 lifecyclePhase: 'plan-review',
                 conflictingRole: 'plan-reviewer',
-                subjectDigest: grantRequirement.subject.subjectDigest,
-                grantRequest: grantRequirement.grantRequest,
+                subjectDigest:
+                  grantRequirement.requirement.subject.subjectDigest,
+                grantRequest: grantRequirement.requirement.grantRequest,
                 allowedDegradedForms:
-                  grantRequirement.grantRequest === null
+                  grantRequirement.requirement.grantRequest === null
                     ? ['caller-supplied', 'direct-human-review']
                     : ['same-provider-fresh-session'],
                 resumeOption: '--grant <grant-id>',
@@ -10006,17 +10002,30 @@ type PlanReviewReservation = {
     attempt: number;
     previousReservationNodeId: string;
     failedInvocation: PlanReviewRetryEnvelope['failedInvocation'];
-    retryDecision: ProviderRetryDecisionBinding | null;
-    executionPolicySnapshot: ProviderExecutionPolicySnapshotCurrent | null;
+    retryDecision: ProviderRetryDecisionBinding;
+    executionPolicySnapshot: ProviderExecutionPolicySnapshotCurrent;
   } | null;
 };
 
+type CollaborationPlanReviewRequirementV3 = Readonly<{
+  schemaVersion: 3;
+  kind: 'collaboration-plan-review-requirement.v3';
+  investigationId: string;
+  changeId: string;
+  subject: PlanReviewSubject;
+  author: RecordedRoleParticipant;
+  grantRequest: CollaborationGrantRequest | null;
+}>;
+
+type DurablePlanReviewGrantRequirementV3 =
+  | CollaborationPlanReviewRequirementV3
+  | RoleContextSharingPlanReviewRequirementV3;
+
 type PlanReviewGrantRequirement =
   | {
-      kind: 'legacy-collaboration-grant';
-      subject: PlanReviewSubject;
-      author: RecordedRoleParticipant;
-      grantRequest: CollaborationGrantRequest | null;
+      kind: 'collaboration';
+      requirementNodeId: string;
+      requirement: CollaborationPlanReviewRequirementV3;
     }
   | {
       kind: 'role-context-sharing';
@@ -10127,7 +10136,7 @@ function preparePlanReviewInvocation(
     ) {
       throw workflowError(
         'PLAN_REVIEW_ROLE_TOPOLOGY_REQUIRED',
-        'A historical PlanReview reservation without durable topology evidence cannot launch new provider work.',
+        'A current PlanReview reservation without durable topology evidence cannot launch new provider work.',
         ExitCode.guard,
       );
     }
@@ -10165,11 +10174,15 @@ function preparePlanReviewInvocation(
     existingGrantRequirement?.kind === 'role-context-sharing'
       ? existingGrantRequirement
       : null;
+  const durableCollaborationRequirement =
+    existingGrantRequirement?.kind === 'collaboration'
+      ? existingGrantRequirement
+      : null;
   if (
-    durableRoleContextRequirement !== null &&
-    (canonicalJson(durableRoleContextRequirement.requirement.subject) !==
+    existingGrantRequirement !== null &&
+    (canonicalJson(existingGrantRequirement.requirement.subject) !==
       canonicalJson(planning.subject) ||
-      canonicalJson(durableRoleContextRequirement.requirement.author) !==
+      canonicalJson(existingGrantRequirement.requirement.author) !==
         canonicalJson(recordedAuthor))
   ) {
     throw workflowError(
@@ -10203,13 +10216,16 @@ function preparePlanReviewInvocation(
   const callableProviderIds = (['codex', 'claude'] as const).filter(
     (providerId) => policy.policy.providers[providerId].enabled,
   );
-  const grantRequest = planReviewGrantRequest({
-    changeId: status.changeId,
-    baseline: status.baseline,
-    targetDigest: planning.subject.subjectDigest,
-    author,
-    callableProviderIds,
-  });
+  const grantRequest =
+    durableCollaborationRequirement === null
+      ? planReviewGrantRequest({
+          changeId: status.changeId,
+          baseline: status.baseline,
+          targetDigest: planning.subject.subjectDigest,
+          author,
+          callableProviderIds,
+        })
+      : durableCollaborationRequirement.requirement.grantRequest;
   let assignment: ProviderRoleAssignment;
   let grantAuthorization: ProposeGrantAuthorization | null = null;
   let roleTopology: RoleTopologyResolutionV1 | null = null;
@@ -10341,12 +10357,17 @@ function preparePlanReviewInvocation(
   } else if (scheduled?.outcome === 'assigned') {
     assignment = scheduled.assignment;
   } else if (!collaborationGrant) {
-    persistPlanReviewGrantRequirement(context.runtime, status, {
-      kind: 'legacy-collaboration-grant',
-      subject: planning.subject,
-      author: recordedAuthor,
-      grantRequest,
-    });
+    persistPlanReviewGrantRequirement(
+      context.runtime,
+      status,
+      createCollaborationPlanReviewRequirementV3({
+        investigationId: status.investigationId,
+        changeId: status.changeId,
+        subject: planning.subject,
+        author: recordedAuthor,
+        grantRequest,
+      }),
+    );
     return null;
   } else {
     if (grantRequest === null) {
@@ -10479,16 +10500,9 @@ function preparePlanReviewInvocation(
   });
   writeEvidenceNode(context.runtime, targetSnapshotNode);
   const planningTarget = readPlanReviewTargetSnapshotNode(targetSnapshotNode);
-  const roleContextAuthorization =
-    grantAuthorization !== null && 'kind' in grantAuthorization;
   const reviewAuthorization = createEvidenceNode({
     type: 'plan-review-authorization',
-    nodeSchema:
-      roleTopology === null
-        ? 'workflow.plan-review-authorization.v1'
-        : roleContextAuthorization
-          ? 'workflow.plan-review-authorization.v3'
-          : 'workflow.plan-review-authorization.v2',
+    nodeSchema: 'workflow.plan-review-authorization.v3',
     evaluator: 'workflow-propose.v1',
     policyDigest: PROPOSE_POLICY_DIGEST,
     exactInputDigests: {
@@ -10496,10 +10510,8 @@ function preparePlanReviewInvocation(
       generation: planning.generation.planningGenerationId,
       assignment: sha256(canonicalJson(assignment)),
       grantAuthorization: sha256(canonicalJson(grantAuthorization)),
+      roleTopology: sha256(canonicalJson(roleTopology)),
       targetSnapshot: targetSnapshotNode.nodeId,
-      ...(roleTopology === null
-        ? {}
-        : { roleTopology: sha256(canonicalJson(roleTopology)) }),
     },
     semanticParentResultDigests: {
       materialization: materializationNode.resultDigest,
@@ -10509,18 +10521,13 @@ function preparePlanReviewInvocation(
       materialization: materializationNodeId,
       targetSnapshot: targetSnapshotNode.nodeId,
     },
-    outputSchema:
-      roleTopology === null
-        ? 'workflow.plan-review-authorization-output.v1'
-        : roleContextAuthorization
-          ? 'workflow.plan-review-authorization-output.v3'
-          : 'workflow.plan-review-authorization-output.v2',
+    outputSchema: 'workflow.plan-review-authorization-output.v3',
     output: {
       subject: planning.subject,
       assignment,
       author: recordedAuthor,
       grantAuthorization,
-      ...(roleTopology === null ? {} : { roleTopology }),
+      roleTopology,
     },
     runtimeMetadata: {},
   });
@@ -10563,7 +10570,7 @@ function preparePlanReviewInvocation(
   });
   const reservationNode = createEvidenceNode({
     type: 'plan-review-request-reservation',
-    nodeSchema: 'workflow.plan-review-request-reservation.v1',
+    nodeSchema: 'workflow.plan-review-request-reservation.v3',
     evaluator: 'workflow-propose.v1',
     policyDigest: PROPOSE_POLICY_DIGEST,
     exactInputDigests: {
@@ -10576,7 +10583,7 @@ function preparePlanReviewInvocation(
       authorization: reviewAuthorization.resultDigest,
     },
     provenanceParentNodeIds: { authorization: reviewAuthorization.nodeId },
-    outputSchema: 'workflow.plan-review-request-reservation-output.v1',
+    outputSchema: 'workflow.plan-review-request-reservation-output.v3',
     output: {
       investigationId: status.investigationId,
       changeId: status.changeId,
@@ -10589,6 +10596,7 @@ function preparePlanReviewInvocation(
       manifest,
       request,
       grantAuthorization,
+      retry: null,
     },
     runtimeMetadata: {},
   });
@@ -10630,56 +10638,28 @@ function preparePlanReviewInvocation(
   return reservation;
 }
 
-function persistPlanReviewGrantRequirement(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  status: ProposeLifecycleStatus,
-  requirement: Extract<
-    PlanReviewGrantRequirement,
-    { kind: 'legacy-collaboration-grant' }
-  >,
-): void {
-  const node = createEvidenceNode({
-    type: 'plan-review-grant-requirement',
-    nodeSchema: 'workflow.plan-review-grant-requirement.v1',
-    evaluator: 'workflow-propose.v1',
-    policyDigest: PROPOSE_POLICY_DIGEST,
-    exactInputDigests: {
-      subject: requirement.subject.subjectDigest,
-      author: sha256(canonicalJson(requirement.author)),
-      grantRequest: sha256(canonicalJson(requirement.grantRequest)),
-    },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'workflow.plan-review-grant-requirement-output.v1',
-    output: {
-      investigationId: status.investigationId,
-      changeId: status.changeId,
-      subject: requirement.subject,
-      author: requirement.author,
-      grantRequest: requirement.grantRequest,
-    },
-    runtimeMetadata: {},
-  });
-  writeEvidenceNode(paths, node);
-  const current =
-    readEvidenceRefs(paths, status.changeId)[
-      PLAN_REVIEW_GRANT_REQUIREMENT_REF
-    ] ?? null;
-  if (current === node.nodeId) {
-    return;
-  }
-  compareAndSwapEvidenceRef(paths, {
-    changeId: status.changeId,
-    refName: PLAN_REVIEW_GRANT_REQUIREMENT_REF,
-    expectedNodeId: current,
-    nextNodeId: node.nodeId,
+function createCollaborationPlanReviewRequirementV3(input: {
+  investigationId: string;
+  changeId: string;
+  subject: PlanReviewSubject;
+  author: RecordedRoleParticipant;
+  grantRequest: CollaborationGrantRequest | null;
+}): CollaborationPlanReviewRequirementV3 {
+  return Object.freeze({
+    schemaVersion: 3,
+    kind: 'collaboration-plan-review-requirement.v3',
+    investigationId: input.investigationId,
+    changeId: input.changeId,
+    subject: input.subject,
+    author: input.author,
+    grantRequest: input.grantRequest,
   });
 }
 
-function persistPlanReviewTopologyRequirement(
+function persistPlanReviewGrantRequirement(
   paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
   status: ProposeLifecycleStatus,
-  requirement: RoleContextSharingPlanReviewRequirementV3,
+  requirement: DurablePlanReviewGrantRequirementV3,
 ): string {
   const node = createEvidenceNode({
     type: 'plan-review-grant-requirement',
@@ -10700,7 +10680,9 @@ function persistPlanReviewTopologyRequirement(
     readEvidenceRefs(paths, status.changeId)[
       PLAN_REVIEW_GRANT_REQUIREMENT_REF
     ] ?? null;
-  if (current === node.nodeId) return node.nodeId;
+  if (current === node.nodeId) {
+    return node.nodeId;
+  }
   compareAndSwapEvidenceRef(paths, {
     changeId: status.changeId,
     refName: PLAN_REVIEW_GRANT_REQUIREMENT_REF,
@@ -10708,6 +10690,14 @@ function persistPlanReviewTopologyRequirement(
     nextNodeId: node.nodeId,
   });
   return node.nodeId;
+}
+
+function persistPlanReviewTopologyRequirement(
+  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  status: ProposeLifecycleStatus,
+  requirement: RoleContextSharingPlanReviewRequirementV3,
+): string {
+  return persistPlanReviewGrantRequirement(paths, status, requirement);
 }
 
 function readPlanReviewGrantRequirement(
@@ -10722,28 +10712,20 @@ function readPlanReviewGrantRequirement(
   }
   const node = readEvidenceNode(paths, nodeId);
   const output = node.output;
-  const roleTopologyShape =
-    node.nodeSchema === 'workflow.plan-review-grant-requirement.v3' &&
-    node.outputSchema === 'workflow.plan-review-grant-requirement-output.v3';
-  const legacyShape =
-    node.nodeSchema === 'workflow.plan-review-grant-requirement.v1' &&
-    node.outputSchema === 'workflow.plan-review-grant-requirement-output.v1';
   if (
     node.type !== 'plan-review-grant-requirement' ||
-    (!legacyShape && !roleTopologyShape) ||
+    node.nodeSchema !== 'workflow.plan-review-grant-requirement.v3' ||
     node.evaluator !== 'workflow-propose.v1' ||
     node.policyDigest !== PROPOSE_POLICY_DIGEST ||
+    node.outputSchema !== 'workflow.plan-review-grant-requirement-output.v3' ||
+    !hasExactKeys(node.exactInputDigests, ['requirement']) ||
+    !hasExactKeys(node.provenanceParentNodeIds, []) ||
+    !hasExactKeys(node.semanticParentResultDigests, []) ||
     !isRecord(output) ||
-    !hasExactKeys(
-      output,
-      roleTopologyShape
-        ? ['requirement']
-        : ['investigationId', 'changeId', 'subject', 'author', 'grantRequest'],
-    ) ||
-    (!roleTopologyShape &&
-      (output.investigationId !== status.investigationId ||
-        output.changeId !== status.changeId ||
-        !isRecord(output.author)))
+    !hasExactKeys(output, ['requirement']) ||
+    !isRecord(output.requirement) ||
+    sha256(canonicalJson(output.requirement)) !==
+      node.exactInputDigests.requirement
   ) {
     throw workflowError(
       'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
@@ -10751,49 +10733,214 @@ function readPlanReviewGrantRequirement(
       ExitCode.staleState,
     );
   }
-  if (roleTopologyShape) {
+  if (
+    output.requirement.kind ===
+    'role-context-sharing-plan-review-requirement.v3'
+  ) {
     const requirement = assertDurableRoleContextSharingPlanReviewRequirement(
       output.requirement,
       status,
     );
-    if (
-      sha256(canonicalJson(requirement)) !== node.exactInputDigests.requirement
-    ) {
-      throw workflowError(
-        'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
-        'The durable role-context-sharing requirement no longer matches its evidence node.',
-        ExitCode.staleState,
-      );
-    }
     return {
       kind: 'role-context-sharing',
       requirementNodeId: node.nodeId,
       requirement,
     };
   }
-  const subject = assertPlanReviewSubject(output.subject);
-  const author = output.author as RecordedRoleParticipant;
-  const grantRequest =
-    output.grantRequest === null
-      ? null
-      : (output.grantRequest as CollaborationGrantRequest);
+  const requirement = assertDurableCollaborationPlanReviewRequirement(
+    output.requirement,
+    status,
+  );
+  return {
+    kind: 'collaboration',
+    requirementNodeId: node.nodeId,
+    requirement,
+  };
+}
+
+function assertDurableCollaborationPlanReviewRequirement(
+  value: unknown,
+  status: ProposeLifecycleStatus,
+): CollaborationPlanReviewRequirementV3 {
   if (
-    subject.subjectDigest !== node.exactInputDigests.subject ||
-    sha256(canonicalJson(author)) !== node.exactInputDigests.author ||
-    sha256(canonicalJson(grantRequest)) !== node.exactInputDigests.grantRequest
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'investigationId',
+      'changeId',
+      'subject',
+      'author',
+      'grantRequest',
+    ]) ||
+    value.schemaVersion !== 3 ||
+    value.kind !== 'collaboration-plan-review-requirement.v3' ||
+    value.investigationId !== status.investigationId ||
+    value.changeId !== status.changeId
   ) {
     throw workflowError(
       'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
-      'The durable exact-plan collaboration requirement no longer matches its evidence node.',
+      'The durable exact-plan collaboration requirement is malformed.',
       ExitCode.staleState,
     );
   }
-  return {
-    kind: 'legacy-collaboration-grant',
+  const subject = assertPlanReviewSubject(value.subject);
+  if (
+    canonicalJson(subject.investigationBaseline) !==
+    canonicalJson(status.baseline)
+  ) {
+    throw workflowError(
+      'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
+      'The durable exact-plan collaboration requirement is malformed.',
+      ExitCode.staleState,
+    );
+  }
+  const author = assertDurableCollaborationPlanReviewAuthor(value.author);
+  const grantRequest = assertDurableCollaborationPlanReviewGrantRequest({
+    value: value.grantRequest,
+    status,
+    subject,
+    author,
+  });
+  const rebuilt = createCollaborationPlanReviewRequirementV3({
+    investigationId: status.investigationId,
+    changeId: status.changeId,
     subject,
     author,
     grantRequest,
-  };
+  });
+  if (canonicalJson(rebuilt) !== canonicalJson(value)) {
+    throw workflowError(
+      'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
+      'The durable exact-plan collaboration requirement is malformed.',
+      ExitCode.staleState,
+    );
+  }
+  return rebuilt;
+}
+
+function assertDurableCollaborationPlanReviewAuthor(
+  value: unknown,
+): RecordedRoleParticipant {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'providerId',
+      'sessionId',
+      'principalId',
+      'identityAssurance',
+      'engineSpawned',
+    ]) ||
+    (value.providerId !== null &&
+      value.providerId !== 'codex' &&
+      value.providerId !== 'claude') ||
+    (value.sessionId !== null &&
+      (typeof value.sessionId !== 'string' || value.sessionId.length === 0)) ||
+    (value.principalId !== null &&
+      (typeof value.principalId !== 'string' ||
+        value.principalId.length === 0)) ||
+    ![
+      'self-declared',
+      'runtime-hint',
+      'adapter-assigned',
+      'maintainer-signed',
+    ].includes(String(value.identityAssurance)) ||
+    typeof value.engineSpawned !== 'boolean'
+  ) {
+    throw workflowError(
+      'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
+      'The durable exact-plan collaboration requirement is malformed.',
+      ExitCode.staleState,
+    );
+  }
+  return Object.freeze({
+    providerId: value.providerId,
+    sessionId: value.sessionId,
+    principalId: value.principalId,
+    identityAssurance:
+      value.identityAssurance as RecordedRoleParticipant['identityAssurance'],
+    engineSpawned: value.engineSpawned,
+  });
+}
+
+function assertDurableCollaborationPlanReviewGrantRequest(input: {
+  value: unknown;
+  status: ProposeLifecycleStatus;
+  subject: PlanReviewSubject;
+  author: RecordedRoleParticipant;
+}): CollaborationGrantRequest | null {
+  if (input.value === null) {
+    // A null request retains the no-topology caller/direct-human continuation.
+    return null;
+  }
+  const value = input.value;
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'changeId',
+      'taskId',
+      'baselineCommit',
+      'baselineTree',
+      'targetDigest',
+      'lifecyclePhase',
+      'rolePair',
+      'availableActor',
+      'degradedForm',
+      'reason',
+      'ttlMinutes',
+      'maxUses',
+    ]) ||
+    value.changeId !== input.status.changeId ||
+    value.taskId !== null ||
+    value.baselineCommit !== input.status.baseline.head ||
+    value.baselineTree !== input.status.baseline.tree ||
+    value.targetDigest !== input.subject.subjectDigest ||
+    value.lifecyclePhase !== 'plan-review' ||
+    canonicalJson(value.rolePair) !==
+      canonicalJson({
+        authorRole: 'plan-author',
+        conflictingRole: 'plan-reviewer',
+      }) ||
+    input.author.providerId === null ||
+    input.author.identityAssurance === 'maintainer-signed' ||
+    canonicalJson(value.availableActor) !==
+      canonicalJson({
+        kind: 'provider',
+        providerId: input.author.providerId,
+        assurance: input.author.identityAssurance,
+      }) ||
+    value.degradedForm !== 'same-provider-fresh-session' ||
+    value.reason !== PLAN_REVIEW_GRANT_REASON ||
+    value.ttlMinutes !== 30 ||
+    value.maxUses !== 1
+  ) {
+    throw workflowError(
+      'PLAN_REVIEW_GRANT_REQUIREMENT_STALE',
+      'The durable exact-plan collaboration requirement is malformed.',
+      ExitCode.staleState,
+    );
+  }
+  return Object.freeze({
+    changeId: value.changeId,
+    taskId: null,
+    baselineCommit: value.baselineCommit,
+    baselineTree: value.baselineTree,
+    targetDigest: value.targetDigest,
+    lifecyclePhase: 'plan-review',
+    rolePair: {
+      authorRole: 'plan-author' as const,
+      conflictingRole: 'plan-reviewer' as const,
+    },
+    availableActor: {
+      kind: 'provider' as const,
+      providerId: input.author.providerId,
+      assurance: input.author.identityAssurance,
+    },
+    degradedForm: 'same-provider-fresh-session',
+    reason: PLAN_REVIEW_GRANT_REASON,
+    ttlMinutes: 30,
+    maxUses: 1,
+  });
 }
 
 export function readCurrentRoleContextSharingPlanReviewRequirement(
@@ -11111,12 +11258,6 @@ function ensurePlanReviewInvocation(
       reservation.request,
       loadAiAdapterPolicy(repositoryRoot),
     );
-  } else if (reservation.retry.executionPolicySnapshot === null) {
-    throw workflowError(
-      'PLAN_REVIEW_RETRY_POLICY_SNAPSHOT_REQUIRED',
-      'A historical PlanReview retry reservation without a recoverable policy snapshot cannot authorize provider work.',
-      ExitCode.guard,
-    );
   } else {
     ensureProviderExecutionPolicySnapshotFromSnapshot(
       paths,
@@ -11302,23 +11443,15 @@ function readPlanReviewReservation(
   }
   const node = readEvidenceNode(paths, nodeId);
   const output = node.output;
-  const retryDecisionShape =
-    node.nodeSchema === 'workflow.plan-review-request-reservation.v3';
   const retryShape =
-    retryDecisionShape ||
-    node.nodeSchema === 'workflow.plan-review-request-reservation.v2';
+    isRecord(output) && Object.hasOwn(output, 'retry') && output.retry !== null;
   if (
     node.type !== 'plan-review-request-reservation' ||
-    (!retryShape &&
-      node.nodeSchema !== 'workflow.plan-review-request-reservation.v1') ||
+    node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
     node.evaluator !== 'workflow-propose.v1' ||
     node.policyDigest !== PROPOSE_POLICY_DIGEST ||
     node.outputSchema !==
-      (retryDecisionShape
-        ? 'workflow.plan-review-request-reservation-output.v3'
-        : retryShape
-          ? 'workflow.plan-review-request-reservation-output.v2'
-          : 'workflow.plan-review-request-reservation-output.v1') ||
+      'workflow.plan-review-request-reservation-output.v3' ||
     !isRecord(output) ||
     !hasExactKeys(output, [
       'investigationId',
@@ -11332,7 +11465,7 @@ function readPlanReviewReservation(
       'manifest',
       'request',
       'grantAuthorization',
-      ...(retryShape ? ['retry'] : []),
+      'retry',
     ]) ||
     !hasExactKeys(node.exactInputDigests, [
       'request',
@@ -11340,9 +11473,7 @@ function readPlanReviewReservation(
       'subject',
       'targetSnapshot',
       ...(retryShape ? ['previousRequest', 'failure'] : []),
-      ...(retryDecisionShape
-        ? ['executionPolicySnapshot', 'retryDecision']
-        : []),
+      ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
     ]) ||
     !hasExactKeys(node.provenanceParentNodeIds, [
       'authorization',
@@ -11410,53 +11541,28 @@ function readPlanReviewReservation(
     request,
   );
   const roleContextAuthorization =
-    authorizationNode.nodeSchema === 'workflow.plan-review-authorization.v3' &&
-    authorizationNode.outputSchema ===
-      'workflow.plan-review-authorization-output.v3';
-  const topologyAuthorization =
-    roleContextAuthorization ||
-    (authorizationNode.nodeSchema === 'workflow.plan-review-authorization.v2' &&
-      authorizationNode.outputSchema ===
-        'workflow.plan-review-authorization-output.v2');
-  const legacyAuthorization =
-    authorizationNode.nodeSchema === 'workflow.plan-review-authorization.v1' &&
-    authorizationNode.outputSchema ===
-      'workflow.plan-review-authorization-output.v1';
+    grantAuthorization !== null && 'kind' in grantAuthorization;
   const authorizationOutput = authorizationNode.output;
   if (
-    (!topologyAuthorization && !legacyAuthorization) ||
+    authorizationNode.nodeSchema !== 'workflow.plan-review-authorization.v3' ||
+    authorizationNode.outputSchema !==
+      'workflow.plan-review-authorization-output.v3' ||
     !isRecord(authorizationOutput) ||
-    !hasExactKeys(
-      authorizationOutput,
-      topologyAuthorization
-        ? [
-            'subject',
-            'assignment',
-            'author',
-            'grantAuthorization',
-            'roleTopology',
-          ]
-        : ['subject', 'assignment', 'author', 'grantAuthorization'],
-    ) ||
-    !hasExactKeys(
-      authorizationNode.exactInputDigests,
-      topologyAuthorization
-        ? [
-            'subject',
-            'generation',
-            'assignment',
-            'grantAuthorization',
-            'targetSnapshot',
-            'roleTopology',
-          ]
-        : [
-            'subject',
-            'generation',
-            'assignment',
-            'grantAuthorization',
-            'targetSnapshot',
-          ],
-    ) ||
+    !hasExactKeys(authorizationOutput, [
+      'subject',
+      'assignment',
+      'author',
+      'grantAuthorization',
+      'roleTopology',
+    ]) ||
+    !hasExactKeys(authorizationNode.exactInputDigests, [
+      'subject',
+      'generation',
+      'assignment',
+      'grantAuthorization',
+      'targetSnapshot',
+      'roleTopology',
+    ]) ||
     canonicalJson(authorizationOutput.subject) !== canonicalJson(subject) ||
     canonicalJson(authorizationOutput.assignment) !==
       canonicalJson(assignment) ||
@@ -11473,33 +11579,35 @@ function readPlanReviewReservation(
   ) {
     throw planReviewRequestStale();
   }
-  const roleTopology = topologyAuthorization
-    ? assertDurablePlanReviewRoleTopology(authorizationOutput.roleTopology, {
-        changeId: status.changeId,
-        planningGeneration: subject.planningGenerationId,
-        author,
-        assignment,
-        requiredDisposition: roleContextAuthorization
-          ? 'exact-grant-required'
-          : 'satisfied',
-      })
-    : null;
+  const roleTopology =
+    authorizationOutput.roleTopology === null
+      ? null
+      : assertDurablePlanReviewRoleTopology(authorizationOutput.roleTopology, {
+          changeId: status.changeId,
+          planningGeneration: subject.planningGenerationId,
+          author,
+          assignment,
+          requiredDisposition: roleContextAuthorization
+            ? 'exact-grant-required'
+            : 'satisfied',
+        });
   if (
-    roleTopology !== null &&
+    (roleContextAuthorization && roleTopology === null) ||
     authorizationNode.exactInputDigests.roleTopology !==
       sha256(canonicalJson(roleTopology))
   ) {
     throw planReviewRequestStale();
   }
-  const retry = retryShape
-    ? assertPlanReviewRetryReservation(
-        paths,
-        node,
-        output.retry,
-        output,
-        request,
-      )
-    : null;
+  const retry =
+    output.retry === null
+      ? null
+      : assertPlanReviewRetryReservation(
+          paths,
+          node,
+          output.retry,
+          output,
+          request,
+        );
   if (
     (expectedSubject &&
       canonicalJson(subject) !== canonicalJson(expectedSubject)) ||
@@ -11567,17 +11675,14 @@ function assertPlanReviewRetryReservation(
   output: Record<string, unknown>,
   request: ProviderInvocationRequest,
 ): NonNullable<PlanReviewReservation['retry']> {
-  const retryDecisionShape =
-    node.nodeSchema === 'workflow.plan-review-request-reservation.v3';
   if (
     !isRecord(value) ||
     !hasExactKeys(value, [
       'attempt',
       'previousReservationNodeId',
       'failedInvocation',
-      ...(retryDecisionShape
-        ? ['executionPolicySnapshot', 'retryDecision']
-        : []),
+      'executionPolicySnapshot',
+      'retryDecision',
     ]) ||
     !Number.isInteger(value.attempt) ||
     (value.attempt as number) < 2 ||
@@ -11606,38 +11711,31 @@ function assertPlanReviewRetryReservation(
   const previousReservationNodeId = value.previousReservationNodeId;
   const failedInvocation =
     value.failedInvocation as PlanReviewRetryEnvelope['failedInvocation'];
-  const retryDecision = retryDecisionShape
-    ? assertPlanReviewRetryDecisionBinding(value.retryDecision)
-    : null;
-  let executionPolicySnapshot: ProviderExecutionPolicySnapshotCurrent | null =
-    null;
-  if (retryDecisionShape) {
-    try {
-      executionPolicySnapshot = validateProviderExecutionPolicySnapshot(
-        request,
-        value.executionPolicySnapshot,
-      );
-    } catch {
-      throw planReviewRequestStale();
-    }
+  const retryDecision = assertPlanReviewRetryDecisionBinding(
+    value.retryDecision,
+  );
+  let executionPolicySnapshot: ProviderExecutionPolicySnapshotCurrent;
+  try {
+    executionPolicySnapshot = validateProviderExecutionPolicySnapshot(
+      request,
+      value.executionPolicySnapshot,
+    );
+  } catch {
+    throw planReviewRequestStale();
   }
   const previousNode = readEvidenceNode(paths, previousReservationNodeId);
   const previousOutput = previousNode.output;
-  const previousRetryDecisionShape =
-    previousNode.nodeSchema === 'workflow.plan-review-request-reservation.v3';
-  const previousRetryShape =
-    previousRetryDecisionShape ||
-    previousNode.nodeSchema === 'workflow.plan-review-request-reservation.v2';
   const previousAttempt =
-    previousRetryShape &&
     isRecord(previousOutput) &&
-    isRecord(previousOutput.retry) &&
-    Number.isInteger(previousOutput.retry.attempt) &&
-    (previousOutput.retry.attempt as number) >= 2
-      ? (previousOutput.retry.attempt as number)
-      : previousRetryShape
-        ? 0
-        : 1;
+    Object.hasOwn(previousOutput, 'retry') &&
+    previousOutput.retry === null
+      ? 1
+      : isRecord(previousOutput) &&
+          isRecord(previousOutput.retry) &&
+          Number.isInteger(previousOutput.retry.attempt) &&
+          (previousOutput.retry.attempt as number) >= 2
+        ? (previousOutput.retry.attempt as number)
+        : 0;
   const failed = readProviderInvocation(paths, failedInvocation.invocationId);
   const failedRequest = readProviderInvocationRequest(
     paths,
@@ -11661,30 +11759,22 @@ function assertPlanReviewRetryReservation(
   } = request;
   if (
     previousNode.type !== 'plan-review-request-reservation' ||
-    (!previousRetryShape &&
-      previousNode.nodeSchema !==
-        'workflow.plan-review-request-reservation.v1') ||
+    previousNode.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
     previousNode.evaluator !== 'workflow-propose.v1' ||
     previousNode.policyDigest !== PROPOSE_POLICY_DIGEST ||
     previousNode.outputSchema !==
-      (previousRetryDecisionShape
-        ? 'workflow.plan-review-request-reservation-output.v3'
-        : previousRetryShape
-          ? 'workflow.plan-review-request-reservation-output.v2'
-          : 'workflow.plan-review-request-reservation-output.v1') ||
+      'workflow.plan-review-request-reservation-output.v3' ||
     !isRecord(previousOutput) ||
     previousNode.nodeId !== node.exactInputDigests.previousRequest ||
     previousNode.nodeId !== node.provenanceParentNodeIds.previousRequest ||
     previousNode.resultDigest !==
       node.semanticParentResultDigests.previousRequest ||
     failedInvocation.failureDigest !== node.exactInputDigests.failure ||
-    (retryDecision !== null &&
-      (retryDecision.evidenceDigest !== node.exactInputDigests.retryDecision ||
-        retryDecision.failedAttemptId !==
-          `attempt-provider-${failedInvocation.invocationId}`)) ||
-    (executionPolicySnapshot !== null &&
-      sha256(canonicalJson(executionPolicySnapshot)) !==
-        node.exactInputDigests.executionPolicySnapshot) ||
+    retryDecision.evidenceDigest !== node.exactInputDigests.retryDecision ||
+    retryDecision.failedAttemptId !==
+      `attempt-provider-${failedInvocation.invocationId}` ||
+    sha256(canonicalJson(executionPolicySnapshot)) !==
+      node.exactInputDigests.executionPolicySnapshot ||
     previousAttempt === 0 ||
     failed.attempt !== previousAttempt ||
     value.attempt !== failed.attempt + 1 ||

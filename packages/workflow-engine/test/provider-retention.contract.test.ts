@@ -982,31 +982,6 @@ function createPlanReviewRolloverHistory(name: string) {
       ),
     },
   );
-  const authorization = createEvidenceNode({
-    type: 'plan-review-authorization',
-    nodeSchema: 'workflow.plan-review-authorization.v1',
-    evaluator: 'workflow-propose.v1',
-    policyDigest: PROPOSE_POLICY_DIGEST,
-    exactInputDigests: {
-      assignment: sha256(canonicalJson(assignment)),
-      generation: context.subject.planningGenerationId,
-      grantAuthorization: sha256(canonicalJson(null)),
-      subject: context.subject.subjectDigest,
-    },
-    semanticParentResultDigests: {
-      materialization: materialization.resultDigest,
-    },
-    provenanceParentNodeIds: { materialization: materialization.nodeId },
-    outputSchema: 'workflow.plan-review-authorization-output.v1',
-    output: {
-      subject: context.subject,
-      assignment,
-      author: { id: 'fixture-author' },
-      grantAuthorization: null,
-    },
-    runtimeMetadata: {},
-  });
-  writeEvidenceNode(runtime, authorization);
   const invocations: ProviderInvocationRequest[] = [];
   try {
     for (const [index, completedAt] of [
@@ -1022,6 +997,44 @@ function createPlanReviewRolloverHistory(name: string) {
         artifacts: new Map([['proposal.md', content]]),
       });
       writeEvidenceNode(runtime, targetNode);
+      const authorization = createEvidenceNode({
+        type: 'plan-review-authorization',
+        nodeSchema: 'workflow.plan-review-authorization.v3',
+        evaluator: 'workflow-propose.v1',
+        policyDigest: PROPOSE_POLICY_DIGEST,
+        exactInputDigests: {
+          assignment: sha256(canonicalJson(assignment)),
+          generation: context.subject.planningGenerationId,
+          grantAuthorization: sha256(canonicalJson(null)),
+          roleTopology: sha256(canonicalJson(null)),
+          subject: context.subject.subjectDigest,
+          targetSnapshot: targetNode.nodeId,
+        },
+        semanticParentResultDigests: {
+          materialization: materialization.resultDigest,
+          targetSnapshot: targetNode.resultDigest,
+        },
+        provenanceParentNodeIds: {
+          materialization: materialization.nodeId,
+          targetSnapshot: targetNode.nodeId,
+        },
+        outputSchema: 'workflow.plan-review-authorization-output.v3',
+        output: {
+          subject: context.subject,
+          assignment,
+          author: {
+            providerId: 'codex',
+            sessionId: 'fixture-author-session',
+            principalId: 'fixture-author',
+            identityAssurance: 'adapter-assigned',
+            engineSpawned: false,
+          },
+          grantAuthorization: null,
+          roleTopology: null,
+        },
+        runtimeMetadata: {},
+      });
+      writeEvidenceNode(runtime, authorization);
       const manifest: PlanReviewManifest = {
         schemaVersion: 1,
         kind: 'plan-review-manifest',

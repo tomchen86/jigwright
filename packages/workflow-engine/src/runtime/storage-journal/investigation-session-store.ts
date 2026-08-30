@@ -6597,49 +6597,109 @@ function isDurablyReservedProviderExecutionPolicySnapshot(
     for (const name of fs.readdirSync(paths.refs).sort()) {
       if (!name.endsWith('.json')) continue;
       const changeId = name.slice(0, -'.json'.length);
-      let refs: Record<string, string>;
+      let closure: InvestigationEvidenceRefsClosure;
       try {
         assertChangeId(changeId);
-        refs = readEvidenceRefs(paths, changeId);
+        closure = readInvestigationEvidenceRefsClosure(paths, changeId);
       } catch {
         continue;
       }
+      const refs = closure.snapshot.refs;
+      if (refs === null) continue;
       const nodeId = refs['propose/plan-review-request'];
       if (nodeId === undefined) continue;
       const node = readEvidenceNode(paths, nodeId);
+      const output = node.output;
+      const retryShape = isRecord(output) && output.retry !== null;
+      const closureEntries = closure.entries.filter(
+        (entry) => entry.refName === 'propose/plan-review-request',
+      );
       if (
         node.type !== 'plan-review-request-reservation' ||
         node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
+        node.evaluator !== 'workflow-propose.v1' ||
+        node.policyDigest !== PROPOSE_POLICY_DIGEST ||
         node.outputSchema !==
           'workflow.plan-review-request-reservation-output.v3' ||
-        !isRecord(node.output) ||
-        !isRecord(node.output.retry) ||
-        !isRecord(node.output.retry.executionPolicySnapshot) ||
-        !isRecord(node.output.request)
+        !isRecord(output) ||
+        !hasExactKeys(output, [
+          'investigationId',
+          'changeId',
+          'planning',
+          'subject',
+          'assignment',
+          'author',
+          'materializationNode',
+          'targetSnapshotNode',
+          'manifest',
+          'request',
+          'grantAuthorization',
+          'retry',
+        ]) ||
+        !hasExactKeys(node.exactInputDigests, [
+          'manifest',
+          'request',
+          'subject',
+          'targetSnapshot',
+          ...(retryShape ? ['previousRequest', 'failure'] : []),
+          ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
+        ]) ||
+        !hasExactKeys(node.provenanceParentNodeIds, [
+          'authorization',
+          ...(retryShape ? ['previousRequest'] : []),
+        ]) ||
+        !hasExactKeys(node.semanticParentResultDigests, [
+          'authorization',
+          ...(retryShape ? ['previousRequest'] : []),
+        ]) ||
+        output.changeId !== changeId ||
+        closureEntries.length !== 1 ||
+        closureEntries[0]?.nodeId !== nodeId ||
+        closureEntries[0]?.ownerInvestigationId !== output.investigationId ||
+        !isRecord(output.request)
       ) {
         continue;
       }
-      const request = recreateProviderInvocationRequest(node.output.request);
-      if (request.invocationId !== invocationId) continue;
+      const request = recreateProviderInvocationRequest(output.request);
+      if (
+        request.invocationId !== invocationId ||
+        request.requestDigest !== node.exactInputDigests.request ||
+        request.authorizationNodeId !==
+          node.provenanceParentNodeIds.authorization
+      ) {
+        continue;
+      }
       const storedSnapshot = readPrivateCanonicalJson(
         paths,
         path.join(directory, 'execution-policy.json'),
         providerInvocationUnsafe,
       );
       assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
+      if (output.retry === null) {
+        // Initial PlanReview publication stores policy before creating the
+        // invocation. A V3 reservation with retry:null is its sole durable
+        // recovery authority for that policy-only crash window. The exact
+        // current refs closure above proves that this is not an orphan or a
+        // rebound V3-labeled object.
+        return true;
+      }
+      if (
+        !isRecord(output.retry) ||
+        !isRecord(output.retry.executionPolicySnapshot)
+      ) {
+        continue;
+      }
       assertProviderExecutionPolicySnapshot(
         paths,
-        node.output.retry.executionPolicySnapshot,
+        output.retry.executionPolicySnapshot,
         request,
       );
       if (
         canonicalJson(storedSnapshot) !==
-        canonicalJson(node.output.retry.executionPolicySnapshot)
+        canonicalJson(output.retry.executionPolicySnapshot)
       ) {
         continue;
       }
-      // The ref parser plus node identity bind the recovery journal; the full
-      // closure is evaluated by status before the reservation is consumed.
       return true;
     }
   } catch {
@@ -7035,9 +7095,10 @@ function assertEvidenceClosureTargetBinding(
       const output = node.output;
       if (
         !isRecord(output) ||
-        !isRecord(output.subject) ||
-        !isRecord(output.subject.investigationBaseline) ||
-        canonicalJson(output.subject.investigationBaseline) !==
+        !isRecord(output.requirement) ||
+        !isRecord(output.requirement.subject) ||
+        !isRecord(output.requirement.subject.investigationBaseline) ||
+        canonicalJson(output.requirement.subject.investigationBaseline) !==
           canonicalJson(owner.baseline)
       ) {
         throw humanResolutionStateInvalid();

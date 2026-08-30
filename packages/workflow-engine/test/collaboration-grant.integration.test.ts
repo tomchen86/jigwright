@@ -87,6 +87,14 @@ import {
   type RoleParticipant,
 } from '../src/modules/provider-orchestration/role-scheduler.ts';
 import { withRepositoryLifecycleOperation } from '../src/runtime/session-workspace/session-store.ts';
+import {
+  computeInvestigationEvidenceRefsClosure,
+  readEvidenceNode,
+  readInvestigationEvidenceRefsClosure,
+  resolvePlanReviewInvocationOwner,
+  writeEvidenceNode,
+} from '../src/runtime/storage-journal/evidence-object-store.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -463,6 +471,118 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
     assert.equal(paused.state, 'human-action-required');
     assert.equal(paused.inputSchema?.kind, 'collaboration-grant-selection');
     assert.equal(paused.inputSchema?.lifecyclePhase, 'plan-review');
+    const paths = investigationRuntimePaths(
+      fs.realpathSync(path.join(repository, '.git')),
+      'workflow-engine',
+    );
+    const requirementClosure = readInvestigationEvidenceRefsClosure(
+      paths,
+      changeId,
+    );
+    const requirementNode = readEvidenceNode(
+      paths,
+      requirementClosure.snapshot.refs![
+        'propose/plan-review-grant-requirement'
+      ]!,
+    );
+    assert.equal(
+      requirementNode.nodeSchema,
+      'workflow.plan-review-grant-requirement.v3',
+    );
+    assert.equal(
+      requirementNode.outputSchema,
+      'workflow.plan-review-grant-requirement-output.v3',
+    );
+    assert.deepEqual(Object.keys(requirementNode.exactInputDigests), [
+      'requirement',
+    ]);
+    assert.deepEqual(requirementNode.provenanceParentNodeIds, {});
+    assert.deepEqual(requirementNode.semanticParentResultDigests, {});
+    const durableRequirement = (
+      requirementNode.output as {
+        requirement: Record<string, unknown>;
+      }
+    ).requirement;
+    assert.equal(durableRequirement.schemaVersion, 3);
+    assert.equal(
+      durableRequirement.kind,
+      'collaboration-plan-review-requirement.v3',
+    );
+    assert.equal(
+      durableRequirement.investigationId,
+      paused.investigation!.investigationId,
+    );
+    assert.equal(durableRequirement.changeId, changeId);
+    assert.equal(
+      (durableRequirement.subject as { subjectDigest: string }).subjectDigest,
+      paused.inputSchema?.subjectDigest,
+    );
+    for (const retiredVersion of [1, 2] as const) {
+      const retiredRequirement = createEvidenceNode({
+        type: requirementNode.type,
+        nodeSchema: `workflow.plan-review-grant-requirement.v${retiredVersion}`,
+        evaluator: requirementNode.evaluator,
+        policyDigest: requirementNode.policyDigest,
+        exactInputDigests: { ...requirementNode.exactInputDigests },
+        semanticParentResultDigests: {},
+        provenanceParentNodeIds: {},
+        outputSchema: `workflow.plan-review-grant-requirement-output.v${retiredVersion}`,
+        output: requirementNode.output,
+        runtimeMetadata: {},
+      });
+      writeEvidenceNode(paths, retiredRequirement);
+      assert.throws(
+        () =>
+          computeInvestigationEvidenceRefsClosure(paths, changeId, {
+            'propose/plan-review-grant-requirement': retiredRequirement.nodeId,
+          }),
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'EVIDENCE_REF_INVALID',
+      );
+    }
+    const currentRequirementRefsDocument =
+      requirementClosure.snapshot.rawDocument;
+    const poisonedGrantRequest = {
+      ...(durableRequirement.grantRequest as Record<string, unknown>),
+      changeId: 'other-change',
+    };
+    const poisonedDurableRequirement = {
+      ...durableRequirement,
+      grantRequest: poisonedGrantRequest,
+    };
+    const poisonedRequirementNode = createEvidenceNode({
+      type: requirementNode.type,
+      nodeSchema: requirementNode.nodeSchema,
+      evaluator: requirementNode.evaluator,
+      policyDigest: requirementNode.policyDigest,
+      exactInputDigests: {
+        requirement: sha256(canonicalJson(poisonedDurableRequirement)),
+      },
+      semanticParentResultDigests: {},
+      provenanceParentNodeIds: {},
+      outputSchema: requirementNode.outputSchema,
+      output: { requirement: poisonedDurableRequirement },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(paths, poisonedRequirementNode);
+    assert.throws(
+      () =>
+        computeInvestigationEvidenceRefsClosure(paths, changeId, {
+          'propose/plan-review-grant-requirement':
+            poisonedRequirementNode.nodeId,
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'EVIDENCE_REF_INVALID',
+    );
+    assert.equal(
+      readInvestigationEvidenceRefsClosure(paths, changeId).snapshot
+        .rawDocument,
+      currentRequirementRefsDocument,
+    );
     const request = paused.inputSchema
       ?.grantRequest as CollaborationGrantRequest;
     assert.equal(request.targetDigest, paused.inputSchema?.subjectDigest);
@@ -488,9 +608,81 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
     });
     assert.equal(waiting.state, 'waiting-for-plan-review');
     assert.equal(waiting.planReview?.providerId, 'codex');
-    const paths = investigationRuntimePaths(
-      fs.realpathSync(path.join(repository, '.git')),
-      'workflow-engine',
+    const reservationNode = readEvidenceNode(
+      paths,
+      readInvestigationEvidenceRefsClosure(paths, changeId).snapshot.refs![
+        'propose/plan-review-request'
+      ]!,
+    );
+    const authorizationNode = readEvidenceNode(
+      paths,
+      reservationNode.provenanceParentNodeIds.authorization!,
+    );
+    assert.equal(
+      authorizationNode.nodeSchema,
+      'workflow.plan-review-authorization.v3',
+    );
+    assert.equal(
+      authorizationNode.outputSchema,
+      'workflow.plan-review-authorization-output.v3',
+    );
+    assert.equal(
+      (authorizationNode.output as { roleTopology: unknown }).roleTopology,
+      null,
+    );
+    assert.equal(
+      authorizationNode.exactInputDigests.roleTopology,
+      sha256(canonicalJson(null)),
+    );
+    const currentAuthorizationRefsDocument =
+      readInvestigationEvidenceRefsClosure(paths, changeId).snapshot
+        .rawDocument;
+    const authorizationOutput = authorizationNode.output as Record<
+      string,
+      unknown
+    >;
+    const poisonedAuthorizationNode = createEvidenceNode({
+      type: authorizationNode.type,
+      nodeSchema: authorizationNode.nodeSchema,
+      evaluator: authorizationNode.evaluator,
+      policyDigest: authorizationNode.policyDigest,
+      exactInputDigests: {
+        ...authorizationNode.exactInputDigests,
+        grantAuthorization: sha256(canonicalJson(null)),
+        roleTopology: sha256(canonicalJson(null)),
+      },
+      semanticParentResultDigests: {
+        ...authorizationNode.semanticParentResultDigests,
+      },
+      provenanceParentNodeIds: {
+        ...authorizationNode.provenanceParentNodeIds,
+      },
+      outputSchema: authorizationNode.outputSchema,
+      output: {
+        ...authorizationOutput,
+        grantAuthorization: null,
+        roleTopology: null,
+      },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(paths, poisonedAuthorizationNode);
+    assert.throws(
+      () =>
+        resolvePlanReviewInvocationOwner(paths, {
+          changeId,
+          subject: authorizationOutput.subject,
+          assignment: authorizationOutput.assignment,
+          authorizationNodeId: poisonedAuthorizationNode.nodeId,
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'EVIDENCE_REF_INVALID',
+    );
+    assert.equal(
+      readInvestigationEvidenceRefsClosure(paths, changeId).snapshot
+        .rawDocument,
+      currentAuthorizationRefsDocument,
     );
     const providerRequest = readProviderInvocationRequest(
       paths,
