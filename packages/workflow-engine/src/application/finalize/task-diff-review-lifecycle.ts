@@ -5881,15 +5881,8 @@ function documentationHints(
     ) {
       add('user-visible-behavior-changed', ['docs/features']);
     }
-    if (
-      changedPath === 'docs/issues/issues.yaml' ||
-      changedPath === 'docs/ISSUE_LOG.md' ||
-      changedPath === 'docs/ROADMAP.md'
-    ) {
-      add('issue-or-roadmap-state-changed', [
-        'docs/ISSUE_LOG.md',
-        'docs/ROADMAP.md',
-      ]);
+    if (changedPath === 'docs/ROADMAP.md') {
+      add('roadmap-state-changed', ['docs/ROADMAP.md']);
     }
     if (
       changedPath.includes('authority') ||

@@ -53,7 +53,7 @@ export type TaskDiffDocumentationHint = Readonly<{
     | 'configuration-changed'
     | 'migration-changed'
     | 'user-visible-behavior-changed'
-    | 'issue-or-roadmap-state-changed'
+    | 'roadmap-state-changed'
     | 'authority-boundary-changed';
   suggestedPaths: readonly string[];
 }>;
@@ -985,7 +985,7 @@ function normalizeDocumentationHints(
         'configuration-changed',
         'migration-changed',
         'user-visible-behavior-changed',
-        'issue-or-roadmap-state-changed',
+        'roadmap-state-changed',
         'authority-boundary-changed',
       ].includes(String(candidate.reason)) ||
       !Array.isArray(candidate.suggestedPaths) ||

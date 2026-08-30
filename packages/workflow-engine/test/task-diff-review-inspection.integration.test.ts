@@ -64,7 +64,10 @@ import {
   listTaskDiffReviewSupersessions,
   taskDiffReviewLineageSupersessionPath,
 } from '../src/runtime/storage-journal/task-diff-review-store.ts';
-import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
+import {
+  createTaskDiffDocumentationClosureRequirement,
+  TASK_DIFF_REVIEW_COVERAGE,
+} from '../src/modules/assurance/task-diff-review.ts';
 import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
@@ -217,6 +220,58 @@ test('final documentation closure activates review for an ordinary candidate', (
     assert.equal(subject.reviewRequirement.basis, 'explicit');
     assert.equal(subject.documentationRequirement?.required, true);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('final documentation closure uses only the current roadmap hint identity', () => {
+  const { repository } = createReviewFixture({
+    additionalAllowedPaths: ['docs/ROADMAP.md'],
+  });
+  try {
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(
+      path.join(repository, 'docs/ROADMAP.md'),
+      '# Roadmap\n\nCurrent product direction.\n',
+    );
+
+    assert.throws(
+      () => finalizeTask(repository, session.sessionId),
+      hasCode('TASK_DIFF_REVIEW_REQUIRED'),
+    );
+    const requirement = inspectTaskDiffReviewSubject(
+      repository,
+      session.sessionId,
+    ).documentationRequirement;
+    assert.equal(requirement?.required, true);
+    if (requirement?.required !== true) {
+      assert.fail('Expected a final documentation closure requirement.');
+    }
+    assert.throws(
+      () =>
+        createTaskDiffDocumentationClosureRequirement({
+          required: true,
+          changeBaseCommit: requirement.changeBaseCommit,
+          changeBaseTree: requirement.changeBaseTree,
+          candidateTree: requirement.candidateTree,
+          changedPaths: requirement.changedPaths,
+          patchDigest: requirement.patchDigest,
+          hints: [
+            {
+              reason: 'issue-or-roadmap-state-changed',
+              suggestedPaths: ['docs/ROADMAP.md'],
+            },
+          ] as never,
+        }),
+      hasCode('TASK_DIFF_REVIEW_SUBJECT_INVALID'),
+    );
+    assert.deepEqual(requirement.hints, [
+      {
+        reason: 'roadmap-state-changed',
+        suggestedPaths: ['docs/ROADMAP.md'],
+      },
+    ]);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -2477,6 +2532,7 @@ function createReviewFixture(
         fingerprint: string;
       }>;
     }) => void;
+    additionalAllowedPaths?: readonly string[];
     forceDiffReviewRequired?: boolean;
   } = {},
 ): {
@@ -2542,6 +2598,21 @@ function createReviewFixture(
   }
   configureCountingCheck(repository, counterPath);
   git(repository, ['checkout', '-b', 'work/demo-change']);
+  if (options.additionalAllowedPaths !== undefined) {
+    const guardPath = path.join(
+      repository,
+      'openspec/changes/demo-change/guard.json',
+    );
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<string, { allowedPaths: string[] }>;
+    };
+    for (const policy of Object.values(guard.tasks)) {
+      policy.allowedPaths = [
+        ...new Set([...policy.allowedPaths, ...options.additionalAllowedPaths]),
+      ];
+    }
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+  }
   writeReadyV3ExemptChange(
     repository,
     'demo-change',
