@@ -1607,17 +1607,8 @@ function expectedInitialReviewAuthority(review) {
 }
 function assertFinalAssuranceAuthorityBindings(input) {
     const expectedReviewAuthority = expectedInitialReviewAuthority(input.review);
-    const legacyExactProviderContinuation = expectedReviewAuthority.kind === 'engine-attributed-provider-reviewer' &&
-        input.reviewerAuthority.kind === 'engine-attributed-provider-reviewer' &&
-        canonicalJson(input.reviewerAuthority) ===
-            canonicalJson(expectedReviewAuthority);
     const reviewFact = input.authenticatedReviewAuthority;
     const closureFact = input.authenticatedChallengeClosureAuthority;
-    if (reviewFact === undefined && closureFact === undefined) {
-        if (!legacyExactProviderContinuation)
-            throw finalAssuranceInvalid();
-        return;
-    }
     if (reviewFact === undefined || closureFact === undefined) {
         throw finalAssuranceInvalid();
     }

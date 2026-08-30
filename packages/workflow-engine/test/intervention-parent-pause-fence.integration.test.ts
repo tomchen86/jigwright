@@ -55,7 +55,10 @@ function dependencies(now = NOW) {
 }
 
 async function fixture(healthy: boolean) {
-  const controlPlane = await setupFinalizedControlPlanePromotionFixture();
+  const controlPlane = await setupFinalizedControlPlanePromotionFixture({
+    candidateExecutableFactory: (closureDigest) =>
+      Buffer.from(currentGlobalEngineSource(closureDigest)),
+  });
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'intervention-parent-fence-')),
   );
@@ -282,7 +285,7 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
       '--json',
     ]);
     assert.equal(ordinaryStatus.status, 0, ordinaryStatus.stderr);
-    assert.match(ordinaryStatus.stdout, /fixture built-in engine/);
+    assert.match(ordinaryStatus.stdout, /fixture current global engine/);
 
     value.prepareAdoption();
     value.step(0);
@@ -304,7 +307,7 @@ test('durable intervention fence blocks before E1/E2 and routes sealed status an
       'parent-session-id',
     ]);
     assert.equal(incompleteStatus.status, 0, incompleteStatus.stderr);
-    assert.match(incompleteStatus.stdout, /fixture built-in engine/);
+    assert.match(incompleteStatus.stdout, /fixture current global engine/);
 
     const incompleteOrdinary = runWorkflowLauncher(value.repository, [
       'check',
@@ -348,7 +351,7 @@ test('rolled-back adoption retains the parent fence before repository-default la
       '--json',
     ]);
     assert.equal(status.status, 0, status.stderr);
-    assert.match(status.stdout, /fixture built-in engine/);
+    assert.match(status.stdout, /fixture current global engine/);
   } finally {
     value.cleanup();
   }
@@ -369,6 +372,21 @@ if (mode === '--health-check') {
 fs.appendFileSync(${JSON.stringify(launchMarker)}, process.argv.slice(2).join(' ') + '\\n');
 process.stdout.write(JSON.stringify({kind:'local-adopted-engine.v1',engine:'E2',argv:process.argv.slice(2)}) + '\\n');
 process.exit(0);
+`;
+}
+
+function currentGlobalEngineSource(closureDigest: string): string {
+  return `#!/usr/bin/env node
+const mode = process.argv[2];
+if (mode === '--control-plane-self-test') {
+  process.stdout.write(JSON.stringify({kind:'control-plane-self-test.v1',healthy:true,closureDigest:${JSON.stringify(closureDigest)}}) + '\\n');
+  process.exit(0);
+}
+if (mode === '--control-plane-restart-probe') {
+  process.stdout.write(JSON.stringify({kind:'control-plane-restart.v1',ready:true,closureDigest:${JSON.stringify(closureDigest)}}) + '\\n');
+  process.exit(0);
+}
+process.stdout.write('fixture current global engine\\n');
 `;
 }
 

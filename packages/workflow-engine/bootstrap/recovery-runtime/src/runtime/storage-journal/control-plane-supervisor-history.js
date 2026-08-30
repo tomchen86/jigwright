@@ -520,44 +520,15 @@ function verifyAnchorAuthority(value) {
     if (!isRecord(value)) {
         throw recordInvalid('Supervisor history anchor authority is invalid.');
     }
-    if (value.kind === 'initial-bootstrap-anchor.v1') {
-        if (!hasExactKeys(value, ['initialBootstrapPublishedDigest', 'kind'])) {
-            throw recordInvalid('Initial supervisor history authority is invalid.');
-        }
-        assertDigest(value.initialBootstrapPublishedDigest);
-        return deepFreeze({
-            kind: value.kind,
-            initialBootstrapPublishedDigest: value.initialBootstrapPublishedDigest,
-        });
+    if (value.kind !== 'initial-bootstrap-anchor.v1' ||
+        !hasExactKeys(value, ['initialBootstrapPublishedDigest', 'kind'])) {
+        throw recordInvalid('Initial supervisor history authority is invalid.');
     }
-    if (value.kind !== 'legacy-v2-terminal-anchor.v1' ||
-        !hasExactKeys(value, [
-            'grantEnvelopeDigest',
-            'grantId',
-            'initialBootstrapPublishedDigest',
-            'kind',
-            'promotionBundleDigest',
-            'terminalState',
-            'transactionJournalDigest',
-            'txId',
-            'updateRecordDigest',
-        ]) ||
-        (value.terminalState !== 'FINALIZED' &&
-            value.terminalState !== 'ROLLED_BACK')) {
-        throw recordInvalid('Legacy V2 supervisor history authority is invalid.');
-    }
-    assertNonEmpty(value.grantId);
-    assertNonEmpty(value.txId);
-    for (const field of [
-        value.initialBootstrapPublishedDigest,
-        value.updateRecordDigest,
-        value.transactionJournalDigest,
-        value.grantEnvelopeDigest,
-        value.promotionBundleDigest,
-    ]) {
-        assertDigest(field);
-    }
-    return deepFreeze(structuredClone(value));
+    assertDigest(value.initialBootstrapPublishedDigest);
+    return deepFreeze({
+        kind: value.kind,
+        initialBootstrapPublishedDigest: value.initialBootstrapPublishedDigest,
+    });
 }
 function assertTransitionFollows(previous, current) {
     if (current.previousRecordDigest !== previous.recordDigest ||

@@ -2049,12 +2049,12 @@ function assertTargetSnapshotMigrationContract(value, artifacts) {
             'engineManagedPaths',
             'guardSemanticDigest',
         ]) ||
-        typeof value.legacyMigration !== 'boolean' ||
-        (value.guardSemanticDigest !== null && !isDigest(value.guardSemanticDigest))) {
+        value.legacyMigration !== false ||
+        value.guardSemanticDigest !== null) {
         throw targetSnapshotInvalid();
     }
     const expected = {
-        legacyMigration: value.legacyMigration,
+        legacyMigration: false,
         preservedPaths: artifacts
             .filter(({ mutability }) => mutability === 'preserved-byte-identical')
             .map(({ path }) => path),
@@ -2064,7 +2064,7 @@ function assertTargetSnapshotMigrationContract(value, artifacts) {
         engineManagedPaths: artifacts
             .filter(({ mutability }) => mutability === 'engine-managed')
             .map(({ path }) => path),
-        guardSemanticDigest: value.guardSemanticDigest,
+        guardSemanticDigest: null,
     };
     if (canonicalJson(value.preservedPaths) !==
         canonicalJson(expected.preservedPaths) ||
@@ -2072,9 +2072,7 @@ function assertTargetSnapshotMigrationContract(value, artifacts) {
             canonicalJson(expected.replaceablePaths) ||
         canonicalJson(value.engineManagedPaths) !==
             canonicalJson(expected.engineManagedPaths) ||
-        (!value.legacyMigration &&
-            (expected.preservedPaths.length > 0 ||
-                expected.guardSemanticDigest !== null))) {
+        expected.preservedPaths.length > 0) {
         throw targetSnapshotInvalid();
     }
     return expected;

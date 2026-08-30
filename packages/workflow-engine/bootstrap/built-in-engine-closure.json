@@ -518,7 +518,7 @@
     {
       "path": "src/application/control-plane/control-plane-promotion-producer.ts",
       "mode": "100644",
-      "digest": "sha256:255fe0a6e476f990a06a7f0dbe2b171b8ace926ba60bac0e694ef9f8e19b1ecc"
+      "digest": "sha256:a290f4efc364aad4ad2fda1da87cadc418c8e0c1e2ea1ac4d75dc025bb843f4f"
     },
     {
       "path": "src/application/control-plane/engine-metrics.ts",
@@ -543,7 +543,7 @@
     {
       "path": "src/application/control-plane/intervention-control-updater.ts",
       "mode": "100644",
-      "digest": "sha256:7338c011d4192a0c14a900897eb42b97dbd99db697e41cd2867c2bbe4788d48a"
+      "digest": "sha256:c515bfd15484f421f4ef0a4ff5c5a40c744492ce362ac7ec663e814b3e06ed88"
     },
     {
       "path": "src/application/control-plane/intervention-maintenance.ts",
@@ -583,7 +583,7 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:09dad1ae38d6bad85265c81bc997ce74146c3bddbfe8f374056b7cc663d2a02b"
+      "digest": "sha256:fc953db1a20098d26a2ecbb343a30aa8e2a935b958e7a7587dc6d4848470629c"
     },
     {
       "path": "src/application/execute-task/session.ts",
@@ -698,7 +698,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:9450336d1266d3186cb66755e3d427d34d859ab076d28426ba2a4aff32e1cb6e"
+      "digest": "sha256:90d08651801781c0c8156ae9546b372277958f20f78149a02ed2b8592dbba300"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1013,7 +1013,7 @@
     {
       "path": "src/entrypoints/cli/intervention-control-updater-cli.ts",
       "mode": "100644",
-      "digest": "sha256:eebfb94ca8c5e2da235f5919aacea63472c61675ee9307e27c34de6e79deb7e7"
+      "digest": "sha256:2964e96b0dcb0db1187352c16a3375fecb8e6a288a1fa3a57e880bb39c20d2bd"
     },
     {
       "path": "src/entrypoints/cli/issue-cli.ts",
@@ -1088,7 +1088,7 @@
     {
       "path": "src/modules/assurance/plan-review.ts",
       "mode": "100644",
-      "digest": "sha256:b20b18ab8084c9a621e90df417336b306153b625cd6659880c1f8758ca8d37cc"
+      "digest": "sha256:2bb8be35af9a313aebb8425aa393e81e9a0eedbd050370cc0c4215c07c992e91"
     },
     {
       "path": "src/modules/assurance/plan-target.ts",
@@ -1128,7 +1128,7 @@
     {
       "path": "src/modules/assurance/task-diff-review-artifact.ts",
       "mode": "100644",
-      "digest": "sha256:a817e2bc525a1637f4579f5c4c1c0d1e10c45cee19483c6f7593bca618d4d743"
+      "digest": "sha256:b34ebe3cdae0cfe248d7341b08a899d5b0153e415b619c305db9e1184e9c4cd2"
     },
     {
       "path": "src/modules/assurance/task-diff-review-input.ts",
@@ -1993,7 +1993,7 @@
     {
       "path": "src/runtime/storage-journal/control-plane-supervisor-history.ts",
       "mode": "100644",
-      "digest": "sha256:7f12487a478f298a83b8f08da2f96004d99a11ab03b7131bab4ae27212afd071"
+      "digest": "sha256:ee7557c6328a38efae71464962eb8d5a4c5d012acc5f6800f24a1e79c3f12e61"
     },
     {
       "path": "src/runtime/storage-journal/evidence-object-store.ts",
@@ -2018,7 +2018,7 @@
     {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",
       "mode": "100644",
-      "digest": "sha256:e281979e3023b30ea7f885fba9f77fa49b472ba9c1a2451211df7f35389ac25e"
+      "digest": "sha256:33a98235a8ef6827a59c3db00de036ecedec5449b98d0eb0554542e5465916f6"
     },
     {
       "path": "src/runtime/storage-journal/intervention-engine-artifact-store.ts",
