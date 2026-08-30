@@ -2185,18 +2185,13 @@ export function writeHumanResolutionReceipt(paths, requestedGrantId, receipt) {
     return digest;
 }
 function assertInvestigationSession(value) {
-    const hasSemanticRevision = isRecord(value) &&
-        Object.prototype.hasOwnProperty.call(value, 'semanticRevision');
-    const hasLifecycleRevision = isRecord(value) &&
-        Object.prototype.hasOwnProperty.call(value, 'lifecycleRevision');
     if (!isRecord(value) ||
         !hasExactKeys(value, [
             'schemaVersion',
             'investigationId',
             'revision',
-            ...(hasSemanticRevision && hasLifecycleRevision
-                ? ['semanticRevision', 'lifecycleRevision']
-                : []),
+            'semanticRevision',
+            'lifecycleRevision',
             'state',
             'changeId',
             ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
@@ -2229,15 +2224,12 @@ function assertInvestigationSession(value) {
         typeof value.investigationId !== 'string' ||
         !Number.isSafeInteger(value.revision) ||
         value.revision < 0 ||
-        hasSemanticRevision !== hasLifecycleRevision ||
-        (hasSemanticRevision &&
-            (!Number.isSafeInteger(value.semanticRevision) ||
-                value.semanticRevision < 0 ||
-                !Number.isSafeInteger(value.lifecycleRevision) ||
-                value.lifecycleRevision < 0 ||
-                value.semanticRevision >
-                    value.lifecycleRevision ||
-                value.lifecycleRevision !== value.revision)) ||
+        !Number.isSafeInteger(value.semanticRevision) ||
+        value.semanticRevision < 0 ||
+        !Number.isSafeInteger(value.lifecycleRevision) ||
+        value.lifecycleRevision < 0 ||
+        value.semanticRevision > value.lifecycleRevision ||
+        value.lifecycleRevision !== value.revision ||
         typeof value.changeId !== 'string' ||
         (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
             !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
@@ -2274,13 +2266,7 @@ function assertInvestigationSession(value) {
         !value.blindInvocationIds.includes(value.currentBlindInvocationId)) {
         throw sessionInvalid();
     }
-    const session = (hasSemanticRevision
-        ? value
-        : {
-            ...value,
-            semanticRevision: value.revision,
-            lifecycleRevision: value.revision,
-        });
+    const session = value;
     if (session.state !== deriveInvestigationSessionState(session) ||
         !milestonesBelongToSession(session)) {
         throw sessionInvalid();

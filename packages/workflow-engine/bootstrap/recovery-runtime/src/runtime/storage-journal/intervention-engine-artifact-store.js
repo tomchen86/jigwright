@@ -26,13 +26,10 @@ export function readStoredInterventionEngineArtifact(storageRoot, artifactId) {
     }
     if (!isRecord(value) ||
         `${canonicalJson(value)}\n` !== raw ||
-        ![
-            'persisted-intervention-engine-artifact.v1',
-            'persisted-intervention-engine-artifact.v2',
-        ].includes(String(value.kind))) {
+        value.kind !== 'persisted-intervention-engine-artifact.v2') {
         throw artifactRecordCorrupt();
     }
-    const v1Keys = [
+    const keys = [
         'artifact',
         'checkpointId',
         'createdAt',
@@ -41,10 +38,10 @@ export function readStoredInterventionEngineArtifact(storageRoot, artifactId) {
         'kind',
         'parentChangeId',
         'recordDigest',
+        'workflowBindingDigest',
+        'workflowStatus',
     ];
-    if (!hasExactKeys(value, value.kind === 'persisted-intervention-engine-artifact.v2'
-        ? [...v1Keys, 'workflowBindingDigest', 'workflowStatus']
-        : v1Keys) ||
+    if (!hasExactKeys(value, keys) ||
         !verifyRecordDigest(value) ||
         !isNonEmptyTrimmed(value.parentChangeId) ||
         !isNonEmptyTrimmed(value.interventionChangeId) ||
@@ -59,9 +56,8 @@ export function readStoredInterventionEngineArtifact(storageRoot, artifactId) {
     const artifact = createEngineArtifact(value.artifact);
     if (artifact.artifactId !== artifactId ||
         artifact.artifactId !== value.artifact.artifactId ||
-        (value.kind === 'persisted-intervention-engine-artifact.v2' &&
-            (!isDigest(value.workflowBindingDigest) ||
-                value.workflowStatus !== 'repair-active'))) {
+        !isDigest(value.workflowBindingDigest) ||
+        value.workflowStatus !== 'repair-active') {
         throw artifactRecordCorrupt();
     }
     return deepFreeze({

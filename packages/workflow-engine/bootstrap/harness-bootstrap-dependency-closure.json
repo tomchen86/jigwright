@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:867896580622b953ed14638745f033972a618ae0b5033fa9f8b2a5cd5b3fb172"
+      "digest": "sha256:7c35175e35e0931d4320a2b7ab5d72d32c88aa3dd531970c923e3b1d810be05f"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -243,7 +243,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/application/control-plane/intervention-maintenance.js",
       "mode": "100644",
-      "digest": "sha256:dd7eee8954ae1564d76d2cdb2796a548254d3908b5b41c394dcaacdc96094b31"
+      "digest": "sha256:ebbfb5d0a3333bb869f7f66f7f9c419a62c29c901ad62798cf3262140b0ea561"
     },
     {
       "path": "bootstrap/recovery-runtime/src/composition-root/maintainer-signer.js",
@@ -743,12 +743,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/intervention-engine-artifact-store.js",
       "mode": "100644",
-      "digest": "sha256:051512df3722521161a94478121b0b6ceb3e43ef47cc539ed7f53382b6ef28fb"
+      "digest": "sha256:8e69ab7b9d8dacef954b5cffe3d4b074d399f104a45d86dcc91e8f94b2406d53"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
       "mode": "100644",
-      "digest": "sha256:0e447f3bdfb3b031036d08a10b162f0964db02cd7775280cdb0bac3506ebc404"
+      "digest": "sha256:b9b862747d88662a92dd8d134095defca5c6ea5ba8f2416b869bb04e7a1d25eb"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",
