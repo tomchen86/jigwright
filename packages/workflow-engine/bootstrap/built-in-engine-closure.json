@@ -403,7 +403,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts",
       "mode": "100644",
-      "digest": "sha256:b3e43a8d234dc3c878289ca3cbcfb8403194c47fa8a1a29c8f0c19eeb864852d"
+      "digest": "sha256:88b526c00980d5cd6804befe85123d6038fb5a99dca7651951bf9a72a8360ab1"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-assets.ts",
@@ -653,7 +653,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:36c28d572858cdd4771febad7577cdac65f68e0a83c9e428d21ec94eced2caee"
+      "digest": "sha256:8166473de9e2a466337b4d5288abfe9a17279ffb81adbffc8c16619b4b1469c7"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -688,7 +688,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:1230beb98ab0707a24f7de5487dbbcd17b367d452c39e6321dba41746a4594dc"
+      "digest": "sha256:b225f6ad21454c32b50f369c1572e87d23c464d83ec47dc13b64972063f3f043"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1333,12 +1333,12 @@
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:ed5f06bd15f9c7409881e1f7d4fa06e0a4333a1693824965976cf3937394c804"
+      "digest": "sha256:0f096187c90213c4545c66d65761f977bf3bff6a406804dc07c483f7d5906ac7"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:3d73cc1318896680edf628ac86819d8ca3aab9dafea9444ccaa7967706c75952"
+      "digest": "sha256:83de56da8da0bcb03b3c6f98371879b2e9c5ed70600e450dbf017fcbe6b46ce4"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",
