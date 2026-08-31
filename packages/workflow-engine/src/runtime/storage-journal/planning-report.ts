@@ -70,7 +70,7 @@ export type PlanningTransitionReport = {
     before: PlanningTaskState[] | null;
     after: PlanningTaskState[];
     /** Completed tasks an amendment sent back to be redone, named. */
-    reopened?: string[];
+    reopened: string[];
   };
   openspec: {
     version: '1.6.0';
@@ -258,13 +258,12 @@ function isAmendmentRecord(
     !isRecord(planningAssurance) ||
     planningAssurance.planningGenerationId !== value.planningGeneration ||
     planningAssurance.reviewNodeId !== value.planReview ||
-    !isRecord(report.tasks)
+    !isRecord(report.tasks) ||
+    !Array.isArray(report.tasks.reopened)
   ) {
     return false;
   }
-  const reopened = Array.isArray(report.tasks.reopened)
-    ? report.tasks.reopened
-    : [];
+  const reopened = report.tasks.reopened;
   const after = Array.isArray(report.tasks.after) ? report.tasks.after : [];
   const afterTaskIds = after
     .filter(isRecord)
@@ -447,15 +446,11 @@ function isTaskProjection(
 ): value is PlanningTransitionReport['tasks'] {
   return (
     isRecord(value) &&
-    // A plan transition carries two keys; an amendment that reopened work
-    // carries the named list as well.
-    (hasExactKeys(value, ['after', 'before']) ||
-      hasExactKeys(value, ['after', 'before', 'reopened'])) &&
+    hasExactKeys(value, ['after', 'before', 'reopened']) &&
     (value.before === null || isTaskStates(value.before)) &&
     isTaskStates(value.after) &&
-    (value.reopened === undefined ||
-      (Array.isArray(value.reopened) &&
-        value.reopened.every((id) => /^\d+(?:\.\d+)+$/.test(String(id)))))
+    Array.isArray(value.reopened) &&
+    value.reopened.every((id) => /^\d+(?:\.\d+)+$/.test(String(id)))
   );
 }
 

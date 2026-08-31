@@ -33,7 +33,7 @@ const BASE_REPORT = {
     'openspec/changes/demo-change/proposal.md': 'e'.repeat(64),
   },
   fingerprint: 'f'.repeat(64),
-  tasks: { before: null, after: [] },
+  tasks: { before: null, after: [], reopened: [] },
   openspec: {
     version: '1.6.0' as const,
     schemaName: 'expense-app',
@@ -97,6 +97,24 @@ test('current planning reports reject pre-v3 fields instead of projecting them',
       'code' in error &&
       error.code === 'PLANNING_REPORT_INVALID',
   );
+});
+
+test('current v3 reader rejects a missing tasks.reopened own key without rewriting immutable bytes', () => {
+  const root = directory();
+  const { reopened: _reopened, ...tasks } = BASE_REPORT.tasks;
+  const id = writeContentRecord(root, { ...BASE_REPORT, tasks });
+  const recordPath = path.join(root, `${id}.json`);
+  const before = fs.readFileSync(recordPath);
+
+  assert.throws(
+    () => readPlanningTransitionReport(root, id),
+    (error: unknown) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'PLANNING_REPORT_INVALID',
+  );
+  assert.deepEqual(fs.readFileSync(recordPath), before);
 });
 
 test('a version 3 report requires an exact disjoint planning/projection partition', () => {
