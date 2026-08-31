@@ -19,6 +19,7 @@ import {
   requestInvestigationV3Grant,
 } from '../src/composition-root/grant-production.ts';
 import { HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST } from '../src/modules/authority/grant-policy.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/assurance/plan-review-coverage.ts';
 import {
   grantStorePaths,
   prepareGrantTransition,
@@ -845,6 +846,7 @@ function installGrantInvestigationSession(repository: string): void {
     branch: gitState.branch,
     baseline: { head: gitState.head, tree: gitState.tree },
     intentDigest: rawDigest('v3-grant-intent'),
+    planReviewCoveragePolicyDigest: GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
     blindManifestDigest: rawDigest('v3-grant-blind-manifest'),
     blindRequestDigest: rawDigest('v3-grant-blind-request'),
     blindInvocationIds: ['invocation-v3-grant'],

@@ -7300,6 +7300,40 @@ test('session loading rejects persisted omission of both current revision clocks
   }
 });
 
+test('propose status rejects persisted omission of the current PlanReview coverage policy digest', () => {
+  const fixture = investigationFixture(
+    'invocation-session-plan-review-coverage-policy-omission',
+  );
+  try {
+    const started = startFixture(fixture);
+    const persistedPath = sessionPath(fixture, started.investigationId);
+    const currentRefPath = path.join(
+      fixture.paths.refs,
+      `${started.changeId}.investigation-session.json`,
+    );
+    const persisted = JSON.parse(
+      fs.readFileSync(persistedPath, 'utf8'),
+    ) as Record<string, unknown>;
+    assert.match(
+      String(persisted.planReviewCoveragePolicyDigest),
+      /^[0-9a-f]{64}$/,
+    );
+    delete persisted.planReviewCoveragePolicyDigest;
+    const poisonedBytes = Buffer.from(`${canonicalJson(persisted)}\n`, 'utf8');
+    const currentRefBytes = fs.readFileSync(currentRefPath);
+    fs.writeFileSync(persistedPath, poisonedBytes, { mode: 0o600 });
+
+    assert.throws(
+      () => getProposeStatus(fixture.repository, started.investigationId),
+      (error) => isWorkflowError(error, 'INVESTIGATION_SESSION_INVALID'),
+    );
+    assert.deepEqual(fs.readFileSync(persistedPath), poisonedBytes);
+    assert.deepEqual(fs.readFileSync(currentRefPath), currentRefBytes);
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
 test('baseline drift and unsafe durable files fail closed', () => {
   const driftFixture = investigationFixture('invocation-baseline-drift');
   const modeFixture = investigationFixture('invocation-session-mode');

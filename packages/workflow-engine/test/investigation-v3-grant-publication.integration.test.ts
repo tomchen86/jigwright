@@ -16,6 +16,7 @@ import {
   propagateInvestigationV3PublicationResult,
 } from '../src/composition-root/grant-production.ts';
 import { HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST } from '../src/modules/authority/grant-policy.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../src/modules/assurance/plan-review-coverage.ts';
 import {
   grantStorePaths,
   prepareGrantTransition,
@@ -1275,6 +1276,7 @@ function installInvestigationSession(repository: string): void {
     branch: gitState.branch,
     baseline: { head: gitState.head, tree: gitState.tree },
     intentDigest: digest('publication-grant-intent'),
+    planReviewCoveragePolicyDigest: GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
     blindManifestDigest: digest('publication-grant-blind-manifest'),
     blindRequestDigest: digest('publication-grant-blind-request'),
     blindInvocationIds: ['invocation-publication-grant'],
