@@ -16,14 +16,19 @@
     "artifacts",
     "allowedPaths",
     "requiredChecks",
+    "isolation",
+    "planningAssurance",
     "createdAt"
   ],
   "properties": {
     "schemaVersion": { "const": 1 },
     "sessionId": { "type": "string", "pattern": "^session-[A-Za-z0-9-]+$" },
-    "state": { "enum": ["active", "aborted", "committed"] },
+    "state": { "enum": ["active", "revising", "aborted", "committed"] },
     "changeId": { "type": "string" },
     "taskId": { "type": "string" },
+    "mandateBinding": {
+      "anyOf": [{ "$ref": "#/$defs/taskMandateBinding" }, { "type": "null" }]
+    },
     "repositoryRoot": { "type": "string" },
     "gitCommonDirectory": { "type": "string" },
     "branch": { "type": "string" },
@@ -39,8 +44,27 @@
     "artifacts": { "$ref": "#/$defs/digestRecord" },
     "allowedPaths": { "type": "array", "items": { "type": "string" } },
     "requiredChecks": { "type": "array", "items": { "type": "string" } },
+    "isolation": { "$ref": "#/$defs/taskSessionIsolationBinding" },
     "requiredCheckDigests": { "$ref": "#/$defs/digestRecord" },
+    "checkEvidenceEngineDigest": { "$ref": "#/$defs/sha256Digest" },
     "planningAssurance": { "$ref": "#/$defs/planningAssurance" },
+    "revisionLeaseId": {
+      "type": "string",
+      "pattern": "^revision-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "implementationReconciliationReportId": { "$ref": "#/$defs/digest" },
+    "implementationReconciliationPaths": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^(?!.*\\.\\.)workflow/semantic-ledger/.+$"
+      }
+    },
+    "documentationRemediation": {
+      "$ref": "#/$defs/documentationRemediation"
+    },
     "createdAt": { "type": "string", "format": "date-time" },
     "latestCheckReportId": { "$ref": "#/$defs/digest" },
     "completionReportId": { "$ref": "#/$defs/digest" },
@@ -68,10 +92,48 @@
           "committedAt"
         ]
       }
+    },
+    {
+      "if": { "properties": { "state": { "const": "revising" } } },
+      "then": {
+        "required": ["revisionLeaseId"],
+        "not": {
+          "anyOf": [
+            { "required": ["latestCheckReportId"] },
+            { "required": ["completionReportId"] },
+            { "required": ["finishReportId"] },
+            { "required": ["commitReportId"] },
+            { "required": ["commitHash"] },
+            { "required": ["committedAt"] }
+          ]
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": { "state": { "enum": ["active", "committed"] } }
+      },
+      "then": { "not": { "required": ["revisionLeaseId"] } }
+    },
+    {
+      "if": { "required": ["implementationReconciliationPaths"] },
+      "then": { "required": ["implementationReconciliationReportId"] }
+    },
+    {
+      "if": { "required": ["commitReportId"] },
+      "then": { "required": ["commitHash"] }
+    },
+    {
+      "if": { "required": ["commitHash"] },
+      "then": { "required": ["commitReportId"] }
     }
   ],
   "$defs": {
     "digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "sha256Digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
     "commitHash": {
       "type": "string",
       "pattern": "^(?:[0-9a-f]{40}|[0-9a-f]{64})$"
@@ -82,6 +144,87 @@
     },
     "nullableDigest": {
       "anyOf": [{ "$ref": "#/$defs/digest" }, { "type": "null" }]
+    },
+    "taskMandateBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "mandateTaskId",
+        "mandateId",
+        "mandateDigest",
+        "changeId",
+        "externalAuditRoot"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "mandateTaskId": {
+          "type": "string",
+          "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+        },
+        "mandateId": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+        },
+        "mandateDigest": { "$ref": "#/$defs/digest" },
+        "changeId": { "type": "string" },
+        "externalAuditRoot": { "type": "string", "minLength": 1 }
+      }
+    },
+    "taskSessionResourceLease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "digest"],
+      "properties": {
+        "kind": { "enum": ["destructive-database", "exclusive"] },
+        "digest": { "$ref": "#/$defs/sha256Digest" }
+      }
+    },
+    "taskSessionIsolationBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "routingRole",
+        "routingWorksetDigest",
+        "concurrencyEnabled",
+        "worktreeDigest",
+        "resources"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "routingRole": { "enum": ["single", "primary", "concurrent"] },
+        "routingWorksetDigest": { "$ref": "#/$defs/sha256Digest" },
+        "concurrencyEnabled": { "type": "boolean" },
+        "worktreeDigest": { "$ref": "#/$defs/sha256Digest" },
+        "resources": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/taskSessionResourceLease" }
+        }
+      }
+    },
+    "documentationRemediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reviewRecordDigests", "paths"],
+      "properties": {
+        "reviewRecordDigests": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/digest" }
+        },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^(?:docs/.+|(?:.+/)?README\\.md)$"
+          }
+        }
+      }
     },
     "planningAssurance": {
       "anyOf": [

@@ -348,6 +348,126 @@ test('current session reader rejects persisted records missing the planning assu
   }
 });
 
+test('tracked session schema exposes only the current WorkflowSession shape', () => {
+  const schema = JSON.parse(
+    fs.readFileSync(
+      path.join(sourceRepositoryRoot, 'workflow/schemas/session.schema.json'),
+      'utf8',
+    ),
+  ) as {
+    $id: string;
+    additionalProperties: boolean;
+    required: string[];
+    properties: Record<
+      string,
+      { const?: unknown; enum?: unknown[]; $ref?: string }
+    >;
+    $defs: Record<string, unknown>;
+  };
+
+  assert.equal(
+    schema.$id,
+    'https://jigwright.local/workflow/session.schema.json',
+  );
+  assert.equal(schema.additionalProperties, false);
+  assert.deepEqual(schema.required, [
+    'schemaVersion',
+    'sessionId',
+    'state',
+    'changeId',
+    'taskId',
+    'repositoryRoot',
+    'gitCommonDirectory',
+    'branch',
+    'baseline',
+    'artifacts',
+    'allowedPaths',
+    'requiredChecks',
+    'isolation',
+    'planningAssurance',
+    'createdAt',
+  ]);
+  assert.deepEqual(Object.keys(schema.properties).sort(), [
+    'abortReason',
+    'abortedAt',
+    'allowedPaths',
+    'artifacts',
+    'baseline',
+    'branch',
+    'changeId',
+    'checkEvidenceEngineDigest',
+    'commitHash',
+    'commitReportId',
+    'committedAt',
+    'completionReportId',
+    'createdAt',
+    'documentationRemediation',
+    'finishReportId',
+    'gitCommonDirectory',
+    'implementationReconciliationPaths',
+    'implementationReconciliationReportId',
+    'isolation',
+    'latestCheckReportId',
+    'mandateBinding',
+    'planningAssurance',
+    'repositoryRoot',
+    'requiredCheckDigests',
+    'requiredChecks',
+    'revisionLeaseId',
+    'schemaVersion',
+    'sessionId',
+    'state',
+    'taskId',
+  ]);
+  assert.equal(schema.properties.schemaVersion?.const, 1);
+  assert.deepEqual(schema.properties.state?.enum, [
+    'active',
+    'revising',
+    'aborted',
+    'committed',
+  ]);
+  assert.equal(
+    schema.properties.isolation?.$ref,
+    '#/$defs/taskSessionIsolationBinding',
+  );
+  assert.equal(
+    schema.properties.planningAssurance?.$ref,
+    '#/$defs/planningAssurance',
+  );
+
+  const mandateBinding = schema.$defs.taskMandateBinding as {
+    additionalProperties: boolean;
+    required: string[];
+    properties: { schemaVersion: { const: number } };
+  };
+  assert.equal(mandateBinding.additionalProperties, false);
+  assert.equal(mandateBinding.properties.schemaVersion.const, 1);
+  assert.deepEqual(mandateBinding.required, [
+    'schemaVersion',
+    'mandateTaskId',
+    'mandateId',
+    'mandateDigest',
+    'changeId',
+    'externalAuditRoot',
+  ]);
+
+  const isolation = schema.$defs.taskSessionIsolationBinding as {
+    additionalProperties: boolean;
+    required: string[];
+    properties: { schemaVersion: { const: number } };
+  };
+  assert.equal(isolation.additionalProperties, false);
+  assert.equal(isolation.properties.schemaVersion.const, 1);
+  assert.deepEqual(isolation.required, [
+    'schemaVersion',
+    'routingRole',
+    'routingWorksetDigest',
+    'concurrencyEnabled',
+    'worktreeDigest',
+    'resources',
+  ]);
+});
+
 test('v3 sessions and every task report pin the exact planning assurance', () => {
   const repository = createFixtureRepository();
   try {
