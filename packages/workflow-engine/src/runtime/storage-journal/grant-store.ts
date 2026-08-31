@@ -148,6 +148,50 @@ export function readGrantRecord(
   return record;
 }
 
+/** Parse one exact canonical Grant record without consulting a local store. */
+export function parseGrantRecord(value: string | unknown): GrantRecord {
+  try {
+    if (typeof value !== 'string') {
+      const canonical = canonicalJson(value);
+      if (Buffer.byteLength(canonical, 'utf8') + 1 > MAX_FILE_BYTES) {
+        throw storeUnsafe();
+      }
+      return assertGrantRecord(JSON.parse(canonical) as unknown);
+    }
+    if (
+      Buffer.byteLength(value, 'utf8') > MAX_FILE_BYTES ||
+      !value.endsWith('\n')
+    ) {
+      throw storeUnsafe();
+    }
+    const record = assertGrantRecord(JSON.parse(value) as unknown);
+    if (`${canonicalJson(record)}\n` !== value) throw storeUnsafe();
+    return record;
+  } catch (error) {
+    if (error instanceof Error && 'code' in error) throw error;
+    throw storeUnsafe();
+  }
+}
+
+/** Rebuild the exact prepared ancestor embedded by a terminal record. */
+export function projectPreparedGrantRecord(
+  candidate: PreparedGrantRecord | TerminalGrantRecord,
+): PreparedGrantRecord {
+  const record = assertGrantRecord(candidate);
+  if (record.state === 'pending') throw storeUnsafe();
+  return assertGrantRecord({
+    schemaVersion: record.schemaVersion,
+    kind: record.kind,
+    state: 'prepared',
+    challenge: record.challenge,
+    recordedAt: record.recordedAt,
+    operationId: record.operationId,
+    approvalSubject: record.approvalSubject,
+    proofModules: record.proofModules,
+    preparedAt: record.preparedAt,
+  }) as PreparedGrantRecord;
+}
+
 export function grantRecordDigest(candidate: GrantRecord): `sha256:${string}` {
   const record = assertGrantRecord(candidate);
   return grantSha256(`workflow.grant-record.v1\n${canonicalJson(record)}`);

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -21,12 +22,14 @@ import {
   HUMAN_GATE_MACOS_V1_CONFIGURATION_DIGEST,
   parseGrantPolicyV2,
   parseGrantPolicyV2Document,
+  type GrantPolicyV2,
 } from '../src/modules/authority/grant-policy.ts';
 import {
   approvalSubjectDigest,
   createApprovalSubject,
 } from '../src/modules/authority/grant-core.ts';
 import { collectSshApprovalProof } from '../src/adapters/signing/ssh/grant-proof-ssh.ts';
+import type { MaintainerSignerProvider } from '../src/modules/authority/maintainer-signer-port.ts';
 import {
   assertGitAuthorityCandidateApplyParameters,
   createGitAuthorityCandidateApplyGrantRequest,
@@ -44,6 +47,12 @@ import {
   type GitAuthorityCandidateApplyCrashPoint,
 } from '../src/composition-root/git-authority-candidate-apply-production.ts';
 import {
+  listVerifiedGitAuthorityCandidateApplyReceipts,
+  publishGitAuthorityCandidateApplyReceipt,
+  readVerifiedGitAuthorityCandidateApplyReceipt,
+} from '../src/composition-root/git-authority-candidate-apply-receipt-production.ts';
+import {
+  grantRecordDigest,
   grantStorePaths,
   readGrantRecord,
 } from '../src/runtime/storage-journal/grant-store.ts';
@@ -63,6 +72,10 @@ import {
   createProductionWorkflowGrantCoordinator,
 } from '../src/composition-root/grant-production.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
+import {
+  createSshSignedFixture,
+  type SshSignedFixture,
+} from './support/ssh-signed-fixture.ts';
 
 const NOW = new Date('2026-08-30T00:00:00.000Z');
 const CHALLENGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
@@ -95,6 +108,8 @@ function fixture(
   baseSshAuthority = false,
   testBeforeIndexPublicationLock?: () => void,
   testAfterIndexPublicationLock?: () => void,
+  sshSigning?: SshSignedFixture,
+  observedSshNamespaces?: string[],
 ) {
   const repository = fs.realpathSync(createFixtureRepository());
   const checksPath = path.join(repository, 'workflow/checks.json');
@@ -110,7 +125,9 @@ function fixture(
   writeJson(checksPath, checks);
   writeJson(
     path.join(repository, 'workflow/grant-policy.json'),
-    baseSshAuthority ? baseSshGrantPolicyInput() : policyInput(),
+    baseSshAuthority
+      ? baseSshGrantPolicyInput(sshSigning?.trustedSigner)
+      : policyInput(),
   );
   git(repository, ['add', '--', 'workflow/checks.json']);
   git(repository, ['add', '--', 'workflow/grant-policy.json']);
@@ -231,16 +248,30 @@ function fixture(
   const definition =
     gitAuthorityCandidateApplyGrantTransitionDefinitions(port)[0]!;
   const ids = [CHALLENGE_ID, OPERATION_ID];
+  const coordinatorPolicy = parseGrantPolicyV2(
+    baseSshAuthority
+      ? baseSshGrantPolicyInput(sshSigning?.trustedSigner)
+      : policyInput(),
+    {
+      registry: codeOwnedApprovalModuleRegistry(),
+    },
+  );
   const coordinator = createGrantCoordinatorKernel({
     paths: grantPaths,
     registry: createTransitionRegistry([definition]),
-    policy: parseGrantPolicyV2(policyInput(), {
-      registry: codeOwnedApprovalModuleRegistry(),
-    }),
+    policy: coordinatorPolicy,
     now: () => new Date(NOW),
     randomUUID: () => ids.shift()!,
     challengeTtlMs: 10 * 60_000,
-    openApprovalSession: successfulHumanSession,
+    openApprovalSession:
+      sshSigning === undefined
+        ? successfulHumanSession
+        : (presentation) =>
+            successfulSshSession(
+              presentation,
+              coordinatorPolicy,
+              sshSigning.signer(observedSshNamespaces),
+            ),
     async withLifecycleOperation(challengeId, operation) {
       return withRepositoryLifecycleOperationAsync(
         lifecycleRuntime,
@@ -793,6 +824,385 @@ test('real Central Grant applies policy deletion as an exact fact without a seco
     );
   } finally {
     current.dispose();
+  }
+});
+
+test('human-presence Central Apply is explicitly non-portable without a receipt mutation', async () => {
+  const current = fixture();
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Complete locally without inventing portable SSH evidence.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'completed');
+    const before = repositorySnapshot(current.repository);
+    assert.throws(
+      () =>
+        publishGitAuthorityCandidateApplyReceipt(
+          current.repository,
+          current.parameters,
+          CHALLENGE_ID,
+        ),
+      (error) =>
+        isWorkflowError(
+          error,
+          'GIT_AUTHORITY_CANDIDATE_APPLY_RECEIPT_NON_PORTABLE',
+        ),
+    );
+    assert.deepEqual(repositorySnapshot(current.repository), before);
+    assert.equal(
+      git(current.repository, [
+        'for-each-ref',
+        '--format=%(objectname)',
+        `refs/tags/workflow-central-grant/${CHALLENGE_ID}`,
+      ]).trim(),
+      '',
+    );
+  } finally {
+    current.dispose();
+  }
+});
+
+test('real SSH Central Apply publishes one canonical receipt that verifies in a fresh clone', async () => {
+  const ssh = createSshSignedFixture('central-receipt-maintainer');
+  const observedSshNamespaces: string[] = [];
+  const current = fixture(
+    undefined,
+    'deletion',
+    false,
+    false,
+    'unchanged',
+    true,
+    undefined,
+    undefined,
+    ssh,
+    observedSshNamespaces,
+  );
+  const cloneRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'central-receipt-clone-'),
+  );
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Publish the exact SSH-authorized Central receipt.',
+      ),
+    );
+    const result = await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    assert.equal(result.outcome, 'completed');
+    const beforeBranch = git(current.repository, [
+      'rev-parse',
+      'refs/heads/main',
+    ]).trim();
+    const beforeIndex = git(current.repository, ['write-tree']).trim();
+    const beforeStatus = git(current.repository, ['status', '--porcelain']);
+    const published = publishGitAuthorityCandidateApplyReceipt(
+      current.repository,
+      current.parameters,
+      CHALLENGE_ID,
+    );
+    assert.equal(published.targetCommit, beforeBranch);
+    assert.equal(published.receipt.approvalMethod, 'ssh');
+    assert.deepEqual(observedSshNamespaces, [
+      'jigwright.workflow.grant-proof.v1',
+      'jigwright.workflow.grant-proof.v1',
+    ]);
+    assert.equal(
+      published.receipt.terminalGrantRecordDigest,
+      grantRecordDigest(readGrantRecord(current.grantPaths, CHALLENGE_ID)),
+    );
+    assert.deepEqual(
+      publishGitAuthorityCandidateApplyReceipt(
+        current.repository,
+        current.parameters,
+        CHALLENGE_ID,
+      ),
+      published,
+    );
+    assert.equal(
+      git(current.repository, ['rev-parse', 'refs/heads/main']).trim(),
+      beforeBranch,
+    );
+    assert.equal(git(current.repository, ['write-tree']).trim(), beforeIndex);
+    assert.equal(
+      git(current.repository, ['status', '--porcelain']),
+      beforeStatus,
+    );
+
+    const clone = path.join(cloneRoot, 'clone');
+    git(current.repository, [
+      'clone',
+      '--quiet',
+      '--no-local',
+      current.repository,
+      clone,
+    ]);
+    const verified = readVerifiedGitAuthorityCandidateApplyReceipt(
+      clone,
+      CHALLENGE_ID,
+    );
+    assert.equal(verified.tagObject, published.tagObject);
+    assert.deepEqual(verified.receipt, published.receipt);
+    assert.deepEqual(listVerifiedGitAuthorityCandidateApplyReceipts(clone), [
+      verified,
+    ]);
+    assert.equal(git(clone, ['status', '--porcelain']), '');
+
+    const tagRef = `refs/tags/workflow-central-grant/${CHALLENGE_ID}`;
+    const originalTag = git(clone, ['rev-parse', `${tagRef}^{tag}`]).trim();
+    const rawTag = git(clone, ['cat-file', 'tag', originalTag]);
+    const boundary = rawTag.indexOf('\n\n');
+    assert.notEqual(boundary, -1);
+    const originalReceipt = JSON.parse(rawTag.slice(boundary + 2)) as Record<
+      string,
+      unknown
+    >;
+    const tamperCases: Array<
+      readonly [string, (value: Record<string, unknown>) => void]
+    > = [
+      [
+        'candidate digest',
+        (value) => {
+          value.candidateDigest = `sha256:${'f'.repeat(64)}`;
+        },
+      ],
+      [
+        'challenge digest',
+        (value) => {
+          value.challengeDigest = `sha256:${'d'.repeat(64)}`;
+        },
+      ],
+      [
+        'operation poststate digest',
+        (value) => {
+          value.poststateDigest = `sha256:${'c'.repeat(64)}`;
+        },
+      ],
+      [
+        'raw payload',
+        (value) => {
+          portableEvidence(value).payload += ' ';
+        },
+      ],
+      [
+        'raw signature',
+        (value) => {
+          portableEvidence(value).signature += 'tamper';
+        },
+      ],
+      [
+        'raw namespace',
+        (value) => {
+          portableEvidence(value).signatureNamespace =
+            'jigwright.workflow.other.v1';
+        },
+      ],
+      [
+        'raw identity',
+        (value) => {
+          portableEvidence(value).identity = 'other-maintainer';
+        },
+      ],
+      [
+        'raw verification time',
+        (value) => {
+          portableEvidence(value).verifiedAt = '2026-08-30T00:00:01.000Z';
+        },
+      ],
+      [
+        'terminal record',
+        (value) => {
+          terminalRecord(value).completedAt = '2026-08-30T00:00:01.000Z';
+        },
+      ],
+      [
+        'Apply journal',
+        (value) => {
+          journalRecord(value).journalDigest = `sha256:${'e'.repeat(64)}`;
+        },
+      ],
+    ];
+    for (const [name, mutate] of tamperCases) {
+      const tampered = structuredClone(originalReceipt);
+      mutate(tampered);
+      replaceAnnotatedTag(
+        clone,
+        tagRef,
+        `${rawTag.slice(0, boundary + 2)}${canonicalJson(tampered)}\n`,
+      );
+      assert.throws(
+        () =>
+          readVerifiedGitAuthorityCandidateApplyReceipt(clone, CHALLENGE_ID),
+        (error) =>
+          isWorkflowError(
+            error,
+            'GIT_AUTHORITY_CANDIDATE_APPLY_RECEIPT_INVALID',
+          ),
+        name,
+      );
+      git(clone, ['update-ref', '--no-deref', tagRef, originalTag]);
+    }
+
+    replaceAnnotatedTag(
+      clone,
+      tagRef,
+      rawTag.replace(
+        `object ${published.targetCommit}\n`,
+        `object ${current.baseCommit}\n`,
+      ),
+    );
+    assert.throws(
+      () => readVerifiedGitAuthorityCandidateApplyReceipt(clone, CHALLENGE_ID),
+      (error) =>
+        isWorkflowError(error, 'GIT_AUTHORITY_CANDIDATE_APPLY_RECEIPT_INVALID'),
+      'tag target',
+    );
+    git(clone, ['update-ref', '--no-deref', tagRef, originalTag]);
+
+    const replacement = git(clone, [
+      'commit-tree',
+      current.candidate.resultTree,
+      '-m',
+      'Replacement policy and config must not affect verification',
+    ]).trim();
+    git(clone, ['replace', current.baseCommit, replacement]);
+    assert.equal(
+      readVerifiedGitAuthorityCandidateApplyReceipt(clone, CHALLENGE_ID)
+        .tagObject,
+      originalTag,
+    );
+    git(clone, ['update-ref', '-d', tagRef]);
+    git(clone, ['symbolic-ref', tagRef, 'refs/heads/main']);
+    assert.throws(
+      () => readVerifiedGitAuthorityCandidateApplyReceipt(clone, CHALLENGE_ID),
+      (error) =>
+        isWorkflowError(error, 'GIT_AUTHORITY_CANDIDATE_APPLY_RECEIPT_INVALID'),
+      'symbolic tag ref',
+    );
+    git(clone, ['symbolic-ref', '--delete', tagRef]);
+    git(clone, ['update-ref', '--no-deref', tagRef, originalTag]);
+  } finally {
+    current.dispose();
+    ssh.dispose();
+    fs.rmSync(cloneRoot, { recursive: true, force: true });
+  }
+});
+
+test('SSH receipt publication recovers both tag object and ref crash windows', async () => {
+  for (const crashPoint of ['object', 'ref'] as const) {
+    const ssh = createSshSignedFixture(`central-receipt-${crashPoint}`);
+    const current = fixture(
+      undefined,
+      'deletion',
+      false,
+      false,
+      'unchanged',
+      true,
+      undefined,
+      undefined,
+      ssh,
+    );
+    try {
+      await current.coordinator.requestGrant(
+        createGitAuthorityCandidateApplyGrantRequest(
+          current.port,
+          current.parameters,
+          `Create the exact ${crashPoint} receipt crash window.`,
+        ),
+      );
+      await current.coordinator.resolveChallenge(CHALLENGE_ID);
+      assert.throws(
+        () =>
+          publishGitAuthorityCandidateApplyReceipt(
+            current.repository,
+            current.parameters,
+            CHALLENGE_ID,
+            crashPoint === 'object'
+              ? {
+                  testAfterTagObject: () => {
+                    throw new Error('object crash');
+                  },
+                }
+              : {
+                  testAfterTagRefUpdate: () => {
+                    throw new Error('ref crash');
+                  },
+                },
+          ),
+        new RegExp(`${crashPoint} crash`, 'u'),
+      );
+      const tagRef = `refs/tags/workflow-central-grant/${CHALLENGE_ID}`;
+      assert.equal(
+        git(current.repository, [
+          'for-each-ref',
+          '--format=%(objectname)',
+          tagRef,
+        ]).trim() !== '',
+        crashPoint === 'ref',
+      );
+      assert.doesNotThrow(() =>
+        publishGitAuthorityCandidateApplyReceipt(
+          current.repository,
+          current.parameters,
+          CHALLENGE_ID,
+        ),
+      );
+    } finally {
+      current.dispose();
+      ssh.dispose();
+    }
+  }
+});
+
+test('foreign Central receipt tag is preserved and rejected', async () => {
+  const ssh = createSshSignedFixture('central-receipt-foreign');
+  const current = fixture(
+    undefined,
+    'deletion',
+    false,
+    false,
+    'unchanged',
+    true,
+    undefined,
+    undefined,
+    ssh,
+  );
+  try {
+    await current.coordinator.requestGrant(
+      createGitAuthorityCandidateApplyGrantRequest(
+        current.port,
+        current.parameters,
+        'Reject a foreign receipt ref without overwriting it.',
+      ),
+    );
+    await current.coordinator.resolveChallenge(CHALLENGE_ID);
+    const tagRef = `refs/tags/workflow-central-grant/${CHALLENGE_ID}`;
+    git(current.repository, ['update-ref', tagRef, current.baseCommit]);
+    assert.throws(
+      () =>
+        publishGitAuthorityCandidateApplyReceipt(
+          current.repository,
+          current.parameters,
+          CHALLENGE_ID,
+        ),
+      (error) =>
+        isWorkflowError(
+          error,
+          'GIT_AUTHORITY_CANDIDATE_APPLY_RECEIPT_CONFLICT',
+        ),
+    );
+    assert.equal(
+      git(current.repository, ['rev-parse', '--verify', tagRef]).trim(),
+      current.baseCommit,
+    );
+  } finally {
+    current.dispose();
+    ssh.dispose();
   }
 });
 
@@ -1954,6 +2364,34 @@ function successfulHumanSession(
   });
 }
 
+function successfulSshSession(
+  presentation: TrustedGrantPresentation,
+  policy: GrantPolicyV2,
+  signer: MaintainerSignerProvider,
+): GrantApprovalSession {
+  return Object.freeze({
+    async collectDecision() {
+      return {
+        choiceId: presentation.choices[0]!.choiceId,
+        approvalMethod: 'ssh' as const,
+        reasonCode: 'approve-exact-git-authority-candidate',
+        reason:
+          'Approve this exact immutable Git candidate with portable SSH evidence.',
+        sessionNonce: 'nonce-git-authority-ssh-00000000000000000001',
+      };
+    },
+    async authenticate(request) {
+      return [
+        collectSshApprovalProof(policy, request, {
+          signer,
+          now: NOW,
+        }),
+      ];
+    },
+    async close() {},
+  });
+}
+
 function humanProof(subjectDigest: `sha256:${string}`): VerifiedApprovalProof {
   return Object.freeze({
     moduleId: 'human-gate-macos',
@@ -2015,7 +2453,18 @@ function attackerGrantPolicyInput() {
   };
 }
 
-function baseSshGrantPolicyInput() {
+function baseSshGrantPolicyInput(
+  trustedSigner: Readonly<{
+    identity: string;
+    publicKey: string;
+    fingerprint: string;
+  }> = {
+    identity: 'base-trusted',
+    publicKey:
+      'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns',
+    fingerprint: 'SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U',
+  },
+) {
   return {
     ...policyInput(),
     profiles: {
@@ -2033,14 +2482,7 @@ function baseSshGrantPolicyInput() {
     ],
     optionalSsh: {
       signatureNamespace: 'jigwright.workflow.grant-proof.v1',
-      trustedSigners: [
-        {
-          identity: 'base-trusted',
-          publicKey:
-            'ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJL6dVljsgm9EAbjCiOhA/tKsgApOhKmcB/NRewL1uns',
-          fingerprint: 'SHA256:7UB1aHADtIMUJBFt3sjo9RwoBDgCKc1B1GlEucUDL4U',
-        },
-      ],
+      trustedSigners: [trustedSigner],
     },
   };
 }
@@ -2058,6 +2500,51 @@ function repositorySnapshot(repository: string) {
       '-z',
       '--untracked-files=all',
     ]),
+  };
+}
+
+function replaceAnnotatedTag(
+  repository: string,
+  tagRef: string,
+  rawTag: string,
+): void {
+  const result = spawnSync('git', ['mktag'], {
+    cwd: repository,
+    encoding: 'utf8',
+    input: rawTag,
+    shell: false,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  git(repository, ['update-ref', '--no-deref', tagRef, result.stdout.trim()]);
+}
+
+function terminalRecord(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  return value.terminalGrantRecord as Record<string, unknown>;
+}
+
+function journalRecord(
+  value: Record<string, unknown>,
+): Record<string, unknown> {
+  return value.journal as Record<string, unknown>;
+}
+
+function portableEvidence(value: Record<string, unknown>): {
+  payload: string;
+  signature: string;
+  signatureNamespace: string;
+  identity: string;
+  verifiedAt: string;
+} {
+  const terminal = terminalRecord(value);
+  const proofs = terminal.proofModules as Array<Record<string, unknown>>;
+  return proofs[0]!.portableEvidence as {
+    payload: string;
+    signature: string;
+    signatureNamespace: string;
+    identity: string;
+    verifiedAt: string;
   };
 }
 

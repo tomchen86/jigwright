@@ -491,6 +491,84 @@ export function verifyImmutableGitCandidateAgainstRepository(
   return candidate;
 }
 
+/**
+ * Verify the immutable parts of a candidate from Git objects only. This is the
+ * clone/CI verifier: the authoring worktree fingerprint and pinned runner path
+ * remain signed observations, while every base/result object, policy fact and
+ * base check definition is rebuilt from the candidate's pinned objects.
+ */
+export function verifyImmutableGitCandidateObjects(
+  cwd: string,
+  value: ImmutableGitCandidateV1,
+): ImmutableGitCandidateV1 {
+  const candidate = parseImmutableGitCandidate(
+    canonicalImmutableGitCandidate(value),
+  );
+  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
+  const objectFormat = readObjectFormat(repositoryRoot);
+  const baseType = runGit(repositoryRoot, [
+    'cat-file',
+    '-t',
+    candidate.expectedOldCommit,
+  ]).trim();
+  const baseTree = runGit(repositoryRoot, [
+    'rev-parse',
+    '--verify',
+    `${candidate.expectedOldCommit}^{tree}`,
+  ]).trim();
+  const resultType = runGit(repositoryRoot, [
+    'cat-file',
+    '-t',
+    candidate.resultTree,
+  ]).trim();
+  const identity = readBaseRepositoryIdentity(
+    repositoryRoot,
+    candidate.expectedOldCommit,
+  );
+  const manifest = buildPatchManifest(
+    repositoryRoot,
+    objectFormat,
+    candidate.expectedOldCommit,
+    candidate.expectedOldTree,
+    candidate.resultTree,
+    candidate.manifest.files.map(({ path: filePath }) => filePath),
+  );
+  const policyObservations = derivePolicyObservations(repositoryRoot, manifest);
+  const baseDefinitions =
+    candidate.checkObservations.length === 0
+      ? {}
+      : loadBaseCheckDefinitions(
+          repositoryRoot,
+          candidate.expectedOldCommit,
+          candidate.checkObservations.map(({ checkId }) => checkId),
+        );
+  if (
+    objectFormat !== candidate.manifest.objectFormat ||
+    baseType !== 'commit' ||
+    baseTree !== candidate.expectedOldTree ||
+    resultType !== 'tree' ||
+    identity.id !== candidate.repositoryId ||
+    identity.origin !== candidate.repositoryOrigin ||
+    canonicalJson(manifest) !== canonicalJson(candidate.manifest) ||
+    canonicalJson(policyObservations) !==
+      canonicalJson(candidate.policyObservations) ||
+    candidate.checkObservations.some(
+      ({ checkId, definition, definitionDigest, commandDigest }) => {
+        const base = baseDefinitions[checkId];
+        return (
+          base === undefined ||
+          canonicalJson(base) !== canonicalJson(definition) ||
+          definitionDigest !== sha256(canonicalJson(base)) ||
+          commandDigest !== sha256(canonicalJson(base.command))
+        );
+      },
+    )
+  ) {
+    throw candidateObjectInvalid();
+  }
+  return candidate;
+}
+
 function assertRepositoryPrestate(
   repository: ReturnType<typeof discoverRepository>,
   request: BuildImmutableGitCandidateRequest,

@@ -24,9 +24,12 @@ import {
 } from '../src/modules/authority/grant-approval.ts';
 import {
   assertGrantLifecycleBarrier,
+  grantRecordDigest,
   grantStorePaths,
+  parseGrantRecord,
   persistGrantChallenge,
   prepareGrantTransition,
+  projectPreparedGrantRecord,
   readGrantRecord,
   recordGrantTransitionOutcome,
   type GrantRecord,
@@ -163,6 +166,20 @@ test('one atomic record moves from pending to prepared to terminal exactly once'
       'state',
     ]);
     assert.deepEqual(readGrantRecord(paths, challenge.challengeId), completed);
+    assert.deepEqual(
+      parseGrantRecord(`${canonicalJson(completed)}\n`),
+      completed,
+    );
+    assert.deepEqual(projectPreparedGrantRecord(completed), prepared);
+    assert.equal(
+      grantRecordDigest(projectPreparedGrantRecord(completed)),
+      grantRecordDigest(prepared),
+    );
+    assert.throws(
+      () =>
+        parseGrantRecord(`${canonicalJson({ ...completed, extra: true })}\n`),
+      (error) => isWorkflowError(error, 'GRANT_STORE_UNSAFE'),
+    );
     assert.deepEqual(
       recordGrantTransitionOutcome(paths, {
         challengeId: challenge.challengeId,

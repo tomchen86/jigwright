@@ -115,6 +115,24 @@ export type GitAuthorityCandidateApplyPort = Readonly<{
   ): Promise<GitAuthorityCandidateApplyObservationV1>;
 }>;
 
+export type GitAuthorityCandidateApplyResultV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'git-authority-candidate-apply-result.v1';
+  transitionId: typeof GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID;
+  candidateDigest: `sha256:${string}`;
+  targetRef: string;
+  expectedOldCommit: string;
+  resultTree: string;
+  challengeId: string;
+  operationId: string;
+  approvalMethod: GrantApprovalMethod;
+  approvalSubjectDigest: `sha256:${string}`;
+  preparedGrantRecordDigest: `sha256:${string}`;
+  commitHash: string | null;
+  failure: GitAuthorityCandidateApplyFailureV1 | null;
+  journalDigest: `sha256:${string}`;
+}>;
+
 export const GIT_AUTHORITY_CANDIDATE_APPLY_PARAMETER_SCHEMA_DIGEST =
   grantSha256(
     canonicalJson({
@@ -269,7 +287,7 @@ export function gitAuthorityCandidateApplyGrantTransitionDefinitions(
         }
         return Object.freeze({
           outcome: observation.phase === 'completed' ? 'completed' : 'failed',
-          details: Object.freeze({
+          details: assertGitAuthorityCandidateApplyResult({
             schemaVersion: 1,
             kind: 'git-authority-candidate-apply-result.v1',
             transitionId: GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID,
@@ -290,6 +308,84 @@ export function gitAuthorityCandidateApplyGrantTransitionDefinitions(
       },
     }),
   ]);
+}
+
+export function assertGitAuthorityCandidateApplyResult(
+  value: unknown,
+): GitAuthorityCandidateApplyResultV1 {
+  if (
+    !isRecord(value) ||
+    !grantHasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'transitionId',
+      'candidateDigest',
+      'targetRef',
+      'expectedOldCommit',
+      'resultTree',
+      'challengeId',
+      'operationId',
+      'approvalMethod',
+      'approvalSubjectDigest',
+      'preparedGrantRecordDigest',
+      'commitHash',
+      'failure',
+      'journalDigest',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'git-authority-candidate-apply-result.v1' ||
+    value.transitionId !== GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID ||
+    typeof value.candidateDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.candidateDigest) ||
+    typeof value.targetRef !== 'string' ||
+    !/^refs\/heads\/[A-Za-z0-9][A-Za-z0-9._/-]{0,254}$/u.test(
+      value.targetRef,
+    ) ||
+    typeof value.expectedOldCommit !== 'string' ||
+    !COMMIT_OID.test(value.expectedOldCommit) ||
+    typeof value.resultTree !== 'string' ||
+    !COMMIT_OID.test(value.resultTree) ||
+    typeof value.challengeId !== 'string' ||
+    !GRANT_UUID_V4.test(value.challengeId) ||
+    typeof value.operationId !== 'string' ||
+    !GRANT_UUID_V4.test(value.operationId) ||
+    (value.approvalMethod !== 'human-presence' &&
+      value.approvalMethod !== 'ssh') ||
+    typeof value.approvalSubjectDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.approvalSubjectDigest) ||
+    typeof value.preparedGrantRecordDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.preparedGrantRecordDigest) ||
+    (value.commitHash !== null &&
+      (typeof value.commitHash !== 'string' ||
+        !COMMIT_OID.test(value.commitHash))) ||
+    typeof value.journalDigest !== 'string' ||
+    !GRANT_SHA256_DIGEST.test(value.journalDigest)
+  ) {
+    throw observationInvalid();
+  }
+  const failure =
+    value.failure === null ? null : assertApplyFailure(value.failure);
+  if (failure === null && value.commitHash === null) {
+    throw observationInvalid();
+  }
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: 'git-authority-candidate-apply-result.v1',
+    transitionId: GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID,
+    candidateDigest: value.candidateDigest as `sha256:${string}`,
+    targetRef: value.targetRef,
+    expectedOldCommit: value.expectedOldCommit,
+    resultTree: value.resultTree,
+    challengeId: value.challengeId,
+    operationId: value.operationId,
+    approvalMethod: value.approvalMethod,
+    approvalSubjectDigest: value.approvalSubjectDigest as `sha256:${string}`,
+    preparedGrantRecordDigest:
+      value.preparedGrantRecordDigest as `sha256:${string}`,
+    commitHash: value.commitHash as string | null,
+    failure,
+    journalDigest: value.journalDigest as `sha256:${string}`,
+  });
 }
 
 export function gitAuthorityCandidateApplyParametersDigest(
