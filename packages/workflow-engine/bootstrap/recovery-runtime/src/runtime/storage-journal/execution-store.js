@@ -7,6 +7,8 @@ import { createExecutionBudgetGrantRequest } from "../../modules/authority/execu
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { assertPrivateInvestigationDirectory, createPrivateCanonicalJson, privatePathExists, readPrivateCanonicalJson, withPrivateRuntimeLock, writePrivateCanonicalJsonAtomic, } from "./investigation-session-store.js";
 import { readProviderRepairLineage, } from "../provider-execution/provider-execution-governance.js";
+import { MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES, assertProviderExecutionAdmissionAuthority, createProviderExecutionAdmissionAuthority, providerExecutionAdmissionAuthorityPath, } from "./provider-execution-admission-authority.js";
+export { providerExecutionAdmissionAuthorityPath } from "./provider-execution-admission-authority.js";
 const EXECUTION_JOB_ID = /^[a-z0-9][a-z0-9._:-]{0,255}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const UNPREFIXED_DIGEST = /^[0-9a-f]{64}$/;
@@ -101,6 +103,7 @@ export function executionStorePaths(paths) {
     return {
         root,
         jobs: path.join(root, 'jobs'),
+        admissionAuthorities: path.join(root, 'admission-authorities'),
     };
 }
 export function executionJobStatePath(paths, requestedJobId) {
@@ -110,6 +113,21 @@ export function executionJobStatePath(paths, requestedJobId) {
 export function readExecutionJobState(paths, requestedJobId) {
     const jobId = assertExecutionJobId(requestedJobId);
     return readExecutionJobStateUnlocked(paths, jobId);
+}
+/**
+ * Publish the immutable pre-launch Job bytes addressed by the exact acceptance
+ * binding. Content-addressed publication is create-only and exact replay is
+ * idempotent; a divergent collision is never repaired in place.
+ */
+export function publishProviderExecutionAdmissionAuthority(paths, binding, executionState) {
+    const authority = createProviderExecutionAdmissionAuthority(binding, executionState, executionAdmissionAuthorityUnsafe);
+    const authorityPath = providerExecutionAdmissionAuthorityPath(paths, authority.acceptanceBinding);
+    createPrivateCanonicalJson(paths, authorityPath, authority, executionAdmissionAuthorityUnsafe, 'EXECUTION_ADMISSION_AUTHORITY_COLLISION', MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES);
+    const stored = assertProviderExecutionAdmissionAuthority(readPrivateCanonicalJson(paths, authorityPath, executionAdmissionAuthorityUnsafe, MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES), executionAdmissionAuthorityUnsafe);
+    if (canonicalJson(stored) !== canonicalJson(authority)) {
+        throw executionAdmissionAuthorityUnsafe();
+    }
+    return stored;
 }
 /**
  * Re-read one durable Job and execute one short synchronous operation while
@@ -242,6 +260,87 @@ export function acceptProviderAttemptResult(paths, input) {
             accepted: outcome.accepted,
             result: outcome.result,
         });
+    });
+}
+/**
+ * Recover one durable Attempt result from an already-persisted completion
+ * candidate. This boundary accepts only the candidate's lease-token digest;
+ * ordinary result submission must continue to prove possession of the raw
+ * lease token through acceptProviderAttemptResult.
+ */
+export function recoverProviderAttemptResultFromCandidate(paths, input) {
+    const prepared = prepareProviderEntries(paths, input.entries);
+    return withExecutionJobLock(paths, prepared.jobId, () => {
+        const current = readExecutionJobStateUnlocked(paths, prepared.jobId);
+        assertExpectedRevision(current, input.expectedRevision);
+        if (current === null)
+            throw executionResultRecoveryConflict();
+        const projected = prepared.entries.find(({ projection }) => projection.attempt.attemptId === input.attemptId)?.projection;
+        const currentAttempt = current.attempts.find(({ attemptId }) => attemptId === input.attemptId);
+        if (projected === undefined || currentAttempt === undefined) {
+            throw executionResultRecoveryConflict();
+        }
+        const materialized = buildProviderExecutionState(prepared, current);
+        const materializedAttempt = materialized.attempts.find(({ attemptId }) => attemptId === input.attemptId);
+        if (materializedAttempt === undefined ||
+            canonicalJson(materialized) !== canonicalJson(current) ||
+            canonicalJson(providerAttemptRecoveryProjectionBinding(projected.attempt)) !==
+                canonicalJson(providerAttemptRecoveryProjectionBinding(currentAttempt)) ||
+            canonicalJson(providerWorkflowRecoveryBinding(prepared.entries[0].projection.workflow)) !== canonicalJson(providerWorkflowRecoveryBinding(current.workflow)) ||
+            canonicalJson(providerJobRecoveryBinding(prepared.entries[0].projection.job)) !== canonicalJson(providerJobRecoveryBinding(current.job))) {
+            throw executionResultRecoveryConflict();
+        }
+        const leaseTokenDigest = normalizeRecoveryDigest(input.leaseTokenDigest);
+        const outputDigest = normalizeRecoveryDigest(input.outputDigest);
+        if (!isExactTimestamp(input.completedAt)) {
+            throw executionResultRecoveryConflict();
+        }
+        assertCandidateRecoveryLease(projected.attempt, input.leaseGeneration, leaseTokenDigest, input.completedAt);
+        assertCandidateRecoveryLease(currentAttempt, input.leaseGeneration, leaseTokenDigest, input.completedAt);
+        assertCandidateRecoveryLease(materializedAttempt, input.leaseGeneration, leaseTokenDigest, input.completedAt);
+        const existingResult = current.results.find(({ attemptId }) => attemptId === input.attemptId);
+        if (existingResult !== undefined) {
+            const exactReplay = createAttemptResult(currentAttempt, outputDigest, existingResult.acceptance, input.completedAt);
+            if (canonicalJson(exactReplay) !== canonicalJson(existingResult)) {
+                throw executionResultRecoveryConflict();
+            }
+            return deepFreeze({
+                state: current,
+                accepted: existingResult.acceptance === 'accepted',
+                result: existingResult,
+            });
+        }
+        if (!['leased', 'running'].includes(currentAttempt.status)) {
+            throw executionResultRecoveryConflict();
+        }
+        const accepted = current.job.acceptedAttemptId === null;
+        const recoveredAttempt = assertAttemptRecord({
+            ...currentAttempt,
+            status: accepted ? 'succeeded' : 'late-duplicate',
+            retention: accepted ? currentAttempt.retention : 'debug',
+            updatedAt: input.completedAt,
+        });
+        const result = createAttemptResult(recoveredAttempt, outputDigest, accepted ? 'accepted' : 'late-duplicate', input.completedAt);
+        const attempts = [...current.attempts];
+        const attemptIndex = attempts.findIndex(({ attemptId }) => attemptId === input.attemptId);
+        attempts[attemptIndex] = recoveredAttempt;
+        const results = [...current.results, result].sort((left, right) => attemptNumber(attempts, left.attemptId) -
+            attemptNumber(attempts, right.attemptId));
+        const candidate = assertDurableExecutionJobState({
+            ...current,
+            job: accepted
+                ? {
+                    ...current.job,
+                    status: 'succeeded',
+                    acceptedAttemptId: currentAttempt.attemptId,
+                    updatedAt: latestTimestamp(current.job.updatedAt, input.completedAt),
+                }
+                : current.job,
+            attempts,
+            results,
+        });
+        const state = persistExecutionJobState(paths, current, candidate);
+        return deepFreeze({ state, accepted, result });
     });
 }
 export function reconcileProviderExecutionJob(paths, input) {
@@ -983,6 +1082,62 @@ function sumAttemptAccounting(attempts, field) {
 function latestTimestamp(left, right) {
     return Date.parse(left) >= Date.parse(right) ? left : right;
 }
+function providerAttemptRecoveryProjectionBinding(attempt) {
+    return {
+        schemaVersion: attempt.schemaVersion,
+        attemptId: attempt.attemptId,
+        jobId: attempt.jobId,
+        workflowId: attempt.workflowId,
+        epoch: attempt.epoch,
+        attemptNumber: attempt.attemptNumber,
+        provider: attempt.provider,
+        inputDigest: attempt.inputDigest,
+        requestDigest: attempt.requestDigest,
+        contextDigest: attempt.contextDigest,
+        environmentDigest: attempt.environmentDigest,
+        policySnapshot: attempt.policySnapshot,
+        providerInvocation: attempt.providerInvocation,
+        createdAt: attempt.createdAt,
+    };
+}
+function providerWorkflowRecoveryBinding(workflow) {
+    return {
+        schemaVersion: workflow.schemaVersion,
+        workflowId: workflow.workflowId,
+        currentEpoch: workflow.currentEpoch,
+        contractVersion: workflow.contractVersion,
+        contextDigest: workflow.contextDigest,
+        checkpoint: workflow.checkpoint,
+        status: workflow.status,
+        engineBinding: workflow.engineBinding,
+    };
+}
+function providerJobRecoveryBinding(job) {
+    return {
+        schemaVersion: job.schemaVersion,
+        jobId: job.jobId,
+        workflowId: job.workflowId,
+        epoch: job.epoch,
+        mandateBinding: job.mandateBinding ?? null,
+        stage: job.stage,
+        contextDigest: job.contextDigest,
+        requestDigest: job.requestDigest,
+        semanticSpec: job.semanticSpec,
+        createdAt: job.createdAt,
+    };
+}
+function assertCandidateRecoveryLease(attempt, leaseGeneration, leaseTokenDigest, completedAt) {
+    if (attempt.lease === null ||
+        !Number.isSafeInteger(leaseGeneration) ||
+        leaseGeneration < 1 ||
+        attempt.leaseGeneration !== leaseGeneration ||
+        attempt.lease.generation !== leaseGeneration ||
+        attempt.lease.tokenDigest !== leaseTokenDigest ||
+        Date.parse(completedAt) < Date.parse(attempt.lease.acquiredAt) ||
+        Date.parse(completedAt) > Date.parse(attempt.lease.expiresAt)) {
+        throw executionResultRecoveryConflict();
+    }
+}
 function assertExecutionJobId(value) {
     if (typeof value !== 'string' || !EXECUTION_JOB_ID.test(value)) {
         throw workflowError('EXECUTION_STORE_JOB_ID_INVALID', 'The durable execution Job identifier is invalid.', ExitCode.usage);
@@ -996,6 +1151,14 @@ function normalizeDigest(value) {
         return `sha256:${value}`;
     throw executionProjectionConflict('Provider result digest is invalid.');
 }
+function normalizeRecoveryDigest(value) {
+    if (typeof value === 'string' && DIGEST.test(value))
+        return value;
+    if (typeof value === 'string' && UNPREFIXED_DIGEST.test(value)) {
+        return `sha256:${value}`;
+    }
+    throw executionResultRecoveryConflict();
+}
 function isPromiseLike(value) {
     return (value !== null &&
         (typeof value === 'object' || typeof value === 'function') &&
@@ -1007,8 +1170,14 @@ function executionSnapshotCallbackInvalid() {
 function executionProjectionConflict(message, cause) {
     return workflowError('EXECUTION_STORE_PROJECTION_CONFLICT', message, ExitCode.guard, cause === undefined ? {} : { details: { cause: errorMessage(cause) } });
 }
+function executionResultRecoveryConflict() {
+    return workflowError('EXECUTION_STORE_RESULT_RECOVERY_CONFLICT', 'The completion candidate does not exactly bind the current durable Attempt.', ExitCode.staleState);
+}
 function executionStoreUnsafe(cause) {
     return workflowError('EXECUTION_STORE_UNSAFE', 'The private durable execution store is malformed or unsafe.', ExitCode.unsafeEnvironment, cause === undefined ? {} : { details: { cause: errorMessage(cause) } });
+}
+function executionAdmissionAuthorityUnsafe() {
+    return workflowError('EXECUTION_ADMISSION_AUTHORITY_UNSAFE', 'The immutable provider execution admission authority is missing, malformed, or divergent.', ExitCode.unsafeEnvironment);
 }
 function sha256Text(value) {
     return crypto.createHash('sha256').update(value).digest('hex');

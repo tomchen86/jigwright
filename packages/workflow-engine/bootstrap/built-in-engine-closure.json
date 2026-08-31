@@ -53,7 +53,7 @@
     {
       "path": "node_modules/@jigwright/agent-runtime/src/bounded-provider-process.ts",
       "mode": "100644",
-      "digest": "sha256:dd45ac31f33f58cb9d764c3fe8526154691bc3711302db02a61c8d053cb69b13"
+      "digest": "sha256:2f68986536c2309a44493c15e1d34646d9e9bf4c99c4f46720e209eb24851d66"
     },
     {
       "path": "node_modules/@jigwright/agent-runtime/src/built-in-provider-definition.ts",
@@ -63,12 +63,12 @@
     {
       "path": "node_modules/@jigwright/agent-runtime/src/harness-jsonl-v1.ts",
       "mode": "100644",
-      "digest": "sha256:826a6932fe4c6d824de5001918acad84f994ff754af97d98a3502e71fdc8c9e4"
+      "digest": "sha256:24cdb0e91842635f3f899b1dba1dd1b41b785cdc912f285d95f839710c9558e3"
     },
     {
       "path": "node_modules/@jigwright/agent-runtime/src/harness-jsonl-v2.ts",
       "mode": "100644",
-      "digest": "sha256:f942f7de0674d487abceb9d7ef575df3511d7fafbb4bf67bde05d2a4f3051275"
+      "digest": "sha256:e713b564a5f1ecd0497d4b08a5fe6f3faf59905e1c8fafa4d7266ac8f725cd5f"
     },
     {
       "path": "node_modules/@jigwright/agent-runtime/src/index.ts",
@@ -103,7 +103,7 @@
     {
       "path": "node_modules/@jigwright/core/src/central-grant-port.ts",
       "mode": "100644",
-      "digest": "sha256:1cada07abaeef99901da53ba0af18b12aff8b72091039a103e92cc3fe0e339ec"
+      "digest": "sha256:859272d49908ea668128f696601e2b4dc5ff82c93b8ad6fb6907c28e3ba252b2"
     },
     {
       "path": "node_modules/@jigwright/core/src/check-command.ts",
@@ -148,7 +148,7 @@
     {
       "path": "node_modules/@jigwright/core/src/managed-transition-trailers.ts",
       "mode": "100644",
-      "digest": "sha256:287fe43082751872909d6d45a3af25ce453c689ffcd7e49e146a22859402cd79"
+      "digest": "sha256:02f50ea3b66752b18aea86c0ec1fec99fcbbe11c7e17477a9dec38a40768a9d6"
     },
     {
       "path": "node_modules/@jigwright/core/src/markdown-sections.ts",
@@ -218,7 +218,7 @@
     {
       "path": "node_modules/@jigwright/grants/src/central-grant-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:82c623975172ef9968b5cf4497836a6276d029f54bdd2021d827dea502d36afa"
+      "digest": "sha256:b5521b05109e1ddc94feef60552287b418dd608604997a29ed68a989f45bbab0"
     },
     {
       "path": "node_modules/@jigwright/grants/src/collaboration-grant-envelope-reader.ts",
@@ -318,7 +318,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/protected-capabilities.ts",
       "mode": "100644",
-      "digest": "sha256:8f6d1556eb48573a2faba7a68083a6d9b5319430fb8fc3cc12719709cbf9a43c"
+      "digest": "sha256:d8d1ba588f779d68f8db3e11c7c04a8d6f75f18ed90b44a43fbbe4c6c5e85382"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/registered-check.ts",
@@ -338,7 +338,7 @@
     {
       "path": "src/adapters/human/macos/human-gate-macos.ts",
       "mode": "100644",
-      "digest": "sha256:b1a44b861a76dd2f1b3b166b91e2e0c07a864e7d39af77bb5418a5c4a8fd94a1"
+      "digest": "sha256:2083aed4b5356a10f78a344a2a8ab2176683c99598cfad025e879a5509e40b7f"
     },
     {
       "path": "src/adapters/planning/investigation/evidence-convergence.ts",
@@ -363,7 +363,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:2a0c29b2f7cf250efd0b6f2cb4f8ea759ec4fc3d5e248f47dce4ce3fb307ae17"
+      "digest": "sha256:57f32088bd924fdc66b0ffd513f74f4e7312d892801275690ce1f19945d59417"
     },
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
@@ -468,7 +468,7 @@
     {
       "path": "src/adapters/signing/ssh/grant-proof-ssh.ts",
       "mode": "100644",
-      "digest": "sha256:4b8b85d2a294d359feeb31b49ea5392ca905a11da0337f777d6b2a5326ab703b"
+      "digest": "sha256:7d7936954094741395314b3c29a5f14be429fe2c6126c268d3478f253b85d329"
     },
     {
       "path": "src/adapters/signing/ssh/maintainer-signer.ts",
@@ -538,7 +538,7 @@
     {
       "path": "src/application/control-plane/intervention-maintenance.ts",
       "mode": "100644",
-      "digest": "sha256:c3a0b94f01ca9246e83bbaa09b727a469539169cea096a846d184a331abee3d0"
+      "digest": "sha256:acc3ae940a539f83777db0fbbe372b0830a2675439b3579c3b6e8c5c37d73391"
     },
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
@@ -548,7 +548,7 @@
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:67145639bc4614a3e09e46e421e57b151afffcc3bdd886f3beb5155d4f2a3223"
+      "digest": "sha256:572b5dd79cf6c947a4dd40c168b25b3f2f185feac74acb3bd1da8857006b9c40"
     },
     {
       "path": "src/application/control-plane/maintainer-candidate-dependencies.ts",
@@ -568,7 +568,7 @@
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:1eda964d6ca5d1e69524b1b942b013fca9e84d34e828f60ff9ce3c1a0cbb50c4"
+      "digest": "sha256:0ae582935f9a0037d6a0bcce2b2f5c399da99c2b80b55dd281e10eba98571f34"
     },
     {
       "path": "src/application/execute-task/open-task.ts",
@@ -653,12 +653,12 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:8166473de9e2a466337b4d5288abfe9a17279ffb81adbffc8c16619b4b1469c7"
+      "digest": "sha256:a36a9f78a91afb798edd470f9fe0633f988a0854179fc9e1d885362286808fe3"
     },
     {
       "path": "src/application/finalize/verification.ts",
       "mode": "100644",
-      "digest": "sha256:5c9dcd74c6fbf12c1c209c2c9070739c394b6121f1a2694317b04c5a91fa4ff2"
+      "digest": "sha256:c4b8ecf272e531f72d3397d9c6806e2e9de45d61d0fc98061964bb6b3284c472"
     },
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
@@ -673,7 +673,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:28f629f8e212cafaf2e5486860cf3db6c1f443e608c1d344183f5617e3adaed4"
+      "digest": "sha256:f29a8944476c8fd2729c9d4ce05e669a3b32301d490bf72ffa96c0e4b2a46dc3"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -683,12 +683,12 @@
     {
       "path": "src/application/revise/task-revision.ts",
       "mode": "100644",
-      "digest": "sha256:6a2af1b8122080a0155e39ecce9eb90b7644baf8f8b761118497673f3e5bceb6"
+      "digest": "sha256:91dbafd0c668e586d32b046910cab41aa804b871c74e7ba43ac7202d99cb72d2"
     },
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:b225f6ad21454c32b50f369c1572e87d23c464d83ec47dc13b64972063f3f043"
+      "digest": "sha256:b654a52f197429cb734d23ed995822ec63ac6de4749d3e6af902a82e1fa3462e"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -703,17 +703,17 @@
     {
       "path": "src/composition-root/agent-runtime-host-wrapper-production.ts",
       "mode": "100644",
-      "digest": "sha256:a7eb90467f6a13915a4a416a826bbee455b3309b5fa1e1873833f315266eb695"
+      "digest": "sha256:a9df4f2b6ef1e81832290766738669473e5ccc2c39193f8f47a491ec30557528"
     },
     {
       "path": "src/composition-root/agent-runtime-production.ts",
       "mode": "100644",
-      "digest": "sha256:7028393e4505e7177170adbfa2c6ceac94fbe573c42df1f375d179270d67342f"
+      "digest": "sha256:2d18c8eca8fd9ba01c0246c5195e4e648e0d35f7f8cfd837c58bf903a9dc7343"
     },
     {
       "path": "src/composition-root/agent-runtime-v1-production.ts",
       "mode": "100644",
-      "digest": "sha256:feb176e87ebb1d9f449ca943b311a7e4b6f01639fc72a776eb3e2f61d1f29ab4"
+      "digest": "sha256:64917f9cedce1fc15b5ed982d85eaf7d8f1ca0b96dc9f5d017a6a2c92579a213"
     },
     {
       "path": "src/composition-root/archive-pr-publication-production.ts",
@@ -723,7 +723,7 @@
     {
       "path": "src/composition-root/authority-remap.ts",
       "mode": "100644",
-      "digest": "sha256:c95f58ded1055e48513fd2a924da594057855f13765ba37e9587a011f06611f7"
+      "digest": "sha256:0393489fcef1ab8dbd677dc762f1b4ffce097e29918597d643359c81cc33582f"
     },
     {
       "path": "src/composition-root/central-role-provider-default-production.ts",
@@ -738,7 +738,7 @@
     {
       "path": "src/composition-root/change-role-assignment-production.ts",
       "mode": "100644",
-      "digest": "sha256:18093d4efd6112fecd1f3edfc28a7e844a3080fe233d6d98194507c362dc83d4"
+      "digest": "sha256:e1d0d770eeb5309d6179644975d3c1bff3a97d098242293367951c2b1aa52a68"
     },
     {
       "path": "src/composition-root/change-role-assignment-simulation-production.ts",
@@ -771,6 +771,16 @@
       "digest": "sha256:d355a1d71e94ec564a020d77877bce524f4a32574ebdc22049d0654ee1adde05"
     },
     {
+      "path": "src/composition-root/git-authority-candidate-apply-production.ts",
+      "mode": "100644",
+      "digest": "sha256:590c0a68a916f89267bea2722e69801b4ce5d49106c696c6497c74a4e43eabe3"
+    },
+    {
+      "path": "src/composition-root/git-authority-candidate-apply-receipt-production.ts",
+      "mode": "100644",
+      "digest": "sha256:dd6716f8af183ffc3950a0f16b38011c812a60d920d6e2d8d42ee7e3035ab869"
+    },
+    {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
       "digest": "sha256:f6e112d8e24b6569d5640b58139c5ecc3540ca3c920509022a180f5060ca03f0"
@@ -778,12 +788,17 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:59143f33a5ba3a0f677cc7dd7acb25b267098ae275827d2ffff6316c59ac3ce9"
+      "digest": "sha256:1be491ceaaa264ad9ef93206820517a328c69191865c53d9e0caecba020e9d5e"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
       "mode": "100644",
       "digest": "sha256:bfc655abb1993aa8907e4c7a2d904a6639450e28414b02241f3648e925658da9"
+    },
+    {
+      "path": "src/composition-root/immutable-git-candidate-production.ts",
+      "mode": "100644",
+      "digest": "sha256:c33fa44cec1e22e39e4430dcea42f3ab07103fadaeedd1d8875aea1076ef88d7"
     },
     {
       "path": "src/composition-root/lifecycle-context.ts",
@@ -888,12 +903,12 @@
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:2b9f23fb5a4501310898755f313bd18eafbd463446656ccbb2915524b93e06f2"
+      "digest": "sha256:879f9aa5561fd431ac271ac06794e94d81ea3cdc383dcbb148540c490c541a11"
     },
     {
       "path": "src/entrypoints/ci/ci-authority.ts",
       "mode": "100644",
-      "digest": "sha256:3600c0f15d7fd33784be668790b0e173f43fc1de0f01ce1b7c523eac0c7b29b2"
+      "digest": "sha256:bf330e3f88183cfa8e5318c35514c5e1d2af09226083442218382730e2b364ce"
     },
     {
       "path": "src/entrypoints/ci/ci-checks.ts",
@@ -923,7 +938,7 @@
     {
       "path": "src/entrypoints/ci/ci-sequence.ts",
       "mode": "100644",
-      "digest": "sha256:69b0ac175b139765e2eac8dc2d0b0b0460d9686d7c21bc5d2dd781a9a460a238"
+      "digest": "sha256:faed6cfc57664ef380690c50b7b21cda92077e9fe759a31588546a4ef5aaf677"
     },
     {
       "path": "src/entrypoints/ci/ci-task-state.ts",
@@ -993,12 +1008,12 @@
     {
       "path": "src/entrypoints/cli/intervention-control-bootstrap-cli.ts",
       "mode": "100644",
-      "digest": "sha256:f0fef8eecfaf380cff8d4ab0de1ec1a3b4c6dbd957cbd0d746590a38eba00c83"
+      "digest": "sha256:c01f9bbd3ec36015a7d94f3895b153cd22a94feb8dc58b27dd84d711de98ce1f"
     },
     {
       "path": "src/entrypoints/cli/intervention-control-cli.ts",
       "mode": "100644",
-      "digest": "sha256:9106fa9e9a18632519fdfaf00f3ac1325985e5fc9adf5e89db609fe19a63c83a"
+      "digest": "sha256:bbe62126eab2c79e04fa6c76d9d200f26704fae3172847ae6f2cf890a3ece13f"
     },
     {
       "path": "src/entrypoints/cli/intervention-control-updater-cli.ts",
@@ -1018,7 +1033,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:2ed0c65a164b4db78e5e7544c7d5da83cd76bcdc691a49ddb2cd7ab14fd998a2"
+      "digest": "sha256:b9d89ae0253ece01d8ba697842ca8b741c24ea76e2f0b5dd79247901c717e339"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1043,7 +1058,7 @@
     {
       "path": "src/harness-bootstrap.ts",
       "mode": "100644",
-      "digest": "sha256:60ae2cf8a8bd14a38b19e65c4186040efee1f6127ffdc35580a2e07068e06f70"
+      "digest": "sha256:4027f34e9af0ab2f8aa3b2d5882d07c98a509b66f531e053df87716b4e446f9b"
     },
     {
       "path": "src/modules/assurance/assurance-assessment-chain.ts",
@@ -1143,7 +1158,7 @@
     {
       "path": "src/modules/authority/archive-pr-grant.ts",
       "mode": "100644",
-      "digest": "sha256:b7e51219cc2946558a8ee493b1aefbf422c4af602f8a4ed4933ea2952d21d079"
+      "digest": "sha256:88be6aaa6ecf97727a0920f45ad465f9e0b54ff899254787842ad647446c4bb5"
     },
     {
       "path": "src/modules/authority/authority-application-receipt.ts",
@@ -1168,7 +1183,7 @@
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
       "mode": "100644",
-      "digest": "sha256:87edce882d28dff32d5e7f8ffafe6beef04135612eeea0605d44adb1fe6c9236"
+      "digest": "sha256:0596648a4f3f0ef049a36ab367545e9237dbf79ccd752480783abea7634f8cc5"
     },
     {
       "path": "src/modules/authority/execution-governance.ts",
@@ -1181,19 +1196,29 @@
       "digest": "sha256:fe1952d296f358bd89fcbba22f7c3a58a61d7bb057a38addce2a79ff8133cf0f"
     },
     {
+      "path": "src/modules/authority/git-authority-candidate-apply-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:4cfb653e13c22fbc447259c3aa49580c4cb45ca06e4907cb3cc47e60bed8e103"
+    },
+    {
+      "path": "src/modules/authority/git-authority-candidate-apply-receipt.ts",
+      "mode": "100644",
+      "digest": "sha256:1e45b1bbdb2ad0be303a0ca4bf715548648e3135db8ede1b150fc5fe797de38c"
+    },
+    {
       "path": "src/modules/authority/grant-approval.ts",
       "mode": "100644",
-      "digest": "sha256:dc5fa619d10e15ed3dd2440cc9685f0fce1dcf23a31f7e7b844095c80130f6d5"
+      "digest": "sha256:0fecee00501263c5fa2791bcb161b0b355b022faba7cb4f2ce5ab835fee9b1db"
     },
     {
       "path": "src/modules/authority/grant-coordinator.ts",
       "mode": "100644",
-      "digest": "sha256:463df6af2baf262ca4dd1d71a77f1922bdabb837eaa5c83a2b0885c61ae5e5ab"
+      "digest": "sha256:cc593306618b471733c7457457d9539b4c64586271822bbe0ac8eda2abd836fb"
     },
     {
       "path": "src/modules/authority/grant-core.ts",
       "mode": "100644",
-      "digest": "sha256:abf3b8f29859d71dc7a64d3222ec9bcec20d45b2917db9ab1de99a555fbf1205"
+      "digest": "sha256:6596419ff972cff2eea24fe8f5a8a20700ef531b7ac33ea72dd3912848523806"
     },
     {
       "path": "src/modules/authority/grant-parent-binding.ts",
@@ -1203,7 +1228,7 @@
     {
       "path": "src/modules/authority/grant-policy.ts",
       "mode": "100644",
-      "digest": "sha256:d5982e55181fa1bdccb803c686b8a7c9b359b5f4d216444e853ca1b1bb3bb26d"
+      "digest": "sha256:86aaafaab334a19116fe816484576c4b7c748070f2e30bfc816966e60daf26de"
     },
     {
       "path": "src/modules/authority/grant-primitives.ts",
@@ -1213,7 +1238,7 @@
     {
       "path": "src/modules/authority/grant-transition-registry.ts",
       "mode": "100644",
-      "digest": "sha256:f08f764130fe48ec9bcaf88461cc91e48251960494ec3c382280202d001b203f"
+      "digest": "sha256:4ac09fd9bef689f02c79567788239e92a0301b29e0953729bf6c01d50a990cf4"
     },
     {
       "path": "src/modules/authority/grant-verifier-port.ts",
@@ -1221,9 +1246,14 @@
       "digest": "sha256:d8fbbcc8f3d304367d6539923f3c1e95d0dcbefe50ab68073591cad71e1a6ed3"
     },
     {
+      "path": "src/modules/authority/immutable-git-candidate.ts",
+      "mode": "100644",
+      "digest": "sha256:195e88be956795a2fd51617f24a95970d9078be8e4ffe69ef1da600de1b1221b"
+    },
+    {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:4c013ebc9fd0af91f429905a98e5d2d9bbbf16a52401a87fc1ef196fa1309f6b"
+      "digest": "sha256:2bfc28ee330c8c793012c5acc4e0c3bdee091c4c4f481f73658fa1730ecf2943"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
@@ -1238,7 +1268,7 @@
     {
       "path": "src/modules/authority/maintainer-grant.ts",
       "mode": "100644",
-      "digest": "sha256:a59c3a42cb7250df6d24e371e0a371c65893e456d872694e55577d592593dbd3"
+      "digest": "sha256:65312fbc42bbe00a78bb4803b831918adcecbd7b01869f9392bfb553aa84079c"
     },
     {
       "path": "src/modules/authority/maintainer-manifest.ts",
@@ -1263,27 +1293,27 @@
     {
       "path": "src/modules/authority/protected-base-initialization-grant.ts",
       "mode": "100644",
-      "digest": "sha256:5ed48997149b790e96913a0fd50be0d159bd2a731c3f76707017a51b348405d4"
+      "digest": "sha256:c69f302bb364f29b7831396d64edd9aa2258709b8d2d8d27aad8f64c0b41673f"
     },
     {
       "path": "src/modules/authority/protected-task-apply-descendant-settlement-grant.ts",
       "mode": "100644",
-      "digest": "sha256:cbe0f0abc03f5fc87f55132db923de9a73f63203056c3bc34300ba713291ec59"
+      "digest": "sha256:f1876087a3ffc29c5cc5cccb4ca4eee6013c9d567b0c64c9563cff45e977dc12"
     },
     {
       "path": "src/modules/authority/protected-task-apply-grant.ts",
       "mode": "100644",
-      "digest": "sha256:7bc2c0eea0b278c5dda36d3aac4d7a601877fa03d5215804d54a5ec3e487f39d"
+      "digest": "sha256:0489d1d4a0e5faaf245717a0d0421a042ef45a0641c46f34757d78c91f92ab19"
     },
     {
       "path": "src/modules/authority/protected-task-apply-recovery-grant.ts",
       "mode": "100644",
-      "digest": "sha256:a75b1075c6d93b20b2a53342d118887793888621fb347eee0f3f7c0986a5af07"
+      "digest": "sha256:ce6da6d43b36201725b0012b20335ddf566fecc88f1c74a2fb4e9248a5b63986"
     },
     {
       "path": "src/modules/authority/provider-invocation-cancellation-grant.ts",
       "mode": "100644",
-      "digest": "sha256:ccf1ef5f3130f073d83adba2a9b08c87c469ab73b03c8fab6dd55235504cddd8"
+      "digest": "sha256:0af29f0966e02f2be87b8ff6e78700b4b54b8ccc9179b333c228273fc75da15a"
     },
     {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
@@ -1306,6 +1336,11 @@
       "digest": "sha256:3a8eae56e97f57e26a39b21c11aae92a9d713c780f2daacef692f2a9e5ab5f64"
     },
     {
+      "path": "src/modules/authority/role-independence-continuation-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:1401cc728fa392a071e93ff92d0cfb484235615edf79614cd8fb29f6109e5503"
+    },
+    {
       "path": "src/modules/authority/task-mandate.ts",
       "mode": "100644",
       "digest": "sha256:5d7ba33384e86a45fac77060df6d3037b110e99d06bda7a2cbe2bc28814fcea0"
@@ -1323,7 +1358,7 @@
     {
       "path": "src/modules/governance-intake/work-registry-grant.ts",
       "mode": "100644",
-      "digest": "sha256:dd53b9dd6d523fe0587f0668c8b2f8a528a5da7b32109a27e130968c6978d66c"
+      "digest": "sha256:ea7bb99064756120b21419fbf79ffd2deb126c9af492234495fef9a6829023b1"
     },
     {
       "path": "src/modules/governance-intake/work-registry.ts",
@@ -1438,7 +1473,7 @@
     {
       "path": "src/modules/investigation/seal/investigation-v3-grant.ts",
       "mode": "100644",
-      "digest": "sha256:5979b0cab98f11926b9f4cee52c089bc479b6555d83a103ddf4512b5464c8768"
+      "digest": "sha256:8255f7c7b3c920ba0871660d90f1fea1c76ee035180e7568f52483fe509b64f9"
     },
     {
       "path": "src/modules/lifecycle/change-routing-grant-contract.ts",
@@ -1448,7 +1483,7 @@
     {
       "path": "src/modules/lifecycle/change-routing-grant.ts",
       "mode": "100644",
-      "digest": "sha256:a518894a9597db09bf2b2a09b3f174247eb398f9f0977ad84c39322ca05df841"
+      "digest": "sha256:8d2586dcbde89ec7da554c3e7fe1bbee03f7ad98305410dc09cee37a0673194d"
     },
     {
       "path": "src/modules/lifecycle/change-routing-transaction.ts",
@@ -1473,7 +1508,7 @@
     {
       "path": "src/modules/lifecycle/managed-trailers.ts",
       "mode": "100644",
-      "digest": "sha256:0a60410570ec12b143d7ee3e41f4094269bb194982c72a63627302264b865d53"
+      "digest": "sha256:a02e92df8ecb000356dada00c98cc45133f59cc72cf254a70328ea97a82fc97b"
     },
     {
       "path": "src/modules/lifecycle/managed-workflow-state-contract.ts",
@@ -1531,14 +1566,34 @@
       "digest": "sha256:f9b731d16bc2d0215fb94fc9a7b642ec48ca6b415808f202d26c4177e98e5054"
     },
     {
+      "path": "src/modules/provider-orchestration/agent-runtime-assignment-binding.ts",
+      "mode": "100644",
+      "digest": "sha256:d1f624b4cb9a3c32fa4fee70ef98d5ed0e07f43b698ffbb47d242c05566a9311"
+    },
+    {
+      "path": "src/modules/provider-orchestration/agent-runtime-durable-authority.ts",
+      "mode": "100644",
+      "digest": "sha256:6e68f483e4a4ffc61dd6b93b6d11998ae70b64636a230a9cd1e2e7a1f3fb66e2"
+    },
+    {
+      "path": "src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts",
+      "mode": "100644",
+      "digest": "sha256:9638c72a44a78cb2c499007cd941a1a3693eda8036117cc6143c6c4a422398ea"
+    },
+    {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
       "mode": "100644",
-      "digest": "sha256:d78ffb698437850b4bf30c960828d817c4f6597cdcf415d11b4c5d697f28e25d"
+      "digest": "sha256:a6a9adc613a7ecfa71c747c2f5b7b4f1f49e39f405c24987500add4acf958fc6"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-protocol.ts",
       "mode": "100644",
-      "digest": "sha256:830f97a30d0ef8dc9e0d87e77e35d2c856d64b27839d411a90a64501de88af93"
+      "digest": "sha256:8c84ff198e3a33faf26a192de141d03b0199973425b50045beac790400113ecd"
+    },
+    {
+      "path": "src/modules/provider-orchestration/blind-survey-output.ts",
+      "mode": "100644",
+      "digest": "sha256:e65609688ab843faa6df97d5f27e35631cddc39be65a4d1c184fb4d71d73edf5"
     },
     {
       "path": "src/modules/provider-orchestration/central-role-provider-default.ts",
@@ -1548,7 +1603,7 @@
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-grant.ts",
       "mode": "100644",
-      "digest": "sha256:bb7062826abd262f307c6dfb89ca1c1814392d6d8c94e00578adff74fcd2ebcd"
+      "digest": "sha256:1c96524161c751779a1807abe4d1eb1141db86ec01749443103f740b5370bcf7"
     },
     {
       "path": "src/modules/provider-orchestration/change-role-assignment-record.ts",
@@ -1573,12 +1628,12 @@
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:d13e373eb65a316cb2707c44feb8af8994253e938914c3e304b16e1f622c1c4f"
+      "digest": "sha256:8357121fd900d8d0af9707495e9a4cfc53674af610619b86cccda8cfdb29d90e"
     },
     {
       "path": "src/modules/provider-orchestration/provider-native-session.ts",
       "mode": "100644",
-      "digest": "sha256:60e045ab71f38077bdb0a8c32165d8c696cd3f8f6988917953b991ee92f48b6b"
+      "digest": "sha256:f323edf08a84a5f1e2df9449dd72a574cd282907bf1dbcd852b5e56627574615"
     },
     {
       "path": "src/modules/provider-orchestration/provider-registry.ts",
@@ -1591,6 +1646,11 @@
       "digest": "sha256:118a246ffa40e9f3667cb3d204f6de9b9f8068cfb166aafa6588a6161e506913"
     },
     {
+      "path": "src/modules/provider-orchestration/provider-runtime-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:5c23f0d01ceea523536811e2f5a94db60d284a9d004726cc50f5782ef7c86036"
+    },
+    {
       "path": "src/modules/provider-orchestration/role-scheduler.ts",
       "mode": "100644",
       "digest": "sha256:e051a053ecab5884a259a5db78400a7bd337ddccca567f3b7d87426ef646ae08"
@@ -1601,9 +1661,14 @@
       "digest": "sha256:705ea607f68e7076f9b26453f1f9cde3a03bc4cdc8e5fb094331d02a47699885"
     },
     {
+      "path": "src/modules/provider-orchestration/task-strategy-implementation-output.ts",
+      "mode": "100644",
+      "digest": "sha256:4efe7d5b639caf91058208838f99bb7534cd4136ac1fd99d7c831932601cff88"
+    },
+    {
       "path": "src/modules/provider-orchestration/task-strategy-provider-contract.ts",
       "mode": "100644",
-      "digest": "sha256:66d7b33b9f2db17348929609658ef82ccbafa3ebc9fefdcab047936d27ba0d11"
+      "digest": "sha256:bf908dfe4dca8b6556cb2fc7128fa66a57248e737c011eeff2c18676abb5f3ab"
     },
     {
       "path": "src/modules/repository-consumer/repository-consumer-config.ts",
@@ -1751,6 +1816,11 @@
       "digest": "sha256:f0990476bdb6614a59fc00cd701d6e7817b10dc652efd3c2f5004f6c86996849"
     },
     {
+      "path": "src/runtime/provider-execution/agent-runtime-progress-tracker.ts",
+      "mode": "100644",
+      "digest": "sha256:cb563d9a9bcf6bc5fe766a14716a84865379fa2122068441d07675a6d617547b"
+    },
+    {
       "path": "src/runtime/provider-execution/ai-adapter-evaluation.ts",
       "mode": "100644",
       "digest": "sha256:d7a352ba9bc657d492d1e51ff9f1da6bc905fd528ef23bc31ecc4779ad9e0c3c"
@@ -1783,7 +1853,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:f500779b2517aec8b4fe3177acc97b7e809bb2d8d97697aa508acc3681b0fe9c"
+      "digest": "sha256:2414fa16b08a4d48ef12a15f29c851ca1a97bfa1be45644bd8296e3367e1e02e"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
@@ -1813,7 +1883,7 @@
     {
       "path": "src/runtime/provider-execution/provider-retention.ts",
       "mode": "100644",
-      "digest": "sha256:12ab18a41000526a9119f38bf860e0bbe6b6343c71bcae1daa23489daf1e80b9"
+      "digest": "sha256:541805ae50b6e0bc8a7c09243b3d42803bb7e73e0b639faa04a57d55cba986f1"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-scheduler.ts",
@@ -1823,7 +1893,7 @@
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
-      "digest": "sha256:9a487a10addd857a97319efd1e40364e599a65b8e435fbc584f19525aade7bfa"
+      "digest": "sha256:fe069e4b897a7b557528e83fe54334b54da5ecde767536b7574863b3c8e7a1df"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",
@@ -1888,7 +1958,7 @@
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
       "mode": "100644",
-      "digest": "sha256:4a2267debf2ea7afad982c9335c719c99ad37a6b929c6fca3a986d62e0927085"
+      "digest": "sha256:519818eb7b75519fc7e68d5981641219032c754dd57da24af123abb84fa2092e"
     },
     {
       "path": "src/runtime/repository-transaction/git.ts",
@@ -1931,9 +2001,14 @@
       "digest": "sha256:5cc92ed737ff0558fa80572ef8794d0c482097298e63755a039c688fdaf7ad5e"
     },
     {
+      "path": "src/runtime/session-workspace/provider-runtime-authority-paths.ts",
+      "mode": "100644",
+      "digest": "sha256:97b19501eaab98f1a3db8e0586fa7adc6adbe18d99bb1a938080b444af3bc258"
+    },
+    {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:716b2364c60f136751af136a1d33e1c1a136fb4a18f830e3df09b318f1ce3929"
+      "digest": "sha256:9574a4c9ae57f30c691885826d1bb87056f66e606a5efdec7744319447e74e49"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
@@ -1963,12 +2038,12 @@
     {
       "path": "src/runtime/storage-journal/change-role-assignment-store.ts",
       "mode": "100644",
-      "digest": "sha256:fcc5798a18ceef6a0393055b6d23bc4643dcd386b6c0357a00eeaee46adaf975"
+      "digest": "sha256:5d9ba72ecb4951d771a54fe417ba2c3f9b3cdf878707420a4ae0bff6afc795b8"
     },
     {
       "path": "src/runtime/storage-journal/collaboration-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:3411748cc0388804efc4a832fe138d11442a989f32b5744985d901851ac132bb"
+      "digest": "sha256:c92a5395b71724027c1a257769e4caa0356aaa94341bd8c24914ea479b1f24be"
     },
     {
       "path": "src/runtime/storage-journal/content-record-store.ts",
@@ -1983,12 +2058,12 @@
     {
       "path": "src/runtime/storage-journal/evidence-object-store.ts",
       "mode": "100644",
-      "digest": "sha256:c78c09eec3be63003817e33dd2a77c199578fc0730363eb1c23e1b66e2aad3c2"
+      "digest": "sha256:e7352b67bc0a98120455f907de389d50f0fe688f218e03af5fe71a2a7d8142a1"
     },
     {
       "path": "src/runtime/storage-journal/execution-store.ts",
       "mode": "100644",
-      "digest": "sha256:88214308d73cd7eb4c287e7878df3c99f7220984770041a3852121fe99d1d8d7"
+      "digest": "sha256:0bd22d193f9c3c79157b1e20b5de4dc29f45ff234487e65ec2c1f3f1a46c6e5c"
     },
     {
       "path": "src/runtime/storage-journal/external-effect-audit.ts",
@@ -1996,14 +2071,19 @@
       "digest": "sha256:55f15d3c7db42e96af3e1d6b12ab751bd98f94cd4bf14142a09958d4bebce8f1"
     },
     {
+      "path": "src/runtime/storage-journal/git-authority-candidate-apply-store.ts",
+      "mode": "100644",
+      "digest": "sha256:d072aff6e2df2261c86ccd6d47a25e7b7e510a66e9f2b594afc032389b6d6fae"
+    },
+    {
       "path": "src/runtime/storage-journal/grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:f0fa2109d259d170a1921c6d1af46ac3e1fdb3dada4b7faaeb645fa33363921b"
+      "digest": "sha256:9bc3aa13f4b168b48c6ddbeb95f191298de64c24806735c7929a53e918a18b2c"
     },
     {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",
       "mode": "100644",
-      "digest": "sha256:33a98235a8ef6827a59c3db00de036ecedec5449b98d0eb0554542e5465916f6"
+      "digest": "sha256:ecd2fd3d9e50df17723f1488b040014fb5e39c0758cc3fee3820eed1568f478b"
     },
     {
       "path": "src/runtime/storage-journal/intervention-engine-artifact-store.ts",
@@ -2013,7 +2093,7 @@
     {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:785af29f888519182adf2e815140c37e7c2c293f8027d5f799e884895ecddad6"
+      "digest": "sha256:4c59d23fccaf49ad1c1190e489ba1fb9b22f1fcc62748646a435cc68015cfce1"
     },
     {
       "path": "src/runtime/storage-journal/investigation-v3-failure-store.ts",
@@ -2033,12 +2113,12 @@
     {
       "path": "src/runtime/storage-journal/maintainer-store.ts",
       "mode": "100644",
-      "digest": "sha256:7e365270c8e24ee35ad9f6c31d8d87ceefd63fa30f772e7766c13fc1f278f344"
+      "digest": "sha256:6828081ffba9937ad9410d21612c776c589ec5d6b47f112414b166d72ead7666"
     },
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
       "mode": "100644",
-      "digest": "sha256:00830a47117ef39ed97071d08252497b12d8b0416d3d7577a02019075981dfec"
+      "digest": "sha256:054ea556a2b195ad9f78e041c71c84d931da0dd24f440288486dca2b33db7e86"
     },
     {
       "path": "src/runtime/storage-journal/pre-merge-assurance-store.ts",
@@ -2051,14 +2131,19 @@
       "digest": "sha256:382d4b50f74c351eea9aa1a7742c29a3efe45d8fd189d1162ff23356ab8b75d0"
     },
     {
+      "path": "src/runtime/storage-journal/provider-execution-admission-authority.ts",
+      "mode": "100644",
+      "digest": "sha256:fb190e48ea256e72ab6a393c28d3ab1e3a54dc50c1ef483f97bab5e958158058"
+    },
+    {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:105d61449d4d679963e45286152286794e19bccfc8c9df29c0d78133c85a26e3"
+      "digest": "sha256:9d415e143b2fe21e82d03f28d866c1bfc57df7904a44a0afb8ae1aeb7224a45f"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:32b4303ab1ea3b039c679afe62049c4888d7effb6b53ee1bf4b94d1a5750590f"
+      "digest": "sha256:81ecb05887e7241bf4bb7a7be9909fd98c184a35ade8c8a62d5ab4d58559c8d2"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",
@@ -2068,7 +2153,7 @@
     {
       "path": "src/runtime/storage-journal/provider-retention-receipt.ts",
       "mode": "100644",
-      "digest": "sha256:150d5a43213f65041db94431d12ac768ebb59428995a6c9f046ea34113c34e0f"
+      "digest": "sha256:67058facc16928b4f1ec3e77dff7e98e1f7811e602e5f4d3bc98a71fb68b47ce"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",
@@ -2103,7 +2188,7 @@
     {
       "path": "src/runtime/storage-journal/task-diff-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:a87a7f7fffa29dcbf8b084ed93f5b3a5d30f17803ec054da2beb8bab2102d0d1"
+      "digest": "sha256:3899eb808edd328a5ebd638956b52f614643860b53e50d5df2d587eafdc588f8"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-store.ts",

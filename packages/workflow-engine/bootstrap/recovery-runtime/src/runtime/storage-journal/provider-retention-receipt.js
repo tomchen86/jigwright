@@ -6,8 +6,15 @@ import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertInvocationId, } from "../session-workspace/paths.js";
 const DIGEST = /^[0-9a-f]{64}$/;
 const NORMALIZED_DIGEST = /^sha256:[0-9a-f]{64}$/;
+export const PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS = [
+    'host-wrapper-probe-runtime/request.json',
+    'host-wrapper-probe-runtime/probe-result.json',
+    'host-wrapper-runtime/request.json',
+    'host-wrapper-runtime/semantic-output.json',
+];
 const RETENTION_ARTIFACTS = new Set([
     'completion-candidate',
+    ...PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS,
     'review-root',
     'runtime/prompt.json',
     'runtime/schema.json',
@@ -72,31 +79,38 @@ export function readProviderRetentionReceipt(paths, requestedInvocationId) {
     let raw;
     try {
         const descriptor = fs.openSync(receiptPath, fs.constants.O_RDONLY |
-            (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW));
+            (process.platform === 'win32'
+                ? 0
+                : fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK));
         try {
             const opened = fs.fstatSync(descriptor);
             assertPrivateRegularFile(opened);
-            if (!sameIdentity(stats, opened))
+            if (!sameStableFile(stats, opened) ||
+                opened.size >= PROVIDER_RETENTION_MAX_RECEIPT_BYTES) {
                 throw receiptUnsafe();
-            const bytes = fs.readFileSync(descriptor);
+            }
+            const expectedBytes = opened.size;
+            const buffer = Buffer.alloc(expectedBytes + 1);
+            let offset = 0;
+            while (offset < buffer.length) {
+                const count = fs.readSync(descriptor, buffer, offset, buffer.length - offset, offset);
+                if (count === 0)
+                    break;
+                offset += count;
+            }
             const afterOpened = fs.fstatSync(descriptor);
             const afterPath = fs.lstatSync(receiptPath, { throwIfNoEntry: false });
-            if (bytes.byteLength >= PROVIDER_RETENTION_MAX_RECEIPT_BYTES ||
-                bytes.byteLength !== opened.size ||
+            if (offset !== expectedBytes ||
                 !afterPath ||
-                !sameIdentity(opened, afterOpened) ||
-                !sameIdentity(afterOpened, afterPath) ||
-                opened.mtimeMs !== afterOpened.mtimeMs ||
-                opened.ctimeMs !== afterOpened.ctimeMs ||
-                afterOpened.size !== bytes.byteLength ||
-                afterPath.size !== bytes.byteLength) {
+                !sameStableFile(opened, afterOpened) ||
+                !sameStableFile(opened, afterPath)) {
                 throw receiptUnsafe();
             }
             assertRetentionDirectories(paths, true);
             if (fs.realpathSync(receiptPath) !== path.resolve(receiptPath)) {
                 throw receiptUnsafe();
             }
-            raw = bytes.toString('utf8');
+            raw = buffer.subarray(0, offset).toString('utf8');
         }
         finally {
             fs.closeSync(descriptor);
@@ -225,7 +239,8 @@ function assertProviderRetentionReceipt(value) {
     const artifacts = value.artifacts.map(assertArtifact);
     const names = artifacts.map(({ name }) => name);
     if (new Set(names).size !== names.length ||
-        canonicalJson(names) !== canonicalJson([...names].sort())) {
+        canonicalJson(names) !== canonicalJson([...names].sort()) ||
+        !isValidHostWrapperArtifactPhase(names, value.terminalState)) {
         throw receiptUnsafe();
     }
     if (value.receiptId !==
@@ -258,6 +273,18 @@ function assertProviderRetentionReceipt(value) {
         ...value,
         artifacts,
     });
+}
+function isValidHostWrapperArtifactPhase(names, terminalState) {
+    const observed = new Set(names.filter((name) => PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.includes(name)));
+    if (observed.size === 0)
+        return true;
+    if (terminalState === 'succeeded' &&
+        observed.size !== PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.length) {
+        return false;
+    }
+    const expected = new Set(PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.slice(0, observed.size));
+    return (expected.size === observed.size &&
+        [...expected].every((name) => observed.has(name)));
 }
 function assertArtifact(value) {
     if (!isRecord(value) ||
@@ -333,6 +360,14 @@ export function assertRetentionDirectories(paths, required) {
 }
 function sameIdentity(left, right) {
     return left.dev === right.dev && left.ino === right.ino;
+}
+function sameStableFile(left, right) {
+    return (sameIdentity(left, right) &&
+        left.mode === right.mode &&
+        left.nlink === right.nlink &&
+        left.size === right.size &&
+        left.mtimeMs === right.mtimeMs &&
+        left.ctimeMs === right.ctimeMs);
 }
 function isRetentionReceiptError(error) {
     return (error instanceof Error &&

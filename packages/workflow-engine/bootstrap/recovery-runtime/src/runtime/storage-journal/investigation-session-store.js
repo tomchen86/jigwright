@@ -11,20 +11,29 @@ const SAMPLE_AUDIT_OUTCOMES = new Set([
     'type-wrong',
 ]);
 import { deriveAuthorityAuditRepositoryId } from "./authority-audit-ledger.js";
-import { exactUnsafePathObservationDigest, readEvidenceNode, readEvidenceRefs, readInvestigationEvidenceRefsClosure, observeInvestigationEvidenceRefsAmbiguities, resolvePlanReviewInvocationOwner, } from "./evidence-object-store.js";
-import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
+import { exactUnsafePathObservationDigest, readEvidenceNode, readInvestigationEvidenceRefsClosure, observeInvestigationEvidenceRefsAmbiguities, resolvePlanReviewInvocationOwner, } from "./evidence-object-store.js";
+import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { assertReadOnlyProbe } from "../../modules/provider-orchestration/execution-core.js";
 import { assertHumanRevocationAuthorization, authorizeHumanRevocation, canonicalHumanRevocationAuthorization, digestHumanRevocationSubject, } from "../../application/control-plane/human-revocation.js";
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
 import { INVESTIGATION_LIMITS, previewInvestigationTermUnion, } from "../../modules/investigation/domain/investigation-terms.js";
+import { PLAN_REVIEW_OUTPUT_SCHEMA, PLAN_REVIEW_OUTPUT_VALIDATOR, } from "../../modules/assurance/plan-review.js";
+import { TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA, TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR, TASK_DIFF_REVIEW_OUTPUT_SCHEMA, TASK_DIFF_REVIEW_OUTPUT_VALIDATOR, } from "../../modules/assurance/task-diff-review-artifact.js";
+import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, } from "../../modules/provider-orchestration/task-strategy-implementation-output.js";
 import { WORKFLOW_SUPERSEDE_REASONS, validateWorkflowSupersedeReason, } from "../../modules/authority/intervention-control.js";
 import { assertProviderInvocationCancellationRequestV1 } from "../../modules/authority/provider-invocation-cancellation-grant.js";
 import { PROPOSE_POLICY_DIGEST, recreateProviderInvocationRequest, } from "../../modules/provider-orchestration/provider-contracts.js";
+import { BLIND_SURVEY_OUTPUT_SCHEMA, validateBlindSurveyOutput, } from "../../modules/provider-orchestration/blind-survey-output.js";
+import { assertAgentRuntimeCompletionReceipt, assertProviderProcessResult, } from "../../modules/provider-orchestration/provider-runtime-evidence.js";
+import { assertAgentRuntimeDurableAssignmentAuthorityV1, assertAgentRuntimeDurableNativeSessionAuthorityV1, assertChangeRoleAssignmentRefV1, assertProviderNativeSessionClaimRefV1, assertProviderNativeSessionCompletionRefV1, } from "../../modules/provider-orchestration/agent-runtime-durable-authority.js";
+import { assertProviderNativeSessionCompletionV1, assertProviderNativeSessionHandleV1, } from "../../modules/provider-orchestration/provider-native-session.js";
 import { inspectProviderInvocationSupersessionRelations } from "../provider-execution/provider-invocation-supersession-schema.js";
 import { assertDurableProviderExecutionBudgetAuthority, validateProviderExecutionBudgetAuthority, } from "../provider-execution/provider-execution-policy-authority.js";
-import { providerRetentionArtifact, providerRetentionReviewRootArtifact, readCompleteProviderRetentionReceipt, readProviderRetentionReceipt, } from "./provider-retention-receipt.js";
+import { PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS, providerRetentionArtifact, providerRetentionReviewRootArtifact, readCompleteProviderRetentionReceipt, readProviderRetentionReceipt, } from "./provider-retention-receipt.js";
+import { MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES, assertDurableExecutionAdmissionState, assertProviderExecutionAdmissionAuthority, providerExecutionAdmissionAuthorityPath, } from "./provider-execution-admission-authority.js";
 import { isProposeExemptionInvestigationId, readProposeExemptionSession, } from "./propose-exemption-store.js";
 import { assertChangeId, assertInvestigationId, assertInvocationId, } from "../session-workspace/paths.js";
+import { changeRoleAssignmentObjectPathV1, changeRoleAssignmentRefPathV1, changeRoleAssignmentStorePathsV1, providerNativeSessionClaimObjectPathV1, providerNativeSessionClaimRefPathV1, providerNativeSessionCompletionObjectPathV1, providerNativeSessionCompletionRefPathV1, providerNativeSessionContinuationAuthorityObjectPathV1, providerNativeSessionHandleObjectPathV1, providerNativeSessionStorePathsV1, } from "../session-workspace/provider-runtime-authority-paths.js";
 const DIGEST = /^[0-9a-f]{64}$/;
 const PROVIDER_REPAIR_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -35,6 +44,14 @@ const HUMAN_RESOLUTION_GRANT_FILE = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89a
 const HUMAN_RESOLUTION_GRANT_TEMPORARY = /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json\.[1-9][0-9]*\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
 const MAX_CHECKPOINT_BYTES = 1_048_576;
 const MAX_HUMAN_RESOLUTION_BYTES = 1_048_576;
+const MAX_PROVIDER_ASSIGNMENT_AUTHORITY_BYTES = 2 * 1_024 * 1_024;
+const MAX_PROVIDER_NATIVE_AUTHORITY_BYTES = 512 * 1_024;
+const MAX_PROVIDER_AUTHORITY_REF_BYTES = 2 * 1_024;
+const MAX_PROVIDER_CONTINUATION_AUTHORITY_BYTES = 8 * 1_024;
+const MAX_PROVIDER_COMPLETION_CANDIDATE_BYTES = 16 * 1_024 * 1_024;
+const MAX_PROVIDER_ADMISSION_AUTHORITY_FILES = 10_000;
+const PROVIDER_ADMISSION_AUTHORITY_FILE = /^[0-9a-f]{64}\.json$/u;
+const PROVIDER_ADMISSION_AUTHORITY_TEMPORARY = /^[0-9a-f]{64}\.json\.[1-9][0-9]*\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/u;
 const BLIND_PROVIDER_CORE_ROOT_FILES = [
     'manifest.json',
     'request.json',
@@ -46,6 +63,18 @@ const BLIND_PROVIDER_RUNTIME_FILES = [
     'schema.json',
     'semantic-output.json',
 ];
+const HOST_WRAPPER_PROBE_DIRECTORY = 'host-wrapper-probe-runtime';
+const HOST_WRAPPER_PROBE_FILES = ['probe-result.json', 'request.json'];
+const HOST_WRAPPER_TURN_DIRECTORY = 'host-wrapper-runtime';
+const HOST_WRAPPER_TURN_FILES = [
+    'request.json',
+    'semantic-output.json',
+];
+const HOST_WRAPPER_DIRECTORIES = [
+    HOST_WRAPPER_PROBE_DIRECTORY,
+    HOST_WRAPPER_TURN_DIRECTORY,
+];
+const MAX_HOST_WRAPPER_PROBE_BYTES = 64 * 1_024;
 const OPTIONAL_PROVIDER_ROOT_FILES = [
     'cancellation-request.json',
     'repair-evidence.json',
@@ -423,27 +452,6 @@ export function assertHumanResolutionDecision(value) {
     }
     throw humanResolutionInvalid('Human resolution decision is unsupported.');
 }
-/**
- * Parses only the supersede shape signed before a canonical reason was
- * required. The returned value is deliberately not a HumanResolutionDecision:
- * callers may inspect or verify historical bytes, but cannot feed it into a
- * current grant, node, or lifecycle transition.
- */
-export function assertLegacySupersedeHumanResolutionDecisionReadOnly(value) {
-    if (!isRecord(value) ||
-        value.kind !== 'supersede' ||
-        !hasExactKeys(value, ['kind', 'parameters']) ||
-        !isRecord(value.parameters) ||
-        !hasExactKeys(value.parameters, ['successorInvestigationId']) ||
-        (value.parameters.successorInvestigationId !== null &&
-            typeof value.parameters.successorInvestigationId !== 'string')) {
-        throw humanResolutionInvalid('Legacy supersede decision is not a read-only historical record.');
-    }
-    if (typeof value.parameters.successorInvestigationId === 'string') {
-        assertInvestigationId(value.parameters.successorInvestigationId);
-    }
-    return deepFreeze(structuredClone(value));
-}
 export function assertHumanResolutionConsequences(value) {
     if (!isRecord(value) ||
         !hasExactKeys(value, ['continuity', 'assurance', 'claimsWaived']) ||
@@ -559,6 +567,9 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
             'lease',
             'result',
             'failure',
+            ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+                ? ['runtimeReceipt']
+                : []),
             'createdAt',
             'updatedAt',
         ]) ||
@@ -618,6 +629,9 @@ export function readProviderInvocationLifecycleProjection(paths, requestedInvoca
             manifest.kind !== 'task-strategy-implementation-manifest')) {
         throw providerInvocationUnsafe();
     }
+    const runtimeEvidence = assertProviderInvocationRuntimeEvidence(value, request, providerInvocationUnsafe);
+    assertProviderInvocationOutputManifestBinding(runtimeEvidence, manifest, providerInvocationUnsafe);
+    assertProviderRuntimeDurableAuthorities(paths, request, runtimeEvidence, runtimeEvidence.result, runtimeEvidence.runtimeReceipt, providerInvocationUnsafe);
     assertInvestigationId(value.investigationId);
     assertChangeId(value.changeId);
     if ((value.state === 'prepared' &&
@@ -1104,9 +1118,9 @@ export function ensurePrivateInvestigationDirectory(paths, directory, makeError)
 export function assertPrivateInvestigationDirectory(paths, directory, makeError) {
     walkPrivateDirectory(paths, directory, makeError, false);
 }
-export function readPrivateCanonicalJson(paths, filePath, makeError) {
+export function readPrivateCanonicalJson(paths, filePath, makeError, maxBytes = MAX_HUMAN_RESOLUTION_BYTES) {
     walkPrivateDirectory(paths, path.dirname(filePath), makeError, false);
-    const content = readPrivateFile(filePath, makeError);
+    const content = readPrivateFile(filePath, makeError, maxBytes);
     let value;
     try {
         value = JSON.parse(content);
@@ -1119,12 +1133,17 @@ export function readPrivateCanonicalJson(paths, filePath, makeError) {
     }
     return value;
 }
-export function createPrivateCanonicalJson(paths, filePath, value, makeError, collisionCode) {
+export function createPrivateCanonicalJson(paths, filePath, value, makeError, collisionCode, maxBytes = MAX_HUMAN_RESOLUTION_BYTES) {
     const content = `${canonicalJson(value)}\n`;
+    if (!Number.isSafeInteger(maxBytes) ||
+        maxBytes < 0 ||
+        Buffer.byteLength(content, 'utf8') > maxBytes) {
+        throw makeError();
+    }
     ensurePrivateInvestigationDirectory(paths, path.dirname(filePath), makeError);
     const existing = fs.lstatSync(filePath, { throwIfNoEntry: false });
     if (existing) {
-        if (readPrivateFile(filePath, makeError) === content) {
+        if (readPrivateFile(filePath, makeError, maxBytes) === content) {
             return;
         }
         throw workflowError(collisionCode, 'A different durable investigation record already exists.', ExitCode.conflict);
@@ -1133,7 +1152,7 @@ export function createPrivateCanonicalJson(paths, filePath, value, makeError, co
     try {
         const raced = fs.lstatSync(filePath, { throwIfNoEntry: false });
         if (raced) {
-            if (readPrivateFile(filePath, makeError) === content) {
+            if (readPrivateFile(filePath, makeError, maxBytes) === content) {
                 return;
             }
             throw workflowError(collisionCode, 'A different durable investigation record already exists.', ExitCode.conflict);
@@ -2198,12 +2217,7 @@ function assertInvestigationSession(value) {
             'branch',
             'baseline',
             'intentDigest',
-            ...(Object.prototype.hasOwnProperty.call(value, 'implementationReconciliationPolicyDigest')
-                ? ['implementationReconciliationPolicyDigest']
-                : []),
-            ...(Object.prototype.hasOwnProperty.call(value, 'planReviewCoveragePolicyDigest')
-                ? ['planReviewCoveragePolicyDigest']
-                : []),
+            'planReviewCoveragePolicyDigest',
             'blindManifestDigest',
             'blindRequestDigest',
             'blindInvocationIds',
@@ -2234,10 +2248,7 @@ function assertInvestigationSession(value) {
         (value.branch !== null && typeof value.branch !== 'string') ||
         !isBaseline(value.baseline) ||
         !isDigest(value.intentDigest) ||
-        (Object.prototype.hasOwnProperty.call(value, 'implementationReconciliationPolicyDigest') &&
-            !isDigest(value.implementationReconciliationPolicyDigest)) ||
-        (Object.prototype.hasOwnProperty.call(value, 'planReviewCoveragePolicyDigest') &&
-            !isDigest(value.planReviewCoveragePolicyDigest)) ||
+        !isDigest(value.planReviewCoveragePolicyDigest) ||
         !isDigest(value.blindManifestDigest) ||
         !isDigest(value.blindRequestDigest) ||
         !isStringArray(value.blindInvocationIds) ||
@@ -2319,7 +2330,6 @@ function assertMonotonicSessionTransition(current, next) {
         'branch',
         'baseline',
         'intentDigest',
-        'implementationReconciliationPolicyDigest',
         'planReviewCoveragePolicyDigest',
         'blindManifestDigest',
         'createdAt',
@@ -2701,18 +2711,21 @@ function writePrivateTemporary(filePath, content) {
         throw error;
     }
 }
-function readPrivateFile(filePath, makeError) {
-    return readPrivateBuffer(filePath, makeError).toString('utf8');
+function readPrivateFile(filePath, makeError, maxBytes = MAX_HUMAN_RESOLUTION_BYTES) {
+    return readPrivateBuffer(filePath, makeError, maxBytes).toString('utf8');
 }
-function readPrivateBuffer(filePath, makeError) {
+function readPrivateBuffer(filePath, makeError, maxBytes = MAX_HUMAN_RESOLUTION_BYTES) {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
+        throw makeError();
+    }
     const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (!before) {
+    if (!before || before.size > maxBytes) {
         throw makeError();
     }
     assertPrivateFile(before, makeError);
     let descriptor;
     try {
-        descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
     }
     catch {
         throw makeError();
@@ -2720,10 +2733,28 @@ function readPrivateBuffer(filePath, makeError) {
     try {
         const opened = fs.fstatSync(descriptor);
         assertPrivateFile(opened, makeError);
-        if (opened.dev !== before.dev || opened.ino !== before.ino) {
+        if (opened.dev !== before.dev ||
+            opened.ino !== before.ino ||
+            opened.size > maxBytes) {
             throw makeError();
         }
-        return fs.readFileSync(descriptor);
+        const content = Buffer.alloc(opened.size + 1);
+        let offset = 0;
+        while (offset < content.length) {
+            const count = fs.readSync(descriptor, content, offset, content.length - offset, offset);
+            if (count === 0)
+                break;
+            offset += count;
+        }
+        const afterDescriptor = fs.fstatSync(descriptor);
+        const afterPath = fs.lstatSync(filePath, { throwIfNoEntry: false });
+        if (offset !== opened.size ||
+            !afterPath ||
+            !sameStablePrivateFile(opened, afterDescriptor) ||
+            !sameStablePrivateFile(opened, afterPath)) {
+            throw makeError();
+        }
+        return content.subarray(0, offset);
     }
     finally {
         fs.closeSync(descriptor);
@@ -4105,40 +4136,94 @@ function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
             if (!name.endsWith('.json'))
                 continue;
             const changeId = name.slice(0, -'.json'.length);
-            let refs;
+            let closure;
             try {
                 assertChangeId(changeId);
-                refs = readEvidenceRefs(paths, changeId);
+                closure = readInvestigationEvidenceRefsClosure(paths, changeId);
             }
             catch {
                 continue;
             }
+            const refs = closure.snapshot.refs;
+            if (refs === null)
+                continue;
             const nodeId = refs['propose/plan-review-request'];
             if (nodeId === undefined)
                 continue;
             const node = readEvidenceNode(paths, nodeId);
+            const output = node.output;
+            const retryShape = isRecord(output) && output.retry !== null;
+            const closureEntries = closure.entries.filter((entry) => entry.refName === 'propose/plan-review-request');
             if (node.type !== 'plan-review-request-reservation' ||
                 node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
+                node.evaluator !== 'workflow-propose.v1' ||
+                node.policyDigest !== PROPOSE_POLICY_DIGEST ||
                 node.outputSchema !==
                     'workflow.plan-review-request-reservation-output.v3' ||
-                !isRecord(node.output) ||
-                !isRecord(node.output.retry) ||
-                !isRecord(node.output.retry.executionPolicySnapshot) ||
-                !isRecord(node.output.request)) {
+                !isRecord(output) ||
+                !hasExactKeys(output, [
+                    'investigationId',
+                    'changeId',
+                    'planning',
+                    'subject',
+                    'assignment',
+                    'author',
+                    'materializationNode',
+                    'targetSnapshotNode',
+                    'manifest',
+                    'request',
+                    'grantAuthorization',
+                    'retry',
+                ]) ||
+                !hasExactKeys(node.exactInputDigests, [
+                    'manifest',
+                    'request',
+                    'subject',
+                    'targetSnapshot',
+                    ...(retryShape ? ['previousRequest', 'failure'] : []),
+                    ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
+                ]) ||
+                !hasExactKeys(node.provenanceParentNodeIds, [
+                    'authorization',
+                    ...(retryShape ? ['previousRequest'] : []),
+                ]) ||
+                !hasExactKeys(node.semanticParentResultDigests, [
+                    'authorization',
+                    ...(retryShape ? ['previousRequest'] : []),
+                ]) ||
+                output.changeId !== changeId ||
+                closureEntries.length !== 1 ||
+                closureEntries[0]?.nodeId !== nodeId ||
+                closureEntries[0]?.ownerInvestigationId !== output.investigationId ||
+                !isRecord(output.request)) {
                 continue;
             }
-            const request = recreateProviderInvocationRequest(node.output.request);
-            if (request.invocationId !== invocationId)
+            const request = recreateProviderInvocationRequest(output.request);
+            if (request.invocationId !== invocationId ||
+                request.requestDigest !== node.exactInputDigests.request ||
+                request.authorizationNodeId !==
+                    node.provenanceParentNodeIds.authorization) {
                 continue;
+            }
             const storedSnapshot = readPrivateCanonicalJson(paths, path.join(directory, 'execution-policy.json'), providerInvocationUnsafe);
             assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
-            assertProviderExecutionPolicySnapshot(paths, node.output.retry.executionPolicySnapshot, request);
-            if (canonicalJson(storedSnapshot) !==
-                canonicalJson(node.output.retry.executionPolicySnapshot)) {
+            if (output.retry === null) {
+                // Initial PlanReview publication stores policy before creating the
+                // invocation. A V3 reservation with retry:null is its sole durable
+                // recovery authority for that policy-only crash window. The exact
+                // current refs closure above proves that this is not an orphan or a
+                // rebound V3-labeled object.
+                return true;
+            }
+            if (!isRecord(output.retry) ||
+                !isRecord(output.retry.executionPolicySnapshot)) {
                 continue;
             }
-            // The ref parser plus node identity bind the recovery journal; the full
-            // closure is evaluated by status before the reservation is consumed.
+            assertProviderExecutionPolicySnapshot(paths, output.retry.executionPolicySnapshot, request);
+            if (canonicalJson(storedSnapshot) !==
+                canonicalJson(output.retry.executionPolicySnapshot)) {
+                continue;
+            }
             return true;
         }
     }
@@ -4146,6 +4231,488 @@ function isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId) {
         return false;
     }
     return false;
+}
+function readCurrentProviderAdmissionGeneration(paths, request, generation, makeError) {
+    if (generation.state !== 'succeeded' && generation.state !== 'failed') {
+        return null;
+    }
+    const directory = path.join(paths.root, 'execution', 'admission-authorities');
+    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
+    if (stats === undefined)
+        return null;
+    if (!stats.isDirectory() || stats.isSymbolicLink())
+        throw makeError();
+    try {
+        assertPrivateInvestigationDirectory(paths, directory, makeError);
+        const names = fs.readdirSync(directory).sort();
+        if (names.length > MAX_PROVIDER_ADMISSION_AUTHORITY_FILES) {
+            throw makeError();
+        }
+        const matches = [];
+        for (const name of names) {
+            if (PROVIDER_ADMISSION_AUTHORITY_TEMPORARY.test(name))
+                continue;
+            if (!PROVIDER_ADMISSION_AUTHORITY_FILE.test(name))
+                throw makeError();
+            const authority = assertProviderExecutionAdmissionAuthority(readPrivateCanonicalJson(paths, path.join(directory, name), makeError, MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES), makeError);
+            if (path.basename(providerExecutionAdmissionAuthorityPath(paths, authority.acceptanceBinding)) !== name) {
+                throw makeError();
+            }
+            const binding = authority.acceptanceBinding;
+            if (binding.invocationId === generation.invocationId &&
+                binding.requestDigest === request.requestDigest &&
+                binding.invocationRevision + 1 === generation.revision &&
+                binding.leaseGeneration === generation.leaseGeneration) {
+                matches.push(authority);
+            }
+        }
+        if (matches.length > 1)
+            throw makeError();
+        return matches[0] ?? null;
+    }
+    catch {
+        throw makeError();
+    }
+}
+function assertCurrentProviderCompletionCandidateReceipt(paths, request, generation, result, receipt, makeError) {
+    if (generation.state !== 'succeeded')
+        return;
+    if (result === null)
+        throw makeError();
+    const candidatePath = path.join(paths.root, 'execution', 'completion-candidates', `${sha256(generation.invocationId)}.json`);
+    const stats = fs.lstatSync(candidatePath, { throwIfNoEntry: false });
+    if (stats === undefined) {
+        assertRetainedProviderCompletionCandidateReceipt(paths, request, generation, makeError);
+        return;
+    }
+    try {
+        const value = readPrivateCanonicalJson(paths, candidatePath, makeError, MAX_PROVIDER_COMPLETION_CANDIDATE_BYTES);
+        if (!isRecord(value) ||
+            !hasExactKeys(value, [
+                'candidateDigest',
+                'completedAt',
+                'expectedInvocationRevision',
+                'invocationId',
+                'kind',
+                'leaseGeneration',
+                'leaseTokenDigest',
+                'requestDigest',
+                'result',
+                ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+                    ? ['runtimeReceipt']
+                    : []),
+                'schemaVersion',
+            ]) ||
+            value.schemaVersion !== 1 ||
+            value.kind !== 'provider-completion-candidate' ||
+            value.invocationId !== generation.invocationId ||
+            value.requestDigest !== request.requestDigest ||
+            !Number.isSafeInteger(value.expectedInvocationRevision) ||
+            value.expectedInvocationRevision < 0 ||
+            value.expectedInvocationRevision + 1 !==
+                generation.revision ||
+            !Number.isSafeInteger(value.leaseGeneration) ||
+            value.leaseGeneration < 1 ||
+            value.leaseGeneration !== generation.leaseGeneration ||
+            !isDigest(value.leaseTokenDigest) ||
+            !isTimestamp(value.completedAt) ||
+            !isDigest(value.candidateDigest) ||
+            canonicalJson(value.result) !== canonicalJson(result)) {
+            throw makeError();
+        }
+        const body = { ...value };
+        delete body.candidateDigest;
+        if (sha256(canonicalJson(body)) !== value.candidateDigest) {
+            throw makeError();
+        }
+        const candidateReceipt = Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+            ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt, makeError)
+            : null;
+        if (candidateReceipt !== null &&
+            (candidateReceipt.invocationId !== generation.invocationId ||
+                candidateReceipt.requestDigest !== request.requestDigest ||
+                candidateReceipt.leasedRevision !== value.expectedInvocationRevision ||
+                candidateReceipt.terminalRevision !== generation.revision ||
+                candidateReceipt.leaseGeneration !== generation.leaseGeneration ||
+                candidateReceipt.terminalState !== 'succeeded')) {
+            throw makeError();
+        }
+        if (canonicalJson(receipt) !== canonicalJson(candidateReceipt)) {
+            throw makeError();
+        }
+    }
+    catch {
+        throw makeError();
+    }
+}
+function assertRetainedProviderCompletionCandidateReceipt(paths, request, generation, makeError) {
+    try {
+        const retentionReceipt = readCompleteProviderRetentionReceipt(paths, generation.invocationId, {
+            requestDigest: request.requestDigest,
+            manifestDigest: generation.manifestDigest,
+            invocationRevision: generation.revision,
+            terminalState: 'succeeded',
+            terminalAt: generation.updatedAt,
+        });
+        const retainedCandidate = retentionReceipt === null
+            ? null
+            : providerRetentionArtifact(retentionReceipt, 'completion-candidate');
+        // The pruning transaction publishes this descriptor only after validating
+        // the complete Job/Attempt, provider record, prompt context, and canonical
+        // candidate bytes. Its complete self-digesting receipt is the durable
+        // replacement for the intentionally deleted raw candidate; terminal state
+        // cannot recreate the candidate's pre-terminal lease bytes.
+        if (retainedCandidate === null)
+            throw makeError();
+    }
+    catch {
+        throw makeError();
+    }
+}
+function assertProviderExecutionAdmissionAuthorityForRuntime(paths, request, generation, receipt, makeError) {
+    const authority = readCurrentProviderAdmissionGeneration(paths, request, generation, makeError);
+    if (authority === null) {
+        if (generation.state === 'succeeded' || receipt?.schemaVersion === 4) {
+            throw makeError();
+        }
+        return;
+    }
+    if (authority.receiptRequirement === 'synchronous-no-activity') {
+        if (receipt !== null)
+            throw makeError();
+        return;
+    }
+    if (receipt?.schemaVersion !== 4 ||
+        receipt.acceptanceBinding.receiptRequirement !== 'schema-v4' ||
+        canonicalJson(authority.acceptanceBinding) !==
+            canonicalJson(receipt.acceptanceBinding) ||
+        authority.acceptanceBindingDigest !== receipt.acceptanceBindingDigest ||
+        authority.executionStateDigest !== receipt.executionStateDigest) {
+        throw makeError();
+    }
+}
+function assertProviderInvocationOutputManifestBinding(runtimeEvidence, manifest, makeError) {
+    if (runtimeEvidence.state !== 'succeeded' ||
+        !isRecord(manifest) ||
+        manifest.kind !== 'task-strategy-implementation-manifest') {
+        return;
+    }
+    const output = runtimeEvidence.result?.output;
+    if (!isRecord(manifest.subject) ||
+        !isRecord(output) ||
+        output.sessionId !== manifest.subject.sessionId ||
+        output.sourceTree !== manifest.subject.sourceTree) {
+        throw makeError();
+    }
+}
+export function readAcceptedProviderInvocationRuntimeReceiptAuthority(paths, invocationId, makeError = providerInvocationUnsafe) {
+    const directory = path.join(paths.invocations, invocationId);
+    let request;
+    try {
+        request = recreateProviderInvocationRequest(readPrivateCanonicalJson(paths, path.join(directory, 'request.json'), makeError));
+    }
+    catch {
+        throw makeError();
+    }
+    const evidence = assertProviderInvocationRuntimeEvidence(readPrivateCanonicalJson(paths, path.join(directory, 'state.json'), makeError), request, makeError);
+    if (evidence.state !== 'succeeded' ||
+        evidence.result === null ||
+        evidence.runtimeReceipt?.schemaVersion !== 4 ||
+        evidence.runtimeReceipt.terminalState !== 'succeeded' ||
+        evidence.runtimeReceipt.terminalDisposition !== 'accepted' ||
+        evidence.runtimeReceipt.failureCode !== null ||
+        evidence.runtimeReceipt.protocolReceipt?.kind !==
+            'provider-wrapper-session-protocol-receipt' ||
+        evidence.runtimeReceipt.protocolReceipt.terminal !== 'result' ||
+        evidence.runtimeReceipt.hostExecutionBinding?.phase !== 'native-terminal' ||
+        evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim === null ||
+        evidence.runtimeReceipt.hostExecutionBinding
+            .nativeSessionCompletionDigest === null ||
+        evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
+            .invocationId !== invocationId ||
+        evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
+            .requestDigest !== request.requestDigest ||
+        evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
+            .attemptId !== evidence.runtimeReceipt.executionAttemptId) {
+        throw makeError();
+    }
+    assertCurrentProviderCompletionCandidateReceipt(paths, request, evidence, evidence.result, evidence.runtimeReceipt, makeError);
+    assertProviderExecutionAdmissionAuthorityForRuntime(paths, request, evidence, evidence.runtimeReceipt, makeError);
+    assertProviderHostAssignmentAndProbeAuthorityForRuntime(paths, request, evidence.result, evidence.runtimeReceipt, makeError);
+    const execution = assertDurableExecutionAdmissionState(readPrivateCanonicalJson(paths, path.join(paths.root, 'execution', 'jobs', `${sha256(evidence.runtimeReceipt.executionJobId)}.json`), makeError, MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES), makeError);
+    const attempt = execution.attempts.find(({ attemptId }) => attemptId === evidence.runtimeReceipt.executionAttemptId);
+    const acceptedResult = execution.results.find(({ attemptId, acceptance }) => attemptId === evidence.runtimeReceipt.executionAttemptId &&
+        acceptance === 'accepted');
+    if (execution.revision <= evidence.runtimeReceipt.executionRevision ||
+        execution.workflow.workflowId !==
+            evidence.runtimeReceipt.acceptanceBinding.ownerWorkflowId ||
+        execution.job.jobId !== evidence.runtimeReceipt.executionJobId ||
+        execution.job.acceptedAttemptId !==
+            evidence.runtimeReceipt.executionAttemptId ||
+        attempt?.status !== 'succeeded' ||
+        attempt.jobId !== evidence.runtimeReceipt.executionJobId ||
+        attempt.leaseGeneration !== evidence.runtimeReceipt.leaseGeneration ||
+        attempt.providerInvocation?.invocationId !== invocationId ||
+        attempt.providerInvocation.invocationRevision !== evidence.revision ||
+        acceptedResult?.outputDigest !== `sha256:${evidence.result.outputDigest}`) {
+        throw makeError();
+    }
+    return evidence.runtimeReceipt;
+}
+function assertProviderHostAssignmentAndProbeAuthorityForRuntime(paths, request, result, receipt, makeError) {
+    const hostBinding = receipt?.hostExecutionBinding;
+    if (hostBinding === null || hostBinding === undefined)
+        return;
+    try {
+        const assignment = hostBinding.assignmentBinding;
+        const assignmentPaths = changeRoleAssignmentStorePathsV1(paths);
+        const assignmentRef = assertChangeRoleAssignmentRefV1(readPrivateCanonicalJson(paths, changeRoleAssignmentRefPathV1(assignmentPaths, assignment.changeId, assignment.planningGeneration), makeError, MAX_PROVIDER_AUTHORITY_REF_BYTES), assignment.changeId, assignment.planningGeneration, makeError);
+        if (assignmentRef.recordDigest !== assignment.recordDigest) {
+            throw makeError();
+        }
+        const assignmentRecord = readPrivateCanonicalJson(paths, changeRoleAssignmentObjectPathV1(assignmentPaths, assignmentRef.recordDigest), makeError, MAX_PROVIDER_ASSIGNMENT_AUTHORITY_BYTES);
+        assertAgentRuntimeDurableAssignmentAuthorityV1(assignment, assignmentRecord, {
+            purpose: request.purpose,
+            providerId: request.providerId,
+            inputManifestDigest: request.inputManifestDigest,
+            targetDigest: request.targetDigest,
+        }, makeError);
+        if (hostBinding.probe !== null &&
+            result !== null &&
+            (result.runtimeObservation === null ||
+                canonicalJson(hostBinding.probe.executable) !==
+                    canonicalJson(result.runtimeObservation.executable))) {
+            throw makeError();
+        }
+    }
+    catch {
+        throw makeError();
+    }
+}
+function assertProviderHostDurableAuthoritiesForRuntime(paths, request, result, receipt, makeError, options = {}) {
+    if (receipt?.schemaVersion !== 4)
+        return;
+    const hostBinding = receipt.hostExecutionBinding;
+    if (hostBinding === null)
+        return;
+    assertProviderHostAssignmentAndProbeAuthorityForRuntime(paths, request, result, receipt, makeError);
+    try {
+        if (hostBinding.phase !== 'native-terminal') {
+            if (receipt.protocolReceipt !== null)
+                throw makeError();
+            return;
+        }
+        if (hostBinding.nativeSessionClaim === null ||
+            hostBinding.nativeSessionCompletionDigest === null) {
+            throw makeError();
+        }
+        const nativePaths = providerNativeSessionStorePathsV1(paths);
+        const turns = [];
+        for (let turn = 1; turn <= hostBinding.nativeSessionClaim.turn; turn += 1) {
+            const claimRef = assertProviderNativeSessionClaimRefV1(readPrivateCanonicalJson(paths, providerNativeSessionClaimRefPathV1(nativePaths, hostBinding.nativeSessionClaim.scope.scopeKey, turn), makeError, MAX_PROVIDER_AUTHORITY_REF_BYTES), hostBinding.nativeSessionClaim.scope.scopeKey, turn, makeError);
+            const claim = readPrivateCanonicalJson(paths, providerNativeSessionClaimObjectPathV1(nativePaths, claimRef.claimDigest), makeError, MAX_PROVIDER_NATIVE_AUTHORITY_BYTES);
+            const completionRef = assertProviderNativeSessionCompletionRefV1(readPrivateCanonicalJson(paths, providerNativeSessionCompletionRefPathV1(nativePaths, hostBinding.nativeSessionClaim.scope.scopeKey, turn), makeError, MAX_PROVIDER_AUTHORITY_REF_BYTES), hostBinding.nativeSessionClaim.scope.scopeKey, turn, claimRef.claimDigest, makeError);
+            const completion = readPrivateCanonicalJson(paths, providerNativeSessionCompletionObjectPathV1(nativePaths, completionRef.completionDigest), makeError, MAX_PROVIDER_NATIVE_AUTHORITY_BYTES);
+            const parsedCompletion = assertProviderNativeSessionCompletionV1(completion);
+            const continuationPath = providerNativeSessionContinuationAuthorityObjectPathV1(nativePaths, parsedCompletion.completionDigest);
+            const continuationExists = fs.lstatSync(continuationPath, { throwIfNoEntry: false }) !== undefined;
+            const terminalTurn = turn === hostBinding.nativeSessionClaim.turn;
+            if (terminalTurn &&
+                receipt.terminalDisposition === 'accepted' &&
+                !continuationExists &&
+                options.allowPendingNativeContinuationAuthority !== true) {
+                throw makeError();
+            }
+            if (continuationExists &&
+                terminalTurn &&
+                receipt.terminalDisposition !== 'accepted') {
+                throw makeError();
+            }
+            const runtimeReceipt = continuationExists
+                ? terminalTurn
+                    ? receipt
+                    : readAcceptedProviderInvocationRuntimeReceiptAuthority(paths, parsedCompletion.invocationId, makeError)
+                : null;
+            const continuationAuthority = continuationExists
+                ? readPrivateCanonicalJson(paths, continuationPath, makeError, MAX_PROVIDER_CONTINUATION_AUTHORITY_BYTES)
+                : null;
+            turns.push({
+                claim,
+                claimRef,
+                completion: parsedCompletion,
+                completionRef,
+                continuationAuthority,
+                runtimeReceipt,
+            });
+        }
+        const durableNative = assertAgentRuntimeDurableNativeSessionAuthorityV1({
+            embeddedClaim: hostBinding.nativeSessionClaim,
+            embeddedCompletionDigest: hostBinding.nativeSessionCompletionDigest,
+            turns,
+        }, makeError);
+        const terminalCompletion = durableNative.completion;
+        if (canonicalJson(receipt.protocolReceipt) !==
+            canonicalJson(terminalCompletion.protocolReceipt) ||
+            (receipt.terminalDisposition === 'accepted' &&
+                (terminalCompletion.disposition !== 'usable' ||
+                    terminalCompletion.usable !== true ||
+                    terminalCompletion.protocolReceipt?.terminal !== 'result')) ||
+            (receipt.terminalDisposition === 'failed-before-result' &&
+                (terminalCompletion.disposition === 'usable' ||
+                    terminalCompletion.usable !== false ||
+                    terminalCompletion.protocolReceipt?.terminal === 'result')) ||
+            (receipt.terminalDisposition === 'rejected-after-result' &&
+                (terminalCompletion.disposition !== 'rejected' ||
+                    terminalCompletion.usable !== false ||
+                    terminalCompletion.handleDigest !== null ||
+                    terminalCompletion.protocolReceipt?.terminal !== 'result'))) {
+            throw makeError();
+        }
+        for (const { completion } of durableNative.turns) {
+            if (completion.usable !== true || completion.handleDigest === null) {
+                continue;
+            }
+            assertProviderNativeSessionHandleV1(readPrivateCanonicalJson(paths, providerNativeSessionHandleObjectPathV1(nativePaths, completion.handleDigest), makeError, MAX_PROVIDER_NATIVE_AUTHORITY_BYTES), { completion, handleDigest: completion.handleDigest });
+        }
+    }
+    catch {
+        throw makeError();
+    }
+}
+export function assertProviderRuntimeDurableAuthorities(paths, request, generation, result, receipt, makeError, options = {}) {
+    assertCurrentProviderCompletionCandidateReceipt(paths, request, generation, result, receipt, makeError);
+    assertProviderExecutionAdmissionAuthorityForRuntime(paths, request, generation, receipt, makeError);
+    assertProviderHostDurableAuthoritiesForRuntime(paths, request, result, receipt, makeError, options);
+}
+/**
+ * Re-admit immutable execution and host authority before publishing a terminal
+ * completion candidate or accepted Attempt result. The only relaxed edge is
+ * the success continuation marker, which cannot exist until provider state is
+ * durably committed.
+ */
+export function assertProviderRuntimeTerminalAuthorityPreflight(paths, request, generation, result, receipt, makeError) {
+    if (generation.state !== 'succeeded' && generation.state !== 'failed') {
+        throw makeError();
+    }
+    assertProviderExecutionAdmissionAuthorityForRuntime(paths, request, generation, receipt, makeError);
+    assertProviderHostDurableAuthoritiesForRuntime(paths, request, result, receipt, makeError, { allowPendingNativeContinuationAuthority: true });
+}
+function assertProviderInvocationRuntimeEvidence(value, request, makeError) {
+    if (!isRecord(value) ||
+        !hasExactKeys(value, [
+            'schemaVersion',
+            'invocationId',
+            'investigationId',
+            'changeId',
+            ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
+                ? ['mandateBinding']
+                : []),
+            'attempt',
+            'revision',
+            'state',
+            'providerId',
+            'purpose',
+            'requestDigest',
+            'manifestDigest',
+            'leaseGeneration',
+            'lease',
+            'result',
+            'failure',
+            ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+                ? ['runtimeReceipt']
+                : []),
+            'createdAt',
+            'updatedAt',
+        ]) ||
+        value.schemaVersion !== 1 ||
+        value.invocationId !== request.invocationId ||
+        typeof value.investigationId !== 'string' ||
+        typeof value.changeId !== 'string' ||
+        (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
+            !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
+        !Number.isSafeInteger(value.attempt) ||
+        value.attempt < 1 ||
+        !Number.isSafeInteger(value.revision) ||
+        value.revision < 0 ||
+        !['prepared', 'leased', 'succeeded', 'failed'].includes(String(value.state)) ||
+        value.providerId !== request.providerId ||
+        value.purpose !== request.purpose ||
+        value.requestDigest !== request.requestDigest ||
+        !isDigest(value.manifestDigest) ||
+        !Number.isSafeInteger(value.leaseGeneration) ||
+        value.leaseGeneration < 0 ||
+        !isProviderInvocationLifecycleLease(value.lease) ||
+        !isProviderInvocationFailureShape(value.failure) ||
+        !isTimestamp(value.createdAt) ||
+        !isTimestamp(value.updatedAt)) {
+        throw makeError();
+    }
+    try {
+        assertInvocationId(value.invocationId);
+        assertInvestigationId(value.investigationId);
+        assertChangeId(value.changeId);
+    }
+    catch {
+        throw makeError();
+    }
+    const result = value.state === 'succeeded'
+        ? assertProviderProcessResult(request, value.result, providerLifecycleOutputValidator(request, makeError), makeError)
+        : null;
+    const runtimeReceipt = Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+        ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt, makeError)
+        : null;
+    if ((value.state === 'prepared' &&
+        (value.lease !== null ||
+            value.result !== null ||
+            value.failure !== null)) ||
+        (value.state === 'leased' &&
+            (value.lease === null ||
+                value.result !== null ||
+                value.failure !== null)) ||
+        (value.state === 'succeeded' &&
+            (value.lease !== null || result === null || value.failure !== null)) ||
+        (value.state === 'failed' &&
+            (value.lease !== null ||
+                value.result !== null ||
+                value.failure === null)) ||
+        (value.lease !== null &&
+            value.lease.generation !== value.leaseGeneration) ||
+        (runtimeReceipt !== null &&
+            (runtimeReceipt.terminalState !== value.state ||
+                runtimeReceipt.invocationId !== value.invocationId ||
+                runtimeReceipt.requestDigest !== value.requestDigest ||
+                runtimeReceipt.terminalRevision !== value.revision ||
+                runtimeReceipt.leaseGeneration !== value.leaseGeneration ||
+                (runtimeReceipt.schemaVersion === 4 &&
+                    runtimeReceipt.failureCode !==
+                        (value.state === 'failed'
+                            ? value.failure.code
+                            : null))))) {
+        throw makeError();
+    }
+    return deepFreeze({
+        invocationId: value.invocationId,
+        revision: value.revision,
+        leaseGeneration: value.leaseGeneration,
+        state: value.state,
+        manifestDigest: value.manifestDigest,
+        updatedAt: value.updatedAt,
+        result,
+        runtimeReceipt,
+    });
+}
+function providerLifecycleOutputValidator(request, makeError) {
+    return Object.freeze({
+        validate(value) {
+            try {
+                assertHostWrapperSemanticOutput(request, value, makeError);
+                return true;
+            }
+            catch {
+                return false;
+            }
+        },
+    });
 }
 function digestPrivateDirectoryEntries(paths, directory, makeError) {
     if (!walkPrivateDirectory(paths, directory, makeError, false)) {
@@ -4169,6 +4736,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const runtimeStats = fs.lstatSync(runtimePath, { throwIfNoEntry: false });
     const reviewRootPath = path.join(directory, 'review-root');
     const optionalRootFiles = OPTIONAL_PROVIDER_ROOT_FILES.filter((name) => rootNames.includes(name));
+    const hostWrapperDirectories = HOST_WRAPPER_DIRECTORIES.filter((name) => rootNames.includes(name));
     const rootFiles = [
         PROVIDER_POLICY_ROOT_FILE,
         ...BLIND_PROVIDER_CORE_ROOT_FILES,
@@ -4176,6 +4744,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const expectedRootNames = [
         ...rootFiles,
         ...optionalRootFiles,
+        ...hostWrapperDirectories,
         ...(runtimeStats ? ['runtime'] : []),
         ...(snapshotArtifacts === null ? [] : ['review-root']),
     ].sort();
@@ -4206,26 +4775,16 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
     catch {
         throw makeError();
     }
-    for (const name of optionalRootFiles) {
-        const content = readPrivateFile(path.join(directory, name), makeError);
-        if (Buffer.byteLength(content, 'utf8') > MAX_HUMAN_RESOLUTION_BYTES) {
-            throw makeError();
-        }
-        let parsed;
-        try {
-            parsed = JSON.parse(content);
-        }
-        catch {
-            throw makeError();
-        }
-        if (`${canonicalJson(parsed)}\n` !== content) {
-            throw makeError();
-        }
-        assertOptionalProviderRootArtifact(name, parsed, request, makeError);
-        files.push({ name, digest: sha256(content) });
+    let state;
+    try {
+        state = JSON.parse(readPrivateFile(path.join(directory, 'state.json'), makeError));
     }
-    const stateContent = readPrivateFile(path.join(directory, 'state.json'), makeError);
-    const state = JSON.parse(stateContent);
+    catch {
+        throw makeError();
+    }
+    const runtimeEvidence = assertProviderInvocationRuntimeEvidence(state, request, makeError);
+    assertProviderInvocationOutputManifestBinding(runtimeEvidence, manifest, makeError);
+    assertProviderRuntimeDurableAuthorities(paths, request, runtimeEvidence, runtimeEvidence.result, runtimeEvidence.runtimeReceipt, makeError);
     let retentionReceipt = null;
     try {
         if (isRecord(state) &&
@@ -4251,9 +4810,63 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
     catch {
         throw makeError();
     }
-    const runtimeRequired = isRecord(state) &&
-        isRecord(state.result) &&
-        state.result.runtimeObservation !== null;
+    const providerDefinitionSnapshot = runtimeEvidence.result?.runtimeObservation?.providerDefinitionSnapshot;
+    const hostExecutionBinding = runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+        ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
+        : null;
+    const retainedHostArtifacts = retentionReceipt === null
+        ? []
+        : PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.filter((name) => providerRetentionArtifact(retentionReceipt, name) !== null);
+    const succeededWithHostWrapper = runtimeEvidence.state === 'succeeded' &&
+        providerDefinitionSnapshot?.kind === 'agent-provider-profile-snapshot' &&
+        providerDefinitionSnapshot.trustTier === 'host-wrapper';
+    const hasHostWrapperArtifacts = hostWrapperDirectories.length > 0 || retainedHostArtifacts.length > 0;
+    if (runtimeEvidence.state === 'succeeded' &&
+        (succeededWithHostWrapper
+            ? hostWrapperDirectories.length !== HOST_WRAPPER_DIRECTORIES.length
+            : hostWrapperDirectories.length !== 0)) {
+        throw makeError();
+    }
+    if ((hostExecutionBinding === null &&
+        hasHostWrapperArtifacts &&
+        (runtimeEvidence.state === 'succeeded' ||
+            runtimeEvidence.state === 'failed')) ||
+        (hostExecutionBinding !== null &&
+            runtimeEvidence.state !== 'succeeded' &&
+            runtimeEvidence.state !== 'failed') ||
+        (hostExecutionBinding !== null &&
+            hostExecutionBinding.phase !== 'assignment-admitted' &&
+            !hasHostWrapperArtifacts) ||
+        (runtimeEvidence.state === 'succeeded' &&
+            (succeededWithHostWrapper
+                ? hostExecutionBinding?.phase !== 'native-terminal'
+                : hostExecutionBinding !== null))) {
+        throw makeError();
+    }
+    if (hasHostWrapperArtifacts) {
+        files.push(...digestHostWrapperRuntimeEntries(paths, directory, request, runtimeEvidence, retentionReceipt, makeError));
+    }
+    for (const name of optionalRootFiles) {
+        const content = readPrivateFile(path.join(directory, name), makeError);
+        if (Buffer.byteLength(content, 'utf8') > MAX_HUMAN_RESOLUTION_BYTES) {
+            throw makeError();
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(content);
+        }
+        catch {
+            throw makeError();
+        }
+        if (`${canonicalJson(parsed)}\n` !== content) {
+            throw makeError();
+        }
+        assertOptionalProviderRootArtifact(name, parsed, request, makeError);
+        files.push({ name, digest: sha256(content) });
+    }
+    const runtimeRequired = runtimeEvidence.result !== null &&
+        runtimeEvidence.result.runtimeObservation !== null &&
+        !succeededWithHostWrapper;
     const retainedRuntimeArtifacts = BLIND_PROVIDER_RUNTIME_FILES.map((name) => retentionReceipt === null
         ? null
         : providerRetentionArtifact(retentionReceipt, `runtime/${name}`));
@@ -4354,7 +4967,7 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
                 });
                 continue;
             }
-            const content = readPrivateBuffer(path.join(reviewRootPath, artifact.snapshotFile), makeError);
+            const content = readPrivateBuffer(path.join(reviewRootPath, artifact.snapshotFile), makeError, artifact.byteLength);
             if (content.byteLength !== artifact.byteLength ||
                 sha256(content) !== artifact.sha256 ||
                 snapshotLineCount(content) !== artifact.lineCount) {
@@ -4367,6 +4980,472 @@ function digestPrivateDirectoryEntries(paths, directory, makeError) {
         }
     }
     return files.sort((left, right) => left.name.localeCompare(right.name));
+}
+function digestHostWrapperRuntimeEntries(paths, invocationDirectory, request, runtimeEvidence, retentionReceipt, makeError) {
+    if (runtimeEvidence.state === 'prepared') {
+        throw makeError();
+    }
+    const probeDirectory = path.join(invocationDirectory, HOST_WRAPPER_PROBE_DIRECTORY);
+    const turnDirectory = path.join(invocationDirectory, HOST_WRAPPER_TURN_DIRECTORY);
+    const retainedArtifacts = retentionReceipt === null
+        ? []
+        : PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.map((name) => ({
+            name,
+            artifact: providerRetentionArtifact(retentionReceipt, name),
+        })).filter((entry) => entry.artifact !== null);
+    if (retainedArtifacts.length > 0) {
+        const hostBinding = runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+            ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
+            : null;
+        if (hostBinding === null)
+            throw makeError();
+        const retainedNames = new Set(retainedArtifacts.map(({ name }) => name));
+        const hasProbeRequest = retainedNames.has('host-wrapper-probe-runtime/request.json');
+        const hasProbeResult = retainedNames.has('host-wrapper-probe-runtime/probe-result.json');
+        const hasTurnRequest = retainedNames.has('host-wrapper-runtime/request.json');
+        const hasSemanticOutput = retainedNames.has('host-wrapper-runtime/semantic-output.json');
+        const retainedAssignmentFailure = hostBinding.phase === 'assignment-admitted' &&
+            runtimeEvidence.state === 'failed' &&
+            runtimeEvidence.runtimeReceipt?.schemaVersion === 4 &&
+            runtimeEvidence.runtimeReceipt.protocolReceipt === null &&
+            hasProbeRequest &&
+            hasProbeResult &&
+            !hasTurnRequest &&
+            !hasSemanticOutput;
+        if (hasProbeRequest !== hasProbeResult ||
+            (hostBinding.phase === 'assignment-admitted' &&
+                !retainedAssignmentFailure) ||
+            !hasProbeRequest ||
+            (hostBinding.phase === 'probe-attested' &&
+                (hasTurnRequest || hasSemanticOutput)) ||
+            (hostBinding.phase === 'native-terminal' && !hasTurnRequest) ||
+            (runtimeEvidence.state === 'succeeded' &&
+                (!hasSemanticOutput ||
+                    runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
+                    runtimeEvidence.runtimeReceipt.protocolReceipt?.kind !==
+                        'provider-wrapper-session-protocol-receipt' ||
+                    runtimeEvidence.result?.runtimeObservation
+                        ?.providerDefinitionBindingDigest !==
+                        hostBinding.probe?.providerDefinitionBindingDigest))) {
+            throw makeError();
+        }
+        if (hostBinding.probe !== null &&
+            retainedArtifacts.some(({ name, artifact }) => name === 'host-wrapper-probe-runtime/request.json'
+                ? artifact.digest !== hostBinding.probe.probeRequestFileDigest
+                : name === 'host-wrapper-probe-runtime/probe-result.json'
+                    ? artifact.digest !== hostBinding.probe.probeResultFileDigest
+                    : false)) {
+            throw makeError();
+        }
+        assertEmptyHostWrapperRetentionMarker(paths, probeDirectory, makeError);
+        assertEmptyHostWrapperRetentionMarker(paths, turnDirectory, makeError);
+        return retainedArtifacts
+            .map(({ name, artifact }) => ({ name, digest: artifact.digest }))
+            .sort((left, right) => left.name.localeCompare(right.name));
+    }
+    const probe = readHostWrapperDirectoryPhase(paths, probeDirectory, HOST_WRAPPER_PROBE_FILES, ['request.json', 'probe-result.json'], new Map([
+        ['request.json', MAX_HOST_WRAPPER_PROBE_BYTES],
+        ['probe-result.json', MAX_HOST_WRAPPER_PROBE_BYTES],
+    ]), new Set(['request.json']), makeError);
+    const turnStats = fs.lstatSync(turnDirectory, { throwIfNoEntry: false });
+    const turn = turnStats === undefined
+        ? null
+        : readHostWrapperDirectoryPhase(paths, turnDirectory, HOST_WRAPPER_TURN_FILES, ['request.json', 'semantic-output.json'], new Map([
+            ['request.json', MAX_HUMAN_RESOLUTION_BYTES],
+            [
+                'semantic-output.json',
+                Math.min(MAX_HUMAN_RESOLUTION_BYTES, request.limits.aggregateOutputBytes),
+            ],
+        ]), new Set(['request.json']), makeError);
+    const probeRequest = probe.get('request.json')?.value;
+    const probeResult = probe.get('probe-result.json')?.value;
+    const hostBinding = runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+        ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
+        : null;
+    if (hostBinding === null && runtimeEvidence.state !== 'leased') {
+        throw makeError();
+    }
+    const acceptanceBinding = runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+        ? runtimeEvidence.runtimeReceipt.acceptanceBinding
+        : null;
+    if (hostBinding !== null &&
+        ((hostBinding.phase === 'assignment-admitted' &&
+            (runtimeEvidence.state !== 'failed' ||
+                runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
+                runtimeEvidence.runtimeReceipt.protocolReceipt !== null ||
+                turn !== null ||
+                isAuthenticatedHostWrapperProbeResult(probeResult))) ||
+            (hostBinding.phase !== 'assignment-admitted' &&
+                (probeRequest === undefined ||
+                    probeResult === undefined ||
+                    hostBinding.probe === null)) ||
+            (hostBinding.phase === 'probe-attested' && turn !== null))) {
+        throw makeError();
+    }
+    const expectedProbeOutputPath = path.join(probeDirectory, 'probe-result.json');
+    if (probeRequest === undefined || probeRequest === null) {
+        if (turn !== null || runtimeEvidence.state === 'succeeded') {
+            throw makeError();
+        }
+        return hostWrapperArtifactDigests([[HOST_WRAPPER_PROBE_DIRECTORY, probe]]);
+    }
+    if (!hasExactKeys(probeRequest, [
+        'schemaVersion',
+        'kind',
+        'invocationId',
+        'requestDigest',
+        'executionAttemptId',
+        'acceptanceBindingDigest',
+        'assignmentBindingDigest',
+        'providerFamily',
+        'profileDigest',
+        'providerDefinitionBindingDigest',
+        'outputFile',
+    ]) ||
+        probeRequest.schemaVersion !== 1 ||
+        probeRequest.kind !== 'agent-runtime-host-wrapper-probe-request.v1' ||
+        probeRequest.invocationId !== request.invocationId ||
+        probeRequest.requestDigest !== request.requestDigest ||
+        !isDigest(probeRequest.acceptanceBindingDigest) ||
+        !isDigest(probeRequest.assignmentBindingDigest) ||
+        (acceptanceBinding !== null &&
+            (probeRequest.executionAttemptId !==
+                acceptanceBinding.executionAttemptId ||
+                probeRequest.acceptanceBindingDigest !==
+                    acceptanceBinding.bindingDigest)) ||
+        (hostBinding !== null &&
+            probeRequest.assignmentBindingDigest !==
+                hostBinding.assignmentBindingDigest) ||
+        probeRequest.providerFamily !== request.providerId ||
+        (hostBinding !== null &&
+            (probeRequest.providerFamily !==
+                hostBinding.assignmentBinding.providerProfileSnapshot.family ||
+                probeRequest.profileDigest !==
+                    hostBinding.assignmentBinding.providerProfileSnapshot
+                        .profileDigest)) ||
+        !isDigest(probeRequest.profileDigest) ||
+        !isDigest(probeRequest.providerDefinitionBindingDigest) ||
+        probeRequest.outputFile !== expectedProbeOutputPath) {
+        throw makeError();
+    }
+    if (hostBinding?.probe !== null &&
+        hostBinding !== null &&
+        (probe.get('request.json')?.digest !==
+            hostBinding.probe.probeRequestFileDigest ||
+            probe.get('probe-result.json')?.digest !==
+                hostBinding.probe.probeResultFileDigest ||
+            hostBinding.probe.providerDefinitionBindingDigest !==
+                probeRequest.providerDefinitionBindingDigest ||
+            !isRecord(probeResult) ||
+            probeResult.providerVersion !== hostBinding.probe.providerVersion)) {
+        throw makeError();
+    }
+    if (turn === null) {
+        if (runtimeEvidence.state === 'succeeded' ||
+            hostBinding?.phase === 'native-terminal') {
+            throw makeError();
+        }
+        return hostWrapperArtifactDigests([[HOST_WRAPPER_PROBE_DIRECTORY, probe]]);
+    }
+    if ((hostBinding !== null &&
+        (hostBinding.phase !== 'native-terminal' ||
+            hostBinding.probe === null)) ||
+        !isAuthenticatedHostWrapperProbeResult(probeResult)) {
+        throw makeError();
+    }
+    const turnRequest = turn.get('request.json')?.value;
+    const expectedSemanticOutputPath = path.join(turnDirectory, 'semantic-output.json');
+    if (turnRequest === undefined || turnRequest === null) {
+        if (runtimeEvidence.state === 'succeeded')
+            throw makeError();
+        return hostWrapperArtifactDigests([
+            [HOST_WRAPPER_PROBE_DIRECTORY, probe],
+            [HOST_WRAPPER_TURN_DIRECTORY, turn],
+        ]);
+    }
+    if (!hasExactKeys(turnRequest, [
+        'schemaVersion',
+        'kind',
+        'invocationId',
+        'requestDigest',
+        'action',
+        'prompt',
+        'outputFile',
+    ]) ||
+        turnRequest.schemaVersion !== 1 ||
+        turnRequest.kind !== 'agent-runtime-host-wrapper-turn-request.v1' ||
+        turnRequest.invocationId !== request.invocationId ||
+        turnRequest.requestDigest !== request.requestDigest ||
+        (turnRequest.action !== 'start' && turnRequest.action !== 'resume') ||
+        typeof turnRequest.prompt !== 'string' ||
+        Buffer.byteLength(turnRequest.prompt, 'utf8') >
+            MAX_HUMAN_RESOLUTION_BYTES ||
+        turnRequest.outputFile !== expectedSemanticOutputPath) {
+        throw makeError();
+    }
+    let prompt;
+    try {
+        prompt = JSON.parse(turnRequest.prompt);
+    }
+    catch {
+        throw makeError();
+    }
+    if (!isRecord(prompt) ||
+        !hasExactKeys(prompt, ['schemaVersion', 'kind', 'request']) ||
+        prompt.schemaVersion !== 1 ||
+        prompt.kind !== 'agent-runtime-host-wrapper-request.v1' ||
+        canonicalJson(prompt) !== turnRequest.prompt ||
+        !isRecord(prompt.request)) {
+        throw makeError();
+    }
+    let promptRequest;
+    try {
+        promptRequest = recreateProviderInvocationRequest(prompt.request);
+    }
+    catch {
+        throw makeError();
+    }
+    if (canonicalJson(promptRequest) !== canonicalJson(request)) {
+        throw makeError();
+    }
+    const terminalProtocolReceipt = runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+        ? runtimeEvidence.runtimeReceipt.protocolReceipt
+        : null;
+    if (terminalProtocolReceipt?.kind ===
+        'provider-wrapper-session-protocol-receipt' &&
+        (terminalProtocolReceipt.sessionAction !== turnRequest.action ||
+            (turnRequest.action === 'start'
+                ? terminalProtocolReceipt.nativeSessionIdentityMode !==
+                    'provider-observed' ||
+                    terminalProtocolReceipt.expectedNativeSessionIdDigest !== null
+                : terminalProtocolReceipt.nativeSessionIdentityMode !==
+                    'engine-supplied' ||
+                    terminalProtocolReceipt.expectedNativeSessionIdDigest === null))) {
+        throw makeError();
+    }
+    const semanticOutput = turn.get('semantic-output.json')?.value;
+    if (runtimeEvidence.state === 'succeeded') {
+        if (semanticOutput === undefined || semanticOutput === null) {
+            throw makeError();
+        }
+        assertSucceededHostWrapperStateBindings(runtimeEvidence, request, probeRequest.profileDigest, turnRequest.action, semanticOutput, makeError);
+    }
+    return hostWrapperArtifactDigests([
+        [HOST_WRAPPER_PROBE_DIRECTORY, probe],
+        [HOST_WRAPPER_TURN_DIRECTORY, turn],
+    ]);
+}
+function assertEmptyHostWrapperRetentionMarker(paths, directory, makeError) {
+    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
+    if (!stats?.isDirectory() ||
+        stats.isSymbolicLink() ||
+        !walkPrivateDirectory(paths, directory, makeError, false)) {
+        throw makeError();
+    }
+    let names;
+    try {
+        names = fs.readdirSync(directory);
+    }
+    catch {
+        throw makeError();
+    }
+    if (names.length !== 0)
+        throw makeError();
+}
+function readHostWrapperDirectoryPhase(paths, directory, expectedFiles, creationOrder, maxBytesByName, canonicalJsonFiles, makeError) {
+    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
+    if (!stats?.isDirectory() ||
+        stats.isSymbolicLink() ||
+        !walkPrivateDirectory(paths, directory, makeError, false)) {
+        throw makeError();
+    }
+    let observedFiles;
+    try {
+        observedFiles = fs.readdirSync(directory).sort();
+    }
+    catch {
+        throw makeError();
+    }
+    const allowedFileSets = Array.from({ length: creationOrder.length + 1 }, (_, length) => [...creationOrder.slice(0, length)].sort());
+    if (!allowedFileSets.some((allowed) => canonicalJson(allowed) === canonicalJson(observedFiles)) ||
+        observedFiles.some((name) => !expectedFiles.includes(name))) {
+        throw makeError();
+    }
+    return new Map(observedFiles.map((observedName) => {
+        const name = observedName;
+        return [
+            name,
+            readBoundedPrivateHostWrapperArtifact(path.join(directory, name), maxBytesByName.get(name) ?? 0, canonicalJsonFiles.has(name), makeError),
+        ];
+    }));
+}
+function readBoundedPrivateHostWrapperArtifact(filePath, maxBytes, canonicalRequired, makeError) {
+    if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
+        throw makeError();
+    }
+    const absolute = path.resolve(filePath);
+    const before = fs.lstatSync(absolute, { throwIfNoEntry: false });
+    if (!before || absolute !== filePath || before.size > maxBytes) {
+        throw makeError();
+    }
+    assertPrivateFile(before, makeError);
+    let descriptor;
+    let content;
+    try {
+        descriptor = fs.openSync(absolute, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK);
+        const opened = fs.fstatSync(descriptor);
+        assertPrivateFile(opened, makeError);
+        if (opened.dev !== before.dev ||
+            opened.ino !== before.ino ||
+            opened.size > maxBytes) {
+            throw makeError();
+        }
+        const buffer = Buffer.alloc(opened.size + 1);
+        let offset = 0;
+        while (offset < buffer.length) {
+            const count = fs.readSync(descriptor, buffer, offset, buffer.length - offset, offset);
+            if (count === 0)
+                break;
+            offset += count;
+        }
+        const afterDescriptor = fs.fstatSync(descriptor);
+        const afterPath = fs.lstatSync(absolute, { throwIfNoEntry: false });
+        if (offset !== opened.size ||
+            !afterPath ||
+            !sameStablePrivateFile(opened, afterDescriptor) ||
+            !sameStablePrivateFile(opened, afterPath)) {
+            throw makeError();
+        }
+        content = buffer.subarray(0, offset);
+    }
+    catch (error) {
+        if (error instanceof WorkflowError)
+            throw error;
+        throw makeError();
+    }
+    finally {
+        if (descriptor !== undefined)
+            fs.closeSync(descriptor);
+    }
+    let value;
+    try {
+        value = JSON.parse(content.toString('utf8'));
+    }
+    catch {
+        value = null;
+    }
+    const parsedRecord = isRecord(value) ? value : null;
+    const canonical = parsedRecord !== null &&
+        Buffer.from(`${canonicalJson(parsedRecord)}\n`, 'utf8').equals(content);
+    if (canonicalRequired && !canonical) {
+        throw makeError();
+    }
+    return {
+        content,
+        digest: sha256(content),
+        value: parsedRecord,
+    };
+}
+function sameStablePrivateFile(left, right) {
+    return (left.dev === right.dev &&
+        left.ino === right.ino &&
+        left.mode === right.mode &&
+        left.nlink === right.nlink &&
+        left.size === right.size &&
+        left.mtimeMs === right.mtimeMs &&
+        left.ctimeMs === right.ctimeMs);
+}
+function isAuthenticatedHostWrapperProbeResult(value) {
+    return (value !== null &&
+        value !== undefined &&
+        hasExactKeys(value, [
+            'schemaVersion',
+            'kind',
+            'providerVersion',
+            'authentication',
+        ]) &&
+        value.schemaVersion === 1 &&
+        value.kind === 'agent-runtime-host-wrapper-probe-result.v1' &&
+        value.authentication === 'authenticated' &&
+        typeof value.providerVersion === 'string' &&
+        value.providerVersion.length > 0 &&
+        Buffer.byteLength(value.providerVersion, 'utf8') <= 256);
+}
+function hostWrapperArtifactDigests(directories) {
+    return directories
+        .flatMap(([directory, artifacts]) => [...artifacts.entries()].map(([name, artifact]) => ({
+        name: `${directory}/${name}`,
+        digest: artifact.digest,
+    })))
+        .sort((left, right) => left.name.localeCompare(right.name));
+}
+function assertSucceededHostWrapperStateBindings(runtimeEvidence, request, profileDigest, action, semanticOutput, makeError) {
+    const result = runtimeEvidence.result;
+    const runtimeObservation = result?.runtimeObservation;
+    const providerDefinitionSnapshot = runtimeObservation?.providerDefinitionSnapshot;
+    const runtimeReceipt = runtimeEvidence.runtimeReceipt;
+    const protocolReceipt = runtimeReceipt?.schemaVersion === 4 ? runtimeReceipt.protocolReceipt : null;
+    const hostExecutionBinding = runtimeReceipt?.schemaVersion === 4
+        ? runtimeReceipt.hostExecutionBinding
+        : null;
+    if (result === null ||
+        canonicalJson(result.output) !== canonicalJson(semanticOutput) ||
+        providerDefinitionSnapshot === undefined ||
+        providerDefinitionSnapshot.kind !== 'agent-provider-profile-snapshot' ||
+        providerDefinitionSnapshot.trustTier !== 'host-wrapper' ||
+        providerDefinitionSnapshot.family !== request.providerId ||
+        providerDefinitionSnapshot.profileDigest !== profileDigest ||
+        hostExecutionBinding?.phase !== 'native-terminal' ||
+        hostExecutionBinding.probe?.providerDefinitionBindingDigest !==
+            runtimeObservation?.providerDefinitionBindingDigest ||
+        protocolReceipt === null ||
+        protocolReceipt.kind !== 'provider-wrapper-session-protocol-receipt' ||
+        protocolReceipt.protocol !== 'harness-jsonl-v2' ||
+        protocolReceipt.sessionAction !== action) {
+        throw makeError();
+    }
+}
+function assertHostWrapperSemanticOutput(request, value, makeError) {
+    try {
+        if (request.purpose === 'survey') {
+            if (canonicalJson(request.outputSchema) !==
+                canonicalJson(BLIND_SURVEY_OUTPUT_SCHEMA) ||
+                !validateBlindSurveyOutput(value, request.invocationId)) {
+                throw makeError();
+            }
+            return;
+        }
+        if (request.purpose === 'plan-review') {
+            if (canonicalJson(request.outputSchema) !==
+                canonicalJson(PLAN_REVIEW_OUTPUT_SCHEMA) ||
+                PLAN_REVIEW_OUTPUT_VALIDATOR.validate(value) !== true) {
+                throw makeError();
+            }
+            return;
+        }
+        if (request.purpose === 'task-diff-review') {
+            const continuation = canonicalJson(request.outputSchema) ===
+                canonicalJson(TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA);
+            if (continuation
+                ? TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR.validate(value) !==
+                    true
+                : canonicalJson(request.outputSchema) !==
+                    canonicalJson(TASK_DIFF_REVIEW_OUTPUT_SCHEMA) ||
+                    TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(value) !== true) {
+                throw makeError();
+            }
+            return;
+        }
+        if (request.purpose !== 'task-implementation' ||
+            canonicalJson(request.outputSchema) !==
+                canonicalJson(TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA) ||
+            TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR.validate(value) !== true) {
+            throw makeError();
+        }
+    }
+    catch {
+        throw makeError();
+    }
 }
 function planReviewSnapshotArtifacts(value, makeError) {
     if (!isRecord(value) || !Array.isArray(value.artifacts)) {
@@ -4438,9 +5517,10 @@ function assertEvidenceClosureTargetBinding(paths, targetSession, closure) {
             const node = readEvidenceNode(paths, entry.nodeId);
             const output = node.output;
             if (!isRecord(output) ||
-                !isRecord(output.subject) ||
-                !isRecord(output.subject.investigationBaseline) ||
-                canonicalJson(output.subject.investigationBaseline) !==
+                !isRecord(output.requirement) ||
+                !isRecord(output.requirement.subject) ||
+                !isRecord(output.requirement.subject.investigationBaseline) ||
+                canonicalJson(output.requirement.subject.investigationBaseline) !==
                     canonicalJson(owner.baseline)) {
                 throw humanResolutionStateInvalid();
             }
@@ -4451,45 +5531,20 @@ function assertEvidenceClosureTargetBinding(paths, targetSession, closure) {
 }
 function assertMaterializationMatchesOwnerSession(paths, node, session) {
     const output = node.output;
-    const exemption = 'kind' in session && session.kind === 'propose-exemption-session';
-    const manifestReceipt = !exemption &&
-        node.nodeSchema === 'workflow.propose-planning-materialization.v3' &&
-        node.outputSchema === 'workflow.propose-planning-materialization-output.v3';
-    if (manifestReceipt) {
-        if ('kind' in session) {
-            throw humanResolutionStateInvalid();
-        }
+    if (!('kind' in session)) {
         assertManifestMaterializationMatchesOwnerSession(paths, node, session);
         return;
     }
-    const expectedType = exemption
-        ? 'propose-exemption-planning-materialization'
-        : 'propose-planning-materialization';
-    const semanticReceipt = !exemption &&
-        node.nodeSchema === 'workflow.propose-planning-materialization.v2' &&
-        node.outputSchema === 'workflow.propose-planning-materialization-output.v2';
-    const legacyReceipt = !exemption &&
-        node.nodeSchema === 'workflow.propose-planning-materialization.v1' &&
-        node.outputSchema === 'workflow.propose-planning-materialization-output.v1';
-    const revisionMatches = isRecord(output) &&
-        (exemption
-            ? output.revision === session.revision
-            : semanticReceipt
-                ? 'semanticRevision' in session &&
-                    output.semanticRevision === session.semanticRevision
-                : legacyReceipt && output.revision === session.revision);
-    if (node.type !== expectedType ||
-        (!exemption && !semanticReceipt && !legacyReceipt) ||
+    const revisionMatches = isRecord(output) && output.revision === session.revision;
+    if (node.type !== 'propose-exemption-planning-materialization' ||
         !isRecord(output) ||
         output.investigationId !== session.investigationId ||
         output.changeId !== session.changeId ||
         !revisionMatches ||
         !isRecord(output.baseline) ||
         canonicalJson(output.baseline) !== canonicalJson(session.baseline) ||
-        (exemption &&
-            (output.applicabilityNodeId !== session.applicabilityNode.nodeId ||
-                output.applicabilityResultDigest !==
-                    session.applicabilityNode.resultDigest))) {
+        output.applicabilityNodeId !== session.applicabilityNode.nodeId ||
+        output.applicabilityResultDigest !== session.applicabilityNode.resultDigest) {
         throw humanResolutionStateInvalid();
     }
 }

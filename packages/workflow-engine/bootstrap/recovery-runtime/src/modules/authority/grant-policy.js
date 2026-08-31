@@ -98,21 +98,12 @@ export function parseGrantPolicyV2Document(document) {
 }
 export function parseGrantPolicyV2(value, options) {
     if (!isRecord(value) ||
-        !hasAllowedExactKeys(value, [
-            'schemaVersion',
-            'defaultProfile',
-            'profiles',
-            'approvalModules',
-            'legacyVerification',
-        ], ['optionalSsh']) ||
+        !hasAllowedExactKeys(value, ['schemaVersion', 'defaultProfile', 'profiles', 'approvalModules'], ['optionalSsh']) ||
         value.schemaVersion !== 2 ||
         value.defaultProfile !== 'local-presence' ||
         !isRecord(value.profiles) ||
         !Array.isArray(value.approvalModules) ||
-        value.approvalModules.length < 1 ||
-        !isRecord(value.legacyVerification) ||
-        !hasExactKeys(value.legacyVerification, ['maintainerPolicyV1']) ||
-        value.legacyVerification.maintainerPolicyV1 !== 'read-only') {
+        value.approvalModules.length < 1) {
         throw policyInvalid('GRANT_POLICY_INVALID', 'Grant policy is malformed.');
     }
     const profiles = parseProfiles(value.profiles);
@@ -148,7 +139,6 @@ export function parseGrantPolicyV2(value, options) {
         profiles,
         approvalModules,
         ...(optionalSsh === undefined ? {} : { optionalSsh }),
-        legacyVerification: { maintainerPolicyV1: 'read-only' },
     });
 }
 function parseProfiles(value) {

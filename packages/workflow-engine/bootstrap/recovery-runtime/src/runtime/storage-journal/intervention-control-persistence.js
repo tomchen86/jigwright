@@ -125,13 +125,6 @@ export function readPersistedIntervention(storageRoot, parentChangeId) {
     }
     return record;
 }
-export function readPersistedBootstrapSidecarSession(storageRoot, parentChangeId) {
-    const value = readCanonicalRecord(persistedBootstrapSidecarSessionPath(storageRoot, parentChangeId), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND');
-    if (isRecord(value) && value.kind === 'bootstrap-sidecar-session.v2') {
-        return projectBootstrapSidecarSessionV1(parseBootstrapSidecarWorkflow(value, parentChangeId));
-    }
-    return parseBootstrapSidecarSession(value, parentChangeId);
-}
 export function readPersistedBootstrapSidecarWorkflow(storageRoot, parentChangeId) {
     return parseBootstrapSidecarWorkflow(readCanonicalRecord(persistedBootstrapSidecarSessionPath(storageRoot, parentChangeId), 'INTERVENTION_SIDECAR_SESSION_NOT_FOUND'), parentChangeId);
 }
@@ -781,7 +774,7 @@ export function rollbackPersistedEngineAdoption(storageRoot, input) {
 export function readPersistedEngineAdoption(storageRoot, txId) {
     const value = readCanonicalRecord(engineAdoptionRecordPath(storageRoot, txId), 'INTERVENTION_ADOPTION_NOT_FOUND');
     if (!isRecord(value) ||
-        !['persisted-engine-adoption.v1', 'persisted-engine-adoption.v2'].includes(String(value.kind)) ||
+        value.kind !== 'persisted-engine-adoption.v2' ||
         !hasExactKeys(value, [
             'createdAt',
             'effectsPerformed',
@@ -800,7 +793,12 @@ export function readPersistedEngineAdoption(storageRoot, txId) {
     }
     const record = value;
     try {
-        if (record.journal.txId !== txId ||
+        if (!isRecord(record.journal) ||
+            !Object.prototype.hasOwnProperty.call(record.journal, 'workflowBindingDigest') ||
+            !Object.prototype.hasOwnProperty.call(record.journal, 'workflowStatus') ||
+            record.journal.workflowBindingDigest === undefined ||
+            record.journal.workflowStatus !== 'repair-active' ||
+            record.journal.txId !== txId ||
             record.effectsPerformed !== false ||
             (record.artifactRecordDigest !== undefined &&
                 !/^sha256:[0-9a-f]{64}$/.test(record.artifactRecordDigest)) ||
@@ -824,8 +822,7 @@ export function readPersistedEngineAdoption(storageRoot, txId) {
     return record;
 }
 function assertPersistedAdoptionWorkflowBinding(storageRoot, record) {
-    if (record.kind !== 'persisted-engine-adoption.v2' ||
-        record.journal.workflowBindingDigest === undefined ||
+    if (record.journal.workflowBindingDigest === undefined ||
         record.journal.workflowStatus !== 'repair-active') {
         throw workflowError('INTERVENTION_ADOPTION_WORKFLOW_BINDING_REQUIRED', 'Historical adoption metadata cannot cross a bootstrap Workflow authority boundary.', ExitCode.verification);
     }
@@ -1296,99 +1293,9 @@ function validateBootstrapSidecarWorkflow(record, expectedParentChangeId) {
             })) {
         throw new Error('bootstrap workflow identity mismatch');
     }
-    const activeBindingDigest = activeBootstrapMaintenanceWorkflowBindingDigest(binding);
-    for (const artifact of record.artifacts) {
-        if (!isRecord(artifact) ||
-            !hasExactKeys(artifact, [
-                'artifactId',
-                'evidenceDigest',
-                'executableDigest',
-                'readyAt',
-                'sourceDigest',
-                'workflowBindingDigest',
-                'workflowStatus',
-            ]) ||
-            artifact.workflowStatus !== 'repair-active' ||
-            artifact.workflowBindingDigest !== activeBindingDigest) {
-            throw new Error('artifact workflow binding mismatch');
-        }
-    }
-    if (record.adoption !== null &&
-        (!isRecord(record.adoption) ||
-            !hasExactKeys(record.adoption, [
-                'adoptedAt',
-                'artifactId',
-                'journalDigest',
-                'txId',
-                'workflowBindingDigest',
-                'workflowStatus',
-            ]) ||
-            record.adoption.workflowStatus !== 'repair-active' ||
-            record.adoption.workflowBindingDigest !== activeBindingDigest)) {
-        throw new Error('adoption workflow binding mismatch');
-    }
-    if ((record.state === 'repair-active' && record.adoption !== null) ||
-        (record.state === 'adopted' && record.adoption === null) ||
-        (record.state === 'abandoned' && record.adoption !== null)) {
-        throw new Error('bootstrap workflow status mismatch');
-    }
-    validateBootstrapSidecarSession(projectBootstrapSidecarSessionV1(record), expectedParentChangeId);
+    validateCurrentBootstrapSidecarSession(record, expectedParentChangeId);
 }
-function projectBootstrapSidecarSessionV1(record) {
-    const identity = { ...record.identity };
-    const artifacts = record.artifacts.map(({ workflowBindingDigest: _workflowBindingDigest, workflowStatus: _workflowStatus, ...artifact }) => artifact);
-    const adoption = record.adoption === null
-        ? null
-        : (({ workflowBindingDigest: _workflowBindingDigest, workflowStatus: _workflowStatus, ...value }) => value)(record.adoption);
-    return withRecordDigest({
-        kind: 'bootstrap-sidecar-session.v1',
-        sidecarSessionId: canonicalDigest({
-            kind: 'bootstrap-sidecar-session-identity.v1',
-            ...identity,
-        }),
-        identity,
-        state: record.state === 'adopted' ? 'repair-active' : record.state,
-        parentUnblock: structuredClone(record.parentUnblock),
-        workspace: structuredClone(record.workspace),
-        artifacts,
-        adoption,
-        promotion: structuredClone(record.promotion),
-        history: structuredClone(record.history),
-        createdAt: record.createdAt,
-        updatedAt: record.updatedAt,
-    });
-}
-function parseBootstrapSidecarSession(value, expectedParentChangeId) {
-    try {
-        if (!isRecord(value) ||
-            value.kind !== 'bootstrap-sidecar-session.v1' ||
-            !hasExactKeys(value, [
-                'adoption',
-                'artifacts',
-                'createdAt',
-                'history',
-                'identity',
-                'kind',
-                'parentUnblock',
-                'promotion',
-                'recordDigest',
-                'sidecarSessionId',
-                'state',
-                'updatedAt',
-                'workspace',
-            ]) ||
-            !verifyRecordDigest(value)) {
-            throw new Error('invalid sidecar record');
-        }
-        const record = value;
-        validateBootstrapSidecarSession(record, expectedParentChangeId);
-        return record;
-    }
-    catch {
-        throw workflowError('INTERVENTION_SIDECAR_SESSION_CORRUPT', 'Bootstrap sidecar session metadata is corrupt or inconsistent.', ExitCode.verification);
-    }
-}
-function validateBootstrapSidecarSession(record, expectedParentChangeId) {
+function validateCurrentBootstrapSidecarSession(record, expectedParentChangeId) {
     if (!isRecord(record.identity) ||
         !hasExactKeys(record.identity, [
             'checkpointId',
@@ -1413,30 +1320,29 @@ function validateBootstrapSidecarSession(record, expectedParentChangeId) {
             'receiptDigest',
             'state',
         ])) {
-        throw new Error('invalid sidecar structure');
+        throw new Error('invalid sidecar workflow structure');
     }
     assertSidecarIdentityText(record.identity.parentChangeId);
     assertSidecarIdentityText(record.identity.interventionChangeId);
     assertDigest(record.identity.checkpointId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
     assertDigest(record.identity.workspaceId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
     assertDigest(record.sidecarSessionId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
-    if (expectedParentChangeId !== undefined &&
-        record.identity.parentChangeId !== expectedParentChangeId) {
-        throw new Error('sidecar parent mismatch');
-    }
-    if (record.sidecarSessionId !==
-        canonicalDigest({
-            kind: 'bootstrap-sidecar-session-identity.v1',
-            ...record.identity,
-        })) {
-        throw new Error('sidecar identity digest mismatch');
+    if ((expectedParentChangeId !== undefined &&
+        record.identity.parentChangeId !== expectedParentChangeId) ||
+        record.sidecarSessionId !==
+            canonicalDigest({
+                kind: 'bootstrap-sidecar-session-identity.v2',
+                ...record.identity,
+                workflowId: record.workflowBinding.workflowId,
+            })) {
+        throw new Error('sidecar workflow identity mismatch');
     }
     assertAbsoluteWorkspacePath(record.workspace.childWorkspacePath);
     assertSafeChangeRef(record.workspace.changeRef);
     if (record.parentUnblock.kind !== 'sidecar-unblocks-parent.v1' ||
         record.parentUnblock.parentChangeId !== record.identity.parentChangeId ||
-        !['repair-active', 'abandoned'].includes(record.state)) {
-        throw new Error('sidecar relationship mismatch');
+        !['repair-active', 'adopted', 'abandoned'].includes(record.state)) {
+        throw new Error('sidecar workflow relationship mismatch');
     }
     if (record.workspace.state === 'planned') {
         if (record.workspace.receiptDigest !== null ||
@@ -1458,6 +1364,7 @@ function validateBootstrapSidecarSession(record, expectedParentChangeId) {
     if (!Array.isArray(record.artifacts)) {
         throw new Error('invalid sidecar artifacts');
     }
+    const activeBindingDigest = activeBootstrapMaintenanceWorkflowBindingDigest(record.workflowBinding);
     const artifactIds = new Set();
     for (const artifact of record.artifacts) {
         if (!isRecord(artifact) ||
@@ -1467,8 +1374,12 @@ function validateBootstrapSidecarSession(record, expectedParentChangeId) {
                 'executableDigest',
                 'readyAt',
                 'sourceDigest',
-            ])) {
-            throw new Error('invalid sidecar artifact');
+                'workflowBindingDigest',
+                'workflowStatus',
+            ]) ||
+            artifact.workflowStatus !== 'repair-active' ||
+            artifact.workflowBindingDigest !== activeBindingDigest) {
+            throw new Error('artifact workflow binding mismatch');
         }
         assertDigest(artifact.artifactId, 'INTERVENTION_SIDECAR_SESSION_INVALID');
         assertDigest(artifact.sourceDigest, 'INTERVENTION_SIDECAR_SESSION_INVALID');
@@ -1480,12 +1391,12 @@ function validateBootstrapSidecarSession(record, expectedParentChangeId) {
         }
         artifactIds.add(artifact.artifactId);
     }
-    validateBootstrapSidecarAdoption(record, artifactIds);
-    validateBootstrapSidecarPromotion(record, artifactIds);
-    validateBootstrapSidecarRelation(record);
-    validateBootstrapSidecarHistory(record);
+    validateCurrentBootstrapSidecarAdoption(record, artifactIds, activeBindingDigest);
+    validateCurrentBootstrapSidecarPromotion(record, artifactIds);
+    validateCurrentBootstrapSidecarRelation(record);
+    validateCurrentBootstrapSidecarHistory(record);
 }
-function validateBootstrapSidecarAdoption(record, artifactIds) {
+function validateCurrentBootstrapSidecarAdoption(record, artifactIds, activeBindingDigest) {
     if (record.adoption === null)
         return;
     if (!isRecord(record.adoption) ||
@@ -1494,7 +1405,11 @@ function validateBootstrapSidecarAdoption(record, artifactIds) {
             'artifactId',
             'journalDigest',
             'txId',
-        ])) {
+            'workflowBindingDigest',
+            'workflowStatus',
+        ]) ||
+        record.adoption.workflowStatus !== 'repair-active' ||
+        record.adoption.workflowBindingDigest !== activeBindingDigest) {
         throw new Error('invalid sidecar adoption');
     }
     assertSidecarIdentityText(record.adoption.txId);
@@ -1505,7 +1420,7 @@ function validateBootstrapSidecarAdoption(record, artifactIds) {
         throw new Error('adoption artifact is not ready');
     }
 }
-function validateBootstrapSidecarPromotion(record, artifactIds) {
+function validateCurrentBootstrapSidecarPromotion(record, artifactIds) {
     if (record.promotion === null)
         return;
     if (!isRecord(record.promotion) ||
@@ -1529,7 +1444,7 @@ function validateBootstrapSidecarPromotion(record, artifactIds) {
         throw new Error('promotion artifact is not ready');
     }
 }
-function validateBootstrapSidecarRelation(record) {
+function validateCurrentBootstrapSidecarRelation(record) {
     const relation = record.parentUnblock;
     if (relation.state === 'blocking') {
         if (relation.resolution !== null ||
@@ -1549,7 +1464,7 @@ function validateBootstrapSidecarRelation(record) {
         if (record.adoption === null ||
             relation.resolvedByTxId !== record.adoption.txId ||
             relation.resolvedAt !== record.adoption.adoptedAt ||
-            record.state !== 'repair-active') {
+            record.state !== 'adopted') {
             throw new Error('invalid adoption relation');
         }
         return;
@@ -1561,7 +1476,7 @@ function validateBootstrapSidecarRelation(record) {
         throw new Error('invalid abandonment relation');
     }
 }
-function validateBootstrapSidecarHistory(record) {
+function validateCurrentBootstrapSidecarHistory(record) {
     if (!Array.isArray(record.history) || record.history.length === 0) {
         throw new Error('missing sidecar history');
     }
@@ -1601,7 +1516,7 @@ function validateBootstrapSidecarHistory(record) {
             .length !== (record.adoption === null ? 0 : 1) ||
         record.history.filter((entry) => entry.eventKind === 'repository-default-promoted').length !== (record.promotion === null ? 0 : 1) ||
         record.history.filter((entry) => entry.eventKind === 'intervention-abandoned').length !== (record.state === 'abandoned' ? 1 : 0)) {
-        throw new Error('sidecar history does not match projection');
+        throw new Error('sidecar history does not match workflow state');
     }
     exactIso(record.createdAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');
     exactIso(record.updatedAt, 'INTERVENTION_SIDECAR_SESSION_INVALID');

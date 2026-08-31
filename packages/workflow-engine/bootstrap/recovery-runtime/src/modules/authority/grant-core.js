@@ -73,6 +73,9 @@ export function createApprovalSubject(challenge, decision, options = {}) {
     if (!GRANT_APPROVAL_METHODS.includes(decision.approvalMethod)) {
         throw grantInvalid('GRANT_APPROVAL_METHOD_INVALID', 'Selected grant approval method is unavailable.');
     }
+    if (!choice.allowedApprovalMethods.includes(decision.approvalMethod)) {
+        throw grantInvalid('GRANT_APPROVAL_METHOD_NOT_ALLOWED', 'Selected grant approval method is not allowed for this transition.');
+    }
     if (!STABLE_ID.test(decision.reasonCode) ||
         !choice.allowedReasonCodes.includes(decision.reasonCode)) {
         throw grantInvalid('GRANT_REASON_NOT_ALLOWED', 'Selected grant reason is not allowed for this choice.');
@@ -242,6 +245,9 @@ function createChoice(candidate, registry) {
         parameterSchemaDigest: normalized.definition.parameterSchemaDigest,
         consequenceDigest: normalized.definition.consequenceDigest,
         resolutionKind: normalized.definition.resolutionKind,
+        allowedApprovalMethods: Object.freeze([
+            ...normalized.definition.allowedApprovalMethods,
+        ]),
         allowedReasonCodes,
         reasonRequired: candidate.reasonRequired,
         proposedReason,
@@ -261,6 +267,7 @@ function assertGrantChoice(value) {
             'parameterSchemaDigest',
             'consequenceDigest',
             'resolutionKind',
+            'allowedApprovalMethods',
             'allowedReasonCodes',
             'reasonRequired',
             'proposedReason',
@@ -276,6 +283,7 @@ function assertGrantChoice(value) {
         typeof value.consequenceDigest !== 'string' ||
         !SHA256_DIGEST.test(value.consequenceDigest) ||
         !['retry', 'non-retry'].includes(String(value.resolutionKind)) ||
+        !hasCanonicalApprovalMethods(value.allowedApprovalMethods) ||
         !Array.isArray(value.allowedReasonCodes) ||
         value.allowedReasonCodes.length < 1 ||
         !value.allowedReasonCodes.every((reasonCode) => typeof reasonCode === 'string' && STABLE_ID.test(reasonCode)) ||
@@ -296,6 +304,9 @@ function assertGrantChoice(value) {
         parameterSchemaDigest: value.parameterSchemaDigest,
         consequenceDigest: value.consequenceDigest,
         resolutionKind: value.resolutionKind,
+        allowedApprovalMethods: Object.freeze([
+            ...value.allowedApprovalMethods,
+        ]),
         allowedReasonCodes: Object.freeze([
             ...value.allowedReasonCodes,
         ]),
@@ -309,6 +320,14 @@ function assertGrantChoice(value) {
         choiceId: value.choiceId,
         ...choicePayload,
     });
+}
+function hasCanonicalApprovalMethods(value) {
+    return (Array.isArray(value) &&
+        (value.length === 1 || value.length === 2) &&
+        value.every((method) => method === 'human-presence' || method === 'ssh') &&
+        new Set(value).size === value.length &&
+        (value.length === 1 ||
+            (value[0] === 'human-presence' && value[1] === 'ssh')));
 }
 function canonicalReason(value, required) {
     if (typeof value !== 'string') {

@@ -1011,7 +1011,7 @@ function readReservationOrInterrupted(filePath, grantId) {
 }
 function readTerminal(filePath, grantId) {
     const value = parseRecord(readPrivateFile(filePath));
-    const hasAuthorization = Object.prototype.hasOwnProperty.call(value, 'revocationAuthorization');
+    const requiresAuthorization = value.state === 'revoked';
     if (!hasExactKeys(value, [
         'schemaVersion',
         'state',
@@ -1021,7 +1021,7 @@ function readTerminal(filePath, grantId) {
         'recordedAt',
         'envelope',
         'use',
-        ...(hasAuthorization ? ['revocationAuthorization'] : []),
+        ...(requiresAuthorization ? ['revocationAuthorization'] : []),
     ]) ||
         value.schemaVersion !== 1 ||
         !['revoked', 'consumed', 'failed', 'expired'].includes(String(value.state)) ||
@@ -1054,7 +1054,7 @@ function readTerminal(filePath, grantId) {
         }
     }
     let revocationAuthorization;
-    if (hasAuthorization) {
+    if (requiresAuthorization) {
         revocationAuthorization = assertHumanRevocationAuthorization(value.revocationAuthorization);
         if (value.state !== 'revoked' ||
             revocationAuthorization.payload.subjectKind !== 'collaboration-grant' ||
@@ -1068,7 +1068,7 @@ function readTerminal(filePath, grantId) {
         ...value,
         envelope,
         use,
-        ...(revocationAuthorization ? { revocationAuthorization } : {}),
+        ...(requiresAuthorization ? { revocationAuthorization } : {}),
     });
 }
 function assertStoredUse(value, envelope) {

@@ -3,12 +3,15 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { assertSessionId, normalizeChangedPath, normalizePolicyPath, } from "../../runtime/session-workspace/paths.js";
 import { parseTaskStrategyGreenFailureRecord, } from "../../runtime/storage-journal/task-strategy-correction-store.js";
+import { assertTaskStrategyImplementationOutput as assertCurrentTaskStrategyImplementationOutput, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, TASK_STRATEGY_IMPLEMENTATION_PROVIDER_OUTPUT_SCHEMA, taskStrategyImplementationOutputValidator, } from "./task-strategy-implementation-output.js";
+export { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, TASK_STRATEGY_IMPLEMENTATION_PROVIDER_OUTPUT_SCHEMA, taskStrategyImplementationOutputValidator, };
 const DIGEST = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const TASK_ID = /^\d+(?:\.\d+)+$/;
 const REPOSITORY_ID = /^[a-z0-9]+(?:[._/-][a-z0-9]+)*$/;
-const MAX_PATCH_BYTES = 8 * 1024 * 1024;
+const MAX_MANIFEST_BYTES = 262_144;
+const MAX_MANIFEST_COLLECTION_ENTRIES = 1_024;
 export const TASK_STRATEGY_IMPLEMENTATION_POLICY = deepFreeze({
     schemaVersion: 1,
     kind: 'task-strategy-implementation-policy.v1',
@@ -19,56 +22,12 @@ export const TASK_STRATEGY_IMPLEMENTATION_POLICY = deepFreeze({
     providerOutputAuthority: 'advisory-patch-only',
 });
 export const TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST = sha256(canonicalJson(TASK_STRATEGY_IMPLEMENTATION_POLICY));
-export const TASK_STRATEGY_IMPLEMENTATION_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
-    type: 'object',
-    additionalProperties: false,
-    required: [
-        'schemaVersion',
-        'kind',
-        'sessionId',
-        'sourceTree',
-        'patchBase64',
-        'patchDigest',
-    ],
-    properties: {
-        schemaVersion: { const: 1 },
-        kind: { const: 'task-strategy-patch-output.v1' },
-        sessionId: { type: 'string', minLength: 1 },
-        sourceTree: {
-            type: 'string',
-            pattern: '^(?:[0-9a-f]{40}|[0-9a-f]{64})$',
-        },
-        patchBase64: {
-            type: 'string',
-            minLength: 1,
-            maxLength: Math.ceil(MAX_PATCH_BYTES / 3) * 4,
-        },
-        patchDigest: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-    },
-});
-export const TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA = Object.freeze({
-    id: 'workflow.task-strategy-implementation-output.v1',
-    version: 1,
-    digest: sha256(canonicalJson(TASK_STRATEGY_IMPLEMENTATION_PROVIDER_OUTPUT_SCHEMA)),
-});
-export const TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR = Object.freeze({
-    ...TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-    validate(value) {
-        try {
-            assertTaskStrategyImplementationOutput(value);
-            return true;
-        }
-        catch {
-            return false;
-        }
-    },
-});
 export function createTaskStrategyImplementationSubject(input) {
     const normalized = {
         ...input,
-        testPaths: [...input.testPaths].sort(),
-        fixturePaths: [...input.fixturePaths].sort(),
-        frozenFiles: [...input.frozenFiles].sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0),
+        testPaths: [...input.testPaths].sort(compareCanonical),
+        fixturePaths: [...input.fixturePaths].sort(compareCanonical),
+        frozenFiles: [...input.frozenFiles].sort((left, right) => compareCanonical(left.path, right.path)),
     };
     const body = {
         schemaVersion: 1,
@@ -116,7 +75,7 @@ export function createTaskStrategyImplementationManifest(input) {
         baseTree: input.baseTree,
         subject: input.subject,
         behaviorContractRefs: [...input.behaviorContractRefs].sort(compareCanonical),
-        implementationPathScopes: [...input.implementationPathScopes].sort(),
+        implementationPathScopes: [...input.implementationPathScopes].sort(compareCanonical),
         capabilityProfile: 'repository-read-only',
         ...(input.greenFailureRecord === undefined
             ? {}
@@ -150,6 +109,8 @@ export function assertTaskStrategyImplementationManifest(value) {
         throw manifestInvalid();
     }
     const subject = assertTaskStrategyImplementationSubject(value.subject);
+    if (!isCanonicalManifestWithinLimit(value))
+        throw manifestInvalid();
     if (hasGreenFailureRecord !== (subject.correction !== undefined)) {
         throw manifestInvalid();
     }
@@ -266,39 +227,17 @@ function isPatchHead(value) {
         isDigest(value.receiptDigest));
 }
 export function assertTaskStrategyImplementationOutput(value) {
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'schemaVersion',
-            'kind',
-            'sessionId',
-            'sourceTree',
-            'patchBase64',
-            'patchDigest',
-        ]) ||
-        value.schemaVersion !== 1 ||
-        value.kind !== 'task-strategy-patch-output.v1' ||
-        !isSessionId(value.sessionId) ||
-        !isObjectId(value.sourceTree) ||
-        !isDigest(value.patchDigest) ||
-        typeof value.patchBase64 !== 'string') {
-        throw outputInvalid();
-    }
-    const patch = Buffer.from(value.patchBase64, 'base64');
-    if (patch.length === 0 ||
-        patch.length > MAX_PATCH_BYTES ||
-        patch.toString('base64') !== value.patchBase64 ||
-        sha256(patch) !== value.patchDigest) {
-        throw outputInvalid();
-    }
-    return deepFreeze(structuredClone(value));
+    return assertCurrentTaskStrategyImplementationOutput(value, outputInvalid);
 }
 function isFrozenFiles(value, testPaths, fixturePaths) {
     if (!Array.isArray(value) ||
         !Array.isArray(testPaths) ||
-        !Array.isArray(fixturePaths)) {
+        !Array.isArray(fixturePaths) ||
+        value.length > MAX_MANIFEST_COLLECTION_ENTRIES ||
+        testPaths.length + fixturePaths.length > MAX_MANIFEST_COLLECTION_ENTRIES) {
         return false;
     }
-    const expectedPaths = [...testPaths, ...fixturePaths].sort();
+    const expectedPaths = [...testPaths, ...fixturePaths].sort(compareCanonical);
     return (value.length === expectedPaths.length &&
         value.every((entry, index) => isRecord(entry) &&
             hasExactKeys(entry, ['path', 'mode', 'objectId']) &&
@@ -309,6 +248,7 @@ function isFrozenFiles(value, testPaths, fixturePaths) {
 function isBehaviorContractRefs(value) {
     return (Array.isArray(value) &&
         value.length > 0 &&
+        value.length <= MAX_MANIFEST_COLLECTION_ENTRIES &&
         value.every((entry) => isRecord(entry) &&
             hasExactKeys(entry, ['specPath', 'requirement', 'scenario']) &&
             typeof entry.specPath === 'string' &&
@@ -326,12 +266,14 @@ function isBehaviorContractRefs(value) {
 function isImplementationScopes(value) {
     return (Array.isArray(value) &&
         value.length > 0 &&
+        value.length <= MAX_MANIFEST_COLLECTION_ENTRIES &&
         value.every((entry) => typeof entry === 'string' && normalizePolicyPath(entry) === entry) &&
         isCanonicalSet(value));
 }
 function isSortedPaths(value, nonEmpty) {
     return (Array.isArray(value) &&
         (!nonEmpty || value.length > 0) &&
+        value.length <= MAX_MANIFEST_COLLECTION_ENTRIES &&
         value.every((entry) => typeof entry === 'string' && normalizeChangedPath(entry) === entry) &&
         isCanonicalSet(value));
 }
@@ -339,7 +281,15 @@ function isCanonicalSet(value) {
     return value.every((entry, index) => index === 0 || compareCanonical(value[index - 1], entry) < 0);
 }
 function compareCanonical(left, right) {
-    return Buffer.from(canonicalJson(left)).compare(Buffer.from(canonicalJson(right)));
+    return Buffer.from(canonicalJson(left), 'utf8').compare(Buffer.from(canonicalJson(right), 'utf8'));
+}
+function isCanonicalManifestWithinLimit(value) {
+    try {
+        return (Buffer.byteLength(canonicalJson(value), 'utf8') <= MAX_MANIFEST_BYTES);
+    }
+    catch {
+        return false;
+    }
 }
 function isSessionId(value) {
     if (typeof value !== 'string')

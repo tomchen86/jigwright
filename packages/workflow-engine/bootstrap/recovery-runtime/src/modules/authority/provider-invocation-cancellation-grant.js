@@ -63,6 +63,7 @@ export function providerInvocationCancellationTransitionDefinitions(port) {
             parameterSchemaDigest: PROVIDER_INVOCATION_CANCELLATION_PARAMETER_SCHEMA_DIGEST,
             consequenceDigest: PROVIDER_INVOCATION_CANCELLATION_CONSEQUENCE_DIGEST,
             resolutionKind: 'non-retry',
+            allowedApprovalMethods: ['human-presence', 'ssh'],
             validateParameters: assertProviderInvocationCancellationParameters,
             renderTrustedChoice(parameters) {
                 return Object.freeze({

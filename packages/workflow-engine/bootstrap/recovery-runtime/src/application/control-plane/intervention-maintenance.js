@@ -107,15 +107,11 @@ export function buildAndPersistInterventionEngineArtifact(storageRoot, input) {
 export function maintenanceGrantId(parentChangeId, checkpointId, issuedAt, interventionChangeId) {
     assertNonEmpty(parentChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
     assertDigest(checkpointId, 'MAINTENANCE_GRANT_RECORD_INVALID');
-    if (issuedAt !== undefined) {
-        exactDate(new Date(issuedAt));
-        assertNonEmpty(interventionChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
-    }
+    exactDate(new Date(issuedAt));
+    assertNonEmpty(interventionChangeId, 'MAINTENANCE_GRANT_RECORD_INVALID');
     return `maintenance-${crypto
         .createHash('sha256')
-        .update(issuedAt === undefined
-        ? `maintenance-grant\0${parentChangeId}\0${checkpointId}`
-        : `maintenance-grant.v2\0${parentChangeId}\0${checkpointId}\0${interventionChangeId}\0${issuedAt}`)
+        .update(`maintenance-grant.v2\0${parentChangeId}\0${checkpointId}\0${interventionChangeId}\0${issuedAt}`)
         .digest('hex')}`;
 }
 export function maintenanceApprovalSummary(input) {
@@ -151,13 +147,11 @@ export function maintenanceApprovalSummary(input) {
     });
 }
 export function persistMaintenanceGrantRecord(storageRoot, input) {
-    const paths = maintenancePaths(storageRoot);
-    ensurePrivateDirectory(paths.grants);
     const payload = input.envelope.payload;
     assertAuditBinding(input.summary.authorityAudit);
-    const legacyGrantId = maintenanceGrantId(input.summary.parentChangeId, input.summary.checkpointId);
     const issuedGrantId = maintenanceGrantId(input.summary.parentChangeId, input.summary.checkpointId, payload.issuedAt, payload.interventionChangeId);
-    if (![legacyGrantId, issuedGrantId].includes(payload.grantId) ||
+    const at = exactDate(input.now).toISOString();
+    if (payload.grantId !== issuedGrantId ||
         payload.parentChangeId !== input.summary.parentChangeId ||
         payload.interventionChangeId !== input.summary.interventionChangeId ||
         payload.engineFromDigest !== input.summary.engineFromDigest ||
@@ -168,7 +162,8 @@ export function persistMaintenanceGrantRecord(storageRoot, input) {
         payload.maxLocalAdoptions !== input.summary.maxLocalAdoptions) {
         throw maintenanceRecordCorrupt('Maintenance grant does not match the presented approval summary.');
     }
-    const at = exactDate(input.now).toISOString();
+    const paths = maintenancePaths(storageRoot);
+    ensurePrivateDirectory(paths.grants);
     const record = withRecordDigest({
         kind: 'persisted-maintenance-grant.v1',
         state: 'available',
@@ -226,6 +221,8 @@ export function readMaintenanceGrantRecord(storageRoot, grantId) {
     assertAuditBinding(record.authorityAudit);
     assertAuditBinding(record.summary.authorityAudit);
     if (record.envelope.payload.grantId !== grantId ||
+        record.envelope.payload.grantId !==
+            maintenanceGrantId(record.parentChangeId, record.checkpointId, record.envelope.payload.issuedAt, record.interventionChangeId) ||
         record.envelope.payload.parentChangeId !== record.parentChangeId ||
         record.envelope.payload.interventionChangeId !==
             record.interventionChangeId ||
@@ -234,6 +231,7 @@ export function readMaintenanceGrantRecord(storageRoot, grantId) {
         record.summary.interventionChangeId !== record.interventionChangeId ||
         canonicalJson(record.authorityAudit) !==
             canonicalJson(record.summary.authorityAudit) ||
+        hasRevocationAuthorization !== (record.state === 'revoked') ||
         (record.state === 'available' &&
             (record.expiredAt !== null ||
                 record.revokedAt !== null ||
@@ -346,7 +344,6 @@ export function revokeMaintenanceGrantForParent(cwd, storageRoot, parentChangeId
     }, options, path.join(storageRoot, 'maintenance-grants', 'revocation-authorizations', `${current.envelope.payload.grantId}.json`), current.revocationAuthorization ?? null);
     if (current.state === 'revoked') {
         if (current.revocationReason !== authorization.payload.reason ||
-            current.revocationAuthorization === undefined ||
             canonicalHumanRevocationAuthorization(current.revocationAuthorization) !==
                 canonicalHumanRevocationAuthorization(authorization)) {
             throw workflowError('HUMAN_REVOCATION_CONFLICT', 'Maintenance grant already has a different revocation tombstone.', ExitCode.conflict);

@@ -304,8 +304,6 @@ export function createTaskSessionIsolationBinding(input) {
     });
 }
 export function acquireTaskSessionIsolationLeases(runtime, session) {
-    if (session.isolation === undefined)
-        return;
     const acquired = [];
     try {
         for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
@@ -340,22 +338,16 @@ export function acquireTaskSessionIsolationLeases(runtime, session) {
     }
 }
 export function releaseTaskSessionIsolationLeases(runtime, session) {
-    if (session.isolation === undefined)
-        return;
     for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
         releaseOwnedLock(leasePath, session.sessionId);
     }
 }
 export function assertTaskSessionIsolationLeasesOwned(runtime, session) {
-    if (session.isolation === undefined)
-        return;
     for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
         assertOwnedLock(leasePath, session.sessionId, session.changeId, session.taskId);
     }
 }
 function taskSessionIsolationLeasePaths(runtime, session) {
-    if (session.isolation === undefined)
-        return [];
     const root = path.join(runtime.root, 'task-isolation');
     return [
         path.join(root, 'worktrees', `${session.isolation.worktreeDigest.slice('sha256:'.length)}.lock`),
@@ -430,8 +422,8 @@ export function assertTaskSessionAdmission(runtime, candidate) {
         }
         const serializedKinds = taskSerializedScopeKinds(existing.allowedPaths).filter((kind) => taskSerializedScopeKinds(candidate.allowedPaths).includes(kind));
         if (serializedKinds.length > 0 &&
-            (existing.isolation?.concurrencyEnabled === true ||
-                candidate.isolation?.concurrencyEnabled === true)) {
+            (existing.isolation.concurrencyEnabled ||
+                candidate.isolation.concurrencyEnabled)) {
             throw workflowError('TASK_SESSION_SERIALIZED_SCOPE_CONFLICT', 'Concurrent task writers cannot share a serialized policy, base-spec, generated-document, or remote-effect class.', ExitCode.conflict, {
                 details: {
                     conflictingSessionId: existing.sessionId,
@@ -440,10 +432,10 @@ export function assertTaskSessionAdmission(runtime, candidate) {
                 },
             });
         }
-        const existingResources = new Set(existing.isolation?.resources.map(({ digest }) => digest) ?? []);
-        const resourceConflicts = candidate.isolation?.resources
+        const existingResources = new Set(existing.isolation.resources.map(({ digest }) => digest));
+        const resourceConflicts = candidate.isolation.resources
             .filter(({ digest }) => existingResources.has(digest))
-            .map(({ kind, digest }) => ({ kind, digest })) ?? [];
+            .map(({ kind, digest }) => ({ kind, digest }));
         if (resourceConflicts.length > 0) {
             throw workflowError('TASK_SESSION_RESOURCE_CONFLICT', 'Concurrent task writers must own distinct exclusive resources.', ExitCode.conflict, {
                 details: {
@@ -765,7 +757,7 @@ function isWorkflowSession(value) {
         !isTaskMandateBinding(value.mandateBinding, value.changeId)) {
         return false;
     }
-    if (value.isolation !== undefined &&
+    if (!Object.hasOwn(value, 'isolation') ||
         !isTaskSessionIsolationBinding(value.isolation)) {
         return false;
     }
@@ -781,7 +773,7 @@ function isWorkflowSession(value) {
             return false;
         }
     }
-    if (value.requiredCheckDigests !== undefined &&
+    if (!Object.hasOwn(value, 'requiredCheckDigests') ||
         !isStringRecord(value.requiredCheckDigests)) {
         return false;
     }

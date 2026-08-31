@@ -8,10 +8,11 @@ import { assertStoredEvidenceNode, canonicalEvidenceNodeEnvelope, } from "../../
 import { assertInvestigationApplicability, INVESTIGATION_APPLICABILITY_POLICY_DIGEST, } from "../../modules/investigation/domain/investigation-applicability.js";
 import { assertPlanReviewSubject, readPlanReviewTargetSnapshotNode, } from "../../modules/assurance/plan-review.js";
 import { assertChangeId, assertInvestigationId, } from "../session-workspace/paths.js";
-import { PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST, PROPOSE_POLICY_DIGEST, isProviderRoleAssignment, recreateProviderInvocationRequest, } from "../../modules/provider-orchestration/provider-contracts.js";
+import { PROPOSE_EXEMPTION_SESSION_STORE_POLICY_DIGEST, PROPOSE_POLICY_DIGEST, isProviderRoleAssignment, isRoleContextSharingGrantedAssignment, recreateProviderInvocationRequest, } from "../../modules/provider-orchestration/provider-contracts.js";
 import { parseTaskDiffReviewSubject, TASK_DIFF_REVIEW_POLICY_DIGEST, } from "../../modules/assurance/task-diff-review.js";
 import { TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST, assertTaskStrategyImplementationSubject, } from "../../modules/provider-orchestration/task-strategy-provider-contract.js";
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;
+const GIT_OBJECT_ID_PATTERN = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const REF_NAME_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*(?:\/[a-z0-9]+(?:-[a-z0-9]+)*)*$/;
 const NO_FOLLOW_CREATE = fs.constants.O_RDWR |
     fs.constants.O_CREAT |
@@ -113,17 +114,36 @@ export function resolvePlanReviewInvocationOwner(paths, input) {
     const authorization = readEvidenceNode(paths, input.authorizationNodeId);
     const output = authorization.output;
     const materializationId = authorization.provenanceParentNodeIds.materialization;
-    const topologyAuthorization = authorization.nodeSchema === 'workflow.plan-review-authorization.v2' &&
-        authorization.outputSchema ===
-            'workflow.plan-review-authorization-output.v2';
-    const legacyAuthorization = authorization.nodeSchema === 'workflow.plan-review-authorization.v1' &&
-        authorization.outputSchema ===
-            'workflow.plan-review-authorization-output.v1';
     if (authorization.type !== 'plan-review-authorization' ||
-        (!legacyAuthorization && !topologyAuthorization) ||
+        authorization.nodeSchema !== 'workflow.plan-review-authorization.v3' ||
+        authorization.outputSchema !==
+            'workflow.plan-review-authorization-output.v3' ||
         authorization.evaluator !== 'workflow-propose.v1' ||
         authorization.policyDigest !== PROPOSE_POLICY_DIGEST ||
         !isPlainRecord(output) ||
+        !hasExactKeys(output, [
+            'subject',
+            'assignment',
+            'author',
+            'grantAuthorization',
+            'roleTopology',
+        ]) ||
+        !hasExactKeys(authorization.exactInputDigests, [
+            'subject',
+            'generation',
+            'assignment',
+            'grantAuthorization',
+            'targetSnapshot',
+            'roleTopology',
+        ]) ||
+        !hasExactKeys(authorization.provenanceParentNodeIds, [
+            'materialization',
+            'targetSnapshot',
+        ]) ||
+        !hasExactKeys(authorization.semanticParentResultDigests, [
+            'materialization',
+            'targetSnapshot',
+        ]) ||
         !(output.grantAuthorization === null ||
             isPlainRecord(output.grantAuthorization)) ||
         canonicalJson(output.subject) !== canonicalJson(subject) ||
@@ -135,18 +155,41 @@ export function resolvePlanReviewInvocationOwner(paths, input) {
             subject.planningGenerationId ||
         authorization.exactInputDigests.grantAuthorization !==
             sha256(canonicalJson(output.grantAuthorization)) ||
-        (topologyAuthorization &&
-            (!isPlainRecord(output.roleTopology) ||
-                authorization.exactInputDigests.roleTopology !==
-                    sha256(canonicalJson(output.roleTopology)))) ||
+        !(output.roleTopology === null || isPlainRecord(output.roleTopology)) ||
+        authorization.exactInputDigests.roleTopology !==
+            sha256(canonicalJson(output.roleTopology)) ||
         !DIGEST_PATTERN.test(materializationId ?? '') ||
-        !DIGEST_PATTERN.test(authorization.semanticParentResultDigests.materialization ?? '')) {
+        !DIGEST_PATTERN.test(authorization.provenanceParentNodeIds.targetSnapshot ?? '') ||
+        !DIGEST_PATTERN.test(authorization.semanticParentResultDigests.materialization ?? '') ||
+        !DIGEST_PATTERN.test(authorization.semanticParentResultDigests.targetSnapshot ?? '')) {
+        throw refInvalid();
+    }
+    const grantKind = assertPlanReviewAuthorizationGrantOwnership({
+        changeId,
+        subject,
+        assignment: input.assignment,
+        author: output.author,
+        grantAuthorization: output.grantAuthorization,
+    });
+    if (grantKind === 'role-context-sharing'
+        ? !isPlainRecord(output.roleTopology) ||
+            output.roleTopology.disposition !== 'exact-grant-required'
+        : isPlainRecord(output.roleTopology) &&
+            output.roleTopology.disposition !== 'satisfied') {
         throw refInvalid();
     }
     const materialization = readEvidenceNode(paths, materializationId);
+    const targetSnapshot = readEvidenceNode(paths, authorization.provenanceParentNodeIds.targetSnapshot);
+    const target = readPlanReviewTargetSnapshotNode(targetSnapshot);
     const ownership = assertPlanningMaterializationOwnership(paths, materialization, changeId);
     if (materialization.resultDigest !==
         authorization.semanticParentResultDigests.materialization ||
+        targetSnapshot.resultDigest !==
+            authorization.semanticParentResultDigests.targetSnapshot ||
+        targetSnapshot.nodeId !== authorization.exactInputDigests.targetSnapshot ||
+        target.subjectDigest !== subject.subjectDigest ||
+        target.materializationNodeId !== materialization.nodeId ||
+        target.materializationResultDigest !== materialization.resultDigest ||
         !isPlainRecord(materialization.output) ||
         !isPlainRecord(materialization.output.baseline) ||
         canonicalJson(materialization.output.baseline) !==
@@ -154,6 +197,197 @@ export function resolvePlanReviewInvocationOwner(paths, input) {
         throw refInvalid();
     }
     return ownership.ownerInvestigationId;
+}
+function assertPlanReviewAuthorizationGrantOwnership(input) {
+    if (!isProviderRoleAssignment(input.assignment) ||
+        input.assignment.role !== 'plan-reviewer' ||
+        input.assignment.targetDigest !== input.subject.subjectDigest) {
+        throw refInvalid();
+    }
+    const assignment = input.assignment;
+    const author = assertPlanReviewRecordedParticipantOwnership(input.author);
+    const grantAuthorization = input.grantAuthorization;
+    if (isRoleContextSharingGrantedAssignment(assignment)) {
+        if (!isPlainRecord(grantAuthorization) ||
+            !hasExactKeys(grantAuthorization, [
+                'kind',
+                'grantId',
+                'requirementNodeId',
+                'expectedBinding',
+                'reservationReceiptDigest',
+                'reservationRecordDigest',
+            ]) ||
+            grantAuthorization.kind !==
+                'role-context-sharing-plan-review-authorization.v1' ||
+            grantAuthorization.grantId !== assignment.roleContextSharingGrantId ||
+            !isDigest(grantAuthorization.requirementNodeId) ||
+            grantAuthorization.reservationReceiptDigest !==
+                assignment.reservationReceiptDigest ||
+            !isDigest(grantAuthorization.reservationRecordDigest) ||
+            !isPlainRecord(grantAuthorization.expectedBinding)) {
+            throw refInvalid();
+        }
+        const expected = grantAuthorization.expectedBinding;
+        if (!hasExactKeys(expected, [
+            'repositoryId',
+            'repositoryOrigin',
+            'policyBlob',
+            'roleContextSharingPolicyDigest',
+            'centralRoleConfigurationDigest',
+            'changeOverrideDigest',
+            'providerRegistryDigest',
+            'eligibilityPolicyDigest',
+            'changeId',
+            'taskId',
+            'baselineCommit',
+            'baselineTree',
+            'targetDigest',
+            'lifecyclePhase',
+            'subjectDigest',
+            'planningGeneration',
+            'rolePairs',
+            'contextGeneration',
+            'sessionGeneration',
+            'sharedEngineSessionId',
+            'providerDefinitionDigest',
+            'reason',
+        ]) ||
+            typeof expected.repositoryId !== 'string' ||
+            expected.repositoryId.length === 0 ||
+            typeof expected.repositoryOrigin !== 'string' ||
+            expected.repositoryOrigin.length === 0 ||
+            typeof expected.policyBlob !== 'string' ||
+            !GIT_OBJECT_ID_PATTERN.test(expected.policyBlob) ||
+            ![
+                expected.roleContextSharingPolicyDigest,
+                expected.centralRoleConfigurationDigest,
+                expected.changeOverrideDigest,
+                expected.providerRegistryDigest,
+                expected.eligibilityPolicyDigest,
+                expected.providerDefinitionDigest,
+            ].every(isDigest) ||
+            expected.changeId !== input.changeId ||
+            expected.taskId !== null ||
+            expected.baselineCommit !== input.subject.investigationBaseline.head ||
+            expected.baselineTree !== input.subject.investigationBaseline.tree ||
+            expected.targetDigest !== input.subject.subjectDigest ||
+            expected.lifecyclePhase !== 'plan-review' ||
+            expected.subjectDigest !== input.subject.subjectDigest ||
+            expected.planningGeneration !== input.subject.planningGenerationId ||
+            canonicalJson(expected.rolePairs) !==
+                canonicalJson(assignment.exactRolePairs) ||
+            expected.contextGeneration !== assignment.contextGeneration ||
+            expected.sessionGeneration !== assignment.sessionGeneration ||
+            expected.sharedEngineSessionId !== assignment.sharedEngineSessionId ||
+            expected.providerDefinitionDigest !==
+                assignment.providerDefinitionDigest ||
+            typeof expected.reason !== 'string' ||
+            expected.reason.length === 0) {
+            throw refInvalid();
+        }
+        return 'role-context-sharing';
+    }
+    if ('grantId' in assignment) {
+        if (!isPlainRecord(grantAuthorization) ||
+            !hasExactKeys(grantAuthorization, [
+                'grantId',
+                'transitionDigest',
+                'expectedBinding',
+            ]) ||
+            grantAuthorization.grantId !== assignment.grantId ||
+            !isDigest(grantAuthorization.transitionDigest) ||
+            !isPlainRecord(grantAuthorization.expectedBinding) ||
+            canonicalJson(author) !== canonicalJson(assignment.author)) {
+            throw refInvalid();
+        }
+        const expected = grantAuthorization.expectedBinding;
+        if (!hasExactKeys(expected, [
+            'repositoryId',
+            'repositoryOrigin',
+            'policyBlob',
+            'collaborationPolicyDigest',
+            'changeId',
+            'taskId',
+            'baselineCommit',
+            'baselineTree',
+            'targetDigest',
+            'lifecyclePhase',
+            'rolePair',
+            'availableActor',
+            'degradedForm',
+            'reason',
+        ]) ||
+            typeof expected.repositoryId !== 'string' ||
+            expected.repositoryId.length === 0 ||
+            typeof expected.repositoryOrigin !== 'string' ||
+            expected.repositoryOrigin.length === 0 ||
+            typeof expected.policyBlob !== 'string' ||
+            !GIT_OBJECT_ID_PATTERN.test(expected.policyBlob) ||
+            !isDigest(expected.collaborationPolicyDigest) ||
+            expected.changeId !== input.changeId ||
+            expected.taskId !== null ||
+            expected.baselineCommit !== input.subject.investigationBaseline.head ||
+            expected.baselineTree !== input.subject.investigationBaseline.tree ||
+            expected.targetDigest !== input.subject.subjectDigest ||
+            expected.lifecyclePhase !== 'plan-review' ||
+            canonicalJson(expected.rolePair) !==
+                canonicalJson({
+                    authorRole: 'plan-author',
+                    conflictingRole: 'plan-reviewer',
+                }) ||
+            canonicalJson(expected.availableActor) !==
+                canonicalJson({
+                    kind: 'provider',
+                    providerId: author.providerId,
+                    assurance: author.identityAssurance,
+                }) ||
+            expected.degradedForm !== 'same-provider-fresh-session' ||
+            typeof expected.reason !== 'string' ||
+            expected.reason.length === 0 ||
+            grantAuthorization.transitionDigest !==
+                sha256(canonicalJson({
+                    schemaVersion: 1,
+                    kind: 'collaboration-role-transition',
+                    expectedBinding: expected,
+                }))) {
+            throw refInvalid();
+        }
+        return 'collaboration';
+    }
+    if (grantAuthorization !== null ||
+        author.providerId === null ||
+        author.providerId === assignment.providerId) {
+        throw refInvalid();
+    }
+    return 'ordinary';
+}
+function assertPlanReviewRecordedParticipantOwnership(value) {
+    if (!isPlainRecord(value) ||
+        !hasExactKeys(value, [
+            'providerId',
+            'sessionId',
+            'principalId',
+            'identityAssurance',
+            'engineSpawned',
+        ]) ||
+        (value.providerId !== null &&
+            value.providerId !== 'codex' &&
+            value.providerId !== 'claude') ||
+        (value.sessionId !== null &&
+            (typeof value.sessionId !== 'string' || value.sessionId.length === 0)) ||
+        (value.principalId !== null &&
+            (typeof value.principalId !== 'string' ||
+                value.principalId.length === 0)) ||
+        ![
+            'self-declared',
+            'runtime-hint',
+            'adapter-assigned',
+            'maintainer-signed',
+        ].includes(String(value.identityAssurance)) ||
+        typeof value.engineSpawned !== 'boolean') {
+        throw refInvalid();
+    }
+    return value;
 }
 export function resolveTaskDiffReviewInvocationOwner(paths, input) {
     const changeId = assertChangeId(input.changeId);
@@ -732,125 +966,75 @@ function assertPlanningMaterializationOwnership(paths, node, expectedChangeId) {
         throw refInvalid();
     }
     if (node.type === 'propose-planning-materialization') {
-        const manifestReceipt = node.nodeSchema === 'workflow.propose-planning-materialization.v3' &&
-            node.outputSchema ===
-                'workflow.propose-planning-materialization-output.v3';
-        if (manifestReceipt) {
-            assertProposeEvidenceNode(node, {
-                type: 'propose-planning-materialization',
-                nodeSchema: node.nodeSchema,
-                outputSchema: node.outputSchema,
-                exactInputKeys: [
-                    'artifacts',
-                    'baseline',
-                    'manifestAuthority',
-                    'manifest',
-                    'investigationTarget',
-                    'sessionSnapshot',
-                ],
-                provenanceKeys: ['manifestAuthority'],
-                semanticKeys: ['manifestAuthority'],
-            });
-            if (!hasExactKeys(output, [
-                'investigationId',
-                'changeId',
-                'semanticRevision',
-                'baseline',
-                'artifacts',
-                'manifestAuthorityNodeId',
-                'manifestAuthorityResultDigest',
-                'manifestDigest',
-                'investigationTargetDigest',
-                'sessionSnapshotDigest',
-            ]) ||
-                output.changeId !== expectedChangeId ||
-                !isInvestigationOwner(output.investigationId) ||
-                !Number.isSafeInteger(output.semanticRevision) ||
-                Number(output.semanticRevision) < 0 ||
-                !isBaseline(output.baseline) ||
-                !isDigestRecord(output.artifacts) ||
-                !isDigest(output.manifestAuthorityNodeId) ||
-                !isDigest(output.manifestAuthorityResultDigest) ||
-                !isDigest(output.manifestDigest) ||
-                !isDigest(output.investigationTargetDigest) ||
-                !isDigest(output.sessionSnapshotDigest) ||
-                node.exactInputDigests.artifacts !==
-                    sha256(canonicalJson(output.artifacts)) ||
-                node.exactInputDigests.baseline !==
-                    sha256(canonicalJson(output.baseline)) ||
-                node.exactInputDigests.manifestAuthority !==
-                    output.manifestAuthorityNodeId ||
-                node.exactInputDigests.manifest !== output.manifestDigest ||
-                node.exactInputDigests.investigationTarget !==
-                    output.investigationTargetDigest ||
-                node.exactInputDigests.sessionSnapshot !==
-                    output.sessionSnapshotDigest ||
-                node.provenanceParentNodeIds.manifestAuthority !==
-                    output.manifestAuthorityNodeId ||
-                node.semanticParentResultDigests.manifestAuthority !==
-                    output.manifestAuthorityResultDigest) {
-                throw refInvalid();
-            }
-            const authority = readManifestAuthorityDependency(paths, output.manifestAuthorityNodeId, output.manifestAuthorityResultDigest, {
-                changeId: output.changeId,
-                investigationId: output.investigationId,
-                manifestDigest: output.manifestDigest,
-                investigationTargetDigest: output.investigationTargetDigest,
-                sessionSnapshotDigest: output.sessionSnapshotDigest,
-            });
-            return Object.freeze({
-                ownerInvestigationId: output.investigationId,
-                dependencies: Object.freeze([authority]),
-            });
-        }
-        const semanticReceipt = node.nodeSchema === 'workflow.propose-planning-materialization.v2' &&
-            node.outputSchema ===
-                'workflow.propose-planning-materialization-output.v2';
-        const legacyReceipt = node.nodeSchema === 'workflow.propose-planning-materialization.v1' &&
-            node.outputSchema ===
-                'workflow.propose-planning-materialization-output.v1';
-        if (!semanticReceipt && !legacyReceipt) {
+        if (node.nodeSchema !== 'workflow.propose-planning-materialization.v3' ||
+            node.outputSchema !==
+                'workflow.propose-planning-materialization-output.v3') {
             throw refInvalid();
         }
         assertProposeEvidenceNode(node, {
             type: 'propose-planning-materialization',
             nodeSchema: node.nodeSchema,
             outputSchema: node.outputSchema,
-            exactInputKeys: ['artifacts', 'baseline', 'seal'],
-            provenanceKeys: ['seal'],
-            semanticKeys: ['seal'],
+            exactInputKeys: [
+                'artifacts',
+                'baseline',
+                'manifestAuthority',
+                'manifest',
+                'investigationTarget',
+                'sessionSnapshot',
+            ],
+            provenanceKeys: ['manifestAuthority'],
+            semanticKeys: ['manifestAuthority'],
         });
         if (!hasExactKeys(output, [
             'investigationId',
             'changeId',
-            semanticReceipt ? 'semanticRevision' : 'revision',
+            'semanticRevision',
             'baseline',
             'artifacts',
-            'sealNodeId',
-            'sealResultDigest',
+            'manifestAuthorityNodeId',
+            'manifestAuthorityResultDigest',
+            'manifestDigest',
+            'investigationTargetDigest',
+            'sessionSnapshotDigest',
         ]) ||
             output.changeId !== expectedChangeId ||
             !isInvestigationOwner(output.investigationId) ||
-            !Number.isSafeInteger(semanticReceipt ? output.semanticRevision : output.revision) ||
-            Number(semanticReceipt ? output.semanticRevision : output.revision) < 0 ||
+            !Number.isSafeInteger(output.semanticRevision) ||
+            Number(output.semanticRevision) < 0 ||
             !isBaseline(output.baseline) ||
             !isDigestRecord(output.artifacts) ||
-            !isDigest(output.sealNodeId) ||
-            !isDigest(output.sealResultDigest) ||
+            !isDigest(output.manifestAuthorityNodeId) ||
+            !isDigest(output.manifestAuthorityResultDigest) ||
+            !isDigest(output.manifestDigest) ||
+            !isDigest(output.investigationTargetDigest) ||
+            !isDigest(output.sessionSnapshotDigest) ||
             node.exactInputDigests.artifacts !==
                 sha256(canonicalJson(output.artifacts)) ||
             node.exactInputDigests.baseline !==
                 sha256(canonicalJson(output.baseline)) ||
-            node.exactInputDigests.seal !== output.sealNodeId ||
-            node.provenanceParentNodeIds.seal !== output.sealNodeId ||
-            node.semanticParentResultDigests.seal !== output.sealResultDigest) {
+            node.exactInputDigests.manifestAuthority !==
+                output.manifestAuthorityNodeId ||
+            node.exactInputDigests.manifest !== output.manifestDigest ||
+            node.exactInputDigests.investigationTarget !==
+                output.investigationTargetDigest ||
+            node.exactInputDigests.sessionSnapshot !== output.sessionSnapshotDigest ||
+            node.provenanceParentNodeIds.manifestAuthority !==
+                output.manifestAuthorityNodeId ||
+            node.semanticParentResultDigests.manifestAuthority !==
+                output.manifestAuthorityResultDigest) {
             throw refInvalid();
         }
+        const authority = readManifestAuthorityDependency(paths, output.manifestAuthorityNodeId, output.manifestAuthorityResultDigest, {
+            changeId: output.changeId,
+            investigationId: output.investigationId,
+            manifestDigest: output.manifestDigest,
+            investigationTargetDigest: output.investigationTargetDigest,
+            sessionSnapshotDigest: output.sessionSnapshotDigest,
+        });
         return Object.freeze({
             ownerInvestigationId: output.investigationId,
-            // The seal is deterministically reconstructed from the investigation
-            // session graph and is intentionally not stored in the evidence CAS.
-            dependencies: Object.freeze([]),
+            dependencies: Object.freeze([authority]),
         });
     }
     assertProposeEvidenceNode(node, {
@@ -896,63 +1080,41 @@ function assertPlanningMaterializationOwnership(paths, node, expectedChangeId) {
 }
 function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
     const output = node.output;
-    const retryDecisionShape = node.nodeSchema === 'workflow.plan-review-request-reservation.v3' &&
-        node.outputSchema === 'workflow.plan-review-request-reservation-output.v3';
-    const retryShape = retryDecisionShape ||
-        (node.nodeSchema === 'workflow.plan-review-request-reservation.v2' &&
-            node.outputSchema ===
-                'workflow.plan-review-request-reservation-output.v2');
-    const initialShape = node.nodeSchema === 'workflow.plan-review-request-reservation.v1' &&
-        node.outputSchema === 'workflow.plan-review-request-reservation-output.v1';
+    const retryShape = isPlainRecord(output) &&
+        Object.hasOwn(output, 'retry') &&
+        output.retry !== null;
     if (!isPlainRecord(output) ||
         node.type !== 'plan-review-request-reservation' ||
-        (!initialShape && !retryShape) ||
+        node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
+        node.outputSchema !==
+            'workflow.plan-review-request-reservation-output.v3' ||
         node.evaluator !== 'workflow-propose.v1' ||
         node.policyDigest !== PROPOSE_POLICY_DIGEST ||
         output.changeId !== expectedChangeId ||
         !isInvestigationOwner(output.investigationId)) {
         throw refInvalid();
     }
-    const currentShape = Object.hasOwn(output, 'materializationNode');
-    if (retryShape && !currentShape) {
-        throw refInvalid();
-    }
-    const outputKeys = currentShape
-        ? [
-            'investigationId',
-            'changeId',
-            'planning',
-            'subject',
-            'assignment',
-            'author',
-            'materializationNode',
-            'targetSnapshotNode',
-            'manifest',
-            'request',
-            'grantAuthorization',
-            ...(retryShape ? ['retry'] : []),
-        ]
-        : [
-            'investigationId',
-            'changeId',
-            'planning',
-            'subject',
-            'assignment',
-            'author',
-            'manifest',
-            'request',
-            'grantAuthorization',
-        ];
-    if (!hasExactKeys(output, outputKeys) ||
+    if (!hasExactKeys(output, [
+        'investigationId',
+        'changeId',
+        'planning',
+        'subject',
+        'assignment',
+        'author',
+        'materializationNode',
+        'targetSnapshotNode',
+        'manifest',
+        'request',
+        'grantAuthorization',
+        'retry',
+    ]) ||
         !hasExactKeys(node.exactInputDigests, [
             'manifest',
             'request',
             'subject',
-            ...(currentShape ? ['targetSnapshot'] : []),
+            'targetSnapshot',
             ...(retryShape ? ['previousRequest', 'failure'] : []),
-            ...(retryDecisionShape
-                ? ['executionPolicySnapshot', 'retryDecision']
-                : []),
+            ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
         ]) ||
         !hasExactKeys(node.provenanceParentNodeIds, [
             'authorization',
@@ -994,15 +1156,10 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
     }
     const authorization = readEvidenceNode(paths, node.provenanceParentNodeIds.authorization);
     const authorizationOutput = authorization.output;
-    const authorizationCurrentShape = Object.hasOwn(authorization.exactInputDigests, 'targetSnapshot');
-    const topologyAuthorization = authorization.nodeSchema === 'workflow.plan-review-authorization.v2' &&
-        authorization.outputSchema ===
-            'workflow.plan-review-authorization-output.v2';
-    const legacyAuthorization = authorization.nodeSchema === 'workflow.plan-review-authorization.v1' &&
-        authorization.outputSchema ===
-            'workflow.plan-review-authorization-output.v1';
     if (authorization.type !== 'plan-review-authorization' ||
-        (!legacyAuthorization && !topologyAuthorization) ||
+        authorization.nodeSchema !== 'workflow.plan-review-authorization.v3' ||
+        authorization.outputSchema !==
+            'workflow.plan-review-authorization-output.v3' ||
         authorization.evaluator !== 'workflow-propose.v1' ||
         authorization.policyDigest !== PROPOSE_POLICY_DIGEST ||
         !isPlainRecord(authorizationOutput) ||
@@ -1011,23 +1168,23 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
             'assignment',
             'author',
             'grantAuthorization',
-            ...(topologyAuthorization ? ['roleTopology'] : []),
+            'roleTopology',
         ]) ||
         !hasExactKeys(authorization.exactInputDigests, [
             'assignment',
             'generation',
             'grantAuthorization',
             'subject',
-            ...(authorizationCurrentShape ? ['targetSnapshot'] : []),
-            ...(topologyAuthorization ? ['roleTopology'] : []),
+            'targetSnapshot',
+            'roleTopology',
         ]) ||
         !hasExactKeys(authorization.provenanceParentNodeIds, [
             'materialization',
-            ...(authorizationCurrentShape ? ['targetSnapshot'] : []),
+            'targetSnapshot',
         ]) ||
         !hasExactKeys(authorization.semanticParentResultDigests, [
             'materialization',
-            ...(authorizationCurrentShape ? ['targetSnapshot'] : []),
+            'targetSnapshot',
         ]) ||
         authorization.resultDigest !==
             node.semanticParentResultDigests.authorization ||
@@ -1043,13 +1200,27 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
             sha256(canonicalJson(output.assignment)) ||
         authorization.exactInputDigests.grantAuthorization !==
             sha256(canonicalJson(output.grantAuthorization)) ||
-        (topologyAuthorization &&
-            (!isPlainRecord(authorizationOutput.roleTopology) ||
-                authorization.exactInputDigests.roleTopology !==
-                    sha256(canonicalJson(authorizationOutput.roleTopology)))) ||
+        !(authorizationOutput.roleTopology === null ||
+            isPlainRecord(authorizationOutput.roleTopology)) ||
+        authorization.exactInputDigests.roleTopology !==
+            sha256(canonicalJson(authorizationOutput.roleTopology)) ||
         !isPlainRecord(output.planning.generation) ||
         authorization.exactInputDigests.generation !==
             output.planning.generation.planningGenerationId) {
+        throw refInvalid();
+    }
+    const grantKind = assertPlanReviewAuthorizationGrantOwnership({
+        changeId: expectedChangeId,
+        subject,
+        assignment: request.roleAssignment,
+        author: authorizationOutput.author,
+        grantAuthorization: authorizationOutput.grantAuthorization,
+    });
+    if (grantKind === 'role-context-sharing'
+        ? !isPlainRecord(authorizationOutput.roleTopology) ||
+            authorizationOutput.roleTopology.disposition !== 'exact-grant-required'
+        : isPlainRecord(authorizationOutput.roleTopology) &&
+            authorizationOutput.roleTopology.disposition !== 'satisfied') {
         throw refInvalid();
     }
     const materializationId = authorization.provenanceParentNodeIds.materialization;
@@ -1070,10 +1241,7 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
             role: `materialization/${dependency.role}`,
         })),
     ];
-    if (currentShape !== authorizationCurrentShape) {
-        throw refInvalid();
-    }
-    if (currentShape) {
+    {
         if (!isPlainRecord(output.materializationNode) ||
             !isPlainRecord(output.targetSnapshotNode)) {
             throw refInvalid();
@@ -1102,9 +1270,6 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
         }
         dependencies.push(dependencyClosureEntry('target-snapshot', storedTargetSnapshot));
     }
-    else if (Object.hasOwn(manifest, 'planningTarget')) {
-        throw refInvalid();
-    }
     if (retryShape) {
         const retry = assertPlanReviewRetryOwnership(paths, refs, node, output, request, expectedChangeId);
         if (retry.previousOwnership.ownerInvestigationId !==
@@ -1123,15 +1288,13 @@ function assertPlanReviewRequestOwnership(paths, refs, node, expectedChangeId) {
 }
 function assertPlanReviewRetryOwnership(paths, refs, node, output, request, expectedChangeId) {
     const retry = output.retry;
-    const retryDecisionShape = node.nodeSchema === 'workflow.plan-review-request-reservation.v3';
     if (!isPlainRecord(retry) ||
         !hasExactKeys(retry, [
             'attempt',
             'previousReservationNodeId',
             'failedInvocation',
-            ...(retryDecisionShape
-                ? ['executionPolicySnapshot', 'retryDecision']
-                : []),
+            'executionPolicySnapshot',
+            'retryDecision',
         ]) ||
         !Number.isSafeInteger(retry.attempt) ||
         retry.attempt < 2 ||
@@ -1152,60 +1315,58 @@ function assertPlanReviewRetryOwnership(paths, refs, node, output, request, expe
         retry.failedInvocation.revision < 0 ||
         !isDigest(retry.failedInvocation.requestDigest) ||
         !isDigest(retry.failedInvocation.failureDigest) ||
-        (retryDecisionShape &&
-            (!isPlainRecord(retry.retryDecision) ||
-                !hasExactKeys(retry.retryDecision, [
-                    'evaluatedAt',
-                    'evidenceDigest',
-                    'executionJobId',
-                    'executionRevision',
-                    'failedAttemptId',
-                    'kind',
-                    'schemaVersion',
-                ]) ||
-                retry.retryDecision.schemaVersion !== 1 ||
-                retry.retryDecision.kind !== 'provider-retry-decision-binding' ||
-                typeof retry.retryDecision.executionJobId !== 'string' ||
-                !/^[a-z0-9][a-z0-9._:-]{0,255}$/.test(retry.retryDecision.executionJobId) ||
-                !Number.isSafeInteger(retry.retryDecision.executionRevision) ||
-                retry.retryDecision.executionRevision < 0 ||
-                retry.retryDecision.failedAttemptId !==
-                    `attempt-provider-${retry.failedInvocation.invocationId}` ||
-                !isDigest(retry.retryDecision.evidenceDigest) ||
-                typeof retry.retryDecision.evaluatedAt !== 'string' ||
-                Number.isNaN(Date.parse(retry.retryDecision.evaluatedAt)) ||
-                node.exactInputDigests.retryDecision !==
-                    retry.retryDecision.evidenceDigest)) ||
-        (retryDecisionShape &&
-            (!isPlainRecord(retry.executionPolicySnapshot) ||
-                !hasExactKeys(retry.executionPolicySnapshot, [
-                    'accountingDigest',
-                    'attemptReservation',
-                    ...(retry.executionPolicySnapshot.schemaVersion === 3
-                        ? ['authority']
-                        : []),
-                    'invocationId',
-                    'kind',
-                    'policyDigest',
-                    'policyDocument',
-                    'requestDigest',
-                    'retryAccounting',
-                    'schemaVersion',
-                ]) ||
-                ![2, 3].includes(retry.executionPolicySnapshot.schemaVersion) ||
-                (retry.executionPolicySnapshot.schemaVersion === 3 &&
-                    !isPlainRecord(retry.executionPolicySnapshot.authority)) ||
-                retry.executionPolicySnapshot.kind !==
-                    'provider-execution-policy-snapshot' ||
-                retry.executionPolicySnapshot.invocationId !== request.invocationId ||
-                retry.executionPolicySnapshot.requestDigest !== request.requestDigest ||
-                retry.executionPolicySnapshot.policyDigest !== request.policyDigest ||
-                typeof retry.executionPolicySnapshot.policyDocument !== 'string' ||
-                !isPlainRecord(retry.executionPolicySnapshot.retryAccounting) ||
-                !isPlainRecord(retry.executionPolicySnapshot.attemptReservation) ||
-                !isDigest(retry.executionPolicySnapshot.accountingDigest) ||
-                node.exactInputDigests.executionPolicySnapshot !==
-                    sha256(canonicalJson(retry.executionPolicySnapshot)))) ||
+        !isPlainRecord(retry.retryDecision) ||
+        !hasExactKeys(retry.retryDecision, [
+            'evaluatedAt',
+            'evidenceDigest',
+            'executionJobId',
+            'executionRevision',
+            'failedAttemptId',
+            'kind',
+            'schemaVersion',
+        ]) ||
+        retry.retryDecision.schemaVersion !== 1 ||
+        retry.retryDecision.kind !== 'provider-retry-decision-binding' ||
+        typeof retry.retryDecision.executionJobId !== 'string' ||
+        !/^[a-z0-9][a-z0-9._:-]{0,255}$/.test(retry.retryDecision.executionJobId) ||
+        !Number.isSafeInteger(retry.retryDecision.executionRevision) ||
+        retry.retryDecision.executionRevision < 0 ||
+        retry.retryDecision.failedAttemptId !==
+            `attempt-provider-${retry.failedInvocation.invocationId}` ||
+        !isDigest(retry.retryDecision.evidenceDigest) ||
+        typeof retry.retryDecision.evaluatedAt !== 'string' ||
+        Number.isNaN(Date.parse(retry.retryDecision.evaluatedAt)) ||
+        node.exactInputDigests.retryDecision !==
+            retry.retryDecision.evidenceDigest ||
+        !isPlainRecord(retry.executionPolicySnapshot) ||
+        !hasExactKeys(retry.executionPolicySnapshot, [
+            'accountingDigest',
+            'attemptReservation',
+            ...(retry.executionPolicySnapshot.schemaVersion === 3
+                ? ['authority']
+                : []),
+            'invocationId',
+            'kind',
+            'policyDigest',
+            'policyDocument',
+            'requestDigest',
+            'retryAccounting',
+            'schemaVersion',
+        ]) ||
+        ![2, 3].includes(retry.executionPolicySnapshot.schemaVersion) ||
+        (retry.executionPolicySnapshot.schemaVersion === 3 &&
+            !isPlainRecord(retry.executionPolicySnapshot.authority)) ||
+        retry.executionPolicySnapshot.kind !==
+            'provider-execution-policy-snapshot' ||
+        retry.executionPolicySnapshot.invocationId !== request.invocationId ||
+        retry.executionPolicySnapshot.requestDigest !== request.requestDigest ||
+        retry.executionPolicySnapshot.policyDigest !== request.policyDigest ||
+        typeof retry.executionPolicySnapshot.policyDocument !== 'string' ||
+        !isPlainRecord(retry.executionPolicySnapshot.retryAccounting) ||
+        !isPlainRecord(retry.executionPolicySnapshot.attemptReservation) ||
+        !isDigest(retry.executionPolicySnapshot.accountingDigest) ||
+        node.exactInputDigests.executionPolicySnapshot !==
+            sha256(canonicalJson(retry.executionPolicySnapshot)) ||
         node.exactInputDigests.failure !== retry.failedInvocation.failureDigest ||
         node.exactInputDigests.previousRequest !==
             retry.previousReservationNodeId ||
@@ -1219,13 +1380,17 @@ function assertPlanReviewRetryOwnership(paths, refs, node, output, request, expe
         throw refInvalid();
     }
     const previousOwnership = assertPlanReviewRequestOwnership(paths, refs, previousNode, expectedChangeId);
-    if (!isPlainRecord(previousNode.output)) {
+    if (previousNode.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
+        previousNode.outputSchema !==
+            'workflow.plan-review-request-reservation-output.v3' ||
+        !isPlainRecord(previousNode.output) ||
+        !Object.hasOwn(previousNode.output, 'retry')) {
         throw refInvalid();
     }
     const previousOutput = previousNode.output;
     const previousRequest = recreateProviderInvocationRequest(previousOutput.request);
     const previousRetry = previousOutput.retry;
-    const previousAttempt = previousNode.nodeSchema === 'workflow.plan-review-request-reservation.v1'
+    const previousAttempt = previousRetry === null
         ? 1
         : isPlainRecord(previousRetry) &&
             Number.isSafeInteger(previousRetry.attempt) &&
@@ -1266,36 +1431,117 @@ function assertPlanReviewGrantRequirementOwnership(node, expectedChangeId) {
     const output = node.output;
     assertProposeEvidenceNode(node, {
         type: 'plan-review-grant-requirement',
-        nodeSchema: 'workflow.plan-review-grant-requirement.v1',
-        outputSchema: 'workflow.plan-review-grant-requirement-output.v1',
-        exactInputKeys: ['author', 'grantRequest', 'subject'],
+        nodeSchema: 'workflow.plan-review-grant-requirement.v3',
+        outputSchema: 'workflow.plan-review-grant-requirement-output.v3',
+        exactInputKeys: ['requirement'],
         provenanceKeys: [],
         semanticKeys: [],
     });
     if (!isPlainRecord(output) ||
-        !hasExactKeys(output, [
+        !hasExactKeys(output, ['requirement']) ||
+        !isPlainRecord(output.requirement)) {
+        throw refInvalid();
+    }
+    const requirement = output.requirement;
+    const collaborationRequirement = requirement.kind === 'collaboration-plan-review-requirement.v3' &&
+        requirement.schemaVersion === 3;
+    const roleContextRequirement = requirement.kind === 'role-context-sharing-plan-review-requirement.v3' &&
+        requirement.schemaVersion === 3 &&
+        hasExactKeys(requirement, [
+            'schemaVersion',
+            'kind',
+            'investigationId',
+            'changeId',
+            'taskId',
+            'baseline',
+            'subject',
+            'author',
+            'roleTopology',
+            'reviewerPlacement',
+            'contextGeneration',
+            'sessionGeneration',
+            'sharedEngineSessionId',
+            'providerDefinitionDigest',
+            'grantReferences',
+        ]) &&
+        isPlainRecord(requirement.author) &&
+        isPlainRecord(requirement.roleTopology);
+    if ((!collaborationRequirement && !roleContextRequirement) ||
+        requirement.changeId !== expectedChangeId ||
+        !isInvestigationOwner(requirement.investigationId) ||
+        node.exactInputDigests.requirement !== sha256(canonicalJson(requirement))) {
+        throw refInvalid();
+    }
+    const subject = assertPlanReviewSubject(requirement.subject);
+    if (collaborationRequirement) {
+        if (!hasExactKeys(requirement, [
+            'schemaVersion',
+            'kind',
             'investigationId',
             'changeId',
             'subject',
             'author',
             'grantRequest',
-        ]) ||
-        output.changeId !== expectedChangeId ||
-        !isInvestigationOwner(output.investigationId) ||
-        !isPlainRecord(output.author)) {
-        throw refInvalid();
-    }
-    const subject = assertPlanReviewSubject(output.subject);
-    if (node.exactInputDigests.subject !== subject.subjectDigest ||
-        node.exactInputDigests.author !== sha256(canonicalJson(output.author)) ||
-        node.exactInputDigests.grantRequest !==
-            sha256(canonicalJson(output.grantRequest))) {
-        throw refInvalid();
+        ])) {
+            throw refInvalid();
+        }
+        const author = assertPlanReviewRecordedParticipantOwnership(requirement.author);
+        assertCollaborationPlanReviewGrantRequestOwnership({
+            value: requirement.grantRequest,
+            changeId: expectedChangeId,
+            subject,
+            author,
+        });
     }
     return Object.freeze({
-        ownerInvestigationId: output.investigationId,
+        ownerInvestigationId: requirement.investigationId,
         dependencies: Object.freeze([]),
     });
+}
+function assertCollaborationPlanReviewGrantRequestOwnership(input) {
+    if (input.value === null)
+        return;
+    const value = input.value;
+    if (!isPlainRecord(value) ||
+        !hasExactKeys(value, [
+            'changeId',
+            'taskId',
+            'baselineCommit',
+            'baselineTree',
+            'targetDigest',
+            'lifecyclePhase',
+            'rolePair',
+            'availableActor',
+            'degradedForm',
+            'reason',
+            'ttlMinutes',
+            'maxUses',
+        ]) ||
+        value.changeId !== input.changeId ||
+        value.taskId !== null ||
+        value.baselineCommit !== input.subject.investigationBaseline.head ||
+        value.baselineTree !== input.subject.investigationBaseline.tree ||
+        value.targetDigest !== input.subject.subjectDigest ||
+        value.lifecyclePhase !== 'plan-review' ||
+        canonicalJson(value.rolePair) !==
+            canonicalJson({
+                authorRole: 'plan-author',
+                conflictingRole: 'plan-reviewer',
+            }) ||
+        input.author.providerId === null ||
+        canonicalJson(value.availableActor) !==
+            canonicalJson({
+                kind: 'provider',
+                providerId: input.author.providerId,
+                assurance: input.author.identityAssurance,
+            }) ||
+        value.degradedForm !== 'same-provider-fresh-session' ||
+        value.reason !==
+            'No provider-independent exact-plan reviewer is callable for this exact planning generation.' ||
+        value.ttlMinutes !== 30 ||
+        value.maxUses !== 1) {
+        throw refInvalid();
+    }
 }
 function assertExemptionSessionOwnership(paths, node, expectedChangeId) {
     const output = node.output;

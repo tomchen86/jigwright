@@ -22,6 +22,9 @@ export function createTransitionRegistry(definitions) {
             parameterSchemaDigest: candidate.parameterSchemaDigest,
             consequenceDigest: candidate.consequenceDigest,
             resolutionKind: candidate.resolutionKind,
+            allowedApprovalMethods: Object.freeze([
+                ...candidate.allowedApprovalMethods,
+            ]),
             validateParameters: (value) => candidate.validateParameters(value),
             renderTrustedChoice: (parameters) => candidate.renderTrustedChoice(parameters),
             ...(candidate.preparedDescendantTree === undefined
@@ -66,7 +69,8 @@ export function createTransitionRegistry(definitions) {
             const definition = resolve(choice.transitionId);
             if (definition.parameterSchemaDigest !== choice.parameterSchemaDigest ||
                 definition.consequenceDigest !== choice.consequenceDigest ||
-                definition.resolutionKind !== choice.resolutionKind) {
+                definition.resolutionKind !== choice.resolutionKind ||
+                !sameApprovalMethods(definition.allowedApprovalMethods, choice.allowedApprovalMethods)) {
                 throw transitionInvalid('GRANT_TRANSITION_DEFINITION_CHANGED', `Transition ${choice.transitionId} no longer matches the challenge.`);
             }
             const parameters = definition.validateParameters(cloneCanonical(choice.parameters));
@@ -81,6 +85,7 @@ function assertDefinition(value) {
         !SHA256_DIGEST.test(value.parameterSchemaDigest) ||
         !SHA256_DIGEST.test(value.consequenceDigest) ||
         !['retry', 'non-retry'].includes(value.resolutionKind) ||
+        !hasCanonicalApprovalMethods(value.allowedApprovalMethods) ||
         typeof value.validateParameters !== 'function' ||
         typeof value.renderTrustedChoice !== 'function' ||
         (value.preparedDescendantTree !== undefined &&
@@ -89,6 +94,18 @@ function assertDefinition(value) {
         typeof value.execute !== 'function') {
         throw transitionInvalid('GRANT_TRANSITION_DEFINITION_INVALID', 'A code-owned transition definition is malformed.');
     }
+}
+function hasCanonicalApprovalMethods(value) {
+    return (Array.isArray(value) &&
+        (value.length === 1 || value.length === 2) &&
+        value.every((method) => method === 'human-presence' || method === 'ssh') &&
+        new Set(value).size === value.length &&
+        (value.length === 1 ||
+            (value[0] === 'human-presence' && value[1] === 'ssh')));
+}
+function sameApprovalMethods(left, right) {
+    return (left.length === right.length &&
+        left.every((method, index) => method === right[index]));
 }
 function validatePresentation(value, transitionId) {
     if (value === null ||
