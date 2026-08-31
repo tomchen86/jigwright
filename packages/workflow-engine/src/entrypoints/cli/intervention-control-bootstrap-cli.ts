@@ -72,18 +72,12 @@ import {
 import type { MaintainerSignerProvider } from '../../composition-root/maintainer-signer.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 
-const MAX_REQUEST_BYTES = 1024 * 1024;
-
 export type BootstrapInterventionCliAction =
   | 'intervene'
   | 'revoke-intervention'
   | 'engine-adopt'
   | 'engine-build-artifact'
   | 'status'
-  | 'checkpoint'
-  | 'worktree'
-  | 'prepare-adoption'
-  | 'adopt'
   | 'recover';
 
 export interface DurableInterventionParentState {
@@ -128,33 +122,6 @@ export interface BootstrapInterventionCliResult {
   decision: EngineAdoptionRecoveryDecision | null;
   engineArtifact: PersistedInterventionEngineArtifact | null;
   effectsPerformed: boolean;
-}
-
-interface CheckpointRequest {
-  kind: 'intervention-checkpoint-request.v1';
-  parent: ParentChangeState;
-  interventionChangeId: string;
-  childWorkspacePath: string;
-  changeRef: string;
-  untrackedAllowlist: string[];
-  sessionSnapshotPath: string;
-  pendingIntent: string;
-  policyDigest: Sha256Digest;
-}
-
-interface PrepareAdoptionRequest {
-  kind: 'intervention-prepare-adoption-request.v1';
-  txId: string;
-  artifact: EngineArtifact;
-  maintenanceGrantEnvelope: HarnessMaintenanceGrantEnvelope;
-  priorLocalAdoptions: number;
-}
-
-interface AdoptStepRequest {
-  kind: 'intervention-adopt-step-request.v1';
-  expectedJournalDigest: Sha256Digest;
-  artifact: EngineArtifact;
-  executablePath: string;
 }
 
 /**
@@ -356,6 +323,7 @@ export function dispatchBootstrapInterventionCommand(
   }
 
   if (
+    (argv[0] === 'checkpoint' && argv.includes('--request')) ||
     (argv[0] === 'worktree' && argv.includes('--grant')) ||
     (argv[0] === 'prepare-adoption' && argv.includes('--request')) ||
     (argv[0] === 'adopt' && argv.includes('--request')) ||
@@ -369,199 +337,6 @@ export function dispatchBootstrapInterventionCommand(
       'Production maintenance accepts only persisted parent, grant, checkpoint, and artifact records; caller-supplied envelopes and manifests are disabled.',
       ExitCode.guard,
     );
-  }
-
-  if (argv[0] === 'checkpoint') {
-    if (argv.length !== 4 || !isNonEmpty(argv[1]) || argv[2] !== '--request') {
-      throw bootstrapInterventionUsageError();
-    }
-    const request = readCheckpointRequest(argv[3]!, cwd);
-    if (request.parent.changeId !== argv[1]) {
-      throw workflowError(
-        'INTERVENTION_BOOTSTRAP_PARENT_ARGUMENT_MISMATCH',
-        'Checkpoint parent argument differs from the request manifest.',
-        ExitCode.verification,
-      );
-    }
-    const captured = capturePersistedWipIntervention(stateRoot, {
-      repositoryRoot: repository.repositoryRoot,
-      parent: request.parent,
-      interventionChangeId: request.interventionChangeId,
-      childWorkspacePath: request.childWorkspacePath,
-      changeRef: request.changeRef,
-      untrackedAllowlist: request.untrackedAllowlist,
-      sessionSnapshotPath: request.sessionSnapshotPath,
-      pendingIntent: request.pendingIntent,
-      policyDigest: request.policyDigest,
-      now: cliNow(dependencies),
-    });
-    return result({
-      action: 'checkpoint',
-      stateRoot,
-      bindingPath: parentBindingPath(stateRoot, argv[1]),
-      parentChangeId: argv[1],
-      checkpointId: captured.intervention.checkpoint.checkpointId,
-      workspaceId: captured.intervention.childWorkspace.workspaceId,
-      intervention: captured.intervention,
-      effectsPerformed: true,
-    });
-  }
-
-  if (argv[0] === 'worktree') {
-    if (argv.length !== 4 || !isNonEmpty(argv[1]) || argv[2] !== '--grant') {
-      throw bootstrapInterventionUsageError();
-    }
-    const envelope = readMaintenanceGrantEnvelope(argv[3]!, cwd);
-    const receipt = materializeInterventionChildWorktree(
-      stateRoot,
-      {
-        parentChangeId: argv[1],
-        repositoryRoot: repository.repositoryRoot,
-        maintenanceGrantEnvelope: envelope,
-      },
-      dependencies,
-    );
-    return result({
-      action: 'worktree',
-      stateRoot,
-      bindingPath: parentBindingPath(stateRoot, argv[1]),
-      parentChangeId: argv[1],
-      checkpointId: receipt.checkpointId,
-      workspaceId: receipt.workspaceId,
-      effectsPerformed: receipt.effectsPerformed,
-    });
-  }
-
-  if (argv[0] === 'prepare-adoption') {
-    if (argv.length !== 4 || !isNonEmpty(argv[1]) || argv[2] !== '--request') {
-      throw bootstrapInterventionUsageError();
-    }
-    const parentChangeId = argv[1];
-    const request = readPrepareAdoptionRequest(argv[3]!, cwd);
-    const intervention = readPersistedIntervention(stateRoot, parentChangeId);
-    const artifactRecord = readInterventionEngineArtifact(
-      stateRoot,
-      request.artifact.artifactId,
-    );
-    if (
-      canonicalJson(artifactRecord.artifact) !== canonicalJson(request.artifact)
-    ) {
-      throw workflowError(
-        'INTERVENTION_ADOPTION_ARTIFACT_RECORD_MISMATCH',
-        'Prepare-adoption request differs from the exact persisted artifact record.',
-        ExitCode.verification,
-      );
-    }
-    const adoption = preparePersistedEngineAdoptionFromArtifactRecord(
-      stateRoot,
-      {
-        txId: request.txId,
-        parentChangeId,
-        artifactId: request.artifact.artifactId,
-        maintenanceGrantEnvelope: request.maintenanceGrantEnvelope,
-        priorLocalAdoptions: request.priorLocalAdoptions,
-      },
-      dependencies,
-    );
-    const bindingPath = parentBindingPath(stateRoot, parentChangeId);
-    const parentSession = initializeOrVerifyParentSession(
-      stateRoot,
-      bindingPath,
-      intervention,
-      adoption,
-      artifactRecord.artifact,
-      cliNow(dependencies),
-    );
-    return result({
-      action: 'prepare-adoption',
-      stateRoot,
-      bindingPath,
-      parentChangeId,
-      txId: request.txId,
-      checkpointId: intervention.checkpoint.checkpointId,
-      workspaceId: intervention.childWorkspace.workspaceId,
-      journalDigest: adoption.journal.journalDigest,
-      adoptionState: adoption.journal.state,
-      intervention,
-      adoption,
-      parentSession,
-      effectsPerformed: true,
-    });
-  }
-
-  if (argv[0] === 'adopt') {
-    if (argv.length !== 4 || !isNonEmpty(argv[1]) || argv[2] !== '--request') {
-      throw bootstrapInterventionUsageError();
-    }
-    const txId = argv[1];
-    const request = readAdoptStepRequest(argv[3]!, cwd);
-    const before = recoverPersistedEngineAdoption(stateRoot, txId);
-    const intervention = readPersistedIntervention(
-      stateRoot,
-      before.record.journal.parentChangeId,
-    );
-    const bindingPath = parentBindingPath(
-      stateRoot,
-      before.record.journal.parentChangeId,
-    );
-    const now = cliNow(dependencies);
-    if (readOptionalParentSession(bindingPath) === null) {
-      if (
-        !['PREPARED', 'PARENT_CHECKPOINTED'].includes(
-          before.record.journal.state,
-        )
-      ) {
-        throw workflowError(
-          'INTERVENTION_BOOTSTRAP_PARENT_SESSION_MISSING',
-          'Parent session metadata is missing after the engine binding may have changed.',
-          ExitCode.unsafeEnvironment,
-        );
-      }
-      initializeLocalEngineBinding(stateRoot, bindingPath, {
-        parentChangeId: intervention.parent.changeId,
-        parentWorkspacePath: intervention.childWorkspace.parentWorkspacePath,
-        parentBranch: `refs/heads/work/${intervention.parent.changeId}`,
-        interventionChangeId: intervention.relationship.interventionChangeId,
-        txId,
-        checkpointId: intervention.checkpoint.checkpointId,
-        engineDigest: intervention.parent.engineBinding,
-        artifactId: request.artifact.artifactId,
-        executableDigest: request.artifact.executableDigest,
-        executablePath: localEngineArtifactPath(
-          stateRoot,
-          request.artifact.artifactId,
-        ),
-        sessionSchema: intervention.parent.sessionSchema,
-        now,
-      });
-    }
-    const stepped = executePersistedAdoptionStep(
-      stateRoot,
-      {
-        txId,
-        expectedJournalDigest: request.expectedJournalDigest,
-        bindingPath,
-        artifact: request.artifact,
-        executablePath: request.executablePath,
-        at: now.toISOString(),
-      },
-      dependencies,
-    );
-    const parentSession = readLocalEngineBinding(bindingPath);
-    assertCommittedParentSession(stepped.record, parentSession);
-    return result({
-      action: 'adopt',
-      stateRoot,
-      bindingPath,
-      parentChangeId: stepped.record.journal.parentChangeId,
-      txId,
-      checkpointId: stepped.record.journal.checkpointId,
-      journalDigest: stepped.record.journal.journalDigest,
-      adoptionState: stepped.record.journal.state,
-      adoption: stepped.record,
-      parentSession,
-      effectsPerformed: stepped.receipt.effectsPerformed,
-    });
   }
 
   if (argv[0] === 'recover') {
@@ -1744,148 +1519,6 @@ function assertRecoveryParentSession(
   }
 }
 
-function readCheckpointRequest(
-  filePath: string,
-  cwd: string,
-): CheckpointRequest {
-  const value = readRequestObject(filePath, cwd);
-  assertExactKeys(value, [
-    'changeRef',
-    'childWorkspacePath',
-    'interventionChangeId',
-    'kind',
-    'parent',
-    'pendingIntent',
-    'policyDigest',
-    'sessionSnapshotPath',
-    'untrackedAllowlist',
-  ]);
-  if (
-    value.kind !== 'intervention-checkpoint-request.v1' ||
-    !isRecord(value.parent)
-  ) {
-    throw invalidRequest();
-  }
-  return value as unknown as CheckpointRequest;
-}
-
-function readPrepareAdoptionRequest(
-  filePath: string,
-  cwd: string,
-): PrepareAdoptionRequest {
-  const value = readRequestObject(filePath, cwd);
-  assertExactKeys(value, [
-    'artifact',
-    'kind',
-    'maintenanceGrantEnvelope',
-    'priorLocalAdoptions',
-    'txId',
-  ]);
-  if (
-    value.kind !== 'intervention-prepare-adoption-request.v1' ||
-    !isRecord(value.artifact) ||
-    !isRecord(value.maintenanceGrantEnvelope)
-  ) {
-    throw invalidRequest();
-  }
-  return value as unknown as PrepareAdoptionRequest;
-}
-
-function readAdoptStepRequest(filePath: string, cwd: string): AdoptStepRequest {
-  const value = readRequestObject(filePath, cwd);
-  assertExactKeys(value, [
-    'artifact',
-    'executablePath',
-    'expectedJournalDigest',
-    'kind',
-  ]);
-  if (
-    value.kind !== 'intervention-adopt-step-request.v1' ||
-    !isRecord(value.artifact)
-  ) {
-    throw invalidRequest();
-  }
-  return value as unknown as AdoptStepRequest;
-}
-
-function readMaintenanceGrantEnvelope(
-  filePath: string,
-  cwd: string,
-): HarnessMaintenanceGrantEnvelope {
-  const value = readRequestObject(filePath, cwd);
-  assertExactKeys(value, ['payload', 'signature']);
-  if (!isRecord(value.payload) || !isNonEmpty(value.signature)) {
-    throw invalidRequest();
-  }
-  return value as unknown as HarnessMaintenanceGrantEnvelope;
-}
-
-function readRequestObject(
-  requestedPath: string,
-  cwd: string,
-): Record<string, unknown> {
-  const filePath = path.resolve(cwd, requestedPath);
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    !stats?.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.size > MAX_REQUEST_BYTES
-  ) {
-    throw workflowError(
-      'INTERVENTION_BOOTSTRAP_REQUEST_UNSAFE',
-      'Bootstrap request must be a bounded regular JSON file.',
-      ExitCode.unsafeEnvironment,
-    );
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    throw invalidRequest();
-  }
-  if (!isRecord(value)) {
-    throw invalidRequest();
-  }
-  rejectPromotionIntent(value);
-  return value;
-}
-
-function rejectPromotionIntent(value: unknown): void {
-  if (Array.isArray(value)) {
-    for (const item of value) rejectPromotionIntent(item);
-    return;
-  }
-  if (!isRecord(value)) return;
-  for (const [key, child] of Object.entries(value)) {
-    if (
-      [
-        'defaultEngine',
-        'globalPromotion',
-        'promote',
-        'repositoryDefault',
-      ].includes(key)
-    ) {
-      throw workflowError(
-        'INTERVENTION_BOOTSTRAP_GLOBAL_PROMOTION_FORBIDDEN',
-        'Bootstrap request contains repository-default promotion intent.',
-        ExitCode.guard,
-      );
-    }
-    rejectPromotionIntent(child);
-  }
-}
-
-function assertExactKeys(
-  value: Record<string, unknown>,
-  expected: readonly string[],
-): void {
-  const actual = Object.keys(value).sort();
-  const canonicalExpected = [...expected].sort();
-  if (JSON.stringify(actual) !== JSON.stringify(canonicalExpected)) {
-    throw invalidRequest();
-  }
-}
-
 function cliNow(dependencies: BootstrapDependencies): Date {
   const now = dependencies.now?.() ?? new Date();
   if (!(now instanceof Date) || !Number.isFinite(now.getTime())) {
@@ -1928,14 +1561,6 @@ function requireMaintenanceVerifier(
     );
   }
   return dependencies.verifyHumanSignature;
-}
-
-function invalidRequest(): WorkflowError {
-  return workflowError(
-    'INTERVENTION_BOOTSTRAP_REQUEST_INVALID',
-    'Bootstrap request manifest does not match its exact command schema.',
-    ExitCode.usage,
-  );
 }
 
 function bootstrapInterventionUsageError(): WorkflowError {

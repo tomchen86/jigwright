@@ -203,7 +203,7 @@ test('the global JSON flag is accepted once at the terminal argv position', () =
   }
 });
 
-test('help omits retired Work Registry migration and Issue commands', () => {
+test('help omits retired Work Registry, Issue, and raw maintenance commands', () => {
   const originalWrite = process.stdout.write;
   let output = '';
   process.stdout.write = ((chunk: string | Uint8Array) => {
@@ -217,6 +217,12 @@ test('help omits retired Work Registry migration and Issue commands', () => {
   }
   assert.doesNotMatch(output, /\bmigrate-issues\b/);
   assert.doesNotMatch(output, /pnpm workflow issue\b/);
+  assert.doesNotMatch(
+    output,
+    /pnpm workflow intervention (?:checkpoint|worktree|prepare-adoption|adopt)\b/,
+  );
+  assert.match(output, /pnpm workflow intervention status <parent-change-id>/);
+  assert.match(output, /pnpm workflow intervention recover <tx-id>/);
 });
 
 test('retired Issue commands fail before mutation while Work Registry remains available', () => {

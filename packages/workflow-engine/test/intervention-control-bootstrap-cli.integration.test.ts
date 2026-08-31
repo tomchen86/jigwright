@@ -1174,8 +1174,13 @@ test('adoption resumes after a crash and unhealthy E2 rolls the parent back to E
 test('caller-supplied signed JSON routes and global promotion fail before any mutation', () => {
   const fixture = fixtureRepository();
   try {
-    const before = fs.readdirSync(fixture.stateRoot);
+    const childWorkspacePath = path.join(
+      fixture.root,
+      'caller-supplied-must-not-create-child',
+    );
+    const before = mutationBoundarySnapshot(fixture, childWorkspacePath);
     for (const argv of [
+      ['checkpoint', 'parent-A', '--request', 'must-not-be-read.json'],
       ['worktree', 'parent-A', '--grant', 'must-not-be-read.json'],
       ['prepare-adoption', 'parent-A', '--request', 'must-not-be-read.json'],
       ['adopt', 'tx-1', '--request', 'must-not-be-read.json'],
@@ -1191,7 +1196,10 @@ test('caller-supplied signed JSON routes and global promotion fail before any mu
           ),
         hasCode('INTERVENTION_CALLER_SUPPLIED_MAINTENANCE_INPUT_DISABLED'),
       );
-      assert.deepEqual(fs.readdirSync(fixture.stateRoot), before);
+      assert.deepEqual(
+        mutationBoundarySnapshot(fixture, childWorkspacePath),
+        before,
+      );
     }
     assert.throws(
       () =>
@@ -1208,7 +1216,10 @@ test('caller-supplied signed JSON routes and global promotion fail before any mu
         ),
       hasCode('INTERVENTION_AUTHORITY_AUDIT_ROOT_REQUIRED'),
     );
-    assert.deepEqual(fs.readdirSync(fixture.stateRoot), before);
+    assert.deepEqual(
+      mutationBoundarySnapshot(fixture, childWorkspacePath),
+      before,
+    );
     assert.throws(
       () =>
         dispatchBootstrapInterventionCommand(
@@ -1218,7 +1229,10 @@ test('caller-supplied signed JSON routes and global promotion fail before any mu
         ),
       hasCode('INTERVENTION_BOOTSTRAP_GLOBAL_PROMOTION_FORBIDDEN'),
     );
-    assert.deepEqual(fs.readdirSync(fixture.stateRoot), before);
+    assert.deepEqual(
+      mutationBoundarySnapshot(fixture, childWorkspacePath),
+      before,
+    );
     assert.match(
       bootstrapInterventionUsage(),
       /engine adopt <artifact-id> --into <parent-change-id>/,
