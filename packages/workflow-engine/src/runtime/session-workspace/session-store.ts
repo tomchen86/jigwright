@@ -69,7 +69,7 @@ export type WorkflowSession = {
   allowedPaths: string[];
   requiredChecks: string[];
   /** Durable worktree, workset, and exclusive-resource lease identities. */
-  isolation?: TaskSessionIsolationBinding;
+  isolation: TaskSessionIsolationBinding;
   requiredCheckDigests?: Record<string, string>;
   /** Engine identity against which the current durable check evidence ran. */
   checkEvidenceEngineDigest?: `sha256:${string}`;
@@ -529,7 +529,6 @@ export function acquireTaskSessionIsolationLeases(
     'sessionId' | 'changeId' | 'taskId' | 'isolation'
   >,
 ): void {
-  if (session.isolation === undefined) return;
   const acquired: string[] = [];
   try {
     for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
@@ -579,7 +578,6 @@ export function releaseTaskSessionIsolationLeases(
     'sessionId' | 'changeId' | 'taskId' | 'isolation'
   >,
 ): void {
-  if (session.isolation === undefined) return;
   for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
     releaseOwnedLock(leasePath, session.sessionId);
   }
@@ -592,7 +590,6 @@ export function assertTaskSessionIsolationLeasesOwned(
     'sessionId' | 'changeId' | 'taskId' | 'isolation'
   >,
 ): void {
-  if (session.isolation === undefined) return;
   for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
     assertOwnedLock(
       leasePath,
@@ -607,7 +604,6 @@ function taskSessionIsolationLeasePaths(
   runtime: ReturnType<typeof runtimePaths>,
   session: Pick<WorkflowSession, 'isolation'>,
 ): string[] {
-  if (session.isolation === undefined) return [];
   const root = path.join(runtime.root, 'task-isolation');
   return [
     path.join(
@@ -734,8 +730,8 @@ export function assertTaskSessionAdmission(
     );
     if (
       serializedKinds.length > 0 &&
-      (existing.isolation?.concurrencyEnabled === true ||
-        candidate.isolation?.concurrencyEnabled === true)
+      (existing.isolation.concurrencyEnabled ||
+        candidate.isolation.concurrencyEnabled)
     ) {
       throw workflowError(
         'TASK_SESSION_SERIALIZED_SCOPE_CONFLICT',
@@ -751,12 +747,11 @@ export function assertTaskSessionAdmission(
       );
     }
     const existingResources = new Set(
-      existing.isolation?.resources.map(({ digest }) => digest) ?? [],
+      existing.isolation.resources.map(({ digest }) => digest),
     );
-    const resourceConflicts =
-      candidate.isolation?.resources
-        .filter(({ digest }) => existingResources.has(digest))
-        .map(({ kind, digest }) => ({ kind, digest })) ?? [];
+    const resourceConflicts = candidate.isolation.resources
+      .filter(({ digest }) => existingResources.has(digest))
+      .map(({ kind, digest }) => ({ kind, digest }));
     if (resourceConflicts.length > 0) {
       throw workflowError(
         'TASK_SESSION_RESOURCE_CONFLICT',
@@ -1217,7 +1212,7 @@ function isWorkflowSession(value: unknown): value is WorkflowSession {
     return false;
   }
   if (
-    value.isolation !== undefined &&
+    !Object.hasOwn(value, 'isolation') ||
     !isTaskSessionIsolationBinding(value.isolation)
   ) {
     return false;

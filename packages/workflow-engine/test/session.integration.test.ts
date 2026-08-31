@@ -253,6 +253,67 @@ test('current single-writer sessions use a neutral routing identity and reject t
   }
 });
 
+test('current session reader rejects persisted records missing the isolation key', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(repository, 'demo-change', '1.1');
+    const runtime = runtimeRoot(repository);
+    const sessionPath = path.join(
+      runtime,
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    assert.equal(Object.hasOwn(stored, 'isolation'), true);
+    const isolation = stored.isolation as {
+      worktreeDigest: string;
+      resources: Array<{ digest: string }>;
+    };
+    const lockPath = path.join(runtime, 'locks', 'demo-change.lock');
+    const leasePaths = [
+      path.join(
+        runtime,
+        'task-isolation',
+        'worktrees',
+        `${isolation.worktreeDigest.slice('sha256:'.length)}.lock`,
+      ),
+      ...isolation.resources.map(({ digest }) =>
+        path.join(
+          runtime,
+          'task-isolation',
+          'resources',
+          `${digest.slice('sha256:'.length)}.lock`,
+        ),
+      ),
+    ];
+    const lockBytes = fs.readFileSync(lockPath);
+    const leaseBytes = leasePaths.map((leasePath) =>
+      fs.readFileSync(leasePath),
+    );
+
+    delete stored.isolation;
+    const poisonedSessionBytes = `${JSON.stringify(stored, null, 2)}\n`;
+    fs.writeFileSync(sessionPath, poisonedSessionBytes);
+
+    assert.throws(
+      () => getSession(repository, started.sessionId),
+      (error) => isWorkflowError(error, 'INVALID_SESSION'),
+    );
+    assert.equal(fs.readFileSync(sessionPath, 'utf8'), poisonedSessionBytes);
+    assert.deepEqual(fs.readFileSync(lockPath), lockBytes);
+    for (const [index, leasePath] of leasePaths.entries()) {
+      assert.deepEqual(fs.readFileSync(leasePath), leaseBytes[index]);
+    }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('current session reader rejects persisted records missing the planning assurance key', () => {
   const repository = createFixtureRepository();
   try {
