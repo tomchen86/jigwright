@@ -100,9 +100,8 @@ export interface MaintenanceApprovalSummary {
   humanReadable: string;
 }
 
-export interface PersistedMaintenanceGrantRecord {
+interface PersistedMaintenanceGrantRecordFields {
   kind: 'persisted-maintenance-grant.v1';
-  state: 'available' | 'expired' | 'revoked';
   parentChangeId: string;
   interventionChangeId: string;
   checkpointId: Sha256Digest;
@@ -117,9 +116,18 @@ export interface PersistedMaintenanceGrantRecord {
   expiredAt: string | null;
   revokedAt: string | null;
   revocationReason: string | null;
-  revocationAuthorization?: HumanRevocationAuthorization;
   recordDigest: Sha256Digest;
 }
+
+export type PersistedMaintenanceGrantRecord =
+  | (PersistedMaintenanceGrantRecordFields & {
+      state: 'available' | 'expired';
+      revocationAuthorization?: never;
+    })
+  | (PersistedMaintenanceGrantRecordFields & {
+      state: 'revoked';
+      revocationAuthorization: HumanRevocationAuthorization;
+    });
 
 export type MaintenanceGrantRevocationOptions = HumanRevocationOptions & {
   verifyHumanSignature: (
@@ -444,6 +452,7 @@ export function readMaintenanceGrantRecord(
     record.summary.interventionChangeId !== record.interventionChangeId ||
     canonicalJson(record.authorityAudit) !==
       canonicalJson(record.summary.authorityAudit) ||
+    hasRevocationAuthorization !== (record.state === 'revoked') ||
     (record.state === 'available' &&
       (record.expiredAt !== null ||
         record.revokedAt !== null ||
@@ -617,7 +626,6 @@ export function revokeMaintenanceGrantForParent(
   if (current.state === 'revoked') {
     if (
       current.revocationReason !== authorization.payload.reason ||
-      current.revocationAuthorization === undefined ||
       canonicalHumanRevocationAuthorization(current.revocationAuthorization) !==
         canonicalHumanRevocationAuthorization(authorization)
     ) {

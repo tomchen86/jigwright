@@ -874,6 +874,79 @@ test('expired maintenance authority can be renewed and revocation abandons befor
   }
 });
 
+test('revoked maintenance records require the current human revocation authorization', () => {
+  const fixture = fixtureRepository();
+  try {
+    createParentWip(fixture);
+    const crashing = humanDependencies(fixture, {
+      afterMaintenanceGrantPersisted() {
+        throw new Error('simulated grant-persistence crash');
+      },
+    });
+    assert.throws(
+      () => intervene(fixture, crashing.dependencies),
+      /simulated grant-persistence crash/,
+    );
+    const available = readMaintenanceGrantForParent(
+      fixture.stateRoot,
+      'parent-A',
+    );
+    const revokeArgs = [
+      'change',
+      'revoke-intervention',
+      'parent-A',
+      '--reason',
+      'Maintainer cancelled the repair.',
+    ];
+    dispatchBootstrapInterventionCommand(
+      revokeArgs,
+      fixture.repositoryRoot,
+      humanDependencies(fixture).dependencies,
+    );
+    const revoked = readMaintenanceGrantRecord(
+      fixture.stateRoot,
+      available.envelope.payload.grantId,
+    );
+    assert.equal(revoked.state, 'revoked');
+    assert.notEqual(revoked.revocationAuthorization, undefined);
+
+    const {
+      recordDigest: _recordDigest,
+      revocationAuthorization: _revocationAuthorization,
+      ...retiredBody
+    } = structuredClone(revoked);
+    const retired = {
+      ...retiredBody,
+      recordDigest: digest(canonicalJson(retiredBody)),
+    };
+    const recordPath = maintenanceGrantRecordPathForTest(
+      fixture.stateRoot,
+      available.envelope.payload.grantId,
+    );
+    const retiredBytes = `${canonicalJson(retired)}\n`;
+    fs.writeFileSync(recordPath, retiredBytes);
+    const childWorkspacePath = revoked.summary.childWorkspace.path;
+    const before = mutationBoundarySnapshot(fixture, childWorkspacePath);
+
+    assert.throws(
+      () =>
+        dispatchBootstrapInterventionCommand(
+          revokeArgs,
+          fixture.repositoryRoot,
+          humanDependencies(fixture).dependencies,
+        ),
+      hasCode('MAINTENANCE_GRANT_RECORD_CORRUPT'),
+    );
+    assert.deepEqual(
+      mutationBoundarySnapshot(fixture, childWorkspacePath),
+      before,
+    );
+    assert.equal(fs.readFileSync(recordPath, 'utf8'), retiredBytes);
+  } finally {
+    fixture.cleanup();
+  }
+});
+
 test('engine adopt reads only persisted state, commits once, and rejects grant reuse', () => {
   const fixture = fixtureRepository();
   try {
