@@ -1,4 +1,5 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { isCentralAuthorityCommitSubject } from '@jigwright/core/managed-transition-trailers';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -140,6 +141,15 @@ export const GIT_AUTHORITY_CANDIDATE_APPLY_CONSEQUENCE_DIGEST = grantSha256(
     checkObservationsAreAuthority: false,
     executesCandidateChecks: false,
     gitStateCasRequired: true,
+    portablePublication: {
+      sshTerminalReceipt: 'one-code-owned-canonical-receipt',
+      humanPresenceTerminalReceipt: null,
+      humanPresencePortability: 'non-portable',
+      configuredProtectedProjection:
+        'deterministic-same-result-tree-same-parent-tree-same-message',
+      additionalSignerRequired: false,
+      legacyMaintainerAttestationRequired: false,
+    },
   }),
 );
 
@@ -211,6 +221,8 @@ export function gitAuthorityCandidateApplyGrantTransitionDefinitions(
             `Create one commit with exact tree ${parameters.candidate.resultTree} and parent ${parameters.candidate.expectedOldCommit}.`,
             `Advance only ${parameters.candidate.targetRef} by exact compare-and-swap and publish the exact candidate tree to the real index.`,
             'Treat policy and check observations as facts only; this transition does not execute checks or add a second authority decision.',
+            'An SSH terminal may publish one code-owned canonical receipt and one deterministic configured-protected projection with the same result tree, parent tree, and message; no second signer or legacy Maintainer attestation is authority.',
+            'A human-presence terminal remains explicitly non-portable and publishes no portable receipt.',
           ]),
         });
       },
@@ -324,7 +336,7 @@ export function assertGitAuthorityCandidateApplyParameters(
     typeof value.candidateDigest !== 'string' ||
     !GRANT_SHA256_DIGEST.test(value.candidateDigest) ||
     typeof value.commitSubject !== 'string' ||
-    !isCommitSubject(value.commitSubject) ||
+    !isCentralAuthorityCommitSubject(value.commitSubject) ||
     typeof value.commitTimestamp !== 'string' ||
     !isExactTimestamp(value.commitTimestamp)
   ) {
@@ -696,15 +708,6 @@ function safelyParseCandidate(value: unknown): ImmutableGitCandidateV1 {
   } catch {
     throw parametersInvalid();
   }
-}
-
-function isCommitSubject(value: string): boolean {
-  return (
-    value.length > 0 &&
-    Buffer.byteLength(value) <= 200 &&
-    value.trim() === value &&
-    !/[\r\n\0]/u.test(value)
-  );
 }
 
 function isSafeIdentity(value: string): boolean {

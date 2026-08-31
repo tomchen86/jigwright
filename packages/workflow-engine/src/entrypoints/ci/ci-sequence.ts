@@ -78,6 +78,13 @@ export function replayCommitSequence(
       );
     }
 
+    if (commit.trailers.kind === 'central-authority') {
+      throw ciError(
+        'CI_AUTHORITY_COMMIT_INVALID',
+        'Central authority commits require the portable Grant receipt verifier before CI replay.',
+      );
+    }
+
     if (
       commit.trailers.kind === 'plan' ||
       // An amendment is a planning commit that also says what it replaces, so

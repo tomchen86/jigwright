@@ -41,6 +41,7 @@ import {
 } from '../runtime/repository-transaction/git.ts';
 import {
   commitFacts,
+  gitAuthorityCandidateApplyCommitMessage,
   resolveCommitIdentity,
   updateManagedRef,
 } from '../runtime/repository-transaction/git-transitions.ts';
@@ -1306,17 +1307,13 @@ function exactCommitMessage(
   subjectDigest: `sha256:${string}`,
   preparedRecordDigest: `sha256:${string}`,
 ): string {
-  return [
-    parameters.commitSubject,
-    '',
-    `Transition: ${GIT_AUTHORITY_CANDIDATE_APPLY_TRANSITION_ID}`,
-    `Candidate: ${parameters.candidateDigest}`,
-    `Grant-Challenge: ${challengeId}`,
-    `Grant-Operation: ${operationId}`,
-    `Approval-Subject: ${subjectDigest}`,
-    `Prepared-Grant: ${preparedRecordDigest}`,
-    '',
-  ].join('\n');
+  return `${gitAuthorityCandidateApplyCommitMessage(parameters.commitSubject, {
+    candidateDigest: parameters.candidateDigest,
+    challengeId,
+    operationId,
+    approvalSubjectDigest: subjectDigest,
+    preparedGrantRecordDigest: preparedRecordDigest,
+  })}\n`;
 }
 
 function commitEnvironment(

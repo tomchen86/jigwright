@@ -12,6 +12,11 @@ const GENERATION = 'a'.repeat(64);
 const AMENDS = 'b'.repeat(64);
 const REVIEW = 'c'.repeat(64);
 const ROUTING_REVIEW = 'd'.repeat(64);
+const CANDIDATE = `sha256:${'e'.repeat(64)}`;
+const APPROVAL_SUBJECT = `sha256:${'f'.repeat(64)}`;
+const PREPARED_GRANT = `sha256:${'1'.repeat(64)}`;
+const CHALLENGE = '11111111-1111-4111-8111-111111111111';
+const OPERATION = '22222222-2222-4222-8222-222222222222';
 
 test('managed transition trailer grammar preserves every landed transition form', () => {
   const vectors = [
@@ -65,6 +70,27 @@ test('managed transition trailer grammar preserves every landed transition form'
     },
     {
       message: [
+        'Grant: Apply exact Central candidate',
+        '',
+        'Transition: git.authority-candidate.apply.v1',
+        `Candidate: ${CANDIDATE}`,
+        `Grant-Challenge: ${CHALLENGE}`,
+        `Grant-Operation: ${OPERATION}`,
+        `Approval-Subject: ${APPROVAL_SUBJECT}`,
+        `Prepared-Grant: ${PREPARED_GRANT}`,
+      ].join('\n'),
+      parsed: {
+        kind: 'central-authority',
+        transition: 'git.authority-candidate.apply.v1',
+        candidateDigest: CANDIDATE,
+        challengeId: CHALLENGE,
+        operationId: OPERATION,
+        approvalSubjectDigest: APPROVAL_SUBJECT,
+        preparedGrantRecordDigest: PREPARED_GRANT,
+      },
+    },
+    {
+      message: [
         'Amend plan demo-change',
         '',
         'Change: demo-change',
@@ -99,11 +125,96 @@ test('managed transition trailer grammar keeps unmanaged and malformed messages 
     true,
   );
 
+  for (const line of [
+    'Transition: git.authority-candidate.apply.v1',
+    `Candidate: ${CANDIDATE}`,
+    `Grant-Challenge: ${CHALLENGE}`,
+    `Grant-Operation: ${OPERATION}`,
+    `Approval-Subject: ${APPROVAL_SUBJECT}`,
+    `Prepared-Grant: ${PREPARED_GRANT}`,
+  ]) {
+    const partial = `Attempt partial Central Apply\n\n${line}\n`;
+    assert.equal(hasManagedTrailerLine(partial), true, line);
+    assert.throws(
+      () => parseManagedTrailers(partial),
+      ManagedTrailerSyntaxError,
+      line,
+    );
+  }
+
   for (const message of [
     'Bad case\n\nchange: demo-change\nTask: 1.2\n',
     'Mixed\n\nChange: demo-change\nTask: 1.1\nTransition: plan\n',
     'Missing grant\n\nChange: demo-change\nTransition: authority-maintenance\n',
     'Missing routing review\n\nTransition: route\n',
+    [
+      'Partial Central Apply',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CANDIDATE}`,
+      `Grant-Challenge: ${CHALLENGE}`,
+    ].join('\n'),
+    [
+      'Central Apply wrong case',
+      '',
+      'transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CANDIDATE}`,
+      `Grant-Challenge: ${CHALLENGE}`,
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
+    [
+      'Central Apply wrong order',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Grant-Challenge: ${CHALLENGE}`,
+      `Candidate: ${CANDIDATE}`,
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
+    [
+      'Central Apply duplicate',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CANDIDATE}`,
+      `Candidate: ${CANDIDATE}`,
+      `Grant-Challenge: ${CHALLENGE}`,
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
+    [
+      'Central\u0001Apply control',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CANDIDATE}`,
+      `Grant-Challenge: ${CHALLENGE}`,
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
+    [
+      'Central Apply uppercase digest',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: sha256:${'E'.repeat(64)}`,
+      `Grant-Challenge: ${CHALLENGE}`,
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
+    [
+      'Central Apply UUID version',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CANDIDATE}`,
+      'Grant-Challenge: 11111111-1111-5111-8111-111111111111',
+      `Grant-Operation: ${OPERATION}`,
+      `Approval-Subject: ${APPROVAL_SUBJECT}`,
+      `Prepared-Grant: ${PREPARED_GRANT}`,
+    ].join('\n'),
     [
       'Self amendment',
       '',

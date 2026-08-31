@@ -1,16 +1,21 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import fs from 'node:fs';
 import test from 'node:test';
 
 import {
   ManagedTrailerSyntaxError,
   parseManagedTrailers,
 } from '../src/modules/lifecycle/managed-trailers.ts';
+import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
+import { replayCommitSequence } from '../src/entrypoints/ci/ci-sequence.ts';
 import {
   amendPlanCommitMessage,
   amendPlanCommitTrailers,
   archiveCommitMessage,
   authorityCandidateCommitMessage,
   authorityCommitMessage,
+  gitAuthorityCandidateApplyCommitMessage,
   managedCommitMessage,
   planningCommitMessage,
   type AmendmentProvenance,
@@ -19,6 +24,102 @@ import {
   loadWorkflowConformanceVectors,
   type ManagedMessageConformanceVector,
 } from './support/conformance-vectors.ts';
+import { createFixtureRepository } from './fixture.ts';
+
+const CENTRAL_CANDIDATE_DIGEST = `sha256:${'a'.repeat(64)}`;
+const CENTRAL_APPROVAL_SUBJECT_DIGEST = `sha256:${'b'.repeat(64)}`;
+const CENTRAL_PREPARED_GRANT_DIGEST = `sha256:${'c'.repeat(64)}`;
+const CENTRAL_CHALLENGE_ID = '11111111-1111-4111-8111-111111111111';
+const CENTRAL_OPERATION_ID = '22222222-2222-4222-8222-222222222222';
+
+test('CI parses the exact Central Apply block and rejects pre-cutover replay', () => {
+  const repository = createFixtureRepository();
+  try {
+    const base = git(repository, ['rev-parse', 'HEAD']).trim();
+    const message = gitAuthorityCandidateApplyCommitMessage(
+      'Grant: Apply exact Central candidate',
+      {
+        candidateDigest: CENTRAL_CANDIDATE_DIGEST,
+        challengeId: CENTRAL_CHALLENGE_ID,
+        operationId: CENTRAL_OPERATION_ID,
+        approvalSubjectDigest: CENTRAL_APPROVAL_SUBJECT_DIGEST,
+        preparedGrantRecordDigest: CENTRAL_PREPARED_GRANT_DIGEST,
+      },
+    );
+    git(repository, ['commit', '--quiet', '--allow-empty', '-m', message]);
+    const head = git(repository, ['rev-parse', 'HEAD']).trim();
+
+    const commits = listRangeCommits(repository, base, head);
+    assert.deepEqual(commits[0]?.trailers, {
+      kind: 'central-authority',
+      transition: 'git.authority-candidate.apply.v1',
+      candidateDigest: CENTRAL_CANDIDATE_DIGEST,
+      challengeId: CENTRAL_CHALLENGE_ID,
+      operationId: CENTRAL_OPERATION_ID,
+      approvalSubjectDigest: CENTRAL_APPROVAL_SUBJECT_DIGEST,
+      preparedGrantRecordDigest: CENTRAL_PREPARED_GRANT_DIGEST,
+    });
+    assert.throws(
+      () => replayCommitSequence(repository, commits, new Map()),
+      (error) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'CI_AUTHORITY_COMMIT_INVALID',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('Central Apply renderer and parser share one exact subject and provenance boundary', () => {
+  const provenance = {
+    candidateDigest: CENTRAL_CANDIDATE_DIGEST,
+    challengeId: CENTRAL_CHALLENGE_ID,
+    operationId: CENTRAL_OPERATION_ID,
+    approvalSubjectDigest: CENTRAL_APPROVAL_SUBJECT_DIGEST,
+    preparedGrantRecordDigest: CENTRAL_PREPARED_GRANT_DIGEST,
+  };
+  const rendered = gitAuthorityCandidateApplyCommitMessage(
+    'Grant: Apply exact Central candidate',
+    provenance,
+  );
+  assert.deepEqual(parseManagedTrailers(rendered), {
+    kind: 'central-authority',
+    transition: 'git.authority-candidate.apply.v1',
+    ...provenance,
+  });
+
+  for (const subject of [
+    '',
+    ' padded',
+    'x'.repeat(201),
+    'control\u0001subject',
+    'split\u2028subject',
+  ]) {
+    assert.throws(
+      () => gitAuthorityCandidateApplyCommitMessage(subject, provenance),
+      hasCode('INVALID_COMMIT_SUBJECT'),
+      JSON.stringify(subject),
+    );
+  }
+  for (const invalid of [
+    { ...provenance, candidateDigest: `sha256:${'A'.repeat(64)}` },
+    { ...provenance, challengeId: '11111111-1111-5111-8111-111111111111' },
+    { ...provenance, operationId: 'not-an-operation' },
+    { ...provenance, approvalSubjectDigest: 'b'.repeat(64) },
+    { ...provenance, preparedGrantRecordDigest: `sha256:${'c'.repeat(63)}` },
+    { ...provenance, extra: 'not-exact' },
+  ]) {
+    assert.throws(
+      () =>
+        gitAuthorityCandidateApplyCommitMessage(
+          'Grant: Apply exact Central candidate',
+          invalid,
+        ),
+      hasCode('INVALID_MANAGED_TRAILERS'),
+    );
+  }
+});
 
 test('language-neutral managed trailer vectors preserve historical parsing', () => {
   const vectors = loadWorkflowConformanceVectors(import.meta.dirname);
@@ -138,6 +239,43 @@ test('managed trailer parser rejects every non-canonical reserved block', () => 
     'Candidate with grant\n\nChange: demo-change\nTransition: authority-candidate\nGrant: 11111111-1111-4111-8111-111111111111\n',
     'Mixed authority\n\nChange: demo-change\nTask: 1.1\nTransition: authority-maintenance\nGrant: 11111111-1111-4111-8111-111111111111\n',
     'Bad grant\n\nChange: demo-change\nTransition: authority-maintenance\nGrant: not-a-grant\n',
+    [
+      'Central partial',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CENTRAL_CANDIDATE_DIGEST}`,
+    ].join('\n'),
+    [
+      'Central case',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `candidate: ${CENTRAL_CANDIDATE_DIGEST}`,
+      `Grant-Challenge: ${CENTRAL_CHALLENGE_ID}`,
+      `Grant-Operation: ${CENTRAL_OPERATION_ID}`,
+      `Approval-Subject: ${CENTRAL_APPROVAL_SUBJECT_DIGEST}`,
+      `Prepared-Grant: ${CENTRAL_PREPARED_GRANT_DIGEST}`,
+    ].join('\n'),
+    [
+      'Central order',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Grant-Challenge: ${CENTRAL_CHALLENGE_ID}`,
+      `Candidate: ${CENTRAL_CANDIDATE_DIGEST}`,
+      `Grant-Operation: ${CENTRAL_OPERATION_ID}`,
+      `Approval-Subject: ${CENTRAL_APPROVAL_SUBJECT_DIGEST}`,
+      `Prepared-Grant: ${CENTRAL_PREPARED_GRANT_DIGEST}`,
+    ].join('\n'),
+    [
+      'Central duplicate',
+      '',
+      'Transition: git.authority-candidate.apply.v1',
+      `Candidate: ${CENTRAL_CANDIDATE_DIGEST}`,
+      `Grant-Challenge: ${CENTRAL_CHALLENGE_ID}`,
+      `Grant-Operation: ${CENTRAL_OPERATION_ID}`,
+      `Approval-Subject: ${CENTRAL_APPROVAL_SUBJECT_DIGEST}`,
+      `Prepared-Grant: ${CENTRAL_PREPARED_GRANT_DIGEST}`,
+      `Prepared-Grant: ${CENTRAL_PREPARED_GRANT_DIGEST}`,
+    ].join('\n'),
   ];
 
   for (const message of invalidMessages) {
@@ -178,6 +316,14 @@ function renderManagedMessage(vector: ManagedMessageConformanceVector): string {
         field(input, 'subject'),
         field(input, 'changeId'),
       );
+    case 'central-authority':
+      return gitAuthorityCandidateApplyCommitMessage(field(input, 'subject'), {
+        candidateDigest: field(input, 'candidateDigest'),
+        challengeId: field(input, 'challengeId'),
+        operationId: field(input, 'operationId'),
+        approvalSubjectDigest: field(input, 'approvalSubjectDigest'),
+        preparedGrantRecordDigest: field(input, 'preparedGrantRecordDigest'),
+      });
   }
 }
 
@@ -200,6 +346,17 @@ function field(input: Readonly<Record<string, string>>, key: string): string {
   const value = input[key];
   assert.equal(typeof value, 'string');
   return value;
+}
+
+function git(repository: string, args: readonly string[]): string {
+  return execFileSync('git', ['-C', repository, ...args], {
+    encoding: 'utf8',
+  });
+}
+
+function hasCode(code: string): (error: unknown) => boolean {
+  return (error) =>
+    error instanceof Error && 'code' in error && error.code === code;
 }
 
 test('managed trailer identifiers use their exact canonical grammar', () => {

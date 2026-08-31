@@ -45,6 +45,24 @@
           "changeId": "demo-change",
           "taskId": "1.2"
         }
+      },
+      {
+        "id": "managed-central-authority-trailer",
+        "message": "Grant: Apply exact Central candidate\n\nTransition: git.authority-candidate.apply.v1\nCandidate: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\nGrant-Challenge: 11111111-1111-4111-8111-111111111111\nGrant-Operation: 22222222-2222-4222-8222-222222222222\nApproval-Subject: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\nPrepared-Grant: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "parsed": {
+          "kind": "central-authority",
+          "transition": "git.authority-candidate.apply.v1",
+          "candidateDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+          "challengeId": "11111111-1111-4111-8111-111111111111",
+          "operationId": "22222222-2222-4222-8222-222222222222",
+          "approvalSubjectDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "preparedGrantRecordDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        }
+      },
+      {
+        "id": "managed-central-authority-partial-rejected",
+        "message": "Partial Central Apply\n\nTransition: git.authority-candidate.apply.v1\nCandidate: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "outcome": "reject"
       }
     ],
     "journal-record": [
@@ -225,5 +243,5 @@
       }
     ]
   },
-  "vectorSetDigest": "sha256:399029d0eb24c98862128980290153815beafa6d976a00e699b3cdb357f282c2"
+  "vectorSetDigest": "sha256:8cfc3ceb27018db1ae2c66622e5ad98c0ee87fbcbab8dabcddd9938847f0c9f0"
 }

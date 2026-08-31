@@ -9,7 +9,12 @@ import path from 'node:path';
 
 import { listChangedPaths, runGit, runGitWithEnvironment } from './git.ts';
 import { normalizeChangedPath } from '../session-workspace/paths.ts';
-import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
+import {
+  isCentralAuthorityCommitProvenance,
+  isCentralAuthorityCommitSubject,
+  parseManagedTrailers,
+  type CentralAuthorityCommitProvenance,
+} from '../../modules/lifecycle/managed-trailers.ts';
 
 export type TaskCommit = {
   hash: string;
@@ -768,6 +773,51 @@ export function authorityCandidateCommitMessage(
   ].join('\n');
 }
 
+export type GitAuthorityCandidateApplyCommitProvenance =
+  CentralAuthorityCommitProvenance;
+
+export function gitAuthorityCandidateApplyCommitTrailers(
+  provenance: GitAuthorityCandidateApplyCommitProvenance,
+): string {
+  if (!isCentralAuthorityCommitProvenance(provenance)) {
+    throw workflowError(
+      'INVALID_MANAGED_TRAILERS',
+      'Central authority commit provenance is not exact.',
+      ExitCode.usage,
+    );
+  }
+  return [
+    'Transition: git.authority-candidate.apply.v1',
+    `Candidate: ${provenance.candidateDigest}`,
+    `Grant-Challenge: ${provenance.challengeId}`,
+    `Grant-Operation: ${provenance.operationId}`,
+    `Approval-Subject: ${provenance.approvalSubjectDigest}`,
+    `Prepared-Grant: ${provenance.preparedGrantRecordDigest}`,
+  ].join('\n');
+}
+
+export function gitAuthorityCandidateApplyCommitMessage(
+  subject: string,
+  provenance: GitAuthorityCandidateApplyCommitProvenance,
+): string {
+  validateCentralAuthorityCommitSubject(subject);
+  return [
+    subject,
+    '',
+    gitAuthorityCandidateApplyCommitTrailers(provenance),
+  ].join('\n');
+}
+
+function validateCentralAuthorityCommitSubject(subject: string): void {
+  if (!isCentralAuthorityCommitSubject(subject)) {
+    throw workflowError(
+      'INVALID_COMMIT_SUBJECT',
+      'Central authority commit subject must be one bounded, trimmed line.',
+      ExitCode.usage,
+    );
+  }
+}
+
 export function managedCommitMessage(
   subject: string,
   changeId: string,
@@ -951,11 +1001,8 @@ export function findCurrentExecutionTaskCommits(
   return commits.filter(
     ({ hash }) =>
       hash !== boundary &&
-      runGit(
-        repositoryRoot,
-        ['merge-base', boundary, hash],
-        true,
-      ).trim() === boundary,
+      runGit(repositoryRoot, ['merge-base', boundary, hash], true).trim() ===
+        boundary,
   );
 }
 

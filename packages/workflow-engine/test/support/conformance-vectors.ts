@@ -80,7 +80,8 @@ export type ManagedMessageConformanceVector = Readonly<{
     | 'amend-plan'
     | 'archive'
     | 'authority'
-    | 'authority-candidate';
+    | 'authority-candidate'
+    | 'central-authority';
   input: Readonly<Record<string, string>>;
   message: string;
   parsed: Readonly<Record<string, unknown>>;
@@ -453,7 +454,16 @@ function assertManagedMessageInput(
             ]
           : renderer === 'authority'
             ? ['changeId', 'grantId', 'subject']
-            : ['changeId', 'subject'];
+            : renderer === 'central-authority'
+              ? [
+                  'approvalSubjectDigest',
+                  'candidateDigest',
+                  'challengeId',
+                  'operationId',
+                  'preparedGrantRecordDigest',
+                  'subject',
+                ]
+              : ['changeId', 'subject'];
   try {
     assertExactKeys(input, keys);
   } catch (error) {
@@ -608,7 +618,8 @@ function isManagedMessageRenderer(
     value === 'amend-plan' ||
     value === 'archive' ||
     value === 'authority' ||
-    value === 'authority-candidate'
+    value === 'authority-candidate' ||
+    value === 'central-authority'
   );
 }
 

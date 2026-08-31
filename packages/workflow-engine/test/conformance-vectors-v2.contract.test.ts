@@ -53,6 +53,23 @@ test('v2 vectors anchor canonical JSON, digest identity, trailers, and journal r
     parseManagedTrailers(String(trailer.message)),
     trailer.parsed,
   );
+  const centralTrailer = vectors.domains['managed-trailer'].find(
+    ({ id }) => id === 'managed-central-authority-trailer',
+  );
+  assert.ok(centralTrailer);
+  assert.deepEqual(
+    parseManagedTrailers(String(centralTrailer.message)),
+    centralTrailer.parsed,
+  );
+  const partialCentralTrailer = vectors.domains['managed-trailer'].find(
+    ({ id }) => id === 'managed-central-authority-partial-rejected',
+  );
+  assert.ok(partialCentralTrailer);
+  assert.equal(partialCentralTrailer.outcome, 'reject');
+  assert.throws(
+    () => parseManagedTrailers(String(partialCentralTrailer.message)),
+    /non-canonical managed trailer/u,
+  );
 
   const journal = first('journal-record');
   assert.equal(canonicalJson(journal.record), journal.canonical);

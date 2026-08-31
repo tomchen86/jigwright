@@ -35,6 +35,20 @@ export type RouteManagedTrailers = {
   routingReview: string;
 };
 
+export type CentralAuthorityCommitProvenance = Readonly<{
+  candidateDigest: string;
+  challengeId: string;
+  operationId: string;
+  approvalSubjectDigest: string;
+  preparedGrantRecordDigest: string;
+}>;
+
+export type CentralAuthorityManagedTrailers = Readonly<{
+  kind: 'central-authority';
+  transition: 'git.authority-candidate.apply.v1';
+}> &
+  CentralAuthorityCommitProvenance;
+
 /**
  * What an amendment records about itself.
  *
@@ -60,12 +74,13 @@ export type ManagedTrailers =
   | ArchiveManagedTrailers
   | RouteManagedTrailers
   | AuthorityManagedTrailers
-  | AuthorityCandidateManagedTrailers;
+  | AuthorityCandidateManagedTrailers
+  | CentralAuthorityManagedTrailers;
 
 // Every managed trailer name is reserved, including the amendment's, so an
 // ordinary commit cannot fabricate one by writing the line itself.
 const RESERVED_TRAILER_LINE =
-  /^[\t ]*(?:change|task|transition|grant|planning-generation|amends-planning-generation|execution-impact|plan-review|routing-review)[\t ]*:/i;
+  /^[\t ]*(?:change|task|transition|grant|planning-generation|amends-planning-generation|execution-impact|plan-review|routing-review|candidate|grant-challenge|grant-operation|approval-subject|prepared-grant)[\t ]*:/i;
 const CHANGE_TRAILER = /^Change: ([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 const TASK_TRAILER = /^Task: (\d+(?:\.\d+)+)$/;
 const TRANSITION_TRAILER =
@@ -79,6 +94,33 @@ const ROUTING_REVIEW_TRAILER = /^Routing-Review: ([0-9a-f]{64})$/;
 const AMEND_TRAILER_LINES = 6;
 const GRANT_TRAILER =
   /^Grant: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+const CENTRAL_TRANSITION_TRAILER =
+  /^Transition: (git\.authority-candidate\.apply\.v1)$/;
+const PREFIXED_SHA256_TRAILER_VALUE = 'sha256:[0-9a-f]{64}';
+const CENTRAL_CANDIDATE_TRAILER = new RegExp(
+  `^Candidate: (${PREFIXED_SHA256_TRAILER_VALUE})$`,
+);
+const CENTRAL_CHALLENGE_TRAILER =
+  /^Grant-Challenge: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+const CENTRAL_OPERATION_TRAILER =
+  /^Grant-Operation: ([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/;
+const CENTRAL_APPROVAL_SUBJECT_TRAILER = new RegExp(
+  `^Approval-Subject: (${PREFIXED_SHA256_TRAILER_VALUE})$`,
+);
+const CENTRAL_PREPARED_GRANT_TRAILER = new RegExp(
+  `^Prepared-Grant: (${PREFIXED_SHA256_TRAILER_VALUE})$`,
+);
+const CENTRAL_TRAILER_LINES = 6;
+const CENTRAL_PREFIXED_SHA256 = /^sha256:[0-9a-f]{64}$/;
+const CENTRAL_UUID_V4 =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const CENTRAL_PROVENANCE_KEYS = Object.freeze([
+  'approvalSubjectDigest',
+  'candidateDigest',
+  'challengeId',
+  'operationId',
+  'preparedGrantRecordDigest',
+] as const);
 
 export class ManagedTrailerSyntaxError extends Error {
   constructor() {
@@ -94,6 +136,46 @@ export class ManagedTrailerSyntaxError extends Error {
  */
 export function hasManagedTrailerLine(message: string): boolean {
   return message.split('\n').some((line) => RESERVED_TRAILER_LINE.test(line));
+}
+
+export function isCentralAuthorityCommitSubject(
+  value: unknown,
+): value is string {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    Buffer.byteLength(value, 'utf8') <= 200 &&
+    value.trim() === value &&
+    !/[\p{Cc}\u2028\u2029]/u.test(value)
+  );
+}
+
+export function isCentralAuthorityCommitProvenance(
+  value: unknown,
+): value is CentralAuthorityCommitProvenance {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record).sort();
+  if (
+    keys.length !== CENTRAL_PROVENANCE_KEYS.length ||
+    keys.some((key, index) => key !== CENTRAL_PROVENANCE_KEYS[index])
+  ) {
+    return false;
+  }
+  return (
+    typeof record.candidateDigest === 'string' &&
+    CENTRAL_PREFIXED_SHA256.test(record.candidateDigest) &&
+    typeof record.challengeId === 'string' &&
+    CENTRAL_UUID_V4.test(record.challengeId) &&
+    typeof record.operationId === 'string' &&
+    CENTRAL_UUID_V4.test(record.operationId) &&
+    typeof record.approvalSubjectDigest === 'string' &&
+    CENTRAL_PREFIXED_SHA256.test(record.approvalSubjectDigest) &&
+    typeof record.preparedGrantRecordDigest === 'string' &&
+    CENTRAL_PREFIXED_SHA256.test(record.preparedGrantRecordDigest)
+  );
 }
 
 /**
@@ -151,6 +233,49 @@ function parseAmendmentTrailers(
   };
 }
 
+function parseCentralAuthorityTrailers(
+  lines: readonly string[],
+): CentralAuthorityManagedTrailers | undefined {
+  const start = -CENTRAL_TRAILER_LINES;
+  const transition = CENTRAL_TRANSITION_TRAILER.exec(lines.at(start) ?? '');
+  if (!transition) return undefined;
+
+  const candidate = CENTRAL_CANDIDATE_TRAILER.exec(lines.at(start + 1) ?? '');
+  const challenge = CENTRAL_CHALLENGE_TRAILER.exec(lines.at(start + 2) ?? '');
+  const operation = CENTRAL_OPERATION_TRAILER.exec(lines.at(start + 3) ?? '');
+  const approvalSubject = CENTRAL_APPROVAL_SUBJECT_TRAILER.exec(
+    lines.at(start + 4) ?? '',
+  );
+  const preparedGrant = CENTRAL_PREPARED_GRANT_TRAILER.exec(
+    lines.at(start + 5) ?? '',
+  );
+  const earlierReservedLine = lines
+    // The first line is the approval-bound commit subject, not another
+    // trailer. Reserved attempts anywhere in the body still fail closed.
+    .slice(1, start)
+    .some((line) => RESERVED_TRAILER_LINE.test(line));
+  const provenance: CentralAuthorityCommitProvenance = {
+    candidateDigest: candidate?.[1] ?? '',
+    challengeId: challenge?.[1] ?? '',
+    operationId: operation?.[1] ?? '',
+    approvalSubjectDigest: approvalSubject?.[1] ?? '',
+    preparedGrantRecordDigest: preparedGrant?.[1] ?? '',
+  };
+  if (
+    lines.at(start - 1) !== '' ||
+    !isCentralAuthorityCommitSubject(lines.at(0)) ||
+    !isCentralAuthorityCommitProvenance(provenance) ||
+    earlierReservedLine
+  ) {
+    throw new ManagedTrailerSyntaxError();
+  }
+  return {
+    kind: 'central-authority',
+    transition: 'git.authority-candidate.apply.v1',
+    ...provenance,
+  };
+}
+
 export function parseManagedTrailers(
   message: string,
 ): ManagedTrailers | undefined {
@@ -160,6 +285,8 @@ export function parseManagedTrailers(
 
   const normalized = message.endsWith('\n') ? message.slice(0, -1) : message;
   const lines = normalized.split('\n');
+  const centralAuthority = parseCentralAuthorityTrailers(lines);
+  if (centralAuthority !== undefined) return centralAuthority;
   const amendment = parseAmendmentTrailers(lines);
   if (amendment !== undefined) return amendment;
   const routeTransition =

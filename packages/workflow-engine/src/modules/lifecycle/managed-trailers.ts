@@ -4,6 +4,8 @@
  */
 export {
   hasManagedTrailerLine,
+  isCentralAuthorityCommitProvenance,
+  isCentralAuthorityCommitSubject,
   ManagedTrailerSyntaxError,
   parseManagedTrailers,
 } from '@jigwright/core/managed-transition-trailers';
@@ -12,6 +14,8 @@ export type {
   ArchiveManagedTrailers,
   AuthorityCandidateManagedTrailers,
   AuthorityManagedTrailers,
+  CentralAuthorityCommitProvenance,
+  CentralAuthorityManagedTrailers,
   ManagedTrailers,
   PlanManagedTrailers,
   RouteManagedTrailers,
