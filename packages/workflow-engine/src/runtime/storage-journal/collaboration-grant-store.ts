@@ -149,17 +149,27 @@ export type CollaborationReservationRecord = {
   envelope: CollaborationGrantEnvelope;
 };
 
-export type CollaborationTerminalRecord = {
+type CollaborationTerminalRecordBase = {
   schemaVersion: 1;
-  state: 'revoked' | 'consumed' | 'failed' | 'expired';
   grantId: string;
   transitionDigest: string | null;
   reason: string;
   recordedAt: string;
   envelope: CollaborationGrantEnvelope;
   use: CollaborationGrantUseProjection | null;
-  revocationAuthorization?: HumanRevocationAuthorization;
 };
+
+export type CollaborationTerminalRecord = CollaborationTerminalRecordBase &
+  (
+    | {
+        state: 'revoked';
+        revocationAuthorization: HumanRevocationAuthorization;
+      }
+    | {
+        state: 'consumed' | 'failed' | 'expired';
+        revocationAuthorization?: never;
+      }
+  );
 
 export type CollaborationGrantInspection = {
   grantId: string;
@@ -1748,10 +1758,7 @@ function readTerminal(
   grantId: string,
 ): CollaborationTerminalRecord {
   const value = parseRecord(readPrivateFile(filePath));
-  const hasAuthorization = Object.prototype.hasOwnProperty.call(
-    value,
-    'revocationAuthorization',
-  );
+  const requiresAuthorization = value.state === 'revoked';
   if (
     !hasExactKeys(value, [
       'schemaVersion',
@@ -1762,7 +1769,7 @@ function readTerminal(
       'recordedAt',
       'envelope',
       'use',
-      ...(hasAuthorization ? ['revocationAuthorization'] : []),
+      ...(requiresAuthorization ? ['revocationAuthorization'] : []),
     ]) ||
     value.schemaVersion !== 1 ||
     !['revoked', 'consumed', 'failed', 'expired'].includes(
@@ -1803,7 +1810,7 @@ function readTerminal(
     }
   }
   let revocationAuthorization: HumanRevocationAuthorization | undefined;
-  if (hasAuthorization) {
+  if (requiresAuthorization) {
     revocationAuthorization = assertHumanRevocationAuthorization(
       value.revocationAuthorization,
     );
@@ -1821,7 +1828,7 @@ function readTerminal(
     ...value,
     envelope,
     use,
-    ...(revocationAuthorization ? { revocationAuthorization } : {}),
+    ...(requiresAuthorization ? { revocationAuthorization } : {}),
   } as CollaborationTerminalRecord);
 }
 

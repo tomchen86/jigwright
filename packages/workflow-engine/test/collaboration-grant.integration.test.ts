@@ -39,6 +39,7 @@ import {
   consumeCollaborationGrantUnderLifecycleLock,
   failCollaborationReservationUnderLifecycleLock,
   inspectCollaborationGrants,
+  readCollaborationGrantInspection,
   readExactConsumedCollaborationGrantUse,
   readReservedCollaborationGrantUnderLifecycleLock,
   reserveCollaborationGrant,
@@ -1576,6 +1577,77 @@ test('expired and revoked collaboration grants never authorize a transition', ()
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }
+  }
+});
+
+test('revoked collaboration terminal records require the current human revocation authorization', () => {
+  const repository = collaborationFixture();
+  const grantId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+  try {
+    const signer = fixtureSigner();
+    issueCollaborationGrant(repository, sameProviderRequest(repository), {
+      now: NOW,
+      grantId,
+      signer,
+    });
+    const revoked = revokeCollaborationGrant(repository, grantId, {
+      reason: 'Retire unused collaboration authority',
+      now: new Date(NOW.getTime() + 30_000),
+      signer,
+      verifier: signer,
+    });
+    assert.equal(revoked.state, 'revoked');
+
+    const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+    const paths = collaborationGrantStorePaths(gitCommonDirectory);
+    const terminalPath = path.join(paths.terminal, `${grantId}.json`);
+    const current = JSON.parse(fs.readFileSync(terminalPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    const {
+      revocationAuthorization: omittedAuthorization,
+      ...retiredTerminal
+    } = current;
+    assert.notEqual(omittedAuthorization, undefined);
+    assert.deepEqual(
+      omittedAuthorization,
+      JSON.parse(
+        fs.readFileSync(
+          path.join(paths.revocationAuthorizations, `${grantId}.json`),
+          'utf8',
+        ),
+      ),
+    );
+    const retiredBytes = `${JSON.stringify(retiredTerminal)}\n`;
+    fs.writeFileSync(terminalPath, retiredBytes);
+    const beforeInspection = snapshotGrantStore(paths.runtime.root);
+    const refsBefore = git(repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]);
+    const statusBefore = git(repository, [
+      'status',
+      '--porcelain=v1',
+      '--untracked-files=all',
+    ]);
+
+    assert.throws(
+      () => readCollaborationGrantInspection(gitCommonDirectory, grantId),
+      (error) => isWorkflowError(error, 'COLLABORATION_GRANT_STATE_AMBIGUOUS'),
+    );
+    assert.equal(fs.readFileSync(terminalPath, 'utf8'), retiredBytes);
+    assert.deepEqual(snapshotGrantStore(paths.runtime.root), beforeInspection);
+    assert.equal(
+      git(repository, ['for-each-ref', '--format=%(refname)%00%(objectname)']),
+      refsBefore,
+    );
+    assert.equal(
+      git(repository, ['status', '--porcelain=v1', '--untracked-files=all']),
+      statusBefore,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
