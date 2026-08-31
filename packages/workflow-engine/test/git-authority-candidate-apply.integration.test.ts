@@ -38,7 +38,7 @@ import {
 import {
   buildImmutableGitCandidate,
   parseImmutableGitCandidate,
-} from '../src/modules/authority/immutable-git-candidate.ts';
+} from '../src/composition-root/immutable-git-candidate-production.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   createProductionGitAuthorityCandidateApplyParameters,

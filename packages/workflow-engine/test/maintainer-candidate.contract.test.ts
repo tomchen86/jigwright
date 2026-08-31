@@ -27,7 +27,7 @@ import {
   canonicalImmutableGitCandidate,
   parseImmutableGitCandidate,
   verifyImmutableGitCandidateAgainstRepository,
-} from '../src/modules/authority/immutable-git-candidate.ts';
+} from '../src/composition-root/immutable-git-candidate-production.ts';
 import type { PatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
 import { canonicalPatchManifest } from '../src/modules/authority/maintainer-manifest.ts';
 import { isWorkflowError } from './fixture.ts';

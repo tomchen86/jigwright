@@ -27,7 +27,7 @@ import {
   parseGitAuthorityCandidateApplyReceipt,
   type GitAuthorityCandidateApplyReceiptV1,
 } from '../modules/authority/git-authority-candidate-apply-receipt.ts';
-import { verifyImmutableGitCandidateObjects } from '../modules/authority/immutable-git-candidate.ts';
+import { verifyImmutableGitCandidateObjects } from './immutable-git-candidate-production.ts';
 import { parseGrantPolicyV2Document } from '../modules/authority/grant-policy.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import {

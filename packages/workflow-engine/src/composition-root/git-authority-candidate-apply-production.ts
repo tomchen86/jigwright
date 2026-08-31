@@ -27,9 +27,9 @@ import {
 } from '../modules/authority/git-authority-candidate-apply-grant.ts';
 import {
   parseImmutableGitCandidate,
-  verifyImmutableGitCandidateAgainstRepository,
   type ImmutableGitCandidateV1,
 } from '../modules/authority/immutable-git-candidate.ts';
+import { verifyImmutableGitCandidateAgainstRepository } from './immutable-git-candidate-production.ts';
 import { grantSha256 } from '../modules/authority/grant-primitives.ts';
 import { ensurePlainDirectory } from '../runtime/repository-transaction/filesystem-safety.ts';
 import {

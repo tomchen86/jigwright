@@ -1,6 +1,5 @@
 import crypto from 'node:crypto';
 
-import { pinCheckRunner } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import {
@@ -12,15 +11,7 @@ import {
   parseChecksConfigSource,
   type CheckDefinition,
 } from '../source/check-command.ts';
-import {
-  discoverRepository,
-  fingerprintWorkingState,
-  listChangedPaths,
-  runGit,
-  runGitBuffer,
-} from '../../runtime/repository-transaction/git.ts';
-import { previewExactStaging } from '../../runtime/repository-transaction/git-transitions.ts';
-import { normalizeExactRepositoryPath } from '../../runtime/session-workspace/paths.ts';
+import { normalizeExactRepositoryPath } from '../../foundation/repository-path/repository-path.ts';
 
 const POLICY_PATH = 'workflow/maintainer-policy.json';
 const CHECKS_PATH = 'workflow/checks.json';
@@ -135,6 +126,44 @@ export type BuildImmutableGitCandidateOptions = Readonly<{
   testAfterPreview?: () => void;
 }>;
 
+export type ImmutableGitCandidateRuntimePort = Readonly<{
+  discoverRepository(cwd: string): Readonly<{
+    repositoryRoot: string;
+    repositoryRealPath: string;
+    gitCommonDirectory: string;
+    branch: string | null;
+    head: string;
+    tree: string;
+    statusEntries: string[];
+  }>;
+  fingerprintWorkingState(
+    repositoryRoot: string,
+    baselineHead: string,
+    statusEntries: string[],
+  ): string;
+  listChangedPaths(repositoryRoot: string, baselineHead: string): string[];
+  pinCheckRunner(
+    repositoryRoot: string,
+    checkId: string,
+    definition: CheckDefinition,
+  ): Readonly<{ runner: string; digest: string }>;
+  previewExactStaging(
+    repositoryRoot: string,
+    baselineHead: string,
+    expectedPaths: string[],
+  ): Readonly<{ tree: string; previousIndexTree: string }>;
+  runGit(cwd: string, args: string[], allowFailure?: boolean): string;
+  runGitBuffer(
+    cwd: string,
+    args: string[],
+    options?: Readonly<{
+      input?: Buffer;
+      allowFailure?: boolean;
+      timeoutMs?: number;
+    }>,
+  ): Buffer;
+}>;
+
 /**
  * Observe and freeze an exact Git candidate without granting, signing,
  * committing, updating a ref, or publishing a durable candidate record.
@@ -142,7 +171,8 @@ export type BuildImmutableGitCandidateOptions = Readonly<{
  * decision in this module. Check execution belongs to the later durable,
  * Grant-authorized operation, so candidate-controlled code never runs here.
  */
-export function buildImmutableGitCandidate(
+export function buildImmutableGitCandidateWithRuntimePort(
+  runtime: ImmutableGitCandidateRuntimePort,
   cwd: string,
   request: BuildImmutableGitCandidateRequest,
   options: BuildImmutableGitCandidateOptions = {},
@@ -150,14 +180,16 @@ export function buildImmutableGitCandidate(
   const checkIds = assertCheckIds(request.observeCheckIds ?? []);
   if (!TARGET_REF.test(request.targetRef)) throw candidateInvalid();
 
-  const initial = discoverRepository(cwd);
-  const objectFormat = readObjectFormat(initial.repositoryRoot);
-  assertRepositoryPrestate(initial, request, objectFormat);
+  const initial = runtime.discoverRepository(cwd);
+  const objectFormat = readObjectFormat(runtime, initial.repositoryRoot);
+  assertRepositoryPrestate(runtime, initial, request, objectFormat);
   const repositoryIdentity = readBaseRepositoryIdentity(
+    runtime,
     initial.repositoryRoot,
     request.expectedOldCommit,
   );
   const changedPaths = canonicalChangedPaths(
+    runtime,
     initial.repositoryRoot,
     request.expectedOldCommit,
   );
@@ -168,15 +200,15 @@ export function buildImmutableGitCandidate(
       ExitCode.verification,
     );
   }
-  const refsBefore = refsSnapshot(initial.repositoryRoot);
+  const refsBefore = refsSnapshot(runtime, initial.repositoryRoot);
   const worktreeStateDigest = prefixedDigest(
-    fingerprintWorkingState(
+    runtime.fingerprintWorkingState(
       initial.repositoryRoot,
       initial.head,
       initial.statusEntries,
     ),
   );
-  const preview = previewExactStaging(
+  const preview = runtime.previewExactStaging(
     initial.repositoryRoot,
     initial.head,
     changedPaths,
@@ -191,6 +223,7 @@ export function buildImmutableGitCandidate(
   options.testAfterPreview?.();
 
   const manifest = buildPatchManifest(
+    runtime,
     initial.repositoryRoot,
     objectFormat,
     initial.head,
@@ -199,25 +232,27 @@ export function buildImmutableGitCandidate(
     changedPaths,
   );
   const policyObservations = derivePolicyObservations(
+    runtime,
     initial.repositoryRoot,
     manifest,
   );
   const checkObservations = observeCandidateChecks(
+    runtime,
     initial.repositoryRoot,
     initial.head,
     checkIds,
   );
 
-  const current = discoverRepository(initial.repositoryRoot);
+  const current = runtime.discoverRepository(initial.repositoryRoot);
   if (
     current.repositoryRealPath !== initial.repositoryRealPath ||
     current.gitCommonDirectory !== initial.gitCommonDirectory ||
     current.branch !== initial.branch ||
     current.head !== initial.head ||
     current.tree !== initial.tree ||
-    refsSnapshot(current.repositoryRoot) !== refsBefore ||
+    refsSnapshot(runtime, current.repositoryRoot) !== refsBefore ||
     prefixedDigest(
-      fingerprintWorkingState(
+      runtime.fingerprintWorkingState(
         current.repositoryRoot,
         current.head,
         current.statusEntries,
@@ -226,7 +261,7 @@ export function buildImmutableGitCandidate(
   ) {
     throw candidateDrift();
   }
-  const repeatedPreview = previewExactStaging(
+  const repeatedPreview = runtime.previewExactStaging(
     current.repositoryRoot,
     current.head,
     changedPaths,
@@ -238,6 +273,7 @@ export function buildImmutableGitCandidate(
     throw candidateDrift();
   }
   const repeatedManifest = buildPatchManifest(
+    runtime,
     current.repositoryRoot,
     objectFormat,
     current.head,
@@ -397,24 +433,28 @@ export function parseImmutableGitCandidate(
   return candidate;
 }
 
-export function verifyImmutableGitCandidateAgainstRepository(
+export function verifyImmutableGitCandidateAgainstRepositoryWithRuntimePort(
+  runtime: ImmutableGitCandidateRuntimePort,
   cwd: string,
   value: ImmutableGitCandidateV1,
 ): ImmutableGitCandidateV1 {
   const candidate = parseImmutableGitCandidate(
     canonicalImmutableGitCandidate(value),
   );
-  const repository = discoverRepository(cwd);
+  const repository = runtime.discoverRepository(cwd);
   const branchRef = repository.branch
     ? `refs/heads/${repository.branch}`
     : null;
-  const observedRef = runGit(
-    repository.repositoryRoot,
-    ['rev-parse', '--verify', candidate.targetRef],
-    true,
-  ).trim();
-  const refsBefore = refsSnapshot(repository.repositoryRoot);
+  const observedRef = runtime
+    .runGit(
+      repository.repositoryRoot,
+      ['rev-parse', '--verify', candidate.targetRef],
+      true,
+    )
+    .trim();
+  const refsBefore = refsSnapshot(runtime, repository.repositoryRoot);
   const repositoryIdentity = readBaseRepositoryIdentity(
+    runtime,
     repository.repositoryRoot,
     candidate.expectedOldCommit,
   );
@@ -425,10 +465,10 @@ export function verifyImmutableGitCandidateAgainstRepository(
     observedRef !== candidate.expectedOldCommit ||
     repositoryIdentity.id !== candidate.repositoryId ||
     repositoryIdentity.origin !== candidate.repositoryOrigin ||
-    readObjectFormat(repository.repositoryRoot) !==
+    readObjectFormat(runtime, repository.repositoryRoot) !==
       candidate.manifest.objectFormat ||
     prefixedDigest(
-      fingerprintWorkingState(
+      runtime.fingerprintWorkingState(
         repository.repositoryRoot,
         repository.head,
         repository.statusEntries,
@@ -438,15 +478,17 @@ export function verifyImmutableGitCandidateAgainstRepository(
     throw candidateDrift();
   }
   const changedPaths = canonicalChangedPaths(
+    runtime,
     repository.repositoryRoot,
     candidate.expectedOldCommit,
   );
-  const preview = previewExactStaging(
+  const preview = runtime.previewExactStaging(
     repository.repositoryRoot,
     candidate.expectedOldCommit,
     changedPaths,
   );
   const manifest = buildPatchManifest(
+    runtime,
     repository.repositoryRoot,
     candidate.manifest.objectFormat,
     candidate.expectedOldCommit,
@@ -455,15 +497,17 @@ export function verifyImmutableGitCandidateAgainstRepository(
     changedPaths,
   );
   const observations = derivePolicyObservations(
+    runtime,
     repository.repositoryRoot,
     manifest,
   );
   const checkObservations = observeCandidateChecks(
+    runtime,
     repository.repositoryRoot,
     candidate.expectedOldCommit,
     candidate.checkObservations.map(({ checkId }) => checkId),
   );
-  const current = discoverRepository(repository.repositoryRoot);
+  const current = runtime.discoverRepository(repository.repositoryRoot);
   if (
     preview.previousIndexTree !== candidate.indexTree ||
     preview.tree !== candidate.resultTree ||
@@ -477,9 +521,9 @@ export function verifyImmutableGitCandidateAgainstRepository(
     current.branch !== repository.branch ||
     current.head !== candidate.expectedOldCommit ||
     current.tree !== candidate.expectedOldTree ||
-    refsSnapshot(current.repositoryRoot) !== refsBefore ||
+    refsSnapshot(runtime, current.repositoryRoot) !== refsBefore ||
     prefixedDigest(
-      fingerprintWorkingState(
+      runtime.fingerprintWorkingState(
         current.repositoryRoot,
         current.head,
         current.statusEntries,
@@ -497,35 +541,36 @@ export function verifyImmutableGitCandidateAgainstRepository(
  * remain signed observations, while every base/result object, policy fact and
  * base check definition is rebuilt from the candidate's pinned objects.
  */
-export function verifyImmutableGitCandidateObjects(
+export function verifyImmutableGitCandidateObjectsWithRuntimePort(
+  runtime: ImmutableGitCandidateRuntimePort,
   cwd: string,
   value: ImmutableGitCandidateV1,
 ): ImmutableGitCandidateV1 {
   const candidate = parseImmutableGitCandidate(
     canonicalImmutableGitCandidate(value),
   );
-  const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const objectFormat = readObjectFormat(repositoryRoot);
-  const baseType = runGit(repositoryRoot, [
-    'cat-file',
-    '-t',
-    candidate.expectedOldCommit,
-  ]).trim();
-  const baseTree = runGit(repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    `${candidate.expectedOldCommit}^{tree}`,
-  ]).trim();
-  const resultType = runGit(repositoryRoot, [
-    'cat-file',
-    '-t',
-    candidate.resultTree,
-  ]).trim();
+  const repositoryRoot = runtime.discoverRepository(cwd).repositoryRoot;
+  const objectFormat = readObjectFormat(runtime, repositoryRoot);
+  const baseType = runtime
+    .runGit(repositoryRoot, ['cat-file', '-t', candidate.expectedOldCommit])
+    .trim();
+  const baseTree = runtime
+    .runGit(repositoryRoot, [
+      'rev-parse',
+      '--verify',
+      `${candidate.expectedOldCommit}^{tree}`,
+    ])
+    .trim();
+  const resultType = runtime
+    .runGit(repositoryRoot, ['cat-file', '-t', candidate.resultTree])
+    .trim();
   const identity = readBaseRepositoryIdentity(
+    runtime,
     repositoryRoot,
     candidate.expectedOldCommit,
   );
   const manifest = buildPatchManifest(
+    runtime,
     repositoryRoot,
     objectFormat,
     candidate.expectedOldCommit,
@@ -533,11 +578,16 @@ export function verifyImmutableGitCandidateObjects(
     candidate.resultTree,
     candidate.manifest.files.map(({ path: filePath }) => filePath),
   );
-  const policyObservations = derivePolicyObservations(repositoryRoot, manifest);
+  const policyObservations = derivePolicyObservations(
+    runtime,
+    repositoryRoot,
+    manifest,
+  );
   const baseDefinitions =
     candidate.checkObservations.length === 0
       ? {}
       : loadBaseCheckDefinitions(
+          runtime,
           repositoryRoot,
           candidate.expectedOldCommit,
           candidate.checkObservations.map(({ checkId }) => checkId),
@@ -570,34 +620,39 @@ export function verifyImmutableGitCandidateObjects(
 }
 
 function assertRepositoryPrestate(
-  repository: ReturnType<typeof discoverRepository>,
+  runtime: ImmutableGitCandidateRuntimePort,
+  repository: ReturnType<
+    ImmutableGitCandidateRuntimePort['discoverRepository']
+  >,
   request: BuildImmutableGitCandidateRequest,
   objectFormat: GitObjectFormat,
 ): void {
   const branchRef = repository.branch
     ? `refs/heads/${repository.branch}`
     : null;
-  const observedRef = runGit(
-    repository.repositoryRoot,
-    ['rev-parse', '--verify', request.targetRef],
-    true,
-  ).trim();
+  const observedRef = runtime
+    .runGit(
+      repository.repositoryRoot,
+      ['rev-parse', '--verify', request.targetRef],
+      true,
+    )
+    .trim();
   if (
     !isObjectId(request.expectedOldCommit, objectFormat) ||
     branchRef !== request.targetRef ||
     repository.head !== request.expectedOldCommit ||
     observedRef !== request.expectedOldCommit ||
     !isObjectId(repository.tree, objectFormat) ||
-    runGit(repository.repositoryRoot, [
-      'cat-file',
-      '-t',
-      request.expectedOldCommit,
-    ]).trim() !== 'commit' ||
-    runGit(repository.repositoryRoot, [
-      'cat-file',
-      '-t',
-      repository.tree,
-    ]).trim() !== 'tree'
+    runtime
+      .runGit(repository.repositoryRoot, [
+        'cat-file',
+        '-t',
+        request.expectedOldCommit,
+      ])
+      .trim() !== 'commit' ||
+    runtime
+      .runGit(repository.repositoryRoot, ['cat-file', '-t', repository.tree])
+      .trim() !== 'tree'
   ) {
     throw candidateError(
       'IMMUTABLE_GIT_CANDIDATE_PRESTATE_INVALID',
@@ -608,6 +663,7 @@ function assertRepositoryPrestate(
 }
 
 function buildPatchManifest(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   objectFormat: GitObjectFormat,
   baseCommit: string,
@@ -616,11 +672,13 @@ function buildPatchManifest(
   changedPaths: readonly string[],
 ): ImmutableGitPatchManifestV1 {
   if (
-    runGit(repositoryRoot, ['cat-file', '-t', resultTree]).trim() !== 'tree'
+    runtime.runGit(repositoryRoot, ['cat-file', '-t', resultTree]).trim() !==
+    'tree'
   ) {
     throw candidateObjectInvalid();
   }
   const files = readRawPatch(
+    runtime,
     repositoryRoot,
     objectFormat,
     baseCommit,
@@ -648,12 +706,13 @@ function buildPatchManifest(
 }
 
 function readRawPatch(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   objectFormat: GitObjectFormat,
   baseCommit: string,
   resultTree: string,
 ): readonly ImmutableGitPatchEntry[] {
-  const output = runGitBuffer(repositoryRoot, [
+  const output = runtime.runGitBuffer(repositoryRoot, [
     'diff-tree',
     '--no-commit-id',
     '-r',
@@ -687,6 +746,7 @@ function readRawPatch(
       beforeId === zero
         ? null
         : readBlobIdentity(
+            runtime,
             repositoryRoot,
             objectFormat,
             beforeId!,
@@ -695,7 +755,13 @@ function readRawPatch(
     const after =
       afterId === zero
         ? null
-        : readBlobIdentity(repositoryRoot, objectFormat, afterId!, afterMode!);
+        : readBlobIdentity(
+            runtime,
+            repositoryRoot,
+            objectFormat,
+            afterId!,
+            afterMode!,
+          );
     const operation =
       before === null ? 'add' : after === null ? 'delete' : 'modify';
     if (
@@ -718,6 +784,7 @@ function readRawPatch(
 }
 
 function readBlobIdentity(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   objectFormat: GitObjectFormat,
   objectId: string,
@@ -726,7 +793,8 @@ function readBlobIdentity(
   if (
     !isObjectId(objectId, objectFormat) ||
     !GIT_MODES.has(mode) ||
-    runGit(repositoryRoot, ['cat-file', '-t', objectId]).trim() !== 'blob'
+    runtime.runGit(repositoryRoot, ['cat-file', '-t', objectId]).trim() !==
+      'blob'
   ) {
     throw candidateError(
       'IMMUTABLE_GIT_CANDIDATE_PATH_UNSAFE',
@@ -734,9 +802,15 @@ function readBlobIdentity(
       ExitCode.guard,
     );
   }
-  const bytes = runGitBuffer(repositoryRoot, ['cat-file', 'blob', objectId]);
+  const bytes = runtime.runGitBuffer(repositoryRoot, [
+    'cat-file',
+    'blob',
+    objectId,
+  ]);
   const observedObjectId = exactUtf8(
-    runGitBuffer(repositoryRoot, ['hash-object', '--stdin'], { input: bytes }),
+    runtime.runGitBuffer(repositoryRoot, ['hash-object', '--stdin'], {
+      input: bytes,
+    }),
   ).trim();
   if (observedObjectId !== objectId) throw candidateObjectInvalid();
   return freezeCanonical({
@@ -749,6 +823,7 @@ function readBlobIdentity(
 }
 
 function derivePolicyObservations(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   manifest: ImmutableGitPatchManifestV1,
 ): readonly ImmutableGitPolicyObservation[] {
@@ -769,10 +844,18 @@ function derivePolicyObservations(
     ]);
   }
   const before = readJsonObject(
-    runGitBuffer(repositoryRoot, ['cat-file', 'blob', policy.before.objectId]),
+    runtime.runGitBuffer(repositoryRoot, [
+      'cat-file',
+      'blob',
+      policy.before.objectId,
+    ]),
   );
   const after = readJsonObject(
-    runGitBuffer(repositoryRoot, ['cat-file', 'blob', policy.after.objectId]),
+    runtime.runGitBuffer(repositoryRoot, [
+      'cat-file',
+      'blob',
+      policy.after.objectId,
+    ]),
   );
   const observations: ImmutableGitPolicyObservation[] = [];
   const beforeFacts = policyFacts(before);
@@ -826,31 +909,39 @@ function derivePolicyObservations(
 }
 
 function observeCandidateChecks(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   baseCommit: string,
   checkIds: readonly string[],
 ): readonly ImmutableGitCheckObservation[] {
   if (checkIds.length === 0) return Object.freeze([]);
   const definitions = loadBaseCheckDefinitions(
+    runtime,
     repositoryRoot,
     baseCommit,
     checkIds,
   );
   return freezeCanonical(
     checkIds.map((checkId) =>
-      observeCandidateCheck(repositoryRoot, checkId, definitions[checkId]!),
+      observeCandidateCheck(
+        runtime,
+        repositoryRoot,
+        checkId,
+        definitions[checkId]!,
+      ),
     ),
   );
 }
 
 function observeCandidateCheck(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   checkId: string,
   definition: CheckDefinition,
 ): ImmutableGitCheckObservation {
   const exactDefinition = freezeCanonical(definition);
-  const pinned = pinCheckRunner(repositoryRoot, checkId, definition);
-  const repeated = pinCheckRunner(repositoryRoot, checkId, definition);
+  const pinned = runtime.pinCheckRunner(repositoryRoot, checkId, definition);
+  const repeated = runtime.pinCheckRunner(repositoryRoot, checkId, definition);
   if (canonicalJson(repeated) !== canonicalJson(pinned)) {
     throw candidateDrift();
   }
@@ -869,6 +960,7 @@ function observeCandidateCheck(
 }
 
 function loadBaseCheckDefinitions(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   baseCommit: string,
   checkIds: readonly string[],
@@ -876,10 +968,9 @@ function loadBaseCheckDefinitions(
   let source: unknown;
   try {
     source = JSON.parse(
-      runGitBuffer(repositoryRoot, [
-        'show',
-        `${baseCommit}:${CHECKS_PATH}`,
-      ]).toString('utf8'),
+      runtime
+        .runGitBuffer(repositoryRoot, ['show', `${baseCommit}:${CHECKS_PATH}`])
+        .toString('utf8'),
     ) as unknown;
   } catch {
     throw candidateInvalid();
@@ -1227,26 +1318,28 @@ function assertExactCheckDefinition(
   return freezeCanonical(definition);
 }
 
-function readObjectFormat(repositoryRoot: string): GitObjectFormat {
-  const value = runGit(repositoryRoot, [
-    'rev-parse',
-    '--show-object-format',
-  ]).trim();
+function readObjectFormat(
+  runtime: ImmutableGitCandidateRuntimePort,
+  repositoryRoot: string,
+): GitObjectFormat {
+  const value = runtime
+    .runGit(repositoryRoot, ['rev-parse', '--show-object-format'])
+    .trim();
   if (value !== 'sha1' && value !== 'sha256') throw candidateObjectInvalid();
   return value;
 }
 
 function readBaseRepositoryIdentity(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   baseCommit: string,
 ): Readonly<{ id: string; origin: string }> {
   let value: unknown;
   try {
     value = JSON.parse(
-      runGitBuffer(repositoryRoot, [
-        'show',
-        `${baseCommit}:${POLICY_PATH}`,
-      ]).toString('utf8'),
+      runtime
+        .runGitBuffer(repositoryRoot, ['show', `${baseCommit}:${POLICY_PATH}`])
+        .toString('utf8'),
     ) as unknown;
   } catch {
     throw candidateInvalid();
@@ -1290,8 +1383,11 @@ function isRepositoryOrigin(value: string): boolean {
   }
 }
 
-function refsSnapshot(repositoryRoot: string): string {
-  return runGit(repositoryRoot, [
+function refsSnapshot(
+  runtime: ImmutableGitCandidateRuntimePort,
+  repositoryRoot: string,
+): string {
+  return runtime.runGit(repositoryRoot, [
     'for-each-ref',
     '--format=%(refname) %(objectname)',
   ]);
@@ -1357,12 +1453,13 @@ function compareCanonicalUtf8(left: string, right: string): number {
 }
 
 function canonicalChangedPaths(
+  runtime: ImmutableGitCandidateRuntimePort,
   repositoryRoot: string,
   baselineHead: string,
 ): string[] {
-  return listChangedPaths(repositoryRoot, baselineHead).sort(
-    compareCanonicalUtf8,
-  );
+  return runtime
+    .listChangedPaths(repositoryRoot, baselineHead)
+    .sort(compareCanonicalUtf8);
 }
 
 function assertCheckIds(value: readonly string[]): readonly string[] {

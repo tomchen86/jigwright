@@ -3868,7 +3868,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-authority.ts",
@@ -5524,7 +5524,7 @@
       "rule": "module-to-runtime",
       "reasonId": "legacy.module-to-runtime",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/grant-coordinator.ts",
