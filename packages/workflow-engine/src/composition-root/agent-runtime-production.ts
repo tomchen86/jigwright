@@ -22,6 +22,13 @@ const builtInAgentRuntime: AgentRuntimePort = {
 
 export const productionAgentRuntime = Object.freeze(builtInAgentRuntime);
 
+export { createAgentRuntimeHostExecutionBindingV1 } from '../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
+export { createAgentRuntimeProgressTracker } from '../runtime/provider-execution/agent-runtime-progress-tracker.ts';
+export {
+  providerAcceptanceGovernedRuntimeInputs,
+  providerInvocationDurableGovernedRuntimeInputs,
+} from '../runtime/provider-execution/provider-runner.ts';
+
 export type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeCompletionReceipt,

@@ -25,10 +25,15 @@ import type {
   ProviderInvocationAcceptanceBinding,
   ProviderRuntimeProtocolReceipt,
 } from '../../composition-root/agent-runtime-production.ts';
-import { createAgentRuntimeHostExecutionBindingV1 } from '../../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import { readInvestigationSession } from '../../runtime/storage-journal/investigation-session-store.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import { productionAgentRuntime } from '../../composition-root/agent-runtime-production.ts';
+import {
+  createAgentRuntimeHostExecutionBindingV1,
+  createAgentRuntimeProgressTracker,
+  productionAgentRuntime,
+  providerAcceptanceGovernedRuntimeInputs,
+  providerInvocationDurableGovernedRuntimeInputs,
+} from '../../composition-root/agent-runtime-production.ts';
 import {
   createCurrentAgentRuntimeAssignmentV1,
   type CurrentAgentRuntimeAssignmentV1,
@@ -91,10 +96,6 @@ import {
 } from '../../runtime/storage-journal/propose-exemption-store.ts';
 import { extractProviderRepairFailure } from '../../runtime/provider-execution/provider-execution-governance.ts';
 import {
-  providerAcceptanceGovernedRuntimeInputs,
-  providerInvocationDurableGovernedRuntimeInputs,
-} from '../../runtime/provider-execution/provider-runner.ts';
-import {
   processProviderFailureRetry,
   pumpProviderRetrySchedules,
   type ProviderRetrySchedulePumpOptions,
@@ -108,7 +109,6 @@ import {
   type TaskMandateBinding,
 } from '../../modules/authority/task-mandate.ts';
 import { recordProviderWorkerMaintenanceWarning } from '../../runtime/storage-journal/provider-worker-maintenance.ts';
-import { createAgentRuntimeProgressTracker } from '../../runtime/provider-execution/agent-runtime-progress-tracker.ts';
 
 const PROVIDER_CANCELLATION_POLL_INTERVAL_MS = 25;
 
