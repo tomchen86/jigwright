@@ -35,7 +35,6 @@ import {
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
-import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type {
@@ -47,10 +46,17 @@ import {
   workItemDigest,
   type WorkItemV1,
 } from '../src/modules/governance-intake/work-registry.ts';
-import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import {
-  builtInProviderDefinitionSnapshotForTest,
-  builtInProviderExecutableIdentityForTest,
+  agentRolePlanV2Digest,
+  renderAgentRolePlanV2,
+  type AgentRolePlanBodyV2,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import {
+  createCentralRoleProviderDefault,
+  renderCentralRoleProviderDefault,
+} from '../src/modules/provider-orchestration/central-role-provider-default.ts';
+import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-paths.ts';
+import {
   createFixtureRepository,
   git,
   installFakeOpenSpec,
@@ -335,6 +341,9 @@ test('consumer paths canonicalize a symlinked repository root while remaining co
 
 test('installed tarball drives the current CLI over a seeded v3 consumer with explicit deterministic seams', (t) => {
   const installed = installSingleJigwrightFixture();
+  t.after(installed.dispose);
+  const providerHost = createPortableProviderHost();
+  t.after(providerHost.dispose);
   const previousPackageRoot = cliPackageRoot;
   const previousEntrypoint = cliEntrypoint;
   cliPackageRoot = installed.packageRoot;
@@ -342,7 +351,6 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
   t.after(() => {
     cliPackageRoot = previousPackageRoot;
     cliEntrypoint = previousEntrypoint;
-    installed.dispose();
   });
   assert.match(
     fs.realpathSync(cliPackageRoot),
@@ -389,6 +397,7 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
       };
     };
     assert.deepEqual(initialized.result, {
+      schemaVersion: 1,
       kind: 'jigwright-init-result.v1',
       status: 'initialized',
       path: 'workflow/jigwright-profile.json',
@@ -421,13 +430,14 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
       'plan-commit',
       'open-task',
       'review-diff',
+      'provider-worker',
       'finalize',
       'archive',
     ]);
     assert.deepEqual(scenarioReport.seamBacked, [
       'seeded-current-v3-repository',
       'source-authored-planning-evidence',
-      'injected-provider-runner',
+      'deterministic-host-provider-wrapper',
       'routing-blocked-focus',
       'two-worktree-third-refusal',
       'managed-intake-promotion',
@@ -503,6 +513,7 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
     git(repository, ['add', '.']);
     git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
     prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+    writePortableAgentRolePlan(repository, 'demo-change');
     git(repository, ['branch', '-m', 'changes/demo-change']);
     writeReadyV3ExemptChange(repository);
     const validation = runCli(repository, [
@@ -534,6 +545,7 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
       sessionId,
       'Complete portable fixture task',
       'src/feature.ts',
+      providerHost,
     );
     git(repository, ['checkout', 'trunk']);
     git(repository, ['merge', '--ff-only', task.commitHash]);
@@ -679,7 +691,93 @@ function installSingleJigwrightFixture(): Readonly<{
   }
 }
 
+function createPortableProviderHost(): PortableProviderHost {
+  const directory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-portable-provider-')),
+  );
+  try {
+    const wrapperPath = path.join(directory, 'provider-wrapper.mjs');
+    fs.copyFileSync(
+      path.join(
+        import.meta.dirname,
+        'fixtures/portability-task-diff-provider-wrapper.mjs',
+      ),
+      wrapperPath,
+    );
+    fs.chmodSync(wrapperPath, 0o700);
+    const submissionPath = path.join(directory, 'task-diff-submission.json');
+    const executable = fs.realpathSync(process.execPath);
+    const startArgs = [wrapperPath, 'start', '{request_file}', submissionPath];
+    const capabilities = [
+      'fresh-session',
+      'plan-review',
+      'survey',
+      'task-diff-review',
+      'task-implementation',
+    ];
+    const configPath = path.join(directory, 'agent-providers.toml');
+    fs.writeFileSync(
+      configPath,
+      [
+        'schema_version = 2',
+        'global_ranking = ["claude-portable", "codex-portable"]',
+        '',
+        '[[providers]]',
+        'id = "claude-portable"',
+        'logical_provider_id = "claude"',
+        'family = "claude"',
+        `capabilities = ${JSON.stringify(capabilities)}`,
+        'trust_tier = "host-wrapper"',
+        'enabled = true',
+        'protocol = "harness-jsonl-v2"',
+        `executable = ${JSON.stringify(executable)}`,
+        `start_args = ${JSON.stringify(startArgs)}`,
+        'resume_args = []',
+        'prompt_input = "stdin"',
+        'cancel = "process-group"',
+        '',
+        '[[providers]]',
+        'id = "codex-portable"',
+        'logical_provider_id = "codex"',
+        'family = "codex"',
+        `capabilities = ${JSON.stringify(capabilities)}`,
+        'trust_tier = "host-wrapper"',
+        'enabled = true',
+        'protocol = "harness-jsonl-v2"',
+        `executable = ${JSON.stringify(executable)}`,
+        `start_args = ${JSON.stringify(startArgs)}`,
+        'resume_args = []',
+        'prompt_input = "stdin"',
+        'cancel = "process-group"',
+        '',
+        '[provider_preferences]',
+        'author = ["claude-portable", "codex-portable"]',
+        'builder = ["codex-portable", "claude-portable"]',
+        'reviewer = ["claude-portable", "codex-portable"]',
+        '',
+      ].join('\n'),
+      { mode: 0o600 },
+    );
+    fs.chmodSync(configPath, 0o600);
+    return Object.freeze({
+      configPath: fs.realpathSync(configPath),
+      submissionPath,
+      dispose() {
+        fs.rmSync(directory, { recursive: true, force: true });
+      },
+    });
+  } catch (error) {
+    fs.rmSync(directory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
 type ManagedCommit = Readonly<{ commitHash: string }>;
+type PortableProviderHost = Readonly<{
+  configPath: string;
+  submissionPath: string;
+  dispose(): void;
+}>;
 type ArchiveCommit = Readonly<{
   status: 'committed' | 'already-archived';
   commitHash: string;
@@ -782,6 +880,7 @@ function configurePortableConsumer(repository: string): void {
     transition: 'completion',
   };
   writeJson(documentPolicyPath, documentPolicy);
+  writePortableCentralRolePolicy(repository);
   const guardPath = path.join(
     repository,
     'openspec/changes/demo-change/guard.json',
@@ -812,6 +911,69 @@ function configurePortableConsumer(repository: string): void {
   git(repository, ['commit', '-m', 'Configure Orbit portability consumer']);
   git(repository, ['branch', '-m', 'main', 'trunk']);
   syncProtectedBase(repository);
+}
+
+function portableCentralRoleProviderDefault() {
+  return createCentralRoleProviderDefault({
+    schemaVersion: 1,
+    kind: 'central-role-provider-default',
+    providerGroups: [
+      {
+        roles: ['author', 'reviewer'],
+        sessionGroups: [['author'], ['reviewer']],
+        providerRule: { kind: 'adaptive-author' },
+      },
+      {
+        roles: ['builder'],
+        sessionGroups: [['builder']],
+        providerRule: {
+          kind: 'ranked-fallback',
+          preferredLogicalProviderId: null,
+        },
+      },
+    ],
+    globalProviderRanking: ['claude', 'codex'],
+  });
+}
+
+function writePortableCentralRolePolicy(repository: string): void {
+  const central = portableCentralRoleProviderDefault();
+  fs.writeFileSync(
+    path.join(repository, 'workflow/role-provider-default.json'),
+    renderCentralRoleProviderDefault(central),
+  );
+}
+
+function writePortableAgentRolePlan(
+  repository: string,
+  changeId: string,
+): void {
+  const central = portableCentralRoleProviderDefault();
+  assert.equal(
+    fs.readFileSync(
+      path.join(repository, 'workflow/role-provider-default.json'),
+      'utf8',
+    ),
+    renderCentralRoleProviderDefault(central),
+  );
+  const planBody: AgentRolePlanBodyV2 = {
+    schemaVersion: 2,
+    changeId,
+    baseCentralConfigurationDigest: central.configurationDigest,
+    roleLanes: [],
+    pairwiseRequirements: [],
+    customWrapperPolicy: 'allowed-non-protected',
+    grantReferences: [],
+  };
+  const planPath = path.join(repository, agentRolePlanV2Path(changeId));
+  fs.mkdirSync(path.dirname(planPath), { recursive: true });
+  fs.writeFileSync(
+    planPath,
+    renderAgentRolePlanV2({
+      ...planBody,
+      planDigest: agentRolePlanV2Digest(planBody),
+    }),
+  );
 }
 
 function syncProtectedBase(repository: string): void {
@@ -997,6 +1159,7 @@ function finalizePortableTask(
   sessionId: string,
   message: string,
   implementationPath: string,
+  providerHost: PortableProviderHost,
 ): ManagedCommit {
   const finalizeArgs = ['finalize', sessionId, '--message', message] as const;
   assert.throws(
@@ -1033,34 +1196,154 @@ function finalizePortableTask(
     reviewedBlobObjectId,
     started.result.subject,
   );
-  const worker = runProviderWorker(repository, started.result.invocationId, {
-    runner(input) {
-      writePortableProviderRuntime(input.invocationDirectory, submission);
-      return {
-        invocationId: started.result.invocationId,
-        providerId: input.providerId,
-        purpose: 'task-diff-review',
-        requestDigest: input.request.requestDigest,
-        semanticOutput: submission,
-        semanticOutputDigest: sha256(canonicalJson(submission)),
-        assurance: 'unchanged-governed-projection',
-        projection: {
-          unchanged: true,
-          changedCategories: [],
-          beforeDigest: started.result.subject.subjectDigest,
-          afterDigest: started.result.subject.subjectDigest,
-        },
-        sameUserProcessConfined: false,
-        residuals: [...PROVIDER_RUNNER_RESIDUALS],
-        executable: builtInProviderExecutableIdentityForTest(input.providerId),
-        elapsedMs: 7,
-        providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
-          input.providerId,
-        ),
+  writePortableProviderSubmission(
+    providerHost.submissionPath,
+    started.result.invocationId,
+    submission,
+  );
+  const worker = withAgentProviderConfig(providerHost.configPath, () =>
+    runCli(repository, ['provider-worker', started.result.invocationId]),
+  ) as {
+    result: {
+      state: string;
+      launched: boolean;
+      failure: unknown;
+      completionReceipt: {
+        schemaVersion: number;
+        kind: string;
+        terminalState: string;
+        acceptanceBinding: {
+          invocationId: string;
+          requestDigest: string;
+          executionAttemptId: string;
+          bindingDigest: string;
+        };
+        protocolReceipt: {
+          kind: string;
+          protocol: string;
+          sessionAction: string;
+          terminal: string;
+          outputSlot: string | null;
+        };
+        hostExecutionBinding: {
+          phase: string;
+          assignmentBindingDigest: string;
+          assignmentBinding: {
+            providerProfileId: string;
+            bindingDigest: string;
+          };
+          probe: {
+            invocationId: string;
+            requestDigest: string;
+            executionAttemptId: string;
+            acceptanceBindingDigest: string;
+            assignmentBindingDigest: string;
+          };
+          nativeSessionClaim: {
+            invocationId: string;
+            requestDigest: string;
+            attemptId: string;
+          };
+          nativeSessionCompletionDigest: string;
+        };
       };
+    };
+  };
+  assert.equal(
+    worker.result.state,
+    'succeeded',
+    JSON.stringify(worker.result.failure),
+  );
+  assert.equal(worker.result.launched, true);
+  assert.deepEqual(
+    {
+      schemaVersion: worker.result.completionReceipt.schemaVersion,
+      kind: worker.result.completionReceipt.kind,
+      terminalState: worker.result.completionReceipt.terminalState,
+      protocolKind: worker.result.completionReceipt.protocolReceipt.kind,
+      protocol: worker.result.completionReceipt.protocolReceipt.protocol,
+      sessionAction:
+        worker.result.completionReceipt.protocolReceipt.sessionAction,
+      terminal: worker.result.completionReceipt.protocolReceipt.terminal,
+      outputSlot: worker.result.completionReceipt.protocolReceipt.outputSlot,
+      acceptanceInvocationId:
+        worker.result.completionReceipt.acceptanceBinding.invocationId,
+      acceptanceRequestDigest:
+        worker.result.completionReceipt.acceptanceBinding.requestDigest,
+      acceptanceAttemptId:
+        worker.result.completionReceipt.acceptanceBinding.executionAttemptId,
+      hostPhase: worker.result.completionReceipt.hostExecutionBinding.phase,
+      hostProfile:
+        worker.result.completionReceipt.hostExecutionBinding.assignmentBinding
+          .providerProfileId,
+      hostAssignmentBound:
+        worker.result.completionReceipt.hostExecutionBinding
+          .assignmentBindingDigest ===
+        worker.result.completionReceipt.hostExecutionBinding.assignmentBinding
+          .bindingDigest,
+      probeInvocationId:
+        worker.result.completionReceipt.hostExecutionBinding.probe.invocationId,
+      probeRequestDigest:
+        worker.result.completionReceipt.hostExecutionBinding.probe
+          .requestDigest,
+      probeAttemptId:
+        worker.result.completionReceipt.hostExecutionBinding.probe
+          .executionAttemptId,
+      probeAcceptanceBound:
+        worker.result.completionReceipt.hostExecutionBinding.probe
+          .acceptanceBindingDigest ===
+        worker.result.completionReceipt.acceptanceBinding.bindingDigest,
+      probeAssignmentBound:
+        worker.result.completionReceipt.hostExecutionBinding.probe
+          .assignmentBindingDigest ===
+        worker.result.completionReceipt.hostExecutionBinding
+          .assignmentBindingDigest,
+      nativeInvocationId:
+        worker.result.completionReceipt.hostExecutionBinding.nativeSessionClaim
+          .invocationId,
+      nativeRequestDigest:
+        worker.result.completionReceipt.hostExecutionBinding.nativeSessionClaim
+          .requestDigest,
+      nativeAttemptId:
+        worker.result.completionReceipt.hostExecutionBinding.nativeSessionClaim
+          .attemptId,
+      nativeCompletionBound: /^[0-9a-f]{64}$/u.test(
+        worker.result.completionReceipt.hostExecutionBinding
+          .nativeSessionCompletionDigest,
+      ),
     },
-  });
-  assert.equal(worker.state, 'succeeded', JSON.stringify(worker.failure));
+    {
+      schemaVersion: 4,
+      kind: 'agent-runtime-completion-receipt',
+      terminalState: 'succeeded',
+      protocolKind: 'provider-wrapper-session-protocol-receipt',
+      protocol: 'harness-jsonl-v2',
+      sessionAction: 'start',
+      terminal: 'result',
+      outputSlot: 'primary',
+      acceptanceInvocationId: started.result.invocationId,
+      acceptanceRequestDigest:
+        worker.result.completionReceipt.acceptanceBinding.requestDigest,
+      acceptanceAttemptId:
+        worker.result.completionReceipt.acceptanceBinding.executionAttemptId,
+      hostPhase: 'native-terminal',
+      hostProfile: 'claude-portable',
+      hostAssignmentBound: true,
+      probeInvocationId: started.result.invocationId,
+      probeRequestDigest:
+        worker.result.completionReceipt.acceptanceBinding.requestDigest,
+      probeAttemptId:
+        worker.result.completionReceipt.acceptanceBinding.executionAttemptId,
+      probeAcceptanceBound: true,
+      probeAssignmentBound: true,
+      nativeInvocationId: started.result.invocationId,
+      nativeRequestDigest:
+        worker.result.completionReceipt.acceptanceBinding.requestDigest,
+      nativeAttemptId:
+        worker.result.completionReceipt.acceptanceBinding.executionAttemptId,
+      nativeCompletionBound: true,
+    },
+  );
   const reviewed = runCli(repository, [
     'review-diff',
     sessionId,
@@ -1073,21 +1356,6 @@ function finalizePortableTask(
       result: ManagedCommit;
     }
   ).result;
-}
-
-function writePortableProviderRuntime(
-  invocationDirectory: string,
-  semanticOutput: unknown,
-): void {
-  const runtime = path.join(invocationDirectory, 'runtime');
-  fs.mkdirSync(runtime, { mode: 0o700 });
-  for (const [name, content] of [
-    ['prompt.json', '{}\n'],
-    ['schema.json', '{}\n'],
-    ['semantic-output.json', `${canonicalJson(semanticOutput)}\n`],
-  ] as const) {
-    fs.writeFileSync(path.join(runtime, name), content, { mode: 0o600 });
-  }
 }
 
 function portableTaskDiffSubmission(
@@ -1136,6 +1404,24 @@ function portableTaskDiffSubmission(
   };
 }
 
+function writePortableProviderSubmission(
+  submissionPath: string,
+  invocationId: string,
+  submission: TaskDiffReviewSubmission,
+): void {
+  fs.writeFileSync(
+    submissionPath,
+    `${canonicalJson({
+      schemaVersion: 1,
+      kind: 'portability-task-diff-provider-input.v1',
+      invocationId,
+      submission,
+    })}\n`,
+    { flag: 'wx', mode: 0o600 },
+  );
+  fs.chmodSync(submissionPath, 0o600);
+}
+
 function withProviderDispatchDisabled<T>(operation: () => T): T {
   const previous = process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH;
   process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH = '1';
@@ -1150,13 +1436,23 @@ function withProviderDispatchDisabled<T>(operation: () => T): T {
   }
 }
 
+function withAgentProviderConfig<T>(configPath: string, operation: () => T): T {
+  const previous = process.env.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
+  process.env.JIGWRIGHT_AGENT_PROVIDER_CONFIG = configPath;
+  try {
+    return operation();
+  } finally {
+    if (previous === undefined) {
+      delete process.env.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
+    } else {
+      process.env.JIGWRIGHT_AGENT_PROVIDER_CONFIG = previous;
+    }
+  }
+}
+
 function hasExactLocalWorkflowCode(code: string): (error: unknown) => boolean {
   return (error) =>
     error instanceof Error && error.message.includes(`\"code\":\"${code}\"`);
-}
-
-function sha256(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
 }
 
 function abortTask(repository: string, sessionId: string): void {

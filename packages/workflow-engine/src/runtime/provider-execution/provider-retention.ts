@@ -42,6 +42,7 @@ import {
 } from '../storage-journal/provider-invocation-store.ts';
 import {
   PROVIDER_RETENTION_MAX_RECEIPT_BYTES,
+  PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS,
   assertRetentionDirectories,
   canonicalProviderRetentionReceipt,
   createProviderRetentionReceipt,
@@ -74,6 +75,10 @@ const RUNTIME_ARTIFACTS = [
   'runtime/semantic-output.json',
 ] as const satisfies readonly ProviderRetentionArtifactName[];
 const MAX_RAW_ARTIFACT_BYTES = 16 * 1_048_576;
+const MAX_HOST_WRAPPER_PROBE_BYTES = 64 * 1_024;
+const MAX_HOST_WRAPPER_TURN_REQUEST_BYTES = 1_048_576;
+const HOST_WRAPPER_PROBE_DIRECTORY = 'host-wrapper-probe-runtime';
+const HOST_WRAPPER_TURN_DIRECTORY = 'host-wrapper-runtime';
 
 export const PROVIDER_RETENTION_DEFAULT_TTL_DAYS = 7;
 export const PROVIDER_RETENTION_MAX_TTL_DAYS = 90;
@@ -406,6 +411,7 @@ type PhysicalArtifact = Readonly<{
   stagingPath: string;
   digest: string;
   bytes: number;
+  maxBytes: number;
 }>;
 
 /**
@@ -726,6 +732,7 @@ function collectPhysicalArtifacts(
   binding: InvocationBinding,
 ): PhysicalArtifact[] {
   const invocationId = binding.record.invocationId;
+  const request = readProviderInvocationRequest(paths, invocationId);
   const invocationDirectory = path.join(paths.invocations, invocationId);
   const stagingDirectory = providerRetentionStagingDirectory(
     paths,
@@ -757,13 +764,29 @@ function collectPhysicalArtifacts(
     }
   }
 
+  artifacts.push(
+    ...collectHostWrapperPhysicalArtifacts(
+      paths,
+      invocationDirectory,
+      stagingDirectory,
+      request.limits.aggregateOutputBytes,
+    ),
+  );
+
   const candidatePath = providerCompletionCandidatePath(paths, invocationId);
   const candidateExists = privatePathExists(
     paths,
     candidatePath,
     runtimeUnsafe,
   );
-  if (candidateExists && runtimeStats) {
+  const rawRuntimeObserved =
+    runtimeStats !== undefined ||
+    artifacts.some(({ receiptName }) =>
+      PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.includes(
+        receiptName as (typeof PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS)[number],
+      ),
+    );
+  if (candidateExists && rawRuntimeObserved) {
     if (
       binding.record.state !== 'succeeded' ||
       binding.record.result === null ||
@@ -813,6 +836,80 @@ function collectPhysicalArtifacts(
   }
   return artifacts.sort((left, right) =>
     left.physicalName.localeCompare(right.physicalName),
+  );
+}
+
+function collectHostWrapperPhysicalArtifacts(
+  paths: InvestigationRuntimePaths,
+  invocationDirectory: string,
+  stagingDirectory: string,
+  aggregateOutputBytes: number,
+): PhysicalArtifact[] {
+  const probeDirectory = path.join(
+    invocationDirectory,
+    HOST_WRAPPER_PROBE_DIRECTORY,
+  );
+  const turnDirectory = path.join(
+    invocationDirectory,
+    HOST_WRAPPER_TURN_DIRECTORY,
+  );
+  const probeStats = fs.lstatSync(probeDirectory, { throwIfNoEntry: false });
+  const turnStats = fs.lstatSync(turnDirectory, { throwIfNoEntry: false });
+  if (!probeStats) {
+    if (turnStats) throw runtimeUnsafe();
+    return [];
+  }
+  assertPrivateInvestigationDirectory(paths, probeDirectory, runtimeUnsafe);
+  const probeNames = fs.readdirSync(probeDirectory).sort();
+  if (!isCreationPrefix(probeNames, ['request.json', 'probe-result.json'])) {
+    throw runtimeUnsafe();
+  }
+  if (turnStats) {
+    assertPrivateInvestigationDirectory(paths, turnDirectory, runtimeUnsafe);
+  }
+  const turnNames = turnStats ? fs.readdirSync(turnDirectory).sort() : [];
+  if (
+    !isCreationPrefix(turnNames, ['request.json', 'semantic-output.json']) ||
+    (turnStats && probeNames.length !== 2)
+  ) {
+    throw runtimeUnsafe();
+  }
+  const descriptors = [
+    ...probeNames.map((name) => ({
+      receiptName:
+        `${HOST_WRAPPER_PROBE_DIRECTORY}/${name}` as ProviderRetentionArtifactName,
+      maxBytes: MAX_HOST_WRAPPER_PROBE_BYTES,
+    })),
+    ...turnNames.map((name) => ({
+      receiptName:
+        `${HOST_WRAPPER_TURN_DIRECTORY}/${name}` as ProviderRetentionArtifactName,
+      maxBytes:
+        name === 'request.json'
+          ? MAX_HOST_WRAPPER_TURN_REQUEST_BYTES
+          : Math.min(MAX_HOST_WRAPPER_TURN_REQUEST_BYTES, aggregateOutputBytes),
+    })),
+  ];
+  return descriptors.map(({ receiptName, maxBytes }) =>
+    physicalArtifact(
+      receiptName,
+      receiptName,
+      path.join(invocationDirectory, receiptName),
+      path.join(stagingDirectory, stagingName(receiptName)),
+      undefined,
+      maxBytes,
+    ),
+  );
+}
+
+function isCreationPrefix(
+  observedNames: readonly string[],
+  creationOrder: readonly string[],
+): boolean {
+  return Array.from({ length: creationOrder.length + 1 }, (_, length) =>
+    [...creationOrder.slice(0, length)].sort(),
+  ).some(
+    (allowed) =>
+      canonicalJson(allowed) === canonicalJson([...observedNames].sort()),
   );
 }
 
@@ -947,6 +1044,7 @@ function completePreparedReceipt(
     stagedCount += 1;
     hooks.afterArtifactStaged?.(stagedCount, receipt.invocationId);
   }
+  ensureHostWrapperRetentionMarker(paths, receipt, assertOwned);
   const { receiptDigest: _receiptDigest, ...prepared } = receipt;
   const complete = createProviderRetentionReceipt({
     ...prepared,
@@ -969,6 +1067,7 @@ function cleanupCompletedReceipt(
   assertOwned: () => void,
 ): void {
   if (receipt.state !== 'complete') throw receiptUnsafe();
+  assertHostWrapperRetentionMarker(paths, receipt);
   const stagingDirectory = providerRetentionStagingDirectory(
     paths,
     receipt.invocationId,
@@ -1021,10 +1120,82 @@ function cleanupCompletedReceipt(
   }
 }
 
+function ensureHostWrapperRetentionMarker(
+  paths: InvestigationRuntimePaths,
+  receipt: ProviderRetentionReceipt,
+  assertOwned: () => void,
+): void {
+  if (!receiptHasHostWrapperArtifacts(receipt)) return;
+  const invocationDirectory = path.join(
+    paths.invocations,
+    receipt.invocationId,
+  );
+  const probeDirectory = path.join(
+    invocationDirectory,
+    HOST_WRAPPER_PROBE_DIRECTORY,
+  );
+  const turnDirectory = path.join(
+    invocationDirectory,
+    HOST_WRAPPER_TURN_DIRECTORY,
+  );
+  assertEmptyPrivateDirectory(paths, probeDirectory);
+  if (!fs.lstatSync(turnDirectory, { throwIfNoEntry: false })) {
+    assertOwned();
+    ensurePrivateDirectory(turnDirectory);
+  }
+  assertEmptyPrivateDirectory(paths, turnDirectory);
+}
+
+function assertHostWrapperRetentionMarker(
+  paths: InvestigationRuntimePaths,
+  receipt: ProviderRetentionReceipt,
+): void {
+  if (!receiptHasHostWrapperArtifacts(receipt)) return;
+  const invocationDirectory = path.join(
+    paths.invocations,
+    receipt.invocationId,
+  );
+  assertEmptyPrivateDirectory(
+    paths,
+    path.join(invocationDirectory, HOST_WRAPPER_PROBE_DIRECTORY),
+  );
+  assertEmptyPrivateDirectory(
+    paths,
+    path.join(invocationDirectory, HOST_WRAPPER_TURN_DIRECTORY),
+  );
+}
+
+function assertEmptyPrivateDirectory(
+  paths: InvestigationRuntimePaths,
+  directory: string,
+): void {
+  assertPrivateInvestigationDirectory(paths, directory, runtimeUnsafe);
+  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
+  if (!stats) throw runtimeUnsafe();
+  assertPrivateDirectory(stats);
+  if (
+    fs.realpathSync(directory) !== path.resolve(directory) ||
+    fs.readdirSync(directory).length !== 0
+  ) {
+    throw runtimeUnsafe();
+  }
+}
+
+function receiptHasHostWrapperArtifacts(
+  receipt: ProviderRetentionReceipt,
+): boolean {
+  return receipt.artifacts.some(({ name }) =>
+    PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.includes(
+      name as (typeof PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS)[number],
+    ),
+  );
+}
+
 function physicalArtifactsForReceipt(
   paths: InvestigationRuntimePaths,
   receipt: ProviderRetentionReceipt,
 ): PhysicalArtifact[] {
+  const request = readProviderInvocationRequest(paths, receipt.invocationId);
   const stagingDirectory = providerRetentionStagingDirectory(
     paths,
     receipt.invocationId,
@@ -1047,6 +1218,10 @@ function physicalArtifactsForReceipt(
             ),
             digest: artifact.digest,
             bytes: artifact.bytes,
+            maxBytes: maxBytesForRetentionArtifact(
+              artifact.name,
+              request.limits.aggregateOutputBytes,
+            ),
           },
         ];
       }
@@ -1085,6 +1260,7 @@ function physicalArtifactsForReceipt(
         ),
         digest: leaf.digest,
         bytes: leaf.bytes,
+        maxBytes: MAX_RAW_ARTIFACT_BYTES,
       }));
     },
   );
@@ -1207,15 +1383,73 @@ function recoverInterruptedPruning(
     fsyncDirectory(stagingRoot);
     return invocationId;
   }
-  const record = readProviderInvocation(paths, invocationId);
-  const binding = readInvocationBinding(paths, record);
-  assertReceiptBinding(receipt, binding, record);
+  const detachedPreparedReceipt = receipt.state === 'prepared';
+  if (detachedPreparedReceipt) {
+    restorePreparedArtifactsAndDetachReceipt(paths, receipt, assertOwned);
+  }
+  try {
+    const record = readProviderInvocation(paths, invocationId);
+    const binding = readInvocationBinding(paths, record);
+    assertReceiptBinding(receipt, binding, record);
+  } catch (error) {
+    if (detachedPreparedReceipt) {
+      assertOwned();
+      createPrivateFileAtomic(
+        providerRetentionReceiptPath(paths, receipt.invocationId),
+        canonicalProviderRetentionReceipt(receipt),
+      );
+    }
+    throw error;
+  }
   if (receipt.state === 'prepared') {
+    assertOwned();
+    createPrivateFileAtomic(
+      providerRetentionReceiptPath(paths, receipt.invocationId),
+      canonicalProviderRetentionReceipt(receipt),
+    );
     completePreparedReceipt(paths, receipt, now, assertOwned, hooks);
   } else {
     cleanupCompletedReceipt(paths, receipt, assertOwned);
   }
   return invocationId;
+}
+
+function restorePreparedArtifactsAndDetachReceipt(
+  paths: InvestigationRuntimePaths,
+  receipt: ProviderRetentionReceipt,
+  assertOwned: () => void,
+): void {
+  if (receipt.state !== 'prepared') throw receiptUnsafe();
+  const stagingDirectory = providerRetentionStagingDirectory(
+    paths,
+    receipt.invocationId,
+  );
+  for (const artifact of physicalArtifactsForReceipt(paths, receipt)) {
+    const source = observeArtifact(artifact.sourcePath, artifact);
+    const staged = observeArtifact(artifact.stagingPath, artifact);
+    if (source && staged) throw runtimeUnsafe();
+    if (!source && !staged) {
+      throw workflowError(
+        'PROVIDER_RETENTION_PRUNING_PARTIAL',
+        'Prepared provider pruning lost an artifact before receipt recovery.',
+        ExitCode.staleState,
+      );
+    }
+    if (staged) {
+      assertOwned();
+      fs.renameSync(artifact.stagingPath, artifact.sourcePath);
+      fsyncDirectory(stagingDirectory);
+      fsyncDirectory(path.dirname(artifact.sourcePath));
+      if (!observeArtifact(artifact.sourcePath, artifact)) {
+        throw runtimeUnsafe();
+      }
+    }
+  }
+  if (fs.readdirSync(stagingDirectory).length !== 0) throw runtimeUnsafe();
+  assertOwned();
+  const receiptPath = providerRetentionReceiptPath(paths, receipt.invocationId);
+  fs.unlinkSync(receiptPath);
+  fsyncDirectory(path.dirname(receiptPath));
 }
 
 function physicalArtifact(
@@ -1224,8 +1458,9 @@ function physicalArtifact(
   sourcePath: string,
   stagingPath: string,
   expected?: { digest: string; bytes: number },
+  maxBytes = MAX_RAW_ARTIFACT_BYTES,
 ): PhysicalArtifact {
-  const content = readPrivateFile(sourcePath);
+  const content = readPrivateFile(sourcePath, maxBytes);
   const digest = sha256(content);
   if (
     expected !== undefined &&
@@ -1240,16 +1475,18 @@ function physicalArtifact(
     stagingPath,
     digest,
     bytes: content.byteLength,
+    maxBytes,
   };
 }
 
 function observeArtifact(
   filePath: string,
-  artifact: Pick<ProviderRetentionArtifact, 'bytes' | 'digest'>,
+  artifact: PhysicalArtifact,
 ): boolean {
+  if (artifact.bytes > artifact.maxBytes) throw runtimeUnsafe();
   const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
   if (!stats) return false;
-  const content = readPrivateFile(filePath);
+  const content = readPrivateFile(filePath, artifact.maxBytes);
   if (
     content.byteLength !== artifact.bytes ||
     sha256(content) !== artifact.digest
@@ -1259,31 +1496,62 @@ function observeArtifact(
   return true;
 }
 
-function readPrivateFile(filePath: string): Buffer {
+function readPrivateFile(
+  filePath: string,
+  maxBytes = MAX_RAW_ARTIFACT_BYTES,
+): Buffer {
+  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
+    throw runtimeUnsafe();
+  }
+  const absolute = path.resolve(filePath);
+  if (absolute !== filePath) throw runtimeUnsafe();
   const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
   if (!before) throw runtimeUnsafe();
   assertPrivateRegularFile(before);
-  if (before.size > MAX_RAW_ARTIFACT_BYTES) throw runtimeUnsafe();
+  if (before.size > maxBytes) throw runtimeUnsafe();
   let descriptor: number | undefined;
   try {
+    const noFollow = fs.constants.O_NOFOLLOW;
+    const nonBlock = fs.constants.O_NONBLOCK;
+    if (typeof noFollow !== 'number' || typeof nonBlock !== 'number') {
+      throw runtimeUnsafe();
+    }
     descriptor = fs.openSync(
-      filePath,
-      fs.constants.O_RDONLY |
-        (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
+      absolute,
+      fs.constants.O_RDONLY | noFollow | nonBlock,
     );
     const opened = fs.fstatSync(descriptor);
     assertPrivateRegularFile(opened);
-    if (!sameIdentity(before, opened)) throw runtimeUnsafe();
-    const content = fs.readFileSync(descriptor);
-    const after = fs.lstatSync(filePath, { throwIfNoEntry: false });
+    if (!sameIdentity(before, opened) || opened.size > maxBytes) {
+      throw runtimeUnsafe();
+    }
+
+    const expectedBytes = opened.size;
+    const content = Buffer.alloc(expectedBytes + 1);
+    let offset = 0;
+    while (offset < content.length) {
+      const count = fs.readSync(
+        descriptor,
+        content,
+        offset,
+        content.length - offset,
+        offset,
+      );
+      if (count === 0) break;
+      offset += count;
+    }
+    const afterRead = fs.fstatSync(descriptor);
+    const current = fs.lstatSync(absolute, { throwIfNoEntry: false });
     if (
-      !after ||
-      !sameIdentity(opened, after) ||
-      after.size !== content.byteLength
+      offset !== expectedBytes ||
+      !current ||
+      !sameStableFile(opened, afterRead) ||
+      !sameStableFile(opened, current) ||
+      fs.realpathSync(absolute) !== absolute
     ) {
       throw runtimeUnsafe();
     }
-    return content;
+    return content.subarray(0, offset);
   } catch (error) {
     if (error instanceof WorkflowError) throw error;
     throw runtimeUnsafe();
@@ -1302,6 +1570,26 @@ function sourcePathForArtifact(
     return providerCompletionCandidatePath(paths, invocationId);
   }
   return path.join(paths.invocations, invocationId, name);
+}
+
+function maxBytesForRetentionArtifact(
+  name: ProviderRetentionArtifactName,
+  aggregateOutputBytes: number,
+): number {
+  switch (name) {
+    case 'host-wrapper-probe-runtime/request.json':
+    case 'host-wrapper-probe-runtime/probe-result.json':
+      return MAX_HOST_WRAPPER_PROBE_BYTES;
+    case 'host-wrapper-runtime/request.json':
+      return MAX_HOST_WRAPPER_TURN_REQUEST_BYTES;
+    case 'host-wrapper-runtime/semantic-output.json':
+      return Math.min(
+        MAX_HOST_WRAPPER_TURN_REQUEST_BYTES,
+        aggregateOutputBytes,
+      );
+    default:
+      return MAX_RAW_ARTIFACT_BYTES;
+  }
 }
 
 function providerCompletionCandidatePath(
@@ -1328,6 +1616,14 @@ function stagingName(name: ProviderRetentionArtifactName): string {
       return 'runtime-schema.json';
     case 'runtime/semantic-output.json':
       return 'runtime-semantic-output.json';
+    case 'host-wrapper-probe-runtime/request.json':
+      return 'host-wrapper-probe-request.json';
+    case 'host-wrapper-probe-runtime/probe-result.json':
+      return 'host-wrapper-probe-result.json';
+    case 'host-wrapper-runtime/request.json':
+      return 'host-wrapper-turn-request.json';
+    case 'host-wrapper-runtime/semantic-output.json':
+      return 'host-wrapper-semantic-output.json';
   }
 }
 
@@ -1429,6 +1725,17 @@ function assertPrivateRegularFile(stats: fs.Stats): void {
 
 function sameIdentity(left: fs.Stats, right: fs.Stats): boolean {
   return left.dev === right.dev && left.ino === right.ino;
+}
+
+function sameStableFile(left: fs.Stats, right: fs.Stats): boolean {
+  return (
+    sameIdentity(left, right) &&
+    left.mode === right.mode &&
+    left.nlink === right.nlink &&
+    left.size === right.size &&
+    left.mtimeMs === right.mtimeMs &&
+    left.ctimeMs === right.ctimeMs
+  );
 }
 
 function fsyncDirectory(directory: string): void {

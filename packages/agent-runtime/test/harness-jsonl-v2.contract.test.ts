@@ -429,3 +429,152 @@ test('harness-jsonl-v2 redacts an observed identity reused in an error and publi
   assert.equal(JSON.stringify(publicFrames).includes(nativeSessionId), false);
   assert.deepEqual(privateIdentities, []);
 });
+
+test('harness-jsonl-v2 preserves a natural terminal across cancellation races', () => {
+  const hello: ProviderWrapperSessionProtocolFrame = {
+    schemaVersion: 2,
+    type: 'hello',
+    sequence: 1,
+    protocol: 'harness-jsonl-v2',
+  };
+
+  {
+    const parser = createProviderWrapperSessionProtocolParser({
+      binding: observedStartBinding(),
+    });
+    pushFrames(parser, [
+      hello,
+      {
+        schemaVersion: 2,
+        type: 'session',
+        sequence: 2,
+        action: 'start',
+        nativeSessionId: 'natural-before-cancel',
+      },
+      {
+        schemaVersion: 2,
+        type: 'result',
+        sequence: 3,
+        outputSlot: 'primary',
+      },
+    ]);
+    assert.equal(parser.requestCancellation(), false);
+    const outcome = parser.finish({ cancellationForced: false });
+    assert.equal(outcome.receipt.terminal, 'result');
+    assert.deepEqual(outcome.receipt.cancellation, {
+      requested: false,
+      acknowledged: false,
+      forced: false,
+    });
+    assert.equal(parser.requestCancellation(), false);
+  }
+
+  {
+    const privateIdentities: Array<{ nativeSessionId: string }> = [];
+    const parser = createProviderWrapperSessionProtocolParser({
+      binding: observedStartBinding(),
+      privateNativeSessionIdentitySink(identity) {
+        privateIdentities.push(identity);
+      },
+    });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 2,
+        type: 'session',
+        sequence: 2,
+        action: 'start',
+        nativeSessionId: 'natural-after-cancel',
+      },
+      {
+        schemaVersion: 2,
+        type: 'result',
+        sequence: 3,
+        outputSlot: 'primary',
+      },
+    ]);
+    const outcome = parser.finish({ cancellationForced: false });
+    assert.equal(outcome.receipt.terminal, 'result');
+    assert.deepEqual(outcome.receipt.cancellation, {
+      requested: true,
+      acknowledged: false,
+      forced: false,
+    });
+    assert.equal(privateIdentities[0]?.nativeSessionId, 'natural-after-cancel');
+  }
+
+  {
+    const parser = createProviderWrapperSessionProtocolParser({
+      binding: observedStartBinding(),
+    });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 2,
+        type: 'error',
+        sequence: 2,
+        code: 'PROVIDER_FAILED',
+      },
+    ]);
+    const outcome = parser.finish({ cancellationForced: false });
+    assert.equal(outcome.receipt.terminal, 'error');
+    assert.equal(outcome.receipt.errorCode, 'PROVIDER_FAILED');
+    assert.deepEqual(outcome.receipt.cancellation, {
+      requested: true,
+      acknowledged: false,
+      forced: false,
+    });
+  }
+});
+
+test('harness-jsonl-v2 rejects a natural terminal after acknowledged or forced cancellation', () => {
+  const hello: ProviderWrapperSessionProtocolFrame = {
+    schemaVersion: 2,
+    type: 'hello',
+    sequence: 1,
+    protocol: 'harness-jsonl-v2',
+  };
+
+  {
+    const parser = createProviderWrapperSessionProtocolParser({
+      binding: observedStartBinding(),
+    });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [{ schemaVersion: 2, type: 'cancel-ack', sequence: 2 }]);
+    assert.throws(
+      () =>
+        pushFrames(parser, [
+          {
+            schemaVersion: 2,
+            type: 'error',
+            sequence: 3,
+            code: 'PROVIDER_FAILED',
+          },
+        ]),
+      ProviderWrapperSessionProtocolError,
+    );
+  }
+
+  {
+    const parser = createProviderWrapperSessionProtocolParser({
+      binding: observedStartBinding(),
+    });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 2,
+        type: 'error',
+        sequence: 2,
+        code: 'PROVIDER_FAILED',
+      },
+    ]);
+    assert.throws(
+      () => parser.finish({ cancellationForced: true }),
+      ProviderWrapperSessionProtocolError,
+    );
+  }
+});

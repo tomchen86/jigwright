@@ -14,6 +14,7 @@ import {
   assertTaskStrategyImplementationManifest,
   createTaskStrategyImplementationManifest,
   createTaskStrategyImplementationSubject,
+  taskStrategyImplementationOutputValidator,
 } from '../src/modules/provider-orchestration/task-strategy-provider-contract.ts';
 
 const OID = 'a'.repeat(40);
@@ -146,6 +147,36 @@ test('task implementation output accepts one exact patch and rejects digest drif
     }),
     false,
   );
+
+  const bound = taskStrategyImplementationOutputValidator({
+    sessionId: output.sessionId,
+    sourceTree: output.sourceTree,
+  });
+  assert.equal(bound.validate(output), true);
+  assert.equal(
+    bound.validate({
+      ...output,
+      sessionId:
+        'session-20260812000000000-00000000-0000-4000-8000-000000000002',
+    }),
+    false,
+  );
+  assert.equal(
+    bound.validate({
+      ...output,
+      sourceTree: '3'.repeat(40),
+    }),
+    false,
+  );
+  assert.equal(
+    TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR.validate({
+      ...output,
+      sessionId:
+        'session-20260812000000000-00000000-0000-4000-8000-000000000002',
+      sourceTree: '3'.repeat(40),
+    }),
+    true,
+  );
 });
 
 test('task implementation manifest cannot carry challenge closure or disposition semantics', () => {
@@ -174,6 +205,118 @@ test('task implementation manifest cannot carry challenge closure or disposition
     assertTaskStrategyImplementationManifest({
       ...manifest,
       challengesClosed: true,
+    }),
+  );
+});
+
+test('task implementation manifest uses one canonical UTF-8 byte order', () => {
+  const bmpPath = 'test/\uE000.test.mjs';
+  const supplementaryPath = 'test/\u{10000}.test.mjs';
+  const subject = subjectFixture({
+    testPaths: [supplementaryPath, bmpPath],
+  });
+  assert.deepEqual(subject.testPaths, [bmpPath, supplementaryPath]);
+  assert.deepEqual(
+    subject.frozenFiles.map((entry) => entry.path),
+    [bmpPath, supplementaryPath],
+  );
+
+  const bmpScope = 'src/\uE000/**';
+  const supplementaryScope = 'src/\u{10000}/**';
+  const manifest = createTaskStrategyImplementationManifest({
+    repositoryId: 'expense-app',
+    baseCommit: OID,
+    baseTree: TREE,
+    subject,
+    behaviorContractRefs: [
+      {
+        specPath: 'specs/demo/spec.md',
+        requirement: '\u{10000} behavior',
+        scenario: null,
+      },
+      {
+        specPath: 'specs/demo/spec.md',
+        requirement: '\uE000 behavior',
+        scenario: null,
+      },
+    ],
+    implementationPathScopes: [supplementaryScope, bmpScope],
+  });
+
+  assert.deepEqual(manifest.implementationPathScopes, [
+    bmpScope,
+    supplementaryScope,
+  ]);
+  assert.deepEqual(
+    manifest.behaviorContractRefs.map((entry) => entry.requirement),
+    ['\uE000 behavior', '\u{10000} behavior'],
+  );
+  assert.deepEqual(
+    assertTaskStrategyImplementationManifest(manifest),
+    manifest,
+  );
+});
+
+test('task implementation manifest bounds canonical bytes and collection counts', () => {
+  const tooManyPaths = Array.from(
+    { length: 1_025 },
+    (_, index) =>
+      `test/generated-${index.toString().padStart(4, '0')}.test.mjs`,
+  );
+  assertManifestInvalid(() =>
+    subjectFixture({
+      testPaths: tooManyPaths,
+    }),
+  );
+
+  const subject = subjectFixture();
+  assertManifestInvalid(() =>
+    createTaskStrategyImplementationManifest({
+      repositoryId: 'expense-app',
+      baseCommit: OID,
+      baseTree: TREE,
+      subject,
+      behaviorContractRefs: Array.from({ length: 1_025 }, (_, index) => ({
+        specPath: 'specs/demo/spec.md',
+        requirement: `Behavior ${index.toString().padStart(4, '0')}`,
+        scenario: null,
+      })),
+      implementationPathScopes: ['src/**'],
+    }),
+  );
+  assertManifestInvalid(() =>
+    createTaskStrategyImplementationManifest({
+      repositoryId: 'expense-app',
+      baseCommit: OID,
+      baseTree: TREE,
+      subject,
+      behaviorContractRefs: [
+        {
+          specPath: 'specs/demo/spec.md',
+          requirement: 'Demo behavior',
+          scenario: null,
+        },
+      ],
+      implementationPathScopes: Array.from(
+        { length: 1_025 },
+        (_, index) => `src/generated-${index.toString().padStart(4, '0')}/**`,
+      ),
+    }),
+  );
+  assertManifestInvalid(() =>
+    createTaskStrategyImplementationManifest({
+      repositoryId: 'expense-app',
+      baseCommit: OID,
+      baseTree: TREE,
+      subject,
+      behaviorContractRefs: [
+        {
+          specPath: 'specs/demo/spec.md',
+          requirement: 'x'.repeat(262_144),
+          scenario: null,
+        },
+      ],
+      implementationPathScopes: ['src/**'],
     }),
   );
 });
@@ -220,7 +363,14 @@ test('task implementation shortage reuses the typed collaboration grant vocabula
   assert.equal(request.degradedForm, 'caller-supplied');
 });
 
-function subjectFixture() {
+function subjectFixture(
+  input: Readonly<{
+    testPaths?: readonly string[];
+    fixturePaths?: readonly string[];
+  }> = {},
+) {
+  const testPaths = input.testPaths ?? ['test/feature.test.mjs'];
+  const fixturePaths = input.fixturePaths ?? [];
   return createTaskStrategyImplementationSubject({
     sessionId: 'session-20260812000000000-00000000-0000-4000-8000-000000000001',
     changeId: 'demo-change',
@@ -232,16 +382,25 @@ function subjectFixture() {
     failureFingerprint: 'e'.repeat(64),
     redEvidenceNodeId: 'f'.repeat(64),
     redEvidenceResultDigest: '1'.repeat(64),
-    testPaths: ['test/feature.test.mjs'],
-    fixturePaths: [],
-    frozenFiles: [
-      {
-        path: 'test/feature.test.mjs',
-        mode: '100644',
-        objectId: '2'.repeat(40),
-      },
-    ],
+    testPaths,
+    fixturePaths,
+    frozenFiles: [...testPaths, ...fixturePaths].map((path) => ({
+      path,
+      mode: '100644',
+      objectId: '2'.repeat(40),
+    })),
   });
+}
+
+function assertManifestInvalid(operation: () => unknown): void {
+  assert.throws(
+    operation,
+    (error) =>
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === 'TASK_STRATEGY_IMPLEMENTATION_MANIFEST_INVALID',
+  );
 }
 
 function sha256(value: string | Buffer): string {

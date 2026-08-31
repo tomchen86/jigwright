@@ -6,17 +6,32 @@ import type {
 } from './provider-contracts.ts';
 import type { ProviderId } from './provider-registry.ts';
 import type {
-  AgentProviderProfileSnapshot,
   HostWrapperProviderProfileSnapshot,
   ProviderWrapperSessionProtocolBinding,
 } from '@jigwright/agent-runtime';
 import type {
   ProviderWrapperProtocolDeclaration,
+  ProviderRuntimeProtocolReceipt,
+} from './agent-runtime-protocol.ts';
+import type { AgentRuntimeAssignmentBindingV1 } from './agent-runtime-assignment-binding.ts';
+import type {
+  AgentRuntimeHostExecutionBindingV1,
+  AgentRuntimeHostProbeEvidenceV1,
+} from './agent-runtime-host-execution-binding.ts';
+import type {
+  ProviderNativeSessionClaimV1,
+  ProviderNativeSessionCompletionTerminalV1,
+} from './provider-native-session.ts';
+
+export type {
+  ProviderRuntimeProtocolReceipt,
   ProviderWrapperProtocolReceipt,
 } from './agent-runtime-protocol.ts';
-import type { ProviderNativeSessionCompletionTerminalV1 } from './provider-native-session.ts';
-
-export type { ProviderWrapperProtocolReceipt } from './agent-runtime-protocol.ts';
+export type { AgentRuntimeAssignmentBindingV1 } from './agent-runtime-assignment-binding.ts';
+export type {
+  AgentRuntimeHostExecutionBindingV1,
+  AgentRuntimeHostProbeEvidenceV1,
+} from './agent-runtime-host-execution-binding.ts';
 
 /** JSON data accepted as one exact provider's semantic-output schema. */
 export type AgentRuntimeJsonValue =
@@ -80,6 +95,7 @@ export type ProviderInvocationAcceptanceBinding = Readonly<{
   executionAttemptId: string;
   executionRevision: number;
   executionStateDigest: string;
+  receiptRequirement: 'schema-v4' | 'synchronous-no-activity';
   repair: ProviderRepairAuthorityBinding;
   bindingDigest: string;
 }>;
@@ -89,27 +105,6 @@ export type ProviderInvocationAcceptanceBinding = Readonly<{
  * binding. Native provider session IDs and continuity tokens are deliberately
  * absent; they remain private runtime state.
  */
-export type AgentRuntimeAssignmentBindingV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'agent-runtime-assignment-binding.v1';
-  changeId: string;
-  planningGeneration: string;
-  recordDigest: string;
-  assignmentDigest: string;
-  role: 'author' | 'builder' | 'reviewer';
-  logicalProviderId: string;
-  providerProfileId: string;
-  /** Exact immutable host profile selected by the durable assignment. */
-  providerProfileSnapshot: AgentProviderProfileSnapshot;
-  definitionDigest: string;
-  dataAuthorizationPolicyDigest: string;
-  /** Current authoritative change Manifest identity used for assignment. */
-  assignmentManifestDigest: string;
-  /** Exact provider-invocation Manifest identity accepted for this turn. */
-  inputManifestDigest: string;
-  targetDigest: string;
-}>;
-
 /** Private durable turn authority carried only by the production composition. */
 export type AgentRuntimeNativeSessionTurnControllerV1 = Readonly<{
   profile: HostWrapperProviderProfileSnapshot;
@@ -127,6 +122,7 @@ export type AgentRuntimeNativeSessionTurnControllerV1 = Readonly<{
       expectedAction: 'start' | 'resume';
     }>,
   ): Readonly<{
+    claim: ProviderNativeSessionClaimV1;
     claimDigest: string;
     predecessorCompletionDigest: string | null;
     binding: ProviderWrapperSessionProtocolBinding;
@@ -214,47 +210,23 @@ type AgentRuntimeCompletionReceiptFields = Readonly<{
   receiptDigest: string;
 }>;
 
-/** Historical/raw async receipt bytes remain the exact v1 shape. */
-export type AgentRuntimeCompletionReceiptV1 =
-  AgentRuntimeCompletionReceiptFields &
-    Readonly<{
-      schemaVersion: 1;
-      protocolReceipt?: never;
-    }>;
-
-/**
- * An opt-in wrapper run carries the exact validated terminal/progress receipt
- * inside the same ProviderInvocation/Attempt completion projection.
- */
-export type AgentRuntimeCompletionReceiptV2 = Omit<
+/** Current exact receipt with full acceptance and optional host authority. */
+export type AgentRuntimeCompletionReceiptV4 = Omit<
   AgentRuntimeCompletionReceiptFields,
   'terminalState'
 > &
   Readonly<{
-    schemaVersion: 2;
-    terminalState: 'succeeded';
-    protocolReceipt: ProviderWrapperProtocolReceipt;
+    schemaVersion: 4;
+    terminalState: 'succeeded' | 'failed';
+    terminalDisposition:
+      'accepted' | 'failed-before-result' | 'rejected-after-result';
+    failureCode: string | null;
+    acceptanceBinding: ProviderInvocationAcceptanceBinding;
+    protocolReceipt: ProviderRuntimeProtocolReceipt | null;
+    hostExecutionBinding: AgentRuntimeHostExecutionBindingV1 | null;
   }>;
 
-/**
- * A wrapper-reported error or bounded cancellation remains a failed
- * ProviderInvocation/Attempt while retaining the validated terminal receipt.
- * Keeping this separate from v2 preserves the already-landed success reader.
- */
-export type AgentRuntimeCompletionReceiptV3 = Omit<
-  AgentRuntimeCompletionReceiptFields,
-  'terminalState'
-> &
-  Readonly<{
-    schemaVersion: 3;
-    terminalState: 'failed';
-    protocolReceipt: ProviderWrapperProtocolReceipt;
-  }>;
-
-export type AgentRuntimeCompletionReceipt =
-  | AgentRuntimeCompletionReceiptV1
-  | AgentRuntimeCompletionReceiptV2
-  | AgentRuntimeCompletionReceiptV3;
+export type AgentRuntimeCompletionReceipt = AgentRuntimeCompletionReceiptV4;
 
 /** Additive async controls for the single-shot compatibility launch. */
 export type AgentRuntimeAsyncSingleShotOptions = AgentRuntimeSingleShotOptions &
@@ -265,7 +237,13 @@ export type AgentRuntimeAsyncSingleShotOptions = AgentRuntimeSingleShotOptions &
      * Validated aggregate receipt only; never raw wrapper output. Observer
      * failure has no process-control or terminal-classification authority.
      */
-    onProtocolReceipt?: (receipt: ProviderWrapperProtocolReceipt) => void;
+    onProtocolReceipt?: (receipt: ProviderRuntimeProtocolReceipt) => void;
+    /** Exact validated pre-claim probe evidence for failure retention. */
+    onHostProbeEvidence?: (evidence: AgentRuntimeHostProbeEvidenceV1) => void;
+    /** Exact public assignment/claim/completion authority; no raw native ID. */
+    onHostExecutionBinding?: (
+      binding: AgentRuntimeHostExecutionBindingV1,
+    ) => void;
   }>;
 
 /** The existing runner report is the single-shot compatibility result. */

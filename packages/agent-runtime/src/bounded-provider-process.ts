@@ -246,6 +246,17 @@ function spawnBoundedProviderProcessInternal(
       ) {
         try {
           protocolParser.parser.push(chunk);
+          if (
+            terminationReason === 'cancelled' &&
+            !cancellationForced &&
+            protocolParser.parser.hasNaturalTerminal()
+          ) {
+            terminationReason = null;
+            if (cancelKillTimer !== undefined) {
+              clearTimeout(cancelKillTimer);
+              cancelKillTimer = undefined;
+            }
+          }
         } catch (error) {
           protocolError = normalizeProtocolError(error, protocolParser);
           spawnErrorCode = protocolError.code;
@@ -257,13 +268,14 @@ function spawnBoundedProviderProcessInternal(
       }
     };
     const onAbort = () => {
+      let cancellationAdmitted = true;
       if (
         protocolParser !== null &&
         protocolError === null &&
         (terminationReason === null || terminationReason === 'cancelled')
       ) {
         try {
-          protocolParser.parser.requestCancellation();
+          cancellationAdmitted = protocolParser.parser.requestCancellation();
         } catch (error) {
           protocolError = normalizeProtocolError(error, protocolParser);
           spawnErrorCode = protocolError.code;
@@ -271,6 +283,7 @@ function spawnBoundedProviderProcessInternal(
           return;
         }
       }
+      if (!cancellationAdmitted) return;
       terminate('cancelled');
     };
     input.signal?.addEventListener('abort', onAbort, { once: true });

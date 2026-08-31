@@ -19,7 +19,15 @@ import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecyc
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
-import { readProviderInvocation } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import {
+  claimProviderInvocation,
+  completeProviderInvocationFromRunner,
+  prepareProviderInvocationAcceptanceBinding,
+  readProviderInvocation,
+  readProviderInvocationRequest,
+} from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { executionJobStatePath } from '../src/runtime/storage-journal/execution-store.ts';
+import { readProviderRepairEvidence } from '../src/runtime/provider-execution/provider-execution-governance.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import {
@@ -453,6 +461,186 @@ test('cross-agent RED schedules one provider-independent implementation reservat
     assert.throws(
       () => inspectTaskStrategyImplementation(repository, session.sessionId),
       hasCode('TASK_STRATEGY_CORRECTION_STATE_STALE'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider worker binds task implementation output to the exact sealed subject before durable success', () => {
+  const cases = [
+    {
+      name: 'session',
+      mutate(sessionId: string, sourceTree: string) {
+        return { sessionId: `${sessionId}-other`, sourceTree };
+      },
+    },
+    {
+      name: 'source tree',
+      mutate(sessionId: string) {
+        return { sessionId, sourceTree: 'f'.repeat(40) };
+      },
+    },
+  ] as const;
+
+  for (const testCase of cases) {
+    const { repository } = createCrossAgentFixture('assertion');
+    try {
+      const session = startSession(repository, 'demo-change', '1.1');
+      const testPath = path.join(repository, 'test/feature.test.mjs');
+      fs.mkdirSync(path.dirname(testPath), { recursive: true });
+      fs.writeFileSync(
+        testPath,
+        "throw new Error('feature behavior is not implemented');\n",
+      );
+      const red = sealTaskStrategyRed(repository, session.sessionId, {
+        explicitActor: 'codex',
+        environment: {},
+      });
+      const waiting = beginTaskStrategyImplementation(
+        repository,
+        session.sessionId,
+      );
+      assert.equal(waiting.state, 'waiting-for-provider');
+      if (waiting.state !== 'waiting-for-provider') continue;
+
+      const wrongSubject = testCase.mutate(
+        session.sessionId,
+        red.red.candidateTree,
+      );
+      const completed = completeTaskImplementationProvider(
+        repository,
+        waiting.invocationId,
+        'claude',
+        taskImplementationOutput(
+          wrongSubject.sessionId,
+          wrongSubject.sourceTree,
+          Buffer.from(`synthetic ${testCase.name} patch`),
+        ),
+      );
+
+      assert.equal(completed.state, 'failed', testCase.name);
+      assert.equal(
+        completed.failure?.code,
+        'PROVIDER_NATIVE_OUTPUT_INVALID',
+        testCase.name,
+      );
+      const runtime = loadInvestigationRuntimeContext(repository).runtime;
+      const invocation = readProviderInvocation(runtime, waiting.invocationId);
+      assert.equal(invocation.state, 'failed', testCase.name);
+      assert.equal(invocation.result, null, testCase.name);
+      const repair = readProviderRepairEvidence(
+        runtime,
+        invocation,
+        readProviderInvocationRequest(runtime, waiting.invocationId),
+      );
+      assert.equal(repair.repairContext.repairKind, 'semantic', testCase.name);
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  }
+});
+
+test('provider completion rejects a digest-consistent wrong task subject before durable mutation', () => {
+  const { repository } = createCrossAgentFixture('assertion');
+  try {
+    const session = startSession(repository, 'demo-change', '1.1');
+    const testPath = path.join(repository, 'test/feature.test.mjs');
+    fs.mkdirSync(path.dirname(testPath), { recursive: true });
+    fs.writeFileSync(
+      testPath,
+      "throw new Error('feature behavior is not implemented');\n",
+    );
+    sealTaskStrategyRed(repository, session.sessionId, {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const waiting = beginTaskStrategyImplementation(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(waiting.state, 'waiting-for-provider');
+    if (waiting.state !== 'waiting-for-provider') return;
+
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const request = readProviderInvocationRequest(
+      runtime,
+      waiting.invocationId,
+    );
+    const claim = claimProviderInvocation(runtime, waiting.invocationId, {
+      workerId: 'task-subject-binding-regression-worker',
+      leaseDurationMs: request.limits.timeoutMs,
+    });
+    const acceptanceBinding = prepareProviderInvocationAcceptanceBinding(
+      runtime,
+      waiting.invocationId,
+      'schema-v4',
+    );
+    const output = taskImplementationOutput(
+      session.sessionId,
+      'f'.repeat(40),
+      Buffer.from('synthetic wrong-subject patch'),
+    );
+    const invocationDirectory = path.join(
+      runtime.invocations,
+      waiting.invocationId,
+    );
+    const manifestPath = path.join(invocationDirectory, 'manifest.json');
+    const executionPath = executionJobStatePath(
+      runtime,
+      acceptanceBinding.executionJobId,
+    );
+    const taskRefsRoot = path.join(
+      runtime.refs,
+      'task-strategy-implementations',
+    );
+    const invocationBefore = snapshotTree(invocationDirectory);
+    const manifestBefore = fs.readFileSync(manifestPath);
+    const executionBefore = fs.readFileSync(executionPath);
+    const taskRefsBefore = snapshotTree(taskRefsRoot);
+
+    assert.throws(
+      () =>
+        completeProviderInvocationFromRunner(runtime, waiting.invocationId, {
+          expectedRevision: claim.record.revision,
+          leaseGeneration: claim.record.leaseGeneration,
+          leaseToken: claim.leaseToken,
+          acceptanceBinding,
+          report: {
+            invocationId: waiting.invocationId,
+            providerId: request.providerId,
+            purpose: 'task-implementation',
+            requestDigest: request.requestDigest,
+            semanticOutput: output,
+            semanticOutputDigest: sha256Buffer(
+              Buffer.from(canonicalJson(output)),
+            ),
+            assurance: 'unchanged-governed-projection',
+            projection: {
+              unchanged: true,
+              changedCategories: [],
+              beforeDigest: '7'.repeat(64),
+              afterDigest: '7'.repeat(64),
+            },
+            sameUserProcessConfined: false,
+            residuals: [...PROVIDER_RUNNER_RESIDUALS],
+            executable: builtInProviderExecutableIdentityForTest(
+              request.providerId,
+            ),
+            elapsedMs: 8,
+            providerDefinitionSnapshot:
+              builtInProviderDefinitionSnapshotForTest(request.providerId),
+          },
+        }),
+      hasCode('PROVIDER_INVOCATION_INVALID'),
+    );
+    assert.deepEqual(snapshotTree(invocationDirectory), invocationBefore);
+    assert.deepEqual(fs.readFileSync(manifestPath), manifestBefore);
+    assert.deepEqual(fs.readFileSync(executionPath), executionBefore);
+    assert.deepEqual(snapshotTree(taskRefsRoot), taskRefsBefore);
+    assert.equal(
+      readProviderInvocation(runtime, waiting.invocationId).state,
+      'leased',
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

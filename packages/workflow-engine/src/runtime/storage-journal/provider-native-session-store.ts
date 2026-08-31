@@ -7,6 +7,18 @@ import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/agent-run
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  assertProviderNativeSessionContinuationAuthorityEnvelopeV1,
+  assertProviderNativeSessionContinuationAuthorityV1,
+  assertProviderNativeSessionClaimRefV1 as assertDurableClaimRef,
+  assertProviderNativeSessionCompletionRefV1 as assertDurableCompletionRef,
+  createProviderNativeSessionContinuationAuthorityV1,
+  createProviderNativeSessionClaimRefV1 as createDurableClaimRef,
+  createProviderNativeSessionCompletionRefV1 as createDurableCompletionRef,
+  type ProviderNativeSessionContinuationAuthorityV1,
+  type ProviderNativeSessionClaimRefV1,
+  type ProviderNativeSessionCompletionRefV1,
+} from '../../modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import type { AgentRolePlanV2SnapshotVerifierPort } from '../../modules/provider-orchestration/agent-role-plan.ts';
 import type {
   ChangeRoleAssignmentDataAuthorizationVerifierPort,
@@ -37,9 +49,26 @@ import { readChangeRoleAssignmentRecordV1 } from './change-role-assignment-store
 import {
   assertPrivateInvestigationDirectory,
   ensurePrivateInvestigationDirectory,
+  readAcceptedProviderInvocationRuntimeReceiptAuthority,
+  readPrivateCanonicalJson,
   withPrivateRuntimeLock,
 } from './investigation-session-store.ts';
+import {
+  MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
+  assertProviderExecutionAdmissionAuthority,
+  providerExecutionAdmissionAuthorityPath,
+} from './provider-execution-admission-authority.ts';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import {
+  providerNativeSessionChainDirectoryV1 as chainDirectory,
+  providerNativeSessionClaimObjectPathV1 as claimObjectPath,
+  providerNativeSessionClaimRefPathV1 as claimRefPath,
+  providerNativeSessionCompletionObjectPathV1 as completionObjectPath,
+  providerNativeSessionCompletionRefPathV1 as completionRefPath,
+  providerNativeSessionContinuationAuthorityObjectPathV1 as continuationAuthorityObjectPath,
+  providerNativeSessionHandleObjectPathV1 as handleObjectPath,
+  providerNativeSessionStorePathsV1 as storePaths,
+} from '../session-workspace/provider-runtime-authority-paths.ts';
 
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;
@@ -51,6 +80,7 @@ const PUBLICATION_TEMP =
 const MAX_TURN = 10_000;
 const MAX_OBJECT_BYTES = 512 * 1024;
 const MAX_HANDLE_BYTES = 8 * 1024;
+const MAX_CONTINUATION_AUTHORITY_BYTES = 8 * 1024;
 const MAX_REF_BYTES = 2 * 1024;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
 const NO_FOLLOW_CREATE =
@@ -85,39 +115,58 @@ export type CompleteProviderNativeSessionTurnInputV1 = Readonly<{
   terminal: ProviderNativeSessionCompletionTerminalV1;
 }>;
 
+export type RecoverProviderNativeSessionTurnInputV1 = Readonly<{
+  scopeKey: string;
+  sessionSlotId: string;
+  claimDigest: string;
+  invocationId: string;
+  requestDigest: string;
+  attemptId: string;
+  expectedProtocolReceiptDigest: string | null;
+}>;
+
+export type RecoverProviderNativeSessionTurnResultV1 = Readonly<{
+  outcome: 'unchanged' | 'abandoned';
+  completion: ProviderNativeSessionCompletionV1;
+}>;
+
+export type PublishProviderNativeSessionContinuationAuthorityInputV1 =
+  Readonly<{
+    changeId: string;
+    planningGeneration: string;
+    assignmentRecordDigest: string;
+    sessionSlotId: string;
+    completionDigest: string;
+  }>;
+
 export type ProviderNativeSessionChainV1 = Readonly<{
   schemaVersion: 1;
   kind: 'provider-native-session-chain.v1';
   scope: ProviderNativeSessionScopeV1;
-  state: 'empty' | 'claimed' | 'resumable' | 'terminal-unusable';
+  state:
+    | 'empty'
+    | 'claimed'
+    | 'continuation-pending'
+    | 'resumable'
+    | 'terminal-unusable';
   turns: readonly Readonly<{
     claim: ProviderNativeSessionClaimV1;
     completion: ProviderNativeSessionCompletionV1 | null;
+    continuationAuthority: ProviderNativeSessionContinuationAuthorityV1 | null;
   }>[];
-}>;
-
-type ProviderNativeSessionClaimRefV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-native-session-claim-ref.v1';
-  scopeKey: string;
-  turn: number;
-  claimDigest: string;
-}>;
-
-type ProviderNativeSessionCompletionRefV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-native-session-completion-ref.v1';
-  scopeKey: string;
-  turn: number;
-  claimDigest: string;
-  completionDigest: string;
 }>;
 
 type PublicationRecoveryTarget = Readonly<{
   filePath: string;
   relativePath: string;
   maxBytes: number;
-  kind: 'claim' | 'completion' | 'handle' | 'claim-ref' | 'completion-ref';
+  kind:
+    | 'claim'
+    | 'completion'
+    | 'handle'
+    | 'continuation-authority'
+    | 'claim-ref'
+    | 'completion-ref';
   digest: string | null;
   turn: number | null;
 }>;
@@ -167,6 +216,9 @@ export function claimProviderNativeSessionTurnV1(
     );
     const chain = readChainForScope(paths, currentScope);
     if (chain.state === 'terminal-unusable') throw terminalUnusable();
+    if (chain.state === 'continuation-pending') {
+      throw continuationNotAuthorized();
+    }
     if (chain.state === 'claimed') {
       const current = chain.turns.at(-1)!.claim;
       if (!claimMatchesInput(current, input)) throw storeConflict();
@@ -420,6 +472,180 @@ export function completeClaimedProviderNativeSessionTurnV1(
   });
 }
 
+/**
+ * Authorize continuation only after the outer invocation has durably committed
+ * one exact success receipt. Native completion alone never publishes this
+ * marker and therefore cannot authorize resume.
+ */
+export function publishProviderNativeSessionContinuationAuthorityV1(
+  paths: InvestigationRuntimePaths,
+  candidate: PublishProviderNativeSessionContinuationAuthorityInputV1,
+): ProviderNativeSessionContinuationAuthorityV1 {
+  const input = assertContinuationAuthorityInput(candidate);
+  const locations = storePaths(paths);
+  const completion = assertProviderNativeSessionCompletionV1(
+    readBoundedCanonicalJson(
+      paths,
+      completionObjectPath(locations, input.completionDigest),
+      MAX_OBJECT_BYTES,
+    ),
+  );
+  if (
+    completion.scope.changeId !== input.changeId ||
+    completion.scope.planningGeneration !== input.planningGeneration ||
+    completion.scope.assignmentRecordDigest !== input.assignmentRecordDigest ||
+    completion.scope.sessionSlotId !== input.sessionSlotId ||
+    completion.completionDigest !== input.completionDigest
+  ) {
+    throw storeConflict();
+  }
+  const scope = completion.scope;
+  const preflightRuntimeReceipt = readAcceptedOuterSuccessAuthority(
+    paths,
+    completion,
+  );
+  return withScopeLock(paths, scope, () => {
+    const runtimeReceipt = readAcceptedOuterSuccessAuthority(paths, completion);
+    if (
+      canonicalJson(runtimeReceipt) !== canonicalJson(preflightRuntimeReceipt)
+    ) {
+      throw storeInvalid();
+    }
+    const chain = readChainForScope(paths, scope);
+    const turn = chain.turns.find(
+      ({ completion: candidateCompletion }) =>
+        candidateCompletion?.completionDigest === completion.completionDigest,
+    );
+    if (
+      turn?.completion === null ||
+      turn?.completion === undefined ||
+      canonicalJson(turn.completion) !== canonicalJson(completion)
+    ) {
+      throw storeConflict();
+    }
+    const authority = createProviderNativeSessionContinuationAuthorityV1(
+      completion,
+      runtimeReceipt,
+      storeInvalid,
+    );
+    const authorityPath = continuationAuthorityObjectPath(
+      locations,
+      completion.completionDigest,
+    );
+    publishCanonicalCreateOnly(
+      paths,
+      scope.scopeKey,
+      authorityPath,
+      authority,
+      MAX_CONTINUATION_AUTHORITY_BYTES,
+    );
+    const published = assertProviderNativeSessionContinuationAuthorityV1(
+      readBoundedCanonicalJson(
+        paths,
+        authorityPath,
+        MAX_CONTINUATION_AUTHORITY_BYTES,
+      ),
+      completion,
+      runtimeReceipt,
+      storeInvalid,
+    );
+    if (canonicalJson(published) !== canonicalJson(authority)) {
+      throw storeInvalid();
+    }
+    return published;
+  });
+}
+
+/**
+ * Recover one exact public completion binding without accepting raw native
+ * identity. A still-claimed launch is abandoned because recovery cannot safely
+ * reconstruct the private handle required to make that session resumable.
+ */
+export function recoverProviderNativeSessionTurnV1(
+  paths: InvestigationRuntimePaths,
+  candidate: RecoverProviderNativeSessionTurnInputV1,
+): RecoverProviderNativeSessionTurnResultV1 {
+  const input = assertRecoveryInput(candidate);
+  const locations = storePaths(paths);
+  const claim = assertProviderNativeSessionClaimV1(
+    readBoundedCanonicalJson(
+      paths,
+      claimObjectPath(locations, input.claimDigest),
+      MAX_OBJECT_BYTES,
+    ),
+  );
+  if (!claimMatchesRecoveryInput(claim, input)) throw storeConflict();
+
+  const scope = claim.scope;
+  return withScopeLock(paths, scope, () => {
+    const chain = readChainForScope(paths, scope);
+    const turnIndex = chain.turns.findIndex(
+      ({ claim: current }) => current.claimDigest === input.claimDigest,
+    );
+    if (turnIndex < 0) throw storeConflict();
+    const turn = chain.turns[turnIndex]!;
+    if (!claimMatchesRecoveryInput(turn.claim, input)) throw storeConflict();
+
+    if (turn.completion !== null) {
+      const receiptDigest =
+        turn.completion.protocolReceipt?.receiptDigest ?? null;
+      if (
+        turn.completion.disposition !== 'indeterminate' &&
+        receiptDigest !== input.expectedProtocolReceiptDigest
+      ) {
+        throw storeConflict();
+      }
+      return deepFreeze({
+        outcome: 'unchanged' as const,
+        completion: turn.completion,
+      });
+    }
+    if (turnIndex !== chain.turns.length - 1 || chain.state !== 'claimed') {
+      throw storeConflict();
+    }
+
+    const materialized = createProviderNativeSessionCompletionV1({
+      claim: turn.claim,
+      binding: bindingForClaim(paths, chain, turnIndex),
+      terminal: { kind: 'claim-crash' },
+    });
+    if (
+      materialized.handle !== null ||
+      materialized.completion.disposition !== 'indeterminate' ||
+      materialized.completion.usable !== false ||
+      materialized.completion.handleDigest !== null
+    ) {
+      throw storeInvalid();
+    }
+    publishCanonicalCreateOnly(
+      paths,
+      scope.scopeKey,
+      completionObjectPath(locations, materialized.completion.completionDigest),
+      materialized.completion,
+      MAX_OBJECT_BYTES,
+    );
+    publishCanonicalCreateOnly(
+      paths,
+      scope.scopeKey,
+      completionRefPath(locations, scope.scopeKey, turn.claim.turn),
+      createCompletionRef(materialized.completion),
+      MAX_REF_BYTES,
+    );
+    const published = readChainForScope(paths, scope);
+    const publishedCompletion = published.turns[turnIndex]?.completion;
+    if (
+      publishedCompletion?.completionDigest !==
+      materialized.completion.completionDigest
+    ) {
+      throw storeInvalid();
+    }
+    return deepFreeze({
+      outcome: 'abandoned' as const,
+      completion: publishedCompletion,
+    });
+  });
+}
+
 /** Read and revalidate the complete immutable chain without exposing handles. */
 export function readProviderNativeSessionChainV1(
   paths: InvestigationRuntimePaths,
@@ -539,6 +765,7 @@ function readChainForScope(
   const turns: Array<{
     claim: ProviderNativeSessionClaimV1;
     completion: ProviderNativeSessionCompletionV1 | null;
+    continuationAuthority: ProviderNativeSessionContinuationAuthorityV1 | null;
   }> = [];
   for (let turn = 1; turn <= lastTurn; turn += 1) {
     const claim = readClaim(paths, locations, scope, turn);
@@ -549,6 +776,7 @@ function readChainForScope(
           claim.predecessorCompletionDigest !== null)) ||
       (turn > 1 &&
         (prior?.usable !== true ||
+          turns.at(-1)?.continuationAuthority === null ||
           claim.action !== 'resume' ||
           claim.predecessorCompletionDigest !== prior.completionDigest ||
           claim.expectedNativeSessionIdDigest !== prior.nativeSessionIdDigest))
@@ -558,16 +786,23 @@ function readChainForScope(
     const completion = completions.has(turn)
       ? readCompletion(paths, locations, scope, claim)
       : null;
+    const continuationAuthority =
+      completion === null
+        ? null
+        : readContinuationAuthority(paths, locations, completion);
     if (
       (completion === null && turn !== lastTurn) ||
-      (completion?.usable === false && turn !== lastTurn)
+      (completion?.usable === false && turn !== lastTurn) ||
+      (completion?.usable === true &&
+        continuationAuthority === null &&
+        turn !== lastTurn)
     ) {
       throw storeInvalid();
     }
-    if (completion?.usable === true) {
+    if (completion?.usable === true && continuationAuthority !== null) {
       readHandleForCompletion(paths, completion);
     }
-    turns.push({ claim, completion });
+    turns.push({ claim, completion, continuationAuthority });
   }
 
   const afterNames = readRefNames(paths, locations, scope.scopeKey);
@@ -647,6 +882,66 @@ function readCompletion(
   return completion;
 }
 
+function readContinuationAuthority(
+  paths: InvestigationRuntimePaths,
+  locations: ReturnType<typeof storePaths>,
+  completion: ProviderNativeSessionCompletionV1,
+): ProviderNativeSessionContinuationAuthorityV1 | null {
+  const authorityPath = continuationAuthorityObjectPath(
+    locations,
+    completion.completionDigest,
+  );
+  if (fs.lstatSync(authorityPath, { throwIfNoEntry: false }) === undefined) {
+    return null;
+  }
+  const runtimeReceipt = readAcceptedOuterSuccessAuthority(paths, completion);
+  return assertProviderNativeSessionContinuationAuthorityV1(
+    readBoundedCanonicalJson(
+      paths,
+      authorityPath,
+      MAX_CONTINUATION_AUTHORITY_BYTES,
+    ),
+    completion,
+    runtimeReceipt,
+    storeInvalid,
+  );
+}
+
+function readAcceptedOuterSuccessAuthority(
+  paths: InvestigationRuntimePaths,
+  completion: ProviderNativeSessionCompletionV1,
+) {
+  const runtimeReceipt = readAcceptedProviderInvocationRuntimeReceiptAuthority(
+    paths,
+    completion.invocationId,
+    storeInvalid,
+  );
+  const admissionAuthority = assertProviderExecutionAdmissionAuthority(
+    readPrivateCanonicalJson(
+      paths,
+      providerExecutionAdmissionAuthorityPath(
+        paths,
+        runtimeReceipt.acceptanceBinding,
+      ),
+      storeInvalid,
+      MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
+    ),
+    storeInvalid,
+  );
+  if (
+    admissionAuthority.receiptRequirement !== 'schema-v4' ||
+    canonicalJson(admissionAuthority.acceptanceBinding) !==
+      canonicalJson(runtimeReceipt.acceptanceBinding) ||
+    admissionAuthority.acceptanceBindingDigest !==
+      runtimeReceipt.acceptanceBindingDigest ||
+    admissionAuthority.executionStateDigest !==
+      runtimeReceipt.executionStateDigest
+  ) {
+    throw storeInvalid();
+  }
+  return runtimeReceipt;
+}
+
 function readHandleForCompletion(
   paths: InvestigationRuntimePaths,
   completion: ProviderNativeSessionCompletionV1,
@@ -678,8 +973,12 @@ function bindingForClaim(
     return createStartBinding(claim);
   }
   const predecessor = chain.turns[turnIndex - 1]?.completion;
+  const continuationAuthority =
+    chain.turns[turnIndex - 1]?.continuationAuthority;
   if (
     predecessor?.usable !== true ||
+    continuationAuthority === null ||
+    continuationAuthority === undefined ||
     predecessor.completionDigest !== claim.predecessorCompletionDigest
   ) {
     throw storeInvalid();
@@ -829,35 +1128,31 @@ function createChain(
   turns: readonly Readonly<{
     claim: ProviderNativeSessionClaimV1;
     completion: ProviderNativeSessionCompletionV1 | null;
+    continuationAuthority: ProviderNativeSessionContinuationAuthorityV1 | null;
   }>[],
 ): ProviderNativeSessionChainV1 {
-  const last = turns.at(-1)?.completion;
+  const lastTurn = turns.at(-1);
+  const last = lastTurn?.completion;
   const state =
     turns.length === 0
       ? ('empty' as const)
       : last === undefined || last === null
         ? ('claimed' as const)
         : last.usable
-          ? ('resumable' as const)
+          ? lastTurn!.continuationAuthority === null
+            ? ('continuation-pending' as const)
+            : ('resumable' as const)
           : ('terminal-unusable' as const);
   return deepFreeze({
     schemaVersion: 1 as const,
     kind: 'provider-native-session-chain.v1' as const,
     scope,
     state,
-    turns: turns.map(({ claim, completion }) => ({ claim, completion })),
-  });
-}
-
-function storePaths(paths: InvestigationRuntimePaths) {
-  const root = path.join(paths.root, 'provider-native-sessions', 'v1');
-  return Object.freeze({
-    root,
-    claims: path.join(root, 'claims', 'sha256'),
-    completions: path.join(root, 'completions', 'sha256'),
-    handles: path.join(root, 'handles', 'sha256'),
-    chains: path.join(root, 'chains', 'sha256'),
-    recovery: path.join(root, 'recovery', 'sha256'),
+    turns: turns.map(({ claim, completion, continuationAuthority }) => ({
+      claim,
+      completion,
+      continuationAuthority,
+    })),
   });
 }
 
@@ -917,6 +1212,11 @@ function publicationRecoveryTarget(
       suffix: '.handle.json',
       kind: 'handle' as const,
       maxBytes: MAX_HANDLE_BYTES,
+    }),
+    'continuation-authorities': Object.freeze({
+      suffix: '.continuation-authority.json',
+      kind: 'continuation-authority' as const,
+      maxBytes: MAX_CONTINUATION_AUTHORITY_BYTES,
     }),
   });
   if (
@@ -1162,6 +1462,20 @@ function assertPublicationRecoveryValue(
       if (handle.scopeKey !== scopeKey) throw storeInvalid();
       return;
     }
+    if (target.kind === 'continuation-authority') {
+      const authority =
+        assertProviderNativeSessionContinuationAuthorityEnvelopeV1(
+          value,
+          storeInvalid,
+        );
+      if (
+        authority.scopeKey !== scopeKey ||
+        authority.completionDigest !== target.digest
+      ) {
+        throw storeInvalid();
+      }
+      return;
+    }
     if (target.turn === null) throw storeInvalid();
     if (target.kind === 'claim-ref') {
       assertClaimRef(value, scopeKey, target.turn);
@@ -1174,66 +1488,6 @@ function assertPublicationRecoveryValue(
   } catch {
     throw storeInvalid();
   }
-}
-
-function claimObjectPath(
-  locations: ReturnType<typeof storePaths>,
-  digest: string,
-): string {
-  return path.join(locations.claims, `${assertDigest(digest)}.claim.json`);
-}
-
-function completionObjectPath(
-  locations: ReturnType<typeof storePaths>,
-  digest: string,
-): string {
-  return path.join(
-    locations.completions,
-    `${assertDigest(digest)}.completion.json`,
-  );
-}
-
-function handleObjectPath(
-  locations: ReturnType<typeof storePaths>,
-  digest: string,
-): string {
-  return path.join(locations.handles, `${assertDigest(digest)}.handle.json`);
-}
-
-function chainDirectory(
-  locations: ReturnType<typeof storePaths>,
-  scopeKey: string,
-): string {
-  return path.join(locations.chains, assertDigest(scopeKey));
-}
-
-function claimRefPath(
-  locations: ReturnType<typeof storePaths>,
-  scopeKey: string,
-  turn: number,
-): string {
-  return path.join(
-    chainDirectory(locations, scopeKey),
-    `${turnName(turn)}.claim-ref.json`,
-  );
-}
-
-function completionRefPath(
-  locations: ReturnType<typeof storePaths>,
-  scopeKey: string,
-  turn: number,
-): string {
-  return path.join(
-    chainDirectory(locations, scopeKey),
-    `${turnName(turn)}.completion-ref.json`,
-  );
-}
-
-function turnName(turn: number): string {
-  if (!Number.isSafeInteger(turn) || turn < 1 || turn > MAX_TURN) {
-    throw storeInvalid();
-  }
-  return String(turn).padStart(5, '0');
 }
 
 function readRefNames(
@@ -1263,26 +1517,13 @@ function readRefNames(
 function createClaimRef(
   claim: ProviderNativeSessionClaimV1,
 ): ProviderNativeSessionClaimRefV1 {
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'provider-native-session-claim-ref.v1',
-    scopeKey: claim.scope.scopeKey,
-    turn: claim.turn,
-    claimDigest: claim.claimDigest,
-  });
+  return createDurableClaimRef(claim, storeInvalid);
 }
 
 function createCompletionRef(
   completion: ProviderNativeSessionCompletionV1,
 ): ProviderNativeSessionCompletionRefV1 {
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'provider-native-session-completion-ref.v1',
-    scopeKey: completion.scope.scopeKey,
-    turn: completion.turn,
-    claimDigest: completion.claimDigest,
-    completionDigest: completion.completionDigest,
-  });
+  return createDurableCompletionRef(completion, storeInvalid);
 }
 
 function assertClaimRef(
@@ -1290,28 +1531,7 @@ function assertClaimRef(
   scopeKey: string,
   turn: number,
 ): ProviderNativeSessionClaimRefV1 {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'scopeKey',
-      'turn',
-      'claimDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'provider-native-session-claim-ref.v1' ||
-    value.scopeKey !== scopeKey ||
-    value.turn !== turn ||
-    !isDigest(value.claimDigest)
-  ) {
-    throw storeInvalid();
-  }
-  return createClaimRef({
-    scope: { scopeKey } as ProviderNativeSessionScopeV1,
-    turn,
-    claimDigest: value.claimDigest,
-  } as ProviderNativeSessionClaimV1);
+  return assertDurableClaimRef(value, scopeKey, turn, storeInvalid);
 }
 
 function assertCompletionRef(
@@ -1320,33 +1540,13 @@ function assertCompletionRef(
   turn: number,
   claimDigest: string,
 ): ProviderNativeSessionCompletionRefV1 {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'scopeKey',
-      'turn',
-      'claimDigest',
-      'completionDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'provider-native-session-completion-ref.v1' ||
-    value.scopeKey !== scopeKey ||
-    value.turn !== turn ||
-    value.claimDigest !== claimDigest ||
-    !isDigest(value.completionDigest)
-  ) {
-    throw storeInvalid();
-  }
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'provider-native-session-completion-ref.v1',
+  return assertDurableCompletionRef(
+    value,
     scopeKey,
     turn,
     claimDigest,
-    completionDigest: value.completionDigest,
-  });
+    storeInvalid,
+  );
 }
 
 function assertRefUnchanged(
@@ -1424,6 +1624,64 @@ function assertCompletionInput(
   );
 }
 
+function assertRecoveryInput(
+  value: unknown,
+): RecoverProviderNativeSessionTurnInputV1 {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'scopeKey',
+      'sessionSlotId',
+      'claimDigest',
+      'invocationId',
+      'requestDigest',
+      'attemptId',
+      'expectedProtocolReceiptDigest',
+    ]) ||
+    !isDigest(value.scopeKey) ||
+    !isSessionSlotId(value.sessionSlotId) ||
+    !isDigest(value.claimDigest) ||
+    !isBindingIdentifier(value.invocationId) ||
+    !isDigest(value.requestDigest) ||
+    !isBindingIdentifier(value.attemptId) ||
+    !isNullableDigest(value.expectedProtocolReceiptDigest)
+  ) {
+    throw storeInvalid();
+  }
+  return deepFreeze(
+    structuredClone(
+      value,
+    ) as unknown as RecoverProviderNativeSessionTurnInputV1,
+  );
+}
+
+function assertContinuationAuthorityInput(
+  value: unknown,
+): PublishProviderNativeSessionContinuationAuthorityInputV1 {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'changeId',
+      'planningGeneration',
+      'assignmentRecordDigest',
+      'sessionSlotId',
+      'completionDigest',
+    ]) ||
+    !isChangeId(value.changeId) ||
+    !isDigest(value.planningGeneration) ||
+    !isDigest(value.assignmentRecordDigest) ||
+    !isSessionSlotId(value.sessionSlotId) ||
+    !isDigest(value.completionDigest)
+  ) {
+    throw storeInvalid();
+  }
+  return deepFreeze(
+    structuredClone(
+      value,
+    ) as PublishProviderNativeSessionContinuationAuthorityInputV1,
+  );
+}
+
 function assertChainIdentity(value: unknown): Readonly<{
   changeId: string;
   planningGeneration: string;
@@ -1459,6 +1717,20 @@ function claimMatchesInput(
 ): boolean {
   return (
     claim.predecessorCompletionDigest === input.predecessorCompletionDigest &&
+    claim.invocationId === input.invocationId &&
+    claim.requestDigest === input.requestDigest &&
+    claim.attemptId === input.attemptId
+  );
+}
+
+function claimMatchesRecoveryInput(
+  claim: ProviderNativeSessionClaimV1,
+  input: RecoverProviderNativeSessionTurnInputV1,
+): boolean {
+  return (
+    claim.scope.scopeKey === input.scopeKey &&
+    claim.scope.sessionSlotId === input.sessionSlotId &&
+    claim.claimDigest === input.claimDigest &&
     claim.invocationId === input.invocationId &&
     claim.requestDigest === input.requestDigest &&
     claim.attemptId === input.attemptId
@@ -1775,6 +2047,14 @@ function terminalUnusable() {
   return workflowError(
     'PROVIDER_NATIVE_SESSION_TERMINAL_UNUSABLE',
     'The provider-native session chain is terminal and cannot be relaunched.',
+    ExitCode.conflict,
+  );
+}
+
+function continuationNotAuthorized() {
+  return workflowError(
+    'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
+    'The provider-native session result is not authorized for continuation.',
     ExitCode.conflict,
   );
 }

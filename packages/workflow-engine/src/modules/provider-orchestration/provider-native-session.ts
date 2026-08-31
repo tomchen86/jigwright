@@ -59,7 +59,7 @@ export type ProviderNativeSessionClaimV1 = Readonly<{
 }>;
 
 export type ProviderNativeSessionDispositionV1 =
-  'usable' | 'error' | 'cancelled' | 'timeout' | 'indeterminate';
+  'usable' | 'rejected' | 'error' | 'cancelled' | 'timeout' | 'indeterminate';
 
 export type ProviderNativeSessionCompletionV1 = Readonly<{
   schemaVersion: 1;
@@ -508,22 +508,25 @@ export function createProviderNativeSessionCompletionV1(
     }
     protocolReceipt = outcome.receipt;
     nativeSessionIdDigestValue = outcome.receipt.observedNativeSessionIdDigest;
-    disposition =
-      outcome.receipt.terminal === 'result'
-        ? 'usable'
-        : outcome.receipt.terminal === 'error'
-          ? 'error'
-          : 'cancelled';
-    if (disposition === 'usable') {
-      const identity = assertPrivateIdentityObservation(
-        input.terminal.privateIdentityObservation,
-        outcome.receipt,
-        binding,
-      );
-      nativeSessionId = identity.nativeSessionId;
+    if (outcome.receipt.terminal === 'result') {
       if (nativeSessionIdDigestValue === null) throw invalidSession();
-    } else if (input.terminal.privateIdentityObservation !== null) {
-      throw invalidSession();
+      if (input.terminal.privateIdentityObservation === null) {
+        disposition = 'rejected';
+      } else {
+        disposition = 'usable';
+        const identity = assertPrivateIdentityObservation(
+          input.terminal.privateIdentityObservation,
+          outcome.receipt,
+          binding,
+        );
+        nativeSessionId = identity.nativeSessionId;
+      }
+    } else {
+      disposition =
+        outcome.receipt.terminal === 'error' ? 'error' : 'cancelled';
+      if (input.terminal.privateIdentityObservation !== null) {
+        throw invalidSession();
+      }
     }
   } else if (input.terminal.kind === 'timeout') {
     if (!hasExactKeys(input.terminal, ['kind'])) throw invalidSession();
@@ -602,9 +605,14 @@ export function assertProviderNativeSessionCompletionV1(
     !isBindingIdentifier(value.invocationId) ||
     !isDigest(value.requestDigest) ||
     !isBindingIdentifier(value.attemptId) ||
-    !['usable', 'error', 'cancelled', 'timeout', 'indeterminate'].includes(
-      String(value.disposition),
-    ) ||
+    ![
+      'usable',
+      'rejected',
+      'error',
+      'cancelled',
+      'timeout',
+      'indeterminate',
+    ].includes(String(value.disposition)) ||
     typeof value.usable !== 'boolean' ||
     !isNullableDigest(value.nativeSessionIdDigest) ||
     !isNullableDigest(value.handleDigest) ||
@@ -637,6 +645,9 @@ export function assertProviderNativeSessionCompletionV1(
     ((value.disposition === 'timeout' ||
       value.disposition === 'indeterminate') &&
       (protocolReceipt !== null || value.nativeSessionIdDigest !== null)) ||
+    (value.disposition === 'rejected' &&
+      (protocolReceipt?.terminal !== 'result' ||
+        value.nativeSessionIdDigest === null)) ||
     (value.disposition === 'error' && protocolReceipt?.terminal !== 'error') ||
     (value.disposition === 'cancelled' &&
       protocolReceipt?.terminal !== 'cancelled') ||

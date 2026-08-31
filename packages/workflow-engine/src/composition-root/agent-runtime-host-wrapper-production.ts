@@ -41,12 +41,21 @@ import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import type {
   AgentRuntimeAsyncSingleShotOptions,
   AgentRuntimeNativeSessionTurnControllerV1,
+  AgentRuntimeProcessActivity,
   AgentRuntimeSingleShotInput,
 } from '../modules/provider-orchestration/agent-runtime-port.ts';
+import { assertProviderRuntimeProtocolReceipt } from '../modules/provider-orchestration/agent-runtime-protocol.ts';
+import {
+  createAgentRuntimeHostExecutionBindingV1,
+  createAgentRuntimeHostProbeEvidenceV1,
+  providerDefinitionExecutableBindingDigest,
+  type AgentRuntimeHostExecutionBindingV1,
+  type AgentRuntimeHostProbeEvidenceV1,
+} from '../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import type { ProviderRunnerReport } from '../modules/provider-orchestration/provider-contracts.ts';
 import { isProviderId } from '../modules/provider-orchestration/provider-registry.ts';
 import { createProviderExecutionEnvironment } from '../runtime/provider-execution/execution-environment.ts';
-import { PROVIDER_RUNNER_RESIDUALS } from '../runtime/provider-execution/provider-runner.ts';
+import { PROVIDER_RUNNER_RESIDUALS } from '../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   captureGovernedProviderProjection,
   compareGovernedProviderProjections,
@@ -58,6 +67,16 @@ type HostWrapperLaunchDefinition = HostWrapperProviderProfileSnapshot &
 type NativeTurnClaim = ReturnType<
   AgentRuntimeNativeSessionTurnControllerV1['claim']
 >;
+
+type HostProbeRuntime = Readonly<{
+  directory: string;
+  requestPath: string;
+  outputPath: string;
+  requestDigest: string;
+  executable: NonNullable<ProviderExecutableObservation['identity']>;
+  providerDefinitionBindingDigest: string;
+  governedInputs: AgentRuntimeSingleShotInput['governedRuntimeInputs'];
+}>;
 
 /**
  * Production bridge for one explicitly assigned harness-jsonl-v2 wrapper turn.
@@ -108,6 +127,24 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
   let driverFailure: unknown = null;
   let claim: NativeTurnClaim | null = null;
   let completionPublished = false;
+  let probeEvidence: AgentRuntimeHostProbeEvidenceV1 | null = null;
+  let hostExecutionBinding: AgentRuntimeHostExecutionBindingV1 | null = null;
+  const observeActivity = (event: AgentRuntimeProcessActivity): void => {
+    try {
+      options.onActivity?.(event);
+    } catch {
+      // Activity observers cannot alter an already-admitted process terminal.
+    }
+  };
+  const probeRuntime = createProbeRuntime(
+    input,
+    profile,
+    executableObservation.identity,
+  );
+  const probeBefore = captureGovernedProviderProjection(
+    input.repositoryRoot,
+    probeRuntime.governedInputs,
+  );
 
   const port = createHostObservedAgentRuntimePortV1<
     HostWrapperLaunchDefinition,
@@ -123,10 +160,12 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     admitResumeInput: assertAgentRuntimeResumeInputV1,
     driver: {
       async probe() {
-        const observation = await probeHostWrapper(
+        const observation = await executeHostProbe(
           input,
           profile,
           executableObservation,
+          probeRuntime,
+          options.signal,
         );
         return Object.freeze({
           status: 'ready' as const,
@@ -149,10 +188,74 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
   });
 
   const probe = await port.probe(profile);
-  if (probe.status !== 'ready') {
+  if (probe.status !== 'ready' || typeof probe.providerVersion !== 'string') {
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
       `Host-wrapper preflight failed (${probe.status}).`,
+    );
+  }
+  const probeAfter = captureGovernedProviderProjection(
+    input.repositoryRoot,
+    probeRuntime.governedInputs,
+  );
+  const probeProjection = compareGovernedProviderProjections(
+    probeBefore,
+    probeAfter,
+  );
+  if (!probeProjection.unchanged) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
+      'Host-wrapper availability probe changed a governed repository projection.',
+    );
+  }
+  const probeRequestBytes = readStablePrivateFile(
+    probeRuntime.requestPath,
+    64 * 1_024,
+    false,
+    'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+    'Host-wrapper availability probe request is invalid.',
+  );
+  const probeResultBytes = readStablePrivateFile(
+    probeRuntime.outputPath,
+    64 * 1_024,
+    false,
+    'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+    'Host-wrapper availability probe result is invalid.',
+  );
+  if (
+    sha256Buffer(probeRequestBytes) !== probeRuntime.requestDigest ||
+    readProbeProviderVersion(probeResultBytes) !== probe.providerVersion
+  ) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+      'Host-wrapper availability probe evidence changed before admission.',
+    );
+  }
+  probeEvidence = createAgentRuntimeHostProbeEvidenceV1({
+    invocationId: input.request.invocationId,
+    requestDigest: input.request.requestDigest,
+    executionAttemptId: input.acceptanceBinding.executionAttemptId,
+    acceptanceBindingDigest: input.acceptanceBinding.bindingDigest,
+    assignmentBindingDigest: controller.assignmentBinding.bindingDigest,
+    providerProfileDigest: profile.profileDigest,
+    executable: probeRuntime.executable,
+    providerDefinitionBindingDigest:
+      probeRuntime.providerDefinitionBindingDigest,
+    providerVersion: probe.providerVersion,
+    probeRequestFileDigest: sha256Buffer(probeRequestBytes),
+    probeResultFileDigest: sha256Buffer(probeResultBytes),
+    governedBeforeDigest: probeProjection.beforeDigest,
+    governedAfterDigest: probeProjection.afterDigest,
+  });
+  try {
+    options.onHostProbeEvidence?.(probeEvidence);
+  } catch {
+    // Evidence observers cannot alter the already-validated probe result.
+  }
+  if (options.signal?.aborted === true) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_CANCELLED',
+      'Host-wrapper execution was cancelled before its native turn claim.',
     );
   }
   claim = controller.claim({
@@ -174,7 +277,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     null;
   for await (const event of stream) {
     if (event.type === 'process-activity') {
-      options.onActivity?.({
+      observeActivity({
         type: event.activity,
         elapsedMs: event.elapsedMs,
         ...(event.bytes === null ? {} : { bytes: event.bytes }),
@@ -182,6 +285,12 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     } else if (event.type === 'completed') {
       completed = event;
     } else if (event.type === 'failed' || event.type === 'cancelled') {
+      if (event.type === 'cancelled') {
+        observeActivity({
+          type: 'cancelled',
+          elapsedMs: event.elapsedMs,
+        });
+      }
       if (driverFailure !== null) throw driverFailure;
       throw runtimeFailure(
         event.type === 'cancelled'
@@ -197,6 +306,44 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_COMPLETION_MISSING',
       'Host-wrapper execution did not publish one completion.',
+    );
+  }
+  let wrapperProtocolReceipt: ReturnType<
+    typeof assertProviderRuntimeProtocolReceipt
+  >;
+  try {
+    wrapperProtocolReceipt = assertProviderRuntimeProtocolReceipt(
+      completed.observation.protocolEvidence,
+      claim.binding,
+    );
+  } catch {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_PROTOCOL_MISSING',
+      'Host-wrapper completion did not retain its exact session protocol receipt.',
+    );
+  }
+  if (
+    wrapperProtocolReceipt.kind !== 'provider-wrapper-session-protocol-receipt'
+  ) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_PROTOCOL_MISSING',
+      'Host-wrapper completion did not retain its exact session protocol receipt.',
+    );
+  }
+  if (hostExecutionBinding === null) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_NATIVE_TURN_INVALID',
+      'Host-wrapper completion omitted its durable host execution binding.',
+    );
+  }
+  if (
+    probeEvidence === null ||
+    canonicalJson(completed.observation.executable) !==
+      canonicalJson(probeEvidence.executable)
+  ) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_DEFINITION_INVALID',
+      'Host-wrapper completion executable does not match its exact probe authority.',
     );
   }
   return Object.freeze({
@@ -220,6 +367,8 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     executable: completed.observation.executable,
     elapsedMs: completed.elapsedMs,
     providerDefinitionSnapshot: profile,
+    wrapperProtocolReceipt,
+    hostExecutionBinding,
   });
 
   function executeHostTurn(
@@ -260,7 +409,13 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
               ? internalSignal
               : AbortSignal.any([options.signal, internalSignal]),
           onActivity(event) {
-            if (event.type === 'cancelled') return;
+            if (event.type === 'cancelled') {
+              observeActivity({
+                type: 'cancelled',
+                elapsedMs: event.elapsedMs,
+              });
+              return;
+            }
             activities.push(
               Object.freeze({
                 type: 'process-activity' as const,
@@ -292,11 +447,27 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
           runtime.governedInputs,
         );
         const projection = compareGovernedProviderProjections(before, after);
+        const wholeRunAfter = captureGovernedProviderProjection(
+          input.repositoryRoot,
+          probeRuntime.governedInputs,
+        );
+        const wholeRunProjection = compareGovernedProviderProjections(
+          probeBefore,
+          wholeRunAfter,
+        );
+        const governedProjectionChanged =
+          !projection.unchanged || !wholeRunProjection.unchanged;
         const protocolOutcome = outcome.wrapperSessionProtocolOutcome;
         if (protocolOutcome === undefined) {
           publishFailureCompletion(
             outcome.timedOut ? { kind: 'timeout' } : { kind: 'claim-crash' },
           );
+          if (governedProjectionChanged) {
+            throw runtimeFailure(
+              'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
+              'Host-wrapper changed a governed repository projection.',
+            );
+          }
           throw runtimeFailure(
             outcome.timedOut
               ? 'AGENT_RUNTIME_V1_TIMEOUT'
@@ -306,19 +477,45 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
         }
         const observedIdentity =
           privateIdentity as ProviderWrapperNativeSessionIdentityObservation | null;
-        if (
-          outcome.terminationReason !== 'exited' ||
-          outcome.exitCode !== 0 ||
-          protocolOutcome.receipt.terminal !== 'result' ||
-          observedIdentity === null
-        ) {
-          publishProtocolCompletion(protocolOutcome, observedIdentity);
+        if (protocolOutcome.receipt.terminal !== 'result') {
+          publishProtocolCompletion(protocolOutcome, null);
+          for (const event of activities) yield event;
+          try {
+            options.onProtocolReceipt?.(protocolOutcome.receipt);
+          } catch {
+            // Receipt observers cannot alter the already-bound terminal state.
+          }
+          if (governedProjectionChanged) {
+            throw runtimeFailure(
+              'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
+              'Host-wrapper changed a governed repository projection.',
+            );
+          }
           throw runtimeFailure(
             'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
             'Host-wrapper process or protocol ended without an accepted result.',
           );
         }
-        if (!projection.unchanged) {
+        if (
+          outcome.terminationReason !== 'exited' ||
+          outcome.exitCode !== 0 ||
+          observedIdentity === null
+        ) {
+          publishRejectedProtocolCompletion(protocolOutcome);
+          for (const event of activities) yield event;
+          if (governedProjectionChanged) {
+            throw runtimeFailure(
+              'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
+              'Host-wrapper changed a governed repository projection.',
+            );
+          }
+          throw runtimeFailure(
+            'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
+            'Host-wrapper process or protocol ended without an accepted result.',
+          );
+        }
+        if (governedProjectionChanged) {
+          publishRejectedProtocolCompletion(protocolOutcome);
           throw runtimeFailure(
             'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
             'Host-wrapper changed a governed repository projection.',
@@ -335,12 +532,18 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
           outputAccepted = false;
         }
         if (!outputAccepted) {
+          publishRejectedProtocolCompletion(protocolOutcome);
           throw runtimeFailure(
             'AGENT_RUNTIME_V1_OUTPUT_INVALID',
             'Host-wrapper semantic output failed its exact current contract.',
           );
         }
         publishProtocolCompletion(protocolOutcome, observedIdentity);
+        try {
+          options.onProtocolReceipt?.(protocolOutcome.receipt);
+        } catch {
+          // Receipt observers cannot alter the already-bound terminal state.
+        }
         for (const event of activities) yield event;
         yield Object.freeze({
           type: 'session-started' as const,
@@ -358,8 +561,8 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
             projection: Object.freeze({
               unchanged: true as const,
               changedCategories: Object.freeze([] as const),
-              beforeDigest: projection.beforeDigest,
-              afterDigest: projection.afterDigest,
+              beforeDigest: wholeRunProjection.beforeDigest,
+              afterDigest: wholeRunProjection.afterDigest,
             }),
             residuals: Object.freeze([...PROVIDER_RUNNER_RESIDUALS]),
             protocolEvidence: protocolOutcome.receipt,
@@ -385,7 +588,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
     outcome: ProviderWrapperSessionProtocolOutcome,
     privateIdentityObservation: ProviderWrapperNativeSessionIdentityObservation | null,
   ): void {
-    controller.complete({
+    const completion = controller.complete({
       claimDigest: claim!.claimDigest,
       terminal: {
         kind: 'protocol-outcome',
@@ -394,13 +597,50 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
       },
     });
     completionPublished = true;
+    publishHostExecutionBinding(completion.completionDigest);
+  }
+
+  function publishRejectedProtocolCompletion(
+    outcome: ProviderWrapperSessionProtocolOutcome,
+  ): void {
+    publishProtocolCompletion(outcome, null);
+    try {
+      options.onProtocolReceipt?.(outcome.receipt);
+    } catch {
+      // Receipt observers cannot alter the already-bound rejected terminal.
+    }
   }
 
   function publishFailureCompletion(
     terminal: { kind: 'timeout' } | { kind: 'claim-crash' },
   ): void {
-    controller.complete({ claimDigest: claim!.claimDigest, terminal });
+    const completion = controller.complete({
+      claimDigest: claim!.claimDigest,
+      terminal,
+    });
     completionPublished = true;
+    publishHostExecutionBinding(completion.completionDigest);
+  }
+
+  function publishHostExecutionBinding(completionDigest: string): void {
+    if (probeEvidence === null) {
+      throw runtimeFailure(
+        'AGENT_RUNTIME_V1_NATIVE_TURN_INVALID',
+        'Host-wrapper native completion omitted its exact probe evidence.',
+      );
+    }
+    const binding = createAgentRuntimeHostExecutionBindingV1({
+      assignmentBinding: controller.assignmentBinding,
+      probe: probeEvidence,
+      nativeSessionClaim: claim!.claim,
+      nativeSessionCompletionDigest: completionDigest,
+    });
+    hostExecutionBinding = binding;
+    try {
+      options.onHostExecutionBinding?.(binding);
+    } catch {
+      // Authority observers cannot alter the already-published native terminal.
+    }
   }
 }
 
@@ -484,17 +724,41 @@ function assertClaimBinding(
   action: 'start' | 'resume',
   claim: NativeTurnClaim,
 ): void {
+  const assignment = input.assignmentBinding!;
+  const durableClaim = claim.claim;
+  const sessionControl = claim.binding.sessionControl;
+  const expectedNativeSessionIdDigest =
+    sessionControl.nativeSessionIdentityMode === 'engine-supplied'
+      ? agentRuntimeNativeSessionIdDigestV1(
+          sessionControl.expectedNativeSessionId,
+        )
+      : null;
   if (
+    durableClaim.claimDigest !== claim.claimDigest ||
+    durableClaim.predecessorCompletionDigest !==
+      claim.predecessorCompletionDigest ||
+    durableClaim.invocationId !== input.request.invocationId ||
+    durableClaim.requestDigest !== input.request.requestDigest ||
+    durableClaim.attemptId !== input.acceptanceBinding.executionAttemptId ||
+    durableClaim.action !== action ||
+    durableClaim.scope.changeId !== assignment.changeId ||
+    durableClaim.scope.planningGeneration !== assignment.planningGeneration ||
+    durableClaim.scope.assignmentRecordDigest !== assignment.recordDigest ||
+    durableClaim.scope.logicalProviderId !== assignment.logicalProviderId ||
+    durableClaim.scope.profileId !== assignment.providerProfileId ||
+    durableClaim.scope.profileDigest !==
+      input.nativeSessionTurn!.profile.profileDigest ||
+    durableClaim.scope.providerDefinitionDigest !==
+      assignment.definitionDigest ||
     claim.binding.invocationId !== input.request.invocationId ||
     claim.binding.requestDigest !== input.request.requestDigest ||
     claim.binding.attemptId !== input.acceptanceBinding.executionAttemptId ||
-    claim.binding.sessionControl.action !== action ||
+    sessionControl.action !== action ||
     (action === 'start' &&
-      claim.binding.sessionControl.nativeSessionIdentityMode !==
-        'provider-observed') ||
+      sessionControl.nativeSessionIdentityMode !== 'provider-observed') ||
     (action === 'resume' &&
-      claim.binding.sessionControl.nativeSessionIdentityMode !==
-        'engine-supplied')
+      sessionControl.nativeSessionIdentityMode !== 'engine-supplied') ||
+    durableClaim.expectedNativeSessionIdDigest !== expectedNativeSessionIdDigest
   ) {
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_NATIVE_TURN_INVALID',
@@ -515,11 +779,11 @@ function projectDefinitionIdentity(
   });
 }
 
-async function probeHostWrapper(
+function createProbeRuntime(
   input: AgentRuntimeSingleShotInput,
   profile: HostWrapperProviderProfileSnapshot,
-  executableObservation: ProviderExecutableObservation,
-): Promise<Readonly<{ providerVersion: string }>> {
+  executable: NonNullable<ProviderExecutableObservation['identity']>,
+): HostProbeRuntime {
   const directory = path.join(
     input.invocationDirectory,
     'host-wrapper-probe-runtime',
@@ -527,19 +791,58 @@ async function probeHostWrapper(
   fs.mkdirSync(directory, { mode: 0o700 });
   const requestPath = path.join(directory, 'request.json');
   const outputPath = path.join(directory, 'probe-result.json');
-  writeExclusive(
-    requestPath,
+  const providerDefinitionBindingDigest =
+    providerDefinitionExecutableBindingDigest(
+      profile.profileDigest,
+      executable,
+    );
+  const requestBytes = Buffer.from(
     `${canonicalJson({
       schemaVersion: 1,
       kind: 'agent-runtime-host-wrapper-probe-request.v1',
+      invocationId: input.request.invocationId,
+      requestDigest: input.request.requestDigest,
+      executionAttemptId: input.acceptanceBinding.executionAttemptId,
+      acceptanceBindingDigest: input.acceptanceBinding.bindingDigest,
+      assignmentBindingDigest: input.assignmentBinding!.bindingDigest,
       providerFamily: profile.family,
       profileDigest: profile.profileDigest,
+      providerDefinitionBindingDigest,
       outputFile: outputPath,
     })}\n`,
+    'utf8',
   );
+  writeExclusive(requestPath, requestBytes);
   writeExclusive(outputPath, '');
+  return Object.freeze({
+    directory,
+    requestPath,
+    outputPath,
+    requestDigest: sha256Buffer(requestBytes),
+    executable,
+    providerDefinitionBindingDigest,
+    governedInputs: [
+      ...input.governedRuntimeInputs,
+      {
+        id: 'engine-host-wrapper-probe-runtime',
+        path: directory,
+        kind: 'directory-closure' as const,
+        expectedFiles: ['request.json', 'probe-result.json'],
+        mutableContentPaths: ['probe-result.json'],
+      },
+    ],
+  });
+}
+
+async function executeHostProbe(
+  input: AgentRuntimeSingleShotInput,
+  profile: HostWrapperProviderProfileSnapshot,
+  executableObservation: ProviderExecutableObservation,
+  runtime: HostProbeRuntime,
+  signal: AbortSignal | undefined,
+): Promise<Readonly<{ providerVersion: string }>> {
   const args = profile.startArgs.map((argument) =>
-    argument.replaceAll('{request_file}', requestPath),
+    argument.replaceAll('{request_file}', runtime.requestPath),
   );
   if (args.some((argument) => /\{[a-z_]+\}/u.test(argument))) {
     throw runtimeFailure(
@@ -550,37 +853,47 @@ async function probeHostWrapper(
   const outcome = await spawnBoundedProviderProcess({
     executable: profile.executable,
     args,
-    cwd: directory,
+    cwd: runtime.directory,
     environment: createProviderExecutionEnvironment(
       input.providerId,
       process.execPath,
-      directory,
+      runtime.directory,
       input.sourceEnvironment,
     ),
     stdinContent: Buffer.alloc(0),
     timeoutMs: Math.min(input.request.limits.timeoutMs, 10_000),
     maxOutputBytes: 64 * 1_024,
+    ...(signal === undefined ? {} : { signal }),
   });
   const current = assertProviderExecutableObservationCurrent(
     executableObservation,
   );
   if (
+    outcome.terminationReason === 'cancelled' ||
     current.identity === null ||
     outcome.terminationReason !== 'exited' ||
     outcome.exitCode !== 0
   ) {
     throw runtimeFailure(
-      'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
-      'Host-wrapper availability probe did not complete successfully.',
+      outcome.terminationReason === 'cancelled'
+        ? 'AGENT_RUNTIME_V1_CANCELLED'
+        : 'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+      outcome.terminationReason === 'cancelled'
+        ? 'Host-wrapper availability probe was cancelled.'
+        : 'Host-wrapper availability probe did not complete successfully.',
     );
   }
   let value: unknown;
   try {
-    const stats = fs.statSync(outputPath, { throwIfNoEntry: false });
-    if (!stats?.isFile() || stats.size <= 0 || stats.size > 64 * 1_024) {
-      throw new Error('invalid size');
-    }
-    value = JSON.parse(fs.readFileSync(outputPath, 'utf8')) as unknown;
+    value = readProbeResult(
+      readStablePrivateFile(
+        runtime.outputPath,
+        64 * 1_024,
+        false,
+        'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+        'Host-wrapper availability probe result is invalid.',
+      ),
+    );
   } catch {
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
@@ -602,7 +915,7 @@ async function probeHostWrapper(
     !('providerVersion' in value) ||
     typeof value.providerVersion !== 'string' ||
     value.providerVersion.length === 0 ||
-    value.providerVersion.length > 256
+    Buffer.byteLength(value.providerVersion, 'utf8') > 256
   ) {
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
@@ -610,6 +923,31 @@ async function probeHostWrapper(
     );
   }
   return Object.freeze({ providerVersion: value.providerVersion });
+}
+
+function readProbeResult(bytes: Buffer): unknown {
+  return JSON.parse(bytes.toString('utf8')) as unknown;
+}
+
+function readProbeProviderVersion(bytes: Buffer): string {
+  const value = readProbeResult(bytes);
+  if (
+    !isRecord(value) ||
+    Object.keys(value).sort().join(',') !==
+      'authentication,kind,providerVersion,schemaVersion' ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'agent-runtime-host-wrapper-probe-result.v1' ||
+    value.authentication !== 'authenticated' ||
+    typeof value.providerVersion !== 'string' ||
+    value.providerVersion.length === 0 ||
+    Buffer.byteLength(value.providerVersion, 'utf8') > 256
+  ) {
+    throw runtimeFailure(
+      'AGENT_RUNTIME_V1_PROVIDER_UNAVAILABLE',
+      'Host-wrapper availability probe result is invalid.',
+    );
+  }
+  return value.providerVersion;
 }
 
 function createPublicInput(
@@ -776,15 +1114,16 @@ function renderArguments(
 }
 
 function readSemanticOutput(outputPath: string, maxBytes: number): unknown {
-  const stats = fs.statSync(outputPath, { throwIfNoEntry: false });
-  if (!stats?.isFile() || stats.size <= 0 || stats.size > maxBytes) {
-    throw runtimeFailure(
-      'AGENT_RUNTIME_V1_OUTPUT_INVALID',
-      'Host-wrapper semantic output is absent or exceeds its bound.',
-    );
-  }
   try {
-    return JSON.parse(fs.readFileSync(outputPath, 'utf8')) as unknown;
+    return JSON.parse(
+      readStablePrivateFile(
+        outputPath,
+        maxBytes,
+        false,
+        'AGENT_RUNTIME_V1_OUTPUT_INVALID',
+        'Host-wrapper semantic output is absent or exceeds its bound.',
+      ).toString('utf8'),
+    ) as unknown;
   } catch {
     throw runtimeFailure(
       'AGENT_RUNTIME_V1_OUTPUT_INVALID',
@@ -793,7 +1132,7 @@ function readSemanticOutput(outputPath: string, maxBytes: number): unknown {
   }
 }
 
-function writeExclusive(filePath: string, content: string): void {
+function writeExclusive(filePath: string, content: string | Buffer): void {
   const descriptor = fs.openSync(
     filePath,
     fs.constants.O_WRONLY |
@@ -803,17 +1142,97 @@ function writeExclusive(filePath: string, content: string): void {
     0o600,
   );
   try {
-    fs.writeFileSync(descriptor, content, 'utf8');
+    fs.writeFileSync(descriptor, content);
     fs.fsyncSync(descriptor);
   } finally {
     fs.closeSync(descriptor);
   }
 }
 
+function readStablePrivateFile(
+  filePath: string,
+  maxBytes: number,
+  allowEmpty: boolean,
+  code: string,
+  message: string,
+): Buffer {
+  let descriptor: number | null = null;
+  try {
+    descriptor = fs.openSync(
+      filePath,
+      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
+    );
+    const before = fs.fstatSync(descriptor, { bigint: true });
+    if (
+      !before.isFile() ||
+      before.nlink !== 1n ||
+      (Number(before.mode) & 0o777) !== 0o600 ||
+      before.size < (allowEmpty ? 0n : 1n) ||
+      before.size > BigInt(maxBytes)
+    ) {
+      throw new Error('invalid private file');
+    }
+    const expectedSize = Number(before.size);
+    const buffer = Buffer.alloc(expectedSize + 1);
+    let offset = 0;
+    while (offset < buffer.length) {
+      const read = fs.readSync(
+        descriptor,
+        buffer,
+        offset,
+        buffer.length - offset,
+        offset,
+      );
+      if (read === 0) break;
+      offset += read;
+    }
+    const after = fs.fstatSync(descriptor, { bigint: true });
+    const pathState = fs.lstatSync(filePath, {
+      bigint: true,
+      throwIfNoEntry: false,
+    });
+    if (
+      offset !== expectedSize ||
+      !sameFileState(before, after) ||
+      pathState === undefined ||
+      !sameFileState(after, pathState)
+    ) {
+      throw new Error('unstable private file');
+    }
+    return buffer.subarray(0, expectedSize);
+  } catch {
+    throw runtimeFailure(code, message);
+  } finally {
+    if (descriptor !== null) fs.closeSync(descriptor);
+  }
+}
+
+function sameFileState(left: fs.BigIntStats, right: fs.BigIntStats): boolean {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.mode === right.mode &&
+    left.nlink === right.nlink &&
+    left.uid === right.uid &&
+    left.gid === right.gid &&
+    left.size === right.size &&
+    left.mtimeNs === right.mtimeNs &&
+    left.ctimeNs === right.ctimeNs
+  );
+}
+
 function runtimeFailure(code: string, message: string) {
   return workflowError(code, message, ExitCode.verification);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function sha256(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+function sha256Buffer(value: Buffer): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }

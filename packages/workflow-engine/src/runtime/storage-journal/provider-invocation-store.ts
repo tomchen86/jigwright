@@ -3,11 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
-  assertAgentProviderProfileSnapshot,
-  type HostWrapperProviderProfileSnapshot,
-} from '@jigwright/agent-runtime';
-
-import {
   parseAiAdapterPolicyDocument,
   type AiAdapterRetryAccounting,
   type LoadedAiAdapterPolicy,
@@ -29,11 +24,15 @@ import {
 import {
   acceptProviderAttemptResult,
   materializeProviderExecutionJob,
+  publishProviderExecutionAdmissionAuthority,
   readExecutionJobState,
+  withExecutionJobStateSnapshot,
   type ProviderExecutionEntry,
 } from './execution-store.ts';
 import {
   assertPrivateInvestigationDirectory,
+  assertProviderRuntimeDurableAuthorities,
+  assertProviderRuntimeTerminalAuthorityPreflight,
   createPrivateCanonicalJson,
   ensurePrivateInvestigationDirectory,
   listProviderInvocationLifecycleProjections,
@@ -53,6 +52,12 @@ import {
   type ProviderExecutionGrantAuthorityInput,
 } from '../provider-execution/provider-execution-policy-authority.ts';
 import {
+  MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
+  assertProviderExecutionAdmissionAuthority,
+  providerExecutionAdmissionAuthorityPath,
+  type ProviderExecutionAdmissionReceiptRequirement,
+} from './provider-execution-admission-authority.ts';
+import {
   createProviderInvocationRequest,
   evaluateProviderProcess,
   type ProviderInvocationRequest,
@@ -60,24 +65,39 @@ import {
   type ProviderProcessResult,
   type ProviderExecutableIdentity,
   type ProviderRunnerReport,
-  type ProviderRuntimeObservation,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type {
   AgentRuntimeCompletionReceipt,
+  AgentRuntimeHostExecutionBindingV1,
   AgentRuntimeProcessProgressProjection,
   ProviderInvocationAcceptanceBinding,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
+import { assertAgentRuntimeHostExecutionBindingV1 } from '../../modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import {
-  assertProviderWrapperProtocolReceipt,
-  type ProviderWrapperProtocolReceipt,
+  assertProviderRuntimeProtocolReceipt,
+  type ProviderRuntimeProtocolReceipt,
 } from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
-import { PROVIDER_RUNNER_RESIDUALS } from '../provider-execution/provider-runner.ts';
-import { assertKnownBuiltInProviderDefinitionSnapshot } from '../provider-execution/built-in-provider-definition.ts';
 import {
-  INVESTIGATION_LIMITS,
-  normalizeInvestigationTerm,
-  type InvestigationTermKind,
-} from '../../modules/investigation/domain/investigation-terms.ts';
+  assertAgentRuntimeCompletionReceipt,
+  assertAgentRuntimeProcessProgress,
+  assertProviderInvocationAcceptanceBinding,
+  assertProviderDefinitionSnapshotForResult,
+  assertProviderProcessResult,
+  assertProviderRuntimeObservation,
+  isProviderExecutableIdentity,
+  providerDefinitionDigest,
+  providerDefinitionExecutableBindingDigest,
+  PROVIDER_RUNNER_RESIDUALS,
+} from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
+import {
+  BLIND_SURVEY_OUTPUT_SCHEMA,
+  BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+  validateBlindSurveyOutput,
+} from '../../modules/provider-orchestration/blind-survey-output.ts';
+export {
+  BLIND_SURVEY_OUTPUT_SCHEMA,
+  BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+} from '../../modules/provider-orchestration/blind-survey-output.ts';
 import {
   assertChangeId,
   assertInvestigationId,
@@ -107,6 +127,11 @@ import {
   readGrantRecord,
 } from './grant-store.ts';
 import { registerProviderRetentionInvocation } from './provider-retention-catalog.ts';
+import { publishProviderNativeSessionContinuationAuthorityV1 } from './provider-native-session-store.ts';
+import {
+  providerNativeSessionContinuationAuthorityObjectPathV1,
+  providerNativeSessionStorePathsV1,
+} from '../session-workspace/provider-runtime-authority-paths.ts';
 import {
   providerRetentionArtifact,
   providerRetentionReviewRootArtifact,
@@ -178,40 +203,6 @@ const MAX_INTENT_FACT_BYTES = 512;
 const MAX_INTENT_FACTS_PER_KIND = 256;
 const MAX_ARCHITECTURE_QUESTION_BYTES = 16_384;
 export const PROVIDER_COMPLETION_GRACE_MS = 30_000;
-// Keep this canonical schema self-contained: provider CLIs infer their supported
-// dialect, while an external `$schema` URI can be rejected before model launch.
-// The request digest, runtime schema, provider argv, and native validator must
-// continue to bind these exact bytes.
-export const BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
-  type: 'object',
-  additionalProperties: false,
-  required: ['reference', 'terms'],
-  properties: {
-    reference: { type: 'string', minLength: 1 },
-    terms: {
-      type: 'array',
-      minItems: 1,
-      maxItems: INVESTIGATION_LIMITS.maxSurveyTerms,
-      items: {
-        type: 'object',
-        additionalProperties: false,
-        required: ['kind', 'value'],
-        properties: {
-          kind: {
-            enum: ['literal-content', 'literal-path', 'symbol', 'config-key'],
-          },
-          value: { type: 'string', minLength: 1 },
-        },
-      },
-    },
-  },
-});
-export const BLIND_SURVEY_OUTPUT_SCHEMA = Object.freeze({
-  id: 'workflow.blind-survey-output.v1',
-  version: 1,
-  digest: sha256(canonicalJson(BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA)),
-});
-
 export type NormalizedChangeIntent = {
   schemaVersion: 1;
   summary: string;
@@ -1253,7 +1244,7 @@ export function readProviderInvocationRuntimeReceipt(
     attempt.providerInvocation?.invocationId !== receipt.invocationId ||
     attempt.providerInvocation.invocationRevision !==
       receipt.terminalRevision ||
-    ((receipt.schemaVersion === 2 || receipt.schemaVersion === 3) &&
+    (receipt.protocolReceipt !== null &&
       (receipt.protocolReceipt.invocationId !== receipt.invocationId ||
         receipt.protocolReceipt.requestDigest !== receipt.requestDigest ||
         receipt.protocolReceipt.attemptId !== attempt.attemptId)) ||
@@ -1267,6 +1258,9 @@ export function readProviderInvocationRuntimeReceipt(
 function readProviderInvocationCore(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
+  options: Readonly<{
+    allowPendingNativeContinuationAuthority?: boolean;
+  }> = {},
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
   const value = readPrivateCanonicalJson(
@@ -1297,12 +1291,37 @@ function readProviderInvocationCore(
     request.requestDigest !== record.requestDigest ||
     providerInvocationManifestDigest(manifest) !== record.manifestDigest ||
     request.providerId !== record.providerId ||
-    request.purpose !== record.purpose ||
-    (record.result !== null &&
-      canonicalJson(assertProviderResult(request, record.result)) !==
-        canonicalJson(record.result))
+    request.purpose !== record.purpose
   ) {
     throw invocationInvalid();
+  }
+  const result =
+    record.result === null
+      ? null
+      : assertProviderResult(request, record.result);
+  if (
+    record.result !== null &&
+    canonicalJson(result) !== canonicalJson(record.result)
+  ) {
+    throw invocationInvalid();
+  }
+  assertProviderRuntimeDurableAuthorities(
+    paths,
+    request,
+    record,
+    result,
+    record.runtimeReceipt ?? null,
+    invocationUnsafe,
+    options,
+  );
+  if (
+    manifest.kind === 'task-strategy-implementation-manifest' &&
+    record.result !== null
+  ) {
+    assertProviderResultManifestBinding(
+      manifest,
+      assertProviderResult(request, record.result),
+    );
   }
   if (record.runtimeReceipt !== undefined) {
     const projection = projectProviderInvocationExecution({ record, request });
@@ -1816,6 +1835,7 @@ export function providerInvocationExists(
 export function prepareProviderInvocationAcceptanceBinding(
   paths: InvestigationRuntimePaths,
   requestedInvocationId: string,
+  receiptRequirement: ProviderExecutionAdmissionReceiptRequirement,
 ): ProviderInvocationAcceptanceBinding {
   const invocationId = assertInvocationId(requestedInvocationId);
   const record = readProviderInvocation(paths, invocationId);
@@ -1832,41 +1852,49 @@ export function prepareProviderInvocationAcceptanceBinding(
     record.investigationId,
   );
   const projection = projectProviderInvocationExecution({ record, request });
-  const execution = readExecutionJobState(paths, projection.job.jobId);
-  const attempt = execution?.attempts.find(
-    ({ attemptId }) => attemptId === projection.attempt.attemptId,
-  );
-  if (
-    execution === null ||
-    execution.workflow.workflowId !== record.investigationId ||
-    execution.job.jobId !== projection.job.jobId ||
-    execution.job.acceptedAttemptId !== null ||
-    attempt === undefined ||
-    attempt.providerInvocation?.invocationId !== invocationId ||
-    attempt.providerInvocation.invocationRevision !== record.revision
-  ) {
-    throw providerAcceptanceBindingStale();
-  }
   const repair = readProviderRepairAuthorityBinding(paths, record, request);
-  const payload = {
-    schemaVersion: 1 as const,
-    kind: 'provider-invocation-acceptance-binding' as const,
-    invocationId,
-    requestDigest: request.requestDigest,
-    ownerWorkflowId: record.investigationId,
-    invocationRevision: record.revision,
-    leaseGeneration: record.leaseGeneration,
-    context,
-    executionJobId: projection.job.jobId,
-    executionAttemptId: projection.attempt.attemptId,
-    executionRevision: execution.revision,
-    executionStateDigest: sha256(canonicalJson(execution)),
-    repair,
-  };
-  return deepFreeze({
-    ...payload,
-    bindingDigest: sha256(canonicalJson(payload)),
-  });
+  return withExecutionJobStateSnapshot(
+    paths,
+    projection.job.jobId,
+    (execution) => {
+      const attempt = execution?.attempts.find(
+        ({ attemptId }) => attemptId === projection.attempt.attemptId,
+      );
+      if (
+        execution === null ||
+        execution.workflow.workflowId !== record.investigationId ||
+        execution.job.jobId !== projection.job.jobId ||
+        execution.job.acceptedAttemptId !== null ||
+        attempt === undefined ||
+        attempt.providerInvocation?.invocationId !== invocationId ||
+        attempt.providerInvocation.invocationRevision !== record.revision
+      ) {
+        throw providerAcceptanceBindingStale();
+      }
+      const payload = {
+        schemaVersion: 1 as const,
+        kind: 'provider-invocation-acceptance-binding' as const,
+        invocationId,
+        requestDigest: request.requestDigest,
+        ownerWorkflowId: record.investigationId,
+        invocationRevision: record.revision,
+        leaseGeneration: record.leaseGeneration,
+        context,
+        executionJobId: projection.job.jobId,
+        executionAttemptId: projection.attempt.attemptId,
+        executionRevision: execution.revision,
+        executionStateDigest: sha256(canonicalJson(execution)),
+        receiptRequirement,
+        repair,
+      };
+      const binding = deepFreeze({
+        ...payload,
+        bindingDigest: sha256(canonicalJson(payload)),
+      });
+      publishProviderExecutionAdmissionAuthority(paths, binding, execution);
+      return binding;
+    },
+  );
 }
 
 export function assertProviderInvocationAcceptanceBindingCurrent(
@@ -1903,6 +1931,75 @@ export function assertProviderInvocationAcceptanceBindingCurrent(
     execution.workflow.workflowId !== binding.ownerWorkflowId ||
     execution.job.acceptedAttemptId !== null ||
     attempt === undefined ||
+    attempt.providerInvocation?.invocationId !== binding.invocationId ||
+    attempt.providerInvocation.invocationRevision !== binding.invocationRevision
+  ) {
+    throw providerAcceptanceBindingStale();
+  }
+  assertProviderRepairAuthorityCurrent(paths, record, request, binding.repair);
+}
+
+/**
+ * Re-admit an already-launched completion without pretending the live Job is
+ * still the pre-launch snapshot. Another leased Attempt may have won meanwhile;
+ * the result CAS remains the sole authority that classifies that race.
+ */
+export function assertProviderInvocationAcceptanceBindingTerminalCurrent(
+  paths: InvestigationRuntimePaths,
+  binding: ProviderInvocationAcceptanceBinding,
+): void {
+  assertProviderAcceptanceBinding(binding);
+  const record = readProviderInvocation(paths, binding.invocationId);
+  const request = readProviderInvocationRequest(paths, binding.invocationId);
+  if (
+    record.investigationId !== binding.ownerWorkflowId ||
+    record.requestDigest !== binding.requestDigest ||
+    record.revision !== binding.invocationRevision ||
+    record.state !== 'leased' ||
+    record.lease === null ||
+    record.leaseGeneration !== binding.leaseGeneration ||
+    record.lease.generation !== binding.leaseGeneration
+  ) {
+    throw providerAcceptanceBindingStale();
+  }
+  assertProviderInvocationNotTerminallyResolved(paths, record);
+  assertProviderPromptContextCurrent(paths.root, binding.context);
+  const authority = assertProviderExecutionAdmissionAuthority(
+    readPrivateCanonicalJson(
+      paths,
+      providerExecutionAdmissionAuthorityPath(paths, binding),
+      providerAcceptanceBindingStale,
+      MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
+    ),
+    providerAcceptanceBindingStale,
+  );
+  const projection = projectProviderInvocationExecution({ record, request });
+  const execution = readExecutionJobState(paths, binding.executionJobId);
+  const attempt = execution?.attempts.find(
+    ({ attemptId }) => attemptId === binding.executionAttemptId,
+  );
+  const acceptedByDifferentAttempt =
+    execution !== null &&
+    execution.job.acceptedAttemptId !== null &&
+    execution.job.acceptedAttemptId !== binding.executionAttemptId;
+  if (
+    canonicalJson(authority.acceptanceBinding) !== canonicalJson(binding) ||
+    authority.acceptanceBindingDigest !== binding.bindingDigest ||
+    authority.executionStateDigest !== binding.executionStateDigest ||
+    authority.receiptRequirement !== binding.receiptRequirement ||
+    projection.job.jobId !== binding.executionJobId ||
+    projection.attempt.attemptId !== binding.executionAttemptId ||
+    execution === null ||
+    execution.workflow.workflowId !== binding.ownerWorkflowId ||
+    execution.job.jobId !== binding.executionJobId ||
+    (!acceptedByDifferentAttempt &&
+      (execution.revision !== binding.executionRevision ||
+        sha256(canonicalJson(execution)) !== binding.executionStateDigest)) ||
+    attempt?.status !== 'leased' ||
+    attempt.lease === null ||
+    attempt.jobId !== binding.executionJobId ||
+    attempt.leaseGeneration !== binding.leaseGeneration ||
+    attempt.lease.generation !== binding.leaseGeneration ||
     attempt.providerInvocation?.invocationId !== binding.invocationId ||
     attempt.providerInvocation.invocationRevision !== binding.invocationRevision
   ) {
@@ -2436,17 +2533,34 @@ export function completeProviderInvocation(
     leaseGeneration: number;
     leaseToken: string;
     outcome: ProviderProcessOutcome;
+    acceptanceBinding?: ProviderInvocationAcceptanceBinding;
     now?: string;
     simulateCrashAfterExecutionAcceptance?: boolean;
   },
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
+  const observed = readProviderInvocation(paths, invocationId);
+  if (observed.revision !== input.expectedRevision) {
+    throw providerCasMismatch(input.expectedRevision, observed.revision);
+  }
+  const acceptanceBinding =
+    input.acceptanceBinding ??
+    prepareProviderInvocationAcceptanceBinding(
+      paths,
+      invocationId,
+      'synchronous-no-activity',
+    );
+  if (acceptanceBinding.receiptRequirement !== 'synchronous-no-activity') {
+    throw invocationInvalid();
+  }
   const request = readProviderInvocationRequest(paths, invocationId);
+  const manifest = readProviderInvocationManifest(paths, invocationId);
   const result = evaluateProviderProcess(
     request,
     input.outcome,
     providerOutputValidator(request),
   );
+  assertProviderResultManifestBinding(manifest, result);
   const now = parseNow(input.now);
   return withProviderWorkerLifecycle(paths, () =>
     updateProviderInvocation(
@@ -2459,6 +2573,27 @@ export function completeProviderInvocation(
           input.leaseGeneration,
           input.leaseToken,
           now,
+        );
+        assertProviderInvocationAcceptanceBindingTerminalCurrent(
+          paths,
+          acceptanceBinding,
+        );
+        const next = assertProviderInvocationRecord({
+          ...current,
+          revision: current.revision + 1,
+          state: 'succeeded',
+          lease: null,
+          result,
+          failure: null,
+          updatedAt: new Date(now).toISOString(),
+        });
+        assertProviderRuntimeTerminalAuthorityPreflight(
+          paths,
+          request,
+          next,
+          result,
+          null,
+          invocationUnsafe,
         );
         persistProviderCompletionCandidate(paths, {
           current,
@@ -2484,15 +2619,7 @@ export function completeProviderInvocation(
             ExitCode.internal,
           );
         }
-        return {
-          ...current,
-          revision: current.revision + 1,
-          state: 'succeeded',
-          lease: null,
-          result,
-          failure: null,
-          updatedAt: new Date(now).toISOString(),
-        };
+        return next;
       },
     ),
   );
@@ -2515,6 +2642,7 @@ export function completeProviderInvocationFromRunner(
     runtimeProgress?: AgentRuntimeProcessProgressProjection;
     now?: string;
     simulateCrashAfterExecutionAcceptance?: boolean;
+    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
   },
 ): ProviderInvocationRecord {
   return withProviderWorkerLifecycle(paths, (assertOwned) =>
@@ -2564,12 +2692,15 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
     runtimeProgress?: AgentRuntimeProcessProgressProjection;
     now?: string;
     simulateCrashAfterExecutionAcceptance?: boolean;
+    simulateCrashAfterProviderStateWriteBeforeContinuationAuthority?: boolean;
   },
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
   const request = readProviderInvocationRequest(paths, invocationId);
+  const manifest = readProviderInvocationManifest(paths, invocationId);
   const result = providerResultFromRunnerReport(request, input.report);
+  assertProviderResultManifestBinding(manifest, result);
   const now = parseNow(input.now);
   assertProviderAcceptanceBinding(input.acceptanceBinding);
   if (
@@ -2577,6 +2708,12 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
     input.acceptanceBinding.requestDigest !== request.requestDigest
   ) {
     throw providerAcceptanceBindingStale();
+  }
+  if (
+    (input.acceptanceBinding.receiptRequirement === 'schema-v4') !==
+    (input.runtimeProgress !== undefined)
+  ) {
+    throw invocationInvalid();
   }
   const protocolReceipt = assertSuccessfulRunnerProtocolReceipt(
     input.report.wrapperProtocolReceipt,
@@ -2602,7 +2739,7 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
             input.leaseToken,
             now,
           );
-          assertProviderInvocationAcceptanceBindingCurrent(
+          assertProviderInvocationAcceptanceBindingTerminalCurrent(
             paths,
             input.acceptanceBinding,
           );
@@ -2614,9 +2751,50 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
                   request,
                   acceptanceBinding: input.acceptanceBinding,
                   terminalState: 'succeeded',
+                  failureCode: null,
                   progress: input.runtimeProgress,
                   ...(protocolReceipt === undefined ? {} : { protocolReceipt }),
+                  ...(protocolReceipt === undefined
+                    ? {}
+                    : {
+                        hostExecutionBinding:
+                          input.report.hostExecutionBinding ?? null,
+                      }),
                 });
+          const next = assertProviderInvocationRecord({
+            ...current,
+            revision: current.revision + 1,
+            state: 'succeeded',
+            lease: null,
+            result,
+            failure: null,
+            ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
+            updatedAt: new Date(now).toISOString(),
+          });
+          assertProviderRuntimeTerminalAuthorityPreflight(
+            paths,
+            request,
+            next,
+            result,
+            runtimeReceipt ?? null,
+            invocationUnsafe,
+          );
+          const accepted = persistProviderExecutionResult(
+            paths,
+            current,
+            request,
+            input.leaseGeneration,
+            input.leaseToken,
+            result.outputDigest,
+            now,
+          );
+          if (runtimeReceipt !== undefined && !accepted) {
+            throw workflowError(
+              'PROVIDER_ASYNC_RESULT_LATE_DUPLICATE',
+              'An async provider result cannot publish an accepted receipt after another Attempt already won the Job.',
+              ExitCode.conflict,
+            );
+          }
           persistProviderCompletionCandidate(paths, {
             current,
             request,
@@ -2626,16 +2804,6 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
             completedAt: new Date(now).toISOString(),
             ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
           });
-          persistProviderExecutionResult(
-            paths,
-            current,
-            request,
-            input.leaseGeneration,
-            input.leaseToken,
-            result.outputDigest,
-            now,
-            input.acceptanceBinding.executionRevision,
-          );
           if (input.simulateCrashAfterExecutionAcceptance === true) {
             throw workflowError(
               'PROVIDER_COMPLETION_SIMULATED_CRASH',
@@ -2643,16 +2811,20 @@ export function completeProviderInvocationFromRunnerUnderLifecycleLock(
               ExitCode.internal,
             );
           }
-          return {
-            ...current,
-            revision: current.revision + 1,
-            state: 'succeeded',
-            lease: null,
-            result,
-            failure: null,
-            ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
-            updatedAt: new Date(now).toISOString(),
-          };
+          return next;
+        },
+        (next) => {
+          if (
+            input.simulateCrashAfterProviderStateWriteBeforeContinuationAuthority ===
+            true
+          ) {
+            throw workflowError(
+              'PROVIDER_CONTINUATION_AUTHORITY_SIMULATED_CRASH',
+              'Simulated crash after durable provider success and before native continuation authority publication.',
+              ExitCode.internal,
+            );
+          }
+          publishProviderNativeContinuationAuthorityForRecord(paths, next);
         },
       ),
   );
@@ -2705,7 +2877,10 @@ export function recoverProviderInvocationCompletionForWorkerUnderLifecycleLock(
 ): ProviderCompletionRecovery {
   const invocationId = assertInvocationId(requestedInvocationId);
   assertOwned();
-  const current = readProviderInvocation(paths, invocationId);
+  const current = readProviderInvocationForNativeContinuationRecovery(
+    paths,
+    invocationId,
+  );
   const request = readProviderInvocationRequest(paths, invocationId);
   const projection = projectProviderInvocationExecution({
     record: current,
@@ -2766,7 +2941,10 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
     path.join(paths.locks, `${invocationId}.lock`),
     () => {
       assertOwned();
-      const current = readProviderInvocation(paths, invocationId);
+      const current = readProviderInvocationForNativeContinuationRecovery(
+        paths,
+        invocationId,
+      );
       const request = readProviderInvocationRequest(paths, invocationId);
       const candidatePath = providerCompletionCandidatePath(
         paths,
@@ -2796,9 +2974,12 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
           expectedRevisionMatches &&
           current.result.outputDigest === input.acceptedOutputDigest
         ) {
+          const repairedContinuation =
+            publishProviderNativeContinuationAuthorityForRecord(paths, current);
+          const recovered = readProviderInvocation(paths, invocationId);
           return deepFreeze({
-            record: current,
-            repaired: false,
+            record: recovered,
+            repaired: repairedContinuation,
             candidateDigest: candidate?.candidateDigest ?? null,
           });
         }
@@ -2829,6 +3010,11 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
       ) {
         throw providerCompletionRecoveryConflict();
       }
+      const executionEntries = providerExecutionEntries(
+        paths,
+        current,
+        request,
+      );
       const next = assertProviderInvocationRecord({
         ...current,
         revision: current.revision + 1,
@@ -2849,6 +3035,15 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
         next,
         invocationUnsafe,
       );
+      materializeProviderExecutionJob(
+        paths,
+        executionEntries.map((entry) =>
+          entry.record.invocationId === invocationId
+            ? { ...entry, record: next, request }
+            : entry,
+        ),
+      );
+      publishProviderNativeContinuationAuthorityForRecord(paths, next);
       const repaired = readProviderInvocation(paths, invocationId);
       assertOwned();
       assertProviderInvocationWorkerQuiescentUnderLifecycleLock(
@@ -2866,6 +3061,59 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(
   );
 }
 
+/**
+ * Repair only the bounded state-success/continuation-marker crash window. The
+ * permissive read is private to this recovery seam; its returned record is
+ * always re-read through the strict public authority path after publication.
+ */
+export function recoverProviderInvocationNativeContinuationForReplay(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+): ProviderInvocationRecord | null {
+  const invocationId = assertInvocationId(requestedInvocationId);
+  return withProviderWorkerLifecycle(paths, (assertOwned) => {
+    assertOwned();
+    const current = readProviderInvocationForNativeContinuationRecovery(
+      paths,
+      invocationId,
+    );
+    if (current.state !== 'succeeded' || current.result === null) return null;
+    const request = readProviderInvocationRequest(paths, invocationId);
+    const projection = projectProviderInvocationExecution({
+      record: current,
+      request,
+    });
+    const durable = readExecutionJobState(paths, projection.job.jobId);
+    const acceptedResult = durable?.results.find(
+      ({ attemptId, acceptance }) =>
+        attemptId === projection.attempt.attemptId && acceptance === 'accepted',
+    );
+    if (
+      acceptedResult?.outputDigest !== `sha256:${current.result.outputDigest}`
+    ) {
+      throw providerCompletionRecoveryConflict();
+    }
+    return recoverProviderInvocationCompletionUnderLifecycleLock(
+      paths,
+      invocationId,
+      {
+        expectedInvocationRevision: current.revision,
+        acceptedOutputDigest: current.result.outputDigest,
+      },
+      assertOwned,
+    ).record;
+  });
+}
+
+function readProviderInvocationForNativeContinuationRecovery(
+  paths: InvestigationRuntimePaths,
+  invocationId: string,
+): ProviderInvocationRecord {
+  return readProviderInvocationCore(paths, invocationId, {
+    allowPendingNativeContinuationAuthority: true,
+  });
+}
+
 function persistProviderExecutionResult(
   paths: InvestigationRuntimePaths,
   current: ProviderInvocationRecord,
@@ -2875,7 +3123,7 @@ function persistProviderExecutionResult(
   outputDigest: string,
   now: number,
   expectedExecutionRevision?: number,
-): void {
+): boolean {
   const entries = providerExecutionEntries(paths, current, request);
   const projection = projectProviderInvocationExecution({
     record: current,
@@ -2903,6 +3151,7 @@ function persistProviderExecutionResult(
       ExitCode.staleState,
     );
   }
+  return result.accepted;
 }
 
 function persistProviderCompletionCandidate(
@@ -3015,7 +3264,10 @@ function readProviderCompletionCandidate(
     value,
     'runtimeReceipt',
   )
-    ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt)
+    ? assertAgentRuntimeCompletionReceipt(
+        value.runtimeReceipt,
+        invocationUnsafe,
+      )
     : undefined;
   if (
     runtimeReceipt !== undefined &&
@@ -3164,7 +3416,8 @@ export function failProviderInvocation(
     runtimeEvidence?: Readonly<{
       acceptanceBinding: ProviderInvocationAcceptanceBinding;
       progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderWrapperProtocolReceipt;
+      protocolReceipt?: ProviderRuntimeProtocolReceipt;
+      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
     }>;
     repair?: ProviderRepairFailureInput;
     now?: string;
@@ -3211,7 +3464,8 @@ export function failProviderInvocationUnderLifecycleLock(
     runtimeEvidence?: Readonly<{
       acceptanceBinding: ProviderInvocationAcceptanceBinding;
       progress: AgentRuntimeProcessProgressProjection;
-      protocolReceipt?: ProviderWrapperProtocolReceipt;
+      protocolReceipt?: ProviderRuntimeProtocolReceipt;
+      hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
     }>;
     repair?: ProviderRepairFailureInput;
     now?: string;
@@ -3219,6 +3473,7 @@ export function failProviderInvocationUnderLifecycleLock(
   assertOwned: () => void,
 ): ProviderInvocationRecord {
   const invocationId = assertInvocationId(requestedInvocationId);
+  const request = readProviderInvocationRequest(paths, invocationId);
   const now = parseNow(input.now);
   const failure = assertProviderFailure(input.failure);
   assertOwned();
@@ -3228,31 +3483,29 @@ export function failProviderInvocationUnderLifecycleLock(
     input.expectedRevision,
     (current) => {
       assertCurrentLease(current, input.leaseGeneration, input.leaseToken, now);
-      if (input.repair !== undefined) {
-        persistProviderRepairEvidence(paths, {
-          record: current,
-          request: readProviderInvocationRequest(paths, invocationId),
-          failure,
-          repair: input.repair,
-          recordedAt: new Date(now).toISOString(),
-        });
-      }
       const runtimeReceipt =
         input.runtimeEvidence === undefined
           ? undefined
           : createAgentRuntimeCompletionReceipt({
               current,
-              request: readProviderInvocationRequest(paths, invocationId),
+              request,
               acceptanceBinding: input.runtimeEvidence.acceptanceBinding,
               terminalState: 'failed',
+              failureCode: failure.code,
               progress: input.runtimeEvidence.progress,
               ...(input.runtimeEvidence.protocolReceipt === undefined
                 ? {}
                 : {
                     protocolReceipt: input.runtimeEvidence.protocolReceipt,
                   }),
+              ...(input.runtimeEvidence.hostExecutionBinding === undefined
+                ? {}
+                : {
+                    hostExecutionBinding:
+                      input.runtimeEvidence.hostExecutionBinding,
+                  }),
             });
-      return {
+      const next = assertProviderInvocationRecord({
         ...current,
         revision: current.revision + 1,
         state: 'failed',
@@ -3261,7 +3514,25 @@ export function failProviderInvocationUnderLifecycleLock(
         failure,
         ...(runtimeReceipt === undefined ? {} : { runtimeReceipt }),
         updatedAt: new Date(now).toISOString(),
-      };
+      });
+      assertProviderRuntimeDurableAuthorities(
+        paths,
+        request,
+        next,
+        next.result,
+        next.runtimeReceipt ?? null,
+        invocationUnsafe,
+      );
+      if (input.repair !== undefined) {
+        persistProviderRepairEvidence(paths, {
+          record: current,
+          request,
+          failure,
+          repair: input.repair,
+          recordedAt: new Date(now).toISOString(),
+        });
+      }
+      return next;
     },
   );
   assertOwned();
@@ -3273,8 +3544,10 @@ function createAgentRuntimeCompletionReceipt(input: {
   request: ProviderInvocationRequest;
   acceptanceBinding: ProviderInvocationAcceptanceBinding;
   terminalState: 'succeeded' | 'failed';
+  failureCode: string | null;
   progress: AgentRuntimeProcessProgressProjection;
-  protocolReceipt?: ProviderWrapperProtocolReceipt;
+  protocolReceipt?: ProviderRuntimeProtocolReceipt;
+  hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1 | null;
 }): AgentRuntimeCompletionReceipt {
   assertProviderAcceptanceBinding(input.acceptanceBinding);
   if (
@@ -3284,11 +3557,17 @@ function createAgentRuntimeCompletionReceipt(input: {
     input.acceptanceBinding.requestDigest !== input.request.requestDigest ||
     input.acceptanceBinding.requestDigest !== input.current.requestDigest ||
     input.acceptanceBinding.invocationRevision !== input.current.revision ||
-    input.acceptanceBinding.leaseGeneration !== input.current.leaseGeneration
+    input.acceptanceBinding.leaseGeneration !== input.current.leaseGeneration ||
+    (input.terminalState === 'succeeded'
+      ? input.failureCode !== null
+      : typeof input.failureCode !== 'string' || input.failureCode.length === 0)
   ) {
     throw providerAcceptanceBindingStale();
   }
-  const progress = assertAgentRuntimeProcessProgress(input.progress);
+  const progress = assertAgentRuntimeProcessProgress(
+    input.progress,
+    invocationInvalid,
+  );
   const fields = {
     kind: 'agent-runtime-completion-receipt' as const,
     invocationId: input.current.invocationId,
@@ -3319,37 +3598,74 @@ function createAgentRuntimeCompletionReceipt(input: {
             input.request,
             input.acceptanceBinding,
           );
-  const payload =
-    protocolReceipt === undefined
-      ? { schemaVersion: 1 as const, ...fields }
-      : input.terminalState === 'succeeded'
-        ? {
-            schemaVersion: 2 as const,
-            ...fields,
-            terminalState: 'succeeded' as const,
-            protocolReceipt,
-          }
-        : {
-            schemaVersion: 3 as const,
-            ...fields,
-            terminalState: 'failed' as const,
-            protocolReceipt,
-          };
-  return assertAgentRuntimeCompletionReceipt({
-    ...payload,
-    receiptDigest: sha256(canonicalJson(payload)),
+  const payload = {
+    schemaVersion: 4 as const,
+    ...fields,
+    terminalDisposition:
+      input.terminalState === 'succeeded'
+        ? ('accepted' as const)
+        : protocolReceipt?.terminal === 'result'
+          ? ('rejected-after-result' as const)
+          : ('failed-before-result' as const),
+    failureCode: input.failureCode,
+    acceptanceBinding: input.acceptanceBinding,
+    protocolReceipt: protocolReceipt ?? null,
+    hostExecutionBinding: input.hostExecutionBinding ?? null,
+  };
+  return assertAgentRuntimeCompletionReceipt(
+    {
+      ...payload,
+      receiptDigest: sha256(canonicalJson(payload)),
+    },
+    invocationInvalid,
+  );
+}
+
+function publishProviderNativeContinuationAuthorityForRecord(
+  paths: InvestigationRuntimePaths,
+  record: ProviderInvocationRecord,
+): boolean {
+  const receipt = record.runtimeReceipt;
+  if (
+    record.state !== 'succeeded' ||
+    receipt?.schemaVersion !== 4 ||
+    receipt.terminalState !== 'succeeded' ||
+    receipt.terminalDisposition !== 'accepted' ||
+    receipt.failureCode !== null ||
+    receipt.hostExecutionBinding?.phase !== 'native-terminal' ||
+    receipt.hostExecutionBinding.nativeSessionClaim === null ||
+    receipt.hostExecutionBinding.nativeSessionCompletionDigest === null
+  ) {
+    return false;
+  }
+  const assignment = receipt.hostExecutionBinding.assignmentBinding;
+  const claim = receipt.hostExecutionBinding.nativeSessionClaim;
+  const authorityPath = providerNativeSessionContinuationAuthorityObjectPathV1(
+    providerNativeSessionStorePathsV1(paths),
+    receipt.hostExecutionBinding.nativeSessionCompletionDigest,
+  );
+  const existed =
+    fs.lstatSync(authorityPath, { throwIfNoEntry: false }) !== undefined;
+  publishProviderNativeSessionContinuationAuthorityV1(paths, {
+    changeId: assignment.changeId,
+    planningGeneration: assignment.planningGeneration,
+    assignmentRecordDigest: assignment.recordDigest,
+    sessionSlotId: claim.scope.sessionSlotId,
+    completionDigest:
+      receipt.hostExecutionBinding.nativeSessionCompletionDigest,
   });
+  return !existed;
 }
 
 function assertSuccessfulRunnerProtocolReceipt(
-  value: ProviderWrapperProtocolReceipt | undefined,
+  value: ProviderRuntimeProtocolReceipt | undefined,
   request: ProviderInvocationRequest,
   acceptanceBinding: ProviderInvocationAcceptanceBinding,
-): ProviderWrapperProtocolReceipt | undefined {
+): ProviderRuntimeProtocolReceipt | undefined {
   if (value === undefined) return undefined;
-  let receipt: ProviderWrapperProtocolReceipt;
+  let receipt: ProviderRuntimeProtocolReceipt;
   try {
-    receipt = assertProviderWrapperProtocolReceipt(value, {
+    receipt = assertProviderRuntimeProtocolReceipt(value, {
       invocationId: request.invocationId,
       requestDigest: request.requestDigest,
       attemptId: acceptanceBinding.executionAttemptId,
@@ -3361,7 +3677,6 @@ function assertSuccessfulRunnerProtocolReceipt(
     receipt.terminal !== 'result' ||
     receipt.outputSlot !== 'primary' ||
     receipt.errorCode !== null ||
-    receipt.cancellation.requested ||
     receipt.cancellation.acknowledged ||
     receipt.cancellation.forced
   ) {
@@ -3371,14 +3686,14 @@ function assertSuccessfulRunnerProtocolReceipt(
 }
 
 function assertFailedRunnerProtocolReceipt(
-  value: ProviderWrapperProtocolReceipt | undefined,
+  value: ProviderRuntimeProtocolReceipt | undefined,
   request: ProviderInvocationRequest,
   acceptanceBinding: ProviderInvocationAcceptanceBinding,
-): ProviderWrapperProtocolReceipt | undefined {
+): ProviderRuntimeProtocolReceipt | undefined {
   if (value === undefined) return undefined;
-  let receipt: ProviderWrapperProtocolReceipt;
+  let receipt: ProviderRuntimeProtocolReceipt;
   try {
-    receipt = assertProviderWrapperProtocolReceipt(value, {
+    receipt = assertProviderRuntimeProtocolReceipt(value, {
       invocationId: request.invocationId,
       requestDigest: request.requestDigest,
       attemptId: acceptanceBinding.executionAttemptId,
@@ -3390,14 +3705,12 @@ function assertFailedRunnerProtocolReceipt(
     (receipt.terminal === 'error' &&
       (receipt.outputSlot !== null ||
         receipt.errorCode === null ||
-        receipt.cancellation.requested ||
         receipt.cancellation.acknowledged ||
         receipt.cancellation.forced)) ||
     (receipt.terminal === 'cancelled' &&
       (receipt.outputSlot !== null ||
         receipt.errorCode !== null ||
-        !receipt.cancellation.requested)) ||
-    receipt.terminal === 'result'
+        !receipt.cancellation.requested))
   ) {
     throw invocationInvalid();
   }
@@ -3420,6 +3733,7 @@ function updateProviderInvocation(
   invocationId: string,
   expectedRevision: number | undefined,
   transition: (current: ProviderInvocationRecord) => ProviderInvocationRecord,
+  afterStateWrite?: (next: ProviderInvocationRecord) => void,
 ): ProviderInvocationRecord {
   return withPrivateRuntimeLock(
     paths,
@@ -3443,22 +3757,31 @@ function updateProviderInvocation(
       );
       const next = assertProviderInvocationRecord(transition(current));
       assertMonotonicInvocationTransition(current, next);
+      assertProviderRuntimeDurableAuthorities(
+        paths,
+        request,
+        next,
+        next.result,
+        next.runtimeReceipt ?? null,
+        invocationUnsafe,
+        { allowPendingNativeContinuationAuthority: true },
+      );
       writePrivateCanonicalJsonAtomic(
         paths,
         providerInvocationStatePath(paths, invocationId),
         next,
         invocationUnsafe,
       );
-      const updated = readProviderInvocation(paths, invocationId);
       materializeProviderExecutionJob(
         paths,
         executionEntries.map((entry) =>
           entry.record.invocationId === invocationId
-            ? { ...entry, record: updated, request }
+            ? { ...entry, record: next, request }
             : entry,
         ),
       );
-      return updated;
+      afterStateWrite?.(next);
+      return readProviderInvocation(paths, invocationId);
     },
     'PROVIDER_INVOCATION_OPERATION_CONFLICT',
     invocationLockInvalid,
@@ -4613,7 +4936,10 @@ function assertProviderInvocationRecord(
     value,
     'runtimeReceipt',
   )
-    ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt)
+    ? assertAgentRuntimeCompletionReceipt(
+        value.runtimeReceipt,
+        invocationInvalid,
+      )
     : undefined;
   if (
     (value.state === 'prepared' &&
@@ -4639,177 +4965,18 @@ function assertProviderInvocationRecord(
         value.invocationId !== runtimeReceipt.invocationId ||
         value.requestDigest !== runtimeReceipt.requestDigest ||
         value.revision !== runtimeReceipt.terminalRevision ||
-        value.leaseGeneration !== runtimeReceipt.leaseGeneration))
+        value.leaseGeneration !== runtimeReceipt.leaseGeneration ||
+        (runtimeReceipt.schemaVersion === 4 &&
+          runtimeReceipt.failureCode !==
+            (value.state === 'failed'
+              ? (value.failure as ProviderInvocationFailure).code
+              : null))))
   ) {
     throw invocationInvalid();
   }
   return (
     runtimeReceipt === undefined ? value : { ...value, runtimeReceipt }
   ) as ProviderInvocationRecord;
-}
-
-function assertAgentRuntimeCompletionReceipt(
-  value: unknown,
-): AgentRuntimeCompletionReceipt {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'invocationId',
-      'requestDigest',
-      'leasedRevision',
-      'terminalRevision',
-      'leaseGeneration',
-      'executionJobId',
-      'executionAttemptId',
-      'executionRevision',
-      'executionStateDigest',
-      'acceptanceBindingDigest',
-      'terminalState',
-      'launched',
-      'progress',
-      ...(value.schemaVersion === 2 || value.schemaVersion === 3
-        ? ['protocolReceipt']
-        : []),
-      'receiptDigest',
-    ]) ||
-    (value.schemaVersion !== 1 &&
-      value.schemaVersion !== 2 &&
-      value.schemaVersion !== 3) ||
-    value.kind !== 'agent-runtime-completion-receipt' ||
-    typeof value.invocationId !== 'string' ||
-    !isDigest(value.requestDigest) ||
-    !Number.isSafeInteger(value.leasedRevision) ||
-    (value.leasedRevision as number) < 0 ||
-    !Number.isSafeInteger(value.terminalRevision) ||
-    value.terminalRevision !== (value.leasedRevision as number) + 1 ||
-    !Number.isSafeInteger(value.leaseGeneration) ||
-    (value.leaseGeneration as number) < 1 ||
-    typeof value.executionJobId !== 'string' ||
-    !/^[a-z0-9][a-z0-9._:-]{0,255}$/.test(value.executionJobId) ||
-    typeof value.executionAttemptId !== 'string' ||
-    !/^[a-zA-Z0-9][a-zA-Z0-9._:-]{0,511}$/u.test(value.executionAttemptId) ||
-    !Number.isSafeInteger(value.executionRevision) ||
-    (value.executionRevision as number) < 0 ||
-    !isDigest(value.executionStateDigest) ||
-    !isDigest(value.acceptanceBindingDigest) ||
-    (value.terminalState !== 'succeeded' && value.terminalState !== 'failed') ||
-    value.launched !== true ||
-    !isDigest(value.receiptDigest)
-  ) {
-    throw invocationInvalid();
-  }
-  assertInvocationId(value.invocationId);
-  const progress = assertAgentRuntimeProcessProgress(value.progress);
-  let protocolReceipt: ProviderWrapperProtocolReceipt | undefined;
-  if (value.schemaVersion === 2 || value.schemaVersion === 3) {
-    try {
-      protocolReceipt = assertProviderWrapperProtocolReceipt(
-        value.protocolReceipt,
-        {
-          invocationId: value.invocationId,
-          requestDigest: value.requestDigest as string,
-          attemptId: value.executionAttemptId as string,
-        },
-      );
-    } catch {
-      throw invocationInvalid();
-    }
-  }
-  if (
-    (value.terminalState === 'succeeded' &&
-      progress.processState !== 'exited') ||
-    (protocolReceipt !== undefined &&
-      ((value.schemaVersion === 2 &&
-        (value.terminalState !== 'succeeded' ||
-          protocolReceipt.terminal !== 'result' ||
-          protocolReceipt.outputSlot !== 'primary' ||
-          protocolReceipt.errorCode !== null ||
-          protocolReceipt.cancellation.requested ||
-          protocolReceipt.cancellation.acknowledged ||
-          protocolReceipt.cancellation.forced)) ||
-        (value.schemaVersion === 3 &&
-          (value.terminalState !== 'failed' ||
-            protocolReceipt.terminal === 'result' ||
-            (protocolReceipt.terminal === 'error' &&
-              progress.processState !== 'exited') ||
-            (protocolReceipt.terminal === 'cancelled' &&
-              progress.processState !== 'cancelled'))) ||
-        progress.lastProviderActivityElapsedMs === null ||
-        progress.stdoutBytes < protocolReceipt.aggregateBytes)) ||
-    sha256(
-      canonicalJson(
-        Object.fromEntries(
-          Object.entries(value).filter(([key]) => key !== 'receiptDigest'),
-        ),
-      ),
-    ) !== value.receiptDigest
-  ) {
-    throw invocationInvalid();
-  }
-  return deepFreeze(
-    structuredClone({
-      ...value,
-      progress,
-      ...(protocolReceipt === undefined ? {} : { protocolReceipt }),
-    }) as AgentRuntimeCompletionReceipt,
-  );
-}
-
-function assertAgentRuntimeProcessProgress(
-  value: unknown,
-): AgentRuntimeProcessProgressProjection {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'processState',
-      'eventCount',
-      'stdoutBytes',
-      'stderrBytes',
-      'lastProcessActivityElapsedMs',
-      'lastProviderActivityElapsedMs',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'agent-runtime-process-progress' ||
-    ![
-      'not-started',
-      'running',
-      'exited',
-      'timed-out',
-      'cancelled',
-      'output-limit',
-      'spawn-error',
-      'protocol-error',
-    ].includes(String(value.processState)) ||
-    !Number.isSafeInteger(value.eventCount) ||
-    (value.eventCount as number) < 0 ||
-    !Number.isSafeInteger(value.stdoutBytes) ||
-    (value.stdoutBytes as number) < 0 ||
-    !Number.isSafeInteger(value.stderrBytes) ||
-    (value.stderrBytes as number) < 0 ||
-    !isNullableNonnegativeInteger(value.lastProcessActivityElapsedMs) ||
-    !isNullableNonnegativeInteger(value.lastProviderActivityElapsedMs) ||
-    ((value.eventCount as number) === 0) !==
-      (value.lastProcessActivityElapsedMs === null) ||
-    (value.lastProviderActivityElapsedMs !== null &&
-      (value.lastProcessActivityElapsedMs === null ||
-        (value.lastProviderActivityElapsedMs as number) >
-          (value.lastProcessActivityElapsedMs as number)))
-  ) {
-    throw invocationInvalid();
-  }
-  return deepFreeze(
-    structuredClone(value) as AgentRuntimeProcessProgressProjection,
-  );
-}
-
-function isNullableNonnegativeInteger(value: unknown): boolean {
-  return (
-    value === null || (Number.isSafeInteger(value) && (value as number) >= 0)
-  );
 }
 
 function assertMonotonicInvocationTransition(
@@ -4936,40 +5103,7 @@ export function blindSurveyOutputValidator(request: ProviderInvocationRequest) {
   return {
     ...BLIND_SURVEY_OUTPUT_SCHEMA,
     validate(value: unknown): boolean {
-      if (
-        !isRecord(value) ||
-        !hasExactKeys(value, ['reference', 'terms']) ||
-        value.reference !== request.invocationId ||
-        !Array.isArray(value.terms) ||
-        value.terms.length < 1 ||
-        value.terms.length > INVESTIGATION_LIMITS.maxSurveyTerms
-      ) {
-        return false;
-      }
-      const termIds = new Set<string>();
-      try {
-        for (const term of value.terms) {
-          if (
-            !isRecord(term) ||
-            !hasExactKeys(term, ['kind', 'value']) ||
-            typeof term.kind !== 'string' ||
-            typeof term.value !== 'string'
-          ) {
-            return false;
-          }
-          const normalized = normalizeInvestigationTerm({
-            kind: term.kind as InvestigationTermKind,
-            value: term.value,
-          });
-          if (termIds.has(normalized.termId)) {
-            return false;
-          }
-          termIds.add(normalized.termId);
-        }
-      } catch {
-        return false;
-      }
-      return true;
+      return validateBlindSurveyOutput(value, request.invocationId);
     },
   };
 }
@@ -5011,53 +5145,12 @@ function assertProviderResult(
   request: ProviderInvocationRequest,
   value: unknown,
 ): ProviderProcessResult {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'requestDigest',
-      'invocationId',
-      'purpose',
-      'providerId',
-      'output',
-      'outputDigest',
-      'runtimeObservation',
-    ]) ||
-    value.requestDigest !== request.requestDigest ||
-    value.invocationId !== request.invocationId ||
-    value.purpose !== request.purpose ||
-    value.providerId !== request.providerId ||
-    !isDigest(value.outputDigest)
-  ) {
-    throw resultInvalid();
-  }
-  const output = deepFreeze(structuredClone(value.output));
-  const validator = providerOutputValidator(request);
-  let outputAccepted: boolean;
-  try {
-    outputAccepted = validator.validate(output) === true;
-  } catch {
-    throw resultInvalid();
-  }
-  if (!outputAccepted) {
-    throw resultInvalid();
-  }
-  const outputDigest = sha256(
-    canonicalJson({
-      id: request.outputSchema.id,
-      version: request.outputSchema.version,
-      output,
-    }),
-  );
-  if (value.outputDigest !== outputDigest) {
-    throw resultInvalid();
-  }
-  const runtimeObservation = assertRuntimeObservation(
-    value.runtimeObservation,
+  return assertProviderProcessResult(
     request,
+    value,
+    providerOutputValidator(request),
+    resultInvalid,
   );
-  return deepFreeze(
-    structuredClone({ ...value, output, runtimeObservation }),
-  ) as ProviderProcessResult;
 }
 
 function providerResultFromRunnerReport(
@@ -5088,7 +5181,7 @@ function providerResultFromRunnerReport(
   const output = deepFreeze(structuredClone(report.semanticOutput));
   let providerDefinitionSnapshot: ProviderRunnerReport['providerDefinitionSnapshot'];
   try {
-    if (!isExecutableIdentity(report.executable)) throw resultInvalid();
+    if (!isProviderExecutableIdentity(report.executable)) throw resultInvalid();
     providerDefinitionSnapshot = assertProviderDefinitionSnapshotForResult(
       report.providerDefinitionSnapshot,
       request.providerId,
@@ -5097,14 +5190,53 @@ function providerResultFromRunnerReport(
   } catch {
     throw resultInvalid();
   }
-  const providerDefinitionEvidence = {
-    providerDefinitionSnapshot,
-    providerDefinitionBindingDigest: providerDefinitionExecutableBindingDigest(
+  const hostWrapperProfile =
+    'profileDigest' in providerDefinitionSnapshot &&
+    providerDefinitionSnapshot.trustTier === 'host-wrapper';
+  const hostWrapperProtocolReceipt =
+    report.wrapperProtocolReceipt?.kind ===
+    'provider-wrapper-session-protocol-receipt';
+  let hostExecutionBinding: AgentRuntimeHostExecutionBindingV1 | null = null;
+  try {
+    hostExecutionBinding =
+      report.hostExecutionBinding === undefined
+        ? null
+        : assertAgentRuntimeHostExecutionBindingV1(report.hostExecutionBinding);
+  } catch {
+    throw resultInvalid();
+  }
+  const providerDefinitionBindingDigest =
+    providerDefinitionExecutableBindingDigest(
       providerDefinitionDigest(providerDefinitionSnapshot),
       report.executable,
-    ),
+    );
+  if (
+    hostWrapperProfile !== hostWrapperProtocolReceipt ||
+    hostWrapperProfile !== (hostExecutionBinding !== null) ||
+    (hostExecutionBinding !== null &&
+      (hostExecutionBinding.phase !== 'native-terminal' ||
+        hostExecutionBinding.probe === null ||
+        canonicalJson(
+          hostExecutionBinding.assignmentBinding.providerProfileSnapshot,
+        ) !== canonicalJson(providerDefinitionSnapshot) ||
+        hostExecutionBinding.assignmentBinding.definitionDigest !==
+          providerDefinitionDigest(providerDefinitionSnapshot) ||
+        hostExecutionBinding.assignmentBinding.dataAuthorizationPolicyDigest !==
+          request.policyDigest ||
+        hostExecutionBinding.assignmentBinding.inputManifestDigest !==
+          request.inputManifestDigest ||
+        hostExecutionBinding.assignmentBinding.targetDigest !==
+          request.targetDigest ||
+        hostExecutionBinding.probe.providerDefinitionBindingDigest !==
+          providerDefinitionBindingDigest))
+  ) {
+    throw resultInvalid();
+  }
+  const providerDefinitionEvidence = {
+    providerDefinitionSnapshot,
+    providerDefinitionBindingDigest,
   };
-  const runtimeObservation = assertRuntimeObservation(
+  const runtimeObservation = assertProviderRuntimeObservation(
     {
       assurance: report.assurance,
       projection: report.projection,
@@ -5115,6 +5247,7 @@ function providerResultFromRunnerReport(
       ...providerDefinitionEvidence,
     },
     request,
+    resultInvalid,
   );
   return deepFreeze({
     requestDigest: request.requestDigest,
@@ -5162,169 +5295,18 @@ function providerOutputValidator(request: ProviderInvocationRequest) {
   throw providerOutputSchemaUnsupported();
 }
 
-function assertRuntimeObservation(
-  value: unknown,
-  request: ProviderInvocationRequest,
-): ProviderRuntimeObservation | null {
-  if (value === null) {
-    return null;
-  }
-  const hasProviderDefinitionSnapshot =
-    isRecord(value) && value.providerDefinitionSnapshot !== undefined;
-  const hasProviderDefinitionBindingDigest =
-    isRecord(value) && value.providerDefinitionBindingDigest !== undefined;
+function assertProviderResultManifestBinding(
+  manifest: ProviderInvocationManifest,
+  result: ProviderProcessResult,
+): void {
+  if (manifest.kind !== 'task-strategy-implementation-manifest') return;
   if (
-    !isRecord(value) ||
-    hasProviderDefinitionSnapshot !== hasProviderDefinitionBindingDigest ||
-    !hasExactKeys(
-      value,
-      !hasProviderDefinitionSnapshot
-        ? [
-            'assurance',
-            'projection',
-            'sameUserProcessConfined',
-            'residuals',
-            'executable',
-            'elapsedMs',
-          ]
-        : [
-            'assurance',
-            'projection',
-            'sameUserProcessConfined',
-            'residuals',
-            'executable',
-            'elapsedMs',
-            'providerDefinitionSnapshot',
-            'providerDefinitionBindingDigest',
-          ],
-    ) ||
-    value.assurance !== 'unchanged-governed-projection' ||
-    value.sameUserProcessConfined !== false ||
-    !isRecord(value.projection) ||
-    !hasExactKeys(value.projection, [
-      'unchanged',
-      'changedCategories',
-      'beforeDigest',
-      'afterDigest',
-    ]) ||
-    value.projection.unchanged !== true ||
-    !Array.isArray(value.projection.changedCategories) ||
-    value.projection.changedCategories.length !== 0 ||
-    !isDigest(value.projection.beforeDigest) ||
-    value.projection.beforeDigest !== value.projection.afterDigest ||
-    !Array.isArray(value.residuals) ||
-    !isExecutableIdentity(value.executable) ||
-    !Number.isSafeInteger(value.elapsedMs) ||
-    (value.elapsedMs as number) < 0 ||
-    (value.elapsedMs as number) > request.limits.timeoutMs
+    !isRecord(result.output) ||
+    result.output.sessionId !== manifest.subject.sessionId ||
+    result.output.sourceTree !== manifest.subject.sourceTree
   ) {
-    throw resultInvalid();
+    throw invocationInvalid();
   }
-  if (hasProviderDefinitionSnapshot) {
-    try {
-      const providerDefinitionSnapshot =
-        assertProviderDefinitionSnapshotForResult(
-          value.providerDefinitionSnapshot,
-          request.providerId,
-          (value.executable as ProviderExecutableIdentity).candidatePath,
-        );
-      if (
-        value.providerDefinitionBindingDigest !==
-        providerDefinitionExecutableBindingDigest(
-          providerDefinitionDigest(providerDefinitionSnapshot),
-          value.executable as ProviderExecutableIdentity,
-        )
-      ) {
-        throw resultInvalid();
-      }
-    } catch {
-      throw resultInvalid();
-    }
-  }
-  classifyProviderResiduals(value.residuals);
-  return deepFreeze(structuredClone(value)) as ProviderRuntimeObservation;
-}
-
-function assertProviderDefinitionSnapshotForResult(
-  value: unknown,
-  providerId: ProviderId,
-  executableCandidatePath: string,
-): ProviderRunnerReport['providerDefinitionSnapshot'] {
-  if (isRecord(value) && value.kind === 'agent-provider-profile-snapshot') {
-    if (typeof value.platform !== 'string') throw resultInvalid();
-    const profile = assertAgentProviderProfileSnapshot(
-      value,
-      value.platform as NodeJS.Platform,
-    );
-    if (
-      profile.trustTier !== 'host-wrapper' ||
-      profile.protocol !== 'harness-jsonl-v2' ||
-      profile.enabled !== true ||
-      profile.family !== providerId ||
-      profile.executable !== executableCandidatePath
-    ) {
-      throw resultInvalid();
-    }
-    return profile;
-  }
-  return assertKnownBuiltInProviderDefinitionSnapshot(value, {
-    providerId,
-    executableCandidatePath,
-  });
-}
-
-function providerDefinitionDigest(
-  snapshot: ProviderRunnerReport['providerDefinitionSnapshot'],
-): string {
-  return 'profileDigest' in snapshot
-    ? (snapshot as HostWrapperProviderProfileSnapshot).profileDigest
-    : snapshot.definitionDigest;
-}
-
-function providerDefinitionExecutableBindingDigest(
-  providerDefinitionDigest: string,
-  executable: ProviderExecutableIdentity,
-): string {
-  return sha256(
-    canonicalJson({
-      providerDefinitionDigest,
-      executable,
-    }),
-  );
-}
-
-function isExecutableIdentity(value: unknown): boolean {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, [
-      'candidatePath',
-      'realPath',
-      'device',
-      'inode',
-      'mode',
-      'uid',
-      'gid',
-      'size',
-      'mtimeNs',
-      'sha256',
-    ]) &&
-    typeof value.candidatePath === 'string' &&
-    value.candidatePath.length > 0 &&
-    typeof value.realPath === 'string' &&
-    value.realPath.length > 0 &&
-    typeof value.device === 'string' &&
-    value.device.length > 0 &&
-    typeof value.inode === 'string' &&
-    value.inode.length > 0 &&
-    Number.isSafeInteger(value.mode) &&
-    Number.isSafeInteger(value.uid) &&
-    Number.isSafeInteger(value.gid) &&
-    Number.isSafeInteger(value.size) &&
-    (value.size as number) >= 0 &&
-    typeof value.mtimeNs === 'string' &&
-    value.mtimeNs.length > 0 &&
-    isDigest(value.sha256)
-  );
 }
 
 function assertProviderFailure(value: unknown): ProviderInvocationFailure {
@@ -5639,27 +5621,12 @@ function providerExecutionPolicySnapshotMismatch() {
 function assertProviderAcceptanceBinding(
   binding: ProviderInvocationAcceptanceBinding,
 ): void {
-  const payload = { ...binding } as Record<string, unknown>;
-  delete payload.bindingDigest;
-  if (
-    binding.schemaVersion !== 1 ||
-    binding.kind !== 'provider-invocation-acceptance-binding' ||
-    assertInvocationId(binding.invocationId) !== binding.invocationId ||
-    assertInvestigationId(binding.ownerWorkflowId) !==
-      binding.ownerWorkflowId ||
-    !isDigest(binding.requestDigest) ||
-    !Number.isSafeInteger(binding.invocationRevision) ||
-    binding.invocationRevision < 0 ||
-    !Number.isSafeInteger(binding.leaseGeneration) ||
-    binding.leaseGeneration < 1 ||
-    !Number.isSafeInteger(binding.executionRevision) ||
-    binding.executionRevision < 0 ||
-    !isDigest(binding.executionStateDigest) ||
-    !isDigest(binding.bindingDigest) ||
-    binding.context.ownerWorkflowId !== binding.ownerWorkflowId ||
-    binding.repair.invocationId !== binding.invocationId ||
-    sha256(canonicalJson(payload)) !== binding.bindingDigest
-  ) {
+  try {
+    assertProviderInvocationAcceptanceBinding(
+      binding,
+      providerAcceptanceBindingStale,
+    );
+  } catch {
     throw providerAcceptanceBindingStale();
   }
 }

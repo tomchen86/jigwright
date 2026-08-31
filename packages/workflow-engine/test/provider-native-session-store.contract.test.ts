@@ -41,15 +41,36 @@ import {
   type ChangeRoleAssignmentDataAuthorizationVerifierPort,
   type ChangeRoleAssignmentProtectedContextVerifierPort,
 } from '../src/modules/provider-orchestration/change-role-assignment.ts';
+import {
+  assertAgentRuntimeDurableNativeSessionAuthorityV1,
+  createProviderNativeSessionClaimRefV1,
+  createProviderNativeSessionCompletionRefV1,
+} from '../src/modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../src/runtime/storage-journal/change-role-assignment-store.ts';
-import { type ProviderNativeSessionAssignmentAuthorityVerifierPort } from '../src/modules/provider-orchestration/provider-native-session.ts';
+import {
+  assertProviderNativeSessionCompletionV1,
+  createProviderNativeSessionClaimV1,
+  createProviderNativeSessionCompletionV1,
+  type ProviderNativeSessionAssignmentAuthorityVerifierPort,
+  type ProviderNativeSessionCompletionV1,
+} from '../src/modules/provider-orchestration/provider-native-session.ts';
 import {
   claimProviderNativeSessionTurnV1,
   completeClaimedProviderNativeSessionTurnV1,
   completeProviderNativeSessionTurnV1,
+  publishProviderNativeSessionContinuationAuthorityV1,
   readProviderNativeSessionChainV1,
+  recoverProviderNativeSessionTurnV1,
 } from '../src/runtime/storage-journal/provider-native-session-store.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import {
+  providerNativeSessionClaimObjectPathV1,
+  providerNativeSessionClaimRefPathV1,
+  providerNativeSessionCompletionObjectPathV1,
+  providerNativeSessionCompletionRefPathV1,
+  providerNativeSessionContinuationAuthorityObjectPathV1,
+  providerNativeSessionStorePathsV1,
+} from '../src/runtime/session-workspace/provider-runtime-authority-paths.ts';
 
 const CHANGE_ID = 'native-session-store';
 const PLANNING_GENERATION = 'a'.repeat(64);
@@ -448,6 +469,45 @@ function successfulTerminal(
   };
 }
 
+function rejectedResultTerminal(
+  binding: ProviderWrapperSessionProtocolBinding,
+  nativeSessionId: string,
+) {
+  const parser = createProviderWrapperSessionProtocolParser({ binding });
+  parser.push(
+    Buffer.from(
+      [
+        {
+          schemaVersion: 2 as const,
+          type: 'hello' as const,
+          sequence: 1,
+          protocol: 'harness-jsonl-v2' as const,
+        },
+        {
+          schemaVersion: 2 as const,
+          type: 'session' as const,
+          sequence: 2,
+          action: binding.sessionControl.action,
+          nativeSessionId,
+        },
+        {
+          schemaVersion: 2 as const,
+          type: 'result' as const,
+          sequence: 3,
+          outputSlot: 'primary' as const,
+        },
+      ]
+        .map(renderProviderWrapperSessionFrame)
+        .join(''),
+    ),
+  );
+  return {
+    kind: 'protocol-outcome' as const,
+    outcome: parser.finish({ cancellationForced: false }),
+    privateIdentityObservation: null,
+  };
+}
+
 function allFiles(root: string): string[] {
   const entries = fs.readdirSync(root, { withFileTypes: true });
   return entries.flatMap((entry) => {
@@ -457,7 +517,7 @@ function allFiles(root: string): string[] {
 }
 
 function nativeSessionStoreRoot(state: ReturnType<typeof fixture>): string {
-  return path.join(state.paths.root, 'provider-native-sessions', 'v1');
+  return providerNativeSessionStorePathsV1(state.paths).root;
 }
 
 function nativeSessionFile(
@@ -467,6 +527,51 @@ function nativeSessionFile(
   return allFiles(nativeSessionStoreRoot(state)).find((file) =>
     file.endsWith(suffix),
   )!;
+}
+
+function writeForgedContinuationAuthority(
+  state: ReturnType<typeof fixture>,
+  completion: ProviderNativeSessionCompletionV1,
+): string {
+  assert.ok(completion.protocolReceipt);
+  const authorityPath = providerNativeSessionContinuationAuthorityObjectPathV1(
+    providerNativeSessionStorePathsV1(state.paths),
+    completion.completionDigest,
+  );
+  const body = {
+    schemaVersion: 1 as const,
+    kind: 'provider-native-session-continuation-authority.v1' as const,
+    scopeKey: completion.scope.scopeKey,
+    turn: completion.turn,
+    claimDigest: completion.claimDigest,
+    completionDigest: completion.completionDigest,
+    invocationId: completion.invocationId,
+    requestDigest: completion.requestDigest,
+    attemptId: completion.attemptId,
+    runtimeReceiptDigest: 'd'.repeat(64),
+    terminalRevision: 2,
+    terminalState: 'succeeded' as const,
+    terminalDisposition: 'accepted' as const,
+    failureCode: null,
+    protocolReceiptDigest: completion.protocolReceipt.receiptDigest,
+  };
+  const authority = {
+    ...body,
+    authorityDigest: crypto
+      .createHash('sha256')
+      .update(
+        `workflow.provider-native-session-continuation-authority.v1\n${canonicalJson(body)}`,
+      )
+      .digest('hex'),
+  };
+  fs.mkdirSync(path.dirname(authorityPath), {
+    recursive: true,
+    mode: 0o700,
+  });
+  fs.writeFileSync(authorityPath, `${canonicalJson(authority)}\n`, {
+    mode: 0o600,
+  });
+  return authorityPath;
 }
 
 function publicationRecoveryPath(
@@ -572,7 +677,7 @@ test('V1 native-session claim, read, and completion reverify exact role-assignme
     assert.ok(verificationCalls > callsAfterRead);
     assert.equal(
       readChain(state, verifyAssignmentAuthority).state,
-      'resumable',
+      'continuation-pending',
     );
   } finally {
     state.cleanup();
@@ -603,6 +708,170 @@ test('V1 native-session terminal fact persists from the immutable claim after au
 
     assert.equal(completion.claimDigest, claim.claim.claimDigest);
     assert.equal(completion.disposition, 'usable');
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('native-session recovery returns an exact existing completion unchanged without private identity', () => {
+  const state = fixture();
+  try {
+    const claimed = claimTurn(
+      state,
+      claimInput(state, null, 'recovery-existing-completion'),
+    );
+    assert.ok(claimed.binding);
+    const nativeSessionId = 'provider-native-recovery-existing-secret';
+    const completion = completeTurn(state, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claimed.claim.claimDigest,
+      terminal: successfulTerminal(claimed.binding, nativeSessionId),
+    });
+    assert.ok(completion.protocolReceipt);
+
+    const recovered = recoverProviderNativeSessionTurnV1(state.paths, {
+      scopeKey: claimed.claim.scope.scopeKey,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claimed.claim.claimDigest,
+      invocationId: claimed.claim.invocationId,
+      requestDigest: claimed.claim.requestDigest,
+      attemptId: claimed.claim.attemptId,
+      expectedProtocolReceiptDigest: completion.protocolReceipt.receiptDigest,
+    });
+
+    assert.equal(recovered.outcome, 'unchanged');
+    assert.deepEqual(recovered.completion, completion);
+    assert.equal(canonicalJson(recovered).includes(nativeSessionId), false);
+    assert.equal(readChain(state).state, 'continuation-pending');
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('native-session recovery abandons an exact claimed turn as indeterminate without creating a handle', () => {
+  const state = fixture();
+  try {
+    const claimed = claimTurn(
+      state,
+      claimInput(state, null, 'recovery-abandon-claimed'),
+    );
+    assert.ok(claimed.binding);
+    const nativeSessionId = 'provider-native-recovery-abandoned-secret';
+    const observedTerminal = successfulTerminal(
+      claimed.binding,
+      nativeSessionId,
+    );
+    const recoveryInput = {
+      scopeKey: claimed.claim.scope.scopeKey,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claimed.claim.claimDigest,
+      invocationId: claimed.claim.invocationId,
+      requestDigest: claimed.claim.requestDigest,
+      attemptId: claimed.claim.attemptId,
+      expectedProtocolReceiptDigest:
+        observedTerminal.outcome.receipt.receiptDigest,
+    };
+    assert.equal(canonicalJson(recoveryInput).includes(nativeSessionId), false);
+    assert.throws(
+      () =>
+        recoverProviderNativeSessionTurnV1(state.paths, {
+          ...recoveryInput,
+          nativeSessionId,
+        } as typeof recoveryInput),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_STORE_INVALID',
+    );
+    assert.equal(readChain(state).state, 'claimed');
+
+    const recovered = recoverProviderNativeSessionTurnV1(
+      state.paths,
+      recoveryInput,
+    );
+    assert.equal(recovered.outcome, 'abandoned');
+    assert.equal(recovered.completion.disposition, 'indeterminate');
+    assert.equal(recovered.completion.usable, false);
+    assert.equal(recovered.completion.handleDigest, null);
+    assert.equal(recovered.completion.protocolReceipt, null);
+
+    const replay = recoverProviderNativeSessionTurnV1(
+      state.paths,
+      recoveryInput,
+    );
+    assert.equal(replay.outcome, 'unchanged');
+    assert.deepEqual(replay.completion, recovered.completion);
+    assert.equal(readChain(state).state, 'terminal-unusable');
+    assert.equal(
+      allFiles(nativeSessionStoreRoot(state)).some((file) =>
+        file.includes('/handles/sha256/'),
+      ),
+      false,
+    );
+    assert.equal(
+      allFiles(nativeSessionStoreRoot(state)).some((file) =>
+        fs.readFileSync(file, 'utf8').includes(nativeSessionId),
+      ),
+      false,
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('native-session recovery fails closed on mismatched public claim bindings', () => {
+  const state = fixture();
+  try {
+    const claimed = claimTurn(
+      state,
+      claimInput(state, null, 'recovery-binding-conflict'),
+    );
+    assert.ok(claimed.binding);
+    const completion = completeTurn(state, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claimed.claim.claimDigest,
+      terminal: successfulTerminal(
+        claimed.binding,
+        'provider-native-recovery-binding-secret',
+      ),
+    });
+    assert.ok(completion.protocolReceipt);
+    const exact = {
+      scopeKey: claimed.claim.scope.scopeKey,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: claimed.claim.claimDigest,
+      invocationId: claimed.claim.invocationId,
+      requestDigest: claimed.claim.requestDigest,
+      attemptId: claimed.claim.attemptId,
+      expectedProtocolReceiptDigest: completion.protocolReceipt.receiptDigest,
+    };
+    const mismatches = [
+      { ...exact, scopeKey: 'f'.repeat(64) },
+      {
+        ...exact,
+        sessionSlotId: `role-assignment-session-${'f'.repeat(64)}`,
+      },
+      { ...exact, invocationId: 'native-invocation-other' },
+      { ...exact, requestDigest: 'f'.repeat(64) },
+      { ...exact, attemptId: 'native-attempt-other' },
+      { ...exact, expectedProtocolReceiptDigest: 'f'.repeat(64) },
+    ];
+    for (const mismatch of mismatches) {
+      assert.throws(
+        () => recoverProviderNativeSessionTurnV1(state.paths, mismatch),
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
+      );
+    }
+    assert.equal(readChain(state).state, 'continuation-pending');
   } finally {
     state.cleanup();
   }
@@ -733,7 +1002,7 @@ test('publication recovery discards exact temp-only claim windows and determinis
   });
 });
 
-test('publication recovery removes exact second links before reading and resuming the chain', () => {
+test('publication recovery removes exact second links before reading a continuation-pending chain', () => {
   const state = fixture();
   try {
     const first = claimTurn(
@@ -763,7 +1032,7 @@ test('publication recovery removes exact second links before reading and resumin
       fs.linkSync(target, temporary);
       assert.equal(fs.statSync(target).nlink, 2);
       const recovered = readChain(state);
-      assert.equal(recovered.state, 'resumable');
+      assert.equal(recovered.state, 'continuation-pending');
       assert.equal(
         recovered.turns[0]?.completion?.completionDigest,
         firstCompletion.completionDigest,
@@ -772,16 +1041,21 @@ test('publication recovery removes exact second links before reading and resumin
       assert.equal(fs.existsSync(temporary), false);
     }
 
-    const resumed = claimTurn(
-      state,
-      claimInput(
-        state,
-        firstCompletion.completionDigest,
-        'after-second-link-recovery',
-      ),
+    assert.throws(
+      () =>
+        claimTurn(
+          state,
+          claimInput(
+            state,
+            firstCompletion.completionDigest,
+            'after-second-link-recovery',
+          ),
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
     );
-    assert.equal(resumed.outcome, 'claimed');
-    assert.equal(resumed.binding?.sessionControl.action, 'resume');
   } finally {
     state.cleanup();
   }
@@ -849,7 +1123,7 @@ test('publication recovery fails closed for conflicting, multiple, or foreign un
   });
 });
 
-test('successful start and resume form one predecessor-CAS chain with the raw ID only in a 0600 handle', () => {
+test('a successful start stays pending with the raw ID only in a 0600 handle', () => {
   const state = fixture();
   try {
     const first = claimTurn(state, claimInput(state, null, 'start-success'));
@@ -866,7 +1140,6 @@ test('successful start and resume form one predecessor-CAS chain with the raw ID
     });
     assert.equal(firstCompletion.disposition, 'usable');
     assert.equal(firstCompletion.protocolReceipt?.terminal, 'result');
-
     const runtimeFiles = allFiles(
       path.join(state.paths.root, 'provider-native-sessions'),
     );
@@ -881,53 +1154,398 @@ test('successful start and resume form one predecessor-CAS chain with the raw ID
       true,
     );
 
-    assert.throws(
-      () =>
-        claimTurn(
-          state,
-          claimInput(state, 'f'.repeat(64), 'wrong-predecessor'),
-        ),
-      (error: unknown) =>
-        error instanceof Error &&
-        'code' in error &&
-        error.code === 'PROVIDER_NATIVE_SESSION_STORE_CONFLICT',
-    );
-
-    const resumed = claimTurn(
-      state,
-      claimInput(state, firstCompletion.completionDigest, 'resume-success'),
-    );
-    assert.equal(resumed.outcome, 'claimed');
-    assert.equal(resumed.binding?.sessionControl.action, 'resume');
+    const chain = readChain(state);
+    assert.equal(chain.state, 'continuation-pending');
+    assert.equal(chain.turns.length, 1);
     assert.equal(
-      resumed.binding?.sessionControl.expectedNativeSessionId,
-      nativeSessionId,
+      chain.turns[0]!.completion?.completionDigest,
+      firstCompletion.completionDigest,
     );
-    const replay = claimTurn(
-      state,
-      claimInput(state, firstCompletion.completionDigest, 'resume-success'),
-    );
-    assert.equal(replay.outcome, 'already-claimed');
-    assert.equal(replay.binding, null);
+  } finally {
+    state.cleanup();
+  }
+});
 
-    const secondCompletion = completeTurn(state, {
+test('a validated result rejected before private identity admission is terminal and cannot resume', () => {
+  const state = fixture();
+  try {
+    const first = claimTurn(
+      state,
+      claimInput(state, null, 'result-rejected-before-identity-admission'),
+    );
+    assert.ok(first.binding);
+    const nativeSessionId = 'provider-native-rejected-result-secret';
+    const completion = completeTurn(state, {
       changeId: state.assignment.changeId,
       planningGeneration: state.assignment.planningGeneration,
       assignmentRecordDigest: state.assignment.recordDigest,
       sessionSlotId: state.slot.sessionSlotId,
-      claimDigest: resumed.claim.claimDigest,
-      terminal: successfulTerminal(resumed.binding!, nativeSessionId),
+      claimDigest: first.claim.claimDigest,
+      terminal: rejectedResultTerminal(first.binding, nativeSessionId),
     });
-    const chain = readChain(state);
-    assert.equal(chain.state, 'resumable');
-    assert.equal(chain.turns.length, 2);
+
+    assert.deepEqual(
+      assertProviderNativeSessionCompletionV1(
+        JSON.parse(canonicalJson(completion)),
+      ),
+      completion,
+    );
+    assert.equal(completion.disposition, 'rejected');
+    assert.equal(completion.usable, false);
+    assert.equal(completion.protocolReceipt?.terminal, 'result');
     assert.equal(
-      chain.turns[1]!.claim.predecessorCompletionDigest,
-      firstCompletion.completionDigest,
+      completion.nativeSessionIdDigest,
+      completion.protocolReceipt?.observedNativeSessionIdDigest,
+    );
+    assert.notEqual(completion.nativeSessionIdDigest, null);
+    assert.equal(completion.handleDigest, null);
+    assert.equal(readChain(state).state, 'terminal-unusable');
+    assert.equal(
+      allFiles(nativeSessionStoreRoot(state)).some((file) =>
+        fs.readFileSync(file, 'utf8').includes(nativeSessionId),
+      ),
+      false,
     );
     assert.equal(
-      chain.turns[1]!.completion?.completionDigest,
-      secondCompletion.completionDigest,
+      allFiles(nativeSessionStoreRoot(state)).some((file) =>
+        file.includes('/handles/sha256/'),
+      ),
+      false,
+    );
+    assert.throws(
+      () =>
+        claimTurn(
+          state,
+          claimInput(
+            state,
+            completion.completionDigest,
+            'resume-rejected-result',
+          ),
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_TERMINAL_UNUSABLE',
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('usable native completion remains continuation-pending without exact outer success authority', () => {
+  const state = fixture();
+  try {
+    const first = claimTurn(
+      state,
+      claimInput(state, null, 'continuation-authority-missing'),
+    );
+    const completion = completeTurn(state, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: first.claim.claimDigest,
+      terminal: successfulTerminal(
+        first.binding!,
+        'provider-native-continuation-authority-missing',
+      ),
+    });
+
+    assert.equal(readChain(state).state, 'continuation-pending');
+    assert.throws(
+      () =>
+        claimTurn(
+          state,
+          claimInput(
+            state,
+            completion.completionDigest,
+            'continuation-authority-missing-resume',
+          ),
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
+    );
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('a forged canonical continuation marker cannot authorize a native resume', () => {
+  const state = fixture();
+  try {
+    const first = claimTurn(
+      state,
+      claimInput(state, null, 'continuation-authority-forged'),
+    );
+    const completion = completeTurn(state, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: first.claim.claimDigest,
+      terminal: successfulTerminal(
+        first.binding!,
+        'provider-native-continuation-authority-forged',
+      ),
+    });
+    const locations = providerNativeSessionStorePathsV1(state.paths);
+    const authorityPath =
+      providerNativeSessionContinuationAuthorityObjectPathV1(
+        locations,
+        completion.completionDigest,
+      );
+    const beforeRejectedPublication = allFiles(state.paths.root).map(
+      (filePath) => ({
+        relativePath: path.relative(state.paths.root, filePath),
+        bytes: fs.readFileSync(filePath),
+      }),
+    );
+    assert.throws(
+      () =>
+        publishProviderNativeSessionContinuationAuthorityV1(state.paths, {
+          changeId: state.assignment.changeId,
+          planningGeneration: state.assignment.planningGeneration,
+          assignmentRecordDigest: state.assignment.recordDigest,
+          sessionSlotId: state.slot.sessionSlotId,
+          completionDigest: completion.completionDigest,
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_STORE_INVALID',
+    );
+    assert.equal(fs.existsSync(authorityPath), false);
+    assert.deepEqual(
+      allFiles(state.paths.root).map((filePath) => ({
+        relativePath: path.relative(state.paths.root, filePath),
+        bytes: fs.readFileSync(filePath),
+      })),
+      beforeRejectedPublication,
+    );
+
+    writeForgedContinuationAuthority(state, completion);
+    const authorityBytes = fs.readFileSync(authorityPath);
+    const completionPath = providerNativeSessionCompletionObjectPathV1(
+      locations,
+      completion.completionDigest,
+    );
+    const completionBytes = fs.readFileSync(completionPath);
+    assert.throws(
+      () => readChain(state),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_STORE_INVALID',
+    );
+    assert.throws(
+      () =>
+        claimTurn(
+          state,
+          claimInput(
+            state,
+            completion.completionDigest,
+            'continuation-authority-forged-resume',
+          ),
+        ),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'PROVIDER_NATIVE_SESSION_STORE_INVALID',
+    );
+    assert.deepEqual(fs.readFileSync(authorityPath), authorityBytes);
+    assert.deepEqual(fs.readFileSync(completionPath), completionBytes);
+  } finally {
+    state.cleanup();
+  }
+});
+
+test('linked or symlinked continuation authority fails closed before resume', async (t) => {
+  for (const attack of ['hardlink', 'symlink'] as const) {
+    await t.test(attack, () => {
+      const state = fixture();
+      try {
+        const first = claimTurn(
+          state,
+          claimInput(state, null, `continuation-authority-${attack}`),
+        );
+        const completion = completeTurn(state, {
+          changeId: state.assignment.changeId,
+          planningGeneration: state.assignment.planningGeneration,
+          assignmentRecordDigest: state.assignment.recordDigest,
+          sessionSlotId: state.slot.sessionSlotId,
+          claimDigest: first.claim.claimDigest,
+          terminal: successfulTerminal(
+            first.binding!,
+            `provider-native-continuation-authority-${attack}`,
+          ),
+        });
+        const authorityPath = writeForgedContinuationAuthority(
+          state,
+          completion,
+        );
+        if (attack === 'hardlink') {
+          fs.linkSync(authorityPath, `${authorityPath}.alias`);
+        } else {
+          const original = `${authorityPath}.original`;
+          fs.renameSync(authorityPath, original);
+          fs.symlinkSync(original, authorityPath);
+        }
+        assert.throws(
+          () => readChain(state),
+          (error: unknown) =>
+            error instanceof Error &&
+            'code' in error &&
+            error.code === 'PROVIDER_NATIVE_SESSION_STORE_INVALID',
+        );
+      } finally {
+        state.cleanup();
+      }
+    });
+  }
+});
+
+test('durable native-session authority requires an exact continuation marker before a successor', () => {
+  const state = fixture();
+  try {
+    const first = claimTurn(
+      state,
+      claimInput(state, null, 'durable-authority-start'),
+    );
+    const nativeSessionId = 'provider-native-durable-authority';
+    const firstCompletion = completeTurn(state, {
+      changeId: state.assignment.changeId,
+      planningGeneration: state.assignment.planningGeneration,
+      assignmentRecordDigest: state.assignment.recordDigest,
+      sessionSlotId: state.slot.sessionSlotId,
+      claimDigest: first.claim.claimDigest,
+      terminal: successfulTerminal(first.binding!, nativeSessionId),
+    });
+    const chain = readChain(state);
+    const locations = providerNativeSessionStorePathsV1(state.paths);
+    const turns = chain.turns.map(({ claim, completion }) => {
+      assert.ok(completion);
+      return {
+        claim: JSON.parse(
+          fs.readFileSync(
+            providerNativeSessionClaimObjectPathV1(
+              locations,
+              claim.claimDigest,
+            ),
+            'utf8',
+          ),
+        ),
+        claimRef: JSON.parse(
+          fs.readFileSync(
+            providerNativeSessionClaimRefPathV1(
+              locations,
+              claim.scope.scopeKey,
+              claim.turn,
+            ),
+            'utf8',
+          ),
+        ),
+        completion: JSON.parse(
+          fs.readFileSync(
+            providerNativeSessionCompletionObjectPathV1(
+              locations,
+              completion.completionDigest,
+            ),
+            'utf8',
+          ),
+        ),
+        completionRef: JSON.parse(
+          fs.readFileSync(
+            providerNativeSessionCompletionRefPathV1(
+              locations,
+              claim.scope.scopeKey,
+              claim.turn,
+            ),
+            'utf8',
+          ),
+        ),
+        continuationAuthority: null,
+        runtimeReceipt: null,
+      };
+    });
+
+    const authority = assertAgentRuntimeDurableNativeSessionAuthorityV1({
+      embeddedClaim: first.claim,
+      embeddedCompletionDigest: firstCompletion.completionDigest,
+      turns,
+    });
+    assert.equal(authority.turns.length, 1);
+    assert.equal(
+      authority.completion.completionDigest,
+      firstCompletion.completionDigest,
+    );
+
+    const resumeBinding: ProviderWrapperSessionProtocolBinding = {
+      invocationId: 'native-invocation-durable-authority-resume',
+      requestDigest: crypto
+        .createHash('sha256')
+        .update('durable-authority-resume')
+        .digest('hex'),
+      attemptId: 'native-attempt-durable-authority-resume',
+      sessionControl: {
+        action: 'resume',
+        nativeSessionIdentityMode: 'engine-supplied',
+        expectedNativeSessionId: nativeSessionId,
+      },
+    };
+    const secondClaim = createProviderNativeSessionClaimV1({
+      scope: first.claim.scope,
+      turn: 2,
+      predecessorCompletion: firstCompletion,
+      binding: resumeBinding,
+    });
+    const secondCompletion = createProviderNativeSessionCompletionV1({
+      claim: secondClaim,
+      binding: resumeBinding,
+      terminal: successfulTerminal(resumeBinding, nativeSessionId),
+    }).completion;
+    const secondTurn = {
+      claim: secondClaim,
+      claimRef: createProviderNativeSessionClaimRefV1(secondClaim),
+      completion: secondCompletion,
+      completionRef:
+        createProviderNativeSessionCompletionRefV1(secondCompletion),
+      continuationAuthority: null,
+      runtimeReceipt: null,
+    };
+    assert.throws(
+      () =>
+        assertAgentRuntimeDurableNativeSessionAuthorityV1({
+          embeddedClaim: secondClaim,
+          embeddedCompletionDigest: secondCompletion.completionDigest,
+          turns: [turns[0]!, secondTurn],
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_DURABLE_AUTHORITY_INVALID',
+    );
+
+    assert.throws(
+      () =>
+        assertAgentRuntimeDurableNativeSessionAuthorityV1({
+          embeddedClaim: first.claim,
+          embeddedCompletionDigest: firstCompletion.completionDigest,
+          turns: [
+            {
+              ...turns[0]!,
+              completionRef: {
+                ...(turns[0]!.completionRef as Record<string, unknown>),
+                completionDigest: 'f'.repeat(64),
+              },
+            },
+          ],
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_DURABLE_AUTHORITY_INVALID',
     );
   } finally {
     state.cleanup();

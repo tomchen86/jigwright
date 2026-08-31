@@ -14,17 +14,22 @@ import {
   executionStorePaths,
   listExecutionJobStates,
   materializeProviderExecutionJob,
+  providerExecutionAdmissionAuthorityPath,
   readExecutionJobState,
+  recoverProviderAttemptResultFromCandidate,
   withExecutionJobStateSnapshot,
 } from '../src/runtime/storage-journal/execution-store.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
 import {
   createProviderInvocationRequest,
   evaluateProviderProcess,
   type ProviderInvocationRequest,
   type ProviderProcessOutcome,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { PROVIDER_RUNNER_RESIDUALS } from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
@@ -33,6 +38,7 @@ import {
   blindSurveyIntentDigest,
   claimProviderInvocation,
   completeProviderInvocation,
+  completeProviderInvocationFromRunner,
   createProviderInvocation,
   failProviderInvocation,
   providerInvocationManifestDigest,
@@ -44,6 +50,7 @@ import {
   storeProviderExecutionPolicySnapshot,
   type BlindSurveyManifest,
   type ProviderLeaseClaim,
+  type ProviderInvocationAcceptanceBinding,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
@@ -269,6 +276,270 @@ test('store-owned execution snapshots keep synchronous callbacks inside the exac
   }
 });
 
+test('schema-v4 runtime receipts re-admit the immutable pre-launch execution authority', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-execution-admission-1',
+      1,
+      'investigation-execution-admission',
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: 'investigation-execution-admission',
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T08:40:00.000Z',
+    });
+    const claim = claimProviderInvocation(runtime, request.invocationId, {
+      workerId: 'worker-execution-admission',
+      leaseDurationMs: request.limits.timeoutMs,
+      now: '2026-08-03T08:41:00.000Z',
+    });
+    const acceptance = prepareProviderInvocationAcceptanceBinding(
+      runtime,
+      request.invocationId,
+      'schema-v4',
+    );
+    const authorityPath = providerExecutionAdmissionAuthorityPath(
+      runtime,
+      acceptance,
+    );
+    const authorityBytes = fs.readFileSync(authorityPath, 'utf8');
+    assert.equal(
+      authorityBytes,
+      `${canonicalJson(JSON.parse(authorityBytes))}\n`,
+    );
+
+    const semanticOutput = evaluateProviderProcess(
+      request,
+      providerOutcome(request),
+      blindSurveyOutputValidator(request),
+    ).output;
+    const runnerRuntime = path.join(
+      runtime.invocations,
+      request.invocationId,
+      'runtime',
+    );
+    fs.mkdirSync(runnerRuntime, { mode: 0o700 });
+    for (const [name, value] of [
+      ['prompt.json', { requestDigest: request.requestDigest }],
+      ['schema.json', BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA],
+      ['semantic-output.json', semanticOutput],
+    ] as const) {
+      fs.writeFileSync(
+        path.join(runnerRuntime, name),
+        `${canonicalJson(value)}\n`,
+        {
+          mode: 0o600,
+        },
+      );
+    }
+    completeProviderInvocationFromRunner(runtime, request.invocationId, {
+      expectedRevision: claim.record.revision,
+      leaseGeneration: claim.record.leaseGeneration,
+      leaseToken: claim.leaseToken,
+      report: {
+        invocationId: request.invocationId,
+        providerId: request.providerId,
+        purpose: request.purpose,
+        requestDigest: request.requestDigest,
+        semanticOutput,
+        semanticOutputDigest: sha256ForTest(canonicalJson(semanticOutput)),
+        assurance: 'unchanged-governed-projection',
+        projection: {
+          unchanged: true,
+          changedCategories: [],
+          beforeDigest: 'a'.repeat(64),
+          afterDigest: 'a'.repeat(64),
+        },
+        sameUserProcessConfined: false,
+        residuals: [...PROVIDER_RUNNER_RESIDUALS],
+        executable: {
+          candidatePath: '/opt/homebrew/bin/claude',
+          realPath: '/opt/homebrew/bin/claude',
+          device: '1',
+          inode: '2',
+          mode: 0o100755,
+          uid: 501,
+          gid: 20,
+          size: 1024,
+          mtimeNs: '123456789',
+          sha256: 'b'.repeat(64),
+        },
+        elapsedMs: 1,
+        providerDefinitionSnapshot: resolveBuiltInProviderDefinitionSnapshot(
+          request.providerId,
+          'darwin',
+        )!,
+      },
+      acceptanceBinding: acceptance,
+      runtimeProgress: {
+        schemaVersion: 1,
+        kind: 'agent-runtime-process-progress',
+        processState: 'exited',
+        eventCount: 1,
+        stdoutBytes: 1,
+        stderrBytes: 0,
+        lastProcessActivityElapsedMs: 1,
+        lastProviderActivityElapsedMs: 1,
+      },
+      now: '2026-08-03T08:41:01.000Z',
+    });
+    const terminal = readProviderInvocation(runtime, request.invocationId);
+    const currentExecution = readExecutionJobState(
+      runtime,
+      acceptance.executionJobId,
+    );
+    assert.ok(currentExecution);
+    assert.notEqual(
+      sha256ForTest(canonicalJson(currentExecution)),
+      acceptance.executionStateDigest,
+      'terminal result acceptance mutates the current Job after admission',
+    );
+    assert.ok(terminal.runtimeReceipt);
+    assert.equal(terminal.runtimeReceipt.terminalDisposition, 'accepted');
+    assert.equal(terminal.runtimeReceipt.failureCode, null);
+    const { receiptDigest: _receiptDigest, ...receiptPayload } =
+      terminal.runtimeReceipt;
+    const terminalState = terminal;
+    const statePath = path.join(
+      runtime.invocations,
+      request.invocationId,
+      'state.json',
+    );
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, request.invocationId)
+        .state,
+      'succeeded',
+    );
+
+    const assertUnsafeWithoutRewrite = (expectedBytes: string) => {
+      assert.throws(
+        () =>
+          readProviderInvocationLifecycleProjection(
+            runtime,
+            request.invocationId,
+          ),
+        (error) =>
+          isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+      );
+      assert.equal(fs.readFileSync(statePath, 'utf8'), expectedBytes);
+    };
+
+    const missingPath = `${authorityPath}.missing`;
+    fs.renameSync(authorityPath, missingPath);
+    const terminalStateBytes = fs.readFileSync(statePath, 'utf8');
+    assertUnsafeWithoutRewrite(terminalStateBytes);
+    fs.renameSync(missingPath, authorityPath);
+
+    const tamperedAuthority = JSON.parse(authorityBytes) as Record<
+      string,
+      unknown
+    >;
+    tamperedAuthority.authorityDigest = '0'.repeat(64);
+    const tamperedAuthorityBytes = `${canonicalJson(tamperedAuthority)}\n`;
+    fs.writeFileSync(authorityPath, tamperedAuthorityBytes, { mode: 0o600 });
+    assertUnsafeWithoutRewrite(terminalStateBytes);
+    assert.equal(
+      fs.readFileSync(authorityPath, 'utf8'),
+      tamperedAuthorityBytes,
+    );
+    fs.writeFileSync(authorityPath, authorityBytes, { mode: 0o600 });
+
+    const candidatePath = path.join(
+      runtime.root,
+      'execution',
+      'completion-candidates',
+      `${sha256ForTest(request.invocationId)}.json`,
+    );
+    const candidateBytes = fs.readFileSync(candidatePath, 'utf8');
+    const flippedBinding = structuredClone(acceptance) as unknown as Record<
+      string,
+      unknown
+    >;
+    flippedBinding.receiptRequirement = 'synchronous-no-activity';
+    delete flippedBinding.bindingDigest;
+    flippedBinding.bindingDigest = sha256ForTest(canonicalJson(flippedBinding));
+    const flippedAuthority = JSON.parse(authorityBytes) as Record<
+      string,
+      unknown
+    >;
+    flippedAuthority.receiptRequirement = 'synchronous-no-activity';
+    flippedAuthority.acceptanceBindingDigest = flippedBinding.bindingDigest;
+    flippedAuthority.acceptanceBinding = flippedBinding;
+    delete flippedAuthority.authorityDigest;
+    flippedAuthority.authorityDigest = sha256ForTest(
+      `workflow.provider-execution-admission-authority.v1\n${canonicalJson(
+        flippedAuthority,
+      )}`,
+    );
+    const flippedState = structuredClone(terminalState) as unknown as Record<
+      string,
+      unknown
+    >;
+    delete flippedState.runtimeReceipt;
+    const flippedCandidate = JSON.parse(candidateBytes) as Record<
+      string,
+      unknown
+    >;
+    delete flippedCandidate.runtimeReceipt;
+    delete flippedCandidate.candidateDigest;
+    flippedCandidate.candidateDigest = sha256ForTest(
+      canonicalJson(flippedCandidate),
+    );
+    const flippedStateBytes = `${canonicalJson(flippedState)}\n`;
+    const flippedAuthorityBytes = `${canonicalJson(flippedAuthority)}\n`;
+    const flippedCandidateBytes = `${canonicalJson(flippedCandidate)}\n`;
+    fs.writeFileSync(statePath, flippedStateBytes, { mode: 0o600 });
+    fs.writeFileSync(authorityPath, flippedAuthorityBytes, { mode: 0o600 });
+    fs.writeFileSync(candidatePath, flippedCandidateBytes, { mode: 0o600 });
+    assertUnsafeWithoutRewrite(flippedStateBytes);
+    assert.throws(
+      () => readProviderInvocation(runtime, request.invocationId),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_STORE_UNSAFE'),
+    );
+    assert.equal(fs.readFileSync(authorityPath, 'utf8'), flippedAuthorityBytes);
+    assert.equal(fs.readFileSync(candidatePath, 'utf8'), flippedCandidateBytes);
+    fs.writeFileSync(statePath, terminalStateBytes, { mode: 0o600 });
+    fs.writeFileSync(authorityPath, authorityBytes, { mode: 0o600 });
+    fs.writeFileSync(candidatePath, candidateBytes, { mode: 0o600 });
+
+    const { bindingDigest: _bindingDigest, ...acceptancePayload } = acceptance;
+    const forgedAcceptancePayload = {
+      ...acceptancePayload,
+      executionStateDigest: '1'.repeat(64),
+    };
+    const forgedAcceptance = {
+      ...forgedAcceptancePayload,
+      bindingDigest: sha256ForTest(canonicalJson(forgedAcceptancePayload)),
+    };
+    const forgedReceiptPayload = {
+      ...receiptPayload,
+      executionStateDigest: forgedAcceptance.executionStateDigest,
+      acceptanceBindingDigest: forgedAcceptance.bindingDigest,
+      acceptanceBinding: forgedAcceptance,
+    };
+    const forgedReceipt = {
+      ...forgedReceiptPayload,
+      receiptDigest: sha256ForTest(canonicalJson(forgedReceiptPayload)),
+    };
+    const forgedStateBytes = `${canonicalJson({
+      ...terminal,
+      runtimeReceipt: forgedReceipt,
+    })}\n`;
+    fs.writeFileSync(statePath, forgedStateBytes, { mode: 0o600 });
+    assertUnsafeWithoutRewrite(forgedStateBytes);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('durable result CAS keeps the first completion and records the loser as late-duplicate', () => {
   const repository = createFixtureRepository();
   try {
@@ -300,18 +571,27 @@ test('durable result CAS keeps the first completion and records the loser as lat
         now: `2026-08-03T09:1${index + 8}:00.000Z`,
       }),
     );
+    const acceptances = requests.map((request) =>
+      prepareProviderInvocationAcceptanceBinding(
+        runtime,
+        request.invocationId,
+        'synchronous-no-activity',
+      ),
+    );
 
     completeClaim(
       runtime,
       requests[1]!,
       claims[1]!,
       '2026-08-03T09:20:00.000Z',
+      acceptances[1],
     );
     completeClaim(
       runtime,
       requests[0]!,
       claims[0]!,
       '2026-08-03T09:21:00.000Z',
+      acceptances[0],
     );
 
     const projection = projectProviderInvocationExecution({
@@ -335,6 +615,14 @@ test('durable result CAS keeps the first completion and records the loser as lat
     assert.equal(secondAttempt.status, 'succeeded');
     assert.equal(firstAttempt.status, 'late-duplicate');
     assert.equal(firstAttempt.retention, 'debug');
+    const loser = readProviderInvocation(runtime, requests[0]!.invocationId);
+    assert.equal(loser.runtimeReceipt, undefined);
+    assert.equal(
+      fs.existsSync(
+        providerExecutionAdmissionAuthorityPath(runtime, acceptances[0]!),
+      ),
+      true,
+    );
     assert.deepEqual(
       stored.results.map(({ attemptId, acceptance }) => ({
         attemptId,
@@ -349,6 +637,415 @@ test('durable result CAS keeps the first completion and records the loser as lat
     assert.equal(inspection.acceptedAttemptId, secondAttempt.attemptId);
     assert.equal(inspection.attempts[0]!.status, 'late-duplicate');
     assert.equal(inspection.attempts[1]!.status, 'succeeded');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('async schema-v4 completion refuses a late duplicate before publishing accepted receipt state', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const requests = [1, 2].map((attempt) =>
+      createRequest(
+        repository,
+        manifest,
+        `invocation-async-durable-race-${attempt}`,
+        attempt,
+        'investigation-async-durable-race',
+      ),
+    );
+    for (const [index, request] of requests.entries()) {
+      createDirectProviderInvocation(repository, runtime, {
+        investigationId: 'investigation-async-durable-race',
+        changeId: CHANGE_ID,
+        attempt: index + 1,
+        manifest,
+        request,
+        createdAt: `2026-08-03T09:3${index}:00.000Z`,
+      });
+    }
+    const claims = requests.map((request, index) =>
+      claimProviderInvocation(runtime, request.invocationId, {
+        workerId: `worker-async-race-${index + 1}`,
+        leaseDurationMs: request.limits.timeoutMs,
+        now: `2026-08-03T09:4${index}:00.000Z`,
+      }),
+    );
+    const acceptances = requests.map((request) =>
+      prepareProviderInvocationAcceptanceBinding(
+        runtime,
+        request.invocationId,
+        'schema-v4',
+      ),
+    );
+    const completeAsync = (index: number, now: string) => {
+      const request = requests[index]!;
+      const claim = claims[index]!;
+      const acceptance = acceptances[index]!;
+      const semanticOutput = evaluateProviderProcess(
+        request,
+        providerOutcome(request),
+        blindSurveyOutputValidator(request),
+      ).output;
+      const runnerRuntime = path.join(
+        runtime.invocations,
+        request.invocationId,
+        'runtime',
+      );
+      fs.mkdirSync(runnerRuntime, { mode: 0o700 });
+      for (const [name, value] of [
+        ['prompt.json', { requestDigest: request.requestDigest }],
+        ['schema.json', BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA],
+        ['semantic-output.json', semanticOutput],
+      ] as const) {
+        fs.writeFileSync(
+          path.join(runnerRuntime, name),
+          `${canonicalJson(value)}\n`,
+          { mode: 0o600 },
+        );
+      }
+      return completeProviderInvocationFromRunner(
+        runtime,
+        request.invocationId,
+        {
+          expectedRevision: claim.record.revision,
+          leaseGeneration: claim.record.leaseGeneration,
+          leaseToken: claim.leaseToken,
+          report: {
+            invocationId: request.invocationId,
+            providerId: request.providerId,
+            purpose: request.purpose,
+            requestDigest: request.requestDigest,
+            semanticOutput,
+            semanticOutputDigest: sha256ForTest(canonicalJson(semanticOutput)),
+            assurance: 'unchanged-governed-projection',
+            projection: {
+              unchanged: true,
+              changedCategories: [],
+              beforeDigest: 'a'.repeat(64),
+              afterDigest: 'a'.repeat(64),
+            },
+            sameUserProcessConfined: false,
+            residuals: [...PROVIDER_RUNNER_RESIDUALS],
+            executable: {
+              candidatePath: '/opt/homebrew/bin/claude',
+              realPath: '/opt/homebrew/bin/claude',
+              device: '1',
+              inode: '2',
+              mode: 0o100755,
+              uid: 501,
+              gid: 20,
+              size: 1024,
+              mtimeNs: '123456789',
+              sha256: 'b'.repeat(64),
+            },
+            elapsedMs: 1,
+            providerDefinitionSnapshot:
+              resolveBuiltInProviderDefinitionSnapshot(
+                request.providerId,
+                'darwin',
+              )!,
+          },
+          acceptanceBinding: acceptance,
+          runtimeProgress: {
+            schemaVersion: 1,
+            kind: 'agent-runtime-process-progress',
+            processState: 'exited',
+            eventCount: 1,
+            stdoutBytes: 1,
+            stderrBytes: 0,
+            lastProcessActivityElapsedMs: 1,
+            lastProviderActivityElapsedMs: 1,
+          },
+          now,
+        },
+      );
+    };
+
+    const winner = completeAsync(1, '2026-08-03T09:42:00.000Z');
+    assert.equal(winner.runtimeReceipt?.terminalDisposition, 'accepted');
+    const loserStatePath = path.join(
+      runtime.invocations,
+      requests[0]!.invocationId,
+      'state.json',
+    );
+    const loserStateBytes = fs.readFileSync(loserStatePath, 'utf8');
+    assert.throws(
+      () => completeAsync(0, '2026-08-03T09:43:00.000Z'),
+      (error) => isWorkflowError(error, 'PROVIDER_ASYNC_RESULT_LATE_DUPLICATE'),
+    );
+    assert.equal(fs.readFileSync(loserStatePath, 'utf8'), loserStateBytes);
+    const loser = readProviderInvocation(runtime, requests[0]!.invocationId);
+    assert.equal(loser.state, 'leased');
+    assert.equal(loser.runtimeReceipt, undefined);
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          runtime.root,
+          'execution',
+          'completion-candidates',
+          `${sha256ForTest(requests[0]!.invocationId)}.json`,
+        ),
+      ),
+      false,
+    );
+    const projection = projectProviderInvocationExecution({
+      record: loser,
+      request: requests[0]!,
+    });
+    const stored = readExecutionJobState(runtime, projection.job.jobId);
+    assert.ok(stored);
+    const loserAttempt = stored.attempts.find(
+      ({ providerInvocation }) =>
+        providerInvocation?.invocationId === requests[0]!.invocationId,
+    );
+    assert.equal(loserAttempt?.status, 'late-duplicate');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('candidate-only recovery accepts and idempotently replays the exact leased Attempt result', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-candidate-result-recovery',
+      1,
+      'investigation-candidate-result-recovery',
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: 'investigation-candidate-result-recovery',
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T10:00:00.000Z',
+    });
+    const claim = claimProviderInvocation(runtime, request.invocationId, {
+      workerId: 'worker-candidate-result-recovery',
+      leaseDurationMs: request.limits.timeoutMs,
+      now: '2026-08-03T10:01:00.000Z',
+    });
+    const entries = [
+      executionEntryForTest(runtime, claim.record, request),
+    ] as const;
+    const projection = projectProviderInvocationExecution({
+      record: claim.record,
+      request,
+    });
+    const before = readExecutionJobState(runtime, projection.job.jobId);
+    assert.ok(before);
+    const recoveryInput = {
+      entries,
+      attemptId: projection.attempt.attemptId,
+      leaseGeneration: claim.record.leaseGeneration,
+      leaseTokenDigest: sha256ForTest(claim.leaseToken),
+      outputDigest: sha256ForTest('candidate-only-result'),
+      completedAt: '2026-08-03T10:02:00.000Z',
+    } as const;
+
+    const recovered = recoverProviderAttemptResultFromCandidate(runtime, {
+      ...recoveryInput,
+      expectedRevision: before.revision,
+    });
+    assert.equal(recovered.accepted, true);
+    assert.equal(recovered.result.acceptance, 'accepted');
+    assert.equal(
+      recovered.state.job.acceptedAttemptId,
+      projection.attempt.attemptId,
+    );
+    assert.equal(recovered.state.attempts[0]!.status, 'succeeded');
+    assert.equal(
+      recovered.result.outputDigest,
+      `sha256:${recoveryInput.outputDigest}`,
+    );
+
+    const replay = recoverProviderAttemptResultFromCandidate(
+      runtime,
+      recoveryInput,
+    );
+    assert.equal(replay.state.revision, recovered.state.revision);
+    assert.deepEqual(replay, recovered);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('candidate-only recovery preserves another exact winner and records a late duplicate', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const investigationId = 'investigation-candidate-result-race';
+    const requests = [1, 2].map((attempt) =>
+      createRequest(
+        repository,
+        manifest,
+        `invocation-candidate-result-race-${attempt}`,
+        attempt,
+        investigationId,
+      ),
+    );
+    for (const [index, request] of requests.entries()) {
+      createDirectProviderInvocation(repository, runtime, {
+        investigationId,
+        changeId: CHANGE_ID,
+        attempt: index + 1,
+        manifest,
+        request,
+        createdAt: `2026-08-03T11:0${index}:00.000Z`,
+      });
+    }
+    const claims = requests.map((request, index) =>
+      claimProviderInvocation(runtime, request.invocationId, {
+        workerId: `worker-candidate-result-race-${index + 1}`,
+        leaseDurationMs: request.limits.timeoutMs,
+        now: `2026-08-03T11:1${index}:00.000Z`,
+      }),
+    );
+    const entries = claims.map((claim, index) =>
+      executionEntryForTest(runtime, claim.record, requests[index]!),
+    );
+    const projections = claims.map((claim, index) =>
+      projectProviderInvocationExecution({
+        record: claim.record,
+        request: requests[index]!,
+      }),
+    );
+
+    const winner = recoverProviderAttemptResultFromCandidate(runtime, {
+      entries,
+      attemptId: projections[1]!.attempt.attemptId,
+      leaseGeneration: claims[1]!.record.leaseGeneration,
+      leaseTokenDigest: sha256ForTest(claims[1]!.leaseToken),
+      outputDigest: sha256ForTest('candidate-race-winner'),
+      completedAt: '2026-08-03T11:12:00.000Z',
+    });
+    const duplicate = recoverProviderAttemptResultFromCandidate(runtime, {
+      entries,
+      attemptId: projections[0]!.attempt.attemptId,
+      leaseGeneration: claims[0]!.record.leaseGeneration,
+      leaseTokenDigest: sha256ForTest(claims[0]!.leaseToken),
+      outputDigest: sha256ForTest('candidate-race-loser'),
+      completedAt: '2026-08-03T11:13:00.000Z',
+    });
+
+    assert.equal(winner.accepted, true);
+    assert.equal(duplicate.accepted, false);
+    assert.equal(duplicate.result.acceptance, 'late-duplicate');
+    assert.equal(
+      duplicate.state.job.acceptedAttemptId,
+      projections[1]!.attempt.attemptId,
+    );
+    assert.equal(duplicate.state.job.status, 'succeeded');
+    assert.equal(duplicate.state.attempts[0]!.status, 'late-duplicate');
+    assert.equal(duplicate.state.attempts[1]!.status, 'succeeded');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('candidate-only recovery refuses lease and projected Attempt binding mismatches without mutation', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-candidate-result-mismatch',
+      1,
+      'investigation-candidate-result-mismatch',
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: 'investigation-candidate-result-mismatch',
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T12:00:00.000Z',
+    });
+    const claim = claimProviderInvocation(runtime, request.invocationId, {
+      workerId: 'worker-candidate-result-mismatch',
+      leaseDurationMs: request.limits.timeoutMs,
+      now: '2026-08-03T12:01:00.000Z',
+    });
+    const entry = executionEntryForTest(runtime, claim.record, request);
+    const projection = projectProviderInvocationExecution({
+      record: claim.record,
+      request,
+    });
+    const statePath = executionJobStatePath(runtime, projection.job.jobId);
+    const beforeBytes = fs.readFileSync(statePath, 'utf8');
+    const exactInput = {
+      entries: [entry],
+      attemptId: projection.attempt.attemptId,
+      leaseGeneration: claim.record.leaseGeneration,
+      leaseTokenDigest: sha256ForTest(claim.leaseToken),
+      outputDigest: sha256ForTest('candidate-mismatch-result'),
+      completedAt: '2026-08-03T12:02:00.000Z',
+    } as const;
+
+    for (const mismatch of [
+      {
+        ...exactInput,
+        leaseGeneration: exactInput.leaseGeneration + 1,
+      },
+      {
+        ...exactInput,
+        leaseTokenDigest: sha256ForTest('different-lease-token'),
+      },
+    ]) {
+      assert.throws(
+        () => recoverProviderAttemptResultFromCandidate(runtime, mismatch),
+        (error) =>
+          isWorkflowError(error, 'EXECUTION_STORE_RESULT_RECOVERY_CONFLICT'),
+      );
+      assert.equal(fs.readFileSync(statePath, 'utf8'), beforeBytes);
+    }
+
+    const changedRequestDigest = sha256ForTest('changed-request-binding');
+    const driftedEntry = {
+      ...entry,
+      record: { ...entry.record, requestDigest: changedRequestDigest },
+      request: { ...entry.request, requestDigest: changedRequestDigest },
+    };
+    assert.throws(
+      () =>
+        recoverProviderAttemptResultFromCandidate(runtime, {
+          ...exactInput,
+          entries: [driftedEntry],
+        }),
+      (error) =>
+        isWorkflowError(error, 'EXECUTION_STORE_RESULT_RECOVERY_CONFLICT'),
+    );
+    assert.equal(fs.readFileSync(statePath, 'utf8'), beforeBytes);
+
+    const changedContextDigest = sha256ForTest('changed-context-binding');
+    const driftedContextEntry = {
+      ...entry,
+      record: { ...entry.record, manifestDigest: changedContextDigest },
+      request: {
+        ...entry.request,
+        inputManifestDigest: changedContextDigest,
+      },
+    };
+    assert.throws(
+      () =>
+        recoverProviderAttemptResultFromCandidate(runtime, {
+          ...exactInput,
+          entries: [driftedContextEntry],
+        }),
+      (error) =>
+        isWorkflowError(error, 'EXECUTION_STORE_RESULT_RECOVERY_CONFLICT'),
+    );
+    assert.equal(fs.readFileSync(statePath, 'utf8'), beforeBytes);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -604,6 +1301,14 @@ test('validator failure reloads as a bounded repair Attempt and missing durable 
     const acceptance = prepareProviderInvocationAcceptanceBinding(
       runtime,
       secondRequest.invocationId,
+      'schema-v4',
+    );
+    assert.equal(
+      fs.existsSync(
+        providerExecutionAdmissionAuthorityPath(runtime, acceptance),
+      ),
+      true,
+      'acceptance preparation publishes its immutable execution authority',
     );
     assert.doesNotThrow(() =>
       assertProviderInvocationAcceptanceBindingCurrent(runtime, acceptance),
@@ -753,12 +1458,14 @@ function completeClaim(
   request: ProviderInvocationRequest,
   claim: ProviderLeaseClaim,
   now: string,
+  acceptanceBinding?: ProviderInvocationAcceptanceBinding,
 ): void {
   completeProviderInvocation(runtime, request.invocationId, {
     expectedRevision: claim.record.revision,
     leaseGeneration: claim.record.leaseGeneration,
     leaseToken: claim.leaseToken,
     outcome: providerOutcome(request),
+    ...(acceptanceBinding === undefined ? {} : { acceptanceBinding }),
     now,
   });
 }
@@ -799,4 +1506,8 @@ function providerOutcome(
     }),
     stderr: '',
   };
+}
+
+function sha256ForTest(value: string): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
 }

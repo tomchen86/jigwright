@@ -27,7 +27,11 @@ import type {
   ProviderRoleAssignment,
   RoleContextSharingGrantedRoleAssignment,
 } from './role-scheduler.ts';
-import type { ProviderWrapperProtocolReceipt } from './agent-runtime-protocol.ts';
+import type {
+  ProviderRuntimeProtocolReceipt,
+  ProviderWrapperProtocolReceipt,
+} from './agent-runtime-protocol.ts';
+import type { AgentRuntimeHostExecutionBindingV1 } from './agent-runtime-host-execution-binding.ts';
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
@@ -191,7 +195,8 @@ export type ProviderRunnerReport = {
   elapsedMs: number;
   providerDefinitionSnapshot:
     ProviderDefinitionSnapshot | HostWrapperProviderProfileSnapshot;
-  wrapperProtocolReceipt?: ProviderWrapperProtocolReceipt;
+  wrapperProtocolReceipt?: ProviderRuntimeProtocolReceipt;
+  hostExecutionBinding?: AgentRuntimeHostExecutionBindingV1;
 };
 
 /**

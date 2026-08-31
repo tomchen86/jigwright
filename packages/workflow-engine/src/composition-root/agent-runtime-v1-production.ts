@@ -27,6 +27,7 @@ import {
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import type { AgentRuntimeAsyncSingleShotOptions } from '../modules/provider-orchestration/agent-runtime-port.ts';
+import { assertAgentRuntimeAssignmentBindingV1 } from '../modules/provider-orchestration/agent-runtime-assignment-binding.ts';
 import type { ProviderId } from '../modules/provider-orchestration/provider-registry.ts';
 import type { ProviderRunnerReport } from '../modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -372,24 +373,23 @@ function admitAssignmentBinding(
   input: ProviderRunInput,
   definition: ProviderDefinitionSnapshot,
 ) {
-  const value = input.assignmentBinding;
-  if (value === undefined) return null;
+  if (input.assignmentBinding === undefined) return null;
+  let value;
+  try {
+    value = assertAgentRuntimeAssignmentBindingV1(input.assignmentBinding);
+  } catch {
+    throw workflowError(
+      'AGENT_RUNTIME_V1_ASSIGNMENT_BINDING_INVALID',
+      'Public AgentRuntime execution requires one exact current assignment binding.',
+      ExitCode.verification,
+    );
+  }
   const expectedRole =
     input.request.purpose === 'task-implementation'
       ? 'builder'
       : input.request.purpose === 'survey'
         ? 'author'
         : 'reviewer';
-  const digestFields = [
-    value.planningGeneration,
-    value.recordDigest,
-    value.assignmentDigest,
-    value.definitionDigest,
-    value.dataAuthorizationPolicyDigest,
-    value.assignmentManifestDigest,
-    value.inputManifestDigest,
-    value.targetDigest,
-  ];
   let providerProfileSnapshot;
   try {
     providerProfileSnapshot = assertAgentProviderProfileSnapshot(
@@ -421,8 +421,7 @@ function admitAssignmentBinding(
     !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(value.changeId) ||
     value.changeId === 'archive' ||
     value.logicalProviderId.length === 0 ||
-    value.providerProfileId.length === 0 ||
-    digestFields.some((digest) => !/^[0-9a-f]{64}$/u.test(digest))
+    value.providerProfileId.length === 0
   ) {
     throw workflowError(
       'AGENT_RUNTIME_V1_ASSIGNMENT_BINDING_INVALID',

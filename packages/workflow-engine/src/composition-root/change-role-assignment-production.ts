@@ -32,6 +32,7 @@ import type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,
 } from '../modules/provider-orchestration/agent-runtime-port.ts';
+import { projectAgentRuntimeAssignmentBindingV1 } from '../modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import type { ProviderInvocationRequest } from '../modules/provider-orchestration/provider-contracts.ts';
 import {
   isProviderId,
@@ -840,6 +841,7 @@ function createNativeSessionTurnController(
         );
       }
       return Object.freeze({
+        claim: claimed.claim,
         claimDigest: claimed.claim.claimDigest,
         predecessorCompletionDigest: claimed.claim.predecessorCompletionDigest,
         binding: claimed.binding,
@@ -934,48 +936,12 @@ function projectRuntimeBinding(
   record: ChangeRoleAssignmentRecordV1,
   request: ProviderInvocationRequest,
 ): AgentRuntimeAssignmentBindingV1 {
-  const role = ROLE_BY_PURPOSE[request.purpose];
-  const placement = record.resolution.placements.find(
-    (candidate) => candidate.role === role,
-  );
-  const slot = record.sessionSlots.find((candidate) =>
-    candidate.roles.includes(role),
-  );
-  const profile = record.host.configuration.providers.find(
-    (candidate) => candidate.id === placement?.profileId,
-  );
-  if (
-    placement === undefined ||
-    slot === undefined ||
-    profile === undefined ||
-    profile.family !== request.providerId ||
-    placement.logicalProviderId !== slot.logicalProviderId ||
-    slot.sessionMode !== 'fresh'
-  ) {
-    throw assignmentFailure(
+  return projectAgentRuntimeAssignmentBindingV1(record, request, () =>
+    assignmentFailure(
       'AGENT_RUNTIME_ASSIGNMENT_PROVIDER_MISMATCH',
       'The durable role assignment does not select the requested fresh provider.',
-    );
-  }
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'agent-runtime-assignment-binding.v1',
-    changeId: record.changeId,
-    planningGeneration: record.planningGeneration,
-    recordDigest: record.recordDigest,
-    assignmentDigest: record.assignmentDigest,
-    role,
-    logicalProviderId: placement.logicalProviderId,
-    providerProfileId: profile.id,
-    providerProfileSnapshot: profile,
-    definitionDigest: slot.providerDefinitionDigest,
-    dataAuthorizationPolicyDigest:
-      record.dataAuthorization.snapshot.policyDigest,
-    assignmentManifestDigest:
-      record.dataAuthorization.snapshot.inputManifestDigest!,
-    inputManifestDigest: request.inputManifestDigest,
-    targetDigest: request.targetDigest,
-  });
+    ),
+  );
 }
 
 function assertExternalHostConfiguration(

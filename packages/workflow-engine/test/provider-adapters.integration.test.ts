@@ -34,6 +34,7 @@ import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   captureGovernedProviderProjection,
   compareGovernedProviderProjections,
+  discoverRepository,
 } from '../src/runtime/repository-transaction/git.ts';
 import {
   createProviderInvocationRequest,
@@ -43,9 +44,24 @@ import {
 import {
   BLIND_SURVEY_OUTPUT_SCHEMA,
   BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+  blindSurveyIntentDigest,
+  blindSurveyOutputValidator,
+  claimProviderInvocation,
+  completeProviderInvocationFromRunner,
   createProviderExecutionPolicySnapshot,
+  createProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
+  readProviderInvocation,
+  recoverProviderInvocationCompletion,
+  storeProviderExecutionPolicySnapshot,
   type ProviderInvocationAcceptanceBinding,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import {
+  providerExecutionAdmissionAuthorityPath,
+  readExecutionJobState,
+} from '../src/runtime/storage-journal/execution-store.ts';
+import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA,
@@ -69,17 +85,69 @@ import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provide
 import { createBuiltInAgentRuntimeV1Bridge } from '../src/composition-root/agent-runtime-v1-production.ts';
 import { runHostWrapperProviderThroughAgentRuntimeV1 } from '../src/composition-root/agent-runtime-host-wrapper-production.ts';
 import { productionAgentRuntime } from '../src/composition-root/agent-runtime-production.ts';
+import { agentRuntimeNativeSessionIdDigestV1 } from '@jigwright/core/agent-runtime-port';
 import {
   parseAgentProviderConfigToml,
   type BuiltInReviewedProviderProfileSnapshot,
   type HostWrapperProviderProfileSnapshot,
+  type ProviderWrapperSessionProtocolBinding,
 } from '@jigwright/agent-runtime';
 import type { ProviderExecutableObservation } from '@jigwright/agent-runtime/provider-executable-identity';
 import type {
+  AgentRuntimeAssignmentBindingV1,
   AgentRuntimeNativeSessionTurnControllerV1,
   AgentRuntimeSingleShotInput,
 } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
-import type { ProviderWrapperProtocolReceipt } from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+import { createAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-assignment-binding.ts';
+import {
+  assertAgentRuntimeHostExecutionBindingV1,
+  type AgentRuntimeHostExecutionBindingV1,
+} from '../src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
+import {
+  type ProviderNativeSessionClaimV1,
+  type ProviderNativeSessionCompletionV1,
+} from '../src/modules/provider-orchestration/provider-native-session.ts';
+import {
+  agentRolePlanV2Digest,
+  createAgentRolePlanV2Snapshot,
+  renderAgentRolePlanV2,
+  type AgentRolePlanBodyV2,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import {
+  createCentralRoleProviderDefault,
+  createCentralRoleProviderDefaultSnapshotV1,
+  renderCentralRoleProviderDefault,
+} from '../src/modules/provider-orchestration/central-role-provider-default.ts';
+import { createChangeRoleAssignmentRecordV1 } from '../src/modules/provider-orchestration/change-role-assignment-record.ts';
+import {
+  createChangeRoleAssignmentProtectedContextV1,
+  resolveChangeRoleAssignmentV1,
+} from '../src/modules/provider-orchestration/change-role-assignment.ts';
+import { projectAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-durable-authority.ts';
+import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../src/runtime/storage-journal/change-role-assignment-store.ts';
+import {
+  claimProviderNativeSessionTurnV1,
+  completeClaimedProviderNativeSessionTurnV1,
+  publishProviderNativeSessionContinuationAuthorityV1,
+  readProviderNativeSessionChainV1,
+} from '../src/runtime/storage-journal/provider-native-session-store.ts';
+import {
+  changeRoleAssignmentObjectPathV1,
+  changeRoleAssignmentRefPathV1,
+  changeRoleAssignmentStorePathsV1,
+  providerNativeSessionClaimObjectPathV1,
+  providerNativeSessionClaimRefPathV1,
+  providerNativeSessionCompletionObjectPathV1,
+  providerNativeSessionCompletionRefPathV1,
+  providerNativeSessionContinuationAuthorityObjectPathV1,
+  providerNativeSessionHandleObjectPathV1,
+  providerNativeSessionStorePathsV1,
+} from '../src/runtime/session-workspace/provider-runtime-authority-paths.ts';
+import {
+  assertProviderRuntimeProtocolReceipt,
+  type ProviderRuntimeProtocolReceipt,
+  type ProviderWrapperProtocolReceipt,
+} from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
 import {
   createFixtureRepository,
   git,
@@ -1152,7 +1220,7 @@ test('assigned runner launch cannot fall back to an unselected higher-priority c
     ).run(
       {
         ...fixture.input,
-        assignmentBinding: {
+        assignmentBinding: createAgentRuntimeAssignmentBindingV1({
           schemaVersion: 1,
           kind: 'agent-runtime-assignment-binding.v1',
           changeId: 'selected-provider-profile',
@@ -1171,7 +1239,7 @@ test('assigned runner launch cannot fall back to an unselected higher-priority c
           assignmentManifestDigest: '4'.repeat(64),
           inputManifestDigest: fixture.request.inputManifestDigest,
           targetDigest: fixture.request.targetDigest,
-        },
+        }),
       },
       { platform: 'darwin' },
     );
@@ -1358,7 +1426,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
         };
       },
     });
-    const acceptanceBinding = {
+    const acceptancePayload = {
       schemaVersion: 1 as const,
       kind: 'provider-invocation-acceptance-binding' as const,
       invocationId: request.invocationId,
@@ -1380,6 +1448,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
       executionAttemptId: 'attempt-runtime-v1',
       executionRevision: 1,
       executionStateDigest: '9'.repeat(64),
+      receiptRequirement: 'schema-v4' as const,
       repair: {
         invocationId: request.invocationId,
         lineagePath: path.join(invocationDirectory, 'repair-lineage.json'),
@@ -1391,7 +1460,10 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
         evidencePath: null,
         evidenceDigest: null,
       },
-      bindingDigest: 'a'.repeat(64),
+    };
+    const acceptanceBinding = {
+      ...acceptancePayload,
+      bindingDigest: sha256(canonicalJson(acceptancePayload)),
     };
     const report = await bridge(
       {
@@ -1405,7 +1477,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
         acceptanceBinding,
         reviewSnapshotRoot: null,
         sourceEnvironment: {},
-        assignmentBinding: {
+        assignmentBinding: createAgentRuntimeAssignmentBindingV1({
           schemaVersion: 1,
           kind: 'agent-runtime-assignment-binding.v1',
           changeId: 'runtime-v1-bridge',
@@ -1421,7 +1493,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
           assignmentManifestDigest: 'e'.repeat(64),
           inputManifestDigest: request.inputManifestDigest,
           targetDigest: request.targetDigest,
-        },
+        }),
       },
       {
         platform: 'darwin',
@@ -1504,6 +1576,7 @@ test('production host-wrapper bridge starts and resumes one private native sessi
   const nativeSessionId = 'native-host-wrapper-1';
   const completionDigests = ['1'.repeat(64), '2'.repeat(64)];
   const terminals: unknown[] = [];
+  const successActivities: string[] = [];
   let claimCount = 0;
   const controller = (
     action: 'start' | 'resume',
@@ -1518,33 +1591,36 @@ test('production host-wrapper bridge starts and resumes one private native sessi
     claim({ attemptId, expectedAction }) {
       assert.equal(expectedAction, action);
       claimCount += 1;
+      const runtimeInput = action === 'start' ? first.input : second.input;
+      const binding = {
+        invocationId: runtimeInput.request.invocationId,
+        requestDigest: runtimeInput.request.requestDigest,
+        attemptId,
+        sessionControl:
+          action === 'start'
+            ? {
+                action: 'start' as const,
+                nativeSessionIdentityMode: 'provider-observed' as const,
+                expectedNativeSessionId: null,
+              }
+            : {
+                action: 'resume' as const,
+                nativeSessionIdentityMode: 'engine-supplied' as const,
+                expectedNativeSessionId: nativeSessionId,
+              },
+      };
+      const claim = fakeNativeSessionClaim(
+        hostWrapperAssignmentBinding(runtimeInput, profile),
+        profile,
+        binding,
+        action === 'start' ? null : completionDigests[0]!,
+      );
       return {
-        claimDigest: `${claimCount}`.repeat(64),
+        claim,
+        claimDigest: claim.claimDigest,
         predecessorCompletionDigest:
           action === 'start' ? null : completionDigests[0]!,
-        binding: {
-          invocationId:
-            action === 'start'
-              ? first.request.invocationId
-              : second.request.invocationId,
-          requestDigest:
-            action === 'start'
-              ? first.request.requestDigest
-              : second.request.requestDigest,
-          attemptId,
-          sessionControl:
-            action === 'start'
-              ? {
-                  action: 'start',
-                  nativeSessionIdentityMode: 'provider-observed',
-                  expectedNativeSessionId: null,
-                }
-              : {
-                  action: 'resume',
-                  nativeSessionIdentityMode: 'engine-supplied',
-                  expectedNativeSessionId: nativeSessionId,
-                },
-        },
+        binding,
       };
     },
     complete(input) {
@@ -1563,14 +1639,65 @@ test('production host-wrapper bridge starts and resumes one private native sessi
     );
     const firstReport = await productionAgentRuntime.runSingleShotAsync!(
       firstInput,
-      { platform: process.platform },
+      {
+        platform: process.platform,
+        onActivity(event) {
+          successActivities.push(event.type);
+          throw new Error('activity observer must remain non-authoritative');
+        },
+      },
     );
     assert.deepEqual(firstReport.semanticOutput, semanticOutput(first.request));
+    assert.ok(successActivities.includes('spawned'));
+    assert.ok(successActivities.includes('exited'));
     assert.equal(
       (
         firstReport.providerDefinitionSnapshot as HostWrapperProviderProfileSnapshot
       ).profileDigest,
       profile.profileDigest,
+    );
+    const firstHostBinding = firstReport.hostExecutionBinding;
+    assert.ok(firstHostBinding?.probe);
+    assert.deepEqual(firstHostBinding.probe.executable, firstReport.executable);
+    const forgedHostBinding = structuredClone(
+      firstHostBinding,
+    ) as unknown as Record<string, unknown>;
+    const forgedProbe = forgedHostBinding.probe as Record<string, unknown>;
+    const forgedExecutable = forgedProbe.executable as Record<string, unknown>;
+    forgedExecutable.candidatePath = `${wrapper}.forged`;
+    forgedProbe.providerDefinitionBindingDigest = sha256(
+      canonicalJson({
+        providerDefinitionDigest: forgedProbe.providerProfileDigest,
+        executable: forgedExecutable,
+      }),
+    );
+    const forgedBody = { ...forgedHostBinding };
+    delete forgedBody.bindingDigest;
+    forgedHostBinding.bindingDigest = sha256(
+      `workflow.agent-runtime-host-execution-binding.v1\n${canonicalJson(forgedBody)}`,
+    );
+    assert.throws(() =>
+      assertAgentRuntimeHostExecutionBindingV1(forgedHostBinding),
+    );
+    const forgedExecutableBinding = structuredClone(
+      firstHostBinding,
+    ) as unknown as Record<string, unknown>;
+    const forgedExecutableProbe = forgedExecutableBinding.probe as Record<
+      string,
+      unknown
+    >;
+    const forgedExecutableIdentity = forgedExecutableProbe.executable as Record<
+      string,
+      unknown
+    >;
+    forgedExecutableIdentity.realPath = `${forgedExecutableIdentity.realPath as string}.forged`;
+    const forgedExecutableBody = { ...forgedExecutableBinding };
+    delete forgedExecutableBody.bindingDigest;
+    forgedExecutableBinding.bindingDigest = sha256(
+      `workflow.agent-runtime-host-execution-binding.v1\n${canonicalJson(forgedExecutableBody)}`,
+    );
+    assert.throws(() =>
+      assertAgentRuntimeHostExecutionBindingV1(forgedExecutableBinding),
     );
 
     const secondInput = hostWrapperInput(
@@ -1594,9 +1721,1507 @@ test('production host-wrapper bridge starts and resumes one private native sessi
     assert.equal(JSON.stringify(terminals).includes(nativeSessionId), true);
     assert.equal(JSON.stringify(firstReport).includes(nativeSessionId), false);
     assert.equal(JSON.stringify(secondReport).includes(nativeSessionId), false);
+
+    const firstReceipt = firstReport.wrapperProtocolReceipt;
+    if (firstReceipt?.kind !== 'provider-wrapper-session-protocol-receipt') {
+      assert.fail('host-wrapper start omitted its session protocol receipt');
+    }
+    const forgedResumeReceipt = structuredClone(
+      firstReceipt,
+    ) as unknown as Record<string, unknown>;
+    forgedResumeReceipt.sessionAction = 'resume';
+    forgedResumeReceipt.nativeSessionIdentityMode = 'engine-supplied';
+    forgedResumeReceipt.expectedNativeSessionIdDigest =
+      forgedResumeReceipt.observedNativeSessionIdDigest;
+    const forgedPayload = { ...forgedResumeReceipt };
+    delete forgedPayload.receiptDigest;
+    forgedResumeReceipt.receiptDigest = sha256(canonicalJson(forgedPayload));
+    assert.throws(() =>
+      assertProviderRuntimeProtocolReceipt(forgedResumeReceipt, {
+        invocationId: first.request.invocationId,
+        requestDigest: first.request.requestDigest,
+        attemptId: firstInput.acceptanceBinding.executionAttemptId,
+        sessionControl: {
+          action: 'start',
+          nativeSessionIdentityMode: 'provider-observed',
+          expectedNativeSessionId: null,
+        },
+      }),
+    );
   } finally {
     first.cleanup();
     second.cleanup();
+  }
+});
+
+test('production host-wrapper preserves terminal error evidence for the worker failure channel', async () => {
+  const fixture = createRunnerFixture();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'host-wrapper-error-')),
+  );
+  const wrapper = path.join(hostDirectory, 'provider-wrapper.mjs');
+  fs.writeFileSync(wrapper, canonicalHostWrapperFixture('error', 2), {
+    mode: 0o700,
+  });
+  const profile = hostWrapperProfile(wrapper, false);
+  const terminals: unknown[] = [];
+  const observed: ProviderRuntimeProtocolReceipt[] = [];
+  const activities: string[] = [];
+  const failedHostBindings: AgentRuntimeHostExecutionBindingV1[] = [];
+  const boundInput = bindRunnerInputToInvestigationOwner(
+    fixture.input,
+    'investigation-host-wrapper-error',
+  );
+  try {
+    await assert.rejects(
+      runHostWrapperProviderThroughAgentRuntimeV1(
+        hostWrapperInput(
+          boundInput,
+          profile,
+          hostWrapperStartController(boundInput, profile, terminals),
+        ),
+        {
+          platform: process.platform,
+          onActivity(event) {
+            activities.push(event.type);
+            throw new Error('activity observer must remain non-authoritative');
+          },
+          onProtocolReceipt(receipt) {
+            observed.push(receipt);
+            throw new Error('receipt observer must remain non-authoritative');
+          },
+          onHostExecutionBinding(binding) {
+            failedHostBindings.push(binding);
+          },
+        },
+      ),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
+    );
+    assert.equal(observed.length, 1);
+    assert.equal(
+      observed[0]!.kind,
+      'provider-wrapper-session-protocol-receipt',
+    );
+    assert.equal(observed[0]!.terminal, 'error');
+    assert.equal(observed[0]!.errorCode, 'FIXTURE_REJECTED');
+    assert.ok(activities.includes('spawned'));
+    assert.ok(activities.includes('stdout'));
+    assert.ok(activities.includes('exited'));
+    assert.equal(failedHostBindings.length, 1);
+    const failedHostBinding = assertAgentRuntimeHostExecutionBindingV1(
+      failedHostBindings[0],
+    );
+    assert.ok(failedHostBinding.probe);
+    assert.equal(
+      failedHostBinding.probe.executable.candidatePath,
+      profile.executable,
+    );
+    assert.equal(terminals.length, 1);
+    assert.deepEqual(terminals[0], {
+      kind: 'protocol-outcome',
+      outcome: {
+        schemaVersion: 2,
+        kind: 'provider-wrapper-session-protocol-outcome',
+        receipt: observed[0],
+      },
+      privateIdentityObservation: null,
+    });
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+  }
+});
+
+test('production host-wrapper preserves cancelled process activity for the durable worker receipt', async () => {
+  const fixture = createRunnerFixture();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'host-wrapper-cancelled-')),
+  );
+  const wrapper = path.join(hostDirectory, 'provider-wrapper.mjs');
+  fs.writeFileSync(wrapper, canonicalHostWrapperFixture('cancelled'), {
+    mode: 0o700,
+  });
+  const profile = hostWrapperProfile(wrapper, false);
+  const terminals: unknown[] = [];
+  const observed: ProviderRuntimeProtocolReceipt[] = [];
+  const activities: string[] = [];
+  const cancellation = new AbortController();
+  const boundInput = bindRunnerInputToInvestigationOwner(
+    fixture.input,
+    'investigation-host-wrapper-cancelled',
+  );
+  let timer: NodeJS.Timeout | null = null;
+  try {
+    await assert.rejects(
+      runHostWrapperProviderThroughAgentRuntimeV1(
+        hostWrapperInput(
+          boundInput,
+          profile,
+          hostWrapperStartController(boundInput, profile, terminals),
+        ),
+        {
+          platform: process.platform,
+          signal: cancellation.signal,
+          onHostProbeEvidence() {
+            timer = setTimeout(() => cancellation.abort(), 250);
+          },
+          onActivity(event) {
+            activities.push(event.type);
+          },
+          onProtocolReceipt(receipt) {
+            observed.push(receipt);
+          },
+        },
+      ),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
+    );
+    assert.equal(observed.length, 1);
+    assert.equal(observed[0]!.terminal, 'cancelled');
+    assert.ok(activities.includes('spawned'));
+    assert.ok(activities.includes('cancelled'));
+    assert.deepEqual(terminals, [
+      {
+        kind: 'protocol-outcome',
+        outcome: {
+          schemaVersion: 2,
+          kind: 'provider-wrapper-session-protocol-outcome',
+          receipt: observed[0],
+        },
+        privateIdentityObservation: null,
+      },
+    ]);
+  } finally {
+    if (timer !== null) clearTimeout(timer);
+    fixture.cleanup();
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+  }
+});
+
+test('production host-wrapper never turns a nonzero process with a result frame into a usable native session', async () => {
+  const fixture = createRunnerFixture();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'host-wrapper-nonzero-result-')),
+  );
+  const wrapper = path.join(hostDirectory, 'provider-wrapper.mjs');
+  fs.writeFileSync(wrapper, canonicalHostWrapperFixture('result', 1), {
+    mode: 0o700,
+  });
+  const profile = hostWrapperProfile(wrapper, false);
+  const terminals: unknown[] = [];
+  const observed: ProviderRuntimeProtocolReceipt[] = [];
+  const boundInput = bindRunnerInputToInvestigationOwner(
+    fixture.input,
+    'investigation-host-wrapper-nonzero-result',
+  );
+  try {
+    await assert.rejects(
+      runHostWrapperProviderThroughAgentRuntimeV1(
+        hostWrapperInput(
+          boundInput,
+          profile,
+          hostWrapperStartController(boundInput, profile, terminals),
+        ),
+        {
+          platform: process.platform,
+          onProtocolReceipt(receipt) {
+            observed.push(receipt);
+          },
+        },
+      ),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
+    );
+    assert.equal(observed.length, 1);
+    assert.equal(observed[0]!.terminal, 'result');
+    assert.deepEqual(terminals, [
+      {
+        kind: 'protocol-outcome',
+        outcome: {
+          schemaVersion: 2,
+          kind: 'provider-wrapper-session-protocol-outcome',
+          receipt: observed[0],
+        },
+        privateIdentityObservation: null,
+      },
+    ]);
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+  }
+});
+
+test('production host-wrapper seals a semantically rejected result turn without a resumable handle', async () => {
+  const fixture = createRunnerFixture();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'host-wrapper-invalid-result-')),
+  );
+  const wrapper = path.join(hostDirectory, 'provider-wrapper.mjs');
+  fs.writeFileSync(wrapper, canonicalHostWrapperFixture('result'), {
+    mode: 0o700,
+  });
+  const changeId = 'host-wrapper-invalid-result';
+  const locator = discoverRepository(fixture.repository);
+  const runtime = investigationRuntimePaths(
+    locator.gitCommonDirectory,
+    'workflow-engine',
+  );
+  const assignment = durableHostWrapperAssignment(
+    changeId,
+    fixture.request,
+    wrapper,
+    true,
+  );
+  createOrReadExactChangeRoleAssignmentRecordV1(
+    runtime,
+    assignment.record,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+  );
+  const boundInput = bindRunnerInputToInvestigationOwner(
+    fixture.input,
+    'investigation-host-wrapper-invalid-result',
+  );
+  const nativeClaims: ProviderNativeSessionClaimV1[] = [];
+  const nativeCompletions: ProviderNativeSessionCompletionV1[] = [];
+  const hostBindings: AgentRuntimeHostExecutionBindingV1[] = [];
+  const protocolReceipts: ProviderRuntimeProtocolReceipt[] = [];
+  const input = hostWrapperInput(
+    {
+      ...boundInput,
+      outputValidator: {
+        ...boundInput.outputValidator,
+        validate: () => false,
+      },
+    },
+    assignment.profile,
+    {
+      profile: assignment.profile,
+      nextAction: () => 'start',
+      claim({ attemptId }) {
+        const claimed = claimProviderNativeSessionTurnV1(
+          runtime,
+          {
+            changeId: assignment.record.changeId,
+            planningGeneration: assignment.record.planningGeneration,
+            assignmentRecordDigest: assignment.record.recordDigest,
+            sessionSlotId: assignment.slot.sessionSlotId,
+            predecessorCompletionDigest: null,
+            invocationId: fixture.request.invocationId,
+            requestDigest: fixture.request.requestDigest,
+            attemptId,
+          },
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+        );
+        assert.equal(claimed.outcome, 'claimed');
+        assert.ok(claimed.binding);
+        nativeClaims.push(claimed.claim);
+        return {
+          claim: claimed.claim,
+          claimDigest: claimed.claim.claimDigest,
+          predecessorCompletionDigest: null,
+          binding: claimed.binding,
+        };
+      },
+      complete(value) {
+        const nativeClaim = nativeClaims.at(-1);
+        assert.ok(nativeClaim);
+        const completion = completeClaimedProviderNativeSessionTurnV1(runtime, {
+          changeId: assignment.record.changeId,
+          planningGeneration: assignment.record.planningGeneration,
+          assignmentRecordDigest: assignment.record.recordDigest,
+          sessionSlotId: assignment.slot.sessionSlotId,
+          claimDigest: nativeClaim.claimDigest,
+          terminal: value.terminal,
+        });
+        nativeCompletions.push(completion);
+        return { completionDigest: completion.completionDigest };
+      },
+    },
+    assignment.binding,
+  );
+  try {
+    await assert.rejects(
+      runHostWrapperProviderThroughAgentRuntimeV1(input, {
+        platform: process.platform,
+        onProtocolReceipt(receipt) {
+          protocolReceipts.push(receipt);
+        },
+        onHostExecutionBinding(binding) {
+          hostBindings.push(binding);
+        },
+      }),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'AGENT_RUNTIME_V1_OUTPUT_INVALID',
+    );
+    assert.equal(nativeClaims.length, 1);
+    assert.equal(nativeCompletions.length, 1);
+    const completion = nativeCompletions[0]!;
+    assert.equal(completion.disposition, 'rejected');
+    assert.equal(completion.usable, false);
+    assert.equal(completion.protocolReceipt?.terminal, 'result');
+    assert.notEqual(completion.nativeSessionIdDigest, null);
+    assert.equal(completion.handleDigest, null);
+    assert.deepEqual(protocolReceipts, [completion.protocolReceipt]);
+    assert.equal(hostBindings.length, 1);
+    const hostBinding = assertAgentRuntimeHostExecutionBindingV1(
+      hostBindings[0],
+    );
+    assert.equal(
+      hostBinding.nativeSessionCompletionDigest,
+      completion.completionDigest,
+    );
+    const chain = readProviderNativeSessionChainV1(
+      runtime,
+      assignment.record.changeId,
+      assignment.record.planningGeneration,
+      assignment.record.recordDigest,
+      assignment.slot.sessionSlotId,
+      (candidate) => candidate,
+      (candidate) => candidate,
+      (candidate) => candidate,
+      (candidate) => candidate,
+      (candidate) => candidate,
+      (candidate) => candidate,
+      (candidate) => candidate,
+    );
+    assert.equal(chain.state, 'terminal-unusable');
+    assert.equal(
+      chain.turns[0]?.completion?.completionDigest,
+      completion.completionDigest,
+    );
+    const locations = providerNativeSessionStorePathsV1(runtime);
+    assert.equal(
+      fs.existsSync(
+        providerNativeSessionCompletionObjectPathV1(
+          locations,
+          completion.completionDigest,
+        ),
+      ),
+      true,
+    );
+    assert.equal(
+      fs.existsSync(
+        providerNativeSessionCompletionRefPathV1(
+          locations,
+          nativeClaims[0]!.scope.scopeKey,
+          nativeClaims[0]!.turn,
+        ),
+      ),
+      true,
+    );
+    assert.deepEqual(
+      fs.existsSync(locations.handles) ? fs.readdirSync(locations.handles) : [],
+      [],
+    );
+  } finally {
+    fixture.cleanup();
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+  }
+});
+
+test('production host-wrapper artifacts remain an exact provider lifecycle closure', async () => {
+  const repository = createFixtureRepository();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'host-wrapper-lifecycle-')),
+  );
+  const wrapper = path.join(hostDirectory, 'provider-wrapper.mjs');
+  fs.writeFileSync(wrapper, canonicalHostWrapperFixture(), { mode: 0o700 });
+  const policyContent = writeAdapterPolicy(repository);
+  const invocationId = 'invocation-host-wrapper-lifecycle';
+  const investigationId = 'investigation-host-wrapper-lifecycle';
+  const changeId = 'host-wrapper-lifecycle';
+  const locator = discoverRepository(repository);
+  const runtime = investigationRuntimePaths(
+    locator.gitCommonDirectory,
+    'workflow-engine',
+  );
+  const invocationDirectory = path.join(runtime.invocations, invocationId);
+  const manifest = {
+    schemaVersion: 1 as const,
+    kind: 'blind-survey-manifest' as const,
+    changeId,
+    repositoryId: 'fixture',
+    baseCommit: locator.head,
+    baseTree: locator.tree,
+    normalizedIntent: {
+      schemaVersion: 1 as const,
+      summary: 'Exercise the exact host-wrapper lifecycle closure.',
+      explicitPaths: [],
+      explicitSymbols: [],
+      explicitConfigKeys: [],
+      renamePairs: [],
+    },
+    architectureQuestion: 'Which exact provider artifacts bind this run?',
+    capabilityProfile: 'repository-read-only' as const,
+  };
+  const manifestDigest = sha256(canonicalJson(manifest));
+  const targetDigest = blindSurveyIntentDigest(manifest);
+  const request = createProviderInvocationRequest({
+    invocationId,
+    nonce: 'host-wrapper-lifecycle-nonce-000001',
+    purpose: 'survey',
+    providerId: 'claude',
+    roleAssignment: {
+      role: 'blind-surveyor',
+      providerId: 'claude',
+      sessionId: 'provider-session-host-wrapper-lifecycle',
+      targetDigest,
+      requiredIndependence: 'provider-independent',
+      achievedIndependence: 'provider-independent',
+    },
+    capabilityProfile: 'repository-read-only',
+    repositoryId: 'fixture',
+    baseCommit: locator.head,
+    baseTree: locator.tree,
+    targetDigest,
+    inputManifestDigest: manifestDigest,
+    authorizationNodeId: 'e'.repeat(64),
+    writeAllowedPaths: [],
+    outputSchema: BLIND_SURVEY_OUTPUT_SCHEMA,
+    evaluatorVersion: 'blind-survey-evaluator.v1',
+    policyDigest: sha256(policyContent),
+    limits: { timeoutMs: 30_000, aggregateOutputBytes: 1_048_576 },
+  });
+  storeProviderExecutionPolicySnapshot(
+    runtime,
+    request,
+    parseAiAdapterPolicyDocument(policyContent),
+  );
+  createProviderInvocation(runtime, {
+    investigationId,
+    changeId,
+    attempt: 1,
+    manifest,
+    request,
+    createdAt: '2026-08-31T00:00:00.000Z',
+  });
+  const claim = claimProviderInvocation(runtime, invocationId, {
+    workerId: 'provider-worker-host-wrapper-lifecycle',
+    leaseDurationMs: request.limits.timeoutMs,
+    now: '2026-08-31T00:00:01.000Z',
+  });
+  const acceptanceBinding = prepareProviderInvocationAcceptanceBinding(
+    runtime,
+    invocationId,
+    'schema-v4',
+  );
+  const assignment = durableHostWrapperAssignment(
+    changeId,
+    request,
+    wrapper,
+    true,
+  );
+  createOrReadExactChangeRoleAssignmentRecordV1(
+    runtime,
+    assignment.record,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+    (candidate) => candidate,
+  );
+  const profile = assignment.profile;
+  let completed = false;
+  let nativeClaim: ProviderNativeSessionClaimV1 | null = null;
+  let nativeCompletion: ProviderNativeSessionCompletionV1 | null = null;
+  const input = hostWrapperInput(
+    {
+      providerId: 'claude',
+      repositoryRoot: repository,
+      invocationDirectory,
+      request,
+      semanticOutputSchema: BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+      outputValidator: blindSurveyOutputValidator(request),
+      governedRuntimeInputs: [],
+      acceptanceBinding,
+      sourceEnvironment: {},
+    },
+    profile,
+    {
+      profile,
+      nextAction: () => 'start',
+      claim({ attemptId }) {
+        const claimed = claimProviderNativeSessionTurnV1(
+          runtime,
+          {
+            changeId: assignment.record.changeId,
+            planningGeneration: assignment.record.planningGeneration,
+            assignmentRecordDigest: assignment.record.recordDigest,
+            sessionSlotId: assignment.slot.sessionSlotId,
+            predecessorCompletionDigest: null,
+            invocationId,
+            requestDigest: request.requestDigest,
+            attemptId,
+          },
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+        );
+        assert.equal(claimed.outcome, 'claimed');
+        assert.ok(claimed.binding);
+        nativeClaim = claimed.claim;
+        return {
+          claim: claimed.claim,
+          claimDigest: claimed.claim.claimDigest,
+          predecessorCompletionDigest: null,
+          binding: claimed.binding,
+        };
+      },
+      complete(value) {
+        if (nativeClaim === null) assert.fail('native claim was not published');
+        nativeCompletion = completeClaimedProviderNativeSessionTurnV1(runtime, {
+          changeId: assignment.record.changeId,
+          planningGeneration: assignment.record.planningGeneration,
+          assignmentRecordDigest: assignment.record.recordDigest,
+          sessionSlotId: assignment.slot.sessionSlotId,
+          claimDigest: nativeClaim.claimDigest,
+          terminal: value.terminal,
+        });
+        completed = true;
+        return { completionDigest: nativeCompletion.completionDigest };
+      },
+    },
+    assignment.binding,
+  );
+  try {
+    const report = await productionAgentRuntime.runSingleShotAsync!(input, {
+      platform: process.platform,
+    });
+    assert.deepEqual(report.semanticOutput, semanticOutput(request));
+    assert.equal(
+      report.wrapperProtocolReceipt?.kind,
+      'provider-wrapper-session-protocol-receipt',
+    );
+    assert.equal(
+      report.wrapperProtocolReceipt?.kind ===
+        'provider-wrapper-session-protocol-receipt'
+        ? report.wrapperProtocolReceipt.sessionAction
+        : null,
+      'start',
+    );
+    assert.equal(completed, true);
+
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+      'leased',
+    );
+
+    const probeDirectory = path.join(
+      invocationDirectory,
+      'host-wrapper-probe-runtime',
+    );
+    const turnDirectory = path.join(
+      invocationDirectory,
+      'host-wrapper-runtime',
+    );
+    const artifacts = [
+      path.join(probeDirectory, 'request.json'),
+      path.join(probeDirectory, 'probe-result.json'),
+      path.join(turnDirectory, 'request.json'),
+      path.join(turnDirectory, 'semantic-output.json'),
+    ];
+    const originals = new Map(
+      artifacts.map((filePath) => [filePath, fs.readFileSync(filePath)]),
+    );
+    const assertUnsafe = () =>
+      assert.throws(
+        () => readProviderInvocationLifecycleProjection(runtime, invocationId),
+        (error: unknown) =>
+          error instanceof WorkflowError &&
+          error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+      );
+    const restore = (filePath: string) => {
+      fs.rmSync(filePath, { force: true });
+      fs.writeFileSync(filePath, originals.get(filePath)!, { mode: 0o600 });
+      fs.chmodSync(filePath, 0o600);
+    };
+    const replaceCanonical = (
+      filePath: string,
+      mutate: (value: Record<string, unknown>) => void,
+    ) => {
+      const value = JSON.parse(
+        originals.get(filePath)!.toString('utf8'),
+      ) as Record<string, unknown>;
+      mutate(value);
+      rewritePrivateJson(filePath, value);
+      assertUnsafe();
+      restore(filePath);
+    };
+
+    for (const directory of [probeDirectory, turnDirectory]) {
+      fs.chmodSync(directory, 0o755);
+      assertUnsafe();
+      fs.chmodSync(directory, 0o700);
+
+      const moved = path.join(
+        hostDirectory,
+        `${path.basename(directory)}.missing`,
+      );
+      fs.renameSync(directory, moved);
+      if (directory === probeDirectory) {
+        assertUnsafe();
+      } else {
+        assert.equal(
+          readProviderInvocationLifecycleProjection(runtime, invocationId)
+            .state,
+          'leased',
+        );
+      }
+      fs.renameSync(moved, directory);
+
+      const extra = path.join(directory, 'unexpected.json');
+      rewritePrivateJson(extra, { unexpected: true });
+      assertUnsafe();
+      fs.rmSync(extra);
+    }
+    const extraRoot = path.join(invocationDirectory, 'unexpected.json');
+    rewritePrivateJson(extraRoot, { unexpected: true });
+    assertUnsafe();
+    fs.rmSync(extraRoot);
+
+    for (const [index, filePath] of artifacts.entries()) {
+      fs.chmodSync(filePath, 0o644);
+      assertUnsafe();
+      fs.chmodSync(filePath, 0o600);
+
+      const moved = path.join(hostDirectory, `missing-${index}.json`);
+      fs.renameSync(filePath, moved);
+      if (filePath.endsWith('/semantic-output.json')) {
+        assert.equal(
+          readProviderInvocationLifecycleProjection(runtime, invocationId)
+            .state,
+          'leased',
+        );
+      } else {
+        assertUnsafe();
+      }
+      fs.renameSync(moved, filePath);
+
+      const target = path.join(hostDirectory, `symlink-target-${index}.json`);
+      fs.writeFileSync(target, originals.get(filePath)!);
+      fs.rmSync(filePath);
+      fs.symlinkSync(target, filePath);
+      assertUnsafe();
+      restore(filePath);
+
+      const parsed = JSON.parse(
+        originals.get(filePath)!.toString('utf8'),
+      ) as Record<string, unknown>;
+      fs.writeFileSync(filePath, `${JSON.stringify(parsed, null, 2)}\n`);
+      if (!filePath.endsWith('/request.json')) {
+        assert.equal(
+          readProviderInvocationLifecycleProjection(runtime, invocationId)
+            .state,
+          'leased',
+          'wrapper-produced JSON is bounded evidence and need not use the engine canonical encoding',
+        );
+      } else {
+        assertUnsafe();
+      }
+      restore(filePath);
+    }
+
+    replaceCanonical(artifacts[0]!, (value) => {
+      value.outputFile = path.join(hostDirectory, 'probe-result.json');
+    });
+    replaceCanonical(artifacts[0]!, (value) => {
+      value.providerFamily = 'codex';
+    });
+    {
+      const value = JSON.parse(
+        originals.get(artifacts[0]!)!.toString('utf8'),
+      ) as Record<string, unknown>;
+      value.profileDigest = '0'.repeat(64);
+      rewritePrivateJson(artifacts[0]!, value);
+      assert.equal(
+        readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+        'leased',
+        'a syntactically valid probe profile remains bounded evidence until terminal runtime evidence binds it',
+      );
+      restore(artifacts[0]!);
+    }
+    replaceCanonical(artifacts[1]!, (value) => {
+      value.authentication = 'unauthenticated';
+    });
+    replaceCanonical(artifacts[2]!, (value) => {
+      value.invocationId = 'invocation-host-wrapper-other';
+    });
+    replaceCanonical(artifacts[2]!, (value) => {
+      value.requestDigest = '0'.repeat(64);
+    });
+    replaceCanonical(artifacts[2]!, (value) => {
+      value.outputFile = path.join(hostDirectory, 'semantic-output.json');
+    });
+    replaceCanonical(artifacts[2]!, (value) => {
+      const prompt = JSON.parse(String(value.prompt)) as {
+        request: { requestDigest: string };
+      };
+      prompt.request.requestDigest = '0'.repeat(64);
+      value.prompt = canonicalJson(prompt);
+    });
+    for (const mutate of [
+      (value: Record<string, unknown>) => {
+        value.reference = 'invocation-host-wrapper-other';
+      },
+      (value: Record<string, unknown>) => {
+        value.terms = [
+          { kind: 'symbol', value: 'protectedBranches' },
+          { kind: 'symbol', value: 'protectedBranches' },
+        ];
+      },
+    ]) {
+      const value = JSON.parse(
+        originals.get(artifacts[3]!)!.toString('utf8'),
+      ) as Record<string, unknown>;
+      mutate(value);
+      rewritePrivateJson(artifacts[3]!, value);
+      assert.equal(
+        readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+        'leased',
+        'leased provider output remains bounded raw failure evidence until terminal acceptance',
+      );
+      restore(artifacts[3]!);
+    }
+
+    const movedTurn = path.join(hostDirectory, 'turn-failure-window');
+    fs.renameSync(turnDirectory, movedTurn);
+    fs.writeFileSync(
+      path.join(probeDirectory, 'probe-result.json'),
+      'provider probe failed\n',
+    );
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+      'leased',
+      'probe failure bytes remain observable before durable failure terminalization',
+    );
+    restore(path.join(probeDirectory, 'probe-result.json'));
+    fs.renameSync(movedTurn, turnDirectory);
+
+    replaceCanonical(artifacts[1]!, (value) => {
+      value.providerVersion = '界'.repeat(100);
+    });
+    replaceCanonical(artifacts[3]!, (value) => {
+      value.reference = 'x'.repeat(1_048_576);
+    });
+
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+      'leased',
+    );
+
+    const protocolReceipt = report.wrapperProtocolReceipt;
+    if (protocolReceipt?.kind !== 'provider-wrapper-session-protocol-receipt') {
+      assert.fail('host-wrapper report omitted its session protocol receipt');
+    }
+    assert.throws(
+      () =>
+        completeProviderInvocationFromRunner(runtime, invocationId, {
+          expectedRevision: claim.record.revision,
+          leaseGeneration: claim.record.leaseGeneration,
+          leaseToken: claim.leaseToken,
+          report,
+          acceptanceBinding,
+          runtimeProgress: {
+            schemaVersion: 1,
+            kind: 'agent-runtime-process-progress',
+            processState: 'exited',
+            eventCount: 1,
+            stdoutBytes: protocolReceipt.aggregateBytes,
+            stderrBytes: 0,
+            lastProcessActivityElapsedMs: report.elapsedMs,
+            lastProviderActivityElapsedMs: report.elapsedMs,
+          },
+          now: '2026-08-31T00:00:02.000Z',
+          simulateCrashAfterProviderStateWriteBeforeContinuationAuthority: true,
+        }),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'PROVIDER_CONTINUATION_AUTHORITY_SIMULATED_CRASH',
+    );
+    const statePath = path.join(invocationDirectory, 'state.json');
+    const publishedNativeClaim =
+      nativeClaim as unknown as ProviderNativeSessionClaimV1;
+    const publishedNativeCompletion =
+      nativeCompletion as unknown as ProviderNativeSessionCompletionV1;
+    assert.ok(publishedNativeClaim);
+    assert.ok(publishedNativeCompletion);
+    const nativePaths = providerNativeSessionStorePathsV1(runtime);
+    const continuationAuthorityPath =
+      providerNativeSessionContinuationAuthorityObjectPathV1(
+        nativePaths,
+        publishedNativeCompletion.completionDigest,
+      );
+    assert.equal(fs.existsSync(continuationAuthorityPath), false);
+    assert.equal(
+      readProviderNativeSessionChainV1(
+        runtime,
+        assignment.record.changeId,
+        assignment.record.planningGeneration,
+        assignment.record.recordDigest,
+        assignment.slot.sessionSlotId,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+      ).state,
+      'continuation-pending',
+    );
+    const refusedResume = {
+      changeId: assignment.record.changeId,
+      planningGeneration: assignment.record.planningGeneration,
+      assignmentRecordDigest: assignment.record.recordDigest,
+      sessionSlotId: assignment.slot.sessionSlotId,
+      predecessorCompletionDigest: publishedNativeCompletion.completionDigest,
+      invocationId: 'invocation-host-wrapper-lifecycle-refused-resume',
+      requestDigest: 'c'.repeat(64),
+      attemptId: 'attempt-host-wrapper-lifecycle-refused-resume',
+    };
+    const stateBeforeRefusedResume = fs.readFileSync(statePath);
+    assert.throws(
+      () =>
+        claimProviderNativeSessionTurnV1(
+          runtime,
+          refusedResume,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+          (candidate) => candidate,
+        ),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'PROVIDER_NATIVE_SESSION_CONTINUATION_NOT_AUTHORIZED',
+    );
+    assert.deepEqual(fs.readFileSync(statePath), stateBeforeRefusedResume);
+    assert.throws(
+      () => readProviderInvocation(runtime, invocationId),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'PROVIDER_INVOCATION_STORE_UNSAFE',
+    );
+    assert.throws(
+      () => readProviderInvocationLifecycleProjection(runtime, invocationId),
+      (error: unknown) =>
+        error instanceof WorkflowError &&
+        error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+    );
+    const recovered = recoverProviderInvocationCompletion(
+      runtime,
+      invocationId,
+      { expectedRevision: claim.record.revision },
+    );
+    assert.equal(recovered.repaired, true);
+    assert.equal(recovered.record.state, 'succeeded');
+    const firstContinuationBytes = fs.readFileSync(
+      continuationAuthorityPath,
+      'utf8',
+    );
+    const publishInput = {
+      changeId: assignment.record.changeId,
+      planningGeneration: assignment.record.planningGeneration,
+      assignmentRecordDigest: assignment.record.recordDigest,
+      sessionSlotId: assignment.slot.sessionSlotId,
+      completionDigest: publishedNativeCompletion.completionDigest,
+    };
+    const firstReplay = publishProviderNativeSessionContinuationAuthorityV1(
+      runtime,
+      publishInput,
+    );
+    const secondReplay = publishProviderNativeSessionContinuationAuthorityV1(
+      runtime,
+      publishInput,
+    );
+    assert.deepEqual(secondReplay, firstReplay);
+    assert.equal(
+      fs.readFileSync(continuationAuthorityPath, 'utf8'),
+      firstContinuationBytes,
+    );
+    const terminalState = JSON.parse(
+      fs.readFileSync(statePath, 'utf8'),
+    ) as Record<string, unknown>;
+    const currentExecution = readExecutionJobState(
+      runtime,
+      acceptanceBinding.executionJobId,
+    );
+    assert.ok(currentExecution);
+    assert.notEqual(
+      sha256(canonicalJson(currentExecution)),
+      acceptanceBinding.executionStateDigest,
+      'terminal acceptance mutates the live Job after immutable admission',
+    );
+    const admissionAuthorityPath = providerExecutionAdmissionAuthorityPath(
+      runtime,
+      acceptanceBinding,
+    );
+    const admissionAuthorityBytes = fs.readFileSync(
+      admissionAuthorityPath,
+      'utf8',
+    );
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+      'succeeded',
+      'terminal host-wrapper output is bound to its exact profile, executable, session action, and receipt',
+    );
+    const terminalStateBytes = fs.readFileSync(statePath, 'utf8');
+    const assertPrimaryUnsafe = () =>
+      assert.throws(
+        () => readProviderInvocation(runtime, invocationId),
+        (error: unknown) =>
+          error instanceof WorkflowError &&
+          error.code === 'PROVIDER_INVOCATION_STORE_UNSAFE',
+      );
+    const assertPrimaryRejected = () =>
+      assert.throws(
+        () => readProviderInvocation(runtime, invocationId),
+        (error: unknown) => error instanceof WorkflowError,
+      );
+    const assertAuthorityUnsafe = () => {
+      assertUnsafe();
+      assertPrimaryUnsafe();
+      assert.equal(fs.readFileSync(statePath, 'utf8'), terminalStateBytes);
+    };
+    const missingAdmissionAuthorityPath = `${admissionAuthorityPath}.missing`;
+    fs.renameSync(admissionAuthorityPath, missingAdmissionAuthorityPath);
+    assertAuthorityUnsafe();
+    fs.renameSync(missingAdmissionAuthorityPath, admissionAuthorityPath);
+
+    fs.writeFileSync(
+      admissionAuthorityPath,
+      admissionAuthorityBytes.trimEnd(),
+      { mode: 0o600 },
+    );
+    assertAuthorityUnsafe();
+    fs.writeFileSync(admissionAuthorityPath, admissionAuthorityBytes, {
+      mode: 0o600,
+    });
+
+    assert.equal(publishedNativeCompletion.usable, true);
+    assert.ok(publishedNativeCompletion.handleDigest);
+    const assignmentPaths = changeRoleAssignmentStorePathsV1(runtime);
+    const durableAuthorityFiles = [
+      changeRoleAssignmentRefPathV1(
+        assignmentPaths,
+        assignment.record.changeId,
+        assignment.record.planningGeneration,
+      ),
+      changeRoleAssignmentObjectPathV1(
+        assignmentPaths,
+        assignment.record.recordDigest,
+      ),
+      providerNativeSessionClaimRefPathV1(
+        nativePaths,
+        publishedNativeClaim.scope.scopeKey,
+        publishedNativeClaim.turn,
+      ),
+      providerNativeSessionClaimObjectPathV1(
+        nativePaths,
+        publishedNativeClaim.claimDigest,
+      ),
+      providerNativeSessionCompletionRefPathV1(
+        nativePaths,
+        publishedNativeClaim.scope.scopeKey,
+        publishedNativeClaim.turn,
+      ),
+      providerNativeSessionCompletionObjectPathV1(
+        nativePaths,
+        publishedNativeCompletion.completionDigest,
+      ),
+      providerNativeSessionHandleObjectPathV1(
+        nativePaths,
+        publishedNativeCompletion.handleDigest!,
+      ),
+    ];
+    for (const [index, authorityPath] of durableAuthorityFiles.entries()) {
+      const moved = path.join(
+        hostDirectory,
+        `durable-authority-${index}.missing`,
+      );
+      fs.renameSync(authorityPath, moved);
+      assertAuthorityUnsafe();
+      fs.renameSync(moved, authorityPath);
+    }
+
+    const assignmentObjectPath = durableAuthorityFiles[1]!;
+    const assignmentObjectBytes = fs.readFileSync(assignmentObjectPath, 'utf8');
+    const tamperedAssignmentObject = JSON.parse(
+      assignmentObjectBytes,
+    ) as Record<string, unknown>;
+    (tamperedAssignmentObject.host as Record<string, unknown>).sourceDigest =
+      '0'.repeat(64);
+    rewritePrivateJson(assignmentObjectPath, tamperedAssignmentObject);
+    assertAuthorityUnsafe();
+    fs.writeFileSync(assignmentObjectPath, assignmentObjectBytes, {
+      mode: 0o600,
+    });
+
+    const handlePath = durableAuthorityFiles[6]!;
+    const handleBytes = fs.readFileSync(handlePath, 'utf8');
+    const tamperedHandle = JSON.parse(handleBytes) as Record<string, unknown>;
+    tamperedHandle.nativeSessionId = 'native-host-wrapper-forged';
+    rewritePrivateJson(handlePath, tamperedHandle);
+    assertAuthorityUnsafe();
+    fs.writeFileSync(handlePath, handleBytes, { mode: 0o600 });
+
+    const assignmentRefPath = durableAuthorityFiles[0]!;
+    const assignmentRefBytes = fs.readFileSync(assignmentRefPath, 'utf8');
+    const forgedAssignmentRef = JSON.parse(assignmentRefBytes) as Record<
+      string,
+      unknown
+    >;
+    forgedAssignmentRef.recordDigest = 'f'.repeat(64);
+    rewritePrivateJson(assignmentRefPath, forgedAssignmentRef);
+    assertAuthorityUnsafe();
+    fs.writeFileSync(assignmentRefPath, assignmentRefBytes, { mode: 0o600 });
+
+    const completionRefPath = durableAuthorityFiles[4]!;
+    const completionRefBytes = fs.readFileSync(completionRefPath, 'utf8');
+    const forgedCompletionRef = JSON.parse(completionRefBytes) as Record<
+      string,
+      unknown
+    >;
+    forgedCompletionRef.completionDigest = 'e'.repeat(64);
+    rewritePrivateJson(completionRefPath, forgedCompletionRef);
+    assertAuthorityUnsafe();
+    fs.writeFileSync(completionRefPath, completionRefBytes, { mode: 0o600 });
+
+    {
+      const movedProbeResult = path.join(
+        hostDirectory,
+        'terminal-probe-result.missing',
+      );
+      fs.renameSync(artifacts[1]!, movedProbeResult);
+      assertUnsafe();
+      fs.renameSync(movedProbeResult, artifacts[1]!);
+    }
+
+    replaceCanonical(artifacts[0]!, (value) => {
+      value.profileDigest = '0'.repeat(64);
+    });
+
+    for (const directory of [probeDirectory, turnDirectory]) {
+      const moved = path.join(
+        hostDirectory,
+        `${path.basename(directory)}.terminal-missing`,
+      );
+      fs.renameSync(directory, moved);
+      assertUnsafe();
+      fs.renameSync(moved, directory);
+    }
+
+    const replaceTerminalState = (
+      mutate: (value: Record<string, unknown>) => void,
+      requirePrimaryRejection = false,
+    ) => {
+      const value = structuredClone(terminalState) as unknown as Record<
+        string,
+        unknown
+      >;
+      mutate(value);
+      rewritePrivateJson(statePath, value);
+      const mutatedStateBytes = fs.readFileSync(statePath, 'utf8');
+      assertUnsafe();
+      if (requirePrimaryRejection) assertPrimaryRejected();
+      assert.equal(
+        fs.readFileSync(statePath, 'utf8'),
+        mutatedStateBytes,
+        'reader rejection must not rewrite poisoned provider state',
+      );
+      rewritePrivateJson(statePath, terminalState);
+    };
+    replaceTerminalState((value) => {
+      delete value.runtimeReceipt;
+    }, true);
+    replaceTerminalState((value) => {
+      const runtimeReceipt = value.runtimeReceipt as Record<string, unknown>;
+      const legacyProtocolBody = {
+        schemaVersion: 1,
+        kind: 'provider-wrapper-protocol-receipt',
+        protocol: 'harness-jsonl-v1',
+        invocationId,
+        requestDigest: request.requestDigest,
+        attemptId: acceptanceBinding.executionAttemptId,
+        frameCount: 1,
+        aggregateBytes: 1,
+        lastSequence: 1,
+        progressFrameCount: 0,
+        terminal: 'result',
+        outputSlot: 'primary',
+        errorCode: null,
+        cancellation: {
+          requested: false,
+          acknowledged: false,
+          forced: false,
+        },
+      };
+      runtimeReceipt.schemaVersion = 3;
+      delete runtimeReceipt.acceptanceBinding;
+      delete runtimeReceipt.failureCode;
+      delete runtimeReceipt.hostExecutionBinding;
+      delete runtimeReceipt.terminalDisposition;
+      runtimeReceipt.protocolReceipt = {
+        ...legacyProtocolBody,
+        receiptDigest: sha256(canonicalJson(legacyProtocolBody)),
+      };
+      const receiptBody = { ...runtimeReceipt };
+      delete receiptBody.receiptDigest;
+      runtimeReceipt.receiptDigest = sha256(canonicalJson(receiptBody));
+    }, true);
+    {
+      const forgedState = structuredClone(terminalState) as unknown as Record<
+        string,
+        unknown
+      >;
+      forgedState.state = 'failed';
+      forgedState.result = null;
+      forgedState.failure = {
+        kind: 'retryable',
+        code: 'FORGED_PRE_NATIVE_PROTOCOL',
+        message: 'Forged pre-native protocol receipt.',
+      };
+      const forgedProtocolBody = {
+        schemaVersion: 1,
+        kind: 'provider-wrapper-protocol-receipt',
+        protocol: 'harness-jsonl-v1',
+        invocationId,
+        requestDigest: request.requestDigest,
+        attemptId: acceptanceBinding.executionAttemptId,
+        frameCount: 1,
+        aggregateBytes: 1,
+        lastSequence: 1,
+        progressFrameCount: 0,
+        terminal: 'error',
+        outputSlot: null,
+        errorCode: 'FORGED_PROTOCOL',
+        cancellation: {
+          requested: false,
+          acknowledged: false,
+          forced: false,
+        },
+      };
+      const assignmentAdmittedBody = {
+        schemaVersion: 1,
+        kind: 'agent-runtime-host-execution-binding.v1',
+        phase: 'assignment-admitted',
+        assignmentBinding: assignment.binding,
+        assignmentBindingDigest: assignment.binding.bindingDigest,
+        probe: null,
+        nativeSessionClaim: null,
+        nativeSessionCompletionDigest: null,
+      };
+      const runtimeReceipt = forgedState.runtimeReceipt as Record<
+        string,
+        unknown
+      >;
+      runtimeReceipt.terminalState = 'failed';
+      runtimeReceipt.terminalDisposition = 'failed-before-result';
+      runtimeReceipt.failureCode = 'FORGED_PRE_NATIVE_PROTOCOL';
+      runtimeReceipt.protocolReceipt = {
+        ...forgedProtocolBody,
+        receiptDigest: sha256(canonicalJson(forgedProtocolBody)),
+      };
+      runtimeReceipt.hostExecutionBinding = {
+        ...assignmentAdmittedBody,
+        bindingDigest: sha256(
+          `workflow.agent-runtime-host-execution-binding.v1\n${canonicalJson(
+            assignmentAdmittedBody,
+          )}`,
+        ),
+      };
+      const receiptDigestBody = { ...runtimeReceipt };
+      delete receiptDigestBody.receiptDigest;
+      runtimeReceipt.receiptDigest = sha256(canonicalJson(receiptDigestBody));
+      rewritePrivateJson(statePath, forgedState);
+      const forgedStateBytes = fs.readFileSync(statePath, 'utf8');
+      assertUnsafe();
+      assertPrimaryUnsafe();
+      assert.equal(fs.readFileSync(statePath, 'utf8'), forgedStateBytes);
+      rewritePrivateJson(statePath, terminalState);
+    }
+    replaceTerminalState((value) => {
+      value.state = 'failed';
+      value.result = null;
+      value.failure = {
+        kind: 'retryable',
+        code: 'FORGED_REJECTED_AFTER_RESULT',
+        message: 'Forged post-result rejection with a continuation marker.',
+      };
+      const runtimeReceipt = value.runtimeReceipt as Record<string, unknown>;
+      runtimeReceipt.terminalState = 'failed';
+      runtimeReceipt.terminalDisposition = 'rejected-after-result';
+      runtimeReceipt.failureCode = 'FORGED_REJECTED_AFTER_RESULT';
+      const receiptBody = { ...runtimeReceipt };
+      delete receiptBody.receiptDigest;
+      runtimeReceipt.receiptDigest = sha256(canonicalJson(receiptBody));
+    }, true);
+    replaceTerminalState((value) => {
+      const observation = (
+        value.result as {
+          runtimeObservation: { residuals: string[] };
+        }
+      ).runtimeObservation;
+      observation.residuals = [];
+    });
+    replaceTerminalState((value) => {
+      const observation = (
+        value.result as {
+          runtimeObservation: {
+            executable: { sha256: string };
+          };
+        }
+      ).runtimeObservation;
+      observation.executable.sha256 = '0'.repeat(64);
+    });
+    replaceTerminalState((value) => {
+      const observation = (
+        value.result as {
+          runtimeObservation: {
+            providerDefinitionSnapshot: { profileDigest: string };
+            providerDefinitionBindingDigest: string;
+            executable: unknown;
+          };
+        }
+      ).runtimeObservation;
+      observation.providerDefinitionSnapshot.profileDigest = '0'.repeat(64);
+      observation.providerDefinitionBindingDigest = sha256(
+        canonicalJson({
+          providerDefinitionDigest: '0'.repeat(64),
+          executable: observation.executable,
+        }),
+      );
+    }, true);
+    replaceTerminalState((value) => {
+      const observation = (
+        value.result as {
+          runtimeObservation: {
+            providerDefinitionSnapshot: { profileDigest: string };
+            providerDefinitionBindingDigest: string;
+            executable: { sha256: string };
+          };
+        }
+      ).runtimeObservation;
+      observation.executable.sha256 = '0'.repeat(64);
+      observation.providerDefinitionBindingDigest = sha256(
+        canonicalJson({
+          providerDefinitionDigest:
+            observation.providerDefinitionSnapshot.profileDigest,
+          executable: observation.executable,
+        }),
+      );
+    }, true);
+
+    const turnRequest = JSON.parse(
+      originals.get(artifacts[2]!)!.toString('utf8'),
+    ) as Record<string, unknown>;
+    turnRequest.action = 'resume';
+    rewritePrivateJson(artifacts[2]!, turnRequest);
+    assertUnsafe();
+    restore(artifacts[2]!);
+
+    const resumedInvocationId = 'invocation-host-wrapper-lifecycle-resume';
+    const resumedInvestigationId =
+      'investigation-host-wrapper-lifecycle-resume';
+    const resumedRequest = createProviderInvocationRequest({
+      invocationId: resumedInvocationId,
+      nonce: 'host-wrapper-lifecycle-resume-nonce-000001',
+      purpose: request.purpose,
+      providerId: request.providerId,
+      roleAssignment: {
+        ...request.roleAssignment,
+        sessionId: 'provider-session-host-wrapper-lifecycle-resume',
+      },
+      capabilityProfile: request.capabilityProfile,
+      repositoryId: request.repositoryId,
+      baseCommit: request.baseCommit,
+      baseTree: request.baseTree,
+      targetDigest: request.targetDigest,
+      inputManifestDigest: request.inputManifestDigest,
+      authorizationNodeId: request.authorizationNodeId,
+      writeAllowedPaths: [],
+      outputSchema: request.outputSchema,
+      evaluatorVersion: request.evaluatorVersion,
+      policyDigest: request.policyDigest,
+      limits: request.limits,
+    });
+    storeProviderExecutionPolicySnapshot(
+      runtime,
+      resumedRequest,
+      parseAiAdapterPolicyDocument(policyContent),
+    );
+    createProviderInvocation(runtime, {
+      investigationId: resumedInvestigationId,
+      changeId,
+      attempt: 1,
+      manifest,
+      request: resumedRequest,
+      createdAt: '2026-08-31T00:01:00.000Z',
+    });
+    const resumedLease = claimProviderInvocation(runtime, resumedInvocationId, {
+      workerId: 'provider-worker-host-wrapper-lifecycle-resume',
+      leaseDurationMs: resumedRequest.limits.timeoutMs,
+      now: '2026-08-31T00:01:01.000Z',
+    });
+    const resumedAcceptance = prepareProviderInvocationAcceptanceBinding(
+      runtime,
+      resumedInvocationId,
+      'schema-v4',
+    );
+    let resumedNativeCompletion: ProviderNativeSessionCompletionV1 | null =
+      null;
+    const resumedInput = hostWrapperInput(
+      {
+        providerId: resumedRequest.providerId,
+        repositoryRoot: repository,
+        invocationDirectory: path.join(
+          runtime.invocations,
+          resumedInvocationId,
+        ),
+        request: resumedRequest,
+        semanticOutputSchema: BLIND_SURVEY_PROVIDER_OUTPUT_SCHEMA,
+        outputValidator: blindSurveyOutputValidator(resumedRequest),
+        governedRuntimeInputs: [],
+        acceptanceBinding: resumedAcceptance,
+        sourceEnvironment: {},
+      },
+      profile,
+      {
+        profile,
+        nextAction: () => 'resume',
+        claim({ attemptId, expectedAction }) {
+          assert.equal(expectedAction, 'resume');
+          const resumed = claimProviderNativeSessionTurnV1(
+            runtime,
+            {
+              changeId: assignment.record.changeId,
+              planningGeneration: assignment.record.planningGeneration,
+              assignmentRecordDigest: assignment.record.recordDigest,
+              sessionSlotId: assignment.slot.sessionSlotId,
+              predecessorCompletionDigest:
+                publishedNativeCompletion.completionDigest,
+              invocationId: resumedInvocationId,
+              requestDigest: resumedRequest.requestDigest,
+              attemptId,
+            },
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+          );
+          assert.equal(resumed.outcome, 'claimed');
+          assert.equal(resumed.claim.action, 'resume');
+          assert.ok(resumed.binding);
+          return {
+            claim: resumed.claim,
+            claimDigest: resumed.claim.claimDigest,
+            predecessorCompletionDigest:
+              publishedNativeCompletion.completionDigest,
+            binding: resumed.binding,
+          };
+        },
+        complete(value) {
+          const current = readProviderNativeSessionChainV1(
+            runtime,
+            assignment.record.changeId,
+            assignment.record.planningGeneration,
+            assignment.record.recordDigest,
+            assignment.slot.sessionSlotId,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+            (candidate) => candidate,
+          ).turns.at(-1)?.claim;
+          assert.ok(current);
+          resumedNativeCompletion = completeClaimedProviderNativeSessionTurnV1(
+            runtime,
+            {
+              changeId: assignment.record.changeId,
+              planningGeneration: assignment.record.planningGeneration,
+              assignmentRecordDigest: assignment.record.recordDigest,
+              sessionSlotId: assignment.slot.sessionSlotId,
+              claimDigest: current.claimDigest,
+              terminal: value.terminal,
+            },
+          );
+          return {
+            completionDigest: resumedNativeCompletion.completionDigest,
+          };
+        },
+      },
+      assignment.binding,
+    );
+    const resumedReport = await productionAgentRuntime.runSingleShotAsync!(
+      resumedInput,
+      { platform: process.platform },
+    );
+    assert.deepEqual(
+      resumedReport.semanticOutput,
+      semanticOutput(resumedRequest),
+    );
+    assert.equal(
+      resumedReport.wrapperProtocolReceipt?.kind ===
+        'provider-wrapper-session-protocol-receipt'
+        ? resumedReport.wrapperProtocolReceipt.sessionAction
+        : null,
+      'resume',
+    );
+    const publishedResumeCompletion =
+      resumedNativeCompletion as unknown as ProviderNativeSessionCompletionV1;
+    assert.ok(publishedResumeCompletion);
+    assert.equal(publishedResumeCompletion.usable, true);
+    assert.equal(
+      readProviderNativeSessionChainV1(
+        runtime,
+        assignment.record.changeId,
+        assignment.record.planningGeneration,
+        assignment.record.recordDigest,
+        assignment.slot.sessionSlotId,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+        (candidate) => candidate,
+      ).state,
+      'continuation-pending',
+    );
+    assert.equal(resumedLease.record.state, 'leased');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
   }
 });
 
@@ -1692,7 +3317,12 @@ for (const fixtureMode of ['error', 'cancel-ack', 'cancel-ignore'] as const) {
         createProviderRunnerForTesting(host).runAsync(input, {
           platform: 'darwin',
           ...(fixtureMode === 'error' ? {} : { signal: controller.signal }),
-          onProtocolReceipt(receipt: ProviderWrapperProtocolReceipt) {
+          onProtocolReceipt(receipt) {
+            if (receipt.kind !== 'provider-wrapper-protocol-receipt') {
+              assert.fail(
+                'harness-jsonl-v1 emitted a session protocol receipt',
+              );
+            }
             observed.push(receipt);
             if (fixtureMode === 'error') {
               throw new Error('receipt observer must be non-authoritative');
@@ -3234,13 +4864,20 @@ function createRunnerFixture(
 }
 
 function hostWrapperProfile(wrapperPath: string, resumable: boolean) {
+  const profile = hostWrapperConfiguration(wrapperPath, resumable)
+    .providers[0]!;
+  assert.equal(profile.trustTier, 'host-wrapper');
+  return profile as HostWrapperProviderProfileSnapshot;
+}
+
+function hostWrapperConfiguration(wrapperPath: string, resumable: boolean) {
   const capabilities = resumable
     ? '"fresh-session", "resumable-session", "plan-review", "survey", "task-diff-review", "task-implementation"'
     : '"fresh-session", "plan-review", "survey", "task-diff-review", "task-implementation"';
   const resumeArgs = resumable
     ? `["${wrapperPath}", "host-resume", "{native_session_id}", "{request_file}"]`
     : '[]';
-  const profile = parseAgentProviderConfigToml(
+  return parseAgentProviderConfigToml(
     `schema_version = 2
 global_ranking = ["host-claude"]
 
@@ -3264,9 +4901,235 @@ builder = ["host-claude"]
 reviewer = ["host-claude"]
 `,
     { platform: process.platform },
-  ).providers[0]!;
-  assert.equal(profile.trustTier, 'host-wrapper');
-  return profile as HostWrapperProviderProfileSnapshot;
+  );
+}
+
+function durableHostWrapperAssignment(
+  changeId: string,
+  request: ProviderInvocationRequest,
+  wrapperPath: string,
+  resumable: boolean,
+) {
+  const configuration = hostWrapperConfiguration(wrapperPath, resumable);
+  const profile = configuration
+    .providers[0] as HostWrapperProviderProfileSnapshot;
+  const central = createCentralRoleProviderDefault({
+    schemaVersion: 1,
+    kind: 'central-role-provider-default',
+    providerGroups: [
+      {
+        roles: ['author', 'builder', 'reviewer'],
+        sessionGroups: [['author', 'builder', 'reviewer']],
+        providerRule: {
+          kind: 'ranked-fallback',
+          preferredLogicalProviderId: 'claude',
+        },
+      },
+    ],
+    globalProviderRanking: ['claude'],
+  });
+  const caller = {
+    logicalProviderId: 'claude',
+    profileId: profile.id,
+    engineSessionId: 'assignment-caller-host-wrapper-lifecycle',
+    adoptableRoles: [] as const,
+  };
+  const dataAuthorization = {
+    policyDigest: request.policyDigest,
+    inputManifestDigest: request.inputManifestDigest,
+    relevantTargetDigest: request.targetDigest,
+    profiles: [
+      {
+        profileId: profile.id,
+        allowed: true,
+        reason: 'AUTHORIZED',
+      },
+    ],
+  };
+  const sessionCapabilities = [
+    {
+      profileId: profile.id,
+      canStartFresh: true,
+      canResume:
+        resumable && profile.capabilities.includes('resumable-session'),
+    },
+  ];
+  const providerRegistry = {
+    schemaVersion: 1 as const,
+    policyDigest: sha256('host-wrapper-provider-registry-policy'),
+    providers: [
+      {
+        logicalProviderId: 'claude',
+        providerFamily: 'claude',
+        enabled: true,
+        definitionDigest: profile.profileDigest,
+      },
+    ],
+  };
+  const changeOverrideBody: AgentRolePlanBodyV2 = {
+    schemaVersion: 2,
+    changeId,
+    baseCentralConfigurationDigest: central.configurationDigest,
+    roleLanes: [],
+    pairwiseRequirements: [],
+    customWrapperPolicy: 'allowed',
+    grantReferences: [],
+  };
+  const changeOverridePlan = {
+    ...changeOverrideBody,
+    planDigest: agentRolePlanV2Digest(changeOverrideBody),
+  };
+  const protectedContext = createChangeRoleAssignmentProtectedContextV1({
+    classification: 'ordinary',
+    pathRoleSourceDigest: sha256('host-wrapper-path-role-source'),
+    policySourceDigest: sha256('host-wrapper-protected-policy-source'),
+    inputManifestDigest: request.inputManifestDigest,
+    relevantTargetDigest: request.targetDigest,
+  });
+  const providerRegistryDigest = sha256(canonicalJson(providerRegistry));
+  const resolved = resolveChangeRoleAssignmentV1({
+    changeId,
+    planningGeneration: request.inputManifestDigest,
+    providerRegistryDigest,
+    centralDefault: central,
+    changeOverride: changeOverridePlan,
+    providerConfiguration: configuration,
+    caller,
+    dataAuthorization,
+    sessionCapabilities,
+    protectedContext,
+  });
+  if (resolved.outcome === 'unsatisfied') {
+    assert.fail(`${resolved.code}: ${canonicalJson(resolved.diagnostics)}`);
+  }
+  const centralSource = renderCentralRoleProviderDefault(central);
+  const overrideSource = renderAgentRolePlanV2(changeOverridePlan);
+  const record = createChangeRoleAssignmentRecordV1({
+    central: createCentralRoleProviderDefaultSnapshotV1({
+      pinnedCommit: request.baseCommit,
+      blobObjectId: gitBlobObjectId(centralSource),
+      configuration: central,
+    }),
+    host: {
+      sourceDigest: sha256('host-wrapper-provider-configuration-source'),
+      configuration,
+    },
+    changeOverride: createAgentRolePlanV2Snapshot({
+      pinnedCommit: request.baseCommit,
+      blobObjectId: gitBlobObjectId(overrideSource),
+      plan: changeOverridePlan,
+    }),
+    caller,
+    dataAuthorization,
+    sessionCapabilities,
+    providerRegistry,
+    resolution: resolved.resolution,
+  });
+  const binding = projectAgentRuntimeAssignmentBindingV1(record, {
+    purpose: request.purpose,
+    providerId: request.providerId,
+    inputManifestDigest: request.inputManifestDigest,
+    targetDigest: request.targetDigest,
+  });
+  const slot = record.sessionSlots.find((candidate) =>
+    candidate.roles.includes('author'),
+  );
+  assert.ok(slot);
+  return { binding, profile, record, slot };
+}
+
+function gitBlobObjectId(source: string): string {
+  return crypto
+    .createHash('sha1')
+    .update(`blob ${Buffer.byteLength(source)}\0`)
+    .update(source)
+    .digest('hex');
+}
+
+function canonicalHostWrapperFixture(
+  terminal: 'result' | 'error' | 'cancelled' = 'result',
+  exitCode = terminal === 'result' || terminal === 'cancelled' ? 0 : 2,
+): string {
+  const terminalFrame =
+    terminal === 'result'
+      ? "emit({ schemaVersion: 2, type: 'result', sequence, outputSlot: 'primary' });"
+      : terminal === 'error'
+        ? "emit({ schemaVersion: 2, type: 'error', sequence, code: 'FIXTURE_REJECTED' });"
+        : "process.once('SIGTERM', () => { emit({ schemaVersion: 2, type: 'cancel-ack', sequence }); setTimeout(() => process.exit(0), 10); }); setInterval(() => {}, 1000);";
+  return `import fs from 'node:fs';
+
+const action = process.argv[2] === 'host-resume' ? 'resume' : 'start';
+const requestPath = action === 'resume' ? process.argv[4] : process.argv[3];
+const request = JSON.parse(fs.readFileSync(requestPath, 'utf8'));
+const canonicalJson = (value) => {
+  if (value === null || typeof value !== 'object') return JSON.stringify(value);
+  if (Array.isArray(value)) return '[' + value.map(canonicalJson).join(',') + ']';
+  return '{' + Object.keys(value).sort().map((key) => JSON.stringify(key) + ':' + canonicalJson(value[key])).join(',') + '}';
+};
+const write = (filePath, value) => fs.writeFileSync(filePath, canonicalJson(value) + '\\n');
+if (request.kind === 'agent-runtime-host-wrapper-probe-request.v1') {
+  write(request.outputFile, {
+    authentication: 'authenticated',
+    kind: 'agent-runtime-host-wrapper-probe-result.v1',
+    providerVersion: 'canonical-host-wrapper-v1',
+    schemaVersion: 1,
+  });
+  process.exit(0);
+}
+write(request.outputFile, {
+  reference: request.invocationId,
+  terms: [{ kind: 'symbol', value: 'protectedBranches' }],
+});
+let sequence = 1;
+const emit = (frame) => process.stdout.write(JSON.stringify(frame) + '\\n');
+emit({ schemaVersion: 2, type: 'hello', sequence: sequence++, protocol: 'harness-jsonl-v2' });
+emit({ schemaVersion: 2, type: 'session', sequence: sequence++, action, nativeSessionId: 'native-host-wrapper-lifecycle' });
+${terminalFrame}
+process.exitCode = ${exitCode};
+`;
+}
+
+function hostWrapperStartController(
+  input: ProviderRunInput,
+  profile: ReturnType<typeof hostWrapperProfile>,
+  terminals: unknown[],
+): Omit<
+  AgentRuntimeNativeSessionTurnControllerV1,
+  'assignmentBinding' | 'invocationBinding'
+> {
+  return {
+    profile,
+    nextAction: () => 'start',
+    claim({ attemptId, expectedAction }) {
+      assert.equal(expectedAction, 'start');
+      const binding = {
+        invocationId: input.request.invocationId,
+        requestDigest: input.request.requestDigest,
+        attemptId,
+        sessionControl: {
+          action: 'start' as const,
+          nativeSessionIdentityMode: 'provider-observed' as const,
+          expectedNativeSessionId: null,
+        },
+      };
+      const claim = fakeNativeSessionClaim(
+        hostWrapperAssignmentBinding(input, profile),
+        profile,
+        binding,
+        null,
+      );
+      return {
+        claim,
+        claimDigest: claim.claimDigest,
+        predecessorCompletionDigest: null,
+        binding,
+      };
+    },
+    complete(value) {
+      terminals.push(value.terminal);
+      return { completionDigest: '2'.repeat(64) };
+    },
+  };
 }
 
 function hostWrapperInput(
@@ -3276,24 +5139,10 @@ function hostWrapperInput(
     AgentRuntimeNativeSessionTurnControllerV1,
     'assignmentBinding' | 'invocationBinding'
   >,
+  exactAssignmentBinding?: AgentRuntimeAssignmentBindingV1,
 ): AgentRuntimeSingleShotInput {
-  const assignmentBinding = {
-    schemaVersion: 1 as const,
-    kind: 'agent-runtime-assignment-binding.v1' as const,
-    changeId: 'host-wrapper-fixture',
-    planningGeneration: '1'.repeat(64),
-    recordDigest: '2'.repeat(64),
-    assignmentDigest: '3'.repeat(64),
-    role: 'author' as const,
-    logicalProviderId: profile.logicalProviderId,
-    providerProfileId: profile.id,
-    providerProfileSnapshot: profile,
-    definitionDigest: profile.profileDigest,
-    dataAuthorizationPolicyDigest: input.request.policyDigest,
-    assignmentManifestDigest: input.request.inputManifestDigest,
-    inputManifestDigest: input.request.inputManifestDigest,
-    targetDigest: input.request.targetDigest,
-  };
+  const assignmentBinding =
+    exactAssignmentBinding ?? hostWrapperAssignmentBinding(input, profile);
   return {
     ...input,
     semanticOutputSchema:
@@ -3311,6 +5160,95 @@ function hostWrapperInput(
       },
     },
     acceptanceBinding: input.acceptanceBinding!,
+  };
+}
+
+function hostWrapperAssignmentBinding(
+  input: ProviderRunInput,
+  profile: ReturnType<typeof hostWrapperProfile>,
+): AgentRuntimeAssignmentBindingV1 {
+  return createAgentRuntimeAssignmentBindingV1({
+    schemaVersion: 1 as const,
+    kind: 'agent-runtime-assignment-binding.v1' as const,
+    changeId: 'host-wrapper-fixture',
+    planningGeneration: '1'.repeat(64),
+    recordDigest: '2'.repeat(64),
+    assignmentDigest: '3'.repeat(64),
+    role: 'author' as const,
+    logicalProviderId: profile.logicalProviderId,
+    providerProfileId: profile.id,
+    providerProfileSnapshot: profile,
+    definitionDigest: profile.profileDigest,
+    dataAuthorizationPolicyDigest: input.request.policyDigest,
+    assignmentManifestDigest: input.request.inputManifestDigest,
+    inputManifestDigest: input.request.inputManifestDigest,
+    targetDigest: input.request.targetDigest,
+  });
+}
+
+function fakeNativeSessionClaim(
+  assignment: AgentRuntimeAssignmentBindingV1,
+  profile: HostWrapperProviderProfileSnapshot,
+  binding: ProviderWrapperSessionProtocolBinding,
+  predecessorCompletionDigest: string | null,
+): ProviderNativeSessionClaimV1 {
+  const scopeBody = {
+    schemaVersion: 1 as const,
+    kind: 'provider-native-session-scope.v1' as const,
+    changeId: assignment.changeId,
+    planningGeneration: assignment.planningGeneration,
+    assignmentRecordDigest: assignment.recordDigest,
+    resolutionDigest: '4'.repeat(64),
+    sessionSlotId: `role-assignment-session-${'5'.repeat(64)}`,
+    logicalProviderId: assignment.logicalProviderId,
+    providerDefinitionDigest: assignment.definitionDigest,
+    profileId: assignment.providerProfileId,
+    profileDigest: profile.profileDigest,
+    protocol: 'harness-jsonl-v2' as const,
+    providerConfigurationDigest: '6'.repeat(64),
+    providerRegistryDigest: '7'.repeat(64),
+    dataAuthorizationDecisionDigest: '8'.repeat(64),
+    sessionCapabilitySnapshotDigest: '9'.repeat(64),
+    canResume:
+      profile.capabilities.includes('resumable-session') &&
+      profile.resumeArgs.length > 0,
+  };
+  const scope = {
+    ...scopeBody,
+    scopeKey: crypto
+      .createHash('sha256')
+      .update(
+        `workflow.provider-native-session-scope.v1\n${canonicalJson(scopeBody)}`,
+      )
+      .digest('hex'),
+  };
+  const action = binding.sessionControl.action;
+  const claimBody = {
+    schemaVersion: 1 as const,
+    kind: 'provider-native-session-claim.v1' as const,
+    scope,
+    turn: action === 'start' ? 1 : 2,
+    action,
+    predecessorCompletionDigest:
+      action === 'start' ? null : predecessorCompletionDigest,
+    expectedNativeSessionIdDigest:
+      binding.sessionControl.nativeSessionIdentityMode === 'engine-supplied'
+        ? agentRuntimeNativeSessionIdDigestV1(
+            binding.sessionControl.expectedNativeSessionId,
+          )
+        : null,
+    invocationId: binding.invocationId,
+    requestDigest: binding.requestDigest,
+    attemptId: binding.attemptId,
+  };
+  return {
+    ...claimBody,
+    claimDigest: crypto
+      .createHash('sha256')
+      .update(
+        `workflow.provider-native-session-claim.v1\n${canonicalJson(claimBody)}`,
+      )
+      .digest('hex'),
   };
 }
 
@@ -3476,9 +5414,9 @@ function bindRunnerInputToInvestigationOwner(
     manifest,
     ownerWorkflowId,
   );
-  const acceptanceBinding: ProviderInvocationAcceptanceBinding = {
-    schemaVersion: 1,
-    kind: 'provider-invocation-acceptance-binding',
+  const acceptancePayload = {
+    schemaVersion: 1 as const,
+    kind: 'provider-invocation-acceptance-binding' as const,
     invocationId: input.request.invocationId,
     requestDigest: input.request.requestDigest,
     ownerWorkflowId,
@@ -3489,6 +5427,7 @@ function bindRunnerInputToInvestigationOwner(
     executionAttemptId: `attempt-provider-concurrency-${input.request.invocationId}`,
     executionRevision: 1,
     executionStateDigest: '0'.repeat(64),
+    receiptRequirement: 'schema-v4' as const,
     repair: {
       invocationId: input.request.invocationId,
       lineagePath: path.join(input.invocationDirectory, 'repair-lineage.json'),
@@ -3500,7 +5439,10 @@ function bindRunnerInputToInvestigationOwner(
       evidencePath: null,
       evidenceDigest: null,
     },
-    bindingDigest: '0'.repeat(64),
+  };
+  const acceptanceBinding: ProviderInvocationAcceptanceBinding = {
+    ...acceptancePayload,
+    bindingDigest: sha256(canonicalJson(acceptancePayload)),
   };
   return { ...input, acceptanceBinding };
 }

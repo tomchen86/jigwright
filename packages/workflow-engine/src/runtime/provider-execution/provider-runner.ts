@@ -78,6 +78,7 @@ import {
   type ProviderWrapperProtocolExecution,
   type ProviderWrapperProtocolReceipt,
 } from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
+import { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
   assertAgentProviderProfileSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
@@ -180,16 +181,7 @@ const PROBE_OUTPUT_BYTES = 64 * 1024;
  * executable in place cannot be detected here, and unreachable-object writes and
  * global filesystem immutability are outside the observed governed projection.
  */
-export const PROVIDER_RUNNER_RESIDUALS = Object.freeze([
-  'SAME_USER_PROCESS_NOT_CONFINED',
-  'SUBPROCESS_TREE_NOT_CONFINED',
-  'TRANSIENT_WRITE_RESTORE_NOT_DETECTABLE',
-  'TRANSIENT_EXECUTABLE_SUBSTITUTION_NOT_DETECTABLE',
-  'UNREACHABLE_OBJECT_WRITES_NOT_OBSERVABLE',
-  'GLOBAL_FILESYSTEM_IMMUTABILITY_NOT_PROVEN',
-  'PROVIDER_INPUT_CONSUMPTION_NOT_OBSERVABLE',
-  'STALE_CONCURRENCY_SLOT_PID_REUSE_NOT_DETECTABLE',
-]);
+export { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 
 /**
  * The bounded preflight surface of a reviewed provider. Every field is
@@ -746,22 +738,7 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
               paths,
               input.acceptanceBinding,
             )),
-        {
-          id: 'engine-durable-manifest',
-          path: path.join(expectedDirectory, 'manifest.json'),
-        },
-        {
-          id: 'engine-durable-request',
-          path: path.join(expectedDirectory, 'request.json'),
-        },
-        {
-          id: 'engine-durable-execution-policy',
-          path: providerExecutionPolicySnapshotPath(paths, invocationId),
-        },
-        {
-          id: 'engine-durable-state',
-          path: path.join(expectedDirectory, 'state.json'),
-        },
+        ...providerInvocationDurableGovernedRuntimeInputs(paths, invocationId),
         {
           id: 'engine-runtime-tree',
           path: runtimeDirectory,
@@ -999,7 +976,7 @@ function selectedBuiltInProfile(
   return profile;
 }
 
-function providerAcceptanceGovernedRuntimeInputs(
+export function providerAcceptanceGovernedRuntimeInputs(
   paths: InvestigationRuntimePaths,
   binding: ProviderInvocationAcceptanceBinding,
 ): AgentRuntimeGovernedInput[] {
@@ -1024,6 +1001,31 @@ function providerAcceptanceGovernedRuntimeInputs(
     });
   }
   return inputs;
+}
+
+export function providerInvocationDurableGovernedRuntimeInputs(
+  paths: InvestigationRuntimePaths,
+  invocationId: string,
+): AgentRuntimeGovernedInput[] {
+  const invocationDirectory = path.join(paths.invocations, invocationId);
+  return [
+    {
+      id: 'engine-durable-manifest',
+      path: path.join(invocationDirectory, 'manifest.json'),
+    },
+    {
+      id: 'engine-durable-request',
+      path: path.join(invocationDirectory, 'request.json'),
+    },
+    {
+      id: 'engine-durable-execution-policy',
+      path: providerExecutionPolicySnapshotPath(paths, invocationId),
+    },
+    {
+      id: 'engine-durable-state',
+      path: path.join(invocationDirectory, 'state.json'),
+    },
+  ];
 }
 
 function createWrapperProtocolExecution(

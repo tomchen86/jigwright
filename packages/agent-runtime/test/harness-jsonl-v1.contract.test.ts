@@ -8,6 +8,7 @@ import {
   assertProviderWrapperProtocolReceipt,
   createProviderWrapperProtocolParser,
   renderProviderWrapperFrame,
+  type ProviderWrapperFrame,
   type ProviderWrapperProtocolBinding,
 } from '../src/index.ts';
 
@@ -16,6 +17,13 @@ const binding: ProviderWrapperProtocolBinding = Object.freeze({
   requestDigest: 'a'.repeat(64),
   attemptId: 'attempt-agent-runtime-package',
 });
+
+function pushFrames(
+  parser: ReturnType<typeof createProviderWrapperProtocolParser>,
+  frames: readonly ProviderWrapperFrame[],
+): void {
+  parser.push(Buffer.from(frames.map(renderProviderWrapperFrame).join('')));
+}
 
 test('public harness-jsonl-v1 contract is versioned and engine-bound', () => {
   assert.equal(
@@ -87,6 +95,126 @@ test('public protocol parser fails closed on unknown and post-terminal frames', 
     const parser = createProviderWrapperProtocolParser({ binding });
     assert.throws(
       () => parser.push(Buffer.from(stream)),
+      ProviderWrapperProtocolError,
+    );
+  }
+});
+
+test('public protocol parser preserves a natural terminal across cancellation races', () => {
+  const hello: ProviderWrapperFrame = {
+    schemaVersion: 1,
+    type: 'hello',
+    sequence: 1,
+    protocol: 'harness-jsonl-v1',
+  };
+
+  {
+    const parser = createProviderWrapperProtocolParser({ binding });
+    pushFrames(parser, [
+      hello,
+      {
+        schemaVersion: 1,
+        type: 'result',
+        sequence: 2,
+        outputSlot: 'primary',
+      },
+    ]);
+    assert.equal(parser.requestCancellation(), false);
+    const receipt = parser.finish({ cancellationForced: false });
+    assert.equal(receipt.terminal, 'result');
+    assert.deepEqual(receipt.cancellation, {
+      requested: false,
+      acknowledged: false,
+      forced: false,
+    });
+    assert.equal(parser.requestCancellation(), false);
+  }
+
+  {
+    const parser = createProviderWrapperProtocolParser({ binding });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 1,
+        type: 'result',
+        sequence: 2,
+        outputSlot: 'primary',
+      },
+    ]);
+    const receipt = parser.finish({ cancellationForced: false });
+    assert.equal(receipt.terminal, 'result');
+    assert.deepEqual(receipt.cancellation, {
+      requested: true,
+      acknowledged: false,
+      forced: false,
+    });
+  }
+
+  {
+    const parser = createProviderWrapperProtocolParser({ binding });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 1,
+        type: 'error',
+        sequence: 2,
+        code: 'PROVIDER_FAILED',
+      },
+    ]);
+    const receipt = parser.finish({ cancellationForced: false });
+    assert.equal(receipt.terminal, 'error');
+    assert.equal(receipt.errorCode, 'PROVIDER_FAILED');
+    assert.deepEqual(receipt.cancellation, {
+      requested: true,
+      acknowledged: false,
+      forced: false,
+    });
+  }
+});
+
+test('public protocol parser rejects a natural terminal after acknowledged or forced cancellation', () => {
+  const hello: ProviderWrapperFrame = {
+    schemaVersion: 1,
+    type: 'hello',
+    sequence: 1,
+    protocol: 'harness-jsonl-v1',
+  };
+
+  {
+    const parser = createProviderWrapperProtocolParser({ binding });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [{ schemaVersion: 1, type: 'cancel-ack', sequence: 2 }]);
+    assert.throws(
+      () =>
+        pushFrames(parser, [
+          {
+            schemaVersion: 1,
+            type: 'result',
+            sequence: 3,
+            outputSlot: 'primary',
+          },
+        ]),
+      ProviderWrapperProtocolError,
+    );
+  }
+
+  {
+    const parser = createProviderWrapperProtocolParser({ binding });
+    pushFrames(parser, [hello]);
+    assert.equal(parser.requestCancellation(), true);
+    pushFrames(parser, [
+      {
+        schemaVersion: 1,
+        type: 'result',
+        sequence: 2,
+        outputSlot: 'primary',
+      },
+    ]);
+    assert.throws(
+      () => parser.finish({ cancellationForced: true }),
       ProviderWrapperProtocolError,
     );
   }

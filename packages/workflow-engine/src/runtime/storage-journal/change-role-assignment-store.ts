@@ -6,6 +6,11 @@ import { TextDecoder } from 'node:util';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
+  assertChangeRoleAssignmentRefV1 as assertDurableAssignmentRef,
+  createChangeRoleAssignmentRefV1,
+  type ChangeRoleAssignmentRefV1,
+} from '../../modules/provider-orchestration/agent-runtime-durable-authority.ts';
+import {
   assertAgentRolePlanV2Snapshot,
   type AgentRolePlanV2SnapshotVerifierPort,
 } from '../../modules/provider-orchestration/agent-role-plan.ts';
@@ -32,6 +37,11 @@ import {
   withPrivateRuntimeLock,
 } from './investigation-session-store.ts';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
+import {
+  changeRoleAssignmentObjectPathV1 as assignmentObjectPath,
+  changeRoleAssignmentRefPathV1 as assignmentRefPath,
+  changeRoleAssignmentStorePathsV1 as storePaths,
+} from '../session-workspace/provider-runtime-authority-paths.ts';
 
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;
@@ -44,14 +54,6 @@ const NO_FOLLOW_CREATE =
   fs.constants.O_CREAT |
   fs.constants.O_EXCL |
   fs.constants.O_NOFOLLOW;
-
-type ChangeRoleAssignmentRefV1 = Readonly<{
-  schemaVersion: 1;
-  kind: 'change-role-assignment-ref.v1';
-  changeId: string;
-  planningGeneration: string;
-  recordDigest: string;
-}>;
 
 export type HistoricalChangeRoleAssignmentObservationV1 = Readonly<{
   schemaVersion: 1;
@@ -333,13 +335,7 @@ export function createOrReadExactChangeRoleAssignmentRecordV1(
         record,
         MAX_OBJECT_BYTES,
       );
-      const ref = Object.freeze({
-        schemaVersion: 1 as const,
-        kind: 'change-role-assignment-ref.v1' as const,
-        changeId: record.changeId,
-        planningGeneration: record.planningGeneration,
-        recordDigest: record.recordDigest,
-      });
+      const ref = createChangeRoleAssignmentRefV1(record, storeInvalid);
       publishCanonicalCreateOnly(
         paths,
         assignmentRefPath(
@@ -539,33 +535,6 @@ function assertVerifiedProtectedContext(
   }
 }
 
-function storePaths(paths: InvestigationRuntimePaths) {
-  const root = path.join(paths.root, 'change-role-assignments', 'v1');
-  return Object.freeze({
-    objects: path.join(root, 'objects', 'sha256'),
-    refs: path.join(root, 'refs'),
-  });
-}
-
-function assignmentObjectPath(
-  locations: ReturnType<typeof storePaths>,
-  requestedDigest: string,
-): string {
-  return path.join(locations.objects, `${assertDigest(requestedDigest)}.json`);
-}
-
-function assignmentRefPath(
-  locations: ReturnType<typeof storePaths>,
-  requestedChangeId: string,
-  requestedPlanningGeneration: string,
-): string {
-  return path.join(
-    locations.refs,
-    assertChangeId(requestedChangeId),
-    `${assertDigest(requestedPlanningGeneration)}.json`,
-  );
-}
-
 function readAssignmentDirectorySnapshot(
   paths: InvestigationRuntimePaths,
   directory: string,
@@ -683,31 +652,12 @@ function assertAssignmentRef(
   changeId: string,
   planningGeneration: string,
 ): ChangeRoleAssignmentRefV1 {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'changeId',
-      'planningGeneration',
-      'recordDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'change-role-assignment-ref.v1' ||
-    value.changeId !== changeId ||
-    value.planningGeneration !== planningGeneration ||
-    typeof value.recordDigest !== 'string' ||
-    !DIGEST.test(value.recordDigest)
-  ) {
-    throw storeInvalid();
-  }
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'change-role-assignment-ref.v1',
+  return assertDurableAssignmentRef(
+    value,
     changeId,
     planningGeneration,
-    recordDigest: value.recordDigest,
-  });
+    storeInvalid,
+  );
 }
 
 function publishCanonicalCreateOnly(

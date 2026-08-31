@@ -99,3 +99,61 @@ for (const fixture of [
     });
   });
 }
+
+for (const fixture of [
+  {
+    mode: 'result-before-abort',
+    abortOn: 'result',
+    terminal: 'result',
+    requested: false,
+    exitCode: 0,
+  },
+  {
+    mode: 'cancel-result',
+    abortOn: 'hello',
+    terminal: 'result',
+    requested: true,
+    exitCode: 0,
+  },
+  {
+    mode: 'cancel-error',
+    abortOn: 'hello',
+    terminal: 'error',
+    requested: true,
+    exitCode: 2,
+  },
+] as const) {
+  test(`public bounded process preserves ${fixture.mode} as its natural terminal`, async () => {
+    const controller = new AbortController();
+    const outcome = await spawnBoundedProviderProcess({
+      executable: process.execPath,
+      args: [fixtureProcess, fixture.mode],
+      cwd: os.tmpdir(),
+      environment: {},
+      timeoutMs: 2_000,
+      maxOutputBytes: 8_192,
+      signal: controller.signal,
+      wrapperProtocol: {
+        protocol: 'harness-jsonl-v1',
+        binding,
+        onFrame(receipt) {
+          if (receipt.frame.type === fixture.abortOn) controller.abort();
+        },
+      },
+    });
+
+    assert.equal(outcome.terminationReason, 'exited');
+    assert.equal(outcome.exitCode, fixture.exitCode);
+    assert.equal(outcome.spawnErrorCode, null);
+    assert.equal(outcome.wrapperProtocolReceipt?.terminal, fixture.terminal);
+    assert.deepEqual(outcome.wrapperProtocolReceipt?.cancellation, {
+      requested: fixture.requested,
+      acknowledged: false,
+      forced: false,
+    });
+    assert.equal(
+      outcome.wrapperProtocolReceipt?.errorCode,
+      fixture.terminal === 'error' ? 'PROVIDER_FAILED' : null,
+    );
+  });
+}

@@ -425,6 +425,7 @@ function runAvailableProvider(input: {
   const acceptanceBinding = prepareProviderInvocationAcceptanceBinding(
     runtime,
     invocationId,
+    'synchronous-no-activity',
   );
   try {
     const report = dependencies.runProvider(

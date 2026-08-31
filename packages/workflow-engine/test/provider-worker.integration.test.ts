@@ -28,10 +28,20 @@ import { projectProviderInvocationExecution } from '../src/modules/provider-orch
 import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import {
+  createAgentRuntimeHostExecutionBindingV1,
+  createAgentRuntimeHostProbeEvidenceV1,
+  providerDefinitionExecutableBindingDigest,
+} from '../src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
+import {
   createProviderWrapperProtocolParser,
   renderProviderWrapperFrame,
   type ProviderWrapperProtocolReceipt,
 } from '../src/modules/provider-orchestration/agent-runtime-protocol.ts';
+import {
+  createProviderWrapperSessionProtocolParser,
+  renderProviderWrapperSessionFrame,
+  type ProviderWrapperSessionProtocolReceipt,
+} from '@jigwright/agent-runtime/harness-jsonl-v2';
 import {
   buildContextManifest,
   inspectDurableEpochContextStore,
@@ -43,6 +53,12 @@ import {
 } from '../src/runtime/storage-journal/execution-store.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import {
+  providerNativeSessionCompletionObjectPathV1,
+  providerNativeSessionContinuationAuthorityObjectPathV1,
+  providerNativeSessionStorePathsV1,
+} from '../src/runtime/session-workspace/provider-runtime-authority-paths.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperationAsync,
@@ -223,6 +239,29 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
             reference: invocationId,
             terms: [{ kind: 'symbol', value: 'ProviderWorker' }],
           };
+          const runtimeDirectory = path.join(
+            input.invocationDirectory,
+            'runtime',
+          );
+          fs.mkdirSync(runtimeDirectory, { mode: 0o700 });
+          for (const [name, value] of [
+            [
+              'prompt.json',
+              {
+                schemaVersion: 1,
+                kind: 'provider-worker-runtime-fixture',
+                requestDigest: request.requestDigest,
+              },
+            ],
+            ['schema.json', input.semanticOutputSchema],
+            ['semantic-output.json', semanticOutput],
+          ] as const) {
+            fs.writeFileSync(
+              path.join(runtimeDirectory, name),
+              `${canonicalJson(value)}\n`,
+              { mode: 0o600, flag: 'wx' },
+            );
+          }
           return {
             invocationId,
             providerId: request.providerId,
@@ -264,6 +303,36 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
       assert.equal(mergedRuntimeSignal.aborted, true);
       const durable = readProviderInvocation(runtime, invocationId);
       assert.equal(durable.state, 'succeeded');
+      assert.equal(
+        readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+        'succeeded',
+        'the strict lifecycle reader admits a real terminal async receipt',
+      );
+      for (const directoryName of [
+        'host-wrapper-probe-runtime',
+        'host-wrapper-runtime',
+      ]) {
+        fs.mkdirSync(
+          path.join(runtime.invocations, invocationId, directoryName),
+          { mode: 0o700 },
+        );
+      }
+      assert.throws(
+        () => readProviderInvocationLifecycleProjection(runtime, invocationId),
+        (error: unknown) =>
+          error instanceof Error &&
+          'code' in error &&
+          error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+        'a built-in success cannot adopt host-wrapper runtime directories',
+      );
+      for (const directoryName of [
+        'host-wrapper-probe-runtime',
+        'host-wrapper-runtime',
+      ]) {
+        fs.rmdirSync(
+          path.join(runtime.invocations, invocationId, directoryName),
+        );
+      }
       const acceptedBinding =
         launchBinding as ProviderInvocationAcceptanceBinding | null;
       assert.ok(acceptedBinding);
@@ -276,7 +345,7 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         sha256(canonicalJson(receiptPayload)),
       );
       assert.deepEqual(receiptPayload, {
-        schemaVersion: 1,
+        schemaVersion: 4,
         kind: 'agent-runtime-completion-receipt',
         invocationId,
         requestDigest: request.requestDigest,
@@ -288,7 +357,10 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         executionRevision: acceptedBinding.executionRevision,
         executionStateDigest: acceptedBinding.executionStateDigest,
         acceptanceBindingDigest: acceptedBinding.bindingDigest,
+        acceptanceBinding: acceptedBinding,
         terminalState: 'succeeded',
+        terminalDisposition: 'accepted',
+        failureCode: null,
         launched: true,
         progress: {
           schemaVersion: 1,
@@ -300,6 +372,8 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
           lastProcessActivityElapsedMs: 7,
           lastProviderActivityElapsedMs: 3,
         },
+        protocolReceipt: null,
+        hostExecutionBinding: null,
       });
       assert.equal(
         durable.result?.runtimeObservation?.assurance,
@@ -463,7 +537,7 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
             attemptId: input.acceptanceBinding.executionAttemptId,
           },
         });
-        const stream = Buffer.from(
+        const initialStream = Buffer.from(
           [
             {
               schemaVersion: 1 as const,
@@ -477,18 +551,24 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
               sequence: 2,
               phase: 'tool' as const,
             },
-            {
-              schemaVersion: 1 as const,
-              type: 'result' as const,
-              sequence: 3,
-              outputSlot: 'primary' as const,
-            },
           ]
             .map(renderProviderWrapperFrame)
             .join(''),
           'utf8',
         );
-        parser.push(stream);
+        parser.push(initialStream);
+        assert.equal(parser.requestCancellation(), true);
+        const terminalStream = Buffer.from(
+          renderProviderWrapperFrame({
+            schemaVersion: 1,
+            type: 'result',
+            sequence: 3,
+            outputSlot: 'primary',
+          }),
+          'utf8',
+        );
+        parser.push(terminalStream);
+        const stream = Buffer.concat([initialStream, terminalStream]);
         protocolReceipt = parser.finish({ cancellationForced: false });
         options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
         options.onActivity?.({
@@ -509,7 +589,7 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
       agentRuntime,
     });
     assert.ok(completed.completionReceipt);
-    assert.equal(completed.completionReceipt.schemaVersion, 2);
+    assert.equal(completed.completionReceipt.schemaVersion, 4);
     assert.ok('protocolReceipt' in completed.completionReceipt);
     assert.deepEqual(
       (
@@ -519,6 +599,14 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
       ).protocolReceipt,
       protocolReceipt,
     );
+    const retainedProtocolReceipt =
+      protocolReceipt as ProviderWrapperProtocolReceipt | null;
+    assert.ok(retainedProtocolReceipt);
+    assert.deepEqual(retainedProtocolReceipt.cancellation, {
+      requested: true,
+      acknowledged: false,
+      forced: false,
+    });
     const durable = readProviderInvocation(runtime, invocationId);
     assert.deepEqual(durable.runtimeReceipt, completed.completionReceipt);
 
@@ -538,7 +626,7 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
     const unknownVersion = JSON.parse(originalState) as {
       runtimeReceipt: Record<string, unknown>;
     };
-    unknownVersion.runtimeReceipt.schemaVersion = 4;
+    unknownVersion.runtimeReceipt.schemaVersion = 99;
     const unknownVersionPayload = { ...unknownVersion.runtimeReceipt };
     delete unknownVersionPayload.receiptDigest;
     unknownVersion.runtimeReceipt.receiptDigest = sha256(
@@ -585,6 +673,376 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
     assert.equal(launches, 1, 'tampered terminal replay must not relaunch');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('async built-in worker durably records semantic rejection after a validated result without native authority', async () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-built-in-result-rejected';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const runtime = investigationRuntimePaths(
+      discoverRepository(repository).gitCommonDirectory,
+      'workflow-engine',
+    );
+    const request = readProviderInvocationRequest(runtime, invocationId);
+    let launches = 0;
+    let protocolReceipt: ProviderWrapperProtocolReceipt | null = null;
+    const agentRuntime: AgentRuntimePort = {
+      runSingleShot() {
+        assert.fail('built-in rejection fixture must use the async worker');
+      },
+      async runSingleShotAsync(input, options) {
+        launches += 1;
+        assert.equal(input.nativeSessionTurn, undefined);
+        assert.equal(input.assignmentBinding, undefined);
+        const parser = createProviderWrapperProtocolParser({
+          binding: {
+            invocationId,
+            requestDigest: request.requestDigest,
+            attemptId: input.acceptanceBinding.executionAttemptId,
+          },
+        });
+        const stream = Buffer.from(
+          [
+            renderProviderWrapperFrame({
+              schemaVersion: 1,
+              type: 'hello',
+              sequence: 1,
+              protocol: 'harness-jsonl-v1',
+            }),
+            renderProviderWrapperFrame({
+              schemaVersion: 1,
+              type: 'result',
+              sequence: 2,
+              outputSlot: 'primary',
+            }),
+          ].join(''),
+          'utf8',
+        );
+        parser.push(stream);
+        protocolReceipt = parser.finish({ cancellationForced: false });
+        options.onProtocolReceipt?.(protocolReceipt);
+        options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+        options.onActivity?.({
+          type: 'stdout',
+          elapsedMs: 1,
+          bytes: stream.byteLength,
+        });
+        options.onActivity?.({ type: 'exited', elapsedMs: 2 });
+        const semanticOutput = { callerInvented: true };
+        assert.equal(input.outputValidator.validate(semanticOutput), false);
+        return {
+          ...successfulWorkerReport(request, invocationId),
+          semanticOutput,
+          semanticOutputDigest: sha256(canonicalJson(semanticOutput)),
+          elapsedMs: 2,
+          wrapperProtocolReceipt: protocolReceipt,
+        };
+      },
+    };
+
+    const failed = await runProviderWorkerAsync(repository, invocationId, {
+      agentRuntime,
+    });
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'PROVIDER_INVOCATION_RESULT_INVALID');
+    assert.equal(failed.completionReceipt?.schemaVersion, 4);
+    assert.equal(
+      failed.completionReceipt?.terminalDisposition,
+      'rejected-after-result',
+    );
+    assert.equal(failed.completionReceipt?.hostExecutionBinding, null);
+    assert.deepEqual(
+      failed.completionReceipt?.protocolReceipt,
+      protocolReceipt,
+    );
+    const durable = readProviderInvocation(runtime, invocationId);
+    assert.equal(durable.state, 'failed');
+    assert.deepEqual(durable.runtimeReceipt, failed.completionReceipt);
+
+    const replayed = await runProviderWorkerAsync(repository, invocationId, {
+      agentRuntime,
+    });
+    assert.equal(replayed.state, 'failed');
+    assert.equal(replayed.launched, false);
+    assert.deepEqual(replayed.completionReceipt, durable.runtimeReceipt);
+    assert.equal(launches, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('async provider worker seals a truthful rejected-after-result native terminal without continuation authority', async () => {
+  const fixture = createCurrentPlanReviewNativeWorkerFixture();
+  const {
+    repository,
+    agentProviderConfigPath,
+    runtime,
+    request,
+    invocationId,
+  } = fixture;
+  let launches = 0;
+  let protocolReceipt: ProviderWrapperSessionProtocolReceipt | null = null;
+  let nativeClaimDigest: string | null = null;
+  let nativeCompletionDigest: string | null = null;
+  try {
+    const agentRuntime: AgentRuntimePort = {
+      runSingleShot() {
+        assert.fail('native rejection fixture must use the async worker');
+      },
+      async runSingleShotAsync(input, options) {
+        launches += 1;
+        const controller = input.nativeSessionTurn;
+        const assignment = input.assignmentBinding;
+        assert.ok(controller);
+        assert.ok(assignment);
+        assert.deepEqual(controller.assignmentBinding, assignment);
+        assert.equal(controller.nextAction(), 'start');
+
+        const executable = executableIdentityFor(controller.profile.executable);
+        const probeDirectory = path.join(
+          input.invocationDirectory,
+          'host-wrapper-probe-runtime',
+        );
+        const turnDirectory = path.join(
+          input.invocationDirectory,
+          'host-wrapper-runtime',
+        );
+        fs.mkdirSync(probeDirectory, { mode: 0o700 });
+        fs.mkdirSync(turnDirectory, { mode: 0o700 });
+        const probeOutputPath = path.join(probeDirectory, 'probe-result.json');
+        const providerDefinitionBindingDigest =
+          providerDefinitionExecutableBindingDigest(
+            controller.profile.profileDigest,
+            executable,
+          );
+        const probeRequestBytes = writePrivateCanonicalJson(
+          path.join(probeDirectory, 'request.json'),
+          {
+            schemaVersion: 1,
+            kind: 'agent-runtime-host-wrapper-probe-request.v1',
+            invocationId,
+            requestDigest: request.requestDigest,
+            executionAttemptId: input.acceptanceBinding.executionAttemptId,
+            acceptanceBindingDigest: input.acceptanceBinding.bindingDigest,
+            assignmentBindingDigest: assignment.bindingDigest,
+            providerFamily: request.providerId,
+            profileDigest: controller.profile.profileDigest,
+            providerDefinitionBindingDigest,
+            outputFile: probeOutputPath,
+          },
+        );
+        const probeResultBytes = writePrivateCanonicalJson(probeOutputPath, {
+          schemaVersion: 1,
+          kind: 'agent-runtime-host-wrapper-probe-result.v1',
+          providerVersion: 'provider-worker-rejected-result-v1',
+          authentication: 'authenticated',
+        });
+        const governedDigest = sha256(canonicalJson([]));
+        const probeEvidence = createAgentRuntimeHostProbeEvidenceV1({
+          invocationId,
+          requestDigest: request.requestDigest,
+          executionAttemptId: input.acceptanceBinding.executionAttemptId,
+          acceptanceBindingDigest: input.acceptanceBinding.bindingDigest,
+          assignmentBindingDigest: assignment.bindingDigest,
+          providerProfileDigest: controller.profile.profileDigest,
+          executable,
+          providerDefinitionBindingDigest,
+          providerVersion: 'provider-worker-rejected-result-v1',
+          probeRequestFileDigest: sha256Buffer(probeRequestBytes),
+          probeResultFileDigest: sha256Buffer(probeResultBytes),
+          governedBeforeDigest: governedDigest,
+          governedAfterDigest: governedDigest,
+        });
+        options.onHostProbeEvidence?.(probeEvidence);
+
+        const claimed = controller.claim({
+          attemptId: input.acceptanceBinding.executionAttemptId,
+          expectedAction: 'start',
+        });
+        nativeClaimDigest = claimed.claimDigest;
+        const invalidSemanticOutput = {
+          schemaVersion: 2,
+          verdict: 'caller-invented-verdict',
+        };
+        writePrivateCanonicalJson(path.join(turnDirectory, 'request.json'), {
+          schemaVersion: 1,
+          kind: 'agent-runtime-host-wrapper-turn-request.v1',
+          invocationId,
+          requestDigest: request.requestDigest,
+          action: 'start',
+          prompt: canonicalJson({
+            schemaVersion: 1,
+            kind: 'agent-runtime-host-wrapper-request.v1',
+            request,
+          }),
+          outputFile: path.join(turnDirectory, 'semantic-output.json'),
+        });
+        writePrivateCanonicalJson(
+          path.join(turnDirectory, 'semantic-output.json'),
+          invalidSemanticOutput,
+        );
+        assert.equal(
+          input.outputValidator.validate(invalidSemanticOutput),
+          false,
+        );
+
+        const parser = createProviderWrapperSessionProtocolParser({
+          binding: claimed.binding,
+        });
+        const stream = Buffer.from(
+          [
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'hello',
+              sequence: 1,
+              protocol: 'harness-jsonl-v2',
+            }),
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'session',
+              sequence: 2,
+              action: 'start',
+              nativeSessionId: 'native-provider-worker-rejected-result',
+            }),
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'result',
+              sequence: 3,
+              outputSlot: 'primary',
+            }),
+          ].join(''),
+          'utf8',
+        );
+        parser.push(stream);
+        const outcome = parser.finish({ cancellationForced: false });
+        protocolReceipt = outcome.receipt;
+        const completed = controller.complete({
+          claimDigest: claimed.claimDigest,
+          terminal: {
+            kind: 'protocol-outcome',
+            outcome,
+            privateIdentityObservation: null,
+          },
+        });
+        nativeCompletionDigest = completed.completionDigest;
+        const hostExecutionBinding = createAgentRuntimeHostExecutionBindingV1({
+          assignmentBinding: assignment,
+          probe: probeEvidence,
+          nativeSessionClaim: claimed.claim,
+          nativeSessionCompletionDigest: completed.completionDigest,
+        });
+        options.onProtocolReceipt?.(outcome.receipt);
+        options.onHostExecutionBinding?.(hostExecutionBinding);
+        options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+        options.onActivity?.({
+          type: 'stdout',
+          elapsedMs: 1,
+          bytes: stream.byteLength,
+        });
+        options.onActivity?.({ type: 'exited', elapsedMs: 2 });
+        throw workflowError(
+          'AGENT_RUNTIME_V1_OUTPUT_INVALID',
+          'The exact current semantic-output validator rejected the native result.',
+          ExitCode.verification,
+        );
+      },
+    };
+
+    const failed = await runProviderWorkerAsync(repository, invocationId, {
+      agentProviderConfigPath,
+      platform: process.platform,
+      agentRuntime,
+    });
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'AGENT_RUNTIME_V1_OUTPUT_INVALID');
+    assert.equal(failed.completionReceipt?.schemaVersion, 4);
+    assert.equal(failed.completionReceipt?.terminalState, 'failed');
+    assert.equal(
+      failed.completionReceipt?.terminalDisposition,
+      'rejected-after-result',
+    );
+    assert.equal(
+      failed.completionReceipt?.failureCode,
+      'AGENT_RUNTIME_V1_OUTPUT_INVALID',
+    );
+    assert.deepEqual(
+      failed.completionReceipt?.protocolReceipt,
+      protocolReceipt,
+    );
+    assert.equal(
+      failed.completionReceipt?.hostExecutionBinding?.phase,
+      'native-terminal',
+    );
+    assert.equal(
+      failed.completionReceipt?.hostExecutionBinding
+        ?.nativeSessionCompletionDigest,
+      nativeCompletionDigest,
+    );
+    const durable = readProviderInvocation(runtime, invocationId);
+    assert.equal(durable.state, 'failed');
+    assert.deepEqual(durable.runtimeReceipt, failed.completionReceipt);
+    assert.equal(
+      readProviderInvocationLifecycleProjection(runtime, invocationId).state,
+      'failed',
+    );
+
+    assert.ok(nativeClaimDigest);
+    assert.ok(nativeCompletionDigest);
+    const nativePaths = providerNativeSessionStorePathsV1(runtime);
+    const nativeCompletion = JSON.parse(
+      fs.readFileSync(
+        providerNativeSessionCompletionObjectPathV1(
+          nativePaths,
+          nativeCompletionDigest,
+        ),
+        'utf8',
+      ),
+    ) as {
+      claimDigest: string;
+      disposition: string;
+      usable: boolean;
+      protocolReceipt: ProviderWrapperSessionProtocolReceipt | null;
+      handleDigest: string | null;
+    };
+    assert.equal(nativeCompletion.claimDigest, nativeClaimDigest);
+    assert.equal(nativeCompletion.disposition, 'rejected');
+    assert.equal(nativeCompletion.usable, false);
+    assert.deepEqual(nativeCompletion.protocolReceipt, protocolReceipt);
+    assert.equal(nativeCompletion.handleDigest, null);
+    assert.deepEqual(
+      fs.existsSync(nativePaths.handles)
+        ? fs.readdirSync(nativePaths.handles)
+        : [],
+      [],
+    );
+    assert.equal(
+      fs.existsSync(
+        providerNativeSessionContinuationAuthorityObjectPathV1(
+          nativePaths,
+          nativeCompletionDigest,
+        ),
+      ),
+      false,
+    );
+
+    const replayed = await runProviderWorkerAsync(repository, invocationId, {
+      agentProviderConfigPath,
+      platform: process.platform,
+      agentRuntime,
+    });
+    assert.equal(replayed.state, 'failed');
+    assert.equal(replayed.launched, false);
+    assert.deepEqual(replayed.completionReceipt, durable.runtimeReceipt);
+    assert.equal(launches, 1);
+  } finally {
+    fixture.cleanup();
   }
 });
 
@@ -924,6 +1382,9 @@ for (const fixture of [
               protocol: 'harness-jsonl-v1',
             }),
           ];
+          const initialStream = Buffer.from(frames.join(''), 'utf8');
+          parser.push(initialStream);
+          assert.equal(parser.requestCancellation(), true);
           if (fixture.mode === 'error') {
             frames.push(
               renderProviderWrapperFrame({
@@ -934,10 +1395,7 @@ for (const fixture of [
               }),
             );
           }
-          const initialStream = Buffer.from(frames.join(''), 'utf8');
-          parser.push(initialStream);
           if (fixture.mode !== 'error') {
-            parser.requestCancellation();
             if (fixture.acknowledged) {
               const acknowledgement = Buffer.from(
                 renderProviderWrapperFrame({
@@ -950,6 +1408,8 @@ for (const fixture of [
               parser.push(acknowledgement);
               frames.push(acknowledgement.toString('utf8'));
             }
+          } else {
+            parser.push(Buffer.from(frames[1]!, 'utf8'));
           }
           const stream = Buffer.from(frames.join(''), 'utf8');
           protocolReceipt = parser.finish({
@@ -985,8 +1445,13 @@ for (const fixture of [
       });
       assert.equal(failed.state, 'failed');
       assert.equal(failed.failure?.code, fixture.failureCode);
-      assert.equal(failed.completionReceipt?.schemaVersion, 3);
+      assert.equal(failed.completionReceipt?.schemaVersion, 4);
       assert.equal(failed.completionReceipt?.terminalState, 'failed');
+      assert.equal(
+        failed.completionReceipt?.terminalDisposition,
+        'failed-before-result',
+      );
+      assert.equal(failed.completionReceipt?.failureCode, fixture.failureCode);
       assert.equal(
         failed.completionReceipt?.progress.processState,
         fixture.processState,
@@ -1010,7 +1475,7 @@ for (const fixture of [
           }
         ).protocolReceipt.cancellation,
         {
-          requested: fixture.mode !== 'error',
+          requested: true,
           acknowledged: fixture.acknowledged,
           forced: fixture.forced,
         },
@@ -1037,7 +1502,7 @@ for (const fixture of [
         ) as {
           runtimeReceipt: Record<string, unknown>;
         };
-        unknownVersion.runtimeReceipt.schemaVersion = 4;
+        unknownVersion.runtimeReceipt.schemaVersion = 99;
         const receiptPayload = { ...unknownVersion.runtimeReceipt };
         delete receiptPayload.receiptDigest;
         unknownVersion.runtimeReceipt.receiptDigest = sha256(
@@ -1059,6 +1524,105 @@ for (const fixture of [
     }
   });
 }
+
+test('async provider worker rejects fabricated host-wrapper evidence without exact host authority', async () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-host-wrapper-error-receipt';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const request = readProviderInvocationRequest(runtime, invocationId);
+    const statePath = path.join(
+      runtime.invocations,
+      invocationId,
+      'state.json',
+    );
+    let claimedState: string | null = null;
+    let protocolReceipt: ProviderWrapperSessionProtocolReceipt | null = null;
+    const agentRuntime: AgentRuntimePort = {
+      runSingleShot() {
+        assert.fail('host-wrapper receipt fixture must use the async runtime');
+      },
+      async runSingleShotAsync(input, options) {
+        claimedState = fs.readFileSync(statePath, 'utf8');
+        const binding = {
+          invocationId,
+          requestDigest: request.requestDigest,
+          attemptId: input.acceptanceBinding.executionAttemptId,
+          sessionControl: {
+            action: 'start' as const,
+            nativeSessionIdentityMode: 'provider-observed' as const,
+            expectedNativeSessionId: null,
+          },
+        };
+        const parser = createProviderWrapperSessionProtocolParser({ binding });
+        const stream = Buffer.from(
+          [
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'hello',
+              sequence: 1,
+              protocol: 'harness-jsonl-v2',
+            }),
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'session',
+              sequence: 2,
+              action: 'start',
+              nativeSessionId: 'native-worker-host-error',
+            }),
+            renderProviderWrapperSessionFrame({
+              schemaVersion: 2,
+              type: 'error',
+              sequence: 3,
+              code: 'FIXTURE_REJECTED',
+            }),
+          ].join(''),
+          'utf8',
+        );
+        parser.push(stream);
+        protocolReceipt = parser.finish({ cancellationForced: false }).receipt;
+        writeHostWrapperFailureArtifacts(input.invocationDirectory, request);
+        options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+        options.onActivity?.({
+          type: 'stdout',
+          elapsedMs: 1,
+          bytes: stream.length,
+        });
+        options.onActivity?.({ type: 'exited', elapsedMs: 2 });
+        options.onProtocolReceipt?.(protocolReceipt);
+        throw workflowError(
+          'AGENT_RUNTIME_V1_HOST_WRAPPER_FAILED',
+          'Fixture host-wrapper reported a bound terminal error.',
+          ExitCode.verification,
+        );
+      },
+    };
+
+    await assert.rejects(
+      () => runProviderWorkerAsync(repository, invocationId, { agentRuntime }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
+    );
+    assert.ok(protocolReceipt);
+    assert.ok(claimedState);
+    assert.equal(fs.readFileSync(statePath, 'utf8'), claimedState);
+    assert.equal(readProviderInvocation(runtime, invocationId).state, 'leased');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('provider worker records launch and admission failure durably', () => {
   const repository = createFixtureRepository();
@@ -1377,6 +1941,7 @@ test('completion guard rejects rollover after runner return and before acceptanc
     const acceptanceBinding = prepareProviderInvocationAcceptanceBinding(
       runtime,
       invocationId,
+      'synchronous-no-activity',
     );
     const nextContent = canonicalJson({
       kind: 'rolled-between-runner-and-completion',
@@ -2503,6 +3068,286 @@ async function beginExactProviderCancellationGrant(
   };
 }
 
+function createCurrentPlanReviewNativeWorkerFixture() {
+  const repository = createFixtureRepository();
+  const hostDirectory = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'provider-worker-native-reject-')),
+  );
+  const wrapperPath = path.join(hostDirectory, 'provider-wrapper-fixture.mjs');
+  const agentProviderConfigPath = path.join(
+    hostDirectory,
+    'agent-providers.toml',
+  );
+  const changeId = 'demo-change';
+  const invocationId = 'invocation-plan-review-native-rejected-result';
+  try {
+    fs.writeFileSync(wrapperPath, '#!/usr/bin/env node\n', { mode: 0o700 });
+    fs.writeFileSync(
+      agentProviderConfigPath,
+      hostWrapperAgentProviderConfigToml(wrapperPath),
+    );
+    const central = createCentralRoleProviderDefault({
+      schemaVersion: 1,
+      kind: 'central-role-provider-default',
+      providerGroups: [
+        {
+          roles: ['author', 'builder', 'reviewer'],
+          sessionGroups: [['author'], ['builder'], ['reviewer']],
+          providerRule: { kind: 'adaptive-author' },
+        },
+      ],
+      globalProviderRanking: ['claude', 'codex'],
+    });
+    fs.writeFileSync(
+      path.join(repository, 'workflow/role-provider-default.json'),
+      renderCentralRoleProviderDefault(central),
+    );
+    const overrideBody: AgentRolePlanBodyV2 = {
+      schemaVersion: 2,
+      changeId,
+      baseCentralConfigurationDigest: central.configurationDigest,
+      roleLanes: [],
+      pairwiseRequirements: [
+        { pair: 'author-builder', required: 'session-independent' },
+        { pair: 'author-reviewer', required: 'session-independent' },
+        { pair: 'builder-reviewer', required: 'session-independent' },
+      ],
+      customWrapperPolicy: 'allowed',
+      grantReferences: [],
+    };
+    const overridePath = agentRolePlanV2Path(changeId);
+    fs.mkdirSync(path.dirname(path.join(repository, overridePath)), {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      path.join(repository, overridePath),
+      renderAgentRolePlanV2({
+        ...overrideBody,
+        planDigest: agentRolePlanV2Digest(overrideBody),
+      }),
+    );
+    git(repository, [
+      'add',
+      'workflow/role-provider-default.json',
+      overridePath,
+    ]);
+    git(repository, ['commit', '-m', 'Select current provider roles']);
+    writeReadyV3ExemptChange(repository, changeId);
+    const contract = loadChangeContract(repository, changeId);
+    assert.ok(contract.investigation);
+    const investigationManifest = contract.investigation.manifest;
+    const planning = deriveInvestigationFirstPlanningSubject(
+      repository,
+      contract,
+    );
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const assignment = {
+      role: 'plan-reviewer' as const,
+      providerId: 'claude' as const,
+      sessionId: 'provider-session-plan-review-native-rejected-result',
+      targetDigest: planning.subject.subjectDigest,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'provider-independent' as const,
+    };
+    const proposalPath = path.join(
+      repository,
+      'openspec/changes',
+      changeId,
+      'proposal.md',
+    );
+    const materialization = writeCurrentPlanningMaterialization(
+      runtime,
+      investigationManifest,
+      planning.subject.investigationBaseline,
+      { 'proposal.md': sha256(fs.readFileSync(proposalPath, 'utf8')) },
+    );
+    const targetSnapshotNode = createPlanReviewTargetSnapshotNode({
+      changeId,
+      changePrefix: `openspec/changes/${changeId}`,
+      subject: planning.subject,
+      materializationNode: materialization,
+      artifacts: new Map([['proposal.md', fs.readFileSync(proposalPath)]]),
+    });
+    writeEvidenceNode(runtime, targetSnapshotNode);
+    const authorization = createEvidenceNode({
+      type: 'plan-review-authorization',
+      nodeSchema: 'workflow.plan-review-authorization.v3',
+      evaluator: 'workflow-propose.v1',
+      policyDigest: PROPOSE_POLICY_DIGEST,
+      exactInputDigests: {
+        assignment: sha256(canonicalJson(assignment)),
+        generation: planning.subject.planningGenerationId,
+        grantAuthorization: sha256(canonicalJson(null)),
+        roleTopology: sha256(canonicalJson(null)),
+        subject: planning.subject.subjectDigest,
+        targetSnapshot: targetSnapshotNode.nodeId,
+      },
+      semanticParentResultDigests: {
+        materialization: materialization.resultDigest,
+        targetSnapshot: targetSnapshotNode.resultDigest,
+      },
+      provenanceParentNodeIds: {
+        materialization: materialization.nodeId,
+        targetSnapshot: targetSnapshotNode.nodeId,
+      },
+      outputSchema: 'workflow.plan-review-authorization-output.v3',
+      output: {
+        subject: planning.subject,
+        assignment,
+        author: {
+          providerId: 'codex',
+          sessionId: 'fixture-native-rejection-author-session',
+          principalId: 'fixture-native-rejection-author',
+          identityAssurance: 'adapter-assigned',
+          engineSpawned: false,
+        },
+        grantAuthorization: null,
+        roleTopology: null,
+      },
+      runtimeMetadata: {},
+    });
+    writeEvidenceNode(runtime, authorization);
+    const manifest: PlanReviewManifest = {
+      schemaVersion: 1,
+      kind: 'plan-review-manifest',
+      changeId,
+      repositoryId: 'fixture',
+      baseCommit: locator.head,
+      baseTree: locator.tree,
+      subject: planning.subject,
+      capabilityProfile: 'repository-read-only',
+      planningTarget: readPlanReviewTargetSnapshotNode(targetSnapshotNode),
+    };
+    const request = createProviderInvocationRequest({
+      invocationId,
+      nonce: 'plan-review-native-rejected-result-nonce-000001',
+      purpose: 'plan-review',
+      providerId: 'claude',
+      roleAssignment: assignment,
+      capabilityProfile: 'repository-read-only',
+      repositoryId: 'fixture',
+      baseCommit: locator.head,
+      baseTree: locator.tree,
+      targetDigest: planning.subject.subjectDigest,
+      inputManifestDigest: providerInvocationManifestDigest(manifest),
+      authorizationNodeId: authorization.nodeId,
+      writeAllowedPaths: [],
+      outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
+      evaluatorVersion: 'plan-review.v2',
+      policyDigest: loadAiAdapterPolicy(repository).digest,
+      limits: {
+        timeoutMs: 300_000,
+        aggregateOutputBytes: 1_048_576,
+      },
+    });
+    storeProviderExecutionPolicySnapshot(
+      runtime,
+      request,
+      loadAiAdapterPolicy(repository),
+    );
+    createProviderInvocation(runtime, {
+      investigationId: investigationManifest.investigationId,
+      changeId,
+      attempt: 1,
+      manifest,
+      request,
+      planReviewSnapshotFiles: [
+        {
+          snapshotFile: '0000.artifact',
+          content: fs.readFileSync(proposalPath),
+        },
+      ],
+    });
+    return {
+      repository,
+      hostDirectory,
+      agentProviderConfigPath,
+      runtime,
+      request,
+      invocationId,
+      cleanup() {
+        fs.rmSync(repository, { recursive: true, force: true });
+        fs.rmSync(hostDirectory, { recursive: true, force: true });
+      },
+    };
+  } catch (error) {
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(hostDirectory, { recursive: true, force: true });
+    throw error;
+  }
+}
+
+function hostWrapperAgentProviderConfigToml(wrapperPath: string): string {
+  const executable = JSON.stringify(wrapperPath);
+  return `schema_version = 2
+global_ranking = ["host-claude", "host-codex"]
+
+[[providers]]
+id = "host-claude"
+logical_provider_id = "claude"
+family = "claude"
+capabilities = ["fresh-session", "plan-review", "survey", "task-diff-review", "task-implementation"]
+trust_tier = "host-wrapper"
+enabled = true
+protocol = "harness-jsonl-v2"
+executable = ${executable}
+start_args = ["host-start", "{request_file}"]
+resume_args = []
+prompt_input = "stdin"
+cancel = "process-group"
+
+[[providers]]
+id = "host-codex"
+logical_provider_id = "codex"
+family = "codex"
+capabilities = ["fresh-session", "plan-review", "survey", "task-diff-review", "task-implementation"]
+trust_tier = "host-wrapper"
+enabled = true
+protocol = "harness-jsonl-v2"
+executable = ${executable}
+start_args = ["host-start", "{request_file}"]
+resume_args = []
+prompt_input = "stdin"
+cancel = "process-group"
+
+[provider_preferences]
+author = ["host-codex", "host-claude"]
+builder = ["host-claude", "host-codex"]
+reviewer = ["host-claude", "host-codex"]
+`;
+}
+
+function executableIdentityFor(candidatePath: string) {
+  const realPath = fs.realpathSync(candidatePath);
+  const stats = fs.statSync(realPath, { bigint: true });
+  return {
+    candidatePath,
+    realPath,
+    device: stats.dev.toString(),
+    inode: stats.ino.toString(),
+    mode: Number(stats.mode),
+    uid: Number(stats.uid),
+    gid: Number(stats.gid),
+    size: Number(stats.size),
+    mtimeNs: stats.mtimeNs.toString(),
+    sha256: sha256Buffer(fs.readFileSync(realPath)),
+  };
+}
+
+function writePrivateCanonicalJson(filePath: string, value: unknown): Buffer {
+  const bytes = Buffer.from(`${canonicalJson(value)}\n`, 'utf8');
+  fs.writeFileSync(filePath, bytes, { mode: 0o600, flag: 'wx' });
+  return bytes;
+}
+
+function sha256Buffer(value: Buffer): string {
+  return crypto.createHash('sha256').update(value).digest('hex');
+}
+
 function intent() {
   return {
     schemaVersion: 1 as const,
@@ -2590,6 +3435,64 @@ function lowerAdapterLimits(repository: string): void {
   policy.limits.timeoutMs = 12_345;
   policy.limits.aggregateOutputBytes = 54_321;
   fs.writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
+}
+
+function writeHostWrapperFailureArtifacts(
+  invocationDirectory: string,
+  request: ProviderInvocationRequest,
+): void {
+  const probeDirectory = path.join(
+    invocationDirectory,
+    'host-wrapper-probe-runtime',
+  );
+  const turnDirectory = path.join(invocationDirectory, 'host-wrapper-runtime');
+  fs.mkdirSync(probeDirectory, { mode: 0o700 });
+  fs.mkdirSync(turnDirectory, { mode: 0o700 });
+  const probeOutputPath = path.join(probeDirectory, 'probe-result.json');
+  const semanticOutputPath = path.join(turnDirectory, 'semantic-output.json');
+  for (const [filePath, value] of [
+    [
+      path.join(probeDirectory, 'request.json'),
+      {
+        schemaVersion: 1,
+        kind: 'agent-runtime-host-wrapper-probe-request.v1',
+        providerFamily: request.providerId,
+        profileDigest: 'c'.repeat(64),
+        outputFile: probeOutputPath,
+      },
+    ],
+    [
+      probeOutputPath,
+      {
+        schemaVersion: 1,
+        kind: 'agent-runtime-host-wrapper-probe-result.v1',
+        providerVersion: 'worker-host-error-fixture-v1',
+        authentication: 'authenticated',
+      },
+    ],
+    [
+      path.join(turnDirectory, 'request.json'),
+      {
+        schemaVersion: 1,
+        kind: 'agent-runtime-host-wrapper-turn-request.v1',
+        invocationId: request.invocationId,
+        requestDigest: request.requestDigest,
+        action: 'start',
+        prompt: canonicalJson({
+          schemaVersion: 1,
+          kind: 'agent-runtime-host-wrapper-request.v1',
+          request,
+        }),
+        outputFile: semanticOutputPath,
+      },
+    ],
+    [semanticOutputPath, { failure: 'fixture-terminal-error' }],
+  ] as const) {
+    fs.writeFileSync(filePath, `${canonicalJson(value)}\n`, {
+      mode: 0o600,
+      flag: 'wx',
+    });
+  }
 }
 
 function agentProviderConfigToml(): string {

@@ -14,13 +14,14 @@
     "plan-commit",
     "open-task",
     "review-diff",
+    "provider-worker",
     "finalize",
     "archive"
   ],
   "seamBacked": [
     "seeded-current-v3-repository",
     "source-authored-planning-evidence",
-    "injected-provider-runner",
+    "deterministic-host-provider-wrapper",
     "routing-blocked-focus",
     "two-worktree-third-refusal",
     "managed-intake-promotion",

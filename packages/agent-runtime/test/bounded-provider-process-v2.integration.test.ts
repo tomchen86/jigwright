@@ -243,6 +243,68 @@ test('bounded process v2 cancellation retains only a digest receipt and publishe
   );
 });
 
+for (const fixture of [
+  {
+    mode: 'v2-result-before-abort',
+    abortOn: 'result',
+    terminal: 'result',
+    requested: false,
+    exitCode: 0,
+  },
+  {
+    mode: 'v2-cancel-result',
+    abortOn: 'session',
+    terminal: 'result',
+    requested: true,
+    exitCode: 0,
+  },
+  {
+    mode: 'v2-cancel-error',
+    abortOn: 'session',
+    terminal: 'error',
+    requested: true,
+    exitCode: 2,
+  },
+] as const) {
+  test(`bounded process v2 preserves ${fixture.mode} as its natural terminal`, async () => {
+    const controller = new AbortController();
+    const privateIdentities: Array<{ nativeSessionId: string }> = [];
+    const outcome = await runV2(fixture.mode, observedStartBinding(), {
+      signal: controller.signal,
+      onFrame(receipt) {
+        if (receipt.frame.type === fixture.abortOn) controller.abort();
+      },
+      privateNativeSessionIdentitySink(identity) {
+        privateIdentities.push(identity);
+      },
+    });
+
+    assert.equal(outcome.terminationReason, 'exited');
+    assert.equal(outcome.exitCode, fixture.exitCode);
+    assert.equal(outcome.spawnErrorCode, null);
+    assert.equal(
+      outcome.wrapperSessionProtocolOutcome?.receipt.terminal,
+      fixture.terminal,
+    );
+    assert.deepEqual(
+      outcome.wrapperSessionProtocolOutcome?.receipt.cancellation,
+      {
+        requested: fixture.requested,
+        acknowledged: false,
+        forced: false,
+      },
+    );
+    assert.equal(
+      outcome.wrapperSessionProtocolOutcome?.receipt.errorCode,
+      fixture.terminal === 'error' ? 'PROVIDER_FAILED' : null,
+    );
+    assert.equal(
+      privateIdentities.length,
+      fixture.terminal === 'result' ? 1 : 0,
+    );
+  });
+}
+
 test('bounded process v2 retains provider errors without upgrading missing identity to success', async () => {
   const privateIdentities: Array<{ nativeSessionId: string }> = [];
   const failed = await runV2('v2-error', observedStartBinding(), {

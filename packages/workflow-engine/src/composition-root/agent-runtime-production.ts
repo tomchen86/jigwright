@@ -25,6 +25,8 @@ export const productionAgentRuntime = Object.freeze(builtInAgentRuntime);
 export type {
   AgentRuntimeAssignmentBindingV1,
   AgentRuntimeCompletionReceipt,
+  AgentRuntimeHostExecutionBindingV1,
+  AgentRuntimeHostProbeEvidenceV1,
   AgentRuntimeNativeSessionTurnControllerV1,
   AgentRuntimePort,
   AgentRuntimeProcessActivity,
@@ -34,5 +36,6 @@ export type {
   AgentRuntimeSingleShotOptions,
   AgentRuntimeSingleShotReport,
   ProviderInvocationAcceptanceBinding,
+  ProviderRuntimeProtocolReceipt,
   ProviderWrapperProtocolReceipt,
 } from '../modules/provider-orchestration/agent-runtime-port.ts';

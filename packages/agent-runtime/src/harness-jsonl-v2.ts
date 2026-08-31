@@ -298,7 +298,8 @@ export function assertProviderWrapperSessionProtocolReceipt(
       (value.outputSlot !== null ||
         value.errorCode !== null ||
         !value.cancellation.requested)) ||
-    (value.terminal !== 'cancelled' && value.cancellation.requested) ||
+    (value.terminal !== 'cancelled' &&
+      (value.cancellation.acknowledged || value.cancellation.forced)) ||
     typeof value.receiptDigest !== 'string' ||
     !DIGEST.test(value.receiptDigest)
   ) {
@@ -420,6 +421,7 @@ export function createProviderWrapperSessionProtocolParser(input: {
       if (!cancellationRequested || cancellationAcknowledged) fail();
       cancellationAcknowledged = true;
     } else {
+      if (cancellationAcknowledged) fail();
       if (frame.type === 'result' && observedNativeSessionId === null) fail();
       terminalFrame = frame;
     }
@@ -489,9 +491,15 @@ export function createProviderWrapperSessionProtocolParser(input: {
       }
       if (pending.length >= HARNESS_JSONL_V2_LIMITS.maxLineBytes) fail();
     },
-    requestCancellation(): void {
-      if (finished || terminalFrame !== null || cancellationRequested) fail();
+    requestCancellation(): boolean {
+      if (finished || terminalFrame !== null || cancellationRequested) {
+        return false;
+      }
       cancellationRequested = true;
+      return true;
+    },
+    hasNaturalTerminal(): boolean {
+      return terminalFrame !== null;
     },
     finish(completion: {
       cancellationForced: boolean;
@@ -502,14 +510,15 @@ export function createProviderWrapperSessionProtocolParser(input: {
         !helloSeen ||
         typeof completion.cancellationForced !== 'boolean' ||
         (completion.cancellationForced && !cancellationRequested) ||
-        (!cancellationRequested && terminalFrame === null)
+        (!cancellationRequested && terminalFrame === null) ||
+        (terminalFrame !== null &&
+          (cancellationAcknowledged || completion.cancellationForced))
       ) {
         fail();
       }
       finished = true;
-      const terminal = cancellationRequested
-        ? ('cancelled' as const)
-        : terminalFrame!.type;
+      const terminal =
+        terminalFrame === null ? ('cancelled' as const) : terminalFrame.type;
       const receiptPayload = {
         schemaVersion: 2 as const,
         kind: 'provider-wrapper-session-protocol-receipt' as const,

@@ -46,6 +46,11 @@ import {
   type ChangeRoleAssignmentProtectedContextVerifierPort,
 } from '../src/modules/provider-orchestration/change-role-assignment.ts';
 import {
+  assertAgentRuntimeDurableAssignmentAuthorityV1,
+  assertChangeRoleAssignmentRefV1,
+  projectAgentRuntimeAssignmentBindingV1,
+} from '../src/modules/provider-orchestration/agent-runtime-durable-authority.ts';
+import {
   changeRoleAssignmentGrantTransitionDefinitions,
   changeRoleAssignmentGrantRequirementDigestV1,
   createChangeRoleAssignmentGrantRequest,
@@ -73,6 +78,11 @@ import {
   readPinnedCentralRoleProviderDefaultSnapshot,
 } from '../src/runtime/repository-transaction/central-role-provider-default-store.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
+import {
+  changeRoleAssignmentObjectPathV1,
+  changeRoleAssignmentRefPathV1,
+  changeRoleAssignmentStorePathsV1,
+} from '../src/runtime/session-workspace/provider-runtime-authority-paths.ts';
 import { git } from './fixture.ts';
 
 const CHANGE_ID = 'durable-role-assignment';
@@ -349,17 +359,93 @@ function locations(
   paths: ReturnType<typeof investigationRuntimePaths>,
   value: ChangeRoleAssignmentRecordV1,
 ) {
-  const root = path.join(paths.root, 'change-role-assignments', 'v1');
+  const store = changeRoleAssignmentStorePathsV1(paths);
   return {
-    object: path.join(root, 'objects', 'sha256', `${value.recordDigest}.json`),
-    ref: path.join(
-      root,
-      'refs',
+    object: changeRoleAssignmentObjectPathV1(store, value.recordDigest),
+    ref: changeRoleAssignmentRefPathV1(
+      store,
       value.changeId,
-      `${value.planningGeneration}.json`,
+      value.planningGeneration,
     ),
   };
 }
+
+test('durable assignment authority reprojects the exact runtime binding from the stored record', () => {
+  const state = fixture();
+  try {
+    const expected = record(state.primaryCentralSnapshot);
+    const published = createOrReadExactChangeRoleAssignmentRecordV1(
+      state.paths,
+      expected,
+      state.verifyCentralSnapshot,
+      state.verifyChangeOverrideSnapshot,
+      state.verifyHostConfiguration,
+      state.verifyProviderRegistry,
+      state.verifyDataAuthorization,
+      state.verifySessionCapabilities,
+      state.verifyProtectedContext,
+    );
+    const placement = published.resolution.placements.find(
+      ({ role }) => role === 'builder',
+    )!;
+    const profile = published.host.configuration.providers.find(
+      ({ id }) => id === placement.profileId,
+    )!;
+    const request = {
+      purpose: 'task-implementation' as const,
+      providerId: profile.family,
+      inputManifestDigest: INPUT_MANIFEST_DIGEST,
+      targetDigest: RELEVANT_TARGET_DIGEST,
+    };
+    const binding = projectAgentRuntimeAssignmentBindingV1(published, request);
+
+    assert.deepEqual(
+      assertAgentRuntimeDurableAssignmentAuthorityV1(
+        binding,
+        published,
+        request,
+      ),
+      binding,
+    );
+    assert.equal(binding.recordDigest, published.recordDigest);
+    assert.equal(binding.role, 'builder');
+    assert.equal(binding.providerProfileId, profile.id);
+    assert.equal(
+      fs.readFileSync(locations(state.paths, published).object, 'utf8'),
+      `${canonicalJson(published)}\n`,
+    );
+    assert.deepEqual(
+      assertChangeRoleAssignmentRefV1(
+        JSON.parse(
+          fs.readFileSync(locations(state.paths, published).ref, 'utf8'),
+        ),
+        published.changeId,
+        published.planningGeneration,
+      ),
+      {
+        schemaVersion: 1,
+        kind: 'change-role-assignment-ref.v1',
+        changeId: published.changeId,
+        planningGeneration: published.planningGeneration,
+        recordDigest: published.recordDigest,
+      },
+    );
+
+    assert.throws(
+      () =>
+        assertAgentRuntimeDurableAssignmentAuthorityV1(binding, published, {
+          ...request,
+          targetDigest: 'f'.repeat(64),
+        }),
+      (error: unknown) =>
+        error instanceof Error &&
+        'code' in error &&
+        error.code === 'AGENT_RUNTIME_DURABLE_AUTHORITY_INVALID',
+    );
+  } finally {
+    state.cleanup();
+  }
+});
 
 test('completed Central Grant activates only the exact durable below-floor assignment', async () => {
   const state = fixture();

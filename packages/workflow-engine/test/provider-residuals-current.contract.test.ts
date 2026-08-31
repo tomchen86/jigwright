@@ -49,8 +49,7 @@ test('provider residual admission accepts only the exact current list', () => {
   for (const residuals of invalid) {
     assert.throws(
       () => classify(residuals),
-      (error) =>
-        isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
       JSON.stringify(residuals),
     );
   }
@@ -89,6 +88,7 @@ test('current runner completion rejects a non-current residual list', () => {
     const acceptanceBinding = prepareProviderInvocationAcceptanceBinding(
       runtime,
       invocationId,
+      'schema-v4',
     );
 
     assert.throws(
@@ -100,8 +100,7 @@ test('current runner completion rejects a non-current residual list', () => {
           report: workerReport(request, invocationId, SHORT_RESIDUALS),
           acceptanceBinding,
         }),
-      (error) =>
-        isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_RESULT_INVALID'),
     );
     assert.equal(readProviderInvocation(runtime, invocationId).result, null);
   } finally {
