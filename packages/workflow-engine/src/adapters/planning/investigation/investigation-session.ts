@@ -98,7 +98,6 @@ import {
   verifyHumanResolutionGrantForRevocation,
 } from '../../../modules/authority/maintainer-grant.ts';
 import type { HumanRevocationOptions } from '../../../application/control-plane/human-revocation.ts';
-import { IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST } from '../../../modules/why-knowledge/implementation-reconciliation-policy.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../../modules/assurance/plan-review-coverage.ts';
 import {
   assertChangeId,
@@ -1891,8 +1890,6 @@ export function startInvestigationSessionUnderLifecycleLock(
       tree: lockedContext.git.tree,
     },
     intentDigest: reservedIntentDigest,
-    implementationReconciliationPolicyDigest:
-      IMPLEMENTATION_RECONCILIATION_POLICY_DIGEST,
     planReviewCoveragePolicyDigest: GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
     blindManifestDigest: reservation.manifestDigest,
     blindRequestDigest: reservation.requestDigest,

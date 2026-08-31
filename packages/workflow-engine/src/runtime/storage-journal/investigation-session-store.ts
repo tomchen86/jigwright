@@ -646,8 +646,6 @@ export type InvestigationSession = {
     tree: string;
   };
   intentDigest: string;
-  /** Omitted for historical sessions whose sealed grammar predates R5. */
-  implementationReconciliationPolicyDigest?: string;
   planReviewCoveragePolicyDigest: string;
   blindManifestDigest: string;
   blindRequestDigest: string;
@@ -3944,12 +3942,6 @@ function assertInvestigationSession(value: unknown): InvestigationSession {
       'branch',
       'baseline',
       'intentDigest',
-      ...(Object.prototype.hasOwnProperty.call(
-        value,
-        'implementationReconciliationPolicyDigest',
-      )
-        ? ['implementationReconciliationPolicyDigest']
-        : []),
       'planReviewCoveragePolicyDigest',
       'blindManifestDigest',
       'blindRequestDigest',
@@ -3984,11 +3976,6 @@ function assertInvestigationSession(value: unknown): InvestigationSession {
     (value.branch !== null && typeof value.branch !== 'string') ||
     !isBaseline(value.baseline) ||
     !isDigest(value.intentDigest) ||
-    (Object.prototype.hasOwnProperty.call(
-      value,
-      'implementationReconciliationPolicyDigest',
-    ) &&
-      !isDigest(value.implementationReconciliationPolicyDigest)) ||
     !isDigest(value.planReviewCoveragePolicyDigest) ||
     !isDigest(value.blindManifestDigest) ||
     !isDigest(value.blindRequestDigest) ||
@@ -4087,7 +4074,6 @@ function assertMonotonicSessionTransition(
     'branch',
     'baseline',
     'intentDigest',
-    'implementationReconciliationPolicyDigest',
     'planReviewCoveragePolicyDigest',
     'blindManifestDigest',
     'createdAt',
