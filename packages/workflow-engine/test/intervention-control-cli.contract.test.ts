@@ -201,28 +201,17 @@ test('dispatcher rejects promotion and live ref mutation rather than performing 
   );
 });
 
-test('workflow supersede validation and malformed requests retain domain error codes', () => {
-  assert.deepEqual(
-    dispatchInterventionControlCommand([
-      'workflow',
-      'validate-supersede-reason',
-      'workflow-replaced',
-    ]),
-    {
-      kind: 'workflow-supersede-reason',
-      validation: { allowed: true, reason: 'workflow-replaced' },
-      effectsPerformed: false,
-    },
-  );
-  assert.throws(
-    () =>
-      dispatchInterventionControlCommand([
-        'workflow',
-        'validate-supersede-reason',
-        'provider-timeout',
-      ]),
-    hasCode('SUPERSEDE_EXECUTION_FAILURE_FORBIDDEN'),
-  );
+test('production parser and dispatcher reject caller-supplied workflow supersede validation', () => {
+  const argv = ['workflow', 'validate-supersede-reason', 'workflow-replaced'];
+  for (const invoke of [
+    () => parseInterventionControlCommand(argv),
+    () => dispatchInterventionControlCommand(argv),
+  ]) {
+    assert.throws(invoke, hasCode('INTERVENTION_CONTROL_COMMAND_UNSUPPORTED'));
+  }
+});
+
+test('malformed intervention requests retain domain error codes', () => {
   assert.throws(
     () =>
       dispatchInterventionControlCommand([

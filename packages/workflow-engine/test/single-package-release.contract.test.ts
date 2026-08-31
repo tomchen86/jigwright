@@ -312,6 +312,54 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
     );
     assert.equal(guidance.guide.kind, 'workflow-command-guide.v1');
 
+    const runtimeStateRoot = path.join(
+      repositoryRoot,
+      '.git',
+      'workflow-engine',
+    );
+    const repositoryStatusBefore = run(
+      'git',
+      ['status', '--porcelain=v1', '--untracked-files=all'],
+      repositoryRoot,
+    );
+    const runtimeStateExistedBefore = fs.existsSync(runtimeStateRoot);
+    const retiredWorkflowValidation = spawnSync(
+      process.execPath,
+      [
+        path.join(installedRoot, 'bin', 'jigwright.mjs'),
+        'workflow',
+        'validate-supersede-reason',
+        'workflow-replaced',
+        '--json',
+      ],
+      {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      },
+    );
+    assert.equal(
+      retiredWorkflowValidation.status,
+      2,
+      retiredWorkflowValidation.stderr,
+    );
+    assert.equal(
+      (
+        JSON.parse(retiredWorkflowValidation.stderr) as {
+          error: { code: string };
+        }
+      ).error.code,
+      'INVALID_USAGE',
+    );
+    assert.equal(
+      run(
+        'git',
+        ['status', '--porcelain=v1', '--untracked-files=all'],
+        repositoryRoot,
+      ),
+      repositoryStatusBefore,
+    );
+    assert.equal(fs.existsSync(runtimeStateRoot), runtimeStateExistedBefore);
+
     const surface = JSON.parse(
       run(
         process.execPath,

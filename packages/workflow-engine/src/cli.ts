@@ -2348,15 +2348,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
           interventionControlDependencies(cwd),
         ),
       };
-    case 'workflow':
-      return {
-        command,
-        ok: true,
-        result: dispatchInterventionControlCommand(
-          [command, ...rest],
-          interventionControlDependencies(cwd),
-        ),
-      };
     case 'task': {
       if (
         rest[0] === 'authorize' &&

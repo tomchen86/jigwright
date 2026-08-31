@@ -4,7 +4,6 @@ import {
   classifyProtectedCandidateImpact,
   createWipCheckpoint,
   prepareEngineAdoption,
-  validateWorkflowSupersedeReason,
   verifyHarnessMaintenanceGrant,
   type EngineAdoptionJournal,
   type EngineArtifact,
@@ -16,7 +15,6 @@ import {
   type ProtectedCapabilityManifest,
   type WipCheckpoint,
   type WipCheckpointInput,
-  type WorkflowSupersedeReason,
 } from '../../modules/authority/intervention-control.ts';
 import {
   ExitCode,
@@ -53,12 +51,7 @@ type ParsedRequestCommand =
       request: Record<string, unknown>;
     };
 
-export type ParsedInterventionControlCommand =
-  | ParsedRequestCommand
-  | {
-      command: 'workflow-validate-supersede-reason';
-      reason: string;
-    };
+export type ParsedInterventionControlCommand = ParsedRequestCommand;
 
 export type InterventionControlDispatchResult =
   | {
@@ -76,11 +69,6 @@ export type InterventionControlDispatchResult =
   | {
       kind: 'control-plane-classify';
       impact: ProtectedCandidateImpact;
-      effectsPerformed: false;
-    }
-  | {
-      kind: 'workflow-supersede-reason';
-      validation: { allowed: true; reason: WorkflowSupersedeReason };
       effectsPerformed: false;
     };
 
@@ -119,16 +107,6 @@ export function parseInterventionControlCommand(
     return {
       command: 'control-plane-classify',
       request: parseRequestOnly(argv, 'control-plane classify'),
-    };
-  }
-
-  if (argv[0] === 'workflow' && argv[1] === 'validate-supersede-reason') {
-    if (argv.length !== 3 || !isNonEmpty(argv[2])) {
-      throw usage('Usage: workflow validate-supersede-reason <reason>');
-    }
-    return {
-      command: 'workflow-validate-supersede-reason',
-      reason: argv[2],
     };
   }
 
@@ -171,12 +149,6 @@ export function dispatchInterventionControlCommand(
         return dispatchEngineAdopt(parsed.request, dependencies);
       case 'control-plane-classify':
         return dispatchControlPlaneClassify(parsed.request);
-      case 'workflow-validate-supersede-reason':
-        return {
-          kind: 'workflow-supersede-reason',
-          validation: validateWorkflowSupersedeReason(parsed.reason),
-          effectsPerformed: false,
-        };
     }
   } catch (error) {
     if (error instanceof WorkflowError) {
