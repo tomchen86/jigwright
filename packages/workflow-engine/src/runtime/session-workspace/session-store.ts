@@ -70,7 +70,7 @@ export type WorkflowSession = {
   requiredChecks: string[];
   /** Durable worktree, workset, and exclusive-resource lease identities. */
   isolation: TaskSessionIsolationBinding;
-  requiredCheckDigests?: Record<string, string>;
+  requiredCheckDigests: Record<string, string>;
   /** Engine identity against which the current durable check evidence ran. */
   checkEvidenceEngineDigest?: `sha256:${string}`;
   planningAssurance: PlanningAssuranceBinding | null;
@@ -1230,7 +1230,7 @@ function isWorkflowSession(value: unknown): value is WorkflowSession {
     }
   }
   if (
-    value.requiredCheckDigests !== undefined &&
+    !Object.hasOwn(value, 'requiredCheckDigests') ||
     !isStringRecord(value.requiredCheckDigests)
   ) {
     return false;

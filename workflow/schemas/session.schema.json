@@ -16,6 +16,7 @@
     "artifacts",
     "allowedPaths",
     "requiredChecks",
+    "requiredCheckDigests",
     "isolation",
     "planningAssurance",
     "createdAt"

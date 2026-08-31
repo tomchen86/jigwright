@@ -120,7 +120,7 @@ export type TaskRevisionJournal = Readonly<{
   artifactDigests: Record<string, string>;
   allowedPaths: string[];
   requiredChecks: string[];
-  requiredCheckDigests: Record<string, string> | null;
+  requiredCheckDigests: Record<string, string>;
   planningAssurance: WorkflowSession['planningAssurance'];
   implementationPaths: string[];
   implementationSnapshot: ImplementationSnapshotEntry[];
@@ -322,9 +322,7 @@ export function reviseTask(
         artifactDigests: { ...current.artifacts },
         allowedPaths: [...current.allowedPaths],
         requiredChecks: [...current.requiredChecks],
-        requiredCheckDigests: current.requiredCheckDigests
-          ? { ...current.requiredCheckDigests }
-          : null,
+        requiredCheckDigests: { ...current.requiredCheckDigests },
         planningAssurance: current.planningAssurance ?? null,
         implementationPaths: [...inspection.changedPaths],
         implementationSnapshot,
@@ -1524,7 +1522,7 @@ function assertNoOpResumeContract(
       canonicalJson(journal.requiredChecks) ||
     canonicalJson(
       digestRequiredCheckDefinitions(contract.checks, policy.requiredChecks),
-    ) !== canonicalJson(journal.requiredCheckDigests ?? {}) ||
+    ) !== canonicalJson(journal.requiredCheckDigests) ||
     canonicalJson(
       createTaskPlanningAssuranceBinding(contract, contract.planningAssurance),
     ) !== canonicalJson(journal.planningAssurance ?? null)
@@ -1967,8 +1965,7 @@ function isTaskRevisionJournal(value: unknown): value is TaskRevisionJournal {
     !isStringRecord(value.artifactDigests) ||
     !isSortedStringArray(value.allowedPaths) ||
     !isSortedStringArray(value.requiredChecks) ||
-    (value.requiredCheckDigests !== null &&
-      !isStringRecord(value.requiredCheckDigests)) ||
+    !isStringRecord(value.requiredCheckDigests) ||
     !isSortedStringArray(value.implementationPaths) ||
     !Array.isArray(value.implementationSnapshot) ||
     typeof value.implementationFingerprint !== 'string' ||

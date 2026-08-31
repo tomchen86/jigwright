@@ -31,6 +31,7 @@ import {
 import {
   createFixtureRepository,
   git,
+  runtimeRoot,
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
@@ -1049,6 +1050,68 @@ test('revise-task crash windows replay one exact durable lease', () => {
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }
+  }
+});
+
+test('revision reader rejects a null required check digest record without rewriting durable state', () => {
+  const repository = revisionFixture();
+  try {
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(
+      path.join(repository, 'src/feature.ts'),
+      'export const value = 1;\n',
+    );
+    assert.throws(
+      () =>
+        reviseTask(repository, session.sessionId, 'correct-plan', {
+          now: () => STARTED_AT,
+          testCrashAfter: 'lease-prepared',
+        }),
+      /simulated task revision crash/,
+    );
+    const interrupted = inspectTaskRevisionStatus(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(interrupted?.phase, 'prepared');
+    assert.ok(interrupted?.leaseId);
+
+    const runtime = runtimeRoot(repository);
+    const sessionPath = path.join(
+      runtime,
+      'sessions',
+      `${session.sessionId}.json`,
+    );
+    const journalPath = path.join(
+      runtime,
+      'task-revisions',
+      `${interrupted.leaseId}.json`,
+    );
+    const lockPath = path.join(runtime, 'locks', 'demo-change.lock');
+    const sessionBytes = fs.readFileSync(sessionPath);
+    const lockBytes = fs.readFileSync(lockPath);
+    const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    assert.equal(Object.hasOwn(journal, 'requiredCheckDigests'), true);
+    assert.notEqual(journal.requiredCheckDigests, null);
+    journal.requiredCheckDigests = null;
+    const poisonedJournalBytes = `${JSON.stringify(journal, null, 2)}\n`;
+    fs.writeFileSync(journalPath, poisonedJournalBytes);
+
+    assert.throws(
+      () =>
+        reviseTask(repository, session.sessionId, 'correct-plan', {
+          now: () => new Date('2026-08-11T01:01:00.000Z'),
+        }),
+      (error) => workflowCode(error) === 'REVISION_STATE_CORRUPT',
+    );
+    assert.equal(fs.readFileSync(journalPath, 'utf8'), poisonedJournalBytes);
+    assert.deepEqual(fs.readFileSync(sessionPath), sessionBytes);
+    assert.deepEqual(fs.readFileSync(lockPath), lockBytes);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

@@ -1470,7 +1470,7 @@ export function resolveHarnessBootstrapParentState(
       artifacts: session.artifacts,
       allowedPaths: session.allowedPaths,
       requiredChecks: session.requiredChecks,
-      requiredCheckDigests: session.requiredCheckDigests ?? {},
+      requiredCheckDigests: session.requiredCheckDigests,
       planningAssurance: session.planningAssurance ?? null,
       mandateBinding: session.mandateBinding ?? null,
     }),
