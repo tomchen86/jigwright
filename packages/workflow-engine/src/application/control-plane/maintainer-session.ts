@@ -47,7 +47,7 @@ import {
 } from '../../modules/authority/maintainer-candidate.ts';
 import { currentCandidateDependencySnapshot } from './maintainer-candidate-dependencies.ts';
 import {
-  isMaintainerGrantV2Envelope,
+  canonicalMaintainerGrantV2Envelope,
   maintainerChecksEnvironmentDigest,
   validateMaintainerGrantV2AuthorityBinding,
   type MaintainerGrantV2Envelope,
@@ -60,7 +60,6 @@ import {
 import type { MaintainerSignerProvider } from '../../modules/authority/maintainer-signer-port.ts';
 import { writeAuthorityCheckReport } from '../../runtime/storage-journal/maintainer-report.ts';
 import {
-  canonicalAnyMaintainerGrantEnvelope,
   inspectMaintainerGrants,
   maintainerGrantStorePaths,
   readReservedMaintainerGrant,
@@ -70,7 +69,6 @@ import {
   terminallyExpireMaintainerReservation,
   terminallyInvalidateMaintainerReservation,
   terminallyRevokeMaintainerReservation,
-  type AnyMaintainerGrantEnvelope,
 } from '../../runtime/storage-journal/maintainer-store.ts';
 import {
   assertChangeId,
@@ -171,7 +169,7 @@ export function verifiedV2AuthorityLifecycleRefusalBinding(
     changeId: mandateBinding.changeId,
     workflowId: mandateBinding.mandateId,
     grantDigest: authorityRefusalDigest(
-      canonicalAnyMaintainerGrantEnvelope(envelope),
+      canonicalMaintainerGrantV2Envelope(envelope),
     ),
     bindingDigest: authorityRefusalDigest(input.bindingEvidence),
     refusalIdentity: input.refusalIdentity,
@@ -208,7 +206,6 @@ export function startAuthoritySession(
   try {
     assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
     const envelope = reservation.envelope;
-    assertExecutableAuthorityGrant(envelope);
     if (
       reservation.repositoryRoot !== initial.repositoryRealPath ||
       envelope.payload.changeId !== changeId ||
@@ -244,7 +241,7 @@ export function startAuthoritySession(
         subjectId: envelope.payload.grantId,
         bindingEvidence: {
           mandateBinding: envelope.payload.mandateBinding,
-          grantDigest: digest(canonicalAnyMaintainerGrantEnvelope(envelope)),
+          grantDigest: digest(canonicalMaintainerGrantV2Envelope(envelope)),
         },
         refusalIdentity: {
           changeId,
@@ -362,7 +359,7 @@ export function startAuthoritySession(
           baselineTree: git.tree,
           policyBlob,
           policyDigest: digest(policyContent),
-          grantDigest: digest(canonicalAnyMaintainerGrantEnvelope(envelope)),
+          grantDigest: digest(canonicalMaintainerGrantV2Envelope(envelope)),
           signer: envelope.payload.signer,
           contractDigest: contract.contractDigest,
           contractArtifacts: Object.fromEntries(
@@ -578,12 +575,10 @@ export function checkAuthoritySession(
             { unexpectedPaths },
           );
         }
-        if (isMaintainerGrantV2Envelope(envelope)) {
-          verifyPatchManifestAgainstWorktree(
-            git.repositoryRoot,
-            envelope.payload.manifest,
-          );
-        }
+        verifyPatchManifestAgainstWorktree(
+          git.repositoryRoot,
+          envelope.payload.manifest,
+        );
         const database = initialSession.pinnedChecks.some(
           ({ definition }) => definition.destructiveDatabase,
         )
@@ -740,21 +735,16 @@ export function readAuthoritySession(
       value.sessionId !== sessionId ||
       !['active', 'failed', 'aborted', 'committed'].includes(value.state) ||
       value.gitCommonDirectory !== git.gitCommonDirectory ||
-      (value.grantVersion === 2 &&
-        (typeof value.mandateBinding !== 'object' ||
-          value.mandateBinding === null)) ||
-      (value.grantVersion === 1 &&
-        value.mandateBinding !== undefined &&
-        value.mandateBinding !== null) ||
+      value.grantVersion !== 2 ||
+      typeof value.mandateBinding !== 'object' ||
+      value.mandateBinding === null ||
       !Array.isArray(value.allowedPaths) ||
       !Array.isArray(value.requiredChecks) ||
       !Array.isArray(value.pinnedChecks)
     ) {
       throw new Error('invalid authority session');
     }
-    return value.mandateBinding === undefined
-      ? { ...value, mandateBinding: null }
-      : value;
+    return value;
   } catch {
     throw authorityError(
       'AUTHORITY_SESSION_INVALID',
@@ -829,11 +819,10 @@ function inspectAuthoritySession(
     git.gitCommonDirectory,
     session.grantId,
   );
-  assertExecutableAuthorityGrant(reservation.envelope);
   if (
     reservation.sessionId !== session.sessionId ||
     reservation.repositoryRoot !== session.repositoryRoot ||
-    digest(canonicalAnyMaintainerGrantEnvelope(reservation.envelope)) !==
+    digest(canonicalMaintainerGrantV2Envelope(reservation.envelope)) !==
       session.grantDigest
   ) {
     throw authorityError(
@@ -964,18 +953,6 @@ function inspectAuthoritySession(
     policy,
     contractDigest: session.contractDigest,
   };
-}
-
-function assertExecutableAuthorityGrant(
-  envelope: AnyMaintainerGrantEnvelope,
-): asserts envelope is MaintainerGrantV2Envelope {
-  if (!isMaintainerGrantV2Envelope(envelope)) {
-    throw workflowError(
-      'LEGACY_GRANT_V1_READ_ONLY',
-      'Legacy V1 grants are historical read-only evidence and cannot create or continue authority sessions.',
-      ExitCode.guard,
-    );
-  }
 }
 
 function validateReservedGrantAuthorityBinding(
@@ -1120,7 +1097,7 @@ function loadBasePolicy(repositoryRoot: string, baseCommit: string) {
 
 function assertExactAuditTag(
   repositoryRoot: string,
-  envelope: AnyMaintainerGrantEnvelope,
+  envelope: MaintainerGrantV2Envelope,
   policy: MaintainerPolicy,
 ): void {
   const tagRef = `${policy.auditTagPrefix}${envelope.payload.grantId}`;
@@ -1136,7 +1113,7 @@ function assertExactAuditTag(
       object !== envelope.payload.baseCommit ||
       type !== 'commit' ||
       tag !== tagRef.slice('refs/tags/'.length) ||
-      raw.slice(separator + 2) !== canonicalAnyMaintainerGrantEnvelope(envelope)
+      raw.slice(separator + 2) !== canonicalMaintainerGrantV2Envelope(envelope)
     ) {
       throw new Error('audit mismatch');
     }

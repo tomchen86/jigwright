@@ -4,15 +4,9 @@ import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../repository-transaction/filesystem-safety.ts';
-import {
-  assertMaintainerGrantId,
-  canonicalGrantEnvelope,
-  parseMaintainerGrantEnvelope,
-  type MaintainerGrantEnvelope,
-} from '../../modules/authority/maintainer-grant.ts';
+import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
-  isMaintainerGrantV2Envelope,
   parseMaintainerGrantV2Envelope,
   type MaintainerGrantV2Envelope,
 } from '../../modules/authority/maintainer-grant-v2.ts';
@@ -21,9 +15,6 @@ import {
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../session-workspace/session-store.ts';
-export type AnyMaintainerGrantEnvelope =
-  MaintainerGrantEnvelope | MaintainerGrantV2Envelope;
-
 export type MaintainerReservationRecord = {
   schemaVersion: 1;
   state: 'reserved';
@@ -31,7 +22,7 @@ export type MaintainerReservationRecord = {
   sessionId: string;
   repositoryRoot: string;
   reservedAt: string;
-  envelope: AnyMaintainerGrantEnvelope;
+  envelope: MaintainerGrantV2Envelope;
 };
 
 export type MaintainerTerminalRecord = {
@@ -42,7 +33,7 @@ export type MaintainerTerminalRecord = {
   commitHash: string | null;
   reason: string;
   recordedAt: string;
-  envelope: AnyMaintainerGrantEnvelope;
+  envelope: MaintainerGrantV2Envelope;
 };
 
 export type MaintainerGrantInspection = {
@@ -144,19 +135,14 @@ export function reserveMaintainerGrant(
     const reservedPath = grantPath(paths.reserved, grantId);
     const terminalPath = grantPath(paths.terminal, grantId);
     if (fs.existsSync(reservedPath)) {
-      assertExecutableGrantVersion(
-        readReservationOrInterrupted(reservedPath, grantId).envelope,
-      );
+      readReservationOrInterrupted(reservedPath, grantId);
       throw unavailableGrant(grantId);
     }
     if (fs.existsSync(terminalPath)) {
-      assertExecutableGrantVersion(
-        readTerminal(terminalPath, grantId).envelope,
-      );
+      readTerminal(terminalPath, grantId);
       throw unavailableGrant(grantId);
     }
     const envelope = readAvailableGrant(availablePath, grantId);
-    assertExecutableGrantVersion(envelope);
     if (envelope.payload.candidateBundle === null) {
       throw workflowError(
         'MAINTAINER_GRANT_INVALID',
@@ -197,18 +183,6 @@ export function reserveMaintainerGrant(
     replacePrivateFileAtomic(reservedPath, serializeRecord(record));
     return record;
   });
-}
-
-function assertExecutableGrantVersion(
-  envelope: AnyMaintainerGrantEnvelope,
-): asserts envelope is MaintainerGrantV2Envelope {
-  if (!isMaintainerGrantV2Envelope(envelope)) {
-    throw workflowError(
-      'LEGACY_GRANT_V1_READ_ONLY',
-      'Legacy V1 grants are historical read-only evidence and cannot be reserved or executed.',
-      ExitCode.guard,
-    );
-  }
 }
 
 export function readReservedMaintainerGrant(
@@ -272,7 +246,6 @@ export function readMaintainerGrantV2RevocationTargetUnderLifecycleLock(
   if (present.length !== 1) throw ambiguousGrant(grantId);
   if (present[0] === availablePath) {
     const envelope = readAvailableGrant(availablePath, grantId);
-    assertExecutableGrantVersion(envelope);
     return {
       state: 'available',
       envelope,
@@ -283,7 +256,6 @@ export function readMaintainerGrantV2RevocationTargetUnderLifecycleLock(
   }
   if (present[0] === reservedPath) {
     const reservation = readReservation(reservedPath, grantId);
-    assertExecutableGrantVersion(reservation.envelope);
     return {
       state: 'reserved',
       envelope: reservation.envelope,
@@ -293,7 +265,6 @@ export function readMaintainerGrantV2RevocationTargetUnderLifecycleLock(
     };
   }
   const terminal = readTerminal(terminalPath, grantId);
-  assertExecutableGrantVersion(terminal.envelope);
   return {
     state: terminal.state,
     envelope: terminal.envelope,
@@ -423,7 +394,7 @@ export function terminallyFailSignedMaintainerGrantV2UnderLifecycleLock(
     const terminal = readTerminal(terminalPath, grantId);
     if (
       terminal.state !== 'failed' ||
-      canonicalAnyMaintainerGrantEnvelope(terminal.envelope) !==
+      canonicalMaintainerGrantV2Envelope(terminal.envelope) !==
         canonicalMaintainerGrantV2Envelope(envelope)
     ) {
       throw ambiguousGrant(grantId);
@@ -434,7 +405,7 @@ export function terminallyFailSignedMaintainerGrantV2UnderLifecycleLock(
   if (fs.existsSync(availablePath)) {
     const available = readAvailableGrant(availablePath, grantId);
     if (
-      canonicalAnyMaintainerGrantEnvelope(available) !==
+      canonicalMaintainerGrantV2Envelope(available) !==
       canonicalMaintainerGrantV2Envelope(envelope)
     ) {
       throw ambiguousGrant(grantId);
@@ -675,7 +646,7 @@ export function releaseMaintainerReservation(
       }
       createPrivateFileAtomic(
         grantPath(paths.available, grantId),
-        canonicalAnyMaintainerGrantEnvelope(reservation.envelope),
+        canonicalMaintainerGrantV2Envelope(reservation.envelope),
       );
       fs.rmSync(reservedPath, { force: true });
       fsyncDirectory(paths.available);
@@ -809,7 +780,7 @@ function inspectOne(
 }
 
 function inspectEnvelope(
-  envelope: AnyMaintainerGrantEnvelope,
+  envelope: MaintainerGrantV2Envelope,
   state: 'available' | 'reserved',
 ): MaintainerGrantInspection {
   const { payload } = envelope;
@@ -840,8 +811,8 @@ function inspectTerminal(
 function readAvailableGrant(
   filePath: string,
   grantId: string,
-): AnyMaintainerGrantEnvelope {
-  const envelope = parseAnyMaintainerGrantEnvelope(readPrivateFile(filePath));
+): MaintainerGrantV2Envelope {
+  const envelope = parseMaintainerGrantV2Envelope(readPrivateFile(filePath));
   if (envelope.payload.grantId !== grantId) {
     throw ambiguousGrant(grantId);
   }
@@ -872,7 +843,7 @@ function readReservation(
   ) {
     throw ambiguousGrant(grantId);
   }
-  const envelope = parseAnyMaintainerGrantEnvelope(
+  const envelope = parseMaintainerGrantV2Envelope(
     serializeEmbeddedEnvelope(value.envelope),
   );
   if (
@@ -888,7 +859,7 @@ function readReservation(
 function readReservationOrInterrupted(
   filePath: string,
   grantId: string,
-): { envelope: AnyMaintainerGrantEnvelope; sessionId?: string } {
+): { envelope: MaintainerGrantV2Envelope; sessionId?: string } {
   try {
     return readReservation(filePath, grantId);
   } catch {
@@ -925,7 +896,7 @@ function readTerminal(
   ) {
     throw ambiguousGrant(grantId);
   }
-  const envelope = parseAnyMaintainerGrantEnvelope(
+  const envelope = parseMaintainerGrantV2Envelope(
     serializeEmbeddedEnvelope(value.envelope),
   );
   if (envelope.payload.grantId !== grantId) {
@@ -937,7 +908,7 @@ function readTerminal(
 function cleanupNonterminalCopies(
   paths: ReturnType<typeof maintainerGrantStorePaths>,
   grantId: string,
-  expected: AnyMaintainerGrantEnvelope,
+  expected: MaintainerGrantV2Envelope,
 ): void {
   for (const directory of [paths.available, paths.reserved]) {
     const target = grantPath(directory, grantId);
@@ -949,39 +920,13 @@ function cleanupNonterminalCopies(
         ? readAvailableGrant(target, grantId)
         : readReservationOrInterrupted(target, grantId).envelope;
     if (
-      canonicalAnyMaintainerGrantEnvelope(observed) !==
-      canonicalAnyMaintainerGrantEnvelope(expected)
+      canonicalMaintainerGrantV2Envelope(observed) !==
+      canonicalMaintainerGrantV2Envelope(expected)
     ) {
       throw ambiguousGrant(grantId);
     }
     fs.unlinkSync(target);
     fsyncDirectory(directory);
-  }
-}
-
-export function canonicalAnyMaintainerGrantEnvelope(
-  envelope: AnyMaintainerGrantEnvelope,
-): string {
-  return isMaintainerGrantV2Envelope(envelope)
-    ? canonicalMaintainerGrantV2Envelope(envelope)
-    : canonicalGrantEnvelope(envelope);
-}
-
-export function parseAnyMaintainerGrantEnvelope(
-  raw: string,
-): AnyMaintainerGrantEnvelope {
-  try {
-    const value = JSON.parse(raw) as {
-      payload?: { version?: unknown };
-    };
-    return value.payload?.version === 2
-      ? parseMaintainerGrantV2Envelope(raw)
-      : parseMaintainerGrantEnvelope(raw);
-  } catch (error) {
-    if (error && typeof error === 'object' && 'code' in error) {
-      throw error;
-    }
-    throw unsafeStore();
   }
 }
 

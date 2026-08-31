@@ -35,16 +35,11 @@ import {
   runGitWithEnvironment,
 } from '../../runtime/repository-transaction/git.ts';
 import {
-  canonicalGrantPayload,
-  parseMaintainerGrantEnvelope,
   readHumanResolutionAuditTag,
-  validateGrantPayload,
   verifyHumanResolutionGrantEnvelope,
-  type MaintainerGrantEnvelope,
 } from '../../modules/authority/maintainer-grant.ts';
 import {
   canonicalMaintainerGrantV2Payload,
-  isMaintainerGrantV2Envelope,
   maintainerGrantV2SignatureNamespace,
   parseMaintainerGrantV2Envelope,
   type MaintainerGrantV2Envelope,
@@ -93,9 +88,6 @@ export type AuthorityAttestationRelayProjection = {
   tagRef: string;
   publishCommand: string;
 };
-
-type AttestedMaintainerGrantEnvelope =
-  MaintainerGrantEnvelope | MaintainerGrantV2Envelope;
 
 type AttestedTransitionIdentity = {
   kind: 'authority' | 'authority-candidate';
@@ -286,7 +278,7 @@ export function issueAuthorityAttestation(
   ) {
     throw grantInvalid(identity.grantId);
   }
-  validateBoundGrant(repositoryRoot, policy, primaryEnvelope, now, signer);
+  validateBoundGrant(repositoryRoot, policy, primaryEnvelope, signer);
 
   const grantBases = request.grantBasePairs
     .map((pair) =>
@@ -387,7 +379,6 @@ function resolveGrantBaseMapping(
       repositoryRoot,
       policy,
       readGrantEnvelope(repositoryRoot, policy, grantId),
-      now,
       signer,
     );
   }
@@ -458,8 +449,7 @@ function attestedTransitionIdentity(
 function validateBoundGrant(
   repositoryRoot: string,
   policy: MaintainerPolicy,
-  envelope: AttestedMaintainerGrantEnvelope,
-  now: Date,
+  envelope: MaintainerGrantV2Envelope,
   signer: MaintainerSignerProvider,
 ): void {
   const baseCommit = envelope.payload.baseCommit;
@@ -471,38 +461,24 @@ function validateBoundGrant(
     'rev-parse',
     `${baseCommit}:${MAINTAINER_POLICY_PATH}`,
   ]).trim();
-  if (isMaintainerGrantV2Envelope(envelope)) {
-    if (
-      envelope.payload.baseCommit !== baseCommit ||
-      envelope.payload.policyBlob !== policyBlob ||
-      envelope.payload.policyDigest !==
-        crypto.createHash('sha256').update(policyContent).digest('hex') ||
-      envelope.payload.repositoryId !== policy.repository.id ||
-      envelope.payload.repositoryOrigin !== policy.repository.origin ||
-      !policy.trustedSigners.some(
-        ({ identity }) => identity === envelope.payload.signer,
-      )
-    ) {
-      throw grantInvalid(envelope.payload.grantId);
-    }
-    signer.verify(
-      canonicalMaintainerGrantV2Payload(envelope.payload),
-      envelope.signature,
-      envelope.payload.signer,
-      maintainerGrantV2SignatureNamespace(envelope),
-    );
-    return;
+  if (
+    envelope.payload.baseCommit !== baseCommit ||
+    envelope.payload.policyBlob !== policyBlob ||
+    envelope.payload.policyDigest !==
+      crypto.createHash('sha256').update(policyContent).digest('hex') ||
+    envelope.payload.repositoryId !== policy.repository.id ||
+    envelope.payload.repositoryOrigin !== policy.repository.origin ||
+    !policy.trustedSigners.some(
+      ({ identity }) => identity === envelope.payload.signer,
+    )
+  ) {
+    throw grantInvalid(envelope.payload.grantId);
   }
-  validateGrantPayload(envelope.payload, policy, {
-    now,
-    expectedBase: baseCommit,
-    expectedPolicyBlob: policyBlob,
-    allowExpired: true,
-  });
   signer.verify(
-    canonicalGrantPayload(envelope.payload),
+    canonicalMaintainerGrantV2Payload(envelope.payload),
     envelope.signature,
     envelope.payload.signer,
+    maintainerGrantV2SignatureNamespace(envelope),
   );
 }
 
@@ -510,7 +486,7 @@ function readGrantEnvelope(
   repositoryRoot: string,
   policy: MaintainerPolicy,
   grantId: string,
-): AttestedMaintainerGrantEnvelope {
+): MaintainerGrantV2Envelope {
   const tagRef = `${policy.auditTagPrefix}${grantId}`;
   if (!runGit(repositoryRoot, ['rev-parse', '--verify', tagRef], true).trim()) {
     throw grantMissing(grantId);
@@ -524,12 +500,7 @@ function readGrantEnvelope(
     throw grantInvalid(grantId);
   }
   const rawEnvelope = raw.slice(boundary + 2);
-  let envelope: AttestedMaintainerGrantEnvelope;
-  try {
-    envelope = parseMaintainerGrantEnvelope(rawEnvelope);
-  } catch {
-    envelope = parseMaintainerGrantV2Envelope(rawEnvelope);
-  }
+  const envelope = parseMaintainerGrantV2Envelope(rawEnvelope);
   const target = runGit(repositoryRoot, [
     'rev-parse',
     `${tagRef}^{commit}`,

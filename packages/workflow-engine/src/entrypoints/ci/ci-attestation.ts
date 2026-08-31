@@ -32,16 +32,10 @@ import { runGit } from '../../runtime/repository-transaction/git.ts';
 import {
   HUMAN_RESOLUTION_SIGNATURE_NAMESPACE,
   canonicalHumanResolutionGrantPayload,
-  canonicalGrantEnvelope,
-  canonicalGrantPayload,
-  parseMaintainerGrantEnvelope,
   readHumanResolutionAuditTag,
-  validateGrantPayload,
-  type MaintainerGrantEnvelope,
 } from '../../modules/authority/maintainer-grant.ts';
 import {
   canonicalMaintainerGrantV2Payload,
-  isMaintainerGrantV2Envelope,
   maintainerGrantV2SignatureNamespace,
   parseMaintainerGrantV2Envelope,
   type MaintainerGrantV2Envelope,
@@ -84,7 +78,7 @@ export type CiAttestationResult = {
 type GrantTagRecord = {
   grantId: string;
   target: string;
-  envelope: MaintainerGrantEnvelope | MaintainerGrantV2Envelope;
+  envelope: MaintainerGrantV2Envelope;
 };
 
 export function verifyBaseAuthorityAttestations(
@@ -315,14 +309,7 @@ export function verifyBaseAuthorityAttestations(
         { grantId: payload.grantId },
       );
     }
-    validateHistoricalGrant(repositoryRoot, policy, primaryGrant, evaluatedAt);
-    if (primaryGrant.envelope.payload.version === 1) {
-      assertCommitInsideGrantLifetime(
-        repositoryRoot,
-        original.oid,
-        primaryGrant.envelope,
-      );
-    }
+    validateHistoricalGrant(repositoryRoot, policy, primaryGrant);
     verifyTrustedCommitSignature(
       repositoryRoot,
       original.oid,
@@ -373,7 +360,7 @@ export function verifyBaseAuthorityAttestations(
             { grantId },
           );
         }
-        validateHistoricalGrant(repositoryRoot, policy, record, evaluatedAt);
+        validateHistoricalGrant(repositoryRoot, policy, record);
       }
       const existing = baseMappings.get(mapping.originalBase);
       if (
@@ -465,7 +452,6 @@ function validateHistoricalGrant(
   repositoryRoot: string,
   policy: MaintainerPolicy,
   record: GrantTagRecord,
-  evaluatedAt: Date,
 ): void {
   const baseCommit = record.envelope.payload.baseCommit;
   const policyBlob = runGit(
@@ -480,41 +466,17 @@ function validateHistoricalGrant(
       { grantId: record.grantId },
     );
   }
-  if (isMaintainerGrantV2Envelope(record.envelope)) {
-    const policyContent = runGit(repositoryRoot, [
-      'show',
-      `${baseCommit}:${MAINTAINER_POLICY_PATH}`,
-    ]);
-    if (
-      record.envelope.payload.policyBlob !== policyBlob ||
-      record.envelope.payload.policyDigest !==
-        crypto.createHash('sha256').update(policyContent).digest('hex') ||
-      record.envelope.payload.repositoryId !== policy.repository.id ||
-      record.envelope.payload.repositoryOrigin !== policy.repository.origin
-    ) {
-      throw attestationError(
-        'CI_ATTESTATION_GRANT_INVALID',
-        'A mapped v2 grant envelope fails validation under base policy.',
-        { grantId: record.grantId },
-      );
-    }
-    verifySshDataSignature(
-      canonicalMaintainerGrantV2Payload(record.envelope.payload),
-      record.envelope.signature,
-      trustedSigner(policy, record.envelope.payload.signer),
-      maintainerGrantV2SignatureNamespace(record.envelope),
-      'CI_ATTESTATION_GRANT_SIGNATURE_INVALID',
-    );
-    return;
-  }
-  try {
-    validateGrantPayload(record.envelope.payload, policy, {
-      now: evaluatedAt,
-      expectedBase: baseCommit,
-      expectedPolicyBlob: policyBlob,
-      allowExpired: true,
-    });
-  } catch {
+  const policyContent = runGit(repositoryRoot, [
+    'show',
+    `${baseCommit}:${MAINTAINER_POLICY_PATH}`,
+  ]);
+  if (
+    record.envelope.payload.policyBlob !== policyBlob ||
+    record.envelope.payload.policyDigest !==
+      crypto.createHash('sha256').update(policyContent).digest('hex') ||
+    record.envelope.payload.repositoryId !== policy.repository.id ||
+    record.envelope.payload.repositoryOrigin !== policy.repository.origin
+  ) {
     throw attestationError(
       'CI_ATTESTATION_GRANT_INVALID',
       'A mapped grant envelope fails validation under base policy.',
@@ -522,38 +484,12 @@ function validateHistoricalGrant(
     );
   }
   verifySshDataSignature(
-    canonicalGrantPayload(record.envelope.payload),
+    canonicalMaintainerGrantV2Payload(record.envelope.payload),
     record.envelope.signature,
     trustedSigner(policy, record.envelope.payload.signer),
-    policy.signatureNamespace,
+    maintainerGrantV2SignatureNamespace(record.envelope),
     'CI_ATTESTATION_GRANT_SIGNATURE_INVALID',
   );
-}
-
-function assertCommitInsideGrantLifetime(
-  repositoryRoot: string,
-  commitHash: string,
-  envelope: MaintainerGrantEnvelope | MaintainerGrantV2Envelope,
-): void {
-  const rawTimestamp = runGit(repositoryRoot, [
-    'show',
-    '-s',
-    '--format=%cI',
-    commitHash,
-  ]).trim();
-  const committedAt = Date.parse(rawTimestamp);
-  const issuedAt = Date.parse(envelope.payload.issuedAt);
-  const expiresAt = Date.parse(envelope.payload.expiresAt);
-  if (
-    !Number.isFinite(committedAt) ||
-    committedAt < issuedAt ||
-    committedAt > expiresAt
-  ) {
-    throw attestationError(
-      'CI_ATTESTATION_GRANT_TIME_INVALID',
-      'The original authority commit is outside its signed grant lifetime.',
-    );
-  }
 }
 
 function listGrantTags(
@@ -612,49 +548,29 @@ function listGrantTags(
     if (separator === -1) {
       throw invalidGrantTag(grantId);
     }
-    let envelope: MaintainerGrantEnvelope;
     try {
-      envelope = parseMaintainerGrantEnvelope(raw.slice(separator + 2));
-    } catch {
-      try {
-        const v2 = parseMaintainerGrantV2Envelope(raw.slice(separator + 2));
-        const target = runGit(repositoryRoot, [
-          'rev-parse',
-          `${ref}^{commit}`,
-        ]).trim();
-        if (
-          v2.payload.grantId !== grantId ||
-          target !== v2.payload.baseCommit
-        ) {
-          throw new Error('v2 grant binding differs');
-        }
-        verifySshDataSignature(
-          canonicalMaintainerGrantV2Payload(v2.payload),
-          v2.signature,
-          trustedSigner(policy, v2.payload.signer),
-          maintainerGrantV2SignatureNamespace(v2),
-          'CI_ATTESTATION_GRANT_INVALID',
-        );
-        records.set(grantId, { grantId, target, envelope: v2 });
-        continue;
-      } catch {
-        throw invalidGrantTag(grantId);
+      const envelope = parseMaintainerGrantV2Envelope(raw.slice(separator + 2));
+      const target = runGit(repositoryRoot, [
+        'rev-parse',
+        `${ref}^{commit}`,
+      ]).trim();
+      if (
+        envelope.payload.grantId !== grantId ||
+        target !== envelope.payload.baseCommit
+      ) {
+        throw new Error('v2 grant binding differs');
       }
-    }
-    if (
-      envelope.payload.grantId !== grantId ||
-      canonicalGrantEnvelope(envelope) !== raw.slice(separator + 2)
-    ) {
+      verifySshDataSignature(
+        canonicalMaintainerGrantV2Payload(envelope.payload),
+        envelope.signature,
+        trustedSigner(policy, envelope.payload.signer),
+        maintainerGrantV2SignatureNamespace(envelope),
+        'CI_ATTESTATION_GRANT_INVALID',
+      );
+      records.set(grantId, { grantId, target, envelope });
+    } catch {
       throw invalidGrantTag(grantId);
     }
-    const target = runGit(repositoryRoot, [
-      'rev-parse',
-      `${ref}^{commit}`,
-    ]).trim();
-    if (target !== envelope.payload.baseCommit) {
-      throw invalidGrantTag(grantId);
-    }
-    records.set(grantId, { grantId, target, envelope });
   }
   return records;
 }

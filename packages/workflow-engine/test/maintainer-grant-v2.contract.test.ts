@@ -24,6 +24,10 @@ import {
   type MaintainerGrantV2Payload,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
 import {
+  canonicalGrantEnvelope,
+  type MaintainerGrantEnvelope,
+} from '../src/modules/authority/maintainer-grant.ts';
+import {
   approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
   prepareMaintainerGrantV2Checks,
   reissueAndApplyMaintainerGrantV2 as reissueAndApplyMaintainerGrantV2Production,
@@ -1714,6 +1718,87 @@ test('v2 issue signs every binding and stores a canonical one-shot grant', () =>
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
+});
+
+test('durable signed V1 grant records fail closed without rewriting bytes', () => {
+  const repository = prepareCandidate();
+  const preparedSigned: string[] = [];
+  const signed: string[] = [];
+  const legacyGrantId = '77777777-7777-4777-8777-777777777777';
+  try {
+    const prepared = freezeIssuableCandidate(repository, preparedSigned);
+    const issued = issueMaintainerGrantV2(
+      repository,
+      {
+        changeId: 'demo-change',
+        reason: 'Issue current grant only to construct a valid retired record',
+        manifest: prepared.manifest,
+        checksAttestation: prepared.checksAttestation!,
+        candidateBundle: prepared.candidateBundle!,
+      },
+      {
+        now: new Date('2026-08-03T09:00:00.000Z'),
+        grantId: GRANT_ID,
+        signer: fakeSigner(signed),
+      },
+    );
+    const legacy: MaintainerGrantEnvelope = {
+      payload: {
+        version: 1,
+        grantId: legacyGrantId,
+        repositoryId: issued.envelope.payload.repositoryId,
+        repositoryOrigin: issued.envelope.payload.repositoryOrigin,
+        baseCommit: issued.envelope.payload.baseCommit,
+        policyBlob: issued.envelope.payload.policyBlob,
+        changeId: issued.envelope.payload.changeId,
+        allowedPaths: issued.envelope.payload.allowedPaths,
+        issuedAt: issued.envelope.payload.issuedAt,
+        expiresAt: issued.envelope.payload.expiresAt,
+        maxUses: 1,
+        reason: issued.envelope.payload.reason,
+        signer: issued.envelope.payload.signer,
+      },
+      signature: FAKE_SIGNATURE,
+    };
+    const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+    const legacyPath = path.join(
+      gitCommonDirectory,
+      'workflow-engine/maintainer-grants/available',
+      `${legacyGrantId}.json`,
+    );
+    fs.writeFileSync(legacyPath, canonicalGrantEnvelope(legacy), {
+      mode: 0o600,
+    });
+    const before = fs.readFileSync(legacyPath, 'utf8');
+    assert.throws(
+      () => inspectMaintainerGrants(gitCommonDirectory, legacyGrantId),
+      (error) => isWorkflowError(error, 'MAINTAINER_GRANT_INVALID'),
+    );
+    assert.equal(fs.readFileSync(legacyPath, 'utf8'), before);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('CI rejects the retired V1 authority commit branch before reading Git state', () => {
+  const legacyAuthorityCommit = {
+    hash: 'a'.repeat(40),
+    subject: 'Retired authority transition',
+    parents: ['b'.repeat(40)],
+    trailers: {
+      kind: 'authority',
+      changeId: 'demo-change',
+      grantId: GRANT_ID,
+    },
+  } as Parameters<typeof validateCiAuthorityCommit>[1];
+  assert.throws(
+    () =>
+      validateCiAuthorityCommit(
+        '/current-only-v1-authority-rejection',
+        legacyAuthorityCommit,
+      ),
+    (error) => isWorkflowError(error, 'CI_AUTHORITY_COMMIT_INVALID'),
+  );
 });
 
 test('v2 revoke is human-trusted, audit-first, task-bound, and replay-safe', () => {
