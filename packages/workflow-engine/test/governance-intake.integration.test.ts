@@ -12,6 +12,7 @@ import {
   recordGovernanceFinding,
 } from '../src/modules/governance-intake/governance-intake.ts';
 import {
+  createWorkRegistryPromotionGrantRequest,
   createWorkRegistryReviewGrantRequest,
   workRegistryGrantTransitionDefinitions,
 } from '../src/modules/governance-intake/work-registry-grant.ts';
@@ -2019,6 +2020,268 @@ test('registered Central Grant review transition applies the exact reviewed item
     });
     assert.equal(outcome.outcome, 'completed');
     assert.equal(showWorkItem(repositoryRoot, item.id).stage, 'backlog');
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('registered Central Grant promotion applies one current surveyed linkage and rejects replay or stale survey without mutation', async () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-work-grant-promotion-'),
+  );
+  configureRepositoryConsumer(repositoryRoot);
+  try {
+    runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+    runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+    runGitForTest(repositoryRoot, [
+      'config',
+      'user.email',
+      'jigwright@example.test',
+    ]);
+    const prepareCandidate = (
+      workItemId: string,
+      changeId: string,
+      createdAt: string,
+      acceptedAt: string,
+    ) => {
+      const created = createWorkItem(
+        repositoryRoot,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane: 'next',
+          title: `Grant promotion for ${changeId}`,
+          summary: 'Central Grant applies one exact surveyed promotion.',
+          sourceRefs: [],
+        },
+        {
+          now: () => createdAt,
+          createId: () => workItemId,
+        },
+      );
+      const accepted = applyWorkItemReview(
+        repositoryRoot,
+        created.item.id,
+        {
+          action: 'accept',
+          expectedDigest: workItemDigest(created.item),
+          summary: created.item.interpretation.summary,
+        },
+        () => acceptedAt,
+      );
+      const changeDirectory = path.join(
+        repositoryRoot,
+        'openspec/changes',
+        changeId,
+      );
+      fs.mkdirSync(changeDirectory, { recursive: true });
+      fs.writeFileSync(
+        path.join(changeDirectory, 'proposal.md'),
+        `# ${changeId}\n`,
+      );
+      return { created, accepted, changeDirectory };
+    };
+    const createPromotionChallenge = (
+      workItemId: string,
+      changeId: string,
+      expectedDigest: string,
+      challengeId: string,
+      promotedAt: string,
+    ) => {
+      const registry = createTransitionRegistry(
+        workRegistryGrantTransitionDefinitions(
+          repositoryRoot,
+          () => promotedAt,
+        ),
+      );
+      const request = createWorkRegistryPromotionGrantRequest({
+        repositoryRoot,
+        workItemId,
+        changeId,
+        expectedDigest,
+        proposedReason: 'Approve this exact surveyed Work Registry promotion.',
+      });
+      const challenge = createGrantChallenge(request, registry, {
+        challengeId,
+        now: new Date('2026-08-24T05:02:00.000Z'),
+        expiresAt: '2026-08-24T05:22:00.000Z',
+      });
+      assert.equal(
+        challenge.choices[0]?.transitionId,
+        'work-registry.promote.v1',
+      );
+      const definition = registry.resolve('work-registry.promote.v1');
+      return {
+        challengeId,
+        definition,
+        parameters: definition.validateParameters(
+          challenge.choices[0]?.parameters,
+        ),
+      };
+    };
+    const executePromotion = (
+      transition: ReturnType<typeof createPromotionChallenge>,
+      operationId: string,
+    ) =>
+      transition.definition.execute({
+        parameters: transition.parameters,
+        approvalSubject: {} as never,
+        approvalSubjectDigest: `sha256:${'a'.repeat(64)}`,
+        challengeId: transition.challengeId,
+        operationId,
+        recovered: false,
+        assertLifecycleOwned() {},
+      });
+    const snapshotPromotion = (
+      itemPath: string,
+      originPath: string,
+      surveyPath: string,
+    ) => ({
+      item: fs.readFileSync(itemPath, 'utf8'),
+      origin: fs.existsSync(originPath)
+        ? fs.readFileSync(originPath, 'utf8')
+        : null,
+      survey: fs.readFileSync(surveyPath, 'utf8'),
+      head: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD']),
+      refs: runGitForTest(repositoryRoot, ['show-ref']),
+      status: runGitForTest(repositoryRoot, ['status', '--porcelain=v1', '-z']),
+    });
+
+    const current = prepareCandidate(
+      'WORK-01K39R0V00000000000000000G',
+      'grant-promoted-current',
+      '2026-08-24T04:58:00.000Z',
+      '2026-08-24T04:59:00.000Z',
+    );
+    runGitForTest(repositoryRoot, ['add', '.']);
+    runGitForTest(repositoryRoot, [
+      'commit',
+      '-m',
+      'Prepare current promotion',
+    ]);
+    const currentSurvey = prepareWorkItemPromotionSurvey(
+      repositoryRoot,
+      current.accepted.id,
+      'grant-promoted-current',
+      {
+        schemaVersion: 1,
+        symbols: [],
+        emptyReason: 'No load-bearing symbols for this local acceptance.',
+      },
+    );
+    const currentTransition = createPromotionChallenge(
+      current.accepted.id,
+      'grant-promoted-current',
+      workItemDigest(current.accepted),
+      'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      '2026-08-24T05:03:00.000Z',
+    );
+    const outcome = await executePromotion(
+      currentTransition,
+      'operation-work-registry-promotion',
+    );
+    assert.deepEqual(outcome, {
+      outcome: 'completed',
+      details: {
+        action: 'promote',
+        workItemId: current.accepted.id,
+        changeId: 'grant-promoted-current',
+      },
+    });
+    const currentItemPath = path.join(
+      repositoryRoot,
+      current.created.relativePath,
+    );
+    const currentOriginPath = path.join(current.changeDirectory, 'origin.json');
+    const currentSurveyPath = path.join(
+      repositoryRoot,
+      currentSurvey.relativePath,
+    );
+    assert.deepEqual(showWorkItem(repositoryRoot, current.accepted.id), {
+      ...current.accepted,
+      stage: 'active',
+      changeRefs: ['grant-promoted-current'],
+      timeline: [
+        ...current.accepted.timeline,
+        {
+          at: '2026-08-24T05:03:00.000Z',
+          event: 'promoted',
+          changeId: 'grant-promoted-current',
+        },
+      ],
+    });
+    assert.deepEqual(JSON.parse(fs.readFileSync(currentOriginPath, 'utf8')), {
+      schemaVersion: 1,
+      sourceRefs: [],
+      workItemRefs: [current.accepted.id],
+    });
+    const afterCurrentPromotion = snapshotPromotion(
+      currentItemPath,
+      currentOriginPath,
+      currentSurveyPath,
+    );
+    await assert.rejects(
+      executePromotion(
+        currentTransition,
+        'operation-work-registry-promotion-replay',
+      ),
+      hasCode('WORK_REGISTRY_GRANT_STALE'),
+    );
+    assert.deepEqual(
+      snapshotPromotion(currentItemPath, currentOriginPath, currentSurveyPath),
+      afterCurrentPromotion,
+    );
+
+    const stale = prepareCandidate(
+      'WORK-01K39R0V00000000000000000H',
+      'grant-promoted-stale',
+      '2026-08-24T05:04:00.000Z',
+      '2026-08-24T05:05:00.000Z',
+    );
+    runGitForTest(repositoryRoot, ['add', '.']);
+    runGitForTest(repositoryRoot, ['commit', '-m', 'Prepare stale promotion']);
+    const staleSurvey = prepareWorkItemPromotionSurvey(
+      repositoryRoot,
+      stale.accepted.id,
+      'grant-promoted-stale',
+      {
+        schemaVersion: 1,
+        symbols: [],
+        emptyReason: 'No load-bearing symbols for this stale acceptance.',
+      },
+    );
+    const staleTransition = createPromotionChallenge(
+      stale.accepted.id,
+      'grant-promoted-stale',
+      workItemDigest(stale.accepted),
+      'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb',
+      '2026-08-24T05:06:00.000Z',
+    );
+    fs.writeFileSync(
+      path.join(repositoryRoot, 'head-advance.txt'),
+      'Advance HEAD after the exact survey.\n',
+    );
+    runGitForTest(repositoryRoot, ['add', 'head-advance.txt']);
+    runGitForTest(repositoryRoot, ['commit', '-m', 'Advance after survey']);
+    const staleItemPath = path.join(repositoryRoot, stale.created.relativePath);
+    const staleOriginPath = path.join(stale.changeDirectory, 'origin.json');
+    const staleSurveyPath = path.join(repositoryRoot, staleSurvey.relativePath);
+    const beforeStaleRefusal = snapshotPromotion(
+      staleItemPath,
+      staleOriginPath,
+      staleSurveyPath,
+    );
+    await assert.rejects(
+      executePromotion(
+        staleTransition,
+        'operation-work-registry-promotion-stale',
+      ),
+      hasCode('WORK_REGISTRY_SURVEY_REQUIRED'),
+    );
+    assert.deepEqual(
+      snapshotPromotion(staleItemPath, staleOriginPath, staleSurveyPath),
+      beforeStaleRefusal,
+    );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
   }
