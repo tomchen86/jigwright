@@ -15,6 +15,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
@@ -134,7 +135,7 @@ for (const fault of [
 
 function completedFixture(marker?: string): string {
   const repository = createFixtureRepository();
-  git(repository, ['checkout', '-b', 'work/demo-change']);
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   if (marker) {
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/specs/demo/spec.md'),

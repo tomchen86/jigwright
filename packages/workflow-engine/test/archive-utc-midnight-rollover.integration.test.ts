@@ -9,6 +9,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
@@ -275,7 +276,7 @@ function completedFixture(marker = ''): string {
   );
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Configure archive delta']);
-  git(repository, ['checkout', '-b', 'work/demo-change']);
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   withPlanningFaultDisabled(repository, marker, () =>
     commitPlanningTransition(repository, 'demo-change'),

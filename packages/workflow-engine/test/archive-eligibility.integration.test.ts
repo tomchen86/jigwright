@@ -22,6 +22,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
@@ -378,6 +379,7 @@ test('archive eligibility fails closed when the remote-tracking base is unresolv
 
 function configuredFixture(): string {
   const repository = createFixtureRepository();
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   fs.chmodSync(runtimeRoot(repository), 0o700);
   git(repository, ['add', '.']);
@@ -388,6 +390,9 @@ function configuredFixture(): string {
     '-m',
     'Change: demo-change\nTransition: plan',
   ]);
+  git(repository, ['checkout', 'main']);
+  git(repository, ['merge', '--ff-only', 'work/demo-change']);
+  git(repository, ['branch', '-d', 'work/demo-change']);
   syncOriginMain(repository);
   return repository;
 }

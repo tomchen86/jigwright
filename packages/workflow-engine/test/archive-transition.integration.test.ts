@@ -24,6 +24,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   syncOriginMain,
   writeReadyV3ExemptChange,
@@ -340,7 +341,7 @@ function completedFixture(
   );
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Configure archive delta']);
-  git(repository, ['checkout', '-b', 'work/demo-change']);
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   beforePlanning?.(repository);
   writeReadyV3ExemptChange(repository);
   fs.chmodSync(runtimeRoot(repository), 0o700);
