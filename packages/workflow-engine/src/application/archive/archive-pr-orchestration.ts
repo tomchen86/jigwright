@@ -31,8 +31,15 @@ import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycl
 import {
   createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
+  readArchivePublicationPreparation,
   type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
+import { readArchiveReport } from '../../runtime/storage-journal/archive-report.ts';
+import {
+  archiveCommitMessage,
+  commitChangedPaths,
+  commitFacts,
+} from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   assertArchivePublicationTarget,
   authenticateCompletedArchivePullRequestGrant,
@@ -94,6 +101,25 @@ export type PreparedPostMergeArchivePullRequestV1 = Readonly<{
   assurance: LocalArchivePullRequestAssuranceV1;
   preparation: ArchivePublicationPreparationV1;
   preparationRecordPath: string;
+}>;
+
+export type ArchivePublicationPreparationStatusV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'archive-publication-preparation-status.v1';
+  authority: 'diagnostic';
+  state: 'local-preparation-current';
+  preparationIdentity: `sha256:${string}`;
+  changeId: string;
+  protectedBase: ArchivePublicationPreparationV1['protectedBase'];
+  archive: Readonly<
+    ArchivePublicationPreparationV1['archive'] & { archivePath: string }
+  >;
+  recordedAssurance: ArchivePublicationPreparationV1['assurance'];
+  publicationBoundary: Readonly<{
+    remoteState: 'not-observed-by-local-status';
+    operationalGate: 'pending';
+  }>;
+  replayCommand: string;
 }>;
 
 export type PreparePostMergeArchivePullRequestOptions = Readonly<{
@@ -574,6 +600,100 @@ export function preparePostMergeArchivePullRequest(
     assurance,
     preparation,
     preparationRecordPath,
+  });
+}
+
+/**
+ * Replay one durable local archive preparation without loading a remote
+ * adapter, contacting a network, creating a worktree, or mutating Git/runtime
+ * state. This is diagnostic evidence only; publication revalidates its own
+ * Grant and remote boundary separately.
+ */
+export function inspectArchivePublicationPreparation(
+  cwd: string,
+  preparationIdentity: string,
+): ArchivePublicationPreparationStatusV1 {
+  const context = loadInvestigationRuntimeContext(cwd);
+  const repositoryRoot = context.git.repositoryRoot;
+  const preparation = readArchivePublicationPreparation(
+    context.lifecycleRuntime.root,
+    preparationIdentity,
+  );
+  const configuredProtectedBranch = context.config.protectedBranches[0];
+  const protectedLocal = readCommitRef(
+    repositoryRoot,
+    `refs/heads/${preparation.protectedBase.branch}`,
+  );
+  const protectedRemote = readCommitRef(
+    repositoryRoot,
+    preparation.protectedBase.trackingRef,
+  );
+  const archiveRef = readCommitRef(
+    repositoryRoot,
+    `refs/heads/${preparation.archive.branch}`,
+  );
+  if (
+    preparation.repositoryId !== context.config.repositoryName ||
+    configuredProtectedBranch !== preparation.protectedBase.branch ||
+    protectedLocal?.commit !== preparation.protectedBase.commit ||
+    protectedLocal.tree !== preparation.protectedBase.tree ||
+    protectedRemote?.commit !== preparation.protectedBase.commit ||
+    protectedRemote.tree !== preparation.protectedBase.tree ||
+    archiveRef?.commit !== preparation.archive.headCommit ||
+    preparation.assurance.baseCommit !== preparation.protectedBase.commit ||
+    preparation.assurance.headCommit !== preparation.archive.headCommit
+  ) {
+    throw archivePreparationStale();
+  }
+
+  const report = readArchiveReport(
+    path.join(context.lifecycleRuntime.root, 'archive-reports'),
+    preparation.archive.reportId,
+  );
+  let facts: ReturnType<typeof commitFacts>;
+  let changedPaths: string[];
+  try {
+    facts = commitFacts(repositoryRoot, preparation.archive.headCommit);
+    changedPaths = commitChangedPaths(
+      repositoryRoot,
+      preparation.archive.headCommit,
+    );
+  } catch {
+    throw archivePreparationStale();
+  }
+  if (
+    facts.hash !== preparation.archive.headCommit ||
+    facts.parents.length !== 1 ||
+    facts.parents[0] !== preparation.protectedBase.commit ||
+    facts.tree !== archiveRef.tree ||
+    facts.tree !== report.tree ||
+    facts.message !== `${archiveCommitMessage(preparation.changeId)}\n` ||
+    report.changeId !== preparation.changeId ||
+    report.parent !== preparation.protectedBase.commit ||
+    report.commitHash !== preparation.archive.headCommit ||
+    canonicalJson(report.changedPaths) !== canonicalJson(changedPaths)
+  ) {
+    throw archivePreparationStale();
+  }
+
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: 'archive-publication-preparation-status.v1',
+    authority: 'diagnostic',
+    state: 'local-preparation-current',
+    preparationIdentity: preparation.preparationIdentity,
+    changeId: preparation.changeId,
+    protectedBase: preparation.protectedBase,
+    archive: Object.freeze({
+      ...preparation.archive,
+      archivePath: report.archivePath,
+    }),
+    recordedAssurance: preparation.assurance,
+    publicationBoundary: Object.freeze({
+      remoteState: 'not-observed-by-local-status',
+      operationalGate: 'pending',
+    }),
+    replayCommand: `pnpm workflow after-merge ${preparation.changeId} --json`,
   });
 }
 
@@ -1265,6 +1385,33 @@ function resolveExactProtectedRemoteBase(
     );
   }
   return Object.freeze({ ref, head, tree });
+}
+
+function readCommitRef(
+  repositoryRoot: string,
+  ref: string,
+): Readonly<{ commit: string; tree: string }> | null {
+  const commit = runGit(
+    repositoryRoot,
+    ['rev-parse', '--verify', `${ref}^{commit}`],
+    true,
+  ).trim();
+  const tree = runGit(
+    repositoryRoot,
+    ['rev-parse', '--verify', `${ref}^{tree}`],
+    true,
+  ).trim();
+  return /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(commit) &&
+    /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(tree)
+    ? Object.freeze({ commit, tree })
+    : null;
+}
+
+function archivePreparationStale() {
+  return archivePrError(
+    'ARCHIVE_PR_PREPARATION_STALE',
+    'The durable archive preparation no longer matches exact local Git and archive-report truth.',
+  );
 }
 
 function isNodeError(error: unknown): error is NodeJS.ErrnoException {

@@ -14,6 +14,7 @@ import { dispatchCentralRoleProviderDefaultCommand } from './entrypoints/cli/cen
 import { commitArchiveTransition } from './application/archive/archive-transition.ts';
 import {
   discoverArchivePullRequestCandidates,
+  inspectArchivePublicationPreparation,
   preparePostMergeArchivePullRequest,
   publishPostMergeArchivePullRequest,
   type ExactArchiveBranchPublisherPortV1,
@@ -1259,6 +1260,15 @@ async function dispatchArchivePullRequest(
   dependencies: ArchivePullRequestCliDependencies = ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
 ): Promise<CommandResult> {
   const [, action, ...rest] = args;
+  if (action === 'status') {
+    if (rest.length !== 1) throw archivePullRequestUsage();
+    return {
+      command: 'archive-pr',
+      action,
+      ok: true,
+      result: dependencies.inspect(cwd, rest[0]!),
+    };
+  }
   if (action !== 'prepare' && action !== 'open') {
     throw archivePullRequestUsage();
   }
@@ -1368,6 +1378,7 @@ async function dispatchArchivePullRequest(
 }
 
 type ArchivePullRequestCliDependencies = Readonly<{
+  inspect: typeof inspectArchivePublicationPreparation;
   prepare: typeof preparePostMergeArchivePullRequest;
   requestGrant: typeof requestArchivePullRequestPublicationGrant;
   publish: typeof publishPostMergeArchivePullRequest;
@@ -1390,6 +1401,7 @@ type ArchivePullRequestCliDependencies = Readonly<{
 
 const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDependencies =
   Object.freeze({
+    inspect: inspectArchivePublicationPreparation,
     prepare: preparePostMergeArchivePullRequest,
     requestGrant: requestArchivePullRequestPublicationGrant,
     publish: publishPostMergeArchivePullRequest,
@@ -1519,7 +1531,7 @@ function archivePullRequestUsage(command = 'archive-pr'): WorkflowError {
   return usage(
     command === 'after-merge'
       ? 'Usage: pnpm workflow after-merge <change-id> [--workspace-parent <absolute-path>] [--json]'
-      : 'Usage: pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]\n       pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
+      : 'Usage: pnpm workflow archive-pr status <sha256:preparation-identity> [--json]\n       pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]\n       pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
   );
 }
 
@@ -4300,6 +4312,7 @@ function usageText(): string {
     '  pnpm workflow archive <change-id> [--json]',
     '  pnpm workflow archive-candidates --base <origin/protected-branch> [--json]',
     '  pnpm workflow after-merge <change-id> --authorization <facts.json> [--workspace-parent <absolute-path>] [--json]',
+    '  pnpm workflow archive-pr status <sha256:preparation-identity> [--json]',
     '  pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow openspec-assets <generate|check|install-prompts --codex-home <path>> [--json]',

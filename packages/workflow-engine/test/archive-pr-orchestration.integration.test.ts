@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -43,6 +43,7 @@ import {
   createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
+import { writeArchiveReport } from '../src/runtime/storage-journal/archive-report.ts';
 import {
   commitSession,
   finalizeTask,
@@ -223,6 +224,9 @@ test('archive prepare returns one exact Fail-Grant and open uses its production 
     tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
   });
   const dispatch = createArchivePullRequestCliDispatcherForTesting({
+    inspect() {
+      throw new Error('status inspection is outside this CLI seam');
+    },
     prepare(cwd, changeId) {
       assert.equal(cwd, repository);
       assert.equal(changeId, 'demo-change');
@@ -908,6 +912,150 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
   }
 });
 
+test('archive preparation status replays exact local Git truth without a worktree or runtime writes', () => {
+  const repository = createFixtureRepository();
+  try {
+    const local = createLocalArchivePreparationFixture(repository);
+    const runtimeRoot = local.runtimeRoot;
+    const before = {
+      repository: repositoryProjection(repository),
+      refs: git(repository, ['show-ref']),
+      worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+      runtime: snapshotDirectory(runtimeRoot),
+    };
+
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        'archive-pr',
+        'status',
+        local.preparation.preparationIdentity,
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout) as {
+      command: string;
+      action: string;
+      result: {
+        schemaVersion: number;
+        kind: string;
+        authority: string;
+        state: string;
+        preparationIdentity: string;
+        changeId: string;
+        protectedBase: { commit: string; tree: string };
+        archive: {
+          branch: string;
+          headCommit: string;
+          reportId: string;
+          archivePath: string;
+        };
+        recordedAssurance: { reportIdentity: string };
+        publicationBoundary: {
+          remoteState: string;
+          operationalGate: string;
+        };
+        replayCommand: string;
+      };
+    };
+    assert.equal(output.command, 'archive-pr');
+    assert.equal(output.action, 'status');
+    assert.equal(output.result.schemaVersion, 1);
+    assert.equal(
+      output.result.kind,
+      'archive-publication-preparation-status.v1',
+    );
+    assert.equal(output.result.authority, 'diagnostic');
+    assert.equal(output.result.state, 'local-preparation-current');
+    assert.equal(
+      output.result.preparationIdentity,
+      local.preparation.preparationIdentity,
+    );
+    assert.equal(output.result.changeId, 'demo-change');
+    assert.equal(
+      output.result.protectedBase.commit,
+      local.preparation.protectedBase.commit,
+    );
+    assert.equal(
+      output.result.protectedBase.tree,
+      local.preparation.protectedBase.tree,
+    );
+    assert.deepEqual(output.result.archive, {
+      branch: local.archiveBranch,
+      headCommit: local.archive.commitHash,
+      reportId: local.archive.reportId,
+      archivePath: local.archive.archivePath,
+    });
+    assert.equal(
+      output.result.recordedAssurance.reportIdentity,
+      '8'.repeat(64),
+    );
+    assert.deepEqual(output.result.publicationBoundary, {
+      remoteState: 'not-observed-by-local-status',
+      operationalGate: 'pending',
+    });
+    assert.equal(
+      output.result.replayCommand,
+      'pnpm workflow after-merge demo-change --json',
+    );
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+      },
+      before,
+    );
+
+    git(repository, [
+      'update-ref',
+      `refs/heads/${local.archiveBranch}`,
+      local.preparation.protectedBase.commit,
+      local.archive.commitHash,
+    ]);
+    const drifted = {
+      repository: repositoryProjection(repository),
+      refs: git(repository, ['show-ref']),
+      worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+      runtime: snapshotDirectory(runtimeRoot),
+    };
+    const stale = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.resolve(import.meta.dirname, '../src/cli.ts'),
+        'archive-pr',
+        'status',
+        local.preparation.preparationIdentity,
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(stale.status, 13, stale.stdout);
+    assert.equal(
+      (JSON.parse(stale.stderr) as { error: { code: string } }).error.code,
+      'ARCHIVE_PR_PREPARATION_STALE',
+    );
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+      },
+      drifted,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('local archive refuses remote-tracking drift while holding archive authority', () => {
   const repository = completedFixture();
   const workspaceParent = path.join(
@@ -1207,6 +1355,128 @@ function repositoryProjection(repository: string) {
     tree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
     status: git(repository, ['status', '--porcelain']),
   };
+}
+
+function createLocalArchivePreparationFixture(repository: string) {
+  const changeId = 'demo-change';
+  const archiveBranch = `work/archive-${changeId}`;
+  const protectedBaseCommit = git(repository, ['rev-parse', 'main']).trim();
+  const protectedBaseTree = git(repository, [
+    'rev-parse',
+    `${protectedBaseCommit}^{tree}`,
+  ]).trim();
+  git(repository, ['checkout', '-b', archiveBranch]);
+  const archivePath = `openspec/changes/archive/2026-09-01-${changeId}`;
+  fs.mkdirSync(path.join(repository, archivePath), { recursive: true });
+  fs.writeFileSync(
+    path.join(repository, archivePath, 'status.txt'),
+    'current archive status fixture\n',
+  );
+  git(repository, ['add', archivePath]);
+  git(repository, [
+    'commit',
+    '-m',
+    `Archive ${changeId}`,
+    '-m',
+    `Change: ${changeId}\nTransition: archive`,
+  ]);
+  const archiveHead = git(repository, ['rev-parse', 'HEAD']).trim();
+  const archiveTree = git(repository, ['rev-parse', 'HEAD^{tree}']).trim();
+  const patch = git(repository, [
+    'diff',
+    '--binary',
+    protectedBaseCommit,
+    archiveHead,
+  ]);
+  git(repository, ['checkout', 'main']);
+
+  const runtimeRoot =
+    loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+  fs.mkdirSync(runtimeRoot, { recursive: true });
+  const reportId = writeArchiveReport(
+    path.join(runtimeRoot, 'archive-reports'),
+    {
+      schemaVersion: 1,
+      kind: 'archive-transition',
+      createdAt: '2026-09-01T00:00:00.000Z',
+      changeId,
+      archivePath,
+      parent: protectedBaseCommit,
+      tree: archiveTree,
+      commitHash: archiveHead,
+      patch,
+      patchDigest: crypto.createHash('sha256').update(patch).digest('hex'),
+      changedPaths: [`${archivePath}/status.txt`],
+      logicalIdentity: 'archive-status-fixture',
+      contractDigest: '1'.repeat(64),
+      promotedSpecDigests: {},
+      archivedArtifactDigests: {},
+    },
+  );
+  const preparation = createArchivePublicationPreparation({
+    repositoryId: 'fixture',
+    changeId,
+    candidateIdentity: '7'.repeat(64),
+    protectedBase: {
+      branch: 'main',
+      remoteName: 'origin',
+      trackingRef: 'refs/remotes/origin/main',
+      commit: protectedBaseCommit,
+      tree: protectedBaseTree,
+    },
+    archive: {
+      branch: archiveBranch,
+      headCommit: archiveHead,
+      reportId,
+    },
+    assurance: {
+      reportIdentity: '8'.repeat(64),
+      baseCommit: protectedBaseCommit,
+      headCommit: archiveHead,
+    },
+  });
+  persistArchivePublicationPreparation(runtimeRoot, preparation);
+  return {
+    runtimeRoot,
+    archiveBranch,
+    archive: {
+      commitHash: archiveHead,
+      reportId,
+      archivePath,
+    },
+    preparation,
+  };
+}
+
+function snapshotDirectory(root: string): readonly unknown[] {
+  const entries: unknown[] = [];
+  const visit = (absolute: string, relative: string): void => {
+    const stats = fs.lstatSync(absolute, { throwIfNoEntry: false });
+    if (stats === undefined) return;
+    entries.push({
+      path: relative,
+      mode: stats.mode,
+      kind: stats.isDirectory()
+        ? 'directory'
+        : stats.isFile()
+          ? 'file'
+          : stats.isSymbolicLink()
+            ? 'symlink'
+            : 'other',
+      content: stats.isFile()
+        ? fs.readFileSync(absolute).toString('base64')
+        : stats.isSymbolicLink()
+          ? fs.readlinkSync(absolute)
+          : null,
+    });
+    if (stats.isDirectory()) {
+      for (const entry of fs.readdirSync(absolute).sort()) {
+        visit(path.join(absolute, entry), path.join(relative, entry));
+      }
+    }
+  };
+  visit(root, '.');
+  return entries;
 }
 
 function jsonResponse(status: number, body: unknown): Response {
