@@ -82,18 +82,24 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   }
 });
 
-test('maintainer policy is a pinned workflow contract artifact', () => {
+test('maintainer policy artifacts exclude the retired Maintainer Grant V1 schema', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const artifacts = workflowContractArtifactPaths(repositoryRoot).map(
     (artifact) => path.relative(repositoryRoot, artifact),
+  );
+  const retiredGrantSchema = path.join(
+    repositoryRoot,
+    'workflow/schemas/maintainer-grant.schema.json',
   );
 
   assert.ok(artifacts.includes('workflow/maintainer-policy.json'));
   assert.ok(
     artifacts.includes('workflow/schemas/maintainer-policy.schema.json'),
   );
-  assert.ok(
+  assert.equal(fs.existsSync(retiredGrantSchema), false);
+  assert.equal(
     artifacts.includes('workflow/schemas/maintainer-grant.schema.json'),
+    false,
   );
   assert.ok(
     artifacts.includes('workflow/schemas/authority-attestation.schema.json'),

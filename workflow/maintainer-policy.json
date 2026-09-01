@@ -28,7 +28,6 @@
     "packages/workflow-engine/src/modules/authority/maintainer-policy.ts",
     "packages/workflow-engine/src/modules/lifecycle/managed-trailers.ts",
     "workflow/maintainer-policy.json",
-    "workflow/schemas/maintainer-grant.schema.json",
     "workflow/schemas/maintainer-policy.schema.json"
   ],
   "requiredChecks": [
