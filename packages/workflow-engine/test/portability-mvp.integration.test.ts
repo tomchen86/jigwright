@@ -597,7 +597,7 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         ).result.result.primaryChangeId,
         'demo-change',
       );
-      const task = finalizePortableTask(
+      let task = finalizePortableTask(
         repository,
         sessionId,
         'Complete portable fixture task',
@@ -605,14 +605,45 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         providerHost,
         lifecycleStrategy,
       );
+      const taskCommitHashes = [task.commitHash];
       git(repository, ['checkout', 'trunk']);
       git(repository, ['merge', '--ff-only', task.commitHash]);
-      const taskParent = git(repository, [
+      let taskParent = git(repository, [
         'rev-parse',
         `${task.commitHash}^`,
       ]).trim();
       runPortableCi(repository, taskParent, task.commitHash);
       syncProtectedBase(repository);
+
+      if (lifecycleStrategy === 'check-complete-finish-commit') {
+        git(repository, ['checkout', 'changes/demo-change']);
+        const finalSessionId = (
+          runCli(repository, ['open-task', 'demo-change', '--task', '1.2']) as {
+            result: { sessionId: string };
+          }
+        ).result.sessionId;
+        fs.writeFileSync(
+          path.join(repository, 'src/final-feature.ts'),
+          'export {};\n',
+        );
+        task = finalizePortableTask(
+          repository,
+          finalSessionId,
+          'Complete portable fixture documentation closure',
+          'src/final-feature.ts',
+          providerHost,
+          'preferred-finalize',
+        );
+        taskCommitHashes.push(task.commitHash);
+        git(repository, ['checkout', 'trunk']);
+        git(repository, ['merge', '--ff-only', task.commitHash]);
+        taskParent = git(repository, [
+          'rev-parse',
+          `${task.commitHash}^`,
+        ]).trim();
+        runPortableCi(repository, taskParent, task.commitHash);
+        syncProtectedBase(repository);
+      }
 
       exerciseConcurrentWorktreesAndUpdateBase(repository);
       syncProtectedBase(repository);
@@ -670,16 +701,20 @@ test('installed tarball drives two complete current lifecycles over unrelated se
           'route',
           'route',
           'task',
+          ...(lifecycleStrategy === 'check-complete-finish-commit'
+            ? (['task'] as const)
+            : []),
           'route',
           'route',
           'archive',
         ],
       );
       assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
-      assert.equal(
-        managed.find(({ trailers }) => trailers.kind === 'task')!
-          .fixtureCommitId,
-        task.commitHash,
+      assert.deepEqual(
+        managed
+          .filter(({ trailers }) => trailers.kind === 'task')
+          .map(({ fixtureCommitId }) => fixtureCommitId),
+        taskCommitHashes,
       );
       assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
     } finally {
@@ -957,9 +992,19 @@ function configurePortableConsumer(
     'openspec/changes/demo-change/guard.json',
   );
   const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-    tasks: Record<string, { requiredChecks: string[] }>;
+    tasks: Record<string, { allowedPaths: string[]; requiredChecks: string[] }>;
   };
   guard.tasks['1.1']!.requiredChecks = ['text-check'];
+  if (lifecycleStrategy === 'check-complete-finish-commit') {
+    fs.appendFileSync(
+      path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+      '\n- [ ] 1.2 Close the portable documentation lifecycle\n',
+    );
+    guard.tasks['1.2'] = {
+      allowedPaths: ['src/**'],
+      requiredChecks: ['text-check'],
+    };
+  }
   writeJson(guardPath, guard);
   writeJson(path.join(repository, 'tooling/portability-profile.json'), {
     schemaVersion: 1,
