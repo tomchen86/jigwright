@@ -185,6 +185,13 @@ function resolveGlobalEngineSelection(
 
 function isReadOnlyStatusInvocation(argv: readonly string[]): boolean {
   return (
+    isReadOnlySessionStatusInvocation(argv) ||
+    isReadOnlyRouteStatusInvocation(argv)
+  );
+}
+
+function isReadOnlySessionStatusInvocation(argv: readonly string[]): boolean {
+  return (
     (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
     argv[0] === 'status' &&
     typeof argv[1] === 'string' &&
@@ -194,6 +201,14 @@ function isReadOnlyStatusInvocation(argv: readonly string[]): boolean {
     !argv[1].startsWith('-') &&
     !argv[1].includes('\0') &&
     !argv[1].includes('\n')
+  );
+}
+
+function isReadOnlyRouteStatusInvocation(argv: readonly string[]): boolean {
+  return (
+    (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
+    argv[0] === 'route' &&
+    argv[1] === 'status'
   );
 }
 
