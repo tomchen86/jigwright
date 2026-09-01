@@ -418,7 +418,7 @@
       "id": "provider-plane-separation",
       "plane": "core-ports",
       "state": "partial",
-      "t3Disposition": "PlanningProviderPort, AgentRuntimePort, and GrantVerifierPort are distinct engine contracts, and planning bindings remain separate from optional agent-role plans; core ownership of those ports and direct @jigwright/agent-runtime port adoption remain incomplete.",
+      "t3Disposition": "PlanningProviderPort, AgentRuntimePort, and GrantVerifierPort are distinct contracts. GrantVerifierPort is core-owned while the workflow engine retains only composition sealing and error mapping; planning bindings remain separate from optional agent-role plans. Core ownership of the AgentRuntimePort and direct @jigwright/agent-runtime port adoption remain incomplete.",
       "evidence": [
         {
           "path": "packages/core/src/planning-provider-port.ts",
@@ -429,8 +429,11 @@
           "contains": ["export interface AgentRuntimePort {"]
         },
         {
-          "path": "packages/workflow-engine/src/modules/authority/grant-verifier-port.ts",
-          "contains": ["export type GrantVerifierPort = Readonly<{"]
+          "path": "packages/core/src/grant-verifier-port.ts",
+          "contains": [
+            "export type GrantVerifierPort = Readonly<{",
+            "export type CurrentGrantVerifierPort = GrantVerifierPort"
+          ]
         },
         {
           "path": "packages/workflow-engine/src/modules/source/planning-role-policy-paths.ts",
@@ -541,8 +544,8 @@
     {
       "id": "schema-signature-namespace",
       "plane": "contracts-and-history",
-      "state": "partial",
-      "t3Disposition": "@jigwright/grants admits only the neutral current V2 Collaboration Grant namespace without fallback; unsupported payload versions cannot reach domain semantics or signature verification, and every JSON Schema host remains neutral.",
+      "state": "landed",
+      "t3Disposition": "Every current JSON Schema host is neutral, and @jigwright/grants admits only the neutral current V2 Collaboration Grant namespace without fallback; unsupported payload versions cannot reach domain semantics or signature verification.",
       "evidence": [
         {
           "path": "packages/grants/src/collaboration-grant-envelope-reader.ts",

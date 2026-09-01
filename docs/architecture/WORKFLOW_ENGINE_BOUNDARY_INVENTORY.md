@@ -158,11 +158,12 @@ repository configuration and keeps identity coverage for both surfaces.
 ### Provider-plane separation — partial
 
 Planning providers, agent runtimes, and grant verification have distinct engine
-contracts. Required planning-binding paths and optional agent-role-plan paths
-also have separate readers; an absent optional agent plan does not weaken or
-replace the required planning contract. Core ownership of these ports and
-direct adoption of a public `@jigwright/agent-runtime` execution port remain
-incomplete.
+contracts. `@jigwright/core` owns the neutral Grant verifier contract while the
+workflow engine retains only composition sealing and error mapping. Required
+planning-binding paths and optional agent-role-plan paths also have separate
+readers; an absent optional agent plan does not weaken or replace the required
+planning contract. Core ownership of the Agent Runtime port and direct adoption
+of a public `@jigwright/agent-runtime` execution port remain incomplete.
 
 <!-- coupling:provider-runner -->
 
@@ -204,14 +205,16 @@ the later distribution phase.
 
 <!-- coupling:schema-signature-namespace -->
 
-### Schema and signature namespace — partial
+### Schema and signature namespace — landed
 
 `workflow/config.json` owns only the consumer namespace. New boundary records
 carry the neutral `workflow.<kind>.vN` schema separately from
 `consumerNamespace`; the current schema admission API has no configurable
 legacy prefix or schema-selection fallback. The Collaboration Grant reader
 admits only its neutral current V2 namespace; unsupported payload versions
-cannot reach domain semantics or signature verification.
+cannot reach domain semantics or signature verification. Legacy strings are
+rejection fixtures or archived documentation rather than current runtime
+admission paths.
 
 ## Conformance and command surfaces
 

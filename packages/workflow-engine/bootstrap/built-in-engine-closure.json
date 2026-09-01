@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:78c1b49f1fce83f3102c02b6e0e9781cacc720a4b3876d6c4d8e6d45156c808a"
+      "digest": "sha256:fce105c089fed622123622b0341849556e081e708d9e3847206282dd8bfaaa77"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -139,6 +139,11 @@
       "path": "node_modules/@jigwright/core/src/governance-source.ts",
       "mode": "100644",
       "digest": "sha256:202a48d2a1f74fc454011b1819bfb69a1b0c13a1af36445522884c7e5582b64e"
+    },
+    {
+      "path": "node_modules/@jigwright/core/src/grant-verifier-port.ts",
+      "mode": "100644",
+      "digest": "sha256:36009b8d47010c65891b24d21cd72f2bc6fae1ec0a742f8a6ec1b5b1bdb08375"
     },
     {
       "path": "node_modules/@jigwright/core/src/job-attempt-runtime.ts",
@@ -233,7 +238,7 @@
     {
       "path": "node_modules/@jigwright/grants/src/grant-envelope-verifier.ts",
       "mode": "100644",
-      "digest": "sha256:36b8d03cdaf4dcba8e55dcb7c673f3b769665efd2ee8a74d88c501f82ca86455"
+      "digest": "sha256:6537097114df6064dc21d47411f4f48a3cd39b64ecfeeda7fb5e8ef892a81221"
     },
     {
       "path": "node_modules/@jigwright/grants/src/grant-lifecycle.ts",
@@ -1258,7 +1263,7 @@
     {
       "path": "src/modules/authority/grant-verifier-port.ts",
       "mode": "100644",
-      "digest": "sha256:d8fbbcc8f3d304367d6539923f3c1e95d0dcbefe50ab68073591cad71e1a6ed3"
+      "digest": "sha256:dd9a142634188875b514f52fa2f7a5615ed35dead1a969d01f1564a0bb595772"
     },
     {
       "path": "src/modules/authority/immutable-git-candidate.ts",

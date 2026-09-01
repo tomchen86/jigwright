@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:25f497ad9b3a4b0ae51d2f59cd5e06fe38f09a301fd8a59679c88662baaccd7c"
+      "digest": "sha256:2435d6d515081f6e66d5af88d4efae627048db8f2a0d4deb40d7fc9517cd8c2d"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -58,7 +58,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:665c7678bf76a385c77c769d5a0649ff913b56e395e1b0d6ebe6486ae2d3c917"
+      "digest": "sha256:1a065c4fe0b23fc5604b24aecb181f390721c50aaa83299e92783a78cc2dee4e"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
@@ -104,6 +104,11 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
       "mode": "100644",
       "digest": "sha256:7f1af628543342775882ab22831b0670a6e6b2bb086b4d2955461c63de7ac901"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/grant-verifier-port.js",
+      "mode": "100644",
+      "digest": "sha256:8e609bb71c20b858c77f0e9f90bb1319db8477b13f9f965f1a1e18524bf50881"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/job-attempt-runtime.js",
