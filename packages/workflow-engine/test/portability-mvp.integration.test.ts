@@ -1661,96 +1661,111 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
     for (const changeId of ['parallel-one', 'parallel-two', 'parallel-three']) {
       fixtures.push(prepareConcurrentWorktree(repository, changeId));
     }
-    const [first, second, third] = fixtures as [
+    const [primary, concurrent, refused] = fixtures as [
       ConcurrentFixture,
       ConcurrentFixture,
       ConcurrentFixture,
     ];
-    const firstSessionId = openTaskSession(first.worktree, first.changeId);
-    const secondSessionId = openTaskSession(second.worktree, second.changeId);
-    const firstStatus = taskStatus(first.worktree, firstSessionId);
-    const secondStatus = taskStatus(second.worktree, secondSessionId);
+    const primarySessionId = openTaskSession(
+      primary.worktree,
+      primary.changeId,
+    );
+    const concurrentSessionId = openTaskSession(
+      concurrent.worktree,
+      concurrent.changeId,
+    );
+    const primaryStatus = taskStatus(primary.worktree, primarySessionId);
+    const concurrentStatus = taskStatus(
+      concurrent.worktree,
+      concurrentSessionId,
+    );
     assert.notEqual(
-      firstStatus.session.repositoryRoot,
-      secondStatus.session.repositoryRoot,
+      primaryStatus.session.repositoryRoot,
+      concurrentStatus.session.repositoryRoot,
     );
-    assert.notEqual(firstStatus.session.branch, secondStatus.session.branch);
-    assert.equal(firstStatus.session.isolation.routingRole, 'primary');
-    assert.equal(secondStatus.session.isolation.routingRole, 'concurrent');
+    assert.notEqual(
+      primaryStatus.session.branch,
+      concurrentStatus.session.branch,
+    );
+    assert.equal(primaryStatus.session.isolation.routingRole, 'primary');
+    assert.equal(concurrentStatus.session.isolation.routingRole, 'concurrent');
     assert.equal(
-      firstStatus.session.isolation.routingWorksetDigest,
-      secondStatus.session.isolation.routingWorksetDigest,
+      primaryStatus.session.isolation.routingWorksetDigest,
+      concurrentStatus.session.isolation.routingWorksetDigest,
     );
-    assert.deepEqual(readTaskAllowedPaths(first.worktree, first.changeId), [
+    assert.deepEqual(readTaskAllowedPaths(primary.worktree, primary.changeId), [
       'src/parallel-one/**',
     ]);
-    assert.deepEqual(readTaskAllowedPaths(third.worktree, third.changeId), [
+    assert.deepEqual(readTaskAllowedPaths(refused.worktree, refused.changeId), [
       'src/parallel-one/**',
     ]);
     assert.throws(
-      () => openTaskSession(third.worktree, third.changeId),
+      () => openTaskSession(refused.worktree, refused.changeId),
       (error: unknown) =>
         error instanceof Error &&
         /CHANGE_ROUTING_REQUIRED/u.test(error.message),
     );
 
-    const secondGuard = path.join(
-      second.worktree,
+    const primaryGuard = path.join(
+      primary.worktree,
       'openspec/changes',
-      second.changeId,
+      primary.changeId,
       'guard.json',
     );
-    const guardPreimage = fs.readFileSync(secondGuard);
-    fs.appendFileSync(secondGuard, '\n');
+    const guardPreimage = fs.readFileSync(primaryGuard);
+    fs.appendFileSync(primaryGuard, '\n');
     assert.throws(
-      () => checkTask(second.worktree, secondSessionId),
+      () => checkTask(primary.worktree, primarySessionId),
       (error: unknown) =>
         error instanceof Error && /ARTIFACTS_CHANGED/u.test(error.message),
     );
-    fs.writeFileSync(secondGuard, guardPreimage);
+    fs.writeFileSync(primaryGuard, guardPreimage);
 
-    const firstTaskPath = path.join(
-      first.worktree,
-      'src/parallel-one/feature.ts',
-    );
-    fs.mkdirSync(path.dirname(firstTaskPath), { recursive: true });
-    fs.writeFileSync(
-      firstTaskPath,
-      'export const parallelOneFeature = true;\n',
-    );
-    const firstTask = (
-      runCli(first.worktree, [
-        'finalize',
-        firstSessionId,
-        '--message',
-        'Complete first portable concurrent task',
-      ]) as { result: ManagedCommit }
-    ).result;
-
-    const secondTaskPath = path.join(
-      second.worktree,
+    const concurrentTaskPath = path.join(
+      concurrent.worktree,
       'src/parallel-two/feature.ts',
     );
-    fs.mkdirSync(path.dirname(secondTaskPath), { recursive: true });
+    fs.mkdirSync(path.dirname(concurrentTaskPath), { recursive: true });
     fs.writeFileSync(
-      secondTaskPath,
+      concurrentTaskPath,
       'export const parallelTwoFeature = true;\n',
     );
-    const secondTask = (
-      runCli(second.worktree, [
+    const concurrentTask = (
+      runCli(concurrent.worktree, [
         'finalize',
-        secondSessionId,
+        concurrentSessionId,
         '--message',
-        'Complete second portable concurrent task',
+        'Complete portable concurrent task',
       ]) as { result: ManagedCommit }
     ).result;
 
-    git(repository, ['merge', '--ff-only', firstTask.commitHash]);
+    const primaryTaskPath = path.join(
+      primary.worktree,
+      'src/parallel-one/feature.ts',
+    );
+    fs.mkdirSync(path.dirname(primaryTaskPath), { recursive: true });
+    fs.writeFileSync(
+      primaryTaskPath,
+      'export const parallelOneFeature = true;\n',
+    );
+    const primaryTask = (
+      runCli(primary.worktree, [
+        'finalize',
+        primarySessionId,
+        '--message',
+        'Complete portable primary task',
+      ]) as { result: ManagedCommit }
+    ).result;
+
+    // Merge the concurrent task first. Its still-open routed state leaves the
+    // primary handoff projection unchanged, so update-base can replay the
+    // primary task without silently reconciling engine-owned document bytes.
+    git(repository, ['merge', '--ff-only', concurrentTask.commitHash]);
     syncProtectedBase(repository);
     const ontoCommit = git(repository, ['rev-parse', 'trunk']).trim();
-    const update = runCli(second.worktree, [
+    const update = runCli(primary.worktree, [
       'update-base',
-      second.changeId,
+      primary.changeId,
       '--onto',
       'trunk',
     ]) as {
@@ -1770,27 +1785,27 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
         };
       };
     };
-    assert.equal(update.result.changeId, second.changeId);
+    assert.equal(update.result.changeId, primary.changeId);
     assert.equal(update.result.ontoCommit, ontoCommit);
-    assert.equal(update.result.oldHead, secondTask.commitHash);
+    assert.equal(update.result.oldHead, primaryTask.commitHash);
     assert.notEqual(update.result.oldHead, update.result.newHead);
     assert.match(
       update.result.revalidated.planningGenerationId,
       /^[a-f0-9]{64}$/u,
     );
     assert.deepEqual(update.result.revalidated.allowedPaths, [
-      'src/parallel-two/**',
+      'src/parallel-one/**',
     ]);
     assert.deepEqual(update.result.assurance, {
       base: ontoCommit,
       head: update.result.newHead,
       checkIds: ['text-check'],
     });
-    const status = taskStatus(second.worktree, secondSessionId);
+    const status = taskStatus(primary.worktree, primarySessionId);
     assert.equal(status.session.state, 'committed');
-    assert.equal(status.session.commitHash, secondTask.commitHash);
+    assert.equal(status.session.commitHash, primaryTask.commitHash);
     assert.equal(
-      git(second.worktree, ['rev-parse', 'HEAD']).trim(),
+      git(primary.worktree, ['rev-parse', 'HEAD']).trim(),
       update.result.newHead,
     );
     git(repository, ['merge', '--ff-only', update.result.newHead]);
