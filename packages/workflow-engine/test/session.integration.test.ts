@@ -102,8 +102,9 @@ function prepareCurrentChangeOnMain(
 function prepareConcurrentTaskWorktree(
   repository: string,
   changeId: string,
-  allowedPath: string,
+  allowedPath: string | readonly string[],
   exclusiveResources: string[] = [],
+  readyOptions: Parameters<typeof writeReadyV3ExemptChange>[2] = {},
 ): { parent: string; worktree: string } {
   const parent = fs.mkdtempSync(
     path.join(os.tmpdir(), 'workflow-concurrent-task-worktree-'),
@@ -133,12 +134,14 @@ function prepareConcurrentTaskWorktree(
     >;
   };
   guard.changeId = changeId;
-  guard.tasks['1.1']!.allowedPaths = [allowedPath];
+  guard.tasks['1.1']!.allowedPaths =
+    typeof allowedPath === 'string' ? [allowedPath] : [...allowedPath];
   if (exclusiveResources.length > 0) {
     guard.tasks['1.1']!.exclusiveResources = [...exclusiveResources].sort();
   }
   fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
-  prepareCurrentChange(worktree, changeId);
+  writeReadyV3ExemptChange(worktree, changeId, readyOptions);
+  commitPlanningTransition(worktree, changeId);
   return { parent, worktree };
 }
 
@@ -1892,6 +1895,165 @@ test('two declared disjoint changes own durable isolated writers and an undeclar
         path.join(runtimeRoot(repository), 'task-isolation', 'worktrees'),
       ),
       [],
+    );
+  } finally {
+    for (const fixture of fixtures.reverse()) {
+      removeConcurrentTaskWorktree(repository, fixture);
+    }
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('status inspects each concurrent active session in its own durable worktree', () => {
+  const repository = createFixtureRepository();
+  const fixtures: Array<{ parent: string; worktree: string }> = [];
+  try {
+    addConcurrentChangeSkeleton(repository, 'second-change');
+    git(repository, ['add', '.']);
+    git(repository, ['commit', '-m', 'Add concurrent status fixture']);
+    declareConcurrentWorkset(repository, 'second-change');
+    const primary = prepareConcurrentTaskWorktree(
+      repository,
+      'demo-change',
+      'src/primary/**',
+    );
+    const concurrent = prepareConcurrentTaskWorktree(
+      repository,
+      'second-change',
+      ['src/concurrent/**', 'test/concurrent/**'],
+      [],
+      {
+        executionTask({ policy }) {
+          return {
+            strategy: 'tdd-single-agent',
+            enforcement: 'planned',
+            allowedPaths: policy.allowedPaths,
+            requiredChecks: policy.requiredChecks,
+            diffReview: 'policy-required',
+            behaviorContractRefs: [
+              {
+                specPath: 'specs/demo/spec.md',
+                requirement: 'Demo behavior',
+                scenario: 'Demo succeeds',
+              },
+            ],
+            testPathScopes: ['test/concurrent/**'],
+            fixturePathScopes: [],
+            implementationPathScopes: ['src/concurrent/**'],
+            redCheck: 'fixture',
+            greenChecks: ['fixture'],
+            requiredImplementerIndependence: 'none',
+          };
+        },
+      },
+    );
+    fixtures.push(primary, concurrent);
+
+    const primarySession = startSession(primary.worktree, 'demo-change', '1.1');
+    const concurrentSession = startSession(
+      concurrent.worktree,
+      'second-change',
+      '1.1',
+    );
+    const beforePrimary = snapshotTaskPreflightState(primary.worktree);
+    const beforeConcurrent = snapshotTaskPreflightState(concurrent.worktree);
+
+    const exact = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'status',
+        concurrentSession.sessionId,
+        '--json',
+      ],
+      { cwd: primary.worktree, encoding: 'utf8' },
+    );
+    assert.equal(exact.status, 0, exact.stderr);
+    const exactOutput = JSON.parse(exact.stdout) as {
+      session: { sessionId: string; isolation: { routingRole: string } };
+      taskStrategy: { sessionId: string; strategy: string; state: string };
+    };
+    assert.equal(exactOutput.session.sessionId, concurrentSession.sessionId);
+    assert.equal(exactOutput.session.isolation.routingRole, 'concurrent');
+    assert.deepEqual(exactOutput.taskStrategy, {
+      schemaVersion: 1,
+      kind: 'task-strategy-lifecycle-status.v1',
+      invocationId: null,
+      sessionId: concurrentSession.sessionId,
+      strategy: 'tdd-single-agent',
+      state: 'red-authoring',
+      transactionDigest: null,
+      sessionState: 'active',
+    });
+
+    const inventory = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'status',
+        '--json',
+      ],
+      { cwd: primary.worktree, encoding: 'utf8' },
+    );
+    assert.equal(inventory.status, 0, inventory.stderr);
+    const inventoryOutput = JSON.parse(inventory.stdout) as {
+      sessions: Array<{
+        sessionId: string;
+        isolation: { routingRole: string };
+      }>;
+      taskStrategies: Array<{
+        sessionId: string;
+        strategy: string;
+        state: string;
+      }>;
+    };
+    assert.equal(
+      inventoryOutput.sessions.find(
+        ({ sessionId }) => sessionId === primarySession.sessionId,
+      )?.isolation.routingRole,
+      'primary',
+    );
+    assert.equal(
+      inventoryOutput.sessions.find(
+        ({ sessionId }) => sessionId === concurrentSession.sessionId,
+      )?.isolation.routingRole,
+      'concurrent',
+    );
+    assert.deepEqual(
+      inventoryOutput.taskStrategies.find(
+        ({ sessionId }) => sessionId === concurrentSession.sessionId,
+      ),
+      {
+        schemaVersion: 1,
+        kind: 'task-strategy-lifecycle-status.v1',
+        invocationId: null,
+        sessionId: concurrentSession.sessionId,
+        strategy: 'tdd-single-agent',
+        state: 'red-authoring',
+        transactionDigest: null,
+        sessionState: 'active',
+      },
+    );
+    assert.deepEqual(
+      snapshotTaskPreflightState(primary.worktree),
+      beforePrimary,
+    );
+    assert.deepEqual(
+      snapshotTaskPreflightState(concurrent.worktree),
+      beforeConcurrent,
+    );
+
+    abortSession(
+      primary.worktree,
+      primarySession.sessionId,
+      'Concurrent status test cleanup.',
+    );
+    abortSession(
+      concurrent.worktree,
+      concurrentSession.sessionId,
+      'Concurrent status test cleanup.',
     );
   } finally {
     for (const fixture of fixtures.reverse()) {

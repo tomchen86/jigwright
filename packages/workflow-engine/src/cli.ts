@@ -2590,8 +2590,9 @@ function dispatch(args: string[], cwd: string): CommandResult {
             return { command, ok: true, openTask: openTaskStatus };
           }
           const session = getSession(cwd, openTaskStatus.sessionId);
+          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
           const finalizeStatus = inspectFinalizeRecoveryStatus(
-            cwd,
+            statusRoot,
             session.sessionId,
             {
               consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
@@ -2603,14 +2604,25 @@ function dispatch(args: string[], cwd: string): CommandResult {
             openTask: openTaskStatus,
             session,
             ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-            taskStrategy: inspectTaskStrategyLifecycle(cwd, session.sessionId),
-            taskRevision: inspectTaskRevisionStatus(cwd, session.sessionId),
-            taskCommits: findTaskCommits(cwd, session.changeId, session.taskId),
+            taskStrategy: inspectTaskStrategyLifecycle(
+              statusRoot,
+              session.sessionId,
+            ),
+            taskRevision: inspectTaskRevisionStatus(
+              statusRoot,
+              session.sessionId,
+            ),
+            taskCommits: findTaskCommits(
+              statusRoot,
+              session.changeId,
+              session.taskId,
+            ),
           };
         }
         const session = getSession(cwd, rest[0]);
+        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
         const finalizeStatus = inspectFinalizeRecoveryStatus(
-          cwd,
+          statusRoot,
           session.sessionId,
           {
             consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
@@ -2621,9 +2633,19 @@ function dispatch(args: string[], cwd: string): CommandResult {
           ok: true,
           session,
           ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-          taskStrategy: inspectTaskStrategyLifecycle(cwd, session.sessionId),
-          taskRevision: inspectTaskRevisionStatus(cwd, session.sessionId),
-          taskCommits: findTaskCommits(cwd, session.changeId, session.taskId),
+          taskStrategy: inspectTaskStrategyLifecycle(
+            statusRoot,
+            session.sessionId,
+          ),
+          taskRevision: inspectTaskRevisionStatus(
+            statusRoot,
+            session.sessionId,
+          ),
+          taskCommits: findTaskCommits(
+            statusRoot,
+            session.changeId,
+            session.taskId,
+          ),
         };
       }
       const sessions = listSessions(cwd);
@@ -2631,16 +2653,22 @@ function dispatch(args: string[], cwd: string): CommandResult {
         command,
         ok: true,
         sessions,
-        taskStrategies: sessions.map((session) =>
-          inspectTaskStrategyLifecycle(cwd, session.sessionId),
-        ),
-        taskRevisions: sessions.map((session) =>
-          inspectTaskRevisionStatus(cwd, session.sessionId),
-        ),
+        taskStrategies: sessions.map((session) => {
+          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+          return inspectTaskStrategyLifecycle(statusRoot, session.sessionId);
+        }),
+        taskRevisions: sessions.map((session) => {
+          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+          return inspectTaskRevisionStatus(statusRoot, session.sessionId);
+        }),
         taskCommits: sessions.map((session) => ({
           changeId: session.changeId,
           taskId: session.taskId,
-          commits: findTaskCommits(cwd, session.changeId, session.taskId),
+          commits: findTaskCommits(
+            sessionStatusRepositoryRoot(cwd, session),
+            session.changeId,
+            session.taskId,
+          ),
         })),
       };
     }
@@ -3553,6 +3581,15 @@ function doctor(cwd: string): CommandResult {
 function optionValue(args: string[], name: string): string | undefined {
   const index = args.indexOf(name);
   return index === -1 ? undefined : args[index + 1];
+}
+
+function sessionStatusRepositoryRoot(
+  callerRoot: string,
+  session: ReturnType<typeof getSession>,
+): string {
+  return session.state === 'active' || session.state === 'revising'
+    ? session.repositoryRoot
+    : callerRoot;
 }
 
 type TaskDiffReviewCliInput =
