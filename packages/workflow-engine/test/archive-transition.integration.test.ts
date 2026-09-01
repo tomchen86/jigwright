@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -30,6 +31,75 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import { readArchiveReport } from '../src/runtime/storage-journal/archive-report.ts';
+import { writeContentRecord } from '../src/runtime/storage-journal/content-record-store.ts';
+
+test('archive report reader rejects digest-valid extra own keys without mutation', () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = runtimeRoot(repository);
+    const directory = path.join(runtime, 'archive-reports');
+    const parent = git(repository, ['rev-parse', 'HEAD']).trim();
+    fs.writeFileSync(
+      path.join(repository, 'archive-report-fixture.txt'),
+      'current archive report\n',
+    );
+    git(repository, ['add', 'archive-report-fixture.txt']);
+    git(repository, ['commit', '-m', 'Prepare archive report fixture']);
+    const commitHash = git(repository, ['rev-parse', 'HEAD']).trim();
+    const patch = git(repository, ['diff', '--binary', parent, commitHash]);
+    const reportId = writeContentRecord(directory, {
+      schemaVersion: 1,
+      kind: 'archive-transition',
+      createdAt: '2026-09-01T00:00:00.000Z',
+      changeId: 'demo-change',
+      archivePath: 'openspec/changes/archive/2026-09-01-demo-change',
+      parent,
+      tree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
+      commitHash,
+      patch,
+      patchDigest: crypto.createHash('sha256').update(patch).digest('hex'),
+      changedPaths: git(repository, [
+        'diff-tree',
+        '--no-commit-id',
+        '--name-only',
+        '-r',
+        commitHash,
+      ])
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .sort(),
+      logicalIdentity: 'current-archive-report-fixture',
+      contractDigest: '1'.repeat(64),
+      promotedSpecDigests: {},
+      archivedArtifactDigests: {},
+      legacyProjection: { inferred: true },
+    });
+    const before = {
+      repository: repositoryState(repository),
+      refs: git(repository, ['show-ref']),
+      worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+      runtime: snapshotDirectory(runtime),
+    };
+
+    assert.throws(
+      () => readArchiveReport(directory, reportId),
+      (error) => isWorkflowError(error, 'ARCHIVE_REPORT_INVALID'),
+    );
+    assert.deepEqual(
+      {
+        repository: repositoryState(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtime),
+      },
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('archive transition persists evidence, applies exact staging, commits, and is idempotent', () => {
   const repository = completedFixture(addedDelta());
@@ -206,36 +276,31 @@ test('archive closes linked Work Items and renders registry history in the verif
 
 test('archive transition rejects silently ignored delta outcomes', () => {
   const delta = [
-      '# Delta',
-      '',
-      '<!-- ARCHIVE_IGNORE_DELTA -->',
-      '',
-      '## ADDED Requirements',
-      '',
-      '### Requirement: Ignored archive change',
-      'The system SHALL detect an archive projection that ignores its delta.',
-      '',
-      '#### Scenario: Archive ignores the reviewed delta',
-      '',
-      '- **WHEN** the public archive reports a change without applying it',
-      '- **THEN** the transition rejects the inconsistent outcome',
-      '',
-    ].join('\n');
+    '# Delta',
+    '',
+    '<!-- ARCHIVE_IGNORE_DELTA -->',
+    '',
+    '## ADDED Requirements',
+    '',
+    '### Requirement: Ignored archive change',
+    'The system SHALL detect an archive projection that ignores its delta.',
+    '',
+    '#### Scenario: Archive ignores the reviewed delta',
+    '',
+    '- **WHEN** the public archive reports a change without applying it',
+    '- **THEN** the transition rejects the inconsistent outcome',
+    '',
+  ].join('\n');
   const repository = completedFixture(delta);
   try {
     const before = repositoryState(repository);
     assert.throws(
       () =>
         withPlanningIgnoredDeltaDisabled(repository, delta, () =>
-          commitArchiveTransition(
-            repository,
-            'demo-change',
-            process.env,
-            {
-              aroundOpenSpecArchive: (invoke) =>
-                withPlanningIgnoredDeltaEnabled(repository, invoke),
-            },
-          ),
+          commitArchiveTransition(repository, 'demo-change', process.env, {
+            aroundOpenSpecArchive: (invoke) =>
+              withPlanningIgnoredDeltaEnabled(repository, invoke),
+          }),
         ),
       (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
     );
@@ -447,4 +512,35 @@ function repositoryState(repository: string) {
     index: git(repository, ['write-tree']).trim(),
     status: git(repository, ['status', '--porcelain=v2', '-z']),
   };
+}
+
+function snapshotDirectory(root: string): readonly unknown[] {
+  const result: unknown[] = [];
+  const visit = (absolute: string, relative: string): void => {
+    const stats = fs.lstatSync(absolute, { throwIfNoEntry: false });
+    if (stats === undefined) return;
+    result.push({
+      path: relative,
+      mode: stats.mode,
+      kind: stats.isDirectory()
+        ? 'directory'
+        : stats.isFile()
+          ? 'file'
+          : stats.isSymbolicLink()
+            ? 'symlink'
+            : 'other',
+      content: stats.isFile()
+        ? fs.readFileSync(absolute).toString('base64')
+        : stats.isSymbolicLink()
+          ? fs.readlinkSync(absolute)
+          : null,
+    });
+    if (stats.isDirectory()) {
+      for (const entry of fs.readdirSync(absolute).sort()) {
+        visit(path.join(absolute, entry), path.join(relative, entry));
+      }
+    }
+  };
+  visit(root, '.');
+  return result;
 }

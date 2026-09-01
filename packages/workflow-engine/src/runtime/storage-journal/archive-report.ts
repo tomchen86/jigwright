@@ -8,6 +8,24 @@ import {
 } from './content-record-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
+const ARCHIVE_REPORT_KEYS = [
+  'archivePath',
+  'archivedArtifactDigests',
+  'changeId',
+  'changedPaths',
+  'commitHash',
+  'contractDigest',
+  'createdAt',
+  'kind',
+  'logicalIdentity',
+  'parent',
+  'patch',
+  'patchDigest',
+  'promotedSpecDigests',
+  'schemaVersion',
+  'tree',
+] as const;
+
 export type ArchiveTransitionReport = ContentRecord & {
   kind: 'archive-transition';
   changeId: string;
@@ -63,6 +81,7 @@ function isArchiveReport(
   value: ContentRecord,
 ): value is ArchiveTransitionReport {
   return (
+    hasExactKeys(value, ARCHIVE_REPORT_KEYS) &&
     value.kind === 'archive-transition' &&
     typeof value.changeId === 'string' &&
     typeof value.archivePath === 'string' &&
@@ -77,6 +96,18 @@ function isArchiveReport(
     typeof value.contractDigest === 'string' &&
     isStringRecord(value.promotedSpecDigests) &&
     isStringRecord(value.archivedArtifactDigests)
+  );
+}
+
+function hasExactKeys(
+  value: Record<string, unknown>,
+  expected: readonly string[],
+): boolean {
+  const actual = Object.keys(value).sort();
+  const sortedExpected = [...expected].sort();
+  return (
+    actual.length === sortedExpected.length &&
+    actual.every((key, index) => key === sortedExpected[index])
   );
 }
 
