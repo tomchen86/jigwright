@@ -67,6 +67,18 @@ export type ArchiveTransitionTestHooks = ArchiveTransformationTestHooks & {
   }): void;
 };
 
+export type ArchiveTransitionEvidenceExpectation = Readonly<{
+  changeId: string;
+  parentCommit: string;
+  commitHash: string;
+  reportId?: string;
+}>;
+
+export type VerifiedArchiveTransitionEvidence = Readonly<{
+  reportId: string;
+  report: ArchiveTransitionReport;
+}>;
+
 export function commitArchiveTransition(
   cwd: string,
   requestedChangeId: string,
@@ -106,6 +118,54 @@ export function commitArchiveTransition(
     },
     now(),
   );
+}
+
+/**
+ * Read one content-addressed archive report and replay its exact immutable Git
+ * commit identity. Supplying no report id is reserved for recovery callers and
+ * requires one unambiguous report for the expected archive commit.
+ */
+export function readVerifiedArchiveTransitionEvidence(
+  repositoryRoot: string,
+  expectation: ArchiveTransitionEvidenceExpectation,
+): VerifiedArchiveTransitionEvidence {
+  try {
+    const directory = archiveReportsDirectory(repositoryRoot);
+    const matches =
+      expectation.reportId === undefined
+        ? listArchiveReports(directory, expectation.changeId).filter(
+            ({ report }) => report.commitHash === expectation.commitHash,
+          )
+        : [
+            {
+              reportId: expectation.reportId,
+              report: readArchiveReport(directory, expectation.reportId),
+            },
+          ];
+    if (matches.length !== 1) throw new Error('ambiguous archive report');
+    const [{ reportId, report }] = matches;
+    const facts = commitFacts(repositoryRoot, expectation.commitHash);
+    if (
+      report.changeId !== expectation.changeId ||
+      report.parent !== expectation.parentCommit ||
+      report.commitHash !== expectation.commitHash ||
+      facts.hash !== expectation.commitHash ||
+      JSON.stringify(facts.parents) !==
+        JSON.stringify([expectation.parentCommit]) ||
+      facts.tree !== report.tree ||
+      facts.message !== `${archiveCommitMessage(expectation.changeId)}\n` ||
+      JSON.stringify(commitChangedPaths(repositoryRoot, facts.hash)) !==
+        JSON.stringify(report.changedPaths)
+    ) {
+      throw new Error('archive report does not match immutable Git facts');
+    }
+    return Object.freeze({ reportId, report });
+  } catch {
+    throw archiveError(
+      'ARCHIVE_REPORT_STALE',
+      'Archive evidence does not match one exact immutable commit.',
+    );
+  }
 }
 
 function commitEligibleArchive(
@@ -460,16 +520,22 @@ function findExistingArchive(
       'Archive identity is ambiguous or conflicts with an active change.',
     );
   }
-  const [{ reportId, report }] = reports;
-  const facts = commitFacts(git.repositoryRoot, report.commitHash);
-  if (
-    report.archivePath !== `openspec/changes/archive/${paths[0]}` ||
-    facts.tree !== report.tree ||
-    facts.message !== `${archiveCommitMessage(changeId)}\n` ||
-    JSON.stringify(
-      commitChangedPaths(git.repositoryRoot, report.commitHash),
-    ) !== JSON.stringify(report.changedPaths)
-  ) {
+  const [{ reportId, report: recordedReport }] = reports;
+  let report: ArchiveTransitionReport;
+  try {
+    report = readVerifiedArchiveTransitionEvidence(git.repositoryRoot, {
+      changeId,
+      parentCommit: recordedReport.parent,
+      commitHash: recordedReport.commitHash,
+      reportId,
+    }).report;
+  } catch {
+    throw archiveError(
+      'ARCHIVE_IDEMPOTENCY_INVALID',
+      'Archived path does not match its verified evidence.',
+    );
+  }
+  if (report.archivePath !== `openspec/changes/archive/${paths[0]}`) {
     throw archiveError(
       'ARCHIVE_IDEMPOTENCY_INVALID',
       'Archived path does not match its verified evidence.',

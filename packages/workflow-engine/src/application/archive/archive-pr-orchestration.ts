@@ -22,6 +22,7 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import {
   commitArchiveTransition,
+  readVerifiedArchiveTransitionEvidence,
   type ArchiveTransitionResult,
   type ArchiveTransitionTestHooks,
 } from './archive-transition.ts';
@@ -34,12 +35,6 @@ import {
   readArchivePublicationPreparation,
   type ArchivePublicationPreparationV1,
 } from '../../runtime/storage-journal/archive-publication-store.ts';
-import { readArchiveReport } from '../../runtime/storage-journal/archive-report.ts';
-import {
-  archiveCommitMessage,
-  commitChangedPaths,
-  commitFacts,
-} from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   assertArchivePublicationTarget,
   authenticateCompletedArchivePullRequestGrant,
@@ -646,33 +641,20 @@ export function inspectArchivePublicationPreparation(
     throw archivePreparationStale();
   }
 
-  const report = readArchiveReport(
-    path.join(context.lifecycleRuntime.root, 'archive-reports'),
-    preparation.archive.reportId,
-  );
-  let facts: ReturnType<typeof commitFacts>;
-  let changedPaths: string[];
+  let report: ReturnType<
+    typeof readVerifiedArchiveTransitionEvidence
+  >['report'];
   try {
-    facts = commitFacts(repositoryRoot, preparation.archive.headCommit);
-    changedPaths = commitChangedPaths(
-      repositoryRoot,
-      preparation.archive.headCommit,
-    );
+    report = readVerifiedArchiveTransitionEvidence(repositoryRoot, {
+      changeId: preparation.changeId,
+      parentCommit: preparation.protectedBase.commit,
+      commitHash: preparation.archive.headCommit,
+      reportId: preparation.archive.reportId,
+    }).report;
   } catch {
     throw archivePreparationStale();
   }
-  if (
-    facts.hash !== preparation.archive.headCommit ||
-    facts.parents.length !== 1 ||
-    facts.parents[0] !== preparation.protectedBase.commit ||
-    facts.tree !== archiveRef.tree ||
-    facts.tree !== report.tree ||
-    facts.message !== `${archiveCommitMessage(preparation.changeId)}\n` ||
-    report.changeId !== preparation.changeId ||
-    report.parent !== preparation.protectedBase.commit ||
-    report.commitHash !== preparation.archive.headCommit ||
-    canonicalJson(report.changedPaths) !== canonicalJson(changedPaths)
-  ) {
+  if (archiveRef.tree !== report.tree) {
     throw archivePreparationStale();
   }
 
@@ -899,6 +881,14 @@ function prepareArchiveWorktree(
       'Archive worktree parent must be an absolute path outside repository authority roots.',
     );
   }
+  const branchOid = runGit(
+    repository.repositoryRoot,
+    ['show-ref', '--verify', '--hash', `refs/heads/${branch}`],
+    true,
+  ).trim();
+  if (branchOid !== '') {
+    assertReusableArchiveBranchIdentity(repository, candidate, branchOid);
+  }
   const canonicalParent = ensureArchiveWorkspaceParent(parent);
   const worktreePath = path.join(canonicalParent, candidate.changeId);
   const registrations = listWorktrees(repository.repositoryRoot);
@@ -935,11 +925,6 @@ function prepareArchiveWorktree(
       'Canonical archive branch is checked out by another worktree.',
     );
   }
-  const branchOid = runGit(
-    repository.repositoryRoot,
-    ['show-ref', '--verify', '--hash', `refs/heads/${branch}`],
-    true,
-  ).trim();
   if (branchOid === '') {
     runGit(repository.repositoryRoot, [
       'worktree',
@@ -950,18 +935,6 @@ function prepareArchiveWorktree(
       candidate.base.commit,
     ]);
   } else {
-    if (
-      runGit(
-        repository.repositoryRoot,
-        ['merge-base', candidate.base.commit, branchOid],
-        true,
-      ).trim() !== candidate.base.commit
-    ) {
-      throw archivePrError(
-        'ARCHIVE_PR_BRANCH_COLLISION',
-        'Existing canonical archive branch does not descend from the exact protected base.',
-      );
-    }
     runGit(repository.repositoryRoot, [
       'worktree',
       'add',
@@ -976,6 +949,42 @@ function prepareArchiveWorktree(
     candidate.base.commit,
   );
   return worktreePath;
+}
+
+function assertReusableArchiveBranchIdentity(
+  repository: ReturnType<typeof discoverRepository>,
+  candidate: ArchivePullRequestCandidateV1,
+  branchOid: string,
+): void {
+  if (branchOid === candidate.base.commit) return;
+  let currentArchiveIdentity = false;
+  try {
+    const context = loadInvestigationRuntimeContext(repository.repositoryRoot);
+    const report = readVerifiedArchiveTransitionEvidence(
+      repository.repositoryRoot,
+      {
+        changeId: candidate.changeId,
+        parentCommit: candidate.base.commit,
+        commitHash: branchOid,
+      },
+    ).report;
+    const archivePrefix = `${context.config.changeRoot}/archive/`;
+    const archiveName = report.archivePath.startsWith(archivePrefix)
+      ? report.archivePath.slice(archivePrefix.length)
+      : '';
+    currentArchiveIdentity =
+      archiveName ===
+        `${archiveName.slice(0, '0000-00-00'.length)}-${candidate.changeId}` &&
+      /^\d{4}-\d{2}-\d{2}-/.test(archiveName);
+  } catch {
+    currentArchiveIdentity = false;
+  }
+  if (!currentArchiveIdentity) {
+    throw archivePrError(
+      'ARCHIVE_PR_BRANCH_COLLISION',
+      'Existing canonical archive branch is neither the exact protected base nor one current report-backed archive commit.',
+    );
+  }
 }
 
 function assertReusableArchiveWorktree(

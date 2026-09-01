@@ -54,6 +54,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   syncOriginMain,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
@@ -65,6 +66,10 @@ import {
   resolveArchivePullRequestPublicationTarget,
 } from '../src/composition-root/archive-pr-publication-production.ts';
 import { runGit as runWorkflowGit } from '../src/runtime/repository-transaction/git.ts';
+import {
+  archiveCommitMessage,
+  commitChangedPaths,
+} from '../src/runtime/repository-transaction/git-transitions.ts';
 
 test('discovers one read-only current-v3 independently reviewed archive candidate', () => {
   const repository = completedFixture();
@@ -180,6 +185,21 @@ test('tracked archive manual-dispatch contract is pinned and inert', () => {
   assert.doesNotMatch(workflow, /\b(?:push|approve|bypass|merge)\b/i);
   assert.match(harness, /ARCHIVE_MANUAL_HARNESS_DISABLED/);
   assert.doesNotMatch(harness, /https?:|fetch\(|child_process|exec|spawn/);
+});
+
+test('archive PR orchestration consumes archive evidence through its application boundary', () => {
+  const source = fs.readFileSync(
+    path.resolve(
+      import.meta.dirname,
+      '../src/application/archive/archive-pr-orchestration.ts',
+    ),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    source,
+    /runtime\/storage-journal\/archive-report\.ts|runtime\/repository-transaction\/git-transitions\.ts/u,
+  );
+  assert.match(source, /readVerifiedArchiveTransitionEvidence/u);
 });
 
 test('archive prepare returns one exact Fail-Grant and open uses its production publication seams', async () => {
@@ -1056,6 +1076,142 @@ test('archive preparation status replays exact local Git truth without a worktre
   }
 });
 
+test('local archive rejects a foreign canonical branch descendant before recovery writes', () => {
+  const repository = completedFixture();
+  const workspaceParent = path.join(
+    path.dirname(repository),
+    `${path.basename(repository)}-archive-collision-worktrees`,
+  );
+  const worktreePath = path.join(workspaceParent, 'demo-change');
+  try {
+    const protectedBase = git(repository, ['rev-parse', 'HEAD']).trim();
+    const tree = git(repository, [
+      'rev-parse',
+      `${protectedBase}^{tree}`,
+    ]).trim();
+    const foreignCommit = git(repository, [
+      'commit-tree',
+      tree,
+      '-p',
+      protectedBase,
+      '-m',
+      'Foreign canonical archive branch occupant',
+    ]).trim();
+    git(repository, [
+      'update-ref',
+      'refs/heads/work/archive-demo-change',
+      foreignCommit,
+    ]);
+    const runtimeRoot =
+      loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+    const before = {
+      repository: repositoryProjection(repository),
+      refs: git(repository, ['show-ref']),
+      worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+      runtime: snapshotDirectory(runtimeRoot),
+      foreignCommit: git(repository, ['cat-file', 'commit', foreignCommit]),
+      workspaceParentExists: fs.existsSync(workspaceParent),
+    };
+
+    assert.throws(
+      () =>
+        preparePostMergeArchivePullRequest(repository, 'demo-change', {
+          workspaceParent,
+          assure: (_cwd, baseCommit, headCommit) => ({
+            status: 'passed',
+            baseCommit,
+            headCommit,
+            reportIdentity: '8'.repeat(64),
+          }),
+        }),
+      (error) => isWorkflowError(error, 'ARCHIVE_PR_BRANCH_COLLISION'),
+    );
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+        foreignCommit: git(repository, ['cat-file', 'commit', foreignCommit]),
+        workspaceParentExists: fs.existsSync(workspaceParent),
+      },
+      before,
+    );
+
+    git(repository, [
+      'update-ref',
+      'refs/heads/work/archive-demo-change',
+      protectedBase,
+      foreignCommit,
+    ]);
+    const resumed = preparePostMergeArchivePullRequest(
+      repository,
+      'demo-change',
+      {
+        workspaceParent,
+        assure: (_cwd, baseCommit, headCommit) => ({
+          status: 'passed',
+          baseCommit,
+          headCommit,
+          reportIdentity: '8'.repeat(64),
+        }),
+      },
+    );
+    assert.equal(resumed.archive.status, 'committed');
+    assert.equal(resumed.archiveReplay.status, 'already-archived');
+    assert.equal(resumed.preparation.protectedBase.commit, protectedBase);
+  } finally {
+    if (fs.existsSync(worktreePath)) {
+      git(repository, ['worktree', 'remove', '--force', worktreePath]);
+    }
+    fs.rmSync(workspaceParent, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('local archive resumes one exact report-backed archive branch', () => {
+  const repository = completedFixture();
+  const workspaceParent = path.join(
+    path.dirname(repository),
+    `${path.basename(repository)}-archive-report-recovery-worktrees`,
+  );
+  const worktreePath = path.join(workspaceParent, 'demo-change');
+  try {
+    const existing = createReportBackedArchiveBranchFixture(repository);
+    const before = repositoryProjection(repository);
+    const prepared = preparePostMergeArchivePullRequest(
+      repository,
+      'demo-change',
+      {
+        workspaceParent,
+        assure: (_cwd, baseCommit, headCommit) => ({
+          status: 'passed',
+          baseCommit,
+          headCommit,
+          reportIdentity: '8'.repeat(64),
+        }),
+      },
+    );
+
+    assert.equal(prepared.archive.status, 'already-archived');
+    assert.equal(prepared.archiveReplay.status, 'already-archived');
+    assert.equal(prepared.archive.commitHash, existing.archiveHead);
+    assert.equal(prepared.archive.reportId, existing.reportId);
+    assert.equal(
+      prepared.preparation.protectedBase.commit,
+      existing.protectedBase,
+    );
+    assert.equal(prepared.preparation.archive.headCommit, existing.archiveHead);
+    assert.deepEqual(repositoryProjection(repository), before);
+  } finally {
+    if (fs.existsSync(worktreePath)) {
+      git(repository, ['worktree', 'remove', '--force', worktreePath]);
+    }
+    fs.rmSync(workspaceParent, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('local archive refuses remote-tracking drift while holding archive authority', () => {
   const repository = completedFixture();
   const workspaceParent = path.join(
@@ -1117,7 +1273,7 @@ function completedFixture(): string {
   );
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Configure archive PR delta']);
-  git(repository, ['checkout', '-b', 'work/demo-change']);
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   commitPlanningTransition(repository, 'demo-change');
   const session = startSession(repository, 'demo-change', '1.1');
@@ -1446,6 +1602,79 @@ function createLocalArchivePreparationFixture(repository: string) {
     },
     preparation,
   };
+}
+
+function createReportBackedArchiveBranchFixture(repository: string) {
+  const changeId = 'demo-change';
+  const archiveBranch = `work/archive-${changeId}`;
+  const protectedBase = git(repository, ['rev-parse', 'HEAD']).trim();
+  const builder = path.join(
+    path.dirname(repository),
+    `${path.basename(repository)}-archive-report-builder`,
+  );
+  let worktreeAdded = false;
+  try {
+    git(repository, [
+      'worktree',
+      'add',
+      '-b',
+      archiveBranch,
+      builder,
+      protectedBase,
+    ]);
+    worktreeAdded = true;
+    const archivePath = `openspec/changes/archive/2026-09-01-${changeId}`;
+    fs.mkdirSync(path.dirname(path.join(builder, archivePath)), {
+      recursive: true,
+    });
+    fs.renameSync(
+      path.join(builder, 'openspec/changes', changeId),
+      path.join(builder, archivePath),
+    );
+    git(builder, ['add', '-A']);
+    git(builder, ['commit', '-m', archiveCommitMessage(changeId)]);
+    const archiveHead = git(builder, ['rev-parse', 'HEAD']).trim();
+    const archiveTree = git(builder, ['rev-parse', 'HEAD^{tree}']).trim();
+    const changedPaths = commitChangedPaths(repository, archiveHead);
+    const patch = git(repository, [
+      'diff',
+      '--binary',
+      '--full-index',
+      '--no-renames',
+      protectedBase,
+      archiveHead,
+      '--',
+      ...changedPaths.map((changedPath) => `:(literal)${changedPath}`),
+    ]);
+    const runtimeRoot =
+      loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+    const reportId = writeArchiveReport(
+      path.join(runtimeRoot, 'archive-reports'),
+      {
+        schemaVersion: 1,
+        kind: 'archive-transition',
+        createdAt: '2026-09-01T00:00:00.000Z',
+        changeId,
+        archivePath,
+        parent: protectedBase,
+        tree: archiveTree,
+        commitHash: archiveHead,
+        patch,
+        patchDigest: crypto.createHash('sha256').update(patch).digest('hex'),
+        changedPaths,
+        logicalIdentity: 'archive-report-recovery-fixture',
+        contractDigest: '1'.repeat(64),
+        promotedSpecDigests: {},
+        archivedArtifactDigests: {},
+      },
+    );
+    return { archiveHead, protectedBase, reportId };
+  } finally {
+    if (worktreeAdded && fs.existsSync(builder)) {
+      git(repository, ['worktree', 'remove', '--force', builder]);
+    }
+    fs.rmSync(builder, { recursive: true, force: true });
+  }
 }
 
 function snapshotDirectory(root: string): readonly unknown[] {
