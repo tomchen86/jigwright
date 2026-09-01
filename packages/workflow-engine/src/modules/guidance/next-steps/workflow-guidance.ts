@@ -126,6 +126,8 @@ export function workflowResultNextSteps(
   if (commandId === 'guide') return Object.freeze([]);
   const failGrant = failGrantNextSteps(record(result.result), invocation);
   if (failGrant !== null) return failGrant;
+  const routeStatus = routeStatusNextSteps(result);
+  if (routeStatus !== null) return routeStatus;
   const bindings = resultBindings(result, invocation);
   if (commandId === 'status') return statusNextSteps(result, bindings);
   if (commandId === 'review-diff') {
@@ -152,6 +154,54 @@ export function workflowResultNextSteps(
       : ['guide'],
     bindings,
   );
+}
+
+function routeStatusNextSteps(
+  result: Readonly<Record<string, unknown>>,
+): readonly WorkflowNextStep[] | null {
+  if (result.command !== 'route') return null;
+  const routed = record(result.result);
+  if (routed?.action !== 'status') return null;
+  const inspection = record(routed.result);
+  const changes = Array.isArray(inspection?.changes)
+    ? inspection.changes
+        .map((change) => record(change))
+        .filter(
+          (change): change is Readonly<Record<string, unknown>> =>
+            change !== undefined,
+        )
+    : [];
+  const primaryChangeId = stringField(inspection, 'primaryChangeId');
+  if (
+    primaryChangeId !== undefined &&
+    changes.some(
+      (change) =>
+        stringField(change, 'changeId') === primaryChangeId &&
+        change.state === 'primary',
+    )
+  ) {
+    return projectWorkflowNextSteps(['open-task'], {
+      changeId: primaryChangeId,
+    });
+  }
+  if (inspection?.sourcePresent === false) {
+    const active = changes.filter(
+      (change) =>
+        change.state !== 'archived' &&
+        change.state !== 'completed-awaiting-archive',
+    );
+    const singleChangeId = stringField(active[0], 'changeId');
+    if (
+      active.length === 1 &&
+      active[0]?.state === 'ready' &&
+      singleChangeId !== undefined
+    ) {
+      return projectWorkflowNextSteps(['open-task'], {
+        changeId: singleChangeId,
+      });
+    }
+  }
+  return projectWorkflowNextSteps(['guide']);
 }
 
 function failGrantNextSteps(

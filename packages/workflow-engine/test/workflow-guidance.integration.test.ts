@@ -289,6 +289,56 @@ test('next-step projection keeps two likely transitions and sends overflow to th
   );
 });
 
+test('route status projects only executable current routing next steps', () => {
+  const routeStatus = (
+    sourcePresent: boolean,
+    primaryChangeId: string | null,
+    changes: Array<{ changeId: string; state: string }>,
+  ) =>
+    workflowResultNextSteps({
+      command: 'route',
+      result: {
+        action: 'status',
+        result: {
+          schemaVersion: 1,
+          sourcePresent,
+          sourceDigest: null,
+          primaryChangeId,
+          concurrentChangeIds: [],
+          changes,
+        },
+      },
+    }).map(({ command }) => command);
+
+  assert.deepEqual(
+    routeStatus(true, 'demo-change', [
+      { changeId: 'demo-change', state: 'primary' },
+    ]),
+    ['pnpm workflow open-task demo-change --json'],
+  );
+  assert.deepEqual(
+    routeStatus(true, null, [{ changeId: 'demo-change', state: 'ready' }]),
+    ['pnpm workflow guide --json'],
+  );
+  assert.deepEqual(
+    routeStatus(false, null, [{ changeId: 'demo-change', state: 'ready' }]),
+    ['pnpm workflow open-task demo-change --json'],
+  );
+
+  for (const commands of [
+    routeStatus(true, 'demo-change', [
+      { changeId: 'demo-change', state: 'primary' },
+    ]),
+    routeStatus(true, null, [{ changeId: 'demo-change', state: 'ready' }]),
+    routeStatus(false, null, [{ changeId: 'demo-change', state: 'ready' }]),
+  ]) {
+    assert.equal(
+      commands.some((command) => command.includes('<change-id>')),
+      false,
+    );
+  }
+});
+
 test('task-strategy retry and exhaustion guidance exposes executable recovery without weakening the budget', () => {
   const sessionId =
     'session-20260812000000000-00000000-0000-4000-8000-000000000000';
