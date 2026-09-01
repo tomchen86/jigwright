@@ -768,7 +768,7 @@
     {
       "path": "src/composition-root/change-routing-transaction-production.ts",
       "mode": "100644",
-      "digest": "sha256:3f17d6232142aac974ec99576b08c096c1a156257e08a1adef9fd0a13b246d31"
+      "digest": "sha256:e75e81d47a0a62d11e7901057d3edc2a4e8be8f29f31372ec7d28b2297e9b726"
     },
     {
       "path": "src/composition-root/check-registry-production.ts",
