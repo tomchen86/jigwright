@@ -6,6 +6,7 @@ import {
   parseChangeRoutingIntent,
   parseChangeRoutingReview,
 } from '../../modules/lifecycle/change-routing.ts';
+import { changeRoutingReviewDigest } from '../../modules/lifecycle/change-routing-transaction.ts';
 import {
   applyManagedChangeRoutingReview,
   inspectChangeRouting,
@@ -73,7 +74,7 @@ export function dispatchChangeRoutingCommand(
     return {
       action: 'prepare',
       output: outputPath,
-      reviewDigest: review.nextSourceDigest,
+      reviewDigest: changeRoutingReviewDigest(review),
     };
   }
   if (args.length === 2 && args[0] === 'apply') {

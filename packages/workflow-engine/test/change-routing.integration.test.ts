@@ -817,6 +817,8 @@ test('route CLI writes an exact review and apply refreshes the handoff', () => {
       repository,
     );
     assert.equal(applied.action, 'apply');
+    assert.match(prepared.reviewDigest, /^[0-9a-f]{64}$/u);
+    assert.equal(prepared.reviewDigest, applied.reviewDigest);
     assert.notEqual(applied.commitHash, baseline);
     assert.equal(
       git(repository, ['rev-parse', 'HEAD']).trim(),
