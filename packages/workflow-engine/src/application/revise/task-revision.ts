@@ -4,7 +4,10 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import {
+  isPlanningAssuranceBinding,
+  loadWorkflowConfig,
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import {
@@ -1966,6 +1969,9 @@ function isTaskRevisionJournal(value: unknown): value is TaskRevisionJournal {
     !isSortedStringArray(value.allowedPaths) ||
     !isSortedStringArray(value.requiredChecks) ||
     !isStringRecord(value.requiredCheckDigests) ||
+    !Object.hasOwn(value, 'planningAssurance') ||
+    (value.planningAssurance !== null &&
+      !isPlanningAssuranceBinding(value.planningAssurance)) ||
     !isSortedStringArray(value.implementationPaths) ||
     !Array.isArray(value.implementationSnapshot) ||
     typeof value.implementationFingerprint !== 'string' ||
