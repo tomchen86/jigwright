@@ -74,6 +74,11 @@ type GeneratedProjectionSnapshot = Readonly<{
   content: string | null;
 }>;
 
+type TaskBaseUpdateTestHooks = Readonly<{
+  /** Test-only interleaving cut after the advisory snapshot and before lock acquisition. */
+  afterFinishedSessionPreflight?: () => void;
+}>;
+
 /**
  * Replay one finished managed task branch onto a locally available base and
  * recompute current planning, generated-document, check, and local PR
@@ -85,6 +90,7 @@ export function updateTaskSessionBase(
   requestedChangeId: string,
   requestedOntoRef: string,
   environment: NodeJS.ProcessEnv = process.env,
+  testHooks: TaskBaseUpdateTestHooks = {},
 ): TaskBaseUpdateResult {
   const changeId = assertChangeId(requestedChangeId);
   const ontoRef = requestedOntoRef.trim();
@@ -102,6 +108,37 @@ export function updateTaskSessionBase(
     config.runtimeDirectory,
   );
   const sessions = listSessions(cwd);
+  assertNoActiveChangeSession(sessions, changeId);
+  resolveFinishedSessionAnchor(runtime, sessions, discovered, changeId);
+  testHooks.afterFinishedSessionPreflight?.();
+  return withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) => {
+    assertRepositoryLock();
+    const lockedRepository = discoverRepository(cwd);
+    const lockedSessions = listSessions(cwd);
+    assertNoActiveChangeSession(lockedSessions, changeId);
+    const lockedAnchor = resolveFinishedSessionAnchor(
+      runtime,
+      lockedSessions,
+      lockedRepository,
+      changeId,
+    );
+    return withSessionOperation(runtime, lockedAnchor.sessionId, () => {
+      assertRepositoryLock();
+      return updateFinishedTaskBaseLocked(
+        cwd,
+        lockedAnchor,
+        ontoRef,
+        environment,
+        assertRepositoryLock,
+      );
+    });
+  });
+}
+
+function assertNoActiveChangeSession(
+  sessions: readonly WorkflowSession[],
+  changeId: string,
+): void {
   const active = sessions.filter(
     (session) =>
       session.changeId === changeId &&
@@ -117,24 +154,6 @@ export function updateTaskSessionBase(
       },
     );
   }
-  const anchor = resolveFinishedSessionAnchor(
-    runtime,
-    sessions,
-    discovered,
-    changeId,
-  );
-  return withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) =>
-    withSessionOperation(runtime, anchor.sessionId, () => {
-      assertRepositoryLock();
-      return updateFinishedTaskBaseLocked(
-        cwd,
-        anchor,
-        ontoRef,
-        environment,
-        assertRepositoryLock,
-      );
-    }),
-  );
 }
 
 function resolveFinishedSessionAnchor(

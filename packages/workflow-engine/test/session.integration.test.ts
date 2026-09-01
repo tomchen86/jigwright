@@ -27,6 +27,7 @@ import {
   startSession,
   startSessionUnderLifecycleLock,
 } from '../src/application/execute-task/session.ts';
+import { updateTaskSessionBase } from '../src/application/execute-task/update-base.ts';
 import {
   createSessionId,
   parseTaskWorktreeRegistrations,
@@ -219,6 +220,64 @@ function removeConcurrentTaskWorktree(
 ): void {
   git(repository, ['worktree', 'remove', '--force', fixture.worktree]);
   fs.rmSync(fixture.parent, { recursive: true, force: true });
+}
+
+function prepareFinishedNonFinalTaskForBaseUpdate(repository: string) {
+  const documentPolicyPath = path.join(
+    repository,
+    'workflow/document-policy.json',
+  );
+  const documentPolicy = JSON.parse(
+    fs.readFileSync(documentPolicyPath, 'utf8'),
+  ) as { documents: Record<string, unknown> };
+  documentPolicy.documents['docs/CURRENT_AND_NEXT_STEPS.md'] = {
+    mode: 'generated',
+    enforcement: 'active',
+    transition: 'completion',
+  };
+  fs.writeFileSync(
+    documentPolicyPath,
+    `${JSON.stringify(documentPolicy, null, 2)}\n`,
+  );
+  renderHandoff(repository);
+  git(repository, [
+    'add',
+    'workflow/document-policy.json',
+    'docs/CURRENT_AND_NEXT_STEPS.md',
+  ]);
+  git(repository, ['commit', '-m', 'Track fixture handoff']);
+  const guardPath = path.join(
+    repository,
+    'openspec/changes/demo-change/guard.json',
+  );
+  const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+    tasks: Record<string, { allowedPaths: string[]; requiredChecks: string[] }>;
+  };
+  guard.tasks['1.1']!.allowedPaths = ['src/task/**'];
+  guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
+  fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+  fs.appendFileSync(
+    path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+    '\n- [ ] 1.2 Keep the fixture change open\n',
+  );
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+  prepareCurrentChange(repository);
+  git(repository, ['checkout', 'main']);
+  git(repository, ['merge', '--ff-only', 'work/demo-change']);
+  const fixture = createTaskWorktreeFromPlannedBase(repository, 'demo-change');
+  const started = startSession(fixture.worktree, 'demo-change', '1.1');
+  fs.mkdirSync(path.join(fixture.worktree, 'src/task'), { recursive: true });
+  fs.writeFileSync(
+    path.join(fixture.worktree, 'src/task/feature.ts'),
+    'export const feature = true;\n',
+  );
+  finalizeTask(fixture.worktree, started.sessionId);
+  const committed = commitSession(
+    fixture.worktree,
+    started.sessionId,
+    'Complete concurrent fixture task',
+  );
+  return { committed, fixture, started };
 }
 
 function snapshotTaskPreflightState(repository: string) {
@@ -2286,65 +2345,9 @@ test('update-base replays a finished non-final task branch and recomputes local 
   const repository = createFixtureRepository();
   let fixture: { parent: string; worktree: string } | undefined;
   try {
-    const documentPolicyPath = path.join(
-      repository,
-      'workflow/document-policy.json',
-    );
-    const documentPolicy = JSON.parse(
-      fs.readFileSync(documentPolicyPath, 'utf8'),
-    ) as { documents: Record<string, unknown> };
-    documentPolicy.documents['docs/CURRENT_AND_NEXT_STEPS.md'] = {
-      mode: 'generated',
-      enforcement: 'active',
-      transition: 'completion',
-    };
-    fs.writeFileSync(
-      documentPolicyPath,
-      `${JSON.stringify(documentPolicy, null, 2)}\n`,
-    );
-    renderHandoff(repository);
-    git(repository, [
-      'add',
-      'workflow/document-policy.json',
-      'docs/CURRENT_AND_NEXT_STEPS.md',
-    ]);
-    git(repository, ['commit', '-m', 'Track fixture handoff']);
-    const guardPath = path.join(
-      repository,
-      'openspec/changes/demo-change/guard.json',
-    );
-    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-      tasks: Record<
-        string,
-        { allowedPaths: string[]; requiredChecks: string[] }
-      >;
-    };
-    guard.tasks['1.1']!.allowedPaths = ['src/task/**'];
-    guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
-    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
-    fs.appendFileSync(
-      path.join(repository, 'openspec/changes/demo-change/tasks.md'),
-      '\n- [ ] 1.2 Keep the fixture change open\n',
-    );
-    prepareCurrentV3IntroductionFixture(repository, 'demo-change');
-    prepareCurrentChange(repository);
-    git(repository, ['checkout', 'main']);
-    git(repository, ['merge', '--ff-only', 'work/demo-change']);
-    fixture = createTaskWorktreeFromPlannedBase(repository, 'demo-change');
-    const started = startSession(fixture.worktree, 'demo-change', '1.1');
-    fs.mkdirSync(path.join(fixture.worktree, 'src/task'), {
-      recursive: true,
-    });
-    fs.writeFileSync(
-      path.join(fixture.worktree, 'src/task/feature.ts'),
-      'export const feature = true;\n',
-    );
-    finalizeTask(fixture.worktree, started.sessionId);
-    const committed = commitSession(
-      fixture.worktree,
-      started.sessionId,
-      'Complete concurrent fixture task',
-    );
+    const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
+    fixture = prepared.fixture;
+    const { committed, started } = prepared;
 
     fs.writeFileSync(
       path.join(repository, 'src/base-update.ts'),
@@ -2459,6 +2462,65 @@ test('update-base replays a finished non-final task branch and recomputes local 
     assert.equal(
       git(fixture.worktree, ['rev-parse', 'HEAD']).trim(),
       output.result.newHead,
+    );
+  } finally {
+    if (fixture !== undefined) {
+      removeConcurrentTaskWorktree(repository, fixture);
+    }
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('update-base revalidates active writers after acquiring the lifecycle lock', () => {
+  const repository = createFixtureRepository();
+  let fixture: { parent: string; worktree: string } | undefined;
+  try {
+    const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
+    fixture = prepared.fixture;
+    fs.writeFileSync(
+      path.join(repository, 'src/base-update.ts'),
+      'export const baseUpdate = true;\n',
+    );
+    git(repository, ['add', 'src/base-update.ts']);
+    git(repository, ['commit', '-m', 'Advance fixture base']);
+    const beforeHead = git(fixture.worktree, ['rev-parse', 'HEAD']).trim();
+    const refreshRoot = path.join(
+      runtimeRoot(fixture.worktree),
+      'base-refreshes',
+      'demo-change',
+    );
+    let interleavedSession: ReturnType<typeof startSession> | undefined;
+
+    assert.throws(
+      () =>
+        updateTaskSessionBase(
+          fixture!.worktree,
+          'demo-change',
+          'main',
+          process.env,
+          {
+            afterFinishedSessionPreflight() {
+              interleavedSession = startSession(
+                fixture!.worktree,
+                'demo-change',
+                '1.2',
+              );
+            },
+          },
+        ),
+      (error) => isWorkflowError(error, 'UPDATE_BASE_ACTIVE_SESSION_PRESENT'),
+    );
+    assert.ok(interleavedSession);
+    assert.equal(interleavedSession.state, 'active');
+    assert.equal(
+      git(fixture.worktree, ['rev-parse', 'HEAD']).trim(),
+      beforeHead,
+    );
+    assert.equal(fs.existsSync(refreshRoot), false);
+    abortSession(
+      fixture.worktree,
+      interleavedSession.sessionId,
+      'Release the interleaved update-base regression session.',
     );
   } finally {
     if (fixture !== undefined) {
