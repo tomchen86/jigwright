@@ -60,6 +60,14 @@ export type GrantLifecycleTransitionResultV1<Persisted> = Readonly<{
   receiptDigest: string;
 }>;
 
+export type GrantUseClaimIdentityV1 = Readonly<{
+  grantId: string;
+  signedEnvelopeDigest: string;
+  transitionDigest: string;
+  useProjectionDigest?: string;
+  admissionDigest?: string;
+}>;
+
 export type GrantLifecycleTransitionErrorCode =
   | 'GRANT_LIFECYCLE_INPUT_INVALID'
   | 'GRANT_LIFECYCLE_CONTRACT_UNSUPPORTED'
@@ -91,6 +99,68 @@ export class GrantLifecycleTransitionError extends Error {
     this.code = code;
     this.receipt = options?.receipt;
     this.receiptDigest = options?.receiptDigest;
+  }
+}
+
+export type GrantUseUniquenessErrorCode =
+  'GRANT_USE_IDENTITY_INVALID' | 'GRANT_USE_IDENTITY_DUPLICATE';
+
+export class GrantUseUniquenessError extends Error {
+  readonly code: GrantUseUniquenessErrorCode;
+
+  constructor(code: GrantUseUniquenessErrorCode, message: string) {
+    super(message);
+    this.name = 'GrantUseUniquenessError';
+    this.code = code;
+  }
+}
+
+/**
+ * Reject reuse of any durable identity that represents one one-use Grant
+ * claim. Domain adapters retain artifact parsing and error presentation.
+ */
+export function assertUniqueGrantUseClaimsV1(
+  claims: readonly GrantUseClaimIdentityV1[],
+): void {
+  const grantIds = new Set<string>();
+  const envelopeDigests = new Set<string>();
+  const useProjectionDigests = new Set<string>();
+  const admissionDigests = new Set<string>();
+  for (const claim of claims) {
+    const terminalIdentityPresent =
+      claim.useProjectionDigest !== undefined ||
+      claim.admissionDigest !== undefined;
+    if (
+      terminalIdentityPresent &&
+      (!/^[0-9a-f]{64}$/u.test(claim.useProjectionDigest ?? '') ||
+        !/^[0-9a-f]{64}$/u.test(claim.admissionDigest ?? ''))
+    ) {
+      throw new GrantUseUniquenessError(
+        'GRANT_USE_IDENTITY_INVALID',
+        'A terminal Grant use identity is malformed.',
+      );
+    }
+    if (
+      grantIds.has(claim.grantId) ||
+      envelopeDigests.has(claim.signedEnvelopeDigest) ||
+      (claim.useProjectionDigest !== undefined &&
+        useProjectionDigests.has(claim.useProjectionDigest)) ||
+      (claim.admissionDigest !== undefined &&
+        admissionDigests.has(claim.admissionDigest))
+    ) {
+      throw new GrantUseUniquenessError(
+        'GRANT_USE_IDENTITY_DUPLICATE',
+        'A one-use Grant identity is claimed more than once.',
+      );
+    }
+    grantIds.add(claim.grantId);
+    envelopeDigests.add(claim.signedEnvelopeDigest);
+    if (claim.useProjectionDigest !== undefined) {
+      useProjectionDigests.add(claim.useProjectionDigest);
+    }
+    if (claim.admissionDigest !== undefined) {
+      admissionDigests.add(claim.admissionDigest);
+    }
   }
 }
 

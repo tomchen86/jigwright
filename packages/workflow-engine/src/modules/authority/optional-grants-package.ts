@@ -41,6 +41,8 @@ export type GrantLifecycleClockPortV1 =
   import('@jigwright/grants/grant-lifecycle').GrantLifecycleClockPortV1;
 export type GrantLifecycleState =
   import('@jigwright/grants/grant-lifecycle').GrantLifecycleState;
+export type GrantUseClaimIdentityV1 =
+  import('@jigwright/grants/grant-lifecycle').GrantUseClaimIdentityV1;
 export type GrantLifecycleStoragePortV1<Validation, Persisted> =
   import('@jigwright/grants/grant-lifecycle').GrantLifecycleStoragePortV1<
     Validation,
@@ -111,6 +113,10 @@ export const executeGrantLifecycleTransitionV1 = delegate(
   loadGrantLifecycle,
   'executeGrantLifecycleTransitionV1',
 );
+export const assertUniqueGrantUseClaimsV1 = delegate(
+  loadGrantLifecycle,
+  'assertUniqueGrantUseClaimsV1',
+);
 
 export const bindingFromRoleContextSharingGrantPayloadV1 = delegate(
   loadRoleContextSharingDegradation,
@@ -160,6 +166,12 @@ export function isGrantLifecycleTransitionError(
   error: unknown,
 ): error is Error & { readonly code: string } {
   return isNamedCodedError(error, 'GrantLifecycleTransitionError');
+}
+
+export function isGrantUseUniquenessError(
+  error: unknown,
+): error is Error & { readonly code: string } {
+  return isNamedCodedError(error, 'GrantUseUniquenessError');
 }
 
 export function isRoleContextSharingGrantError(

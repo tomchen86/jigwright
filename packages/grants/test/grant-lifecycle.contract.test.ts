@@ -5,6 +5,8 @@ import test from 'node:test';
 import {
   GRANT_LIFECYCLE_CONTRACT_VERSION_V1,
   GrantLifecycleTransitionError,
+  GrantUseUniquenessError,
+  assertUniqueGrantUseClaimsV1,
   executeGrantLifecycleTransitionV1,
   type GrantLifecycleState,
 } from '../src/grant-lifecycle.ts';
@@ -225,6 +227,74 @@ test('revokes either active state, supports explicit failure, and rejects reuse 
   assert.equal(writes, 0);
 });
 
+test('aggregate one-use claims reject duplicate and malformed durable identities', () => {
+  const first = {
+    grantId: 'grant-a',
+    signedEnvelopeDigest: 'a'.repeat(64),
+    transitionDigest: 'b'.repeat(64),
+  };
+  const second = {
+    grantId: 'grant-b',
+    signedEnvelopeDigest: 'c'.repeat(64),
+    transitionDigest: 'd'.repeat(64),
+    useProjectionDigest: 'e'.repeat(64),
+    admissionDigest: 'f'.repeat(64),
+  };
+
+  assert.doesNotThrow(() => assertUniqueGrantUseClaimsV1([]));
+  assert.doesNotThrow(() => assertUniqueGrantUseClaimsV1([first, second]));
+
+  for (const duplicate of [
+    {
+      grantId: first.grantId,
+      signedEnvelopeDigest: '1'.repeat(64),
+      transitionDigest: '2'.repeat(64),
+      useProjectionDigest: '3'.repeat(64),
+      admissionDigest: '4'.repeat(64),
+    },
+    {
+      grantId: 'grant-c',
+      signedEnvelopeDigest: first.signedEnvelopeDigest,
+      transitionDigest: '2'.repeat(64),
+      useProjectionDigest: '3'.repeat(64),
+      admissionDigest: '4'.repeat(64),
+    },
+    {
+      grantId: 'grant-c',
+      signedEnvelopeDigest: '1'.repeat(64),
+      transitionDigest: '2'.repeat(64),
+      useProjectionDigest: second.useProjectionDigest,
+      admissionDigest: '4'.repeat(64),
+    },
+    {
+      grantId: 'grant-c',
+      signedEnvelopeDigest: '1'.repeat(64),
+      transitionDigest: '2'.repeat(64),
+      useProjectionDigest: '3'.repeat(64),
+      admissionDigest: second.admissionDigest,
+    },
+  ]) {
+    assert.throws(
+      () => assertUniqueGrantUseClaimsV1([first, second, duplicate]),
+      isGrantUseError('GRANT_USE_IDENTITY_DUPLICATE'),
+    );
+  }
+
+  for (const malformed of [
+    { ...first, useProjectionDigest: '0'.repeat(64) },
+    {
+      ...first,
+      useProjectionDigest: 'not-a-digest',
+      admissionDigest: '1'.repeat(64),
+    },
+  ]) {
+    assert.throws(
+      () => assertUniqueGrantUseClaimsV1([malformed]),
+      isGrantUseError('GRANT_USE_IDENTITY_INVALID'),
+    );
+  }
+});
+
 function lifecycleRequest(
   kind: 'reserve' | 'consume' | 'fail' | 'revoke',
   reason: string,
@@ -270,6 +340,11 @@ function fixturePorts(
 function isLifecycleError(code: string) {
   return (error: unknown): boolean =>
     error instanceof GrantLifecycleTransitionError && error.code === code;
+}
+
+function isGrantUseError(code: string) {
+  return (error: unknown): boolean =>
+    error instanceof GrantUseUniquenessError && error.code === code;
 }
 
 function sha256(value: string): string {

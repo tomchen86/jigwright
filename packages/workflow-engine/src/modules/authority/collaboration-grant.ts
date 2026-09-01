@@ -8,6 +8,7 @@ import {
   canonicalCollaborationGrantEnvelopeBytesV1,
   canonicalCollaborationGrantPayloadBytesV1,
   isCollaborationGrantEnvelopeReaderError,
+  isGrantUseUniquenessError,
   isSignedAttestationEnvelopeReaderError,
   parseCollaborationGrantEnvelopeV1,
   readAndVerifyCollaborationGrantEnvelopeV1,
@@ -17,7 +18,9 @@ import {
   canonicalSignedAttestationPayloadBytesV1,
   parseSignedAttestationEnvelopeV1,
   readAndVerifySignedAttestationEnvelopeV1,
+  assertUniqueGrantUseClaimsV1,
   type CollaborationGrantPayloadCodecV1,
+  type GrantUseClaimIdentityV1,
   type SignedAttestationPayloadCodecV1,
   type VerifiedGrantCapabilityV1,
 } from './optional-grants-package.ts';
@@ -1031,13 +1034,7 @@ export function validateCollaborationGrantPayload(
  * deliberately excluded so a replaying caller and a live caller decide
  * uniqueness from the same inputs.
  */
-export type CollaborationGrantUseIdentity = {
-  grantId: string;
-  signedEnvelopeDigest: string;
-  transitionDigest: string;
-  useProjectionDigest?: string;
-  admissionDigest?: string;
-};
+export type CollaborationGrantUseIdentity = GrantUseClaimIdentityV1;
 
 /**
  * Reject a grant or signed envelope claimed more than once across a complete
@@ -1049,47 +1046,25 @@ export type CollaborationGrantUseIdentity = {
 export function assertUniqueCollaborationGrantUses(
   uses: readonly CollaborationGrantUseIdentity[],
 ): void {
-  const grantIds = new Set<string>();
-  const envelopeDigests = new Set<string>();
-  const useProjectionDigests = new Set<string>();
-  const admissionDigests = new Set<string>();
-  for (const use of uses) {
-    const terminalIdentityPresent =
-      use.useProjectionDigest !== undefined ||
-      use.admissionDigest !== undefined;
-    if (
-      terminalIdentityPresent &&
-      (!/^[0-9a-f]{64}$/u.test(use.useProjectionDigest ?? '') ||
-        !/^[0-9a-f]{64}$/u.test(use.admissionDigest ?? ''))
-    ) {
+  try {
+    assertUniqueGrantUseClaimsV1(uses);
+  } catch (error) {
+    if (!isGrantUseUniquenessError(error)) throw error;
+    if (error.code === 'GRANT_USE_IDENTITY_INVALID') {
       throw workflowError(
         'COLLABORATION_GRANT_USE_INVALID',
         'A collaboration grant terminal-use identity is malformed.',
         ExitCode.verification,
       );
     }
-    if (
-      grantIds.has(use.grantId) ||
-      envelopeDigests.has(use.signedEnvelopeDigest) ||
-      (use.useProjectionDigest !== undefined &&
-        useProjectionDigests.has(use.useProjectionDigest)) ||
-      (use.admissionDigest !== undefined &&
-        admissionDigests.has(use.admissionDigest))
-    ) {
+    if (error.code === 'GRANT_USE_IDENTITY_DUPLICATE') {
       throw workflowError(
         'COLLABORATION_GRANT_USE_DUPLICATE',
         'A collaboration grant use is claimed more than once in this subject.',
         ExitCode.staleState,
       );
     }
-    grantIds.add(use.grantId);
-    envelopeDigests.add(use.signedEnvelopeDigest);
-    if (use.useProjectionDigest !== undefined) {
-      useProjectionDigests.add(use.useProjectionDigest);
-    }
-    if (use.admissionDigest !== undefined) {
-      admissionDigests.add(use.admissionDigest);
-    }
+    throw error;
   }
 }
 

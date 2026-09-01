@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import test, { after } from 'node:test';
 
+import { assertUniqueGrantUseClaimsV1 } from '@jigwright/grants/grant-lifecycle';
+
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { parseCollaborationGrantArguments } from '../src/entrypoints/cli/collaboration-grant-cli.ts';
 import {
@@ -2040,6 +2042,7 @@ test('aggregate grant uses reject a duplicate claim across one subject', () => {
 
   assertUniqueCollaborationGrantUses([]);
   assertUniqueCollaborationGrantUses([first, second]);
+  assert.doesNotThrow(() => assertUniqueGrantUseClaimsV1([first, second]));
 
   // Every grant is issued with maxUses: 1, so the same grant replayed at a
   // second transition is a duplicate claim even though each use is well formed.
@@ -2059,6 +2062,13 @@ test('aggregate grant uses reject a duplicate claim across one subject', () => {
         { ...second, signedEnvelopeDigest: first.signedEnvelopeDigest },
       ]),
     (error) => isWorkflowError(error, 'COLLABORATION_GRANT_USE_DUPLICATE'),
+  );
+  assert.throws(
+    () =>
+      assertUniqueCollaborationGrantUses([
+        { ...first, useProjectionDigest: '0'.repeat(64) },
+      ]),
+    (error) => isWorkflowError(error, 'COLLABORATION_GRANT_USE_INVALID'),
   );
 });
 
