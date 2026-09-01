@@ -79,10 +79,10 @@
     "authorizationClosureDigest": "sha256:7fca6368fc3d7df0b040f6181c0d32e51b91aaab2f57dbddfd3d7c2b0f30b943",
     "humanTrustRootsClosureDigest": "sha256:57d0bfbcded53b5245be023c61a12f262c7018354095e870ebafaa907d0e6c6b",
     "applyJournalClosureDigest": "sha256:aa1d96842a56ba4789717c650391f24430a11b09e4527463cece98563eb74c0c",
-    "controlPlaneUpdateClosureDigest": "sha256:23bc92a05b9aef2727670c64e51cb5728352e22c675a6414b33c4defb973a9fd",
+    "controlPlaneUpdateClosureDigest": "sha256:556c3563b05a7be66c11bb0a7e257b871db026d50ba4dbba92b7f3e65629dd0b",
     "recoveryClosureDigest": "sha256:1a399ad32e4b27f424922f01d484dc806e6a057aacf8295bbc73be66b8e073f9",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:6df3f7680dab361962e46ae702eedda48287c9b249c8a305588a397a21d013a1"
+    "compositionDigest": "sha256:5095d95c395e4780982e051ca1a40ffcdf827533b223f68a1aaf73d2e563f999"
   },
   "entries": [
     {
@@ -310,8 +310,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/intervention-control-persistence.ts",
         "workflow/protected-capabilities.json"
       ],
-      "contentDigest": "sha256:f8eaabeb771b981761ba6283461377433cc79dab498cf024714609fdb641f1b3",
-      "closureDigest": "sha256:23bc92a05b9aef2727670c64e51cb5728352e22c675a6414b33c4defb973a9fd"
+      "contentDigest": "sha256:0528c7c4a3e18185165408f83bf9af00dcbc1bc79343212e840e92f310259d2e",
+      "closureDigest": "sha256:556c3563b05a7be66c11bb0a7e257b871db026d50ba4dbba92b7f3e65629dd0b"
     },
     {
       "capability": "effect.monitor",
