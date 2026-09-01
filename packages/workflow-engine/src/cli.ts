@@ -4348,7 +4348,7 @@ function usageText(): string {
     '  pnpm workflow role-config <show|configure --config <absolute-host-path>|simulate --config <absolute-host-path> --caller <logical-provider-id>> [--json]',
     '  pnpm workflow adapter availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
     '  pnpm workflow adapter verify-availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
-    '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>> [--json]',
+    '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>|show <source-id>|trace <source-id>> [--json]',
     '  pnpm workflow finding add --session <session-id> --input <finding-envelope.json> [--json]',
     '  pnpm workflow work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ... [--json]',
     '  pnpm workflow maintainer grant preflight --profile <profile-id> [--json]',

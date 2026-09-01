@@ -14,7 +14,7 @@ import {
   workRegistryGrantTransitionDefinitions,
 } from '../src/modules/governance-intake/work-registry-grant.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { createWorkRegistryFailGrantResult } from '../src/cli.ts';
+import { createWorkRegistryFailGrantResult, runCli } from '../src/cli.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
@@ -70,6 +70,24 @@ test('source capture is content-addressed, append-only, and idempotent', () => {
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
   }
+});
+
+test('top-level help advertises every current Governance Source command', () => {
+  const originalWrite = process.stdout.write;
+  let output = '';
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    output += chunk.toString();
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    assert.equal(runCli(['--help']), 0);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  assert.match(
+    output,
+    /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|show <source-id>\|trace <source-id>> \[--json\]/u,
+  );
 });
 
 test('Source show and correction trace work without the optional Work Registry', () => {
