@@ -58,6 +58,38 @@ test('plan-commit validation crosses the production planning composition root', 
   );
 });
 
+test('plan-commit task history crosses the production planning composition root', () => {
+  const applicationSource = fs.readFileSync(
+    new URL(
+      '../src/application/propose/planning-transition.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const compositionSource = fs.readFileSync(
+    new URL(
+      '../src/composition-root/planning-provider-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    applicationSource,
+    /adapters\/planning\/openspec\/documents\/planning-contract/u,
+  );
+  for (const exportName of [
+    'amendmentLeftWorkMarkedDone',
+    'assertPlanningTaskHistory',
+    'taskStates',
+  ]) {
+    assert.match(
+      compositionSource,
+      new RegExp(`export function ${exportName}\\(`, 'u'),
+    );
+  }
+});
+
 test('plan-commit introduces an unchecked change through one exact managed commit', () => {
   const repository = createPlanningRepository('planned-change');
   try {

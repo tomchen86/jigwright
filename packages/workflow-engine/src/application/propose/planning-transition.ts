@@ -35,10 +35,9 @@ import {
 } from '../../runtime/session-workspace/paths.ts';
 import {
   amendmentLeftWorkMarkedDone,
-  taskStates,
-} from '../../adapters/planning/openspec/documents/planning-contract.ts';
-import {
+  assertPlanningTaskHistory,
   inspectPlanningTransition,
+  taskStates,
   validatePlanningTransition,
 } from '../../composition-root/planning-provider-production.ts';
 import {
@@ -129,10 +128,8 @@ export type PlanningTransitionTestHooks = {
   }): void;
 };
 
-export {
-  assertPlanningPaths,
-  assertPlanningTaskHistory,
-} from '../../adapters/planning/openspec/documents/planning-contract.ts';
+export { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
+export { assertPlanningTaskHistory };
 
 /**
  * Amends an already-committed plan.

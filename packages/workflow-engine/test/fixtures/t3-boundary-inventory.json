@@ -248,7 +248,7 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "coupled",
-      "t3Disposition": "Planning inspection and plan-commit validation now cross the production planning composition root; propose still imports generic task-history helpers, while archive and several CI paths retain direct in-engine OpenSpec adapter dependencies, so standalone adapter extraction remains.",
+      "t3Disposition": "Planning inspection, plan-commit validation, and task-history policy now cross the production planning composition root; plan-commit no longer imports the OpenSpec planning contract directly, while propose-orchestrator, archive, and several CI paths retain direct adapter dependencies, so standalone adapter extraction remains.",
       "evidence": [
         {
           "path": "packages/workflow-engine/src/modules/planning-provider/planning-provider-port.ts",
@@ -260,7 +260,9 @@
         {
           "path": "packages/workflow-engine/src/composition-root/planning-provider-production.ts",
           "contains": [
+            "assertPlanningTaskHistory as assertPlanningTaskHistoryWithAdapter,",
             "validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,",
+            "export function assertPlanningTaskHistory(",
             "export function validatePlanningTransition("
           ]
         },
