@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { assertExecutionPolicySnapshotV1 } from '@jigwright/core/execution-policy-snapshot';
 import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
 
 import {
@@ -27,7 +28,7 @@ import {
   type ProviderInvocationProjection,
   type WorkflowRecord,
 } from '../src/modules/provider-orchestration/execution-core.ts';
-import { WorkflowError } from '../src/foundation/errors/errors.ts';
+import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import type { ProviderInvocationRecord } from '../src/runtime/storage-journal/provider-invocation-store.ts';
 
 const digest = (character: string): string => `sha256:${character.repeat(64)}`;
@@ -72,7 +73,7 @@ const POLICY_600: ExecutionPolicySnapshot = {
   timeoutMs: 600_000,
 };
 
-function createJob() {
+function createJob(executionPolicy: ExecutionPolicySnapshot = POLICY_300) {
   return createExecutionJob({
     workflow: WORKFLOW,
     mandateBinding: MANDATE_BINDING,
@@ -88,7 +89,7 @@ function createJob() {
       outputContractDigest: digest('c'),
       acceptancePolicyDigest: digest('d'),
     },
-    executionPolicy: POLICY_300,
+    executionPolicy,
     environmentDigest: digest('f'),
     retryPolicy: {
       maxAttempts: 4,
@@ -103,6 +104,33 @@ function createJob() {
     createdAt: NOW,
   });
 }
+
+test('execution Jobs use the core policy snapshot with exact engine error mapping', () => {
+  const corePolicy = assertExecutionPolicySnapshotV1(POLICY_300);
+  const created = createJob(corePolicy);
+  assert.deepEqual(created.attempt.policySnapshot, corePolicy);
+
+  assert.throws(
+    () =>
+      createJob({
+        ...POLICY_300,
+        transientToolConfig: { 'retry-after-ms': Number.NaN },
+      }),
+    (error) =>
+      error instanceof WorkflowError &&
+      error.code === 'CANONICAL_JSON_INVALID' &&
+      error.exitCode === ExitCode.usage &&
+      error.message === 'Value cannot be encoded as canonical JSON data.',
+  );
+  assert.throws(
+    () => createJob({ ...POLICY_300, provider: 'Invalid Provider' }),
+    (error) =>
+      error instanceof WorkflowError &&
+      error.code === 'EXECUTION_RECORD_INVALID' &&
+      error.exitCode === ExitCode.guard &&
+      error.message === 'provider is invalid.',
+  );
+});
 
 test('300 to 600 creates a replacement Attempt without changing semantic identity', () => {
   const initial = createJob();

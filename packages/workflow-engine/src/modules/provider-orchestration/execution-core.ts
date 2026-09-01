@@ -17,6 +17,11 @@ import {
   type ReadOnlyProbeKindV1,
   type ReadOnlyProbeRequestV1,
 } from '@jigwright/core/read-only-probe';
+import {
+  ExecutionPolicySnapshotCodecError,
+  assertExecutionPolicySnapshotV1,
+  type ExecutionPolicySnapshotV1,
+} from '@jigwright/core/execution-policy-snapshot';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -93,17 +98,8 @@ export type SemanticJobSpec = {
   acceptancePolicyDigest: string;
 };
 
-export type ExecutionPolicySnapshot = {
-  schemaVersion: 1;
-  provider: string;
-  timeoutMs: number;
-  maxOutputBytes: number;
-  workerClass: string;
-  backoffMs: number;
-  processEnvironment: Readonly<Record<string, string>>;
-  concurrency: number;
-  transientToolConfig: Readonly<Record<string, JsonPrimitive>>;
-};
+/** Compatibility name for the public core-owned V1 execution policy value. */
+export type ExecutionPolicySnapshot = ExecutionPolicySnapshotV1;
 
 export type JobRecord = {
   schemaVersion: 2;
@@ -1975,36 +1971,21 @@ function assertSemanticJobSpec(value: unknown): SemanticJobSpec {
 }
 
 function assertExecutionPolicy(value: unknown): ExecutionPolicySnapshot {
-  if (
-    !isPlainObject(value) ||
-    !hasExactKeys(value, [
-      'backoffMs',
-      'concurrency',
-      'maxOutputBytes',
-      'processEnvironment',
-      'provider',
-      'schemaVersion',
-      'timeoutMs',
-      'transientToolConfig',
-      'workerClass',
-    ]) ||
-    value.schemaVersion !== 1
-  ) {
-    throw executionInvalid('Execution policy snapshot is invalid.');
+  try {
+    return assertExecutionPolicySnapshotV1(value);
+  } catch (error) {
+    if (error instanceof ExecutionPolicySnapshotCodecError) {
+      if (error.code === 'EXECUTION_POLICY_SNAPSHOT_CANONICAL_JSON_INVALID') {
+        throw executionError(
+          'CANONICAL_JSON_INVALID',
+          error.message,
+          ExitCode.usage,
+        );
+      }
+      throw executionInvalid(error.message);
+    }
+    throw error;
   }
-  assertIdentifier(value.provider, 'provider');
-  assertIdentifier(value.workerClass, 'workerClass');
-  assertBoundedPositiveInteger(value.timeoutMs, 'timeoutMs', 3_600_000);
-  assertBoundedPositiveInteger(
-    value.maxOutputBytes,
-    'maxOutputBytes',
-    268_435_456,
-  );
-  assertBoundedNonnegativeInteger(value.backoffMs, 'backoffMs', 86_400_000);
-  assertBoundedPositiveInteger(value.concurrency, 'concurrency', 1_024);
-  assertStringRecord(value.processEnvironment, 'processEnvironment');
-  assertPrimitiveRecord(value.transientToolConfig, 'transientToolConfig');
-  return deepFreeze(structuredClone(value) as ExecutionPolicySnapshot);
 }
 
 function assertRetryPolicy(value: unknown): RetryPolicy {
@@ -2749,40 +2730,6 @@ function diffJson(
     return changes;
   }
   return [{ path: basePath || '/', from: before, to: after }];
-}
-
-function assertEnvironmentRecordValue(
-  value: unknown,
-): asserts value is JsonValue {
-  canonicalJson(value);
-}
-
-function assertStringRecord(value: unknown, label: string): void {
-  if (!isPlainObject(value)) throw executionInvalid(`${label} is invalid.`);
-  assertSortedObjectKeys(value, label);
-  for (const [key, entry] of Object.entries(value)) {
-    if (!/^[A-Z_][A-Z0-9_]{0,127}$/.test(key) || typeof entry !== 'string') {
-      throw executionInvalid(`${label} is invalid.`);
-    }
-    assertBoundedString(entry, `${label}.${key}`);
-  }
-}
-
-function assertPrimitiveRecord(value: unknown, label: string): void {
-  if (!isPlainObject(value)) throw executionInvalid(`${label} is invalid.`);
-  assertSortedObjectKeys(value, label);
-  for (const [key, entry] of Object.entries(value)) {
-    assertIdentifier(key, `${label} key`);
-    if (
-      entry !== null &&
-      typeof entry !== 'string' &&
-      typeof entry !== 'number' &&
-      typeof entry !== 'boolean'
-    ) {
-      throw executionInvalid(`${label} is invalid.`);
-    }
-    assertEnvironmentRecordValue(entry);
-  }
 }
 
 function assertSortedObjectKeys(

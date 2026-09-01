@@ -21,6 +21,7 @@
     "./contract-values": "./src/contract-values.ts",
     "./data-authorization-policy-port": "./src/data-authorization-policy-port.ts",
     "./evidence-node": "./src/evidence-node.ts",
+    "./execution-policy-snapshot": "./src/execution-policy-snapshot.ts",
     "./governance-source": "./src/governance-source.ts",
     "./grant-verifier-port": "./src/grant-verifier-port.ts",
     "./job-attempt-runtime": "./src/job-attempt-runtime.ts",
