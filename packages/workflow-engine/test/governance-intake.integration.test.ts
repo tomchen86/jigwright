@@ -301,6 +301,87 @@ test('top-level help advertises every current Governance Source command', () => 
   );
 });
 
+test('Source capture projects exact ownerless show and trace next steps', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-source-capture-next-steps-'),
+  );
+  const inputPath = path.join(repositoryRoot, 'source.json');
+  const originalWrite = process.stdout.write;
+  let output = '';
+  try {
+    runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+    runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+    runGitForTest(repositoryRoot, [
+      'config',
+      'user.email',
+      'jigwright@example.test',
+    ]);
+    fs.writeFileSync(path.join(repositoryRoot, 'README.md'), 'fixture\n');
+    runGitForTest(repositoryRoot, ['add', 'README.md']);
+    runGitForTest(repositoryRoot, ['commit', '-m', 'Initialize fixture']);
+    fs.writeFileSync(
+      inputPath,
+      `${JSON.stringify({
+        semanticAuthor: 'maintainer',
+        capturedBy: 'jigwright',
+        capturedAt: '2026-08-24T03:10:00.000Z',
+        contextRef: 'direct-human:thread/turn-43',
+        text: 'Keep every coherent MVP slice committed.\n',
+        supersedes: null,
+      })}\n`,
+    );
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      output += chunk.toString();
+      return true;
+    }) as typeof process.stdout.write;
+
+    assert.equal(
+      runCli(
+        ['source', 'capture', '--input', inputPath, '--json'],
+        repositoryRoot,
+      ),
+      0,
+    );
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  try {
+    const parsed = JSON.parse(output) as {
+      result: Record<string, unknown> & { sourceId: string };
+      nextSteps: Array<{ command: string; why: string }>;
+    };
+    const sourceId = parsed.result.sourceId;
+    assert.match(sourceId, /^SRC-[0-9a-f]{64}$/u);
+    assert.deepEqual(
+      parsed.nextSteps.map(({ command }) => command),
+      [
+        `pnpm workflow source show ${sourceId} --json`,
+        `pnpm workflow source trace ${sourceId} --json`,
+        'pnpm workflow guide --json',
+      ],
+    );
+    for (const poisoned of [
+      {
+        ...parsed.result,
+        sourceId: 'SRC-not-a-canonical-identity --unsafe',
+      },
+      { ...parsed.result, sourceId: `SRC-${'a'.repeat(64)}` },
+      { ...parsed.result, path: 'workflow/source-ledger/objects/wrong.json' },
+      { ...parsed.result, unexpected: 'field' },
+      { ...parsed.result, action: 'unknown' },
+    ]) {
+      assert.deepEqual(
+        workflowResultNextSteps({ command: 'source', result: poisoned }).map(
+          ({ command }) => command,
+        ),
+        ['pnpm workflow guide --json'],
+      );
+    }
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
 test('Source list preserves exact wording without the optional Work Registry', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-core-list-'),

@@ -126,6 +126,8 @@ export function workflowResultNextSteps(
   if (commandId === 'guide') return Object.freeze([]);
   const failGrant = failGrantNextSteps(record(result.result), invocation);
   if (failGrant !== null) return failGrant;
+  const governanceSource = governanceSourceCaptureNextSteps(result);
+  if (governanceSource !== null) return governanceSource;
   const archivePullRequest = archivePullRequestLocalNextSteps(result);
   if (archivePullRequest !== null) return archivePullRequest;
   if (commandId === 'task-preflight') {
@@ -159,6 +161,44 @@ export function workflowResultNextSteps(
       : ['guide'],
     bindings,
   );
+}
+
+function governanceSourceCaptureNextSteps(
+  result: Readonly<Record<string, unknown>>,
+): readonly WorkflowNextStep[] | null {
+  if (result.command !== 'source') return null;
+  const captured = record(result.result);
+  if (captured?.action !== 'capture') return null;
+  const sourceId = stringField(captured, 'sourceId');
+  const sourceDigest = stringField(captured, 'sourceDigest');
+  const objectPath = stringField(captured, 'path');
+  const sourceObjectDigest = sourceId?.slice('SRC-'.length);
+  if (
+    Object.keys(captured).sort().join('\0') !==
+      ['action', 'created', 'path', 'sourceDigest', 'sourceId']
+        .sort()
+        .join('\0') ||
+    sourceId === undefined ||
+    !/^SRC-[0-9a-f]{64}$/u.test(sourceId) ||
+    sourceDigest === undefined ||
+    !/^sha256:[0-9a-f]{64}$/u.test(sourceDigest) ||
+    typeof captured.created !== 'boolean' ||
+    objectPath !==
+      `workflow/source-ledger/objects/sha256/${sourceObjectDigest?.slice(0, 2)}/${sourceObjectDigest}.json`
+  ) {
+    return projectWorkflowNextSteps(['guide']);
+  }
+  return Object.freeze([
+    Object.freeze({
+      command: `pnpm workflow source show ${sourceId} --json`,
+      why: 'Read the exact immutable Source wording that was just captured.',
+    }),
+    Object.freeze({
+      command: `pnpm workflow source trace ${sourceId} --json`,
+      why: 'Trace the exact immutable Source to its durable repository references.',
+    }),
+    nextStep('guide', {}),
+  ]);
 }
 
 function taskSessionPreflightNextSteps(
