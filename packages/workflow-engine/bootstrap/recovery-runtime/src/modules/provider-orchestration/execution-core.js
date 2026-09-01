@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
-import { ATTEMPT_STATUSES_V2, JOB_STATUSES_V2, AttemptResultCodecError, assertAttemptAcceptanceBindingV1, createAttemptAcceptanceBindingV1, } from '@jigwright/core/job-attempt-runtime';
+import { ATTEMPT_STATUSES_V2, JOB_STATUSES_V2, AttemptResultCodecError, SemanticJobSpecCodecError, assertAttemptAcceptanceBindingV1, assertSemanticJobSpecV1, createAttemptAcceptanceBindingV1, } from '@jigwright/core/job-attempt-runtime';
 import { ReadOnlyProbeCodecError, assertReadOnlyProbeRequestV1, } from '@jigwright/core/read-only-probe';
 import { ExecutionPolicySnapshotCodecError, assertExecutionPolicySnapshotV1, } from '@jigwright/core/execution-policy-snapshot';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
@@ -1243,26 +1243,14 @@ export function assertAttemptResult(value) {
     }
 }
 function assertSemanticJobSpec(value) {
-    if (!isPlainObject(value) ||
-        !hasExactKeys(value, [
-            'acceptancePolicyDigest',
-            'contextDigest',
-            'contractVersion',
-            'inputDigest',
-            'outputContractDigest',
-            'schemaVersion',
-            'stage',
-        ]) ||
-        value.schemaVersion !== 1) {
-        throw executionInvalid('Semantic Job specification is invalid.');
+    try {
+        return assertSemanticJobSpecV1(value);
     }
-    assertPositiveInteger(value.contractVersion, 'contractVersion');
-    assertIdentifier(value.stage, 'stage');
-    assertDigest(value.contextDigest);
-    assertDigest(value.inputDigest);
-    assertDigest(value.outputContractDigest);
-    assertDigest(value.acceptancePolicyDigest);
-    return deepFreeze(structuredClone(value));
+    catch (error) {
+        if (!(error instanceof SemanticJobSpecCodecError))
+            throw error;
+        throw executionInvalid(error.message);
+    }
 }
 function assertExecutionPolicy(value) {
     try {

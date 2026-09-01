@@ -153,7 +153,7 @@
     {
       "path": "node_modules/@jigwright/core/src/job-attempt-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:96422a8d444d9f99bd6dd1357892677690e9c2f794ac5992123556ef4ce95346"
+      "digest": "sha256:739a176c66d03b415b598ff20095a4498d06d6e76e4525636e23715715988a0f"
     },
     {
       "path": "node_modules/@jigwright/core/src/managed-transition-trailers.ts",
@@ -1668,7 +1668,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:df733a15c76dc2da9ddd250c3d6f6039bc4392fbb8dda28450bc7acfb172f94c"
+      "digest": "sha256:1af6367723efbd3842f19d482f1d7bf9aeb6a19ca820320bce3e50d8a1b0649c"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
