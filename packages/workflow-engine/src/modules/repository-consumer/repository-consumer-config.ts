@@ -100,6 +100,21 @@ export function repositoryPlanningConfiguration(
 export function repositoryWorkRegistryConfiguration(
   repositoryRoot: string,
 ): RepositoryWorkRegistryConfigurationV1 {
+  const configuration =
+    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
+  if (configuration === null) {
+    throw configError(
+      'WORK_REGISTRY_UNAVAILABLE',
+      'This repository has not enabled the optional Work Registry.',
+      ExitCode.guard,
+    );
+  }
+  return configuration;
+}
+
+export function repositoryWorkRegistryConfigurationOrNull(
+  repositoryRoot: string,
+): RepositoryWorkRegistryConfigurationV1 | null {
   return productionRepositoryConsumerPort.load(repositoryRoot).workRegistry;
 }
 
@@ -158,28 +173,20 @@ export function parseRepositoryConsumerConfiguration(
     !isRecord(value.documents) ||
     !hasExactKeys(value.documents, ['adapterId', 'handoffPath']) ||
     typeof value.documents.adapterId !== 'string' ||
-    !isRecord(value.workRegistry) ||
-    !hasExactKeys(value.workRegistry, [
-      'adapterId',
-      'backlogPath',
-      'changeOriginRoot',
-      'historyRoot',
-      'inventoryPath',
-      'itemRoot',
-      'sourceRoot',
-      'transitionPolicyPath',
-    ]) ||
-    typeof value.workRegistry.adapterId !== 'string' ||
+    !isWorkRegistryConfiguration(value.workRegistry) ||
     !isRecord(value.databasePolicy) ||
     !hasExactKeys(value.databasePolicy, ['adapterId']) ||
     typeof value.databasePolicy.adapterId !== 'string'
   ) {
     throw configInvalid();
   }
+  const workRegistry =
+    value.workRegistry as RepositoryWorkRegistryConfigurationV1 | null;
   if (
     value.planning.providerId !== 'openspec' ||
     value.documents.adapterId !== 'filesystem-documents-v1' ||
-    value.workRegistry.adapterId !== 'filesystem-work-registry-v1' ||
+    (workRegistry !== null &&
+      workRegistry.adapterId !== 'filesystem-work-registry-v1') ||
     !['postgresql-disposable-v1', 'disabled-v1'].includes(
       value.databasePolicy.adapterId,
     )
@@ -209,17 +216,19 @@ export function parseRepositoryConsumerConfiguration(
     throw configInvalid();
   }
   const documents = value.documents as Record<string, unknown>;
-  const workRegistry = value.workRegistry as Record<string, unknown>;
   const documentPaths = [documents.handoffPath].map(safePathValue);
-  const registryPaths = [
-    workRegistry.itemRoot,
-    workRegistry.inventoryPath,
-    workRegistry.backlogPath,
-    workRegistry.historyRoot,
-    workRegistry.sourceRoot,
-    workRegistry.transitionPolicyPath,
-    workRegistry.changeOriginRoot,
-  ].map(safePathValue);
+  const registryPaths =
+    workRegistry === null
+      ? []
+      : [
+          workRegistry.itemRoot,
+          workRegistry.inventoryPath,
+          workRegistry.backlogPath,
+          workRegistry.historyRoot,
+          workRegistry.sourceRoot,
+          workRegistry.transitionPolicyPath,
+          workRegistry.changeOriginRoot,
+        ].map(safePathValue);
   if (
     new Set(documentPaths).size !== documentPaths.length ||
     new Set(registryPaths).size !== registryPaths.length ||
@@ -244,16 +253,19 @@ export function parseRepositoryConsumerConfiguration(
       adapterId: 'filesystem-documents-v1',
       handoffPath: documentPaths[0]!,
     },
-    workRegistry: {
-      adapterId: 'filesystem-work-registry-v1',
-      itemRoot: registryPaths[0]!,
-      inventoryPath: registryPaths[1]!,
-      backlogPath: registryPaths[2]!,
-      historyRoot: registryPaths[3]!,
-      sourceRoot: registryPaths[4]!,
-      transitionPolicyPath: registryPaths[5]!,
-      changeOriginRoot: registryPaths[6]!,
-    },
+    workRegistry:
+      workRegistry === null
+        ? null
+        : {
+            adapterId: 'filesystem-work-registry-v1',
+            itemRoot: registryPaths[0]!,
+            inventoryPath: registryPaths[1]!,
+            backlogPath: registryPaths[2]!,
+            historyRoot: registryPaths[3]!,
+            sourceRoot: registryPaths[4]!,
+            transitionPolicyPath: registryPaths[5]!,
+            changeOriginRoot: registryPaths[6]!,
+          },
     databasePolicy: { adapterId: value.databasePolicy.adapterId },
   });
 }
@@ -264,13 +276,17 @@ function assertConfiguredPathsInsideRepository(
 ): void {
   const paths = [
     configuration.documents.handoffPath,
-    configuration.workRegistry.itemRoot,
-    configuration.workRegistry.inventoryPath,
-    configuration.workRegistry.backlogPath,
-    configuration.workRegistry.historyRoot,
-    configuration.workRegistry.sourceRoot,
-    configuration.workRegistry.transitionPolicyPath,
-    configuration.workRegistry.changeOriginRoot,
+    ...(configuration.workRegistry === null
+      ? []
+      : [
+          configuration.workRegistry.itemRoot,
+          configuration.workRegistry.inventoryPath,
+          configuration.workRegistry.backlogPath,
+          configuration.workRegistry.historyRoot,
+          configuration.workRegistry.sourceRoot,
+          configuration.workRegistry.transitionPolicyPath,
+          configuration.workRegistry.changeOriginRoot,
+        ]),
   ];
   try {
     for (const configuredPath of paths) {
@@ -398,6 +414,26 @@ function isSchemaNames(value: unknown, allowEmpty: boolean): value is string[] {
   );
 }
 
+function isWorkRegistryConfiguration(
+  value: unknown,
+): value is RepositoryWorkRegistryConfigurationV1 | null {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      hasExactKeys(value, [
+        'adapterId',
+        'backlogPath',
+        'changeOriginRoot',
+        'historyRoot',
+        'inventoryPath',
+        'itemRoot',
+        'sourceRoot',
+        'transitionPolicyPath',
+      ]) &&
+      typeof value.adapterId === 'string')
+  );
+}
+
 function hasExactKeys(
   value: Record<string, unknown>,
   expected: readonly string[],
@@ -416,7 +452,7 @@ function deepFreeze<T extends RepositoryConsumerConfigurationV1>(value: T): T {
   Object.freeze(value.planning.managedSchemaNames);
   Object.freeze(value.planning);
   Object.freeze(value.documents);
-  Object.freeze(value.workRegistry);
+  if (value.workRegistry !== null) Object.freeze(value.workRegistry);
   Object.freeze(value.databasePolicy);
   return Object.freeze(value);
 }

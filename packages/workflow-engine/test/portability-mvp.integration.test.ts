@@ -1837,7 +1837,11 @@ function runPortabilityPackageInvocation(
   });
 }
 
-function orbitConsumerConfiguration(): RepositoryConsumerConfigurationV1 {
+function orbitConsumerConfiguration(): RepositoryConsumerConfigurationV1 & {
+  readonly workRegistry: NonNullable<
+    RepositoryConsumerConfigurationV1['workRegistry']
+  >;
+} {
   return {
     schemaVersion: 1,
     adapterId: 'configured-repository-v1',

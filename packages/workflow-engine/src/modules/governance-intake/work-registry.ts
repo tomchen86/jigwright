@@ -11,6 +11,7 @@ import {
   repositoryConsumerConfigurationExists,
   repositoryConsumerPath,
   repositoryWorkRegistryConfiguration,
+  repositoryWorkRegistryConfigurationOrNull,
 } from '../repository-consumer/repository-consumer-config.ts';
 import {
   listGovernanceSources,
@@ -670,7 +671,12 @@ export function traceGovernanceSource(
     workItems: [] as WorkItemV1[],
     origins: [] as string[],
   };
-  if (!repositoryConsumerConfigurationExists(repositoryRoot)) return coreTrace;
+  if (
+    !repositoryConsumerConfigurationExists(repositoryRoot) ||
+    repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null
+  ) {
+    return coreTrace;
+  }
   const workItems = listWorkItems(repositoryRoot)
     .filter((item) => item.sourceRefs.includes(source.id))
     .map((item) => {
@@ -822,8 +828,12 @@ export function reconcileArchivedWorkItems(
 ): { closedItemIds: string[]; outputPaths: string[] } {
   const changeId = changeIdentity(requestedChangeId);
   const closedAt = canonicalTimestamp(requestedClosedAt);
-  const changeOriginRoot =
-    repositoryWorkRegistryConfiguration(repositoryRoot).changeOriginRoot;
+  const workRegistry =
+    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
+  if (workRegistry === null) {
+    return { closedItemIds: [], outputPaths: [] };
+  }
+  const changeOriginRoot = workRegistry.changeOriginRoot;
   if (
     !new RegExp(
       `^${escapeRegExp(changeOriginRoot)}/archive/\\d{4}-\\d{2}-\\d{2}-${changeId}$`,

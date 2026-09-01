@@ -33,7 +33,7 @@ export type RepositoryConsumerConfigurationV1 = Readonly<{
   consumerId: string;
   planning: RepositoryPlanningConfigurationV1;
   documents: RepositoryDocumentConfigurationV1;
-  workRegistry: RepositoryWorkRegistryConfigurationV1;
+  workRegistry: RepositoryWorkRegistryConfigurationV1 | null;
   databasePolicy: RepositoryDatabasePolicyConfigurationV1;
 }>;
 

@@ -19,7 +19,11 @@ import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
-import { repositoryConsumerConfigurationExists } from '../src/modules/repository-consumer/repository-consumer-config.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import {
+  loadRepositoryConsumerConfiguration,
+  repositoryConsumerConfigurationExists,
+} from '../src/modules/repository-consumer/repository-consumer-config.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
@@ -140,6 +144,98 @@ test('Source list preserves exact wording without the optional Work Registry', (
       hasCode('GOVERNANCE_SOURCE_IDENTITY_INVALID'),
     );
     assert.equal(fs.readFileSync(poisonedPath, 'utf8'), poisonedBytes);
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('configured consumers can disable Work Registry without disabling core Source or lifecycle', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-optional-work-registry-'),
+  );
+  configureRepositoryConsumer(repositoryRoot);
+  const configPath = path.join(
+    repositoryRoot,
+    'workflow/repository-consumer.json',
+  );
+  const configured = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<
+    string,
+    unknown
+  >;
+  configured.workRegistry = null;
+  const disabledConfigBytes = `${JSON.stringify(configured)}\n`;
+  fs.writeFileSync(configPath, disabledConfigBytes);
+  try {
+    assert.equal(
+      loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+        .workRegistry,
+      null,
+    );
+
+    const source = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:10:30.000Z',
+      contextRef: 'direct-human:thread/turn-42',
+      text: 'Source capture must not require the Work Registry.\n',
+      supersedes: null,
+    }).source;
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand('source', ['list'], repositoryRoot),
+      { action: 'list', sources: [source] },
+    );
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['trace', source.id],
+        repositoryRoot,
+      ),
+      {
+        action: 'trace',
+        source,
+        supersedes: null,
+        supersededBy: [],
+        workItems: [],
+        origins: [],
+      },
+    );
+
+    const handoff = renderHandoff(repositoryRoot);
+    assert.doesNotMatch(handoff, /Work Registry|Work backlog/u);
+    const sourcePath = path.join(
+      repositoryRoot,
+      'workflow/source-ledger/objects/sha256',
+      source.id.slice(4, 6),
+      `${source.id.slice(4)}.json`,
+    );
+    const sourceBytes = fs.readFileSync(sourcePath, 'utf8');
+    assert.deepEqual(
+      reconcileArchivedWorkItems(
+        repositoryRoot,
+        'optional-registry-change',
+        'openspec/changes/archive/2026-08-24-optional-registry-change',
+        '2026-08-24T03:11:00.000Z',
+      ),
+      { closedItemIds: [], outputPaths: [] },
+    );
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand('work-item', ['list'], repositoryRoot),
+      hasCode('WORK_REGISTRY_UNAVAILABLE'),
+    );
+    assert.equal(fs.readFileSync(configPath, 'utf8'), disabledConfigBytes);
+    assert.equal(fs.readFileSync(sourcePath, 'utf8'), sourceBytes);
+    assert.equal(
+      fs.existsSync(path.join(repositoryRoot, 'docs/work-registry')),
+      false,
+    );
+
+    const { workRegistry: _workRegistry, ...missingWorkRegistry } = configured;
+    fs.writeFileSync(configPath, `${JSON.stringify(missingWorkRegistry)}\n`);
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repositoryRoot),
+      hasCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+    );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
   }

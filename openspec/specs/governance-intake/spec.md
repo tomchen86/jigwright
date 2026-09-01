@@ -95,6 +95,27 @@ Source, deleting the citation, or rewriting historical bytes.
 - **WHEN** registry validation reads an `origin.json` with a dangling `sourceRefs` entry
 - **THEN** validation fails without changing the origin or Source ledger
 
+### Requirement: Work Registry Is an Explicit Optional Capability
+
+A configured repository SHALL represent an installed Work Registry with its
+strict adapter configuration and SHALL represent a disabled Work Registry with
+the required exact value `workRegistry: null`. Omitting the key or supplying an
+unknown adapter MUST remain invalid. Disabling the Work Registry MUST NOT
+disable Governance Source capture or reading, generic handoff rendering, or
+archive processing that has no Work Items to reconcile.
+
+#### Scenario: Configured consumer disables the Work Registry
+
+- **WHEN** a valid repository consumer configuration sets `workRegistry` to `null`
+- **THEN** Source capture, list, show, and correction-only trace remain available
+- **AND** generic handoff and archive processing omit Work Registry projections
+- **AND** a Work Item command fails with `WORK_REGISTRY_UNAVAILABLE` before mutation
+
+#### Scenario: Work Registry capability key is missing
+
+- **WHEN** a repository consumer configuration omits `workRegistry`
+- **THEN** configuration validation fails rather than inferring enabled or disabled behavior
+
 ### Requirement: Findings Remain Independent of Task Write Scope
 
 A Finding SHALL bind its exact text to the active session, change, branch, head,
