@@ -525,9 +525,17 @@ function investigationFirstProposeAsset(source: string): string {
     '   pnpm workflow propose <change-id> --intent <intent.json> [--actor <id>] --json',
     '   ```',
     '',
-    '3. Read the returned `state`, `nextAction`, and `inputSchema` exactly. Preserve every returned binding value. Fill only the caller-owned contribution requested by that schema, using `work` and any `authoredInstructions` as constraints. Keep each task guard’s `requiredChecks` targeted to that task. The engine owns terminal full-gate escalation. Do not directly create or overwrite engine-owned `investigation.json`, `execution.json`, `plan-review.json`, or managed ledger fields.',
+    '3. If the current request cites Governance Sources, keep their immutable identities in change `origin.json`. Resolve each cited Source through the current read surface:',
     '',
-    '4. Submit each typed checkpoint from a temporary envelope file:',
+    '   ```bash',
+    '   pnpm workflow source show <source-id> --json',
+    '   ```',
+    '',
+    '   Use the returned exact selected wording when writing proposal, design, spec, and plan prose. Mark quotations and claims grounded in those Sources as `source-backed`, and mark interpretations or extensions as `agent-derived`. Sources remain optional. Do not require the Work Registry for an uncited change, copy an entire Source record into planning or Manifest artifacts, or treat Source provenance as transition authority.',
+    '',
+    '4. Read the returned `state`, `nextAction`, and `inputSchema` exactly. Preserve every returned binding value. Fill only the caller-owned contribution requested by that schema, using `work` and any `authoredInstructions` as constraints. Keep each task guard’s `requiredChecks` targeted to that task. The engine owns terminal full-gate escalation. Do not directly create or overwrite engine-owned `investigation.json`, `execution.json`, `plan-review.json`, or managed ledger fields.',
+    '',
+    '5. Submit each typed checkpoint from a temporary envelope file:',
     '',
     '   ```bash',
     '   pnpm workflow propose <change-id> --resume --input <envelope.json> --json',
@@ -539,13 +547,13 @@ function investigationFirstProposeAsset(source: string): string {
     '   pnpm workflow status <investigation-or-task-id> --json',
     '   ```',
     '',
-    '5. Planning is ready only when the wrapper returns `state: planning-complete` with its managed planning transition. Then open the selected or next incomplete task:',
+    '6. Planning is ready only when the wrapper returns `state: planning-complete` with its managed planning transition. Then open the selected or next incomplete task:',
     '',
     '   ```bash',
     `   ${GUIDED_OPEN_TASK_COMMAND}`,
     '   ```',
     '',
-    '6. During implementation, inspect the versioned advisory command catalog and use its preferred projected single-pass path:',
+    '7. During implementation, inspect the versioned advisory command catalog and use its preferred projected single-pass path:',
     '',
     '   ```bash',
     `   ${GUIDED_WORKFLOW_GUIDE_COMMAND}`,
@@ -658,6 +666,15 @@ export function verifyOpenSpecPlanningAssetContent(
         content.includes('`renamePairs`') &&
         content.includes('`from`') &&
         content.includes('`to`') &&
+        content.includes('`origin.json`') &&
+        content.includes('pnpm workflow source show <source-id> --json') &&
+        content.includes('exact selected wording') &&
+        content.includes('`source-backed`') &&
+        content.includes('`agent-derived`') &&
+        content.includes('Sources remain optional') &&
+        content.includes('Do not require the Work Registry') &&
+        content.includes('copy an entire Source record') &&
+        content.includes('treat Source provenance as transition authority') &&
         !content.includes(RETIRED_FINALIZE_TASK_COMMAND) &&
         !/(?:all artifacts generated|generate all artifacts in one step|generated? in one step)/i.test(
           content,

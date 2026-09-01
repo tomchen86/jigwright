@@ -406,6 +406,15 @@ test('governed propose assets use the investigation-first checkpoint wrapper wit
       '`explicitSymbols`',
       '`explicitConfigKeys`',
       '`renamePairs`',
+      '`origin.json`',
+      'pnpm workflow source show <source-id> --json',
+      'exact selected wording',
+      '`source-backed`',
+      '`agent-derived`',
+      'Sources remain optional',
+      'Do not require the Work Registry',
+      'copy an entire Source record',
+      'treat Source provenance as transition authority',
     ]) {
       assert.throws(
         () =>
@@ -1718,6 +1727,41 @@ function assertInvestigationFirstProposeContract(
       message(`missing exact intent field ${field}`),
     );
   }
+  assert.match(
+    content,
+    /keep their immutable identities in change `origin\.json`/i,
+    message('missing immutable Governance Source identity guidance'),
+  );
+  assert.match(
+    content,
+    /pnpm workflow source show <source-id> --json/,
+    message('missing current Governance Source read command'),
+  );
+  assert.match(
+    content,
+    /exact selected wording/i,
+    message('missing exact Source quotation guidance'),
+  );
+  assert.match(
+    content,
+    /`source-backed`[^\n]+`agent-derived`/i,
+    message('missing Source-backed versus agent-derived prose guidance'),
+  );
+  assert.match(
+    content,
+    /Sources remain optional/i,
+    message('makes Governance Sources mandatory'),
+  );
+  assert.match(
+    content,
+    /Do not require the Work Registry for an uncited change/i,
+    message('makes the Work Registry a Source prerequisite'),
+  );
+  assert.match(
+    content,
+    /Do not[^.]*copy an entire Source record[^.]*treat Source provenance as transition authority/i,
+    message('missing Source copying and authority boundaries'),
+  );
   assert.doesNotMatch(
     content,
     /(?:all artifacts generated|generate all artifacts in one step)/i,
