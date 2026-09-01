@@ -12,6 +12,8 @@ import {
 } from './build-single-jigwright-package.ts';
 import {
   runCurrentJigwrightAdoption,
+  verifyCurrentJigwrightAdoptionArtifacts,
+  verifyCurrentJigwrightAdoptionReportV1,
   type CurrentJigwrightAdoptionReportV1,
 } from './run-current-jigwright-adoption.ts';
 
@@ -231,9 +233,7 @@ export function verifyCurrentJigwrightV1ReleaseCandidate(
     throw new Error('Current Jigwright v1 release candidate is invalid.');
   }
   const candidate = value as unknown as CurrentJigwrightV1ReleaseCandidate;
-  if (!isCurrentAdoptionReport(candidate.adoption, candidate.release)) {
-    throw new Error('Current Jigwright v1 release candidate is invalid.');
-  }
+  verifyCurrentJigwrightAdoptionReportV1(candidate.adoption, candidate.release);
   const tarballPath = path.join(
     outputRoot,
     'package',
@@ -252,6 +252,10 @@ export function verifyCurrentJigwrightV1ReleaseCandidate(
   if (!isDeepStrictEqual(adoption, candidate.adoption)) {
     throw new Error('Current Jigwright v1 adoption binding is invalid.');
   }
+  verifyCurrentJigwrightAdoptionArtifacts(
+    path.join(outputRoot, 'adoption'),
+    candidate.adoption,
+  );
   const boundary = inspectPackageBoundary(tarballPath);
   if (boundary.license !== candidate.packageBoundary.license) {
     throw new Error('Current Jigwright v1 package license binding is invalid.');
@@ -532,110 +536,6 @@ function parseJson(value: string): JsonRecord {
 
 function readJson(filePath: string): JsonRecord {
   return parseJson(fs.readFileSync(filePath, 'utf8'));
-}
-
-function isCurrentAdoptionReport(
-  value: unknown,
-  release: SingleJigwrightPackageArtifactV1,
-): value is CurrentJigwrightAdoptionReportV1 {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'release',
-      'install',
-      'bootstrap',
-      'publicSurfaces',
-      'consumer',
-      'currentOnly',
-      'operationalGates',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'jigwright-current-local-adoption-report.v1' ||
-    !isDeepStrictEqual(value.release, release) ||
-    !isRecord(value.install) ||
-    !isRecord(value.bootstrap) ||
-    !isRecord(value.publicSurfaces) ||
-    !isRecord(value.consumer) ||
-    !isRecord(value.currentOnly) ||
-    !isRecord(value.operationalGates)
-  ) {
-    return false;
-  }
-  const installedPackage = value.install.package;
-  const init = value.bootstrap.init;
-  const repeatedInit = value.bootstrap.repeatedInit;
-  return (
-    hasExactKeys(value.install, [
-      'networkPolicy',
-      'packageManager',
-      'lifecycleScriptsDenied',
-      'lockfileVerified',
-      'publicPackageIdentities',
-      'package',
-    ]) &&
-    value.install.networkPolicy === 'offline-exact-local-tarball' &&
-    value.install.packageManager === 'npm' &&
-    value.install.lifecycleScriptsDenied === true &&
-    value.install.lockfileVerified === true &&
-    isDeepStrictEqual(value.install.publicPackageIdentities, ['jigwright']) &&
-    isRecord(installedPackage) &&
-    hasExactKeys(installedPackage, ['name', 'version', 'digest']) &&
-    installedPackage.name === 'jigwright' &&
-    installedPackage.version === release.version &&
-    installedPackage.digest === release.digest &&
-    hasExactKeys(value.bootstrap, [
-      'init',
-      'repeatedInit',
-      'policyUnchanged',
-      'guide',
-    ]) &&
-    isRecord(init) &&
-    hasExactKeys(init, ['kind', 'status', 'path', 'digest']) &&
-    init.kind === 'jigwright-init-result.v1' &&
-    init.status === 'initialized' &&
-    init.path === 'workflow/jigwright-profile.json' &&
-    isSha256Digest(init.digest) &&
-    isRecord(repeatedInit) &&
-    hasExactKeys(repeatedInit, ['exitCode', 'errorClass']) &&
-    repeatedInit.exitCode === 12 &&
-    repeatedInit.errorClass === 'JIGWRIGHT_INIT_ALREADY_CONFIGURED' &&
-    value.bootstrap.policyUnchanged === true &&
-    value.bootstrap.guide === 'workflow-command-guide.v1' &&
-    hasExactKeys(value.publicSurfaces, [
-      'manifestV3',
-      'planReview',
-      'centralGrant',
-    ]) &&
-    value.publicSurfaces.manifestV3 === true &&
-    value.publicSurfaces.planReview === true &&
-    value.publicSurfaces.centralGrant === true &&
-    hasExactKeys(value.consumer, ['commit', 'tree', 'clean']) &&
-    isGitObjectId(value.consumer.commit) &&
-    isGitObjectId(value.consumer.tree) &&
-    value.consumer.clean === true &&
-    hasExactKeys(value.currentOnly, [
-      'historicalRuntimeState',
-      'dualRun',
-      'rollback',
-    ]) &&
-    value.currentOnly.historicalRuntimeState === 'unsupported' &&
-    value.currentOnly.dualRun === 'retired' &&
-    value.currentOnly.rollback === 'revert-consumer-cutover-commit' &&
-    hasExactKeys(value.operationalGates, [
-      'implementation',
-      'realPilot',
-      'fullGate',
-    ]) &&
-    value.operationalGates.implementation === 'implementation-ready' &&
-    value.operationalGates.realPilot === 'real-pilot-pending' &&
-    value.operationalGates.fullGate === 'full-gate-pending'
-  );
-}
-
-function hasExactKeys(value: JsonRecord, expected: readonly string[]): boolean {
-  return isDeepStrictEqual(Object.keys(value).sort(), [...expected].sort());
 }
 
 function writeJson(filePath: string, value: unknown): void {

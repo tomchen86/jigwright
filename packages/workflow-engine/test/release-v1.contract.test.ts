@@ -69,6 +69,23 @@ test('single-package v1 candidate binds reproducibility and stays fail closed fo
       candidate.adoption.kind,
       'jigwright-current-local-adoption-report.v1',
     );
+    assert.equal(candidate.adoption.comparison.exact, true);
+    assert.equal(
+      candidate.adoption.comparison.bindings.releaseDigest,
+      candidate.release.digest,
+    );
+    assert.deepEqual(
+      candidate.adoption.comparison.source,
+      candidate.adoption.comparison.installed,
+    );
+    assert.deepEqual(candidate.adoption.consumer.history.cutover, {
+      commit: candidate.adoption.consumer.commit,
+      tree: candidate.adoption.consumer.tree,
+    });
+    assert.equal(
+      candidate.adoption.consumer.rollback.tree,
+      candidate.adoption.consumer.history.baseline.tree,
+    );
     assert.deepEqual(candidate.operationalGates, {
       implementation: 'implementation-ready',
       independentReview: 'independent-review-pending',
@@ -95,6 +112,7 @@ test('single-package v1 candidate binds reproducibility and stays fail closed fo
     for (const relativePath of [
       `package/${candidate.release.tarball}`,
       'adoption/report.json',
+      'adoption/facts/workflow-conformance-v2.json',
       'integrity.json',
       'provenance.intoto.json',
       'sbom.cdx.json',
@@ -190,6 +208,57 @@ test('release verifier rejects independently tampered source, adoption, and supp
         relativePath: 'adoption/report.json',
         mutate(value) {
           value.operationalGates.realPilot = 'complete';
+        },
+      },
+      {
+        name: 'source command payload drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.source.commands.guide.payload.guide.kind =
+            'tampered';
+        },
+      },
+      {
+        name: 'source command error drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.source.init.repeated.payload.error.code =
+            'TAMPERED';
+        },
+      },
+      {
+        name: 'current-v3 facts drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.source.manifestV3.negativeCode = 'TAMPERED';
+        },
+      },
+      {
+        name: 'vector binding drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.bindings.vectors.fileDigest = `sha256:${'0'.repeat(64)}`;
+        },
+      },
+      {
+        name: 'routed effect drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.source.routedEffects.requestedGrantTransitions = 1;
+        },
+      },
+      {
+        name: 'state fingerprint drift',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.comparison.source.state.after.refs = `sha256:${'0'.repeat(64)}`;
+        },
+      },
+      {
+        name: 'external vector bytes drift',
+        relativePath: 'adoption/facts/workflow-conformance-v2.json',
+        mutate(value) {
+          value.algorithms['canonical-json'] = 'tampered';
         },
       },
       {
