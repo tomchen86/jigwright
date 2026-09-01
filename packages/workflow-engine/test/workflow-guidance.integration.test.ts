@@ -139,6 +139,25 @@ test('workflow guide exposes one versioned advisory catalog with finalize as the
   );
 });
 
+test('update-base guidance requires a finished current branch without an active writer', () => {
+  const guidance = workflowCommandGuidance('update-base');
+  const contract = [
+    guidance.purpose,
+    ...guidance.preconditions,
+    ...guidance.consequences,
+  ].join('\n');
+
+  assert.match(guidance.purpose, /finished managed task branch/i);
+  assert.match(contract, /no active or revising task session/i);
+  assert.match(
+    contract,
+    /one exact committed finished managed task[^.]*current branch HEAD/i,
+  );
+  assert.match(contract, /clean worktree and branch/i);
+  assert.match(contract, /locally available[^.]*base advances shared history/i);
+  assert.doesNotMatch(contract, /active task session in this worktree/i);
+});
+
 test('help projects every managed guide usage exactly once', () => {
   const run = spawnSync(
     process.execPath,

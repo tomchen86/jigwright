@@ -154,9 +154,11 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     usage: ['pnpm workflow update-base <change-id> --onto <ref> [--json]'],
     status: 'preferred',
     purpose:
-      'Replay one clean pre-edit task branch onto a locally available base and revalidate its current planning authority.',
+      'Replay one clean finished managed task branch onto a locally available base and revalidate its current planning authority.',
     preconditions: [
-      'The change has exactly one clean active task session in this worktree and the selected base advances shared history.',
+      'No active or revising task session exists for the change.',
+      'The clean worktree and branch contain one exact committed finished managed task at the current branch HEAD.',
+      'The locally available selected base advances shared history.',
     ],
     consequences: [
       'Revalidates the v3 Manifest, PlanReview, and exact task scope, then invalidates prior check evidence.',
