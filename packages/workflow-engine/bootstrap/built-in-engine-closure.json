@@ -258,7 +258,7 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/package.json",
       "mode": "100644",
-      "digest": "sha256:47f3debf5c246d3fa3b783f41c7aecb1bb04852db7ceb347e10589e866f52613"
+      "digest": "sha256:48d1a0d0d9193ff9991dc889bf11f338db0b3fc3b909ffe6febcbd0fd331e59e"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/archive-projection.ts",
@@ -268,7 +268,12 @@
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/index.ts",
       "mode": "100644",
-      "digest": "sha256:5de4955c1489cc1d734e245cc65483f9e33741e7a54874d51e3a2a5f3d81f010"
+      "digest": "sha256:98880ae3a0ee2c46fc7cb6099415d13ea30f3ec3ae4c1e03f45d65e81c540a3c"
+    },
+    {
+      "path": "node_modules/@jigwright/openspec-adapter/src/planning-paths.ts",
+      "mode": "100644",
+      "digest": "sha256:5562a752d1b1c4bb8c63aa8ed0d63a51df0b2d31e3763eda7333ebc0b53c2ed0"
     },
     {
       "path": "node_modules/@jigwright/openspec-adapter/src/planning-provider.ts",
@@ -1728,7 +1733,7 @@
     {
       "path": "src/modules/source/planning-paths.ts",
       "mode": "100644",
-      "digest": "sha256:7c7ae478d045c007ba292f23b76fa5cf11effdb1fdc6b9279b5b351cb9d54555"
+      "digest": "sha256:d6044fedff51451465c58103228a8fcf6d45289f9f5b314a04cb6cfc7bbb5074"
     },
     {
       "path": "src/modules/source/planning-role-policy-paths.ts",

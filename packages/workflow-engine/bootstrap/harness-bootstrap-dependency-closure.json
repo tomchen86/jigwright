@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:d3597cad90cb71f927ca6148dbf435c1a0d956dc22c7bb2eeeebfbf6c0b53eb5"
+      "digest": "sha256:17a1cf6dde11727f2fa507cce930c422de9cdf8da27bfb81dc0b08731ed7fe68"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -174,6 +174,16 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/signed-attestation-envelope-reader.js",
       "mode": "100644",
       "digest": "sha256:dac4a38ced2864c5432a070f5b7e4ed416b52eb9199498b2ae4e0fa01e238224"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/openspec-adapter/package.json",
+      "mode": "100644",
+      "digest": "sha256:3c25d3f0193ebba82fb1e42ab0762ca7159f94fb545b92688ced1dfcb1cc2282"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/openspec-adapter/src/planning-paths.js",
+      "mode": "100644",
+      "digest": "sha256:1df9d0ff18b9d0384e5083a34923736c5b8e4f6d2c3a0cb1005c36828b81804a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/check-runner.js",
@@ -628,7 +638,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/planning-paths.js",
       "mode": "100644",
-      "digest": "sha256:ab8792710b29cb63d760a3824e7b0b973300834f12e0a9a80e21879927f2f717"
+      "digest": "sha256:00017b71890ca3882e3b73d6cab4c18d43c71467e45fdc1782d85f57394cf6a8"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/planning-role-policy-paths.js",

@@ -6260,7 +6260,7 @@
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/source/planning-paths.ts",
@@ -6268,7 +6268,7 @@
       "rule": "module-to-runtime",
       "reasonId": "legacy.module-to-runtime",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/why-knowledge/implementation-reconciliation.ts",
