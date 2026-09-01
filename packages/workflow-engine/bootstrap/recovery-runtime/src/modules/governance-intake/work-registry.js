@@ -406,14 +406,26 @@ function inspectWorkRegistryUnlocked(repositoryRoot) {
 }
 export function searchWorkItems(repositoryRoot, requestedQuery) {
     const query = boundedText(requestedQuery, 256, 'search query').toLowerCase();
-    return listWorkItems(repositoryRoot).filter((item) => [
-        item.id,
-        item.title,
-        item.interpretation.summary,
-        ...item.aliases,
-        ...item.sourceRefs,
-        ...item.changeRefs,
-    ].some((value) => value.toLowerCase().includes(query)));
+    const sourceText = new Map();
+    return listWorkItems(repositoryRoot).filter((item) => {
+        const citedWording = item.sourceRefs.map((sourceRef) => {
+            const cached = sourceText.get(sourceRef);
+            if (cached !== undefined)
+                return cached;
+            const text = readSourceValue(repositoryRoot, sourceRef).text;
+            sourceText.set(sourceRef, text);
+            return text;
+        });
+        return [
+            item.id,
+            item.title,
+            item.interpretation.summary,
+            ...item.aliases,
+            ...item.sourceRefs,
+            ...item.changeRefs,
+            ...citedWording,
+        ].some((value) => value.toLowerCase().includes(query));
+    });
 }
 export function traceWorkItem(repositoryRoot, requestedId, testHooks = {}) {
     return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => traceWorkItemUnlocked(repositoryRoot, requestedId, testHooks));

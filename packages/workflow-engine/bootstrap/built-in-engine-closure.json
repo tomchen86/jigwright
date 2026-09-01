@@ -1383,7 +1383,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:63b3086df21120208e5818555c74224776543a6c29dc29640dba2dd0cd95c955"
+      "digest": "sha256:cf1172660ef1a10ca9bfcd43f6a804ad2da9532752208b17b65cdd622270ea0c"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1393,7 +1393,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:a9660a30b264ca4e1cbacfa6554cff0053aaf533c122e2e077f4f50b6f4aa06d"
+      "digest": "sha256:afaeb25e4761d2886ef1e0e5bb628ba373669cb1ec30e442ff616dc3b8b37007"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",
