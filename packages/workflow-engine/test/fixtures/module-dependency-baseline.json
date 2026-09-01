@@ -3404,7 +3404,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",

@@ -248,7 +248,7 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "coupled",
-      "t3Disposition": "Planning inspection and validation cross the production planning composition root; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Plan-commit and CI-planning no longer import the OpenSpec planning contract directly, while propose-orchestrator still uses its immutable reader and OpenSpec authoring adapter, and archive/CI path assumptions remain, so standalone adapter extraction is incomplete.",
+      "t3Disposition": "Planning inspection and validation cross the production planning composition root; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned, so plan-commit, CI-planning, and propose-orchestrator no longer import the OpenSpec planning contract directly. Propose authoring, archive/CI projection, and remaining OpenSpec path assumptions stay coupled, so standalone adapter extraction is incomplete.",
       "evidence": [
         {
           "path": "packages/core/src/planning-task-history.ts",
@@ -279,6 +279,20 @@
             "amendmentLeftWorkMarkedDone,",
             "assertPlanningTaskHistory,",
             "from '../../composition-root/planning-provider-production.ts';"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+          "contains": [
+            "export function readFileAtCommit(",
+            "`:(literal)${filePath}`"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
+          "contains": [
+            "readFileAtCommit,",
+            "from '../../runtime/repository-transaction/git.ts';"
           ]
         },
         {

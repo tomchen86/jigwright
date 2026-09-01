@@ -16,6 +16,7 @@ import {
 } from '../../../../foundation/errors/errors.ts';
 import {
   discoverRepository,
+  readFileAtCommit,
   runGit,
 } from '../../../../runtime/repository-transaction/git.ts';
 import type { PlanningProviderBindingReaderPort } from '../../../../modules/planning-provider/planning-provider-binding.ts';
@@ -284,22 +285,6 @@ function listTreePaths(
     .filter(Boolean)
     .map(normalizeChangedPath)
     .sort();
-}
-
-export function readFileAtCommit(
-  repositoryRoot: string,
-  commit: string,
-  filePath: string,
-): string | undefined {
-  return runGit(repositoryRoot, [
-    'ls-tree',
-    '-z',
-    commit,
-    '--',
-    `:(literal)${filePath}`,
-  ])
-    ? runGit(repositoryRoot, ['show', `${commit}:${filePath}`])
-    : undefined;
 }
 
 function relative(root: string, target: string): string {

@@ -438,7 +438,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
       "mode": "100644",
-      "digest": "sha256:188490cac6f4c6247493a51ddd257ff6ccb03c3a02d5bdfa432c4873da2079d7"
+      "digest": "sha256:c1a8c0231088e7d0f175e581bf818d39680272bcf511eee5ffd2009858b4159c"
     },
     {
       "path": "src/adapters/providers/built-in-provider-definition.ts",
@@ -678,7 +678,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:d84963556ce1a3df06563dbd4f03c460a6b5d7528820c38da33a9fa5c6a2d613"
+      "digest": "sha256:7d56d083a58e5c26bad2929982a89615279be99f2a29cb95a688486d515074a0"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -923,7 +923,7 @@
     {
       "path": "src/entrypoints/ci/ci-git.ts",
       "mode": "100644",
-      "digest": "sha256:3b026d615c46df08965faa98824be03fdcc52a991147c803709522fb4e44ffba"
+      "digest": "sha256:412f82b7300e2512bb755a135c0f4812565586a361de7c194ea93a24311b0f07"
     },
     {
       "path": "src/entrypoints/ci/ci-historical-contract.ts",
@@ -1973,7 +1973,7 @@
     {
       "path": "src/runtime/repository-transaction/git.ts",
       "mode": "100644",
-      "digest": "sha256:febc0d0d3b9b3e58c46b7163a86300cd9d8b689df94b96b3a1ca51453c2c8999"
+      "digest": "sha256:33a5a9b0613635f385881124c814cdce86df4898c8e4c0200289e7c4b33f341f"
     },
     {
       "path": "src/runtime/repository-transaction/package-closure.ts",

@@ -12,6 +12,7 @@ import {
 import { normalizeChangedPath } from '../../runtime/session-workspace/paths.ts';
 
 export type { ManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';
+export { readFileAtCommit } from '../../runtime/repository-transaction/git.ts';
 
 export type RangeCommit = {
   hash: string;
@@ -113,23 +114,6 @@ export function listRangePaths(
     .filter(Boolean)
     .map(normalizeChangedPath)
     .sort();
-}
-
-export function readFileAtCommit(
-  repositoryRoot: string,
-  commit: string,
-  filePath: string,
-): string | undefined {
-  const listing = runGit(repositoryRoot, [
-    'ls-tree',
-    '-z',
-    commit,
-    '--',
-    `:(literal)${filePath}`,
-  ]);
-  return listing
-    ? runGit(repositoryRoot, ['show', `${commit}:${filePath}`])
-    : undefined;
 }
 
 export function lastCommitChangingPath(

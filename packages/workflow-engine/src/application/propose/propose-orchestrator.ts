@@ -74,6 +74,7 @@ import {
 import {
   discoverRepository,
   protectedBranchRef,
+  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import {
@@ -242,7 +243,6 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../runtime/session-workspace/paths.ts';
-import { readFileAtCommit } from '../../adapters/planning/openspec/documents/planning-contract.ts';
 import { assertPlanningTaskHistory } from '../../modules/planning-provider/planning-task-history.ts';
 import {
   projectWorkflowPlanDigest,

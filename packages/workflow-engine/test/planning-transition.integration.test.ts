@@ -92,6 +92,49 @@ test('plan-commit task history crosses the production planning composition root'
   }
 });
 
+test('propose immutable Git reads cross the repository transaction boundary', () => {
+  const proposeSource = fs.readFileSync(
+    new URL(
+      '../src/application/propose/propose-orchestrator.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const planningContractSource = fs.readFileSync(
+    new URL(
+      '../src/adapters/planning/openspec/documents/planning-contract.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const ciGitSource = fs.readFileSync(
+    new URL('../src/entrypoints/ci/ci-git.ts', import.meta.url),
+    'utf8',
+  );
+  const gitSource = fs.readFileSync(
+    new URL('../src/runtime/repository-transaction/git.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    proposeSource,
+    /adapters\/planning\/openspec\/documents\/planning-contract/u,
+  );
+  assert.match(
+    proposeSource,
+    /from '\.\.\/\.\.\/runtime\/repository-transaction\/git\.ts';/u,
+  );
+  assert.doesNotMatch(
+    planningContractSource,
+    /export function readFileAtCommit\(/u,
+  );
+  assert.match(gitSource, /export function readFileAtCommit\(/u);
+  assert.match(
+    ciGitSource,
+    /export \{ readFileAtCommit \} from '\.\.\/\.\.\/runtime\/repository-transaction\/git\.ts';/u,
+  );
+});
+
 test('plan-commit introduces an unchecked change through one exact managed commit', () => {
   const repository = createPlanningRepository('planned-change');
   try {

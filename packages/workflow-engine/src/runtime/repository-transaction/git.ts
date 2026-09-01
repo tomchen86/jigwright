@@ -593,6 +593,28 @@ export function runGit(
 }
 
 /**
+ * Read one exact tracked path from a pinned Git tree or commit. Missing paths
+ * remain distinguishable from empty files, and the literal tree lookup prevents
+ * pathspec expansion before the blob is read.
+ */
+export function readFileAtCommit(
+  repositoryRoot: string,
+  commit: string,
+  filePath: string,
+): string | undefined {
+  const listing = runGit(repositoryRoot, [
+    'ls-tree',
+    '-z',
+    commit,
+    '--',
+    `:(literal)${filePath}`,
+  ]);
+  return listing
+    ? runGit(repositoryRoot, ['show', `${commit}:${filePath}`])
+    : undefined;
+}
+
+/**
  * The remote-tracking ref for a protected branch. Authority operations resolve
  * the protected base through this single spelling rather than a bare local
  * branch, whose freshness is not a contract; both maintainer attestation and

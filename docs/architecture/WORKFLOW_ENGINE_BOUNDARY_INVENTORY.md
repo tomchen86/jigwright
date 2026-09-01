@@ -107,12 +107,13 @@ moved, and no second lifecycle reducer was introduced.
 Planning inspection, plan-commit validation and task-history policy, plus CI
 planning task replay now cross the production planning composition root. The
 task-history reducer is owned by `@jigwright/core`, with workflow errors mapped
-by an engine façade; the OpenSpec adapter only consumes it. Plan-commit and
-CI-planning no longer import the OpenSpec planning contract directly, while
-propose-orchestrator still uses its immutable file reader and OpenSpec authoring
-adapter. Archive, CI archive, and remaining OpenSpec path assumptions also stay
-coupled. The remaining work is standalone adapter extraction and those
-authoring/archive/path seams, not absence of the planning port.
+by an engine façade; the OpenSpec adapter only consumes it. Immutable Git reads
+are repository-transaction owned, so plan-commit, CI-planning, and
+propose-orchestrator no longer import the OpenSpec planning contract directly.
+Propose still uses OpenSpec authoring and planning-asset adapters. Archive, CI
+archive, and remaining OpenSpec path assumptions also stay coupled. The
+remaining work is standalone adapter extraction and those authoring/archive/path
+seams, not absence of the planning port.
 
 The planning seam retains all eight planning-provider responsibilities:
 provider provenance, artifact inventory, task/source anchors, readiness
