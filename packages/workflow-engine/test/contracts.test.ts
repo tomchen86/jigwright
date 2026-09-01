@@ -62,6 +62,13 @@ test('retired investigation readers are absent', () => {
 
 test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
+  const workRegistrySource = fs.readFileSync(
+    path.join(
+      repositoryRoot,
+      'packages/workflow-engine/src/modules/governance-intake/work-registry.ts',
+    ),
+    'utf8',
+  );
   assert.equal(
     fs.existsSync(
       path.join(
@@ -80,6 +87,7 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   ]) {
     assert.equal(exportName in workRegistry, false, exportName);
   }
+  assert.doesNotMatch(workRegistrySource, /replaceCanonicalFileExpected/u);
 });
 
 test('maintainer policy artifacts exclude the retired Maintainer Grant V1 schema', () => {

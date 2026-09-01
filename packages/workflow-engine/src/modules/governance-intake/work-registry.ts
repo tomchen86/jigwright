@@ -1382,21 +1382,6 @@ function replaceCanonicalFile(filePath: string, value: unknown): void {
   }
 }
 
-function replaceCanonicalFileExpected(
-  filePath: string,
-  expected: string,
-  value: unknown,
-): void {
-  if (readOptionalPlainFile(filePath) !== expected) {
-    throw workflowError(
-      'WORK_REGISTRY_STALE',
-      'Work Item changed before the compatibility mutation was applied.',
-      ExitCode.conflict,
-    );
-  }
-  replaceCanonicalFile(filePath, value);
-}
-
 function readOptionalPlainFile(filePath: string): string | null {
   const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
   if (!stats) return null;
