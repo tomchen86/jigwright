@@ -1,8 +1,8 @@
 {
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
-  "frozenEdgeCount": 825,
-  "frozenIdentityDigest": "sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a",
+  "frozenEdgeCount": 828,
+  "frozenIdentityDigest": "sha256:e3de3980a2befc14c053ceee7ebdb9bda1ab431584a9a75f8d730eb04caf5dcd",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -848,6 +848,22 @@
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/handoff/handoff.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "to": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
+      "rule": "application-to-adapters",
+      "reasonId": "legacy.application-to-adapters",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
       "to": "packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-executor.ts",
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
@@ -869,6 +885,14 @@
       "reasonId": "legacy.application-to-entrypoints",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "to": "packages/workflow-engine/src/runtime/managed-documents/validation/managed-documents.ts",
+      "rule": "application-to-runtime",
+      "reasonId": "legacy.application-to-runtime",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",

@@ -288,7 +288,7 @@
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:58e7d772d2b11419272c20e8131fa87dee67a694905f5be57bb2cb4bd5b5f387"
+      "digest": "sha256:37c1a213e8c15bb1cb715d79880aaa3702b6c058f241d104eff4f3fc7c711cc0"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/check-registry-adapter.ts",
@@ -308,7 +308,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:de83a469199a8cf09adc3e248163ae2c5c8dda8129cb8823f38ace96386c94bc"
+      "digest": "sha256:581e2567855953840d6f4eec95f6033914df24e5cad31d67a4562939cd09685f"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -493,7 +493,7 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:7dc71b5826d93dd379e097cd47bfe5c7fcdd099f882c63d96d8a218823d3df13"
+      "digest": "sha256:268cf0edbb64ccc7ef26c7a273a78d3dccd33c329fbe9745f178b809cf7b8a6b"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
@@ -578,12 +578,12 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:37f20352bd956614b55ecd778e15e52a93fb9e65d956f98e214da79315363f28"
+      "digest": "sha256:74265df84cc6d777a08d7ba16fa705d3c924a88c8364be426d8bfdf870c10116"
     },
     {
       "path": "src/application/execute-task/session.ts",
       "mode": "100644",
-      "digest": "sha256:8f0c2c0d05b5416268df8168590d7416916478056e81567cacf2bc420f405161"
+      "digest": "sha256:9d776871d6c84974c1e2944b053e3f0d3049258b1cecebd87f6f73a46f802722"
     },
     {
       "path": "src/application/execute-task/task-mechanical-transform-lifecycle.ts",
@@ -693,7 +693,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:d97f6ce6cf343f126ac103f7332f42110beb771ae52640464044f5af62ac6862"
+      "digest": "sha256:d7d5b3e5caebd651e5809b37b0c946b16b820af4e9bfc2d4d288ac76fbb73a9b"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -908,7 +908,7 @@
     {
       "path": "src/entrypoints/ci/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:68d9f8cfbe942f768b470dcdf3b98e5e1e2c865aa879ea095d7c438fd93997a0"
+      "digest": "sha256:f45de1142371fe1664edc11c380255c227bb4d88a98f97284fc54b8a8874dc51"
     },
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
@@ -1368,7 +1368,7 @@
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
       "mode": "100644",
-      "digest": "sha256:bcb0aa623bf38301b06c393df1e3edaaf5c19881fdda225a208bd4a8e5385604"
+      "digest": "sha256:d1232d529a0d63fd8d1af30209d35fe545d62a029b43201be3486dbdce8cb996"
     },
     {
       "path": "src/modules/governance-intake/work-registry-grant.ts",
@@ -1378,7 +1378,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:e0359309d1eb1c3972cc642ffcc6d6e4eb8db938dedb7a1ae3e6f7eb41ce493c"
+      "digest": "sha256:e02090713ae20e38a4a5ec7fe33c6aaeb66577fe1b57397a89a49e7a52e81604"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -2033,7 +2033,7 @@
     {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:bc535eb63edd7cc88af607dbb8093ec9ecc0a94e54409b9fd199c820eeca30ac"
+      "digest": "sha256:6202f6d7c056654ac3fe424da5040e6a2ac25f24c2df2e1a234c64cee22f210b"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",

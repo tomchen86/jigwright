@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:206909e84eaf3c078e40ff92e15e33ff123c46b976054a5ce3fb4cef859b4ee1"
+      "digest": "sha256:4f47481a1907295bc44e9fec1628c33c10f3b9098442825d58acf22dff0d04fe"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -58,7 +58,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:39ebbcb5d57b7afb69d78b15c7b2caad18c145c0a2b776877eb3631fd3283b94"
+      "digest": "sha256:665c7678bf76a385c77c769d5a0649ff913b56e395e1b0d6ebe6486ae2d3c917"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
@@ -99,6 +99,11 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/evidence-node.js",
       "mode": "100644",
       "digest": "sha256:ec661e6c5f27945bb41183c16e2f181d857343a50a5c3cdacee5fe51848a3341"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
+      "mode": "100644",
+      "digest": "sha256:7f1af628543342775882ab22831b0670a6e6b2bb086b4d2955461c63de7ac901"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/job-attempt-runtime.js",
@@ -178,7 +183,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:d58cb3a74be13620f5d4c6db97eb29b3c5bd7d54b94368978bb7c59f1b202201"
+      "digest": "sha256:bf847d42561a89a26436f3d0dc6f9a10fbcf7465a50b9731cf375b7dbb69220a"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
@@ -399,6 +404,16 @@
       "path": "bootstrap/recovery-runtime/src/modules/authority/task-mandate.js",
       "mode": "100644",
       "digest": "sha256:d26c6e6a89e91ca901ca738e7b98d3f50a215189892c8533b04f760cbff2914a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/governance-intake/governance-intake.js",
+      "mode": "100644",
+      "digest": "sha256:5977ce478cbcf89e0dd4d05cd325e267d43369900ac80b71f1ea9bc8dc7460a5"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry.js",
+      "mode": "100644",
+      "digest": "sha256:86027c6683ed1e1de88adfdca86fd7fe14af130832d16d02c7d662f96709bad3"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
@@ -708,7 +723,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-store.js",
       "mode": "100644",
-      "digest": "sha256:b3a1982027537d862520d04038ec6cf8130c6887acf5ad1944784a9908f1df68"
+      "digest": "sha256:3786c810a74502a4bea9949afe8c4fc85339c510d8bea00f1c80ee4216b07a68"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-ledger.js",

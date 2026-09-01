@@ -4,13 +4,15 @@ import path from 'node:path';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 import { isPlanningAssuranceBinding, } from "../../adapters/consumer/repository/work-registry/contracts.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { assertPlainDirectory, ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
+import { assertPlainDirectory, ensurePlainDirectory, preparedLockTemporaryPath, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
+import { runGit } from "../repository-transaction/git.js";
 import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../storage-journal/investigation-session-store.js";
 import { assertGrantLifecycleBarrier } from "../storage-journal/grant-store.js";
-import { assertChangeId, matchesAllowedPath, normalizePolicyPath, } from "./paths.js";
+import { assertChangeId, assertSessionId, assertTaskId, matchesAllowedPath, normalizePolicyPath, } from "./paths.js";
 const MAINTAINER_GRANT_STATE_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/;
 const SESSION_LOCK_OWNER_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const TASK_REVISION_LEASE_ID = /^revision-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 export function runtimePaths(gitCommonDirectory, runtimeDirectory) {
     return defaultSessionRuntimeLayoutPort.resolve({
         gitCommonDirectory,
@@ -317,6 +319,150 @@ function readDescriptorContent(descriptor, byteLength) {
     const count = fs.readSync(descriptor, bytes, 0, byteLength, 0);
     return bytes.subarray(0, count).toString('utf8');
 }
+export function assertTaskSessionWorktreeRegistration(repositoryRoot, repositoryRealPath, branch, head) {
+    const expectedWorktree = fs.realpathSync(repositoryRealPath);
+    const expectedBranchRef = `refs/heads/${branch}`;
+    const registrations = readTaskWorktreeRegistrations(repositoryRoot);
+    const current = registrations.filter((registration) => path.resolve(registration.worktreePath) ===
+        path.resolve(expectedWorktree));
+    if (current.length !== 1) {
+        throw taskWorktreeRegistrationInvalid('The current worktree must have one exact Git registration.');
+    }
+    const currentRegistration = current[0];
+    const currentStats = fs.lstatSync(currentRegistration.worktreePath, {
+        throwIfNoEntry: false,
+    });
+    if (!currentStats?.isDirectory() ||
+        currentStats.isSymbolicLink() ||
+        fs.realpathSync(currentRegistration.worktreePath) !== expectedWorktree ||
+        currentRegistration.head !== head ||
+        currentRegistration.branchRef !== expectedBranchRef ||
+        currentRegistration.detached ||
+        currentRegistration.bare ||
+        currentRegistration.prunable) {
+        throw taskWorktreeRegistrationInvalid('The current worktree Git registration does not match its exact branch and HEAD.');
+    }
+    const branchRegistrations = registrations.filter((registration) => registration.branchRef === expectedBranchRef);
+    if (branchRegistrations.length !== 1) {
+        throw workflowError('TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT', `Branch ${branch} has more than one Git worktree registration.`, ExitCode.conflict, {
+            details: {
+                branch,
+                registrationCount: branchRegistrations.length,
+            },
+            recovery: 'Remove or prune the duplicate Git worktree registration explicitly, then rerun task preflight.',
+        });
+    }
+}
+function readTaskWorktreeRegistrations(repositoryRoot) {
+    return parseTaskWorktreeRegistrations(runGit(repositoryRoot, [
+        'worktree',
+        'list',
+        '--porcelain',
+        '-z',
+        '--expire',
+        'now',
+    ]));
+}
+export function parseTaskWorktreeRegistrations(porcelain) {
+    const fields = porcelain.split('\0');
+    const registrations = [];
+    let current = [];
+    const finish = () => {
+        if (current.length === 0)
+            return;
+        const worktreeField = current[0];
+        if (!worktreeField?.startsWith('worktree ')) {
+            throw taskWorktreeRegistrationInvalid('Git did not begin a worktree registration with its path.');
+        }
+        const worktreePath = worktreeField.slice('worktree '.length);
+        if (!path.isAbsolute(worktreePath)) {
+            throw taskWorktreeRegistrationInvalid('Git returned a non-absolute worktree registration path.');
+        }
+        let head;
+        let branchRef;
+        let detached;
+        let bare;
+        let metadataOffset;
+        if (current[1] === 'bare') {
+            head = null;
+            branchRef = null;
+            detached = false;
+            bare = true;
+            metadataOffset = 2;
+        }
+        else {
+            const headField = current[1];
+            if (!headField?.startsWith('HEAD ')) {
+                throw taskWorktreeRegistrationInvalid('Git did not place a worktree HEAD immediately after its path.');
+            }
+            head = headField.slice('HEAD '.length);
+            if (!GIT_OBJECT_ID.test(head)) {
+                throw taskWorktreeRegistrationInvalid('Git returned an invalid worktree HEAD.');
+            }
+            const identityField = current[2];
+            if (identityField?.startsWith('branch ')) {
+                branchRef = identityField.slice('branch '.length);
+                if (!/^refs\/heads\/.+$/u.test(branchRef)) {
+                    throw taskWorktreeRegistrationInvalid('Git returned a non-local or empty worktree branch registration.');
+                }
+                detached = false;
+            }
+            else if (identityField === 'detached') {
+                branchRef = null;
+                detached = true;
+            }
+            else {
+                throw taskWorktreeRegistrationInvalid('Git did not place one branch or detached identity after the worktree HEAD.');
+            }
+            bare = false;
+            metadataOffset = 3;
+        }
+        let locked = false;
+        let prunable = false;
+        for (const metadata of current.slice(metadataOffset)) {
+            if (metadata === 'locked' || metadata.startsWith('locked ')) {
+                if (locked) {
+                    throw taskWorktreeRegistrationInvalid('Git returned a duplicate worktree locked field.');
+                }
+                locked = true;
+            }
+            else if (metadata === 'prunable' || metadata.startsWith('prunable ')) {
+                if (prunable) {
+                    throw taskWorktreeRegistrationInvalid('Git returned a duplicate worktree prunable field.');
+                }
+                prunable = true;
+            }
+            else {
+                throw taskWorktreeRegistrationInvalid('Git returned an unknown or out-of-order worktree registration field.');
+            }
+        }
+        if (locked && prunable) {
+            throw taskWorktreeRegistrationInvalid('Git returned a contradictory worktree registration.');
+        }
+        registrations.push(Object.freeze({
+            worktreePath: path.resolve(worktreePath),
+            head,
+            branchRef,
+            detached,
+            bare,
+            locked,
+            prunable,
+        }));
+        current = [];
+    };
+    for (const field of fields) {
+        if (field === '') {
+            finish();
+            continue;
+        }
+        current.push(field);
+    }
+    finish();
+    return registrations;
+}
+function taskWorktreeRegistrationInvalid(message) {
+    return workflowError('TASK_SESSION_WORKTREE_REGISTRATION_INVALID', message, ExitCode.staleState);
+}
 export function createTaskSessionIsolationBinding(input) {
     if (!isSha256Digest(input.routingWorksetDigest)) {
         throw workflowError('TASK_SESSION_ISOLATION_INVALID', 'Task-session routing workset identity is invalid.', ExitCode.staleState);
@@ -341,12 +487,19 @@ export function createTaskSessionIsolationBinding(input) {
         resources: Object.freeze(resources),
     });
 }
-export function acquireTaskSessionIsolationLeases(runtime, session) {
+export function acquireTaskSessionIsolationLeases(runtime, session, testHooks = {}) {
     const acquired = [];
     try {
-        for (const leasePath of taskSessionIsolationLeasePaths(runtime, session)) {
+        for (const [index, leasePath] of taskSessionIsolationLeasePaths(runtime, session).entries()) {
+            testHooks.beforePublication?.({ index, leasePath });
+            const observation = observeTaskSessionIsolationLease(runtime, leasePath);
+            if (observation.state === 'occupied') {
+                throw taskSessionLeaseConflict(leasePath);
+            }
+            if (observation.state === 'reclaimable') {
+                reclaimObservedTaskSessionIsolationLease(observation);
+            }
             ensurePlainDirectory(path.dirname(leasePath));
-            reclaimStaleTaskSessionIsolationLease(runtime, leasePath);
             const ownerToken = crypto.randomUUID();
             const content = `${JSON.stringify({
                 sessionId: session.sessionId,
@@ -357,22 +510,178 @@ export function acquireTaskSessionIsolationLeases(runtime, session) {
             })}\n`;
             try {
                 const descriptor = publishPreparedExclusiveLock(leasePath, content, ownerToken, invalidSessionLock);
-                fs.closeSync(descriptor);
-                acquired.push(leasePath);
+                acquired.push({
+                    runtimeRoot: runtime.root,
+                    filePath: leasePath,
+                    descriptor,
+                    content,
+                });
             }
             catch (error) {
                 if (isNodeError(error) && error.code === 'EEXIST') {
-                    throw workflowError('TASK_SESSION_LEASE_CONFLICT', 'A task-session worktree or resource lease is already owned.', ExitCode.conflict, { details: { lease: path.basename(leasePath) } });
+                    throw taskSessionLeaseConflict(leasePath);
                 }
                 throw error;
             }
         }
+        return Object.freeze({ publications: Object.freeze([...acquired]) });
     }
     catch (error) {
-        for (const leasePath of acquired.reverse()) {
-            releaseOwnedLock(leasePath, session.sessionId);
-        }
+        rollbackRuntimeFilePublications(acquired, error);
         throw error;
+    }
+}
+export function closeTaskSessionIsolationLeaseAcquisition(acquisition) {
+    closeRuntimeFilePublications(acquisition.publications);
+}
+export function rollbackTaskSessionIsolationLeaseAcquisition(acquisition) {
+    rollbackRuntimeFilePublications(acquisition.publications);
+}
+export function closeOwnedRuntimeFilePublication(publication) {
+    fs.closeSync(publication.descriptor);
+}
+export function assertOwnedRuntimeFilePublication(publication, makeUnsafeError = invalidSessionLock) {
+    try {
+        if (!assertExistingRuntimeDirectoryChain(publication.runtimeRoot, path.dirname(publication.filePath))) {
+            throw makeUnsafeError();
+        }
+        const before = fs.lstatSync(publication.filePath, {
+            throwIfNoEntry: false,
+        });
+        const owned = fs.fstatSync(publication.descriptor);
+        const content = readDescriptorContent(publication.descriptor, Buffer.byteLength(publication.content));
+        const after = fs.lstatSync(publication.filePath, {
+            throwIfNoEntry: false,
+        });
+        if (!before?.isFile() ||
+            before.isSymbolicLink() ||
+            !after?.isFile() ||
+            after.isSymbolicLink() ||
+            !owned.isFile() ||
+            before.dev !== owned.dev ||
+            before.ino !== owned.ino ||
+            after.dev !== owned.dev ||
+            after.ino !== owned.ino ||
+            before.nlink !== 1 ||
+            owned.nlink !== 1 ||
+            after.nlink !== 1 ||
+            before.size !== owned.size ||
+            after.size !== owned.size ||
+            (before.mode & 0o777) !== 0o600 ||
+            (owned.mode & 0o777) !== 0o600 ||
+            (after.mode & 0o777) !== 0o600 ||
+            owned.size !== Buffer.byteLength(publication.content) ||
+            content !== publication.content) {
+            throw makeUnsafeError();
+        }
+    }
+    catch (error) {
+        if (isNodeError(error))
+            throw makeUnsafeError();
+        throw error;
+    }
+}
+export function rollbackOwnedRuntimeFilePublication(publication) {
+    try {
+        if (!assertExistingRuntimeDirectoryChain(publication.runtimeRoot, path.dirname(publication.filePath))) {
+            throw invalidSessionLock();
+        }
+        withPreparedLockCleanupClaim(publication.filePath, () => {
+            const owned = fs.fstatSync(publication.descriptor);
+            const observed = fs.lstatSync(publication.filePath, {
+                throwIfNoEntry: false,
+            });
+            if (!observed)
+                return;
+            if (observed.dev !== owned.dev || observed.ino !== owned.ino)
+                return;
+            if (!observed.isFile() ||
+                observed.isSymbolicLink() ||
+                !owned.isFile() ||
+                observed.nlink !== 1 ||
+                owned.nlink !== 1 ||
+                observed.size !== Buffer.byteLength(publication.content) ||
+                owned.size !== Buffer.byteLength(publication.content) ||
+                (observed.mode & 0o777) !== 0o600 ||
+                (owned.mode & 0o777) !== 0o600 ||
+                readDescriptorContent(publication.descriptor, Buffer.byteLength(publication.content)) !== publication.content) {
+                throw invalidSessionLock();
+            }
+            const final = fs.lstatSync(publication.filePath, {
+                throwIfNoEntry: false,
+            });
+            if (!final)
+                return;
+            if (final.dev !== owned.dev || final.ino !== owned.ino)
+                return;
+            if (!final.isFile() ||
+                final.isSymbolicLink() ||
+                final.nlink !== 1 ||
+                final.size !== Buffer.byteLength(publication.content) ||
+                (final.mode & 0o777) !== 0o600 ||
+                readDescriptorContent(publication.descriptor, Buffer.byteLength(publication.content)) !== publication.content) {
+                throw invalidSessionLock();
+            }
+            const stable = fs.lstatSync(publication.filePath, {
+                throwIfNoEntry: false,
+            });
+            if (!stable)
+                return;
+            if (stable.dev !== owned.dev || stable.ino !== owned.ino)
+                return;
+            if (!stable.isFile() ||
+                stable.isSymbolicLink() ||
+                stable.nlink !== 1 ||
+                stable.size !== Buffer.byteLength(publication.content) ||
+                (stable.mode & 0o777) !== 0o600) {
+                throw invalidSessionLock();
+            }
+            try {
+                fs.unlinkSync(publication.filePath);
+            }
+            catch (error) {
+                if (!isNodeError(error) || error.code !== 'ENOENT')
+                    throw error;
+            }
+            fsyncDirectory(path.dirname(publication.filePath));
+        });
+    }
+    finally {
+        fs.closeSync(publication.descriptor);
+    }
+}
+function closeRuntimeFilePublications(publications) {
+    const errors = [];
+    for (const publication of publications) {
+        try {
+            closeOwnedRuntimeFilePublication(publication);
+        }
+        catch (error) {
+            errors.push(error);
+        }
+    }
+    if (errors.length > 0) {
+        throw new AggregateError(errors, 'Runtime publication descriptors failed to close.');
+    }
+}
+function rollbackRuntimeFilePublications(publications, primaryError) {
+    const errors = [];
+    for (const publication of [...publications].reverse()) {
+        try {
+            rollbackOwnedRuntimeFilePublication(publication);
+        }
+        catch (error) {
+            errors.push(error);
+        }
+    }
+    if (primaryError !== undefined) {
+        if (errors.length > 0) {
+            throw new AggregateError([primaryError, ...errors], 'Task-session lease acquisition failed and cleanup was incomplete.');
+        }
+        throw primaryError;
+    }
+    if (errors.length > 0) {
+        throw new AggregateError(errors, 'Task-session lease cleanup was incomplete.');
     }
 }
 export function releaseTaskSessionIsolationLeases(runtime, session) {
@@ -392,32 +701,288 @@ function taskSessionIsolationLeasePaths(runtime, session) {
         ...session.isolation.resources.map((resource) => path.join(root, 'resources', `${resource.digest.slice('sha256:'.length)}.lock`)),
     ];
 }
-function reclaimStaleTaskSessionIsolationLease(runtime, leasePath) {
-    const stats = fs.lstatSync(leasePath, { throwIfNoEntry: false });
-    if (!stats)
-        return;
-    let value;
-    try {
-        value = JSON.parse(fs.readFileSync(leasePath, 'utf8'));
+function observeTaskSessionIsolationLease(runtime, leasePath) {
+    if (!assertExistingRuntimeDirectoryChain(runtime.root, path.dirname(leasePath))) {
+        return Object.freeze({ state: 'absent', leasePath });
     }
-    catch {
+    const before = fs.lstatSync(leasePath, { throwIfNoEntry: false });
+    if (!before)
+        return Object.freeze({ state: 'absent', leasePath });
+    if (!before.isFile() ||
+        before.isSymbolicLink() ||
+        ![1, 2].includes(before.nlink) ||
+        (before.mode & 0o777) !== 0o600) {
         throw invalidSessionLock();
     }
-    if (!isRecord(value) || typeof value.sessionId !== 'string') {
-        throw invalidSessionLock();
-    }
-    const sessionPath = path.join(runtime.sessions, `${value.sessionId}.json`);
-    let active = false;
+    let descriptor;
     try {
-        const owner = readSessionFile(sessionPath);
-        active = owner.state === 'active' || owner.state === 'revising';
+        descriptor = fs.openSync(leasePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        const opened = fs.fstatSync(descriptor);
+        const content = fs.readFileSync(descriptor, 'utf8');
+        const after = fs.lstatSync(leasePath, { throwIfNoEntry: false });
+        const value = parseManagedSessionLock(content);
+        if (!after ||
+            opened.dev !== before.dev ||
+            opened.ino !== before.ino ||
+            after.dev !== opened.dev ||
+            after.ino !== opened.ino ||
+            !opened.isFile() ||
+            ![1, 2].includes(opened.nlink) ||
+            opened.nlink !== after.nlink ||
+            (opened.mode & 0o777) !== 0o600 ||
+            opened.size !== Buffer.byteLength(content) ||
+            value === null) {
+            throw invalidSessionLock();
+        }
+        try {
+            assertSessionId(value.sessionId);
+            assertChangeId(value.changeId);
+            assertTaskId(value.taskId);
+        }
+        catch {
+            throw invalidSessionLock();
+        }
+        const temporaryPath = opened.nlink === 2
+            ? preparedLockTemporaryPath(leasePath, value.pid, value.ownerToken)
+            : null;
+        if (temporaryPath !== null) {
+            const temporary = fs.lstatSync(temporaryPath, {
+                throwIfNoEntry: false,
+            });
+            if (!temporary?.isFile() ||
+                temporary.isSymbolicLink() ||
+                temporary.dev !== opened.dev ||
+                temporary.ino !== opened.ino ||
+                temporary.nlink !== 2 ||
+                (temporary.mode & 0o777) !== 0o600) {
+                throw invalidSessionLock();
+            }
+        }
+        const sessionPath = path.join(runtime.sessions, `${value.sessionId}.json`);
+        const owner = observeStableWorkflowSession(runtime.root, sessionPath);
+        if (owner === null) {
+            return processIsAlive(value.pid)
+                ? Object.freeze({ state: 'occupied', leasePath })
+                : Object.freeze({
+                    state: 'reclaimable',
+                    leasePath,
+                    dev: opened.dev,
+                    ino: opened.ino,
+                    nlink: opened.nlink,
+                    content,
+                    temporaryPath,
+                    owner: Object.freeze({
+                        kind: 'missing',
+                        runtimeRoot: runtime.root,
+                        sessionPath,
+                        pid: value.pid,
+                    }),
+                });
+        }
+        if (owner.session.changeId !== value.changeId ||
+            owner.session.taskId !== value.taskId ||
+            !taskSessionIsolationLeasePaths(runtime, owner.session).includes(leasePath)) {
+            throw invalidSessionLock();
+        }
+        if (owner.session.state === 'active' ||
+            owner.session.state === 'revising') {
+            return Object.freeze({ state: 'occupied', leasePath });
+        }
+        return Object.freeze({
+            state: 'reclaimable',
+            leasePath,
+            dev: opened.dev,
+            ino: opened.ino,
+            nlink: opened.nlink,
+            content,
+            temporaryPath,
+            owner: Object.freeze({ kind: 'terminal', observation: owner }),
+        });
     }
     catch (error) {
-        if (!isNodeError(error) || error.code !== 'ENOENT')
-            throw error;
+        if (isNodeError(error) && error.code === 'ELOOP') {
+            throw invalidSessionLock();
+        }
+        throw error;
     }
-    if (!active)
-        releaseOwnedLock(leasePath, value.sessionId);
+    finally {
+        if (descriptor !== undefined)
+            fs.closeSync(descriptor);
+    }
+}
+function observeStableWorkflowSession(runtimeRoot, sessionPath) {
+    if (!assertExistingRuntimeDirectoryChain(runtimeRoot, path.dirname(sessionPath))) {
+        return null;
+    }
+    const before = fs.lstatSync(sessionPath, { throwIfNoEntry: false });
+    if (!before)
+        return null;
+    if (!before.isFile() ||
+        before.isSymbolicLink() ||
+        before.nlink !== 1 ||
+        (before.mode & 0o777) !== 0o600) {
+        throw invalidSessionLock();
+    }
+    let descriptor;
+    try {
+        descriptor = fs.openSync(sessionPath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+        const opened = fs.fstatSync(descriptor);
+        const content = fs.readFileSync(descriptor, 'utf8');
+        const after = fs.lstatSync(sessionPath, { throwIfNoEntry: false });
+        let value;
+        try {
+            value = JSON.parse(content);
+        }
+        catch {
+            throw invalidSessionLock();
+        }
+        if (!after ||
+            opened.dev !== before.dev ||
+            opened.ino !== before.ino ||
+            after.dev !== opened.dev ||
+            after.ino !== opened.ino ||
+            !opened.isFile() ||
+            opened.nlink !== 1 ||
+            (opened.mode & 0o777) !== 0o600 ||
+            opened.size !== Buffer.byteLength(content) ||
+            `${JSON.stringify(value, null, 2)}\n` !== content ||
+            !isWorkflowSession(value) ||
+            value.sessionId !== path.basename(sessionPath, '.json')) {
+            throw invalidSessionLock();
+        }
+        return Object.freeze({
+            session: value,
+            runtimeRoot,
+            sessionPath,
+            dev: opened.dev,
+            ino: opened.ino,
+            content,
+        });
+    }
+    catch (error) {
+        if (isNodeError(error) && error.code === 'ELOOP') {
+            throw invalidSessionLock();
+        }
+        throw error;
+    }
+    finally {
+        if (descriptor !== undefined)
+            fs.closeSync(descriptor);
+    }
+}
+function reclaimObservedTaskSessionIsolationLease(observation) {
+    assertPlainDirectory(path.dirname(observation.leasePath));
+    withPreparedLockCleanupClaim(observation.leasePath, () => {
+        if (observation.owner.kind === 'terminal') {
+            assertStableSessionObservation(observation.owner.observation);
+        }
+        else {
+            if (observeStableWorkflowSession(observation.owner.runtimeRoot, observation.owner.sessionPath) !== null ||
+                processIsAlive(observation.owner.pid)) {
+                throw invalidSessionLock();
+            }
+        }
+        let descriptor;
+        try {
+            descriptor = fs.openSync(observation.leasePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
+            const opened = fs.fstatSync(descriptor);
+            const content = fs.readFileSync(descriptor, 'utf8');
+            const current = fs.lstatSync(observation.leasePath, {
+                throwIfNoEntry: false,
+            });
+            if (!current ||
+                current.dev !== observation.dev ||
+                current.ino !== observation.ino ||
+                opened.dev !== observation.dev ||
+                opened.ino !== observation.ino ||
+                opened.nlink !== observation.nlink ||
+                (opened.mode & 0o777) !== 0o600 ||
+                content !== observation.content) {
+                throw invalidSessionLock();
+            }
+            if (observation.temporaryPath !== null) {
+                const temporary = fs.lstatSync(observation.temporaryPath, {
+                    throwIfNoEntry: false,
+                });
+                if (!temporary?.isFile() ||
+                    temporary.dev !== opened.dev ||
+                    temporary.ino !== opened.ino ||
+                    temporary.nlink !== 2) {
+                    throw invalidSessionLock();
+                }
+                fs.unlinkSync(observation.temporaryPath);
+            }
+            const final = fs.lstatSync(observation.leasePath, {
+                throwIfNoEntry: false,
+            });
+            if (!final || final.dev !== opened.dev || final.ino !== opened.ino) {
+                throw invalidSessionLock();
+            }
+            fs.unlinkSync(observation.leasePath);
+            fsyncDirectory(path.dirname(observation.leasePath));
+        }
+        catch (error) {
+            if (isNodeError(error) &&
+                ['ENOENT', 'ELOOP'].includes(error.code ?? '')) {
+                throw invalidSessionLock();
+            }
+            throw error;
+        }
+        finally {
+            if (descriptor !== undefined)
+                fs.closeSync(descriptor);
+        }
+    });
+}
+function assertStableSessionObservation(observation) {
+    const current = observeStableWorkflowSession(observation.runtimeRoot, observation.sessionPath);
+    if (!current ||
+        current.dev !== observation.dev ||
+        current.ino !== observation.ino ||
+        current.content !== observation.content) {
+        throw invalidSessionLock();
+    }
+}
+function assertExistingRuntimeDirectoryChain(runtimeRoot, targetDirectory) {
+    const root = path.resolve(runtimeRoot);
+    const target = path.resolve(targetDirectory);
+    const relative = path.relative(root, target);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        throw invalidSessionLock();
+    }
+    let current = root;
+    for (const part of relative === '' ? [] : relative.split(path.sep)) {
+        const stats = fs.lstatSync(current, { throwIfNoEntry: false });
+        if (!stats)
+            return false;
+        if (!stats.isDirectory() ||
+            stats.isSymbolicLink() ||
+            fs.realpathSync(current) !== current) {
+            throw invalidSessionLock();
+        }
+        current = path.join(current, part);
+    }
+    const stats = fs.lstatSync(current, { throwIfNoEntry: false });
+    if (!stats)
+        return false;
+    if (!stats.isDirectory() ||
+        stats.isSymbolicLink() ||
+        fs.realpathSync(current) !== current) {
+        throw invalidSessionLock();
+    }
+    return true;
+}
+function processIsAlive(pid) {
+    try {
+        process.kill(pid, 0);
+        return true;
+    }
+    catch (error) {
+        return !(isNodeError(error) && error.code === 'ESRCH');
+    }
+}
+function taskSessionLeaseConflict(leasePath) {
+    return workflowError('TASK_SESSION_LEASE_CONFLICT', 'A task-session worktree or resource lease is already owned.', ExitCode.conflict, { details: { lease: path.basename(leasePath) } });
 }
 function isolationDigest(kind, identity) {
     return `sha256:${crypto
@@ -482,6 +1047,12 @@ export function assertTaskSessionAdmission(runtime, candidate) {
                     resourceConflicts,
                 },
             });
+        }
+    }
+    for (const leasePath of taskSessionIsolationLeasePaths(runtime, candidate)) {
+        const observation = observeTaskSessionIsolationLease(runtime, leasePath);
+        if (observation.state === 'occupied') {
+            throw taskSessionLeaseConflict(leasePath);
         }
     }
 }

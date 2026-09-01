@@ -15,6 +15,7 @@ import { validateClosedEvidenceDag } from "../../../planning/investigation/evide
 import { createConvergenceRecord, createDescendantReuseProof, readConvergenceBinding, readReuseProofBinding, } from "../../../planning/investigation/evidence-convergence.js";
 import { engineProjectionDefinitions } from "../../../../modules/projection/engine-projection-registry.js";
 import { validateTrackedEvidenceReusePaths } from "../../../planning/investigation/evidence-reuse-path.js";
+import { validateCurrentChangeOrigin } from "../../../../modules/governance-intake/work-registry.js";
 import { assertCurrentPlanReviewProviderResultNode, readPlanReviewNode, readPlanReviewTargetSnapshotNode, } from "../../../../modules/assurance/plan-review.js";
 import { assertAdmittedRoleResultRecord } from "../../../../modules/provider-orchestration/role-scheduler.js";
 import { assertChangeId, assertPolicyPathInsideRepository, assertTaskId, matchesAllowedPath, normalizePolicyPath, } from "../../../../runtime/session-workspace/paths.js";
@@ -485,6 +486,9 @@ function loadChangeContractWithInvestigationSource(repositoryRootInput, requeste
     const originPath = path.join(changeDirectory, 'origin.json');
     const surveyPath = path.join(changeDirectory, 'survey.json');
     const planReviewPath = path.join(changeDirectory, 'plan-review.json');
+    if (schemaName === currentSchemaName) {
+        validateCurrentChangeOrigin(repositoryRoot, changeId);
+    }
     const requiredPaths = [
         proposalPath,
         designPath,

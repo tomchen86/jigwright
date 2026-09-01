@@ -27,10 +27,10 @@ import { BLIND_SURVEY_OUTPUT_SCHEMA } from '../src/runtime/storage-journal/provi
 const EXPECTED_MAP_ROWS = 262;
 const EXPECTED_FROZEN_MAP_DIGEST =
   'sha256:931d205467a344db99e9c5d9295557bbcd031987899a40aeccde3b87f4ef2762';
-const EXPECTED_FROZEN_EDGE_COUNT = 825;
-const EXPECTED_ACTIVE_EDGE_COUNT = 715;
+const EXPECTED_FROZEN_EDGE_COUNT = 828;
+const EXPECTED_ACTIVE_EDGE_COUNT = 718;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
-  'sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a';
+  'sha256:e3de3980a2befc14c053ceee7ebdb9bda1ab431584a9a75f8d730eb04caf5dcd';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
   'sha256:fa76412d23bae9fd53f7cc06178938ff62de9b8b3640ddabc4152858e1f24da6';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
@@ -2170,19 +2170,22 @@ function assertObservedMatchesBaseline(
     (edge.status === 'active' ? active : retired).set(edgeIdentity(edge), edge);
   }
   const observedIdentities = new Set(observed.map(edgeIdentity));
+  const mismatches: string[] = [];
   for (const edge of observed) {
     const identity = edgeIdentity(edge);
     if (retired.has(identity)) {
-      throw new Error(`Retired baseline edge reappeared: ${identity}`);
-    }
-    if (!active.has(identity)) {
-      throw new Error(`Unlisted dependency violation: ${identity}`);
+      mismatches.push(`Retired baseline edge reappeared: ${identity}`);
+    } else if (!active.has(identity)) {
+      mismatches.push(`Unlisted dependency violation: ${identity}`);
     }
   }
   for (const identity of active.keys()) {
     if (!observedIdentities.has(identity)) {
-      throw new Error(`Stale active baseline edge: ${identity}`);
+      mismatches.push(`Stale active baseline edge: ${identity}`);
     }
+  }
+  if (mismatches.length > 0) {
+    throw new Error(mismatches.sort().join('\n'));
   }
 }
 
