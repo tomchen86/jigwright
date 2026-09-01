@@ -11,7 +11,10 @@ import {
   loadChangeContract,
   type ExecutionTask,
 } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import {
+  createEvidenceNode,
+  type EvidenceNode,
+} from '../src/adapters/planning/investigation/evidence-node.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   buildInvestigationManifestDraft,
@@ -26,8 +29,11 @@ import {
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
   createPlanReviewTargetSnapshotNode,
+  canonicalizePlanReviewSubmission,
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
+  type PlanReviewSubject,
+  type PlanReviewSubmission,
 } from '../src/modules/assurance/plan-review.ts';
 import {
   deriveInvestigationFirstPlanningSubject,
@@ -42,7 +48,18 @@ import {
   type GrantVerifierPort,
 } from '../src/modules/authority/grant-verifier-port.ts';
 import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import type { ProviderRoleAssignment } from '../src/modules/provider-orchestration/role-scheduler.ts';
 import type { ProviderId } from '../src/modules/provider-orchestration/provider-registry.ts';
+import {
+  createProviderInvocationRequest,
+  type ProviderInvocationRequest,
+  type ProviderProcessResult,
+} from '../src/modules/provider-orchestration/provider-contracts.ts';
+import {
+  providerDefinitionDigest,
+  providerDefinitionExecutableBindingDigest,
+  PROVIDER_RUNNER_RESIDUALS,
+} from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
 
 export const sourceRepositoryRoot = path.resolve(
@@ -126,6 +143,132 @@ export function builtInProviderExecutableIdentityForTest(
     size: 1024,
     mtimeNs: '123456789',
     sha256: 'b'.repeat(64),
+  };
+}
+
+export function createCurrentPlanReviewProviderEvidenceForTest(input: {
+  subject: PlanReviewSubject;
+  assignment: ProviderRoleAssignment;
+  submission: PlanReviewSubmission;
+  targetSnapshotNode: EvidenceNode;
+  policyDigest: string;
+  invocationId?: string;
+  repositoryId?: string;
+  runtimeObservation?: 'current' | null;
+}): {
+  request: ProviderInvocationRequest;
+  result: ProviderProcessResult;
+  providerInvocation: {
+    invocationId: string;
+    requestDigest: string;
+    outputDigest: string;
+    providerId: ProviderId;
+    sessionId: string;
+    targetDigest: string;
+    engineSpawned: true;
+  };
+} {
+  const invocationId = input.invocationId ?? 'fixture-plan-review-invocation';
+  const request = createProviderInvocationRequest({
+    invocationId,
+    nonce: `fixture-plan-review-${invocationId}`,
+    purpose: 'plan-review',
+    providerId: input.assignment.providerId,
+    roleAssignment: input.assignment,
+    capabilityProfile: 'repository-read-only',
+    repositoryId: input.repositoryId ?? 'fixture',
+    baseCommit: input.subject.investigationBaseline.head,
+    baseTree: input.subject.investigationBaseline.tree,
+    targetDigest: input.assignment.targetDigest,
+    inputManifestDigest: crypto
+      .createHash('sha256')
+      .update(
+        canonicalJson({
+          schema: 'fixture.plan-review-input.v1',
+          subject: input.subject.subjectDigest,
+          targetSnapshot: input.targetSnapshotNode.nodeId,
+        }),
+      )
+      .digest('hex'),
+    authorizationNodeId: crypto
+      .createHash('sha256')
+      .update(
+        canonicalJson({
+          schema: 'fixture.plan-review-authorization.v1',
+          assignment: input.assignment,
+        }),
+      )
+      .digest('hex'),
+    writeAllowedPaths: [],
+    outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
+    evaluatorVersion: 'plan-review.v2',
+    policyDigest: input.policyDigest,
+    limits: { timeoutMs: 60_000, aggregateOutputBytes: 1_048_576 },
+  });
+  const output = canonicalizePlanReviewSubmission(input.submission);
+  const outputDigest = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJson({
+        id: request.outputSchema.id,
+        version: request.outputSchema.version,
+        output,
+      }),
+    )
+    .digest('hex');
+  const runtimeObservation =
+    input.runtimeObservation === 'current'
+      ? (() => {
+          const executable = builtInProviderExecutableIdentityForTest(
+            request.providerId,
+          );
+          const providerDefinitionSnapshot =
+            builtInProviderDefinitionSnapshotForTest(request.providerId);
+          const projectionDigest = crypto
+            .createHash('sha256')
+            .update(`fixture-plan-review-projection:${invocationId}`)
+            .digest('hex');
+          return {
+            assurance: 'unchanged-governed-projection' as const,
+            projection: {
+              unchanged: true as const,
+              changedCategories: [] as [],
+              beforeDigest: projectionDigest,
+              afterDigest: projectionDigest,
+            },
+            sameUserProcessConfined: false as const,
+            residuals: [...PROVIDER_RUNNER_RESIDUALS],
+            executable,
+            elapsedMs: 1,
+            providerDefinitionSnapshot,
+            providerDefinitionBindingDigest:
+              providerDefinitionExecutableBindingDigest(
+                providerDefinitionDigest(providerDefinitionSnapshot),
+                executable,
+              ),
+          };
+        })()
+      : null;
+  return {
+    request,
+    result: {
+      requestDigest: request.requestDigest,
+      invocationId: request.invocationId,
+      purpose: request.purpose,
+      providerId: request.providerId,
+      output,
+      outputDigest,
+      runtimeObservation,
+    },
+    providerInvocation: {
+      invocationId: request.invocationId,
+      requestDigest: request.requestDigest,
+      outputDigest,
+      providerId: request.providerId,
+      sessionId: input.assignment.sessionId,
+      targetDigest: request.targetDigest,
+      engineSpawned: true,
+    },
   };
 }
 
@@ -775,27 +918,21 @@ export function writeReadyV3ExemptChange(
       'The structured exemption does not prove semantic completeness.',
     uncertainty: 'The fixture relies only on the declared low-risk exemption.',
   };
-  const providerResultNode = createPlanReviewProviderResultNode({
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject: subjectContext.subject,
     assignment,
     submission,
-    providerPolicyDigest: subjectContext.policies.reviewPolicyDigest,
     targetSnapshotNode,
-    runtimeAssurance: {
-      assurance: 'unchanged-governed-projection',
-      projectionDigest: crypto
-        .createHash('sha256')
-        .update('synthetic current-v3 fixture projection')
-        .digest('hex'),
-      sameUserProcessConfined: false,
-      residuals: [
-        'Synthetic current-v3 fixture only; no executable process was launched.',
-      ],
-      executableSha256: crypto
-        .createHash('sha256')
-        .update('synthetic current-v3 fixture executable identity')
-        .digest('hex'),
-    },
+    policyDigest: subjectContext.policies.reviewPolicyDigest,
+    invocationId: 'fixture-plan-review-invocation',
+    runtimeObservation: 'current',
+  });
+  const providerResultNode = createPlanReviewProviderResultNode({
+    subject: subjectContext.subject,
+    assignment,
+    request: providerEvidence.request,
+    result: providerEvidence.result,
+    targetSnapshotNode,
   });
   const reviewNode = createPlanReviewNode({
     subject: subjectContext.subject,
@@ -821,23 +958,15 @@ export function writeReadyV3ExemptChange(
     },
     content: {
       kind: 'plan-review',
-      nodeId: reviewNode.nodeId,
-      resultDigest: reviewNode.resultDigest,
-      outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-      evaluator: reviewNode.evaluator,
-      policyDigest: reviewNode.policyDigest,
-      contentDigest: reviewNode.resultDigest,
+      nodeId: providerResultNode.nodeId,
+      resultDigest: providerResultNode.resultDigest,
+      outputSchema: providerEvidence.request.outputSchema,
+      evaluator: providerEvidence.request.evaluatorVersion,
+      policyDigest: providerEvidence.request.policyDigest,
+      contentDigest: providerResultNode.resultDigest,
       current: true,
     },
-    providerInvocation: {
-      invocationId: 'fixture-plan-review-invocation',
-      requestDigest: '4'.repeat(64),
-      outputDigest: '5'.repeat(64),
-      providerId: assignment.providerId,
-      sessionId: assignment.sessionId,
-      targetDigest: assignment.targetDigest,
-      engineSpawned: true,
-    },
+    providerInvocation: providerEvidence.providerInvocation,
     grantUse: null,
     grantValidation: null,
   });

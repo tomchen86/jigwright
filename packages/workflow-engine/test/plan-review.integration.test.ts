@@ -11,7 +11,6 @@ import {
   createPlanReviewTargetSnapshotNode,
   createPlanReviewSubject,
   PLAN_REVIEW_COVERAGE,
-  PLAN_REVIEW_OUTPUT_SCHEMA,
   readPlanReviewNode,
 } from '../src/modules/assurance/plan-review.ts';
 import { validatePlanReview } from '../src/modules/assurance/plan-review-validation.ts';
@@ -21,6 +20,7 @@ import {
 } from '../src/modules/assurance/plan-target.ts';
 import { createPlanningGeneration } from '../src/modules/lifecycle/planning-generation.ts';
 import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
+import { createCurrentPlanReviewProviderEvidenceForTest } from './fixture.ts';
 
 test('exact PlanReview composes target, generation, challenge, terms, and advisory eligibility', () => {
   const targetInput = integrationTargetInput();
@@ -111,31 +111,41 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
     residualRisk: 'The authorization explanation remains the only known risk.',
     uncertainty: 'No additional uncertainty identified.',
   };
-  const providerResultNode = createPlanReviewProviderResultNode({
+  const targetSnapshotNode = createPlanReviewTargetSnapshotNode({
+    changeId: 'demo-change',
+    changePrefix: 'openspec/changes/demo-change',
+    subject,
+    materializationNode: createEvidenceNode({
+      type: 'propose-planning-materialization',
+      nodeSchema: 'test.integration-materialization.v1',
+      evaluator: 'test.integration-materialization.v1',
+      policyDigest: 'a'.repeat(64),
+      exactInputDigests: {},
+      semanticParentResultDigests: {},
+      provenanceParentNodeIds: {},
+      outputSchema: 'test.integration-materialization-output.v1',
+      output: { testOnly: true },
+      runtimeMetadata: {},
+    }),
+    artifacts: new Map([
+      ['proposal.md', Buffer.from('# Proposal\n\nPreserve the behavior.\n')],
+    ]),
+  });
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject,
     assignment,
     submission,
-    providerPolicyDigest: 'a'.repeat(64),
-    targetSnapshotNode: createPlanReviewTargetSnapshotNode({
-      changeId: 'demo-change',
-      changePrefix: 'openspec/changes/demo-change',
-      subject,
-      materializationNode: createEvidenceNode({
-        type: 'propose-planning-materialization',
-        nodeSchema: 'test.integration-materialization.v1',
-        evaluator: 'test.integration-materialization.v1',
-        policyDigest: 'a'.repeat(64),
-        exactInputDigests: {},
-        semanticParentResultDigests: {},
-        provenanceParentNodeIds: {},
-        outputSchema: 'test.integration-materialization-output.v1',
-        output: { testOnly: true },
-        runtimeMetadata: {},
-      }),
-      artifacts: new Map([
-        ['proposal.md', Buffer.from('# Proposal\n\nPreserve the behavior.\n')],
-      ]),
-    }),
+    targetSnapshotNode,
+    policyDigest: 'a'.repeat(64),
+    invocationId: 'plan-review-integration',
+    runtimeObservation: 'current',
+  });
+  const providerResultNode = createPlanReviewProviderResultNode({
+    subject,
+    assignment,
+    request: providerEvidence.request,
+    result: providerEvidence.result,
+    targetSnapshotNode,
   });
   const reviewNode = createPlanReviewNode({
     subject,
@@ -163,23 +173,15 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
       },
       content: {
         kind: 'plan-review',
-        nodeId: reviewNode.nodeId,
-        resultDigest: reviewNode.resultDigest,
-        outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-        evaluator: reviewNode.evaluator,
-        policyDigest: reviewNode.policyDigest,
-        contentDigest: reviewNode.resultDigest,
+        nodeId: providerResultNode.nodeId,
+        resultDigest: providerResultNode.resultDigest,
+        outputSchema: providerEvidence.request.outputSchema,
+        evaluator: providerEvidence.request.evaluatorVersion,
+        policyDigest: providerEvidence.request.policyDigest,
+        contentDigest: providerResultNode.resultDigest,
         current: true,
       },
-      providerInvocation: {
-        invocationId: 'plan-review-integration',
-        requestDigest: 'c'.repeat(64),
-        outputDigest: 'd'.repeat(64),
-        providerId: assignment.providerId,
-        sessionId: assignment.sessionId,
-        targetDigest: assignment.targetDigest,
-        engineSpawned: true,
-      },
+      providerInvocation: providerEvidence.providerInvocation,
       grantUse: null,
       grantValidation: null,
     }),
@@ -199,6 +201,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
   });
   const validation = validatePlanReview({
     reviewNode,
+    providerResultNode,
     dispositionNode,
     subject,
     generation,
@@ -229,6 +232,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
   const projection = projectPlanReviewTerms({
     validationInput: {
       reviewNode,
+      providerResultNode,
       dispositionNode,
       subject,
       generation,

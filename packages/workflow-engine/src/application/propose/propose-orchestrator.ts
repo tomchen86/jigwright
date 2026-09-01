@@ -274,6 +274,7 @@ import {
 import { listSessions } from '../execute-task/session.ts';
 import { withTaskRevisionPlanningOperation } from '../revise/task-revision.ts';
 import {
+  assertCurrentPlanReviewProviderResultNode,
   assertAuthorizedPlanReviewChallengeClosure,
   createAuthorizedPlanReviewDispositionNode,
   createPlanReviewDispositionNode,
@@ -301,8 +302,10 @@ import {
 } from '../../modules/assurance/plan-review-coverage.ts';
 import {
   deriveInvestigationFirstPlanningSubject,
+  replayCurrentPlanReviewRoleResult,
   resolvePlanReviewPlanningEvidence,
   resolvePlanReviewRepositoryEvidence,
+  type ConsumedPlanReviewReplayPort,
   type ConsumedRoleResultReplayPort,
   type InvestigationFirstPlanningSubject,
 } from '../../modules/assurance/planning-assurance-validator.ts';
@@ -366,6 +369,7 @@ import {
   type ProviderExecutionGrantAuthorization,
 } from '../../modules/provider-orchestration/provider-retry-decision.ts';
 import {
+  assertAdmittedRoleResultRecord,
   admitRoleContextSharingResult,
   admitConsumedRoleResultReplay,
   admitRoleResult,
@@ -439,6 +443,7 @@ export type ProposeResumeOptions = {
     now?: Date;
     verifier?: unknown;
     consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
+    consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort;
   };
   executionGrantAuthorization?: ProviderExecutionGrantAuthorization & {
     replacementRequest: ProviderInvocationRequest;
@@ -3950,6 +3955,10 @@ function materializePlanReviewResult(
   const existing = readTrackedPlanReview(
     context.git.repositoryRoot,
     status.changeId,
+    {
+      subject: reservation.subject,
+      consumedPlanReviewReplay: grantValidation?.consumedPlanReviewReplay,
+    },
   );
   if (existing !== null) {
     return existing;
@@ -3965,17 +3974,9 @@ function materializePlanReviewResult(
   const providerResultNode = createPlanReviewProviderResultNode({
     subject: reservation.subject,
     assignment: reservation.assignment,
-    submission,
-    providerPolicyDigest: reservation.request.policyDigest,
+    request: reservation.request,
+    result,
     targetSnapshotNode: reservation.targetSnapshotNode,
-    runtimeAssurance: {
-      assurance: result.runtimeObservation.assurance,
-      projectionDigest: result.runtimeObservation.projection.beforeDigest,
-      sameUserProcessConfined:
-        result.runtimeObservation.sameUserProcessConfined,
-      residuals: result.runtimeObservation.residuals,
-      executableSha256: result.runtimeObservation.executable.sha256,
-    },
   });
   const reviewNode = createPlanReviewNode({
     subject: reservation.subject,
@@ -4041,12 +4042,12 @@ function materializePlanReviewResult(
   }
   const content = {
     kind: 'plan-review' as const,
-    nodeId: reviewNode.nodeId,
-    resultDigest: reviewNode.resultDigest,
-    outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-    evaluator: reviewNode.evaluator,
-    policyDigest: reviewNode.policyDigest,
-    contentDigest: reviewNode.resultDigest,
+    nodeId: providerResultNode.nodeId,
+    resultDigest: providerResultNode.resultDigest,
+    outputSchema: reservation.request.outputSchema,
+    evaluator: reservation.request.evaluatorVersion,
+    policyDigest: reservation.request.policyDigest,
+    contentDigest: providerResultNode.resultDigest,
     current: true as const,
   };
   let grantUse: CollaborationGrantUseProjection | null = null;
@@ -4243,6 +4244,7 @@ function materializePlanReviewResult(
     const projection = projectPlanReviewTerms({
       validationInput: {
         reviewNode,
+        providerResultNode,
         dispositionNode: null,
         subject: reservation.planning.subject,
         generation: reservation.planning.generation,
@@ -4366,10 +4368,14 @@ function completePlanReviewDispositions(
         assertCurrentExemptionContext(context, status);
       }
       const reservation = readPlanReviewReservation(context.runtime, status);
-      const tracked = readTrackedPlanReview(
-        context.git.repositoryRoot,
-        status.changeId,
-      );
+      const tracked =
+        reservation === null
+          ? null
+          : readTrackedPlanReview(context.git.repositoryRoot, status.changeId, {
+              subject: reservation.subject,
+              consumedPlanReviewReplay:
+                options.collaborationGrantValidation?.consumedPlanReviewReplay,
+            });
       if (
         status.changeId !== input.changeId ||
         reservation === null ||
@@ -4377,7 +4383,9 @@ function completePlanReviewDispositions(
         tracked === null ||
         tracked.reviewNode.nodeId !== input.reviewNodeId ||
         tracked.reviewNode.resultDigest !== input.reviewResultDigest ||
-        tracked.dispositionNode !== null
+        tracked.dispositionNode !== null ||
+        canonicalJson(tracked.roleResult.author) !==
+          canonicalJson(reservation.author)
       ) {
         throw workflowError(
           'PROPOSE_INPUT_STALE',
@@ -5161,6 +5169,7 @@ function getProposeStatusInternal(
     rebuilt.reuseCoverage,
     classSampleAuditsFor(rebuilt),
     rebuilt.floorTrimming,
+    grantValidation,
   );
 }
 
@@ -5271,6 +5280,7 @@ function renderProposeOutput(
         rebuilt.reuseCoverage,
         classSampleAuditsFor(rebuilt),
         rebuilt.floorTrimming,
+        grantValidation,
       );
     }
     const scaffold = preparePlanningScaffold(
@@ -5514,6 +5524,7 @@ function renderMaterializedProposeOutput(
     dropped: [],
     escalated: false,
   },
+  grantValidation?: ProposeResumeOptions['collaborationGrantValidation'],
 ): ProposeOutput {
   const context = loadInvestigationRuntimeContext(cwd);
   const reservation = readPlanReviewReservation(context.runtime, status);
@@ -5622,6 +5633,10 @@ function renderMaterializedProposeOutput(
   const trackedReview = readTrackedPlanReview(
     context.git.repositoryRoot,
     status.changeId,
+    {
+      subject: reservation.subject,
+      consumedPlanReviewReplay: grantValidation?.consumedPlanReviewReplay,
+    },
   );
   const planReview: ProposePlanReviewStatus = {
     subjectDigest: reservation.subject.subjectDigest,
@@ -5731,6 +5746,10 @@ function renderMaterializedProposeOutput(
 function readTrackedPlanReview(
   repositoryRoot: string,
   changeId: string,
+  replay?: Readonly<{
+    subject: PlanReviewSubject;
+    consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort;
+  }>,
 ): {
   nodes: EvidenceNode[];
   reviewNode: EvidenceNode;
@@ -5755,16 +5774,44 @@ function readTrackedPlanReview(
   const reviewNodes = artifact.nodes.filter(
     ({ nodeId }) => nodeId === reviewNodeId,
   );
+  const review =
+    reviewNodes.length === 1 ? readPlanReviewNode(reviewNodes[0]!) : null;
   const roleResults = (artifact.roleResults ?? []).filter(
     (value) =>
       isRecord(value) &&
       isRecord(value.content) &&
-      value.content.nodeId === reviewNodeId,
+      review !== null &&
+      value.content.nodeId === review.providerResultNodeId &&
+      value.content.resultDigest === review.providerResultResultDigest,
   );
   if (reviewNodes.length !== 1 || roleResults.length !== 1) {
     throw workflowError(
       'PLAN_REVIEW_ARTIFACT_STALE',
       'Tracked PlanReview does not select one admitted review result.',
+      ExitCode.staleState,
+    );
+  }
+  let roleResult: AdmittedRoleResult;
+  try {
+    roleResult =
+      replay === undefined
+        ? assertAdmittedRoleResultRecord(roleResults[0])
+        : replayCurrentPlanReviewRoleResult(
+            roleResults[0],
+            {
+              repositoryRoot,
+              changeId,
+              baselineCommit: replay.subject.investigationBaseline.head,
+              baselineTree: replay.subject.investigationBaseline.tree,
+              subjectDigest: replay.subject.subjectDigest,
+              planningGenerationId: replay.subject.planningGenerationId,
+            },
+            replay.consumedPlanReviewReplay,
+          );
+  } catch {
+    throw workflowError(
+      'PLAN_REVIEW_ARTIFACT_STALE',
+      'Tracked PlanReview role authority no longer replays exactly.',
       ExitCode.staleState,
     );
   }
@@ -5786,7 +5833,7 @@ function readTrackedPlanReview(
     nodes: artifact.nodes,
     reviewNode: reviewNodes[0]!,
     dispositionNode,
-    roleResult: roleResults[0] as unknown as AdmittedRoleResult,
+    roleResult,
   };
 }
 
@@ -5942,6 +5989,8 @@ function rebuildInvestigation(
     context.runtime,
     session.milestones.reviewerTermSourceNodeId,
     session,
+    context.git.repositoryRoot,
+    grantValidation?.consumedPlanReviewReplay,
   );
   const main = session.milestones.mainTerms.envelope;
   if (main.kind !== 'main-terms') {
@@ -7023,6 +7072,8 @@ function readReviewerTermSource(
   paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
   nodeId: string | null,
   session: InvestigationSession,
+  repositoryRoot: string,
+  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
 ): ReviewerTermSourceRecord | null {
   if (nodeId === null) {
     return null;
@@ -7044,13 +7095,21 @@ function readReviewerTermSource(
       },
     );
   }
-  return readReviewerTermSourceV3(paths, sourceNode, session);
+  return readReviewerTermSourceV3(
+    paths,
+    sourceNode,
+    session,
+    repositoryRoot,
+    consumedPlanReviewReplay,
+  );
 }
 
 function readReviewerTermSourceV3(
   paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
   sourceNode: EvidenceNode,
   session: InvestigationSession,
+  repositoryRoot: string,
+  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
 ): ReviewerTermSourceRecord {
   const output = sourceNode.output;
   if (
@@ -7090,13 +7149,38 @@ function readReviewerTermSourceV3(
     paths,
     output.previousReviewerTermSourceNodeId,
     session,
+    repositoryRoot,
+    consumedPlanReviewReplay,
   );
   const embeddedProviderResultNode = output.providerResultNode as EvidenceNode;
   const reviewNode = output.reviewNode as EvidenceNode;
   const review = readPlanReviewNode(reviewNode);
+  let roleResult: AdmittedRoleResult;
+  try {
+    roleResult = replayCurrentPlanReviewRoleResult(
+      output.roleResult,
+      {
+        repositoryRoot,
+        changeId: session.changeId,
+        baselineCommit: session.baseline.head,
+        baselineTree: session.baseline.tree,
+        subjectDigest: review.subjectDigest,
+        planningGenerationId: review.planningGenerationId,
+      },
+      consumedPlanReviewReplay,
+    );
+  } catch {
+    throw invalidReviewerTermSource();
+  }
   const { providerResultNode, targetSnapshotNode } =
-    readReviewerTermProviderResult(paths, embeddedProviderResultNode, review);
-  const roleResult = output.roleResult as AdmittedRoleResult;
+    readReviewerTermProviderResult(
+      paths,
+      embeddedProviderResultNode,
+      review,
+      roleResult.providerInvocation,
+      roleResult.content,
+      reviewNode.exactInputDigests.submission,
+    );
   const rawPriorGroupDispositions = output.priorGroupDispositions as Record<
     string,
     unknown
@@ -7166,8 +7250,8 @@ function readReviewerTermSourceV3(
     canonicalJson(output.baseline) !== canonicalJson(session.baseline) ||
     providerResultNode.nodeId !== review.providerResultNodeId ||
     providerResultNode.resultDigest !== review.providerResultResultDigest ||
-    roleResult.content.nodeId !== reviewNode.nodeId ||
-    roleResult.content.resultDigest !== reviewNode.resultDigest ||
+    roleResult.content.nodeId !== providerResultNode.nodeId ||
+    roleResult.content.resultDigest !== providerResultNode.resultDigest ||
     !hasExactKeys(sourceNode.exactInputDigests, exactRoles) ||
     !hasExactKeys(sourceNode.semanticParentResultDigests, parentRoles) ||
     !hasExactKeys(sourceNode.provenanceParentNodeIds, parentRoles) ||
@@ -7265,33 +7349,18 @@ function readReviewerTermProviderResult(
   paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
   value: EvidenceNode,
   review: ReturnType<typeof readPlanReviewNode>,
+  providerInvocation: AdmittedRoleResult['providerInvocation'],
+  roleResultContent: AdmittedRoleResult['content'],
+  reviewSubmissionDigest: string,
 ): { providerResultNode: EvidenceNode; targetSnapshotNode: EvidenceNode } {
   try {
-    const providerResultNode = assertStoredEvidenceNode(
+    const providerResultNode = assertCurrentPlanReviewProviderResultNode(
       value,
-      invalidReviewerTermSource,
+      providerInvocation,
+      roleResultContent,
+      reviewSubmissionDigest,
     );
-    if (
-      providerResultNode.type !== 'plan-review-provider-result' ||
-      providerResultNode.nodeSchema !== 'plan-review-provider-result.v2' ||
-      providerResultNode.evaluator !== 'plan-review-provider-result.v2' ||
-      providerResultNode.outputSchema !==
-        'plan-review-provider-result-output.v2' ||
-      !hasExactKeys(providerResultNode.exactInputDigests, [
-        'assignment',
-        'subject',
-        'submission',
-        'targetSnapshot',
-      ]) ||
-      !hasExactKeys(providerResultNode.semanticParentResultDigests, [
-        'targetSnapshot',
-      ]) ||
-      !hasExactKeys(providerResultNode.provenanceParentNodeIds, [
-        'targetSnapshot',
-      ]) ||
-      Object.keys(providerResultNode.runtimeMetadata).length !== 0 ||
-      providerResultNode.exactInputDigests.subject !== review.subjectDigest
-    ) {
+    if (providerResultNode.exactInputDigests.subject !== review.subjectDigest) {
       throw invalidReviewerTermSource();
     }
     const targetSnapshotNode = readEvidenceNode(

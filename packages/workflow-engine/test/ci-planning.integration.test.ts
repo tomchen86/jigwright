@@ -32,7 +32,6 @@ import {
   createPlanReviewProviderResultNode,
   createPlanReviewTargetSnapshotNode,
   PLAN_REVIEW_COVERAGE,
-  PLAN_REVIEW_OUTPUT_SCHEMA,
 } from '../src/modules/assurance/plan-review.ts';
 import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
@@ -47,6 +46,7 @@ import { agentRolePlanV2Path } from '../src/modules/source/planning-role-policy-
 import { CENTRAL_ROLE_PROVIDER_DEFAULT_PATH } from '../src/runtime/repository-transaction/central-role-provider-default-store.ts';
 import {
   createFixtureRepository,
+  createCurrentPlanReviewProviderEvidenceForTest,
   git,
   isWorkflowError,
   sourceRepositoryRoot,
@@ -1282,30 +1282,10 @@ function writeGrantClaim(
     transitionDigest: string;
   },
 ): void {
-  const reviewNode = createEvidenceNode({
-    type: 'fixture-plan-review',
-    nodeSchema: 'fixture.plan-review.v1',
-    evaluator: 'fixture.plan-review.v1',
-    policyDigest: '1'.repeat(64),
-    exactInputDigests: { target: '2'.repeat(64) },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'fixture.plan-review-output.v1',
-    output: { verdict: 'advisory-approve' },
-    runtimeMetadata: {},
+  refreshFixturePlanReview(repository);
+  appendSyntheticGrantRoleResult(repository, 'plan-review.json', {
+    grantUse: use,
   });
-  write(
-    repository,
-    `openspec/changes/${CHANGE_ID}/plan-review.json`,
-    `${canonicalJson({
-      schemaVersion: 1,
-      kind: 'plan-review-artifact',
-      changeId: CHANGE_ID,
-      nodes: [reviewNode],
-      currentRefs: { planReview: reviewNode.nodeId },
-      roleResults: [{ grantUse: use }],
-    })}\n`,
-  );
 }
 
 function writePlanReviewWithoutRole(repository: string): void {
@@ -1433,45 +1413,21 @@ function writeRoleContextSharingClaim(
     },
     signature: 'fixture-signature',
   };
-  const reviewNode = createEvidenceNode({
-    type: 'fixture-plan-review',
-    nodeSchema: 'fixture.plan-review.v1',
-    evaluator: 'fixture.plan-review.v1',
-    policyDigest: '6'.repeat(64),
-    exactInputDigests: { target: '7'.repeat(64) },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'fixture.plan-review-output.v1',
-    output: { verdict: 'advisory-approve' },
-    runtimeMetadata: {},
+  refreshFixturePlanReview(repository);
+  appendSyntheticGrantRoleResult(repository, 'plan-review.json', {
+    grantUse: null,
+    roleContextSharingUse: {
+      kind: 'role-context-sharing-consumed-use.v1',
+      grantId,
+      envelope,
+      expectedBinding: { targetDigest },
+      useProjectionDigest: crypto
+        .createHash('sha256')
+        .update(canonicalJson({ admissionDigest: '9'.repeat(64) }))
+        .digest('hex'),
+      use: { admissionDigest: '9'.repeat(64) },
+    },
   });
-  write(
-    repository,
-    `openspec/changes/${CHANGE_ID}/plan-review.json`,
-    `${canonicalJson({
-      schemaVersion: 1,
-      kind: 'plan-review-artifact',
-      changeId: CHANGE_ID,
-      nodes: [reviewNode],
-      currentRefs: { planReview: reviewNode.nodeId },
-      roleResults: [
-        {
-          grantUse: null,
-          roleContextSharingUse: {
-            kind: 'role-context-sharing-consumed-use.v1',
-            grantId,
-            envelope,
-            expectedBinding: { targetDigest },
-            useProjectionDigest: crypto
-              .createHash('sha256')
-              .update(canonicalJson({ admissionDigest: '9'.repeat(64) }))
-              .digest('hex'),
-            use: { admissionDigest: '9'.repeat(64) },
-          },
-        },
-      ],
-    })}\n`,
-  );
 }
 
 function mktree(repository: string, listing: string): string {
@@ -1844,27 +1800,21 @@ function refreshFixturePlanReview(repository: string): void {
     residualRisk: 'The fixture grant claims remain subject to aggregate CI.',
     uncertainty: 'The fixture uses a structured planning exemption.',
   };
-  const providerResultNode = createPlanReviewProviderResultNode({
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject: context.subject,
     assignment,
     submission,
-    providerPolicyDigest: context.policies.reviewPolicyDigest,
     targetSnapshotNode,
-    runtimeAssurance: {
-      assurance: 'unchanged-governed-projection',
-      projectionDigest: crypto
-        .createHash('sha256')
-        .update('synthetic current-v3 CI fixture projection')
-        .digest('hex'),
-      sameUserProcessConfined: false,
-      residuals: [
-        'Synthetic current-v3 CI fixture only; no executable process was launched.',
-      ],
-      executableSha256: crypto
-        .createHash('sha256')
-        .update('synthetic current-v3 CI fixture executable identity')
-        .digest('hex'),
-    },
+    policyDigest: context.policies.reviewPolicyDigest,
+    invocationId: 'fixture-current-plan-review-invocation',
+    runtimeObservation: 'current',
+  });
+  const providerResultNode = createPlanReviewProviderResultNode({
+    subject: context.subject,
+    assignment,
+    request: providerEvidence.request,
+    result: providerEvidence.result,
+    targetSnapshotNode,
   });
   const reviewNode = createPlanReviewNode({
     subject: context.subject,
@@ -1890,23 +1840,15 @@ function refreshFixturePlanReview(repository: string): void {
     },
     content: {
       kind: 'plan-review',
-      nodeId: reviewNode.nodeId,
-      resultDigest: reviewNode.resultDigest,
-      outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-      evaluator: reviewNode.evaluator,
-      policyDigest: reviewNode.policyDigest,
-      contentDigest: reviewNode.resultDigest,
+      nodeId: providerResultNode.nodeId,
+      resultDigest: providerResultNode.resultDigest,
+      outputSchema: providerEvidence.request.outputSchema,
+      evaluator: providerEvidence.request.evaluatorVersion,
+      policyDigest: providerEvidence.request.policyDigest,
+      contentDigest: providerResultNode.resultDigest,
       current: true,
     },
-    providerInvocation: {
-      invocationId: 'fixture-current-plan-review-invocation',
-      requestDigest: 'c'.repeat(64),
-      outputDigest: 'd'.repeat(64),
-      providerId: assignment.providerId,
-      sessionId: assignment.sessionId,
-      targetDigest: assignment.targetDigest,
-      engineSpawned: true,
-    },
+    providerInvocation: providerEvidence.providerInvocation,
     grantUse: null,
     grantValidation: null,
   });

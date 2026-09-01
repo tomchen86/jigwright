@@ -42,6 +42,12 @@
       "additionalProperties": { "$ref": "#/$defs/digest" }
     },
     "admittedRoleResult": {
+      "oneOf": [
+        { "$ref": "#/$defs/admittedRoleResultV1" },
+        { "$ref": "#/$defs/admittedRoleResultV2" }
+      ]
+    },
+    "admittedRoleResultV1": {
       "type": "object",
       "additionalProperties": false,
       "required": [
@@ -161,6 +167,46 @@
           }
         }
       ]
+    },
+    "admittedRoleResultV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "form",
+        "role",
+        "targetDigest",
+        "assignment",
+        "author",
+        "participant",
+        "orchestration",
+        "requiredIndependence",
+        "achievedIndependence",
+        "content",
+        "providerInvocation",
+        "grantUse",
+        "roleContextSharingUse",
+        "directHumanReviewAttestation",
+        "resultDigest"
+      ],
+      "properties": {
+        "schemaVersion": { "const": 2 },
+        "form": { "const": "granted-role-context-sharing" },
+        "role": { "const": "plan-reviewer" },
+        "targetDigest": { "$ref": "#/$defs/digest" },
+        "assignment": { "type": "object" },
+        "author": { "type": "object" },
+        "participant": { "type": "object" },
+        "orchestration": { "const": "engine-spawned-provider" },
+        "requiredIndependence": { "const": "provider-independent" },
+        "achievedIndependence": { "const": "session-independent" },
+        "content": { "$ref": "#/$defs/roleContentAdmission" },
+        "providerInvocation": { "type": "object" },
+        "grantUse": { "type": "null" },
+        "roleContextSharingUse": { "type": "object" },
+        "directHumanReviewAttestation": { "type": "null" },
+        "resultDigest": { "$ref": "#/$defs/digest" }
+      }
     },
     "roleContentAdmission": {
       "type": "object",

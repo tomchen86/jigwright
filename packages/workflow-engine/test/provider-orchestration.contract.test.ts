@@ -22,6 +22,7 @@ import {
 } from '../src/modules/provider-orchestration/provider-registry.ts';
 import {
   admitRoleResult,
+  assertAdmittedRoleResultRecord,
   assessRoleIndependence,
   scheduleOrdinaryRole,
   type GrantedSameProviderRoleAssignment,
@@ -633,6 +634,18 @@ test('provider requests admit only ordinary or granted same-provider assignments
   });
   assert.equal(admitted.form, 'ordinary-provider');
   assert.equal(admitted.orchestration, 'engine-spawned-provider');
+  assert.equal(
+    assertAdmittedRoleResultRecord(admitted).resultDigest,
+    admitted.resultDigest,
+  );
+  assert.throws(
+    () =>
+      assertAdmittedRoleResultRecord({
+        ...admitted,
+        author: { ...admitted.author, principalId: 'forged-author' },
+      }),
+    (error) => isWorkflowError(error, 'ROLE_RESULT_INVALID'),
+  );
 
   const granted = grantedSameProviderAssignment();
   const request = createProviderInvocationRequest(requestInput(granted));
@@ -666,19 +679,65 @@ test('the tracked PlanReview schema exposes every admitted role-result form', ()
     ),
   ) as {
     $defs: {
-      admittedRoleResult: {
+      admittedRoleResult: { oneOf: Array<{ $ref: string }> };
+      admittedRoleResultV1: {
         properties: { form: { enum: string[] } };
         allOf: unknown[];
       };
+      admittedRoleResultV2: {
+        required: string[];
+        properties: {
+          schemaVersion: { const: number };
+          form: { const: string };
+          role: { const: string };
+          orchestration: { const: string };
+          grantUse: { type: string };
+          roleContextSharingUse: { type: string };
+        };
+      };
     };
   };
-  assert.deepEqual(schema.$defs.admittedRoleResult.properties.form.enum, [
+  assert.deepEqual(schema.$defs.admittedRoleResult.oneOf, [
+    { $ref: '#/$defs/admittedRoleResultV1' },
+    { $ref: '#/$defs/admittedRoleResultV2' },
+  ]);
+  assert.deepEqual(schema.$defs.admittedRoleResultV1.properties.form.enum, [
     'ordinary-provider',
     'granted-same-provider',
     'granted-caller-supplied',
     'direct-human-attestation',
   ]);
-  assert.equal(schema.$defs.admittedRoleResult.allOf.length, 4);
+  assert.equal(schema.$defs.admittedRoleResultV1.allOf.length, 4);
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.schemaVersion.const,
+    2,
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.form.const,
+    'granted-role-context-sharing',
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.role.const,
+    'plan-reviewer',
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.orchestration.const,
+    'engine-spawned-provider',
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.grantUse.type,
+    'null',
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.properties.roleContextSharingUse.type,
+    'object',
+  );
+  assert.equal(
+    schema.$defs.admittedRoleResultV2.required.includes(
+      'roleContextSharingUse',
+    ),
+    true,
+  );
 });
 
 test('deterministic fake process accepts only a fully bound structured result', () => {

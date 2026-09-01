@@ -179,6 +179,7 @@ import {
   createConsumedCollaborationGrantReplayVerifier,
   createCurrentAuthoritativeCollaborationGrantVerifier,
   createCurrentAuthoritativeRoleContextSharingGrantVerifier,
+  productionConsumedPlanReviewReplayPort,
   productionConsumedRoleResultReplayPort,
 } from './composition-root/grant-verifier-composition.ts';
 import { readCollaborationGrantInspection } from './runtime/storage-journal/collaboration-grant-store.ts';
@@ -1807,6 +1808,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
                 }),
             collaborationGrantValidation: {
               consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+              consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
               ...(collaborationGrant === undefined
                 ? {}
                 : { verifier: collaborationGrant.verifier }),
@@ -2194,7 +2196,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
               process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
                 ? undefined
                 : dispatchProviderWorker,
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
           }),
         };
       }
@@ -2535,6 +2537,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
             ok: true,
             result: getProposeStatus(cwd, rest[0], {
               consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+              consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
             }),
           };
         }

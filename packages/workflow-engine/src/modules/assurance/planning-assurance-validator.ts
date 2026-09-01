@@ -41,6 +41,7 @@ import { readCurrentPlanningRoleOverridePolicy } from '../source/planning-role-p
 import { parseMaintainerPolicy } from '../authority/maintainer-policy.ts';
 import {
   assertAuthorizedPlanReviewChallengeClosure,
+  assertCurrentPlanReviewProviderResultNode,
   createPlanReviewSubject,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   readPlanReviewTargetSnapshotNode,
@@ -65,6 +66,7 @@ import {
   type PlanningPolicyDigests,
 } from '../lifecycle/planning-generation.ts';
 import {
+  assertAdmittedRoleResultRecord,
   admitConsumedRoleContextSharingResultReplay,
   admitConsumedRoleResultReplay,
   admitRoleResult,
@@ -143,6 +145,159 @@ export type ConsumedPlanReviewReplayPort = ConsumedRoleResultReplayPort &
       input: ConsumedRoleContextSharingReplayInput,
     ): AdmitConsumedRoleContextSharingResultReplayInput['replay'];
   }>;
+
+export type CurrentPlanReviewRoleResultReplayContext = Readonly<{
+  repositoryRoot: string;
+  changeId: string;
+  baselineCommit: string;
+  baselineTree: string;
+  subjectDigest: string;
+  planningGenerationId: string;
+}>;
+
+/**
+ * Re-authenticate one persisted PlanReview role result against the terminal
+ * Grant record before recovery or status code consumes its role facts. The
+ * content-pure role reader remains the first boundary; grant-backed forms then
+ * require the same opaque consumed-use replay used by planning readiness.
+ */
+export function replayCurrentPlanReviewRoleResult(
+  storedValue: unknown,
+  context: CurrentPlanReviewRoleResultReplayContext,
+  consumedPlanReviewReplay?: ConsumedPlanReviewReplayPort,
+): AdmittedRoleResult {
+  let stored: AdmittedRoleResult;
+  try {
+    stored = assertAdmittedRoleResultRecord(storedValue);
+  } catch {
+    throw planningNotReady('Stored PlanReview role result is malformed.');
+  }
+  if (stored.form === 'granted-role-context-sharing') {
+    const evidence = stored.roleContextSharingUse;
+    const expected = evidence?.expectedBinding;
+    if (
+      consumedPlanReviewReplay === undefined ||
+      evidence === null ||
+      expected === undefined ||
+      stored.providerInvocation === null ||
+      expected.changeId !== context.changeId ||
+      expected.baselineCommit !== context.baselineCommit ||
+      expected.baselineTree !== context.baselineTree ||
+      expected.subjectDigest !== context.subjectDigest ||
+      expected.targetDigest !== context.subjectDigest ||
+      expected.planningGeneration !== context.planningGenerationId ||
+      expected.lifecyclePhase !== 'plan-review'
+    ) {
+      throw planningNotReady(
+        'Role-context-sharing PlanReview is bound to another transition or has no terminal replay authority.',
+      );
+    }
+    const replay = consumedPlanReviewReplay.verifyRoleContextSharing({
+      repositoryRoot: context.repositoryRoot,
+      evidence,
+      assignment: stored.assignment,
+      author: stored.author,
+      participant: stored.participant,
+      content: stored.content,
+      providerInvocation: stored.providerInvocation,
+    });
+    if (
+      replay.grantId !== evidence.grantId ||
+      replay.terminalRecordDigest !== evidence.terminalRecordDigest ||
+      replay.useProjectionDigest !== evidence.useProjectionDigest
+    ) {
+      throw planningNotReady(
+        'Consumed role-context-sharing replay proof does not match the exact stored use.',
+      );
+    }
+    const replayed = admitConsumedRoleContextSharingResultReplay({
+      assignment: stored.assignment,
+      author: stored.author,
+      participant: stored.participant,
+      content: stored.content,
+      providerInvocation: stored.providerInvocation,
+      replay,
+    });
+    if (canonicalJson(replayed) !== canonicalJson(stored)) {
+      throw planningNotReady(
+        'Stored PlanReview role result does not replay exactly.',
+      );
+    }
+    return replayed;
+  }
+  let replayed: AdmittedRoleResult;
+  if (stored.form === 'ordinary-provider') {
+    if (
+      stored.author.providerId === null ||
+      stored.author.providerId === stored.assignment.providerId
+    ) {
+      throw planningNotReady(
+        'Ordinary PlanReview must record a provider distinct from the plan author.',
+      );
+    }
+    replayed = admitRoleResult({
+      assignment: stored.assignment,
+      author: stored.author,
+      participant: stored.participant,
+      content: stored.content,
+      providerInvocation: stored.providerInvocation,
+      grantUse: null,
+      grantValidation: null,
+    });
+  } else {
+    if (consumedPlanReviewReplay === undefined || !stored.grantUse) {
+      throw planningNotReady(
+        'Granted PlanReview role result has no terminal replay authority.',
+      );
+    }
+    const envelope = parseCollaborationGrantEnvelope(
+      canonicalCollaborationGrantEnvelope(stored.grantUse.envelope),
+    );
+    if (
+      envelope.payload.changeId !== context.changeId ||
+      envelope.payload.baselineCommit !== context.baselineCommit ||
+      envelope.payload.baselineTree !== context.baselineTree ||
+      envelope.payload.targetDigest !== context.subjectDigest ||
+      envelope.payload.lifecyclePhase !== 'plan-review'
+    ) {
+      throw planningNotReady(
+        'Granted PlanReview role result is bound to another transition.',
+      );
+    }
+    const expectedBinding = bindingFromPayload(envelope.payload);
+    const replay = consumedPlanReviewReplay.verify({
+      repositoryRoot: context.repositoryRoot,
+      expectedBinding,
+      grantUse: stored.grantUse,
+      assignment: stored.assignment,
+      content: stored.content,
+      directHumanReviewAttestation: stored.directHumanReviewAttestation,
+    });
+    if (
+      replay.grantId !== stored.grantUse.grantId ||
+      replay.transitionDigest !== stored.grantUse.transitionDigest ||
+      replay.useDigest !== sha256(canonicalJson(stored.grantUse))
+    ) {
+      throw planningNotReady(
+        'Consumed PlanReview replay proof does not match the exact stored grant use.',
+      );
+    }
+    replayed = admitConsumedRoleResultReplay({
+      assignment: stored.assignment,
+      author: stored.author,
+      participant: stored.participant,
+      content: stored.content,
+      providerInvocation: stored.providerInvocation,
+      replay,
+    });
+  }
+  if (canonicalJson(replayed) !== canonicalJson(stored)) {
+    throw planningNotReady(
+      'Stored PlanReview role result does not replay exactly.',
+    );
+  }
+  return replayed;
+}
 
 /**
  * Derive the immutable exact-plan review subject from current tracked planning
@@ -238,9 +393,33 @@ export function validateInvestigationFirstPlanningReadiness(
   const review = readPlanReviewNode(reviewNode);
   const providerResultNode = requireNode(
     planReview.nodes,
-    reviewNode.provenanceParentNodeIds.providerResult,
+    review.providerResultNodeId,
     'plan review provider result',
   );
+  if (providerResultNode.resultDigest !== review.providerResultResultDigest) {
+    throw planningNotReady(
+      'PlanReview does not select the exact provider result it reviewed.',
+    );
+  }
+  const roleResult = requireCurrentPlanReviewRoleResult(
+    repositoryRoot,
+    contract,
+    providerResultNode,
+    context.subject,
+    consumedPlanReviewReplay,
+  );
+  try {
+    assertCurrentPlanReviewProviderResultNode(
+      providerResultNode,
+      roleResult.providerInvocation,
+      roleResult.content,
+      reviewNode.exactInputDigests.submission,
+    );
+  } catch {
+    throw planningNotReady(
+      'PlanReview provider evidence is not current and invocation-bound.',
+    );
+  }
   const snapshotNode = requireNode(
     planReview.nodes,
     providerResultNode.provenanceParentNodeIds.targetSnapshot,
@@ -252,6 +431,7 @@ export function validateInvestigationFirstPlanningReadiness(
       snapshotNode.nodeId ||
     providerResultNode.semanticParentResultDigests.targetSnapshot !==
       snapshotNode.resultDigest ||
+    snapshotNode.policyDigest !== review.policyDigest ||
     planningSnapshot.changeId !== contract.changeId ||
     planningSnapshot.subjectDigest !== context.subject.subjectDigest ||
     planningSnapshot.planningGenerationId !==
@@ -270,13 +450,6 @@ export function validateInvestigationFirstPlanningReadiness(
         'plan review disposition',
       )
     : null;
-  const roleResult = requireCurrentPlanReviewRoleResult(
-    repositoryRoot,
-    contract,
-    reviewNode,
-    context.subject,
-    consumedPlanReviewReplay,
-  );
   const coverageRequirements = context.investigationRequirements.filter(
     (
       requirement,
@@ -324,6 +497,7 @@ export function validateInvestigationFirstPlanningReadiness(
   }
   const validation = validatePlanReview({
     reviewNode,
+    providerResultNode,
     dispositionNode,
     subject: context.subject,
     generation: context.generation,
@@ -898,7 +1072,7 @@ function policyComponent(
 function requireCurrentPlanReviewRoleResult(
   repositoryRoot: string,
   contract: ChangeContract,
-  reviewNode: EvidenceNode,
+  providerResultNode: EvidenceNode,
   subject: PlanReviewSubject,
   consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
 ): AdmittedRoleResult {
@@ -910,8 +1084,8 @@ function requireCurrentPlanReviewRoleResult(
     return (
       candidate.role === 'plan-reviewer' &&
       candidate.targetDigest === subject.subjectDigest &&
-      candidate.content.nodeId === reviewNode.nodeId &&
-      candidate.content.resultDigest === reviewNode.resultDigest
+      candidate.content.nodeId === providerResultNode.nodeId &&
+      candidate.content.resultDigest === providerResultNode.resultDigest
     );
   });
   if (matches.length !== 1) {
@@ -919,131 +1093,18 @@ function requireCurrentPlanReviewRoleResult(
       'Exactly one admitted role result must authorize the current PlanReview.',
     );
   }
-  const stored = matches[0] as unknown as AdmittedRoleResult;
-  if (stored.form === 'granted-role-context-sharing') {
-    const evidence = stored.roleContextSharingUse;
-    const expected = evidence?.expectedBinding;
-    if (
-      evidence === null ||
-      expected === undefined ||
-      stored.providerInvocation === null ||
-      expected.changeId !== contract.changeId ||
-      expected.baselineCommit !== subject.investigationBaseline.head ||
-      expected.baselineTree !== subject.investigationBaseline.tree ||
-      expected.subjectDigest !== subject.subjectDigest ||
-      expected.targetDigest !== subject.subjectDigest ||
-      expected.planningGeneration !== subject.planningGenerationId ||
-      expected.lifecyclePhase !== 'plan-review'
-    ) {
-      throw planningNotReady(
-        'Role-context-sharing PlanReview is bound to another transition.',
-      );
-    }
-    const replay = consumedPlanReviewReplay.verifyRoleContextSharing({
+  return replayCurrentPlanReviewRoleResult(
+    matches[0],
+    {
       repositoryRoot,
-      evidence,
-      assignment: stored.assignment,
-      author: stored.author,
-      participant: stored.participant,
-      content: stored.content,
-      providerInvocation: stored.providerInvocation,
-    });
-    if (
-      replay.grantId !== evidence.grantId ||
-      replay.terminalRecordDigest !== evidence.terminalRecordDigest ||
-      replay.useProjectionDigest !== evidence.useProjectionDigest
-    ) {
-      throw planningNotReady(
-        'Consumed role-context-sharing replay proof does not match the exact stored use.',
-      );
-    }
-    const replayed = admitConsumedRoleContextSharingResultReplay({
-      assignment: stored.assignment,
-      author: stored.author,
-      participant: stored.participant,
-      content: stored.content,
-      providerInvocation: stored.providerInvocation,
-      replay,
-    });
-    if (canonicalJson(replayed) !== canonicalJson(stored)) {
-      throw planningNotReady(
-        'Stored PlanReview role result does not replay exactly.',
-      );
-    }
-    return replayed;
-  }
-  let replayed: AdmittedRoleResult;
-  if (stored.form === 'ordinary-provider') {
-    if (
-      stored.author.providerId === null ||
-      stored.author.providerId === stored.assignment.providerId
-    ) {
-      throw planningNotReady(
-        'Ordinary PlanReview must record a provider distinct from the plan author.',
-      );
-    }
-    replayed = admitRoleResult({
-      assignment: stored.assignment,
-      author: stored.author,
-      participant: stored.participant,
-      content: stored.content,
-      providerInvocation: stored.providerInvocation,
-      grantUse: null,
-      grantValidation: null,
-    });
-  } else {
-    if (!stored.grantUse) {
-      throw planningNotReady(
-        'Granted PlanReview role result has no grant use.',
-      );
-    }
-    const envelope = parseCollaborationGrantEnvelope(
-      canonicalCollaborationGrantEnvelope(stored.grantUse.envelope),
-    );
-    if (
-      envelope.payload.changeId !== contract.changeId ||
-      envelope.payload.baselineCommit !== subject.investigationBaseline.head ||
-      envelope.payload.baselineTree !== subject.investigationBaseline.tree ||
-      envelope.payload.targetDigest !== subject.subjectDigest ||
-      envelope.payload.lifecyclePhase !== 'plan-review'
-    ) {
-      throw planningNotReady(
-        'Granted PlanReview role result is bound to another transition.',
-      );
-    }
-    const expectedBinding = bindingFromPayload(envelope.payload);
-    const replay = consumedPlanReviewReplay.verify({
-      repositoryRoot,
-      expectedBinding,
-      grantUse: stored.grantUse,
-      assignment: stored.assignment,
-      content: stored.content,
-      directHumanReviewAttestation: stored.directHumanReviewAttestation,
-    });
-    if (
-      replay.grantId !== stored.grantUse.grantId ||
-      replay.transitionDigest !== stored.grantUse.transitionDigest ||
-      replay.useDigest !== sha256(canonicalJson(stored.grantUse))
-    ) {
-      throw planningNotReady(
-        'Consumed PlanReview replay proof does not match the exact stored grant use.',
-      );
-    }
-    replayed = admitConsumedRoleResultReplay({
-      assignment: stored.assignment,
-      author: stored.author,
-      participant: stored.participant,
-      content: stored.content,
-      providerInvocation: stored.providerInvocation,
-      replay,
-    });
-  }
-  if (canonicalJson(replayed) !== canonicalJson(stored)) {
-    throw planningNotReady(
-      'Stored PlanReview role result does not replay exactly.',
-    );
-  }
-  return replayed;
+      changeId: contract.changeId,
+      baselineCommit: subject.investigationBaseline.head,
+      baselineTree: subject.investigationBaseline.tree,
+      subjectDigest: subject.subjectDigest,
+      planningGenerationId: subject.planningGenerationId,
+    },
+    consumedPlanReviewReplay,
+  );
 }
 
 export function resolvePlanReviewRepositoryEvidence(

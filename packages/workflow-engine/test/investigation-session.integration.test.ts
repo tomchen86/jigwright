@@ -2838,27 +2838,30 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       (node: { type: string }) => node.type === 'plan-review-provider-result',
     );
     assert.equal(
-      trackedReviewProviderResult.output.runtimeAssurance.assurance,
+      trackedReviewProviderResult.output.result.runtimeObservation.assurance,
       'unchanged-governed-projection',
     );
     assert.equal(
-      trackedReviewProviderResult.output.runtimeAssurance
+      trackedReviewProviderResult.output.result.runtimeObservation
         .sameUserProcessConfined,
       false,
     );
     assert.match(
-      trackedReviewProviderResult.output.runtimeAssurance.executableSha256,
+      trackedReviewProviderResult.output.result.runtimeObservation.executable
+        .sha256,
       /^[0-9a-f]{64}$/,
     );
     assert.deepEqual(
-      trackedReviewProviderResult.output.runtimeAssurance.residuals,
+      trackedReviewProviderResult.output.result.runtimeObservation.residuals,
       PROVIDER_RUNNER_RESIDUALS,
     );
     const reviewNode = trackedPlanReview.nodes.find(
       (node: { type: string }) => node.type === 'plan-review',
     );
-    const retiredProviderResult = createEvidenceNode({
-      type: trackedReviewProviderResult.type,
+    const trackedRoleResult = trackedPlanReview.roleResults[0];
+    assert.equal(trackedRoleResult.form, 'ordinary-provider');
+    const relabeledProviderResult = createEvidenceNode({
+      type: 'retired-plan-review-provider-result',
       nodeSchema: trackedReviewProviderResult.nodeSchema,
       evaluator: trackedReviewProviderResult.evaluator,
       policyDigest: trackedReviewProviderResult.policyDigest,
@@ -2868,11 +2871,131 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       provenanceParentNodeIds:
         trackedReviewProviderResult.provenanceParentNodeIds,
       outputSchema: trackedReviewProviderResult.outputSchema,
+      output: trackedReviewProviderResult.output,
+      runtimeMetadata: trackedReviewProviderResult.runtimeMetadata,
+    });
+    const relabeledReviewNode = createEvidenceNode({
+      type: reviewNode.type,
+      nodeSchema: reviewNode.nodeSchema,
+      evaluator: reviewNode.evaluator,
+      policyDigest: reviewNode.policyDigest,
+      exactInputDigests: reviewNode.exactInputDigests,
+      semanticParentResultDigests: {
+        ...reviewNode.semanticParentResultDigests,
+        providerResult: relabeledProviderResult.resultDigest,
+      },
+      provenanceParentNodeIds: {
+        ...reviewNode.provenanceParentNodeIds,
+        providerResult: relabeledProviderResult.nodeId,
+      },
+      outputSchema: reviewNode.outputSchema,
+      output: reviewNode.output,
+      runtimeMetadata: reviewNode.runtimeMetadata,
+    });
+    const relabeledRoleResult = admitRoleResult({
+      assignment: trackedRoleResult.assignment,
+      author: trackedRoleResult.author,
+      participant: trackedRoleResult.participant,
+      content: {
+        ...trackedRoleResult.content,
+        nodeId: relabeledProviderResult.nodeId,
+        resultDigest: relabeledProviderResult.resultDigest,
+        contentDigest: relabeledProviderResult.resultDigest,
+      },
+      providerInvocation: trackedRoleResult.providerInvocation,
+      grantUse: null,
+      grantValidation: null,
+    });
+    const relabeledArtifact = {
+      ...trackedPlanReview,
+      nodes: trackedPlanReview.nodes
+        .map((node: EvidenceNode) =>
+          node.nodeId === trackedReviewProviderResult.nodeId
+            ? relabeledProviderResult
+            : node.nodeId === reviewNode.nodeId
+              ? relabeledReviewNode
+              : node,
+        )
+        .sort((left: EvidenceNode, right: EvidenceNode) =>
+          left.nodeId.localeCompare(right.nodeId),
+        ),
+      currentRefs: {
+        ...trackedPlanReview.currentRefs,
+        planReview: relabeledReviewNode.nodeId,
+      },
+      roleResults: [relabeledRoleResult],
+    };
+    fs.writeFileSync(
+      planReviewPath,
+      `${canonicalJson(relabeledArtifact)}\n`,
+      'utf8',
+    );
+    const relabeledArtifactBytes = fs.readFileSync(planReviewPath);
+    const relabeledGitState = {
+      head: git(repository, ['rev-parse', 'HEAD']),
+      tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+      status: git(repository, ['status', '--porcelain=v2', '-z']),
+    };
+    const relabeledRuntimeState = snapshotFileTree(reviewerRuntime.root);
+    try {
+      await t.test(
+        'tracked PlanReview follows the authoritative review edge and rejects a digest-consistent relabeled provider result without mutation',
+        () => {
+          assert.throws(
+            () =>
+              getProposeStatus(
+                repository,
+                twiceReplanned.investigation!.investigationId,
+              ),
+            (error: unknown) =>
+              isWorkflowError(error, 'INVALID_PLAN_REVIEW_ARTIFACT'),
+          );
+          assert.deepEqual(
+            fs.readFileSync(planReviewPath),
+            relabeledArtifactBytes,
+          );
+          assert.deepEqual(
+            {
+              head: git(repository, ['rev-parse', 'HEAD']),
+              tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+              status: git(repository, ['status', '--porcelain=v2', '-z']),
+            },
+            relabeledGitState,
+          );
+          assert.deepEqual(
+            snapshotFileTree(reviewerRuntime.root),
+            relabeledRuntimeState,
+          );
+        },
+      );
+    } finally {
+      fs.writeFileSync(planReviewPath, trackedPlanReviewBytes);
+    }
+    const retiredProviderResult = createEvidenceNode({
+      type: trackedReviewProviderResult.type,
+      nodeSchema: trackedReviewProviderResult.nodeSchema,
+      evaluator: trackedReviewProviderResult.evaluator,
+      policyDigest: trackedReviewProviderResult.policyDigest,
+      semanticParentResultDigests:
+        trackedReviewProviderResult.semanticParentResultDigests,
+      provenanceParentNodeIds:
+        trackedReviewProviderResult.provenanceParentNodeIds,
+      outputSchema: trackedReviewProviderResult.outputSchema,
       output: {
         ...trackedReviewProviderResult.output,
-        runtimeAssurance: null,
+        result: {
+          ...trackedReviewProviderResult.output.result,
+          runtimeObservation: null,
+        },
       },
       runtimeMetadata: trackedReviewProviderResult.runtimeMetadata,
+      exactInputDigests: {
+        ...trackedReviewProviderResult.exactInputDigests,
+        runtimeObservation: crypto
+          .createHash('sha256')
+          .update(canonicalJson(null))
+          .digest('hex'),
+      },
     });
     const retiredReviewNode = createEvidenceNode({
       type: reviewNode.type,
@@ -2892,17 +3015,15 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       output: reviewNode.output,
       runtimeMetadata: reviewNode.runtimeMetadata,
     });
-    const trackedRoleResult = trackedPlanReview.roleResults[0];
-    assert.equal(trackedRoleResult.form, 'ordinary-provider');
     const retiredRoleResult = admitRoleResult({
       assignment: trackedRoleResult.assignment,
       author: trackedRoleResult.author,
       participant: trackedRoleResult.participant,
       content: {
         ...trackedRoleResult.content,
-        nodeId: retiredReviewNode.nodeId,
-        resultDigest: retiredReviewNode.resultDigest,
-        contentDigest: retiredReviewNode.resultDigest,
+        nodeId: retiredProviderResult.nodeId,
+        resultDigest: retiredProviderResult.resultDigest,
+        contentDigest: retiredProviderResult.resultDigest,
       },
       providerInvocation: trackedRoleResult.providerInvocation,
       grantUse: null,
@@ -2941,7 +3062,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     const rejectedRuntimeState = snapshotFileTree(reviewerRuntime.root);
     try {
       await t.test(
-        'tracked PlanReview rejects a digest-consistent provider result with retired null runtime assurance without mutation',
+        'tracked PlanReview rejects a digest-consistent provider result with retired null runtime observation without mutation',
         () => {
           assert.throws(
             () =>
@@ -2974,20 +3095,101 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       fs.writeFileSync(planReviewPath, trackedPlanReviewBytes);
     }
     const challengeId = readPlanReviewNode(reviewNode).findings[0]!.findingId;
+    const dispositions = [
+      {
+        challengeId,
+        decision: 'rebutted' as const,
+        rationale:
+          'The exact provider worker path and its registered test are in the plan.',
+        author: reviewAuthority.identity,
+        supersededBy: null,
+      },
+    ];
+    const reauthoredRoleResult = admitRoleResult({
+      assignment: trackedRoleResult.assignment,
+      author: {
+        ...trackedRoleResult.author,
+        principalId: 're-authored-plan-review',
+      },
+      participant: trackedRoleResult.participant,
+      content: trackedRoleResult.content,
+      providerInvocation: trackedRoleResult.providerInvocation,
+      grantUse: null,
+      grantValidation: null,
+    });
+    const reauthoredArtifact = {
+      ...trackedPlanReview,
+      roleResults: [reauthoredRoleResult],
+    };
+    fs.writeFileSync(
+      planReviewPath,
+      `${canonicalJson(reauthoredArtifact)}\n`,
+      'utf8',
+    );
+    const reauthoredArtifactBytes = fs.readFileSync(planReviewPath);
+    const reauthoredGitState = {
+      head: git(repository, ['rev-parse', 'HEAD']),
+      tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+      status: git(repository, ['status', '--porcelain=v2', '-z']),
+    };
+    const reauthoredRuntimeState = snapshotFileTree(reviewerRuntime.root);
+    let dispositionSignatureCalls = 0;
+    try {
+      await t.test(
+        'challenge closure rejects a digest-consistent re-authored role result before signing or mutation',
+        () => {
+          assert.throws(
+            () =>
+              resumePropose(
+                repository,
+                changeId,
+                createPlanReviewDispositionsEnvelope(
+                  awaitingDisposition,
+                  dispositions,
+                ),
+                {
+                  challengeDispositionAuthority: {
+                    now: new Date('2026-08-10T00:00:00.000Z'),
+                    role: 'reviewer',
+                    signer: {
+                      ...reviewAuthority.signer,
+                      sign(payload, namespace) {
+                        dispositionSignatureCalls += 1;
+                        return reviewAuthority.signer.sign(payload, namespace);
+                      },
+                    },
+                  },
+                },
+              ),
+            (error: unknown) => isWorkflowError(error, 'PROPOSE_INPUT_STALE'),
+          );
+          assert.equal(dispositionSignatureCalls, 0);
+          assert.deepEqual(
+            fs.readFileSync(planReviewPath),
+            reauthoredArtifactBytes,
+          );
+          assert.deepEqual(
+            {
+              head: git(repository, ['rev-parse', 'HEAD']),
+              tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+              status: git(repository, ['status', '--porcelain=v2', '-z']),
+            },
+            reauthoredGitState,
+          );
+          assert.deepEqual(
+            snapshotFileTree(reviewerRuntime.root),
+            reauthoredRuntimeState,
+          );
+        },
+      );
+    } finally {
+      fs.writeFileSync(planReviewPath, trackedPlanReviewBytes);
+    }
     fs.writeFileSync(adapterPolicyPath, adapterPolicyBytes);
     const completedPlanning = resumePropose(
       repository,
       changeId,
-      createPlanReviewDispositionsEnvelope(awaitingDisposition, [
-        {
-          challengeId,
-          decision: 'rebutted',
-          rationale:
-            'The exact provider worker path and its registered test are in the plan.',
-          author: reviewAuthority.identity,
-          supersededBy: null,
-        },
-      ]),
+      createPlanReviewDispositionsEnvelope(awaitingDisposition, dispositions),
       {
         challengeDispositionAuthority: {
           now: new Date('2026-08-10T00:00:00.000Z'),

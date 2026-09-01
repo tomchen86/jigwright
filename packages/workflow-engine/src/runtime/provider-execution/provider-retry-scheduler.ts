@@ -12,7 +12,7 @@ import {
   type RetryMode,
 } from '../../modules/provider-orchestration/execution-core.ts';
 import type { GrantRequest } from '../../modules/authority/execution-governance.ts';
-import type { ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 import { inspectExecutionJob } from './execution-runtime.ts';
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import {
@@ -170,7 +170,7 @@ export type ProviderFailureRetryResult =
 export type ProcessProviderFailureRetryOptions = Readonly<{
   now?: string;
   dispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
+  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
 }>;
 
 /**
@@ -875,7 +875,7 @@ function scheduleProbeRetry(
 function publishReplacement(
   cwd: string,
   failed: ProviderInvocationRecord,
-  consumedRoleResultReplay?: ConsumedRoleResultReplayPort,
+  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort,
 ): string {
   if (failed.purpose === 'survey') {
     return publishSurveyReplacement(cwd, failed);
@@ -883,7 +883,10 @@ function publishReplacement(
   const collaborationGrantValidation =
     consumedRoleResultReplay === undefined
       ? undefined
-      : { consumedRoleResultReplay };
+      : {
+          consumedRoleResultReplay,
+          consumedPlanReviewReplay: consumedRoleResultReplay,
+        };
   const output = getProposeStatus(
     cwd,
     failed.investigationId,

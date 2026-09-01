@@ -9,6 +9,7 @@ import {
   createEvidenceNode,
   type EvidenceNode,
 } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { parsePlanReviewArtifact } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
@@ -16,6 +17,7 @@ import {
   type PlanReviewTermProjection,
 } from '../src/modules/projection/investigation-term-projection.ts';
 import {
+  assertCurrentPlanReviewProviderResultNode,
   createPlanReviewDispositionNode,
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
@@ -26,6 +28,7 @@ import {
   PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
+  planReviewSubmissionDigest,
   planReviewSubjectDigest,
   readPlanReviewTargetSnapshotNode,
   readPlanReviewDispositionNode,
@@ -56,7 +59,15 @@ import {
   admitRoleResult,
   type RoleAssignment,
 } from '../src/modules/provider-orchestration/role-scheduler.ts';
-import { createFixtureRepository, git } from './fixture.ts';
+import type {
+  ProviderInvocationRequest,
+  ProviderProcessResult,
+} from '../src/modules/provider-orchestration/provider-contracts.ts';
+import {
+  createCurrentPlanReviewProviderEvidenceForTest,
+  createFixtureRepository,
+  git,
+} from './fixture.ts';
 
 const DIGESTS = {
   schema: '1'.repeat(64),
@@ -71,6 +82,8 @@ const DIGESTS = {
   investigationNode: 'a'.repeat(64),
   investigationResult: 'b'.repeat(64),
 } as const;
+
+const providerResultsById = new Map<string, EvidenceNode>();
 
 test('PlanReview challenge authority uses the Jigwright product identity', () => {
   assert.equal(
@@ -188,44 +201,7 @@ test('plan review rejects structurally incomplete or invented admitted-result as
     providerResultNode: context.providerResult,
     submission: challengeSubmission(),
   });
-  const admitted = admitRoleResult({
-    assignment: context.assignment,
-    author: {
-      providerId: 'codex',
-      sessionId: 'author-session',
-      principalId: null,
-      identityAssurance: 'runtime-hint',
-      engineSpawned: false,
-    },
-    participant: {
-      providerId: context.assignment.providerId,
-      sessionId: context.assignment.sessionId,
-      principalId: null,
-      identityAssurance: 'adapter-assigned',
-      engineSpawned: true,
-    },
-    content: {
-      kind: 'plan-review',
-      nodeId: reviewNode.nodeId,
-      resultDigest: reviewNode.resultDigest,
-      outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-      evaluator: reviewNode.evaluator,
-      policyDigest: reviewNode.policyDigest,
-      contentDigest: reviewNode.resultDigest,
-      current: true,
-    },
-    providerInvocation: {
-      invocationId: 'plan-review-invocation',
-      requestDigest: 'c'.repeat(64),
-      outputDigest: 'd'.repeat(64),
-      providerId: context.assignment.providerId,
-      sessionId: context.assignment.sessionId,
-      targetDigest: context.assignment.targetDigest,
-      engineSpawned: true,
-    },
-    grantUse: null,
-    grantValidation: null,
-  });
+  const admitted = admittedRoleAuthorization(context.providerResult).roleResult;
 
   for (const mutate of [
     (value: Record<string, unknown>) => delete value.achievedIndependence,
@@ -1630,13 +1606,24 @@ function reviewContext(): {
       ['proposal.md', Buffer.from('# Proposal\n\nPreserve the behavior.\n')],
     ]),
   });
-  const providerResult = createPlanReviewProviderResultNode({
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject,
     assignment,
     submission: challengeSubmission(),
-    providerPolicyDigest: DIGESTS.reviewPolicy,
     targetSnapshotNode,
+    policyDigest: DIGESTS.reviewPolicy,
+    invocationId: 'plan-review-invocation',
+    runtimeObservation: 'current',
   });
+  const providerResult = rememberProviderResult(
+    createPlanReviewProviderResultNode({
+      subject,
+      assignment,
+      request: providerEvidence.request,
+      result: providerEvidence.result,
+      targetSnapshotNode,
+    }),
+  );
   return {
     target,
     generation,
@@ -1651,24 +1638,62 @@ function providerResultFor(
   context: ReturnType<typeof reviewContext>,
   submission: PlanReviewSubmission,
 ): EvidenceNode {
-  return createPlanReviewProviderResultNode({
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject: context.subject,
     assignment: context.assignment,
     submission,
-    providerPolicyDigest: DIGESTS.reviewPolicy,
     targetSnapshotNode: context.targetSnapshotNode,
+    policyDigest: DIGESTS.reviewPolicy,
+    invocationId: `plan-review-${crypto
+      .createHash('sha256')
+      .update(canonicalJson(submission))
+      .digest('hex')
+      .slice(0, 16)}`,
+    runtimeObservation: 'current',
   });
+  return rememberProviderResult(
+    createPlanReviewProviderResultNode({
+      subject: context.subject,
+      assignment: context.assignment,
+      request: providerEvidence.request,
+      result: providerEvidence.result,
+      targetSnapshotNode: context.targetSnapshotNode,
+    }),
+  );
+}
+
+function rememberProviderResult(node: EvidenceNode): EvidenceNode {
+  providerResultsById.set(node.nodeId, node);
+  return node;
+}
+
+function providerExecutionFromNode(node: EvidenceNode): {
+  request: ProviderInvocationRequest;
+  result: ProviderProcessResult;
+} {
+  return node.output as {
+    request: ProviderInvocationRequest;
+    result: ProviderProcessResult;
+  };
 }
 
 test('provider results require an immutable target snapshot binding', () => {
   const context = reviewContext();
+  const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
+    subject: context.subject,
+    assignment: context.assignment,
+    submission: challengeSubmission(),
+    targetSnapshotNode: context.targetSnapshotNode,
+    policyDigest: DIGESTS.reviewPolicy,
+    runtimeObservation: 'current',
+  });
   assert.throws(
     () =>
       createPlanReviewProviderResultNode({
         subject: context.subject,
         assignment: context.assignment,
-        submission: challengeSubmission(),
-        providerPolicyDigest: DIGESTS.reviewPolicy,
+        request: providerEvidence.request,
+        result: providerEvidence.result,
       } as Parameters<typeof createPlanReviewProviderResultNode>[0]),
     (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
   );
@@ -1685,16 +1710,206 @@ test('provider results require an immutable target snapshot binding', () => {
     output: { noArtifacts: true },
     runtimeMetadata: {},
   });
+  const fakeTargetEvidence = createCurrentPlanReviewProviderEvidenceForTest({
+    subject: context.subject,
+    assignment: context.assignment,
+    submission: challengeSubmission(),
+    targetSnapshotNode: fakeSnapshotNode,
+    policyDigest: DIGESTS.reviewPolicy,
+    runtimeObservation: 'current',
+  });
   assert.throws(
     () =>
       createPlanReviewProviderResultNode({
         subject: context.subject,
         assignment: context.assignment,
-        submission: challengeSubmission(),
-        providerPolicyDigest: DIGESTS.reviewPolicy,
+        request: fakeTargetEvidence.request,
+        result: fakeTargetEvidence.result,
         targetSnapshotNode: fakeSnapshotNode,
       }),
     (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+});
+
+test('current provider results bind the exact request, invocation, and admitted content', () => {
+  const context = reviewContext();
+  const roleResult = admittedRoleAuthorization(
+    context.providerResult,
+  ).roleResult;
+  assert.equal(
+    assertCurrentPlanReviewProviderResultNode(
+      context.providerResult,
+      roleResult.providerInvocation,
+      roleResult.content,
+      planReviewSubmissionDigest(challengeSubmission()),
+    ).nodeId,
+    context.providerResult.nodeId,
+  );
+
+  assert.throws(
+    () =>
+      assertCurrentPlanReviewProviderResultNode(
+        context.providerResult,
+        {
+          ...roleResult.providerInvocation,
+          outputDigest: 'f'.repeat(64),
+        },
+        roleResult.content,
+        planReviewSubmissionDigest(challengeSubmission()),
+      ),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+  assert.throws(
+    () =>
+      assertCurrentPlanReviewProviderResultNode(
+        context.providerResult,
+        roleResult.providerInvocation,
+        {
+          ...roleResult.content,
+          nodeId: 'f'.repeat(64),
+        },
+        planReviewSubmissionDigest(challengeSubmission()),
+      ),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+
+  const currentProviderOutput = context.providerResult.output as Record<
+    string,
+    unknown
+  > & { result: ProviderProcessResult };
+  const nullRuntimeProviderResult = createEvidenceNode({
+    type: context.providerResult.type,
+    nodeSchema: context.providerResult.nodeSchema,
+    evaluator: context.providerResult.evaluator,
+    policyDigest: context.providerResult.policyDigest,
+    exactInputDigests: {
+      ...context.providerResult.exactInputDigests,
+      runtimeObservation: crypto
+        .createHash('sha256')
+        .update(canonicalJson(null))
+        .digest('hex'),
+    },
+    semanticParentResultDigests:
+      context.providerResult.semanticParentResultDigests,
+    provenanceParentNodeIds: context.providerResult.provenanceParentNodeIds,
+    outputSchema: context.providerResult.outputSchema,
+    output: {
+      ...currentProviderOutput,
+      result: {
+        ...currentProviderOutput.result,
+        runtimeObservation: null,
+      },
+    },
+    runtimeMetadata: context.providerResult.runtimeMetadata,
+  });
+  assert.throws(
+    () =>
+      assertCurrentPlanReviewProviderResultNode(
+        nullRuntimeProviderResult,
+        null,
+        {
+          ...roleResult.content,
+          nodeId: nullRuntimeProviderResult.nodeId,
+          resultDigest: nullRuntimeProviderResult.resultDigest,
+          contentDigest: nullRuntimeProviderResult.resultDigest,
+        },
+        planReviewSubmissionDigest(challengeSubmission()),
+      ),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+
+  const alternatePolicyNode = createEvidenceNode({
+    type: context.providerResult.type,
+    nodeSchema: context.providerResult.nodeSchema,
+    evaluator: context.providerResult.evaluator,
+    policyDigest: 'f'.repeat(64),
+    exactInputDigests: context.providerResult.exactInputDigests,
+    semanticParentResultDigests:
+      context.providerResult.semanticParentResultDigests,
+    provenanceParentNodeIds: context.providerResult.provenanceParentNodeIds,
+    outputSchema: context.providerResult.outputSchema,
+    output: context.providerResult.output,
+    runtimeMetadata: context.providerResult.runtimeMetadata,
+  });
+  assert.throws(
+    () =>
+      assertCurrentPlanReviewProviderResultNode(
+        alternatePolicyNode,
+        roleResult.providerInvocation,
+        {
+          ...roleResult.content,
+          nodeId: alternatePolicyNode.nodeId,
+          resultDigest: alternatePolicyNode.resultDigest,
+          contentDigest: alternatePolicyNode.resultDigest,
+          policyDigest: alternatePolicyNode.policyDigest,
+        },
+        planReviewSubmissionDigest(challengeSubmission()),
+      ),
+    (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+  );
+});
+
+test('tracked PlanReview rejects a recomputed alternate-policy target snapshot', () => {
+  const context = reviewContext();
+  const alternateTargetSnapshot = createEvidenceNode({
+    type: context.targetSnapshotNode.type,
+    nodeSchema: context.targetSnapshotNode.nodeSchema,
+    evaluator: context.targetSnapshotNode.evaluator,
+    policyDigest: 'f'.repeat(64),
+    exactInputDigests: context.targetSnapshotNode.exactInputDigests,
+    semanticParentResultDigests:
+      context.targetSnapshotNode.semanticParentResultDigests,
+    provenanceParentNodeIds: context.targetSnapshotNode.provenanceParentNodeIds,
+    outputSchema: context.targetSnapshotNode.outputSchema,
+    output: context.targetSnapshotNode.output,
+    runtimeMetadata: context.targetSnapshotNode.runtimeMetadata,
+  });
+  const alternateProviderResult = createEvidenceNode({
+    type: context.providerResult.type,
+    nodeSchema: context.providerResult.nodeSchema,
+    evaluator: context.providerResult.evaluator,
+    policyDigest: context.providerResult.policyDigest,
+    exactInputDigests: {
+      ...context.providerResult.exactInputDigests,
+      targetSnapshot: alternateTargetSnapshot.nodeId,
+    },
+    semanticParentResultDigests: {
+      targetSnapshot: alternateTargetSnapshot.resultDigest,
+    },
+    provenanceParentNodeIds: {
+      targetSnapshot: alternateTargetSnapshot.nodeId,
+    },
+    outputSchema: context.providerResult.outputSchema,
+    output: context.providerResult.output,
+    runtimeMetadata: context.providerResult.runtimeMetadata,
+  });
+  const reviewNode = createPlanReviewNode({
+    subject: context.subject,
+    assignment: context.assignment,
+    providerResultNode: alternateProviderResult,
+    submission: challengeSubmission(),
+  });
+  const roleResult = admittedRoleAuthorization(
+    alternateProviderResult,
+  ).roleResult;
+  assert.throws(
+    () =>
+      parsePlanReviewArtifact(
+        {
+          schemaVersion: 1,
+          kind: 'plan-review-artifact',
+          changeId: 'demo-change',
+          nodes: [
+            alternateTargetSnapshot,
+            alternateProviderResult,
+            reviewNode,
+          ].sort((left, right) => left.nodeId.localeCompare(right.nodeId)),
+          currentRefs: { planReview: reviewNode.nodeId },
+          roleResults: [roleResult],
+        },
+        'demo-change',
+      ),
+    (error) => isWorkflowError(error, 'INVALID_PLAN_REVIEW_ARTIFACT'),
   );
 });
 
@@ -1808,6 +2023,15 @@ function currentValidationInput(
   reviewNode: EvidenceNode,
 ) {
   const review = readPlanReviewNode(reviewNode);
+  const providerResultNode = providerResultsById.get(
+    review.providerResultNodeId,
+  );
+  if (
+    providerResultNode === undefined ||
+    providerResultNode.resultDigest !== review.providerResultResultDigest
+  ) {
+    throw new TypeError('Fixture PlanReview provider result is unavailable.');
+  }
   const challengeIds = review.findings
     .filter(({ kind }) => kind === 'challenge')
     .map(({ findingId }) => findingId);
@@ -1826,13 +2050,14 @@ function currentValidationInput(
         });
   return {
     reviewNode,
+    providerResultNode,
     dispositionNode,
     subject: context.subject,
     generation: context.generation,
     target: context.target,
     expectedReviewPolicyDigest: DIGESTS.reviewPolicy,
     requiredIndependence: 'provider-independent' as const,
-    independenceAuthorization: admittedRoleAuthorization(reviewNode),
+    independenceAuthorization: admittedRoleAuthorization(providerResultNode),
     repositoryEvidence: repositoryEvidenceFor(
       reviewNode,
       context.subject.investigationBaseline.tree,
@@ -1840,12 +2065,12 @@ function currentValidationInput(
   };
 }
 
-function admittedRoleAuthorization(reviewNode: EvidenceNode) {
-  const review = readPlanReviewNode(reviewNode);
+function admittedRoleAuthorization(providerResultNode: EvidenceNode) {
+  const { request, result } = providerExecutionFromNode(providerResultNode);
   return {
     kind: 'admitted-role-result' as const,
     roleResult: admitRoleResult({
-      assignment: review.assignment,
+      assignment: request.roleAssignment,
       author: {
         providerId: 'codex',
         sessionId: 'author-session',
@@ -1854,29 +2079,29 @@ function admittedRoleAuthorization(reviewNode: EvidenceNode) {
         engineSpawned: false,
       },
       participant: {
-        providerId: review.assignment.providerId,
-        sessionId: review.assignment.sessionId,
+        providerId: request.roleAssignment.providerId,
+        sessionId: request.roleAssignment.sessionId,
         principalId: null,
         identityAssurance: 'adapter-assigned',
         engineSpawned: true,
       },
       content: {
         kind: 'plan-review',
-        nodeId: reviewNode.nodeId,
-        resultDigest: reviewNode.resultDigest,
-        outputSchema: PLAN_REVIEW_OUTPUT_SCHEMA,
-        evaluator: reviewNode.evaluator,
-        policyDigest: reviewNode.policyDigest,
-        contentDigest: reviewNode.resultDigest,
+        nodeId: providerResultNode.nodeId,
+        resultDigest: providerResultNode.resultDigest,
+        outputSchema: request.outputSchema,
+        evaluator: request.evaluatorVersion,
+        policyDigest: request.policyDigest,
+        contentDigest: providerResultNode.resultDigest,
         current: true,
       },
       providerInvocation: {
-        invocationId: 'plan-review-invocation',
-        requestDigest: 'c'.repeat(64),
-        outputDigest: 'd'.repeat(64),
-        providerId: review.assignment.providerId,
-        sessionId: review.assignment.sessionId,
-        targetDigest: review.assignment.targetDigest,
+        invocationId: request.invocationId,
+        requestDigest: request.requestDigest,
+        outputDigest: result.outputDigest,
+        providerId: request.providerId,
+        sessionId: request.roleAssignment.sessionId,
+        targetDigest: request.targetDigest,
         engineSpawned: true,
       },
       grantUse: null,
@@ -2213,11 +2438,19 @@ test('resolved planning evidence uses canonical UTF-8 path ordering', () => {
         },
       ],
     });
-    const providerResultNode = createPlanReviewProviderResultNode({
+    const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
       subject: context.subject,
       assignment: context.assignment,
       submission,
-      providerPolicyDigest: DIGESTS.reviewPolicy,
+      targetSnapshotNode,
+      policyDigest: DIGESTS.reviewPolicy,
+      runtimeObservation: 'current',
+    });
+    const providerResultNode = createPlanReviewProviderResultNode({
+      subject: context.subject,
+      assignment: context.assignment,
+      request: providerEvidence.request,
+      result: providerEvidence.result,
       targetSnapshotNode,
     });
     const reviewNode = createPlanReviewNode({

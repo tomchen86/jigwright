@@ -16,7 +16,6 @@ import {
 } from '../src/application/propose/role-context-sharing-plan-review.ts';
 import { completeRoleContextSharingPlanReviewAdmission } from '../src/application/propose/propose-orchestrator.ts';
 import { runCli } from '../src/cli.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { productionRoleContextSharingGrantLifecyclePort } from '../src/composition-root/role-context-sharing-grant-lifecycle-production.ts';
 import {
   ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1,
@@ -36,10 +35,7 @@ import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../src/modules/authority/rol
 import { createMaintainerAuditTag } from '../src/modules/authority/maintainer-grant.ts';
 import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
-import {
-  deriveInvestigationFirstPlanningSubject,
-  validateInvestigationFirstPlanningReadiness,
-} from '../src/modules/assurance/planning-assurance-validator.ts';
+import { replayCurrentPlanReviewRoleResult } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   agentRolePlanV2Digest,
   type AgentRolePlanBodyV2,
@@ -61,84 +57,13 @@ import {
   roleContextSharingStorePaths,
   storeAvailableRoleContextSharingGrant,
 } from '../src/runtime/storage-journal/role-context-sharing-store.ts';
-import {
-  createFixtureRepository,
-  isWorkflowError,
-  writeReadyV3ExemptChange,
-} from './fixture.ts';
+import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
 
 const GRANT_ID = '12345678-1234-4123-8123-123456789abc';
 const APPROVAL_GRANT_ID = '87654321-4321-4321-8321-cba987654321';
 const UNLISTED_GRANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const NOW = new Date('2026-08-21T00:01:00.000Z');
-
-test('planning readiness routes terminal R-007 results through its dedicated replay port', () => {
-  const repositoryRoot = createFixtureRepository();
-  try {
-    writeReadyV3ExemptChange(repositoryRoot, 'demo-change');
-    const contract = structuredClone(
-      loadChangeContract(repositoryRoot, 'demo-change'),
-    );
-    const subject = deriveInvestigationFirstPlanningSubject(
-      repositoryRoot,
-      contract,
-    ).subject;
-    const stored = contract.planReview!.roleResults![0] as Record<
-      string,
-      unknown
-    >;
-    stored.schemaVersion = 2;
-    stored.form = 'granted-role-context-sharing';
-    stored.grantUse = null;
-    stored.roleContextSharingUse = {
-      kind: 'role-context-sharing-consumed-use.v1',
-      expectedBinding: {
-        repositoryId: 'github:R_fixture',
-        repositoryOrigin: 'https://github.com/example/fixture.git',
-        policyBlob: '0'.repeat(40),
-        roleContextSharingPolicyDigest: '1'.repeat(64),
-        centralRoleConfigurationDigest: '2'.repeat(64),
-        changeOverrideDigest: '3'.repeat(64),
-        providerRegistryDigest: '4'.repeat(64),
-        eligibilityPolicyDigest: '5'.repeat(64),
-        changeId: contract.changeId,
-        taskId: null,
-        baselineCommit: subject.investigationBaseline.head,
-        baselineTree: subject.investigationBaseline.tree,
-        targetDigest: subject.subjectDigest,
-        lifecyclePhase: 'plan-review',
-        subjectDigest: subject.subjectDigest,
-        planningGeneration: subject.planningGenerationId,
-        rolePairs: ['author-reviewer'],
-        contextGeneration: 1,
-        sessionGeneration: 1,
-        sharedEngineSessionId: 'fixture-shared-session',
-        providerDefinitionDigest: '6'.repeat(64),
-        reason: 'Exercise the dedicated terminal replay port.',
-      },
-    };
-    let replayCalls = 0;
-    const replaySentinel = new Error('r007-replay-port-called');
-
-    assert.throws(
-      () =>
-        validateInvestigationFirstPlanningReadiness(repositoryRoot, contract, {
-          verify() {
-            throw new Error('legacy Collaboration replay must not run');
-          },
-          verifyRoleContextSharing() {
-            replayCalls += 1;
-            throw replaySentinel;
-          },
-        } as never),
-      (error) => error === replaySentinel,
-    );
-    assert.equal(replayCalls, 1);
-  } finally {
-    fs.rmSync(repositoryRoot, { recursive: true, force: true });
-  }
-});
 
 test('R-007 reserve precedes launch, exact result consumes once, and crash replay is receipt-idempotent', (t) => {
   const repositoryRoot = createFixtureRepository();
@@ -462,7 +387,39 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     throw new Error('Expected one role-context-sharing result.');
   }
   const terminalRoleResult = completed.roleResult;
+  const replayContext = {
+    repositoryRoot,
+    changeId: expected.changeId,
+    baselineCommit: expected.baselineCommit,
+    baselineTree: expected.baselineTree,
+    subjectDigest: expected.subjectDigest,
+    planningGenerationId: expected.planningGeneration,
+  };
   assert.equal(completed.roleResult.grantUse, null);
+  const planReviewSchema = JSON.parse(
+    fs.readFileSync(
+      new URL(
+        '../../../workflow/schemas/plan-review-artifact.schema.json',
+        import.meta.url,
+      ),
+      'utf8',
+    ),
+  ) as {
+    $defs: {
+      admittedRoleResultV2: {
+        additionalProperties: boolean;
+        required: string[];
+      };
+    };
+  };
+  assert.equal(
+    planReviewSchema.$defs.admittedRoleResultV2.additionalProperties,
+    false,
+  );
+  assert.deepEqual(
+    [...planReviewSchema.$defs.admittedRoleResultV2.required].sort(),
+    Object.keys(terminalRoleResult).sort(),
+  );
   assert.equal(
     completed.roleResult.roleContextSharingUse.grantId,
     reserved.assignment.roleContextSharingGrantId,
@@ -490,6 +447,19 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
         'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_UNAVAILABLE',
       ),
   );
+  assert.throws(
+    () =>
+      replayCurrentPlanReviewRoleResult(
+        terminalRoleResult,
+        replayContext,
+        productionConsumedPlanReviewReplayPort,
+      ),
+    (error) =>
+      isWorkflowError(
+        error,
+        'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_UNAVAILABLE',
+      ),
+  );
   const publishedReceipt = publishRoleContextSharingTerminalReceipt(
     repositoryRoot,
     GRANT_ID,
@@ -508,6 +478,14 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     `refs/tags/workflow-grant/role-context-sharing-use-${GRANT_ID}`,
   );
   assert.equal(publishedReceipt.target, repository.head);
+  assert.equal(
+    replayCurrentPlanReviewRoleResult(
+      terminalRoleResult,
+      replayContext,
+      productionConsumedPlanReviewReplayPort,
+    ).resultDigest,
+    terminalRoleResult.resultDigest,
+  );
   assert.throws(
     () =>
       canonicalRoleContextSharingTerminalReceiptPayloadV1({

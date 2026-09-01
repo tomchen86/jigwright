@@ -38,7 +38,10 @@ import {
   createCurrentAgentRuntimeAssignmentV1,
   type CurrentAgentRuntimeAssignmentV1,
 } from '../../composition-root/change-role-assignment-production.ts';
-import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
+import {
+  productionConsumedPlanReviewReplayPort,
+  productionConsumedRoleResultReplayPort,
+} from '../../composition-root/grant-verifier-composition.ts';
 import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
@@ -1154,7 +1157,7 @@ function runTerminalFollowups(
           : { now: options.automaticRetry.now }),
         dispatcher:
           options.automaticRetry?.dispatcher ?? dispatchProviderWorker,
-        consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+        consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
       });
     } catch (error) {
       if (isRoleAssignmentGrantRequired(error)) throw error;

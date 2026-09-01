@@ -7,6 +7,7 @@ import {
   type PlanningGeneration,
 } from '../lifecycle/planning-generation.ts';
 import {
+  assertCurrentPlanReviewProviderResultNode,
   assertPlanReviewSubject,
   assertPlanReviewTargetSnapshot,
   readPlanReviewDispositionNode,
@@ -69,6 +70,7 @@ export type PlanReviewPlanningEvidence = {
  */
 export type ValidatePlanReviewInput = {
   reviewNode: EvidenceNode;
+  providerResultNode: EvidenceNode;
   dispositionNode: EvidenceNode | null;
   subject: PlanReviewSubject;
   generation: PlanningGeneration;
@@ -126,6 +128,7 @@ export function validatePlanReview(
     !isPlainRecord(input) ||
     !hasExactKeys(input, [
       'reviewNode',
+      'providerResultNode',
       'dispositionNode',
       'subject',
       'generation',
@@ -164,6 +167,12 @@ export function validatePlanReview(
       : assertPlanningEvidence(input.planningEvidence);
 
   const staleReasons = new Set<string>();
+  if (
+    input.providerResultNode.nodeId !== review.providerResultNodeId ||
+    input.providerResultNode.resultDigest !== review.providerResultResultDigest
+  ) {
+    staleReasons.add('REVIEW_ROLE_RESULT_MISMATCH');
+  }
   if (review.subjectDigest !== subject.subjectDigest) {
     staleReasons.add('SUBJECT_BINDING_MISMATCH');
   }
@@ -245,12 +254,22 @@ export function validatePlanReview(
   const roleResultForm = admittedRoleResult.form;
   const orchestration = admittedRoleResult.orchestration;
   const degradationAuthorized = admittedRoleResult.form !== 'ordinary-provider';
+  try {
+    assertCurrentPlanReviewProviderResultNode(
+      input.providerResultNode,
+      admittedRoleResult.providerInvocation,
+      admittedRoleResult.content,
+      input.reviewNode.exactInputDigests.submission,
+    );
+  } catch {
+    staleReasons.add('REVIEW_ROLE_RESULT_MISMATCH');
+  }
   if (
     admittedRoleResult.role !== 'plan-reviewer' ||
     admittedRoleResult.targetDigest !== subject.subjectDigest ||
-    admittedRoleResult.content.nodeId !== review.nodeId ||
-    admittedRoleResult.content.resultDigest !== review.resultDigest ||
-    admittedRoleResult.content.policyDigest !== review.policyDigest ||
+    admittedRoleResult.content.nodeId !== review.providerResultNodeId ||
+    admittedRoleResult.content.resultDigest !==
+      review.providerResultResultDigest ||
     admittedRoleResult.assignment.providerId !== review.assignment.providerId ||
     admittedRoleResult.assignment.sessionId !== review.assignment.sessionId ||
     admittedRoleResult.assignment.targetDigest !==
@@ -506,43 +525,40 @@ function assertIndependenceAuthorization(
 function isAdmittedRoleResultShape(
   value: unknown,
 ): value is AdmittedRoleResult {
-  return (
-    isPlainRecord(value) &&
-    hasExactKeys(value, [
-      'schemaVersion',
-      'form',
-      'role',
-      'targetDigest',
-      'assignment',
-      'author',
-      'participant',
-      'orchestration',
-      'requiredIndependence',
-      'achievedIndependence',
-      'content',
-      'providerInvocation',
-      'grantUse',
-      'directHumanReviewAttestation',
-      'resultDigest',
-    ]) &&
-    value.schemaVersion === 1 &&
+  if (!isPlainRecord(value)) return false;
+  const commonKeys = [
+    'schemaVersion',
+    'form',
+    'role',
+    'targetDigest',
+    'assignment',
+    'author',
+    'participant',
+    'orchestration',
+    'requiredIndependence',
+    'achievedIndependence',
+    'content',
+    'providerInvocation',
+    'grantUse',
+    'directHumanReviewAttestation',
+    'resultDigest',
+  ] as const;
+  if (
+    !hasExactKeys(
+      value,
+      value.schemaVersion === 2
+        ? [...commonKeys, 'roleContextSharingUse']
+        : commonKeys,
+    )
+  ) {
+    return false;
+  }
+  const commonShape =
     value.role === 'plan-reviewer' &&
     typeof value.targetDigest === 'string' &&
     DIGEST_PATTERN.test(value.targetDigest) &&
     typeof value.resultDigest === 'string' &&
     DIGEST_PATTERN.test(value.resultDigest) &&
-    typeof value.form === 'string' &&
-    [
-      'ordinary-provider',
-      'granted-same-provider',
-      'granted-caller-supplied',
-      'direct-human-attestation',
-    ].includes(value.form) &&
-    [
-      'engine-spawned-provider',
-      'caller-supplied',
-      'direct-human-review',
-    ].includes(String(value.orchestration)) &&
     value.requiredIndependence === 'provider-independent' &&
     [
       'provider-independent',
@@ -557,7 +573,32 @@ function isAdmittedRoleResultShape(
     typeof value.content.resultDigest === 'string' &&
     DIGEST_PATTERN.test(value.content.resultDigest) &&
     typeof value.content.policyDigest === 'string' &&
-    DIGEST_PATTERN.test(value.content.policyDigest)
+    DIGEST_PATTERN.test(value.content.policyDigest);
+  if (!commonShape) return false;
+  if (value.schemaVersion === 2) {
+    return (
+      value.form === 'granted-role-context-sharing' &&
+      value.orchestration === 'engine-spawned-provider' &&
+      value.grantUse === null &&
+      value.directHumanReviewAttestation === null &&
+      isPlainRecord(value.providerInvocation) &&
+      isPlainRecord(value.roleContextSharingUse)
+    );
+  }
+  return (
+    value.schemaVersion === 1 &&
+    typeof value.form === 'string' &&
+    [
+      'ordinary-provider',
+      'granted-same-provider',
+      'granted-caller-supplied',
+      'direct-human-attestation',
+    ].includes(value.form) &&
+    [
+      'engine-spawned-provider',
+      'caller-supplied',
+      'direct-human-review',
+    ].includes(String(value.orchestration))
   );
 }
 

@@ -50,7 +50,7 @@ import {
 } from '../../runtime/storage-journal/provider-invocation-store.ts';
 import { withRepositoryLifecycleOperation } from '../../runtime/session-workspace/session-store.ts';
 import { assertActiveTaskMandateBindingUnderLifecycleLock } from '../../modules/authority/task-mandate.ts';
-import type { ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
+import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 
 export type ExecutionRetryRequestResult = Readonly<{
   schemaVersion: 1;
@@ -158,7 +158,7 @@ export type ExecutionReplacementTransaction = Readonly<{
 export type ExecuteGrantedReplacementOptions = {
   now?: Date;
   providerDispatcher?: (cwd: string, invocationId: string) => unknown;
-  consumedRoleResultReplay?: ConsumedRoleResultReplayPort;
+  consumedRoleResultReplay?: ConsumedPlanReviewReplayPort;
   simulateCrashAfter?:
     | 'prepared'
     | 'grant-consume-before-journal'
@@ -838,10 +838,18 @@ function isPublishedReplacement(
 
 function consumedRoleResultReplayValidation(
   options: Pick<ExecuteGrantedReplacementOptions, 'consumedRoleResultReplay'>,
-): { consumedRoleResultReplay: ConsumedRoleResultReplayPort } | undefined {
+):
+  | {
+      consumedRoleResultReplay: ConsumedPlanReviewReplayPort;
+      consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+    }
+  | undefined {
   return options.consumedRoleResultReplay === undefined
     ? undefined
-    : { consumedRoleResultReplay: options.consumedRoleResultReplay };
+    : {
+        consumedRoleResultReplay: options.consumedRoleResultReplay,
+        consumedPlanReviewReplay: options.consumedRoleResultReplay,
+      };
 }
 
 function requestExecutionReplacementBytes(
