@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   assertPlanningPaths,
   assertPlanningTaskHistory,
 } from '../src/application/propose/planning-transition.ts';
+import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 import { isWorkflowError } from './fixture.ts';
+
+test('OpenSpec planning path grammar is package-owned behind the engine facade', () => {
+  const facade = fs.readFileSync(
+    path.join(import.meta.dirname, '../src/modules/source/planning-paths.ts'),
+    'utf8',
+  );
+
+  assert.match(facade, /@jigwright\/openspec-adapter\/planning-paths/u);
+  assert.doesNotMatch(
+    facade,
+    /['"](?:\.openspec\.yaml|proposal\.md|design\.md|tasks\.md|guard\.json|investigation\.json|execution\.json|plan-review\.json|spec\.md)['"]/u,
+  );
+});
 
 test('planning paths accept only the exact named OpenSpec planning grammar', () => {
   assert.doesNotThrow(() =>
@@ -140,6 +156,33 @@ test('planning paths reject the reserved OpenSpec archive container as a change'
         'jigwright',
       ),
     (error) => isWorkflowError(error, 'PLANNING_CHANGE_ID_RESERVED'),
+  );
+});
+
+test('planning path package errors retain exact workflow error bytes', () => {
+  assert.throws(
+    () =>
+      assertPlanningPaths(
+        'openspec/changes',
+        'demo-change',
+        ['../escape'],
+        [],
+        'jigwright',
+        'jigwright',
+      ),
+    (error) => {
+      assert.equal(error instanceof WorkflowError, true);
+      const workflow = error as WorkflowError;
+      assert.equal(workflow.code, 'INVALID_REPOSITORY_PATH');
+      assert.equal(
+        workflow.message,
+        'Invalid repository path reported by Git: ../escape',
+      );
+      assert.equal(workflow.exitCode, ExitCode.guard);
+      assert.deepEqual(workflow.details, { path: '../escape' });
+      assert.equal(workflow.recovery, undefined);
+      return true;
+    },
   );
 });
 

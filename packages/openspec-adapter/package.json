@@ -13,6 +13,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./archive-projection": "./src/archive-projection.ts",
+    "./planning-paths": "./src/planning-paths.ts",
     "./planning-provider": "./src/planning-provider.ts",
     "./provider-binding": "./src/provider-binding.ts",
     "./validation-payload": "./src/validation-payload.ts"

@@ -247,6 +247,7 @@ test('@jigwright/openspec-adapter has one-way public package dependencies', () =
   assert.deepEqual(Object.keys(manifest.exports ?? {}).sort(), [
     '.',
     './archive-projection',
+    './planning-paths',
     './planning-provider',
     './provider-binding',
     './validation-payload',
