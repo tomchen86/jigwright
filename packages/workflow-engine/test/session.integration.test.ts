@@ -37,6 +37,7 @@ import {
   git,
   installFakeOpenSpec,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
@@ -1209,7 +1210,7 @@ test('update-base replays a finished non-final task branch and recomputes local 
       path.join(repository, 'openspec/changes/demo-change/tasks.md'),
       '\n- [ ] 1.2 Keep the fixture change open\n',
     );
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, 'demo-change');
     prepareCurrentChange(repository);
     git(repository, ['checkout', 'main']);
     git(repository, ['merge', '--ff-only', 'work/demo-change']);
