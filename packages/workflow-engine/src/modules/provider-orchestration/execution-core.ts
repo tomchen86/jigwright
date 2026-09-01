@@ -5,11 +5,14 @@ import {
   ATTEMPT_STATUSES_V2,
   JOB_STATUSES_V2,
   AttemptResultCodecError,
+  SemanticJobSpecCodecError,
   assertAttemptAcceptanceBindingV1,
+  assertSemanticJobSpecV1,
   createAttemptAcceptanceBindingV1,
   type AttemptAcceptanceBindingV1,
   type AttemptStatusV2,
   type JobStatusV2,
+  type SemanticJobSpecV1,
 } from '@jigwright/core/job-attempt-runtime';
 import {
   ReadOnlyProbeCodecError,
@@ -88,15 +91,8 @@ export type RetryPolicy = {
   providerLimits: Readonly<Record<string, number>>;
 };
 
-export type SemanticJobSpec = {
-  schemaVersion: 1;
-  contractVersion: number;
-  stage: string;
-  contextDigest: string;
-  inputDigest: string;
-  outputContractDigest: string;
-  acceptancePolicyDigest: string;
-};
+/** Compatibility name for the public core-owned V1 semantic Job value. */
+export type SemanticJobSpec = SemanticJobSpecV1;
 
 /** Compatibility name for the public core-owned V1 execution policy value. */
 export type ExecutionPolicySnapshot = ExecutionPolicySnapshotV1;
@@ -1946,28 +1942,12 @@ export function assertAttemptResult(value: unknown): AttemptResult {
 }
 
 function assertSemanticJobSpec(value: unknown): SemanticJobSpec {
-  if (
-    !isPlainObject(value) ||
-    !hasExactKeys(value, [
-      'acceptancePolicyDigest',
-      'contextDigest',
-      'contractVersion',
-      'inputDigest',
-      'outputContractDigest',
-      'schemaVersion',
-      'stage',
-    ]) ||
-    value.schemaVersion !== 1
-  ) {
-    throw executionInvalid('Semantic Job specification is invalid.');
+  try {
+    return assertSemanticJobSpecV1(value);
+  } catch (error) {
+    if (!(error instanceof SemanticJobSpecCodecError)) throw error;
+    throw executionInvalid(error.message);
   }
-  assertPositiveInteger(value.contractVersion, 'contractVersion');
-  assertIdentifier(value.stage, 'stage');
-  assertDigest(value.contextDigest);
-  assertDigest(value.inputDigest);
-  assertDigest(value.outputContractDigest);
-  assertDigest(value.acceptancePolicyDigest);
-  return deepFreeze(structuredClone(value) as SemanticJobSpec);
 }
 
 function assertExecutionPolicy(value: unknown): ExecutionPolicySnapshot {

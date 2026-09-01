@@ -5,12 +5,12 @@ import { canonicalJson } from './canonical-json.ts';
 /**
  * Partial mechanical extraction from workflow-engine execution-core.
  *
- * This module owns only the exact landed Job/Attempt state vocabulary and the
- * exact AttemptResult acceptance-binding codec. Aggregate transition adoption
- * is NOT implemented here: workflow-engine execution-store remains the unique
- * Job/Attempt aggregate and transition authority. A future move must delete
- * that old implementation in the same slice; it must never dual-run a second
- * reducer beside execution-store.
+ * This module owns only the exact landed Job/Attempt state vocabulary,
+ * SemanticJobSpec value, and AttemptResult acceptance-binding codec.
+ * Aggregate transition adoption is NOT implemented here:
+ * workflow-engine execution-store remains the unique Job/Attempt aggregate and
+ * transition authority. A future move must delete that old implementation in
+ * the same slice; it must never dual-run a second reducer beside execution-store.
  */
 export const JOB_ATTEMPT_RUNTIME_CONTRACT_VERSION =
   'jigwright.job-attempt-runtime.v1' as const;
@@ -50,6 +50,16 @@ export type JobStatusV2 = (typeof JOB_STATUSES_V2)[number];
 export type AttemptStatusV2 = (typeof ATTEMPT_STATUSES_V2)[number];
 export type AttemptAcceptanceV1 = (typeof ATTEMPT_ACCEPTANCES_V1)[number];
 
+export type SemanticJobSpecV1 = {
+  schemaVersion: 1;
+  contractVersion: number;
+  stage: string;
+  contextDigest: string;
+  inputDigest: string;
+  outputContractDigest: string;
+  acceptancePolicyDigest: string;
+};
+
 export type AttemptResultIdentityV1 = Readonly<{
   workflowId: string;
   epoch: number;
@@ -83,9 +93,54 @@ export class AttemptResultCodecError extends TypeError {
   }
 }
 
+export class SemanticJobSpecCodecError extends TypeError {
+  readonly code = 'SEMANTIC_JOB_SPEC_INVALID';
+
+  constructor(message = 'Semantic Job specification is invalid.') {
+    super(message);
+    this.name = 'SemanticJobSpecCodecError';
+  }
+}
+
 const IDENTIFIER = /^[a-z0-9][a-z0-9._:-]{0,255}$/;
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const ACCEPTANCE_SET = new Set<AttemptAcceptanceV1>(ATTEMPT_ACCEPTANCES_V1);
+
+/** Admit and snapshot the immutable semantic identity shared by Job retries. */
+export function assertSemanticJobSpecV1(value: unknown): SemanticJobSpecV1 {
+  if (
+    !isPlainRecord(value) ||
+    !hasExactKeys(value, [
+      'acceptancePolicyDigest',
+      'contextDigest',
+      'contractVersion',
+      'inputDigest',
+      'outputContractDigest',
+      'schemaVersion',
+      'stage',
+    ]) ||
+    value.schemaVersion !== 1
+  ) {
+    throw new SemanticJobSpecCodecError();
+  }
+  if (!isPositiveInteger(value.contractVersion)) {
+    throw new SemanticJobSpecCodecError(
+      'contractVersion must be a positive integer.',
+    );
+  }
+  if (!isIdentifier(value.stage)) {
+    throw new SemanticJobSpecCodecError('stage is invalid.');
+  }
+  if (
+    !isDigest(value.contextDigest) ||
+    !isDigest(value.inputDigest) ||
+    !isDigest(value.outputContractDigest) ||
+    !isDigest(value.acceptancePolicyDigest)
+  ) {
+    throw new SemanticJobSpecCodecError('Digest is invalid.');
+  }
+  return deepFreeze(structuredClone(value) as SemanticJobSpecV1);
+}
 
 export function assertAttemptAcceptanceBindingV1(
   value: unknown,
@@ -181,6 +236,12 @@ function assertAttemptResultIdentity(value: unknown): AttemptResultIdentityV1 {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  if (!isRecord(value)) return false;
+  const prototype = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }
 
 function hasExactKeys(

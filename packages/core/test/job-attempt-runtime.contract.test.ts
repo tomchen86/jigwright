@@ -7,13 +7,26 @@ import {
   JOB_ATTEMPT_RUNTIME_CONTRACT_VERSION,
   JOB_STATUSES_V2,
   AttemptResultCodecError,
+  SemanticJobSpecCodecError,
   assertAttemptAcceptanceBindingV1,
+  assertSemanticJobSpecV1,
   attemptResultDigestV1,
   createAttemptAcceptanceBindingV1,
   type AttemptResultIdentityV1,
+  type SemanticJobSpecV1,
 } from '../src/job-attempt-runtime.ts';
 
 const digest = (character: string): string => `sha256:${character.repeat(64)}`;
+
+const SEMANTIC_SPEC: SemanticJobSpecV1 = {
+  schemaVersion: 1,
+  contractVersion: 2,
+  stage: 'plan-review',
+  contextDigest: digest('a'),
+  inputDigest: digest('b'),
+  outputContractDigest: digest('c'),
+  acceptancePolicyDigest: digest('d'),
+};
 
 const RESULT_IDENTITY: AttemptResultIdentityV1 = {
   workflowId: 'workflow-a',
@@ -54,6 +67,47 @@ test('core publishes only the exact landed Job and Attempt vocabularies', () => 
     'late-duplicate',
     'cancelled',
   ]);
+});
+
+test('core snapshots the exact current SemanticJobSpec value', () => {
+  const input = structuredClone(SEMANTIC_SPEC) as SemanticJobSpecV1;
+  const snapshot = assertSemanticJobSpecV1(input);
+  (input as { stage: string }).stage = 'poisoned';
+  assert.deepEqual(snapshot, SEMANTIC_SPEC);
+  assert.equal(Object.isFrozen(snapshot), true);
+});
+
+test('SemanticJobSpec codec preserves exact engine validation failures', () => {
+  const candidates: ReadonlyArray<readonly [unknown, string]> = [
+    [
+      Object.assign(Object.create({ inherited: true }), SEMANTIC_SPEC),
+      'Semantic Job specification is invalid.',
+    ],
+    [
+      { ...SEMANTIC_SPEC, schemaVersion: 2 },
+      'Semantic Job specification is invalid.',
+    ],
+    [
+      { ...SEMANTIC_SPEC, unknown: true },
+      'Semantic Job specification is invalid.',
+    ],
+    [
+      { ...SEMANTIC_SPEC, contractVersion: 0 },
+      'contractVersion must be a positive integer.',
+    ],
+    [{ ...SEMANTIC_SPEC, stage: 'Plan Review' }, 'stage is invalid.'],
+    [{ ...SEMANTIC_SPEC, inputDigest: 'b'.repeat(64) }, 'Digest is invalid.'],
+  ];
+  for (const [candidate, message] of candidates) {
+    assert.throws(
+      () => assertSemanticJobSpecV1(candidate),
+      (error) =>
+        error instanceof SemanticJobSpecCodecError &&
+        error.code === 'SEMANTIC_JOB_SPEC_INVALID' &&
+        error.message === message,
+      message,
+    );
+  }
 });
 
 test('AttemptResult factory and parser preserve the landed identity digest exactly', () => {

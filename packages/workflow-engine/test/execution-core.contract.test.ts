@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { assertExecutionPolicySnapshotV1 } from '@jigwright/core/execution-policy-snapshot';
+import {
+  assertSemanticJobSpecV1,
+  type SemanticJobSpecV1,
+} from '@jigwright/core/job-attempt-runtime';
 import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
 
 import {
@@ -73,22 +77,27 @@ const POLICY_600: ExecutionPolicySnapshot = {
   timeoutMs: 600_000,
 };
 
-function createJob(executionPolicy: ExecutionPolicySnapshot = POLICY_300) {
+const SEMANTIC_SPEC: SemanticJobSpecV1 = {
+  schemaVersion: 1,
+  contractVersion: 2,
+  stage: 'plan-review',
+  contextDigest: WORKFLOW.contextDigest,
+  inputDigest: digest('b'),
+  outputContractDigest: digest('c'),
+  acceptancePolicyDigest: digest('d'),
+};
+
+function createJob(
+  executionPolicy: ExecutionPolicySnapshot = POLICY_300,
+  semanticSpec: SemanticJobSpecV1 = SEMANTIC_SPEC,
+) {
   return createExecutionJob({
     workflow: WORKFLOW,
     mandateBinding: MANDATE_BINDING,
     jobId: 'job-plan-review-004',
     attemptId: 'attempt-001',
     stage: 'plan-review',
-    semanticSpec: {
-      schemaVersion: 1,
-      contractVersion: 2,
-      stage: 'plan-review',
-      contextDigest: WORKFLOW.contextDigest,
-      inputDigest: digest('b'),
-      outputContractDigest: digest('c'),
-      acceptancePolicyDigest: digest('d'),
-    },
+    semanticSpec,
     executionPolicy,
     environmentDigest: digest('f'),
     retryPolicy: {
@@ -104,6 +113,29 @@ function createJob(executionPolicy: ExecutionPolicySnapshot = POLICY_300) {
     createdAt: NOW,
   });
 }
+
+test('execution Jobs use the core SemanticJobSpec with exact engine error mapping', () => {
+  const coreSpec = assertSemanticJobSpecV1(SEMANTIC_SPEC);
+  const created = createJob(POLICY_300, coreSpec);
+  assert.deepEqual(created.job.semanticSpec, coreSpec);
+  assert.deepEqual(
+    parseJobRecord(canonicalJobRecord(created.job)).semanticSpec,
+    coreSpec,
+  );
+
+  assert.throws(
+    () =>
+      createJob(POLICY_300, {
+        ...SEMANTIC_SPEC,
+        contractVersion: 0,
+      }),
+    (error) =>
+      error instanceof WorkflowError &&
+      error.code === 'EXECUTION_RECORD_INVALID' &&
+      error.exitCode === ExitCode.guard &&
+      error.message === 'contractVersion must be a positive integer.',
+  );
+});
 
 test('execution Jobs use the core policy snapshot with exact engine error mapping', () => {
   const corePolicy = assertExecutionPolicySnapshotV1(POLICY_300);
