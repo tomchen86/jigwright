@@ -18,6 +18,7 @@ import { assertHumanRevocationAuthorization, authorizeHumanRevocation, canonical
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "../repository-transaction/filesystem-safety.js";
 import { INVESTIGATION_LIMITS, previewInvestigationTermUnion, } from "../../modules/investigation/domain/investigation-terms.js";
 import { PLAN_REVIEW_OUTPUT_SCHEMA, PLAN_REVIEW_OUTPUT_VALIDATOR, } from "../../modules/assurance/plan-review.js";
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from "../../modules/assurance/plan-review-coverage-policy.js";
 import { TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA, TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR, TASK_DIFF_REVIEW_OUTPUT_SCHEMA, TASK_DIFF_REVIEW_OUTPUT_VALIDATOR, } from "../../modules/assurance/task-diff-review-artifact.js";
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, } from "../../modules/provider-orchestration/task-strategy-implementation-output.js";
 import { WORKFLOW_SUPERSEDE_REASONS, validateWorkflowSupersedeReason, } from "../../modules/authority/intervention-control.js";
@@ -2248,7 +2249,8 @@ function assertInvestigationSession(value) {
         (value.branch !== null && typeof value.branch !== 'string') ||
         !isBaseline(value.baseline) ||
         !isDigest(value.intentDigest) ||
-        !isDigest(value.planReviewCoveragePolicyDigest) ||
+        value.planReviewCoveragePolicyDigest !==
+            GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
         !isDigest(value.blindManifestDigest) ||
         !isDigest(value.blindRequestDigest) ||
         !isStringArray(value.blindInvocationIds) ||

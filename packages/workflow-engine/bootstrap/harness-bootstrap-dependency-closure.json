@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:5b139564030c3ae13e9969cf987f96b44d39c1e9728eb064fefbe92f479ab3f4"
+      "digest": "sha256:e1952331a8973cebb4372c15026f9b8c6b303109db47695e4a8f9dbd06169a3b"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -264,6 +264,11 @@
       "path": "bootstrap/recovery-runtime/src/harness-bootstrap.js",
       "mode": "100755",
       "digest": "sha256:e3b27f2027ca42ff16f0fe716ea52fe065e809435a26d48cb1c1a25896cf7543"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review-coverage-policy.js",
+      "mode": "100644",
+      "digest": "sha256:15f0c7f3a3daf141a408189ba35178dfeb7b6bb4aa40f5ff81b8330ffe0cc06c"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review.js",
@@ -763,7 +768,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
       "mode": "100644",
-      "digest": "sha256:0d265b3df6822040421a4287c72c1dc42a8d6e17e97eab6ebaf930a6f01053ec"
+      "digest": "sha256:5e77f36a89f023471599634c95657f0075243d9397c4f6bae9d201394ac935d8"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",

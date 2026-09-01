@@ -678,7 +678,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:8581838e1f968b4098692830208dc5d343f0c49727ac22abc0e11a3b7a162ab3"
+      "digest": "sha256:d86c150da2f6d38b51bd369219882051a63d2e64104f5e7d9beba47538c7f5d5"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1086,9 +1086,14 @@
       "digest": "sha256:95a8f8a51c1d1336321626833dc660aad21b07a665fb8945d3d12e73e22edfd8"
     },
     {
+      "path": "src/modules/assurance/plan-review-coverage-policy.ts",
+      "mode": "100644",
+      "digest": "sha256:642f35744cdff0369f77799a7a04e2d6c24ebd4c307ae25b91f96f239e95e701"
+    },
+    {
       "path": "src/modules/assurance/plan-review-coverage.ts",
       "mode": "100644",
-      "digest": "sha256:27bccbac5758aa7aeba79f07ad102d9791f00c767c98dc6564fcc8f261d0de47"
+      "digest": "sha256:9fd56092ffd1d9142cb5e58dc006c438e85320eb05a47e8c429b2093769da061"
     },
     {
       "path": "src/modules/assurance/plan-review-validation.ts",
@@ -2113,7 +2118,7 @@
     {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:4c59d23fccaf49ad1c1190e489ba1fb9b22f1fcc62748646a435cc68015cfce1"
+      "digest": "sha256:99dd6c7f1c9f26660a70a2e7efca7eaf6551701e71ae4c25537e0b1436f98f56"
     },
     {
       "path": "src/runtime/storage-journal/investigation-v3-failure-store.ts",
