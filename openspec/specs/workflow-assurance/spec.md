@@ -29,6 +29,14 @@ Detailed runtime transcripts, leases, and mutable refs MAY remain under the Git 
 
 The workflow engine SHALL refuse to create an active task session unless repository identity, branch, clean baseline, governing planning generation, change artifacts, a current sealed investigation or eligible structured investigation exemption, current PlanReview when applicable, task strategy, task policy, and exclusive lock invariants pass. For an investigation-first generation, the session SHALL pin `planningGenerationId`, exact investigation applicability node/digest, and exact current PlanReview node/digest.
 
+#### Scenario: Advisory task preflight is read-only
+
+- **GIVEN** a current change and selected task
+- **WHEN** an agent runs `task-preflight`
+- **THEN** the engine reports the exact observed repository and Git identity, task and routing scope, allowed paths, required checks, Task Mandate requirement, and task-session isolation binding
+- **AND** it does not acquire or reclaim a lifecycle lock, create a lease, session, journal, operation, or Grant, or authorize, reserve, or open the task
+- **AND** a later `open-task` revalidates the same admission and isolation facts under the lifecycle locks before creating durable execution authority
+
 #### Scenario: Dirty worktree is rejected
 
 - **GIVEN** a valid change and task
