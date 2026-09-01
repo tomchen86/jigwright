@@ -34,6 +34,7 @@ import {
 } from '../src/modules/repository-consumer/repository-consumer-config.ts';
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
@@ -648,6 +649,7 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         syncProtectedBase(repository);
       }
 
+      activatePortableConcurrentHandoff(repository);
       exerciseConcurrentWorktreesAndUpdateBase(repository);
       syncProtectedBase(repository);
 
@@ -1103,6 +1105,37 @@ function writePortableAgentRolePlan(
 function syncProtectedBase(repository: string): void {
   const tip = git(repository, ['rev-parse', 'trunk']).trim();
   git(repository, ['update-ref', 'refs/remotes/origin/trunk', tip]);
+}
+
+function activatePortableConcurrentHandoff(repository: string): void {
+  const policyPath = path.join(repository, 'workflow/document-policy.json');
+  const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8')) as {
+    documents: Record<
+      string,
+      { mode: string; enforcement?: string; transition?: string }
+    >;
+  };
+  const handoff = policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'];
+  if (handoff === undefined) {
+    assert.fail('the portable handoff policy must be configured');
+  }
+  if (handoff.enforcement === 'active') return;
+  assert.deepEqual(handoff, {
+    mode: 'generated',
+    enforcement: 'planned',
+    transition: 'completion',
+  });
+  handoff.enforcement = 'active';
+  writeJson(policyPath, policy);
+  renderHandoff(repository);
+  git(repository, [
+    'add',
+    '--',
+    'workflow/document-policy.json',
+    'docs/CURRENT_AND_NEXT_STEPS.md',
+  ]);
+  git(repository, ['commit', '-m', 'Activate portable concurrent handoff']);
+  syncProtectedBase(repository);
 }
 
 function assertNeutralPlanningProvider(repository: string): void {
