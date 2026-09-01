@@ -766,6 +766,125 @@ test('Work Item traversal rejects mismatched year shards and unsafe or noncanoni
   }
 });
 
+test('persisted Work Item admission requires canonical bytes and one stable writer-owned file without mutation', () => {
+  const itemId = 'WORK-01K39R0V000000000000000001';
+  const cases = [
+    {
+      name: 'semantically valid pretty-printed bytes',
+      poison(root: string, itemPath: string, bytes: string) {
+        fs.writeFileSync(
+          itemPath,
+          `${JSON.stringify(JSON.parse(bytes), null, 2)}\n`,
+        );
+        return { targets: [] as string[] };
+      },
+    },
+    {
+      name: 'semantically valid noncanonical key order',
+      poison(root: string, itemPath: string, bytes: string) {
+        const value = JSON.parse(bytes) as Record<string, unknown>;
+        fs.writeFileSync(
+          itemPath,
+          `${JSON.stringify(Object.fromEntries(Object.entries(value).reverse()))}\n`,
+        );
+        return { targets: [] as string[] };
+      },
+    },
+    {
+      name: 'semantically valid CRLF termination',
+      poison(root: string, itemPath: string, bytes: string) {
+        fs.writeFileSync(itemPath, bytes.replace(/\n$/u, '\r\n'));
+        return { targets: [] as string[] };
+      },
+    },
+    {
+      name: 'mode differs from the current writer policy',
+      poison(root: string, itemPath: string) {
+        fs.chmodSync(itemPath, 0o600);
+        return { targets: [] as string[] };
+      },
+    },
+    {
+      name: 'Work Item has a second hard link',
+      poison(root: string, itemPath: string) {
+        const target = path.join(root, 'work-item-hardlink-target.yaml');
+        fs.linkSync(itemPath, target);
+        return { targets: [target] };
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const repositoryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-work-item-persistence-'),
+    );
+    configureRepositoryConsumer(repositoryRoot);
+    try {
+      const created = createWorkItem(
+        repositoryRoot,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane: 'later',
+          title: 'Work Item persistence boundary',
+          summary: 'Admit only the exact current writer representation.',
+          sourceRefs: [],
+        },
+        {
+          now: () => '2026-08-24T04:22:00.000Z',
+          createId: () => itemId,
+          aliases: ['ISS-321'],
+        },
+      );
+      const itemPath = path.join(repositoryRoot, created.relativePath);
+      const writerStats = fs.lstatSync(itemPath);
+      assert.equal(writerStats.mode & 0o777, 0o644);
+      if (typeof process.getuid === 'function') {
+        assert.equal(writerStats.uid, process.getuid());
+      }
+      const canonicalBytes = fs.readFileSync(itemPath, 'utf8');
+      const rendered = renderWorkRegistry(repositoryRoot);
+      runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+      runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+      runGitForTest(repositoryRoot, [
+        'config',
+        'user.email',
+        'jigwright@example.test',
+      ]);
+      runGitForTest(repositoryRoot, ['add', '.']);
+      runGitForTest(repositoryRoot, ['commit', '-m', 'Track Work Registry']);
+      const poisoned = scenario.poison(
+        repositoryRoot,
+        itemPath,
+        canonicalBytes,
+      );
+      const itemRoot = path.join(repositoryRoot, 'docs/work-registry/items');
+      const snapshot = () => ({
+        head: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD']),
+        refs: runGitForTest(repositoryRoot, ['show-ref']),
+        status: runGitForTest(repositoryRoot, [
+          'status',
+          '--porcelain=v1',
+          '-z',
+        ]),
+        entries: snapshotPlainTree(itemRoot),
+        targets: poisoned.targets.map((target) => snapshotPlainTree(target)),
+        backlog: fs.readFileSync(rendered.backlogPath, 'utf8'),
+        inventory: fs.readFileSync(rendered.inventoryPath, 'utf8'),
+      });
+      const before = snapshot();
+      assert.throws(
+        () => validateWorkRegistry(repositoryRoot),
+        hasCode('WORK_REGISTRY_INVALID'),
+        scenario.name,
+      );
+      assert.deepEqual(snapshot(), before);
+    } finally {
+      fs.rmSync(repositoryRoot, { recursive: true, force: true });
+    }
+  }
+});
+
 test('a Source can link directly to a change without a parking Work Item', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-change-'),
@@ -2189,13 +2308,16 @@ function snapshotPlainTree(root: string): string[] {
   const entries: string[] = [];
   const visit = (target: string, relativePath: string): void => {
     const stats = fs.lstatSync(target);
+    const identity = `${stats.dev}:${stats.ino}:${stats.uid}:${stats.gid}:${stats.mode & 0o777}:${stats.nlink}:${stats.size}`;
     if (stats.isSymbolicLink()) {
-      entries.push(`link:${relativePath}:${fs.readlinkSync(target)}`);
+      entries.push(
+        `link:${relativePath}:${identity}:${fs.readlinkSync(target)}`,
+      );
       return;
     }
     if (stats.isFile()) {
       entries.push(
-        `file:${relativePath}:${fs.readFileSync(target).toString('base64')}`,
+        `file:${relativePath}:${identity}:${fs.readFileSync(target).toString('base64')}`,
       );
       return;
     }
@@ -2203,7 +2325,7 @@ function snapshotPlainTree(root: string): string[] {
       entries.push(`other:${relativePath}`);
       return;
     }
-    entries.push(`directory:${relativePath}`);
+    entries.push(`directory:${relativePath}:${identity}`);
     for (const name of fs.readdirSync(target).sort()) {
       visit(path.join(target, name), path.posix.join(relativePath, name));
     }

@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { TextDecoder } from 'node:util';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
@@ -131,6 +132,8 @@ export type WorkRegistryInventoryV1 = Readonly<{
 
 export type WorkRegistryGovernedTransition =
   'intake' | 'prioritize' | 'promote';
+
+const WORK_ITEM_FILE_MODE = 0o644;
 
 type WorkRegistryTransitionPolicyV1 = Readonly<{
   schemaVersion: 1;
@@ -325,8 +328,7 @@ export function applyWorkItemReview(
 ): WorkItemV1 {
   const id = workItemId(requestedId);
   const itemPath = findWorkItemPath(repositoryRoot, id);
-  const before = fs.readFileSync(itemPath, 'utf8');
-  const item = readWorkItem(itemPath, before);
+  const item = readWorkItem(itemPath);
   if (workItemDigest(item) !== exactDigest(review.expectedDigest)) {
     throw workflowError(
       'WORK_REGISTRY_STALE',
@@ -394,8 +396,7 @@ export function promoteWorkItem(
   const id = workItemId(requestedId);
   const changeId = changeIdentity(requestedChangeId);
   const itemPath = findWorkItemPath(repositoryRoot, id);
-  const itemBefore = fs.readFileSync(itemPath, 'utf8');
-  const item = readWorkItem(itemPath, itemBefore);
+  const { item, serialized: itemBefore } = readWorkItemRecord(itemPath);
   if (
     requestedExpectedDigest !== undefined &&
     workItemDigest(item) !== exactDigest(requestedExpectedDigest)
@@ -1057,10 +1058,18 @@ function parseWorkItem(value: unknown): WorkItemV1 {
   return item;
 }
 
-function readWorkItem(itemPath: string, source?: string): WorkItemV1 {
-  const serialized = source ?? fs.readFileSync(itemPath, 'utf8');
+function readWorkItem(itemPath: string): WorkItemV1 {
+  return readWorkItemRecord(itemPath).item;
+}
+
+function readWorkItemRecord(
+  itemPath: string,
+): Readonly<{ item: WorkItemV1; serialized: string }> {
+  const bytes = readPlainWorkItemBytes(itemPath);
+  let serialized: string;
   let value: unknown;
   try {
+    serialized = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     value = JSON.parse(serialized);
   } catch {
     throw registryInvalid('Work Item is invalid.');
@@ -1068,11 +1077,92 @@ function readWorkItem(itemPath: string, source?: string): WorkItemV1 {
   const item = parseWorkItem(value);
   if (
     path.basename(itemPath) !== `${item.id}.yaml` ||
-    path.basename(path.dirname(itemPath)) !== item.createdAt.slice(0, 4)
+    path.basename(path.dirname(itemPath)) !== item.createdAt.slice(0, 4) ||
+    !bytes.equals(Buffer.from(`${canonicalJson(item)}\n`, 'utf8'))
   ) {
     throw registryInvalid('Work Item path and identity differ.');
   }
-  return item;
+  return { item, serialized };
+}
+
+function readPlainWorkItemBytes(itemPath: string): Buffer {
+  let before: fs.BigIntStats | undefined;
+  try {
+    before = fs.lstatSync(itemPath, {
+      bigint: true,
+      throwIfNoEntry: false,
+    });
+  } catch {
+    throw registryInvalid('Work Item path is unsafe.');
+  }
+  if (before === undefined || !isSafeWorkItemFile(before)) {
+    throw registryInvalid('Work Item path is unsafe.');
+  }
+  let descriptor: number | undefined;
+  try {
+    descriptor = fs.openSync(
+      itemPath,
+      fs.constants.O_RDONLY |
+        (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
+    );
+    const openedBefore = fs.fstatSync(descriptor, { bigint: true });
+    if (
+      !isSafeWorkItemFile(openedBefore) ||
+      !sameWorkItemFileSnapshot(before, openedBefore)
+    ) {
+      throw new Error('Work Item changed before descriptor admission.');
+    }
+    const bytes = fs.readFileSync(descriptor);
+    const openedAfter = fs.fstatSync(descriptor, { bigint: true });
+    const after = fs.lstatSync(itemPath, {
+      bigint: true,
+      throwIfNoEntry: false,
+    });
+    if (
+      after === undefined ||
+      !isSafeWorkItemFile(openedAfter) ||
+      !isSafeWorkItemFile(after) ||
+      BigInt(bytes.byteLength) !== openedBefore.size ||
+      !sameWorkItemFileSnapshot(openedBefore, openedAfter) ||
+      !sameWorkItemFileSnapshot(openedAfter, after)
+    ) {
+      throw new Error('Work Item changed while it was read.');
+    }
+    return bytes;
+  } catch {
+    throw registryInvalid('Work Item path could not be read safely.');
+  } finally {
+    if (descriptor !== undefined) fs.closeSync(descriptor);
+  }
+}
+
+function isSafeWorkItemFile(stats: fs.BigIntStats): boolean {
+  return (
+    stats.isFile() &&
+    !stats.isSymbolicLink() &&
+    stats.nlink === 1n &&
+    (process.platform === 'win32' ||
+      (stats.mode & 0o777n) === BigInt(WORK_ITEM_FILE_MODE)) &&
+    (typeof process.getuid !== 'function' ||
+      stats.uid === BigInt(process.getuid()))
+  );
+}
+
+function sameWorkItemFileSnapshot(
+  left: fs.BigIntStats,
+  right: fs.BigIntStats,
+): boolean {
+  return (
+    left.dev === right.dev &&
+    left.ino === right.ino &&
+    left.mode === right.mode &&
+    left.nlink === right.nlink &&
+    left.uid === right.uid &&
+    left.gid === right.gid &&
+    left.size === right.size &&
+    left.mtimeNs === right.mtimeNs &&
+    left.ctimeNs === right.ctimeNs
+  );
 }
 
 function hasCoherentWorkItemLifecycle(item: WorkItemV1): boolean {
@@ -1548,13 +1638,13 @@ function createCanonicalFile(filePath: string, value: unknown): void {
     fs.writeFileSync(filePath, content, {
       encoding: 'utf8',
       flag: 'wx',
-      mode: 0o644,
+      mode: WORK_ITEM_FILE_MODE,
     });
   } catch (error) {
     if (
       isNodeError(error) &&
       error.code === 'EEXIST' &&
-      fs.readFileSync(filePath, 'utf8') === content
+      readWorkItemRecord(filePath).serialized === content
     ) {
       return;
     }
@@ -1568,7 +1658,7 @@ function replaceCanonicalFile(filePath: string, value: unknown): void {
   fs.writeFileSync(temporary, `${canonicalJson(value)}\n`, {
     encoding: 'utf8',
     flag: 'wx',
-    mode: 0o644,
+    mode: WORK_ITEM_FILE_MODE,
   });
   try {
     fs.renameSync(temporary, filePath);
