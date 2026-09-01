@@ -9,7 +9,6 @@ import {
   parseTasks,
   type ManagedSchemaName,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import { assertDocumentationClosureCommitCurrent } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { validateInvestigationFirstPlanningReadiness } from '../../modules/assurance/planning-assurance-validator.ts';
@@ -17,6 +16,7 @@ import {
   discoverRepository,
   fingerprintRepositoryWorktree,
   protectedBranchRef,
+  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import type { TaskCommit } from '../../runtime/repository-transaction/git-transitions.ts';

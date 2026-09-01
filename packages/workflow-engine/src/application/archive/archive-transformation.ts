@@ -18,7 +18,6 @@ import {
   canonicalJson,
   compareCanonicalStrings,
 } from '../../foundation/canonical-json/canonical-json.ts';
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -29,6 +28,7 @@ import {
   discoverRepository,
   fingerprintRepositoryWorktree,
   listChangedPaths,
+  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import {

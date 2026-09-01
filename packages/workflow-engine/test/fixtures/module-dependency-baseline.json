@@ -716,7 +716,7 @@
       "rule": "application-to-entrypoints",
       "reasonId": "legacy.application-to-entrypoints",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-eligibility.ts",
@@ -868,7 +868,7 @@
       "rule": "application-to-entrypoints",
       "reasonId": "legacy.application-to-entrypoints",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",

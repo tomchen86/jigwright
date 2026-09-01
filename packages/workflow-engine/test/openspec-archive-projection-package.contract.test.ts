@@ -41,6 +41,23 @@ test('OpenSpec archive projection is public and the workflow verifier is an acti
       file,
     );
   }
+
+  for (const file of [
+    'packages/workflow-engine/src/application/archive/archive-eligibility.ts',
+    'packages/workflow-engine/src/application/archive/archive-transformation.ts',
+  ]) {
+    const archiveApplication = readSource(file);
+    assert.match(
+      archiveApplication,
+      /runtime\/repository-transaction\/git\.ts/,
+      file,
+    );
+    assert.doesNotMatch(
+      archiveApplication,
+      /entrypoints\/ci\/ci-git\.ts/,
+      file,
+    );
+  }
 });
 
 test('workflow archive facade preserves exact applicability and outcome errors', () => {
