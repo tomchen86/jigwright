@@ -23,9 +23,13 @@ import {
   abortSession,
   checkSession,
   getSession,
+  preflightTaskSession,
   startSession,
+  startSessionUnderLifecycleLock,
 } from '../src/application/execute-task/session.ts';
 import {
+  createSessionId,
+  parseTaskWorktreeRegistrations,
   runtimePaths,
   withRepositoryLifecycleOperation,
 } from '../src/runtime/session-workspace/session-store.ts';
@@ -432,6 +436,571 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session worktree registration parser rejects malformed porcelain ordering and identities', () => {
+  const head = 'a'.repeat(40);
+  assert.deepEqual(
+    parseTaskWorktreeRegistrations(
+      `worktree /tmp/current\0HEAD ${head}\0branch refs/heads/work/demo-change\0locked fixture\0\0`,
+    ),
+    [
+      {
+        worktreePath: '/tmp/current',
+        head,
+        branchRef: 'refs/heads/work/demo-change',
+        detached: false,
+        bare: false,
+        locked: true,
+        prunable: false,
+      },
+    ],
+  );
+  for (const malformed of [
+    `HEAD ${head}\0worktree /tmp/current\0branch refs/heads/work/demo-change\0\0`,
+    `worktree /tmp/current\0bare\0HEAD ${head}\0\0`,
+    `worktree /tmp/current\0HEAD ${head}\0branch refs/heads/\0\0`,
+    `worktree /tmp/current\0HEAD ${head}\0locked fixture\0branch refs/heads/work/demo-change\0\0`,
+  ]) {
+    assert.throws(
+      () => parseTaskWorktreeRegistrations(malformed),
+      (error) =>
+        isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_INVALID'),
+    );
+  }
+});
+
+test('task-session admission rejects a duplicate live registration for its current branch without mutation', () => {
+  const repository = createFixtureRepository();
+  const duplicateParent = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-duplicate-branch-worktree-'),
+  );
+  const duplicateWorktree = path.join(duplicateParent, 'duplicate');
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    git(repository, [
+      'worktree',
+      'add',
+      '--quiet',
+      '--force',
+      '--force',
+      duplicateWorktree,
+      'work/demo-change',
+    ]);
+    const before = snapshotTaskPreflightState(repository);
+
+    assert.throws(
+      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      (error) =>
+        isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.throws(
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) =>
+        isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+  } finally {
+    if (fs.existsSync(repository)) {
+      try {
+        git(repository, ['worktree', 'remove', '--force', duplicateWorktree]);
+      } catch {
+        // The assertion failure is more useful than cleanup noise.
+      }
+    }
+    fs.rmSync(duplicateParent, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session admission leaves a prunable duplicate registration untouched until the caller prunes it', () => {
+  const repository = createFixtureRepository();
+  const duplicateParent = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-prunable-branch-worktree-'),
+  );
+  const duplicateWorktree = path.join(duplicateParent, 'duplicate');
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    git(repository, [
+      'worktree',
+      'add',
+      '--quiet',
+      '--force',
+      '--force',
+      duplicateWorktree,
+      'work/demo-change',
+    ]);
+    fs.rmSync(duplicateWorktree, { recursive: true, force: true });
+    const before = git(repository, [
+      'worktree',
+      'list',
+      '--porcelain',
+      '-z',
+      '--expire',
+      'now',
+    ]);
+    assert.match(before, /prunable/u);
+
+    assert.throws(
+      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      (error) =>
+        isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
+    );
+    assert.equal(
+      git(repository, [
+        'worktree',
+        'list',
+        '--porcelain',
+        '-z',
+        '--expire',
+        'now',
+      ]),
+      before,
+    );
+
+    git(repository, ['worktree', 'prune', '--expire', 'now']);
+    assert.equal(
+      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      'ready',
+    );
+  } finally {
+    if (fs.existsSync(repository)) {
+      try {
+        git(repository, ['worktree', 'prune', '--expire', 'now']);
+      } catch {
+        // The assertion failure is more useful than cleanup noise.
+      }
+    }
+    fs.rmSync(duplicateParent, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session admission leaves an unsafe isolation lease and all unrelated state unchanged', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const prior = startSession(repository, 'demo-change', '1.1');
+    abortSession(repository, prior.sessionId, 'Prepare unsafe lease fixture.');
+    const leasePath = path.join(
+      runtimeRoot(repository),
+      'task-isolation',
+      'worktrees',
+      `${prior.isolation.worktreeDigest.slice('sha256:'.length)}.lock`,
+    );
+    fs.mkdirSync(path.dirname(leasePath), { recursive: true, mode: 0o700 });
+    const poisonBytes = '{"poison":true}\n';
+    fs.writeFileSync(leasePath, poisonBytes, { flag: 'wx', mode: 0o600 });
+    const before = snapshotTaskPreflightState(repository);
+
+    assert.throws(
+      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.throws(
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.equal(fs.readFileSync(leasePath, 'utf8'), poisonBytes);
+    assert.equal(
+      fs.existsSync(
+        path.join(runtimeRoot(repository), 'locks', 'demo-change.lock'),
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session admission detects a poisoned later resource before any lease or change-lock publication', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const guardPath = path.join(
+      repository,
+      'openspec/changes/demo-change/guard.json',
+    );
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<string, { exclusiveResources?: string[] }>;
+    };
+    guard.tasks['1.1']!.exclusiveResources = [
+      'fixture:first-resource',
+      'fixture:second-resource',
+    ];
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    prepareCurrentChange(repository);
+    const inspected = preflightTaskSession(repository, 'demo-change', '1.1');
+    assert.equal(inspected.isolation.resources.length, 2);
+    const isolationRoot = path.join(runtimeRoot(repository), 'task-isolation');
+    const worktreeLease = path.join(
+      isolationRoot,
+      'worktrees',
+      `${inspected.isolation.worktreeDigest.slice('sha256:'.length)}.lock`,
+    );
+    const resourceLeases = inspected.isolation.resources.map(({ digest }) =>
+      path.join(
+        isolationRoot,
+        'resources',
+        `${digest.slice('sha256:'.length)}.lock`,
+      ),
+    );
+    fs.mkdirSync(path.dirname(resourceLeases[1]!), {
+      recursive: true,
+      mode: 0o700,
+    });
+    const poisonBytes = '{"poison":"later-resource"}\n';
+    fs.writeFileSync(resourceLeases[1]!, poisonBytes, {
+      flag: 'wx',
+      mode: 0o600,
+    });
+    const before = snapshotTaskPreflightState(repository);
+
+    assert.throws(
+      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.throws(
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.equal(fs.existsSync(worktreeLease), false);
+    assert.equal(fs.existsSync(resourceLeases[0]!), false);
+    assert.equal(fs.readFileSync(resourceLeases[1]!, 'utf8'), poisonBytes);
+    assert.equal(
+      fs.existsSync(
+        path.join(runtimeRoot(repository), 'locks', 'demo-change.lock'),
+      ),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session start rolls back exact earlier publications when a later lease becomes unsafe', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const guardPath = path.join(
+      repository,
+      'openspec/changes/demo-change/guard.json',
+    );
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<string, { exclusiveResources?: string[] }>;
+    };
+    guard.tasks['1.1']!.exclusiveResources = [
+      'fixture:first-resource',
+      'fixture:second-resource',
+    ];
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    prepareCurrentChange(repository);
+    const visited: string[] = [];
+    const poisonBytes = '{"poison":"publication-race"}\n';
+    let poisonPath = '';
+
+    assert.throws(
+      () =>
+        startSession(repository, 'demo-change', '1.1', {
+          testHooks: {
+            beforeIsolationLeasePublication({ index, leasePath }) {
+              visited.push(leasePath);
+              if (index !== 2) return;
+              poisonPath = leasePath;
+              fs.mkdirSync(path.dirname(leasePath), {
+                recursive: true,
+                mode: 0o700,
+              });
+              fs.writeFileSync(leasePath, poisonBytes, {
+                flag: 'wx',
+                mode: 0o600,
+              });
+            },
+          },
+        }),
+      (error) => isWorkflowError(error, 'SESSION_LOCK_INVALID'),
+    );
+    assert.equal(visited.length, 3);
+    assert.equal(fs.existsSync(visited[0]!), false);
+    assert.equal(fs.existsSync(visited[1]!), false);
+    assert.equal(fs.readFileSync(poisonPath, 'utf8'), poisonBytes);
+    assert.equal(
+      fs.existsSync(
+        path.join(runtimeRoot(repository), 'locks', 'demo-change.lock'),
+      ),
+      false,
+    );
+    const sessionsPath = path.join(runtimeRoot(repository), 'sessions');
+    assert.deepEqual(
+      fs.existsSync(sessionsPath) ? fs.readdirSync(sessionsPath) : [],
+      [],
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session start reclaims an exact terminal-owner lease and republishes current ownership', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const prior = startSession(repository, 'demo-change', '1.1');
+    const leasePath = path.join(
+      runtimeRoot(repository),
+      'task-isolation',
+      'worktrees',
+      `${prior.isolation.worktreeDigest.slice('sha256:'.length)}.lock`,
+    );
+    const priorLeaseBytes = fs.readFileSync(leasePath, 'utf8');
+    abortSession(
+      repository,
+      prior.sessionId,
+      'Prepare terminal lease fixture.',
+    );
+    fs.writeFileSync(leasePath, priorLeaseBytes, { flag: 'wx', mode: 0o600 });
+
+    assert.equal(
+      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      'ready',
+    );
+    assert.equal(fs.readFileSync(leasePath, 'utf8'), priorLeaseBytes);
+    const current = startSession(repository, 'demo-change', '1.1');
+    const currentLease = JSON.parse(fs.readFileSync(leasePath, 'utf8')) as {
+      sessionId: string;
+    };
+    assert.equal(currentLease.sessionId, current.sessionId);
+    assert.notEqual(currentLease.sessionId, prior.sessionId);
+    abortSession(repository, current.sessionId, 'Terminal lease cleanup.');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session start only reclaims a missing-owner lease after exact dead-process revalidation', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const inspected = preflightTaskSession(repository, 'demo-change', '1.1');
+    const leasePath = path.join(
+      runtimeRoot(repository),
+      'task-isolation',
+      'worktrees',
+      `${inspected.isolation.worktreeDigest.slice('sha256:'.length)}.lock`,
+    );
+    fs.mkdirSync(path.dirname(leasePath), { recursive: true, mode: 0o700 });
+    const missingSessionId = createSessionId();
+    const ownerToken = '11111111-1111-4111-8111-111111111111';
+    const leaseBytes = (pid: number) =>
+      `${JSON.stringify({
+        sessionId: missingSessionId,
+        ownerToken,
+        changeId: 'demo-change',
+        taskId: '1.1',
+        pid,
+      })}\n`;
+    fs.writeFileSync(leasePath, leaseBytes(process.pid), {
+      flag: 'wx',
+      mode: 0o600,
+    });
+
+    assert.throws(
+      () => preflightTaskSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'TASK_SESSION_LEASE_CONFLICT'),
+    );
+    assert.equal(fs.readFileSync(leasePath, 'utf8'), leaseBytes(process.pid));
+
+    const exited = spawnSync(process.execPath, ['-e', 'process.exit(0)']);
+    assert.equal(exited.status, 0);
+    assert.equal(typeof exited.pid, 'number');
+    assert.throws(
+      () => process.kill(exited.pid!, 0),
+      (error: NodeJS.ErrnoException) => error.code === 'ESRCH',
+    );
+    const deadBytes = leaseBytes(exited.pid!);
+    fs.writeFileSync(leasePath, deadBytes);
+    assert.equal(
+      preflightTaskSession(repository, 'demo-change', '1.1').status,
+      'ready',
+    );
+    assert.equal(fs.readFileSync(leasePath, 'utf8'), deadBytes);
+
+    const session = startSession(repository, 'demo-change', '1.1');
+    const currentLease = JSON.parse(fs.readFileSync(leasePath, 'utf8')) as {
+      sessionId: string;
+    };
+    assert.equal(currentLease.sessionId, session.sessionId);
+    abortSession(repository, session.sessionId, 'Missing-owner lease cleanup.');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('fixed session identity publication never overwrites or removes foreign bytes', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const prior = startSession(repository, 'demo-change', '1.1');
+    abortSession(
+      repository,
+      prior.sessionId,
+      'Prepare fixed identity fixture.',
+    );
+    const runtime = runtimePaths(
+      fs.realpathSync(path.join(repository, '.git')),
+      'workflow-engine',
+    );
+    const sessionId = prior.sessionId;
+    const sessionPath = path.join(runtime.sessions, `${sessionId}.json`);
+    const foreignBytes = fs.readFileSync(sessionPath, 'utf8');
+
+    assert.throws(
+      () =>
+        withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) =>
+          startSessionUnderLifecycleLock(
+            repository,
+            'demo-change',
+            '1.1',
+            {
+              sessionId,
+              createdAt: '2026-09-01T00:00:00.000Z',
+            },
+            assertRepositoryLock,
+          ),
+        ),
+      (error) => isWorkflowError(error, 'SESSION_PUBLICATION_CONFLICT'),
+    );
+    assert.equal(fs.readFileSync(sessionPath, 'utf8'), foreignBytes);
+    assert.equal(
+      fs.existsSync(path.join(runtime.locks, 'demo-change.lock')),
+      false,
+    );
+    assert.deepEqual(
+      fs.existsSync(path.join(runtime.root, 'task-isolation', 'worktrees'))
+        ? fs.readdirSync(path.join(runtime.root, 'task-isolation', 'worktrees'))
+        : [],
+      [],
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session start rejects replacement, in-place rewrite, and hardlink races after publication', () => {
+  const scenarios: Array<
+    Readonly<{
+      name: string;
+      tamper: (sessionPath: string) => ReadonlyMap<string, string>;
+    }>
+  > = [
+    {
+      name: 'replacement',
+      tamper(sessionPath) {
+        const ownedAlias = `${sessionPath}.attacker-owned`;
+        const ownedBytes = fs.readFileSync(sessionPath, 'utf8');
+        const foreignBytes = '{"foreign":"replacement"}\n';
+        fs.renameSync(sessionPath, ownedAlias);
+        fs.writeFileSync(sessionPath, foreignBytes, {
+          flag: 'wx',
+          mode: 0o600,
+        });
+        return new Map([
+          [ownedAlias, ownedBytes],
+          [sessionPath, foreignBytes],
+        ]);
+      },
+    },
+    {
+      name: 'in-place rewrite',
+      tamper(sessionPath) {
+        const foreignBytes = '{"foreign":"in-place"}\n';
+        fs.writeFileSync(sessionPath, foreignBytes);
+        return new Map([[sessionPath, foreignBytes]]);
+      },
+    },
+    {
+      name: 'hardlink',
+      tamper(sessionPath) {
+        const aliasPath = `${sessionPath}.attacker-link`;
+        const ownedBytes = fs.readFileSync(sessionPath, 'utf8');
+        fs.linkSync(sessionPath, aliasPath);
+        return new Map([
+          [sessionPath, ownedBytes],
+          [aliasPath, ownedBytes],
+        ]);
+      },
+    },
+  ];
+  const containsVerificationFailure = (error: unknown): boolean =>
+    isWorkflowError(error, 'SESSION_WRITE_VERIFICATION_FAILED') ||
+    (error instanceof AggregateError &&
+      error.errors.some(containsVerificationFailure));
+
+  for (const scenario of scenarios) {
+    const repository = createFixtureRepository();
+    try {
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      prepareCurrentChange(repository);
+      let expectedFiles: ReadonlyMap<string, string> = new Map();
+      let startError: unknown;
+      assert.throws(
+        () =>
+          startSession(repository, 'demo-change', '1.1', {
+            testHooks: {
+              afterSessionPublication({ sessionPath }) {
+                expectedFiles = scenario.tamper(sessionPath);
+              },
+            },
+          }),
+        (error) => {
+          startError = error;
+          return true;
+        },
+      );
+      assert.equal(
+        containsVerificationFailure(startError),
+        true,
+        `${scenario.name} did not reach exact publication verification`,
+      );
+      for (const [filePath, expectedBytes] of expectedFiles) {
+        assert.equal(
+          fs.readFileSync(filePath, 'utf8'),
+          expectedBytes,
+          `${scenario.name} bytes changed during refusal cleanup`,
+        );
+      }
+      assert.equal(
+        fs.existsSync(
+          path.join(runtimeRoot(repository), 'locks', 'demo-change.lock'),
+        ),
+        false,
+        `${scenario.name} left the exact-owned change lock behind`,
+      );
+      for (const kind of ['worktrees', 'resources']) {
+        const directory = path.join(
+          runtimeRoot(repository),
+          'task-isolation',
+          kind,
+        );
+        assert.deepEqual(
+          fs.existsSync(directory) ? fs.readdirSync(directory) : [],
+          [],
+          `${scenario.name} left an exact-owned isolation lease behind`,
+        );
+      }
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
 });
 

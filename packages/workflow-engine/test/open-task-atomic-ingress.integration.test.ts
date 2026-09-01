@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -79,6 +80,130 @@ test('ordinary open-task crash recovery preserves explicit no-mandate authority'
       ),
     );
     assert.equal(session.mandateBinding, undefined);
+  } finally {
+    fixture.dispose();
+  }
+});
+
+test('open-task rejects a duplicate branch worktree before publishing planning or runtime state', () => {
+  const fixture = prepareOrdinaryOpenTaskFixture(
+    'duplicate-open-task-worktree',
+  );
+  const duplicateParent = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'workflow-open-task-duplicate-worktree-'),
+  );
+  const duplicateWorktree = path.join(duplicateParent, 'duplicate');
+  try {
+    git(fixture.repository, [
+      'worktree',
+      'add',
+      '--quiet',
+      '--force',
+      '--force',
+      duplicateWorktree,
+      `work/${fixture.changeId}`,
+    ]);
+    const beforeHead = git(fixture.repository, ['rev-parse', 'HEAD']).trim();
+    const beforeStatus = git(fixture.repository, [
+      'status',
+      '--porcelain=v2',
+      '-z',
+    ]);
+    const beforeRefs = git(fixture.repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]);
+
+    assert.throws(
+      () => openTask(fixture.repository, fixture.changeId, '1.1'),
+      (error) =>
+        isWorkflowError(error, 'TASK_SESSION_WORKTREE_REGISTRATION_CONFLICT'),
+    );
+    assert.equal(
+      git(fixture.repository, ['rev-parse', 'HEAD']).trim(),
+      beforeHead,
+    );
+    assert.equal(
+      git(fixture.repository, ['status', '--porcelain=v2', '-z']),
+      beforeStatus,
+    );
+    assert.equal(
+      git(fixture.repository, [
+        'for-each-ref',
+        '--format=%(refname)%00%(objectname)',
+      ]),
+      beforeRefs,
+    );
+    assert.equal(
+      readOpenTaskJournal(fixture.repository, fixture.changeId, '1.1'),
+      null,
+    );
+    assert.deepEqual(
+      fs.existsSync(path.join(runtimeRoot(fixture.repository), 'sessions'))
+        ? fs.readdirSync(path.join(runtimeRoot(fixture.repository), 'sessions'))
+        : [],
+      [],
+    );
+  } finally {
+    try {
+      git(fixture.repository, [
+        'worktree',
+        'remove',
+        '--force',
+        duplicateWorktree,
+      ]);
+    } catch {
+      // The assertion failure is more useful than cleanup noise.
+    }
+    fs.rmSync(duplicateParent, { recursive: true, force: true });
+    fixture.dispose();
+  }
+});
+
+test('open-task rejects detached HEAD before publishing planning or runtime state', () => {
+  const fixture = prepareOrdinaryOpenTaskFixture('detached-open-task');
+  try {
+    git(fixture.repository, ['checkout', '--detach', '--quiet']);
+    const beforeHead = git(fixture.repository, ['rev-parse', 'HEAD']).trim();
+    const beforeStatus = git(fixture.repository, [
+      'status',
+      '--porcelain=v2',
+      '-z',
+    ]);
+    const beforeRefs = git(fixture.repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]);
+
+    assert.throws(
+      () => openTask(fixture.repository, fixture.changeId, '1.1'),
+      (error) => isWorkflowError(error, 'DETACHED_HEAD'),
+    );
+    assert.equal(
+      git(fixture.repository, ['rev-parse', 'HEAD']).trim(),
+      beforeHead,
+    );
+    assert.equal(
+      git(fixture.repository, ['status', '--porcelain=v2', '-z']),
+      beforeStatus,
+    );
+    assert.equal(
+      git(fixture.repository, [
+        'for-each-ref',
+        '--format=%(refname)%00%(objectname)',
+      ]),
+      beforeRefs,
+    );
+    assert.equal(
+      readOpenTaskJournal(fixture.repository, fixture.changeId, '1.1'),
+      null,
+    );
+    assert.deepEqual(
+      fs.existsSync(path.join(runtimeRoot(fixture.repository), 'sessions'))
+        ? fs.readdirSync(path.join(runtimeRoot(fixture.repository), 'sessions'))
+        : [],
+      [],
+    );
   } finally {
     fixture.dispose();
   }

@@ -54,6 +54,7 @@ import {
 } from '../../runtime/session-workspace/planning-workspace.ts';
 import {
   assertOwnedLock,
+  assertTaskSessionWorktreeRegistration,
   assertTaskSessionIsolationLeasesOwned,
   createSessionId,
   readSessionFile,
@@ -176,6 +177,7 @@ export function openTask(
 ): OpenTaskResult {
   const changeId = assertChangeId(requestedChangeId);
   const initialRepository = discoverRepository(cwd);
+  assertOpenTaskWorktreeRegistration(initialRepository);
   assertProductionChangeRoutingAdmission(
     initialRepository.repositoryRoot,
     changeId,
@@ -251,6 +253,8 @@ export function openTask(
 
   return withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) => {
     assertRepositoryLock();
+    const lockedRepository = discoverRepository(cwd);
+    assertOpenTaskWorktreeRegistration(lockedRepository);
     const existing = readOpenTaskJournal(cwd, changeId, taskId);
     if (existing !== null) {
       assertRequestedTransaction(existing, {
@@ -373,6 +377,24 @@ export function openTask(
     const completed = completeJournal(runtime, durable, options.now);
     return resultFrom(completed, session, false);
   });
+}
+
+function assertOpenTaskWorktreeRegistration(
+  repository: ReturnType<typeof discoverRepository>,
+): void {
+  if (repository.branch === null) {
+    throw workflowError(
+      'DETACHED_HEAD',
+      'Cannot open a task from detached HEAD.',
+      ExitCode.guard,
+    );
+  }
+  assertTaskSessionWorktreeRegistration(
+    repository.repositoryRoot,
+    repository.repositoryRealPath,
+    repository.branch,
+    repository.head,
+  );
 }
 
 export function readOpenTaskJournal(

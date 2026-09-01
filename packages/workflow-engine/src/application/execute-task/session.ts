@@ -19,14 +19,22 @@ import { createTaskPlanningAssuranceBinding } from '../../modules/assurance/plan
 import { reclaimDeadChangeTransitionLock } from '../../runtime/session-workspace/planning-lock.ts';
 import {
   acquireTaskSessionIsolationLeases,
+  assertOwnedRuntimeFilePublication,
+  assertTaskSessionWorktreeRegistration,
   assertRepositoryLifecyclePreflightAdmission,
   assertTaskSessionAdmission,
+  closeOwnedRuntimeFilePublication,
+  closeTaskSessionIsolationLeaseAcquisition,
   createTaskSessionIsolationBinding,
   createSessionId,
   readSessionFile,
   releaseOwnedLock,
   releaseTaskSessionIsolationLeases,
+  rollbackOwnedRuntimeFilePublication,
+  rollbackTaskSessionIsolationLeaseAcquisition,
   runtimePaths,
+  type OwnedRuntimeFilePublication,
+  type TaskSessionIsolationLeaseAcquisition,
   type TaskSessionIsolationBinding,
   type WorkflowSession,
   withRepositoryLifecycleOperation,
@@ -67,6 +75,19 @@ import {
 
 export type SessionStartOptions = Readonly<{
   environment?: NodeJS.ProcessEnv;
+  testHooks?: Readonly<{
+    beforeIsolationLeasePublication?: (
+      input: Readonly<{
+        index: number;
+        leasePath: string;
+      }>,
+    ) => void;
+    afterSessionPublication?: (
+      input: Readonly<{
+        sessionPath: string;
+      }>,
+    ) => void;
+  }>;
 }>;
 
 export type TaskSessionPreflightV1 = Readonly<{
@@ -146,6 +167,7 @@ export function startSession(
       undefined,
       undefined,
       options.environment,
+      options.testHooks,
     );
   });
 }
@@ -315,6 +337,12 @@ function inspectSessionStart(
       { details: { actual: git.branch, expected: requiredBranch } },
     );
   }
+  assertTaskSessionWorktreeRegistration(
+    git.repositoryRoot,
+    git.repositoryRealPath,
+    git.branch,
+    git.head,
+  );
   if (git.statusEntries.length > 0) {
     throw workflowError(
       'DIRTY_WORKTREE',
@@ -343,6 +371,7 @@ function persistSessionStart(
   mandateBinding?: TaskMandateBinding,
   fixedIdentity?: Readonly<{ sessionId: string; createdAt: string }>,
   environment: NodeJS.ProcessEnv = process.env,
+  testHooks: SessionStartOptions['testHooks'] = {},
 ): WorkflowSession {
   const { changeId, taskId, git, contract, branch } = inspection;
   const policy = contract.guard.tasks[taskId];
@@ -360,47 +389,11 @@ function persistSessionStart(
     git.gitCommonDirectory,
     contract.config.runtimeDirectory,
   );
-  ensurePlainDirectory(runtime.sessions);
-  ensurePlainDirectory(runtime.locks);
   const { isolation } = inspectTaskSessionAdmission(
     inspection,
     runtime,
     environment,
   );
-
-  const lockPath = path.join(runtime.locks, `${changeId}.lock`);
-  const ownerToken = crypto.randomUUID();
-  let lockDescriptor: number | undefined;
-  try {
-    lockDescriptor = publishPreparedExclusiveLock(
-      lockPath,
-      `${JSON.stringify({
-        sessionId,
-        ownerToken,
-        changeId,
-        taskId,
-        pid: process.pid,
-      })}\n`,
-      ownerToken,
-      sessionLockInvalid,
-    );
-    fs.closeSync(lockDescriptor);
-    lockDescriptor = undefined;
-  } catch (error) {
-    if (lockDescriptor !== undefined) {
-      fs.closeSync(lockDescriptor);
-    }
-    if (isNodeError(error) && error.code === 'EEXIST') {
-      throw workflowError(
-        'ACTIVE_SESSION_CONFLICT',
-        `Change ${changeId} already has an active session lock.`,
-        ExitCode.conflict,
-        { details: { lockPath } },
-      );
-    }
-    throw error;
-  }
-
   const session: WorkflowSession = {
     schemaVersion: 1,
     sessionId,
@@ -429,26 +422,177 @@ function persistSessionStart(
       : new Date().toISOString(),
   };
   const sessionPath = path.join(runtime.sessions, `${sessionId}.json`);
-
+  assertTaskSessionWorktreeRegistration(
+    git.repositoryRoot,
+    git.repositoryRealPath,
+    branch,
+    git.head,
+  );
+  ensurePlainDirectory(runtime.sessions);
+  ensurePlainDirectory(runtime.locks);
+  const lockPath = path.join(runtime.locks, `${changeId}.lock`);
+  let lockPublication: OwnedRuntimeFilePublication | undefined;
+  let leaseAcquisition: TaskSessionIsolationLeaseAcquisition | undefined;
+  let sessionPublication: OwnedRuntimeFilePublication | undefined;
   try {
-    acquireTaskSessionIsolationLeases(runtime, session);
-    writeJsonAtomic(sessionPath, session);
-    const persisted = readSessionFile(sessionPath);
-    if (persisted.sessionId !== sessionId || persisted.state !== 'active') {
-      throw workflowError(
-        'SESSION_WRITE_VERIFICATION_FAILED',
-        'Persisted session did not match the requested active session.',
-        ExitCode.staleState,
-      );
+    const lockOwnerToken = crypto.randomUUID();
+    const lockContent = `${JSON.stringify({
+      sessionId,
+      ownerToken: lockOwnerToken,
+      changeId,
+      taskId,
+      pid: process.pid,
+    })}\n`;
+    try {
+      lockPublication = {
+        runtimeRoot: runtime.root,
+        filePath: lockPath,
+        descriptor: publishPreparedExclusiveLock(
+          lockPath,
+          lockContent,
+          lockOwnerToken,
+          sessionLockInvalid,
+        ),
+        content: lockContent,
+      };
+    } catch (error) {
+      if (isNodeError(error) && error.code === 'EEXIST') {
+        throw workflowError(
+          'ACTIVE_SESSION_CONFLICT',
+          `Change ${changeId} already has an active session lock.`,
+          ExitCode.conflict,
+          { details: { lockPath } },
+        );
+      }
+      throw error;
     }
+    leaseAcquisition = acquireTaskSessionIsolationLeases(runtime, session, {
+      beforePublication: testHooks?.beforeIsolationLeasePublication,
+    });
+    assertTaskSessionWorktreeRegistration(
+      git.repositoryRoot,
+      git.repositoryRealPath,
+      branch,
+      git.head,
+    );
+    const sessionContent = `${JSON.stringify(session, null, 2)}\n`;
+    const publicationToken = crypto.randomUUID();
+    try {
+      sessionPublication = {
+        runtimeRoot: runtime.root,
+        filePath: sessionPath,
+        descriptor: publishPreparedExclusiveLock(
+          sessionPath,
+          sessionContent,
+          publicationToken,
+          () => sessionPublicationConflict(sessionPath),
+        ),
+        content: sessionContent,
+      };
+    } catch (error) {
+      if (isNodeError(error) && error.code === 'EEXIST') {
+        throw sessionPublicationConflict(sessionPath);
+      }
+      throw error;
+    }
+    testHooks?.afterSessionPublication?.({ sessionPath });
+    assertOwnedRuntimeFilePublication(
+      sessionPublication,
+      sessionWriteVerificationFailed,
+    );
+    assertOwnedRuntimeFilePublication(lockPublication, sessionLockInvalid);
+    for (const leasePublication of leaseAcquisition.publications) {
+      assertOwnedRuntimeFilePublication(leasePublication);
+    }
+    const persisted = readSessionFile(sessionPath);
+    if (`${JSON.stringify(persisted, null, 2)}\n` !== sessionContent) {
+      throw sessionWriteVerificationFailed();
+    }
+    assertOwnedRuntimeFilePublication(
+      sessionPublication,
+      sessionWriteVerificationFailed,
+    );
+    assertOwnedRuntimeFilePublication(lockPublication, sessionLockInvalid);
+    for (const leasePublication of leaseAcquisition.publications) {
+      assertOwnedRuntimeFilePublication(leasePublication);
+    }
+    assertTaskSessionWorktreeRegistration(
+      git.repositoryRoot,
+      git.repositoryRealPath,
+      branch,
+      git.head,
+    );
   } catch (error) {
-    fs.rmSync(sessionPath, { force: true });
-    releaseTaskSessionIsolationLeases(runtime, session);
-    releaseOwnedLock(lockPath, sessionId);
-    throw error;
+    rollbackSessionStartPublications(error, {
+      sessionPublication,
+      leaseAcquisition,
+      lockPublication,
+    });
   }
 
+  closeOwnedRuntimeFilePublication(sessionPublication!);
+  closeTaskSessionIsolationLeaseAcquisition(leaseAcquisition!);
+  closeOwnedRuntimeFilePublication(lockPublication!);
+
   return session;
+}
+
+function rollbackSessionStartPublications(
+  primaryError: unknown,
+  publications: Readonly<{
+    sessionPublication: OwnedRuntimeFilePublication | undefined;
+    leaseAcquisition: TaskSessionIsolationLeaseAcquisition | undefined;
+    lockPublication: OwnedRuntimeFilePublication | undefined;
+  }>,
+): never {
+  const cleanupErrors: unknown[] = [];
+  for (const cleanup of [
+    publications.sessionPublication === undefined
+      ? undefined
+      : () =>
+          rollbackOwnedRuntimeFilePublication(publications.sessionPublication!),
+    publications.leaseAcquisition === undefined
+      ? undefined
+      : () =>
+          rollbackTaskSessionIsolationLeaseAcquisition(
+            publications.leaseAcquisition!,
+          ),
+    publications.lockPublication === undefined
+      ? undefined
+      : () =>
+          rollbackOwnedRuntimeFilePublication(publications.lockPublication!),
+  ]) {
+    if (cleanup === undefined) continue;
+    try {
+      cleanup();
+    } catch (error) {
+      cleanupErrors.push(error);
+    }
+  }
+  if (cleanupErrors.length > 0) {
+    throw new AggregateError(
+      [primaryError, ...cleanupErrors],
+      'Task-session start failed and exact-owned cleanup was incomplete.',
+    );
+  }
+  throw primaryError;
+}
+
+function sessionPublicationConflict(sessionPath: string) {
+  return workflowError(
+    'SESSION_PUBLICATION_CONFLICT',
+    'The requested task-session identity already has durable bytes.',
+    ExitCode.conflict,
+    { details: { sessionPath } },
+  );
+}
+
+function sessionWriteVerificationFailed() {
+  return workflowError(
+    'SESSION_WRITE_VERIFICATION_FAILED',
+    'Persisted session did not match the exact requested active session bytes.',
+    ExitCode.staleState,
+  );
 }
 
 function inspectTaskSessionAdmission(
