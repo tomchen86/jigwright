@@ -9,6 +9,24 @@ import {
 
 export type BuiltInProviderFamily = 'codex' | 'claude';
 
+const BUILT_IN_PROVIDER_FAMILIES: readonly BuiltInProviderFamily[] =
+  Object.freeze(['codex', 'claude']);
+
+/**
+ * Return the code-owned built-in provider family identities in stable
+ * preference order. Workflow composition may attach repository capabilities
+ * to these identities, but it must not maintain a second family registry.
+ */
+export function listBuiltInProviderFamilies(): readonly BuiltInProviderFamily[] {
+  return BUILT_IN_PROVIDER_FAMILIES;
+}
+
+export function isBuiltInProviderFamily(
+  value: unknown,
+): value is BuiltInProviderFamily {
+  return BUILT_IN_PROVIDER_FAMILIES.some((family) => family === value);
+}
+
 type CandidateSet = Readonly<
   Partial<Record<NodeJS.Platform, readonly string[]>>
 >;

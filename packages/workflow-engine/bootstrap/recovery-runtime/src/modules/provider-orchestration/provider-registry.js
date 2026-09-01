@@ -1,3 +1,4 @@
+import { isBuiltInProviderFamily, listBuiltInProviderFamilies, } from '@jigwright/agent-runtime';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 function readOnlyCapabilities() {
     return [
@@ -13,7 +14,7 @@ function readOnlyCapabilities() {
         }),
     ];
 }
-const BUILT_IN_PROVIDERS = Object.freeze(['codex', 'claude'].map((id) => Object.freeze({
+const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderFamilies().map((id) => Object.freeze({
     id,
     capabilities: Object.freeze(readOnlyCapabilities()),
 })));
@@ -42,5 +43,5 @@ export function requireProviderCapability(id, purpose, profile) {
     return provider;
 }
 export function isProviderId(value) {
-    return value === 'codex' || value === 'claude';
+    return isBuiltInProviderFamily(value);
 }

@@ -13,6 +13,8 @@ import {
   CLAUDE_EXECUTABLE_CANDIDATES,
   CODEX_EXECUTABLE_CANDIDATES,
   assertKnownBuiltInProviderDefinitionSnapshot,
+  isBuiltInProviderFamily,
+  listBuiltInProviderFamilies,
   resolveBuiltInProviderDefinitionSnapshot,
 } from '../src/built-in-provider-definition.ts';
 
@@ -25,6 +27,17 @@ const definition = {
   executableCandidates: ['/opt/homebrew/bin/claude', '/usr/local/bin/claude'],
   commandProfile: 'claude-fixed-read-only-v1',
 } as const;
+
+test('agent runtime owns the exact immutable built-in provider family registry', () => {
+  const families = listBuiltInProviderFamilies();
+
+  assert.deepEqual(families, ['codex', 'claude']);
+  assert.equal(Object.isFrozen(families), true);
+  assert.strictEqual(listBuiltInProviderFamilies(), families);
+  assert.equal(isBuiltInProviderFamily('codex'), true);
+  assert.equal(isBuiltInProviderFamily('claude'), true);
+  assert.equal(isBuiltInProviderFamily('custom/internal'), false);
+});
 
 test('provider definition snapshot is deterministic and deeply immutable', () => {
   const first = createProviderDefinitionSnapshot(definition);

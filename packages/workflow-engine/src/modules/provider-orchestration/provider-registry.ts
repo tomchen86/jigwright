@@ -1,15 +1,20 @@
+import {
+  isBuiltInProviderFamily,
+  listBuiltInProviderFamilies,
+  type BuiltInProviderFamily,
+} from '@jigwright/agent-runtime';
+
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 /**
- * The reviewed built-in provider registry. It is code-owned: repository policy
- * may enable/disable these fixed IDs and lower bounded limits, but it can never
- * add an ID, executable path, argv, shell fragment, module path, prompt, or
- * result parser. This slice exposes exactly `codex` and `claude`, each with the
- * `survey`, `plan-review`, `task-diff-review`, and `task-implementation`
- * capabilities under the
- * `repository-read-only` profile.
+ * The reviewed built-in provider capability facade. Agent Runtime owns the
+ * exact family identities; repository policy may enable/disable those fixed
+ * identities and lower bounded limits, but it can never add an ID, executable
+ * path, argv, shell fragment, module path, prompt, or result parser. This slice
+ * attaches the `survey`, `plan-review`, `task-diff-review`, and
+ * `task-implementation` capabilities under the `repository-read-only` profile.
  */
-export type ProviderId = 'codex' | 'claude';
+export type ProviderId = BuiltInProviderFamily;
 export type CapabilityPurpose =
   'survey' | 'plan-review' | 'task-diff-review' | 'task-implementation';
 export type CapabilityProfile = 'repository-read-only';
@@ -40,7 +45,7 @@ function readOnlyCapabilities(): readonly ProviderCapability[] {
 }
 
 const BUILT_IN_PROVIDERS: readonly BuiltInProvider[] = Object.freeze(
-  (['codex', 'claude'] as const).map((id) =>
+  listBuiltInProviderFamilies().map((id) =>
     Object.freeze({
       id,
       capabilities: Object.freeze(readOnlyCapabilities()),
@@ -90,5 +95,5 @@ export function requireProviderCapability(
 }
 
 export function isProviderId(value: unknown): value is ProviderId {
-  return value === 'codex' || value === 'claude';
+  return isBuiltInProviderFamily(value);
 }

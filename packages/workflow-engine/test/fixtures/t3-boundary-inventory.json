@@ -68,14 +68,23 @@
     {
       "id": "agent-provider-identity",
       "plane": "agent-runtime",
-      "state": "coupled",
-      "t3Disposition": "The process/protocol package is present, but fixed Codex and Claude identity still belongs to the workflow-engine registry and provider-specific policy; later 3.3c work must move that ownership without weakening reviewed profiles.",
+      "state": "partial",
+      "t3Disposition": "The agent-runtime package owns the exact immutable built-in provider family registry and reviewed definition snapshots; the workflow-engine capability facade derives identity from that registry while repository capability policy remains a later separate seam.",
       "evidence": [
+        {
+          "path": "packages/agent-runtime/src/built-in-provider-definition.ts",
+          "contains": [
+            "export type BuiltInProviderFamily = 'codex' | 'claude';",
+            "export function listBuiltInProviderFamilies(): readonly BuiltInProviderFamily[]",
+            "export function isBuiltInProviderFamily("
+          ]
+        },
         {
           "path": "packages/workflow-engine/src/modules/provider-orchestration/provider-registry.ts",
           "contains": [
-            "export type ProviderId = 'codex' | 'claude';",
-            "This slice exposes exactly `codex` and `claude`"
+            "from '@jigwright/agent-runtime';",
+            "export type ProviderId = BuiltInProviderFamily;",
+            "listBuiltInProviderFamilies().map((id)"
           ]
         }
       ],

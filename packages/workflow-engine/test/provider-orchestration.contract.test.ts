@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
+import { listBuiltInProviderFamilies } from '@jigwright/agent-runtime';
+
 import { resolveActorIdentity } from '../src/modules/provider-orchestration/actor-identity.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -87,6 +89,27 @@ test('built-in provider registry is exact, immutable, and capability-scoped', ()
   assert.equal(Object.isFrozen(providers[0]?.capabilities), true);
   assert.equal(Object.isFrozen(providers[0]?.capabilities[0]), true);
   assert.strictEqual(listBuiltInProviders(), providers);
+  assert.deepEqual(
+    providers.map(({ id }) => id),
+    listBuiltInProviderFamilies(),
+  );
+
+  const registrySource = fs.readFileSync(
+    new URL(
+      '../src/modules/provider-orchestration/provider-registry.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  assert.match(registrySource, /from '@jigwright\/agent-runtime';/u);
+  assert.doesNotMatch(
+    registrySource,
+    /export type ProviderId\s*=\s*['"]codex['"]\s*\|\s*['"]claude['"]/u,
+  );
+  assert.doesNotMatch(
+    registrySource,
+    /\[\s*['"]codex['"]\s*,\s*['"]claude['"]\s*\]/u,
+  );
 
   assert.equal(
     requireProviderCapability('claude', 'plan-review', 'repository-read-only')
