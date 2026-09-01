@@ -56,7 +56,7 @@ import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
 } from '../../modules/assurance/plan-review.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage-policy.ts';
 import {
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR,

@@ -22,28 +22,13 @@ import {
   type InvestigationPlanReviewCoverageRequirementV3,
   type InvestigationPlanReviewCoverageTargetBindingV3,
 } from '../investigation/manifest/investigation-manifest.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
+
+export { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from './plan-review-coverage-policy.ts';
 
 const HEX64 = /^[0-9a-f]{64}$/;
 const PREFIXED_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const GIT_OBJECT = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
-
-export const GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST = sha256(
-  canonicalJson({
-    schemaVersion: 2,
-    kind: 'plan-review-coverage-policy',
-    activation: 'global',
-    sampling: 'review-coverage.v1',
-    evidence: 'namespace-correct-exact-location',
-    targetFields: [
-      'invariants',
-      'risk-factors',
-      'freshness',
-      'evidence-mode',
-      'degraded-extraction',
-      'cost-profile',
-    ],
-  }),
-);
 
 export type GlobalPlanReviewCoverageTargetInput = Readonly<{
   source:
