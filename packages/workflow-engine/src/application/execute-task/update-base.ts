@@ -40,6 +40,7 @@ export type TaskBaseUpdateResult = Readonly<{
   ontoCommit: string;
   oldHead: string;
   newHead: string;
+  invalidatedRuntimeReportIds: readonly string[];
   revalidated: Readonly<{
     applicabilityNodeId: string;
     planningGenerationId: string;
@@ -350,6 +351,7 @@ function updateFinishedTaskBaseLocked(
     const checkIds = [
       ...new Set(assurance.checks.map(({ checkId }) => checkId)),
     ].sort();
+    const invalidatedRuntimeReportIds = sessionRuntimeReportIds(session);
     const receipt: TaskBaseRefreshReceipt = {
       schemaVersion: 1,
       kind: 'task-session-base-refresh-receipt.v1',
@@ -360,7 +362,7 @@ function updateFinishedTaskBaseLocked(
       ontoCommit,
       oldHead,
       newHead: afterReplay.head,
-      invalidatedRuntimeReportIds: sessionRuntimeReportIds(session),
+      invalidatedRuntimeReportIds,
       assuranceCheckIds: checkIds,
       planningGenerationId: planningAssurance.planningGenerationId,
       completedAt: new Date().toISOString(),
@@ -386,6 +388,7 @@ function updateFinishedTaskBaseLocked(
       ontoCommit,
       oldHead,
       newHead: afterReplay.head,
+      invalidatedRuntimeReportIds: [...invalidatedRuntimeReportIds],
       revalidated: {
         applicabilityNodeId: planningAssurance.applicabilityNodeId,
         planningGenerationId: planningAssurance.planningGenerationId,

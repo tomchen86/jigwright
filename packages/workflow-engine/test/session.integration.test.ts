@@ -2404,6 +2404,17 @@ test('update-base replays a finished non-final task branch and recomputes local 
     const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
     fixture = prepared.fixture;
     const { committed, started } = prepared;
+    const finishedSession = getSession(fixture.worktree, started.sessionId);
+    const expectedInvalidatedRuntimeReportIds = [
+      finishedSession.latestCheckReportId,
+      finishedSession.completionReportId,
+      finishedSession.finishReportId,
+      finishedSession.commitReportId,
+      finishedSession.implementationReconciliationReportId,
+    ]
+      .filter((reportId): reportId is string => reportId !== undefined)
+      .sort();
+    assert.ok(expectedInvalidatedRuntimeReportIds.length > 0);
 
     fs.writeFileSync(
       path.join(repository, 'src/base-update.ts'),
@@ -2434,6 +2445,7 @@ test('update-base replays a finished non-final task branch and recomputes local 
         oldHead: string;
         newHead: string;
         ontoCommit: string;
+        invalidatedRuntimeReportIds: string[];
         revalidated: {
           planningGenerationId: string;
           allowedPaths: string[];
@@ -2449,6 +2461,10 @@ test('update-base replays a finished non-final task branch and recomputes local 
     assert.equal(output.result.oldHead, committed.commitHash);
     assert.notEqual(output.result.newHead, output.result.oldHead);
     assert.equal(output.result.ontoCommit, ontoCommit);
+    assert.deepEqual(
+      output.result.invalidatedRuntimeReportIds,
+      expectedInvalidatedRuntimeReportIds,
+    );
     assert.match(
       output.result.revalidated.planningGenerationId,
       /^[0-9a-f]{64}$/,
@@ -2481,11 +2497,16 @@ test('update-base replays a finished non-final task branch and recomputes local 
       sessionId: string;
       oldHead: string;
       newHead: string;
+      invalidatedRuntimeReportIds: string[];
       assuranceCheckIds: string[];
     };
     assert.equal(receipt.sessionId, started.sessionId);
     assert.equal(receipt.oldHead, committed.commitHash);
     assert.equal(receipt.newHead, output.result.newHead);
+    assert.deepEqual(
+      receipt.invalidatedRuntimeReportIds,
+      expectedInvalidatedRuntimeReportIds,
+    );
     assert.deepEqual(receipt.assuranceCheckIds, ['fixture']);
     git(fixture.worktree, [
       'merge-base',
