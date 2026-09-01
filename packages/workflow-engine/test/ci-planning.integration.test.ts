@@ -54,6 +54,25 @@ import {
 
 const CHANGE_ID = 'demo-change';
 
+test('CI planning task replay crosses the production planning composition root', () => {
+  const ciPlanningSource = fs.readFileSync(
+    new URL('../src/entrypoints/ci/ci-planning.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    ciPlanningSource,
+    /adapters\/planning\/openspec\/documents\/planning-contract/u,
+  );
+  for (const helper of [
+    'amendmentLeftWorkMarkedDone',
+    'assertPlanningTaskHistory',
+    'taskStates',
+  ]) {
+    assert.match(ciPlanningSource, new RegExp(`\\b${helper}\\b`, 'u'));
+  }
+});
+
 function overrideCentralConfiguration(
   ranking: readonly string[] = ['claude', 'codex'],
 ): CentralRoleProviderDefaultV1 {

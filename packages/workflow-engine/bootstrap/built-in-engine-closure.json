@@ -928,7 +928,7 @@
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:04901d39dfaabdfd9f6aad2baa427c0dea4452b19b772d7dd6ffa2c44034a6d6"
+      "digest": "sha256:b58062657d710d135c82caa9ac8b3bdd00062aa8ace9970806ff53b68b305575"
     },
     {
       "path": "src/entrypoints/ci/ci-routing.ts",
@@ -1363,7 +1363,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:3827dd21994950918899b757c2e484676fc5f3e3284705051b3397c3556565cc"
+      "digest": "sha256:5f5bbba9832e4bebd1fa6b06a44a4f517277223739b6db08e9900960527f35b2"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1673,7 +1673,7 @@
     {
       "path": "src/modules/repository-consumer/repository-consumer-config.ts",
       "mode": "100644",
-      "digest": "sha256:6da3ba71251d81744d1dca4a8690df819053449f2f026651e72c35cd7c3364e9"
+      "digest": "sha256:f3c8a7f3ce84ab29ee8b896b6926a00070d587fd55b012e75a62d8bbd3c7a115"
     },
     {
       "path": "src/modules/source/check-command.ts",

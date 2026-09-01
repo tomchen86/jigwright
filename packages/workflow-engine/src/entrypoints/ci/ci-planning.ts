@@ -46,19 +46,17 @@ import {
 import { committedPlanningGeneration } from '../../runtime/repository-transaction/planning-generation-history.ts';
 import { readPlanningAmendmentDecision } from '../../modules/lifecycle/planning-amendment-decision.ts';
 import {
-  amendmentLeftWorkMarkedDone,
-  assertPlanningPaths,
-  assertPlanningTaskHistory,
-  taskStates,
-} from '../../adapters/planning/openspec/documents/planning-contract.ts';
-import {
   agentRolePlanV2Path,
+  amendmentLeftWorkMarkedDone,
+  assertPlanningTaskHistory,
   partitionPlanningRolePolicyPaths,
   resolveHistoricalOpenSpecPlanningTransitionBinding,
   resolveHistoricalOpenSpecProviderBinding,
+  taskStates,
 } from '../../composition-root/planning-provider-production.ts';
 import { productionConsumedPlanReviewReplayPort } from '../../composition-root/grant-verifier-composition.ts';
 import {
+  assertPlanningPaths,
   planningProviderBindingPath,
   requiredPlanningArtifactPaths,
 } from '../../modules/source/planning-paths.ts';

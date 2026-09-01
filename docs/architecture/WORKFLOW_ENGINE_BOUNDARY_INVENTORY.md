@@ -104,12 +104,13 @@ moved, and no second lifecycle reducer was introduced.
 
 ### OpenSpec direct dependency — coupled
 
-Planning inspection, plan-commit validation, and plan task-history policy now
-cross the production planning composition root. The plan-commit application no
-longer imports the OpenSpec planning contract directly; propose-orchestrator,
-archive, and several CI paths still import the in-engine OpenSpec adapter. The
-remaining coupling is standalone adapter extraction and those direct authoring,
-archive, and CI seams, not absence of the planning port.
+Planning inspection, plan-commit validation and task-history policy, plus CI
+planning task replay now cross the production planning composition root. The
+plan-commit and CI-planning modules no longer import the OpenSpec planning
+contract directly; propose-orchestrator, archive, CI archive, and remaining
+OpenSpec path assumptions still couple to the in-engine adapter. The remaining
+work is standalone adapter extraction and those authoring/archive/path seams,
+not absence of the planning port.
 
 The planning seam retains all eight planning-provider responsibilities:
 provider provenance, artifact inventory, task/source anchors, readiness

@@ -35,6 +35,18 @@ export function loadRepositoryConsumerConfiguration(requestedRepositoryRoot) {
         source: 'tracked',
     });
 }
+/**
+ * Report only whether the optional repository-consumer configuration entry is
+ * present. A true result does not admit the entry: every consumer must still
+ * pass it through the strict loader, so an unsafe or invalid entry cannot be
+ * treated as absent.
+ */
+export function repositoryConsumerConfigurationExists(requestedRepositoryRoot) {
+    const repositoryRoot = canonicalRoot(requestedRepositoryRoot);
+    return (fs.lstatSync(path.join(repositoryRoot, CONFIG_PATH), {
+        throwIfNoEntry: false,
+    }) !== undefined);
+}
 export function repositoryDocumentConfiguration(repositoryRoot) {
     return productionRepositoryConsumerPort.load(repositoryRoot).documents;
 }
