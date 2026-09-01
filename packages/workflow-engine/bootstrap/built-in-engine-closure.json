@@ -1678,7 +1678,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:be7b3593dd28e1d6fa6e206632fa65da08f534236d2095ce2662a6bcfa95f12f"
+      "digest": "sha256:2ef2d3c8065f82ac4f1e88aa437a7bfd5df2f41c8c88c0237f480e3563723f3b"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",

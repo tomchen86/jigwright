@@ -13,6 +13,7 @@ import {
 } from '@jigwright/core/job-attempt-runtime';
 import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
 
+import * as executionCore from '../src/modules/provider-orchestration/execution-core.ts';
 import {
   acceptAttemptResult,
   assertReadOnlyProbe,
@@ -20,19 +21,16 @@ import {
   canonicalAttemptRecord,
   canonicalJobRecord,
   canonicalWorkflowRecord,
-  classifyEnvironmentDrift,
   classifyExecutionFailure,
   createExecutionJob,
   createFailureDescriptor,
   createReplacementAttempt,
   decideRetry,
-  environmentSnapshotDigest,
   leaseAttempt,
   parseAttemptRecord,
   parseJobRecord,
   parseWorkflowRecord,
   projectProviderInvocationRecord,
-  type EnvironmentSnapshot,
   type ExecutionPolicySnapshot,
   type JobRecord,
   type ProviderInvocationProjection,
@@ -781,37 +779,7 @@ test('automatic retry rejects runtime, cost, token, deadline, and provider thres
   }
 });
 
-test('environment snapshots use an exact read-only probe allowlist and classify drift', () => {
-  const base: EnvironmentSnapshot = {
-    schemaVersion: 1,
-    repository: {
-      head: 'a'.repeat(40),
-      treeDigest: digest('1'),
-      worktreeDigest: digest('2'),
-    },
-    runtime: { node: 'v24.1.0', platform: 'darwin-arm64' },
-    provider: {
-      adapter: 'claude-cli',
-      version: '1.2.3',
-      timeoutMs: 300_000,
-    },
-    tools: [
-      { name: 'git', available: true, version: '2.50.0' },
-      { name: 'node', available: true, version: '24.1.0' },
-      { name: 'pnpm', available: true, version: '10.0.0' },
-      { name: 'rg', available: true, version: '14.1.0' },
-    ],
-    capabilities: {
-      network: false,
-      readRepository: true,
-      writeWorkspace: false,
-    },
-  };
-  assert.equal(
-    environmentSnapshotDigest(base),
-    environmentSnapshotDigest(base),
-  );
-
+test('read-only probes use an exact allowlist', () => {
   const binaryProbe = {
     kind: 'binary-exists' as const,
     target: 'rg',
@@ -857,32 +825,11 @@ test('environment snapshots use an exact read-only probe allowlist and classify 
       }),
     (error) => isWorkflowError(error, 'EXECUTION_PROBE_NOT_ALLOWED'),
   );
+});
 
-  assert.equal(
-    classifyEnvironmentDrift(base, {
-      ...base,
-      provider: { ...base.provider, timeoutMs: 600_000 },
-    }).class,
-    'non-semantic',
-  );
-  assert.equal(
-    classifyEnvironmentDrift(base, {
-      ...base,
-      repository: { ...base.repository, worktreeDigest: digest('3') },
-    }).class,
-    'refreshable',
-  );
-  assert.equal(
-    classifyEnvironmentDrift(base, {
-      ...base,
-      repository: {
-        head: 'b'.repeat(40),
-        treeDigest: digest('4'),
-        worktreeDigest: digest('5'),
-      },
-    }).class,
-    'semantic',
-  );
+test('execution core retains no unattached EnvironmentSnapshot API', () => {
+  assert.equal('environmentSnapshotDigest' in executionCore, false);
+  assert.equal('classifyEnvironmentDrift' in executionCore, false);
 });
 
 test('execution records round-trip only through strict canonical bytes', () => {

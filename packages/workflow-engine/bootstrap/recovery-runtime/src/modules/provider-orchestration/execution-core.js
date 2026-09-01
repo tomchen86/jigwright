@@ -9,7 +9,6 @@ import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const UNPREFIXED_DIGEST = /^[0-9a-f]{64}$/;
-const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const IDENTIFIER = /^[a-z0-9][a-z0-9._:-]{0,255}$/;
 const MAX_RECORD_BYTES = 1_048_576;
 const MAX_STRING_BYTES = 16_384;
@@ -833,9 +832,6 @@ export function projectExecutionFailureState(input) {
         }),
     });
 }
-export function environmentSnapshotDigest(snapshot) {
-    return digestCanonical(assertEnvironmentSnapshot(snapshot));
-}
 export function assertReadOnlyProbe(input) {
     try {
         return assertReadOnlyProbeRequestV1(input);
@@ -846,22 +842,6 @@ export function assertReadOnlyProbe(input) {
         }
         throw error;
     }
-}
-export function classifyEnvironmentDrift(previousInput, currentInput) {
-    const previous = assertEnvironmentSnapshot(previousInput);
-    const current = assertEnvironmentSnapshot(currentInput);
-    const changedFields = diffJson(previous, current);
-    if (changedFields.length === 0) {
-        return deepFreeze({ class: 'none', changedFields });
-    }
-    if (previous.repository.head !== current.repository.head ||
-        previous.repository.treeDigest !== current.repository.treeDigest) {
-        return deepFreeze({ class: 'semantic', changedFields });
-    }
-    if (previous.repository.worktreeDigest !== current.repository.worktreeDigest) {
-        return deepFreeze({ class: 'refreshable', changedFields });
-    }
-    return deepFreeze({ class: 'non-semantic', changedFields });
 }
 export function projectProviderInvocationRecord(input) {
     const record = input.record;
@@ -1298,65 +1278,6 @@ function assertFailureDescriptor(value) {
         throw executionInvalid('Failure descriptor is not canonical.');
     }
     return rebuilt;
-}
-function assertEnvironmentSnapshot(value) {
-    if (!isPlainObject(value) ||
-        !hasExactKeys(value, [
-            'capabilities',
-            'provider',
-            'repository',
-            'runtime',
-            'schemaVersion',
-            'tools',
-        ]) ||
-        value.schemaVersion !== 1 ||
-        !isPlainObject(value.repository) ||
-        !hasExactKeys(value.repository, ['head', 'treeDigest', 'worktreeDigest']) ||
-        !isPlainObject(value.runtime) ||
-        !hasExactKeys(value.runtime, ['node', 'platform']) ||
-        !isPlainObject(value.provider) ||
-        !hasExactKeys(value.provider, ['adapter', 'timeoutMs', 'version']) ||
-        !Array.isArray(value.tools) ||
-        !isPlainObject(value.capabilities) ||
-        !hasExactKeys(value.capabilities, [
-            'network',
-            'readRepository',
-            'writeWorkspace',
-        ])) {
-        throw executionInvalid('Environment snapshot is invalid.');
-    }
-    if (typeof value.repository.head !== 'string' ||
-        !GIT_OBJECT_ID.test(value.repository.head)) {
-        throw executionInvalid('Environment repository head is invalid.');
-    }
-    assertDigest(value.repository.treeDigest);
-    assertDigest(value.repository.worktreeDigest);
-    assertBoundedString(value.runtime.node, 'runtime.node');
-    assertBoundedString(value.runtime.platform, 'runtime.platform');
-    assertIdentifier(value.provider.adapter, 'provider.adapter');
-    assertBoundedString(value.provider.version, 'provider.version');
-    assertBoundedPositiveInteger(value.provider.timeoutMs, 'provider.timeoutMs', 3_600_000);
-    const toolNames = [];
-    for (const tool of value.tools) {
-        if (!isPlainObject(tool) ||
-            !hasExactKeys(tool, ['available', 'name', 'version']) ||
-            typeof tool.available !== 'boolean' ||
-            (tool.version !== null && typeof tool.version !== 'string')) {
-            throw executionInvalid('Environment tool observation is invalid.');
-        }
-        assertIdentifier(tool.name, 'tool.name');
-        if (tool.version !== null)
-            assertBoundedString(tool.version, 'tool.version');
-        toolNames.push(tool.name);
-    }
-    if (canonicalJson(toolNames) !==
-        canonicalJson([...new Set(toolNames)].sort()) ||
-        typeof value.capabilities.network !== 'boolean' ||
-        typeof value.capabilities.readRepository !== 'boolean' ||
-        typeof value.capabilities.writeWorkspace !== 'boolean') {
-        throw executionInvalid('Environment snapshot is not canonical.');
-    }
-    return deepFreeze(structuredClone(value));
 }
 function assertRepairContext(value, job) {
     const context = assertRepairContextShape(value);
