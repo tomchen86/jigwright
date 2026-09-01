@@ -2007,11 +2007,16 @@ function resumeExemptionPlanningContribution(
           assertOwned,
         ),
         materializedArtifacts,
+        options.collaborationGrantValidation,
       );
     },
   );
   dispatchPreparedPlanReview(cwd, output, options);
-  return getExemptionProposeStatus(cwd, input.investigationId);
+  return getExemptionProposeStatus(
+    cwd,
+    input.investigationId,
+    options.collaborationGrantValidation,
+  );
 }
 
 function assertExemptionPlanningBinding(
@@ -4926,6 +4931,7 @@ function getProposeLifecycleStatus(
 function getExemptionProposeStatus(
   cwd: string,
   investigationId: string,
+  grantValidation?: ProposeResumeOptions['collaborationGrantValidation'],
 ): ExemptionProposeOutput {
   const context = loadInvestigationRuntimeContext(cwd);
   const session = readProposeExemptionSession(context.runtime, investigationId);
@@ -4934,6 +4940,8 @@ function getExemptionProposeStatus(
     cwd,
     session,
     prepareExemptionPlanningScaffold(cwd, session, true, true, false),
+    undefined,
+    grantValidation,
   );
 }
 
@@ -4942,6 +4950,7 @@ function renderExemptionProposeOutput(
   session: ProposeExemptionSession,
   knownScaffold?: ReturnType<typeof prepareExemptionPlanningScaffold>,
   knownMaterializedArtifacts?: Record<string, string>,
+  grantValidation?: ProposeResumeOptions['collaborationGrantValidation'],
 ): ExemptionProposeOutput {
   const context = loadInvestigationRuntimeContext(cwd);
   const receipt = readExemptionPlanningMaterializationReceipt(
@@ -4983,6 +4992,10 @@ function renderExemptionProposeOutput(
     },
     materializedArtifacts,
     projectExemptionPlanDigest(cwd, session),
+    null,
+    [],
+    { dropped: [], escalated: false },
+    grantValidation,
   ) as ExemptionProposeOutput;
 }
 
@@ -5071,7 +5084,11 @@ function getProposeStatusInternal(
   assertOwned?: () => void,
 ): ProposeOutput {
   if (isProposeExemptionInvestigationId(requestedInvestigationId)) {
-    return getExemptionProposeStatus(cwd, requestedInvestigationId);
+    return getExemptionProposeStatus(
+      cwd,
+      requestedInvestigationId,
+      grantValidation,
+    );
   }
   const status = getInvestigationStatus(cwd, requestedInvestigationId);
   assertOwned?.();

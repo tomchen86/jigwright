@@ -98,7 +98,10 @@ import {
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { productionConsumedRoleResultReplayPort } from '../src/composition-root/grant-verifier-composition.ts';
+import {
+  productionConsumedPlanReviewReplayPort,
+  productionConsumedRoleResultReplayPort,
+} from '../src/composition-root/grant-verifier-composition.ts';
 import {
   authoritativeCollaborationGrantVerifierForTest,
   createFixtureRepository,
@@ -745,6 +748,7 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
           collaborationGrantValidation: {
             now: new Date(NOW.getTime() + 120_000),
             verifier: authoritativeCollaborationGrantVerifierForTest(signer),
+            consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
           },
         }),
       ),
@@ -752,6 +756,7 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
         collaborationGrantValidation: {
           now: new Date(NOW.getTime() + 120_000),
           verifier: authoritativeCollaborationGrantVerifierForTest(signer),
+          consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
         },
       },
     );
