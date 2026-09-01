@@ -426,7 +426,28 @@ test('installed tarball drives two complete current lifecycles over unrelated se
       version: installed.adoption.release.version,
       digest: installed.releaseDigest,
     },
+    lockfile: {
+      path: 'package-lock.json',
+      digest:
+        installed.adoption.consumer.localCutover.rootWorkflow.lockfileDigest,
+      resolved: `file:../release/${installed.adoption.release.tarball}`,
+      integrity:
+        installed.adoption.consumer.localCutover.rootWorkflow.lockfileIntegrity,
+      integrityVerified: true,
+    },
   });
+  assert.match(
+    installed.adoption.install.lockfile.digest,
+    /^sha256:[a-f0-9]{64}$/u,
+  );
+  assert.match(
+    installed.adoption.install.lockfile.resolved,
+    /^file:\.\.\/release\/jigwright-[^/]+\.tgz$/u,
+  );
+  assert.match(
+    installed.adoption.install.lockfile.integrity,
+    /^sha512-[A-Za-z0-9+/]+={0,2}$/u,
+  );
   assert.equal(installed.adoption.bootstrap.init.status, 'initialized');
   assert.deepEqual(installed.adoption.bootstrap.repeatedInit, {
     exitCode: 12,
