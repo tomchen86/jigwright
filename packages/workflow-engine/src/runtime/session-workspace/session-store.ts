@@ -10,6 +10,7 @@ import {
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
+  assertPlainDirectory,
   ensurePlainDirectory,
   publishPreparedExclusiveLock,
   reclaimDeadPreparedLock,
@@ -20,7 +21,11 @@ import {
   reclaimHumanResolutionJournalTemporaries,
 } from '../storage-journal/investigation-session-store.ts';
 import { assertGrantLifecycleBarrier } from '../storage-journal/grant-store.ts';
-import { matchesAllowedPath, normalizePolicyPath } from './paths.ts';
+import {
+  assertChangeId,
+  matchesAllowedPath,
+  normalizePolicyPath,
+} from './paths.ts';
 
 const MAINTAINER_GRANT_STATE_FILE =
   /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/;
@@ -235,6 +240,74 @@ export type RepositoryLifecycleOperationOptions = Readonly<{
   allowHumanResolutionChangeId?: string;
   allowGrantChallengeIds?: readonly string[];
 }>;
+
+/**
+ * Observe the repository-wide lifecycle admission boundary without acquiring,
+ * reclaiming, or publishing authority. Any existing lifecycle owner or
+ * reclaimer is reported as a conflict; the mutating operation remains
+ * responsible for its bounded dead-owner recovery before revalidating.
+ */
+export function assertRepositoryLifecyclePreflightAdmission(
+  runtime: ReturnType<typeof runtimePaths>,
+  requestedChangeId: string,
+  options: RepositoryLifecycleOperationOptions = {},
+): void {
+  const changeId = assertChangeId(requestedChangeId);
+  assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
+  assertHumanResolutionLifecycleBarrier(
+    runtime.root,
+    options.allowHumanResolutionGrantId ?? null,
+    options.allowHumanResolutionChangeId ?? null,
+  );
+  assertMaintainerReservationCompatibility(
+    runtime,
+    options.allowMaintainerGrantId,
+  );
+  for (const directory of [runtime.sessions, runtime.locks]) {
+    if (fs.lstatSync(directory, { throwIfNoEntry: false })) {
+      assertPlainDirectory(directory);
+    }
+  }
+  const operationsStats = fs.lstatSync(runtime.operations, {
+    throwIfNoEntry: false,
+  });
+  if (operationsStats) {
+    assertPlainDirectory(runtime.operations);
+    const lifecycleLockName = 'repository-lifecycle.lock';
+    if (
+      fs
+        .readdirSync(runtime.operations)
+        .some(
+          (name) =>
+            name === lifecycleLockName ||
+            name.startsWith(`${lifecycleLockName}.reclaim.`),
+        )
+    ) {
+      throw workflowError(
+        'REPOSITORY_LIFECYCLE_CONFLICT',
+        'Another repository lifecycle transition is in progress.',
+        ExitCode.conflict,
+      );
+    }
+  }
+  const changeLockName = `${changeId}.lock`;
+  if (
+    fs.lstatSync(runtime.locks, { throwIfNoEntry: false }) &&
+    fs
+      .readdirSync(runtime.locks)
+      .some(
+        (name) =>
+          name === changeLockName ||
+          name.startsWith(`${changeLockName}.reclaim.`),
+      )
+  ) {
+    throw workflowError(
+      'REPOSITORY_LIFECYCLE_CONFLICT',
+      `Another lifecycle transition already owns change ${changeId}.`,
+      ExitCode.conflict,
+    );
+  }
+}
 
 type RepositoryLifecycleLease = Readonly<{
   assertOwned(): void;

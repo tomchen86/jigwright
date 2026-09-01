@@ -239,6 +239,7 @@ import {
   checkSession,
   getSession,
   listSessions,
+  preflightTaskSession,
 } from './application/execute-task/session.ts';
 import { updateTaskSessionBase } from './application/execute-task/update-base.ts';
 import { runtimePaths } from './runtime/session-workspace/session-store.ts';
@@ -1665,6 +1666,26 @@ function dispatch(args: string[], cwd: string): CommandResult {
           discoverRepository(cwd).repositoryRoot,
         ),
       };
+    case 'task-preflight': {
+      const changeId = rest[0];
+      const taskId = optionValue(rest.slice(1), '--task');
+      const expected = taskId ? [changeId, '--task', taskId] : [changeId];
+      if (
+        !changeId ||
+        rest.length !== expected.length ||
+        JSON.stringify(rest) !== JSON.stringify(expected)
+      ) {
+        throw usage(
+          'Usage: pnpm workflow task-preflight <change-id> [--task <task-id>] [--json]',
+        );
+      }
+      const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
+      return {
+        command,
+        ok: true,
+        result: preflightTaskSession(cwd, changeId, resolvedTaskId),
+      };
+    }
     case 'open-task': {
       const changeId = rest[0];
       const taskId = optionValue(rest.slice(1), '--task');

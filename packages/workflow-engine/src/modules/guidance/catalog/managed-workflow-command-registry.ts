@@ -4,6 +4,7 @@ export type WorkflowGuidanceStatus =
 export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'guide',
   'route',
+  'task-preflight',
   'open-task',
   'update-base',
   'revise-task',
@@ -64,6 +65,8 @@ const FINALIZE_REPLACEMENT =
   'pnpm workflow finalize <session-id> --message <subject> [--full-gate] [--json]';
 const OPEN_TASK_REPLACEMENT =
   'pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] [--json]';
+const TASK_PREFLIGHT_USAGE =
+  'pnpm workflow task-preflight <change-id> [--task <task-id>] [--json]';
 
 const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
   {
@@ -130,6 +133,21 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     ],
     consequences: [
       'Publishes the controlled routing source by CAS and deterministically refreshes the repository inventory handoff.',
+    ],
+    successors: ['open-task'],
+  },
+  {
+    id: 'task-preflight',
+    route: ['task-preflight'],
+    usage: [TASK_PREFLIGHT_USAGE],
+    status: 'read-only',
+    purpose:
+      'Inspect the exact task-session admission and isolation binding without acquiring authority or changing repository state.',
+    preconditions: [
+      'The clean current branch, planning generation, task, and routing admission are valid.',
+    ],
+    consequences: [
+      'Reads current task scope, isolation conflicts, and Task Mandate requirements without creating a lock, lease, session, journal, or Grant.',
     ],
     successors: ['open-task'],
   },

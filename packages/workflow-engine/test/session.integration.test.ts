@@ -26,6 +26,10 @@ import {
   startSession,
 } from '../src/application/execute-task/session.ts';
 import {
+  runtimePaths,
+  withRepositoryLifecycleOperation,
+} from '../src/runtime/session-workspace/session-store.ts';
+import {
   applyChangeRoutingReview,
   prepareChangeRoutingReview,
 } from '../src/composition-root/change-routing-production.ts';
@@ -210,6 +214,114 @@ function removeConcurrentTaskWorktree(
   fs.rmSync(fixture.parent, { recursive: true, force: true });
 }
 
+function snapshotTaskPreflightState(repository: string) {
+  return {
+    head: git(repository, ['rev-parse', 'HEAD']).trim(),
+    tree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
+    status: git(repository, ['status', '--porcelain=v2', '-z']),
+    refs: git(repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]),
+    worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+    runtime: snapshotTaskPreflightDirectory(runtimeRoot(repository)),
+  };
+}
+
+type TaskSessionPreflightCliOutput = {
+  result: {
+    schemaVersion: number;
+    kind: string;
+    authority: string;
+    status: string;
+    changeId: string;
+    taskId: string;
+    observed: {
+      repositoryRoot: string;
+      gitCommonDirectory: string;
+      branch: string;
+      head: string;
+      tree: string;
+    };
+    routing: {
+      role: string;
+      worksetDigest: string;
+      concurrencyEnabled: boolean;
+    };
+    scope: {
+      allowedPaths: string[];
+      requiredChecks: string[];
+      authorization: {
+        requiresMandate: boolean;
+        mode: string;
+        roles: string[];
+        matchedPatterns: string[];
+        unclassifiedScope: boolean;
+        policyDigest: string;
+      };
+    };
+    isolation: {
+      schemaVersion: number;
+      routingRole: string;
+      worktreeDigest: string;
+      resources: unknown[];
+    };
+    mutationBoundary: {
+      git: string;
+      runtime: string;
+      grants: string;
+    };
+  };
+  nextSteps: Array<{ command: string; why: string }>;
+};
+
+function snapshotTaskPreflightDirectory(
+  root: string,
+): ReadonlyArray<Readonly<Record<string, unknown>>> {
+  if (!fs.existsSync(root)) return Object.freeze([]);
+  const entries: Array<Readonly<Record<string, unknown>>> = [];
+  const visit = (absolute: string, relative: string): void => {
+    const stats = fs.lstatSync(absolute);
+    if (stats.isSymbolicLink()) {
+      entries.push(
+        Object.freeze({
+          path: relative,
+          kind: 'symlink',
+          mode: stats.mode & 0o777,
+          target: fs.readlinkSync(absolute),
+        }),
+      );
+      return;
+    }
+    if (stats.isDirectory()) {
+      entries.push(
+        Object.freeze({
+          path: relative,
+          kind: 'directory',
+          mode: stats.mode & 0o777,
+        }),
+      );
+      for (const name of fs.readdirSync(absolute).sort()) {
+        visit(
+          path.join(absolute, name),
+          relative ? `${relative}/${name}` : name,
+        );
+      }
+      return;
+    }
+    entries.push(
+      Object.freeze({
+        path: relative,
+        kind: 'file',
+        mode: stats.mode & 0o777,
+        bytes: fs.readFileSync(absolute).toString('base64'),
+      }),
+    );
+  };
+  visit(root, '');
+  return Object.freeze(entries);
+}
+
 test('current lifecycle rejects a non-managed schema directly', () => {
   const repository = createFixtureRepository();
   try {
@@ -224,6 +336,279 @@ test('current lifecycle rejects a non-managed schema directly', () => {
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session preflight reuses exact admission without mutating Git, runtime, or Grant state', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const before = snapshotTaskPreflightState(repository);
+    const result = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'task-preflight',
+        'demo-change',
+        '--task',
+        '1.1',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+
+    assert.equal(result.status, 0, result.stderr);
+    const output = JSON.parse(result.stdout) as TaskSessionPreflightCliOutput;
+    assert.deepEqual(
+      {
+        schemaVersion: output.result.schemaVersion,
+        kind: output.result.kind,
+        authority: output.result.authority,
+        status: output.result.status,
+        changeId: output.result.changeId,
+        taskId: output.result.taskId,
+        branch: output.result.observed.branch,
+        head: output.result.observed.head,
+        tree: output.result.observed.tree,
+        routingRole: output.result.routing.role,
+        isolationRole: output.result.isolation.routingRole,
+        requiresMandate: output.result.scope.authorization.requiresMandate,
+        mutationBoundary: output.result.mutationBoundary,
+      },
+      {
+        schemaVersion: 1,
+        kind: 'task-session-preflight.v1',
+        authority: 'advisory',
+        status: 'ready',
+        changeId: 'demo-change',
+        taskId: '1.1',
+        branch: 'work/demo-change',
+        head: before.head,
+        tree: before.tree,
+        routingRole: 'single',
+        isolationRole: 'single',
+        requiresMandate: false,
+        mutationBoundary: {
+          git: 'read-only',
+          runtime: 'read-only',
+          grants: 'not-requested',
+        },
+      },
+    );
+    assert.equal(
+      output.result.observed.repositoryRoot,
+      fs.realpathSync(repository),
+    );
+    assert.match(output.result.observed.gitCommonDirectory, /\.git$/);
+    assert.match(output.result.routing.worksetDigest, /^sha256:[0-9a-f]{64}$/);
+    assert.match(
+      output.result.isolation.worktreeDigest,
+      /^sha256:[0-9a-f]{64}$/,
+    );
+    assert.deepEqual(output.result.scope.allowedPaths, ['src/**']);
+    assert.deepEqual(output.result.scope.requiredChecks, ['fixture']);
+    assert.equal(output.result.scope.authorization.mode, 'conditional');
+    assert.match(
+      output.result.scope.authorization.policyDigest,
+      /^sha256:[0-9a-f]{64}$/,
+    );
+    assert.deepEqual(output.result.isolation.resources, []);
+    assert.deepEqual(output.nextSteps, [
+      {
+        command: 'pnpm workflow open-task demo-change --task 1.1 --json',
+        why: 'Open the selected or next incomplete task, committing an owned draft only when required.',
+      },
+    ]);
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+
+    const started = startSession(repository, 'demo-change', '1.1');
+    assert.deepEqual(started.isolation, output.result.isolation);
+    abortSession(
+      repository,
+      started.sessionId,
+      'Preflight regression cleanup.',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session preflight reports protected authority without requesting a Grant', () => {
+  const repository = createFixtureRepository();
+  try {
+    const roleRegistryPath = path.join(repository, 'workflow/path-roles.json');
+    const roleRegistry = JSON.parse(
+      fs.readFileSync(roleRegistryPath, 'utf8'),
+    ) as { roles: Record<string, string[]> };
+    roleRegistry.roles['control-plane'] = ['control-plane/**'];
+    fs.writeFileSync(
+      roleRegistryPath,
+      `${JSON.stringify(roleRegistry, null, 2)}\n`,
+    );
+    git(repository, ['add', 'workflow/path-roles.json']);
+    git(repository, ['commit', '-m', 'Add fixture control-plane path role']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const guardPath = path.join(
+      repository,
+      'openspec/changes/demo-change/guard.json',
+    );
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
+      tasks: Record<string, { allowedPaths: string[] }>;
+    };
+    guard.tasks['1.1']!.allowedPaths = ['control-plane/**'];
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    prepareCurrentChange(repository);
+    const before = snapshotTaskPreflightState(repository);
+    const run = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'task-preflight',
+        'demo-change',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+
+    assert.equal(run.status, 0, run.stderr);
+    const output = JSON.parse(run.stdout) as TaskSessionPreflightCliOutput;
+    assert.equal(output.result.status, 'mandate-required');
+    assert.equal(output.result.taskId, '1.1');
+    assert.deepEqual(output.result.scope.allowedPaths, ['control-plane/**']);
+    assert.deepEqual(output.result.scope.authorization.roles, [
+      'control-plane',
+    ]);
+    assert.deepEqual(output.result.scope.authorization.matchedPatterns, [
+      'control-plane/**',
+    ]);
+    assert.equal(output.result.scope.authorization.requiresMandate, true);
+    assert.deepEqual(output.result.mutationBoundary, {
+      git: 'read-only',
+      runtime: 'read-only',
+      grants: 'not-requested',
+    });
+    assert.deepEqual(output.nextSteps, [
+      {
+        command: 'pnpm workflow guide --json',
+        why: 'Inspect the versioned managed-task workflow command guide.',
+      },
+    ]);
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session preflight fails closed on an active lifecycle barrier without mutation', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const runtime = runtimePaths(
+      fs.realpathSync(path.join(repository, '.git')),
+      'workflow-engine',
+    );
+    withRepositoryLifecycleOperation(runtime, () => {
+      const before = snapshotTaskPreflightState(repository);
+      const run = spawnSync(
+        process.execPath,
+        [
+          '--experimental-strip-types',
+          path.join(
+            sourceRepositoryRoot,
+            'packages/workflow-engine/src/cli.ts',
+          ),
+          'task-preflight',
+          'demo-change',
+          '--task',
+          '1.1',
+          '--json',
+        ],
+        { cwd: repository, encoding: 'utf8' },
+      );
+
+      assert.notEqual(run.status, 0, run.stdout);
+      assert.equal(
+        (JSON.parse(run.stderr) as { error: { code: string } }).error.code,
+        'REPOSITORY_LIFECYCLE_CONFLICT',
+      );
+      assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    });
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('task-session preflight fails closed on change-lock and publication-directory barriers', () => {
+  for (const scenario of [
+    'live-change-lock',
+    'unsafe-lock-directory',
+  ] as const) {
+    const repository = createFixtureRepository();
+    try {
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      prepareCurrentChange(repository);
+      const runtime = runtimePaths(
+        fs.realpathSync(path.join(repository, '.git')),
+        'workflow-engine',
+      );
+      fs.mkdirSync(path.dirname(runtime.locks), {
+        recursive: true,
+        mode: 0o700,
+      });
+      if (scenario === 'live-change-lock') {
+        fs.mkdirSync(runtime.locks, { recursive: true, mode: 0o700 });
+        const ownerToken = '11111111-1111-4111-8111-111111111111';
+        fs.writeFileSync(
+          path.join(runtime.locks, 'demo-change.lock'),
+          `${JSON.stringify({
+            operationId: `plan-${ownerToken}`,
+            ownerToken,
+            changeId: 'demo-change',
+            transition: 'plan',
+            pid: process.pid,
+          })}\n`,
+          { flag: 'wx', mode: 0o600 },
+        );
+      } else {
+        fs.rmSync(runtime.locks, { recursive: true, force: true });
+        fs.writeFileSync(runtime.locks, 'unsafe lock directory\n', {
+          flag: 'wx',
+          mode: 0o600,
+        });
+      }
+      const before = snapshotTaskPreflightState(repository);
+      const run = spawnSync(
+        process.execPath,
+        [
+          '--experimental-strip-types',
+          path.join(
+            sourceRepositoryRoot,
+            'packages/workflow-engine/src/cli.ts',
+          ),
+          'task-preflight',
+          'demo-change',
+          '--task',
+          '1.1',
+          '--json',
+        ],
+        { cwd: repository, encoding: 'utf8' },
+      );
+
+      assert.notEqual(run.status, 0, run.stdout);
+      assert.equal(
+        (JSON.parse(run.stderr) as { error: { code: string } }).error.code,
+        scenario === 'live-change-lock'
+          ? 'REPOSITORY_LIFECYCLE_CONFLICT'
+          : 'RUNTIME_DIRECTORY_UNSAFE',
+      );
+      assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
 });
 

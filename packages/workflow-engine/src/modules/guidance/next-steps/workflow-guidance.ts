@@ -126,6 +126,9 @@ export function workflowResultNextSteps(
   if (commandId === 'guide') return Object.freeze([]);
   const failGrant = failGrantNextSteps(record(result.result), invocation);
   if (failGrant !== null) return failGrant;
+  if (commandId === 'task-preflight') {
+    return taskSessionPreflightNextSteps(record(result.result));
+  }
   const routeStatus = routeStatusNextSteps(result);
   if (routeStatus !== null) return routeStatus;
   const bindings = resultBindings(result, invocation);
@@ -154,6 +157,26 @@ export function workflowResultNextSteps(
       : ['guide'],
     bindings,
   );
+}
+
+function taskSessionPreflightNextSteps(
+  result: Readonly<Record<string, unknown>> | undefined,
+): readonly WorkflowNextStep[] {
+  const changeId = stringField(result, 'changeId');
+  const taskId = stringField(result, 'taskId');
+  if (
+    result?.status !== 'ready' ||
+    changeId === undefined ||
+    taskId === undefined
+  ) {
+    return projectWorkflowNextSteps(['guide']);
+  }
+  return Object.freeze([
+    explicitNextStep(
+      'open-task',
+      `pnpm workflow open-task ${shellQuote(changeId)} --task ${shellQuote(taskId)} --json`,
+    ),
+  ]);
 }
 
 function routeStatusNextSteps(

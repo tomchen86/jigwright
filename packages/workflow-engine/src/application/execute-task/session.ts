@@ -19,6 +19,7 @@ import { createTaskPlanningAssuranceBinding } from '../../modules/assurance/plan
 import { reclaimDeadChangeTransitionLock } from '../../runtime/session-workspace/planning-lock.ts';
 import {
   acquireTaskSessionIsolationLeases,
+  assertRepositoryLifecyclePreflightAdmission,
   assertTaskSessionAdmission,
   createTaskSessionIsolationBinding,
   createSessionId,
@@ -26,6 +27,7 @@ import {
   releaseOwnedLock,
   releaseTaskSessionIsolationLeases,
   runtimePaths,
+  type TaskSessionIsolationBinding,
   type WorkflowSession,
   withRepositoryLifecycleOperation,
   withSessionOperation,
@@ -40,7 +42,11 @@ import {
   type TaskMandateBinding,
   type TaskMandateOptions,
 } from '../../modules/authority/task-mandate.ts';
-import { assertTaskMandateOptional } from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
+import {
+  assertTaskMandateOptional,
+  resolveTaskAuthorizationRequirement,
+  type TaskAuthorizationRequirement,
+} from '../../adapters/consumer/repository/work-registry/task-authorization-policy.ts';
 import { assertDisposableDatabaseForRepository } from '../../adapters/consumer/repository/work-registry/database-policy.ts';
 import {
   completeTaskRevisionAbort,
@@ -61,6 +67,38 @@ import {
 
 export type SessionStartOptions = Readonly<{
   environment?: NodeJS.ProcessEnv;
+}>;
+
+export type TaskSessionPreflightV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'task-session-preflight.v1';
+  authority: 'advisory';
+  status: 'ready' | 'mandate-required';
+  changeId: string;
+  taskId: string;
+  observed: Readonly<{
+    repositoryRoot: string;
+    gitCommonDirectory: string;
+    branch: string;
+    head: string;
+    tree: string;
+  }>;
+  routing: Readonly<{
+    role: TaskSessionIsolationBinding['routingRole'];
+    worksetDigest: string;
+    concurrencyEnabled: boolean;
+  }>;
+  scope: Readonly<{
+    allowedPaths: readonly string[];
+    requiredChecks: readonly string[];
+    authorization: TaskAuthorizationRequirement;
+  }>;
+  isolation: TaskSessionIsolationBinding;
+  mutationBoundary: Readonly<{
+    git: 'read-only';
+    runtime: 'read-only';
+    grants: 'not-requested';
+  }>;
 }>;
 
 type ValidatedChangeContract = ReturnType<
@@ -109,6 +147,67 @@ export function startSession(
       undefined,
       options.environment,
     );
+  });
+}
+
+export function preflightTaskSession(
+  cwd: string,
+  requestedChangeId: string,
+  requestedTaskId: string,
+  options: SessionStartOptions = {},
+): TaskSessionPreflightV1 {
+  const inspection = inspectSessionStart(
+    cwd,
+    requestedChangeId,
+    requestedTaskId,
+  );
+  const runtime = runtimePaths(
+    inspection.git.gitCommonDirectory,
+    inspection.contract.config.runtimeDirectory,
+  );
+  assertRepositoryLifecyclePreflightAdmission(runtime, inspection.changeId);
+  const admission = inspectTaskSessionAdmission(
+    inspection,
+    runtime,
+    options.environment,
+  );
+  const authorization = resolveTaskAuthorizationRequirement(
+    inspection.git.repositoryRoot,
+    inspection.contract.config,
+    admission.policy.allowedPaths,
+  );
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    kind: 'task-session-preflight.v1' as const,
+    authority: 'advisory' as const,
+    status: authorization.requiresMandate
+      ? ('mandate-required' as const)
+      : ('ready' as const),
+    changeId: inspection.changeId,
+    taskId: inspection.taskId,
+    observed: Object.freeze({
+      repositoryRoot: inspection.git.repositoryRealPath,
+      gitCommonDirectory: inspection.git.gitCommonDirectory,
+      branch: inspection.branch,
+      head: inspection.git.head,
+      tree: inspection.git.tree,
+    }),
+    routing: Object.freeze({
+      role: inspection.routingAdmission.role,
+      worksetDigest: inspection.routingAdmission.worksetDigest,
+      concurrencyEnabled: inspection.routingAdmission.concurrencyEnabled,
+    }),
+    scope: Object.freeze({
+      allowedPaths: Object.freeze([...admission.policy.allowedPaths]),
+      requiredChecks: Object.freeze([...admission.policy.requiredChecks]),
+      authorization,
+    }),
+    isolation: admission.isolation,
+    mutationBoundary: Object.freeze({
+      git: 'read-only' as const,
+      runtime: 'read-only' as const,
+      grants: 'not-requested' as const,
+    }),
   });
 }
 
@@ -245,8 +344,7 @@ function persistSessionStart(
   fixedIdentity?: Readonly<{ sessionId: string; createdAt: string }>,
   environment: NodeJS.ProcessEnv = process.env,
 ): WorkflowSession {
-  const { changeId, taskId, git, contract, branch, routingAdmission } =
-    inspection;
+  const { changeId, taskId, git, contract, branch } = inspection;
   const policy = contract.guard.tasks[taskId];
   if (!mandateBinding) {
     assertTaskMandateOptional(
@@ -264,41 +362,11 @@ function persistSessionStart(
   );
   ensurePlainDirectory(runtime.sessions);
   ensurePlainDirectory(runtime.locks);
-  const destructiveDatabase = policy.requiredChecks.some(
-    (checkId) => contract.checks.checks[checkId]?.destructiveDatabase === true,
+  const { isolation } = inspectTaskSessionAdmission(
+    inspection,
+    runtime,
+    environment,
   );
-  const databaseIdentity =
-    routingAdmission.concurrencyEnabled && destructiveDatabase
-      ? assertDisposableDatabaseForRepository(git.repositoryRoot, environment)
-          .identity
-      : null;
-  const isolation = createTaskSessionIsolationBinding({
-    routingRole: routingAdmission.role,
-    routingWorksetDigest: routingAdmission.worksetDigest,
-    concurrencyEnabled: routingAdmission.concurrencyEnabled,
-    repositoryRoot: git.repositoryRealPath,
-    resources: [
-      ...(databaseIdentity === null
-        ? []
-        : [
-            {
-              kind: 'destructive-database' as const,
-              identity: databaseIdentity,
-            },
-          ]),
-      ...(policy.exclusiveResources ?? []).map((identity) => ({
-        kind: 'exclusive' as const,
-        identity,
-      })),
-    ],
-  });
-  assertTaskSessionAdmission(runtime, {
-    changeId,
-    repositoryRoot: git.repositoryRealPath,
-    branch,
-    allowedPaths: policy.allowedPaths,
-    isolation,
-  });
 
   const lockPath = path.join(runtime.locks, `${changeId}.lock`);
   const ownerToken = crypto.randomUUID();
@@ -381,6 +449,55 @@ function persistSessionStart(
   }
 
   return session;
+}
+
+function inspectTaskSessionAdmission(
+  inspection: ReturnType<typeof inspectSessionStart>,
+  runtime: ReturnType<typeof runtimePaths>,
+  environment: NodeJS.ProcessEnv = process.env,
+): Readonly<{
+  policy: ValidatedChangeContract['guard']['tasks'][string];
+  isolation: TaskSessionIsolationBinding;
+}> {
+  const { changeId, taskId, git, contract, branch, routingAdmission } =
+    inspection;
+  const policy = contract.guard.tasks[taskId];
+  const destructiveDatabase = policy.requiredChecks.some(
+    (checkId) => contract.checks.checks[checkId]?.destructiveDatabase === true,
+  );
+  const databaseIdentity =
+    routingAdmission.concurrencyEnabled && destructiveDatabase
+      ? assertDisposableDatabaseForRepository(git.repositoryRoot, environment)
+          .identity
+      : null;
+  const isolation = createTaskSessionIsolationBinding({
+    routingRole: routingAdmission.role,
+    routingWorksetDigest: routingAdmission.worksetDigest,
+    concurrencyEnabled: routingAdmission.concurrencyEnabled,
+    repositoryRoot: git.repositoryRealPath,
+    resources: [
+      ...(databaseIdentity === null
+        ? []
+        : [
+            {
+              kind: 'destructive-database' as const,
+              identity: databaseIdentity,
+            },
+          ]),
+      ...(policy.exclusiveResources ?? []).map((identity) => ({
+        kind: 'exclusive' as const,
+        identity,
+      })),
+    ],
+  });
+  assertTaskSessionAdmission(runtime, {
+    changeId,
+    repositoryRoot: git.repositoryRealPath,
+    branch,
+    allowedPaths: policy.allowedPaths,
+    isolation,
+  });
+  return Object.freeze({ policy, isolation });
 }
 
 /**
