@@ -6,6 +6,121 @@ import { COLLABORATION_GRANT_AUTHORIZED_EFFECT, canonicalCollaborationGrantEnvel
 import { consumedCollaborationGrantUseForReplay, validateCollaborationGrantUseProjection, } from "../../runtime/storage-journal/collaboration-grant-store.js";
 import { computeRoleContextSharingResultAdmissionDigestV1, consumedRoleContextSharingUseForReplay, } from "../authority/role-context-sharing-consumed-replay.js";
 import { isProviderId, requireProviderCapability, } from "./provider-registry.js";
+const ADMITTED_ROLE_RESULT_COMMON_KEYS = [
+    'schemaVersion',
+    'form',
+    'role',
+    'targetDigest',
+    'assignment',
+    'author',
+    'participant',
+    'orchestration',
+    'requiredIndependence',
+    'achievedIndependence',
+    'content',
+    'providerInvocation',
+    'grantUse',
+    'directHumanReviewAttestation',
+    'resultDigest',
+];
+/**
+ * Re-admit the exact immutable role-result record before any consumer uses its
+ * author, participant, or orchestration facts. Grant-backed v1 results still
+ * require their normal external consumed-use replay at the authority boundary;
+ * this content-pure reader prevents an embedded record from changing facts
+ * while retaining the digest minted by that replay.
+ */
+export function assertAdmittedRoleResultRecord(value) {
+    if (!value || typeof value !== 'object') {
+        throw roleResultInvalid();
+    }
+    const schemaVersion = Reflect.get(value, 'schemaVersion');
+    const expectedKeys = schemaVersion === 2
+        ? [...ADMITTED_ROLE_RESULT_COMMON_KEYS, 'roleContextSharingUse']
+        : ADMITTED_ROLE_RESULT_COMMON_KEYS;
+    if ((schemaVersion !== 1 && schemaVersion !== 2) ||
+        !hasExactKeys(value, expectedKeys)) {
+        throw roleResultInvalid();
+    }
+    const record = structuredClone(value);
+    const { resultDigest, ...semantic } = record;
+    const expectedDigest = crypto
+        .createHash('sha256')
+        .update(canonicalJson({
+        schema: `admitted-role-result.v${schemaVersion}`,
+        ...semantic,
+    }))
+        .digest('hex');
+    if (!/^[0-9a-f]{64}$/.test(resultDigest) ||
+        resultDigest !== expectedDigest ||
+        !/^[0-9a-f]{64}$/.test(record.targetDigest) ||
+        record.requiredIndependence !== 'provider-independent' ||
+        !record.assignment ||
+        typeof record.assignment !== 'object' ||
+        record.assignment.role !== record.role ||
+        record.assignment.targetDigest !== record.targetDigest ||
+        canonicalJson(normalizeRecordedParticipant(record.author)) !==
+            canonicalJson(record.author) ||
+        canonicalJson(normalizeRecordedParticipant(record.participant)) !==
+            canonicalJson(record.participant) ||
+        canonicalJson(assertRoleContentAdmission(record.content)) !==
+            canonicalJson(record.content)) {
+        throw roleResultInvalid();
+    }
+    if (schemaVersion === 2) {
+        if (record.form !== 'granted-role-context-sharing') {
+            throw roleResultInvalid();
+        }
+        const replayed = admitRoleContextSharingResult({
+            assignment: record.assignment,
+            author: record.author,
+            participant: record.participant,
+            content: record.content,
+            providerInvocation: record.providerInvocation,
+            consumedUse: record.roleContextSharingUse,
+        });
+        if (canonicalJson(replayed) !== canonicalJson(record)) {
+            throw roleResultInvalid();
+        }
+        return replayed;
+    }
+    if (record.form === 'ordinary-provider') {
+        const replayed = admitRoleResult({
+            assignment: record.assignment,
+            author: record.author,
+            participant: record.participant,
+            content: record.content,
+            providerInvocation: record.providerInvocation,
+            grantUse: null,
+            grantValidation: null,
+        });
+        if (canonicalJson(replayed) !== canonicalJson(record)) {
+            throw roleResultInvalid();
+        }
+        return replayed;
+    }
+    if (!record.grantUse ||
+        typeof record.grantUse !== 'object' ||
+        (record.form === 'granted-same-provider'
+            ? record.orchestration !== 'engine-spawned-provider' ||
+                record.achievedIndependence !== 'session-independent' ||
+                record.providerInvocation === null ||
+                record.directHumanReviewAttestation !== null
+            : record.form === 'granted-caller-supplied'
+                ? record.orchestration !== 'caller-supplied' ||
+                    record.achievedIndependence !== 'none' ||
+                    record.providerInvocation !== null ||
+                    record.directHumanReviewAttestation !== null
+                : record.form === 'direct-human-attestation'
+                    ? record.orchestration !== 'direct-human-review' ||
+                        record.achievedIndependence !== 'none' ||
+                        record.providerInvocation !== null ||
+                        !record.directHumanReviewAttestation
+                    : true)) {
+        throw roleResultInvalid();
+    }
+    return deepFreeze(record);
+}
 const ORDINARY_ASSIGNMENT_KEYS = [
     'role',
     'providerId',

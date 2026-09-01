@@ -144,6 +144,7 @@ test('workflow-engine value-imports core only through the sealed runtime closure
             '@jigwright/core/markdown-sections',
             '@jigwright/core/planning-provider-binding',
             '@jigwright/core/planning-provider-port',
+            '@jigwright/core/planning-task-history',
             '@jigwright/core/repository-path',
             '@jigwright/core/runtime-path-kernel',
             '@jigwright/core/session-runtime-layout-port',

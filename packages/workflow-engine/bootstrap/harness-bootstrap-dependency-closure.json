@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:c848edb8739e5911a220450304bc8927255cc20d0c9e86b18d4537b69a3629b5"
+      "digest": "sha256:486302f06f6a458ed349ef91255bb3f1576d66bf7290f625467c9ca3f22eb0c0"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -178,7 +178,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:2c8b6fe4feb31458460ab5e5b4405d2bb92befa327eceafcf9678a3e9647d866"
+      "digest": "sha256:d58cb3a74be13620f5d4c6db97eb29b3c5bd7d54b94368978bb7c59f1b202201"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
@@ -268,7 +268,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review.js",
       "mode": "100644",
-      "digest": "sha256:9dfaed7c977cf13d52adfd7ff859150f45a2ea535bdfad101db2383b85f1e702"
+      "digest": "sha256:ffc039c1762dff621790ea4cc7d8638a3586c2dc776c3719d49c5edf9ef7bce6"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-target.js",
@@ -563,7 +563,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/role-scheduler.js",
       "mode": "100644",
-      "digest": "sha256:68468bd3be8cc456de6f6e2f8cd4b047a8586d1918333694edb3f2630cee0813"
+      "digest": "sha256:e9f48e1c8cc5ce15e6bb0dafa451ff7301b03ab41622576257468875d2046581"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/role-topology-resolution.js",
@@ -583,7 +583,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-config.js",
       "mode": "100644",
-      "digest": "sha256:4f15971279f4acb009a6fa6765b704c3b32364482963096300d9fb4532f2ac94"
+      "digest": "sha256:d723386a8c5c35eb7a8e1707c52b4afed8b21da8b7ca081b27e2f1772dcb1942"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",
@@ -703,7 +703,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/session-store.js",
       "mode": "100644",
-      "digest": "sha256:80c5aabaf3ccea781a290ea603f683867fd3593a39744bc22745d7a3c7e0726b"
+      "digest": "sha256:b3a1982027537d862520d04038ec6cf8130c6887acf5ad1944784a9908f1df68"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/authority-audit-ledger.js",

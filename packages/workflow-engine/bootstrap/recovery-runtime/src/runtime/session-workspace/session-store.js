@@ -4,10 +4,10 @@ import path from 'node:path';
 import { defaultSessionRuntimeLayoutPort } from '@jigwright/core/session-runtime-layout-port';
 import { isPlanningAssuranceBinding, } from "../../adapters/consumer/repository/work-registry/contracts.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
+import { assertPlainDirectory, ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
 import { assertHumanResolutionLifecycleBarrier, reclaimHumanResolutionJournalTemporaries, } from "../storage-journal/investigation-session-store.js";
 import { assertGrantLifecycleBarrier } from "../storage-journal/grant-store.js";
-import { matchesAllowedPath, normalizePolicyPath } from "./paths.js";
+import { assertChangeId, matchesAllowedPath, normalizePolicyPath, } from "./paths.js";
 const MAINTAINER_GRANT_STATE_FILE = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.json$/;
 const SESSION_LOCK_OWNER_TOKEN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 const TASK_REVISION_LEASE_ID = /^revision-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -114,6 +114,44 @@ function reclaimDeadSessionOperationLock(lockPath, expectedSessionId) {
         };
     });
     return result === 'absent' || result === 'reclaimed';
+}
+/**
+ * Observe the repository-wide lifecycle admission boundary without acquiring,
+ * reclaiming, or publishing authority. Any existing lifecycle owner or
+ * reclaimer is reported as a conflict; the mutating operation remains
+ * responsible for its bounded dead-owner recovery before revalidating.
+ */
+export function assertRepositoryLifecyclePreflightAdmission(runtime, requestedChangeId, options = {}) {
+    const changeId = assertChangeId(requestedChangeId);
+    assertGrantLifecycleBarrier(runtime.root, options.allowGrantChallengeIds);
+    assertHumanResolutionLifecycleBarrier(runtime.root, options.allowHumanResolutionGrantId ?? null, options.allowHumanResolutionChangeId ?? null);
+    assertMaintainerReservationCompatibility(runtime, options.allowMaintainerGrantId);
+    for (const directory of [runtime.sessions, runtime.locks]) {
+        if (fs.lstatSync(directory, { throwIfNoEntry: false })) {
+            assertPlainDirectory(directory);
+        }
+    }
+    const operationsStats = fs.lstatSync(runtime.operations, {
+        throwIfNoEntry: false,
+    });
+    if (operationsStats) {
+        assertPlainDirectory(runtime.operations);
+        const lifecycleLockName = 'repository-lifecycle.lock';
+        if (fs
+            .readdirSync(runtime.operations)
+            .some((name) => name === lifecycleLockName ||
+            name.startsWith(`${lifecycleLockName}.reclaim.`))) {
+            throw workflowError('REPOSITORY_LIFECYCLE_CONFLICT', 'Another repository lifecycle transition is in progress.', ExitCode.conflict);
+        }
+    }
+    const changeLockName = `${changeId}.lock`;
+    if (fs.lstatSync(runtime.locks, { throwIfNoEntry: false }) &&
+        fs
+            .readdirSync(runtime.locks)
+            .some((name) => name === changeLockName ||
+            name.startsWith(`${changeLockName}.reclaim.`))) {
+        throw workflowError('REPOSITORY_LIFECYCLE_CONFLICT', `Another lifecycle transition already owns change ${changeId}.`, ExitCode.conflict);
+    }
 }
 export function withRepositoryLifecycleOperation(runtime, operation, options = {}) {
     const lease = acquireRepositoryLifecycleLease(runtime, options);

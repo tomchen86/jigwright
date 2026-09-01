@@ -6,7 +6,8 @@ import { normalizeInvestigationTerm, } from "../investigation/domain/investigati
 import { verifySshSignatureWithPublicKey, } from "../../adapters/signing/ssh/maintainer-signer.js";
 import { normalizeExactRepositoryPath } from "../../runtime/session-workspace/paths.js";
 import { isProviderId } from "../provider-orchestration/provider-registry.js";
-import { isProviderRoleAssignment } from "../provider-orchestration/provider-contracts.js";
+import { isProviderRoleAssignment, recreateProviderInvocationRequest, } from "../provider-orchestration/provider-contracts.js";
+import { assertProviderProcessResult } from "../provider-orchestration/provider-runtime-evidence.js";
 import { assertPlanningGeneration, } from "../lifecycle/planning-generation.js";
 import { normalizeInvestigationRequirementsV3 } from "../investigation/manifest/investigation-manifest.js";
 import { assertAuthorizedReviewChallengeClosure, } from "./review-challenge.js";
@@ -16,9 +17,9 @@ const PLAN_REVIEW_EVALUATOR = 'plan-review.v2';
 const PLAN_REVIEW_OUTPUT_SCHEMA_ID = 'plan-review-output.v2';
 const PLAN_REVIEW_NODE_OUTPUT_SCHEMA_ID = 'plan-review-node-output.v2';
 const PROVIDER_RESULT_TYPE = 'plan-review-provider-result';
-const PROVIDER_RESULT_SCHEMA = 'plan-review-provider-result.v2';
-const PROVIDER_RESULT_EVALUATOR = 'plan-review-provider-result.v2';
-const PROVIDER_RESULT_OUTPUT_SCHEMA = 'plan-review-provider-result-output.v2';
+const PROVIDER_RESULT_SCHEMA = 'plan-review-provider-result.v3';
+const PROVIDER_RESULT_EVALUATOR = 'plan-review-provider-result.v3';
+const PROVIDER_RESULT_OUTPUT_SCHEMA = 'plan-review-provider-result-output.v3';
 const DISPOSITION_TYPE = 'plan-review-disposition';
 const DISPOSITION_SCHEMA = 'plan-review-disposition.v1';
 const DISPOSITION_EVALUATOR = 'plan-review-disposition.v1';
@@ -152,8 +153,8 @@ const PROVIDER_RESULT_OUTPUT_KEYS = [
     'schemaVersion',
     'subjectDigest',
     'assignment',
-    'submission',
-    'runtimeAssurance',
+    'request',
+    'result',
 ];
 const ROLE_ASSIGNMENT_KEYS = [
     'role',
@@ -177,9 +178,16 @@ const PLAN_REVIEW_SCHEMA_GRAMMAR = {
         evaluator: PROVIDER_RESULT_EVALUATOR,
         outputSchema: PROVIDER_RESULT_OUTPUT_SCHEMA,
         outputKeys: [...PROVIDER_RESULT_OUTPUT_KEYS],
-        exactInputRoles: ['assignment', 'subject', 'submission'],
-        semanticParentRoles: [],
-        provenanceParentRoles: [],
+        exactInputRoles: [
+            'assignment',
+            'output',
+            'request',
+            'runtimeObservation',
+            'subject',
+            'targetSnapshot',
+        ],
+        semanticParentRoles: ['targetSnapshot'],
+        provenanceParentRoles: ['targetSnapshot'],
     },
     reviewNode: {
         type: PLAN_REVIEW_TYPE,
@@ -582,47 +590,37 @@ export function planReviewSubjectDigest(fields) {
         investigationRequirements: fields.investigationRequirements,
     }));
 }
-/**
- * Wrap one already-validated provider semantic result in the exact evidence
- * shape consumed by PlanReview construction. Task 6.5 may bridge a real bounded
- * adapter result into this helper; the wrapper itself deliberately carries no
- * runtime-only launch metadata.
- */
+/** Wrap one exact provider request/result pair in tracked PlanReview evidence. */
 export function createPlanReviewProviderResultNode(input) {
     if (!isRecord(input) ||
         !hasExactKeys(input, [
             'subject',
             'assignment',
-            'submission',
-            'providerPolicyDigest',
+            'request',
+            'result',
             'targetSnapshotNode',
-            ...(Object.hasOwn(input, 'runtimeAssurance')
-                ? ['runtimeAssurance']
-                : []),
         ])) {
         throw planReviewInvalid('Plan review provider result input is malformed.');
     }
     const subject = assertPlanReviewSubject(input.subject);
     const assignment = assertAssignment(input.assignment, subject);
-    if (!isDigest(input.providerPolicyDigest)) {
-        throw planReviewInvalid('Plan review provider policy digest is malformed.');
-    }
-    const normalized = assertPlanReviewSubmission(input.submission);
+    const request = assertPlanReviewProviderRequest(input.request, assignment);
+    const result = assertPlanReviewProviderProcessResult(input.result, request);
+    const normalized = assertPlanReviewSubmission(result.output);
     assertSubmissionEvidenceBindings(normalized, subject);
-    const submission = canonicalSubmission(normalized);
-    const runtimeAssurance = assertPlanReviewRuntimeAssurance(input.runtimeAssurance ?? null);
     const targetSnapshot = assertProviderTargetSnapshot(input.targetSnapshotNode, subject);
     const assignmentDigest = planReviewAssignmentDigest(assignment);
-    const submissionDigest = planReviewSubmissionDigest(submission);
     return createEvidenceNode({
         type: PROVIDER_RESULT_TYPE,
         nodeSchema: PROVIDER_RESULT_SCHEMA,
         evaluator: PROVIDER_RESULT_EVALUATOR,
-        policyDigest: input.providerPolicyDigest,
+        policyDigest: request.policyDigest,
         exactInputDigests: {
             assignment: assignmentDigest,
+            output: result.outputDigest,
+            request: request.requestDigest,
+            runtimeObservation: sha256(canonicalJson(result.runtimeObservation)),
             subject: subject.subjectDigest,
-            submission: submissionDigest,
             targetSnapshot: targetSnapshot.nodeId,
         },
         semanticParentResultDigests: {
@@ -631,14 +629,135 @@ export function createPlanReviewProviderResultNode(input) {
         provenanceParentNodeIds: { targetSnapshot: targetSnapshot.nodeId },
         outputSchema: PROVIDER_RESULT_OUTPUT_SCHEMA,
         output: {
-            schemaVersion: 2,
+            schemaVersion: 3,
             subjectDigest: subject.subjectDigest,
             assignment,
-            submission,
-            runtimeAssurance,
+            request,
+            result,
         },
         runtimeMetadata: {},
     });
+}
+export function assertCurrentPlanReviewProviderResultNode(value, expectedProviderInvocation, expectedContent, expectedSubmissionDigest) {
+    const node = assertStoredEvidenceNode(value, () => planReviewInvalid('Provider result node is malformed.'));
+    if (node.type !== PROVIDER_RESULT_TYPE ||
+        node.nodeSchema !== PROVIDER_RESULT_SCHEMA ||
+        node.evaluator !== PROVIDER_RESULT_EVALUATOR ||
+        node.outputSchema !== PROVIDER_RESULT_OUTPUT_SCHEMA) {
+        throw planReviewInvalid('Provider result node identity is unexpected.');
+    }
+    assertExactDigestRoles(node.exactInputDigests, [
+        'assignment',
+        'output',
+        'request',
+        'runtimeObservation',
+        'subject',
+        'targetSnapshot',
+    ], 'Provider result exact-input roles are unexpected.');
+    assertExactDigestRoles(node.semanticParentResultDigests, ['targetSnapshot'], 'Provider result semantic-parent roles are unexpected.');
+    assertExactDigestRoles(node.provenanceParentNodeIds, ['targetSnapshot'], 'Provider result provenance-parent roles are unexpected.');
+    if (Object.keys(node.runtimeMetadata).length !== 0 ||
+        node.exactInputDigests.targetSnapshot !==
+            node.provenanceParentNodeIds.targetSnapshot ||
+        !isDigest(node.semanticParentResultDigests.targetSnapshot)) {
+        throw planReviewInvalid('Provider result target binding is malformed.');
+    }
+    const output = assertExactKeys(node.output, PROVIDER_RESULT_OUTPUT_KEYS);
+    if (output.schemaVersion !== 3 || !isDigest(output.subjectDigest)) {
+        throw planReviewInvalid('Provider result output identity is malformed.');
+    }
+    const assignment = assertAssignmentForSubjectDigest(output.assignment, output.subjectDigest);
+    const request = assertPlanReviewProviderRequest(output.request, assignment);
+    const result = assertPlanReviewProviderProcessResult(output.result, request);
+    const submission = canonicalSubmission(assertPlanReviewSubmission(result.output));
+    if (node.policyDigest !== request.policyDigest ||
+        node.exactInputDigests.subject !== output.subjectDigest ||
+        node.exactInputDigests.assignment !==
+            planReviewAssignmentDigest(assignment) ||
+        node.exactInputDigests.request !== request.requestDigest ||
+        node.exactInputDigests.output !== result.outputDigest ||
+        node.exactInputDigests.runtimeObservation !==
+            sha256(canonicalJson(result.runtimeObservation)) ||
+        expectedSubmissionDigest !== planReviewSubmissionDigest(submission) ||
+        !planReviewProviderResultMatchesInvocation(request, result, assignment, expectedProviderInvocation) ||
+        !planReviewProviderResultMatchesContent(node, request, expectedContent)) {
+        throw planReviewInvalid('Provider result does not carry current invocation-bound evidence.');
+    }
+    return node;
+}
+function assertPlanReviewProviderRequest(value, assignment) {
+    let request;
+    try {
+        request = recreateProviderInvocationRequest(value);
+    }
+    catch {
+        throw planReviewInvalid('Plan review provider request is malformed.');
+    }
+    if (request.purpose !== 'plan-review' ||
+        request.providerId !== assignment.providerId ||
+        request.targetDigest !== assignment.targetDigest ||
+        request.evaluatorVersion !== PLAN_REVIEW_EVALUATOR ||
+        canonicalJson(request.roleAssignment) !== canonicalJson(assignment) ||
+        canonicalJson(request.outputSchema) !==
+            canonicalJson(PLAN_REVIEW_OUTPUT_SCHEMA)) {
+        throw planReviewInvalid('Plan review provider request is unbound.');
+    }
+    return request;
+}
+function assertPlanReviewProviderProcessResult(value, request) {
+    let result;
+    try {
+        result = assertProviderProcessResult(request, value, PLAN_REVIEW_OUTPUT_VALIDATOR, () => planReviewInvalid('Plan review provider result is malformed.'));
+    }
+    catch {
+        throw planReviewInvalid('Plan review provider result is malformed.');
+    }
+    if (result.runtimeObservation === null) {
+        throw planReviewInvalid('Plan review provider result requires a fixed-runner observation.');
+    }
+    return result;
+}
+function planReviewProviderResultMatchesInvocation(request, result, assignment, value) {
+    return (isRecord(value) &&
+        hasExactKeys(value, [
+            'invocationId',
+            'requestDigest',
+            'outputDigest',
+            'providerId',
+            'sessionId',
+            'targetDigest',
+            'engineSpawned',
+        ]) &&
+        result.runtimeObservation !== null &&
+        value.invocationId === request.invocationId &&
+        value.requestDigest === request.requestDigest &&
+        value.outputDigest === result.outputDigest &&
+        value.providerId === request.providerId &&
+        value.providerId === assignment.providerId &&
+        value.sessionId === assignment.sessionId &&
+        value.targetDigest === assignment.targetDigest &&
+        value.engineSpawned === true);
+}
+function planReviewProviderResultMatchesContent(node, request, value) {
+    return (isRecord(value) &&
+        hasExactKeys(value, [
+            'kind',
+            'nodeId',
+            'resultDigest',
+            'outputSchema',
+            'evaluator',
+            'policyDigest',
+            'contentDigest',
+            'current',
+        ]) &&
+        value.kind === 'plan-review' &&
+        value.nodeId === node.nodeId &&
+        value.resultDigest === node.resultDigest &&
+        canonicalJson(value.outputSchema) === canonicalJson(request.outputSchema) &&
+        value.evaluator === request.evaluatorVersion &&
+        value.policyDigest === request.policyDigest &&
+        value.contentDigest === node.resultDigest &&
+        value.current === true);
 }
 export function planReviewAssignmentDigest(assignment) {
     return sha256(canonicalJson({
@@ -651,6 +770,9 @@ export function planReviewSubmissionDigest(submission) {
         schema: 'plan-review-submission.v2',
         submission,
     }));
+}
+export function canonicalizePlanReviewSubmission(value) {
+    return deepFreeze(canonicalSubmission(assertPlanReviewSubmission(value)));
 }
 /**
  * Construct an immutable exact-plan review evidence node from a strict
@@ -1142,7 +1264,14 @@ function assertProviderResult(value, subject, assignment, expectedSubmission) {
         node.outputSchema !== PROVIDER_RESULT_OUTPUT_SCHEMA) {
         throw planReviewInvalid('Provider result node identity is unexpected.');
     }
-    assertExactDigestRoles(node.exactInputDigests, ['assignment', 'subject', 'submission', 'targetSnapshot'], 'Provider result exact-input roles are unexpected.');
+    assertExactDigestRoles(node.exactInputDigests, [
+        'assignment',
+        'output',
+        'request',
+        'runtimeObservation',
+        'subject',
+        'targetSnapshot',
+    ], 'Provider result exact-input roles are unexpected.');
     assertExactDigestRoles(node.semanticParentResultDigests, ['targetSnapshot'], 'Provider result semantic-parent roles are unexpected.');
     assertExactDigestRoles(node.provenanceParentNodeIds, ['targetSnapshot'], 'Provider result provenance-parent roles are unexpected.');
     if (Object.keys(node.runtimeMetadata).length !== 0) {
@@ -1154,23 +1283,28 @@ function assertProviderResult(value, subject, assignment, expectedSubmission) {
         throw planReviewInvalid('Provider result target snapshot binding is malformed.');
     }
     const output = assertExactKeys(node.output, PROVIDER_RESULT_OUTPUT_KEYS);
-    if (output.schemaVersion !== 2 ||
+    if (output.schemaVersion !== 3 ||
         output.subjectDigest !== subject.subjectDigest ||
         node.exactInputDigests.subject !== subject.subjectDigest) {
         throw planReviewInvalid('Provider result did not observe the review subject.');
     }
     const storedAssignment = assertAssignment(output.assignment, subject);
-    if (canonicalJson(storedAssignment) !== canonicalJson(assignment) ||
-        node.exactInputDigests.assignment !==
-            planReviewAssignmentDigest(storedAssignment)) {
-        throw planReviewInvalid('Provider result did not use the reviewer assignment.');
-    }
-    const normalizedSubmission = assertPlanReviewSubmission(output.submission);
-    assertPlanReviewRuntimeAssurance(output.runtimeAssurance);
+    const request = assertPlanReviewProviderRequest(output.request, storedAssignment);
+    const result = assertPlanReviewProviderProcessResult(output.result, request);
+    const normalizedSubmission = assertPlanReviewSubmission(result.output);
     assertSubmissionEvidenceBindings(normalizedSubmission, subject);
     const submission = canonicalSubmission(normalizedSubmission);
-    if (canonicalJson(submission) !== canonicalJson(expectedSubmission) ||
-        node.exactInputDigests.submission !== planReviewSubmissionDigest(submission)) {
+    if (canonicalJson(storedAssignment) !== canonicalJson(assignment) ||
+        node.exactInputDigests.assignment !==
+            planReviewAssignmentDigest(storedAssignment) ||
+        node.policyDigest !== request.policyDigest ||
+        node.exactInputDigests.request !== request.requestDigest ||
+        node.exactInputDigests.output !== result.outputDigest ||
+        node.exactInputDigests.runtimeObservation !==
+            sha256(canonicalJson(result.runtimeObservation))) {
+        throw planReviewInvalid('Provider result did not use the reviewer assignment and request.');
+    }
+    if (canonicalJson(submission) !== canonicalJson(expectedSubmission)) {
         throw planReviewInvalid('Provider result semantic output differs from the review submission.');
     }
     return node;
@@ -1191,30 +1325,6 @@ function assertProviderTargetSnapshot(value, subject) {
         throw planReviewInvalid('Provider target snapshot does not bind the review subject.');
     }
     return node;
-}
-function assertPlanReviewRuntimeAssurance(value) {
-    if (value === null) {
-        return null;
-    }
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'assurance',
-            'projectionDigest',
-            'sameUserProcessConfined',
-            'residuals',
-            'executableSha256',
-        ]) ||
-        value.assurance !== 'unchanged-governed-projection' ||
-        !isDigest(value.projectionDigest) ||
-        value.sameUserProcessConfined !== false ||
-        !Array.isArray(value.residuals) ||
-        value.residuals.length === 0 ||
-        value.residuals.some((residual) => typeof residual !== 'string' || residual.length === 0) ||
-        new Set(value.residuals).size !== value.residuals.length ||
-        !isDigest(value.executableSha256)) {
-        throw planReviewInvalid('Provider runtime assurance is malformed.');
-    }
-    return deepFreeze(structuredClone(value));
 }
 function assertPlanReviewSubmission(value) {
     if (!isRecord(value) || !hasExactKeys(value, SUBMISSION_KEYS)) {
