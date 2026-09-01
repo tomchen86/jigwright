@@ -135,14 +135,28 @@ export type CurrentJigwrightV3ComparisonFactsV1 = Readonly<{
     negativeOutcome: 'blocked';
     negativeCode: string;
   }>;
+  planReview: Readonly<{
+    subjectSchemaVersion: 1;
+    subjectDigest: string;
+    manifestDigest: string;
+    investigationTargetDigest: string;
+    readerOutcome: 'verified';
+    negativeOutcome: 'blocked';
+    negativeCode: 'PLAN_REVIEW_INVALID';
+  }>;
   centralGrant: Readonly<{
     policySchemaVersion: 2;
     policyDigest: Sha256Digest;
     recordKind: 'grant-record.v1';
     recordState: 'pending';
     challengeDigest: Sha256Digest;
+    stateDigest: Sha256Digest;
+    approvalMethods: readonly ['human-presence', 'ssh'];
+    approvalSubjectDigest: Sha256Digest;
     recordDigest: Sha256Digest;
     publicReadKind: 'grant-record.v1';
+    negativeOutcome: 'blocked';
+    negativeCode: 'GRANT_APPROVAL_SUBJECT_INVALID';
   }>;
   state: Readonly<{
     before: CurrentJigwrightRepositoryStateFingerprintV1;
@@ -479,6 +493,12 @@ export function runCurrentJigwrightAdoption(
         'packages/workflow-engine/src/composition-root/public/manifest-v3.ts',
       ),
     ).href,
+    planReviewSpecifier: pathToFileURL(
+      path.join(
+        repositoryRoot,
+        'packages/workflow-engine/src/composition-root/public/plan-review.ts',
+      ),
+    ).href,
     centralGrantSpecifier: pathToFileURL(
       path.join(
         repositoryRoot,
@@ -495,6 +515,7 @@ export function runCurrentJigwrightAdoption(
     consumerRoot,
     executable: installedExecutable,
     manifestSpecifier: 'jigwright/manifest-v3',
+    planReviewSpecifier: 'jigwright/plan-review',
     centralGrantSpecifier: 'jigwright/central-grant',
     vectorEvidencePath,
     freshInit: installedFreshInit,
@@ -1198,6 +1219,7 @@ function collectCurrentV3ComparisonFacts(
     consumerRoot: string;
     executable: string;
     manifestSpecifier: string;
+    planReviewSpecifier: string;
     centralGrantSpecifier: string;
     vectorEvidencePath: string;
     freshInit: CurrentJigwrightCommandObservationV1;
@@ -1229,11 +1251,17 @@ function collectCurrentV3ComparisonFacts(
   const manifestV3 = isRecord(publicFacts.manifestV3)
     ? publicFacts.manifestV3
     : null;
+  const planReview = isRecord(publicFacts.planReview)
+    ? publicFacts.planReview
+    : null;
   const centralGrant = isRecord(publicFacts.centralGrant)
     ? publicFacts.centralGrant
     : null;
   if (!isManifestV3ComparisonFacts(manifestV3)) {
     throw new Error('Current Manifest V3 comparison facts are invalid.');
+  }
+  if (!isPlanReviewComparisonFacts(planReview, manifestV3)) {
+    throw new Error('Current PlanReview comparison facts are invalid.');
   }
   if (!isCentralGrantComparisonFacts(centralGrant)) {
     throw new Error('Current Central Grant comparison facts are invalid.');
@@ -1251,6 +1279,7 @@ function collectCurrentV3ComparisonFacts(
     }),
     commands: Object.freeze({ guide, doctor, status, jobList }),
     manifestV3,
+    planReview,
     centralGrant,
     state: Object.freeze({ before, after, unchanged: true as const }),
     routedEffects: Object.freeze({
@@ -1312,6 +1341,7 @@ function runCurrentV3PublicProbe(
   input: Readonly<{
     consumerRoot: string;
     manifestSpecifier: string;
+    planReviewSpecifier: string;
     centralGrantSpecifier: string;
     vectorEvidencePath: string;
   }>,
@@ -1330,6 +1360,7 @@ function runCurrentV3PublicProbe(
       {
         JIGWRIGHT_ADOPTION_REPOSITORY_ROOT: input.consumerRoot,
         JIGWRIGHT_ADOPTION_MANIFEST_SPECIFIER: input.manifestSpecifier,
+        JIGWRIGHT_ADOPTION_PLAN_REVIEW_SPECIFIER: input.planReviewSpecifier,
         JIGWRIGHT_ADOPTION_CENTRAL_GRANT_SPECIFIER: input.centralGrantSpecifier,
         JIGWRIGHT_ADOPTION_VECTOR_PATH: input.vectorEvidencePath,
         JIGWRIGHT_ADOPTION_CONSUMER_HEAD: identity.commit,
@@ -1354,6 +1385,9 @@ const sha256 = (value) =>
   crypto.createHash('sha256').update(value).digest('hex');
 const repositoryRoot = required('JIGWRIGHT_ADOPTION_REPOSITORY_ROOT');
 const manifest = await import(required('JIGWRIGHT_ADOPTION_MANIFEST_SPECIFIER'));
+const planReview = await import(
+  required('JIGWRIGHT_ADOPTION_PLAN_REVIEW_SPECIFIER')
+);
 const grant = await import(
   required('JIGWRIGHT_ADOPTION_CENTRAL_GRANT_SPECIFIER')
 );
@@ -1444,6 +1478,127 @@ if (negative.outcome !== 'blocked') {
   throw new Error('Manifest V3 negative read did not fail closed.');
 }
 
+const planReviewFields = {
+  planningGenerationId: sha256('current-v3-plan-review-generation'),
+  planTargetDigest: sha256('current-v3-plan-review-target'),
+  manifestDigest: verified.manifestDigest,
+  investigationTargetDigest: verified.investigationTargetDigest,
+  reviewPolicyDigest: sha256('current-v3-plan-review-policy'),
+  requiredIndependence: 'provider-independent',
+  investigationBaseline: { head, tree },
+  investigationDependencies: [],
+  investigationRequirements: [],
+};
+const planReviewSubject = {
+  schemaVersion: 1,
+  subjectDigest: planReview.planReviewSubjectDigest(planReviewFields),
+  ...planReviewFields,
+};
+const replayedPlanReviewSubject =
+  planReview.assertPlanReviewSubject(planReviewSubject);
+let planReviewNegativeCode = null;
+try {
+  planReview.assertPlanReviewSubject({
+    ...planReviewSubject,
+    subjectDigest: '0'.repeat(64),
+  });
+} catch (error) {
+  planReviewNegativeCode =
+    error !== null && typeof error === 'object' && 'code' in error
+      ? String(error.code)
+      : null;
+}
+if (
+  replayedPlanReviewSubject.manifestDigest !== verified.manifestDigest ||
+  replayedPlanReviewSubject.investigationTargetDigest !==
+    verified.investigationTargetDigest ||
+  planReviewNegativeCode !== 'PLAN_REVIEW_INVALID'
+) {
+  throw new Error('Current PlanReview public replay facts are invalid.');
+}
+
+const { candidate: vectorCandidate, ...vectorRequest } = centralVector.request;
+const grantStateBinding = centralVector.request.stateBinding;
+const grantRegistry = grant.createTransitionRegistry([
+  {
+    transitionId: vectorCandidate.transitionId,
+    parameterSchemaDigest: centralVector.registry.parameterSchemaDigest,
+    consequenceDigest: centralVector.registry.consequenceDigest,
+    resolutionKind: centralVector.registry.resolutionKind,
+    allowedApprovalMethods: centralVector.registry.allowedApprovalMethods,
+    validateParameters(value) {
+      if (
+        value === null ||
+        typeof value !== 'object' ||
+        Array.isArray(value) ||
+        Object.keys(value).length !== 1 ||
+        value.resume !== true
+      ) {
+        throw new Error('Current adoption Grant vector parameters are invalid.');
+      }
+      return { resume: true };
+    },
+    renderTrustedChoice() {
+      return {
+        title: 'Continue current adoption parity',
+        consequences: ['The canonical read-only transition remains bound.'],
+      };
+    },
+    observeState() {
+      return grantStateBinding;
+    },
+    async execute() {
+      throw new Error('Current adoption probe never executes Grant transitions.');
+    },
+  },
+]);
+const grantChallenge = grant.createGrantChallenge(
+  {
+    ...vectorRequest,
+    candidates: [vectorCandidate],
+  },
+  grantRegistry,
+  {
+    challengeId: centralVector.challengeId,
+    now: new Date(centralVector.issuedAt),
+    expiresAt: centralVector.expiresAt,
+  },
+);
+if (
+  grantChallenge.challengeDigest !== centralVector.challengeDigest ||
+  grantChallenge.choices.length !== 1 ||
+  grantChallenge.choices[0].choiceId !== centralVector.choiceId
+) {
+  throw new Error('Current Central Grant challenge vector is invalid.');
+}
+const approvalSubject = grant.createApprovalSubject(
+  grantChallenge,
+  {
+    choiceId: grantChallenge.choices[0].choiceId,
+    approvalMethod: 'human-presence',
+    reasonCode: 'approved-for-vector',
+    reason: 'Verify current source and installed Grant public parity.',
+    sessionNonce: 'current-adoption-grant-subject-0001',
+  },
+  { now: new Date(centralVector.issuedAt) },
+);
+const approvalSubjectDigest = grant.approvalSubjectDigest(approvalSubject);
+let grantNegativeCode = null;
+try {
+  grant.approvalSubjectDigest({
+    ...approvalSubject,
+    reason: 'Tamper the canonical read-only Grant subject.',
+  });
+} catch (error) {
+  grantNegativeCode =
+    error !== null && typeof error === 'object' && 'code' in error
+      ? String(error.code)
+      : null;
+}
+if (grantNegativeCode !== 'GRANT_APPROVAL_SUBJECT_INVALID') {
+  throw new Error('Current Central Grant public rejection facts are invalid.');
+}
+
 const policyDocument = JSON.stringify({
   schemaVersion: 2,
   defaultProfile: 'local-presence',
@@ -1480,14 +1635,29 @@ process.stdout.write(
       negativeOutcome: negative.outcome,
       negativeCode: negative.blocker.failureCode,
     },
+    planReview: {
+      subjectSchemaVersion: replayedPlanReviewSubject.schemaVersion,
+      subjectDigest: replayedPlanReviewSubject.subjectDigest,
+      manifestDigest: replayedPlanReviewSubject.manifestDigest,
+      investigationTargetDigest:
+        replayedPlanReviewSubject.investigationTargetDigest,
+      readerOutcome: 'verified',
+      negativeOutcome: 'blocked',
+      negativeCode: planReviewNegativeCode,
+    },
     centralGrant: {
       policySchemaVersion: policy.policy.schemaVersion,
       policyDigest: 'sha256:' + policy.digest,
       recordKind: record.kind,
       recordState: record.state,
-      challengeDigest: record.challenge.challengeDigest,
+      challengeDigest: grantChallenge.challengeDigest,
+      stateDigest: grantChallenge.stateBinding.digest,
+      approvalMethods: grantChallenge.choices[0].allowedApprovalMethods,
+      approvalSubjectDigest,
       recordDigest,
       publicReadKind: publicRecord.kind,
+      negativeOutcome: 'blocked',
+      negativeCode: grantNegativeCode,
     },
   }),
 );
@@ -1519,6 +1689,31 @@ function isManifestV3ComparisonFacts(
   );
 }
 
+function isPlanReviewComparisonFacts(
+  value: JsonRecord | null,
+  manifestV3: CurrentJigwrightV3ComparisonFactsV1['manifestV3'],
+): value is CurrentJigwrightV3ComparisonFactsV1['planReview'] {
+  return (
+    value !== null &&
+    hasExactKeys(value, [
+      'subjectSchemaVersion',
+      'subjectDigest',
+      'manifestDigest',
+      'investigationTargetDigest',
+      'readerOutcome',
+      'negativeOutcome',
+      'negativeCode',
+    ]) &&
+    value.subjectSchemaVersion === 1 &&
+    isDigest(value.subjectDigest) &&
+    value.manifestDigest === manifestV3.manifestDigest &&
+    value.investigationTargetDigest === manifestV3.investigationTargetDigest &&
+    value.readerOutcome === 'verified' &&
+    value.negativeOutcome === 'blocked' &&
+    value.negativeCode === 'PLAN_REVIEW_INVALID'
+  );
+}
+
 function isCentralGrantComparisonFacts(
   value: JsonRecord | null,
 ): value is CurrentJigwrightV3ComparisonFactsV1['centralGrant'] {
@@ -1530,16 +1725,26 @@ function isCentralGrantComparisonFacts(
       'recordKind',
       'recordState',
       'challengeDigest',
+      'stateDigest',
+      'approvalMethods',
+      'approvalSubjectDigest',
       'recordDigest',
       'publicReadKind',
+      'negativeOutcome',
+      'negativeCode',
     ]) &&
     value.policySchemaVersion === 2 &&
     isSha256Digest(value.policyDigest) &&
     value.recordKind === 'grant-record.v1' &&
     value.recordState === 'pending' &&
     isSha256Digest(value.challengeDigest) &&
+    isSha256Digest(value.stateDigest) &&
+    sameJson(value.approvalMethods, ['human-presence', 'ssh']) &&
+    isSha256Digest(value.approvalSubjectDigest) &&
     isSha256Digest(value.recordDigest) &&
-    value.publicReadKind === 'grant-record.v1'
+    value.publicReadKind === 'grant-record.v1' &&
+    value.negativeOutcome === 'blocked' &&
+    value.negativeCode === 'GRANT_APPROVAL_SUBJECT_INVALID'
   );
 }
 
@@ -1661,6 +1866,7 @@ function isCurrentV3ComparisonFacts(
       'init',
       'commands',
       'manifestV3',
+      'planReview',
       'centralGrant',
       'state',
       'routedEffects',
@@ -1684,6 +1890,8 @@ function isCurrentV3ComparisonFacts(
     !isSuccessfulCommand(value.commands.jobList, 'job', 'list') ||
     !isRecord(value.manifestV3) ||
     !isManifestV3ComparisonFacts(value.manifestV3) ||
+    !isRecord(value.planReview) ||
+    !isPlanReviewComparisonFacts(value.planReview, value.manifestV3) ||
     !isRecord(value.centralGrant) ||
     !isCentralGrantComparisonFacts(value.centralGrant) ||
     !isRecord(value.state) ||

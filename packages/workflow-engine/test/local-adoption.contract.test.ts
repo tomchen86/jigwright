@@ -42,6 +42,18 @@ test('current-v3 source and installed facts have a recomputable tamper verifier'
       },
     },
     {
+      name: 'PlanReview separation drift',
+      mutate(value) {
+        value.source.planReview.manifestDigest = 'd'.repeat(64);
+      },
+    },
+    {
+      name: 'Grant approval state-binding drift',
+      mutate(value) {
+        value.source.centralGrant.stateDigest = sha256('tampered-state');
+      },
+    },
+    {
       name: 'vector drift',
       mutate(value) {
         value.bindings.vectors.fileDigest = sha256('tampered-vector');
@@ -196,7 +208,62 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover',
       report.comparison.source.manifestV3.negativeOutcome,
       'blocked',
     );
+    assert.deepEqual(report.comparison.source.planReview, {
+      subjectSchemaVersion: 1,
+      subjectDigest: report.comparison.source.planReview.subjectDigest,
+      manifestDigest: report.comparison.source.manifestV3.manifestDigest,
+      investigationTargetDigest:
+        report.comparison.source.manifestV3.investigationTargetDigest,
+      readerOutcome: 'verified',
+      negativeOutcome: 'blocked',
+      negativeCode: 'PLAN_REVIEW_INVALID',
+    });
+    assert.match(
+      report.comparison.source.planReview.subjectDigest,
+      /^[a-f0-9]{64}$/u,
+    );
     assert.equal(report.comparison.source.centralGrant.recordState, 'pending');
+    assert.deepEqual(report.comparison.source.centralGrant.approvalMethods, [
+      'human-presence',
+      'ssh',
+    ]);
+    const centralGrantVector = (
+      JSON.parse(
+        fs.readFileSync(
+          path.resolve(
+            'packages/core/conformance/workflow-conformance-v2.json',
+          ),
+          'utf8',
+        ),
+      ) as {
+        domains: {
+          'central-grant': Array<{
+            challengeDigest: string;
+            request: { stateBinding: { digest: string } };
+          }>;
+        };
+      }
+    ).domains['central-grant'][0]!;
+    assert.equal(
+      report.comparison.source.centralGrant.challengeDigest,
+      centralGrantVector.challengeDigest,
+    );
+    assert.equal(
+      report.comparison.source.centralGrant.stateDigest,
+      centralGrantVector.request.stateBinding.digest,
+    );
+    assert.match(
+      report.comparison.source.centralGrant.approvalSubjectDigest,
+      /^sha256:[a-f0-9]{64}$/u,
+    );
+    assert.equal(
+      report.comparison.source.centralGrant.negativeOutcome,
+      'blocked',
+    );
+    assert.equal(
+      report.comparison.source.centralGrant.negativeCode,
+      'GRANT_APPROVAL_SUBJECT_INVALID',
+    );
     assert.deepEqual(
       {
         kind: report.consumer.localCutover.kind,
@@ -360,14 +427,28 @@ function currentComparisonFixture(): CurrentJigwrightAdoptionComparisonV1 {
       negativeOutcome: 'blocked',
       negativeCode: 'RECONSTRUCTION_MISMATCH',
     },
+    planReview: {
+      subjectSchemaVersion: 1,
+      subjectDigest: 'c'.repeat(64),
+      manifestDigest: 'a'.repeat(64),
+      investigationTargetDigest: 'b'.repeat(64),
+      readerOutcome: 'verified',
+      negativeOutcome: 'blocked',
+      negativeCode: 'PLAN_REVIEW_INVALID',
+    },
     centralGrant: {
       policySchemaVersion: 2,
       policyDigest: sha256('policy'),
       recordKind: 'grant-record.v1',
       recordState: 'pending',
       challengeDigest: sha256('challenge'),
+      stateDigest: sha256('state'),
+      approvalMethods: ['human-presence', 'ssh'],
+      approvalSubjectDigest: sha256('approval-subject'),
       recordDigest: sha256('record'),
       publicReadKind: 'grant-record.v1',
+      negativeOutcome: 'blocked',
+      negativeCode: 'GRANT_APPROVAL_SUBJECT_INVALID',
     },
     state: { before: state, after: state, unchanged: true },
     routedEffects: {
