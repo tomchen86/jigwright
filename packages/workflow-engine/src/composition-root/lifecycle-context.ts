@@ -24,6 +24,10 @@ import {
   withSessionOperation,
 } from '../runtime/session-workspace/session-store.ts';
 import type { SessionInspection } from '../application/finalize/verification.ts';
+import {
+  createPlanningProviderAuthoringPort,
+  planningProviderReviewedAssetMirrors,
+} from './planning-provider-authoring-production.ts';
 
 export function loadActiveSessionContext(
   cwd: string,
@@ -60,6 +64,10 @@ export function loadInvestigationRuntimeContext(cwd: string) {
       git.gitCommonDirectory,
       config.runtimeDirectory,
     ),
+    planningProviderAuthoring: () =>
+      createPlanningProviderAuthoringPort(git.repositoryRoot),
+    planningProviderReviewedAssetMirrors: () =>
+      planningProviderReviewedAssetMirrors(git.repositoryRoot),
   };
 }
 

@@ -49,7 +49,6 @@ test('plan-commit validation crosses the production planning composition root', 
     ),
     'utf8',
   );
-
   assert.doesNotMatch(applicationSource, /\bvalidateOpenSpecPlanning\b/u);
   assert.match(applicationSource, /\bvalidatePlanningTransition\b/u);
   assert.match(
@@ -73,7 +72,6 @@ test('plan-commit task history crosses the production planning composition root'
     ),
     'utf8',
   );
-
   assert.doesNotMatch(
     applicationSource,
     /adapters\/planning\/openspec\/documents\/planning-contract/u,
@@ -132,6 +130,49 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
   assert.match(
     ciGitSource,
     /export \{ readFileAtCommit \} from '\.\.\/\.\.\/runtime\/repository-transaction\/git\.ts';/u,
+  );
+});
+
+test('propose authoring crosses the production planning-provider composition root', () => {
+  const proposeSource = fs.readFileSync(
+    new URL(
+      '../src/application/propose/propose-orchestrator.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const compositionSource = fs.readFileSync(
+    new URL(
+      '../src/composition-root/planning-provider-authoring-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const lifecycleContextSource = fs.readFileSync(
+    new URL('../src/composition-root/lifecycle-context.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.doesNotMatch(
+    proposeSource,
+    /adapters\/planning\/openspec\/documents\/(?:openspec-adapter|openspec-planning-asset-contract)/u,
+  );
+  assert.match(proposeSource, /context\.planningProviderAuthoring\(\)/u);
+  assert.doesNotMatch(
+    proposeSource,
+    /composition-root\/planning-provider-authoring-production/u,
+  );
+  assert.match(
+    lifecycleContextSource,
+    /from '\.\/planning-provider-authoring-production\.ts';/u,
+  );
+  assert.match(
+    compositionSource,
+    /from '\.\.\/adapters\/planning\/openspec\/documents\/openspec-adapter\.ts';/u,
+  );
+  assert.match(
+    compositionSource,
+    /from '\.\.\/adapters\/planning\/openspec\/documents\/openspec-planning-asset-contract\.ts';/u,
   );
 });
 

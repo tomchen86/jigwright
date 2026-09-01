@@ -236,8 +236,6 @@ import {
   createInteractiveSshSigner,
   type MaintainerSignerProvider,
 } from '../../adapters/signing/ssh/maintainer-signer.ts';
-import { createOpenSpecAdapter } from '../../adapters/planning/openspec/documents/openspec-adapter.ts';
-import { OPENSPEC_ASSET_DEFINITIONS } from '../../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
 import {
   assertChangeId,
   normalizeExactRepositoryPath,
@@ -1871,8 +1869,8 @@ function prepareExemptionPlanningScaffold(
       },
     });
   }
-  const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const proposalInstruction = adapter.instructions(
+  const authoring = context.planningProviderAuthoring();
+  const proposalInstruction = authoring.instruction(
     session.changeId,
     currentPlanningSchemaName(context.git.repositoryRoot),
     'proposal',
@@ -5861,7 +5859,7 @@ function rebuildInvestigation(
     baseCommit: authorization.protectedBase.commit,
     targetCommit: session.baseline.head,
   });
-  const reviewedRelationships = deriveReviewedAssetRelationships();
+  const reviewedRelationships = deriveReviewedAssetRelationships(context);
   const reviewedCounterparts = deriveReviewedCounterpartFacts(
     intent,
     changedPaths,
@@ -6317,27 +6315,16 @@ function emptyRebuilt(
   };
 }
 
-function deriveReviewedAssetRelationships(): ReviewedPathRelationship[] {
-  return OPENSPEC_ASSET_DEFINITIONS.filter(
-    (
-      asset,
-    ): asset is (typeof OPENSPEC_ASSET_DEFINITIONS)[number] & {
-      mirrorOf: string;
-    } => asset.mirrorOf !== null,
-  )
-    .map((asset) => {
-      const reference = `OPENSPEC_ASSET_DEFINITIONS:${asset.mirrorOf}->${asset.destinationPath}`;
-      return {
-        relationshipId: `openspec-asset-mirror:${sha256(reference)}`,
-        kind: 'mirror',
-        subjectPath: pathIdentity(asset.mirrorOf),
-        counterpartPath: pathIdentity(asset.destinationPath),
-        reference,
-      };
-    })
-    .sort((left, right) =>
-      left.relationshipId.localeCompare(right.relationshipId),
-    );
+function deriveReviewedAssetRelationships(
+  context: ReturnType<typeof loadInvestigationRuntimeContext>,
+): ReviewedPathRelationship[] {
+  return context.planningProviderReviewedAssetMirrors().map((asset) => ({
+    relationshipId: asset.relationshipId,
+    kind: 'mirror',
+    subjectPath: pathIdentity(asset.mirrorOf),
+    counterpartPath: pathIdentity(asset.destinationPath),
+    reference: asset.reference,
+  }));
 }
 
 /**
@@ -7697,8 +7684,8 @@ function preparePlanningScaffold(
     });
   }
 
-  const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const proposalInstruction = adapter.instructions(
+  const authoring = context.planningProviderAuthoring();
+  const proposalInstruction = authoring.instruction(
     status.changeId,
     currentPlanningSchemaName(context.git.repositoryRoot),
     'proposal',
@@ -9436,8 +9423,8 @@ function materializePlanningContribution(
       });
       createdPaths.push(target);
     }
-    const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-    const statusPayload = adapter.status(
+    const authoring = context.planningProviderAuthoring();
+    const statusPayload = authoring.inspectStatus(
       status.changeId,
       currentPlanningSchemaName(context.git.repositoryRoot),
     );
@@ -9625,8 +9612,8 @@ function materializeExemptionPlanningContribution(
       });
       createdPaths.push(target);
     }
-    const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-    const statusPayload = adapter.status(
+    const authoring = context.planningProviderAuthoring();
+    const statusPayload = authoring.inspectStatus(
       session.changeId,
       currentPlanningSchemaName(context.git.repositoryRoot),
     );
@@ -12027,15 +12014,15 @@ function readMaterializedPlanningArtifacts(
   const hasPlanReview = fs.existsSync(
     path.join(scaffold.changeDirectory, 'plan-review.json'),
   );
-  const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const openspecStatus = adapter.status(
+  const authoring = context.planningProviderAuthoring();
+  const providerStatus = authoring.inspectStatus(
     status.changeId,
     currentPlanningSchemaName(context.git.repositoryRoot),
   );
   if (
-    (hasPlanReview && !openspecStatus.isComplete) ||
-    (!hasPlanReview && openspecStatus.isComplete) ||
-    openspecStatus.artifacts.find(({ id }) => id === 'plan-review')?.status !==
+    (hasPlanReview && !providerStatus.isComplete) ||
+    (!hasPlanReview && providerStatus.isComplete) ||
+    providerStatus.artifacts.find(({ id }) => id === 'plan-review')?.status !==
       (hasPlanReview ? 'done' : 'ready')
   ) {
     throw planningMaterializationStale(
@@ -12115,15 +12102,15 @@ function readMaterializedExemptionPlanningArtifacts(
   const hasPlanReview = fs.existsSync(
     path.join(changeDirectory, 'plan-review.json'),
   );
-  const adapter = createOpenSpecAdapter(context.git.repositoryRoot);
-  const openspecStatus = adapter.status(
+  const authoring = context.planningProviderAuthoring();
+  const providerStatus = authoring.inspectStatus(
     session.changeId,
     currentPlanningSchemaName(context.git.repositoryRoot),
   );
   if (
-    (hasPlanReview && !openspecStatus.isComplete) ||
-    (!hasPlanReview && openspecStatus.isComplete) ||
-    openspecStatus.artifacts.find(({ id }) => id === 'plan-review')?.status !==
+    (hasPlanReview && !providerStatus.isComplete) ||
+    (!hasPlanReview && providerStatus.isComplete) ||
+    providerStatus.artifacts.find(({ id }) => id === 'plan-review')?.status !==
       (hasPlanReview ? 'done' : 'ready')
   ) {
     throw planningMaterializationStale(

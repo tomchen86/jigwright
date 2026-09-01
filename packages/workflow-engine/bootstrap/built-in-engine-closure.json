@@ -678,7 +678,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:7d56d083a58e5c26bad2929982a89615279be99f2a29cb95a688486d515074a0"
+      "digest": "sha256:4ba71c038a22bf383c63430ed47559087f758b611d33e5a8234c3b0e3305d941"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -808,7 +808,7 @@
     {
       "path": "src/composition-root/lifecycle-context.ts",
       "mode": "100644",
-      "digest": "sha256:1b9574f25a8363ca9fa0dffdc40eca29da79ade5db2b86cac73df40f231f1a53"
+      "digest": "sha256:c2a603c7909270caaf032aec4388b2faca50313d7d1f85d9809ec660e4b12abe"
     },
     {
       "path": "src/composition-root/maintainer-signer.ts",
@@ -819,6 +819,11 @@
       "path": "src/composition-root/optional-grants-package-production.ts",
       "mode": "100644",
       "digest": "sha256:faa9efb9298b28ef1b3b85b348a504d4bb6760ca1121bfa6d308bc5ecfd8a153"
+    },
+    {
+      "path": "src/composition-root/planning-provider-authoring-production.ts",
+      "mode": "100644",
+      "digest": "sha256:1eef7bb8041a5d29e138329262e20cc2cdd1a5b3060b347dee183f22b130a60a"
     },
     {
       "path": "src/composition-root/planning-provider-production.ts",
@@ -1534,6 +1539,11 @@
       "path": "src/modules/lifecycle/planning-generation.ts",
       "mode": "100644",
       "digest": "sha256:3b29b5ca0c592072dc097cd5198c37c33ab0b733c4ece4717fa4808737f7e185"
+    },
+    {
+      "path": "src/modules/planning-provider/planning-provider-authoring-port.ts",
+      "mode": "100644",
+      "digest": "sha256:4febe929acbab233742220981e29233f6ad8ae89174efd2edf05d6ee5a2ece06"
     },
     {
       "path": "src/modules/planning-provider/planning-provider-binding.ts",

@@ -248,7 +248,7 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "coupled",
-      "t3Disposition": "Planning inspection and validation cross the production planning composition root; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. Propose authoring, archive application/CI projection, and remaining OpenSpec path assumptions stay coupled, so standalone adapter extraction is incomplete.",
+      "t3Disposition": "Planning inspection, validation and propose authoring cross production planning composition roots; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. The propose application consumes a neutral read-only authoring port and reviewed-asset projection while OpenSpec construction stays in composition. Archive application/CI projection and remaining OpenSpec path assumptions stay coupled, so standalone adapter extraction is incomplete.",
       "evidence": [
         {
           "path": "packages/core/src/planning-task-history.ts",
@@ -292,7 +292,25 @@
           "path": "packages/workflow-engine/src/application/propose/propose-orchestrator.ts",
           "contains": [
             "readFileAtCommit,",
-            "from '../../runtime/repository-transaction/git.ts';"
+            "from '../../runtime/repository-transaction/git.ts';",
+            "context.planningProviderAuthoring()",
+            "context.planningProviderReviewedAssetMirrors()"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/lifecycle-context.ts",
+          "contains": [
+            "createPlanningProviderAuthoringPort,",
+            "from './planning-provider-authoring-production.ts';",
+            "planningProviderAuthoring: () =>"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/planning-provider-authoring-production.ts",
+          "contains": [
+            "createOpenSpecAdapter",
+            "OPENSPEC_ASSET_DEFINITIONS",
+            "export function createPlanningProviderAuthoringPort("
           ]
         },
         {

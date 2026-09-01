@@ -111,10 +111,12 @@ by an engine façade; the OpenSpec adapter only consumes it. Immutable Git reads
 are repository-transaction owned, so plan-commit, CI-planning,
 propose-orchestrator, open-task, finalize, and the archive verifier runtime no
 longer invert through the OpenSpec planning contract or CI entrypoint facade.
-Propose still uses OpenSpec authoring and planning-asset adapters. Archive
-application, CI archive, and remaining OpenSpec path assumptions also stay
-coupled. The remaining work is standalone adapter extraction and those
-authoring/archive/path seams, not absence of the planning port.
+Propose authoring now consumes a neutral read-only authoring port and reviewed
+asset projection; OpenSpec construction and provider-specific asset definitions
+stay in the production composition root. Archive application, CI archive, and
+remaining OpenSpec path assumptions still stay coupled. The remaining work is
+standalone adapter extraction and those archive/path seams, not absence of the
+planning ports.
 
 The planning seam retains all eight planning-provider responsibilities:
 provider provenance, artifact inventory, task/source anchors, readiness
