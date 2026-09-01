@@ -28,6 +28,7 @@ import {
   startSessionUnderLifecycleLock,
 } from '../src/application/execute-task/session.ts';
 import { updateTaskSessionBase } from '../src/application/execute-task/update-base.ts';
+import { reviseTask } from '../src/application/revise/task-revision.ts';
 import {
   createSessionId,
   parseTaskWorktreeRegistrations,
@@ -1240,6 +1241,61 @@ test('task-session preflight fails closed on change-lock and publication-directo
     } finally {
       fs.rmSync(repository, { recursive: true, force: true });
     }
+  }
+});
+
+test('doctor counts a durable revising session as a write-capable session without mutation', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(repository, 'demo-change', '1.1');
+    assert.throws(
+      () =>
+        reviseTask(repository, started.sessionId, 'Inspect current planning.', {
+          testCrashAfter: 'session-revising',
+        }),
+      /simulated task revision crash after session-revising/u,
+    );
+    assert.equal(getSession(repository, started.sessionId).state, 'revising');
+    const sessionPath = path.join(
+      runtimeRoot(repository),
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const before = {
+      head: git(repository, ['rev-parse', 'HEAD']),
+      status: git(repository, ['status', '--porcelain=v1', '-z']),
+      sessionBytes: fs.readFileSync(sessionPath, 'utf8'),
+    };
+
+    const run = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'doctor',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+
+    assert.equal(run.status, 0, run.stderr);
+    assert.equal(
+      (JSON.parse(run.stdout) as { activeSessionCount: number })
+        .activeSessionCount,
+      1,
+    );
+    assert.deepEqual(
+      {
+        head: git(repository, ['rev-parse', 'HEAD']),
+        status: git(repository, ['status', '--porcelain=v1', '-z']),
+        sessionBytes: fs.readFileSync(sessionPath, 'utf8'),
+      },
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

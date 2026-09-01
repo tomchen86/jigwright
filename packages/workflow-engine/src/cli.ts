@@ -3564,7 +3564,7 @@ function doctor(cwd: string): CommandResult {
     openspec,
     retainedSpectraUsed: false,
     activeSessionCount: listSessions(cwd).filter(
-      (session) => session.state === 'active',
+      (session) => session.state === 'active' || session.state === 'revising',
     ).length,
     warnings,
   };
