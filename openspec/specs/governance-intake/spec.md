@@ -111,6 +111,125 @@ item-only match.
 - **AND** the Source and Work Item bytes remain unchanged
 - **AND** no lifecycle, priority, or transition authority is created
 
+### Requirement: Work Items Use Stable Per-Item Records
+
+An installed Work Registry SHALL persist each current Work Item as one exact,
+canonical record under
+`docs/work-registry/items/<created-year>/WORK-<ULID>.yaml`. The Work Item path
+MUST remain stable across lifecycle changes. `stage`, `lane`, and `blockedBy`
+SHALL remain independent facts, and the current interpretation SHALL identify
+whether it is `agent-derived` or `maintainer-confirmed`. Source identities,
+blockers, change identities, aliases, timeline events, and closure facts MUST
+be canonical, internally coherent, and validated without inventing history.
+
+#### Scenario: A new current Work Item is parked
+
+- **WHEN** a caller creates one valid Work Item from explicit current input
+- **THEN** the registry writes one `inbox` item at its creation-year path
+- **AND** the initial interpretation remains visibly `agent-derived`
+- **AND** no priority, planning, or transition authority is created
+
+#### Scenario: A persisted relation is incoherent
+
+- **WHEN** a Work Item path, canonical bytes, blocker, Source reference, change link, timeline, or closure disagrees
+- **THEN** the registry rejects the record without moving or rewriting it
+
+### Requirement: Reviewed Work Item Decisions Use Grant Core
+
+Priority recommendation SHALL be read-only and SHALL expose its current lane,
+recommended lane, and explicit reasons. Intake, priority application, and
+promotion SHALL bind the exact current Work Item digest. When repository policy
+classifies one of those operations as a protected continuation, the domain
+SHALL submit a registered Central Grant transition and apply only the exact
+accepted transition. A Source, Finding, recommendation, or Work Item MUST NOT
+act as a second authority or bypass an accepted Grant Core result.
+
+#### Scenario: Priority is inspected without application
+
+- **WHEN** a caller requests the current priority recommendation
+- **THEN** the registry returns explicit recommendation reasons
+- **AND** no Work Item, projection, Git ref, or private journal is changed
+
+#### Scenario: Protected review needs exact authorization
+
+- **WHEN** current policy requires a Grant for the requested reviewed transition
+- **THEN** the ordinary command emits one exact Fail-Grant challenge before mutation
+- **AND** only the registered transition consumer may apply the accepted current decision
+
+### Requirement: Promotion Atomically Links Work and Source Provenance
+
+Promotion SHALL require one `maintainer-confirmed` `backlog` Work Item in lane
+`now` or `next`, closed blockers, the exact expected item digest, and a current
+survey of declared repository symbols. It SHALL atomically change the Work Item
+to `active` and merge the Work Item's immutable `sourceRefs` plus its identity
+into the existing change `origin.json` `sourceRefs` and `workItemRefs`.
+Promotion MUST preserve unrelated origin relations, use compare-and-swap for
+both tracked inputs, and recover the same prepared transaction after a crash.
+
+#### Scenario: Current promotion succeeds
+
+- **WHEN** an eligible reviewed Work Item, current survey, expected digest, and change identity still agree
+- **THEN** the item and origin publish one bidirectional relationship
+- **AND** the origin stores identities rather than copied Source or Work Item records
+
+#### Scenario: Either tracked input changes
+
+- **WHEN** the Work Item or origin no longer matches the prepared promotion
+- **THEN** promotion fails or rolls back without a partial relationship
+- **AND** retry never overwrites a concurrent canonical update
+
+### Requirement: Work Registry Read Surfaces Are Deterministic
+
+The installed registry SHALL expose `list`, `show`, `search`, `trace`,
+`recommend`, `inventory`, `render`, and `validate`. Every composite read MUST
+use one coherent item/origin snapshot and validate every traversed Source and
+relation. Render SHALL derive the backlog, inventory, history, and configured
+handoff views deterministically from canonical records; those views and any
+search cache SHALL NOT become authority.
+
+#### Scenario: A caller traces one Work Item
+
+- **WHEN** the Work Item and all cited records are canonical
+- **THEN** trace returns the unchanged item, its canonical Sources, and linked current or archived origins
+- **AND** the read creates no lifecycle or transition fact
+
+#### Scenario: A projection drifts
+
+- **WHEN** a generated backlog, inventory, history, or handoff byte no longer matches canonical records
+- **THEN** validation rejects the projection rather than treating it as registry authority
+
+### Requirement: Planning Prose Distinguishes Source-Backed Claims
+
+The generated planning interface SHALL instruct callers to resolve cited
+Sources through `source show`, preserve their exact selected wording, mark
+claims grounded in those Sources as `source-backed`, and mark interpretations
+or extensions as `agent-derived`. Planning and change artifacts SHALL retain
+immutable Source identities without copying an entire Source record. This
+provenance distinction SHALL NOT grant planning, policy, check, or transition
+authority and SHALL NOT require the optional Work Registry for an uncited
+change.
+
+#### Scenario: A proposed change cites maintainer wording
+
+- **WHEN** the request names a canonical Source identity
+- **THEN** the planning guidance directs the caller to the current Source read surface
+- **AND** source-backed wording remains distinguishable from agent-derived interpretation
+
+### Requirement: Archive Reconciles Linked Work Items Deterministically
+
+Archive reconciliation SHALL derive linked Work Items from the canonical
+archived change origin, require the same bidirectional relationship admitted
+before archive, close only those active items with outcome `delivered`, and
+regenerate exact current projections. It SHALL preserve every Source and Work
+Item timeline and SHALL be idempotent for the same archive facts. When the Work
+Registry is disabled, archive reconciliation SHALL return no Work Item effects.
+
+#### Scenario: One linked change is archived
+
+- **WHEN** current item, origin, archive identity, and compare-and-swap facts agree
+- **THEN** each exactly linked active Work Item closes once with the archived change identity
+- **AND** a second reconciliation preserves the same record and projection bytes
+
 ### Requirement: Work Registry Is an Explicit Optional Capability
 
 A configured repository SHALL represent an installed Work Registry with its
