@@ -58,7 +58,7 @@
     {
       "path": "node_modules/@jigwright/agent-runtime/src/built-in-provider-definition.ts",
       "mode": "100644",
-      "digest": "sha256:e9d53736a8d8958fea80211379ed8bf97ce55dee17959fe6c98fc76a01ce3b1c"
+      "digest": "sha256:02c6b58586af4986a7a898459489f8e77546af8bb37923e30235a9983541af4d"
     },
     {
       "path": "node_modules/@jigwright/agent-runtime/src/harness-jsonl-v1.ts",
@@ -1638,7 +1638,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-registry.ts",
       "mode": "100644",
-      "digest": "sha256:2ff28be7739ece2579ca5158d46539972e9b99d214ebd99a83e5d0d7e522c73e"
+      "digest": "sha256:a4f6d0dddde53d7ad4cdf1acaa6c5dedfbb8fc9fe1e4a658602beed469cf06b1"
     },
     {
       "path": "src/modules/provider-orchestration/provider-retry-decision.ts",

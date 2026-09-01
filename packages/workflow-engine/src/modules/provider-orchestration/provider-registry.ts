@@ -1,6 +1,9 @@
 import {
   isBuiltInProviderFamily,
-  listBuiltInProviderFamilies,
+  listBuiltInProviderCapabilityDescriptors,
+  type BuiltInProviderCapability,
+  type BuiltInProviderCapabilityProfile,
+  type BuiltInProviderCapabilityPurpose,
   type BuiltInProviderFamily,
 } from '@jigwright/agent-runtime';
 
@@ -15,41 +18,22 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
  * `task-implementation` capabilities under the `repository-read-only` profile.
  */
 export type ProviderId = BuiltInProviderFamily;
-export type CapabilityPurpose =
-  'survey' | 'plan-review' | 'task-diff-review' | 'task-implementation';
-export type CapabilityProfile = 'repository-read-only';
-
-export type ProviderCapability = {
-  readonly purpose: CapabilityPurpose;
-  readonly profile: CapabilityProfile;
-};
+export type CapabilityPurpose = BuiltInProviderCapabilityPurpose;
+export type CapabilityProfile = BuiltInProviderCapabilityProfile;
+export type ProviderCapability = BuiltInProviderCapability;
 
 export type BuiltInProvider = {
   readonly id: ProviderId;
   readonly capabilities: readonly ProviderCapability[];
 };
 
-function readOnlyCapabilities(): readonly ProviderCapability[] {
-  return [
-    Object.freeze({ purpose: 'survey', profile: 'repository-read-only' }),
-    Object.freeze({ purpose: 'plan-review', profile: 'repository-read-only' }),
-    Object.freeze({
-      purpose: 'task-implementation',
-      profile: 'repository-read-only',
-    }),
-    Object.freeze({
-      purpose: 'task-diff-review',
-      profile: 'repository-read-only',
-    }),
-  ];
-}
-
 const BUILT_IN_PROVIDERS: readonly BuiltInProvider[] = Object.freeze(
-  listBuiltInProviderFamilies().map((id) =>
-    Object.freeze({
-      id,
-      capabilities: Object.freeze(readOnlyCapabilities()),
-    }),
+  listBuiltInProviderCapabilityDescriptors().map(
+    ({ providerFamily: id, capabilities }) =>
+      Object.freeze({
+        id,
+        capabilities,
+      }),
   ),
 );
 

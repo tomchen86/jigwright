@@ -1,22 +1,8 @@
-import { isBuiltInProviderFamily, listBuiltInProviderFamilies, } from '@jigwright/agent-runtime';
+import { isBuiltInProviderFamily, listBuiltInProviderCapabilityDescriptors, } from '@jigwright/agent-runtime';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-function readOnlyCapabilities() {
-    return [
-        Object.freeze({ purpose: 'survey', profile: 'repository-read-only' }),
-        Object.freeze({ purpose: 'plan-review', profile: 'repository-read-only' }),
-        Object.freeze({
-            purpose: 'task-implementation',
-            profile: 'repository-read-only',
-        }),
-        Object.freeze({
-            purpose: 'task-diff-review',
-            profile: 'repository-read-only',
-        }),
-    ];
-}
-const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderFamilies().map((id) => Object.freeze({
+const BUILT_IN_PROVIDERS = Object.freeze(listBuiltInProviderCapabilityDescriptors().map(({ providerFamily: id, capabilities }) => Object.freeze({
     id,
-    capabilities: Object.freeze(readOnlyCapabilities()),
+    capabilities,
 })));
 /**
  * Return the deeply frozen built-in provider registry. The same immutable

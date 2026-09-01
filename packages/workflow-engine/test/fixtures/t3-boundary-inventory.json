@@ -68,15 +68,16 @@
     {
       "id": "agent-provider-identity",
       "plane": "agent-runtime",
-      "state": "partial",
-      "t3Disposition": "The agent-runtime package owns the exact immutable built-in provider family registry and reviewed definition snapshots; the workflow-engine capability facade derives identity from that registry while repository capability policy remains a later separate seam.",
+      "state": "landed",
+      "t3Disposition": "The agent-runtime package owns the exact immutable built-in provider family registry, reviewed definition snapshots, and role-purpose capability policy; the workflow-engine facade derives those canonical bytes and retains only workflow error mapping.",
       "evidence": [
         {
           "path": "packages/agent-runtime/src/built-in-provider-definition.ts",
           "contains": [
             "export type BuiltInProviderFamily = 'codex' | 'claude';",
             "export function listBuiltInProviderFamilies(): readonly BuiltInProviderFamily[]",
-            "export function isBuiltInProviderFamily("
+            "export function isBuiltInProviderFamily(",
+            "export function listBuiltInProviderCapabilityDescriptors(): readonly BuiltInProviderCapabilityDescriptor[]"
           ]
         },
         {
@@ -84,7 +85,8 @@
           "contains": [
             "from '@jigwright/agent-runtime';",
             "export type ProviderId = BuiltInProviderFamily;",
-            "listBuiltInProviderFamilies().map((id)"
+            "export type CapabilityPurpose = BuiltInProviderCapabilityPurpose;",
+            "listBuiltInProviderCapabilityDescriptors().map("
           ]
         }
       ],

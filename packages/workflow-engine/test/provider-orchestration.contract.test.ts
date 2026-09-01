@@ -2,7 +2,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-import { listBuiltInProviderFamilies } from '@jigwright/agent-runtime';
+import {
+  listBuiltInProviderCapabilityDescriptors,
+  listBuiltInProviderFamilies,
+} from '@jigwright/agent-runtime';
 
 import { resolveActorIdentity } from '../src/modules/provider-orchestration/actor-identity.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
@@ -93,6 +96,12 @@ test('built-in provider registry is exact, immutable, and capability-scoped', ()
     providers.map(({ id }) => id),
     listBuiltInProviderFamilies(),
   );
+  assert.deepEqual(
+    providers,
+    listBuiltInProviderCapabilityDescriptors().map(
+      ({ providerFamily: id, capabilities }) => ({ id, capabilities }),
+    ),
+  );
 
   const registrySource = fs.readFileSync(
     new URL(
@@ -109,6 +118,11 @@ test('built-in provider registry is exact, immutable, and capability-scoped', ()
   assert.doesNotMatch(
     registrySource,
     /\[\s*['"]codex['"]\s*,\s*['"]claude['"]\s*\]/u,
+  );
+  assert.doesNotMatch(registrySource, /function readOnlyCapabilities\(/u);
+  assert.doesNotMatch(
+    registrySource,
+    /export type CapabilityPurpose\s*=\s*['"]survey['"]/u,
   );
 
   assert.equal(

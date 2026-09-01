@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:ef3614a4947d67093200a2c6758d25cd5c2854c2969ca8854d42a6322349731f"
+      "digest": "sha256:d735df0a23e3e177f7169f4424fcdf951d37b70aed2656c7c267fcaae26eb845"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -28,7 +28,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/built-in-provider-definition.js",
       "mode": "100644",
-      "digest": "sha256:91c1e5ad5f59a21ded40f736974804a6fdb923541577babfbf950b4f89eeb7ef"
+      "digest": "sha256:acead8bb10b2fa91f8ca8343ca59ec69d8151e56016c095ad6400b193bacb6f6"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/src/harness-jsonl-v1.js",
@@ -553,7 +553,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-registry.js",
       "mode": "100644",
-      "digest": "sha256:44cadc507faabdfbd4a7fc2eff06e7e670a1c3debd5caa5a1be0b18e34aae108"
+      "digest": "sha256:571e4ac45d78f5b830462e2e0d822e0f4d2192a9af1b74dce22bc4f0c1b79fc8"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-runtime-evidence.js",

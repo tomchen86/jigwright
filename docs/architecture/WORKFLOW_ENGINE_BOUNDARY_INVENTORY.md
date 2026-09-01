@@ -43,14 +43,14 @@ module migration map contains the exact scopes and identity digests.
 
 <!-- coupling:agent-provider-identity -->
 
-### Agent provider identity — partial
+### Agent provider identity — landed
 
 `@jigwright/agent-runtime` owns the exact immutable built-in provider family
-registry and reviewed definition snapshots. The workflow-engine capability
-facade derives its provider identities from that package-owned registry rather
-than maintaining another `codex | claude` list. Repository capability policy
-still belongs to the workflow engine; later T3.3c work can move that policy
-through a separate seam without changing the reviewed identities or profiles.
+registry, reviewed definition snapshots, and role-purpose capability policy.
+The workflow-engine facade derives both identity and capability bytes from that
+package-owned registry, retaining only workflow error mapping. Repository role
+selection still belongs to repository policy and does not redefine provider
+identity, reviewed command profiles, or provider capabilities.
 
 <!-- coupling:availability-pilot -->
 

@@ -27,6 +27,55 @@ export function isBuiltInProviderFamily(
   return BUILT_IN_PROVIDER_FAMILIES.some((family) => family === value);
 }
 
+export type BuiltInProviderCapabilityPurpose =
+  'survey' | 'plan-review' | 'task-diff-review' | 'task-implementation';
+export type BuiltInProviderCapabilityProfile = 'repository-read-only';
+export type BuiltInProviderCapability = Readonly<{
+  purpose: BuiltInProviderCapabilityPurpose;
+  profile: BuiltInProviderCapabilityProfile;
+}>;
+export type BuiltInProviderCapabilityDescriptor = Readonly<{
+  providerFamily: BuiltInProviderFamily;
+  capabilities: readonly BuiltInProviderCapability[];
+}>;
+
+function repositoryReadOnlyCapabilities(): readonly BuiltInProviderCapability[] {
+  return Object.freeze([
+    Object.freeze({ purpose: 'survey', profile: 'repository-read-only' }),
+    Object.freeze({
+      purpose: 'plan-review',
+      profile: 'repository-read-only',
+    }),
+    Object.freeze({
+      purpose: 'task-implementation',
+      profile: 'repository-read-only',
+    }),
+    Object.freeze({
+      purpose: 'task-diff-review',
+      profile: 'repository-read-only',
+    }),
+  ]);
+}
+
+const BUILT_IN_PROVIDER_CAPABILITY_DESCRIPTORS: readonly BuiltInProviderCapabilityDescriptor[] =
+  Object.freeze(
+    BUILT_IN_PROVIDER_FAMILIES.map((providerFamily) =>
+      Object.freeze({
+        providerFamily,
+        capabilities: repositoryReadOnlyCapabilities(),
+      }),
+    ),
+  );
+
+/**
+ * Return the reviewed role-purpose capability policy for every built-in
+ * provider family. Repository role assignment may select from this policy but
+ * cannot redefine it.
+ */
+export function listBuiltInProviderCapabilityDescriptors(): readonly BuiltInProviderCapabilityDescriptor[] {
+  return BUILT_IN_PROVIDER_CAPABILITY_DESCRIPTORS;
+}
+
 type CandidateSet = Readonly<
   Partial<Record<NodeJS.Platform, readonly string[]>>
 >;

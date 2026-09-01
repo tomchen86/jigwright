@@ -14,6 +14,7 @@ import {
   CODEX_EXECUTABLE_CANDIDATES,
   assertKnownBuiltInProviderDefinitionSnapshot,
   isBuiltInProviderFamily,
+  listBuiltInProviderCapabilityDescriptors,
   listBuiltInProviderFamilies,
   resolveBuiltInProviderDefinitionSnapshot,
 } from '../src/built-in-provider-definition.ts';
@@ -37,6 +38,26 @@ test('agent runtime owns the exact immutable built-in provider family registry',
   assert.equal(isBuiltInProviderFamily('codex'), true);
   assert.equal(isBuiltInProviderFamily('claude'), true);
   assert.equal(isBuiltInProviderFamily('custom/internal'), false);
+});
+
+test('agent runtime owns the built-in provider capability policy', () => {
+  const descriptors = listBuiltInProviderCapabilityDescriptors();
+  const capabilities = [
+    { purpose: 'survey', profile: 'repository-read-only' },
+    { purpose: 'plan-review', profile: 'repository-read-only' },
+    { purpose: 'task-implementation', profile: 'repository-read-only' },
+    { purpose: 'task-diff-review', profile: 'repository-read-only' },
+  ];
+
+  assert.deepEqual(descriptors, [
+    { providerFamily: 'codex', capabilities },
+    { providerFamily: 'claude', capabilities },
+  ]);
+  assert.equal(Object.isFrozen(descriptors), true);
+  assert.equal(Object.isFrozen(descriptors[0]), true);
+  assert.equal(Object.isFrozen(descriptors[0]?.capabilities), true);
+  assert.equal(Object.isFrozen(descriptors[0]?.capabilities[0]), true);
+  assert.strictEqual(listBuiltInProviderCapabilityDescriptors(), descriptors);
 });
 
 test('provider definition snapshot is deterministic and deeply immutable', () => {
