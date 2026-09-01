@@ -8,6 +8,7 @@ import test from 'node:test';
 import {
   runCurrentJigwrightAdoption,
   verifyCurrentJigwrightAdoptionComparisonV1,
+  verifyCurrentJigwrightAdoptionReportV1,
   type CurrentJigwrightAdoptionComparisonV1,
 } from '../../../scripts/run-current-jigwright-adoption.ts';
 
@@ -81,7 +82,7 @@ test('the public adoption command is current-only and preserves the workspace re
   );
 });
 
-test('one exact Jigwright tarball bootstraps a fresh current-only consumer', () => {
+test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover', () => {
   const adoptionRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-current-adoption-'),
   );
@@ -196,10 +197,108 @@ test('one exact Jigwright tarball bootstraps a fresh current-only consumer', () 
       'blocked',
     );
     assert.equal(report.comparison.source.centralGrant.recordState, 'pending');
+    assert.deepEqual(
+      {
+        kind: report.consumer.localCutover.kind,
+        environment: report.consumer.localCutover.environment,
+        realPilot: report.consumer.localCutover.realPilot,
+        notEvaluated: report.consumer.localCutover.notEvaluated,
+      },
+      {
+        kind: 'jigwright-synthetic-local-cutover.v1',
+        environment: 'synthetic-local',
+        realPilot: false,
+        notEvaluated: [
+          'managed-lifecycle',
+          'grant-transitions',
+          'human-gates',
+          'expense-app-consumer',
+          'publication',
+          'full-gate',
+        ],
+      },
+    );
+    assert.deepEqual(report.consumer.localCutover.rootWorkflow, {
+      script: 'jigwright',
+      invocation: 'npm run --silent workflow --',
+      packageName: 'jigwright',
+      packageExecutable: 'node_modules/jigwright/bin/jigwright.mjs',
+      packageExecutableDigest:
+        report.consumer.localCutover.rootWorkflow.binDigest,
+      bin: 'node_modules/.bin/jigwright',
+      binTarget: '../jigwright/bin/jigwright.mjs',
+      binDigest: report.consumer.localCutover.rootWorkflow.binDigest,
+      lockfileDigest: report.install.lockfile.digest,
+      lockfileIntegrity: report.install.lockfile.integrity,
+      guide: report.comparison.installed.commands.guide,
+    });
+    assert.deepEqual(report.consumer.localCutover.hooks.state, {
+      before: report.consumer.localCutover.hooks.state.after,
+      after: report.consumer.localCutover.hooks.state.after,
+      unchanged: true,
+    });
+    assert.deepEqual(
+      report.consumer.localCutover.hooks.observations.preCommit.payload.result,
+      { hook: 'pre-commit', changes: [], documents: [] },
+    );
+    assert.equal(
+      commandErrorCode(
+        report.consumer.localCutover.hooks.observations.malformedCommitMessage
+          .payload,
+      ),
+      'COMMIT_MESSAGE_INVALID',
+    );
+    assert.equal(
+      commandErrorCode(
+        report.consumer.localCutover.hooks.observations
+          .prePushWithoutTransaction.payload,
+      ),
+      'PUBLISH_TRANSACTION_REQUIRED',
+    );
+    assert.deepEqual(
+      report.consumer.localCutover.hooks.observations.postMerge.payload.result,
+      { hook: 'post-merge', changes: [], documents: [] },
+    );
+
+    const consumerRoot = path.join(adoptionRoot, 'consumer');
+    const consumerManifest = JSON.parse(
+      fs.readFileSync(path.join(consumerRoot, 'package.json'), 'utf8'),
+    ) as { scripts: Record<string, string> };
+    assert.deepEqual(consumerManifest.scripts, { workflow: 'jigwright' });
+    assert.equal(
+      fs.realpathSync(
+        path.join(consumerRoot, report.consumer.localCutover.rootWorkflow.bin),
+      ),
+      fs.realpathSync(
+        path.join(
+          consumerRoot,
+          report.consumer.localCutover.rootWorkflow.packageExecutable,
+        ),
+      ),
+    );
+    for (const proxy of report.consumer.localCutover.hooks.proxies) {
+      const proxyPath = path.join(consumerRoot, proxy.path);
+      assert.equal(fs.readFileSync(proxyPath, 'utf8'), proxy.content);
+      assert.notEqual(fs.statSync(proxyPath).mode & 0o111, 0);
+    }
+
+    const falsePilot = structuredClone(report) as any;
+    falsePilot.consumer.localCutover.realPilot = true;
+    assert.throws(
+      () => verifyCurrentJigwrightAdoptionReportV1(falsePilot, report.release),
+      /adoption report is invalid/u,
+    );
   } finally {
     fs.rmSync(adoptionRoot, { recursive: true, force: true });
   }
 });
+
+function commandErrorCode(payload: Record<string, unknown>): unknown {
+  const error = payload.error;
+  return error !== null && typeof error === 'object' && !Array.isArray(error)
+    ? (error as Record<string, unknown>).code
+    : undefined;
+}
 
 function currentComparisonFixture(): CurrentJigwrightAdoptionComparisonV1 {
   const command = (

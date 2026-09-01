@@ -17,6 +17,27 @@ const CONFORMANCE_VECTOR_SOURCE_PATH =
   'packages/core/conformance/workflow-conformance-v2.json';
 const CONFORMANCE_VECTOR_EVIDENCE_PATH =
   'facts/workflow-conformance-v2.json' as const;
+const CURRENT_HOOKS = Object.freeze([
+  'pre-commit',
+  'commit-msg',
+  'pre-push',
+  'post-merge',
+] as const);
+const CURRENT_OPENSPEC_INTEGRATION_ASSET_PATHS = Object.freeze([
+  '.agents/skills/openspec-explore/SKILL.md',
+  '.agents/skills/openspec-propose/SKILL.md',
+  '.agents/skills/workflow-engine/SKILL.md',
+  '.claude/skills/openspec-explore/SKILL.md',
+  '.claude/skills/openspec-propose/SKILL.md',
+  '.claude/skills/workflow-engine/SKILL.md',
+  '.codex/skills/openspec-explore/SKILL.md',
+  '.codex/skills/openspec-propose/SKILL.md',
+  '.codex/skills/workflow-engine/SKILL.md',
+  'workflow/openspec-assets/manifest.json',
+  'workflow/openspec-assets/prompts/opsx-explore.md',
+  'workflow/openspec-assets/prompts/opsx-propose.md',
+  'workflow/openspec-assets/sources/workflow-engine/SKILL.md',
+] as const);
 const COMMIT_DATES = Object.freeze({
   baseline: '2026-08-30T00:00:00.000Z',
   dependency: '2026-08-30T00:01:00.000Z',
@@ -41,6 +62,55 @@ export type CurrentJigwrightRepositoryStateFingerprintV1 = Readonly<{
   refs: Sha256Digest;
   tracked: Sha256Digest;
   privateRuntime: Sha256Digest;
+}>;
+
+type CurrentJigwrightHookName = (typeof CURRENT_HOOKS)[number];
+
+type CurrentJigwrightLocalCutoverV1 = Readonly<{
+  kind: 'jigwright-synthetic-local-cutover.v1';
+  environment: 'synthetic-local';
+  realPilot: false;
+  notEvaluated: readonly [
+    'managed-lifecycle',
+    'grant-transitions',
+    'human-gates',
+    'expense-app-consumer',
+    'publication',
+    'full-gate',
+  ];
+  rootWorkflow: Readonly<{
+    script: 'jigwright';
+    invocation: 'npm run --silent workflow --';
+    packageName: 'jigwright';
+    packageExecutable: 'node_modules/jigwright/bin/jigwright.mjs';
+    packageExecutableDigest: Sha256Digest;
+    bin: 'node_modules/.bin/jigwright';
+    binTarget: '../jigwright/bin/jigwright.mjs';
+    binDigest: Sha256Digest;
+    lockfileDigest: Sha256Digest;
+    lockfileIntegrity: `sha512-${string}`;
+    guide: CurrentJigwrightCommandObservationV1;
+  }>;
+  hooks: Readonly<{
+    proxies: readonly Readonly<{
+      hook: CurrentJigwrightHookName;
+      path: `.husky/${CurrentJigwrightHookName}`;
+      content: string;
+      digest: Sha256Digest;
+      executable: true;
+    }>[];
+    observations: Readonly<{
+      preCommit: CurrentJigwrightCommandObservationV1;
+      malformedCommitMessage: CurrentJigwrightCommandObservationV1;
+      prePushWithoutTransaction: CurrentJigwrightCommandObservationV1;
+      postMerge: CurrentJigwrightCommandObservationV1;
+    }>;
+    state: Readonly<{
+      before: CurrentJigwrightRepositoryStateFingerprintV1;
+      after: CurrentJigwrightRepositoryStateFingerprintV1;
+      unchanged: true;
+    }>;
+  }>;
 }>;
 
 export type CurrentJigwrightV3ComparisonFactsV1 = Readonly<{
@@ -158,6 +228,7 @@ export type CurrentJigwrightAdoptionReportV1 = Readonly<{
       dependency: GitIdentityV1;
       cutover: GitIdentityV1;
     }>;
+    localCutover: CurrentJigwrightLocalCutoverV1;
     rollback: Readonly<{
       kind: 'jigwright-consumer-rollback-rehearsal.v1';
       revertedCommits: readonly [string, string];
@@ -357,7 +428,8 @@ export function runCurrentJigwrightAdoption(
     sourceProfilePath,
     sourceProfileBytes,
   );
-  git(sourceProbeRoot, ['add', '--', sourceInit.path]);
+  materializeCurrentLocalCutover(repositoryRoot, sourceProbeRoot);
+  stageCurrentLocalCutover(sourceProbeRoot, sourceInit.path);
   commitConsumer(
     sourceProbeRoot,
     'Activate current Jigwright profile',
@@ -385,7 +457,8 @@ export function runCurrentJigwrightAdoption(
   ) {
     throw new Error('Source and installed Jigwright init facts differ.');
   }
-  git(consumerRoot, ['add', '--', init.path]);
+  materializeCurrentLocalCutover(repositoryRoot, consumerRoot);
+  stageCurrentLocalCutover(consumerRoot, init.path);
   commitConsumer(
     consumerRoot,
     'Activate current Jigwright profile',
@@ -431,6 +504,14 @@ export function runCurrentJigwrightAdoption(
   if (!sameJson(sourceFacts, installedFacts)) {
     throw new Error('Source and installed current-v3 facts differ.');
   }
+
+  const localCutover = collectCurrentLocalCutoverEvidence({
+    consumerRoot,
+    installedRoot,
+    installedManifest,
+    lockfile,
+    installedGuide: installedFacts.commands.guide,
+  });
 
   const publicSurfaces = inspectInstalledPublicSurfaces(consumerRoot);
   const rollback = rehearseConsumerRollback(
@@ -492,6 +573,7 @@ export function runCurrentJigwrightAdoption(
       ...cutover,
       clean: true as const,
       history: Object.freeze({ baseline, dependency, cutover }),
+      localCutover,
       rollback,
     }),
     comparison,
@@ -537,6 +619,346 @@ function gitIdentity(repositoryRoot: string): GitIdentityV1 {
     commit: git(repositoryRoot, ['rev-parse', 'HEAD']),
     tree: git(repositoryRoot, ['rev-parse', 'HEAD^{tree}']),
   });
+}
+
+function materializeCurrentLocalCutover(
+  repositoryRoot: string,
+  consumerRoot: string,
+): void {
+  const manifestPath = path.join(consumerRoot, 'package.json');
+  const manifest = readJson(manifestPath);
+  if (
+    !isRecord(manifest.dependencies) ||
+    typeof manifest.dependencies.jigwright !== 'string'
+  ) {
+    throw new Error('Current local cutover requires the installed dependency.');
+  }
+  writeJson(manifestPath, {
+    ...manifest,
+    scripts: { workflow: 'jigwright' },
+  });
+  writeJson(path.join(consumerRoot, 'workflow', 'document-policy.json'), {
+    schemaVersion: 1,
+    enforcementMode: 'active',
+    documents: {},
+  });
+  writeText(path.join(consumerRoot, 'openspec', 'changes', '.gitkeep'), '');
+
+  for (const relativePath of CURRENT_OPENSPEC_INTEGRATION_ASSET_PATHS) {
+    const source = path.join(repositoryRoot, relativePath);
+    const stats = fs.lstatSync(source, { throwIfNoEntry: false });
+    if (
+      stats === undefined ||
+      !stats.isFile() ||
+      stats.isSymbolicLink() ||
+      stats.nlink !== 1
+    ) {
+      throw new Error(`Current integration asset is unsafe: ${relativePath}.`);
+    }
+    writeText(
+      path.join(consumerRoot, relativePath),
+      fs.readFileSync(source, 'utf8'),
+    );
+  }
+  for (const hook of CURRENT_HOOKS) {
+    const hookPath = path.join(consumerRoot, '.husky', hook);
+    writeText(hookPath, currentHookProxyContent(hook));
+    fs.chmodSync(hookPath, 0o755);
+  }
+}
+
+function stageCurrentLocalCutover(
+  consumerRoot: string,
+  profilePath: string,
+): void {
+  git(consumerRoot, [
+    'add',
+    '--',
+    profilePath,
+    'package.json',
+    'workflow/document-policy.json',
+    'workflow/openspec-assets',
+    'openspec/changes/.gitkeep',
+    '.agents/skills',
+    '.claude/skills',
+    '.codex/skills',
+    '.husky',
+  ]);
+}
+
+function currentHookProxyContent(hook: CurrentJigwrightHookName): string {
+  return `#!/usr/bin/env sh\nexec npm run --silent workflow -- hook ${hook} "$@"\n`;
+}
+
+function collectCurrentLocalCutoverEvidence(
+  input: Readonly<{
+    consumerRoot: string;
+    installedRoot: string;
+    installedManifest: JsonRecord;
+    lockfile: CurrentJigwrightAdoptionReportV1['install']['lockfile'];
+    installedGuide: CurrentJigwrightCommandObservationV1;
+  }>,
+): CurrentJigwrightLocalCutoverV1 {
+  const packageExecutable = path.join(
+    input.installedRoot,
+    'bin',
+    'jigwright.mjs',
+  );
+  const bin = path.join(
+    input.consumerRoot,
+    'node_modules',
+    '.bin',
+    'jigwright',
+  );
+  const executableStats = fs.lstatSync(packageExecutable, {
+    throwIfNoEntry: false,
+  });
+  const binStats = fs.lstatSync(bin, { throwIfNoEntry: false });
+  const binTarget = binStats?.isSymbolicLink() ? fs.readlinkSync(bin) : null;
+  if (
+    !sameJson(input.installedManifest.bin, {
+      jigwright: './bin/jigwright.mjs',
+    }) ||
+    !executableStats?.isFile() ||
+    executableStats.isSymbolicLink() ||
+    executableStats.nlink !== 1 ||
+    (executableStats.mode & 0o111) === 0 ||
+    !binStats?.isSymbolicLink() ||
+    binTarget !== '../jigwright/bin/jigwright.mjs' ||
+    fs.realpathSync(bin) !== fs.realpathSync(packageExecutable)
+  ) {
+    throw new Error(
+      'Current root workflow does not resolve the installed bin.',
+    );
+  }
+  const packageExecutableDigest = digestBytes(
+    fs.readFileSync(packageExecutable),
+  );
+  const binDigest = digestBytes(fs.readFileSync(bin));
+  if (packageExecutableDigest !== binDigest) {
+    throw new Error('Current root workflow bin bytes are not exact.');
+  }
+
+  const guide = observeRootWorkflowCommand(input.consumerRoot, ['guide']);
+  requireReadOnlyCommand(guide, 'guide');
+  if (!sameJson(guide, input.installedGuide)) {
+    throw new Error(
+      'Root workflow did not route to the installed Jigwright CLI.',
+    );
+  }
+
+  const proxies = Object.freeze(
+    CURRENT_HOOKS.map((hook) => {
+      const relativePath = `.husky/${hook}` as const;
+      const hookPath = path.join(input.consumerRoot, relativePath);
+      const stats = fs.lstatSync(hookPath, { throwIfNoEntry: false });
+      const content = currentHookProxyContent(hook);
+      if (
+        !stats?.isFile() ||
+        stats.isSymbolicLink() ||
+        stats.nlink !== 1 ||
+        (stats.mode & 0o111) === 0 ||
+        fs.readFileSync(hookPath, 'utf8') !== content
+      ) {
+        throw new Error(`Current ${hook} hook proxy is invalid.`);
+      }
+      return Object.freeze({
+        hook,
+        path: relativePath,
+        content,
+        digest: digestBytes(content),
+        executable: true as const,
+      });
+    }),
+  );
+
+  const before = repositoryStateFingerprint(input.consumerRoot);
+  const preCommit = observeHookProxy(input.consumerRoot, 'pre-commit', []);
+  requireSuccessfulHook(preCommit, 'pre-commit');
+  const malformedCommitMessage = observeMalformedCommitMessageHook(
+    input.consumerRoot,
+  );
+  requireFailedHook(
+    malformedCommitMessage,
+    'COMMIT_MESSAGE_INVALID',
+    'commit-msg',
+  );
+  const prePushWithoutTransaction = observeHookProxy(
+    input.consumerRoot,
+    'pre-push',
+    ['origin', 'ssh://example.test/jigwright-current-adoption-consumer.git'],
+  );
+  requireFailedHook(
+    prePushWithoutTransaction,
+    'PUBLISH_TRANSACTION_REQUIRED',
+    'pre-push',
+  );
+  const postMerge = observeHookProxy(input.consumerRoot, 'post-merge', ['0']);
+  requireSuccessfulHook(postMerge, 'post-merge');
+  const after = repositoryStateFingerprint(input.consumerRoot);
+  if (!sameJson(before, after)) {
+    throw new Error('Current hook probes changed repository state.');
+  }
+
+  return Object.freeze({
+    kind: 'jigwright-synthetic-local-cutover.v1' as const,
+    environment: 'synthetic-local' as const,
+    realPilot: false as const,
+    notEvaluated: Object.freeze([
+      'managed-lifecycle',
+      'grant-transitions',
+      'human-gates',
+      'expense-app-consumer',
+      'publication',
+      'full-gate',
+    ] as const),
+    rootWorkflow: Object.freeze({
+      script: 'jigwright' as const,
+      invocation: 'npm run --silent workflow --' as const,
+      packageName: 'jigwright' as const,
+      packageExecutable: 'node_modules/jigwright/bin/jigwright.mjs' as const,
+      packageExecutableDigest,
+      bin: 'node_modules/.bin/jigwright' as const,
+      binTarget: '../jigwright/bin/jigwright.mjs' as const,
+      binDigest,
+      lockfileDigest: input.lockfile.digest,
+      lockfileIntegrity: input.lockfile.integrity,
+      guide,
+    }),
+    hooks: Object.freeze({
+      proxies,
+      observations: Object.freeze({
+        preCommit,
+        malformedCommitMessage,
+        prePushWithoutTransaction,
+        postMerge,
+      }),
+      state: Object.freeze({ before, after, unchanged: true as const }),
+    }),
+  });
+}
+
+function observeRootWorkflowCommand(
+  repositoryRoot: string,
+  args: string[],
+): CurrentJigwrightCommandObservationV1 {
+  return observeJsonCommand(
+    'npm',
+    ['run', '--silent', 'workflow', '--', ...args, '--json'],
+    repositoryRoot,
+    `root workflow ${args.join(' ')}`,
+  );
+}
+
+function observeHookProxy(
+  repositoryRoot: string,
+  hook: CurrentJigwrightHookName,
+  args: string[],
+): CurrentJigwrightCommandObservationV1 {
+  return observeJsonCommand(
+    path.join(repositoryRoot, '.husky', hook),
+    args,
+    repositoryRoot,
+    `${hook} hook`,
+  );
+}
+
+function observeMalformedCommitMessageHook(
+  repositoryRoot: string,
+): CurrentJigwrightCommandObservationV1 {
+  const requestedPath = git(repositoryRoot, [
+    'rev-parse',
+    '--git-path',
+    'COMMIT_EDITMSG',
+  ]);
+  const messagePath = path.resolve(repositoryRoot, requestedPath);
+  const existingStats = fs.lstatSync(messagePath, { throwIfNoEntry: false });
+  if (
+    existingStats !== undefined &&
+    (!existingStats.isFile() ||
+      existingStats.isSymbolicLink() ||
+      existingStats.nlink !== 1)
+  ) {
+    throw new Error('Current commit message probe target is unsafe.');
+  }
+  const existingBytes = existingStats
+    ? fs.readFileSync(messagePath)
+    : undefined;
+  const existingMode = existingStats ? existingStats.mode & 0o777 : undefined;
+  try {
+    fs.writeFileSync(messagePath, 'wip.\n', 'utf8');
+    return observeHookProxy(repositoryRoot, 'commit-msg', [requestedPath]);
+  } finally {
+    if (existingBytes === undefined) {
+      fs.rmSync(messagePath, { force: true });
+    } else {
+      fs.writeFileSync(messagePath, existingBytes);
+      fs.chmodSync(messagePath, existingMode!);
+    }
+  }
+}
+
+function observeJsonCommand(
+  executable: string,
+  args: string[],
+  repositoryRoot: string,
+  label: string,
+): CurrentJigwrightCommandObservationV1 {
+  const result = runCommand(executable, args, repositoryRoot);
+  if (result.status === null) throw new Error(`${label} was interrupted.`);
+  const stream = result.status === 0 ? 'stdout' : 'stderr';
+  const output = stream === 'stdout' ? result.stdout : result.stderr;
+  if (typeof output !== 'string' || output.trim().length === 0) {
+    throw new Error(`${label} returned no JSON payload.`);
+  }
+  const payload = normalizeCommandPayload(
+    parseJsonOutput(output),
+    repositoryRoot,
+  );
+  return Object.freeze({
+    exitCode: result.status,
+    stream,
+    payload,
+    payloadDigest: digestJson(payload),
+  });
+}
+
+function requireSuccessfulHook(
+  observation: CurrentJigwrightCommandObservationV1,
+  hook: CurrentJigwrightHookName,
+): void {
+  const result = isRecord(observation.payload.result)
+    ? observation.payload.result
+    : null;
+  if (
+    observation.exitCode !== 0 ||
+    observation.stream !== 'stdout' ||
+    observation.payload.ok !== true ||
+    observation.payload.command !== 'hook' ||
+    result?.hook !== hook ||
+    !Array.isArray(result.changes) ||
+    !Array.isArray(result.documents)
+  ) {
+    throw new Error(`Current ${hook} hook did not complete read-only.`);
+  }
+}
+
+function requireFailedHook(
+  observation: CurrentJigwrightCommandObservationV1,
+  code: string,
+  hook: CurrentJigwrightHookName,
+): void {
+  const error = isRecord(observation.payload.error)
+    ? observation.payload.error
+    : null;
+  if (
+    observation.exitCode === 0 ||
+    observation.stream !== 'stderr' ||
+    observation.payload.ok !== false ||
+    error?.code !== code
+  ) {
+    throw new Error(`Current ${hook} hook did not fail closed with ${code}.`);
+  }
 }
 
 function inspectInstalledLockfile(
@@ -1494,6 +1916,12 @@ export function verifyCurrentJigwrightAdoptionReportV1(
   }
   const consumer =
     value.consumer as unknown as CurrentJigwrightAdoptionReportV1['consumer'];
+  if (
+    consumer.localCutover.rootWorkflow.lockfileDigest !== lockfile.digest ||
+    consumer.localCutover.rootWorkflow.lockfileIntegrity !== lockfile.integrity
+  ) {
+    throw new Error('Current Jigwright adoption report is invalid.');
+  }
   verifyCurrentJigwrightAdoptionComparisonV1(value.comparison, {
     releaseDigest: release.digest,
     source: { commit: release.source.commit, tree: release.source.tree },
@@ -1504,7 +1932,14 @@ export function verifyCurrentJigwrightAdoptionReportV1(
 
 function isCurrentConsumerEvidence(value: JsonRecord): boolean {
   if (
-    !hasExactKeys(value, ['commit', 'tree', 'clean', 'history', 'rollback']) ||
+    !hasExactKeys(value, [
+      'commit',
+      'tree',
+      'clean',
+      'history',
+      'localCutover',
+      'rollback',
+    ]) ||
     !isGitObjectId(value.commit) ||
     !isGitObjectId(value.tree) ||
     value.clean !== true ||
@@ -1515,6 +1950,7 @@ function isCurrentConsumerEvidence(value: JsonRecord): boolean {
     !isGitIdentity(value.history.cutover) ||
     value.commit !== value.history.cutover.commit ||
     value.tree !== value.history.cutover.tree ||
+    !isCurrentLocalCutoverEvidence(value.localCutover) ||
     !isRecord(value.rollback) ||
     !hasExactKeys(value.rollback, [
       'kind',
@@ -1538,6 +1974,151 @@ function isCurrentConsumerEvidence(value: JsonRecord): boolean {
     return false;
   }
   return true;
+}
+
+function isCurrentLocalCutoverEvidence(value: unknown): boolean {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'kind',
+      'environment',
+      'realPilot',
+      'notEvaluated',
+      'rootWorkflow',
+      'hooks',
+    ]) ||
+    value.kind !== 'jigwright-synthetic-local-cutover.v1' ||
+    value.environment !== 'synthetic-local' ||
+    value.realPilot !== false ||
+    !sameJson(value.notEvaluated, [
+      'managed-lifecycle',
+      'grant-transitions',
+      'human-gates',
+      'expense-app-consumer',
+      'publication',
+      'full-gate',
+    ]) ||
+    !isRecord(value.rootWorkflow) ||
+    !hasExactKeys(value.rootWorkflow, [
+      'script',
+      'invocation',
+      'packageName',
+      'packageExecutable',
+      'packageExecutableDigest',
+      'bin',
+      'binTarget',
+      'binDigest',
+      'lockfileDigest',
+      'lockfileIntegrity',
+      'guide',
+    ]) ||
+    value.rootWorkflow.script !== 'jigwright' ||
+    value.rootWorkflow.invocation !== 'npm run --silent workflow --' ||
+    value.rootWorkflow.packageName !== 'jigwright' ||
+    value.rootWorkflow.packageExecutable !==
+      'node_modules/jigwright/bin/jigwright.mjs' ||
+    !isSha256Digest(value.rootWorkflow.packageExecutableDigest) ||
+    value.rootWorkflow.bin !== 'node_modules/.bin/jigwright' ||
+    value.rootWorkflow.binTarget !== '../jigwright/bin/jigwright.mjs' ||
+    !isSha256Digest(value.rootWorkflow.binDigest) ||
+    value.rootWorkflow.binDigest !==
+      value.rootWorkflow.packageExecutableDigest ||
+    !isSha256Digest(value.rootWorkflow.lockfileDigest) ||
+    typeof value.rootWorkflow.lockfileIntegrity !== 'string' ||
+    !/^sha512-[A-Za-z0-9+/]+={0,2}$/u.test(
+      value.rootWorkflow.lockfileIntegrity,
+    ) ||
+    !isCommandObservation(value.rootWorkflow.guide) ||
+    !isSuccessfulCommand(value.rootWorkflow.guide, 'guide') ||
+    !isRecord(value.rootWorkflow.guide.payload.guide) ||
+    value.rootWorkflow.guide.payload.guide.kind !==
+      'workflow-command-guide.v1' ||
+    !isRecord(value.hooks) ||
+    !hasExactKeys(value.hooks, ['proxies', 'observations', 'state']) ||
+    !Array.isArray(value.hooks.proxies) ||
+    value.hooks.proxies.length !== CURRENT_HOOKS.length ||
+    !value.hooks.proxies.every((entry, index) => {
+      const hook = CURRENT_HOOKS[index]!;
+      const content = currentHookProxyContent(hook);
+      return (
+        isRecord(entry) &&
+        hasExactKeys(entry, [
+          'hook',
+          'path',
+          'content',
+          'digest',
+          'executable',
+        ]) &&
+        entry.hook === hook &&
+        entry.path === `.husky/${hook}` &&
+        entry.content === content &&
+        entry.digest === digestBytes(content) &&
+        entry.executable === true
+      );
+    }) ||
+    !isRecord(value.hooks.observations) ||
+    !hasExactKeys(value.hooks.observations, [
+      'preCommit',
+      'malformedCommitMessage',
+      'prePushWithoutTransaction',
+      'postMerge',
+    ]) ||
+    !isSuccessfulHookObservation(
+      value.hooks.observations.preCommit,
+      'pre-commit',
+    ) ||
+    !isFailedHookObservation(
+      value.hooks.observations.malformedCommitMessage,
+      'COMMIT_MESSAGE_INVALID',
+    ) ||
+    !isFailedHookObservation(
+      value.hooks.observations.prePushWithoutTransaction,
+      'PUBLISH_TRANSACTION_REQUIRED',
+    ) ||
+    !isSuccessfulHookObservation(
+      value.hooks.observations.postMerge,
+      'post-merge',
+    ) ||
+    !isRecord(value.hooks.state) ||
+    !hasExactKeys(value.hooks.state, ['before', 'after', 'unchanged']) ||
+    !isStateFingerprint(value.hooks.state.before) ||
+    !isStateFingerprint(value.hooks.state.after) ||
+    value.hooks.state.unchanged !== true ||
+    !sameJson(value.hooks.state.before, value.hooks.state.after)
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function isSuccessfulHookObservation(
+  value: unknown,
+  hook: CurrentJigwrightHookName,
+): boolean {
+  if (!isCommandObservation(value) || !isRecord(value.payload.result)) {
+    return false;
+  }
+  return (
+    value.exitCode === 0 &&
+    value.stream === 'stdout' &&
+    value.payload.ok === true &&
+    value.payload.command === 'hook' &&
+    value.payload.result.hook === hook &&
+    Array.isArray(value.payload.result.changes) &&
+    Array.isArray(value.payload.result.documents)
+  );
+}
+
+function isFailedHookObservation(value: unknown, code: string): boolean {
+  if (!isCommandObservation(value) || !isRecord(value.payload.error)) {
+    return false;
+  }
+  return (
+    value.exitCode > 0 &&
+    value.stream === 'stderr' &&
+    value.payload.ok === false &&
+    value.payload.error.code === code
+  );
 }
 
 export function verifyCurrentJigwrightAdoptionArtifacts(
@@ -1628,6 +2209,7 @@ export function verifyCurrentJigwrightAdoptionArtifacts(
   if (!sameJson(observedLockfile, report.install.lockfile)) {
     throw new Error('Current Jigwright lockfile evidence is invalid.');
   }
+  assertCurrentLocalCutoverHistory(consumerRoot, report, expectedResolved);
 
   const vectorPath = path.join(
     adoptionRoot,
@@ -1651,11 +2233,137 @@ export function verifyCurrentJigwrightAdoptionArtifacts(
   const currentState = repositoryStateFingerprint(consumerRoot);
   if (
     !sameJson(currentState, report.comparison.source.state.after) ||
-    !sameJson(currentState, report.comparison.installed.state.after)
+    !sameJson(currentState, report.comparison.installed.state.after) ||
+    !sameJson(currentState, report.consumer.localCutover.hooks.state.after)
   ) {
     throw new Error('Current Jigwright state fingerprint is invalid.');
   }
+  const installedRoot = fs.realpathSync(
+    path.join(consumerRoot, 'node_modules', 'jigwright'),
+  );
+  const observedLocalCutover = collectCurrentLocalCutoverEvidence({
+    consumerRoot,
+    installedRoot,
+    installedManifest: readJson(path.join(installedRoot, 'package.json')),
+    lockfile: report.install.lockfile,
+    installedGuide: report.comparison.installed.commands.guide,
+  });
+  if (!sameJson(observedLocalCutover, report.consumer.localCutover)) {
+    throw new Error('Current Jigwright local cutover evidence is invalid.');
+  }
   return report;
+}
+
+function assertCurrentLocalCutoverHistory(
+  consumerRoot: string,
+  report: CurrentJigwrightAdoptionReportV1,
+  expectedResolved: string,
+): void {
+  const { baseline, dependency, cutover } = report.consumer.history;
+  if (
+    git(consumerRoot, ['rev-parse', `${dependency.commit}^`]) !==
+      baseline.commit ||
+    git(consumerRoot, ['rev-parse', `${cutover.commit}^`]) !== dependency.commit
+  ) {
+    throw new Error('Current Jigwright consumer cutover history is invalid.');
+  }
+  const baselineManifest = readGitJson(
+    consumerRoot,
+    baseline.commit,
+    'package.json',
+  );
+  const dependencyManifest = readGitJson(
+    consumerRoot,
+    dependency.commit,
+    'package.json',
+  );
+  const cutoverManifest = readGitJson(
+    consumerRoot,
+    cutover.commit,
+    'package.json',
+  );
+  if (
+    'dependencies' in baselineManifest ||
+    'scripts' in baselineManifest ||
+    !isRecord(dependencyManifest.dependencies) ||
+    dependencyManifest.dependencies.jigwright !== expectedResolved ||
+    'scripts' in dependencyManifest ||
+    !isRecord(cutoverManifest.dependencies) ||
+    cutoverManifest.dependencies.jigwright !== expectedResolved ||
+    !sameJson(cutoverManifest.scripts, { workflow: 'jigwright' }) ||
+    digestBytes(
+      gitFileBytes(
+        consumerRoot,
+        dependency.commit,
+        report.install.lockfile.path,
+      ),
+    ) !== report.install.lockfile.digest ||
+    digestBytes(
+      gitFileBytes(consumerRoot, cutover.commit, report.install.lockfile.path),
+    ) !== report.install.lockfile.digest
+  ) {
+    throw new Error('Current Jigwright root workflow binding is invalid.');
+  }
+
+  for (const proxy of report.consumer.localCutover.hooks.proxies) {
+    const bytes = gitFileBytes(consumerRoot, cutover.commit, proxy.path);
+    const treeEntry = git(consumerRoot, [
+      'ls-tree',
+      cutover.commit,
+      '--',
+      proxy.path,
+    ]);
+    if (
+      bytes.toString('utf8') !== proxy.content ||
+      digestBytes(bytes) !== proxy.digest ||
+      !treeEntry.startsWith('100755 blob ') ||
+      gitFileExists(consumerRoot, dependency.commit, proxy.path)
+    ) {
+      throw new Error(`Current ${proxy.hook} cutover binding is invalid.`);
+    }
+  }
+}
+
+function readGitJson(
+  repositoryRoot: string,
+  commit: string,
+  relativePath: string,
+): JsonRecord {
+  return parseJsonOutput(
+    gitFileBytes(repositoryRoot, commit, relativePath).toString('utf8'),
+  );
+}
+
+function gitFileBytes(
+  repositoryRoot: string,
+  commit: string,
+  relativePath: string,
+): Buffer {
+  const result = spawnSync('git', ['show', `${commit}:${relativePath}`], {
+    cwd: repositoryRoot,
+    encoding: null,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0 || !Buffer.isBuffer(result.stdout)) {
+    throw new Error(
+      `Current Jigwright committed file is missing: ${relativePath}.`,
+    );
+  }
+  return result.stdout;
+}
+
+function gitFileExists(
+  repositoryRoot: string,
+  commit: string,
+  relativePath: string,
+): boolean {
+  return (
+    runCommand(
+      'git',
+      ['cat-file', '-e', `${commit}:${relativePath}`],
+      repositoryRoot,
+    ).status === 0
+  );
 }
 
 function assertCommitTree(
