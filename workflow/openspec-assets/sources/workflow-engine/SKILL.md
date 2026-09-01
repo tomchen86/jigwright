@@ -21,21 +21,31 @@ changes, completion, signing, publication, or any external effect.
    pnpm workflow guide --json
    ```
 
-2. Open the selected or next incomplete task. Supply a Task Mandate only when
+2. Optionally inspect the exact current task admission and isolation binding:
+
+   ```bash
+   pnpm workflow task-preflight <change-id> [--task <task-id>] --json
+   ```
+
+   This preflight is read-only. It does not authorize, reserve, or open the
+   task. The governing `open-task` command revalidates the same facts under the
+   lifecycle locks.
+
+3. Open the selected or next incomplete task. Supply a Task Mandate only when
    the engine reports that the reviewed scope requires one:
 
    ```bash
    pnpm workflow open-task <change-id> [--task <task-id>] [--mandate <mandate-task-id>] --json
    ```
 
-3. Implement only the task guard scope with RED then GREEN evidence. Read
+4. Implement only the task guard scope with RED then GREEN evidence. Read
    durable state without advancing it:
 
    ```bash
    pnpm workflow status <session-id> --json
    ```
 
-4. When the task strategy or a persisted recovery phase pauses, resume only
+5. When the task strategy or a persisted recovery phase pauses, resume only
    the exact returned transaction and preserve its bindings:
 
    ```bash
@@ -43,7 +53,7 @@ changes, completion, signing, publication, or any external effect.
    pnpm workflow review-diff status <session-id> --json
    ```
 
-5. Finalize through the preferred single transaction. Intermediate tasks run
+6. Finalize through the preferred single transaction. Intermediate tasks run
    targeted checks. The engine adds the terminal full gate when this transition
    makes every task terminal:
 
@@ -51,7 +61,7 @@ changes, completion, signing, publication, or any external effect.
    pnpm workflow finalize <session-id> --message "Imperative subject" --json
    ```
 
-6. Archive only after every task commit is present on the configured base:
+7. Archive only after every task commit is present on the configured base:
 
    ```bash
    pnpm workflow archive <change-id> --json

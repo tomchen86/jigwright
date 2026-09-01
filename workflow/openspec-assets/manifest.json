@@ -77,9 +77,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".codex/skills/workflow-engine/SKILL.md",
       "mirrorOf": null,
-      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
+      "sourceDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "overlayDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "finalDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4"
     },
     {
       "target": "claude",
@@ -110,9 +110,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".claude/skills/workflow-engine/SKILL.md",
       "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
-      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
+      "sourceDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "overlayDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "finalDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4"
     },
     {
       "target": "agents",
@@ -143,9 +143,9 @@
       "sourcePath": "workflow/openspec-assets/sources/workflow-engine/SKILL.md",
       "destinationPath": ".agents/skills/workflow-engine/SKILL.md",
       "mirrorOf": ".codex/skills/workflow-engine/SKILL.md",
-      "sourceDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "overlayDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4",
-      "finalDigest": "ddba7b21ff02f4b05f652eef0f4ecfb06011b115c6ff2bd1062149cf41f1e5f4"
+      "sourceDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "overlayDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4",
+      "finalDigest": "662bec69514bc592215698ae8c13759ca9701c71aa6c463b20120d49780e68a4"
     },
     {
       "target": "codex",

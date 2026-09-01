@@ -479,6 +479,18 @@ test('workflow routing skill exposes preferred commands without compatibility or
     'utf8',
   );
   verifyOpenSpecPlanningAssetContent(skill, 'workflow-engine');
+  const guideOffset = skill.indexOf('pnpm workflow guide --json');
+  const preflightOffset = skill.indexOf(
+    'pnpm workflow task-preflight <change-id> [--task <task-id>] --json',
+  );
+  const openTaskOffset = skill.indexOf('pnpm workflow open-task <change-id>');
+  assert.equal(guideOffset >= 0, true);
+  assert.equal(preflightOffset > guideOffset, true);
+  assert.equal(openTaskOffset > preflightOffset, true);
+  assert.match(
+    skill,
+    /preflight is read-only[\s\S]{0,160}does not authorize, reserve, or open/i,
+  );
 
   for (const forbidden of [
     'pnpm workflow start demo --task 1.1',

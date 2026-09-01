@@ -22,6 +22,9 @@ const FORMATTER_RUNNER = 'node-package-bin:.:prettier/prettier' as const;
 const GUIDED_WORKFLOW_GUIDE_COMMAND = workflowCommandGuidance(
   'guide',
 ).usage[0]!.replace('[--json]', '--json');
+const GUIDED_TASK_PREFLIGHT_COMMAND = workflowCommandGuidance(
+  'task-preflight',
+).usage[0]!.replace('[--json]', '--json');
 const GUIDED_FINALIZE_COMMAND = workflowCommandGuidance('finalize')
   .usage[0]!.replace('<subject>', '"Imperative subject"')
   .replace(' [--full-gate]', '')
@@ -645,6 +648,7 @@ export function verifyOpenSpecPlanningAssetContent(
   ];
   const workflowEngineCommands = [
     GUIDED_WORKFLOW_GUIDE_COMMAND,
+    GUIDED_TASK_PREFLIGHT_COMMAND,
     'pnpm workflow open-task',
     'pnpm workflow status',
     'pnpm workflow resume',

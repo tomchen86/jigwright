@@ -426,6 +426,7 @@ test('repository exposes only reviewed planning and workflow routing skills', ()
   );
   for (const command of [
     'pnpm workflow guide',
+    'pnpm workflow task-preflight',
     'pnpm workflow open-task',
     'pnpm workflow status',
     'pnpm workflow resume',
@@ -472,6 +473,7 @@ test('agent guide documents the complete public workflow surface and source-size
     'pnpm workflow openspec-assets generate',
     'pnpm workflow openspec-assets check',
     'pnpm workflow openspec-assets install-prompts',
+    'pnpm workflow task-preflight',
     'pnpm workflow open-task',
     'pnpm workflow finalize',
     'pnpm workflow status',
@@ -533,11 +535,16 @@ test('public guidance exposes the investigation-first and repeated managed-task 
 
   for (const surface of [agents, workflow]) {
     assert.match(surface, /pnpm workflow propose/);
+    assert.match(surface, /pnpm workflow task-preflight/);
     assert.match(surface, /pnpm workflow open-task/);
     assert.match(surface, /pnpm workflow finalize <session-id>/);
     assert.doesNotMatch(surface, /pnpm workflow finalize-task/);
   }
   assert.match(workflow, /propose → \[ open-task → finalize \]×N → archive/);
+  assert.match(
+    workflow,
+    /task-preflight[\s\S]{0,240}read-only[\s\S]{0,240}(?:does not|doesn't|cannot)[\s\S]{0,120}(?:authorize|reserve|open)/i,
+  );
   assert.match(
     workflow,
     /(?:checked\s+tree[\s\S]{0,160}staged\s+tree|stages only[\s\S]{0,160}checked\s+tree)/i,

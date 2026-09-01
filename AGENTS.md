@@ -115,6 +115,7 @@ Planning assets:
 
 Managed lifecycle:
 
+- `pnpm workflow task-preflight <id> --json`
 - `pnpm workflow open-task <id> --json`
 - `pnpm workflow finalize <session-id> --message "Subject" --json`
 - `pnpm workflow status <session-id> --json`

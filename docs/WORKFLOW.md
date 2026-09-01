@@ -45,7 +45,12 @@ The ordinary sequence is:
 propose → [ open-task → finalize ]×N → archive
 ```
 
-Start planning with `pnpm workflow propose`. Enter implementation with `pnpm workflow open-task`. Finish one task with `pnpm workflow finalize <session-id>`.
+Start planning with `pnpm workflow propose`. Before opening a task, optionally
+run `pnpm workflow task-preflight <change-id> --task <task-id> --json` to inspect
+the exact current admission and isolation binding. Task preflight is read-only:
+it does not authorize, reserve, or open the task, and `open-task` revalidates the
+same facts under the lifecycle locks. Enter implementation with `pnpm workflow
+open-task`. Finish one task with `pnpm workflow finalize <session-id>`.
 The finalize durable transaction is replay-safe: it validates the checked tree
 and stages only that exact checked tree before creating its managed commit.
 
