@@ -3,6 +3,10 @@ import test from 'node:test';
 
 import { assertExecutionPolicySnapshotV1 } from '@jigwright/core/execution-policy-snapshot';
 import {
+  assertExecutionRetryPolicyV1,
+  type ExecutionRetryPolicyV1,
+} from '@jigwright/core/execution-retry-policy';
+import {
   assertSemanticJobSpecV1,
   type SemanticJobSpecV1,
 } from '@jigwright/core/job-attempt-runtime';
@@ -87,9 +91,21 @@ const SEMANTIC_SPEC: SemanticJobSpecV1 = {
   acceptancePolicyDigest: digest('d'),
 };
 
+const RETRY_POLICY: ExecutionRetryPolicyV1 = {
+  maxAttempts: 4,
+  maxCumulativeRuntimeMs: 2_400_000,
+  maxProviderCostMicros: 1_000_000,
+  maxProviderTokens: 200_000,
+  maxSameFailureFingerprint: 2,
+  maxRepairAttempts: 2,
+  deadline: '2026-08-04T00:00:00.000Z',
+  providerLimits: { claude: 4 },
+};
+
 function createJob(
   executionPolicy: ExecutionPolicySnapshot = POLICY_300,
   semanticSpec: SemanticJobSpecV1 = SEMANTIC_SPEC,
+  retryPolicy: ExecutionRetryPolicyV1 = RETRY_POLICY,
 ) {
   return createExecutionJob({
     workflow: WORKFLOW,
@@ -100,19 +116,42 @@ function createJob(
     semanticSpec,
     executionPolicy,
     environmentDigest: digest('f'),
-    retryPolicy: {
-      maxAttempts: 4,
-      maxCumulativeRuntimeMs: 2_400_000,
-      maxProviderCostMicros: 1_000_000,
-      maxProviderTokens: 200_000,
-      maxSameFailureFingerprint: 2,
-      maxRepairAttempts: 2,
-      deadline: '2026-08-04T00:00:00.000Z',
-      providerLimits: { claude: 4 },
-    },
+    retryPolicy,
     createdAt: NOW,
   });
 }
+
+test('execution Jobs use the core retry policy with exact engine error mapping', () => {
+  const corePolicy = assertExecutionRetryPolicyV1(RETRY_POLICY);
+  const created = createJob(POLICY_300, SEMANTIC_SPEC, corePolicy);
+  assert.deepEqual(created.job.retryPolicy, corePolicy);
+  assert.deepEqual(
+    parseJobRecord(canonicalJobRecord(created.job)).retryPolicy,
+    corePolicy,
+  );
+
+  for (const [candidate, message] of [
+    [
+      { ...RETRY_POLICY, maxAttempts: 0 },
+      'maxAttempts must be a positive integer.',
+    ],
+    [{ ...RETRY_POLICY, deadline: '2026-08-04' }, 'Timestamp is invalid.'],
+    [
+      { ...RETRY_POLICY, providerLimits: { codex: 2, claude: 2 } },
+      'providerLimits keys are not canonically sorted.',
+    ],
+  ] as const) {
+    assert.throws(
+      () => createJob(POLICY_300, SEMANTIC_SPEC, candidate),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'EXECUTION_RECORD_INVALID' &&
+        error.exitCode === ExitCode.guard &&
+        error.message === message,
+      message,
+    );
+  }
+});
 
 test('execution Jobs use the core SemanticJobSpec with exact engine error mapping', () => {
   const coreSpec = assertSemanticJobSpecV1(SEMANTIC_SPEC);

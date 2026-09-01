@@ -25,6 +25,11 @@ import {
   assertExecutionPolicySnapshotV1,
   type ExecutionPolicySnapshotV1,
 } from '@jigwright/core/execution-policy-snapshot';
+import {
+  ExecutionRetryPolicyCodecError,
+  assertExecutionRetryPolicyV1,
+  type ExecutionRetryPolicyV1,
+} from '@jigwright/core/execution-retry-policy';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -80,16 +85,8 @@ export type WorkflowRecord = {
 /** Compatibility name for the public core-owned V2 Job state vocabulary. */
 export type JobStatus = JobStatusV2;
 
-export type RetryPolicy = {
-  maxAttempts: number;
-  maxCumulativeRuntimeMs: number;
-  maxProviderCostMicros: number;
-  maxProviderTokens: number;
-  maxSameFailureFingerprint: number;
-  maxRepairAttempts: number;
-  deadline: string;
-  providerLimits: Readonly<Record<string, number>>;
-};
+/** Compatibility name for the public core-owned execution retry policy. */
+export type RetryPolicy = ExecutionRetryPolicyV1;
 
 /** Compatibility name for the public core-owned V1 semantic Job value. */
 export type SemanticJobSpec = SemanticJobSpecV1;
@@ -1969,57 +1966,12 @@ function assertExecutionPolicy(value: unknown): ExecutionPolicySnapshot {
 }
 
 function assertRetryPolicy(value: unknown): RetryPolicy {
-  if (
-    !isPlainObject(value) ||
-    !hasExactKeys(value, [
-      'deadline',
-      'maxAttempts',
-      'maxCumulativeRuntimeMs',
-      'maxProviderCostMicros',
-      'maxProviderTokens',
-      'maxRepairAttempts',
-      'maxSameFailureFingerprint',
-      'providerLimits',
-    ])
-  ) {
-    throw executionInvalid('Retry policy is invalid.');
+  try {
+    return assertExecutionRetryPolicyV1(value);
+  } catch (error) {
+    if (!(error instanceof ExecutionRetryPolicyCodecError)) throw error;
+    throw executionInvalid(error.message);
   }
-  assertBoundedPositiveInteger(value.maxAttempts, 'maxAttempts', 1_000);
-  assertBoundedPositiveInteger(
-    value.maxCumulativeRuntimeMs,
-    'maxCumulativeRuntimeMs',
-    31_536_000_000,
-  );
-  assertBoundedNonnegativeInteger(
-    value.maxProviderCostMicros,
-    'maxProviderCostMicros',
-    Number.MAX_SAFE_INTEGER,
-  );
-  assertBoundedNonnegativeInteger(
-    value.maxProviderTokens,
-    'maxProviderTokens',
-    Number.MAX_SAFE_INTEGER,
-  );
-  assertBoundedPositiveInteger(
-    value.maxSameFailureFingerprint,
-    'maxSameFailureFingerprint',
-    100,
-  );
-  assertBoundedNonnegativeInteger(
-    value.maxRepairAttempts,
-    'maxRepairAttempts',
-    100,
-  );
-  assertTimestamp(value.deadline);
-  if (!isPlainObject(value.providerLimits)) {
-    throw executionInvalid('providerLimits is invalid.');
-  }
-  for (const [provider, limit] of Object.entries(value.providerLimits)) {
-    assertIdentifier(provider, 'providerLimits key');
-    assertBoundedPositiveInteger(limit, 'provider limit', 1_000);
-  }
-  assertSortedObjectKeys(value.providerLimits, 'providerLimits');
-  return deepFreeze(structuredClone(value) as RetryPolicy);
 }
 
 function assertFailureDescriptor(value: unknown): FailureDescriptor {
@@ -2710,16 +2662,6 @@ function diffJson(
     return changes;
   }
   return [{ path: basePath || '/', from: before, to: after }];
-}
-
-function assertSortedObjectKeys(
-  value: Record<string, unknown>,
-  label: string,
-): void {
-  const keys = Object.keys(value);
-  if (canonicalJson(keys) !== canonicalJson([...keys].sort())) {
-    throw executionInvalid(`${label} keys are not canonically sorted.`);
-  }
 }
 
 function normalizeUniqueStrings(
