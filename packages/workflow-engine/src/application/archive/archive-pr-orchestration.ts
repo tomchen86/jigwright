@@ -478,7 +478,7 @@ export function projectArchivePullRequestCandidate(
 }
 
 export function openArchivePullRequest(
-  candidate: ArchivePullRequestCandidateV1,
+  publication: ArchivePullRequestPublicationV1,
   remote: ArchivePullRequestRemotePortV1,
 ): OpenedArchivePullRequestV1 {
   if (
@@ -491,7 +491,7 @@ export function openArchivePullRequest(
       'Archive PR automation may prepare and open but never approve, bypass, or merge.',
     );
   }
-  return remote.open(remote.prepare(candidate));
+  return remote.open(remote.prepare(publication));
 }
 
 /**

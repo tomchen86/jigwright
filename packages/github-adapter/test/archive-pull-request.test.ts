@@ -52,17 +52,21 @@ test('GitHub App token lease is exact, repository-scoped, short-lived, and recei
   );
 });
 
-test('fake remote prepares and opens one idempotent request per candidate identity', () => {
+test('fake remote prepares and opens only one completed Grant-bound publication identity', () => {
   const remote = createFakeArchivePullRequestRemote();
-  const candidate = fixtureCandidate();
+  const publication = fixturePublication();
 
-  const first = remote.open(remote.prepare(candidate));
-  const second = remote.open(remote.prepare(candidate));
+  const first = remote.open(remote.prepare(publication));
+  const second = remote.open(remote.prepare(publication));
 
   assert.deepEqual(second, first);
   assert.equal(first.number, 1);
-  assert.equal(first.candidateIdentity, candidate.identity);
+  assert.equal(first.publicationIdentity, publication.publicationIdentity);
   assert.equal(remote.requests().length, 1);
+  assert.throws(
+    () => remote.prepare(publication.candidate as never),
+    /archive publication/i,
+  );
 });
 
 test('prepares a credential-free least-privilege GitHub request', () => {

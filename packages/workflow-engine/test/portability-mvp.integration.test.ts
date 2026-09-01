@@ -27,6 +27,7 @@ import {
 import {
   discoverArchivePullRequestCandidate,
   openArchivePullRequest,
+  projectArchivePullRequestPublication,
 } from '../src/application/archive/archive-pr-orchestration.ts';
 import {
   loadRepositoryConsumerConfiguration,
@@ -653,22 +654,37 @@ test('installed tarball drives two complete current lifecycles over unrelated se
       exerciseConcurrentWorktreesAndUpdateBase(repository);
       syncProtectedBase(repository);
 
-      const remote = createFakeArchivePullRequestRemote();
       const candidate = discoverArchivePullRequestCandidate(
         repository,
         'demo-change',
       );
-      const firstRequest = openArchivePullRequest(candidate, remote);
-      const replayedRequest = openArchivePullRequest(candidate, remote);
-      assert.deepEqual(replayedRequest, firstRequest);
-      assert.equal(remote.requests().length, 1);
-
-      git(repository, ['checkout', '-b', 'changes/archive-demo']);
+      git(repository, ['checkout', '-b', 'work/archive-demo-change']);
       const archived = archiveChange(repository, 'demo-change');
       const replayedArchive = archiveChange(repository, 'demo-change');
       assert.equal(archived.status, 'committed');
       assert.equal(replayedArchive.status, 'already-archived');
       assert.equal(replayedArchive.commitHash, archived.commitHash);
+      const publication = projectArchivePullRequestPublication({
+        candidate,
+        archiveBranch: 'work/archive-demo-change',
+        archive: archived,
+        assurance: {
+          status: 'passed',
+          baseCommit: candidate.base.commit,
+          headCommit: archived.commitHash,
+          reportIdentity: '8'.repeat(64),
+        },
+        authorization: fakeArchivePublicationAuthorization(),
+      });
+      const remote = createFakeArchivePullRequestRemote();
+      const firstRequest = openArchivePullRequest(publication, remote);
+      const replayedRequest = openArchivePullRequest(publication, remote);
+      assert.deepEqual(replayedRequest, firstRequest);
+      assert.equal(
+        firstRequest.publicationIdentity,
+        publication.publicationIdentity,
+      );
+      assert.equal(remote.requests().length, 1);
       assert.deepEqual(
         JSON.parse(
           fs.readFileSync(
@@ -892,8 +908,11 @@ type PortableTaskLifecycleStrategy =
   'preferred-finalize' | 'check-complete-finish-commit';
 type ArchiveCommit = Readonly<{
   status: 'committed' | 'already-archived';
+  changeId: string;
   commitHash: string;
   archivePath: string;
+  reportId: string;
+  changedPaths: string[];
 }>;
 type FixtureWorkItem = WorkItemV1;
 type ChangeOrigin = Readonly<{
@@ -1645,6 +1664,27 @@ function archiveChange(repository: string, changeId: string): ArchiveCommit {
       result: ArchiveCommit;
     }
   ).result;
+}
+
+function fakeArchivePublicationAuthorization() {
+  const observedAt = new Date(Date.now() - 1_000);
+  const expiresAt = new Date(observedAt.getTime() + 4 * 60_000);
+  return {
+    centralGrantRecord: {
+      contractVersion: 'central-grant-completed-authority-ref.v1' as const,
+      challengeId: '11111111-1111-4111-8111-111111111111',
+      challengeDigest: `sha256:${'d'.repeat(64)}` as const,
+      transitionId: 'github.archive-pr.publish' as const,
+      operationId: '77777777-7777-4777-8777-777777777777',
+      terminalOutcomeDigest: `sha256:${'e'.repeat(64)}` as const,
+    },
+    rulesetObservation: {
+      observationDigest: `sha256:${'f'.repeat(64)}` as const,
+      authenticationReceiptDigest: `sha256:${'1'.repeat(64)}` as const,
+      observedAt: observedAt.toISOString(),
+      expiresAt: expiresAt.toISOString(),
+    },
+  };
 }
 
 function exerciseRouting(repository: string): void {

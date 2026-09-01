@@ -11,6 +11,7 @@ import {
   openArchivePullRequest,
   preparePostMergeArchivePullRequest,
   projectArchivePullRequestCandidate,
+  projectArchivePullRequestPublication,
   publishPostMergeArchivePullRequest,
   type ExactArchiveBranchPublisherPortV1,
 } from '../src/application/archive/archive-pr-orchestration.ts';
@@ -101,20 +102,18 @@ test('discovers one read-only current-v3 independently reviewed archive candidat
   }
 });
 
-test('opens the same fake archive PR identity twice without approval or merge authority', () => {
+test('opens the same completed Grant-bound fake archive PR publication twice without broader authority', () => {
   const repository = completedFixture();
   try {
     const remote = createFakeArchivePullRequestRemote();
-    const first = openArchivePullRequest(
+    const publication = fakeArchivePullRequestPublication(
       discoverArchivePullRequestCandidate(repository, 'demo-change'),
-      remote,
     );
-    const second = openArchivePullRequest(
-      discoverArchivePullRequestCandidate(repository, 'demo-change'),
-      remote,
-    );
+    const first = openArchivePullRequest(publication, remote);
+    const second = openArchivePullRequest(publication, remote);
 
     assert.deepEqual(second, first);
+    assert.equal(first.publicationIdentity, publication.publicationIdentity);
     assert.equal(remote.requests().length, 1);
     assert.deepEqual(remote.capabilities, {
       prepare: true,
@@ -1438,6 +1437,48 @@ function completedFixture(): string {
   git(repository, ['merge', '--ff-only', completed.commitHash]);
   syncOriginMain(repository);
   return repository;
+}
+
+function fakeArchivePullRequestPublication(
+  candidate: ReturnType<typeof discoverArchivePullRequestCandidate>,
+) {
+  const archiveHead = 'a'.repeat(40);
+  const observedAt = new Date(Date.now() - 1_000);
+  const expiresAt = new Date(observedAt.getTime() + 4 * 60_000);
+  return projectArchivePullRequestPublication({
+    candidate,
+    archiveBranch: `work/archive-${candidate.changeId}`,
+    archive: {
+      status: 'committed',
+      changeId: candidate.changeId,
+      archivePath: `openspec/changes/archive/2026-09-01-${candidate.changeId}`,
+      commitHash: archiveHead,
+      reportId: 'b'.repeat(64),
+      changedPaths: [],
+    },
+    assurance: {
+      status: 'passed',
+      baseCommit: candidate.base.commit,
+      headCommit: archiveHead,
+      reportIdentity: 'c'.repeat(64),
+    },
+    authorization: {
+      centralGrantRecord: {
+        contractVersion: 'central-grant-completed-authority-ref.v1',
+        challengeId: '11111111-1111-4111-8111-111111111111',
+        challengeDigest: `sha256:${'d'.repeat(64)}`,
+        transitionId: 'github.archive-pr.publish',
+        operationId: '77777777-7777-4777-8777-777777777777',
+        terminalOutcomeDigest: `sha256:${'e'.repeat(64)}`,
+      },
+      rulesetObservation: {
+        observationDigest: `sha256:${'f'.repeat(64)}`,
+        authenticationReceiptDigest: `sha256:${'1'.repeat(64)}`,
+        observedAt: observedAt.toISOString(),
+        expiresAt: expiresAt.toISOString(),
+      },
+    },
+  });
 }
 
 function completePublicationGrant(

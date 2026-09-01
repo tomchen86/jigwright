@@ -46,7 +46,7 @@ export type PreparedArchivePullRequestV1 = Readonly<{
   schemaVersion: 1;
   kind: 'prepared-archive-pull-request';
   requestIdentity: string;
-  candidate: ArchivePullRequestCandidateV1;
+  publication: ArchivePullRequestPublicationV1;
   branch: string;
   title: string;
 }>;
@@ -55,7 +55,7 @@ export type OpenedArchivePullRequestV1 = Readonly<{
   schemaVersion: 1;
   kind: 'opened-archive-pull-request';
   requestIdentity: string;
-  candidateIdentity: string;
+  publicationIdentity: string;
   number: number;
   url: string;
   state: 'open';
@@ -74,7 +74,7 @@ export type ArchivePullRequestRemotePortV1 = Readonly<{
     merge: false;
   }>;
   prepare(
-    candidate: ArchivePullRequestCandidateV1,
+    publication: ArchivePullRequestPublicationV1,
   ): PreparedArchivePullRequestV1;
   open(prepared: PreparedArchivePullRequestV1): OpenedArchivePullRequestV1;
 }>;
@@ -493,18 +493,18 @@ export function createFakeArchivePullRequestRemote(): FakeArchivePullRequestRemo
 
   return Object.freeze({
     capabilities,
-    prepare(candidate: ArchivePullRequestCandidateV1) {
-      assertCandidate(candidate);
+    prepare(publication: ArchivePullRequestPublicationV1) {
+      assertPublication(publication);
       const requestIdentity = digest(
-        `archive-pull-request/v1\0${candidate.identity}`,
+        `archive-pull-request-publication/v1\0${publication.publicationIdentity}`,
       );
       return Object.freeze({
         schemaVersion: 1 as const,
         kind: 'prepared-archive-pull-request' as const,
         requestIdentity,
-        candidate,
-        branch: `archive/${candidate.changeId}-${candidate.identity.slice(0, 12)}`,
-        title: `Archive ${candidate.changeId}`,
+        publication,
+        branch: publication.archive.branch,
+        title: `Archive ${publication.candidate.changeId}`,
       });
     },
     open(prepared: PreparedArchivePullRequestV1) {
@@ -515,7 +515,7 @@ export function createFakeArchivePullRequestRemote(): FakeArchivePullRequestRemo
         schemaVersion: 1 as const,
         kind: 'opened-archive-pull-request' as const,
         requestIdentity: prepared.requestIdentity,
-        candidateIdentity: prepared.candidate.identity,
+        publicationIdentity: prepared.publication.publicationIdentity,
         number: openedByIdentity.size + 1,
         url: `https://fake.invalid/pulls/${openedByIdentity.size + 1}`,
         state: 'open' as const,
@@ -613,11 +613,15 @@ function assertPrepared(prepared: PreparedArchivePullRequestV1): void {
     prepared.schemaVersion !== 1 ||
     prepared.kind !== 'prepared-archive-pull-request' ||
     prepared.requestIdentity !==
-      digest(`archive-pull-request/v1\0${prepared.candidate.identity}`)
+      digest(
+        `archive-pull-request-publication/v1\0${prepared.publication.publicationIdentity}`,
+      ) ||
+    prepared.branch !== prepared.publication.archive.branch ||
+    prepared.title !== `Archive ${prepared.publication.candidate.changeId}`
   ) {
     throw new TypeError('Prepared archive pull request is invalid.');
   }
-  assertCandidate(prepared.candidate);
+  assertPublication(prepared.publication);
 }
 
 function assertPublication(publication: ArchivePullRequestPublicationV1): void {
