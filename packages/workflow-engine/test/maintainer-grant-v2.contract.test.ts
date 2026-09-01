@@ -23,6 +23,7 @@ import {
   type MaintainerGrantV2Envelope,
   type MaintainerGrantV2Payload,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
+import * as maintainerGrantV2 from '../src/modules/authority/maintainer-grant-v2.ts';
 import * as maintainerGrant from '../src/modules/authority/maintainer-grant.ts';
 import {
   approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
@@ -613,6 +614,48 @@ test('retired V1 Apply Grant exports are absent from the current authority surfa
       retiredType,
     );
   }
+});
+
+test('current V2 authority has no post-cutoff discriminator or persisted-field fallback', () => {
+  assert.equal(
+    'isMaintainerGrantV2Envelope' in maintainerGrantV2,
+    false,
+    'isMaintainerGrantV2Envelope',
+  );
+
+  for (const relativePath of [
+    'packages/workflow-engine/src/application/control-plane/maintainer-approve.ts',
+    'packages/workflow-engine/src/application/control-plane/maintainer-recovery.ts',
+    'packages/workflow-engine/src/application/control-plane/maintainer-session.ts',
+    'packages/workflow-engine/src/entrypoints/ci/ci-authority.ts',
+  ]) {
+    const source = fs.readFileSync(
+      path.join(sourceRepositoryRoot, relativePath),
+      'utf8',
+    );
+    assert.doesNotMatch(
+      source,
+      /\bisMaintainerGrantV2Envelope\b/u,
+      relativePath,
+    );
+    assert.doesNotMatch(
+      source,
+      /\bpayload\.evidenceWaivers\s*\?\?\s*\[\]/u,
+      relativePath,
+    );
+  }
+
+  const sessionSource = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/application/control-plane/maintainer-session.ts',
+    ),
+    'utf8',
+  );
+  assert.doesNotMatch(
+    sessionSource,
+    /\benvelope\.payload\.candidateBundleDigest\s*\?\?\s*null/u,
+  );
 });
 
 test('preapproval checks durably resume after interruption without rerunning completed evidence', () => {

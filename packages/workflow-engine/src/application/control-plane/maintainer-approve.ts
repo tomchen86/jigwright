@@ -75,7 +75,6 @@ import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   canonicalMaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Payload,
-  isMaintainerGrantV2Envelope,
   issueMaintainerGrantV2,
   maintainerChecksEnvironmentDigest,
   preflightMaintainerGrantV2,
@@ -704,7 +703,7 @@ function approveAndApplyMaintainerGrantV2WithBinding(
     resultTree: prospective.tree,
     candidateBundleDigest: candidateBundle.candidateBundleDigest,
     candidateStorePath,
-    evidenceWaivers: grant.envelope.payload.evidenceWaivers ?? [],
+    evidenceWaivers: grant.envelope.payload.evidenceWaivers,
     applied: true as const,
   };
 }
@@ -745,13 +744,6 @@ function reissueAndApplyMaintainerGrantV2WithDeadline(
     repository.gitCommonDirectory,
     request.priorGrantId,
   );
-  if (!isMaintainerGrantV2Envelope(prior.envelope)) {
-    throw workflowError(
-      'MAINTAINER_GRANT_REISSUE_INVALID',
-      'Only an expired or invalidated v2 grant may reissue its retained candidate.',
-      ExitCode.guard,
-    );
-  }
   const envelope = prior.envelope;
   const trusted = verifyHistoricalApplyGrantTrust(
     repository,
@@ -792,7 +784,7 @@ function reissueAndApplyMaintainerGrantV2WithDeadline(
       const payload = envelope.payload;
       const evidenceWaivers =
         request.evidenceWaivers === undefined
-          ? (payload.evidenceWaivers ?? [])
+          ? payload.evidenceWaivers
           : request.evidenceWaivers;
       const candidate = payload.candidateBundle;
       if (
@@ -907,7 +899,7 @@ function reissueAndApplyMaintainerGrantV2WithDeadline(
         candidateCommit: candidate.candidateCommit,
         resultTree: candidate.resultTree,
         candidateBundleDigest: candidate.candidateBundleDigest,
-        evidenceWaivers: grant.envelope.payload.evidenceWaivers ?? [],
+        evidenceWaivers: grant.envelope.payload.evidenceWaivers,
         applied: true as const,
       };
     },
@@ -1357,7 +1349,7 @@ function appendApplyGrantAudit(
     classification: envelope.payload.classification,
     manifestDigest: envelope.payload.manifestDigest,
     checksAttestationDigest: envelope.payload.checksAttestationDigest,
-    evidenceWaivers: envelope.payload.evidenceWaivers ?? [],
+    evidenceWaivers: envelope.payload.evidenceWaivers,
   });
   recordAuthorityAuditEvent(scope, {
     eventType: 'apply-grant',

@@ -50,10 +50,7 @@ import {
   type PostApprovalAdmissionDeadline,
   type PostApprovalBudgetTestOptions,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  canonicalMaintainerGrantV2Envelope,
-  isMaintainerGrantV2Envelope,
-} from '../../modules/authority/maintainer-grant-v2.ts';
+import { canonicalMaintainerGrantV2Envelope } from '../../modules/authority/maintainer-grant-v2.ts';
 import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
 import {
   createInteractiveSshSigner,
@@ -1369,8 +1366,7 @@ function ensurePortableApplicationReceipt(
     terminal.state !== 'consumed' ||
     terminal.sessionId !== session.sessionId ||
     terminal.commitHash !== journal.commitHash ||
-    terminal.recordedAt !== journal.consumedAt ||
-    !isMaintainerGrantV2Envelope(terminal.envelope)
+    terminal.recordedAt !== journal.consumedAt
   ) {
     throw recoveryError(
       'AUTHORITY_APPLICATION_RECEIPT_TERMINAL_MISMATCH',
@@ -1423,7 +1419,7 @@ function ensurePortableApplicationReceipt(
     ),
     candidateBundleDigest: candidate.candidateBundleDigest,
     effectsManifestDigest: candidate.effectsManifestDigest,
-    evidenceWaivers: envelope.payload.evidenceWaivers ?? [],
+    evidenceWaivers: envelope.payload.evidenceWaivers,
     candidatePatchDigest: envelope.payload.patchDigest,
     candidateCommit: candidate.candidateCommit,
     candidateTree: candidate.resultTree,

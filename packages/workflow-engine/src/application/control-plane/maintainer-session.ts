@@ -373,7 +373,7 @@ export function startAuthoritySession(
           candidateCommit:
             envelope.payload.candidateBundle?.candidateCommit ?? null,
           resultTree: envelope.payload.candidateBundle?.resultTree ?? null,
-          candidateBundleDigest: envelope.payload.candidateBundleDigest ?? null,
+          candidateBundleDigest: envelope.payload.candidateBundleDigest,
           mandateBinding: envelope.payload.mandateBinding,
           expectedRefGeneration:
             envelope.payload.candidateBundle?.expectedRefGeneration ?? null,
@@ -1001,7 +1001,7 @@ function assertV2CandidateFresh(
     patchDigest: envelope.payload.patchDigest,
     trustBaseCommit: envelope.payload.baseCommit,
     requiredChecks: envelope.payload.requiredChecks,
-    waivedFreshnessCheckIds: (envelope.payload.evidenceWaivers ?? []).map(
+    waivedFreshnessCheckIds: envelope.payload.evidenceWaivers.map(
       ({ checkId }) => checkId,
     ),
     environmentDigest,

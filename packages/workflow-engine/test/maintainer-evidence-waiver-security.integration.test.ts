@@ -19,7 +19,6 @@ import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts
 import {
   canonicalMaintainerGrantV2Envelope,
   canonicalMaintainerGrantV2Payload,
-  isMaintainerGrantV2Envelope,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   parseMaintainerGrantV2Envelope,
   type MaintainerEvidenceWaiver,
@@ -160,10 +159,6 @@ test('CI rejects a trusted receipt whose waiver projection differs from its sign
       applied.grantId,
     );
     const currentGrant = terminal.envelope;
-    assert.equal(isMaintainerGrantV2Envelope(currentGrant), true);
-    if (!isMaintainerGrantV2Envelope(currentGrant)) {
-      assert.fail('expected a terminal v2 grant');
-    }
     const legacyGrantPayload = structuredClone(
       currentGrant.payload,
     ) as unknown as Record<string, unknown>;

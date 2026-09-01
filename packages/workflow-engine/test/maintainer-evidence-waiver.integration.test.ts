@@ -16,7 +16,6 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { assertCandidateV2ChecksFresh } from '../src/modules/authority/maintainer-candidate.ts';
 import {
   canonicalMaintainerGrantV2Envelope,
-  isMaintainerGrantV2Envelope,
   preflightMaintainerGrantV2,
   validateMaintainerGrantV2AuthorityBinding,
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
@@ -179,10 +178,6 @@ test('a human-signed named waiver admits stale retained evidence without deletin
       gitCommonDirectory,
       applied.grantId,
     );
-    assert.equal(isMaintainerGrantV2Envelope(terminal.envelope), true);
-    if (!isMaintainerGrantV2Envelope(terminal.envelope)) {
-      assert.fail('expected a v2 terminal grant');
-    }
     assert.deepEqual(
       terminal.envelope.payload.evidenceWaivers,
       evidenceWaivers,

@@ -819,12 +819,6 @@ export function parseMaintainerGrantV2Envelope(
   }
 }
 
-export function isMaintainerGrantV2Envelope(envelope: {
-  payload: { version: number };
-}): envelope is MaintainerGrantV2Envelope {
-  return envelope.payload.version === 2;
-}
-
 export function validateMaintainerGrantV2AuthorityBinding(
   repositoryRoot: string,
   envelope: MaintainerGrantV2Envelope,

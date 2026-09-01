@@ -186,8 +186,8 @@ function validateCiAuthorityCandidateCommit(
     envelope.payload.candidateBundleDigest !== payload.candidateBundleDigest ||
     candidate.effectsManifestDigest !== payload.effectsManifestDigest ||
     envelope.payload.effectsManifestDigest !== payload.effectsManifestDigest ||
-    canonicalJson(payload.evidenceWaivers ?? []) !==
-      canonicalJson(envelope.payload.evidenceWaivers ?? []) ||
+    canonicalJson(payload.evidenceWaivers) !==
+      canonicalJson(envelope.payload.evidenceWaivers) ||
     envelope.payload.patchDigest !== payload.candidatePatchDigest ||
     candidate.manifest.patchDigest !== payload.candidatePatchDigest ||
     candidate.candidateCommit !== commit.hash ||
