@@ -14,6 +14,7 @@ import {
   applyChangeRoutingReviewUnderLifecycleLock,
   changeLifecycleRelativePath,
   parseChangeRoutingReview,
+  type ChangeRoutingAuthorityPort,
   type ChangeRoutingReview,
 } from '../modules/lifecycle/change-routing.ts';
 import {
@@ -54,10 +55,22 @@ type RouteJournal = Readonly<{
   commitHash: string | null;
 }>;
 
+type ManagedChangeRoutingReviewOptions = Readonly<{
+  crashAfterCommitObject?: boolean;
+  authorityPort?: ChangeRoutingAuthorityPort;
+}>;
+
+type AuthorityLoadOutcome =
+  | Readonly<{
+      kind: 'loaded';
+      value: ReturnType<ChangeRoutingAuthorityPort['loadCurrentAuthority']>;
+    }>
+  | Readonly<{ kind: 'failed'; error: unknown }>;
+
 export function applyManagedChangeRoutingReview(
   repositoryRoot: string,
   rawReview: unknown,
-  options: Readonly<{ crashAfterCommitObject?: boolean }> = {},
+  options: ManagedChangeRoutingReviewOptions = {},
 ): ManagedChangeRoutingResult {
   const review = parseChangeRoutingReview(rawReview);
   const initial = discoverRepository(repositoryRoot);
@@ -66,21 +79,51 @@ export function applyManagedChangeRoutingReview(
     initial.gitCommonDirectory,
     config.runtimeDirectory,
   );
-  return withRepositoryLifecycleOperation(runtime, () =>
-    applyManagedChangeRoutingReviewLocked(
+  return withRepositoryLifecycleOperation(runtime, () => {
+    const authorityPort = memoizeAuthorityWithinLifecycleOperation(
+      options.authorityPort ?? productionChangeRoutingAuthorityPort,
+    );
+    return applyManagedChangeRoutingReviewLocked(
       initial.repositoryRoot,
       runtime.root,
       review,
       options,
-    ),
-  );
+      authorityPort,
+    );
+  });
+}
+
+function memoizeAuthorityWithinLifecycleOperation(
+  authorityPort: ChangeRoutingAuthorityPort,
+): ChangeRoutingAuthorityPort {
+  const outcomes = new Map<string, AuthorityLoadOutcome>();
+  return Object.freeze({
+    loadCurrentAuthority(repositoryRoot: string, changeId: string) {
+      const key = `${repositoryRoot}\0${changeId}`;
+      const existing = outcomes.get(key);
+      if (existing?.kind === 'loaded') return existing.value;
+      if (existing?.kind === 'failed') throw existing.error;
+      try {
+        const value = authorityPort.loadCurrentAuthority(
+          repositoryRoot,
+          changeId,
+        );
+        outcomes.set(key, Object.freeze({ kind: 'loaded', value }));
+        return value;
+      } catch (error) {
+        outcomes.set(key, Object.freeze({ kind: 'failed', error }));
+        throw error;
+      }
+    },
+  });
 }
 
 function applyManagedChangeRoutingReviewLocked(
   repositoryRoot: string,
   runtimeRoot: string,
   review: ChangeRoutingReview,
-  options: Readonly<{ crashAfterCommitObject?: boolean }>,
+  options: ManagedChangeRoutingReviewOptions,
+  authorityPort: ChangeRoutingAuthorityPort,
 ): ManagedChangeRoutingResult {
   const reviewDigest = changeRoutingReviewDigest(review);
   const reportPath = `${changeRoutingReportRoot}/${reviewDigest}.json`;
@@ -145,10 +188,10 @@ function applyManagedChangeRoutingReviewLocked(
     applyChangeRoutingReviewUnderLifecycleLock(
       repositoryRoot,
       review,
-      productionChangeRoutingAuthorityPort,
+      authorityPort,
       productionChangeRoutingContinuationGrantPort,
     );
-    renderHandoff(repositoryRoot, productionChangeRoutingAuthorityPort);
+    renderHandoff(repositoryRoot, authorityPort);
     writeChangeRoutingReport(
       repositoryRoot,
       reportPath,

@@ -49,6 +49,7 @@ import {
   parseGrantPolicyV2,
 } from '../src/modules/authority/grant-policy.ts';
 import { grantStorePaths } from '../src/runtime/storage-journal/grant-store.ts';
+import { productionChangeRoutingAuthorityPort } from '../src/composition-root/validated-contract-context.ts';
 
 test('managed routing projects mixed repository state and recovers idempotently', () => {
   const repository = createFixtureRepository();
@@ -941,6 +942,45 @@ test('managed routing commits and replays the handoff path from repository confi
         ...routeCommit,
         trailers: routeTrailers,
       }),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('managed route apply reuses each exact current authority for its handoff projection', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeReadyV3ExemptChange(repository);
+    commitFixtureState(repository);
+    const review = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: { kind: 'focus', changeId: 'demo-change' },
+    });
+    const authorityLoads = new Map<string, number>();
+    const applied = applyManagedChangeRoutingReview(repository, review, {
+      authorityPort: Object.freeze({
+        loadCurrentAuthority(repositoryRoot, changeId) {
+          authorityLoads.set(changeId, (authorityLoads.get(changeId) ?? 0) + 1);
+          return productionChangeRoutingAuthorityPort.loadCurrentAuthority(
+            repositoryRoot,
+            changeId,
+          );
+        },
+      }),
+    });
+
+    assert.deepEqual([...authorityLoads.entries()], [['demo-change', 1]]);
+    assert.match(
+      fs.readFileSync(
+        path.join(repository, 'docs/CURRENT_AND_NEXT_STEPS.md'),
+        'utf8',
+      ),
+      /## Current Work\n\n`demo-change`/,
+    );
+    assert.equal(
+      applyManagedChangeRoutingReview(repository, review).commitHash,
+      applied.commitHash,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
