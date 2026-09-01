@@ -72,6 +72,20 @@ const scenarioReportPath = path.resolve(
   '../../fixture-adapter/portability-mvp-scenarios.json',
 );
 
+type PortabilityScenarioReport = Readonly<{
+  schemaVersion: 4;
+  kind: 'jigwright-portability-mvp-scenarios';
+  localLifecycleRuns: 2;
+  covered: readonly string[];
+  realTarball: readonly string[];
+  installedCliSeededCurrentV3: readonly string[];
+  seamBacked: readonly string[];
+  gate6Contracts: readonly string[];
+  targetedEvidence: readonly string[];
+  status: readonly string[];
+  deferred: readonly Readonly<{ scenario: string; reason: string }>[];
+}>;
+
 test('a neutral consumer selects schema, documents, work registry, and database policy without expense fallback', () => {
   const repository = createConsumerRepository('orbit-consumer');
   try {
@@ -339,11 +353,48 @@ test('consumer paths canonicalize a symlinked repository root while remaining co
   }
 });
 
-test('installed tarball drives the current CLI over a seeded v3 consumer with explicit deterministic seams', (t) => {
+test('tracked portability evidence requires two complete local lifecycles and the current Gate 6 matrix', () => {
+  const scenarioReport = readPortabilityScenarioReport();
+  assert.equal(scenarioReport.schemaVersion, 4);
+  assert.equal(scenarioReport.localLifecycleRuns, 2);
+  assert.deepEqual(scenarioReport.covered, [
+    'exact-local-package-install',
+    'plan-lifecycle',
+    'task-lifecycle',
+    'routing-blocked-focus',
+    'two-worktree-third-refusal',
+    'managed-intake-promotion',
+    'merge-rebase-update-base',
+    'archive-idempotency',
+    'fake-remote-archive-pull-request',
+    'immutable-commit-object-replay',
+  ]);
+  assert.deepEqual(scenarioReport.gate6Contracts, [
+    'manifest-v3-direct-writer-and-current-validation',
+    'manifest-plan-review-execution-authority-non-duplication',
+    'central-grant-prepared-recovery',
+    'method-agnostic-approval-outcome',
+    'trusted-human-decision-only',
+    'retired-local-authority-issuance-absent',
+    'below-floor-no-local-r007-store',
+    'dual-worktree-state-drift-refusal',
+    'negative-expense-app-coupling-matrix',
+  ]);
+  for (const evidencePath of scenarioReport.targetedEvidence) {
+    assert.equal(
+      fs
+        .statSync(path.resolve(sourcePackageRoot, '../..', evidencePath))
+        .isFile(),
+      true,
+      evidencePath,
+    );
+  }
+});
+
+test('installed tarball drives two complete current lifecycles over unrelated seeded v3 consumers', (t) => {
+  const scenarioReport = readPortabilityScenarioReport();
   const installed = installSingleJigwrightFixture();
   t.after(installed.dispose);
-  const providerHost = createPortableProviderHost();
-  t.after(providerHost.dispose);
   const previousPackageRoot = cliPackageRoot;
   const previousEntrypoint = cliEntrypoint;
   cliPackageRoot = installed.packageRoot;
@@ -386,246 +437,260 @@ test('installed tarball drives the current CLI over a seeded v3 consumer with ex
     centralGrant: true,
   });
   assert.equal(installed.adoption.consumer.clean, true);
-  const repository = createFixtureRepository();
-  try {
-    const initialized = runCli(repository, ['init']) as {
-      result: {
-        kind: string;
-        status: string;
-        path: string;
-        digest: string;
-      };
-    };
-    assert.deepEqual(initialized.result, {
-      schemaVersion: 1,
-      kind: 'jigwright-init-result.v1',
-      status: 'initialized',
-      path: 'workflow/jigwright-profile.json',
-      digest: initialized.result.digest,
-    });
-    assert.match(initialized.result.digest, /^sha256:[a-f0-9]{64}$/u);
-    configurePortableConsumer(repository);
-    assertNeutralPlanningProvider(repository);
-    const scenarioReport = JSON.parse(
-      fs.readFileSync(scenarioReportPath, 'utf8'),
-    ) as {
-      schemaVersion: number;
-      realTarball: string[];
-      installedCliSeededCurrentV3: string[];
-      seamBacked: string[];
-      status: string[];
-      deferred: Array<{ scenario: string; reason: string }>;
-    };
-    assert.equal(scenarioReport.schemaVersion, 3);
-    assert.deepEqual(scenarioReport.realTarball, [
-      'strict-clean-source-release-candidate',
-      'offline-exact-local-tarball-install',
-      'fresh-consumer-init',
-      'repeated-init-refusal',
-      'installed-guide',
-      'installed-public-exports',
-    ]);
-    assert.deepEqual(scenarioReport.installedCliSeededCurrentV3, [
-      'validate-change',
-      'plan-commit',
-      'open-task',
-      'review-diff',
-      'provider-worker',
-      'finalize',
-      'archive',
-    ]);
-    assert.deepEqual(scenarioReport.seamBacked, [
-      'seeded-current-v3-repository',
-      'source-authored-planning-evidence',
-      'deterministic-host-provider-wrapper',
-      'routing-blocked-focus',
-      'two-worktree-third-refusal',
-      'managed-intake-promotion',
-      'merge-rebase-update-base',
-      'fake-remote-archive-pull-request',
-      'raw-git-immutable-commit-object-replay',
-    ]);
-    assert.deepEqual(scenarioReport.status, [
-      'implementation-ready',
-      'real-pilot-pending',
-      'full-gate-pending',
-    ]);
-    assert.equal(
-      scenarioReport.deferred.some(
-        ({ scenario }) => scenario === 'real-protected-remote-pilot',
-      ),
-      true,
-    );
-    assert.equal(
-      scenarioReport.deferred.some(({ scenario }) => scenario === 'full-gate'),
-      true,
-    );
+  assert.deepEqual(scenarioReport.realTarball, [
+    'strict-clean-source-release-candidate',
+    'offline-exact-local-tarball-install',
+    'fresh-consumer-init',
+    'repeated-init-refusal',
+    'installed-guide',
+    'installed-public-exports',
+  ]);
+  assert.deepEqual(scenarioReport.installedCliSeededCurrentV3, [
+    'validate-change',
+    'plan-commit',
+    'open-task',
+    'check',
+    'review-diff',
+    'provider-worker',
+    'complete-task',
+    'finish',
+    'commit',
+    'finalize',
+    'archive',
+  ]);
+  assert.deepEqual(scenarioReport.seamBacked, [
+    'seeded-current-v3-repository',
+    'source-authored-planning-evidence',
+    'deterministic-host-provider-wrapper',
+    'routing-blocked-focus',
+    'two-worktree-third-refusal',
+    'managed-intake-promotion',
+    'merge-rebase-update-base',
+    'fake-remote-archive-pull-request',
+    'raw-git-immutable-commit-object-replay',
+  ]);
+  assert.deepEqual(scenarioReport.status, [
+    'implementation-ready',
+    'real-pilot-pending',
+    'full-gate-pending',
+  ]);
+  assert.equal(
+    scenarioReport.deferred.some(
+      ({ scenario }) => scenario === 'real-protected-remote-pilot',
+    ),
+    true,
+  );
+  assert.equal(
+    scenarioReport.deferred.some(({ scenario }) => scenario === 'full-gate'),
+    true,
+  );
 
-    const help = runPortabilityPackageInvocation(
-      createExactLocalPackageInvocation({
-        packageRoot: cliPackageRoot,
-        entrypoint: cliEntrypoint,
-        args: ['help'],
-        cwd: repository,
-      }),
-    );
-    assert.match(help, /^Usage:\n/u);
-
-    writePortableDelta(repository);
-    const workSourceId = captureSource(repository, 'work-source', {
-      semanticAuthor: 'maintainer',
-      capturedBy: 'jigwright-portability-fixture',
-      capturedAt: '2026-08-24T04:00:00.000Z',
-      contextRef: 'direct-human:fixture/source-work-item',
-      text: 'Promote this Source through a Work Item.\n',
-      supersedes: null,
-    });
-    const directSourceId = captureSource(repository, 'direct-source', {
-      semanticAuthor: 'maintainer',
-      capturedBy: 'jigwright-portability-fixture',
-      capturedAt: '2026-08-24T04:01:00.000Z',
-      contextRef: 'direct-human:fixture/source-direct-change',
-      text: 'Link this Source directly to the current change.\n',
-      supersedes: null,
-    });
-    const workItemId = createFixtureWorkItem(repository, {
-      schemaVersion: 1,
-      kind: 'feature',
-      lane: 'now',
-      title: 'Portable lifecycle fixture',
-      summary: 'Exercise one exact local Jigwright lifecycle.',
-      sourceRefs: [workSourceId],
-    });
-    reviewFixtureWorkItem(repository, workItemId);
-    runCli(repository, [
-      'source',
-      'link-change',
-      directSourceId,
-      '--change',
-      'demo-change',
-    ]);
-    promoteFixtureWorkItem(repository, workItemId, 'demo-change');
-    const direct = readOrigin(repository, 'demo-change');
-    assert.deepEqual(direct.sourceRefs, [directSourceId, workSourceId].sort());
-    assert.deepEqual(direct.workItemRefs, [workItemId]);
-    assert.equal(showFixtureWorkItem(repository, workItemId).stage, 'active');
-
-    git(repository, ['add', '.']);
-    git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
-    prepareCurrentV3IntroductionFixture(repository, 'demo-change');
-    writePortableAgentRolePlan(repository, 'demo-change');
-    git(repository, ['branch', '-m', 'changes/demo-change']);
-    writeReadyV3ExemptChange(repository);
-    const validation = runCli(repository, [
-      'validate-change',
-      'demo-change',
-    ]) as { changeId: string; tasks: unknown[]; contractDigest: string };
-    assert.equal(validation.changeId, 'demo-change');
-    assert.equal(validation.tasks.length, 1);
-    assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
-    const plan = planCommit(repository, 'demo-change');
-    git(repository, ['checkout', 'trunk']);
-    git(repository, ['merge', '--ff-only', plan.commitHash]);
-    git(repository, ['branch', '-d', 'changes/demo-change']);
-    prepareRoutingChangePlans(repository);
-    exerciseRouting(repository);
-    git(repository, ['checkout', '-b', 'changes/demo-change']);
-    const sessionId = openTaskSession(repository, 'demo-change');
-    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
-    assert.deepEqual(
-      (
-        runCli(repository, ['route', 'status']) as {
-          result: { result: { primaryChangeId: string | null } };
-        }
-      ).result.result.primaryChangeId,
-      'demo-change',
-    );
-    const task = finalizePortableTask(
-      repository,
-      sessionId,
-      'Complete portable fixture task',
-      'src/feature.ts',
-      providerHost,
-    );
-    git(repository, ['checkout', 'trunk']);
-    git(repository, ['merge', '--ff-only', task.commitHash]);
-    const taskParent = git(repository, [
-      'rev-parse',
-      `${task.commitHash}^`,
-    ]).trim();
-    runPortableCi(repository, taskParent, task.commitHash);
-    syncProtectedBase(repository);
-
-    exerciseConcurrentWorktreesAndUpdateBase(repository);
-    syncProtectedBase(repository);
-
-    const remote = createFakeArchivePullRequestRemote();
-    const candidate = discoverArchivePullRequestCandidate(
-      repository,
-      'demo-change',
-    );
-    const firstRequest = openArchivePullRequest(candidate, remote);
-    const replayedRequest = openArchivePullRequest(candidate, remote);
-    assert.deepEqual(replayedRequest, firstRequest);
-    assert.equal(remote.requests().length, 1);
-
-    git(repository, ['checkout', '-b', 'changes/archive-demo']);
-    const archived = archiveChange(repository, 'demo-change');
-    const replayedArchive = archiveChange(repository, 'demo-change');
-    assert.equal(archived.status, 'committed');
-    assert.equal(replayedArchive.status, 'already-archived');
-    assert.equal(replayedArchive.commitHash, archived.commitHash);
-    assert.deepEqual(
-      JSON.parse(
-        fs.readFileSync(
-          path.join(repository, archived.archivePath, 'origin.json'),
-          'utf8',
-        ),
-      ),
-      direct,
-    );
-
-    const allCommits = git(repository, ['rev-list', '--reverse', 'HEAD'])
-      .trim()
-      .split(/\s+/u);
-    for (const commitHash of allCommits) {
-      replayImmutableCommit(repository, commitHash);
-    }
-    const managed = readFixtureManagedTransitionLog(
-      allCommits.map((commitHash) => {
-        const raw = git(repository, ['cat-file', 'commit', commitHash]);
-        return {
-          kind: 'jigwright.fixture-commit.v1' as const,
-          fixtureCommitId: commitHash,
-          message: raw.slice(raw.indexOf('\n\n') + 2).replace(/\n$/u, ''),
+  const lifecycleStrategies = [
+    'preferred-finalize',
+    'check-complete-finish-commit',
+  ] as const;
+  assert.equal(lifecycleStrategies.length, scenarioReport.localLifecycleRuns);
+  const repositoryPaths: string[] = [];
+  for (const lifecycleStrategy of lifecycleStrategies) {
+    const providerHost = createPortableProviderHost();
+    const repository = createFixtureRepository();
+    repositoryPaths.push(fs.realpathSync(repository));
+    try {
+      const initialized = runCli(repository, ['init']) as {
+        result: {
+          kind: string;
+          status: string;
+          path: string;
+          digest: string;
         };
-      }),
-    );
-    assert.deepEqual(
-      managed.map(({ trailers }) => trailers.kind),
-      [
-        'plan',
-        'plan',
-        'plan',
-        'plan',
-        'plan',
-        'route',
-        'route',
-        'task',
-        'route',
-        'route',
-        'archive',
-      ],
-    );
-    assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
-    assert.equal(
-      managed.find(({ trailers }) => trailers.kind === 'task')!.fixtureCommitId,
-      task.commitHash,
-    );
-    assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
+      };
+      assert.deepEqual(initialized.result, {
+        schemaVersion: 1,
+        kind: 'jigwright-init-result.v1',
+        status: 'initialized',
+        path: 'workflow/jigwright-profile.json',
+        digest: initialized.result.digest,
+      });
+      assert.match(initialized.result.digest, /^sha256:[a-f0-9]{64}$/u);
+      configurePortableConsumer(repository);
+      assertNeutralPlanningProvider(repository);
+
+      const help = runPortabilityPackageInvocation(
+        createExactLocalPackageInvocation({
+          packageRoot: cliPackageRoot,
+          entrypoint: cliEntrypoint,
+          args: ['help'],
+          cwd: repository,
+        }),
+      );
+      assert.match(help, /^Usage:\n/u);
+
+      writePortableDelta(repository);
+      const workSourceId = captureSource(repository, 'work-source', {
+        semanticAuthor: 'maintainer',
+        capturedBy: 'jigwright-portability-fixture',
+        capturedAt: '2026-08-24T04:00:00.000Z',
+        contextRef: 'direct-human:fixture/source-work-item',
+        text: 'Promote this Source through a Work Item.\n',
+        supersedes: null,
+      });
+      const directSourceId = captureSource(repository, 'direct-source', {
+        semanticAuthor: 'maintainer',
+        capturedBy: 'jigwright-portability-fixture',
+        capturedAt: '2026-08-24T04:01:00.000Z',
+        contextRef: 'direct-human:fixture/source-direct-change',
+        text: 'Link this Source directly to the current change.\n',
+        supersedes: null,
+      });
+      const workItemId = createFixtureWorkItem(repository, {
+        schemaVersion: 1,
+        kind: 'feature',
+        lane: 'now',
+        title: 'Portable lifecycle fixture',
+        summary: 'Exercise one exact local Jigwright lifecycle.',
+        sourceRefs: [workSourceId],
+      });
+      reviewFixtureWorkItem(repository, workItemId);
+      runCli(repository, [
+        'source',
+        'link-change',
+        directSourceId,
+        '--change',
+        'demo-change',
+      ]);
+      promoteFixtureWorkItem(repository, workItemId, 'demo-change');
+      const direct = readOrigin(repository, 'demo-change');
+      assert.deepEqual(
+        direct.sourceRefs,
+        [directSourceId, workSourceId].sort(),
+      );
+      assert.deepEqual(direct.workItemRefs, [workItemId]);
+      assert.equal(showFixtureWorkItem(repository, workItemId).stage, 'active');
+
+      git(repository, ['add', '.']);
+      git(repository, ['commit', '-m', 'Prepare portable provenance fixture']);
+      prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+      writePortableAgentRolePlan(repository, 'demo-change');
+      git(repository, ['branch', '-m', 'changes/demo-change']);
+      writeReadyV3ExemptChange(repository);
+      const validation = runCli(repository, [
+        'validate-change',
+        'demo-change',
+      ]) as { changeId: string; tasks: unknown[]; contractDigest: string };
+      assert.equal(validation.changeId, 'demo-change');
+      assert.equal(validation.tasks.length, 1);
+      assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
+      const plan = planCommit(repository, 'demo-change');
+      git(repository, ['checkout', 'trunk']);
+      git(repository, ['merge', '--ff-only', plan.commitHash]);
+      git(repository, ['branch', '-d', 'changes/demo-change']);
+      prepareRoutingChangePlans(repository);
+      exerciseRouting(repository);
+      git(repository, ['checkout', '-b', 'changes/demo-change']);
+      const sessionId = openTaskSession(repository, 'demo-change');
+      fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+      assert.deepEqual(
+        (
+          runCli(repository, ['route', 'status']) as {
+            result: { result: { primaryChangeId: string | null } };
+          }
+        ).result.result.primaryChangeId,
+        'demo-change',
+      );
+      const task = finalizePortableTask(
+        repository,
+        sessionId,
+        'Complete portable fixture task',
+        'src/feature.ts',
+        providerHost,
+        lifecycleStrategy,
+      );
+      git(repository, ['checkout', 'trunk']);
+      git(repository, ['merge', '--ff-only', task.commitHash]);
+      const taskParent = git(repository, [
+        'rev-parse',
+        `${task.commitHash}^`,
+      ]).trim();
+      runPortableCi(repository, taskParent, task.commitHash);
+      syncProtectedBase(repository);
+
+      exerciseConcurrentWorktreesAndUpdateBase(repository);
+      syncProtectedBase(repository);
+
+      const remote = createFakeArchivePullRequestRemote();
+      const candidate = discoverArchivePullRequestCandidate(
+        repository,
+        'demo-change',
+      );
+      const firstRequest = openArchivePullRequest(candidate, remote);
+      const replayedRequest = openArchivePullRequest(candidate, remote);
+      assert.deepEqual(replayedRequest, firstRequest);
+      assert.equal(remote.requests().length, 1);
+
+      git(repository, ['checkout', '-b', 'changes/archive-demo']);
+      const archived = archiveChange(repository, 'demo-change');
+      const replayedArchive = archiveChange(repository, 'demo-change');
+      assert.equal(archived.status, 'committed');
+      assert.equal(replayedArchive.status, 'already-archived');
+      assert.equal(replayedArchive.commitHash, archived.commitHash);
+      assert.deepEqual(
+        JSON.parse(
+          fs.readFileSync(
+            path.join(repository, archived.archivePath, 'origin.json'),
+            'utf8',
+          ),
+        ),
+        direct,
+      );
+
+      const allCommits = git(repository, ['rev-list', '--reverse', 'HEAD'])
+        .trim()
+        .split(/\s+/u);
+      for (const commitHash of allCommits) {
+        replayImmutableCommit(repository, commitHash);
+      }
+      const managed = readFixtureManagedTransitionLog(
+        allCommits.map((commitHash) => {
+          const raw = git(repository, ['cat-file', 'commit', commitHash]);
+          return {
+            kind: 'jigwright.fixture-commit.v1' as const,
+            fixtureCommitId: commitHash,
+            message: raw.slice(raw.indexOf('\n\n') + 2).replace(/\n$/u, ''),
+          };
+        }),
+      );
+      assert.deepEqual(
+        managed.map(({ trailers }) => trailers.kind),
+        [
+          'plan',
+          'plan',
+          'plan',
+          'plan',
+          'plan',
+          'route',
+          'route',
+          'task',
+          'route',
+          'route',
+          'archive',
+        ],
+      );
+      assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
+      assert.equal(
+        managed.find(({ trailers }) => trailers.kind === 'task')!
+          .fixtureCommitId,
+        task.commitHash,
+      );
+      assert.equal(managed.at(-1)!.fixtureCommitId, archived.commitHash);
+    } finally {
+      providerHost.dispose();
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
   }
+  assert.equal(
+    new Set(repositoryPaths).size,
+    scenarioReport.localLifecycleRuns,
+  );
 });
 
 function installSingleJigwrightFixture(): Readonly<{
@@ -778,6 +843,8 @@ type PortableProviderHost = Readonly<{
   submissionPath: string;
   dispose(): void;
 }>;
+type PortableTaskLifecycleStrategy =
+  'preferred-finalize' | 'check-complete-finish-commit';
 type ArchiveCommit = Readonly<{
   status: 'committed' | 'already-archived';
   commitHash: string;
@@ -1131,10 +1198,13 @@ function openTaskSession(repository: string, changeId: string): string {
   ).result.sessionId;
 }
 
-function checkTask(repository: string, sessionId: string): { passed: boolean } {
+function checkTask(
+  repository: string,
+  sessionId: string,
+): { passed: boolean; reportId: string } {
   return (
     runCli(repository, ['check', sessionId]) as {
-      result: { passed: boolean };
+      result: { passed: boolean; reportId: string };
     }
   ).result;
 }
@@ -1160,10 +1230,20 @@ function finalizePortableTask(
   message: string,
   implementationPath: string,
   providerHost: PortableProviderHost,
+  lifecycleStrategy: PortableTaskLifecycleStrategy,
 ): ManagedCommit {
   const finalizeArgs = ['finalize', sessionId, '--message', message] as const;
+  if (lifecycleStrategy === 'check-complete-finish-commit') {
+    const checked = checkTask(repository, sessionId);
+    assert.equal(checked.passed, true);
+    assert.match(checked.reportId, /^[0-9a-f]{64}$/u);
+  }
+  const reviewGateArgs =
+    lifecycleStrategy === 'preferred-finalize'
+      ? finalizeArgs
+      : (['complete-task', sessionId] as const);
   assert.throws(
-    () => runCli(repository, finalizeArgs),
+    () => runCli(repository, reviewGateArgs),
     hasExactLocalWorkflowCode('TASK_DIFF_REVIEW_REQUIRED'),
   );
   const started = withProviderDispatchDisabled(() =>
@@ -1351,8 +1431,28 @@ function finalizePortableTask(
     'codex',
   ]) as { result: { state: string } };
   assert.equal(reviewed.result.state, 'satisfied');
+  if (lifecycleStrategy === 'preferred-finalize') {
+    return (
+      runCli(repository, finalizeArgs) as {
+        result: ManagedCommit;
+      }
+    ).result;
+  }
+  const completed = runCli(repository, ['complete-task', sessionId]) as {
+    result: {
+      reportId: string;
+      completedTaskIds: string[];
+    };
+  };
+  assert.match(completed.result.reportId, /^[0-9a-f]{64}$/u);
+  assert.deepEqual(completed.result.completedTaskIds, ['1.1']);
+  const finished = runCli(repository, ['finish', sessionId]) as {
+    result: { reportId: string; tree: string };
+  };
+  assert.match(finished.result.reportId, /^[0-9a-f]{64}$/u);
+  assert.match(finished.result.tree, /^[0-9a-f]{40,64}$/u);
   return (
-    runCli(repository, finalizeArgs) as {
+    runCli(repository, ['commit', sessionId, '--message', message]) as {
       result: ManagedCommit;
     }
   ).result;
@@ -1906,6 +2006,12 @@ function hasWorkflowCode(expected: string): (error: unknown) => boolean {
     error instanceof Error &&
     'code' in error &&
     (error as Error & { code: unknown }).code === expected;
+}
+
+function readPortabilityScenarioReport(): PortabilityScenarioReport {
+  return JSON.parse(
+    fs.readFileSync(scenarioReportPath, 'utf8'),
+  ) as PortabilityScenarioReport;
 }
 
 function writeJson(filePath: string, value: unknown): void {
