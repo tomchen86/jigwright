@@ -578,7 +578,10 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         'demo-change',
       ]) as { changeId: string; tasks: unknown[]; contractDigest: string };
       assert.equal(validation.changeId, 'demo-change');
-      assert.equal(validation.tasks.length, 1);
+      assert.equal(
+        validation.tasks.length,
+        lifecycleStrategy === 'check-complete-finish-commit' ? 2 : 1,
+      );
       assert.match(validation.contractDigest, /^[0-9a-f]{64}$/u);
       const plan = planCommit(repository, 'demo-change');
       git(repository, ['checkout', 'trunk']);
@@ -706,13 +709,18 @@ test('installed tarball drives two complete current lifecycles over unrelated se
             : []),
           'route',
           'route',
+          'task',
+          'task',
           'archive',
         ],
       );
       assert.equal(managed[0]!.fixtureCommitId, plan.commitHash);
       assert.deepEqual(
         managed
-          .filter(({ trailers }) => trailers.kind === 'task')
+          .filter(
+            ({ trailers }) =>
+              trailers.kind === 'task' && trailers.changeId === 'demo-change',
+          )
           .map(({ fixtureCommitId }) => fixtureCommitId),
         taskCommitHashes,
       );
@@ -1598,15 +1606,6 @@ function hasExactLocalWorkflowCode(code: string): (error: unknown) => boolean {
     error instanceof Error && error.message.includes(`\"code\":\"${code}\"`);
 }
 
-function abortTask(repository: string, sessionId: string): void {
-  runCli(repository, [
-    'abort',
-    sessionId,
-    '--reason',
-    'Portability fixture complete.',
-  ]);
-}
-
 function archiveChange(repository: string, changeId: string): ArchiveCommit {
   return (
     runCli(repository, ['archive', changeId]) as {
@@ -1710,6 +1709,24 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
     );
     fs.writeFileSync(secondGuard, guardPreimage);
 
+    const firstTaskPath = path.join(
+      first.worktree,
+      'src/parallel-one/feature.ts',
+    );
+    fs.mkdirSync(path.dirname(firstTaskPath), { recursive: true });
+    fs.writeFileSync(
+      firstTaskPath,
+      'export const parallelOneFeature = true;\n',
+    );
+    const firstTask = (
+      runCli(first.worktree, [
+        'finalize',
+        firstSessionId,
+        '--message',
+        'Complete first portable concurrent task',
+      ]) as { result: ManagedCommit }
+    ).result;
+
     const secondTaskPath = path.join(
       second.worktree,
       'src/parallel-two/feature.ts',
@@ -1728,12 +1745,8 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       ]) as { result: ManagedCommit }
     ).result;
 
-    fs.writeFileSync(
-      path.join(repository, 'src/portable-base-update.ts'),
-      'export const portableBaseUpdate = true;\n',
-    );
-    git(repository, ['add', 'src/portable-base-update.ts']);
-    git(repository, ['commit', '-m', 'Advance portable fixture base']);
+    git(repository, ['merge', '--ff-only', firstTask.commitHash]);
+    syncProtectedBase(repository);
     const ontoCommit = git(repository, ['rev-parse', 'trunk']).trim();
     const update = runCli(second.worktree, [
       'update-base',
@@ -1746,12 +1759,33 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
         ontoCommit: string;
         oldHead: string;
         newHead: string;
+        revalidated: {
+          planningGenerationId: string;
+          allowedPaths: string[];
+        };
+        assurance: {
+          base: string;
+          head: string;
+          checkIds: string[];
+        };
       };
     };
     assert.equal(update.result.changeId, second.changeId);
     assert.equal(update.result.ontoCommit, ontoCommit);
     assert.equal(update.result.oldHead, secondTask.commitHash);
     assert.notEqual(update.result.oldHead, update.result.newHead);
+    assert.match(
+      update.result.revalidated.planningGenerationId,
+      /^[a-f0-9]{64}$/u,
+    );
+    assert.deepEqual(update.result.revalidated.allowedPaths, [
+      'src/parallel-two/**',
+    ]);
+    assert.deepEqual(update.result.assurance, {
+      base: ontoCommit,
+      head: update.result.newHead,
+      checkIds: ['text-check'],
+    });
     const status = taskStatus(second.worktree, secondSessionId);
     assert.equal(status.session.state, 'committed');
     assert.equal(status.session.commitHash, secondTask.commitHash);
@@ -1759,8 +1793,12 @@ function exerciseConcurrentWorktreesAndUpdateBase(repository: string): void {
       git(second.worktree, ['rev-parse', 'HEAD']).trim(),
       update.result.newHead,
     );
-
-    abortTask(first.worktree, firstSessionId);
+    git(repository, ['merge', '--ff-only', update.result.newHead]);
+    assert.equal(
+      git(repository, ['rev-parse', 'trunk']).trim(),
+      update.result.newHead,
+    );
+    syncProtectedBase(repository);
   } finally {
     for (const fixture of fixtures.reverse()) {
       git(repository, ['worktree', 'remove', '--force', fixture.worktree]);
@@ -1858,7 +1896,7 @@ function addChangeSkeleton(
   };
   guard.changeId = changeId;
   guard.tasks['1.1']!.allowedPaths = [allowedPath];
-  if (changeId === 'parallel-two') {
+  if (changeId === 'parallel-one' || changeId === 'parallel-two') {
     fs.appendFileSync(
       path.join(target, 'tasks.md'),
       '\n- [ ] 1.2 Complete the post-refresh follow-up\n',
