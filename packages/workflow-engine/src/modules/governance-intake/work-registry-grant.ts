@@ -1,5 +1,9 @@
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
 import type {
   GrantRequestInput,
   StateBinding,
@@ -16,9 +20,14 @@ import type {
 import { grantTransitionPreconditionChanged } from '../authority/grant-transition-registry.ts';
 import {
   applyWorkItemReview,
+  hasExactWorkItemPromotionReceipt,
+  observeWorkItemPromotionSurveyDigest,
   promoteWorkItem,
+  readWorkItemPromotionSurveyDigest,
   showWorkItem,
   workItemDigest,
+  type WorkItemPromotionGrantBindingV1,
+  type WorkItemPromotionTestHooks,
   type WorkItemReviewV1,
 } from './work-registry.ts';
 
@@ -41,6 +50,7 @@ type PromotionParametersV1 = Readonly<{
   workItemId: string;
   changeId: string;
   expectedDigest: `sha256:${string}`;
+  surveyDigest: `sha256:${string}`;
   stateBindingDigest: `sha256:${string}`;
 }>;
 
@@ -110,14 +120,20 @@ export function createWorkRegistryPromotionGrantRequest(
   const workItemId = exactWorkItemId(input.workItemId);
   const changeId = exactChangeId(input.changeId);
   const expectedDigest = exactDigest(input.expectedDigest);
-  const stateBinding = observeWorkItem(input.repositoryRoot, workItemId);
-  if (expectedDigest !== stateBinding.digest) {
+  const itemBinding = observeWorkItem(input.repositoryRoot, workItemId);
+  if (expectedDigest !== itemBinding.digest) {
     throw grantInvalid(
       'WORK_REGISTRY_GRANT_STALE',
       'Protected Work Registry promotion no longer matches the current item.',
       ExitCode.conflict,
     );
   }
+  const surveyDigest = observeWorkItemPromotionSurveyDigest(
+    input.repositoryRoot,
+    workItemId,
+    changeId,
+  );
+  const stateBinding = promotionStateBinding(expectedDigest, surveyDigest);
   return freezeGrantCanonical({
     sourceModuleId: 'work-registry',
     failureCode: 'work-registry.protected-transition',
@@ -137,6 +153,7 @@ export function createWorkRegistryPromotionGrantRequest(
           workItemId,
           changeId,
           expectedDigest,
+          surveyDigest,
           stateBindingDigest: stateBinding.digest,
         },
         allowedReasonCodes: [APPROVAL_REASON_CODE],
@@ -150,6 +167,7 @@ export function createWorkRegistryPromotionGrantRequest(
 export function workRegistryGrantTransitionDefinitions(
   repositoryRoot: string,
   now: () => string = () => new Date().toISOString(),
+  testHooks: WorkItemPromotionTestHooks = {},
 ): readonly [
   TransitionDefinition<ReviewParametersV1>,
   TransitionDefinition<PromotionParametersV1>,
@@ -195,7 +213,17 @@ export function workRegistryGrantTransitionDefinitions(
     Object.freeze({
       transitionId: PROMOTION_TRANSITION_ID,
       parameterSchemaDigest: grantSha256(
-        canonicalJson({ schema: 'work-registry-promotion-parameters.v1' }),
+        canonicalJson({
+          schema: 'work-registry-promotion-parameters.v1',
+          required: [
+            'changeId',
+            'expectedDigest',
+            'schemaVersion',
+            'stateBindingDigest',
+            'surveyDigest',
+            'workItemId',
+          ],
+        }),
       ),
       consequenceDigest: grantSha256(canonicalJson(renderPromotionChoice())),
       resolutionKind: 'non-retry' as const,
@@ -203,23 +231,67 @@ export function workRegistryGrantTransitionDefinitions(
       validateParameters: assertPromotionParameters,
       renderTrustedChoice: renderPromotionChoice,
       observeState(parameters) {
-        return observeWorkItem(repositoryRoot, parameters.workItemId);
+        return observeWorkItemPromotionState(repositoryRoot, parameters);
       },
       async execute(context): Promise<TransitionOutcome> {
+        const grantBinding: WorkItemPromotionGrantBindingV1 = {
+          schemaVersion: 1,
+          challengeId: context.challengeId,
+          operationId: context.operationId,
+          approvalSubjectDigest: context.approvalSubjectDigest,
+          surveyDigest: context.parameters.surveyDigest,
+        };
         context.assertLifecycleOwned();
+        if (
+          context.recovered &&
+          hasExactWorkItemPromotionReceipt(
+            repositoryRoot,
+            context.parameters.workItemId,
+            context.parameters.changeId,
+            context.parameters.expectedDigest,
+            grantBinding,
+          )
+        ) {
+          context.assertLifecycleOwned();
+          return {
+            outcome: 'completed',
+            details: {
+              action: 'promote',
+              workItemId: context.parameters.workItemId,
+              changeId: context.parameters.changeId,
+            },
+          };
+        }
+        const authorizedState = observeWorkItemPromotionState(
+          repositoryRoot,
+          context.parameters,
+        );
         assertCurrentBinding(
-          observeWorkItem(repositoryRoot, context.parameters.workItemId),
+          authorizedState,
           context.parameters.stateBindingDigest,
         );
         context.assertLifecycleOwned();
-        const promoted = promoteWorkItem(
-          repositoryRoot,
-          context.parameters.workItemId,
-          context.parameters.changeId,
-          now,
-          context.parameters.expectedDigest,
-          true,
-        );
+        let promoted: ReturnType<typeof promoteWorkItem>;
+        try {
+          promoted = promoteWorkItem(
+            repositoryRoot,
+            context.parameters.workItemId,
+            context.parameters.changeId,
+            now,
+            context.parameters.expectedDigest,
+            true,
+            testHooks,
+            grantBinding,
+          );
+        } catch (error) {
+          if (isPromotionSurveyPreconditionError(error)) {
+            throw grantTransitionPreconditionChanged(
+              'WORK_REGISTRY_GRANT_STALE',
+              'Work Registry promotion survey changed after Grant approval.',
+            );
+          }
+          throw error;
+        }
         return {
           outcome: 'completed',
           details: {
@@ -231,6 +303,61 @@ export function workRegistryGrantTransitionDefinitions(
       },
     }),
   ];
+}
+
+function observeWorkItemPromotionState(
+  repositoryRoot: string,
+  parameters: PromotionParametersV1,
+): StateBinding {
+  const itemBinding = observeWorkItem(repositoryRoot, parameters.workItemId);
+  let surveyDigest: `sha256:${string}`;
+  try {
+    surveyDigest = readWorkItemPromotionSurveyDigest(
+      repositoryRoot,
+      parameters.workItemId,
+      parameters.changeId,
+    );
+  } catch (error) {
+    if (!(error instanceof WorkflowError)) throw error;
+    surveyDigest = grantSha256(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'work-registry-promotion-survey-unavailable.v1',
+        errorCode: error.code,
+      }),
+    );
+  }
+  return promotionStateBinding(itemBinding.digest, surveyDigest);
+}
+
+function promotionStateBinding(
+  itemDigest: string,
+  surveyDigest: string,
+): StateBinding {
+  return {
+    kind: 'work-registry-promotion-state.v1',
+    digest: grantSha256(
+      canonicalJson({
+        schemaVersion: 1,
+        kind: 'work-registry-promotion-state.v1',
+        itemDigest: exactDigest(itemDigest),
+        surveyDigest: exactDigest(surveyDigest),
+      }),
+    ),
+  };
+}
+
+function isPromotionSurveyPreconditionError(
+  error: unknown,
+): error is WorkflowError {
+  return (
+    error instanceof WorkflowError &&
+    [
+      'WORK_REGISTRY_GRANT_STALE',
+      'WORK_REGISTRY_INVALID',
+      'WORK_REGISTRY_SURVEY_REQUIRED',
+    ].includes(error.code)
+  );
 }
 
 function observeWorkItem(
@@ -285,6 +412,7 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
       'expectedDigest',
       'schemaVersion',
       'stateBindingDigest',
+      'surveyDigest',
       'workItemId',
     ]) ||
     value.schemaVersion !== 1
@@ -293,12 +421,19 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
   }
   const expectedDigest = exactDigest(value.expectedDigest);
   const stateBindingDigest = exactDigest(value.stateBindingDigest);
-  if (expectedDigest !== stateBindingDigest) throw grantParametersInvalid();
+  const surveyDigest = exactDigest(value.surveyDigest);
+  if (
+    promotionStateBinding(expectedDigest, surveyDigest).digest !==
+    stateBindingDigest
+  ) {
+    throw grantParametersInvalid();
+  }
   return {
     schemaVersion: 1,
     workItemId: exactWorkItemId(value.workItemId),
     changeId: exactChangeId(value.changeId),
     expectedDigest,
+    surveyDigest,
     stateBindingDigest,
   };
 }

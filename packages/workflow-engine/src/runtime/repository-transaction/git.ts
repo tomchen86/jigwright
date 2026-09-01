@@ -13,6 +13,11 @@ import {
 import { createTrustedExecutionEnvironment } from '../provider-execution/execution-environment.ts';
 import { normalizeChangedPath } from '../session-workspace/paths.ts';
 
+export {
+  publishPreparedExclusiveLock,
+  reclaimDeadPreparedLock,
+} from './filesystem-safety.ts';
+
 export const POST_APPROVAL_ADMISSION_LIMIT_MS = 10_000;
 
 export type PostApprovalBudgetTestOptions = {
