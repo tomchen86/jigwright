@@ -19,7 +19,6 @@ import {
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
@@ -30,6 +29,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  prepareCurrentV3IntroductionFixture,
   runtimeRoot,
   sourceRepositoryRoot,
   syncOriginMain,
@@ -386,13 +386,14 @@ function createArchivedFixtureTemplate(): ArchivedFixture {
     'workflow/maintainer-policy.json',
   ]);
   git(repository, ['commit', '-m', 'Configure review policies']);
-  syncOriginMain(repository);
-  git(repository, ['checkout', '-b', 'work/demo-change']);
   const deltaPath = path.join(
     repository,
     'openspec/changes/demo-change/specs/demo/spec.md',
   );
   fs.writeFileSync(deltaPath, addedDelta());
+  git(repository, ['add', '-A']);
+  git(repository, ['commit', '-m', 'Configure archive delta']);
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
   writeReadyV3ExemptChange(repository);
   fs.chmodSync(runtimeRoot(repository), 0o700);
   commitPlanningTransition(repository, 'demo-change');
@@ -528,25 +529,9 @@ function amendArchive(repository: string): string {
 }
 
 function createArchiveHistoryRepository(): string {
-  const repository = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'workflow-ci-archive-history-'),
-  );
-  git(repository, ['init', '-b', 'main']);
-  git(repository, ['config', 'user.email', 'workflow@example.test']);
-  git(repository, ['config', 'user.name', 'Workflow Test']);
-  fs.mkdirSync(path.join(repository, 'workflow'), { recursive: true });
-  fs.writeFileSync(
-    path.join(repository, 'workflow/config.json'),
-    `${canonicalJson({
-      schemaVersion: 1,
-      repositoryName: 'fixture',
-      changeRoot: 'openspec/changes',
-      runtimeDirectory: 'workflow-engine',
-      protectedBranches: ['main', 'master'],
-      branchTemplate: 'work/{changeId}',
-    })}\n`,
-  );
-  commitHistory(repository, 'Create archive history fixture');
+  const repository = createFixtureRepository();
+  prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+  writeReadyV3ExemptChange(repository);
   return repository;
 }
 
@@ -558,32 +543,52 @@ function writeHistoricalPlanReviewGrant(
     transitionDigest: string;
   },
 ): void {
-  const reviewNode = createEvidenceNode({
-    type: 'fixture-plan-review',
-    nodeSchema: 'fixture.plan-review.v1',
-    evaluator: 'fixture.plan-review.v1',
-    policyDigest: '1'.repeat(64),
-    exactInputDigests: { target: '2'.repeat(64) },
-    semanticParentResultDigests: {},
-    provenanceParentNodeIds: {},
-    outputSchema: 'fixture.plan-review-output.v1',
-    output: { verdict: 'advisory-approve' },
-    runtimeMetadata: {},
-  });
+  const digest = grantUse.transitionDigest;
   const artifactPath = path.join(
     repository,
     'openspec/changes/demo-change/plan-review.json',
   );
-  fs.mkdirSync(path.dirname(artifactPath), { recursive: true });
+  const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8')) as {
+    roleResults: unknown[];
+  };
+  assert.equal(artifact.roleResults.length >= 1, true);
   fs.writeFileSync(
     artifactPath,
     `${canonicalJson({
-      schemaVersion: 1,
-      kind: 'plan-review-artifact',
-      changeId: 'demo-change',
-      nodes: [reviewNode],
-      currentRefs: { planReview: reviewNode.nodeId },
-      roleResults: [{ grantUse }],
+      ...artifact,
+      roleResults: [
+        artifact.roleResults[0],
+        {
+          schemaVersion: 1,
+          form: 'granted-caller-supplied',
+          role: 'plan-reviewer',
+          targetDigest: digest,
+          assignment: {},
+          author: {},
+          participant: {},
+          orchestration: 'caller-supplied',
+          requiredIndependence: 'provider-independent',
+          achievedIndependence: 'none',
+          content: {
+            kind: 'plan-review',
+            nodeId: digest,
+            resultDigest: digest,
+            outputSchema: {
+              id: 'fixture.plan-review.v1',
+              version: 1,
+              digest,
+            },
+            evaluator: 'fixture.plan-review.v1',
+            policyDigest: digest,
+            contentDigest: digest,
+            current: true,
+          },
+          providerInvocation: null,
+          grantUse,
+          directHumanReviewAttestation: null,
+          resultDigest: digest,
+        },
+      ],
     })}\n`,
   );
 }
