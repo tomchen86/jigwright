@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:a480e26b67b774914eacd175ae91cde8bcc2fe19031da481747ad2b208637bbc"
+      "digest": "sha256:4d4da3f03d75cba75b4bd563bc54307d84a1692a0406f3a116a6dfb2cc0d9f4d"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -58,7 +58,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:bfc28b7b953aa5c3161fa1975d453f320e72bfe5602b4b865d03e38f32792f20"
+      "digest": "sha256:da5e6c05a132e92b18b98205f74b2056d9ab0cd6c91d27306ea1360cc01b8b37"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
@@ -114,6 +114,11 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/job-attempt-runtime.js",
       "mode": "100644",
       "digest": "sha256:497db5dfedd7854aaaa05473764bf1f3a02f59f8af3ee79a3e5ddee790263d57"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/planning-provider-binding.js",
+      "mode": "100644",
+      "digest": "sha256:1846281ffc14e846615d7f489cd04d0cbea24f56f418892258a976f294e3297e"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/read-only-probe.js",
@@ -643,7 +648,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/planning-paths.js",
       "mode": "100644",
-      "digest": "sha256:00017b71890ca3882e3b73d6cab4c18d43c71467e45fdc1782d85f57394cf6a8"
+      "digest": "sha256:48f44a21f265b6331f4320d47499d2f76bd5bdfc609f4a28064be04557746d69"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/planning-role-policy-paths.js",
