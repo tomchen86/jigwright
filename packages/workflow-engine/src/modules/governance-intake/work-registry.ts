@@ -977,6 +977,29 @@ export function validateWorkRegistry(repositoryRoot: string): {
   return { itemCount: itemIds.size, sourceCount: sourceIds.size };
 }
 
+/**
+ * Admit an optional current change origin through the same citation and
+ * bidirectional-link validation used by the public registry validator. The
+ * current planning contract calls this boundary for both its live checkout and
+ * its immutable detached-worktree replay.
+ */
+export function validateCurrentChangeOrigin(
+  repositoryRoot: string,
+  requestedChangeId: string,
+): void {
+  const configuration =
+    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
+  if (configuration === null) return;
+  const changeId = changeIdentity(requestedChangeId);
+  const originPath = path.join(
+    repositoryConsumerPath(repositoryRoot, configuration.changeOriginRoot),
+    changeId,
+    'origin.json',
+  );
+  if (readOptionalPlainFile(originPath) === null) return;
+  validateWorkRegistry(repositoryRoot);
+}
+
 function parseWorkItem(value: unknown): WorkItemV1 {
   if (!isRecord(value) || !hasExactKeys(value, ITEM_KEYS)) {
     throw registryInvalid('Work Item is invalid.');
@@ -1114,7 +1137,12 @@ function mergeOrigin(
 }
 
 function parseOrigin(existingText: string): ChangeOriginV1 {
-  const value: unknown = JSON.parse(existingText);
+  let value: unknown;
+  try {
+    value = JSON.parse(existingText);
+  } catch {
+    throw registryInvalid('Change origin is invalid.');
+  }
   if (
     !isRecord(value) ||
     !hasExactKeys(value, ORIGIN_KEYS) ||
@@ -1132,7 +1160,18 @@ function parseOrigin(existingText: string): ChangeOriginV1 {
   ) {
     throw registryInvalid('Change origin is invalid.');
   }
-  return value as ChangeOriginV1;
+  const origin = value as unknown as ChangeOriginV1;
+  const canonicalSourceRefs = sourceReferences(origin.sourceRefs);
+  const canonicalWorkItemRefs = workItemReferences(origin.workItemRefs);
+  if (
+    JSON.stringify(origin.sourceRefs) !== JSON.stringify(canonicalSourceRefs) ||
+    JSON.stringify(origin.workItemRefs) !==
+      JSON.stringify(canonicalWorkItemRefs) ||
+    existingText !== `${canonicalJson(origin)}\n`
+  ) {
+    throw registryInvalid('Change origin is invalid.');
+  }
+  return origin;
 }
 
 const ORIGIN_KEYS = ['schemaVersion', 'sourceRefs', 'workItemRefs'] as const;
@@ -1271,12 +1310,36 @@ function assertPromotionSurveyCurrent(
   const surveyPath = path.join(changeDirectory, 'survey.json');
   const source = readOptionalPlainFile(surveyPath);
   if (source === null) {
-    throw workflowError(
-      'WORK_REGISTRY_SURVEY_REQUIRED',
+    throw promotionSurveyRequired(
       'Promotion requires a current premise survey.',
-      ExitCode.conflict,
     );
   }
+  const survey = parsePromotionSurvey(source);
+  if (survey.workItemId !== item.id || survey.changeId !== changeId) {
+    throw registryInvalid('Promotion survey is invalid.');
+  }
+  const currentHead = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+  if (survey.surveyedCommit !== currentHead) {
+    throw promotionSurveyRequired(
+      'Promotion survey is stale for the current repository head.',
+    );
+  }
+  const currentSymbols = survey.symbols.map(({ symbol }) => ({
+    symbol,
+    consumerPaths: listSymbolConsumers(
+      repositoryRoot,
+      survey.surveyedCommit,
+      symbol,
+    ),
+  }));
+  if (canonicalJson(survey.symbols) !== canonicalJson(currentSymbols)) {
+    throw promotionSurveyRequired(
+      'Promotion survey consumer facts do not match the surveyed Git commit.',
+    );
+  }
+}
+
+function parsePromotionSurvey(source: string): WorkItemPromotionSurveyV1 {
   let value: unknown;
   try {
     value = JSON.parse(source);
@@ -1294,8 +1357,10 @@ function assertPromotionSurveyCurrent(
       'workItemId',
     ]) ||
     value.schemaVersion !== 1 ||
-    value.workItemId !== item.id ||
-    value.changeId !== changeId ||
+    typeof value.workItemId !== 'string' ||
+    !/^WORK-[0-9A-HJKMNP-TV-Z]{26}$/.test(value.workItemId) ||
+    typeof value.changeId !== 'string' ||
+    changeIdentity(value.changeId) !== value.changeId ||
     typeof value.surveyedCommit !== 'string' ||
     !/^[0-9a-f]{40,64}$/.test(value.surveyedCommit) ||
     !Array.isArray(value.symbols) ||
@@ -1307,18 +1372,33 @@ function assertPromotionSurveyCurrent(
         !Array.isArray(entry.consumerPaths) ||
         entry.consumerPaths.some((consumer) => typeof consumer !== 'string'),
     ) ||
-    (value.emptyReason !== null && typeof value.emptyReason !== 'string')
+    (value.emptyReason !== null &&
+      (typeof value.emptyReason !== 'string' ||
+        boundedText(value.emptyReason, 500, 'survey reason') !==
+          value.emptyReason)) ||
+    (value.symbols.length === 0 && value.emptyReason === null) ||
+    (value.symbols.length > 0 && value.emptyReason !== null)
   ) {
     throw registryInvalid('Promotion survey is invalid.');
   }
-  const currentHead = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
-  if (value.surveyedCommit !== currentHead) {
-    throw workflowError(
-      'WORK_REGISTRY_SURVEY_REQUIRED',
-      'Promotion survey is stale for the current repository head.',
-      ExitCode.conflict,
-    );
+  const survey = value as unknown as WorkItemPromotionSurveyV1;
+  const symbols = survey.symbols.map(({ symbol }) => symbol);
+  if (
+    new Set(symbols).size !== symbols.length ||
+    JSON.stringify(symbols) !== JSON.stringify([...symbols].sort()) ||
+    source !== `${canonicalJson(survey)}\n`
+  ) {
+    throw registryInvalid('Promotion survey is invalid.');
   }
+  return survey;
+}
+
+function promotionSurveyRequired(message: string) {
+  return workflowError(
+    'WORK_REGISTRY_SURVEY_REQUIRED',
+    message,
+    ExitCode.conflict,
+  );
 }
 
 function assertPromotionEligible(

@@ -993,7 +993,11 @@ test('the configured current schema owns investigation-first contract semantics'
     );
     fs.writeFileSync(
       path.join(changeDirectory, 'origin.json'),
-      `${canonicalJson({ schemaVersion: 1, sources: [] })}\n`,
+      `${canonicalJson({
+        schemaVersion: 1,
+        sourceRefs: [],
+        workItemRefs: [],
+      })}\n`,
     );
     fs.writeFileSync(
       path.join(changeDirectory, 'survey.json'),

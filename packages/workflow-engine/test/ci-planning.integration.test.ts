@@ -659,6 +659,73 @@ test('CI accepts an exact planning introduction reconstructed from Git', () => {
   }
 });
 
+test('current planning and immutable CI reject dangling or noncanonical governance origins without mutation', () => {
+  const originPath = `openspec/changes/${CHANGE_ID}/origin.json`;
+  const cases = [
+    {
+      name: 'dangling Source citation',
+      bytes: `${canonicalJson({
+        schemaVersion: 1,
+        sourceRefs: [`SRC-${'f'.repeat(64)}`],
+        workItemRefs: [],
+      })}\n`,
+    },
+    {
+      name: 'noncanonical bytes',
+      bytes: `${JSON.stringify(
+        { schemaVersion: 1, sourceRefs: [], workItemRefs: [] },
+        null,
+        2,
+      )}\n`,
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const repository = prepareCurrentV3IntroductionRepository();
+    try {
+      write(repository, originPath, scenario.bytes);
+      const beforeHead = git(repository, ['rev-parse', 'HEAD']).trim();
+      const beforeStatus = git(repository, ['status', '--porcelain=v1', '-z']);
+
+      assert.throws(
+        () => commitPlanningTransition(repository, CHANGE_ID),
+        (error) => isWorkflowError(error, 'WORK_REGISTRY_INVALID'),
+        scenario.name,
+      );
+      assert.equal(
+        fs.readFileSync(path.join(repository, originPath), 'utf8'),
+        scenario.bytes,
+      );
+      assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), beforeHead);
+      assert.equal(
+        git(repository, ['status', '--porcelain=v1', '-z']),
+        beforeStatus,
+      );
+
+      const invalidCommit = commitPlan(repository);
+      assert.throws(
+        () => validateCiPlanningCommit(repository, invalidCommit, CHANGE_ID),
+        (error) => isWorkflowError(error, 'WORK_REGISTRY_INVALID'),
+        scenario.name,
+      );
+      assert.equal(
+        execFileSync('git', ['show', `${invalidCommit}:${originPath}`], {
+          cwd: repository,
+          encoding: 'utf8',
+        }),
+        scenario.bytes,
+      );
+      assert.equal(
+        git(repository, ['rev-parse', 'HEAD']).trim(),
+        invalidCommit,
+      );
+      assert.equal(git(repository, ['status', '--porcelain=v1', '-z']), '');
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  }
+});
+
 test('CI replays task authority from an immutable current-schema planning introduction', () => {
   const repository = prepareCurrentV3IntroductionRepository();
   try {

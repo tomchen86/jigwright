@@ -17,6 +17,7 @@ import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governan
 import { createWorkRegistryFailGrantResult, runCli } from '../src/cli.ts';
 import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
@@ -1842,7 +1843,7 @@ test('Work Registry CLI exposes reviewed read and render surfaces', () => {
   }
 });
 
-test('promotion prepare surveys immutable consumers before CLI promotion', () => {
+test('promotion recomputes immutable consumers and rejects poisoned same-head survey facts before mutation', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-survey-'));
   configureRepositoryConsumer(root);
   try {
@@ -1921,6 +1922,47 @@ test('promotion prepare surveys immutable consumers before CLI promotion', () =>
         consumerPaths: ['src/first.ts', 'src/second.ts'],
       },
     ]);
+    const surveyPath = path.join(root, survey.relativePath);
+    const surveyBytes = fs.readFileSync(surveyPath, 'utf8');
+    const poisonedSurvey = {
+      ...(JSON.parse(surveyBytes) as Record<string, unknown>),
+      symbols: [
+        {
+          symbol: 'sharedAuthority',
+          consumerPaths: [],
+        },
+      ],
+    };
+    const poisonedSurveyBytes = `${canonicalJson(poisonedSurvey)}\n`;
+    fs.writeFileSync(surveyPath, poisonedSurveyBytes);
+    const itemPath = path.join(
+      root,
+      'docs/work-registry/items/2026',
+      `${accepted.id}.yaml`,
+    );
+    const itemBytes = fs.readFileSync(itemPath, 'utf8');
+    const originPath = path.join(
+      root,
+      'openspec/changes/survey-change/origin.json',
+    );
+
+    assert.throws(
+      () =>
+        promoteWorkItem(
+          root,
+          accepted.id,
+          'survey-change',
+          () => '2026-08-24T04:44:00.000Z',
+          workItemDigest(accepted),
+          true,
+        ),
+      hasCode('WORK_REGISTRY_SURVEY_REQUIRED'),
+    );
+    assert.equal(fs.readFileSync(surveyPath, 'utf8'), poisonedSurveyBytes);
+    assert.equal(fs.readFileSync(itemPath, 'utf8'), itemBytes);
+    assert.equal(fs.existsSync(originPath), false);
+
+    fs.writeFileSync(surveyPath, surveyBytes);
     const promoted = promoteWorkItem(
       root,
       accepted.id,

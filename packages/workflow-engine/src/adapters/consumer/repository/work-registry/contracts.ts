@@ -47,6 +47,7 @@ import {
 } from '../../../planning/investigation/evidence-convergence.ts';
 import { engineProjectionDefinitions } from '../../../../modules/projection/engine-projection-registry.ts';
 import { validateTrackedEvidenceReusePaths } from '../../../planning/investigation/evidence-reuse-path.ts';
+import { validateCurrentChangeOrigin } from '../../../../modules/governance-intake/work-registry.ts';
 import {
   assertCurrentPlanReviewProviderResultNode,
   readPlanReviewNode,
@@ -976,6 +977,10 @@ function loadChangeContractWithInvestigationSource(
   const originPath = path.join(changeDirectory, 'origin.json');
   const surveyPath = path.join(changeDirectory, 'survey.json');
   const planReviewPath = path.join(changeDirectory, 'plan-review.json');
+
+  if (schemaName === currentSchemaName) {
+    validateCurrentChangeOrigin(repositoryRoot, changeId);
+  }
 
   const requiredPaths = [
     proposalPath,
