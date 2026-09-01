@@ -1,10 +1,7 @@
 import {
-  amendmentLeftWorkMarkedDone as amendmentLeftWorkMarkedDoneWithAdapter,
-  assertPlanningTaskHistory as assertPlanningTaskHistoryWithAdapter,
   inspectPlanningTransition as inspectPlanningTransitionWithReader,
   resolveHistoricalOpenSpecPlanningTransitionBinding as resolveHistoricalOpenSpecPlanningTransitionBindingWithReader,
   resolveHistoricalOpenSpecProviderBinding as resolveHistoricalOpenSpecProviderBindingWithReader,
-  taskStates as taskStatesWithAdapter,
   validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,
 } from '../adapters/planning/openspec/documents/planning-contract.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
@@ -23,6 +20,11 @@ export {
   agentRolePlanV2Path,
   partitionPlanningRolePolicyPaths,
 } from '../modules/source/planning-role-policy-paths.ts';
+export {
+  amendmentLeftWorkMarkedDone,
+  assertPlanningTaskHistory,
+  taskStates,
+} from '../modules/planning-provider/planning-task-history.ts';
 
 export function inspectPlanningTransition(
   repositoryRoot: string,
@@ -72,26 +74,6 @@ export function validatePlanningTransition(
     changeId,
     schemaName,
   );
-}
-
-export function amendmentLeftWorkMarkedDone(
-  input: Parameters<typeof amendmentLeftWorkMarkedDoneWithAdapter>[0],
-): ReturnType<typeof amendmentLeftWorkMarkedDoneWithAdapter> {
-  return amendmentLeftWorkMarkedDoneWithAdapter(input);
-}
-
-export function assertPlanningTaskHistory(
-  before: Parameters<typeof assertPlanningTaskHistoryWithAdapter>[0],
-  after: Parameters<typeof assertPlanningTaskHistoryWithAdapter>[1],
-  options: Parameters<typeof assertPlanningTaskHistoryWithAdapter>[2] = {},
-): ReturnType<typeof assertPlanningTaskHistoryWithAdapter> {
-  return assertPlanningTaskHistoryWithAdapter(before, after, options);
-}
-
-export function taskStates(
-  tasks: Parameters<typeof taskStatesWithAdapter>[0],
-): ReturnType<typeof taskStatesWithAdapter> {
-  return taskStatesWithAdapter(tasks);
 }
 
 export function resolveHistoricalOpenSpecPlanningTransitionBinding(

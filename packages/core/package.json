@@ -27,6 +27,7 @@
     "./markdown-sections": "./src/markdown-sections.ts",
     "./planning-provider-binding": "./src/planning-provider-binding.ts",
     "./planning-provider-port": "./src/planning-provider-port.ts",
+    "./planning-task-history": "./src/planning-task-history.ts",
     "./repository-path": "./src/repository-path.ts",
     "./repository-consumer-port": "./src/repository-consumer-port.ts",
     "./runtime-path-kernel": "./src/runtime-path-kernel.ts",

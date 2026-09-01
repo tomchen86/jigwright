@@ -5,7 +5,8 @@ import { assertTaskHistory } from '../src/entrypoints/ci/ci-task-state.ts';
 import {
   amendmentLeftWorkMarkedDone,
   assertPlanningTaskHistory,
-} from '../src/adapters/planning/openspec/documents/planning-contract.ts';
+} from '../src/modules/planning-provider/planning-task-history.ts';
+import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
 
 const DONE = [
   { id: '1.1', completed: true },
@@ -49,8 +50,16 @@ test('reopening a chosen subset is refused even when authorized', () => {
         ] as never,
         { reopenAuthorized: true },
       ),
-    (error: unknown) =>
-      (error as { code?: string }).code === 'AMENDMENT_PARTIAL_REOPEN',
+    (error: unknown) => {
+      assert.ok(error instanceof WorkflowError);
+      assert.equal(error.code, 'AMENDMENT_PARTIAL_REOPEN');
+      assert.equal(error.exitCode, ExitCode.verification);
+      assert.deepEqual(error.details, {
+        reopened: ['1.1'],
+        stillCompleted: ['1.2'],
+      });
+      return true;
+    },
   );
 });
 

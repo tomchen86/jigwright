@@ -19,16 +19,14 @@ import {
   runGit,
 } from '../../../../runtime/repository-transaction/git.ts';
 import type { PlanningProviderBindingReaderPort } from '../../../../modules/planning-provider/planning-provider-binding.ts';
+import { assertPlanningTaskHistory } from '../../../../modules/planning-provider/planning-task-history.ts';
 import { normalizeChangedPath } from '../../../../runtime/session-workspace/paths.ts';
 import {
   assertPlanningPaths,
   requiredPlanningArtifactPaths,
 } from '../../../../modules/source/planning-paths.ts';
 import { loadStableValidatedChangeContract } from '../../../../composition-root/validated-contract-context.ts';
-import type {
-  PlanningTaskState,
-  PlanningTransitionReport,
-} from '../../../../runtime/storage-journal/planning-report.ts';
+import type { PlanningTransitionReport } from '../../../../runtime/storage-journal/planning-report.ts';
 import type { ResolvedPlanningProviderBinding } from '../../../../modules/planning-provider/planning-provider-binding.ts';
 import { planningProviderBindingPath } from '../../../../modules/source/planning-paths.ts';
 import {
@@ -199,93 +197,6 @@ export function validateOpenSpecPlanning(
   };
 }
 
-/**
- * Whether an amendment declared its execution invalid and then left it marked
- * done.
- *
- * One definition, consulted by the transition and by CI replay alike. Two
- * copies of this condition is how an engine mints a commit its own replay
- * rejects, so the copies are gone: only the error each side raises differs.
- */
-export function amendmentLeftWorkMarkedDone(input: {
-  reopenAuthorized: boolean;
-  reopenedTasks: readonly string[];
-  beforeTasks: readonly ParsedTask[] | undefined;
-}): boolean {
-  return (
-    input.reopenAuthorized &&
-    input.reopenedTasks.length === 0 &&
-    (input.beforeTasks ?? []).some(({ completed }) => completed)
-  );
-}
-
-export function assertPlanningTaskHistory(
-  before: ParsedTask[] | undefined,
-  after: ParsedTask[],
-  options: { reopenAuthorized?: boolean } = {},
-): string[] {
-  if (!before) {
-    if (after.some(({ completed }) => completed)) {
-      throw invalidTaskState();
-    }
-    return [];
-  }
-  const beforeById = new Map(before.map((task) => [task.id, task]));
-  const afterById = new Map(after.map((task) => [task.id, task]));
-  const removedCompleted = before.some(
-    (task) => task.completed && !afterById.has(task.id),
-  );
-  if (removedCompleted) {
-    // Dropping a completed task loses the record that it was ever done, which
-    // no authorization makes acceptable.
-    throw invalidTaskState();
-  }
-
-  const newlyCompleted = after.filter(
-    (task) => !beforeById.get(task.id)?.completed && task.completed,
-  );
-  const reopened = after
-    .filter((task) => beforeById.get(task.id)?.completed && !task.completed)
-    .map(({ id }) => id);
-
-  if (newlyCompleted.length > 0) {
-    // A plan may not mark work done; only the task transition may.
-    throw invalidTaskState();
-  }
-  if (reopened.length === 0) return [];
-  if (!options.reopenAuthorized) {
-    throw invalidTaskState();
-  }
-
-  // Authorized reopening is all or nothing. Reopening a chosen subset would be
-  // a claim that the rest of the completed work is unaffected by the
-  // correction, and nothing here can establish that; redoing everything is the
-  // answer that does not require the claim.
-  const previouslyCompleted = before
-    .filter((task) => task.completed)
-    .map(({ id }) => id);
-  if (reopened.length !== previouslyCompleted.length) {
-    throw workflowError(
-      'AMENDMENT_PARTIAL_REOPEN',
-      'An amendment that reopens execution reopens all of it; a chosen subset would claim the rest is unaffected.',
-      ExitCode.verification,
-      {
-        details: {
-          reopened,
-          stillCompleted: previouslyCompleted.filter(
-            (id) => !reopened.includes(id),
-          ),
-        },
-      },
-    );
-  }
-  return reopened.sort();
-}
-
-export function taskStates(tasks: ParsedTask[]): PlanningTaskState[] {
-  return tasks.map(({ id, completed }) => ({ id, completed }));
-}
-
 function assertPlanningArtifactTree(
   repositoryRoot: string,
   changeRoot: string,
@@ -393,14 +304,6 @@ export function readFileAtCommit(
 
 function relative(root: string, target: string): string {
   return path.relative(root, target).split(path.sep).join('/');
-}
-
-function invalidTaskState() {
-  return workflowError(
-    'PLANNING_TASK_STATE_INVALID',
-    'Planning transition may not project task completion state.',
-    ExitCode.guard,
-  );
 }
 
 function unsafePlanningTree() {

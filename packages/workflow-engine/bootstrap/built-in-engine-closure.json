@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:5cb6e9666b212992f2dc482875efd8598af704c59d4767512e0c69377306a27c"
+      "digest": "sha256:78c1b49f1fce83f3102c02b6e0e9781cacc720a4b3876d6c4d8e6d45156c808a"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -164,6 +164,11 @@
       "path": "node_modules/@jigwright/core/src/planning-provider-port.ts",
       "mode": "100644",
       "digest": "sha256:dc6879810ba4727ab02fc4d49bf388eed1e1af7387a1cfe7ac1d49a69f7b13c4"
+    },
+    {
+      "path": "node_modules/@jigwright/core/src/planning-task-history.ts",
+      "mode": "100644",
+      "digest": "sha256:28aeb733abcbd4251c5db51aaf46d2ad3635c5b5ff5186b3a5c7c770a60cd5bf"
     },
     {
       "path": "node_modules/@jigwright/core/src/repository-consumer-port.ts",
@@ -433,7 +438,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
       "mode": "100644",
-      "digest": "sha256:c94c80e359a40e58ac2f40a7df9cebebfb3d2366678c5bc85bcc1b77690834b3"
+      "digest": "sha256:188490cac6f4c6247493a51ddd257ff6ccb03c3a02d5bdfa432c4873da2079d7"
     },
     {
       "path": "src/adapters/providers/built-in-provider-definition.ts",
@@ -673,7 +678,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:f29a8944476c8fd2729c9d4ce05e669a3b32301d490bf72ffa96c0e4b2a46dc3"
+      "digest": "sha256:d84963556ce1a3df06563dbd4f03c460a6b5d7528820c38da33a9fa5c6a2d613"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -818,7 +823,7 @@
     {
       "path": "src/composition-root/planning-provider-production.ts",
       "mode": "100644",
-      "digest": "sha256:b00aa906c16b07a913e857f91df5966ff889e97463a52bf29367e70575319255"
+      "digest": "sha256:b7e83b82acb34e985a29ce2d9a0b00e0275d0a1614295340f20340a4dbf0d369"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",
@@ -1539,6 +1544,11 @@
       "path": "src/modules/planning-provider/planning-provider-port.ts",
       "mode": "100644",
       "digest": "sha256:9cfaaf1ebac6a51439f721baaaf8b658ef34bc808ccb05be31a4bf3fbaaff449"
+    },
+    {
+      "path": "src/modules/planning-provider/planning-task-history.ts",
+      "mode": "100644",
+      "digest": "sha256:468e7eb04313c4c5536a610201a04430ffa7eeef504323251067c00f60ce5b7c"
     },
     {
       "path": "src/modules/projection/engine-projection-registry.ts",

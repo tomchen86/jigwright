@@ -78,15 +78,17 @@ test('plan-commit task history crosses the production planning composition root'
     applicationSource,
     /adapters\/planning\/openspec\/documents\/planning-contract/u,
   );
+  assert.match(
+    compositionSource,
+    /from '\.\.\/modules\/planning-provider\/planning-task-history\.ts';/u,
+  );
+  assert.doesNotMatch(compositionSource, /TaskHistoryWithAdapter/u);
   for (const exportName of [
     'amendmentLeftWorkMarkedDone',
     'assertPlanningTaskHistory',
     'taskStates',
   ]) {
-    assert.match(
-      compositionSource,
-      new RegExp(`export function ${exportName}\\(`, 'u'),
-    );
+    assert.match(compositionSource, new RegExp(`\\b${exportName},`, 'u'));
   }
 });
 

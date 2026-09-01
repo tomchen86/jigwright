@@ -248,8 +248,16 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "coupled",
-      "t3Disposition": "Planning inspection, plan-commit validation and task-history policy, plus CI planning task replay now cross the production planning composition root; plan-commit and CI-planning no longer import the OpenSpec planning contract directly, while propose-orchestrator, archive, CI archive, and OpenSpec path assumptions retain coupling, so standalone adapter extraction remains.",
+      "t3Disposition": "Planning inspection and validation cross the production planning composition root; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Plan-commit and CI-planning no longer import the OpenSpec planning contract directly, while propose-orchestrator still uses its immutable reader and OpenSpec authoring adapter, and archive/CI path assumptions remain, so standalone adapter extraction is incomplete.",
       "evidence": [
+        {
+          "path": "packages/core/src/planning-task-history.ts",
+          "contains": [
+            "export class PlanningTaskHistoryError extends TypeError",
+            "export function assertPlanningTaskHistory<",
+            "export function taskStates<"
+          ]
+        },
         {
           "path": "packages/workflow-engine/src/modules/planning-provider/planning-provider-port.ts",
           "contains": [
@@ -260,9 +268,8 @@
         {
           "path": "packages/workflow-engine/src/composition-root/planning-provider-production.ts",
           "contains": [
-            "assertPlanningTaskHistory as assertPlanningTaskHistoryWithAdapter,",
             "validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,",
-            "export function assertPlanningTaskHistory(",
+            "from '../modules/planning-provider/planning-task-history.ts';",
             "export function validatePlanningTransition("
           ]
         },

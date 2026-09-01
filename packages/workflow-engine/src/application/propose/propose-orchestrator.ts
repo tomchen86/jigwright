@@ -242,10 +242,8 @@ import {
   normalizeExactRepositoryPath,
   normalizePolicyPath,
 } from '../../runtime/session-workspace/paths.ts';
-import {
-  assertPlanningTaskHistory,
-  readFileAtCommit,
-} from '../../adapters/planning/openspec/documents/planning-contract.ts';
+import { readFileAtCommit } from '../../adapters/planning/openspec/documents/planning-contract.ts';
+import { assertPlanningTaskHistory } from '../../modules/planning-provider/planning-task-history.ts';
 import {
   projectWorkflowPlanDigest,
   type WorkflowPlanDigest,
