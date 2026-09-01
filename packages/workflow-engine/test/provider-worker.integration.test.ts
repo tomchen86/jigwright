@@ -131,7 +131,7 @@ import {
 import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
 import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
-import { createAsyncCliDispatcherForTesting } from '../src/cli.ts';
+import { createAsyncCliDispatcherForTesting, runCli } from '../src/cli.ts';
 import {
   createProviderWorkerDispatcherForTesting,
   runProviderWorker,
@@ -142,6 +142,43 @@ import {
   git,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
+
+test('synchronous CLI refuses the hidden provider worker before repository access', () => {
+  const directory = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'provider-worker-sync-cli-'),
+  );
+  const originalStderrWrite = process.stderr.write;
+  let stderr = '';
+  process.stderr.write = ((chunk: string | Uint8Array) => {
+    stderr += chunk.toString();
+    return true;
+  }) as typeof process.stderr.write;
+  try {
+    assert.equal(
+      runCli(['provider-worker', 'invocation-sync-cli', '--json'], directory),
+      ExitCode.usage,
+    );
+    const failure = JSON.parse(stderr) as {
+      ok: false;
+      error: { code: string; message: string };
+    };
+    assert.equal(failure.ok, false);
+    assert.equal(failure.error.code, 'INVALID_USAGE');
+    assert.equal(
+      failure.error.message,
+      'Unknown workflow command: provider-worker',
+    );
+
+    const cliSource = fs.readFileSync(
+      new URL('../src/cli.ts', import.meta.url),
+      'utf8',
+    );
+    assert.doesNotMatch(cliSource, /\brunProviderWorker\b/u);
+  } finally {
+    process.stderr.write = originalStderrWrite;
+    fs.rmSync(directory, { recursive: true, force: true });
+  }
+});
 
 test('hidden provider-worker CLI command dispatches the async worker entry', async () => {
   const calls: Array<{ cwd: string; invocationId: string }> = [];

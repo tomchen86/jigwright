@@ -294,7 +294,6 @@ import { productionRoleTopologyResolutionPort } from './composition-root/role-to
 import { productionRoleContextSharingGrantLifecyclePort } from './composition-root/role-context-sharing-grant-lifecycle-production.ts';
 import {
   dispatchProviderWorker,
-  runProviderWorker,
   runProviderWorkerAsync,
 } from './entrypoints/worker/provider-worker.ts';
 import { readProviderInvocation } from './runtime/storage-journal/provider-invocation-store.ts';
@@ -1893,13 +1892,6 @@ function dispatch(args: string[], cwd: string): CommandResult {
       }
       throw proposeUsage();
     }
-    case 'provider-worker':
-      requireArgumentCount(command, rest, 1, 1);
-      return {
-        command,
-        ok: true,
-        result: runProviderWorker(cwd, rest[0]!),
-      };
     case 'archive':
       requireArgumentCount(command, rest, 1, 1);
       return {
