@@ -1,7 +1,7 @@
 {
   "kind": "jigwright.workflow.t3-boundary-inventory.v1",
   "schemaVersion": 1,
-  "observedAtCommit": "53041698b3534d74ab0d4a26f96c2d2755708b65",
+  "observedAtCommit": "584f25c17e6b8762e56515a2c7ddfdac3c4387aa",
   "architectureDocument": "docs/architecture/WORKFLOW_ENGINE_BOUNDARY_INVENTORY.md",
   "namespaceBaseline": {
     "legacyPrefix": "expense-app.workflow.",
@@ -18,9 +18,9 @@
     "workflowJsonFileCount": 0,
     "workflowJsonIdentityDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "jsonSchemaIdHosts": {
-      "jigwright.local": 15
+      "jigwright.local": 14
     },
-    "jsonSchemaIdIdentityDigest": "sha256:1f15e3235842ddd474aedea45c8133a6fabc4505314b99adfa554582887b8f6e"
+    "jsonSchemaIdIdentityDigest": "sha256:039d2e047631c04623b5c0e10a3ec896ea5995d2037c8e46322a5f24f727a025"
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 190,

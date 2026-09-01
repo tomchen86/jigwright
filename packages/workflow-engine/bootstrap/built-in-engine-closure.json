@@ -548,7 +548,7 @@
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:4d67a4cba57fd40c6d6476e555215afbb9af8df630f1c243cb0bc69d3587e52e"
+      "digest": "sha256:fd228c2fd0f3a6b58278ae7a08c5f039bce328ba56eb55076a6ae5278dad45cc"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -568,12 +568,12 @@
     {
       "path": "src/application/control-plane/maintainer-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:fe4f8fc03f9cb437b0c160e6198afa02eb9ffc5bce45fa6fae9dd226da441bde"
+      "digest": "sha256:3b8e68ca9010044eb51fd40cf87b60acb64f5a277a5515aff04d510b1f39f5de"
     },
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:7e03aa0eb8e43c515545ed91799015aec1ef7053a526d00a52a9431b72d78907"
+      "digest": "sha256:5bfdc8890d91587250f99e49ea6ea863dfe8bdf6683571b50faa1ca73a4d9e07"
     },
     {
       "path": "src/application/execute-task/open-task.ts",
@@ -918,7 +918,7 @@
     {
       "path": "src/entrypoints/ci/ci-authority.ts",
       "mode": "100644",
-      "digest": "sha256:bf330e3f88183cfa8e5318c35514c5e1d2af09226083442218382730e2b364ce"
+      "digest": "sha256:ebfa2fdc5ec810ebb703b5b13aee2321ab19224eb03db7db3146d99ede1991f1"
     },
     {
       "path": "src/entrypoints/ci/ci-checks.ts",
@@ -1278,7 +1278,7 @@
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:9ff54e48eab17c1acb97fa48e43916a308604435a74bbafdc8f8ec6ca07b8193"
+      "digest": "sha256:654e907260fccbe45033942ffca5aea039885edceecee84c8f77ff0182e81df6"
     },
     {
       "path": "src/modules/authority/maintainer-grant.ts",
@@ -1378,7 +1378,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:5b232515e1de5a7f4002f4b8756f8755c9345774c83ca183178e6a87fbf48cb3"
+      "digest": "sha256:e0359309d1eb1c3972cc642ffcc6d6e4eb8db938dedb7a1ae3e6f7eb41ce493c"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
