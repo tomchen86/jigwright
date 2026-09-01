@@ -248,7 +248,7 @@
     {
       "path": "node_modules/@jigwright/grants/src/grant-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:22755d917e886da516df86537f06181f00d9c264c9dcaf8929dacb58a12a88f2"
+      "digest": "sha256:3b8c664156b97fa4e8add0804d72e7cb0ee8cec48e7d4464f5c13b1dc75b63e3"
     },
     {
       "path": "node_modules/@jigwright/grants/src/role-context-sharing-degradation.ts",
@@ -1208,7 +1208,7 @@
     {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:8771490f2f2bcf63627e9ffc0133210e881b2bc552a4b929c672abf10e6ebe05"
+      "digest": "sha256:27aab68240924210bf492fd4e3ec4e3559723e2c92d02c819463b242c9ff6ee8"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
@@ -1318,7 +1318,7 @@
     {
       "path": "src/modules/authority/optional-grants-package.ts",
       "mode": "100644",
-      "digest": "sha256:696cb82cd72625eca0029f16397ae1c49974a07e7cff77dac345e6b2da5df0df"
+      "digest": "sha256:df9386dee4cfe65db383334293383f53f896c1b27b7e5e25b90896e67eaa4a08"
     },
     {
       "path": "src/modules/authority/protected-base-initialization-grant.ts",

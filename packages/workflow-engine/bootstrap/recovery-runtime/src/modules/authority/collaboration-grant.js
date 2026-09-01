@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, isCollaborationGrantEnvelopeReaderError, isSignedAttestationEnvelopeReaderError, parseCollaborationGrantEnvelopeV1, readAndVerifyCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, readAndVerifySignedAttestationEnvelopeV1, } from "./optional-grants-package.js";
+import { COLLABORATION_GRANT_ENVELOPE_READER_CONTRACT_VERSION_V1, COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE as PACKAGE_COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE, canonicalCollaborationGrantEnvelopeBytesV1, canonicalCollaborationGrantPayloadBytesV1, isCollaborationGrantEnvelopeReaderError, isGrantUseUniquenessError, isSignedAttestationEnvelopeReaderError, parseCollaborationGrantEnvelopeV1, readAndVerifyCollaborationGrantEnvelopeV1, selectCollaborationGrantSignatureNamespaceV1, SIGNED_ATTESTATION_ENVELOPE_READER_CONTRACT_VERSION_V1, canonicalSignedAttestationEnvelopeBytesV1, canonicalSignedAttestationPayloadBytesV1, parseSignedAttestationEnvelopeV1, readAndVerifySignedAttestationEnvelopeV1, assertUniqueGrantUseClaimsV1, } from "./optional-grants-package.js";
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { discoverRepository, runGit, } from "../../runtime/repository-transaction/git.js";
 import { parseMaintainerPolicy, } from "./maintainer-policy.js";
@@ -578,34 +578,19 @@ export function validateCollaborationGrantPayload(payload, policy, options) {
  * common-directory reservation store to apply it.
  */
 export function assertUniqueCollaborationGrantUses(uses) {
-    const grantIds = new Set();
-    const envelopeDigests = new Set();
-    const useProjectionDigests = new Set();
-    const admissionDigests = new Set();
-    for (const use of uses) {
-        const terminalIdentityPresent = use.useProjectionDigest !== undefined ||
-            use.admissionDigest !== undefined;
-        if (terminalIdentityPresent &&
-            (!/^[0-9a-f]{64}$/u.test(use.useProjectionDigest ?? '') ||
-                !/^[0-9a-f]{64}$/u.test(use.admissionDigest ?? ''))) {
+    try {
+        assertUniqueGrantUseClaimsV1(uses);
+    }
+    catch (error) {
+        if (!isGrantUseUniquenessError(error))
+            throw error;
+        if (error.code === 'GRANT_USE_IDENTITY_INVALID') {
             throw workflowError('COLLABORATION_GRANT_USE_INVALID', 'A collaboration grant terminal-use identity is malformed.', ExitCode.verification);
         }
-        if (grantIds.has(use.grantId) ||
-            envelopeDigests.has(use.signedEnvelopeDigest) ||
-            (use.useProjectionDigest !== undefined &&
-                useProjectionDigests.has(use.useProjectionDigest)) ||
-            (use.admissionDigest !== undefined &&
-                admissionDigests.has(use.admissionDigest))) {
+        if (error.code === 'GRANT_USE_IDENTITY_DUPLICATE') {
             throw workflowError('COLLABORATION_GRANT_USE_DUPLICATE', 'A collaboration grant use is claimed more than once in this subject.', ExitCode.staleState);
         }
-        grantIds.add(use.grantId);
-        envelopeDigests.add(use.signedEnvelopeDigest);
-        if (use.useProjectionDigest !== undefined) {
-            useProjectionDigests.add(use.useProjectionDigest);
-        }
-        if (use.admissionDigest !== undefined) {
-            admissionDigests.add(use.admissionDigest);
-        }
+        throw error;
     }
 }
 export function bindingFromPayload(payload) {

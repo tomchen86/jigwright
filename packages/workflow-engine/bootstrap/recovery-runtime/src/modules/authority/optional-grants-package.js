@@ -22,6 +22,7 @@ export const parseCollaborationGrantEnvelopeV1 = delegate(loadCollaborationGrant
 export const readAndVerifyCollaborationGrantEnvelopeV1 = delegate(loadCollaborationGrantEnvelopeReader, 'readAndVerifyCollaborationGrantEnvelopeV1');
 export const selectCollaborationGrantSignatureNamespaceV1 = delegate(loadCollaborationGrantEnvelopeReader, 'selectCollaborationGrantSignatureNamespaceV1');
 export const executeGrantLifecycleTransitionV1 = delegate(loadGrantLifecycle, 'executeGrantLifecycleTransitionV1');
+export const assertUniqueGrantUseClaimsV1 = delegate(loadGrantLifecycle, 'assertUniqueGrantUseClaimsV1');
 export const bindingFromRoleContextSharingGrantPayloadV1 = delegate(loadRoleContextSharingDegradation, 'bindingFromRoleContextSharingGrantPayloadV1');
 export const canonicalRoleContextSharingGrantEnvelopeV1 = delegate(loadRoleContextSharingDegradation, 'canonicalRoleContextSharingGrantEnvelopeV1');
 export const canonicalRoleContextSharingGrantPayloadV1 = delegate(loadRoleContextSharingDegradation, 'canonicalRoleContextSharingGrantPayloadV1');
@@ -38,6 +39,9 @@ export function isCollaborationGrantEnvelopeReaderError(error) {
 }
 export function isGrantLifecycleTransitionError(error) {
     return isNamedCodedError(error, 'GrantLifecycleTransitionError');
+}
+export function isGrantUseUniquenessError(error) {
+    return isNamedCodedError(error, 'GrantUseUniquenessError');
 }
 export function isRoleContextSharingGrantError(error) {
     return isNamedCodedError(error, 'RoleContextSharingGrantError');

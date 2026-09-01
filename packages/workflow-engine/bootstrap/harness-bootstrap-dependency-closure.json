@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:99f07e57d562a322beeaa37dcf2b351a666a46238be99c28a8d33a672a242936"
+      "digest": "sha256:a480e26b67b774914eacd175ae91cde8bcc2fe19031da481747ad2b208637bbc"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -168,7 +168,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/grant-lifecycle.js",
       "mode": "100644",
-      "digest": "sha256:b05a8809eefc594db2cfe501e697aa65d13665b014b1c0e1e11ce4992e5f9e6b"
+      "digest": "sha256:31b236d3c85f01bac8acb5fb32f8b551cbceee68e461c8c3afcba88a47c49b27"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/grants/src/role-context-sharing-degradation.js",
@@ -328,7 +328,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/collaboration-grant.js",
       "mode": "100644",
-      "digest": "sha256:fb2c440623f09d7661def964f67a8a022524052e8c5b98a495d98d520356cfc3"
+      "digest": "sha256:f78ee42439e7bb7219a5c30e0cb33ebe162480d22629247a2cf76414b58cc9b8"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/control-plane-recovery-grant.js",
@@ -393,7 +393,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/optional-grants-package.js",
       "mode": "100644",
-      "digest": "sha256:3b4e12bf6d6c9f582d30ac25d85e4d5b178c2d3f382ee25b807d219dd3e655a3"
+      "digest": "sha256:25a6f2cc5b6df0c6ee635edd4635f0a333057695a880b088cf8995180ede3426"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/provider-invocation-cancellation-grant.js",
