@@ -191,6 +191,12 @@ function isReadOnlyStatusInvocation(argv: readonly string[]): boolean {
 }
 
 function isReadOnlySessionStatusInvocation(argv: readonly string[]): boolean {
+  if (
+    (argv.length === 1 || (argv.length === 2 && argv[1] === '--json')) &&
+    argv[0] === 'status'
+  ) {
+    return true;
+  }
   return (
     (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
     argv[0] === 'status' &&

@@ -345,6 +345,8 @@ test('workflow launcher preserves exact route status across incomplete local ado
     const worktreeStatus = git(value.repository, ['status', '--porcelain']);
 
     for (const argv of [
+      ['status'],
+      ['status', '--json'],
       ['route', 'status'],
       ['route', 'status', '--json'],
     ]) {
@@ -366,6 +368,7 @@ test('workflow launcher preserves exact route status across incomplete local ado
     );
 
     for (const argv of [
+      ['status', '--json', 'extra'],
       ['route', 'prepare'],
       ['route', 'status', 'extra'],
     ]) {
