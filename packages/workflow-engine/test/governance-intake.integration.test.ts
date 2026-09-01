@@ -558,6 +558,88 @@ test('optional Work Registry creates one stable item and promotes exact provenan
   }
 });
 
+test('persisted Work Item reads reject incoherent state, path identity drift, and noncanonical relation sets without mutation', () => {
+  const cases = [
+    {
+      name: 'closed item without closure or closing timeline event',
+      requestedId: 'WORK-01K39R0V000000000000000001',
+      poison(item: Record<string, unknown>) {
+        item.stage = 'closed';
+      },
+    },
+    {
+      name: 'record identity differs from stable filename',
+      requestedId: 'WORK-01K39R0V000000000000000002',
+      poison(item: Record<string, unknown>) {
+        item.id = 'WORK-01K39R0V000000000000000002';
+      },
+    },
+    {
+      name: 'Source references are not canonically sorted',
+      requestedId: 'WORK-01K39R0V000000000000000001',
+      poison(item: Record<string, unknown>) {
+        item.sourceRefs = [`SRC-${'b'.repeat(64)}`, `SRC-${'a'.repeat(64)}`];
+      },
+    },
+    {
+      name: 'blocker references are duplicated',
+      requestedId: 'WORK-01K39R0V000000000000000001',
+      poison(item: Record<string, unknown>) {
+        item.blockedBy = [
+          'WORK-01K39R0V000000000000000002',
+          'WORK-01K39R0V000000000000000002',
+        ];
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const repositoryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-work-item-read-boundary-'),
+    );
+    configureRepositoryConsumer(repositoryRoot);
+    try {
+      const created = createWorkItem(
+        repositoryRoot,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane: 'later',
+          title: 'Persisted Work Item read boundary',
+          summary: 'Reject durable state that no current writer can emit.',
+          sourceRefs: [],
+        },
+        {
+          now: () => '2026-08-24T04:20:00.000Z',
+          createId: () => 'WORK-01K39R0V000000000000000001',
+        },
+      );
+      const itemPath = path.join(repositoryRoot, created.relativePath);
+      const poisoned = JSON.parse(fs.readFileSync(itemPath, 'utf8')) as Record<
+        string,
+        unknown
+      >;
+      scenario.poison(poisoned);
+      const poisonedBytes = `${canonicalJson(poisoned)}\n`;
+      fs.writeFileSync(itemPath, poisonedBytes);
+      const entriesBefore = fs.readdirSync(path.dirname(itemPath)).sort();
+
+      assert.throws(
+        () => showWorkItem(repositoryRoot, scenario.requestedId),
+        hasCode('WORK_REGISTRY_INVALID'),
+        scenario.name,
+      );
+      assert.equal(fs.readFileSync(itemPath, 'utf8'), poisonedBytes);
+      assert.deepEqual(
+        fs.readdirSync(path.dirname(itemPath)).sort(),
+        entriesBefore,
+      );
+    } finally {
+      fs.rmSync(repositoryRoot, { recursive: true, force: true });
+    }
+  }
+});
+
 test('a Source can link directly to a change without a parking Work Item', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-change-'),

@@ -305,9 +305,7 @@ export function showWorkItem(
     throw registryInvalid('Work Item identity or alias is invalid.');
   }
   const matches = listWorkItemPaths(repositoryRoot)
-    .map((itemPath) =>
-      parseWorkItem(JSON.parse(fs.readFileSync(itemPath, 'utf8'))),
-    )
+    .map((itemPath) => readWorkItem(itemPath))
     .filter(
       (item) => item.id === requestedId || item.aliases.includes(requestedId),
     );
@@ -328,7 +326,7 @@ export function applyWorkItemReview(
   const id = workItemId(requestedId);
   const itemPath = findWorkItemPath(repositoryRoot, id);
   const before = fs.readFileSync(itemPath, 'utf8');
-  const item = parseWorkItem(JSON.parse(before));
+  const item = readWorkItem(itemPath, before);
   if (workItemDigest(item) !== exactDigest(review.expectedDigest)) {
     throw workflowError(
       'WORK_REGISTRY_STALE',
@@ -397,7 +395,7 @@ export function promoteWorkItem(
   const changeId = changeIdentity(requestedChangeId);
   const itemPath = findWorkItemPath(repositoryRoot, id);
   const itemBefore = fs.readFileSync(itemPath, 'utf8');
-  const item = parseWorkItem(JSON.parse(itemBefore));
+  const item = readWorkItem(itemPath, itemBefore);
   if (
     requestedExpectedDigest !== undefined &&
     workItemDigest(item) !== exactDigest(requestedExpectedDigest)
@@ -488,9 +486,7 @@ export function linkSourceToChange(
 
 export function listWorkItems(repositoryRoot: string): WorkItemV1[] {
   return listWorkItemPaths(repositoryRoot)
-    .map((itemPath) =>
-      parseWorkItem(JSON.parse(fs.readFileSync(itemPath, 'utf8'))),
-    )
+    .map((itemPath) => readWorkItem(itemPath))
     .sort((left, right) => left.id.localeCompare(right.id));
 }
 
@@ -858,7 +854,7 @@ export function reconcileArchivedWorkItems(
   validateWorkRegistry(repositoryRoot);
   const itemPaths = origin.workItemRefs.map((workItemRef) => {
     const itemPath = findWorkItemPath(repositoryRoot, workItemRef);
-    const item = parseWorkItem(JSON.parse(fs.readFileSync(itemPath, 'utf8')));
+    const item = readWorkItem(itemPath);
     if (
       item.stage !== 'active' ||
       item.closure !== null ||
@@ -1031,7 +1027,8 @@ function parseWorkItem(value: unknown): WorkItemV1 {
   ) {
     throw registryInvalid('Work Item is invalid.');
   }
-  sourceReferences(item.sourceRefs);
+  const canonicalAliases = [...item.aliases].sort();
+  const canonicalSourceRefs = sourceReferences(item.sourceRefs);
   if (
     !Array.isArray(item.blockedBy) ||
     !item.blockedBy.every((entry) =>
@@ -1045,7 +1042,108 @@ function parseWorkItem(value: unknown): WorkItemV1 {
   ) {
     throw registryInvalid('Work Item relations are invalid.');
   }
+  const canonicalBlockedBy = workItemReferences(item.blockedBy);
+  const canonicalChangeRefs = [...new Set(item.changeRefs)].sort();
+  if (
+    JSON.stringify(item.aliases) !== JSON.stringify(canonicalAliases) ||
+    JSON.stringify(item.sourceRefs) !== JSON.stringify(canonicalSourceRefs) ||
+    JSON.stringify(item.blockedBy) !== JSON.stringify(canonicalBlockedBy) ||
+    canonicalChangeRefs.length !== item.changeRefs.length ||
+    JSON.stringify(item.changeRefs) !== JSON.stringify(canonicalChangeRefs) ||
+    !hasCoherentWorkItemLifecycle(item)
+  ) {
+    throw registryInvalid('Work Item relations are invalid.');
+  }
   return item;
+}
+
+function readWorkItem(itemPath: string, source?: string): WorkItemV1 {
+  const serialized = source ?? fs.readFileSync(itemPath, 'utf8');
+  let value: unknown;
+  try {
+    value = JSON.parse(serialized);
+  } catch {
+    throw registryInvalid('Work Item is invalid.');
+  }
+  const item = parseWorkItem(value);
+  if (path.basename(itemPath) !== `${item.id}.yaml`) {
+    throw registryInvalid('Work Item path and identity differ.');
+  }
+  return item;
+}
+
+function hasCoherentWorkItemLifecycle(item: WorkItemV1): boolean {
+  const first = item.timeline[0]!;
+  const last = item.timeline.at(-1)!;
+  const promoted = item.timeline.filter(({ event }) => event === 'promoted');
+  if (
+    first.event !== 'created' ||
+    first.at !== item.createdAt ||
+    first.changeId !== null ||
+    item.timeline.filter(({ event }) => event === 'created').length !== 1
+  ) {
+    return false;
+  }
+  let observedStage: WorkItemStageV1 = 'inbox';
+  for (const entry of item.timeline.slice(1)) {
+    if (
+      entry.event === 'accepted' &&
+      observedStage === 'inbox' &&
+      entry.changeId === null
+    ) {
+      observedStage = 'backlog';
+    } else if (
+      entry.event === 'prioritized' &&
+      observedStage === 'backlog' &&
+      entry.changeId === null
+    ) {
+      continue;
+    } else if (
+      entry.event === 'promoted' &&
+      observedStage === 'backlog' &&
+      entry.changeId !== null
+    ) {
+      observedStage = 'active';
+    } else if (entry.event === 'closed' && observedStage !== 'closed') {
+      observedStage = 'closed';
+    } else {
+      return false;
+    }
+  }
+  if (observedStage !== item.stage) return false;
+  if (observedStage !== 'closed') {
+    if (item.closure !== null) return false;
+    if (observedStage !== 'active') return item.changeRefs.length === 0;
+    return (
+      promoted.length === 1 &&
+      last.event === 'promoted' &&
+      last.changeId !== null &&
+      item.changeRefs.length === 1 &&
+      item.changeRefs[0] === last.changeId
+    );
+  }
+  if (
+    item.closure === null ||
+    last.event !== 'closed' ||
+    last.at !== item.closure.at ||
+    last.changeId !== item.closure.changeId
+  ) {
+    return false;
+  }
+  if (item.closure.outcome === 'delivered') {
+    return (
+      item.closure.changeId !== null &&
+      promoted.length === 1 &&
+      promoted[0]!.changeId === item.closure.changeId &&
+      item.changeRefs.length === 1 &&
+      item.changeRefs[0] === item.closure.changeId
+    );
+  }
+  return (
+    item.closure.changeId === null &&
+    promoted.length === 0 &&
+    item.changeRefs.length === 0
+  );
 }
 
 function isTimelineEntry(value: unknown): boolean {
