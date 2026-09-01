@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:486302f06f6a458ed349ef91255bb3f1576d66bf7290f625467c9ca3f22eb0c0"
+      "digest": "sha256:5b139564030c3ae13e9969cf987f96b44d39c1e9728eb064fefbe92f479ab3f4"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
