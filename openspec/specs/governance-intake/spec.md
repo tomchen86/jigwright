@@ -95,6 +95,22 @@ Source, deleting the citation, or rewriting historical bytes.
 - **WHEN** registry validation reads an `origin.json` with a dangling `sourceRefs` entry
 - **THEN** validation fails without changing the origin or Source ledger
 
+### Requirement: Work Registry Search Resolves Linked Source Wording
+
+An installed Work Registry SHALL allow a caller to find a Work Item by the
+exact text of any identity-valid Source it cites. Search SHALL return the
+canonical Work Item without copying Source text into the item, a projection,
+or a search index. Every cited Source SHALL be validated during the search;
+missing or invalid Source bytes MUST fail rather than silently degrading to an
+item-only match.
+
+#### Scenario: Exact maintainer wording finds a linked Work Item
+
+- **WHEN** a Work Item cites a canonical Source whose exact selected wording matches the query
+- **THEN** `work-item search` returns that unchanged Work Item
+- **AND** the Source and Work Item bytes remain unchanged
+- **AND** no lifecycle, priority, or transition authority is created
+
 ### Requirement: Work Registry Is an Explicit Optional Capability
 
 A configured repository SHALL represent an installed Work Registry with its

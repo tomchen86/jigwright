@@ -2161,6 +2161,74 @@ test('reviewed intake and priority use exact current Work Item digests', () => {
   }
 });
 
+test('Work Registry search resolves exact linked Source wording without copying it', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-work-source-search-'),
+  );
+  configureRepositoryConsumer(repositoryRoot);
+  try {
+    const source = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T04:33:30.000Z',
+      contextRef: 'direct-human:thread/turn-source-search',
+      text: '保留 Cobalt Finch maintainer 原話作為可追溯依據。\n',
+      supersedes: null,
+    });
+    const created = createWorkItem(
+      repositoryRoot,
+      {
+        schemaVersion: 1,
+        kind: 'research',
+        lane: 'next',
+        title: 'Search immutable provenance',
+        summary: 'Find this item from its linked canonical Source.',
+        sourceRefs: [source.source.id],
+      },
+      {
+        now: () => '2026-08-24T04:34:00.000Z',
+        createId: () => 'WORK-01K39R0V000000000000000020',
+      },
+    );
+    const sourcePath = path.join(repositoryRoot, source.relativePath);
+    const itemPath = path.join(repositoryRoot, created.relativePath);
+    const before = {
+      source: fs.readFileSync(sourcePath),
+      item: fs.readFileSync(itemPath),
+    };
+
+    assert.deepEqual(searchWorkItems(repositoryRoot, 'cobalt finch'), [
+      created.item,
+    ]);
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'work-item',
+        ['search', 'cobalt finch'],
+        repositoryRoot,
+      ),
+      { action: 'search', items: [created.item] },
+    );
+    assert.doesNotMatch(fs.readFileSync(itemPath, 'utf8'), /Cobalt Finch/u);
+    assert.deepEqual(fs.readFileSync(sourcePath), before.source);
+    assert.deepEqual(fs.readFileSync(itemPath), before.item);
+
+    const poisonedSource = JSON.parse(
+      fs.readFileSync(sourcePath, 'utf8'),
+    ) as Record<string, unknown>;
+    poisonedSource.text = 'Poisoned text with a stale identity.\n';
+    fs.writeFileSync(sourcePath, `${canonicalJson(poisonedSource)}\n`);
+    const poisonedBytes = fs.readFileSync(sourcePath);
+    assert.throws(
+      () => searchWorkItems(repositoryRoot, 'search immutable provenance'),
+      hasCode('GOVERNANCE_SOURCE_IDENTITY_INVALID'),
+    );
+    assert.deepEqual(fs.readFileSync(sourcePath), poisonedBytes);
+    assert.deepEqual(fs.readFileSync(itemPath), before.item);
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
 test('priority recommendations are explainable and inventory exposes current intake facts', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-priority-'),
