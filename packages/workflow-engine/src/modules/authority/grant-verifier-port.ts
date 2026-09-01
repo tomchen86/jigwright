@@ -1,22 +1,14 @@
+import type {
+  CurrentGrantVerifierPort,
+  GrantVerifierPort,
+} from '@jigwright/core/grant-verifier-port';
+
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
-/**
- * Verify one exact, caller-selected signature namespace without exposing
- * signing, signer selection, or human-presence authority to validation paths.
- */
-export type GrantVerifierPort = Readonly<{
-  verify(
-    payload: string,
-    signature: string,
-    identity: string,
-    namespace: string,
-  ): void;
-}>;
-
-export type CurrentGrantVerifierPort = GrantVerifierPort &
-  Readonly<{
-    assertCurrent(): void;
-  }>;
+export type {
+  CurrentGrantVerifierPort,
+  GrantVerifierPort,
+} from '@jigwright/core/grant-verifier-port';
 
 const DIGEST = /^[0-9a-f]{64}$/;
 const authoritativeCollaborationGrantVerifiers = new WeakSet<object>();

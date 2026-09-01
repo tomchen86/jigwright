@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 
+import type { GrantVerifierPort } from '@jigwright/core/grant-verifier-port';
+
 export const GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1 =
   'jigwright.grant-envelope-verifier.v1' as const;
 export const VERIFIED_GRANT_CAPABILITY_KIND_V1 =
@@ -9,14 +11,7 @@ const verifiedGrantCapabilityBrand: unique symbol = Symbol(
   VERIFIED_GRANT_CAPABILITY_KIND_V1,
 );
 
-export type GrantSignatureVerifierPortV1 = Readonly<{
-  verify(
-    payload: string,
-    signature: string,
-    signer: string,
-    namespace: string,
-  ): void;
-}>;
+export type GrantSignatureVerifierPortV1 = GrantVerifierPort;
 
 export type GrantEnvelopeVerificationRequestV1<
   AuthorizedEffect extends string,
