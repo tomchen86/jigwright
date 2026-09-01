@@ -126,6 +126,8 @@ export function workflowResultNextSteps(
   if (commandId === 'guide') return Object.freeze([]);
   const failGrant = failGrantNextSteps(record(result.result), invocation);
   if (failGrant !== null) return failGrant;
+  const archivePullRequest = archivePullRequestLocalNextSteps(result);
+  if (archivePullRequest !== null) return archivePullRequest;
   if (commandId === 'task-preflight') {
     return taskSessionPreflightNextSteps(record(result.result));
   }
@@ -225,6 +227,66 @@ function routeStatusNextSteps(
     }
   }
   return projectWorkflowNextSteps(['guide']);
+}
+
+function archivePullRequestLocalNextSteps(
+  result: Readonly<Record<string, unknown>>,
+): readonly WorkflowNextStep[] | null {
+  if (result.command !== 'archive-pr') return null;
+  const guide = nextStep('guide', {});
+  if (result.action === 'doctor') {
+    const inventory = record(result.result);
+    if (inventory?.kind !== 'archive-pull-request-candidate-inventory') {
+      return Object.freeze([guide]);
+    }
+    const items = Array.isArray(inventory.items) ? inventory.items : [];
+    const candidates = items.flatMap((item) => {
+      const candidate = record(item);
+      const changeId = stringField(candidate, 'changeId');
+      if (
+        candidate?.state !== 'eligible' ||
+        changeId === undefined ||
+        !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(changeId)
+      ) {
+        return [];
+      }
+      return [
+        localArchiveNextStep(
+          `pnpm workflow archive-pr dry-run ${shellQuote(changeId)} --json`,
+          'Prepare and verify this exact archive candidate locally without contacting a remote.',
+        ),
+      ];
+    });
+    return Object.freeze([...candidates.slice(0, 2), guide]);
+  }
+  if (result.action === 'dry-run') {
+    const dryRun = record(result.result);
+    const local = record(dryRun?.local);
+    const preparation = record(local?.preparation);
+    const preparationIdentity = stringField(preparation, 'preparationIdentity');
+    if (
+      dryRun?.kind !== 'archive-pr-dry-run.v1' ||
+      dryRun.remoteState !== 'not-observed' ||
+      dryRun.operationalGate !== 'pending' ||
+      preparationIdentity === undefined ||
+      !/^sha256:[0-9a-f]{64}$/u.test(preparationIdentity)
+    ) {
+      return Object.freeze([guide]);
+    }
+    return Object.freeze([
+      localArchiveNextStep(
+        `pnpm workflow archive-pr status ${preparationIdentity} --json`,
+        'Revalidate the exact durable local archive preparation without contacting a remote or mutating state.',
+      ),
+      guide,
+    ]);
+  }
+  if (result.action === 'status') return Object.freeze([guide]);
+  return null;
+}
+
+function localArchiveNextStep(command: string, why: string): WorkflowNextStep {
+  return Object.freeze({ command, why });
 }
 
 function failGrantNextSteps(

@@ -358,6 +358,79 @@ test('route status projects only executable current routing next steps', () => {
   }
 });
 
+test('archive-pr local results project exact ownerless next steps without crossing the remote gate', () => {
+  const commands = (result: Readonly<Record<string, unknown>>) =>
+    workflowResultNextSteps(result).map(({ command }) => command);
+  const preparationIdentity = `sha256:${'a'.repeat(64)}`;
+
+  assert.deepEqual(
+    commands({
+      command: 'archive-pr',
+      action: 'doctor',
+      result: {
+        schemaVersion: 1,
+        kind: 'archive-pull-request-candidate-inventory',
+        base: 'origin/main',
+        items: [
+          { changeId: 'blocked-change', state: 'blocked' },
+          { changeId: 'demo-change', state: 'eligible' },
+          { changeId: 'old-change', state: 'already-archived' },
+        ],
+      },
+    }),
+    [
+      'pnpm workflow archive-pr dry-run demo-change --json',
+      'pnpm workflow guide --json',
+    ],
+  );
+  assert.deepEqual(
+    commands({
+      command: 'archive-pr',
+      action: 'dry-run',
+      result: {
+        schemaVersion: 1,
+        kind: 'archive-pr-dry-run.v1',
+        remoteState: 'not-observed',
+        operationalGate: 'pending',
+        local: { preparation: { preparationIdentity } },
+      },
+    }),
+    [
+      `pnpm workflow archive-pr status ${preparationIdentity} --json`,
+      'pnpm workflow guide --json',
+    ],
+  );
+  for (const result of [
+    {
+      command: 'archive-pr',
+      action: 'doctor',
+      result: { items: [{ changeId: 'blocked-change', state: 'blocked' }] },
+    },
+    {
+      command: 'archive-pr',
+      action: 'status',
+      result: {
+        state: 'local-preparation-current',
+        preparationIdentity,
+      },
+    },
+    {
+      command: 'archive-pr',
+      action: 'prepare',
+      result: { kind: 'archive-pr-publication-grant-required.v1' },
+    },
+  ]) {
+    const projected = commands(result);
+    assert.deepEqual(projected, ['pnpm workflow guide --json']);
+    assert.equal(
+      projected.some((command) =>
+        /archive-pr (?:prepare|open)|\bgit push\b/u.test(command),
+      ),
+      false,
+    );
+  }
+});
+
 test('task-strategy retry and exhaustion guidance exposes executable recovery without weakening the budget', () => {
   const sessionId =
     'session-20260812000000000-00000000-0000-4000-8000-000000000000';
