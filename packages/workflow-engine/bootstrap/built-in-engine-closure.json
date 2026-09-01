@@ -1373,7 +1373,7 @@
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:0f096187c90213c4545c66d65761f977bf3bff6a406804dc07c483f7d5906ac7"
+      "digest": "sha256:8453b5ca0e5f42f336f9a3a9ef8123dbf1bba9a54a46d18ad13fbcd9e28e1e56"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
