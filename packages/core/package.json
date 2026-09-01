@@ -31,6 +31,7 @@
     "./planning-task-history": "./src/planning-task-history.ts",
     "./repository-path": "./src/repository-path.ts",
     "./repository-consumer-port": "./src/repository-consumer-port.ts",
+    "./read-only-probe": "./src/read-only-probe.ts",
     "./runtime-path-kernel": "./src/runtime-path-kernel.ts",
     "./session-runtime-layout-port": "./src/session-runtime-layout-port.ts",
     "./tracked-object-reader-port": "./src/tracked-object-reader-port.ts",

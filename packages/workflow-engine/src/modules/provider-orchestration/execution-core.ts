@@ -11,6 +11,12 @@ import {
   type AttemptStatusV2,
   type JobStatusV2,
 } from '@jigwright/core/job-attempt-runtime';
+import {
+  ReadOnlyProbeCodecError,
+  assertReadOnlyProbeRequestV1,
+  type ReadOnlyProbeKindV1,
+  type ReadOnlyProbeRequestV1,
+} from '@jigwright/core/read-only-probe';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -270,24 +276,11 @@ export type EnvironmentSnapshot = {
   };
 };
 
-export type ReadOnlyProbeKind =
-  | 'repository-head'
-  | 'repository-dirty-state'
-  | 'runtime-version'
-  | 'adapter-version'
-  | 'binary-exists'
-  | 'file-read'
-  | 'validator-error'
-  | 'execution-limits'
-  | 'lease-state'
-  | 'attempt-lineage'
-  | 'dependency-availability';
+/** Compatibility name for the public core-owned probe vocabulary. */
+export type ReadOnlyProbeKind = ReadOnlyProbeKindV1;
 
-export type ReadOnlyProbeRequest = {
-  kind: ReadOnlyProbeKind;
-  target?: string;
-  timeoutMs: number;
-};
+/** Compatibility name for the public core-owned probe request. */
+export type ReadOnlyProbeRequest = ReadOnlyProbeRequestV1;
 
 export type EnvironmentDrift = {
   class: 'none' | 'non-semantic' | 'refreshable' | 'semantic';
@@ -1450,71 +1443,14 @@ export function environmentSnapshotDigest(
 export function assertReadOnlyProbe(
   input: unknown,
 ): Readonly<ReadOnlyProbeRequest> {
-  if (
-    !isPlainObject(input) ||
-    !hasOnlyKeys(input, ['kind', 'target', 'timeoutMs'])
-  ) {
-    throw probeNotAllowed();
+  try {
+    return assertReadOnlyProbeRequestV1(input);
+  } catch (error) {
+    if (error instanceof ReadOnlyProbeCodecError) {
+      throw probeNotAllowed();
+    }
+    throw error;
   }
-  if (
-    typeof input.kind !== 'string' ||
-    !READ_ONLY_PROBE_KINDS.has(input.kind as ReadOnlyProbeKind) ||
-    !Number.isSafeInteger(input.timeoutMs) ||
-    (input.timeoutMs as number) < 1 ||
-    (input.timeoutMs as number) > 30_000
-  ) {
-    throw probeNotAllowed();
-  }
-  const kind = input.kind as ReadOnlyProbeKind;
-  const requiresTarget = new Set<ReadOnlyProbeKind>([
-    'binary-exists',
-    'file-read',
-    'validator-error',
-    'dependency-availability',
-  ]).has(kind);
-  if (
-    requiresTarget !== Object.hasOwn(input, 'target') ||
-    (requiresTarget &&
-      (typeof input.target !== 'string' ||
-        input.target.length === 0 ||
-        Buffer.byteLength(input.target, 'utf8') > 1_024))
-  ) {
-    throw probeNotAllowed();
-  }
-  if (
-    kind === 'file-read' &&
-    !isSafeRepositoryRelativePath(input.target as string)
-  ) {
-    throw probeNotAllowed();
-  }
-  if (
-    kind === 'binary-exists' &&
-    !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/.test(input.target as string)
-  ) {
-    throw probeNotAllowed();
-  }
-  if (
-    kind === 'validator-error' &&
-    !/^[A-Z][A-Z0-9_]{1,127}$/.test(input.target as string)
-  ) {
-    throw probeNotAllowed();
-  }
-  if (
-    kind === 'dependency-availability' &&
-    !/^(?:@[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/)?[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:\/[A-Za-z0-9][A-Za-z0-9._-]{0,127})*$/.test(
-      input.target as string,
-    )
-  ) {
-    throw probeNotAllowed();
-  }
-  const probe: ReadOnlyProbeRequest = {
-    kind,
-    timeoutMs: input.timeoutMs as number,
-  };
-  if (requiresTarget) {
-    probe.target = input.target as string;
-  }
-  return deepFreeze(probe);
 }
 
 export function classifyEnvironmentDrift(
@@ -2878,12 +2814,25 @@ function normalizeFailurePaths(value: string[]): string[] {
     throw executionInvalid('Failure paths are invalid.');
   const normalized = value.map((entry) => {
     if (entry.startsWith('/')) return assertJsonPointer(entry, 'failure path');
-    if (!isSafeRepositoryRelativePath(entry)) {
+    if (!isSafeFailureRepositoryRelativePath(entry)) {
       throw executionInvalid('Failure path is unsafe.');
     }
     return entry;
   });
   return deepFreeze([...new Set(normalized)].sort());
+}
+
+function isSafeFailureRepositoryRelativePath(value: string): boolean {
+  return (
+    value === value.normalize('NFC') &&
+    value.length > 0 &&
+    !value.startsWith('/') &&
+    !value.includes('\\') &&
+    !value.includes('\0') &&
+    !value
+      .split('/')
+      .some((part) => part === '' || part === '.' || part === '..')
+  );
 }
 
 function assertJsonPointer(value: unknown, label: string): string {
@@ -2897,19 +2846,6 @@ function assertJsonPointer(value: unknown, label: string): string {
     throw executionInvalid(`${label} is not a canonical JSON pointer.`);
   }
   return value;
-}
-
-function isSafeRepositoryRelativePath(value: string): boolean {
-  return (
-    value === value.normalize('NFC') &&
-    value.length > 0 &&
-    !value.startsWith('/') &&
-    !value.includes('\\') &&
-    !value.includes('\0') &&
-    !value
-      .split('/')
-      .some((part) => part === '' || part === '.' || part === '..')
-  );
 }
 
 function normalizeDigest(value: string): string {
@@ -3154,17 +3090,4 @@ const FAILURE_SOURCES = new Set<FailureSource>([
   'state',
   'effect',
   'policy',
-]);
-const READ_ONLY_PROBE_KINDS = new Set<ReadOnlyProbeKind>([
-  'repository-head',
-  'repository-dirty-state',
-  'runtime-version',
-  'adapter-version',
-  'binary-exists',
-  'file-read',
-  'validator-error',
-  'execution-limits',
-  'lease-state',
-  'attempt-lineage',
-  'dependency-availability',
 ]);

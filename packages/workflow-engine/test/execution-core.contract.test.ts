@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
+
 import {
   acceptAttemptResult,
   assertReadOnlyProbe,
@@ -672,13 +674,14 @@ test('environment snapshots use an exact read-only probe allowlist and classify 
     environmentSnapshotDigest(base),
   );
 
+  const binaryProbe = {
+    kind: 'binary-exists' as const,
+    target: 'rg',
+    timeoutMs: 1_000,
+  };
   assert.deepEqual(
-    assertReadOnlyProbe({
-      kind: 'binary-exists',
-      target: 'rg',
-      timeoutMs: 1_000,
-    }),
-    { kind: 'binary-exists', target: 'rg', timeoutMs: 1_000 },
+    assertReadOnlyProbe(binaryProbe),
+    assertReadOnlyProbeRequestV1(binaryProbe),
   );
   assert.throws(
     () =>
