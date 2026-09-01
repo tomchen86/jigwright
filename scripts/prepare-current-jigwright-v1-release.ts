@@ -4,6 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
+import { isDeepStrictEqual } from 'node:util';
 
 import {
   buildSingleJigwrightPackage,
@@ -230,6 +231,9 @@ export function verifyCurrentJigwrightV1ReleaseCandidate(
     throw new Error('Current Jigwright v1 release candidate is invalid.');
   }
   const candidate = value as unknown as CurrentJigwrightV1ReleaseCandidate;
+  if (!isCurrentAdoptionReport(candidate.adoption, candidate.release)) {
+    throw new Error('Current Jigwright v1 release candidate is invalid.');
+  }
   const tarballPath = path.join(
     outputRoot,
     'package',
@@ -241,57 +245,25 @@ export function verifyCurrentJigwrightV1ReleaseCandidate(
   const integrity = readJson(
     path.join(outputRoot, candidate.supplyChain.integrity),
   );
-  if (
-    integrity.kind !== 'jigwright-v1-single-package-integrity.v1' ||
-    !isRecord(integrity.artifacts) ||
-    integrity.artifacts[`package/${candidate.release.tarball}`] !==
-      candidate.release.digest
-  ) {
+  if (!isDeepStrictEqual(integrity, currentIntegrityDocument(candidate))) {
     throw new Error('Current Jigwright v1 integrity binding is invalid.');
   }
   const adoption = readJson(path.join(outputRoot, 'adoption', 'report.json'));
-  if (
-    !isRecord(adoption.release) ||
-    adoption.release.digest !== candidate.release.digest ||
-    adoption.kind !== 'jigwright-current-local-adoption-report.v1'
-  ) {
+  if (!isDeepStrictEqual(adoption, candidate.adoption)) {
     throw new Error('Current Jigwright v1 adoption binding is invalid.');
   }
   const boundary = inspectPackageBoundary(tarballPath);
   if (boundary.license !== candidate.packageBoundary.license) {
     throw new Error('Current Jigwright v1 package license binding is invalid.');
   }
-  const expectedHexDigest = candidate.release.digest.slice('sha256:'.length);
   const provenance = readJson(
     path.join(outputRoot, candidate.supplyChain.provenance),
   );
-  const provenanceSubject = Array.isArray(provenance.subject)
-    ? provenance.subject[0]
-    : null;
-  if (
-    provenance._type !== 'https://in-toto.io/Statement/v1' ||
-    !isRecord(provenanceSubject) ||
-    provenanceSubject.name !== `package/${candidate.release.tarball}` ||
-    !isRecord(provenanceSubject.digest) ||
-    provenanceSubject.digest.sha256 !== expectedHexDigest
-  ) {
+  if (!isDeepStrictEqual(provenance, currentProvenanceDocument(candidate))) {
     throw new Error('Current Jigwright v1 provenance binding is invalid.');
   }
   const sbom = readJson(path.join(outputRoot, candidate.supplyChain.sbom));
-  const component = Array.isArray(sbom.components) ? sbom.components[0] : null;
-  const hash =
-    isRecord(component) && Array.isArray(component.hashes)
-      ? component.hashes[0]
-      : null;
-  if (
-    sbom.bomFormat !== 'CycloneDX' ||
-    !isRecord(component) ||
-    component.name !== 'jigwright' ||
-    component.version !== candidate.release.version ||
-    !isRecord(hash) ||
-    hash.alg !== 'SHA-256' ||
-    hash.content !== expectedHexDigest
-  ) {
+  if (!isDeepStrictEqual(sbom, currentSbomDocument(candidate))) {
     throw new Error('Current Jigwright v1 SBOM binding is invalid.');
   }
   if (
@@ -390,14 +362,37 @@ function writeSupplyChainArtifacts(
   outputRoot: string,
   candidate: CurrentJigwrightV1ReleaseCandidate,
 ): void {
+  writeJson(
+    path.join(outputRoot, candidate.supplyChain.integrity),
+    currentIntegrityDocument(candidate),
+  );
+  writeJson(
+    path.join(outputRoot, candidate.supplyChain.provenance),
+    currentProvenanceDocument(candidate),
+  );
+  writeJson(
+    path.join(outputRoot, candidate.supplyChain.sbom),
+    currentSbomDocument(candidate),
+  );
+}
+
+function currentIntegrityDocument(
+  candidate: CurrentJigwrightV1ReleaseCandidate,
+): JsonRecord {
   const artifactPath = `package/${candidate.release.tarball}`;
-  writeJson(path.join(outputRoot, candidate.supplyChain.integrity), {
+  return {
     schemaVersion: 1,
     kind: 'jigwright-v1-single-package-integrity.v1',
     source: candidate.release.source,
     artifacts: { [artifactPath]: candidate.release.digest },
-  });
-  writeJson(path.join(outputRoot, candidate.supplyChain.provenance), {
+  };
+}
+
+function currentProvenanceDocument(
+  candidate: CurrentJigwrightV1ReleaseCandidate,
+): JsonRecord {
+  const artifactPath = `package/${candidate.release.tarball}`;
+  return {
     _type: 'https://in-toto.io/Statement/v1',
     subject: [
       {
@@ -418,8 +413,13 @@ function writeSupplyChainArtifacts(
       },
       runDetails: { attestation: 'unsigned-local' },
     },
-  });
-  writeJson(path.join(outputRoot, candidate.supplyChain.sbom), {
+  };
+}
+
+function currentSbomDocument(
+  candidate: CurrentJigwrightV1ReleaseCandidate,
+): JsonRecord {
+  return {
     bomFormat: 'CycloneDX',
     specVersion: '1.6',
     version: 1,
@@ -439,7 +439,7 @@ function writeSupplyChainArtifacts(
         licenses: [{ license: { name: candidate.packageBoundary.license } }],
       },
     ],
-  });
+  };
 }
 
 function writeReleaseDocuments(
@@ -532,6 +532,110 @@ function parseJson(value: string): JsonRecord {
 
 function readJson(filePath: string): JsonRecord {
   return parseJson(fs.readFileSync(filePath, 'utf8'));
+}
+
+function isCurrentAdoptionReport(
+  value: unknown,
+  release: SingleJigwrightPackageArtifactV1,
+): value is CurrentJigwrightAdoptionReportV1 {
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'release',
+      'install',
+      'bootstrap',
+      'publicSurfaces',
+      'consumer',
+      'currentOnly',
+      'operationalGates',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.kind !== 'jigwright-current-local-adoption-report.v1' ||
+    !isDeepStrictEqual(value.release, release) ||
+    !isRecord(value.install) ||
+    !isRecord(value.bootstrap) ||
+    !isRecord(value.publicSurfaces) ||
+    !isRecord(value.consumer) ||
+    !isRecord(value.currentOnly) ||
+    !isRecord(value.operationalGates)
+  ) {
+    return false;
+  }
+  const installedPackage = value.install.package;
+  const init = value.bootstrap.init;
+  const repeatedInit = value.bootstrap.repeatedInit;
+  return (
+    hasExactKeys(value.install, [
+      'networkPolicy',
+      'packageManager',
+      'lifecycleScriptsDenied',
+      'lockfileVerified',
+      'publicPackageIdentities',
+      'package',
+    ]) &&
+    value.install.networkPolicy === 'offline-exact-local-tarball' &&
+    value.install.packageManager === 'npm' &&
+    value.install.lifecycleScriptsDenied === true &&
+    value.install.lockfileVerified === true &&
+    isDeepStrictEqual(value.install.publicPackageIdentities, ['jigwright']) &&
+    isRecord(installedPackage) &&
+    hasExactKeys(installedPackage, ['name', 'version', 'digest']) &&
+    installedPackage.name === 'jigwright' &&
+    installedPackage.version === release.version &&
+    installedPackage.digest === release.digest &&
+    hasExactKeys(value.bootstrap, [
+      'init',
+      'repeatedInit',
+      'policyUnchanged',
+      'guide',
+    ]) &&
+    isRecord(init) &&
+    hasExactKeys(init, ['kind', 'status', 'path', 'digest']) &&
+    init.kind === 'jigwright-init-result.v1' &&
+    init.status === 'initialized' &&
+    init.path === 'workflow/jigwright-profile.json' &&
+    isSha256Digest(init.digest) &&
+    isRecord(repeatedInit) &&
+    hasExactKeys(repeatedInit, ['exitCode', 'errorClass']) &&
+    repeatedInit.exitCode === 12 &&
+    repeatedInit.errorClass === 'JIGWRIGHT_INIT_ALREADY_CONFIGURED' &&
+    value.bootstrap.policyUnchanged === true &&
+    value.bootstrap.guide === 'workflow-command-guide.v1' &&
+    hasExactKeys(value.publicSurfaces, [
+      'manifestV3',
+      'planReview',
+      'centralGrant',
+    ]) &&
+    value.publicSurfaces.manifestV3 === true &&
+    value.publicSurfaces.planReview === true &&
+    value.publicSurfaces.centralGrant === true &&
+    hasExactKeys(value.consumer, ['commit', 'tree', 'clean']) &&
+    isGitObjectId(value.consumer.commit) &&
+    isGitObjectId(value.consumer.tree) &&
+    value.consumer.clean === true &&
+    hasExactKeys(value.currentOnly, [
+      'historicalRuntimeState',
+      'dualRun',
+      'rollback',
+    ]) &&
+    value.currentOnly.historicalRuntimeState === 'unsupported' &&
+    value.currentOnly.dualRun === 'retired' &&
+    value.currentOnly.rollback === 'revert-consumer-cutover-commit' &&
+    hasExactKeys(value.operationalGates, [
+      'implementation',
+      'realPilot',
+      'fullGate',
+    ]) &&
+    value.operationalGates.implementation === 'implementation-ready' &&
+    value.operationalGates.realPilot === 'real-pilot-pending' &&
+    value.operationalGates.fullGate === 'full-gate-pending'
+  );
+}
+
+function hasExactKeys(value: JsonRecord, expected: readonly string[]): boolean {
+  return isDeepStrictEqual(Object.keys(value).sort(), [...expected].sort());
 }
 
 function writeJson(filePath: string, value: unknown): void {

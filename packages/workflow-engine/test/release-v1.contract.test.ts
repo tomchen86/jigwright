@@ -156,6 +156,96 @@ test('single-package v1 candidate binds reproducibility and stays fail closed fo
   }
 });
 
+test('release verifier rejects independently tampered source, adoption, and supply-chain facts', () => {
+  const outputRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-current-v1-release-cross-binding-'),
+  );
+  try {
+    const candidate = prepareCurrentJigwrightV1ReleaseCandidate(
+      process.cwd(),
+      outputRoot,
+      { allowDirty: true },
+    );
+    const tamperCases: readonly Readonly<{
+      name: string;
+      relativePath: string;
+      mutate(value: any): void;
+    }>[] = [
+      {
+        name: 'candidate source commit',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.release.source.commit = '0'.repeat(40);
+        },
+      },
+      {
+        name: 'candidate adoption real-pilot claim',
+        relativePath: 'release-candidate.json',
+        mutate(value) {
+          value.adoption.operationalGates.realPilot = 'complete';
+        },
+      },
+      {
+        name: 'external adoption real-pilot claim',
+        relativePath: 'adoption/report.json',
+        mutate(value) {
+          value.operationalGates.realPilot = 'complete';
+        },
+      },
+      {
+        name: 'integrity source commit',
+        relativePath: 'integrity.json',
+        mutate(value) {
+          value.source.commit = '0'.repeat(40);
+        },
+      },
+      {
+        name: 'signed provenance claim',
+        relativePath: 'provenance.intoto.json',
+        mutate(value) {
+          value.predicate.runDetails.attestation = 'signed';
+        },
+      },
+      {
+        name: 'stable release-channel claim',
+        relativePath: 'provenance.intoto.json',
+        mutate(value) {
+          value.predicate.buildDefinition.externalParameters.releaseChannel =
+            'stable';
+        },
+      },
+      {
+        name: 'SBOM license claim',
+        relativePath: 'sbom.cdx.json',
+        mutate(value) {
+          value.components[0].licenses[0].license.name = 'MIT';
+        },
+      },
+    ];
+
+    for (const { name, relativePath, mutate } of tamperCases) {
+      const artifactPath = path.join(outputRoot, relativePath);
+      const original = fs.readFileSync(artifactPath);
+      const value = readJson(artifactPath);
+      mutate(value);
+      fs.writeFileSync(artifactPath, `${JSON.stringify(value, null, 2)}\n`);
+      assert.throws(
+        () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
+        /invalid|binding|match/u,
+        name,
+      );
+      fs.writeFileSync(artifactPath, original);
+      assert.equal(
+        verifyCurrentJigwrightV1ReleaseCandidate(outputRoot).release.digest,
+        candidate.release.digest,
+        `${name} restore`,
+      );
+    }
+  } finally {
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  }
+});
+
 test('jigwright init writes the default MVP profile once and never rewrites policy', () => {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-v1-init-'),
