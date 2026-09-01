@@ -1897,10 +1897,12 @@ function addChangeSkeleton(
   guard.changeId = changeId;
   guard.tasks['1.1']!.allowedPaths = [allowedPath];
   if (changeId === 'parallel-one' || changeId === 'parallel-two') {
-    fs.appendFileSync(
-      path.join(target, 'tasks.md'),
-      '\n- [ ] 1.2 Complete the post-refresh follow-up\n',
-    );
+    if (guard.tasks['1.2'] === undefined) {
+      fs.appendFileSync(
+        path.join(target, 'tasks.md'),
+        '\n- [ ] 1.2 Complete the post-refresh follow-up\n',
+      );
+    }
     guard.tasks['1.2'] = {
       allowedPaths: [allowedPath],
       requiredChecks: [...guard.tasks['1.1']!.requiredChecks],
