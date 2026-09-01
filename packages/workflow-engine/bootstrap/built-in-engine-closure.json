@@ -408,7 +408,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts",
       "mode": "100644",
-      "digest": "sha256:88b526c00980d5cd6804befe85123d6038fb5a99dca7651951bf9a72a8360ab1"
+      "digest": "sha256:028e23c8a7b7727c80ae6a2e5715d204e50d35b40667ef549dbc102654fd360b"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-assets.ts",

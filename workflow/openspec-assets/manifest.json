@@ -67,8 +67,8 @@
       "destinationPath": ".codex/skills/openspec-propose/SKILL.md",
       "mirrorOf": null,
       "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
-      "overlayDigest": "b9e15b4971709763b2bb5f60f4104f80baa9c45fa44699efd876ed68f4e04e83",
-      "finalDigest": "9d5f8668e55e701cfafaafe9c0635ecc506ae76930468b9644c148cc5671c8c0"
+      "overlayDigest": "907d1d3458161f713b3c117fa0dc6d94258bde5437fa4204b8ffda48c425f8a6",
+      "finalDigest": "3b148fc187e2d3be96e1af2b9377968d9aef468edbf46312d710d18adfc33ed2"
     },
     {
       "target": "codex",
@@ -100,8 +100,8 @@
       "destinationPath": ".claude/skills/openspec-propose/SKILL.md",
       "mirrorOf": null,
       "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
-      "overlayDigest": "b9e15b4971709763b2bb5f60f4104f80baa9c45fa44699efd876ed68f4e04e83",
-      "finalDigest": "9d5f8668e55e701cfafaafe9c0635ecc506ae76930468b9644c148cc5671c8c0"
+      "overlayDigest": "907d1d3458161f713b3c117fa0dc6d94258bde5437fa4204b8ffda48c425f8a6",
+      "finalDigest": "3b148fc187e2d3be96e1af2b9377968d9aef468edbf46312d710d18adfc33ed2"
     },
     {
       "target": "claude",
@@ -133,8 +133,8 @@
       "destinationPath": ".agents/skills/openspec-propose/SKILL.md",
       "mirrorOf": ".codex/skills/openspec-propose/SKILL.md",
       "sourceDigest": "a666b2381a7d5e982d8e32183484020f518da2b795c0f387c5ff4b3cb47be0fd",
-      "overlayDigest": "b9e15b4971709763b2bb5f60f4104f80baa9c45fa44699efd876ed68f4e04e83",
-      "finalDigest": "9d5f8668e55e701cfafaafe9c0635ecc506ae76930468b9644c148cc5671c8c0"
+      "overlayDigest": "907d1d3458161f713b3c117fa0dc6d94258bde5437fa4204b8ffda48c425f8a6",
+      "finalDigest": "3b148fc187e2d3be96e1af2b9377968d9aef468edbf46312d710d18adfc33ed2"
     },
     {
       "target": "agents",
@@ -166,8 +166,8 @@
       "destinationPath": "workflow/openspec-assets/prompts/opsx-propose.md",
       "mirrorOf": null,
       "sourceDigest": "887ef29166ad98e5fa45df6e3da3265f8e343389c432c3bd951862ffa7e9dbff",
-      "overlayDigest": "733a5b8dd2c24824d308e91cb9308c843d72ee759c259952a778a97e1fa4d8c2",
-      "finalDigest": "733a5b8dd2c24824d308e91cb9308c843d72ee759c259952a778a97e1fa4d8c2"
+      "overlayDigest": "34fdca9812eff8852d1ddc6a120821b4ea358709a19a70a63040ead92e552d0b",
+      "finalDigest": "34fdca9812eff8852d1ddc6a120821b4ea358709a19a70a63040ead92e552d0b"
     }
   ]
 }
