@@ -208,7 +208,7 @@
     {
       "path": "node_modules/@jigwright/github-adapter/src/archive-pull-request.ts",
       "mode": "100644",
-      "digest": "sha256:4ebfa98e04298e5107070cea55589547ce42cb36618f5afb582cd8d86dddd848"
+      "digest": "sha256:620f4406f3f7020fe93513c247ff21756e42088fce8c0c0dc411059263b72e97"
     },
     {
       "path": "node_modules/@jigwright/github-adapter/src/github-app-token.ts",
@@ -488,7 +488,7 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:a988e070ecd49ab055c56d6f137dc44fa623f05b47cbf15294a172efc79a01b7"
+      "digest": "sha256:4cb917b1af0d0aba8629e39b6f1a923653b64ceeef50d1dd715d87a5981c5184"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -693,7 +693,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:d7d5b3e5caebd651e5809b37b0c946b16b820af4e9bfc2d4d288ac76fbb73a9b"
+      "digest": "sha256:0a9defffc44ff95e0b9f1b34a4ae263000a8082bfc647de94ae5f2df7eddc260"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1373,12 +1373,12 @@
     {
       "path": "src/modules/governance-intake/work-registry-grant.ts",
       "mode": "100644",
-      "digest": "sha256:ea7bb99064756120b21419fbf79ffd2deb126c9af492234495fef9a6829023b1"
+      "digest": "sha256:08f81a678a619e8734798c2af9bcd82ff60aef76267d48fcd58643403806f593"
     },
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:e02090713ae20e38a4a5ec7fe33c6aaeb66577fe1b57397a89a49e7a52e81604"
+      "digest": "sha256:63b3086df21120208e5818555c74224776543a6c29dc29640dba2dd0cd95c955"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1988,7 +1988,7 @@
     {
       "path": "src/runtime/repository-transaction/git.ts",
       "mode": "100644",
-      "digest": "sha256:33a5a9b0613635f385881124c814cdce86df4898c8e4c0200289e7c4b33f341f"
+      "digest": "sha256:c4e95f9cdff62d122fc10e3891034bf0e0f0b15f3bc98964b12cf35aa14a401f"
     },
     {
       "path": "src/runtime/repository-transaction/package-closure.ts",

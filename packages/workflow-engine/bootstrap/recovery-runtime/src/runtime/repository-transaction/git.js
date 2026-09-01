@@ -7,6 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { ExitCode, WorkflowError, workflowError, } from "../../foundation/errors/errors.js";
 import { createTrustedExecutionEnvironment } from "../provider-execution/execution-environment.js";
 import { normalizeChangedPath } from "../session-workspace/paths.js";
+export { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "./filesystem-safety.js";
 export const POST_APPROVAL_ADMISSION_LIMIT_MS = 10_000;
 const postApprovalDeadlineStorage = new AsyncLocalStorage();
 export function createPostApprovalAdmissionDeadline(testOptions = {}) {
