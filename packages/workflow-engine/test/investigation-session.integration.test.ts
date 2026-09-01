@@ -71,6 +71,7 @@ import {
   readPlanReviewNode,
 } from '../src/modules/assurance/plan-review.ts';
 import { planningInvestigationRoleResultDependency } from '../src/modules/assurance/planning-assurance-validator.ts';
+import { admitRoleResult } from '../src/modules/provider-orchestration/role-scheduler.ts';
 import {
   createProviderRunnerForTesting,
   PROVIDER_RUNNER_RESIDUALS,
@@ -2830,9 +2831,9 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       ),
     );
     assert.equal(awaitingDisposition.state, 'awaiting-challenge-dispositions');
-    const trackedPlanReview = JSON.parse(
-      fs.readFileSync(path.join(changeDirectory, 'plan-review.json'), 'utf8'),
-    );
+    const planReviewPath = path.join(changeDirectory, 'plan-review.json');
+    const trackedPlanReviewBytes = fs.readFileSync(planReviewPath);
+    const trackedPlanReview = JSON.parse(trackedPlanReviewBytes.toString());
     const trackedReviewProviderResult = trackedPlanReview.nodes.find(
       (node: { type: string }) => node.type === 'plan-review-provider-result',
     );
@@ -2856,6 +2857,122 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     const reviewNode = trackedPlanReview.nodes.find(
       (node: { type: string }) => node.type === 'plan-review',
     );
+    const retiredProviderResult = createEvidenceNode({
+      type: trackedReviewProviderResult.type,
+      nodeSchema: trackedReviewProviderResult.nodeSchema,
+      evaluator: trackedReviewProviderResult.evaluator,
+      policyDigest: trackedReviewProviderResult.policyDigest,
+      exactInputDigests: trackedReviewProviderResult.exactInputDigests,
+      semanticParentResultDigests:
+        trackedReviewProviderResult.semanticParentResultDigests,
+      provenanceParentNodeIds:
+        trackedReviewProviderResult.provenanceParentNodeIds,
+      outputSchema: trackedReviewProviderResult.outputSchema,
+      output: {
+        ...trackedReviewProviderResult.output,
+        runtimeAssurance: null,
+      },
+      runtimeMetadata: trackedReviewProviderResult.runtimeMetadata,
+    });
+    const retiredReviewNode = createEvidenceNode({
+      type: reviewNode.type,
+      nodeSchema: reviewNode.nodeSchema,
+      evaluator: reviewNode.evaluator,
+      policyDigest: reviewNode.policyDigest,
+      exactInputDigests: reviewNode.exactInputDigests,
+      semanticParentResultDigests: {
+        ...reviewNode.semanticParentResultDigests,
+        providerResult: retiredProviderResult.resultDigest,
+      },
+      provenanceParentNodeIds: {
+        ...reviewNode.provenanceParentNodeIds,
+        providerResult: retiredProviderResult.nodeId,
+      },
+      outputSchema: reviewNode.outputSchema,
+      output: reviewNode.output,
+      runtimeMetadata: reviewNode.runtimeMetadata,
+    });
+    const trackedRoleResult = trackedPlanReview.roleResults[0];
+    assert.equal(trackedRoleResult.form, 'ordinary-provider');
+    const retiredRoleResult = admitRoleResult({
+      assignment: trackedRoleResult.assignment,
+      author: trackedRoleResult.author,
+      participant: trackedRoleResult.participant,
+      content: {
+        ...trackedRoleResult.content,
+        nodeId: retiredReviewNode.nodeId,
+        resultDigest: retiredReviewNode.resultDigest,
+        contentDigest: retiredReviewNode.resultDigest,
+      },
+      providerInvocation: trackedRoleResult.providerInvocation,
+      grantUse: null,
+      grantValidation: null,
+    });
+    const retiredArtifact = {
+      ...trackedPlanReview,
+      nodes: trackedPlanReview.nodes
+        .map((node: EvidenceNode) =>
+          node.nodeId === trackedReviewProviderResult.nodeId
+            ? retiredProviderResult
+            : node.nodeId === reviewNode.nodeId
+              ? retiredReviewNode
+              : node,
+        )
+        .sort((left: EvidenceNode, right: EvidenceNode) =>
+          left.nodeId.localeCompare(right.nodeId),
+        ),
+      currentRefs: {
+        ...trackedPlanReview.currentRefs,
+        planReview: retiredReviewNode.nodeId,
+      },
+      roleResults: [retiredRoleResult],
+    };
+    fs.writeFileSync(
+      planReviewPath,
+      `${canonicalJson(retiredArtifact)}\n`,
+      'utf8',
+    );
+    const rejectedArtifactBytes = fs.readFileSync(planReviewPath);
+    const rejectedGitState = {
+      head: git(repository, ['rev-parse', 'HEAD']),
+      tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+      status: git(repository, ['status', '--porcelain=v2', '-z']),
+    };
+    const rejectedRuntimeState = snapshotFileTree(reviewerRuntime.root);
+    try {
+      await t.test(
+        'tracked PlanReview rejects a digest-consistent provider result with retired null runtime assurance without mutation',
+        () => {
+          assert.throws(
+            () =>
+              getProposeStatus(
+                repository,
+                twiceReplanned.investigation!.investigationId,
+              ),
+            (error: unknown) =>
+              isWorkflowError(error, 'INVALID_PLAN_REVIEW_ARTIFACT'),
+          );
+          assert.deepEqual(
+            fs.readFileSync(planReviewPath),
+            rejectedArtifactBytes,
+          );
+          assert.deepEqual(
+            {
+              head: git(repository, ['rev-parse', 'HEAD']),
+              tree: git(repository, ['rev-parse', 'HEAD^{tree}']),
+              status: git(repository, ['status', '--porcelain=v2', '-z']),
+            },
+            rejectedGitState,
+          );
+          assert.deepEqual(
+            snapshotFileTree(reviewerRuntime.root),
+            rejectedRuntimeState,
+          );
+        },
+      );
+    } finally {
+      fs.writeFileSync(planReviewPath, trackedPlanReviewBytes);
+    }
     const challengeId = readPlanReviewNode(reviewNode).findings[0]!.findingId;
     fs.writeFileSync(adapterPolicyPath, adapterPolicyBytes);
     const completedPlanning = resumePropose(
@@ -9340,6 +9457,37 @@ function createCrashPublicationEvidenceNode(label: string): EvidenceNode {
     output: { label },
     runtimeMetadata: {},
   });
+}
+
+function snapshotFileTree(root: string): readonly unknown[] {
+  const snapshot: unknown[] = [];
+  const visit = (absolute: string, relative: string): void => {
+    const stats = fs.lstatSync(absolute, { throwIfNoEntry: false });
+    if (stats === undefined) return;
+    snapshot.push({
+      path: relative,
+      mode: stats.mode,
+      kind: stats.isDirectory()
+        ? 'directory'
+        : stats.isFile()
+          ? 'file'
+          : stats.isSymbolicLink()
+            ? 'symlink'
+            : 'other',
+      content: stats.isFile()
+        ? fs.readFileSync(absolute).toString('base64')
+        : stats.isSymbolicLink()
+          ? fs.readlinkSync(absolute)
+          : null,
+    });
+    if (stats.isDirectory()) {
+      for (const entry of fs.readdirSync(absolute).sort()) {
+        visit(path.join(absolute, entry), path.join(relative, entry));
+      }
+    }
+  };
+  visit(root, '.');
+  return snapshot;
 }
 
 function runEvidenceObjectCrashChild(

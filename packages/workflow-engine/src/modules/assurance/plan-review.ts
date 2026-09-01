@@ -1056,6 +1056,69 @@ export function createPlanReviewProviderResultNode(
   });
 }
 
+export function assertCurrentPlanReviewProviderResultNode(
+  value: unknown,
+): EvidenceNode {
+  const node = assertStoredEvidenceNode(value, () =>
+    planReviewInvalid('Provider result node is malformed.'),
+  );
+  if (
+    node.type !== PROVIDER_RESULT_TYPE ||
+    node.nodeSchema !== PROVIDER_RESULT_SCHEMA ||
+    node.evaluator !== PROVIDER_RESULT_EVALUATOR ||
+    node.outputSchema !== PROVIDER_RESULT_OUTPUT_SCHEMA
+  ) {
+    throw planReviewInvalid('Provider result node identity is unexpected.');
+  }
+  assertExactDigestRoles(
+    node.exactInputDigests,
+    ['assignment', 'subject', 'submission', 'targetSnapshot'],
+    'Provider result exact-input roles are unexpected.',
+  );
+  assertExactDigestRoles(
+    node.semanticParentResultDigests,
+    ['targetSnapshot'],
+    'Provider result semantic-parent roles are unexpected.',
+  );
+  assertExactDigestRoles(
+    node.provenanceParentNodeIds,
+    ['targetSnapshot'],
+    'Provider result provenance-parent roles are unexpected.',
+  );
+  if (
+    Object.keys(node.runtimeMetadata).length !== 0 ||
+    node.exactInputDigests.targetSnapshot !==
+      node.provenanceParentNodeIds.targetSnapshot ||
+    !isDigest(node.semanticParentResultDigests.targetSnapshot)
+  ) {
+    throw planReviewInvalid('Provider result target binding is malformed.');
+  }
+  const output = assertExactKeys(node.output, PROVIDER_RESULT_OUTPUT_KEYS);
+  if (output.schemaVersion !== 2 || !isDigest(output.subjectDigest)) {
+    throw planReviewInvalid('Provider result output identity is malformed.');
+  }
+  const assignment = assertAssignmentForSubjectDigest(
+    output.assignment,
+    output.subjectDigest,
+  );
+  const submission = canonicalSubmission(
+    assertPlanReviewSubmission(output.submission),
+  );
+  if (
+    node.exactInputDigests.subject !== output.subjectDigest ||
+    node.exactInputDigests.assignment !==
+      planReviewAssignmentDigest(assignment) ||
+    node.exactInputDigests.submission !==
+      planReviewSubmissionDigest(submission) ||
+    assertPlanReviewRuntimeAssurance(output.runtimeAssurance) === null
+  ) {
+    throw planReviewInvalid(
+      'Provider result does not carry current runtime assurance.',
+    );
+  }
+  return node;
+}
+
 export function planReviewAssignmentDigest(
   assignment: ProviderRoleAssignment,
 ): string {

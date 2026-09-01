@@ -47,6 +47,7 @@ import {
 } from '../../../planning/investigation/evidence-convergence.ts';
 import { engineProjectionDefinitions } from '../../../../modules/projection/engine-projection-registry.ts';
 import { validateTrackedEvidenceReusePaths } from '../../../planning/investigation/evidence-reuse-path.ts';
+import { assertCurrentPlanReviewProviderResultNode } from '../../../../modules/assurance/plan-review.ts';
 import {
   assertChangeId,
   assertPolicyPathInsideRepository,
@@ -1620,6 +1621,11 @@ function parsePlanReviewEvidenceArtifact(
   );
   try {
     validateEvidenceArtifactNodes(nodes);
+    for (const node of nodes) {
+      if (node.type === 'plan-review-provider-result') {
+        assertCurrentPlanReviewProviderResultNode(node);
+      }
+    }
   } catch {
     throw invalid();
   }

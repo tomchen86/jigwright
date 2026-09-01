@@ -781,6 +781,21 @@ export function writeReadyV3ExemptChange(
     submission,
     providerPolicyDigest: subjectContext.policies.reviewPolicyDigest,
     targetSnapshotNode,
+    runtimeAssurance: {
+      assurance: 'unchanged-governed-projection',
+      projectionDigest: crypto
+        .createHash('sha256')
+        .update('synthetic current-v3 fixture projection')
+        .digest('hex'),
+      sameUserProcessConfined: false,
+      residuals: [
+        'Synthetic current-v3 fixture only; no executable process was launched.',
+      ],
+      executableSha256: crypto
+        .createHash('sha256')
+        .update('synthetic current-v3 fixture executable identity')
+        .digest('hex'),
+    },
   });
   const reviewNode = createPlanReviewNode({
     subject: subjectContext.subject,

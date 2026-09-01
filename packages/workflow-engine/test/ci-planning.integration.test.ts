@@ -1850,6 +1850,21 @@ function refreshFixturePlanReview(repository: string): void {
     submission,
     providerPolicyDigest: context.policies.reviewPolicyDigest,
     targetSnapshotNode,
+    runtimeAssurance: {
+      assurance: 'unchanged-governed-projection',
+      projectionDigest: crypto
+        .createHash('sha256')
+        .update('synthetic current-v3 CI fixture projection')
+        .digest('hex'),
+      sameUserProcessConfined: false,
+      residuals: [
+        'Synthetic current-v3 CI fixture only; no executable process was launched.',
+      ],
+      executableSha256: crypto
+        .createHash('sha256')
+        .update('synthetic current-v3 CI fixture executable identity')
+        .digest('hex'),
+    },
   });
   const reviewNode = createPlanReviewNode({
     subject: context.subject,
