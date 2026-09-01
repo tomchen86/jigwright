@@ -512,7 +512,7 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         digest: initialized.result.digest,
       });
       assert.match(initialized.result.digest, /^sha256:[a-f0-9]{64}$/u);
-      configurePortableConsumer(repository);
+      configurePortableConsumer(repository, lifecycleStrategy);
       assertNeutralPlanningProvider(repository);
 
       const help = runPortabilityPackageInvocation(
@@ -870,7 +870,10 @@ type FixtureTaskStatus = Readonly<{
   }>;
 }>;
 
-function configurePortableConsumer(repository: string): void {
+function configurePortableConsumer(
+  repository: string,
+  lifecycleStrategy: PortableTaskLifecycleStrategy,
+): void {
   const configPath = path.join(repository, 'workflow/config.json');
   const config = JSON.parse(fs.readFileSync(configPath, 'utf8')) as {
     repositoryName: string;
@@ -943,7 +946,8 @@ function configurePortableConsumer(repository: string): void {
   ) as { documents: Record<string, unknown> };
   documentPolicy.documents['docs/CURRENT_AND_NEXT_STEPS.md'] = {
     mode: 'generated',
-    enforcement: 'active',
+    enforcement:
+      lifecycleStrategy === 'preferred-finalize' ? 'active' : 'planned',
     transition: 'completion',
   };
   writeJson(documentPolicyPath, documentPolicy);
@@ -1237,13 +1241,27 @@ function finalizePortableTask(
     const checked = checkTask(repository, sessionId);
     assert.equal(checked.passed, true);
     assert.match(checked.reportId, /^[0-9a-f]{64}$/u);
+    const completed = runCli(repository, ['complete-task', sessionId]) as {
+      result: {
+        reportId: string;
+        completedTaskIds: string[];
+      };
+    };
+    assert.match(completed.result.reportId, /^[0-9a-f]{64}$/u);
+    assert.deepEqual(completed.result.completedTaskIds, ['1.1']);
+    const finished = runCli(repository, ['finish', sessionId]) as {
+      result: { reportId: string; tree: string };
+    };
+    assert.match(finished.result.reportId, /^[0-9a-f]{64}$/u);
+    assert.match(finished.result.tree, /^[0-9a-f]{40,64}$/u);
+    return (
+      runCli(repository, ['commit', sessionId, '--message', message]) as {
+        result: ManagedCommit;
+      }
+    ).result;
   }
-  const reviewGateArgs =
-    lifecycleStrategy === 'preferred-finalize'
-      ? finalizeArgs
-      : (['complete-task', sessionId] as const);
   assert.throws(
-    () => runCli(repository, reviewGateArgs),
+    () => runCli(repository, finalizeArgs),
     hasExactLocalWorkflowCode('TASK_DIFF_REVIEW_REQUIRED'),
   );
   const started = withProviderDispatchDisabled(() =>
@@ -1431,28 +1449,8 @@ function finalizePortableTask(
     'codex',
   ]) as { result: { state: string } };
   assert.equal(reviewed.result.state, 'satisfied');
-  if (lifecycleStrategy === 'preferred-finalize') {
-    return (
-      runCli(repository, finalizeArgs) as {
-        result: ManagedCommit;
-      }
-    ).result;
-  }
-  const completed = runCli(repository, ['complete-task', sessionId]) as {
-    result: {
-      reportId: string;
-      completedTaskIds: string[];
-    };
-  };
-  assert.match(completed.result.reportId, /^[0-9a-f]{64}$/u);
-  assert.deepEqual(completed.result.completedTaskIds, ['1.1']);
-  const finished = runCli(repository, ['finish', sessionId]) as {
-    result: { reportId: string; tree: string };
-  };
-  assert.match(finished.result.reportId, /^[0-9a-f]{64}$/u);
-  assert.match(finished.result.tree, /^[0-9a-f]{40,64}$/u);
   return (
-    runCli(repository, ['commit', sessionId, '--message', message]) as {
+    runCli(repository, finalizeArgs) as {
       result: ManagedCommit;
     }
   ).result;
