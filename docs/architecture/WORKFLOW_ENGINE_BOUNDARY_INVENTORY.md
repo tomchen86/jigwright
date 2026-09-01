@@ -10,28 +10,41 @@ disagree, code is authoritative.
 ## Scanner baseline
 
 The production `jigwright boundary inventory --check` command parses TypeScript
-and JavaScript syntax rather than counting comments. Its primary-source
-baseline is 178 direct `workflow/*.json` literal occurrences in 60 files,
-covering 11 unique paths.
-AST provenance separately freezes four split `path.join`/`path.resolve` sites
-and one workflow-root directory enumeration. Bootstrap TypeScript contributes
-nine direct references in three files, and root tooling scripts contribute one.
-The generated recovery projection contains 34 direct references in 13 files
-and three split path joins in three files; these are pinned separately from the
-primary extraction workload.
+and JavaScript syntax rather than counting comments. The current audited
+checkpoint is the exact production observation identified below; the contract
+test requires every quantitative row to match that same command output.
+
+Current production inventory digest: `sha256:319a53e82231dc33bcd1c9cbf60dd548345339e9a70b16b0bb01915e5d4385ca`.
+
+| Scope                                      | Occurrences | Files |
+| ------------------------------------------ | ----------: | ----: |
+| Primary workflow JSON literals             |         190 |    63 |
+| Primary split path joins/resolves          |           3 |     3 |
+| Primary dynamic workflow-root enumerations |           1 |     1 |
+| Bootstrap workflow JSON literals           |           9 |     3 |
+| Root tooling workflow JSON literals        |           6 |     2 |
+| Recovery workflow JSON literals            |          32 |    12 |
+| Recovery split path joins                  |           2 |     2 |
+| Workflow artifact package-path leaves      |        1269 |     6 |
+
+The primary literals cover 11 unique paths. Split joins and dynamic directory
+enumeration are authenticated separately from direct literals. Bootstrap,
+tooling-script, and generated recovery observations are also pinned separately
+from the primary extraction workload.
 
 The retired signature/record namespace `expense-app.workflow.*` has zero
 occurrences in primary TypeScript, bootstrap TypeScript, generated recovery
 JavaScript, and workflow JSON artifacts. JSON Schema `$id` values are a
-separate surface: all 15 tracked schemas use `jigwright.local`; the complete
-URI identities, not only host counts, are frozen.
+separate surface. The same observation reports **14** tracked JSON Schema `$id`
+values using `jigwright.local`. The complete URI identities, not only host
+counts, are frozen.
 
-Top-level workflow artifacts contain a different path surface. Across
-`workflow/*.json`, 1,261 string leaves in six files are equal to
-`packages/workflow-engine` or begin with that package prefix. This scope
-includes authority-sensitive policies and generated test shards; it does not
-label every value as authority. Their file, JSON Pointer, and raw value
-identities are frozen for mechanical remapping.
+Top-level workflow artifacts contain a different path surface, reported in the
+table as package-path leaves. Those values are equal to
+`packages/workflow-engine` or begin with that package prefix. This scope includes
+authority-sensitive policies and generated test shards; it does not label every
+value as authority. Their file, JSON Pointer, and raw value identities are
+frozen for mechanical remapping.
 
 These numbers are scope-qualified. Generated recovery files are not counted as
 additional extraction work, JSON Schema URIs are not signature namespaces, and
