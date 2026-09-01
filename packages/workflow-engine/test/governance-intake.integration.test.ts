@@ -72,6 +72,71 @@ test('source capture is content-addressed, append-only, and idempotent', () => {
   }
 });
 
+test('Source show and correction trace work without the optional Work Registry', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-source-core-trace-'),
+  );
+  try {
+    const original = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:10:00.000Z',
+      contextRef: 'direct-human:thread/turn-43',
+      text: 'Preserve this exact original wording.\n',
+      supersedes: null,
+    }).source;
+    const correction = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:11:00.000Z',
+      contextRef: 'maintainer-confirmation:thread/turn-44',
+      text: 'Preserve this exact corrected wording.\n',
+      supersedes: original.id,
+    }).source;
+
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['show', correction.id],
+        repositoryRoot,
+      ),
+      { action: 'show', source: correction },
+    );
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['trace', correction.id],
+        repositoryRoot,
+      ),
+      {
+        action: 'trace',
+        source: correction,
+        supersedes: original,
+        supersededBy: [],
+        workItems: [],
+        origins: [],
+      },
+    );
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['trace', original.id],
+        repositoryRoot,
+      ),
+      {
+        action: 'trace',
+        source: original,
+        supersedes: null,
+        supersededBy: [correction],
+        workItems: [],
+        origins: [],
+      },
+    );
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
 test('finding capture binds active session and Git facts outside task paths', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-finding-'));
   const repositoryRoot = path.join(root, 'repository');
@@ -333,6 +398,137 @@ test('a Source can link directly to a change without a parking Work Item', () =>
     );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('Source CLI show and trace preserve exact wording and refuse dangling citations', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-source-trace-'),
+  );
+  const repositoryRoot = path.join(root, 'repository');
+  const runtimeRoot = path.join(root, 'runtime');
+  fs.mkdirSync(repositoryRoot, { recursive: true });
+  configureRepositoryConsumer(repositoryRoot);
+  fs.mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
+  try {
+    const original = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:31:00.000Z',
+      contextRef: 'direct-human:thread/turn-45',
+      text: '保留這段 maintainer 原話。\n',
+      supersedes: null,
+    }).source;
+    const correction = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:32:00.000Z',
+      contextRef: 'direct-human:thread/turn-45',
+      text: '修正後仍保留原話的獨立來源。\n',
+      supersedes: original.id,
+    }).source;
+    fs.mkdirSync(
+      path.join(repositoryRoot, 'openspec/changes/direct-source-trace'),
+      { recursive: true },
+    );
+    dispatchGovernanceIntakeCommand(
+      'source',
+      ['link-change', correction.id, '--change', 'direct-source-trace'],
+      repositoryRoot,
+    );
+
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['show', correction.id],
+        repositoryRoot,
+      ),
+      { action: 'show', source: correction },
+    );
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand(
+        'source',
+        ['trace', correction.id],
+        repositoryRoot,
+      ),
+      {
+        action: 'trace',
+        source: correction,
+        supersedes: original,
+        supersededBy: [],
+        workItems: [],
+        origins: ['openspec/changes/direct-source-trace/origin.json'],
+      },
+    );
+
+    const missingSourceId = `SRC-${'f'.repeat(64)}` as `SRC-${string}`;
+    assert.throws(
+      () =>
+        captureGovernanceSource(repositoryRoot, {
+          semanticAuthor: 'agent',
+          capturedBy: 'jigwright',
+          capturedAt: '2026-08-24T03:33:00.000Z',
+          contextRef: 'session:session-current-task',
+          text: 'A correction cannot cite an absent Source.\n',
+          supersedes: missingSourceId,
+        }),
+      hasCode('GOVERNANCE_INTAKE_INVALID'),
+    );
+    assert.throws(
+      () =>
+        recordGovernanceFinding(
+          {
+            repositoryRoot,
+            runtimeRoot,
+            sessionId: 'session-current-task',
+            changeId: 'current-change',
+            branch: 'work/current-change',
+            head: 'a'.repeat(40),
+            tree: 'b'.repeat(40),
+          },
+          {
+            schemaVersion: 1,
+            text: 'A Finding cannot cite an absent Source.',
+            sourceRefs: [missingSourceId],
+          },
+          () => '2026-08-24T03:34:00.000Z',
+        ),
+      hasCode('GOVERNANCE_INTAKE_INVALID'),
+    );
+    fs.mkdirSync(
+      path.join(repositoryRoot, 'openspec/changes/poisoned-source'),
+      {
+        recursive: true,
+      },
+    );
+    fs.writeFileSync(
+      path.join(repositoryRoot, 'openspec/changes/poisoned-source/origin.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        sourceRefs: [missingSourceId],
+        workItemRefs: [],
+      })}\n`,
+    );
+    const poisonedOriginPath = path.join(
+      repositoryRoot,
+      'openspec/changes/poisoned-source/origin.json',
+    );
+    const poisonedOriginBytes = fs.readFileSync(poisonedOriginPath, 'utf8');
+    assert.throws(
+      () =>
+        linkSourceToChange(repositoryRoot, correction.id, 'poisoned-source'),
+      hasCode('GOVERNANCE_INTAKE_INVALID'),
+    );
+    assert.equal(
+      fs.readFileSync(poisonedOriginPath, 'utf8'),
+      poisonedOriginBytes,
+    );
+    assert.throws(
+      () => validateWorkRegistry(repositoryRoot),
+      hasCode('WORK_REGISTRY_INVALID'),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

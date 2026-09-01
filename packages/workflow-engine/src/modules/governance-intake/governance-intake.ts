@@ -5,6 +5,7 @@ import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import {
   createGovernanceSourceV1,
+  parseGovernanceSourceV1,
   type GovernanceSourceAuthoringV1,
   type GovernanceSourceV1,
 } from '@jigwright/core/governance-source';
@@ -41,6 +42,9 @@ export type GovernanceFindingV1 = Readonly<{
   sourceRefs: readonly `SRC-${string}`[];
 }>;
 
+const SOURCE_LEDGER_ROOT = 'workflow/source-ledger/objects/sha256';
+const SOURCE_ID = /^SRC-[0-9a-f]{64}$/;
+
 export function captureGovernanceSource(
   repositoryRoot: string,
   input: GovernanceSourceAuthoringV1,
@@ -50,15 +54,10 @@ export function captureGovernanceSource(
   created: boolean;
 } {
   const source = createGovernanceSourceV1(input);
-  const digest = source.id.slice('SRC-'.length);
-  const relativePath = path.posix.join(
-    'workflow',
-    'source-ledger',
-    'objects',
-    'sha256',
-    digest.slice(0, 2),
-    `${digest}.json`,
-  );
+  if (source.supersedes !== null) {
+    readGovernanceSource(repositoryRoot, source.supersedes);
+  }
+  const relativePath = governanceSourceRelativePath(source.id);
   const created = publishCreateOnlyCanonical(
     path.join(repositoryRoot, ...relativePath.split('/')),
     source,
@@ -68,12 +67,90 @@ export function captureGovernanceSource(
   return { source, relativePath, created };
 }
 
+export function readGovernanceSource(
+  repositoryRoot: string,
+  requestedSourceId: string,
+  sourceRoot: string = SOURCE_LEDGER_ROOT,
+): GovernanceSourceV1 {
+  const sourceId = sourceReference(requestedSourceId);
+  const relativePath = governanceSourceRelativePath(sourceId, sourceRoot);
+  const sourcePath = path.join(repositoryRoot, ...relativePath.split('/'));
+  const stats = fs.lstatSync(sourcePath, { throwIfNoEntry: false });
+  if (!stats?.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
+    throw intakeInvalid('Governance Source must resolve to one plain record.');
+  }
+  let serialized: string;
+  try {
+    serialized = fs.readFileSync(sourcePath, 'utf8');
+  } catch {
+    throw intakeInvalid('Governance Source cannot be read.');
+  }
+  let source: GovernanceSourceV1;
+  try {
+    source = parseGovernanceSourceV1(JSON.parse(serialized));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      throw intakeInvalid('Governance Source is invalid.');
+    }
+    throw error;
+  }
+  if (source.id !== sourceId || serialized !== `${canonicalJson(source)}\n`) {
+    throw intakeInvalid(
+      'Governance Source path, identity, or canonical bytes are invalid.',
+    );
+  }
+  return source;
+}
+
+export function listGovernanceSources(
+  repositoryRoot: string,
+  sourceRoot: string = SOURCE_LEDGER_ROOT,
+): GovernanceSourceV1[] {
+  const ledgerRoot = path.join(repositoryRoot, ...sourceRoot.split('/'));
+  const rootStats = fs.lstatSync(ledgerRoot, { throwIfNoEntry: false });
+  if (rootStats === undefined) return [];
+  if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
+    throw intakeInvalid(
+      'Governance Source ledger root must be a plain directory.',
+    );
+  }
+  const sources: GovernanceSourceV1[] = [];
+  for (const prefix of fs.readdirSync(ledgerRoot, { withFileTypes: true })) {
+    if (prefix.isSymbolicLink()) {
+      throw intakeInvalid('Governance Source ledger cannot contain links.');
+    }
+    if (!prefix.isDirectory() || !/^[0-9a-f]{2}$/.test(prefix.name)) {
+      continue;
+    }
+    const prefixRoot = path.join(ledgerRoot, prefix.name);
+    for (const entry of fs.readdirSync(prefixRoot, { withFileTypes: true })) {
+      if (entry.isSymbolicLink()) {
+        throw intakeInvalid('Governance Source ledger cannot contain links.');
+      }
+      if (!entry.isFile() || !/^[0-9a-f]{64}\.json$/.test(entry.name)) {
+        continue;
+      }
+      const digest = entry.name.slice(0, -'.json'.length);
+      if (prefix.name !== digest.slice(0, 2)) {
+        throw intakeInvalid('Governance Source path prefix is invalid.');
+      }
+      sources.push(
+        readGovernanceSource(repositoryRoot, `SRC-${digest}`, sourceRoot),
+      );
+    }
+  }
+  return sources.sort((left, right) => left.id.localeCompare(right.id));
+}
+
 export function recordGovernanceFinding(
   context: GovernanceFindingContextV1,
   input: GovernanceFindingAuthoringV1,
   now: () => string = () => new Date().toISOString(),
 ): { finding: GovernanceFindingV1; path: string; created: boolean } {
   const normalized = normalizeFindingInput(input);
+  for (const sourceRef of normalized.sourceRefs) {
+    readGovernanceSource(context.repositoryRoot, sourceRef);
+  }
   const payload = {
     schemaVersion: 1 as const,
     createdAt: canonicalTimestamp(now()),
@@ -134,6 +211,21 @@ function normalizeFindingInput(input: GovernanceFindingAuthoringV1): {
   }
   sourceRefs.sort();
   return { text: input.text, sourceRefs };
+}
+
+function governanceSourceRelativePath(
+  sourceId: `SRC-${string}`,
+  sourceRoot: string = SOURCE_LEDGER_ROOT,
+): string {
+  const digest = sourceId.slice('SRC-'.length);
+  return path.posix.join(sourceRoot, digest.slice(0, 2), `${digest}.json`);
+}
+
+function sourceReference(value: string): `SRC-${string}` {
+  if (!SOURCE_ID.test(value)) {
+    throw intakeInvalid('Governance Source reference is invalid.');
+  }
+  return value as `SRC-${string}`;
 }
 
 function ensurePrivateFindingDirectory(

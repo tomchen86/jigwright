@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { parseGovernanceSourceV1 } from '@jigwright/core/governance-source';
+import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
@@ -11,6 +11,10 @@ import {
   repositoryConsumerPath,
   repositoryWorkRegistryConfiguration,
 } from '../repository-consumer/repository-consumer-config.ts';
+import {
+  listGovernanceSources,
+  readGovernanceSource,
+} from './governance-intake.ts';
 
 export type WorkItemKindV1 =
   'feature' | 'bug' | 'improvement' | 'chore' | 'research';
@@ -421,7 +425,12 @@ export function promoteWorkItem(
   };
   const originPath = path.join(changeDirectory, 'origin.json');
   const originBefore = readOptionalPlainFile(originPath);
-  const origin = mergeOrigin(originBefore, promoted.sourceRefs, [promoted.id]);
+  const origin = mergeOrigin(
+    repositoryRoot,
+    originBefore,
+    promoted.sourceRefs,
+    [promoted.id],
+  );
 
   try {
     replaceCanonicalFile(originPath, origin);
@@ -466,7 +475,7 @@ export function linkSourceToChange(
   }
   const originPath = path.join(changeDirectory, 'origin.json');
   const before = readOptionalPlainFile(originPath);
-  const origin = mergeOrigin(before, [sourceRef!], []);
+  const origin = mergeOrigin(repositoryRoot, before, [sourceRef!], []);
   const content = `${canonicalJson(origin)}\n`;
   if (before === content) {
     return { origin, originPath, created: false };
@@ -632,6 +641,62 @@ export function traceWorkItem(
     readSourceValue(repositoryRoot, sourceRef),
   );
   return { item, origins, sources };
+}
+
+export function traceGovernanceSource(
+  repositoryRoot: string,
+  requestedSourceId: string,
+): {
+  source: GovernanceSourceV1;
+  supersedes: GovernanceSourceV1 | null;
+  supersededBy: GovernanceSourceV1[];
+  workItems: WorkItemV1[];
+  origins: string[];
+} {
+  const canonicalRepositoryRoot = fs.realpathSync(repositoryRoot);
+  const source = readGovernanceSource(repositoryRoot, requestedSourceId);
+  const supersedes =
+    source.supersedes === null
+      ? null
+      : readGovernanceSource(repositoryRoot, source.supersedes);
+  const supersededBy = listGovernanceSources(repositoryRoot)
+    .filter((candidate) => candidate.supersedes === source.id)
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const coreTrace = {
+    source,
+    supersedes,
+    supersededBy,
+    workItems: [] as WorkItemV1[],
+    origins: [] as string[],
+  };
+  const configStats = fs.lstatSync(
+    path.join(repositoryRoot, 'workflow', 'repository-consumer.json'),
+    { throwIfNoEntry: false },
+  );
+  if (configStats === undefined) return coreTrace;
+  const workItems = listWorkItems(repositoryRoot)
+    .filter((item) => item.sourceRefs.includes(source.id))
+    .map((item) => {
+      for (const itemSourceRef of item.sourceRefs) {
+        readSource(repositoryRoot, itemSourceRef);
+      }
+      return item;
+    });
+  const origins = listOriginPaths(repositoryRoot)
+    .flatMap((originPath) => {
+      const origin = parseOrigin(fs.readFileSync(originPath, 'utf8'));
+      if (!origin.sourceRefs.includes(source.id)) return [];
+      for (const originSourceRef of origin.sourceRefs) {
+        readSource(repositoryRoot, originSourceRef);
+      }
+      return [
+        path
+          .relative(canonicalRepositoryRoot, originPath)
+          .replaceAll(path.sep, '/'),
+      ];
+    })
+    .sort();
+  return { source, supersedes, supersededBy, workItems, origins };
 }
 
 export function renderWorkRegistry(repositoryRoot: string): {
@@ -837,14 +902,22 @@ export function validateWorkRegistry(repositoryRoot: string): {
   sourceCount: number;
 } {
   const sourceIds = new Set<string>();
+  const sources: GovernanceSourceV1[] = [];
   for (const sourcePath of listSourcePaths(repositoryRoot)) {
-    const source = parseGovernanceSourceV1(
-      JSON.parse(fs.readFileSync(sourcePath, 'utf8')),
+    const source = readSourceValue(
+      repositoryRoot,
+      sourceReferenceFromPath(sourcePath),
     );
     if (sourceIds.has(source.id)) {
       throw registryInvalid('Governance Source identity is duplicated.');
     }
     sourceIds.add(source.id);
+    sources.push(source);
+  }
+  for (const source of sources) {
+    if (source.supersedes !== null && !sourceIds.has(source.supersedes)) {
+      throw registryInvalid('Governance Source supersedes a missing Source.');
+    }
   }
   const itemIds = new Set<string>();
   const items = listWorkItems(repositoryRoot);
@@ -870,6 +943,11 @@ export function validateWorkRegistry(repositoryRoot: string): {
   for (const originPath of listOriginPaths(repositoryRoot)) {
     const origin = parseOrigin(fs.readFileSync(originPath, 'utf8'));
     const changeId = originChangeId(repositoryRoot, originPath);
+    for (const sourceRef of origin.sourceRefs) {
+      if (!sourceIds.has(sourceRef)) {
+        throw registryInvalid('Change origin references a missing Source.');
+      }
+    }
     for (const workItemRef of origin.workItemRefs) {
       if (!itemIds.has(workItemRef)) {
         throw registryInvalid('Change origin references a missing Work Item.');
@@ -989,6 +1067,7 @@ function isClosure(value: unknown): boolean {
 }
 
 function mergeOrigin(
+  repositoryRoot: string,
   existingText: string | null,
   sourceRefs: readonly `SRC-${string}`[],
   workItemRefs: readonly `WORK-${string}`[],
@@ -1014,13 +1093,17 @@ function mergeOrigin(
     }
     existing = value as ChangeOriginV1;
   }
-  return {
+  const merged: ChangeOriginV1 = {
     schemaVersion: 1,
     sourceRefs: [...new Set([...existing.sourceRefs, ...sourceRefs])].sort(),
     workItemRefs: [
       ...new Set([...existing.workItemRefs, ...workItemRefs]),
     ].sort(),
   };
+  for (const sourceRef of merged.sourceRefs) {
+    readSource(repositoryRoot, sourceRef);
+  }
+  return merged;
 }
 
 function parseOrigin(existingText: string): ChangeOriginV1 {
@@ -1096,21 +1179,7 @@ function listSourcePaths(repositoryRoot: string): string[] {
 }
 
 function readSource(repositoryRoot: string, sourceRef: `SRC-${string}`): void {
-  const digest = sourceRef.slice('SRC-'.length);
-  const sourcePath = path.join(
-    repositoryConsumerPath(
-      repositoryRoot,
-      repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
-    ),
-    digest.slice(0, 2),
-    `${digest}.json`,
-  );
-  const source = parseGovernanceSourceV1(
-    JSON.parse(fs.readFileSync(sourcePath, 'utf8')),
-  );
-  if (source.id !== sourceRef) {
-    throw registryInvalid('Work Item Source path and identity differ.');
-  }
+  readSourceValue(repositoryRoot, sourceRef);
 }
 
 function findWorkItemPath(repositoryRoot: string, id: string): string {
@@ -1645,23 +1714,23 @@ function findOriginForChange(repositoryRoot: string, changeId: string): string {
 function readSourceValue(
   repositoryRoot: string,
   sourceRef: `SRC-${string}`,
-): unknown {
-  const digest = sourceRef.slice('SRC-'.length);
-  const sourcePath = path.join(
-    repositoryConsumerPath(
-      repositoryRoot,
-      repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
-    ),
-    digest.slice(0, 2),
-    `${digest}.json`,
+): GovernanceSourceV1 {
+  return readGovernanceSource(
+    repositoryRoot,
+    sourceRef,
+    repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
   );
-  const source = parseGovernanceSourceV1(
-    JSON.parse(fs.readFileSync(sourcePath, 'utf8')),
-  );
-  if (source.id !== sourceRef) {
-    throw registryInvalid('Work Item Source path and identity differ.');
+}
+
+function sourceReferenceFromPath(sourcePath: string): `SRC-${string}` {
+  const digest = path.basename(sourcePath, '.json');
+  if (
+    !/^[0-9a-f]{64}$/.test(digest) ||
+    path.basename(path.dirname(sourcePath)) !== digest.slice(0, 2)
+  ) {
+    throw registryInvalid('Governance Source path is invalid.');
   }
-  return source;
+  return `SRC-${digest}`;
 }
 
 function replaceTextFile(filePath: string, content: string): void {

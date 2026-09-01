@@ -11,6 +11,7 @@ import { loadActiveSessionContext } from '../../composition-root/lifecycle-conte
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   captureGovernanceSource,
+  readGovernanceSource,
   recordGovernanceFinding,
   type GovernanceFindingAuthoringV1,
   type GovernanceFindingContextV1,
@@ -28,6 +29,7 @@ import {
   renderWorkRegistry,
   searchWorkItems,
   showWorkItem,
+  traceGovernanceSource,
   traceWorkItem,
   validateWorkRegistry,
   validateWorkRegistryProjections,
@@ -65,6 +67,18 @@ export function dispatchGovernanceIntakeCommand(
         sourceDigest: result.source.textDigest,
         path: result.relativePath,
         created: result.created,
+      };
+    }
+    if (command === 'source' && args.length === 2 && args[0] === 'show') {
+      return {
+        action: 'show',
+        source: readGovernanceSource(cwd, args[1]!),
+      };
+    }
+    if (command === 'source' && args.length === 2 && args[0] === 'trace') {
+      return {
+        action: 'trace',
+        ...traceGovernanceSource(cwd, args[1]!),
       };
     }
     if (
@@ -279,7 +293,7 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright source <capture --input <source-envelope.json> | link-change <source-id> --change <change-id>> | jigwright finding add --session <session-id> --input <finding-envelope.json> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright source <capture --input <source-envelope.json> | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding add --session <session-id> --input <finding-envelope.json> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 
