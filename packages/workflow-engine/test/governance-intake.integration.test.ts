@@ -640,6 +640,132 @@ test('persisted Work Item reads reject incoherent state, path identity drift, an
   }
 });
 
+test('Work Item traversal rejects mismatched year shards and unsafe or noncanonical entries without mutation', () => {
+  const itemId = 'WORK-01K39R0V000000000000000001';
+  const cases = [
+    {
+      name: 'created year differs from path shard',
+      poison(root: string, itemPath: string): string[] {
+        const wrongYear = path.join(
+          path.dirname(path.dirname(itemPath)),
+          '2025',
+        );
+        fs.mkdirSync(wrongYear);
+        fs.renameSync(itemPath, path.join(wrongYear, path.basename(itemPath)));
+        return [];
+      },
+    },
+    {
+      name: 'year entry is a symbolic link',
+      poison(root: string, itemPath: string): string[] {
+        const target = path.join(root, 'unsafe-year-target');
+        fs.mkdirSync(target);
+        fs.writeFileSync(path.join(target, 'sentinel.txt'), 'year target\n');
+        fs.symlinkSync(
+          target,
+          path.join(path.dirname(path.dirname(itemPath)), '2025'),
+          'dir',
+        );
+        return [target];
+      },
+    },
+    {
+      name: 'item entry is a symbolic link',
+      poison(root: string, itemPath: string): string[] {
+        const target = path.join(root, 'unsafe-item-target.json');
+        fs.writeFileSync(target, 'item target\n');
+        fs.symlinkSync(
+          target,
+          path.join(
+            path.dirname(itemPath),
+            'WORK-01K39R0V000000000000000002.yaml',
+          ),
+        );
+        return [target];
+      },
+    },
+    {
+      name: 'year entry name is not canonical',
+      poison(root: string, itemPath: string): string[] {
+        fs.mkdirSync(
+          path.join(path.dirname(path.dirname(itemPath)), 'year-2025'),
+        );
+        return [];
+      },
+    },
+    {
+      name: 'item entry name is not canonical',
+      poison(root: string, itemPath: string): string[] {
+        fs.writeFileSync(
+          path.join(path.dirname(itemPath), 'README.md'),
+          'poison\n',
+        );
+        return [];
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const repositoryRoot = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-work-item-traversal-'),
+    );
+    configureRepositoryConsumer(repositoryRoot);
+    try {
+      const created = createWorkItem(
+        repositoryRoot,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane: 'later',
+          title: 'Work Item traversal boundary',
+          summary: 'Reject unsafe or noncanonical durable item paths.',
+          sourceRefs: [],
+        },
+        {
+          now: () => '2026-08-24T04:21:00.000Z',
+          createId: () => itemId,
+        },
+      );
+      const itemPath = path.join(repositoryRoot, created.relativePath);
+      const rendered = renderWorkRegistry(repositoryRoot);
+      runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+      runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+      runGitForTest(repositoryRoot, [
+        'config',
+        'user.email',
+        'jigwright@example.test',
+      ]);
+      runGitForTest(repositoryRoot, ['add', '.']);
+      runGitForTest(repositoryRoot, ['commit', '-m', 'Track Work Registry']);
+      const targets = scenario.poison(repositoryRoot, itemPath);
+      const itemRoot = path.join(repositoryRoot, 'docs/work-registry/items');
+      const snapshot = () => ({
+        head: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD']),
+        refs: runGitForTest(repositoryRoot, ['show-ref']),
+        status: runGitForTest(repositoryRoot, [
+          'status',
+          '--porcelain=v1',
+          '-z',
+        ]),
+        entries: snapshotPlainTree(itemRoot),
+        targets: targets.map((target) => snapshotPlainTree(target)),
+        backlog: fs.readFileSync(rendered.backlogPath, 'utf8'),
+        inventory: fs.readFileSync(rendered.inventoryPath, 'utf8'),
+      });
+      const before = snapshot();
+
+      assert.throws(
+        () => validateWorkRegistry(repositoryRoot),
+        hasCode('WORK_REGISTRY_INVALID'),
+        scenario.name,
+      );
+      assert.deepEqual(snapshot(), before);
+    } finally {
+      fs.rmSync(repositoryRoot, { recursive: true, force: true });
+    }
+  }
+});
+
 test('a Source can link directly to a change without a parking Work Item', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-change-'),
@@ -2058,6 +2184,33 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
     fs.rmSync(root, { recursive: true, force: true });
   }
 });
+
+function snapshotPlainTree(root: string): string[] {
+  const entries: string[] = [];
+  const visit = (target: string, relativePath: string): void => {
+    const stats = fs.lstatSync(target);
+    if (stats.isSymbolicLink()) {
+      entries.push(`link:${relativePath}:${fs.readlinkSync(target)}`);
+      return;
+    }
+    if (stats.isFile()) {
+      entries.push(
+        `file:${relativePath}:${fs.readFileSync(target).toString('base64')}`,
+      );
+      return;
+    }
+    if (!stats.isDirectory()) {
+      entries.push(`other:${relativePath}`);
+      return;
+    }
+    entries.push(`directory:${relativePath}`);
+    for (const name of fs.readdirSync(target).sort()) {
+      visit(path.join(target, name), path.posix.join(relativePath, name));
+    }
+  };
+  visit(root, '.');
+  return entries;
+}
 
 function runGitForTest(root: string, args: readonly string[]): string {
   const result = spawnSync('git', args, { cwd: root, encoding: 'utf8' });

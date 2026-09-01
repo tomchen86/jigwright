@@ -1066,7 +1066,10 @@ function readWorkItem(itemPath: string, source?: string): WorkItemV1 {
     throw registryInvalid('Work Item is invalid.');
   }
   const item = parseWorkItem(value);
-  if (path.basename(itemPath) !== `${item.id}.yaml`) {
+  if (
+    path.basename(itemPath) !== `${item.id}.yaml` ||
+    path.basename(path.dirname(itemPath)) !== item.createdAt.slice(0, 4)
+  ) {
     throw registryInvalid('Work Item path and identity differ.');
   }
   return item;
@@ -1284,21 +1287,35 @@ function listWorkItemPaths(repositoryRoot: string): string[] {
   if (!rootStats.isDirectory() || rootStats.isSymbolicLink()) {
     throw registryInvalid('Work Registry item root is unsafe.');
   }
-  return fs
-    .readdirSync(itemsRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && /^\d{4}$/.test(entry.name))
-    .flatMap((entry) => {
-      const yearRoot = path.join(itemsRoot, entry.name);
-      return fs
-        .readdirSync(yearRoot, { withFileTypes: true })
-        .filter(
-          (item) =>
-            item.isFile() &&
-            /^WORK-[0-9A-HJKMNP-TV-Z]{26}\.yaml$/.test(item.name),
-        )
-        .map((item) => path.join(yearRoot, item.name));
-    })
-    .sort();
+  const itemPaths: string[] = [];
+  for (const entry of fs.readdirSync(itemsRoot, { withFileTypes: true })) {
+    const yearRoot = path.join(itemsRoot, entry.name);
+    const yearStats = fs.lstatSync(yearRoot);
+    if (
+      entry.isSymbolicLink() ||
+      !entry.isDirectory() ||
+      !yearStats.isDirectory() ||
+      yearStats.isSymbolicLink() ||
+      !/^\d{4}$/.test(entry.name)
+    ) {
+      throw registryInvalid('Work Registry year entry is unsafe or invalid.');
+    }
+    for (const item of fs.readdirSync(yearRoot, { withFileTypes: true })) {
+      const itemPath = path.join(yearRoot, item.name);
+      const itemStats = fs.lstatSync(itemPath);
+      if (
+        item.isSymbolicLink() ||
+        !item.isFile() ||
+        !itemStats.isFile() ||
+        itemStats.isSymbolicLink() ||
+        !/^WORK-[0-9A-HJKMNP-TV-Z]{26}\.yaml$/.test(item.name)
+      ) {
+        throw registryInvalid('Work Registry item entry is unsafe or invalid.');
+      }
+      itemPaths.push(itemPath);
+    }
+  }
+  return itemPaths.sort();
 }
 
 function listSourcePaths(repositoryRoot: string): string[] {
