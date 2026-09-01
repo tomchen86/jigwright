@@ -244,6 +244,7 @@ test('archive prepare returns one exact Fail-Grant and open uses its production 
     tokenEnvironmentVariable: 'JIGWRIGHT_GITHUB_APP_TOKEN',
   });
   const dispatch = createArchivePullRequestCliDispatcherForTesting({
+    discover: discoverArchivePullRequestCandidates,
     inspect() {
       throw new Error('status inspection is outside this CLI seam');
     },
@@ -389,6 +390,150 @@ test('archive prepare returns one exact Fail-Grant and open uses its production 
       branchPublisher,
     });
   } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive-pr doctor reuses exact local candidate discovery without writes or remote seams', async () => {
+  const repository = completedFixture();
+  const remoteCalls: string[] = [];
+  const runtimeRoot =
+    loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+  const before = {
+    repository: repositoryProjection(repository),
+    refs: git(repository, ['show-ref']),
+    worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+    runtime: snapshotDirectory(runtimeRoot),
+  };
+  const dispatch = createArchivePullRequestCliDispatcherForTesting(
+    localOnlyArchiveCliDependencies(remoteCalls),
+  );
+
+  try {
+    const output = await dispatch(
+      ['archive-pr', 'doctor', '--base', 'origin/main'],
+      repository,
+    );
+    assert.equal(output.command, 'archive-pr');
+    assert.equal(output.action, 'doctor');
+    assert.equal(output.ok, true);
+    const inventory = output.result as ReturnType<
+      typeof discoverArchivePullRequestCandidates
+    >;
+    assert.equal(inventory.schemaVersion, 1);
+    assert.equal(inventory.kind, 'archive-pull-request-candidate-inventory');
+    assert.equal(inventory.base, 'origin/main');
+    assert.equal(inventory.items.length, 1);
+    assert.equal(inventory.items[0]?.changeId, 'demo-change');
+    assert.equal(inventory.items[0]?.state, 'eligible');
+    await assert.rejects(
+      dispatch(['archive-pr', 'doctor', '--base', 'main'], repository),
+      (error) => isWorkflowError(error, 'ARCHIVE_PR_BASE_INVALID'),
+    );
+    assert.deepEqual(remoteCalls, []);
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+      },
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive-pr dry-run creates only a local canonical preparation and reports the remote gate pending', async () => {
+  const repository = completedFixture();
+  const workspaceParent = path.join(
+    path.dirname(repository),
+    `${path.basename(repository)}-archive-dry-run-worktrees`,
+  );
+  const worktreePath = path.join(workspaceParent, 'demo-change');
+  const remoteCalls: string[] = [];
+  const before = repositoryProjection(repository);
+  const remoteBaseBefore = git(repository, [
+    'rev-parse',
+    'refs/remotes/origin/main',
+  ]).trim();
+  const dispatch = createArchivePullRequestCliDispatcherForTesting(
+    localOnlyArchiveCliDependencies(remoteCalls, {
+      prepare(cwd, changeId, options) {
+        return preparePostMergeArchivePullRequest(cwd, changeId, {
+          ...options,
+          assure: (_worktree, baseCommit, headCommit) => ({
+            status: 'passed',
+            baseCommit,
+            headCommit,
+            reportIdentity: '8'.repeat(64),
+          }),
+        });
+      },
+    }),
+  );
+
+  try {
+    const output = await dispatch(
+      [
+        'archive-pr',
+        'dry-run',
+        'demo-change',
+        '--workspace-parent',
+        workspaceParent,
+      ],
+      repository,
+    );
+    assert.equal(output.command, 'archive-pr');
+    assert.equal(output.action, 'dry-run');
+    assert.equal(output.ok, true);
+    const result = output.result as {
+      schemaVersion: number;
+      kind: string;
+      remoteState: string;
+      operationalGate: string;
+      local: ReturnType<typeof preparePostMergeArchivePullRequest>;
+    };
+    assert.deepEqual(
+      {
+        schemaVersion: result.schemaVersion,
+        kind: result.kind,
+        remoteState: result.remoteState,
+        operationalGate: result.operationalGate,
+      },
+      {
+        schemaVersion: 1,
+        kind: 'archive-pr-dry-run.v1',
+        remoteState: 'not-observed',
+        operationalGate: 'pending',
+      },
+    );
+    assert.equal(result.local.kind, 'prepared-post-merge-archive-pull-request');
+    assert.equal(result.local.archiveBranch, 'work/archive-demo-change');
+    assert.equal(result.local.worktreePath, fs.realpathSync(worktreePath));
+    assert.equal(result.local.archive.status, 'committed');
+    assert.equal(result.local.archiveReplay.status, 'already-archived');
+    assert.equal(
+      result.local.archive.commitHash,
+      result.local.archiveReplay.commitHash,
+    );
+    assert.equal(fs.existsSync(result.local.preparationRecordPath), true);
+    assert.equal(
+      git(repository, ['rev-parse', result.local.archiveBranch]).trim(),
+      result.local.archive.commitHash,
+    );
+    assert.equal(
+      git(repository, ['rev-parse', 'refs/remotes/origin/main']).trim(),
+      remoteBaseBefore,
+    );
+    assert.deepEqual(repositoryProjection(repository), before);
+    assert.deepEqual(remoteCalls, []);
+  } finally {
+    if (fs.existsSync(worktreePath)) {
+      git(repository, ['worktree', 'remove', '--force', worktreePath]);
+    }
+    fs.rmSync(workspaceParent, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
@@ -1470,6 +1615,46 @@ function disabledBranchPublisher(): ExactArchiveBranchPublisherPortV1 {
     publish() {
       throw new Error('publisher must not run');
     },
+  };
+}
+
+function localOnlyArchiveCliDependencies(
+  remoteCalls: string[],
+  overrides: Partial<
+    Parameters<typeof createArchivePullRequestCliDispatcherForTesting>[0]
+  > = {},
+): Parameters<typeof createArchivePullRequestCliDispatcherForTesting>[0] {
+  return {
+    discover: discoverArchivePullRequestCandidates,
+    inspect() {
+      throw new Error('local status inspection must not run');
+    },
+    prepare: preparePostMergeArchivePullRequest,
+    async requestGrant() {
+      remoteCalls.push('request-grant');
+      throw new Error('Grant request must not run');
+    },
+    async publish() {
+      remoteCalls.push('publish');
+      throw new Error('remote publication must not run');
+    },
+    async loadAdapter() {
+      remoteCalls.push('load-adapter');
+      throw new Error('GitHub adapter must not load');
+    },
+    createRulesetObserver() {
+      remoteCalls.push('create-ruleset-observer');
+      throw new Error('ruleset observer must not be created');
+    },
+    createBranchPublisher() {
+      remoteCalls.push('create-branch-publisher');
+      throw new Error('branch publisher must not be created');
+    },
+    resolvePublicationTarget() {
+      remoteCalls.push('resolve-publication-target');
+      throw new Error('publication target must not be resolved');
+    },
+    ...overrides,
   };
 }
 

@@ -1262,6 +1262,17 @@ async function dispatchArchivePullRequest(
   dependencies: ArchivePullRequestCliDependencies = ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES,
 ): Promise<CommandResult> {
   const [, action, ...rest] = args;
+  if (action === 'doctor') {
+    if (rest.length !== 2 || rest[0] !== '--base') {
+      throw archivePullRequestUsage();
+    }
+    return {
+      command: 'archive-pr',
+      action,
+      ok: true,
+      result: dependencies.discover(cwd, rest[1]!),
+    };
+  }
   if (action === 'status') {
     if (rest.length !== 1) throw archivePullRequestUsage();
     return {
@@ -1269,6 +1280,33 @@ async function dispatchArchivePullRequest(
       action,
       ok: true,
       result: dependencies.inspect(cwd, rest[0]!),
+    };
+  }
+  if (action === 'dry-run') {
+    const parsed = parseArchivePullRequestCliOptions(
+      'archive-pr dry-run',
+      rest,
+      {
+        requireConfig: false,
+        requireGrant: false,
+      },
+    );
+    const local = dependencies.prepare(cwd, parsed.changeId, {
+      ...(parsed.workspaceParent === undefined
+        ? {}
+        : { workspaceParent: parsed.workspaceParent }),
+    });
+    return {
+      command: 'archive-pr',
+      action,
+      ok: true,
+      result: {
+        schemaVersion: 1,
+        kind: 'archive-pr-dry-run.v1',
+        remoteState: 'not-observed',
+        operationalGate: 'pending',
+        local,
+      },
     };
   }
   if (action !== 'prepare' && action !== 'open') {
@@ -1380,6 +1418,7 @@ async function dispatchArchivePullRequest(
 }
 
 type ArchivePullRequestCliDependencies = Readonly<{
+  discover: typeof discoverArchivePullRequestCandidates;
   inspect: typeof inspectArchivePublicationPreparation;
   prepare: typeof preparePostMergeArchivePullRequest;
   requestGrant: typeof requestArchivePullRequestPublicationGrant;
@@ -1403,6 +1442,7 @@ type ArchivePullRequestCliDependencies = Readonly<{
 
 const ARCHIVE_PULL_REQUEST_CLI_DEPENDENCIES: ArchivePullRequestCliDependencies =
   Object.freeze({
+    discover: discoverArchivePullRequestCandidates,
     inspect: inspectArchivePublicationPreparation,
     prepare: preparePostMergeArchivePullRequest,
     requestGrant: requestArchivePullRequestPublicationGrant,
@@ -1533,7 +1573,7 @@ function archivePullRequestUsage(command = 'archive-pr'): WorkflowError {
   return usage(
     command === 'after-merge'
       ? 'Usage: pnpm workflow after-merge <change-id> [--workspace-parent <absolute-path>] [--json]'
-      : 'Usage: pnpm workflow archive-pr status <sha256:preparation-identity> [--json]\n       pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]\n       pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
+      : 'Usage: pnpm workflow archive-pr doctor --base <origin/protected-branch> [--json]\n       pnpm workflow archive-pr dry-run <change-id> [--workspace-parent <absolute-path>] [--json]\n       pnpm workflow archive-pr status <sha256:preparation-identity> [--json]\n       pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]\n       pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
   );
 }
 
@@ -4336,6 +4376,8 @@ function usageText(): string {
     '  pnpm workflow archive <change-id> [--json]',
     '  pnpm workflow archive-candidates --base <origin/protected-branch> [--json]',
     '  pnpm workflow after-merge <change-id> --authorization <facts.json> [--workspace-parent <absolute-path>] [--json]',
+    '  pnpm workflow archive-pr doctor --base <origin/protected-branch> [--json]',
+    '  pnpm workflow archive-pr dry-run <change-id> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr status <sha256:preparation-identity> [--json]',
     '  pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
