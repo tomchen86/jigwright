@@ -23,10 +23,7 @@ import {
   type MaintainerGrantV2Envelope,
   type MaintainerGrantV2Payload,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
-import {
-  canonicalGrantEnvelope,
-  type MaintainerGrantEnvelope,
-} from '../src/modules/authority/maintainer-grant.ts';
+import * as maintainerGrant from '../src/modules/authority/maintainer-grant.ts';
 import {
   approveAndApplyMaintainerGrantV2 as approveAndApplyMaintainerGrantV2Production,
   prepareMaintainerGrantV2Checks,
@@ -111,6 +108,32 @@ const FAKE_SIGNATURE = [
   '-----END SSH SIGNATURE-----',
   '',
 ].join('\n');
+
+type RetiredV1GrantEnvelopeFixture = Readonly<{
+  payload: Readonly<{
+    version: 1;
+    grantId: string;
+    repositoryId: string;
+    repositoryOrigin: string;
+    baseCommit: string;
+    policyBlob: string;
+    changeId: string;
+    allowedPaths: readonly string[];
+    issuedAt: string;
+    expiresAt: string;
+    maxUses: 1;
+    reason: string;
+    signer: string;
+  }>;
+  signature: string;
+}>;
+
+function retiredV1GrantEnvelopeBytes(
+  envelope: RetiredV1GrantEnvelopeFixture,
+): string {
+  return `${JSON.stringify(envelope)}\n`;
+}
+
 const temporaryAuditRoots = new Set<string>();
 const STABLE_POST_APPROVAL_TEST_BUDGET = Object.freeze({
   monotonicNow: () => 0,
@@ -515,6 +538,36 @@ function withTwoCheckCandidate<T>(operation: (repository: string) => T): T {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 }
+
+test('retired V1 Apply Grant exports are absent from the current authority surface', () => {
+  for (const exportName of [
+    'canonicalGrantEnvelope',
+    'canonicalGrantPayload',
+    'parseMaintainerGrantEnvelope',
+    'validateGrantPayload',
+    'assertGrantPathsEligible',
+  ]) {
+    assert.equal(exportName in maintainerGrant, false, exportName);
+  }
+  const authoritySource = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/modules/authority/maintainer-grant.ts',
+    ),
+    'utf8',
+  );
+  for (const retiredType of [
+    'MaintainerGrantPayload',
+    'MaintainerGrantEnvelope',
+    'GrantValidationOptions',
+  ]) {
+    assert.doesNotMatch(
+      authoritySource,
+      new RegExp(`\\b${retiredType}\\b`, 'u'),
+      retiredType,
+    );
+  }
+});
 
 test('preapproval checks durably resume after interruption without rerunning completed evidence', () => {
   withTwoCheckCandidate((repository) => {
@@ -1742,7 +1795,7 @@ test('durable signed V1 grant records fail closed without rewriting bytes', () =
         signer: fakeSigner(signed),
       },
     );
-    const legacy: MaintainerGrantEnvelope = {
+    const legacy: RetiredV1GrantEnvelopeFixture = {
       payload: {
         version: 1,
         grantId: legacyGrantId,
@@ -1766,7 +1819,7 @@ test('durable signed V1 grant records fail closed without rewriting bytes', () =
       'workflow-engine/maintainer-grants/available',
       `${legacyGrantId}.json`,
     );
-    fs.writeFileSync(legacyPath, canonicalGrantEnvelope(legacy), {
+    fs.writeFileSync(legacyPath, retiredV1GrantEnvelopeBytes(legacy), {
       mode: 0o600,
     });
     const before = fs.readFileSync(legacyPath, 'utf8');

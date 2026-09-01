@@ -6,16 +6,43 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
-import {
-  canonicalGrantEnvelope,
-  canonicalGrantPayload,
-  type MaintainerGrantEnvelope,
-  type MaintainerGrantPayload,
-} from '../src/modules/authority/maintainer-grant.ts';
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const GRANT_ID = '33333333-3333-4333-8333-333333333333';
 const GRANT_NAMESPACE = 'workflow.maintainer-grant.v1';
+
+type RetiredV1GrantPayloadFixture = Readonly<{
+  version: 1;
+  grantId: string;
+  repositoryId: string;
+  repositoryOrigin: string;
+  baseCommit: string;
+  policyBlob: string;
+  changeId: string;
+  allowedPaths: readonly string[];
+  issuedAt: string;
+  expiresAt: string;
+  maxUses: 1;
+  reason: string;
+  signer: string;
+}>;
+
+type RetiredV1GrantEnvelopeFixture = Readonly<{
+  payload: RetiredV1GrantPayloadFixture;
+  signature: string;
+}>;
+
+function retiredV1GrantPayloadBytes(
+  payload: RetiredV1GrantPayloadFixture,
+): string {
+  return `${JSON.stringify(payload)}\n`;
+}
+
+function retiredV1GrantEnvelopeBytes(
+  envelope: RetiredV1GrantEnvelopeFixture,
+): string {
+  return `${JSON.stringify(envelope)}\n`;
+}
 
 function sh(repository: string, args: string[]): string {
   const result = spawnSync('git', args, { cwd: repository, encoding: 'utf8' });
@@ -110,7 +137,7 @@ test('signed V1 grant tag fails closed without rewriting bytes or refs', () => {
       `${baseCommit}:workflow/maintainer-policy.json`,
     ]).trim();
     const now = new Date('2026-08-03T09:00:00.000Z');
-    const payload: MaintainerGrantPayload = {
+    const payload: RetiredV1GrantPayloadFixture = {
       version: 1,
       grantId: GRANT_ID,
       repositoryId: policy.repository.id,
@@ -125,13 +152,13 @@ test('signed V1 grant tag fails closed without rewriting bytes or refs', () => {
       reason: 'Signed retired maintainer grant fixture',
       signer: 'fixture-maintainer',
     };
-    const envelope: MaintainerGrantEnvelope = {
+    const envelope: RetiredV1GrantEnvelopeFixture = {
       payload,
-      signature: sign(key.privateKey, canonicalGrantPayload(payload)),
+      signature: sign(key.privateKey, retiredV1GrantPayloadBytes(payload)),
     };
     const tagRef = `${policy.auditTagPrefix}${GRANT_ID}`;
     const messagePath = path.join(signingDirectory, 'message');
-    fs.writeFileSync(messagePath, canonicalGrantEnvelope(envelope), {
+    fs.writeFileSync(messagePath, retiredV1GrantEnvelopeBytes(envelope), {
       mode: 0o600,
     });
     git(repository, [
