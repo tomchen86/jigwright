@@ -75,7 +75,7 @@ try {
       );
       process.exit(0);
     }
-    const readOnlyStatus = isReadOnlyStatusInvocation(argv);
+    const readOnlyInspection = isReadOnlyRepositoryInspectionInvocation(argv);
     if (fence !== null && isSealedInterventionInvocation(argv)) {
       invocation = sealedInterventionInvocation(argv);
     } else {
@@ -83,13 +83,13 @@ try {
         local = resolveLocalEngineSelection(stateRoot, repository);
       } catch (error) {
         if (
-          !readOnlyStatus ||
+          !readOnlyInspection ||
           errorCode(error) !== 'WORKFLOW_LOCAL_ADOPTION_INCOMPLETE'
         ) {
           throw error;
         }
       }
-      if (!isReadOnlyHelpInvocation(argv) && !readOnlyStatus) {
+      if (!isReadOnlyHelpInvocation(argv) && !readOnlyInspection) {
         assertParentInterventionFenceCleared(fence, local);
       }
       const global =
@@ -183,10 +183,13 @@ function resolveGlobalEngineSelection(
   return resolveControlPlaneEngineSelection(stateRoot, repositoryId);
 }
 
-function isReadOnlyStatusInvocation(argv: readonly string[]): boolean {
+function isReadOnlyRepositoryInspectionInvocation(
+  argv: readonly string[],
+): boolean {
   return (
     isReadOnlySessionStatusInvocation(argv) ||
-    isReadOnlyRouteStatusInvocation(argv)
+    isReadOnlyRouteStatusInvocation(argv) ||
+    isReadOnlyTaskPreflightInvocation(argv)
   );
 }
 
@@ -215,6 +218,29 @@ function isReadOnlyRouteStatusInvocation(argv: readonly string[]): boolean {
     (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
     argv[0] === 'route' &&
     argv[1] === 'status'
+  );
+}
+
+function isReadOnlyTaskPreflightInvocation(argv: readonly string[]): boolean {
+  const args = argv[argv.length - 1] === '--json' ? argv.slice(0, -1) : argv;
+  return (
+    (args.length === 2 || args.length === 4) &&
+    args[0] === 'task-preflight' &&
+    isBoundedNonOptionArgument(args[1]) &&
+    (args.length === 2 ||
+      (args[2] === '--task' && isBoundedNonOptionArgument(args[3])))
+  );
+}
+
+function isBoundedNonOptionArgument(value: string | undefined): boolean {
+  return (
+    typeof value === 'string' &&
+    value.length > 0 &&
+    value.length <= 255 &&
+    value.trim() === value &&
+    !value.startsWith('-') &&
+    !value.includes('\0') &&
+    !value.includes('\n')
   );
 }
 

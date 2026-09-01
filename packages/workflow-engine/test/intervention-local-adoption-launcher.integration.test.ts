@@ -386,6 +386,61 @@ test('workflow launcher preserves exact route status across incomplete local ado
   }
 });
 
+test('workflow launcher preserves exact task preflight across incomplete local adoption', async () => {
+  const value = await fixture(true);
+  try {
+    const first = value.step(0);
+    assert.equal(first.record.journal.state, 'PARENT_CHECKPOINTED');
+    const bindingBytes = fs.readFileSync(value.bindingPath);
+    const journalPath = adoptionPath(value.stateRoot, value.txId);
+    const journalBytes = fs.readFileSync(journalPath);
+    const head = git(value.repository, ['rev-parse', 'HEAD']).trim();
+    const worktreeStatus = git(value.repository, ['status', '--porcelain']);
+
+    for (const argv of [
+      ['task-preflight', 'demo-change'],
+      ['task-preflight', 'demo-change', '--json'],
+      ['task-preflight', 'demo-change', '--task', '1.1'],
+      ['task-preflight', 'demo-change', '--task', '1.1', '--json'],
+    ]) {
+      const launched = runWorkflowLauncher(value.repository, argv);
+      assert.equal(launched.status, 0, launched.stderr);
+      assert.deepEqual(JSON.parse(launched.stdout), {
+        kind: 'repository-default-engine.v1',
+        engine: 'Eglobal',
+        argv,
+      });
+    }
+
+    assert.deepEqual(fs.readFileSync(value.bindingPath), bindingBytes);
+    assert.deepEqual(fs.readFileSync(journalPath), journalBytes);
+    assert.equal(git(value.repository, ['rev-parse', 'HEAD']).trim(), head);
+    assert.equal(
+      git(value.repository, ['status', '--porcelain']),
+      worktreeStatus,
+    );
+
+    for (const argv of [
+      ['task-preflight'],
+      ['task-preflight', '--json'],
+      ['task-preflight', 'demo-change', '--task'],
+      ['task-preflight', 'demo-change', '--task', '1.1', 'extra'],
+      ['task-preflight', 'demo-change', '--json', '--task', '1.1'],
+    ]) {
+      const launched = runWorkflowLauncher(value.repository, argv);
+      assert.notEqual(launched.status, 0, argv.join(' '));
+      assert.equal(launched.stdout, '', argv.join(' '));
+      assert.match(
+        launched.stderr,
+        /WORKFLOW_LOCAL_ADOPTION_INCOMPLETE/,
+        argv.join(' '),
+      );
+    }
+  } finally {
+    value.cleanup();
+  }
+});
+
 test('binding-first crash windows fail closed and direct recovery reaches committed E2', async () => {
   const value = await fixture(true);
   try {
