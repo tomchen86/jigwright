@@ -19,6 +19,7 @@ import { createGrantChallenge } from '../src/modules/authority/grant-core.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
+import { repositoryConsumerConfigurationExists } from '../src/modules/repository-consumer/repository-consumer-config.ts';
 import {
   applyWorkItemReview,
   createWorkItem,
@@ -90,7 +91,7 @@ test('top-level help advertises every current Governance Source command', () => 
   );
 });
 
-test('Source show and correction trace work without the optional Work Registry', () => {
+test('Source trace only treats an absent repository consumer config as optional', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-core-trace-'),
   );
@@ -112,6 +113,7 @@ test('Source show and correction trace work without the optional Work Registry',
       supersedes: original.id,
     }).source;
 
+    assert.equal(repositoryConsumerConfigurationExists(repositoryRoot), false);
     assert.deepEqual(
       dispatchGovernanceIntakeCommand(
         'source',
@@ -149,6 +151,48 @@ test('Source show and correction trace work without the optional Work Registry',
         workItems: [],
         origins: [],
       },
+    );
+
+    const configPath = path.join(
+      repositoryRoot,
+      'workflow/repository-consumer.json',
+    );
+    fs.writeFileSync(configPath, '{}\n');
+    assert.equal(repositoryConsumerConfigurationExists(repositoryRoot), true);
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'source',
+          ['trace', original.id],
+          repositoryRoot,
+        ),
+      (error: unknown) =>
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'REPOSITORY_CONSUMER_CONFIG_INVALID',
+    );
+
+    fs.rmSync(configPath);
+    const unsafeTarget = path.join(
+      repositoryRoot,
+      'workflow/unsafe-repository-consumer.json',
+    );
+    fs.writeFileSync(unsafeTarget, '{}\n');
+    fs.symlinkSync(unsafeTarget, configPath);
+    assert.equal(repositoryConsumerConfigurationExists(repositoryRoot), true);
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'source',
+          ['trace', original.id],
+          repositoryRoot,
+        ),
+      (error: unknown) =>
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        error.code === 'REPOSITORY_CONSUMER_CONFIG_INVALID',
     );
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });

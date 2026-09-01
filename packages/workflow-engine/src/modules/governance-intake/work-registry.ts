@@ -8,6 +8,7 @@ import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from '../../runtime/repository-transaction/git.ts';
 import {
+  repositoryConsumerConfigurationExists,
   repositoryConsumerPath,
   repositoryWorkRegistryConfiguration,
 } from '../repository-consumer/repository-consumer-config.ts';
@@ -669,11 +670,7 @@ export function traceGovernanceSource(
     workItems: [] as WorkItemV1[],
     origins: [] as string[],
   };
-  const configStats = fs.lstatSync(
-    path.join(repositoryRoot, 'workflow', 'repository-consumer.json'),
-    { throwIfNoEntry: false },
-  );
-  if (configStats === undefined) return coreTrace;
+  if (!repositoryConsumerConfigurationExists(repositoryRoot)) return coreTrace;
   const workItems = listWorkItems(repositoryRoot)
     .filter((item) => item.sourceRefs.includes(source.id))
     .map((item) => {
