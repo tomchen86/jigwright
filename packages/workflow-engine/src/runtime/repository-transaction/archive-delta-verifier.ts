@@ -20,7 +20,7 @@ import {
   type SpecDeltaPreflightRecord,
 } from '@jigwright/openspec-adapter/archive-projection';
 
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
+import { readFileAtCommit } from './git.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export { SPEC_DELTA_VALIDATOR_VERSION, findMissingScenarioIdentities };

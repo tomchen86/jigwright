@@ -578,7 +578,7 @@
     {
       "path": "src/application/execute-task/open-task.ts",
       "mode": "100644",
-      "digest": "sha256:fc953db1a20098d26a2ecbb343a30aa8e2a935b958e7a7587dc6d4848470629c"
+      "digest": "sha256:37f20352bd956614b55ecd778e15e52a93fb9e65d956f98e214da79315363f28"
     },
     {
       "path": "src/application/execute-task/session.ts",
@@ -638,7 +638,7 @@
     {
       "path": "src/application/finalize/lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:76345fe6b6ae6c3bf68aa0ebe3c8851cc94f9f68b1e9fbb4ff5c5e3b2f2e8412"
+      "digest": "sha256:d573eb0a0b0fe67036e71f73f52db97aeab82c77734b0cc32bb5ea2ea9157097"
     },
     {
       "path": "src/application/finalize/predecessor-reconciliation.ts",
@@ -1918,7 +1918,7 @@
     {
       "path": "src/runtime/repository-transaction/archive-delta-verifier.ts",
       "mode": "100644",
-      "digest": "sha256:283a0c82722e7424d1bd9ad329dfa0746fd6675e6d32dd13c2d91ee449e04bd4"
+      "digest": "sha256:818d8762be04be7245cbdc0edddd17cd6661779943bccd84adcd65ad5cb7e883"
     },
     {
       "path": "src/runtime/repository-transaction/archive-output-safety.ts",

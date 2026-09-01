@@ -10,7 +10,6 @@ import {
   parseDocumentationClosureFromCommitMessage,
   type DocumentationReviewCapture,
 } from '../../runtime/managed-documents/contracts/documentation-closure.ts';
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   loadWorkflowConfig,
   parseTasks,
@@ -53,6 +52,7 @@ import {
   discoverRepository,
   fingerprintRepositoryProjection,
   listChangedPaths,
+  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import {

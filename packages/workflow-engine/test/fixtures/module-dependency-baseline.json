@@ -1748,7 +1748,7 @@
       "rule": "application-to-entrypoints",
       "reasonId": "legacy.application-to-entrypoints",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/execute-task/open-task.ts",
@@ -2668,7 +2668,7 @@
       "rule": "application-to-entrypoints",
       "reasonId": "legacy.application-to-entrypoints",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/finalize/lifecycle.ts",
@@ -6516,7 +6516,7 @@
       "rule": "runtime-to-entrypoints",
       "reasonId": "legacy.runtime-to-entrypoints",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/repository-transaction/assurance-inspection.ts",

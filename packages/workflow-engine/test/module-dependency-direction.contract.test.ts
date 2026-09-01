@@ -28,11 +28,11 @@ const EXPECTED_MAP_ROWS = 262;
 const EXPECTED_FROZEN_MAP_DIGEST =
   'sha256:931d205467a344db99e9c5d9295557bbcd031987899a40aeccde3b87f4ef2762';
 const EXPECTED_FROZEN_EDGE_COUNT = 825;
-const EXPECTED_ACTIVE_EDGE_COUNT = 722;
+const EXPECTED_ACTIVE_EDGE_COUNT = 719;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:b18748fb1ac225334b384461cebd3815923306332efe1028e2249ab7c092aa5a';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:f4761c4754bad93c796c3266da22ab1631dfe7f26eb8aac9fcd2a886fb9b4e53';
+  'sha256:002f9e68476719c312cbc6ea5534b22f7914e697904cbba5f582d4d9c0f6c5ac';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';
@@ -1036,6 +1036,18 @@ test('current repository matches the exact active dependency baseline', () => {
   });
   assert.equal(violations.length, EXPECTED_ACTIVE_EDGE_COUNT);
   assertObservedMatchesBaseline(violations, baseline);
+});
+
+test('application and runtime immutable reads do not invert into CI entrypoints', () => {
+  for (const file of [
+    'packages/workflow-engine/src/application/execute-task/open-task.ts',
+    'packages/workflow-engine/src/application/finalize/lifecycle.ts',
+    'packages/workflow-engine/src/runtime/repository-transaction/archive-delta-verifier.ts',
+  ]) {
+    const source = fs.readFileSync(path.join(repositoryRoot, file), 'utf8');
+    assert.match(source, /\breadFileAtCommit\b/u, file);
+    assert.doesNotMatch(source, /entrypoints\/ci\/ci-git\.ts/u, file);
+  }
 });
 
 test('a new file under a recognized organized root is scanned with self identity', () => {

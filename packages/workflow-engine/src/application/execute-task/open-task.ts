@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
-import { readFileAtCommit } from '../../entrypoints/ci/ci-git.ts';
 import {
   loadChangeContract,
   loadWorkflowConfig,
@@ -25,6 +24,7 @@ import {
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
+  readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import { validateHandoffForChange } from '../../adapters/consumer/repository/handoff/handoff.ts';
