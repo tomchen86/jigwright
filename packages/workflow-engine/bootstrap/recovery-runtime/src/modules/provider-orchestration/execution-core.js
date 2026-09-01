@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ATTEMPT_STATUSES_V2, JOB_STATUSES_V2, AttemptResultCodecError, assertAttemptAcceptanceBindingV1, createAttemptAcceptanceBindingV1, } from '@jigwright/core/job-attempt-runtime';
+import { ReadOnlyProbeCodecError, assertReadOnlyProbeRequestV1, } from '@jigwright/core/read-only-probe';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -833,55 +834,15 @@ export function environmentSnapshotDigest(snapshot) {
     return digestCanonical(assertEnvironmentSnapshot(snapshot));
 }
 export function assertReadOnlyProbe(input) {
-    if (!isPlainObject(input) ||
-        !hasOnlyKeys(input, ['kind', 'target', 'timeoutMs'])) {
-        throw probeNotAllowed();
+    try {
+        return assertReadOnlyProbeRequestV1(input);
     }
-    if (typeof input.kind !== 'string' ||
-        !READ_ONLY_PROBE_KINDS.has(input.kind) ||
-        !Number.isSafeInteger(input.timeoutMs) ||
-        input.timeoutMs < 1 ||
-        input.timeoutMs > 30_000) {
-        throw probeNotAllowed();
+    catch (error) {
+        if (error instanceof ReadOnlyProbeCodecError) {
+            throw probeNotAllowed();
+        }
+        throw error;
     }
-    const kind = input.kind;
-    const requiresTarget = new Set([
-        'binary-exists',
-        'file-read',
-        'validator-error',
-        'dependency-availability',
-    ]).has(kind);
-    if (requiresTarget !== Object.hasOwn(input, 'target') ||
-        (requiresTarget &&
-            (typeof input.target !== 'string' ||
-                input.target.length === 0 ||
-                Buffer.byteLength(input.target, 'utf8') > 1_024))) {
-        throw probeNotAllowed();
-    }
-    if (kind === 'file-read' &&
-        !isSafeRepositoryRelativePath(input.target)) {
-        throw probeNotAllowed();
-    }
-    if (kind === 'binary-exists' &&
-        !/^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$/.test(input.target)) {
-        throw probeNotAllowed();
-    }
-    if (kind === 'validator-error' &&
-        !/^[A-Z][A-Z0-9_]{1,127}$/.test(input.target)) {
-        throw probeNotAllowed();
-    }
-    if (kind === 'dependency-availability' &&
-        !/^(?:@[A-Za-z0-9][A-Za-z0-9._-]{0,63}\/)?[A-Za-z0-9][A-Za-z0-9._-]{0,127}(?:\/[A-Za-z0-9][A-Za-z0-9._-]{0,127})*$/.test(input.target)) {
-        throw probeNotAllowed();
-    }
-    const probe = {
-        kind,
-        timeoutMs: input.timeoutMs,
-    };
-    if (requiresTarget) {
-        probe.target = input.target;
-    }
-    return deepFreeze(probe);
 }
 export function classifyEnvironmentDrift(previousInput, currentInput) {
     const previous = assertEnvironmentSnapshot(previousInput);
@@ -1940,12 +1901,22 @@ function normalizeFailurePaths(value) {
     const normalized = value.map((entry) => {
         if (entry.startsWith('/'))
             return assertJsonPointer(entry, 'failure path');
-        if (!isSafeRepositoryRelativePath(entry)) {
+        if (!isSafeFailureRepositoryRelativePath(entry)) {
             throw executionInvalid('Failure path is unsafe.');
         }
         return entry;
     });
     return deepFreeze([...new Set(normalized)].sort());
+}
+function isSafeFailureRepositoryRelativePath(value) {
+    return (value === value.normalize('NFC') &&
+        value.length > 0 &&
+        !value.startsWith('/') &&
+        !value.includes('\\') &&
+        !value.includes('\0') &&
+        !value
+            .split('/')
+            .some((part) => part === '' || part === '.' || part === '..'));
 }
 function assertJsonPointer(value, label) {
     if (typeof value !== 'string' ||
@@ -1956,16 +1927,6 @@ function assertJsonPointer(value, label) {
         throw executionInvalid(`${label} is not a canonical JSON pointer.`);
     }
     return value;
-}
-function isSafeRepositoryRelativePath(value) {
-    return (value === value.normalize('NFC') &&
-        value.length > 0 &&
-        !value.startsWith('/') &&
-        !value.includes('\\') &&
-        !value.includes('\0') &&
-        !value
-            .split('/')
-            .some((part) => part === '' || part === '.' || part === '..'));
 }
 function normalizeDigest(value) {
     if (DIGEST.test(value))
@@ -2158,17 +2119,4 @@ const FAILURE_SOURCES = new Set([
     'state',
     'effect',
     'policy',
-]);
-const READ_ONLY_PROBE_KINDS = new Set([
-    'repository-head',
-    'repository-dirty-state',
-    'runtime-version',
-    'adapter-version',
-    'binary-exists',
-    'file-read',
-    'validator-error',
-    'execution-limits',
-    'lease-state',
-    'attempt-lineage',
-    'dependency-availability',
 ]);
