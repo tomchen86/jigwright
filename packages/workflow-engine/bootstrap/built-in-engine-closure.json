@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:69b37a2a1001d0f144b717f66fc45115a7290381c9465e7e96a6da1c379ca8fe"
+      "digest": "sha256:6c313ef2d2e37009c150570cfae49f6ae9b52578218685befb463c4d6d68bc9e"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -134,6 +134,11 @@
       "path": "node_modules/@jigwright/core/src/evidence-node.ts",
       "mode": "100644",
       "digest": "sha256:a73c93d8f302c8deb13bffe33d661b68a0d2971d0aa206a4df8cc89740cbf7dd"
+    },
+    {
+      "path": "node_modules/@jigwright/core/src/execution-policy-snapshot.ts",
+      "mode": "100644",
+      "digest": "sha256:2d0fd0e89d8bf06828e8141eaa572c2cc86bb92bf5a53292b0915990e73f8f94"
     },
     {
       "path": "node_modules/@jigwright/core/src/governance-source.ts",
@@ -693,7 +698,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:d86c150da2f6d38b51bd369219882051a63d2e64104f5e7d9beba47538c7f5d5"
+      "digest": "sha256:ef98363ca700f2325d60951c99f5ee9c7fe0cc5b86fa8c3178b2075f3195e71c"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1663,7 +1668,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:86409bf23ce429b7eb3c768f2e9953cb608f1ea83f9f6c9c46849a5abd72144b"
+      "digest": "sha256:df733a15c76dc2da9ddd250c3d6f6039bc4392fbb8dda28450bc7acfb172f94c"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",

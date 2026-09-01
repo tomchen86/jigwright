@@ -2,6 +2,7 @@ import crypto from 'node:crypto';
 import path from 'node:path';
 import { ATTEMPT_STATUSES_V2, JOB_STATUSES_V2, AttemptResultCodecError, assertAttemptAcceptanceBindingV1, createAttemptAcceptanceBindingV1, } from '@jigwright/core/job-attempt-runtime';
 import { ReadOnlyProbeCodecError, assertReadOnlyProbeRequestV1, } from '@jigwright/core/read-only-probe';
+import { ExecutionPolicySnapshotCodecError, assertExecutionPolicySnapshotV1, } from '@jigwright/core/execution-policy-snapshot';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -1264,30 +1265,18 @@ function assertSemanticJobSpec(value) {
     return deepFreeze(structuredClone(value));
 }
 function assertExecutionPolicy(value) {
-    if (!isPlainObject(value) ||
-        !hasExactKeys(value, [
-            'backoffMs',
-            'concurrency',
-            'maxOutputBytes',
-            'processEnvironment',
-            'provider',
-            'schemaVersion',
-            'timeoutMs',
-            'transientToolConfig',
-            'workerClass',
-        ]) ||
-        value.schemaVersion !== 1) {
-        throw executionInvalid('Execution policy snapshot is invalid.');
+    try {
+        return assertExecutionPolicySnapshotV1(value);
     }
-    assertIdentifier(value.provider, 'provider');
-    assertIdentifier(value.workerClass, 'workerClass');
-    assertBoundedPositiveInteger(value.timeoutMs, 'timeoutMs', 3_600_000);
-    assertBoundedPositiveInteger(value.maxOutputBytes, 'maxOutputBytes', 268_435_456);
-    assertBoundedNonnegativeInteger(value.backoffMs, 'backoffMs', 86_400_000);
-    assertBoundedPositiveInteger(value.concurrency, 'concurrency', 1_024);
-    assertStringRecord(value.processEnvironment, 'processEnvironment');
-    assertPrimitiveRecord(value.transientToolConfig, 'transientToolConfig');
-    return deepFreeze(structuredClone(value));
+    catch (error) {
+        if (error instanceof ExecutionPolicySnapshotCodecError) {
+            if (error.code === 'EXECUTION_POLICY_SNAPSHOT_CANONICAL_JSON_INVALID') {
+                throw executionError('CANONICAL_JSON_INVALID', error.message, ExitCode.usage);
+            }
+            throw executionInvalid(error.message);
+        }
+        throw error;
+    }
 }
 function assertRetryPolicy(value) {
     if (!isPlainObject(value) ||
@@ -1848,35 +1837,6 @@ function diffJson(before, after, basePath = '', ignored = new Set()) {
         return changes;
     }
     return [{ path: basePath || '/', from: before, to: after }];
-}
-function assertEnvironmentRecordValue(value) {
-    canonicalJson(value);
-}
-function assertStringRecord(value, label) {
-    if (!isPlainObject(value))
-        throw executionInvalid(`${label} is invalid.`);
-    assertSortedObjectKeys(value, label);
-    for (const [key, entry] of Object.entries(value)) {
-        if (!/^[A-Z_][A-Z0-9_]{0,127}$/.test(key) || typeof entry !== 'string') {
-            throw executionInvalid(`${label} is invalid.`);
-        }
-        assertBoundedString(entry, `${label}.${key}`);
-    }
-}
-function assertPrimitiveRecord(value, label) {
-    if (!isPlainObject(value))
-        throw executionInvalid(`${label} is invalid.`);
-    assertSortedObjectKeys(value, label);
-    for (const [key, entry] of Object.entries(value)) {
-        assertIdentifier(key, `${label} key`);
-        if (entry !== null &&
-            typeof entry !== 'string' &&
-            typeof entry !== 'number' &&
-            typeof entry !== 'boolean') {
-            throw executionInvalid(`${label} is invalid.`);
-        }
-        assertEnvironmentRecordValue(entry);
-    }
 }
 function assertSortedObjectKeys(value, label) {
     const keys = Object.keys(value);
