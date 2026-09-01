@@ -514,6 +514,10 @@ test('archive-pr dry-run creates only a local canonical preparation and reports 
     assert.equal(result.local.archive.status, 'committed');
     assert.equal(result.local.archiveReplay.status, 'already-archived');
     assert.equal(
+      result.local.statusCommand,
+      `pnpm workflow archive-pr status ${result.local.preparation.preparationIdentity} --json`,
+    );
+    assert.equal(
       result.local.archive.commitHash,
       result.local.archiveReplay.commitHash,
     );

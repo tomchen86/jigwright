@@ -96,6 +96,7 @@ export type PreparedPostMergeArchivePullRequestV1 = Readonly<{
   assurance: LocalArchivePullRequestAssuranceV1;
   preparation: ArchivePublicationPreparationV1;
   preparationRecordPath: string;
+  statusCommand: string;
 }>;
 
 export type ArchivePublicationPreparationStatusV1 = Readonly<{
@@ -595,6 +596,7 @@ export function preparePostMergeArchivePullRequest(
     assurance,
     preparation,
     preparationRecordPath,
+    statusCommand: `pnpm workflow archive-pr status ${preparation.preparationIdentity} --json`,
   });
 }
 
