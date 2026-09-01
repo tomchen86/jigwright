@@ -698,7 +698,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:2ed28d1492257e40d3914cca7554d442fd76ea3d0598ab24e8998a8a22cb9313"
+      "digest": "sha256:c5e4c1d96a807da4e362cf25e07bfe0a463f025df3fc400d7df031268874cdce"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -993,7 +993,7 @@
     {
       "path": "src/entrypoints/cli/change-routing-cli.ts",
       "mode": "100644",
-      "digest": "sha256:47db32e7d41bbe2c7b00d3f1a4224b38249e7eeac666cd1208908007c2495873"
+      "digest": "sha256:48c28af9dc13eef3898411d4fa2339d12d3eb24ff50f004c97ee9708de96a8b2"
     },
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
@@ -1388,12 +1388,12 @@
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:b9ae4a9be5ca73307e5410e7b1749457d5a4f17c05d24097ba6a9fbb3531dd11"
+      "digest": "sha256:89285762cc8578860d1bf9aeb3be837d8cae31a010164b8b32c1b18d5150431e"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:afaeb25e4761d2886ef1e0e5bb628ba373669cb1ec30e442ff616dc3b8b37007"
+      "digest": "sha256:fefab8dcdde891be204d17c3ebdb9446c7acec4785f88e3bd08d377da47ad345"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

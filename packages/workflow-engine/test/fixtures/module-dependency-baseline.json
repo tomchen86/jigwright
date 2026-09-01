@@ -1,8 +1,8 @@
 {
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
-  "frozenEdgeCount": 828,
-  "frozenIdentityDigest": "sha256:e3de3980a2befc14c053ceee7ebdb9bda1ab431584a9a75f8d730eb04caf5dcd",
+  "frozenEdgeCount": 829,
+  "frozenIdentityDigest": "sha256:7c07700f881763bc7e892d5bc2e03235a87147619b5217d212f8266e85f25afc",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -4461,6 +4461,14 @@
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
       "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/entrypoints/cli/change-routing-cli.ts",
+      "to": "packages/workflow-engine/src/modules/lifecycle/change-routing-transaction.ts",
+      "rule": "entrypoint-bypass-composition-root",
+      "reasonId": "legacy.entrypoint-bypass-composition-root",
+      "retirementPhase": "post-layout-composition-root-extraction",
+      "status": "active"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/change-routing-cli.ts",
