@@ -168,6 +168,18 @@ export function readVerifiedArchiveTransitionEvidence(
   }
 }
 
+/**
+ * Inspect an already-applied archive transition using the same report and
+ * immutable Git replay as archive idempotency. This read-only surface never
+ * acquires the archive lock or authors a transition.
+ */
+export function inspectExistingArchiveTransition(
+  cwd: string,
+  changeId: string,
+): ArchiveTransitionResult | undefined {
+  return findExistingArchive(cwd, changeId);
+}
+
 function commitEligibleArchive(
   eligibility: ArchiveEligibility,
   environment: NodeJS.ProcessEnv,

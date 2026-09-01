@@ -444,6 +444,134 @@ test('archive-pr doctor reuses exact local candidate discovery without writes or
   }
 });
 
+test('archive-pr doctor rejects a tracked archive directory without verified transition evidence', async () => {
+  const repository = completedFixture();
+  const poisonedChangeId = 'poisoned-change';
+  const poisonedArchivePath = path.join(
+    repository,
+    'openspec/changes/archive',
+    `2026-09-01-${poisonedChangeId}`,
+  );
+  fs.mkdirSync(poisonedArchivePath, { recursive: true });
+  fs.writeFileSync(
+    path.join(poisonedArchivePath, 'status.txt'),
+    'not backed by an archive transition report\n',
+  );
+  git(repository, ['add', 'openspec/changes/archive']);
+  git(repository, ['commit', '-m', 'Add unverified archive directory']);
+  git(repository, [
+    'update-ref',
+    'refs/remotes/origin/main',
+    git(repository, ['rev-parse', 'HEAD']).trim(),
+  ]);
+
+  const remoteCalls: string[] = [];
+  const runtimeRoot =
+    loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+  const before = {
+    repository: repositoryProjection(repository),
+    refs: git(repository, ['show-ref']),
+    worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+    runtime: snapshotDirectory(runtimeRoot),
+  };
+  const dispatch = createArchivePullRequestCliDispatcherForTesting(
+    localOnlyArchiveCliDependencies(remoteCalls),
+  );
+
+  try {
+    const output = await dispatch(
+      ['archive-pr', 'doctor', '--base', 'origin/main'],
+      repository,
+    );
+    const inventory = output.result as ReturnType<
+      typeof discoverArchivePullRequestCandidates
+    >;
+    const poisoned = inventory.items.find(
+      ({ changeId }) => changeId === poisonedChangeId,
+    );
+    assert.equal(poisoned?.state, 'blocked');
+    assert.equal(poisoned?.blocker?.code, 'ARCHIVE_IDEMPOTENCY_INVALID');
+    assert.equal(poisoned?.nextSafeCommand, null);
+    assert.equal(
+      inventory.items.some(
+        ({ changeId, state }) =>
+          changeId === poisonedChangeId && state === 'already-archived',
+      ),
+      false,
+    );
+    assert.deepEqual(remoteCalls, []);
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+      },
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive-pr doctor reports an exact report-backed archived transition without mutation', async () => {
+  const repository = completedFixture();
+  const archived = createReportBackedArchiveBranchFixture(repository);
+  git(repository, ['merge', '--ff-only', archived.archiveHead]);
+  git(repository, [
+    'update-ref',
+    'refs/remotes/origin/main',
+    archived.archiveHead,
+  ]);
+
+  const remoteCalls: string[] = [];
+  const runtimeRoot =
+    loadInvestigationRuntimeContext(repository).lifecycleRuntime.root;
+  const before = {
+    repository: repositoryProjection(repository),
+    refs: git(repository, ['show-ref']),
+    worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+    runtime: snapshotDirectory(runtimeRoot),
+  };
+  const dispatch = createArchivePullRequestCliDispatcherForTesting(
+    localOnlyArchiveCliDependencies(remoteCalls),
+  );
+
+  try {
+    const output = await dispatch(
+      ['archive-pr', 'doctor', '--base', 'origin/main'],
+      repository,
+    );
+    assert.deepEqual(output.result, {
+      schemaVersion: 1,
+      kind: 'archive-pull-request-candidate-inventory',
+      base: 'origin/main',
+      items: [
+        {
+          changeId: 'demo-change',
+          state: 'already-archived',
+          candidate: null,
+          blocker: null,
+          archivePath: 'openspec/changes/archive/2026-09-01-demo-change',
+          nextSafeCommand: null,
+        },
+      ],
+    });
+    assert.deepEqual(remoteCalls, []);
+    assert.deepEqual(
+      {
+        repository: repositoryProjection(repository),
+        refs: git(repository, ['show-ref']),
+        worktrees: git(repository, ['worktree', 'list', '--porcelain']),
+        runtime: snapshotDirectory(runtimeRoot),
+      },
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('archive-pr dry-run creates only a local canonical preparation and reports the remote gate pending', async () => {
   const repository = completedFixture();
   const workspaceParent = path.join(

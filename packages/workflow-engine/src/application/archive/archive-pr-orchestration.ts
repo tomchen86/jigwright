@@ -22,6 +22,7 @@ import {
 } from '../../runtime/repository-transaction/git.ts';
 import {
   commitArchiveTransition,
+  inspectExistingArchiveTransition,
   readVerifiedArchiveTransitionEvidence,
   type ArchiveTransitionResult,
   type ArchiveTransitionTestHooks,
@@ -369,30 +370,11 @@ export function discoverArchivePullRequestCandidates(
           nextSafeCommand: `jigwright after-merge ${changeId} --json`,
         });
       } catch (error) {
-        const code =
-          error !== null &&
-          typeof error === 'object' &&
-          'code' in error &&
-          typeof error.code === 'string'
-            ? error.code
-            : 'ARCHIVE_PR_CANDIDATE_BLOCKED';
-        return Object.freeze({
-          changeId,
-          state: 'blocked' as const,
-          candidate: null,
-          blocker: Object.freeze({
-            code,
-            message:
-              error instanceof Error
-                ? error.message
-                : 'Archive candidate validation failed.',
-          }),
-          nextSafeCommand: null,
-        });
+        return blockedArchiveInventoryItem(changeId, error);
       }
     });
   const archiveRoot = path.join(changeRoot, 'archive');
-  const archivedItems: ArchivePullRequestCandidateInventoryV1['items'][number][] =
+  const archivedChangeIds = new Set(
     fs.lstatSync(archiveRoot, { throwIfNoEntry: false })?.isDirectory()
       ? fs
           .readdirSync(archiveRoot, { withFileTypes: true })
@@ -401,18 +383,34 @@ export function discoverArchivePullRequestCandidates(
               entry.isDirectory() &&
               /^\d{4}-\d{2}-\d{2}-[a-z0-9]+(?:-[a-z0-9]+)*$/.test(entry.name),
           )
-          .map(({ name }) => {
-            const changeId = name.slice('0000-00-00-'.length);
-            return Object.freeze({
-              changeId,
-              state: 'already-archived' as const,
-              candidate: null,
-              blocker: null,
-              archivePath: `${config.changeRoot}/archive/${name}`,
-              nextSafeCommand: null,
-            });
-          })
-      : [];
+          .map(({ name }) => name.slice('0000-00-00-'.length))
+      : [],
+  );
+  const archivedItems: ArchivePullRequestCandidateInventoryV1['items'][number][] =
+    [...archivedChangeIds].map((changeId) => {
+      try {
+        const archive = inspectExistingArchiveTransition(
+          repository.repositoryRoot,
+          changeId,
+        );
+        if (archive === undefined) {
+          throw archivePrError(
+            'ARCHIVE_IDEMPOTENCY_INVALID',
+            'Archived path does not match verified transition evidence.',
+          );
+        }
+        return Object.freeze({
+          changeId,
+          state: 'already-archived' as const,
+          candidate: null,
+          blocker: null,
+          archivePath: archive.archivePath,
+          nextSafeCommand: null,
+        });
+      } catch (error) {
+        return blockedArchiveInventoryItem(changeId, error);
+      }
+    });
   return Object.freeze({
     schemaVersion: 1,
     kind: 'archive-pull-request-candidate-inventory',
@@ -422,6 +420,32 @@ export function discoverArchivePullRequestCandidates(
         left.changeId.localeCompare(right.changeId),
       ),
     ),
+  });
+}
+
+function blockedArchiveInventoryItem(
+  changeId: string,
+  error: unknown,
+): ArchivePullRequestCandidateInventoryV1['items'][number] {
+  const code =
+    error !== null &&
+    typeof error === 'object' &&
+    'code' in error &&
+    typeof error.code === 'string'
+      ? error.code
+      : 'ARCHIVE_PR_CANDIDATE_BLOCKED';
+  return Object.freeze({
+    changeId,
+    state: 'blocked' as const,
+    candidate: null,
+    blocker: Object.freeze({
+      code,
+      message:
+        error instanceof Error
+          ? error.message
+          : 'Archive candidate validation failed.',
+    }),
+    nextSafeCommand: null,
   });
 }
 
