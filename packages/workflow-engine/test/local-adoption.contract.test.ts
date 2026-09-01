@@ -3,9 +3,12 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
+  assessCurrentJigwrightAdoptionFreshness,
+  inspectCurrentJigwrightAdoptionFreshness,
   runCurrentJigwrightAdoption,
   verifyCurrentJigwrightAdoptionComparisonV1,
   verifyCurrentJigwrightAdoptionReportV1,
@@ -94,7 +97,47 @@ test('the public adoption command is current-only and preserves the workspace re
   );
 });
 
-test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover', () => {
+test('standalone adoption freshness reports only the exact current clean source', () => {
+  const source = {
+    commit: 'a'.repeat(40),
+    tree: 'b'.repeat(40),
+    dirty: false,
+  };
+  assert.deepEqual(assessCurrentJigwrightAdoptionFreshness(source, source), {
+    schemaVersion: 1,
+    kind: 'jigwright-current-local-adoption-freshness.v1',
+    status: 'current',
+    adoption: source,
+    current: source,
+    reasons: [],
+  });
+  assert.deepEqual(
+    assessCurrentJigwrightAdoptionFreshness(
+      { ...source, dirty: true },
+      { ...source, commit: 'c'.repeat(40), tree: 'd'.repeat(40), dirty: true },
+    ),
+    {
+      schemaVersion: 1,
+      kind: 'jigwright-current-local-adoption-freshness.v1',
+      status: 'stale',
+      adoption: { ...source, dirty: true },
+      current: {
+        ...source,
+        commit: 'c'.repeat(40),
+        tree: 'd'.repeat(40),
+        dirty: true,
+      },
+      reasons: [
+        'adoption-source-dirty',
+        'current-source-dirty',
+        'source-commit-mismatch',
+        'source-tree-mismatch',
+      ],
+    },
+  );
+});
+
+test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover with a read-only status', () => {
   const adoptionRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-current-adoption-'),
   );
@@ -102,6 +145,47 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover',
     const report = runCurrentJigwrightAdoption(process.cwd(), adoptionRoot, {
       allowDirty: true,
     });
+
+    const persistedReportPath = path.join(adoptionRoot, 'report.json');
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(persistedReportPath, 'utf8')),
+      report,
+    );
+    const expectedFreshness = inspectCurrentJigwrightAdoptionFreshness(
+      process.cwd(),
+      adoptionRoot,
+    );
+    const status = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.resolve('scripts/run-current-jigwright-adoption.ts'),
+        '--status',
+        adoptionRoot,
+      ],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    );
+    assert.equal(status.status, 0, status.stderr);
+    assert.deepEqual(JSON.parse(status.stdout), expectedFreshness);
+    assert.deepEqual(
+      JSON.parse(fs.readFileSync(persistedReportPath, 'utf8')),
+      report,
+    );
+
+    const persistedReportBytes = fs.readFileSync(persistedReportPath);
+    const tamperedReport = JSON.parse(persistedReportBytes.toString('utf8'));
+    tamperedReport.release.tarball = '../../outside.tgz';
+    fs.writeFileSync(persistedReportPath, JSON.stringify(tamperedReport));
+    assert.throws(
+      () =>
+        inspectCurrentJigwrightAdoptionFreshness(process.cwd(), adoptionRoot),
+      /adoption report is invalid/u,
+    );
+    assert.deepEqual(
+      fs.readFileSync(persistedReportPath),
+      Buffer.from(JSON.stringify(tamperedReport)),
+    );
+    fs.writeFileSync(persistedReportPath, persistedReportBytes);
 
     assert.equal(report.schemaVersion, 1);
     assert.equal(report.kind, 'jigwright-current-local-adoption-report.v1');

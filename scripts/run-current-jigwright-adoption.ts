@@ -265,6 +265,20 @@ export type CurrentJigwrightAdoptionReportV1 = Readonly<{
   }>;
 }>;
 
+export type CurrentJigwrightAdoptionFreshnessV1 = Readonly<{
+  schemaVersion: 1;
+  kind: 'jigwright-current-local-adoption-freshness.v1';
+  status: 'current' | 'stale';
+  adoption: CurrentJigwrightAdoptionReportV1['release']['source'];
+  current: CurrentJigwrightAdoptionReportV1['release']['source'];
+  reasons: readonly (
+    | 'adoption-source-dirty'
+    | 'current-source-dirty'
+    | 'source-commit-mismatch'
+    | 'source-tree-mismatch'
+  )[];
+}>;
+
 export function runCurrentJigwrightAdoption(
   requestedRepositoryRoot: string,
   requestedAdoptionRoot: string,
@@ -610,8 +624,55 @@ export function runCurrentJigwrightAdoption(
     }),
   });
   verifyCurrentJigwrightAdoptionReportV1(report, release);
+  writeJson(path.join(adoptionRoot, 'report.json'), report);
   verifyCurrentJigwrightAdoptionArtifacts(adoptionRoot, report);
   return report;
+}
+
+/**
+ * Re-verifies a persisted synthetic adoption rehearsal before reporting whether
+ * its recorded source still exactly matches the current repository. This never
+ * prepares, refreshes, or persistently changes the adoption artifact.
+ */
+export function inspectCurrentJigwrightAdoptionFreshness(
+  requestedRepositoryRoot: string,
+  requestedAdoptionRoot: string,
+): CurrentJigwrightAdoptionFreshnessV1 {
+  const repositoryRoot = fs.realpathSync(requestedRepositoryRoot);
+  const adoptionRoot = fs.realpathSync(requestedAdoptionRoot);
+  const reportValue = readJson(path.join(adoptionRoot, 'report.json'));
+  const release = isSingleJigwrightPackageArtifactV1(reportValue.release)
+    ? reportValue.release
+    : null;
+  if (release === null) {
+    throw new Error('Current Jigwright adoption report is invalid.');
+  }
+  const report = verifyCurrentJigwrightAdoptionReportV1(reportValue, release);
+  verifyCurrentJigwrightAdoptionArtifacts(adoptionRoot, report);
+  return assessCurrentJigwrightAdoptionFreshness(
+    report.release.source,
+    currentSourceIdentity(repositoryRoot),
+  );
+}
+
+export function assessCurrentJigwrightAdoptionFreshness(
+  adoption: CurrentJigwrightAdoptionReportV1['release']['source'],
+  current: CurrentJigwrightAdoptionReportV1['release']['source'],
+): CurrentJigwrightAdoptionFreshnessV1 {
+  const reasons: CurrentJigwrightAdoptionFreshnessV1['reasons'][number][] = [];
+  if (adoption.dirty) reasons.push('adoption-source-dirty');
+  if (current.dirty) reasons.push('current-source-dirty');
+  if (adoption.commit !== current.commit)
+    reasons.push('source-commit-mismatch');
+  if (adoption.tree !== current.tree) reasons.push('source-tree-mismatch');
+  return Object.freeze({
+    schemaVersion: 1 as const,
+    kind: 'jigwright-current-local-adoption-freshness.v1' as const,
+    status: reasons.length === 0 ? ('current' as const) : ('stale' as const),
+    adoption: Object.freeze({ ...adoption }),
+    current: Object.freeze({ ...current }),
+    reasons: Object.freeze(reasons),
+  });
 }
 
 function initializeConsumerRepository(consumerRoot: string): void {
@@ -639,6 +700,17 @@ function gitIdentity(repositoryRoot: string): GitIdentityV1 {
   return Object.freeze({
     commit: git(repositoryRoot, ['rev-parse', 'HEAD']),
     tree: git(repositoryRoot, ['rev-parse', 'HEAD^{tree}']),
+  });
+}
+
+function currentSourceIdentity(
+  repositoryRoot: string,
+): CurrentJigwrightAdoptionReportV1['release']['source'] {
+  return Object.freeze({
+    ...gitIdentity(repositoryRoot),
+    dirty:
+      git(repositoryRoot, ['status', '--porcelain', '--untracked-files=all'])
+        .length > 0,
   });
 }
 
@@ -2010,6 +2082,35 @@ function isGitIdentity(value: unknown): value is GitIdentityV1 {
   );
 }
 
+function isSingleJigwrightPackageArtifactV1(
+  value: unknown,
+): value is SingleJigwrightPackageArtifactV1 {
+  return (
+    isRecord(value) &&
+    hasExactKeys(value, [
+      'schemaVersion',
+      'kind',
+      'name',
+      'version',
+      'tarball',
+      'digest',
+      'source',
+    ]) &&
+    value.schemaVersion === 1 &&
+    value.kind === 'jigwright-single-package.v1' &&
+    value.name === 'jigwright' &&
+    typeof value.version === 'string' &&
+    /^[0-9]+\.[0-9]+\.[0-9]+(?:-[a-z0-9.-]+)?$/u.test(value.version) &&
+    value.tarball === `jigwright-${value.version}.tgz` &&
+    isSha256Digest(value.digest) &&
+    isRecord(value.source) &&
+    hasExactKeys(value.source, ['commit', 'tree', 'dirty']) &&
+    isGitObjectId(value.source.commit) &&
+    isGitObjectId(value.source.tree) &&
+    typeof value.source.dirty === 'boolean'
+  );
+}
+
 export function verifyCurrentJigwrightAdoptionReportV1(
   value: unknown,
   release: SingleJigwrightPackageArtifactV1,
@@ -2030,6 +2131,7 @@ export function verifyCurrentJigwrightAdoptionReportV1(
     ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'jigwright-current-local-adoption-report.v1' ||
+    !isSingleJigwrightPackageArtifactV1(value.release) ||
     !sameJson(value.release, release) ||
     !isRecord(value.install) ||
     !isRecord(value.bootstrap) ||
@@ -2781,14 +2883,30 @@ if (
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
   const outputIndex = process.argv.indexOf('--output');
-  if (outputIndex < 0 || process.argv[outputIndex + 1] === undefined) {
+  const statusIndex = process.argv.indexOf('--status');
+  if (
+    outputIndex >= 0 &&
+    process.argv[outputIndex + 1] !== undefined &&
+    statusIndex < 0
+  ) {
+    const report = runCurrentJigwrightAdoption(
+      process.cwd(),
+      process.argv[outputIndex + 1]!,
+    );
+    process.stdout.write(`${JSON.stringify(report)}\n`);
+  } else if (
+    statusIndex >= 0 &&
+    process.argv[statusIndex + 1] !== undefined &&
+    outputIndex < 0
+  ) {
+    const freshness = inspectCurrentJigwrightAdoptionFreshness(
+      process.cwd(),
+      process.argv[statusIndex + 1]!,
+    );
+    process.stdout.write(`${JSON.stringify(freshness)}\n`);
+  } else {
     throw new Error(
-      'Usage: node --experimental-strip-types scripts/run-current-jigwright-adoption.ts --output <directory>',
+      'Usage: node --experimental-strip-types scripts/run-current-jigwright-adoption.ts (--output|--status) <directory>',
     );
   }
-  const report = runCurrentJigwrightAdoption(
-    process.cwd(),
-    process.argv[outputIndex + 1]!,
-  );
-  process.stdout.write(`${JSON.stringify(report)}\n`);
 }
