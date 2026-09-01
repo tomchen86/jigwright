@@ -693,7 +693,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:0a9defffc44ff95e0b9f1b34a4ae263000a8082bfc647de94ae5f2df7eddc260"
+      "digest": "sha256:137483e338011bb81c6d7676813c842fa2c54a378a103f8255c14009ddd0f109"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
