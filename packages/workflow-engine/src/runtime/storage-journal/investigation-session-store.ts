@@ -56,6 +56,7 @@ import {
   PLAN_REVIEW_OUTPUT_SCHEMA,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
 } from '../../modules/assurance/plan-review.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage.ts';
 import {
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR,
@@ -3976,7 +3977,8 @@ function assertInvestigationSession(value: unknown): InvestigationSession {
     (value.branch !== null && typeof value.branch !== 'string') ||
     !isBaseline(value.baseline) ||
     !isDigest(value.intentDigest) ||
-    !isDigest(value.planReviewCoveragePolicyDigest) ||
+    value.planReviewCoveragePolicyDigest !==
+      GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST ||
     !isDigest(value.blindManifestDigest) ||
     !isDigest(value.blindRequestDigest) ||
     !isStringArray(value.blindInvocationIds) ||

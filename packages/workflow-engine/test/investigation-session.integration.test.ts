@@ -7642,10 +7642,50 @@ test('propose status rejects persisted omission of the current PlanReview covera
     const currentRefBytes = fs.readFileSync(currentRefPath);
     fs.writeFileSync(persistedPath, poisonedBytes, { mode: 0o600 });
 
-    assert.throws(
+    for (const read of [
+      () => readInvestigationSession(fixture.paths, started.investigationId),
       () => getProposeStatus(fixture.repository, started.investigationId),
-      (error) => isWorkflowError(error, 'INVESTIGATION_SESSION_INVALID'),
+    ]) {
+      assert.throws(read, (error) =>
+        isWorkflowError(error, 'INVESTIGATION_SESSION_INVALID'),
+      );
+    }
+    assert.deepEqual(fs.readFileSync(persistedPath), poisonedBytes);
+    assert.deepEqual(fs.readFileSync(currentRefPath), currentRefBytes);
+  } finally {
+    fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
+test('propose status rejects an unknown PlanReview coverage policy digest without rewriting durable state', () => {
+  const fixture = investigationFixture(
+    'invocation-session-unknown-plan-review-coverage-policy',
+  );
+  try {
+    const started = startFixture(fixture);
+    const persistedPath = sessionPath(fixture, started.investigationId);
+    const currentRefPath = path.join(
+      fixture.paths.refs,
+      `${started.changeId}.investigation-session.json`,
     );
+    const persisted = JSON.parse(
+      fs.readFileSync(persistedPath, 'utf8'),
+    ) as Record<string, unknown>;
+    persisted.planReviewCoveragePolicyDigest = sha256(
+      'unknown-plan-review-coverage-policy',
+    );
+    const poisonedBytes = Buffer.from(`${canonicalJson(persisted)}\n`, 'utf8');
+    const currentRefBytes = fs.readFileSync(currentRefPath);
+    fs.writeFileSync(persistedPath, poisonedBytes, { mode: 0o600 });
+
+    for (const read of [
+      () => readInvestigationSession(fixture.paths, started.investigationId),
+      () => getProposeStatus(fixture.repository, started.investigationId),
+    ]) {
+      assert.throws(read, (error) =>
+        isWorkflowError(error, 'INVESTIGATION_SESSION_INVALID'),
+      );
+    }
     assert.deepEqual(fs.readFileSync(persistedPath), poisonedBytes);
     assert.deepEqual(fs.readFileSync(currentRefPath), currentRefBytes);
   } finally {

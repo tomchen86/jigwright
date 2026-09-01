@@ -296,7 +296,6 @@ import {
 } from '../../modules/assurance/plan-review.ts';
 import {
   buildGlobalPlanReviewCoverageRequirement,
-  GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST,
   type GlobalPlanReviewCoverageRequirement,
   type GlobalPlanReviewCoverageTargetInput,
 } from '../../modules/assurance/plan-review-coverage.ts';
@@ -4398,8 +4397,7 @@ function completePlanReviewDispositions(
           ? null
           : readInvestigationSession(context.runtime, input.investigationId);
       const dispositionNode =
-        session?.planReviewCoveragePolicyDigest ===
-        GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST
+        session !== null
           ? (() => {
               const policy = loadMaintainerPolicyAtCommit(
                 context.git.repositoryRoot,
@@ -6250,8 +6248,7 @@ function rebuildInvestigation(
     assuranceAssessmentNode,
   ).coverageTier;
   const planReviewCoverage =
-    session.planReviewCoveragePolicyDigest ===
-      GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST && whyAuthoring !== null
+    whyAuthoring !== null
       ? buildGlobalPlanReviewCoverageRequirement({
           investigationId: session.investigationId,
           changeId: session.changeId,
