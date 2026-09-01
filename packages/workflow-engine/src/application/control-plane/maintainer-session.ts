@@ -92,7 +92,7 @@ export type AuthoritySession = {
   schemaVersion: 1;
   sessionId: string;
   state: 'active' | 'failed' | 'aborted' | 'committed';
-  grantVersion: 1 | 2;
+  grantVersion: 2;
   grantId: string;
   changeId: string;
   repositoryRoot: string;

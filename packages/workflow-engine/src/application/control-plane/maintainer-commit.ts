@@ -12,7 +12,6 @@ import {
 } from '../../modules/authority/authority-refusal-audit.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
-  createSignedAuthorityCommitObject,
   previewExactStaging,
   resolveCommitIdentity,
   rollbackExactStaging,
@@ -120,14 +119,6 @@ export function commitAuthoritySession(
         maintainerGrantStorePaths(session.gitCommonDirectory).journals,
         `${session.sessionId}.json`,
       );
-      if (session.grantVersion === 1) {
-        return commitAuthoritySessionWithDeadline(
-          cwd,
-          requestedSessionId,
-          subject,
-          options,
-        );
-      }
       deadline = createPostApprovalAdmissionDeadline(
         options.testPostApprovalBudget,
       );
@@ -147,26 +138,24 @@ export function commitAuthoritySession(
       }
     }
     const phaseSession = readAuthoritySession(cwd, requestedSessionId);
-    if (phaseSession.grantVersion === 2) {
-      const phaseJournalPath = path.join(
-        maintainerGrantStorePaths(phaseSession.gitCommonDirectory).journals,
-        `${phaseSession.sessionId}.json`,
+    const phaseJournalPath = path.join(
+      maintainerGrantStorePaths(phaseSession.gitCommonDirectory).journals,
+      `${phaseSession.sessionId}.json`,
+    );
+    if (fs.existsSync(phaseJournalPath)) {
+      const phaseJournal = readAuthorityCommitJournal(
+        phaseSession.gitCommonDirectory,
+        phaseSession.sessionId,
       );
-      if (fs.existsSync(phaseJournalPath)) {
-        const phaseJournal = readAuthorityCommitJournal(
-          phaseSession.gitCommonDirectory,
-          phaseSession.sessionId,
-        );
-        if (authorityJournalRequiresCompletion(phaseJournal.state)) {
-          enterPostApprovalCompletionObligation(deadline, {
-            allowExpired: true,
-          });
-        } else {
-          assertPostApprovalAdmissionPhase(deadline);
-        }
+      if (authorityJournalRequiresCompletion(phaseJournal.state)) {
+        enterPostApprovalCompletionObligation(deadline, {
+          allowExpired: true,
+        });
       } else {
         assertPostApprovalAdmissionPhase(deadline);
       }
+    } else {
+      assertPostApprovalAdmissionPhase(deadline);
     }
     if (deadline.phase === 'unarmed') {
       armPostApprovalAdmissionDeadline(deadline);
@@ -343,90 +332,54 @@ function commitAuthoritySessionWithDeadline(
           );
           let staged: ReturnType<typeof stageExactPaths>;
           let journal: ReturnType<typeof beginAuthorityCommitJournal>;
-          if (current.session.grantVersion === 2) {
-            const preview = previewExactStaging(
-              current.git.repositoryRoot,
-              current.session.baseCommit,
-              changedPaths,
+          const preview = previewExactStaging(
+            current.git.repositoryRoot,
+            current.session.baseCommit,
+            changedPaths,
+          );
+          if (
+            current.session.resultTree === null ||
+            current.session.resultTree !== preview.tree
+          ) {
+            throw commitError(
+              'AUTHORITY_CANDIDATE_TREE_MISMATCH',
+              'The prospective tree differs from the immutable candidate result tree.',
             );
-            if (
-              current.session.resultTree === null ||
-              current.session.resultTree !== preview.tree
-            ) {
-              throw commitError(
-                'AUTHORITY_CANDIDATE_TREE_MISMATCH',
-                'The prospective tree differs from the immutable candidate result tree.',
-              );
-            }
-            assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
-            journal = beginAuthorityCommitJournal(current.session, {
-              expectedTree: preview.tree,
-              previousIndexTree: preview.previousIndexTree,
-              changedPaths,
-              subject,
-              now: exactDate(options.now ?? new Date()),
-              auditScope,
-            });
-            journalCreated = true;
-            staged = stageExactPaths(
-              current.git.repositoryRoot,
-              current.session.baseCommit,
-              changedPaths,
-              {
-                expectedTree: preview.tree,
-                expectedPreviousIndexTree: preview.previousIndexTree,
-              },
-            );
-            stagedProjection.current = {
-              repositoryRoot: current.git.repositoryRoot,
-              previousIndexTree: staged.previousIndexTree,
-              workflowTree: staged.tree,
-            };
-            if (options.testCrashAfter === 'index-staged') {
-              throw new SimulatedAuthorityCrash('index-staged');
-            }
-          } else {
-            staged = stageExactPaths(
-              current.git.repositoryRoot,
-              current.session.baseCommit,
-              changedPaths,
-            );
-            stagedProjection.current = {
-              repositoryRoot: current.git.repositoryRoot,
-              previousIndexTree: staged.previousIndexTree,
-              workflowTree: staged.tree,
-            };
-            assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
-            journal = beginAuthorityCommitJournal(current.session, {
-              expectedTree: staged.tree,
-              previousIndexTree: staged.previousIndexTree,
-              changedPaths,
-              subject,
-              now: exactDate(options.now ?? new Date()),
-              auditScope,
-            });
-            journalCreated = true;
-            if (
-              current.session.resultTree !== null &&
-              current.session.resultTree !== staged.tree
-            ) {
-              throw commitError(
-                'AUTHORITY_CANDIDATE_TREE_MISMATCH',
-                'The staged tree differs from the immutable candidate result tree.',
-              );
-            }
           }
-          const commitHash =
-            current.session.candidateCommit ??
-            createSignedAuthorityCommitObject(
-              current.git.repositoryRoot,
-              staged.tree,
-              current.session.baseCommit,
-              subject,
-              current.session.changeId,
-              current.session.grantId,
-              options.environment,
+          assertPostApprovalAdmissionDeadline(options.postApprovalDeadline);
+          journal = beginAuthorityCommitJournal(current.session, {
+            expectedTree: preview.tree,
+            previousIndexTree: preview.previousIndexTree,
+            changedPaths,
+            subject,
+            now: exactDate(options.now ?? new Date()),
+            auditScope,
+          });
+          journalCreated = true;
+          staged = stageExactPaths(
+            current.git.repositoryRoot,
+            current.session.baseCommit,
+            changedPaths,
+            {
+              expectedTree: preview.tree,
+              expectedPreviousIndexTree: preview.previousIndexTree,
+            },
+          );
+          stagedProjection.current = {
+            repositoryRoot: current.git.repositoryRoot,
+            previousIndexTree: staged.previousIndexTree,
+            workflowTree: staged.tree,
+          };
+          if (options.testCrashAfter === 'index-staged') {
+            throw new SimulatedAuthorityCrash('index-staged');
+          }
+          if (current.session.candidateCommit === null) {
+            throw commitError(
+              'AUTHORITY_CANDIDATE_TREE_MISMATCH',
+              'The authority session is missing its immutable candidate commit.',
             );
+          }
+          const commitHash = current.session.candidateCommit;
           journal = recordAuthorityCommitCreated(
             current.session.gitCommonDirectory,
             journal,
@@ -666,8 +619,7 @@ function operationNow(options: AuthorityCommitOptions): Date {
 function prepareAuthorityAuditScope(
   session: AuthoritySession,
   repositoryIdentity: string,
-): AuthorityAuditLedgerScope | null {
-  if (session.grantVersion === 1) return null;
+): AuthorityAuditLedgerScope {
   if (session.mandateBinding === null) {
     throw workflowError(
       'AUTHORITY_TASK_MANDATE_BINDING_REQUIRED',

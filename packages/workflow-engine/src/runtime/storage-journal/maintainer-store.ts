@@ -1070,16 +1070,7 @@ function serializeRecord(value: unknown): string {
 }
 
 function serializeEmbeddedEnvelope(value: unknown): string {
-  const version =
-    value &&
-    typeof value === 'object' &&
-    'payload' in value &&
-    value.payload &&
-    typeof value.payload === 'object' &&
-    'version' in value.payload
-      ? value.payload.version
-      : undefined;
-  return `${version === 2 ? canonicalJson(value) : JSON.stringify(value)}\n`;
+  return `${canonicalJson(value)}\n`;
 }
 
 function parseRecord(raw: string): Record<string, unknown> {

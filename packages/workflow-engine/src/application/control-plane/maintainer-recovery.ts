@@ -30,7 +30,6 @@ import { authorityAttestationRelayProjectionCommand } from '../../adapters/remot
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   authorityCandidateCommitMessage,
-  authorityCommitMessage,
   commitChangedPaths,
   commitFacts,
   rollbackExactStaging,
@@ -185,27 +184,22 @@ export function beginAuthorityCommitJournal(
     changedPaths: string[];
     subject: string;
     now: Date;
-    auditScope?: AuthorityAuditLedgerScope | null;
+    auditScope: AuthorityAuditLedgerScope;
   },
 ): AuthorityCommitJournal {
   const timestamp = exactDate(input.now).toISOString();
-  const auditScope = input.auditScope ?? null;
+  const auditScope = input.auditScope;
   if (
-    (session.grantVersion === 2 && auditScope === null) ||
-    (session.grantVersion === 1 && auditScope !== null) ||
-    (session.grantVersion === 2 && session.mandateBinding === null) ||
-    (session.grantVersion === 1 && session.mandateBinding !== null) ||
-    (auditScope !== null &&
-      (auditScope.repositoryRoot !== session.repositoryRoot ||
-        auditScope.externalAuditRoot !==
-          session.mandateBinding?.externalAuditRoot))
+    session.mandateBinding === null ||
+    auditScope.repositoryRoot !== session.repositoryRoot ||
+    auditScope.externalAuditRoot !== session.mandateBinding.externalAuditRoot
   ) {
     throw recoveryError(
       'AUTHORITY_AUDIT_SCOPE_MISMATCH',
       'Authority audit scope does not match the pinned grant and repository.',
     );
   }
-  if (auditScope !== null) authorityAuditLedgerPaths(auditScope);
+  authorityAuditLedgerPaths(auditScope);
   const journal: AuthorityCommitJournal = {
     schemaVersion: 4,
     state: 'preparing',
@@ -292,14 +286,6 @@ export function recoverAuthorityCommit(
   try {
     if (deadline === undefined) {
       const session = readAuthoritySession(cwd, requestedSessionId);
-      if (session.grantVersion === 1) {
-        return recoverAuthorityCommitWithDeadline(
-          cwd,
-          requestedSessionId,
-          now,
-          options,
-        );
-      }
       const journal = readAuthorityCommitJournal(
         session.gitCommonDirectory,
         session.sessionId,
@@ -314,18 +300,16 @@ export function recoverAuthorityCommit(
       }
     }
     const phaseSession = readAuthoritySession(cwd, requestedSessionId);
-    if (phaseSession.grantVersion === 2) {
-      const phaseJournal = readAuthorityCommitJournal(
-        phaseSession.gitCommonDirectory,
-        phaseSession.sessionId,
-      );
-      if (journalRequiresCompletion(phaseJournal.state)) {
-        enterPostApprovalCompletionObligation(deadline, {
-          allowExpired: true,
-        });
-      } else {
-        assertPostApprovalAdmissionPhase(deadline);
-      }
+    const phaseJournal = readAuthorityCommitJournal(
+      phaseSession.gitCommonDirectory,
+      phaseSession.sessionId,
+    );
+    if (journalRequiresCompletion(phaseJournal.state)) {
+      enterPostApprovalCompletionObligation(deadline, {
+        allowExpired: true,
+      });
+    } else {
+      assertPostApprovalAdmissionPhase(deadline);
     }
     if (deadline.phase === 'unarmed') {
       armPostApprovalAdmissionDeadline(deadline);
@@ -1217,7 +1201,7 @@ function finalizeConsumed(
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
-  auditScope: AuthorityAuditLedgerScope | null,
+  auditScope: AuthorityAuditLedgerScope,
   now: Date,
   options: AuthorityRecoveryOptions,
 ): AuthorityCommitResult {
@@ -1237,99 +1221,84 @@ function finalizeConsumed(
       'Consumed journal and terminal grant state do not match.',
     );
   }
-  if (session.grantVersion === 2) {
-    if (auditScope === null || journal.casAuditRecordDigest === null) {
-      throw recoveryError(
-        'AUTHORITY_AUDIT_STATE_INVALID',
-        'Consumed v2 authority state is missing its bound external audit scope or CAS receipt.',
-      );
-    }
-    assertAppliedTransactionPoststate(
-      session.repositoryRoot,
-      `refs/heads/${session.branch}`,
-      commitHash,
-      journal.expectedTree,
+  if (journal.casAuditRecordDigest === null) {
+    throw recoveryError(
+      'AUTHORITY_AUDIT_STATE_INVALID',
+      'Consumed v2 authority state is missing its bound external audit scope or CAS receipt.',
     );
-    let verified = ensureTransactionAuditReceipt(
-      session,
-      journal,
-      auditScope,
-      'cas',
-      now,
-    );
-    if (verified.poststateVerifiedAt === null) {
-      const verifiedAt =
-        verified.consumedAt ?? verified.refUpdatedAt ?? verified.updatedAt;
-      verified = transitionJournal(
-        session.gitCommonDirectory,
-        verified,
-        'consumed',
-        {
-          state: 'consumed',
-          poststateVerifiedAt: verifiedAt,
-          updatedAt: verified.updatedAt,
-        },
-      );
-    }
-    verified = ensureTransactionAuditReceipt(
-      session,
-      verified,
-      auditScope,
-      'poststate',
-      now,
-    );
-    verified = ensureTransactionAuditReceipt(
-      session,
-      verified,
-      auditScope,
-      'grant-consume',
-      now,
-      options,
-    );
-    const audited = transitionJournal(
+  }
+  assertAppliedTransactionPoststate(
+    session.repositoryRoot,
+    `refs/heads/${session.branch}`,
+    commitHash,
+    journal.expectedTree,
+  );
+  let verified = ensureTransactionAuditReceipt(
+    session,
+    journal,
+    auditScope,
+    'cas',
+    now,
+  );
+  if (verified.poststateVerifiedAt === null) {
+    const verifiedAt =
+      verified.consumedAt ?? verified.refUpdatedAt ?? verified.updatedAt;
+    verified = transitionJournal(
       session.gitCommonDirectory,
       verified,
       'consumed',
       {
-        state: 'audited',
-        updatedAt: exactDate(now).toISOString(),
+        state: 'consumed',
+        poststateVerifiedAt: verifiedAt,
+        updatedAt: verified.updatedAt,
       },
     );
-    return finalizeAudited(cwd, session, audited, auditScope, now, options);
   }
-  const committed =
-    session.state === 'committed'
-      ? session
-      : markAuthoritySessionCommitted(cwd, session, commitHash, now);
-  if (committed.commitHash !== commitHash) {
-    throw recoveryError(
-      'AUTHORITY_SESSION_DIVERGED',
-      'Committed authority session references another commit.',
-    );
-  }
-  return result(committed, journal, commitHash);
+  verified = ensureTransactionAuditReceipt(
+    session,
+    verified,
+    auditScope,
+    'poststate',
+    now,
+  );
+  verified = ensureTransactionAuditReceipt(
+    session,
+    verified,
+    auditScope,
+    'grant-consume',
+    now,
+    options,
+  );
+  const audited = transitionJournal(
+    session.gitCommonDirectory,
+    verified,
+    'consumed',
+    {
+      state: 'audited',
+      updatedAt: exactDate(now).toISOString(),
+    },
+  );
+  return finalizeAudited(cwd, session, audited, auditScope, now, options);
 }
 
 function finalizeAudited(
   cwd: string,
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
-  auditScope: AuthorityAuditLedgerScope | null,
+  auditScope: AuthorityAuditLedgerScope,
   now: Date,
   options: AuthorityRecoveryOptions,
 ): AuthorityCommitResult {
   const commitHash = requireCommitHash(journal);
   verifyJournaledCommit(cwd, session, journal, commitHash);
   if (
-    session.grantVersion !== 2 ||
-    auditScope === null ||
     journal.casAuditRecordDigest === null ||
     journal.poststateAuditRecordDigest === null ||
     journal.consumeAuditRecordDigest === null
   ) {
     throw recoveryError(
       'AUTHORITY_AUDIT_STATE_INVALID',
-      'Audited authority state is incomplete or belongs to a legacy grant.',
+      'Audited authority state is incomplete.',
     );
   }
   const terminal = inspectMaintainerGrants(
@@ -1497,25 +1466,7 @@ function ensurePortableApplicationReceipt(
 function authorityAuditScopeForJournal(
   session: AuthoritySession,
   journal: AuthorityCommitJournal,
-): AuthorityAuditLedgerScope | null {
-  if (session.grantVersion === 1) {
-    if (
-      journal.externalAuditRoot !== null ||
-      journal.auditRepositoryId !== null ||
-      journal.mandateBinding !== null ||
-      journal.casAuditRecordDigest !== null ||
-      journal.poststateAuditRecordDigest !== null ||
-      journal.consumeAuditRecordDigest !== null ||
-      journal.errorAuditRecordDigest !== null ||
-      journal.rollbackAuditRecordDigest !== null
-    ) {
-      throw recoveryError(
-        'AUTHORITY_AUDIT_STATE_INVALID',
-        'Legacy authority state unexpectedly contains v2 audit authority.',
-      );
-    }
-    return null;
-  }
+): AuthorityAuditLedgerScope {
   if (
     journal.externalAuditRoot === null ||
     journal.auditRepositoryId === null ||
@@ -1883,12 +1834,8 @@ function verifyJournaledCommit(
   const expectedMessage = expectedAuthorityMessage(session, journal.subject);
   const trailers = parseManagedTrailers(facts.message);
   const exactTrailers =
-    session.grantVersion === 2
-      ? trailers?.kind === 'authority-candidate' &&
-        trailers.changeId === journal.changeId
-      : trailers?.kind === 'authority' &&
-        trailers.changeId === journal.changeId &&
-        trailers.grantId === journal.grantId;
+    trailers?.kind === 'authority-candidate' &&
+    trailers.changeId === journal.changeId;
   if (
     JSON.stringify(facts.parents) !== JSON.stringify([journal.baseCommit]) ||
     facts.tree !== journal.expectedTree ||
@@ -1910,9 +1857,7 @@ function expectedAuthorityMessage(
   session: AuthoritySession,
   subject: string,
 ): string {
-  return session.grantVersion === 2
-    ? authorityCandidateCommitMessage(subject, session.changeId)
-    : authorityCommitMessage(subject, session.changeId, session.grantId);
+  return authorityCandidateCommitMessage(subject, session.changeId);
 }
 
 function verifyCommitSignature(

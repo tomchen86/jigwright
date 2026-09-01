@@ -77,9 +77,13 @@ import {
   checkAuthoritySession,
   readAuthoritySession,
   startAuthoritySession,
+  type AuthoritySession,
 } from '../src/application/control-plane/maintainer-session.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
-import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
+import {
+  inspectMaintainerGrants,
+  maintainerGrantStorePaths,
+} from '../src/runtime/storage-journal/maintainer-store.ts';
 import {
   authorizeTaskMandate,
   inspectActiveTaskMandateBinding,
@@ -108,6 +112,17 @@ const FAKE_SIGNATURE = [
   '-----END SSH SIGNATURE-----',
   '',
 ].join('\n');
+
+type IsExact<T, Expected> = [T] extends [Expected]
+  ? [Expected] extends [T]
+    ? true
+    : false
+  : false;
+
+const AUTHORITY_SESSION_GRANT_VERSION_IS_EXACT_V2: IsExact<
+  AuthoritySession['grantVersion'],
+  2
+> = true;
 
 type RetiredV1GrantEnvelopeFixture = Readonly<{
   payload: Readonly<{
@@ -197,6 +212,37 @@ function externalAuditRoot(repository: string): string {
   const root = `${fs.realpathSync(repository)}.external-authority-audit`;
   temporaryAuditRoots.add(root);
   return root;
+}
+
+function snapshotPrivateTree(root: string): ReadonlyArray<{
+  relativePath: string;
+  mode: number;
+  bytes: string;
+}> {
+  const snapshot: Array<{
+    relativePath: string;
+    mode: number;
+    bytes: string;
+  }> = [];
+  const visit = (directory: string): void => {
+    for (const entry of fs
+      .readdirSync(directory, { withFileTypes: true })
+      .sort((left, right) => left.name.localeCompare(right.name))) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+        continue;
+      }
+      const stats = fs.lstatSync(entryPath);
+      snapshot.push({
+        relativePath: path.relative(root, entryPath),
+        mode: stats.mode,
+        bytes: fs.readFileSync(entryPath).toString('base64'),
+      });
+    }
+  };
+  visit(root);
+  return snapshot;
 }
 
 test.after(() => {
@@ -2448,6 +2494,95 @@ test('CLI disables manual v2 issue and requires an exact task binding', () => {
       'INVALID_USAGE',
     );
     assert.match(missingEffectsDeclaration.stderr, /--effects-file/);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('durable V1 authority session fails closed without mutating repository state', () => {
+  assert.equal(AUTHORITY_SESSION_GRANT_VERSION_IS_EXACT_V2, true);
+  const repository = prepareCandidate();
+  const preparedSigned: string[] = [];
+  const signed: string[] = [];
+  const signer = fakeSigner(signed);
+  try {
+    const prepared = freezeIssuableCandidate(repository, preparedSigned);
+    const grant = issueMaintainerGrantV2(
+      repository,
+      {
+        changeId: 'demo-change',
+        reason: 'Reject a retired authority session version',
+        manifest: prepared.manifest,
+        checksAttestation: prepared.checksAttestation!,
+        candidateBundle: prepared.candidateBundle!,
+      },
+      {
+        now: new Date('2026-08-03T09:00:00.000Z'),
+        grantId: GRANT_ID,
+        signer,
+      },
+    );
+    const session = startAuthoritySession(
+      repository,
+      'demo-change',
+      grant.grantId,
+      {
+        now: new Date('2026-08-03T09:01:00.000Z'),
+        signer,
+        allowSignedV2Candidate: true,
+      },
+    );
+    const gitCommonDirectory = fs.realpathSync(path.join(repository, '.git'));
+    const store = maintainerGrantStorePaths(gitCommonDirectory);
+    const sessionPath = path.join(store.sessions, `${session.sessionId}.json`);
+    const retired = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as Record<
+      string,
+      unknown
+    >;
+    retired.grantVersion = 1;
+    fs.writeFileSync(sessionPath, `${JSON.stringify(retired)}\n`, {
+      mode: 0o600,
+    });
+
+    const sessionBytes = fs.readFileSync(sessionPath);
+    const indexBytes = fs.readFileSync(path.join(gitCommonDirectory, 'index'));
+    const refs = git(repository, [
+      'for-each-ref',
+      '--format=%(refname)%00%(objectname)',
+    ]);
+    const storeSnapshot = snapshotPrivateTree(store.root);
+    const operations = [
+      () => readAuthoritySession(repository, session.sessionId),
+      () => checkAuthoritySession(repository, session.sessionId),
+      () =>
+        commitAuthoritySession(
+          repository,
+          session.sessionId,
+          'Reject retired authority session',
+        ),
+      () =>
+        recoverAuthorityCommit(
+          repository,
+          session.sessionId,
+          new Date('2026-08-03T09:02:00.000Z'),
+        ),
+    ];
+    for (const operation of operations) {
+      assert.throws(operation, (error: unknown) =>
+        isWorkflowError(error, 'AUTHORITY_SESSION_INVALID'),
+      );
+    }
+
+    assert.deepEqual(fs.readFileSync(sessionPath), sessionBytes);
+    assert.deepEqual(
+      fs.readFileSync(path.join(gitCommonDirectory, 'index')),
+      indexBytes,
+    );
+    assert.equal(
+      git(repository, ['for-each-ref', '--format=%(refname)%00%(objectname)']),
+      refs,
+    );
+    assert.deepEqual(snapshotPrivateTree(store.root), storeSnapshot);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
