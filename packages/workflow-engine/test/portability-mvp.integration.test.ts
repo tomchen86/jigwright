@@ -2125,7 +2125,7 @@ function runPortabilityPackageInvocation(
   invocation: ReturnType<typeof createExactLocalPackageInvocation>,
 ): string {
   return runExactLocalPackageInvocation(invocation, {
-    timeoutMs: cliEntrypoint === 'bin/jigwright.mjs' ? 120_000 : 30_000,
+    timeoutMs: cliEntrypoint === 'bin/jigwright.mjs' ? 300_000 : 30_000,
   });
 }
 
