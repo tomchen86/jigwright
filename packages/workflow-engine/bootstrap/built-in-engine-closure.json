@@ -493,7 +493,7 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:53db3328197bd9ea43e38057499faa12265b0e688a3086ee06ab48a687771ed1"
+      "digest": "sha256:e9f49d9e97d6142da22bb975958eaea409fff3db44d67e02fa77c01ff30d36de"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -503,7 +503,7 @@
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:f4cf9a9ec2980a71399a7e5fb3582bbdb7bb71abdd8c3054eb33b80385fdcbe0"
+      "digest": "sha256:cf4e7f5012af52ed5a8d205a4be360c8288b9fb4ee9157e5ee565a92e7b5388a"
     },
     {
       "path": "src/application/configure/central-role-provider-default-wizard.ts",
