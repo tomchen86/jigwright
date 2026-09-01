@@ -4,6 +4,7 @@ import { ATTEMPT_STATUSES_V2, JOB_STATUSES_V2, AttemptResultCodecError, Semantic
 import { ReadOnlyProbeCodecError, assertReadOnlyProbeRequestV1, } from '@jigwright/core/read-only-probe';
 import { ExecutionPolicySnapshotCodecError, assertExecutionPolicySnapshotV1, } from '@jigwright/core/execution-policy-snapshot';
 import { ExecutionRetryPolicyCodecError, assertExecutionRetryPolicyV1, } from '@jigwright/core/execution-retry-policy';
+import { ExecutionWorkflowRecordCodecError, assertExecutionWorkflowRecordV2, } from '@jigwright/core/execution-workflow-record';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
@@ -1046,32 +1047,14 @@ export function parseAttemptResult(raw) {
     return parseCanonicalRecord(raw, assertAttemptResult);
 }
 export function assertWorkflowRecord(value) {
-    if (!isPlainObject(value) ||
-        !hasExactKeys(value, [
-            'blocker',
-            'checkpoint',
-            'contextDigest',
-            'contractVersion',
-            'currentEpoch',
-            'engineBinding',
-            'schemaVersion',
-            'status',
-            'workflowId',
-        ]) ||
-        value.schemaVersion !== 2 ||
-        !WORKFLOW_STATUSES.has(value.status)) {
-        throw executionInvalid('Workflow record is invalid.');
+    try {
+        return assertExecutionWorkflowRecordV2(value);
     }
-    assertIdentifier(value.workflowId, 'workflowId');
-    assertPositiveInteger(value.currentEpoch, 'currentEpoch');
-    assertPositiveInteger(value.contractVersion, 'contractVersion');
-    assertDigest(value.contextDigest);
-    assertDigest(value.engineBinding);
-    if (value.checkpoint !== null) {
-        assertIdentifier(value.checkpoint, 'checkpoint');
+    catch (error) {
+        if (!(error instanceof ExecutionWorkflowRecordCodecError))
+            throw error;
+        throw executionInvalid(error.message);
     }
-    assertWorkflowBlocker(value.blocker);
-    return deepFreeze(structuredClone(value));
 }
 export function assertJobRecord(value) {
     const baseKeys = [
@@ -1374,34 +1357,6 @@ function assertEnvironmentSnapshot(value) {
         throw executionInvalid('Environment snapshot is not canonical.');
     }
     return deepFreeze(structuredClone(value));
-}
-function assertWorkflowBlocker(value) {
-    if (value === null)
-        return;
-    if (!isPlainObject(value) ||
-        !hasOnlyKeys(value, [
-            'blockedBy',
-            'checkpointId',
-            'detailsDigest',
-            'jobId',
-            'kind',
-            'retryAt',
-            'since',
-        ]) ||
-        !WORKFLOW_BLOCKERS.has(value.kind)) {
-        throw executionInvalid('Workflow blocker is invalid.');
-    }
-    assertTimestamp(value.since);
-    if (value.jobId !== undefined)
-        assertIdentifier(value.jobId, 'blocker.jobId');
-    if (value.retryAt !== undefined)
-        assertTimestamp(value.retryAt);
-    if (value.detailsDigest !== undefined)
-        assertDigest(value.detailsDigest);
-    if (value.checkpointId !== undefined)
-        assertIdentifier(value.checkpointId, 'blocker.checkpointId');
-    if (value.blockedBy !== undefined)
-        assertIdentifier(value.blockedBy, 'blocker.blockedBy');
 }
 function assertRepairContext(value, job) {
     const context = assertRepairContextShape(value);
@@ -1977,10 +1932,6 @@ function hasExactKeys(value, keys) {
 function hasKeysEither(value, variants) {
     return variants.some((keys) => hasExactKeys(value, keys));
 }
-function hasOnlyKeys(value, keys) {
-    const allowed = new Set(keys);
-    return Object.keys(value).every((key) => allowed.has(key));
-}
 function deepFreeze(value) {
     if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
         Object.freeze(value);
@@ -1999,22 +1950,6 @@ function probeNotAllowed() {
 function executionError(code, message, exitCode) {
     return workflowError(code, message, exitCode);
 }
-const WORKFLOW_STATUSES = new Set([
-    'active',
-    'completed',
-    'cancelled',
-    'superseded',
-]);
-const WORKFLOW_BLOCKERS = new Set([
-    'retry-delay',
-    'provider-capacity',
-    'human-grant',
-    'human-input',
-    'configuration',
-    'dependency',
-    'manual-reconciliation',
-    'harness-intervention',
-]);
 const JOB_STATUSES = new Set(JOB_STATUSES_V2);
 const ATTEMPT_STATUSES = new Set(ATTEMPT_STATUSES_V2);
 const RETRY_MODES = new Set([

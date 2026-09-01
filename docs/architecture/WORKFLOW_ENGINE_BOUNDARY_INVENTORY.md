@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:319a53e82231dc33bcd1c9cbf60dd548345339e9a70b16b0bb01915e5d4385ca`.
+Current production inventory digest: `sha256:03c2a6a4e2164cd759e592a28a0fbdf87e03c8c8f90241f6a441dae674a529f6`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
@@ -107,11 +107,12 @@ the v3 parser is replay-only and cannot become a second live authority source.
 
 ### Execution substrate — partial
 
-`@jigwright/core` now owns the exact Job/Attempt status vocabulary and the
-AttemptResult acceptance-binding codec. Workflow, Job, Attempt, lease, retry,
-and fencing in `execution-store` remain the existing sole aggregate and
-transition authority. Broader Git/session/check/record ownership has not yet
-moved, and no second lifecycle reducer was introduced.
+`@jigwright/core` now owns the exact WorkflowRecord V2 value boundary, the
+Job/Attempt status vocabulary, and the AttemptResult acceptance-binding codec.
+`execution-store` remains the existing sole aggregate and transition authority
+for Workflow, Job, Attempt, lease, retry, and fencing. Broader Job/Attempt
+record plus Git/session/check ownership has not yet moved, and no second
+lifecycle reducer was introduced.
 
 <!-- coupling:openspec-direct-dependency -->
 

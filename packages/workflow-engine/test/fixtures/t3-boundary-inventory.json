@@ -221,7 +221,7 @@
       "id": "execution-substrate",
       "plane": "core",
       "state": "partial",
-      "t3Disposition": "@jigwright/core now owns the exact Job/Attempt status vocabulary and AttemptResult acceptance codec; workflow-engine execution-store remains the unique aggregate and transition authority, and broader Git/session/check/record ownership is not yet extracted.",
+      "t3Disposition": "@jigwright/core now owns the exact WorkflowRecord V2 value boundary, Job/Attempt status vocabulary, and AttemptResult acceptance codec; workflow-engine execution-store remains the unique aggregate and transition authority, and broader Job/Attempt record plus Git/session/check ownership is not yet extracted.",
       "evidence": [
         {
           "path": "packages/core/src/job-attempt-runtime.ts",
@@ -233,10 +233,19 @@
           ]
         },
         {
+          "path": "packages/core/src/execution-workflow-record.ts",
+          "contains": [
+            "EXECUTION_WORKFLOW_RECORD_CONTRACT_VERSION_V2",
+            "export type ExecutionWorkflowRecordV2 = {",
+            "export function assertExecutionWorkflowRecordV2("
+          ]
+        },
+        {
           "path": "packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts",
           "contains": [
             "from '@jigwright/core/job-attempt-runtime';",
-            "export type WorkflowRecord = {",
+            "from '@jigwright/core/execution-workflow-record';",
+            "export type WorkflowRecord = ExecutionWorkflowRecordV2;",
             "export type JobRecord = {",
             "Compatibility name for the public core-owned V2 Job state vocabulary."
           ]

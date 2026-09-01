@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:a56c3a09711020cf2328b6fd2d5935cf90d4e78b427879a1335b5d1a56cb1f4a"
+      "digest": "sha256:284cba34b4ce67ea834536254ca9dd90345d70832b6519151c7ef62ca5ac09d0"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -58,7 +58,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:06f8b47ea1549b0a0072a9d8564ac70fef88b2465f7571dd5e508f813827c798"
+      "digest": "sha256:c3e66cafec146c36d81f42a764861e9671e4824ab77bfa3700363c93ee176f38"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
@@ -109,6 +109,11 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/execution-retry-policy.js",
       "mode": "100644",
       "digest": "sha256:1a7ed1b9c9d7a314c209ce3aa2eb907e09f8401f9b25931ed22517e484a3fdf4"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/execution-workflow-record.js",
+      "mode": "100644",
+      "digest": "sha256:12b2f2a3446a5d1e49ff66ffc370abfc79681221001eb3c2207237ff061a990f"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
@@ -593,7 +598,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/execution-core.js",
       "mode": "100644",
-      "digest": "sha256:d724b6d284bd3093539821e07cb1a1592c26d37b36d4aa7fa64a79e4f20db31d"
+      "digest": "sha256:4a3e6d1b0906f50a32215cf6c13281c81816ddb1acc8345d670e3932360355a2"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/provider-contracts.js",

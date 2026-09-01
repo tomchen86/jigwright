@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:fafdb3a272bb9d6a10f3353611e88a6b68d75c783573d52871eb0dcfd1795bc8"
+      "digest": "sha256:69c8fac7f3d19cef9b4ad24408746a0386bb98508bc40a28fa6c5ba1a4b6825b"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -144,6 +144,11 @@
       "path": "node_modules/@jigwright/core/src/execution-retry-policy.ts",
       "mode": "100644",
       "digest": "sha256:0e6bf10a8588aef5abb0221f2d422e0dbe99f8e8e079c8de6886f0e21f60d047"
+    },
+    {
+      "path": "node_modules/@jigwright/core/src/execution-workflow-record.ts",
+      "mode": "100644",
+      "digest": "sha256:ec57f36eabcbf9337c8114789e764978b59978785f79667d68c4f668f3c85208"
     },
     {
       "path": "node_modules/@jigwright/core/src/governance-source.ts",
@@ -1673,7 +1678,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:49143838a0b31a52060f9ed911c1b1637a336b0c73f7e02bb82fc40614894436"
+      "digest": "sha256:be7b3593dd28e1d6fa6e206632fa65da08f534236d2095ce2662a6bcfa95f12f"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
