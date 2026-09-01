@@ -36,9 +36,11 @@ import {
 import {
   amendmentLeftWorkMarkedDone,
   taskStates,
-  validateOpenSpecPlanning,
 } from '../../adapters/planning/openspec/documents/planning-contract.ts';
-import { inspectPlanningTransition } from '../../composition-root/planning-provider-production.ts';
+import {
+  inspectPlanningTransition,
+  validatePlanningTransition,
+} from '../../composition-root/planning-provider-production.ts';
 import {
   readPlanningTransitionReport,
   writePlanningTransitionReport,
@@ -468,7 +470,7 @@ function commitPlanningTransitionLocked(
     deletedPaths,
     reopenAuthorized,
   );
-  const planningValidation = validateOpenSpecPlanning(
+  const planningValidation = validatePlanningTransition(
     initial.repositoryRoot,
     changeId,
     inspection.schemaName,

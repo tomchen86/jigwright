@@ -34,6 +34,30 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
+test('plan-commit validation crosses the production planning composition root', () => {
+  const applicationSource = fs.readFileSync(
+    new URL(
+      '../src/application/propose/planning-transition.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const compositionSource = fs.readFileSync(
+    new URL(
+      '../src/composition-root/planning-provider-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(applicationSource, /\bvalidateOpenSpecPlanning\b/u);
+  assert.match(applicationSource, /\bvalidatePlanningTransition\b/u);
+  assert.match(
+    compositionSource,
+    /export function validatePlanningTransition\(/u,
+  );
+});
+
 test('plan-commit introduces an unchecked change through one exact managed commit', () => {
   const repository = createPlanningRepository('planned-change');
   try {

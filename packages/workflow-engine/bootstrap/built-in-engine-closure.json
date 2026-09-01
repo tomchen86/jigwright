@@ -668,7 +668,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:266adc1fdd85dae69b3f5b2a29229b2f3df78d3fd181ed3d3d77c3049229f7a5"
+      "digest": "sha256:a31ea8ab12b9a5f3b22367573e0169ddcd04f36526285c01249a0834311c0bb3"
     },
     {
       "path": "src/application/propose/propose-orchestrator.ts",
@@ -818,7 +818,7 @@
     {
       "path": "src/composition-root/planning-provider-production.ts",
       "mode": "100644",
-      "digest": "sha256:e5b16e88820833a33c4e67328d74cbd5fa0a8cfb8ceb9b17f2f48cb81802a282"
+      "digest": "sha256:0733e1a50bec25a592147f83ad0ed24316e348e800b5e84ab3383becfd748721"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",

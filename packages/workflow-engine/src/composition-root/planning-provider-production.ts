@@ -2,6 +2,7 @@ import {
   inspectPlanningTransition as inspectPlanningTransitionWithReader,
   resolveHistoricalOpenSpecPlanningTransitionBinding as resolveHistoricalOpenSpecPlanningTransitionBindingWithReader,
   resolveHistoricalOpenSpecProviderBinding as resolveHistoricalOpenSpecProviderBindingWithReader,
+  validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,
 } from '../adapters/planning/openspec/documents/planning-contract.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
@@ -56,6 +57,18 @@ export function inspectPlanningTransition(
     planningRoleOverride,
   );
   return Object.freeze({ ...inspection, planningRoleOverride });
+}
+
+export function validatePlanningTransition(
+  repositoryRoot: string,
+  changeId: string,
+  schemaName: Parameters<typeof validatePlanningTransitionWithAdapter>[2],
+): ReturnType<typeof validatePlanningTransitionWithAdapter> {
+  return validatePlanningTransitionWithAdapter(
+    repositoryRoot,
+    changeId,
+    schemaName,
+  );
 }
 
 export function resolveHistoricalOpenSpecPlanningTransitionBinding(

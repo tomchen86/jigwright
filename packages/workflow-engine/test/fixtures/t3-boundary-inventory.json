@@ -248,13 +248,20 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "coupled",
-      "t3Disposition": "The planning inspection seam now uses PlanningProviderPort, while propose, archive, and several CI paths still import the in-engine OpenSpec adapter directly; standalone adapter extraction remains.",
+      "t3Disposition": "Planning inspection and plan-commit validation now cross the production planning composition root; propose still imports generic task-history helpers, while archive and several CI paths retain direct in-engine OpenSpec adapter dependencies, so standalone adapter extraction remains.",
       "evidence": [
         {
           "path": "packages/workflow-engine/src/modules/planning-provider/planning-provider-port.ts",
           "contains": [
             "type PlanningProviderPort,",
             "export function evaluatePlanningProvider("
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/planning-provider-production.ts",
+          "contains": [
+            "validateOpenSpecPlanning as validatePlanningTransitionWithAdapter,",
+            "export function validatePlanningTransition("
           ]
         },
         {
