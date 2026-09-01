@@ -87,8 +87,62 @@ test('top-level help advertises every current Governance Source command', () => 
   }
   assert.match(
     output,
-    /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|show <source-id>\|trace <source-id>> \[--json\]/u,
+    /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|list\|show <source-id>\|trace <source-id>> \[--json\]/u,
   );
+});
+
+test('Source list preserves exact wording without the optional Work Registry', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-source-core-list-'),
+  );
+  try {
+    const first = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:09:00.000Z',
+      contextRef: 'direct-human:thread/turn-42',
+      text: 'Preserve the maintainer wording exactly.\n',
+      supersedes: null,
+    }).source;
+    const second = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'agent',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T03:10:00.000Z',
+      contextRef: 'session:source-list-audit',
+      text: 'Keep this agent interpretation visibly distinct.\n',
+      supersedes: null,
+    }).source;
+    const expected = [first, second].sort((left, right) =>
+      left.id.localeCompare(right.id),
+    );
+
+    assert.equal(repositoryConsumerConfigurationExists(repositoryRoot), false);
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand('source', ['list'], repositoryRoot),
+      { action: 'list', sources: expected },
+    );
+
+    const poisonedPath = path.join(
+      repositoryRoot,
+      'workflow/source-ledger/objects/sha256',
+      expected[0]!.id.slice(4, 6),
+      `${expected[0]!.id.slice(4)}.json`,
+    );
+    const poisonedValue = JSON.parse(fs.readFileSync(poisonedPath, 'utf8')) as {
+      text: string;
+    };
+    poisonedValue.text = `${poisonedValue.text}drift`;
+    const poisonedBytes = `${JSON.stringify(poisonedValue)}\n`;
+    fs.writeFileSync(poisonedPath, poisonedBytes);
+
+    assert.throws(
+      () => dispatchGovernanceIntakeCommand('source', ['list'], repositoryRoot),
+      hasCode('GOVERNANCE_SOURCE_IDENTITY_INVALID'),
+    );
+    assert.equal(fs.readFileSync(poisonedPath, 'utf8'), poisonedBytes);
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
 });
 
 test('Source trace only treats an absent repository consumer config as optional', () => {

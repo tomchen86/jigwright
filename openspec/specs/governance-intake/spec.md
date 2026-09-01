@@ -53,10 +53,18 @@ remain replayable.
 
 ### Requirement: Source Trace Exposes Provenance Without Copying Authority
 
-The Source read surface SHALL provide `show` and `trace`. Trace SHALL resolve
-the selected Source, its predecessor and direct corrections, linked Work Items,
-and current or archived change `origin.json` citations. Change and planning
-artifacts SHALL store Source identities rather than copied Source records.
+The Source read surface SHALL provide `list`, `show`, and `trace`. List SHALL
+return every identity-valid canonical Source in stable Source-ID order. Trace
+SHALL resolve the selected Source, its predecessor and direct corrections,
+linked Work Items, and current or archived change `origin.json` citations.
+Change and planning artifacts SHALL store Source identities rather than copied
+Source records.
+
+#### Scenario: Sources are listed without optional governance
+
+- **WHEN** a repository has Source records but no Work Registry configuration
+- **THEN** `source list` returns their exact selected wording in stable Source-ID order
+- **AND** every returned Source passes the same identity and canonical-byte validation as `source show`
 
 #### Scenario: Immediate work cites a Source directly
 
@@ -67,7 +75,7 @@ artifacts SHALL store Source identities rather than copied Source records.
 #### Scenario: Optional Work Registry is absent
 
 - **WHEN** a repository has Source records but no Work Registry configuration
-- **THEN** `source show` and correction-chain `source trace` remain available
+- **THEN** `source list`, `source show`, and correction-chain `source trace` remain available
 - **AND** optional Work Item and change-origin relations are returned as empty
 
 ### Requirement: Every Governance Citation Resolves
