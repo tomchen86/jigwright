@@ -225,6 +225,28 @@ test('help omits retired Work Registry, Issue, and raw maintenance commands', ()
   assert.match(output, /pnpm workflow intervention recover <tx-id>/);
 });
 
+test('global help exposes the executable local after-merge command without a retired authorization input', () => {
+  const originalWrite = process.stdout.write;
+  let output = '';
+  process.stdout.write = ((chunk: string | Uint8Array) => {
+    output += chunk.toString();
+    return true;
+  }) as typeof process.stdout.write;
+  try {
+    assert.equal(runCli(['--help']), 0);
+  } finally {
+    process.stdout.write = originalWrite;
+  }
+  assert.match(
+    output,
+    /^  pnpm workflow after-merge <change-id> \[--workspace-parent <absolute-path>\] \[--json\]$/m,
+  );
+  assert.doesNotMatch(
+    output,
+    /pnpm workflow after-merge[^\n]*--authorization\b/,
+  );
+});
+
 test('retired Issue commands fail before mutation while Work Registry remains available', () => {
   const repository = createFixtureRepository();
   const legacyIssueSourcePath = path.join(

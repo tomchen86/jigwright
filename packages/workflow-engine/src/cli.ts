@@ -4375,7 +4375,7 @@ function usageText(): string {
     '  pnpm workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required> [--json]',
     '  pnpm workflow archive <change-id> [--json]',
     '  pnpm workflow archive-candidates --base <origin/protected-branch> [--json]',
-    '  pnpm workflow after-merge <change-id> --authorization <facts.json> [--workspace-parent <absolute-path>] [--json]',
+    '  pnpm workflow after-merge <change-id> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr doctor --base <origin/protected-branch> [--json]',
     '  pnpm workflow archive-pr dry-run <change-id> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr status <sha256:preparation-identity> [--json]',
