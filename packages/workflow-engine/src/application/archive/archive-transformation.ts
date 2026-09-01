@@ -35,11 +35,14 @@ import {
   createOpenSpecProcess,
   resolveOpenSpecInstallation,
 } from '../../adapters/planning/openspec/documents/openspec-executor.ts';
+import { renderHandoffFromTrackedFacts } from '../../adapters/consumer/repository/handoff/handoff.ts';
+import { repositoryHandoffRelativePath } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   assertPlanningPaths,
   requiredPlanningArtifactPaths,
 } from '../../modules/source/planning-paths.ts';
 import { reconcileArchivedWorkItems } from '../../modules/governance-intake/work-registry.ts';
+import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import {
   assertChangeId,
   normalizeChangedPath,
@@ -146,12 +149,18 @@ export function createArchiveTransformation(
       eligibility.archiveDestination,
       archiveReconciliationTimestamp(worktree, eligibility.head),
     );
+    const handoffOutputPaths = refreshArchiveManagedHandoff(
+      worktree,
+      eligibility.head,
+    );
     const result = verifyTransformation(
       worktree,
       eligibility,
       payload,
       installation.version,
-      registryProjection.outputPaths,
+      [...registryProjection.outputPaths, ...handoffOutputPaths].sort(
+        compareCanonicalStrings,
+      ),
     );
     const validate = () => validateRebuiltSpecs(openspec, worktree);
     if (options.testHooks?.aroundOpenSpecValidation) {
@@ -193,6 +202,21 @@ export function archiveReconciliationTimestamp(
     );
   }
   return parsed.toISOString();
+}
+
+export function refreshArchiveManagedHandoff(
+  repositoryRoot: string,
+  parentCommit: string,
+): readonly string[] {
+  const handoffPath = repositoryHandoffRelativePath(repositoryRoot);
+  if (!completionDocumentPaths(repositoryRoot).includes(handoffPath)) {
+    return Object.freeze([]);
+  }
+  const rendered = renderHandoffFromTrackedFacts(repositoryRoot);
+  return readFileAtCommit(repositoryRoot, parentCommit, handoffPath) ===
+    rendered
+    ? Object.freeze([])
+    : Object.freeze([handoffPath]);
 }
 
 /**
@@ -909,7 +933,7 @@ function verifyTransformation(
   eligibility: ArchiveEligibility,
   payload: ArchivePayload,
   openspecVersion: '1.6.0',
-  registryOutputPaths: readonly string[],
+  managedOutputPaths: readonly string[],
 ): ArchiveTransformation {
   const activeRoot = eligibility.activeRoot;
   const activeFiles = [...eligibility.activeArtifactPaths].sort();
@@ -967,7 +991,7 @@ function verifyTransformation(
     ...eligibility.targetPaths.filter((target) =>
       target.startsWith('openspec/specs/'),
     ),
-    ...registryOutputPaths,
+    ...managedOutputPaths,
   ]);
   if (
     changedPaths.some((changedPath) => !allowed.has(changedPath)) ||
@@ -975,7 +999,7 @@ function verifyTransformation(
     expectedArchivedFiles.some(
       (archivedFile) => !changedPaths.includes(archivedFile),
     ) ||
-    registryOutputPaths.some((outputPath) => !changedPaths.includes(outputPath))
+    managedOutputPaths.some((outputPath) => !changedPaths.includes(outputPath))
   ) {
     throw archiveError(
       'ARCHIVE_TRANSFORMATION_PATHS_INVALID',

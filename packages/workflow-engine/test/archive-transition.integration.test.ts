@@ -11,6 +11,11 @@ import {
 } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
+import {
+  applyManagedChangeRoutingReview,
+  prepareChangeRoutingReview,
+} from '../src/composition-root/change-routing-production.ts';
+import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
 import { runCli } from '../src/cli.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import {
@@ -147,6 +152,52 @@ test('archive transition persists evidence, applies exact staging, commits, and 
     assert.equal(
       git(repository, ['rev-parse', 'HEAD']).trim(),
       committed.commitHash,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive refreshes a current routed managed handoff in its immutable projection', () => {
+  const repository = completedFixture(addedDelta(), undefined, {
+    routedManagedHandoff: true,
+  });
+  try {
+    const handoffPath = 'docs/CURRENT_AND_NEXT_STEPS.md';
+    const before = fs.readFileSync(path.join(repository, handoffPath), 'utf8');
+    assert.match(before, /## Pending Archival[\s\S]*`demo-change`/u);
+    assert.match(before, /## Ready Changes[\s\S]*`other-change`/u);
+    const foreignJournalPath = path.join(
+      runtimeRoot(repository),
+      'open-task',
+      'transactions',
+      'foreign-recovery.json',
+    );
+    fs.mkdirSync(path.dirname(foreignJournalPath), { recursive: true });
+    fs.writeFileSync(
+      foreignJournalPath,
+      `${JSON.stringify({
+        changeId: 'other-change',
+        phase: 'prepared',
+        sessionId: 'session-foreign-recovery',
+      })}\n`,
+    );
+
+    const committed = commitArchiveTransition(repository, 'demo-change');
+
+    assert.equal(committed.changedPaths.includes(handoffPath), true);
+    const after = fs.readFileSync(path.join(repository, handoffPath), 'utf8');
+    assert.doesNotMatch(after, /## Pending Archival[\s\S]*`demo-change`/u);
+    assert.match(after, /## Ready Changes[\s\S]*`other-change`/u);
+    assert.doesNotMatch(after, /\brecovery-required\b/u);
+    assert.doesNotThrow(() =>
+      validateRepositoryStateAtCommit(repository, committed.commitHash),
+    );
+    fs.rmSync(foreignJournalPath);
+    assert.deepEqual(
+      validateCiArchiveCommit(repository, committed.commitHash, 'demo-change')
+        .changedPaths,
+      committed.changedPaths,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -398,8 +449,23 @@ test('archive transition rolls back its patch when persisted evidence is tampere
 function completedFixture(
   delta: string,
   beforePlanning?: (repository: string) => void,
+  options: Readonly<{ routedManagedHandoff?: boolean }> = {},
 ): string {
   const repository = createFixtureRepository();
+  if (options.routedManagedHandoff === true) {
+    const policyPath = path.join(repository, 'workflow/document-policy.json');
+    const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8')) as {
+      documents: Record<string, unknown>;
+    };
+    policy.documents['docs/CURRENT_AND_NEXT_STEPS.md'] = {
+      mode: 'generated',
+      enforcement: 'active',
+      source: 'openspec/changes/*/tasks.md',
+      validator: 'managed-documents',
+      transition: 'completion',
+    };
+    fs.writeFileSync(policyPath, `${JSON.stringify(policy, null, 2)}\n`);
+  }
   fs.writeFileSync(
     path.join(repository, 'openspec/changes/demo-change/specs/demo/spec.md'),
     delta,
@@ -413,6 +479,60 @@ function completedFixture(
   withPlanningIgnoredDeltaDisabled(repository, delta, () =>
     commitPlanningTransition(repository, 'demo-change'),
   );
+  if (options.routedManagedHandoff === true) {
+    const companionChangeId = 'other-change';
+    fs.cpSync(
+      path.join(repository, 'openspec/changes/demo-change'),
+      path.join(repository, 'openspec/changes', companionChangeId),
+      { recursive: true },
+    );
+    const companionGuardPath = path.join(
+      repository,
+      'openspec/changes',
+      companionChangeId,
+      'guard.json',
+    );
+    const companionGuard = JSON.parse(
+      fs.readFileSync(companionGuardPath, 'utf8'),
+    ) as { changeId: string };
+    companionGuard.changeId = companionChangeId;
+    fs.writeFileSync(
+      companionGuardPath,
+      `${JSON.stringify(companionGuard, null, 2)}\n`,
+    );
+    const providerBindingPath = path.join(
+      repository,
+      'workflow/change-providers',
+      `${companionChangeId}.json`,
+    );
+    const providerBinding = JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/change-providers/demo-change.json'),
+        'utf8',
+      ),
+    ) as { changeId: string; planningRoot: string };
+    providerBinding.changeId = companionChangeId;
+    providerBinding.planningRoot = `openspec/changes/${companionChangeId}`;
+    fs.writeFileSync(
+      providerBindingPath,
+      `${JSON.stringify(providerBinding, null, 2)}\n`,
+    );
+    writeReadyV3ExemptChange(repository, companionChangeId);
+    git(repository, [
+      'add',
+      '--',
+      `openspec/changes/${companionChangeId}`,
+      `workflow/change-providers/${companionChangeId}.json`,
+    ]);
+    git(repository, ['commit', '-m', 'Seed companion routed change']);
+    applyManagedChangeRoutingReview(
+      repository,
+      prepareChangeRoutingReview(repository, {
+        schemaVersion: 1,
+        action: { kind: 'focus', changeId: 'demo-change' },
+      }),
+    );
+  }
   const session = startSession(repository, 'demo-change', '1.1');
   fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
   assert.throws(

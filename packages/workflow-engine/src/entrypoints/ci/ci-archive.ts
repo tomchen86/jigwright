@@ -32,7 +32,10 @@ import {
   listChangedPaths,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { archiveReconciliationTimestamp } from '../../application/archive/archive-transformation.ts';
+import {
+  archiveReconciliationTimestamp,
+  refreshArchiveManagedHandoff,
+} from '../../application/archive/archive-transformation.ts';
 import { reconcileArchivedWorkItems } from '../../modules/governance-intake/work-registry.ts';
 import {
   createOpenSpecProcess,
@@ -149,6 +152,7 @@ export function validateCiArchiveCommit(
       payload.archivePath,
       archiveReconciliationTimestamp(worktree, parent),
     );
+    refreshArchiveManagedHandoff(worktree, parent);
     validateRebuiltSpecs(openspec, worktree);
     const replayPaths = listChangedPaths(worktree, parent);
     if (

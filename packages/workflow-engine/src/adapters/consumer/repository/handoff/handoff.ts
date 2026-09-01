@@ -73,6 +73,20 @@ export function renderHandoff(
   return rendered;
 }
 
+/**
+ * Render from tracked repository facts only. Durable transition and CI replay
+ * callers use this projection so Git-common task runtime cannot change bytes.
+ */
+export function renderHandoffFromTrackedFacts(repositoryRoot: string): string {
+  const rendered = buildHandoff(repositoryRoot, undefined, undefined, {
+    contracts: liveContracts(repositoryRoot),
+    readText: (relativePath) =>
+      readTrackedHandoffSource(repositoryRoot, relativePath),
+  });
+  writeTextAtomic(handoffPath(repositoryRoot), rendered);
+  return rendered;
+}
+
 export function projectHandoff(
   repositoryRoot: string,
   authorityPort?: ChangeRoutingAuthorityPort,
@@ -615,6 +629,22 @@ function liveContracts(repositoryRoot: string): HandoffChange[] {
     .readdirSync(root, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'archive')
     .map((entry) => loadChangeContract(repositoryRoot, entry.name));
+}
+
+function readTrackedHandoffSource(
+  repositoryRoot: string,
+  relativePath: string,
+): string | undefined {
+  const sourcePath = repositoryConsumerPath(repositoryRoot, relativePath);
+  const stats = fs.lstatSync(sourcePath, { throwIfNoEntry: false });
+  if (stats === undefined) return undefined;
+  if (!stats.isFile() || stats.isSymbolicLink() || stats.nlink !== 1) {
+    throw invalidHandoff(
+      'HANDOFF_SOURCE_UNSAFE',
+      'A tracked handoff source is not one plain file.',
+    );
+  }
+  return fs.readFileSync(sourcePath, 'utf8');
 }
 
 function readBlockers(repositoryRoot: string, readText?: RepositoryTextReader) {
