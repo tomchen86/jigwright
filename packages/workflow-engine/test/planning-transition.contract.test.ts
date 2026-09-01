@@ -8,6 +8,7 @@ import {
   assertPlanningTaskHistory,
 } from '../src/application/propose/planning-transition.ts';
 import { ExitCode, WorkflowError } from '../src/foundation/errors/errors.ts';
+import { planningProviderBindingPath } from '../src/modules/source/planning-paths.ts';
 import { isWorkflowError } from './fixture.ts';
 
 test('OpenSpec planning path grammar is package-owned behind the engine facade', () => {
@@ -21,6 +22,26 @@ test('OpenSpec planning path grammar is package-owned behind the engine facade',
     facade,
     /['"](?:\.openspec\.yaml|proposal\.md|design\.md|tasks\.md|guard\.json|investigation\.json|execution\.json|plan-review\.json|spec\.md)['"]/u,
   );
+
+  assert.equal(
+    planningProviderBindingPath('demo-change'),
+    'workflow/change-providers/demo-change.json',
+  );
+  for (const invalidChangeId of ['archive', 'Demo-change']) {
+    assert.throws(
+      () => planningProviderBindingPath(invalidChangeId),
+      (error) => {
+        assert.ok(error instanceof WorkflowError);
+        assert.equal(error.code, 'PLANNING_CHANGE_ID_INVALID');
+        assert.equal(error.exitCode, ExitCode.guard);
+        assert.equal(
+          error.message,
+          'Planning-provider binding requires one valid non-reserved change ID.',
+        );
+        return true;
+      },
+    );
+  }
 });
 
 test('planning paths accept only the exact named OpenSpec planning grammar', () => {

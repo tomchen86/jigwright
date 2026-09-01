@@ -54,6 +54,15 @@ export type PlanningProviderBindingReaderPort = Readonly<{
   ): PlanningProviderBindingV1 | null;
 }>;
 
+export function planningProviderBindingPath(changeId: string): string {
+  if (!CHANGE_ID.test(changeId) || changeId === 'archive') {
+    throw bindingInvalid(
+      'Planning-provider binding requires one valid non-reserved change ID.',
+    );
+  }
+  return `workflow/change-providers/${changeId}.json`;
+}
+
 export function parsePlanningProviderBinding(
   source: string,
   expectedChangeId: string,

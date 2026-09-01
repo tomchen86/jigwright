@@ -3,20 +3,24 @@ import {
   assertOpenSpecPlanningPaths,
   requiredOpenSpecPlanningArtifactPaths,
 } from '@jigwright/openspec-adapter/planning-paths';
+import {
+  PlanningProviderBindingError,
+  planningProviderBindingPath as corePlanningProviderBindingPath,
+} from '@jigwright/core/planning-provider-binding';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
-const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
-
 export function planningProviderBindingPath(changeId: string): string {
-  if (!CHANGE_ID.test(changeId) || changeId === 'archive') {
+  try {
+    return corePlanningProviderBindingPath(changeId);
+  } catch (error) {
+    if (!(error instanceof PlanningProviderBindingError)) throw error;
     throw workflowError(
       'PLANNING_CHANGE_ID_INVALID',
-      'Planning-provider binding requires one valid non-reserved change ID.',
+      error.message,
       ExitCode.guard,
     );
   }
-  return `workflow/change-providers/${changeId}.json`;
 }
 
 export function assertPlanningPaths(

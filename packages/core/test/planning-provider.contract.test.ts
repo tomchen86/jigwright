@@ -12,6 +12,7 @@ import {
   parsePlanningProviderBinding,
   PlanningProviderBindingError,
   planningProviderBindingDigest,
+  planningProviderBindingPath,
   renderPlanningProviderBinding,
   type PlanningProviderBindingV1,
 } from '../src/planning-provider-binding.ts';
@@ -91,6 +92,20 @@ test('planning-provider binding preserves canonical bytes, digest, and fail-clos
     planningProviderBindingDigest(BINDING),
     'c154dbbb019ac77bae1fec0215599655d4a617ead3d015644c45ff2400abee95',
   );
+  assert.equal(
+    planningProviderBindingPath('demo-change'),
+    'workflow/change-providers/demo-change.json',
+  );
+
+  for (const invalidChangeId of ['', 'archive', 'Demo-change', 'demo/change']) {
+    assert.throws(
+      () => planningProviderBindingPath(invalidChangeId),
+      (error) =>
+        error instanceof PlanningProviderBindingError &&
+        error.code === 'PROVIDER_BINDING_INVALID',
+      invalidChangeId,
+    );
+  }
 
   assert.throws(
     () =>
