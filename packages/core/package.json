@@ -23,6 +23,7 @@
     "./evidence-node": "./src/evidence-node.ts",
     "./execution-policy-snapshot": "./src/execution-policy-snapshot.ts",
     "./execution-retry-policy": "./src/execution-retry-policy.ts",
+    "./execution-workflow-record": "./src/execution-workflow-record.ts",
     "./governance-source": "./src/governance-source.ts",
     "./grant-verifier-port": "./src/grant-verifier-port.ts",
     "./job-attempt-runtime": "./src/job-attempt-runtime.ts",

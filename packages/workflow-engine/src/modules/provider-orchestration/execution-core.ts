@@ -30,6 +30,13 @@ import {
   assertExecutionRetryPolicyV1,
   type ExecutionRetryPolicyV1,
 } from '@jigwright/core/execution-retry-policy';
+import {
+  ExecutionWorkflowRecordCodecError,
+  assertExecutionWorkflowRecordV2,
+  type ExecutionWorkflowBlockerV2,
+  type ExecutionWorkflowRecordV2,
+  type ExecutionWorkflowStatusV2,
+} from '@jigwright/core/execution-workflow-record';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -49,38 +56,10 @@ export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue =
   JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
 
-export type WorkflowStatus =
-  'active' | 'completed' | 'cancelled' | 'superseded';
-
-export type WorkflowBlocker = {
-  kind:
-    | 'retry-delay'
-    | 'provider-capacity'
-    | 'human-grant'
-    | 'human-input'
-    | 'configuration'
-    | 'dependency'
-    | 'manual-reconciliation'
-    | 'harness-intervention';
-  since: string;
-  jobId?: string;
-  retryAt?: string;
-  detailsDigest?: string;
-  checkpointId?: string;
-  blockedBy?: string;
-};
-
-export type WorkflowRecord = {
-  schemaVersion: 2;
-  workflowId: string;
-  currentEpoch: number;
-  contractVersion: number;
-  contextDigest: string;
-  checkpoint: string | null;
-  status: WorkflowStatus;
-  blocker: WorkflowBlocker | null;
-  engineBinding: string;
-};
+/** Compatibility names for the public core-owned execution Workflow value. */
+export type WorkflowStatus = ExecutionWorkflowStatusV2;
+export type WorkflowBlocker = ExecutionWorkflowBlockerV2;
+export type WorkflowRecord = ExecutionWorkflowRecordV2;
 
 /** Compatibility name for the public core-owned V2 Job state vocabulary. */
 export type JobStatus = JobStatusV2;
@@ -1702,34 +1681,12 @@ export function parseAttemptResult(raw: string): AttemptResult {
 export function assertWorkflowRecord(value: WorkflowRecord): WorkflowRecord;
 export function assertWorkflowRecord(value: unknown): WorkflowRecord;
 export function assertWorkflowRecord(value: unknown): WorkflowRecord {
-  if (
-    !isPlainObject(value) ||
-    !hasExactKeys(value, [
-      'blocker',
-      'checkpoint',
-      'contextDigest',
-      'contractVersion',
-      'currentEpoch',
-      'engineBinding',
-      'schemaVersion',
-      'status',
-      'workflowId',
-    ]) ||
-    value.schemaVersion !== 2 ||
-    !WORKFLOW_STATUSES.has(value.status as WorkflowStatus)
-  ) {
-    throw executionInvalid('Workflow record is invalid.');
+  try {
+    return assertExecutionWorkflowRecordV2(value);
+  } catch (error) {
+    if (!(error instanceof ExecutionWorkflowRecordCodecError)) throw error;
+    throw executionInvalid(error.message);
   }
-  assertIdentifier(value.workflowId, 'workflowId');
-  assertPositiveInteger(value.currentEpoch, 'currentEpoch');
-  assertPositiveInteger(value.contractVersion, 'contractVersion');
-  assertDigest(value.contextDigest);
-  assertDigest(value.engineBinding);
-  if (value.checkpoint !== null) {
-    assertIdentifier(value.checkpoint, 'checkpoint');
-  }
-  assertWorkflowBlocker(value.blocker);
-  return deepFreeze(structuredClone(value) as WorkflowRecord);
 }
 
 export function assertJobRecord(value: JobRecord): JobRecord;
@@ -2090,33 +2047,6 @@ function assertEnvironmentSnapshot(value: unknown): EnvironmentSnapshot {
     throw executionInvalid('Environment snapshot is not canonical.');
   }
   return deepFreeze(structuredClone(value) as EnvironmentSnapshot);
-}
-
-function assertWorkflowBlocker(value: unknown): void {
-  if (value === null) return;
-  if (
-    !isPlainObject(value) ||
-    !hasOnlyKeys(value, [
-      'blockedBy',
-      'checkpointId',
-      'detailsDigest',
-      'jobId',
-      'kind',
-      'retryAt',
-      'since',
-    ]) ||
-    !WORKFLOW_BLOCKERS.has(value.kind as WorkflowBlocker['kind'])
-  ) {
-    throw executionInvalid('Workflow blocker is invalid.');
-  }
-  assertTimestamp(value.since);
-  if (value.jobId !== undefined) assertIdentifier(value.jobId, 'blocker.jobId');
-  if (value.retryAt !== undefined) assertTimestamp(value.retryAt);
-  if (value.detailsDigest !== undefined) assertDigest(value.detailsDigest);
-  if (value.checkpointId !== undefined)
-    assertIdentifier(value.checkpointId, 'blocker.checkpointId');
-  if (value.blockedBy !== undefined)
-    assertIdentifier(value.blockedBy, 'blocker.blockedBy');
 }
 
 function assertRepairContext(
@@ -2882,11 +2812,6 @@ function hasKeysEither(
   return variants.some((keys) => hasExactKeys(value, keys));
 }
 
-function hasOnlyKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  const allowed = new Set(keys);
-  return Object.keys(value).every((key) => allowed.has(key));
-}
-
 function deepFreeze<T>(value: T): T {
   if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
     Object.freeze(value);
@@ -2917,22 +2842,6 @@ function executionError(
   return workflowError(code, message, exitCode);
 }
 
-const WORKFLOW_STATUSES = new Set<WorkflowStatus>([
-  'active',
-  'completed',
-  'cancelled',
-  'superseded',
-]);
-const WORKFLOW_BLOCKERS = new Set<WorkflowBlocker['kind']>([
-  'retry-delay',
-  'provider-capacity',
-  'human-grant',
-  'human-input',
-  'configuration',
-  'dependency',
-  'manual-reconciliation',
-  'harness-intervention',
-]);
 const JOB_STATUSES = new Set<JobStatus>(JOB_STATUSES_V2);
 const ATTEMPT_STATUSES = new Set<AttemptStatus>(ATTEMPT_STATUSES_V2);
 const RETRY_MODES = new Set<RetryMode>([

@@ -6,6 +6,7 @@ import {
   assertExecutionRetryPolicyV1,
   type ExecutionRetryPolicyV1,
 } from '@jigwright/core/execution-retry-policy';
+import { assertExecutionWorkflowRecordV2 } from '@jigwright/core/execution-workflow-record';
 import {
   assertSemanticJobSpecV1,
   type SemanticJobSpecV1,
@@ -15,6 +16,7 @@ import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
 import {
   acceptAttemptResult,
   assertReadOnlyProbe,
+  assertWorkflowRecord,
   canonicalAttemptRecord,
   canonicalJobRecord,
   canonicalWorkflowRecord,
@@ -120,6 +122,43 @@ function createJob(
     createdAt: NOW,
   });
 }
+
+test('execution Workflow records use the core V2 codec with exact engine error mapping', () => {
+  const coreRecord = assertExecutionWorkflowRecordV2(WORKFLOW);
+  assert.deepEqual(assertWorkflowRecord(coreRecord), coreRecord);
+  assert.deepEqual(
+    parseWorkflowRecord(canonicalWorkflowRecord(coreRecord)),
+    coreRecord,
+  );
+
+  for (const [candidate, message] of [
+    [{ ...WORKFLOW, status: 'paused' }, 'Workflow record is invalid.'],
+    [
+      {
+        ...WORKFLOW,
+        blocker: { kind: 'dependency', since: NOW, extra: true },
+      },
+      'Workflow blocker is invalid.',
+    ],
+    [
+      {
+        ...WORKFLOW,
+        blocker: { kind: 'dependency', since: '2026-08-03' },
+      },
+      'Timestamp is invalid.',
+    ],
+  ] as const) {
+    assert.throws(
+      () => assertWorkflowRecord(candidate),
+      (error) =>
+        error instanceof WorkflowError &&
+        error.code === 'EXECUTION_RECORD_INVALID' &&
+        error.exitCode === ExitCode.guard &&
+        error.message === message,
+      message,
+    );
+  }
+});
 
 test('execution Jobs use the core retry policy with exact engine error mapping', () => {
   const corePolicy = assertExecutionRetryPolicyV1(RETRY_POLICY);
