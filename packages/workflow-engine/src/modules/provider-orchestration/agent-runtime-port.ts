@@ -259,7 +259,7 @@ export interface AgentRuntimePort {
     input: AgentRuntimeSingleShotInput,
     options: AgentRuntimeSingleShotOptions,
   ): AgentRuntimeSingleShotReport;
-  runSingleShotAsync?(
+  runSingleShotAsync(
     input: AgentRuntimeSingleShotInput,
     options: AgentRuntimeAsyncSingleShotOptions,
   ): Promise<AgentRuntimeSingleShotReport>;

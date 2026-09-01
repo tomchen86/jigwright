@@ -20,6 +20,7 @@ import {
   startPropose,
 } from '../src/application/propose/propose-orchestrator.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
+import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type {
   InvestigationManifestV3,
   InvestigationPlanReviewCoverageRequirementV3,
@@ -431,7 +432,7 @@ test('an amendment contribution replaces the executed prior generation without r
       repository,
       getProposeStatus(repository, investigationId).planReview!.invocationId,
       {
-        runner: (input) =>
+        agentRuntime: createCurrentAgentRuntime((input) =>
           fakeRunnerReport(input.request, {
             schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
@@ -464,6 +465,7 @@ test('an amendment contribution replaces the executed prior generation without r
             uncertainty:
               'Advisory review remains a semantic judgment over the exact subject.',
           }),
+        ),
       },
     );
     const awaitingDisposition = resumePropose(
@@ -736,7 +738,7 @@ test('novel reviewer terms reopen an amendment whose prior review is committed b
       repository,
       getProposeStatus(repository, investigationId).planReview!.invocationId,
       {
-        runner: (input) =>
+        agentRuntime: createCurrentAgentRuntime((input) =>
           fakeRunnerReport(input.request, {
             schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
@@ -770,6 +772,7 @@ test('novel reviewer terms reopen an amendment whose prior review is committed b
             uncertainty:
               'Advisory review remains a semantic judgment over the exact subject.',
           }),
+        ),
       },
     );
     const reopened = resumePropose(
@@ -826,6 +829,17 @@ function fakeRunnerReport(
     providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
       request.providerId,
     ),
+  };
+}
+
+function createCurrentAgentRuntime(
+  runSingleShot: AgentRuntimePort['runSingleShot'],
+): AgentRuntimePort {
+  return {
+    runSingleShot,
+    async runSingleShotAsync(input, options) {
+      return runSingleShot(input, options);
+    },
   };
 }
 

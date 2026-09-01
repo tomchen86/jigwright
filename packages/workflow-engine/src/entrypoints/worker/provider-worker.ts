@@ -143,7 +143,7 @@ export type ProviderWorkerOptions = {
   agentRuntime?: AgentRuntimePort;
   /** Explicit host-owned config path; production may supply the same path by env. */
   agentProviderConfigPath?: string;
-  /** @deprecated Use the core-owned `agentRuntime` port injection seam. */
+  /** @deprecated Use the complete `agentRuntime` port injection seam. */
   runner?: AgentRuntimePort['runSingleShot'];
   automaticRetry?: {
     enabled?: boolean;
@@ -237,13 +237,6 @@ export async function runProviderWorkerAsync(
     requestedInvocationId,
     options,
     (agentRuntime, input, runtimeOptions) => {
-      if (agentRuntime.runSingleShotAsync === undefined) {
-        throw workflowError(
-          'AGENT_RUNTIME_ASYNC_UNAVAILABLE',
-          'The selected Agent Runtime does not implement asynchronous execution.',
-          ExitCode.verification,
-        );
-      }
       return agentRuntime
         .runSingleShotAsync(input, {
           ...runtimeOptions,
@@ -1126,7 +1119,19 @@ function resolveAgentRuntime(options: ProviderWorkerOptions): AgentRuntimePort {
     return options.agentRuntime;
   }
   if (options.runner !== undefined) {
-    return { runSingleShot: options.runner };
+    const runner = options.runner;
+    // The deprecated test seam stays explicitly synchronous-only. Every
+    // injected AgentRuntimePort, by contrast, now has the complete async API.
+    return {
+      runSingleShot: runner,
+      async runSingleShotAsync() {
+        throw workflowError(
+          'AGENT_RUNTIME_ASYNC_UNAVAILABLE',
+          'The selected Agent Runtime does not implement asynchronous execution.',
+          ExitCode.verification,
+        );
+      },
+    };
   }
   return productionAgentRuntime;
 }

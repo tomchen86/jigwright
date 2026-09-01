@@ -1637,7 +1637,7 @@ test('production host-wrapper bridge starts and resumes one private native sessi
       profile,
       controller('start'),
     );
-    const firstReport = await productionAgentRuntime.runSingleShotAsync!(
+    const firstReport = await productionAgentRuntime.runSingleShotAsync(
       firstInput,
       {
         platform: process.platform,
@@ -1708,7 +1708,7 @@ test('production host-wrapper bridge starts and resumes one private native sessi
       profile,
       controller('resume'),
     );
-    const secondReport = await productionAgentRuntime.runSingleShotAsync!(
+    const secondReport = await productionAgentRuntime.runSingleShotAsync(
       secondInput,
       { platform: process.platform },
     );
@@ -2307,7 +2307,7 @@ test('production host-wrapper artifacts remain an exact provider lifecycle closu
     assignment.binding,
   );
   try {
-    const report = await productionAgentRuntime.runSingleShotAsync!(input, {
+    const report = await productionAgentRuntime.runSingleShotAsync(input, {
       platform: process.platform,
     });
     assert.deepEqual(report.semanticOutput, semanticOutput(request));
@@ -3182,7 +3182,7 @@ test('production host-wrapper artifacts remain an exact provider lifecycle closu
       },
       assignment.binding,
     );
-    const resumedReport = await productionAgentRuntime.runSingleShotAsync!(
+    const resumedReport = await productionAgentRuntime.runSingleShotAsync(
       resumedInput,
       { platform: process.platform },
     );

@@ -1048,7 +1048,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:d1a1dba54515fad65881918ac290aa32637ea4b9cf199433f1c2eb66df3e8c92"
+      "digest": "sha256:30b3b1a42e2cf803a30975ea6a3feb14cbcdfe8893a1ba9a17f6b4ccc27fe554"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1613,7 +1613,7 @@
     {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
       "mode": "100644",
-      "digest": "sha256:a6a9adc613a7ecfa71c747c2f5b7b4f1f49e39f405c24987500add4acf958fc6"
+      "digest": "sha256:f2b7df64da872d21f6a41396fdb1e43cbadcfd6bfe74588bacc7dcf3f84f8764"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-protocol.ts",
