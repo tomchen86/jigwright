@@ -1378,7 +1378,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:83de56da8da0bcb03b3c6f98371879b2e9c5ed70600e450dbf017fcbe6b46ce4"
+      "digest": "sha256:2e97dd916fb4b90964adc97051fa74adbc2293aaaed1e7a3214623a165bc9b7a"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",
