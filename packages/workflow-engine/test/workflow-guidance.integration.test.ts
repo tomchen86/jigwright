@@ -308,6 +308,25 @@ test('next-step projection keeps two likely transitions and sends overflow to th
   );
 });
 
+test('route prepare and apply project exact read-only status without guessing a change', () => {
+  for (const action of ['prepare', 'apply']) {
+    const commands = workflowResultNextSteps({
+      command: 'route',
+      result: { action },
+    }).map(({ command }) => command);
+    assert.deepEqual(commands, ['pnpm workflow route status --json']);
+    assert.equal(
+      commands.some((command) => command.includes('<')),
+      false,
+    );
+  }
+  assert.equal(
+    resolveManagedWorkflowCommandRoute(['route', 'status']).id,
+    'route-status',
+  );
+  assert.equal(workflowCommandGuidance('route-status').status, 'read-only');
+});
+
 test('route status projects only executable current routing next steps', () => {
   const routeStatus = (
     sourcePresent: boolean,

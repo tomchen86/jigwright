@@ -4,6 +4,7 @@ export type WorkflowGuidanceStatus =
 export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'guide',
   'route',
+  'route-status',
   'task-preflight',
   'open-task',
   'update-base',
@@ -134,7 +135,20 @@ const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
     consequences: [
       'Publishes the controlled routing source by CAS and deterministically refreshes the repository inventory handoff.',
     ],
-    successors: ['open-task'],
+    successors: ['route-status'],
+  },
+  {
+    id: 'route-status',
+    route: ['route', 'status'],
+    usage: ['pnpm workflow route status [--json]'],
+    status: 'read-only',
+    purpose:
+      'Inspect the exact current repository routing state before selecting an executable task transition.',
+    preconditions: [],
+    consequences: [
+      'Reads the controlled routing source and current lifecycle facts without changing repository state.',
+    ],
+    successors: [],
   },
   {
     id: 'task-preflight',
