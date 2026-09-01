@@ -17,6 +17,7 @@
     "jigwright:adopt-local": "node --experimental-strip-types scripts/run-current-jigwright-adoption.ts",
     "jigwright:pack-local": "node --experimental-strip-types scripts/build-single-jigwright-package.ts --output dist/local-release",
     "jigwright:release-v1": "node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --output dist/release-v1",
+    "jigwright:release-v1:status": "node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --status dist/release-v1",
     "workflow": "node --experimental-strip-types packages/workflow-engine/bootstrap/workflow-launcher.ts",
     "workflow:build-human-gate-macos": "node --experimental-strip-types scripts/build-human-gate-macos.ts",
     "workflow:protected-capabilities": "node --experimental-strip-types packages/workflow-engine/bootstrap/generate-protected-capabilities.ts",

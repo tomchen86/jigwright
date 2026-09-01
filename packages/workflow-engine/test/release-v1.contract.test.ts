@@ -6,7 +6,9 @@ import { spawnSync } from 'node:child_process';
 import test from 'node:test';
 
 import {
+  assessCurrentJigwrightV1ReleaseCandidateFreshness,
   assessCurrentJigwrightV1PublishReadiness,
+  inspectCurrentJigwrightV1ReleaseCandidateFreshness,
   prepareCurrentJigwrightV1ReleaseCandidate,
   verifyCurrentJigwrightV1ReleaseCandidate,
 } from '../../../scripts/prepare-current-jigwright-v1-release.ts';
@@ -19,6 +21,10 @@ test('the v1 command prepares one current-only Jigwright package', () => {
   assert.equal(
     workspaceManifest.scripts['jigwright:release-v1'],
     'node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --output dist/release-v1',
+  );
+  assert.equal(
+    workspaceManifest.scripts['jigwright:release-v1:status'],
+    'node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --status dist/release-v1',
   );
 });
 
@@ -168,6 +174,80 @@ test('single-package v1 candidate binds reproducibility and stays fail closed fo
     assert.throws(
       () => verifyCurrentJigwrightV1ReleaseCandidate(outputRoot),
       /artifact digest/u,
+    );
+  } finally {
+    fs.rmSync(outputRoot, { recursive: true, force: true });
+  }
+});
+
+test('release candidate freshness reports only the exact current clean source', () => {
+  const source = {
+    commit: 'a'.repeat(40),
+    tree: 'b'.repeat(40),
+    dirty: false,
+  };
+  assert.deepEqual(
+    assessCurrentJigwrightV1ReleaseCandidateFreshness(source, source),
+    {
+      schemaVersion: 1,
+      kind: 'jigwright-v1-release-candidate-freshness.v1',
+      status: 'current',
+      candidate: source,
+      current: source,
+      reasons: [],
+    },
+  );
+  assert.deepEqual(
+    assessCurrentJigwrightV1ReleaseCandidateFreshness(
+      { ...source, dirty: true },
+      { ...source, commit: 'c'.repeat(40), tree: 'd'.repeat(40), dirty: true },
+    ),
+    {
+      schemaVersion: 1,
+      kind: 'jigwright-v1-release-candidate-freshness.v1',
+      status: 'stale',
+      candidate: { ...source, dirty: true },
+      current: {
+        ...source,
+        commit: 'c'.repeat(40),
+        tree: 'd'.repeat(40),
+        dirty: true,
+      },
+      reasons: [
+        'candidate-source-dirty',
+        'current-source-dirty',
+        'source-commit-mismatch',
+        'source-tree-mismatch',
+      ],
+    },
+  );
+});
+
+test('release candidate status is read-only and binds the live source identity', () => {
+  const outputRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-current-v1-release-status-'),
+  );
+  try {
+    prepareCurrentJigwrightV1ReleaseCandidate(process.cwd(), outputRoot, {
+      allowDirty: true,
+    });
+    const expected = inspectCurrentJigwrightV1ReleaseCandidateFreshness(
+      process.cwd(),
+      outputRoot,
+    );
+    const script = path.resolve(
+      'scripts/prepare-current-jigwright-v1-release.ts',
+    );
+    const status = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', script, '--status', outputRoot],
+      { cwd: process.cwd(), encoding: 'utf8' },
+    );
+    assert.equal(status.status, 0, status.stderr);
+    assert.deepEqual(JSON.parse(status.stdout), expected);
+    assert.equal(
+      fs.existsSync(path.join(outputRoot, 'release-candidate.json')),
+      true,
     );
   } finally {
     fs.rmSync(outputRoot, { recursive: true, force: true });

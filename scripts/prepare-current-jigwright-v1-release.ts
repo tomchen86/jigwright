@@ -71,6 +71,20 @@ export type CurrentJigwrightV1ReleaseCandidate = Readonly<{
   publishReadiness: CurrentJigwrightV1PublishReadiness;
 }>;
 
+export type CurrentJigwrightV1ReleaseCandidateFreshness = Readonly<{
+  schemaVersion: 1;
+  kind: 'jigwright-v1-release-candidate-freshness.v1';
+  status: 'current' | 'stale';
+  candidate: CurrentJigwrightV1ReleaseCandidate['release']['source'];
+  current: CurrentJigwrightV1ReleaseCandidate['release']['source'];
+  reasons: readonly (
+    | 'candidate-source-dirty'
+    | 'current-source-dirty'
+    | 'source-commit-mismatch'
+    | 'source-tree-mismatch'
+  )[];
+}>;
+
 export function prepareCurrentJigwrightV1ReleaseCandidate(
   requestedRepositoryRoot: string,
   requestedOutputRoot: string,
@@ -277,6 +291,45 @@ export function verifyCurrentJigwrightV1ReleaseCandidate(
     throw new Error('Current Jigwright v1 publish readiness is invalid.');
   }
   return candidate;
+}
+
+/**
+ * Reports whether a verified local candidate still exactly represents the
+ * current clean repository source. This is observational and never changes
+ * either the candidate or the repository.
+ */
+export function inspectCurrentJigwrightV1ReleaseCandidateFreshness(
+  requestedRepositoryRoot: string,
+  requestedOutputRoot: string,
+): CurrentJigwrightV1ReleaseCandidateFreshness {
+  const repositoryRoot = fs.realpathSync(requestedRepositoryRoot);
+  const candidate =
+    verifyCurrentJigwrightV1ReleaseCandidate(requestedOutputRoot);
+  return assessCurrentJigwrightV1ReleaseCandidateFreshness(
+    candidate.release.source,
+    currentSourceIdentity(repositoryRoot),
+  );
+}
+
+export function assessCurrentJigwrightV1ReleaseCandidateFreshness(
+  candidate: CurrentJigwrightV1ReleaseCandidate['release']['source'],
+  current: CurrentJigwrightV1ReleaseCandidate['release']['source'],
+): CurrentJigwrightV1ReleaseCandidateFreshness {
+  const reasons: CurrentJigwrightV1ReleaseCandidateFreshness['reasons'][number][] =
+    [];
+  if (candidate.dirty) reasons.push('candidate-source-dirty');
+  if (current.dirty) reasons.push('current-source-dirty');
+  if (candidate.commit !== current.commit)
+    reasons.push('source-commit-mismatch');
+  if (candidate.tree !== current.tree) reasons.push('source-tree-mismatch');
+  return Object.freeze({
+    schemaVersion: 1,
+    kind: 'jigwright-v1-release-candidate-freshness.v1',
+    status: reasons.length === 0 ? 'current' : 'stale',
+    candidate: Object.freeze({ ...candidate }),
+    current: Object.freeze({ ...current }),
+    reasons: Object.freeze(reasons),
+  });
 }
 
 function assessReadiness(
@@ -506,6 +559,21 @@ function assertEmptyDirectory(root: string): void {
   fs.mkdirSync(root, { recursive: true });
 }
 
+function currentSourceIdentity(
+  repositoryRoot: string,
+): CurrentJigwrightV1ReleaseCandidate['release']['source'] {
+  return Object.freeze({
+    commit: runRequired('git', ['rev-parse', 'HEAD'], { cwd: repositoryRoot }),
+    tree: runRequired('git', ['rev-parse', 'HEAD^{tree}'], {
+      cwd: repositoryRoot,
+    }),
+    dirty:
+      runRequired('git', ['status', '--porcelain=v1'], {
+        cwd: repositoryRoot,
+      }).length > 0,
+  });
+}
+
 function digestFile(filePath: string): `sha256:${string}` {
   return `sha256:${crypto
     .createHash('sha256')
@@ -513,8 +581,13 @@ function digestFile(filePath: string): `sha256:${string}` {
     .digest('hex')}`;
 }
 
-function runRequired(executable: string, args: string[]): string {
+function runRequired(
+  executable: string,
+  args: string[],
+  options: Readonly<{ cwd?: string }> = {},
+): string {
   const result = spawnSync(executable, args, {
+    cwd: options.cwd,
     encoding: 'utf8',
     env: process.env,
     stdio: ['ignore', 'pipe', 'pipe'],
@@ -573,14 +646,30 @@ if (
   import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href
 ) {
   const outputIndex = process.argv.indexOf('--output');
-  if (outputIndex < 0 || process.argv[outputIndex + 1] === undefined) {
+  const statusIndex = process.argv.indexOf('--status');
+  if (
+    outputIndex >= 0 &&
+    process.argv[outputIndex + 1] !== undefined &&
+    statusIndex < 0
+  ) {
+    const candidate = prepareCurrentJigwrightV1ReleaseCandidate(
+      process.cwd(),
+      process.argv[outputIndex + 1]!,
+    );
+    process.stdout.write(`${JSON.stringify(candidate)}\n`);
+  } else if (
+    statusIndex >= 0 &&
+    process.argv[statusIndex + 1] !== undefined &&
+    outputIndex < 0
+  ) {
+    const freshness = inspectCurrentJigwrightV1ReleaseCandidateFreshness(
+      process.cwd(),
+      process.argv[statusIndex + 1]!,
+    );
+    process.stdout.write(`${JSON.stringify(freshness)}\n`);
+  } else {
     throw new Error(
-      'Usage: node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts --output <directory>',
+      'Usage: node --experimental-strip-types scripts/prepare-current-jigwright-v1-release.ts (--output|--status) <directory>',
     );
   }
-  const candidate = prepareCurrentJigwrightV1ReleaseCandidate(
-    process.cwd(),
-    process.argv[outputIndex + 1]!,
-  );
-  process.stdout.write(`${JSON.stringify(candidate)}\n`);
 }
