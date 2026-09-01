@@ -7,6 +7,8 @@ import test from 'node:test';
 
 import {
   captureGovernanceSource,
+  listGovernanceSources,
+  readGovernanceSource,
   recordGovernanceFinding,
 } from '../src/modules/governance-intake/governance-intake.ts';
 import {
@@ -75,6 +77,198 @@ test('source capture is content-addressed, append-only, and idempotent', () => {
     assert.equal(JSON.parse(bytes).text, input.text);
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('Source ledger list and configured registry validation reject every noncanonical entry without mutation', () => {
+  const cases = [
+    {
+      name: 'noncanonical entry at the ledger root',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.writeFileSync(
+          path.join(fixture.sourceLedgerRoot, 'README.md'),
+          'poison\n',
+        );
+      },
+    },
+    {
+      name: 'noncanonical prefix directory',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const prefix = path.join(fixture.sourceLedgerRoot, 'zz');
+        fs.mkdirSync(prefix);
+        fs.writeFileSync(path.join(prefix, 'sentinel.txt'), 'poison\n');
+      },
+    },
+    {
+      name: 'noncanonical entry inside a valid prefix',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.writeFileSync(
+          path.join(path.dirname(fixture.sourcePath), 'README.md'),
+          'poison\n',
+        );
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-source-ledger-traversal-'),
+    );
+    try {
+      const fixture = createGovernancePersistenceFixture(root);
+      scenario.poison(fixture);
+      const before = snapshotGovernancePersistence(fixture);
+
+      assert.throws(
+        () => listGovernanceSources(fixture.repositoryRoot),
+        hasCode('GOVERNANCE_INTAKE_INVALID'),
+        `source list: ${scenario.name}`,
+      );
+      assert.throws(
+        () => validateWorkRegistry(fixture.repositoryRoot),
+        hasCode('GOVERNANCE_INTAKE_INVALID'),
+        `configured registry: ${scenario.name}`,
+      );
+      assert.deepEqual(snapshotGovernancePersistence(fixture), before);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  }
+});
+
+test('current Source and Finding create-only admission rejects unsafe identities without mutation', () => {
+  const cases = [
+    {
+      name: 'Source mode differs from the current writer',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.chmodSync(fixture.sourcePath, 0o600);
+        return [] as string[];
+      },
+      assertRejected(
+        fixture: ReturnType<typeof createGovernancePersistenceFixture>,
+      ) {
+        assert.throws(
+          () =>
+            readGovernanceSource(
+              fixture.repositoryRoot,
+              fixture.source.source.id,
+            ),
+          hasCode('GOVERNANCE_INTAKE_INVALID'),
+        );
+        assert.throws(
+          () =>
+            captureGovernanceSource(
+              fixture.repositoryRoot,
+              fixture.sourceInput,
+            ),
+          hasCode('GOVERNANCE_SOURCE_COLLISION'),
+        );
+      },
+    },
+    {
+      name: 'Source has a second hard link',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const target = path.join(fixture.root, 'source-hardlink.json');
+        fs.linkSync(fixture.sourcePath, target);
+        return [target];
+      },
+      assertRejected(
+        fixture: ReturnType<typeof createGovernancePersistenceFixture>,
+      ) {
+        assert.throws(
+          () =>
+            readGovernanceSource(
+              fixture.repositoryRoot,
+              fixture.source.source.id,
+            ),
+          hasCode('GOVERNANCE_INTAKE_INVALID'),
+        );
+        assert.throws(
+          () =>
+            captureGovernanceSource(
+              fixture.repositoryRoot,
+              fixture.sourceInput,
+            ),
+          hasCode('GOVERNANCE_SOURCE_COLLISION'),
+        );
+      },
+    },
+    {
+      name: 'Finding mode differs from the current writer',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.chmodSync(fixture.finding.path, 0o644);
+        return [] as string[];
+      },
+      assertRejected(
+        fixture: ReturnType<typeof createGovernancePersistenceFixture>,
+      ) {
+        assert.throws(
+          () =>
+            recordGovernanceFinding(
+              fixture.findingContext,
+              fixture.findingInput,
+              fixture.findingNow,
+            ),
+          hasCode('GOVERNANCE_FINDING_COLLISION'),
+        );
+      },
+    },
+    {
+      name: 'Finding has a second hard link',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const target = path.join(fixture.root, 'finding-hardlink.json');
+        fs.linkSync(fixture.finding.path, target);
+        return [target];
+      },
+      assertRejected(
+        fixture: ReturnType<typeof createGovernancePersistenceFixture>,
+      ) {
+        assert.throws(
+          () =>
+            recordGovernanceFinding(
+              fixture.findingContext,
+              fixture.findingInput,
+              fixture.findingNow,
+            ),
+          hasCode('GOVERNANCE_FINDING_COLLISION'),
+        );
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-governance-create-only-'),
+    );
+    try {
+      const fixture = createGovernancePersistenceFixture(root);
+      assert.equal(fs.lstatSync(fixture.sourcePath).mode & 0o777, 0o644);
+      assert.equal(fs.lstatSync(fixture.finding.path).mode & 0o777, 0o600);
+      if (typeof process.getuid === 'function') {
+        assert.equal(fs.lstatSync(fixture.sourcePath).uid, process.getuid());
+        assert.equal(fs.lstatSync(fixture.finding.path).uid, process.getuid());
+      }
+      assert.equal(
+        captureGovernanceSource(fixture.repositoryRoot, fixture.sourceInput)
+          .created,
+        false,
+      );
+      assert.equal(
+        recordGovernanceFinding(
+          fixture.findingContext,
+          fixture.findingInput,
+          fixture.findingNow,
+        ).created,
+        false,
+      );
+      const targets = scenario.poison(fixture);
+      const before = snapshotGovernancePersistence(fixture, targets);
+
+      scenario.assertRejected(fixture);
+      assert.deepEqual(snapshotGovernancePersistence(fixture, targets), before);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   }
 });
 
@@ -2332,6 +2526,110 @@ function snapshotPlainTree(root: string): string[] {
   };
   visit(root, '.');
   return entries;
+}
+
+function createGovernancePersistenceFixture(root: string) {
+  const repositoryRoot = path.join(root, 'repository');
+  const runtimeRoot = path.join(root, 'git-common', 'workflow-engine');
+  fs.mkdirSync(repositoryRoot, { recursive: true });
+  fs.mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
+  configureRepositoryConsumer(repositoryRoot);
+  const sourceInput = {
+    semanticAuthor: 'maintainer' as const,
+    capturedBy: 'jigwright',
+    capturedAt: '2026-08-24T03:13:00.000Z',
+    contextRef: 'direct-human:thread/turn-44',
+    text: 'Preserve this exact Source across every admission path.\n',
+    supersedes: null,
+  };
+  const source = captureGovernanceSource(repositoryRoot, sourceInput);
+  const findingContext = {
+    repositoryRoot,
+    runtimeRoot,
+    sessionId: 'session-governance-persistence',
+    changeId: 'governance-persistence',
+    branch: 'work/governance-persistence',
+    head: 'a'.repeat(40),
+    tree: 'b'.repeat(40),
+  };
+  const findingInput = {
+    schemaVersion: 1 as const,
+    text: 'The Source persistence boundary needs a durable observation.',
+    sourceRefs: [source.source.id],
+  };
+  const findingNow = () => '2026-08-24T03:14:00.000Z';
+  const finding = recordGovernanceFinding(
+    findingContext,
+    findingInput,
+    findingNow,
+  );
+  const item = createWorkItem(
+    repositoryRoot,
+    {
+      schemaVersion: 1,
+      kind: 'chore',
+      lane: 'later',
+      title: 'Governance persistence boundary',
+      summary: 'Keep Source and Finding evidence immutable.',
+      sourceRefs: [source.source.id],
+    },
+    {
+      now: () => '2026-08-24T03:15:00.000Z',
+      createId: () => 'WORK-01K39R0V000000000000000001',
+      aliases: ['ISS-321'],
+    },
+  );
+  const rendered = renderWorkRegistry(repositoryRoot);
+  runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+  runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+  runGitForTest(repositoryRoot, [
+    'config',
+    'user.email',
+    'jigwright@example.test',
+  ]);
+  runGitForTest(repositoryRoot, ['add', '.']);
+  runGitForTest(repositoryRoot, ['commit', '-m', 'Track governance state']);
+  return {
+    root,
+    repositoryRoot,
+    runtimeRoot,
+    sourceInput,
+    source,
+    sourcePath: path.join(repositoryRoot, source.relativePath),
+    sourceLedgerRoot: path.join(
+      repositoryRoot,
+      'workflow/source-ledger/objects/sha256',
+    ),
+    findingContext,
+    findingInput,
+    findingNow,
+    finding,
+    item,
+    rendered,
+  };
+}
+
+function snapshotGovernancePersistence(
+  fixture: ReturnType<typeof createGovernancePersistenceFixture>,
+  targets: readonly string[] = [],
+) {
+  return {
+    head: runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+    refs: runGitForTest(fixture.repositoryRoot, ['show-ref']),
+    status: runGitForTest(fixture.repositoryRoot, [
+      'status',
+      '--porcelain=v1',
+      '-z',
+    ]),
+    sources: snapshotPlainTree(fixture.sourceLedgerRoot),
+    findings: snapshotPlainTree(path.join(fixture.runtimeRoot, 'findings')),
+    items: snapshotPlainTree(
+      path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+    ),
+    targets: targets.map((target) => snapshotPlainTree(target)),
+    backlog: fs.readFileSync(fixture.rendered.backlogPath, 'utf8'),
+    inventory: fs.readFileSync(fixture.rendered.inventoryPath, 'utf8'),
+  };
 }
 
 function runGitForTest(root: string, args: readonly string[]): string {

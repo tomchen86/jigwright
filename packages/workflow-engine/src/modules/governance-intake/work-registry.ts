@@ -906,17 +906,15 @@ export function validateWorkRegistry(repositoryRoot: string): {
   sourceCount: number;
 } {
   const sourceIds = new Set<string>();
-  const sources: GovernanceSourceV1[] = [];
-  for (const sourcePath of listSourcePaths(repositoryRoot)) {
-    const source = readSourceValue(
-      repositoryRoot,
-      sourceReferenceFromPath(sourcePath),
-    );
+  const sources = listGovernanceSources(
+    repositoryRoot,
+    repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
+  );
+  for (const source of sources) {
     if (sourceIds.has(source.id)) {
       throw registryInvalid('Governance Source identity is duplicated.');
     }
     sourceIds.add(source.id);
-    sources.push(source);
   }
   for (const source of sources) {
     if (source.supersedes !== null && !sourceIds.has(source.supersedes)) {
@@ -1406,27 +1404,6 @@ function listWorkItemPaths(repositoryRoot: string): string[] {
     }
   }
   return itemPaths.sort();
-}
-
-function listSourcePaths(repositoryRoot: string): string[] {
-  const root = repositoryConsumerPath(
-    repositoryRoot,
-    repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
-  );
-  if (!fs.existsSync(root)) return [];
-  return fs
-    .readdirSync(root, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && /^[0-9a-f]{2}$/.test(entry.name))
-    .flatMap((entry) =>
-      fs
-        .readdirSync(path.join(root, entry.name), { withFileTypes: true })
-        .filter(
-          (source) =>
-            source.isFile() && /^[0-9a-f]{64}\.json$/.test(source.name),
-        )
-        .map((source) => path.join(root, entry.name, source.name)),
-    )
-    .sort();
 }
 
 function readSource(repositoryRoot: string, sourceRef: `SRC-${string}`): void {
@@ -1997,17 +1974,6 @@ function readSourceValue(
     sourceRef,
     repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
   );
-}
-
-function sourceReferenceFromPath(sourcePath: string): `SRC-${string}` {
-  const digest = path.basename(sourcePath, '.json');
-  if (
-    !/^[0-9a-f]{64}$/.test(digest) ||
-    path.basename(path.dirname(sourcePath)) !== digest.slice(0, 2)
-  ) {
-    throw registryInvalid('Governance Source path is invalid.');
-  }
-  return `SRC-${digest}`;
 }
 
 function replaceTextFile(filePath: string, content: string): void {
