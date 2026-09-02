@@ -743,7 +743,7 @@
     {
       "path": "src/composition-root/agent-runtime-production.ts",
       "mode": "100644",
-      "digest": "sha256:2d18c8eca8fd9ba01c0246c5195e4e648e0d35f7f8cfd837c58bf903a9dc7343"
+      "digest": "sha256:46d1d95214a0740449f9b34e22b22b47e75e491f7fe21ccc94201c7513c87498"
     },
     {
       "path": "src/composition-root/agent-runtime-v1-production.ts",
@@ -1083,7 +1083,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:30b3b1a42e2cf803a30975ea6a3feb14cbcdfe8893a1ba9a17f6b4ccc27fe554"
+      "digest": "sha256:ed6c6faa74e9cb78fcc64146a5a6e321bf2e8050afd15ed40bf5f33496ce9d66"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1658,7 +1658,7 @@
     {
       "path": "src/modules/provider-orchestration/agent-runtime-port.ts",
       "mode": "100644",
-      "digest": "sha256:f2b7df64da872d21f6a41396fdb1e43cbadcfd6bfe74588bacc7dcf3f84f8764"
+      "digest": "sha256:8a8829b7c6dbb132f526f2b912e8425a5847bd4440131736941a7bf740f765f1"
     },
     {
       "path": "src/modules/provider-orchestration/agent-runtime-protocol.ts",
