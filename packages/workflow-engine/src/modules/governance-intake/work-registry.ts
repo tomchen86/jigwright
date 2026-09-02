@@ -305,7 +305,7 @@ export function prepareWorkItemPromotionSurvey(
   requestedChangeId: string,
   declaration: WorkItemPromotionSurveyDeclarationV1,
 ): { survey: WorkItemPromotionSurveyV1; relativePath: string } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     prepareWorkItemPromotionSurveyUnlocked(
       repositoryRoot,
       requestedId,
@@ -416,7 +416,7 @@ export function showWorkItem(
   repositoryRoot: string,
   requestedId: string,
 ): WorkItemV1 {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     showWorkItemUnlocked(repositoryRoot, requestedId),
   );
 }
@@ -450,7 +450,7 @@ export function applyWorkItemReview(
   review: WorkItemReviewV1,
   now: () => string = () => new Date().toISOString(),
 ): WorkItemV1 {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     applyWorkItemReviewUnlocked(repositoryRoot, requestedId, review, now),
   );
 }
@@ -673,7 +673,7 @@ export function observeWorkItemPromotionSurveyDigest(
   requestedId: string,
   requestedChangeId: string,
 ): `sha256:${string}` {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     observeWorkItemPromotionSurveyDigestUnlocked(
       repositoryRoot,
       requestedId,
@@ -703,7 +703,7 @@ export function readWorkItemPromotionSurveyDigest(
   requestedId: string,
   requestedChangeId: string,
 ): `sha256:${string}` {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     readWorkItemPromotionSurveyDigestUnlocked(
       repositoryRoot,
       requestedId,
@@ -741,7 +741,7 @@ export function linkSourceToChange(
   originPath: string;
   created: boolean;
 } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     linkSourceToChangeUnlocked(
       repositoryRoot,
       requestedSourceId,
@@ -787,7 +787,7 @@ function linkSourceToChangeUnlocked(
 }
 
 export function listWorkItems(repositoryRoot: string): WorkItemV1[] {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     listWorkItemPaths(repositoryRoot)
       .map((itemPath) => readWorkItem(itemPath))
       .sort((left, right) => left.id.localeCompare(right.id)),
@@ -858,7 +858,7 @@ export function recommendWorkItemPriorities(
 export function inspectWorkRegistry(
   repositoryRoot: string,
 ): WorkRegistryInventoryV1 {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     inspectWorkRegistryUnlocked(repositoryRoot),
   );
 }
@@ -946,7 +946,7 @@ export function traceWorkItem(
   origins: string[];
   sources: unknown[];
 } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     traceWorkItemUnlocked(repositoryRoot, requestedId, testHooks),
   );
 }
@@ -1020,7 +1020,7 @@ function traceGovernanceSourceUnlocked(
   if (!repositoryConsumerConfigurationExists(repositoryRoot)) {
     return coreTrace;
   }
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
     const workItems = listWorkItems(repositoryRoot)
       .filter((item) => item.sourceRefs.includes(source.id))
       .map((item) => {
@@ -1052,7 +1052,7 @@ export function renderWorkRegistry(repositoryRoot: string): {
   inventoryPath: string;
   historyPaths: string[];
 } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     renderWorkRegistryUnlocked(repositoryRoot),
   );
 }
@@ -1098,7 +1098,7 @@ function renderWorkRegistryUnlocked(repositoryRoot: string): {
 export function validateWorkRegistryProjections(repositoryRoot: string): {
   projectionCount: number;
 } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     validateWorkRegistryProjectionsUnlocked(repositoryRoot),
   );
 }
@@ -1189,7 +1189,7 @@ export function reconcileArchivedWorkItems(
   archivedChangeRoot: string,
   requestedClosedAt: string,
 ): { closedItemIds: string[]; outputPaths: string[] } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     reconcileArchivedWorkItemsUnlocked(
       repositoryRoot,
       requestedChangeId,
@@ -1286,7 +1286,7 @@ export function validateWorkRegistry(
   itemCount: number;
   sourceCount: number;
 } {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     validateWorkRegistryUnlocked(repositoryRoot, testHooks),
   );
 }
@@ -1364,7 +1364,7 @@ function validateWorkRegistryUnlocked(
 }
 
 /**
- * Admit an optional current change origin through the same citation and
+ * Validate a current change origin when present through the same citation and
  * bidirectional-link validation used by the public registry validator. The
  * current planning contract calls this boundary for both its live checkout and
  * its immutable detached-worktree replay.
@@ -1373,7 +1373,7 @@ export function validateCurrentChangeOrigin(
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
-  withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId),
   );
 }
@@ -1764,7 +1764,7 @@ function parseOrigin(existingText: string): ChangeOriginV1 {
 const ORIGIN_KEYS = ['schemaVersion', 'sourceRefs', 'workItemRefs'] as const;
 
 function listWorkItemPaths(repositoryRoot: string): string[] {
-  return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
     listWorkItemPathsUnlocked(repositoryRoot),
   );
 }
@@ -2215,7 +2215,7 @@ function withWorkRegistryPromotionLock<T>(
   return result!;
 }
 
-function withOptionalWorkRegistryPromotionLock<T>(
+function withWorkRegistryPromotionLockWhenAvailable<T>(
   repositoryRoot: string,
   operation: () => T,
 ): T {

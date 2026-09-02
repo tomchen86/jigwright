@@ -235,7 +235,7 @@ change with zero linked Work Items SHALL produce no Work Item effects.
 - **THEN** archive reconciliation returns no Work Item output paths
 - **AND** Source, Work Registry, handoff, and Git bytes remain unchanged
 
-### Requirement: Work Registry Is Always Available While Work Item Use Is Optional
+### Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
 
 A configured repository SHALL always have the built-in Work Registry available.
 The repository MAY have zero Work Items, and a change MAY cite a Source directly

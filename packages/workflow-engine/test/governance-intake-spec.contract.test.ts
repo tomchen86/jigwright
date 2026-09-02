@@ -37,7 +37,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Work Registry Read Surfaces Are Deterministic',
     '### Requirement: Planning Prose Distinguishes Source-Backed Claims',
     '### Requirement: Archive Reconciles Linked Work Items Deterministically',
-    '### Requirement: Work Registry Is Always Available While Work Item Use Is Optional',
+    '### Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory',
     '### Requirement: Governance Source Ledger Path Is Engine-Owned',
   ];
 
@@ -96,12 +96,12 @@ test('active governance intake contract covers the current Source-to-work lifecy
   assert.doesNotMatch(changeRoutingSpecification, /optional Work Registry/iu);
 });
 
-test('production has no optional Work Registry or configurable Source-root surface', () => {
+test('production has no disableable Work Registry or configurable Source-root surface', () => {
   for (const sourceUrl of currentWorkRegistrySources) {
     const source = fs.readFileSync(sourceUrl, 'utf8');
     assert.doesNotMatch(
       source,
-      /repositoryWorkRegistryConfigurationOrNull|WORK_REGISTRY_UNAVAILABLE|\bsourceRoot\b/u,
+      /repositoryWorkRegistryConfigurationOrNull|WORK_REGISTRY_UNAVAILABLE|\bsourceRoot\b|withOptionalWorkRegistryPromotionLock/u,
       sourceUrl.pathname,
     );
   }

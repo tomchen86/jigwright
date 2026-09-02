@@ -754,7 +754,7 @@ test('source and finding CLI routes parse exact input envelopes', () => {
         kind: 'research',
         lane: 'later',
         title: 'Captured CLI work',
-        summary: 'Keep the optional registry route small.',
+        summary: 'Keep the always-available registry path small.',
         sourceRefs: [source.sourceId],
       })}\n`,
     );
@@ -810,7 +810,7 @@ test('built-in Work Registry creates one stable item and promotes exact provenan
       capturedBy: 'jigwright',
       capturedAt: '2026-08-24T03:20:00.000Z',
       contextRef: 'direct-human:thread/turn-44',
-      text: 'Keep Work Item use optional.\n',
+      text: 'Keep Work Item use not mandatory.\n',
       supersedes: null,
     }).source;
     const created = createWorkItem(
@@ -819,7 +819,7 @@ test('built-in Work Registry creates one stable item and promotes exact provenan
         schemaVersion: 1,
         kind: 'feature',
         lane: 'next',
-        title: 'Optional Work Registry',
+        title: 'Always-available Work Registry',
         summary: 'Ship the smallest Git-native registry.',
         sourceRefs: [source.id],
       },
