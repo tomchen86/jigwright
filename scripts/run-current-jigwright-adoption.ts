@@ -735,6 +735,24 @@ function materializeCurrentLocalCutover(
     enforcementMode: 'active',
     documents: {},
   });
+  writeJson(path.join(consumerRoot, 'workflow', 'repository-consumer.json'), {
+    schemaVersion: 1,
+    adapterId: 'configured-repository-v1',
+    consumerId: 'jigwright-current-adoption-consumer',
+    planning: {
+      providerId: 'openspec',
+      packageSchemaNames: ['spec-driven'],
+      requiredSchemaNames: ['spec-driven', 'jigwright'],
+      supportedSchemaNames: ['spec-driven', 'jigwright'],
+      managedSchemaNames: ['jigwright'],
+      currentSchemaName: 'jigwright',
+    },
+    documents: {
+      adapterId: 'filesystem-documents-v1',
+      handoffPath: 'docs/CURRENT_AND_NEXT_STEPS.md',
+    },
+    databasePolicy: { adapterId: 'disabled-v1' },
+  });
   writeText(path.join(consumerRoot, 'openspec', 'changes', '.gitkeep'), '');
 
   for (const relativePath of CURRENT_OPENSPEC_INTEGRATION_ASSET_PATHS) {
@@ -770,6 +788,7 @@ function stageCurrentLocalCutover(
     profilePath,
     'package.json',
     'workflow/document-policy.json',
+    'workflow/repository-consumer.json',
     'workflow/openspec-assets',
     'openspec/changes/.gitkeep',
     '.agents/skills',
