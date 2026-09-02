@@ -186,6 +186,7 @@ function installOrdinaryManifest(repository: string): InvestigationManifestV3 {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Inspect one exact lifecycle scan hit.',
+      sourceRefs: [],
       explicitPaths: [],
       explicitSymbols: ['AssuranceInspectionNeedle'],
       explicitConfigKeys: [],
@@ -278,6 +279,7 @@ function installExemptionManifest(repository: string): InvestigationManifestV3 {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Refresh assurance documentation only.',
+      sourceRefs: [],
       explicitPaths: ['docs/assurance.md'],
       explicitSymbols: [],
       explicitConfigKeys: [],

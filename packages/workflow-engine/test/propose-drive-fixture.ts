@@ -85,6 +85,7 @@ export function driveProposeToDispositions(
     {
       schemaVersion: 1,
       summary: `Drive ${changeId} to its dispositions.`,
+      sourceRefs: [],
       explicitPaths: options.explicitPaths ?? [
         '.codex/skills/openspec-propose/SKILL.md',
         'workflow/openspec-assets/manifest.json',

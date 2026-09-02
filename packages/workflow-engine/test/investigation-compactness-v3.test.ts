@@ -178,6 +178,7 @@ test('production-scale v3 measures compact persisted bytes with authority replay
     const intent = {
       schemaVersion: 1 as const,
       summary: 'Measure Manifest-first Investigation v3 at production scale.',
+      sourceRefs: [],
       explicitPaths: [],
       explicitSymbols: [],
       explicitConfigKeys: [],

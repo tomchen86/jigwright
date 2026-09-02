@@ -46,6 +46,7 @@ test('author and survey overage cannot evict an engine-floor term', () => {
       {
         schemaVersion: 1,
         summary: 'Refuse a union overage caused outside the engine floor.',
+        sourceRefs: [],
         explicitPaths: [WIDE_PATH],
         explicitSymbols: [],
         explicitConfigKeys: [],

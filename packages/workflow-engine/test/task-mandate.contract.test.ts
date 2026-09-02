@@ -2051,6 +2051,7 @@ test('ordinary propose CLI starts without a task mandate', () => {
       `${canonicalJson({
         schemaVersion: 1,
         summary: 'Plan an ordinary source-only change.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -2115,6 +2116,7 @@ test('protected propose CLI requires a task mandate before durable planning', ()
       `${canonicalJson({
         schemaVersion: 1,
         summary: 'Change protected workflow lifecycle behavior.',
+        sourceRefs: [],
         explicitPaths: [
           'packages/workflow-engine/src/application/finalize/lifecycle.ts',
         ],
@@ -2180,6 +2182,7 @@ test('true propose CLI charges the durable Survey reservation once and revoked r
       `${JSON.stringify({
         schemaVersion: 1,
         summary: 'Inspect the exact mandate-bound provider reservation.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -2332,6 +2335,7 @@ test('Survey retry consumes one durable mandate reservation and revoked dispatch
       {
         schemaVersion: 1,
         summary: 'Exercise exact mandate accounting across Survey retry.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -2514,6 +2518,7 @@ test('exempt PlanReview inherits the durable mandate and audits one fail-closed 
         intent: {
           schemaVersion: 1,
           summary: 'Clarify the workflow documentation wording.',
+          sourceRefs: [],
           explicitPaths: ['docs/WORKFLOW.md'],
           explicitSymbols: [],
           explicitConfigKeys: [],

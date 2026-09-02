@@ -196,6 +196,7 @@ import {
   withRepositoryLifecycleOperation,
 } from '../session-workspace/session-store.ts';
 const DIGEST = /^[0-9a-f]{64}$/;
+const SOURCE_REFERENCE = /^SRC-[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_BLIND_MANIFEST_BYTES = 262_144;
 const MAX_INTENT_SUMMARY_BYTES = 4_096;
@@ -206,6 +207,7 @@ export const PROVIDER_COMPLETION_GRACE_MS = 30_000;
 export type NormalizedChangeIntent = {
   schemaVersion: 1;
   summary: string;
+  sourceRefs: `SRC-${string}`[];
   explicitPaths: string[];
   explicitSymbols: string[];
   explicitConfigKeys: string[];
@@ -4130,6 +4132,7 @@ function assertNormalizedChangeIntent(value: unknown): NormalizedChangeIntent {
     !hasExactKeys(value, [
       'schemaVersion',
       'summary',
+      'sourceRefs',
       'explicitPaths',
       'explicitSymbols',
       'explicitConfigKeys',
@@ -4137,6 +4140,7 @@ function assertNormalizedChangeIntent(value: unknown): NormalizedChangeIntent {
     ]) ||
     value.schemaVersion !== 1 ||
     !isBoundedBlindText(value.summary, MAX_INTENT_SUMMARY_BYTES) ||
+    !isCanonicalSourceReferenceArray(value.sourceRefs) ||
     !isUniqueBoundedBlindStringArray(value.explicitPaths) ||
     !isUniqueBoundedBlindStringArray(value.explicitSymbols) ||
     !isUniqueBoundedBlindStringArray(value.explicitConfigKeys) ||
@@ -4163,6 +4167,24 @@ function assertNormalizedChangeIntent(value: unknown): NormalizedChangeIntent {
     seenPairs.add(key);
   }
   return deepFreeze(structuredClone(value)) as NormalizedChangeIntent;
+}
+
+function isCanonicalSourceReferenceArray(
+  value: unknown,
+): value is `SRC-${string}`[] {
+  if (
+    !Array.isArray(value) ||
+    value.length > MAX_INTENT_FACTS_PER_KIND ||
+    !value.every(
+      (entry): entry is `SRC-${string}` =>
+        typeof entry === 'string' && SOURCE_REFERENCE.test(entry),
+    )
+  ) {
+    return false;
+  }
+  return value.every(
+    (entry, index) => index === 0 || value[index - 1]!.localeCompare(entry) < 0,
+  );
 }
 
 function isUniqueBoundedBlindStringArray(value: unknown): value is string[] {

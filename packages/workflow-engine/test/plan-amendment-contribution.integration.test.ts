@@ -205,6 +205,7 @@ test('an amendment contribution replaces the executed prior generation without r
         schemaVersion: 1,
         summary:
           'Restore the dropped scenario identity in the executed change.',
+        sourceRefs: [],
         explicitPaths: [],
         explicitSymbols: ['AmendGateNeedle'],
         explicitConfigKeys: [],
@@ -640,6 +641,7 @@ test('novel reviewer terms reopen an amendment whose prior review is committed b
         schemaVersion: 1,
         summary:
           'Restore the dropped scenario identity in the executed change.',
+        sourceRefs: [],
         explicitPaths: [],
         explicitSymbols: ['AmendGateNeedle'],
         explicitConfigKeys: [],

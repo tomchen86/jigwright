@@ -38,6 +38,7 @@ test('an investigation moves into its owned canonical worktree and rejects later
       {
         schemaVersion: 1,
         summary: 'Exercise the canonical branch rename tolerance.',
+        sourceRefs: [],
         explicitPaths: [],
         explicitSymbols: ['RenameNeedle'],
         explicitConfigKeys: [],

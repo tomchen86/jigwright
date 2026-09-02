@@ -182,6 +182,7 @@ test('propose reuses the exact revising task authority without touching implemen
       {
         schemaVersion: 1,
         summary: 'Regenerate the reviewed plan for the active task.',
+        sourceRefs: [],
         explicitPaths: ['src/feature.ts'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -221,6 +222,7 @@ test('revision-bound propose rejects implementation drift before planning mutati
           {
             schemaVersion: 1,
             summary: 'Attempt planning after implementation drift.',
+            sourceRefs: [],
             explicitPaths: ['src/feature.ts'],
             explicitSymbols: [],
             explicitConfigKeys: [],

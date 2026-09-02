@@ -1997,6 +1997,7 @@ function buildCurrentV3Investigation(
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Exercise the current v3 contract reader.',
+        sourceRefs: [],
         explicitPaths: ['docs/example.md'],
         explicitSymbols: [],
         explicitConfigKeys: [],

@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../../modules/authority/optional-grants-package.ts';
 import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import { readGovernanceSource } from '../../modules/governance-intake/governance-intake.ts';
 
 import {
   resolveActorIdentity,
@@ -1194,8 +1195,9 @@ export function startPropose(
     };
   }
 
+  const repository = discoverRepository(cwd);
+  assertCurrentGovernanceSources(repository.repositoryRoot, intent.sourceRefs);
   if (options.taskMandateId === undefined) {
-    const repository = discoverRepository(cwd);
     assertTaskMandateOptional(
       repository.repositoryRoot,
       loadWorkflowConfig(repository.repositoryRoot),
@@ -9421,6 +9423,16 @@ function materializePlanningContribution(
     ['guard.json', `${canonicalJson(guard)}\n`],
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
+  assertCurrentGovernanceSources(
+    context.git.repositoryRoot,
+    rebuilt.intent.sourceRefs,
+  );
+  if (rebuilt.intent.sourceRefs.length > 0) {
+    entries.set(
+      'origin.json',
+      currentChangeOriginBytes(rebuilt.intent.sourceRefs),
+    );
+  }
   for (const spec of assertSpecContributions(payload.specs)) {
     entries.set(spec.path, spec.content);
   }
@@ -9650,6 +9662,16 @@ function materializeExemptionPlanningContribution(
     ['guard.json', `${canonicalJson(guard)}\n`],
     ['execution.json', `${canonicalJson(execution)}\n`],
   ]);
+  assertCurrentGovernanceSources(
+    context.git.repositoryRoot,
+    session.intent.sourceRefs,
+  );
+  if (session.intent.sourceRefs.length > 0) {
+    entries.set(
+      'origin.json',
+      currentChangeOriginBytes(session.intent.sourceRefs),
+    );
+  }
   for (const spec of assertSpecContributions(payload.specs)) {
     entries.set(spec.path, spec.content);
   }
@@ -12071,6 +12093,10 @@ function readMaterializedPlanningArtifacts(
   if (receipt === null) {
     return null;
   }
+  assertCurrentGovernanceSources(
+    context.git.repositoryRoot,
+    rebuilt.intent.sourceRefs,
+  );
   const required = [
     '.openspec.yaml',
     'investigation.json',
@@ -12079,6 +12105,7 @@ function readMaterializedPlanningArtifacts(
     'tasks.md',
     'guard.json',
     'execution.json',
+    ...(rebuilt.intent.sourceRefs.length > 0 ? ['origin.json'] : []),
   ];
   if (
     required.some(
@@ -12159,6 +12186,10 @@ function readMaterializedExemptionPlanningArtifacts(
       'Structured exemption planning has no durable materialization receipt.',
     );
   }
+  assertCurrentGovernanceSources(
+    context.git.repositoryRoot,
+    session.intent.sourceRefs,
+  );
   const required = [
     '.openspec.yaml',
     'investigation.json',
@@ -12167,6 +12198,7 @@ function readMaterializedExemptionPlanningArtifacts(
     'tasks.md',
     'guard.json',
     'execution.json',
+    ...(session.intent.sourceRefs.length > 0 ? ['origin.json'] : []),
   ];
   if (
     required.some(
@@ -12966,6 +12998,7 @@ function assertNormalizedIntent(value: unknown): NormalizedChangeIntent {
     !hasExactKeys(value, [
       'schemaVersion',
       'summary',
+      'sourceRefs',
       'explicitPaths',
       'explicitSymbols',
       'explicitConfigKeys',
@@ -12974,6 +13007,7 @@ function assertNormalizedIntent(value: unknown): NormalizedChangeIntent {
     value.schemaVersion !== 1 ||
     typeof value.summary !== 'string' ||
     value.summary.trim().length === 0 ||
+    !isCanonicalSourceReferenceArray(value.sourceRefs) ||
     !isStringArray(value.explicitPaths) ||
     !isStringArray(value.explicitSymbols) ||
     !isStringArray(value.explicitConfigKeys) ||
@@ -13005,6 +13039,7 @@ function assertNormalizedIntent(value: unknown): NormalizedChangeIntent {
   const intent: NormalizedChangeIntent = {
     schemaVersion: 1,
     summary: value.summary,
+    sourceRefs: [...value.sourceRefs],
     explicitPaths: [...value.explicitPaths],
     explicitSymbols: [...value.explicitSymbols],
     explicitConfigKeys: [...value.explicitConfigKeys],
@@ -13023,6 +13058,39 @@ function assertNormalizedIntent(value: unknown): NormalizedChangeIntent {
   };
   blindSurveyIntentDigest(Object.freeze(probe) as BlindSurveyManifest);
   return intent;
+}
+
+function isCanonicalSourceReferenceArray(
+  value: unknown,
+): value is `SRC-${string}`[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (entry, index): entry is `SRC-${string}` =>
+        typeof entry === 'string' &&
+        /^SRC-[0-9a-f]{64}$/.test(entry) &&
+        (index === 0 || value[index - 1]!.localeCompare(entry) < 0),
+    )
+  );
+}
+
+function assertCurrentGovernanceSources(
+  repositoryRoot: string,
+  sourceRefs: readonly `SRC-${string}`[],
+): void {
+  for (const sourceRef of sourceRefs) {
+    readGovernanceSource(repositoryRoot, sourceRef);
+  }
+}
+
+function currentChangeOriginBytes(
+  sourceRefs: readonly `SRC-${string}`[],
+): string {
+  return `${canonicalJson({
+    schemaVersion: 1,
+    sourceRefs,
+    workItemRefs: [],
+  })}\n`;
 }
 
 function assertProposeStartInput(value: unknown): ProposeStartInput {

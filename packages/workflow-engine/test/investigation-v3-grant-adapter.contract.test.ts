@@ -941,6 +941,7 @@ function currentExemptionManifest(repository: string) {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Exercise direct-v3 Grant currentness.',
+      sourceRefs: [],
       explicitPaths: ['docs/example.md'],
       explicitSymbols: [],
       explicitConfigKeys: [],

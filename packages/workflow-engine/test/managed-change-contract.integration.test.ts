@@ -862,6 +862,7 @@ function writeCurrentV3Investigation(
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Exercise the managed current v3 reader.',
+        sourceRefs: [],
         explicitPaths: ['package.json'],
         explicitSymbols: [],
         explicitConfigKeys: [],

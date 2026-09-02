@@ -236,6 +236,7 @@ function preparePrunableProviderRuntime(changeId: string) {
       {
         schemaVersion: 1,
         summary: `Create ${changeId} retention evidence.`,
+        sourceRefs: [],
         explicitPaths: [
           'packages/workflow-engine/src/runtime/provider-execution/provider-retention.ts',
         ],

@@ -1861,6 +1861,7 @@ function sealedExemption(repository: string, sessionRevision = 3) {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Publish a documentation-only v3 fixture.',
+      sourceRefs: [],
       explicitPaths: ['docs/example.md'],
       explicitSymbols: [],
       explicitConfigKeys: [],

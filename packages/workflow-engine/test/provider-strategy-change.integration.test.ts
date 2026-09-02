@@ -209,6 +209,7 @@ function intent() {
   return {
     schemaVersion: 1 as const,
     summary: 'Require a real strategy change before provider replacement.',
+    sourceRefs: [],
     explicitPaths: [
       'packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts',
     ],

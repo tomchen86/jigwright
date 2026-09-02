@@ -109,6 +109,7 @@ function prepareCurrentInvocation() {
     {
       schemaVersion: 1,
       summary: 'Create current provider invocation state.',
+      sourceRefs: [],
       explicitPaths: ['packages/workflow-engine/src/execution-core.ts'],
       explicitSymbols: ['createExecutionJob'],
       explicitConfigKeys: [],

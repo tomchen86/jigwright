@@ -443,6 +443,7 @@ function createManifest(repository: string): BlindSurveyManifest {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Exercise retry accounting.',
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/runtime/storage-journal/execution-store.ts',
       ],

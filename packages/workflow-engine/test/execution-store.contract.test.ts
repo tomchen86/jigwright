@@ -1350,6 +1350,7 @@ function createManifest(repository: string): BlindSurveyManifest {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Exercise the durable execution store.',
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/runtime/storage-journal/execution-store.ts',
       ],

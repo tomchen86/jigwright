@@ -317,6 +317,7 @@ function startSupersedeFixture(repository: string) {
   const normalizedIntent = {
     schemaVersion: 1 as const,
     summary: 'Exercise supersede reason enforcement.',
+    sourceRefs: [],
     explicitPaths: [] as string[],
     explicitSymbols: ['HumanResolutionDecision'],
     explicitConfigKeys: [] as string[],

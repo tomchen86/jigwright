@@ -30,6 +30,7 @@ test('v3 authoring builds reconciliation directly from WHY overlays', () => {
     intent: {
       schemaVersion: 1,
       summary: 'Change a.',
+      sourceRefs: [],
       explicitPaths: ['src/b.ts', 'src/a.ts'],
       explicitSymbols: [],
       explicitConfigKeys: [],

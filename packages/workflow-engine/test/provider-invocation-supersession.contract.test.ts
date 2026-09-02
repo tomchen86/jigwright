@@ -531,6 +531,7 @@ function createManifest(
     normalizedIntent: {
       schemaVersion: 1,
       summary: `Exercise provider supersession ${label}.`,
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/runtime/provider-execution/provider-invocation-supersession.ts',
       ],

@@ -134,6 +134,7 @@ function createManifest(
     normalizedIntent: {
       schemaVersion: 1,
       summary: `Project the ${scenario} execution blocker.`,
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts',
       ],

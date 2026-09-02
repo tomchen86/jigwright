@@ -73,6 +73,7 @@ test('granted Survey retries raise a 300s policy ceiling through 600s to the 360
       {
         schemaVersion: 1,
         summary: 'Exercise one real execution-budget replacement dispatch.',
+        sourceRefs: [],
         explicitPaths: [
           'packages/workflow-engine/src/application/control-plane/execution-replacement.ts',
         ],
@@ -714,6 +715,7 @@ test('granted PlanReview retry publishes one v3 reservation ref before dispatch'
       {
         schemaVersion: 1,
         summary: 'Exercise a granted PlanReview replacement.',
+        sourceRefs: [],
         explicitPaths: ['src/plan-review-target.ts'],
         explicitSymbols: ['PlanReviewGrantTarget'],
         explicitConfigKeys: [],

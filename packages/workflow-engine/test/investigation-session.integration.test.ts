@@ -64,6 +64,7 @@ import {
   startProposeFromFile,
 } from '../src/application/propose/propose-orchestrator.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
 import { productionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
 import { readCurrentProposeExemptionSession } from '../src/runtime/storage-journal/propose-exemption-store.ts';
 import {
@@ -343,6 +344,7 @@ test('structured investigation exemption starts a durable planning branch withou
         intent: {
           schemaVersion: 1,
           summary: 'Clarify the workflow documentation wording.',
+          sourceRefs: [],
           explicitPaths: ['docs/WORKFLOW.md'],
           explicitSymbols: [],
           explicitConfigKeys: [],
@@ -436,6 +438,7 @@ test('structured investigation exemption starts a durable planning branch withou
         intent: {
           schemaVersion: 1,
           summary: 'Clarify the workflow documentation wording.',
+          sourceRefs: [],
           explicitPaths: ['docs/WORKFLOW.md'],
           explicitSymbols: [],
           explicitConfigKeys: [],
@@ -855,6 +858,16 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       'workflow/document-policy.json',
       'workflow/maintainer-policy.json',
     ]);
+    const planningSourceCapture = captureGovernanceSource(repository, {
+      semanticAuthor: 'agent',
+      capturedBy: 'codex',
+      capturedAt: '2026-07-23T23:59:59.000Z',
+      contextRef: 'decision:D-019',
+      text: 'Retain the exact Source identity in the planning contribution.',
+      supersedes: null,
+    });
+    const planningSource = planningSourceCapture.source;
+    git(repository, ['add', planningSourceCapture.relativePath]);
     git(repository, ['commit', '-m', 'Add investigation target']);
     git(repository, ['checkout', '-b', `work/${changeId}`]);
     const providerBindingPath = path.join(
@@ -888,6 +901,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     const intent = {
       schemaVersion: 1 as const,
       summary: 'Extend the investigation target without losing consumers.',
+      sourceRefs: [planningSource.id],
       explicitPaths: [
         '.codex/skills/openspec-propose/SKILL.md',
         'workflow/openspec-assets/manifest.json',
@@ -1259,10 +1273,50 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     });
     assert.equal(materialized.state, 'waiting-for-plan-review');
     assert.equal(materialized.nextAction, 'wait-for-plan-review');
+    const originPath = path.join(changeDirectory, 'origin.json');
+    const originBytes = `${canonicalJson({
+      schemaVersion: 1,
+      sourceRefs: [planningSource.id],
+      workItemRefs: [],
+    })}\n`;
+    assert.equal(fs.readFileSync(originPath, 'utf8'), originBytes);
+    assert.equal(
+      materialized.materializedArtifacts?.['origin.json'],
+      sha256(originBytes),
+    );
     const topologyRuntime = investigationRuntimePaths(
       discoverRepository(repository).gitCommonDirectory,
       'workflow-engine',
     );
+    const materializedSessionPath = path.join(
+      topologyRuntime.sessions,
+      `${materialized.investigation!.investigationId}.json`,
+    );
+    const materializedRefsPath = path.join(
+      topologyRuntime.refs,
+      `${changeId}.json`,
+    );
+    const materializedSessionBytes = fs.readFileSync(materializedSessionPath);
+    const materializedRefsBytes = fs.readFileSync(materializedRefsPath);
+    fs.rmSync(originPath);
+    assert.throws(
+      () =>
+        getProposeStatus(
+          repository,
+          materialized.investigation!.investigationId,
+        ),
+      (error) => isWorkflowError(error, 'PLANNING_MATERIALIZATION_STALE'),
+    );
+    assert.equal(fs.existsSync(originPath), false);
+    assert.deepEqual(
+      fs.readFileSync(materializedSessionPath),
+      materializedSessionBytes,
+    );
+    assert.deepEqual(
+      fs.readFileSync(materializedRefsPath),
+      materializedRefsBytes,
+    );
+    fs.writeFileSync(originPath, originBytes);
     const topologyRefs = readInvestigationEvidenceRefsClosure(
       topologyRuntime,
       changeId,
@@ -3287,6 +3341,7 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
       schemaVersion: 1 as const,
       summary:
         'Exercise bounded reviewer-term reopening without changing planning evidence.',
+      sourceRefs: [],
       explicitPaths: [],
       explicitSymbols: ['ReviewerReopenBaseNeedle'],
       explicitConfigKeys: [],
@@ -3844,6 +3899,7 @@ test('propose CLI persists a fake-backed wait for read-only status in a fresh pr
       JSON.stringify({
         schemaVersion: 1,
         summary: 'Inspect the fixture through the durable CLI wrapper.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -3997,6 +4053,7 @@ test('propose resolves actor before runtime creation and safely bounds caller fi
     const intent = {
       schemaVersion: 1 as const,
       summary: 'Inspect actor and input safety.',
+      sourceRefs: [],
       explicitPaths: ['src/.gitkeep'],
       explicitSymbols: [],
       explicitConfigKeys: [],
@@ -4052,6 +4109,49 @@ test('propose resolves actor before runtime creation and safely bounds caller fi
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
     fs.rmSync(inputDirectory, { recursive: true, force: true });
+  }
+});
+
+test('propose rejects unknown current Source references before durable workspace creation', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'unknown-source-reference';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const runtimeBefore = fs.existsSync(runtimeRoot(repository));
+    const refsBefore = git(repository, [
+      'for-each-ref',
+      '--format=%(refname) %(objectname)',
+    ]);
+
+    assert.throws(
+      () =>
+        startPropose(
+          repository,
+          changeId,
+          {
+            schemaVersion: 1,
+            summary: 'Reject an unknown current Source before any write.',
+            sourceRefs: [`SRC-${'f'.repeat(64)}`],
+            explicitPaths: ['src/.gitkeep'],
+            explicitSymbols: [],
+            explicitConfigKeys: [],
+            renamePairs: [],
+          } as never,
+          { explicitActor: 'codex', environment: {} },
+        ),
+      (error) => isWorkflowError(error, 'GOVERNANCE_INTAKE_INVALID'),
+    );
+    assert.equal(fs.existsSync(runtimeRoot(repository)), runtimeBefore);
+    assert.equal(
+      fs.existsSync(path.join(repository, 'openspec/changes', changeId)),
+      false,
+    );
+    assert.equal(
+      git(repository, ['for-each-ref', '--format=%(refname) %(objectname)']),
+      refsBefore,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
@@ -8727,6 +8827,7 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
       {
         schemaVersion: 1,
         summary: 'Exercise the explicit provider retry transition.',
+        sourceRefs: [],
         explicitPaths: [
           'packages/workflow-engine/src/entrypoints/worker/provider-worker.ts',
         ],
@@ -9251,6 +9352,7 @@ function investigationFixture(invocationId: string): InvestigationFixture {
   const normalizedIntent = {
     schemaVersion: 1 as const,
     summary: 'Understand and extend the durable planning workflow.',
+    sourceRefs: [],
     explicitPaths: [] as string[],
     explicitSymbols: ['InvestigationSession'],
     explicitConfigKeys: [] as string[],

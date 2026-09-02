@@ -179,6 +179,30 @@ test('ordinary v3 is built directly, sealed separately, and replayed from pinned
   }
 });
 
+test('normalized intent requires the exact current sourceRefs key', () => {
+  const repository = createRepository();
+  try {
+    const state = ordinaryAuthoringState(repository);
+    const normalizedIntent = {
+      ...state.normalizedIntent,
+      sourceRefs: [],
+    } as Record<string, unknown>;
+    delete normalizedIntent.sourceRefs;
+    state.normalizedIntent = normalizedIntent as never;
+
+    const built = buildInvestigationManifestDraft({
+      repositoryRoot: repository,
+      state,
+    });
+    assert.equal(built.outcome, 'blocked');
+    if (built.outcome === 'blocked') {
+      assert.equal(built.blocker.failureCode, 'MANIFEST_UNREPRESENTABLE');
+    }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('production builder deterministically seals raw domain facts and rejects stale authority', () => {
   const repository = createRepository();
   try {
@@ -901,6 +925,7 @@ test('v3 exemption is a strict separate branch with no synthetic proof collectio
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Refresh explanatory documentation only.',
+        sourceRefs: [],
         explicitPaths: ['docs/example.md'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -1302,6 +1327,7 @@ test('raw-byte anchors replay identically for a non-UTF-8 Git path in another cl
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Bind a non UTF-8 Git path without lossy display conversion.',
+        sourceRefs: [],
         explicitPaths: [],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -1357,6 +1383,7 @@ function ordinaryAuthoringState(
   const normalizedIntent = {
     schemaVersion: 1 as const,
     summary: 'Introduce a ManifestFirst implementation.',
+    sourceRefs: [],
     explicitPaths: [],
     explicitSymbols: ['ManifestFirst'],
     explicitConfigKeys: [],

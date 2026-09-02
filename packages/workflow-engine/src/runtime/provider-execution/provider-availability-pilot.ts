@@ -330,6 +330,7 @@ function runAvailableProvider(input: {
       schemaVersion: 1,
       summary:
         'Observe whether the ordinary Codex and Claude read-only provider pair is callable.',
+      sourceRefs: [],
       explicitPaths: [],
       explicitSymbols: [],
       explicitConfigKeys: [],

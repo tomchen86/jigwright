@@ -1066,6 +1066,7 @@ function intent() {
   return {
     schemaVersion: 1 as const,
     summary: 'Exercise production automatic provider retry routing.',
+    sourceRefs: [],
     explicitPaths: [
       'packages/workflow-engine/src/entrypoints/worker/provider-worker.ts',
     ],

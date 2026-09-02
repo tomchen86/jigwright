@@ -50,6 +50,7 @@ test('granted replacement republication traverses its own reservation crash wind
       {
         schemaVersion: 1,
         summary: 'Exercise the replacement reservation crash window.',
+        sourceRefs: [],
         explicitPaths: ['src/crash-window-target.ts'],
         explicitSymbols: ['CrashWindowNeedle'],
         explicitConfigKeys: [],

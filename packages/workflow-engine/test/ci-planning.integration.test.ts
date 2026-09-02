@@ -1589,6 +1589,7 @@ function writeReadyV3ExemptChange(
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Exercise immutable CI replay with a current v3 Manifest.',
+        sourceRefs: [],
         explicitPaths: [`openspec/changes/${changeId}/proposal.md`],
         explicitSymbols: [],
         explicitConfigKeys: [],

@@ -2163,6 +2163,7 @@ test('production host-wrapper artifacts remain an exact provider lifecycle closu
     normalizedIntent: {
       schemaVersion: 1 as const,
       summary: 'Exercise the exact host-wrapper lifecycle closure.',
+      sourceRefs: [],
       explicitPaths: [],
       explicitSymbols: [],
       explicitConfigKeys: [],

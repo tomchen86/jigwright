@@ -1119,6 +1119,7 @@ function sealedExemption(repository: string) {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Exercise publication Grant source binding.',
+      sourceRefs: [],
       explicitPaths: ['docs/example.md'],
       explicitSymbols: [],
       explicitConfigKeys: [],

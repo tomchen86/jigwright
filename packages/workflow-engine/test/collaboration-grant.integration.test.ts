@@ -178,6 +178,7 @@ test('propose pauses for an exact grant and admits a same-provider fresh-session
     const intent = {
       schemaVersion: 1 as const,
       summary: 'Extend the granted survey target.',
+      sourceRefs: [],
       explicitPaths: ['src/granted-survey-target.ts'],
       explicitSymbols: ['GrantedSurveyNeedle'],
       explicitConfigKeys: [],
@@ -407,6 +408,7 @@ test('exact PlanReview preserves materialized planning while waiting for a same-
         intent: {
           schemaVersion: 1,
           summary: 'Clarify granted review documentation.',
+          sourceRefs: [],
           explicitPaths: ['docs/granted-review.md'],
           explicitSymbols: [],
           explicitConfigKeys: [],

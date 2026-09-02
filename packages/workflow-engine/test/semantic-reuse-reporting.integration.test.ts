@@ -56,6 +56,7 @@ function prepareWorkflow(changeId: string) {
     {
       schemaVersion: 1,
       summary: `Report ${changeId} semantic reuse.`,
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts',
       ],

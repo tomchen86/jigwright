@@ -67,6 +67,7 @@ test('current runner completion rejects a non-current residual list', () => {
       {
         schemaVersion: 1,
         summary: 'Reject a current runner report with non-current residuals.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],

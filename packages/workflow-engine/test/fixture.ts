@@ -579,6 +579,7 @@ function buildManagedFixtureInvestigation(
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Prepare one current v3 managed-change fixture.',
+        sourceRefs: [],
         explicitPaths: ['docs/example.md'],
         explicitSymbols: [],
         explicitConfigKeys: [],
@@ -730,6 +731,7 @@ export function writeReadyV3ExemptChange(
       normalizedIntent: {
         schemaVersion: 1,
         summary: 'Prepare one current v3 documentation-only fixture change.',
+        sourceRefs: [],
         explicitPaths: ['src/documentation.md'],
         explicitSymbols: [],
         explicitConfigKeys: [],

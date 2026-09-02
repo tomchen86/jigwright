@@ -641,6 +641,7 @@ function createManifest(repository: string): BlindSurveyManifest {
     normalizedIntent: {
       schemaVersion: 1,
       summary: 'Inspect provider retries through one stable Job.',
+      sourceRefs: [],
       explicitPaths: [
         'packages/workflow-engine/src/runtime/provider-execution/execution-runtime.ts',
       ],

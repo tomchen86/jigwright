@@ -3389,6 +3389,7 @@ function intent() {
   return {
     schemaVersion: 1 as const,
     summary: 'Exercise lifecycle-owned provider work.',
+    sourceRefs: [],
     explicitPaths: ['src/.gitkeep'],
     explicitSymbols: [],
     explicitConfigKeys: [],

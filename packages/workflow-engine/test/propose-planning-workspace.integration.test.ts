@@ -36,6 +36,7 @@ test('fresh and resumed propose stay inside one engine-owned planning worktree',
       `${JSON.stringify({
         schemaVersion: 1,
         summary: 'Keep every planning draft byte out of the source worktree.',
+        sourceRefs: [],
         explicitPaths: ['src/.gitkeep'],
         explicitSymbols: [],
         explicitConfigKeys: [],

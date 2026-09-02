@@ -164,6 +164,7 @@ function intent() {
   return {
     schemaVersion: 1 as const,
     summary: 'Exercise automatic replacement after a provider lease expires.',
+    sourceRefs: [],
     explicitPaths: [
       'packages/workflow-engine/src/runtime/provider-execution/provider-retry-scheduler.ts',
     ],
