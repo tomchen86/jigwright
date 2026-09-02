@@ -723,7 +723,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:9fe7d48004447109a45dd0440d08a3529d062e9ac18c475d4ced05c251efeda9"
+      "digest": "sha256:7ee103f47fffa7d68a0dce5b7156d0530c15adf91cf258ab97ed3e121cec8403"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1928,7 +1928,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:e2f7933c32661b79c063e3ac1e1ce7292494fe7b31f613b3e8c922b69765ee78"
+      "digest": "sha256:d2acf5633252b962428e9c34413c9041b77e17fe56c06eb9a3a9a33762ef1dc0"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",

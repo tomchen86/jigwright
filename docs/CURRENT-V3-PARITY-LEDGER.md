@@ -9,9 +9,10 @@
 
 **Target audit base:** official `jigwright@6ed62e9`
 
-**Live audit checkpoint:** `jigwright-package-side@01f92a9` (2026-09-02).
+**Live audit checkpoint:** `jigwright-package-side@84b644f` (2026-09-02).
 This preserves the frozen semantic denominator while recording the reviewed
-current target. CAP-019 remains the sole local code gap at this checkpoint.
+current target. Every CLI, capability, and invariant row now has a terminal
+implementation disposition; operational gates remain separate below.
 
 This ledger implements D-017. Clean-slate removes historical formats and
 consumer baggage; it does not reduce the current-v3 product. The quarry is
@@ -35,7 +36,7 @@ an allowed terminal disposition.
 | Ledger                                | Ported | Already equivalent | Port required | Retirement review | Legacy-only retired |
 | ------------------------------------- | -----: | -----------------: | ------------: | ----------------: | ------------------: |
 | CLI routes (70 rows)                  |     54 |                  5 |             0 |                 0 |                  11 |
-| Capabilities (40 rows)                |     32 |                  7 |             1 |                 0 |                   0 |
+| Capabilities (40 rows)                |     33 |                  7 |             0 |                 0 |                   0 |
 | Correctness invariants (34 rows)      |     20 |                 14 |             0 |                 0 |                   0 |
 | Approved retirement families (7 rows) |      0 |                  0 |             0 |                 0 |                   7 |
 
@@ -94,16 +95,16 @@ not claim those external operations succeeded.
 
 - `already-equivalent`: CAP-004, CAP-005, CAP-018, CAP-025, CAP-035,
   CAP-036, CAP-037.
-- `port-required`: CAP-019 only. Durable status exists, but the required
-  status-watch entry point is not present at `01f92a9`.
-- `ported`: every other capability row from CAP-001 through CAP-040.
+- `ported`: every capability row from CAP-001 through CAP-040 except the seven
+  `already-equivalent` rows above.
 
-Evidence groups for the 32 ported capabilities:
+Evidence groups for the 33 ported capabilities:
 
 | Rows                             | Production boundary                                                                                                                                                                       | Targeted evidence                                                                                                                 |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | CAP-001–CAP-003, CAP-006–CAP-015 | current schema/Manifest/PlanReview, protected Apply, atomic task/finalize/recovery, managed documents and handoff                                                                         | current-v3 Manifest, PlanReview, task-mandate, open-task, finalize, recovery, document-refresh and handoff suites                 |
 | CAP-016–CAP-017                  | immutable Source/Finding/WHY knowledge plus always-built-in Work Registry with `now`/`later`/`attach`, exact dispositions, sourceRefs and conditional promotion survey                    | governance-intake 45/45 and source/semantic-reuse contracts                                                                       |
+| CAP-019                          | durable `job status` plus async `job watch`; watch emits the immediate durable projection and changed states through one terminal observation without lifecycle mutation                  | execution-runtime watch/abort 2/2; unified CLI watch route 1/1 at `84b644f`                                                       |
 | CAP-020–CAP-024, CAP-026–CAP-027 | provider config/identity, durable Job/Attempt, role topology, native sessions, data-egress policy and current Grant/effect families                                                       | provider adapter, execution store/runtime, role assignment, native-session, collaboration/role-context and external-effect suites |
 | CAP-028–CAP-034, CAP-038–CAP-040 | archive/publication orchestration, hooks/CI, authority/control-plane recovery, retention/metrics, OpenSpec assets, audit, amendment provenance and availability-pilot record verification | archive, CI, authority-plan, control-plane, retention, metrics, OpenSpec assets, audit, amendment and availability-pilot suites   |
 
@@ -146,7 +147,7 @@ missing invariant implementation.
 | Real provider pilot/adoption     | `pending`                     | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence. |
 | Hosted archive publication       | `pending`                     | Local publication orchestration is GREEN; no hosted publication was performed.          |
 | Exact release/consumer lifecycle | `targeted-green`              | single-package/release-v1 13/13; portability 8/8 across the recorded focused runs.      |
-| CAP-019 status-watch             | `port-required`               | `job status` exists; durable `job watch` is the remaining local implementation gap.     |
+| CAP-019 status-watch             | `targeted-green`              | durable changed-only watch and CLI streaming regressions are GREEN at `84b644f`.        |
 
 ## Frozen initial CLI audit detail
 
