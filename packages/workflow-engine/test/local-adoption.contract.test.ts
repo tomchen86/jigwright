@@ -218,6 +218,32 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
 
     assert.equal(report.bootstrap.init.kind, 'jigwright-init-result.v1');
     assert.equal(report.bootstrap.init.status, 'initialized');
+    const consumerConfig = JSON.parse(
+      fs.readFileSync(
+        path.join(adoptionRoot, 'consumer', 'workflow', 'config.json'),
+        'utf8',
+      ),
+    ) as Record<string, unknown>;
+    assert.deepEqual(consumerConfig.taskAuthorization, {
+      pathRoleRegistry: 'workflow/path-roles.json',
+      mandateRequiredRoles: ['control-plane'],
+    });
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(adoptionRoot, 'consumer', 'workflow', 'path-roles.json'),
+          'utf8',
+        ),
+      ),
+      {
+        schemaVersion: 1,
+        kind: 'path-role-registry',
+        roles: {
+          'control-plane': ['workflow/**'],
+          ordinary: ['docs/**', 'openspec/**', 'package.json'],
+        },
+      },
+    );
     assert.equal(
       report.bootstrap.repeatedInit.errorClass,
       'JIGWRIGHT_INIT_ALREADY_CONFIGURED',

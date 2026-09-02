@@ -333,6 +333,19 @@ export function runCurrentJigwrightAdoption(
     runtimeDirectory: 'workflow-engine',
     protectedBranches: ['main', 'master'],
     branchTemplate: 'work/{changeId}',
+    taskAuthorization: {
+      pathRoleRegistry: 'workflow/path-roles.json',
+      mandateRequiredRoles: ['control-plane'],
+    },
+    allowedPathModes: ['exact', 'directory-prefix'],
+  });
+  writeJson(path.join(consumerRoot, 'workflow', 'path-roles.json'), {
+    schemaVersion: 1,
+    kind: 'path-role-registry',
+    roles: {
+      'control-plane': ['workflow/**'],
+      ordinary: ['docs/**', 'openspec/**', 'package.json'],
+    },
   });
   writeText(
     path.join(consumerRoot, 'docs', 'adoption.md'),
@@ -344,6 +357,7 @@ export function runCurrentJigwrightAdoption(
     '.gitignore',
     'package.json',
     'workflow/config.json',
+    'workflow/path-roles.json',
     'docs/adoption.md',
   ]);
   commitConsumer(
