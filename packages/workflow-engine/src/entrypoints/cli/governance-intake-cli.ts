@@ -28,6 +28,7 @@ import {
   attachSourceToWorkItem,
   assertOrdinaryWorkRegistryTransition,
   createWorkItem,
+  createWorkItemAfterExactSourceTextRecheck,
   ensureFindingConversionWorkItem,
   findWorkItemsByExactSourceText,
   inspectWorkRegistry,
@@ -53,6 +54,7 @@ import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;
   afterFindingConversionWorkItemPersisted?: () => void;
+  afterLaterSourceCaptured?: () => void;
   resolveSession?: (
     cwd: string,
     sessionId: string,
@@ -76,6 +78,8 @@ export function dispatchGovernanceIntakeCommand(
         return {
           action: 'later',
           originalText,
+          sourceId: null,
+          sourceLinked: false,
           deduplicated: true,
           matches: matches.map(({ id }) => id),
           nextSteps: matches
@@ -96,8 +100,10 @@ export function dispatchGovernanceIntakeCommand(
         text: originalText,
         supersedes: null,
       });
-      const workItem = createWorkItem(
+      dependencies.afterLaterSourceCaptured?.();
+      const workItem = createWorkItemAfterExactSourceTextRecheck(
         cwd,
+        originalText,
         {
           schemaVersion: 1,
           kind: 'improvement',
@@ -108,10 +114,26 @@ export function dispatchGovernanceIntakeCommand(
         },
         { now: () => capturedAt },
       );
+      if (!workItem.created) {
+        return {
+          action: 'later',
+          originalText,
+          sourceId: source.source.id,
+          sourceLinked: false,
+          deduplicated: true,
+          matches: workItem.matches.map(({ id }) => id),
+          nextSteps: workItem.matches
+            .slice(0, 3)
+            .map(
+              ({ id }) => `pnpm workflow attach ${id} <original-text> --json`,
+            ),
+        };
+      }
       return {
         action: 'later',
         originalText,
         sourceId: source.source.id,
+        sourceLinked: true,
         workItemId: workItem.item.id,
         deduplicated: false,
         nextSteps: [`pnpm workflow work-item show ${workItem.item.id} --json`],

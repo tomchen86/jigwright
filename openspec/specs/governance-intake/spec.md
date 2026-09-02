@@ -341,6 +341,13 @@ second Source or Work Item. The ordinary path SHALL require no Grant.
 - **AND** the result returns the original text, Source ID, Work Item ID, and one exact next step
 - **AND** repeating the same wording returns the existing Work Item as a dedupe match without changing Source, Work Item, Git ref, or Grant bytes
 
+#### Scenario: Concurrent exact wording converges
+
+- **WHEN** two `later` calls both pass their initial exact-wording search before either publishes a Work Item
+- **THEN** a Work Registry locked recheck allows at most one inbox Work Item to cite that wording
+- **AND** the loser returns the winning Work Item as a truthful dedupe match with an attach next step
+- **AND** any Source captured by the loser remains an immutable unreferenced record and no Work Item relation is overwritten
+
 ### Requirement: Attach Adds a Source Without Reclassifying Work
 
 Under D-019, `attach <work-item-id> <original-text>` SHALL capture or reuse one

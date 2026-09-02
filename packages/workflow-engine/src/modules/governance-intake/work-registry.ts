@@ -299,6 +299,43 @@ export function createWorkItem(
   return { item, relativePath };
 }
 
+export function createWorkItemAfterExactSourceTextRecheck(
+  repositoryRoot: string,
+  exactText: string,
+  input: WorkItemAuthoringV1,
+  dependencies: Readonly<{
+    now?: () => string;
+    createId?: () => string;
+    aliases?: readonly string[];
+  }> = {},
+):
+  | Readonly<{ created: false; matches: WorkItemV1[] }>
+  | Readonly<{
+      created: true;
+      item: WorkItemV1;
+      relativePath: string;
+    }> {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+    const inputSources = sourceReferences(input.sourceRefs).map((sourceRef) =>
+      readSourceValue(repositoryRoot, sourceRef),
+    );
+    if (!inputSources.some(({ text }) => text === exactText)) {
+      throw registryInvalid(
+        'Work Item exact-wording recheck requires its captured Source.',
+      );
+    }
+    const matches = findWorkItemsByExactSourceText(
+      repositoryRoot,
+      exactText,
+    ).filter(({ closure, stage }) => closure === null && stage !== 'closed');
+    if (matches.length > 0) return { created: false, matches };
+    return {
+      created: true,
+      ...createWorkItem(repositoryRoot, input, dependencies),
+    };
+  });
+}
+
 export function ensureFindingConversionWorkItem(
   repositoryRoot: string,
   requestedFindingId: string,

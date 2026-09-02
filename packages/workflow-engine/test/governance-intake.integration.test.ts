@@ -1181,6 +1181,77 @@ test('D-019 later and attach preserve original wording only in Sources and conve
   }
 });
 
+test('D-019 concurrent later calls converge on at most one Work Item', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-later-concurrency-'),
+  );
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const originalText = 'Converge concurrent exact-wording intake.';
+    let inner:
+      | {
+          deduplicated: boolean;
+          sourceId: string;
+          sourceLinked: boolean;
+          workItemId: string;
+        }
+      | undefined;
+    const outer = dispatchGovernanceIntakeCommand(
+      'later',
+      [originalText],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-08-24T03:27:00.000Z',
+        afterLaterSourceCaptured: () => {
+          inner = dispatchGovernanceIntakeCommand(
+            'later',
+            [originalText],
+            fixture.repositoryRoot,
+            { now: () => '2026-08-24T03:27:01.000Z' },
+          ) as typeof inner;
+        },
+      },
+    ) as {
+      deduplicated: boolean;
+      sourceId: string;
+      sourceLinked: boolean;
+      matches: string[];
+      nextSteps: string[];
+    };
+    assert.ok(inner);
+    assert.equal(inner.deduplicated, false);
+    assert.equal(inner.sourceLinked, true);
+    assert.equal(outer.deduplicated, true);
+    assert.equal(outer.sourceLinked, false);
+    assert.deepEqual(outer.matches, [inner.workItemId]);
+    assert.deepEqual(outer.nextSteps, [
+      `pnpm workflow attach ${inner.workItemId} <original-text> --json`,
+    ]);
+
+    const exactSources = listGovernanceSources(fixture.repositoryRoot).filter(
+      ({ text }) => text === originalText,
+    );
+    assert.equal(exactSources.length, 2);
+    assert.deepEqual(
+      exactSources.map(({ id }) => id).sort(),
+      [inner.sourceId, outer.sourceId].sort(),
+    );
+    const exactItems = listWorkItems(fixture.repositoryRoot).filter((item) =>
+      item.sourceRefs.some(
+        (sourceRef) =>
+          readGovernanceSource(fixture.repositoryRoot, sourceRef).text ===
+          originalText,
+      ),
+    );
+    assert.equal(exactItems.length, 1);
+    assert.equal(exactItems[0]!.id, inner.workItemId);
+    assert.deepEqual(exactItems[0]!.sourceRefs, [inner.sourceId]);
+    assert.equal(exactItems[0]!.sourceRefs.includes(outer.sourceId), false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('D-019 finding convert resumes one deterministic item before publishing its receipt', () => {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-finding-convert-'),
