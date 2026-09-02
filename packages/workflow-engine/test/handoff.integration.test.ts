@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
@@ -27,6 +28,11 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+
+const cliPath = path.join(
+  sourceRepositoryRoot,
+  'packages/workflow-engine/src/cli.ts',
+);
 
 function createFixtureRepository(): string {
   const repository = createBareFixtureRepository();
@@ -119,6 +125,17 @@ test('current Work Registry handoff ignores poisoned legacy Issue data', () => {
     );
     assert.equal(fs.statSync(legacyIssuePath).mode & 0o777, 0o640);
     validateHandoff(repository);
+
+    const validated = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', cliPath, 'handoff', 'validate', '--json'],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(validated.status, 0, validated.stderr);
+    assert.deepEqual(
+      (JSON.parse(validated.stdout) as { intakeCounts: unknown }).intakeCounts,
+      { schemaVersion: 1, inbox: 0, pendingFindings: 0, backlog: 2 },
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

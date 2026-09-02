@@ -3051,7 +3051,12 @@ function dispatch(args: string[], cwd: string): CommandResult {
         throw usage('Usage: pnpm workflow handoff validate [--json]');
       }
       validateHandoff(repositoryRoot);
-      return { command, ok: true, action: 'validate' };
+      return {
+        command,
+        ok: true,
+        action: 'validate',
+        intakeCounts: currentGovernanceIntakeCounts(repositoryRoot),
+      };
     }
     case 'hook': {
       const [hook, ...hookArgs] = rest;
