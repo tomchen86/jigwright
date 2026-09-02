@@ -508,6 +508,8 @@ test('installed tarball drives two complete current lifecycles over unrelated se
     manifestV3: true,
     planReview: true,
     centralGrant: true,
+    executionJobStatus: true,
+    executionJobWatch: true,
   });
   assert.equal(installed.adoption.consumer.clean, true);
   assert.deepEqual(scenarioReport.realTarball, [

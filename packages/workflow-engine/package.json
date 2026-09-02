@@ -9,6 +9,7 @@
   },
   "exports": {
     "./central-grant": "./src/composition-root/public/central-grant.ts",
+    "./execution-job": "./src/composition-root/public/execution-job.ts",
     "./manifest-v3": "./src/composition-root/public/manifest-v3.ts",
     "./plan-review": "./src/composition-root/public/plan-review.ts"
   },

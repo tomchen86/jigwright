@@ -44,6 +44,10 @@ const PUBLIC_EXPORTS = Object.freeze({
     types: './runtime/composition-root/public/central-grant.ts',
     import: './dist/runtime/composition-root/public/central-grant.js',
   }),
+  './execution-job': Object.freeze({
+    types: './runtime/composition-root/public/execution-job.ts',
+    import: './dist/runtime/composition-root/public/execution-job.js',
+  }),
   './manifest-v3': Object.freeze({
     types: './runtime/composition-root/public/manifest-v3.ts',
     import: './dist/runtime/composition-root/public/manifest-v3.js',

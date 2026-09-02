@@ -87,14 +87,121 @@ test('single Jigwright tarball ships current installed CLI guidance', () => {
   }
 });
 
+test('single Jigwright tarball exposes only read-only durable Job observation', () => {
+  const scratch = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-execution-job-public-'),
+  );
+  try {
+    const outputRoot = path.join(scratch, 'release');
+    const artifact = buildSingleJigwrightPackage(process.cwd(), outputRoot, {
+      allowDirty: true,
+    });
+    const consumerRoot = path.join(scratch, 'consumer');
+    fs.mkdirSync(consumerRoot);
+    fs.writeFileSync(
+      path.join(consumerRoot, 'package.json'),
+      `${JSON.stringify({ name: 'fixture', private: true, type: 'module' })}\n`,
+    );
+    run(
+      'npm',
+      [
+        'install',
+        '--offline',
+        '--ignore-scripts',
+        '--no-audit',
+        '--no-fund',
+        '--package-lock=false',
+        path.join(outputRoot, artifact.tarball),
+      ],
+      consumerRoot,
+    );
+    fs.writeFileSync(
+      path.join(consumerRoot, 'consumer.ts'),
+      [
+        "import { inspectExecutionJob, watchExecutionJob, type ExecutionJobInspection, type ExecutionJobWatchOptions } from 'jigwright/execution-job';",
+        'export const observers = [inspectExecutionJob, watchExecutionJob] as const;',
+        'export type Inspection = ExecutionJobInspection;',
+        'export type WatchOptions = ExecutionJobWatchOptions;',
+        '// @ts-expect-error test-only dependency injection is not public',
+        "export type HiddenWatchDependencies = import('jigwright/execution-job').ExecutionJobWatchDependencies;",
+        '',
+      ].join('\n'),
+    );
+    fs.writeFileSync(
+      path.join(consumerRoot, 'tsconfig.json'),
+      `${JSON.stringify(
+        {
+          compilerOptions: {
+            target: 'ES2023',
+            module: 'NodeNext',
+            moduleResolution: 'NodeNext',
+            strict: true,
+            noEmit: true,
+            allowImportingTsExtensions: true,
+            skipLibCheck: true,
+            types: ['node'],
+            typeRoots: [path.resolve('node_modules/@types')],
+          },
+          include: ['consumer.ts'],
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    run(
+      process.execPath,
+      [path.resolve('node_modules/typescript/bin/tsc'), '-p', 'tsconfig.json'],
+      consumerRoot,
+    );
+
+    const surface = JSON.parse(
+      run(
+        process.execPath,
+        [
+          '--input-type=module',
+          '--eval',
+          [
+            "const executionJob = await import('jigwright/execution-job');",
+            'let invalidCode = null;',
+            "try { executionJob.inspectExecutionJob(process.cwd(), '../job'); } catch (error) { invalidCode = error?.code ?? null; }",
+            'process.stdout.write(JSON.stringify({',
+            '  exports: Object.keys(executionJob).sort(),',
+            '  invalidCode,',
+            '}));',
+          ].join('\n'),
+        ],
+        consumerRoot,
+      ),
+    );
+    assert.deepEqual(surface, {
+      exports: ['inspectExecutionJob', 'watchExecutionJob'],
+      invalidCode: 'EXECUTION_RUNTIME_JOB_ID_INVALID',
+    });
+  } finally {
+    fs.rmSync(scratch, { recursive: true, force: true });
+  }
+});
+
 test('single Jigwright tarball installs the complete CLI and public surfaces', () => {
   const workspaceManifest = JSON.parse(
     fs.readFileSync(path.resolve('package.json'), 'utf8'),
   ) as { scripts: Record<string, string> };
+  const engineManifest = JSON.parse(
+    fs.readFileSync(
+      path.resolve('packages/workflow-engine/package.json'),
+      'utf8',
+    ),
+  ) as { exports: Record<string, string> };
   assert.equal(
     workspaceManifest.scripts['jigwright:pack-local'],
     'node --experimental-strip-types scripts/build-single-jigwright-package.ts --output dist/local-release',
   );
+  assert.deepEqual(engineManifest.exports, {
+    './central-grant': './src/composition-root/public/central-grant.ts',
+    './execution-job': './src/composition-root/public/execution-job.ts',
+    './manifest-v3': './src/composition-root/public/manifest-v3.ts',
+    './plan-review': './src/composition-root/public/plan-review.ts',
+  });
   const scratch = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-single-package-'),
   );
@@ -149,6 +256,10 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       './central-grant': {
         types: './runtime/composition-root/public/central-grant.ts',
         import: './dist/runtime/composition-root/public/central-grant.js',
+      },
+      './execution-job': {
+        types: './runtime/composition-root/public/execution-job.ts',
+        import: './dist/runtime/composition-root/public/execution-job.js',
       },
       './manifest-v3': {
         types: './runtime/composition-root/public/manifest-v3.ts',
@@ -265,14 +376,21 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
         "import { validateForAuthority, type InvestigationManifestV3 } from 'jigwright/manifest-v3';",
         "import { validatePlanReview, type ValidatePlanReviewInput } from 'jigwright/plan-review';",
         "import { loadGrantPolicyV2 } from 'jigwright/central-grant';",
+        "import { inspectExecutionJob, watchExecutionJob, type ExecutionJobInspection, type ExecutionJobWatchOptions } from 'jigwright/execution-job';",
         '',
         'export const publicValidators = [',
         '  validateForAuthority,',
         '  validatePlanReview,',
         '  loadGrantPolicyV2,',
+        '  inspectExecutionJob,',
+        '  watchExecutionJob,',
         '] as const;',
         'export type PublicManifest = InvestigationManifestV3;',
         'export type PublicPlanReviewInput = ValidatePlanReviewInput;',
+        'export type PublicExecutionJobInspection = ExecutionJobInspection;',
+        'export type PublicExecutionJobWatchOptions = ExecutionJobWatchOptions;',
+        '// @ts-expect-error test-only dependency injection is not public',
+        "export type HiddenWatchDependencies = import('jigwright/execution-job').ExecutionJobWatchDependencies;",
         '',
       ].join('\n'),
     );
@@ -374,10 +492,15 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
             "const manifest = await import('jigwright/manifest-v3');",
             "const review = await import('jigwright/plan-review');",
             "const grant = await import('jigwright/central-grant');",
+            "const executionJob = await import('jigwright/execution-job');",
+            'let executionJobInvalidCode = null;',
+            "try { executionJob.inspectExecutionJob(process.cwd(), '../job'); } catch (error) { executionJobInvalidCode = error?.code ?? null; }",
             'process.stdout.write(JSON.stringify({',
             "  manifest: typeof manifest.validateForAuthority === 'function',",
             "  review: typeof review.validatePlanReview === 'function',",
             "  grant: typeof grant.loadGrantPolicyV2 === 'function',",
+            '  executionJobExports: Object.keys(executionJob).sort(),',
+            '  executionJobInvalidCode,',
             '}));',
           ].join('\n'),
         ],
@@ -388,6 +511,8 @@ test('single Jigwright tarball installs the complete CLI and public surfaces', (
       manifest: true,
       review: true,
       grant: true,
+      executionJobExports: ['inspectExecutionJob', 'watchExecutionJob'],
+      executionJobInvalidCode: 'EXECUTION_RUNTIME_JOB_ID_INVALID',
     });
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });

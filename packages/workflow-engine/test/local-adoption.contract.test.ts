@@ -355,6 +355,8 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
       manifestV3: true,
       planReview: true,
       centralGrant: true,
+      executionJobStatus: true,
+      executionJobWatch: true,
     });
     assert.deepEqual(report.currentOnly, {
       historicalRuntimeState: 'unsupported',

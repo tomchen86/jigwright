@@ -237,6 +237,8 @@ export type CurrentJigwrightAdoptionReportV1 = Readonly<{
     manifestV3: true;
     planReview: true;
     centralGrant: true;
+    executionJobStatus: true;
+    executionJobWatch: true;
   }>;
   consumer: Readonly<{
     commit: string;
@@ -629,6 +631,8 @@ export function runCurrentJigwrightAdoption(
       manifestV3: true as const,
       planReview: true as const,
       centralGrant: true as const,
+      executionJobStatus: true as const,
+      executionJobWatch: true as const,
     }),
     consumer: Object.freeze({
       ...cutover,
@@ -1221,10 +1225,13 @@ function inspectInstalledPublicSurfaces(consumerRoot: string): JsonRecord {
           "const manifest = await import('jigwright/manifest-v3');",
           "const review = await import('jigwright/plan-review');",
           "const grant = await import('jigwright/central-grant');",
+          "const executionJob = await import('jigwright/execution-job');",
           'process.stdout.write(JSON.stringify({',
           "  manifestV3: typeof manifest.validateForAuthority === 'function',",
           "  planReview: typeof review.validatePlanReview === 'function',",
           "  centralGrant: typeof grant.loadGrantPolicyV2 === 'function',",
+          "  executionJobStatus: typeof executionJob.inspectExecutionJob === 'function',",
+          "  executionJobWatch: typeof executionJob.watchExecutionJob === 'function',",
           '}));',
         ].join('\n'),
       ],
@@ -1234,7 +1241,9 @@ function inspectInstalledPublicSurfaces(consumerRoot: string): JsonRecord {
   if (
     publicSurfaces.manifestV3 !== true ||
     publicSurfaces.planReview !== true ||
-    publicSurfaces.centralGrant !== true
+    publicSurfaces.centralGrant !== true ||
+    publicSurfaces.executionJobStatus !== true ||
+    publicSurfaces.executionJobWatch !== true
   ) {
     throw new Error(
       'Installed current Jigwright public surface is incomplete.',
@@ -2314,6 +2323,8 @@ export function verifyCurrentJigwrightAdoptionReportV1(
       manifestV3: true,
       planReview: true,
       centralGrant: true,
+      executionJobStatus: true,
+      executionJobWatch: true,
     }) ||
     !isCurrentConsumerEvidence(value.consumer) ||
     !sameJson(value.currentOnly, {
