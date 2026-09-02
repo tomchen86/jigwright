@@ -1423,7 +1423,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:a3d1535fd782e18c72a35890eb0193f2ccc60a9c6def8410fc1d943b46f89947"
+      "digest": "sha256:30bca9b9b8725ebed367bc918d09d65ce635c77b4dfd113bdbb5cc3dbd529d50"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",

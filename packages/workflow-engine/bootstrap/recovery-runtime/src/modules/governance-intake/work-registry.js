@@ -692,9 +692,12 @@ function linkSourceToChangeUnlocked(repositoryRoot, requestedSourceId, requested
     return { origin, originPath, created: true };
 }
 export function listWorkItems(repositoryRoot) {
-    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => listWorkItemPaths(repositoryRoot)
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => listWorkItemsUnlocked(repositoryRoot));
+}
+function listWorkItemsUnlocked(repositoryRoot) {
+    return listWorkItemPathsUnlocked(repositoryRoot)
         .map((itemPath) => readWorkItem(itemPath))
-        .sort((left, right) => left.id.localeCompare(right.id)));
+        .sort((left, right) => left.id.localeCompare(right.id));
 }
 /**
  * Explain one transparent priority suggestion per Work Item. The recommendation
@@ -751,11 +754,11 @@ export function recommendWorkItemPriorities(repositoryRoot) {
     });
 }
 export function inspectWorkRegistry(repositoryRoot) {
-    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => inspectWorkRegistryUnlocked(repositoryRoot));
+    return withWorkRegistryPromotionReadLockWhenAvailable(repositoryRoot, () => inspectWorkRegistryUnlocked(repositoryRoot));
 }
 function inspectWorkRegistryUnlocked(repositoryRoot) {
-    const validated = validateWorkRegistry(repositoryRoot);
-    const items = listWorkItems(repositoryRoot);
+    const validated = validateWorkRegistryUnlocked(repositoryRoot, {});
+    const items = listWorkItemsUnlocked(repositoryRoot);
     const byId = new Map(items.map((item) => [item.id, item]));
     const stages = {
         inbox: 0,
@@ -1033,7 +1036,7 @@ function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
         }
     }
     const itemIds = new Set();
-    const items = listWorkItems(repositoryRoot);
+    const items = listWorkItemsUnlocked(repositoryRoot);
     for (const item of items) {
         if (itemIds.has(item.id)) {
             throw registryInvalid('Work Item identity is duplicated.');
@@ -1763,6 +1766,24 @@ function withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, operation) {
     }
     return withWorkRegistryPromotionLock(repositoryRoot, (runtime) => {
         recoverWorkItemPromotionTransactionsUnlocked(runtime);
+        return operation();
+    });
+}
+function withWorkRegistryPromotionReadLockWhenAvailable(repositoryRoot, operation) {
+    const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
+    if (runtime === null)
+        return operation();
+    if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
+        return operation();
+    }
+    if (fs.lstatSync(runtime.root, { throwIfNoEntry: false }) === undefined) {
+        const result = operation();
+        if (fs.lstatSync(runtime.root, { throwIfNoEntry: false }) === undefined) {
+            return result;
+        }
+    }
+    return withWorkRegistryPromotionLock(repositoryRoot, (lockedRuntime) => {
+        recoverWorkItemPromotionTransactionsUnlocked(lockedRuntime);
         return operation();
     });
 }
