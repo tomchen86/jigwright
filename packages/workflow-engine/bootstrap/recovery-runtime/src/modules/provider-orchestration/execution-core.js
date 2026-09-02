@@ -1002,26 +1002,8 @@ export function projectProviderInvocationRecord(input) {
         attempt: assertAttemptRecord(attempt),
     });
 }
-export function canonicalWorkflowRecord(record) {
-    return `${canonicalJson(assertWorkflowRecord(record))}\n`;
-}
-export function canonicalJobRecord(record) {
-    return `${canonicalJson(assertJobRecord(record))}\n`;
-}
-export function canonicalAttemptRecord(record) {
-    return `${canonicalJson(assertAttemptRecord(record))}\n`;
-}
 export function canonicalAttemptResult(result) {
     return `${canonicalJson(assertAttemptResult(result))}\n`;
-}
-export function parseWorkflowRecord(raw) {
-    return parseCanonicalRecord(raw, assertWorkflowRecord);
-}
-export function parseJobRecord(raw) {
-    return parseCanonicalRecord(raw, assertJobRecord);
-}
-export function parseAttemptRecord(raw) {
-    return parseCanonicalRecord(raw, assertAttemptRecord);
 }
 export function parseAttemptResult(raw) {
     return parseCanonicalRecord(raw, assertAttemptResult);
