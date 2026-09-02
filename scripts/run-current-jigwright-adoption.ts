@@ -1508,6 +1508,7 @@ const state = {
     explicitSymbols: [],
     explicitConfigKeys: [],
     renamePairs: [],
+    sourceRefs: [],
   },
   authoring: {
     sessionRevision: 1,
