@@ -79,8 +79,8 @@ export type ValidatePlanReviewInput = {
   requiredIndependence: IndependenceDimension;
   independenceAuthorization: PlanReviewAdmittedRoleAuthorization;
   repositoryEvidence: PlanReviewRepositoryEvidence;
-  planningTarget?: PlanReviewTargetSnapshot;
-  planningEvidence?: PlanReviewPlanningEvidence;
+  planningTarget: PlanReviewTargetSnapshot;
+  planningEvidence: PlanReviewPlanningEvidence;
 };
 
 /**
@@ -137,12 +137,8 @@ export function validatePlanReview(
       'requiredIndependence',
       'independenceAuthorization',
       'repositoryEvidence',
-      ...(Object.hasOwn(input, 'planningTarget')
-        ? ['planningTarget' as const]
-        : []),
-      ...(Object.hasOwn(input, 'planningEvidence')
-        ? ['planningEvidence' as const]
-        : []),
+      'planningTarget',
+      'planningEvidence',
     ]) ||
     !DIGEST_PATTERN.test(input.expectedReviewPolicyDigest)
   ) {
@@ -157,14 +153,8 @@ export function validatePlanReview(
     input.independenceAuthorization,
   );
   const repositoryEvidence = assertRepositoryEvidence(input.repositoryEvidence);
-  const planningTarget =
-    input.planningTarget === undefined
-      ? null
-      : assertPlanReviewTargetSnapshot(input.planningTarget);
-  const planningEvidence =
-    input.planningEvidence === undefined
-      ? null
-      : assertPlanningEvidence(input.planningEvidence);
+  const planningTarget = assertPlanReviewTargetSnapshot(input.planningTarget);
+  const planningEvidence = assertPlanningEvidence(input.planningEvidence);
 
   const staleReasons = new Set<string>();
   if (
@@ -190,10 +180,9 @@ export function validatePlanReview(
     staleReasons.add('PLANNING_GENERATION_MISMATCH');
   }
   if (
-    planningTarget !== null &&
-    (planningTarget.subjectDigest !== subject.subjectDigest ||
-      planningTarget.planningGenerationId !== generation.planningGenerationId ||
-      planningTarget.planTargetDigest !== target.targetDigest)
+    planningTarget.subjectDigest !== subject.subjectDigest ||
+    planningTarget.planningGenerationId !== generation.planningGenerationId ||
+    planningTarget.planTargetDigest !== target.targetDigest
   ) {
     staleReasons.add('PLAN_TARGET_MISMATCH');
   }
@@ -366,8 +355,8 @@ function reviewEvidenceIsBound(
   review: ReturnType<typeof readPlanReviewNode>,
   generation: PlanningGeneration,
   repositoryEvidence: PlanReviewRepositoryEvidence,
-  planningTarget: PlanReviewTargetSnapshot | null,
-  planningEvidence: PlanReviewPlanningEvidence | null,
+  planningTarget: PlanReviewTargetSnapshot,
+  planningEvidence: PlanReviewPlanningEvidence,
 ): boolean {
   const dependencies = new Set(
     generation.investigationDependencies.map(
@@ -405,10 +394,7 @@ function reviewEvidenceIsBound(
     repositoryEvidence.locations.map((location) => [location.path, location]),
   );
   const planningLocations = new Map(
-    (planningEvidence?.locations ?? []).map((location) => [
-      location.path,
-      location,
-    ]),
+    planningEvidence.locations.map((location) => [location.path, location]),
   );
   return citations.every((citation) => {
     if (citation.kind === 'repository-location') {
@@ -437,7 +423,7 @@ function reviewEvidenceIsBound(
 
 function repositoryLocationsExactlyCoverCitations(
   repositoryEvidence: PlanReviewRepositoryEvidence,
-  planningTarget: PlanReviewTargetSnapshot | null,
+  planningTarget: PlanReviewTargetSnapshot,
   citations: PlanReviewEvidence[],
 ): boolean {
   const citedPaths = new Set(
@@ -453,7 +439,7 @@ function repositoryLocationsExactlyCoverCitations(
       .map(({ path }) => path),
   );
   const planningPaths = new Set(
-    planningTarget?.artifacts.map(({ path }) => path) ?? [],
+    planningTarget.artifacts.map(({ path }) => path),
   );
   return (
     citedPaths.size === repositoryEvidence.locations.length &&
@@ -464,8 +450,8 @@ function repositoryLocationsExactlyCoverCitations(
 }
 
 function planningLocationsExactlyCoverCitations(
-  planningTarget: PlanReviewTargetSnapshot | null,
-  planningEvidence: PlanReviewPlanningEvidence | null,
+  planningTarget: PlanReviewTargetSnapshot,
+  planningEvidence: PlanReviewPlanningEvidence,
   citations: PlanReviewEvidence[],
 ): boolean {
   const citedPaths = new Set(
@@ -480,15 +466,12 @@ function planningLocationsExactlyCoverCitations(
       )
       .map(({ path }) => path),
   );
-  const locations = planningEvidence?.locations ?? [];
+  const locations = planningEvidence.locations;
   const artifacts = new Map(
-    planningTarget?.artifacts.map((artifact) => [artifact.path, artifact]) ??
-      [],
+    planningTarget.artifacts.map((artifact) => [artifact.path, artifact]),
   );
   return (
-    (planningEvidence === null ||
-      (planningTarget !== null &&
-        planningEvidence.snapshotDigest === planningTarget.snapshotDigest)) &&
+    planningEvidence.snapshotDigest === planningTarget.snapshotDigest &&
     citedPaths.size === locations.length &&
     locations.every((location) => {
       const artifact = artifacts.get(location.path);

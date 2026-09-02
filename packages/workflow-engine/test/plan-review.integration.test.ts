@@ -12,6 +12,7 @@ import {
   createPlanReviewSubject,
   PLAN_REVIEW_COVERAGE,
   readPlanReviewNode,
+  readPlanReviewTargetSnapshotNode,
 } from '../src/modules/assurance/plan-review.ts';
 import { validatePlanReview } from '../src/modules/assurance/plan-review-validation.ts';
 import {
@@ -131,6 +132,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
       ['proposal.md', Buffer.from('# Proposal\n\nPreserve the behavior.\n')],
     ]),
   });
+  const planningTarget = readPlanReviewTargetSnapshotNode(targetSnapshotNode);
   const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
     subject,
     assignment,
@@ -219,6 +221,11 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
         },
       ],
     },
+    planningTarget,
+    planningEvidence: {
+      snapshotDigest: planningTarget.snapshotDigest,
+      locations: [],
+    },
   });
 
   assert.equal(validation.current, true);
@@ -249,6 +256,11 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
             lineCount: 10,
           },
         ],
+      },
+      planningTarget,
+      planningEvidence: {
+        snapshotDigest: planningTarget.snapshotDigest,
+        locations: [],
       },
     },
     existingContributions: [

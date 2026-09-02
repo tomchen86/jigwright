@@ -84,6 +84,7 @@ const DIGESTS = {
 } as const;
 
 const providerResultsById = new Map<string, EvidenceNode>();
+const targetSnapshotsById = new Map<string, EvidenceNode>();
 
 test('PlanReview challenge authority uses the Jigwright product identity', () => {
   assert.equal(
@@ -250,6 +251,36 @@ test('plan review rejects retired caller-authored provider independence', () => 
       } as never),
     (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
   );
+});
+
+test('plan review validation requires the current immutable planning target and evidence pair', () => {
+  const context = reviewContext();
+  const reviewNode = createPlanReviewNode({
+    subject: context.subject,
+    assignment: context.assignment,
+    providerResultNode: context.providerResult,
+    submission: challengeSubmission(),
+  });
+  const planningTarget = readPlanReviewTargetSnapshotNode(
+    context.targetSnapshotNode,
+  );
+  const current = {
+    ...currentValidationInput(context, reviewNode),
+    planningTarget,
+    planningEvidence: {
+      snapshotDigest: planningTarget.snapshotDigest,
+      locations: [],
+    },
+  };
+
+  for (const missingKey of ['planningTarget', 'planningEvidence'] as const) {
+    const incomplete = structuredClone(current);
+    delete incomplete[missingKey];
+    assert.throws(
+      () => validatePlanReview(incomplete as never),
+      (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
+    );
+  }
 });
 
 test('plan target canonicalizes only enumerated component semantics', () => {
@@ -1623,6 +1654,7 @@ function reviewContext(): {
       result: providerEvidence.result,
       targetSnapshotNode,
     }),
+    targetSnapshotNode,
   );
   return {
     target,
@@ -1659,11 +1691,16 @@ function providerResultFor(
       result: providerEvidence.result,
       targetSnapshotNode: context.targetSnapshotNode,
     }),
+    context.targetSnapshotNode,
   );
 }
 
-function rememberProviderResult(node: EvidenceNode): EvidenceNode {
+function rememberProviderResult(
+  node: EvidenceNode,
+  targetSnapshotNode: EvidenceNode,
+): EvidenceNode {
   providerResultsById.set(node.nodeId, node);
+  targetSnapshotsById.set(targetSnapshotNode.nodeId, targetSnapshotNode);
   return node;
 }
 
@@ -2032,6 +2069,13 @@ function currentValidationInput(
   ) {
     throw new TypeError('Fixture PlanReview provider result is unavailable.');
   }
+  const targetSnapshotNode = targetSnapshotsById.get(
+    providerResultNode.provenanceParentNodeIds.targetSnapshot,
+  );
+  if (targetSnapshotNode === undefined) {
+    throw new TypeError('Fixture PlanReview target snapshot is unavailable.');
+  }
+  const planningTarget = readPlanReviewTargetSnapshotNode(targetSnapshotNode);
   const challengeIds = review.findings
     .filter(({ kind }) => kind === 'challenge')
     .map(({ findingId }) => findingId);
@@ -2062,6 +2106,11 @@ function currentValidationInput(
       reviewNode,
       context.subject.investigationBaseline.tree,
     ),
+    planningTarget,
+    planningEvidence: {
+      snapshotDigest: planningTarget.snapshotDigest,
+      locations: [],
+    },
   };
 }
 
