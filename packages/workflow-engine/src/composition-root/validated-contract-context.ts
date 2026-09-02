@@ -8,7 +8,7 @@ import {
   loadValidatedChangeContract,
   type ValidatedChangeContract,
 } from '../adapters/planning/openspec/documents/managed-change-contract.ts';
-import { createOpenSpecPlanningProviderPort } from '../adapters/planning/openspec/documents/openspec-planning-provider.ts';
+import { createOpenSpecPlanningProviderPort } from './openspec-planning-provider-production.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
 import { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
 import type { ConsumedPlanReviewReplayPort } from '../modules/assurance/planning-assurance-validator.ts';

@@ -6,19 +6,16 @@ import {
 import type {
   PlanningProviderExecutionContext,
   PlanningProviderPort,
-} from '../../../../modules/planning-provider/planning-provider-port.ts';
-import {
-  ExitCode,
-  workflowError,
-} from '../../../../foundation/errors/errors.ts';
+} from '../modules/planning-provider/planning-provider-port.ts';
+import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
   createOpenSpecAdapter,
   resolveOpenSpecInstallation,
-} from './openspec-adapter.ts';
+} from '../adapters/planning/openspec/documents/openspec-adapter.ts';
 import {
   OPENSPEC_PACKAGE_NAME,
   OPENSPEC_PACKAGE_VERSION,
-} from './openspec-provenance.ts';
+} from '../adapters/planning/openspec/documents/openspec-provenance.ts';
 import type { RepositoryPlanningConfigurationV1 } from '@jigwright/core/repository-consumer-port';
 
 /**

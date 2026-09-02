@@ -36,7 +36,7 @@ import {
 import { assertDisposableDatabaseForRepository } from '../src/adapters/consumer/repository/work-registry/database-policy.ts';
 import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
+import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type {

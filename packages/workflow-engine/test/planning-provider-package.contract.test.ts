@@ -104,6 +104,15 @@ test('workflow current facades preserve landed provider bytes and errors', () =>
 test('production facades consume public core and OpenSpec package subpaths', () => {
   const read = (relativePath: string) =>
     fs.readFileSync(path.join(repositoryRoot, relativePath), 'utf8');
+  assert.equal(
+    fs.existsSync(
+      path.join(
+        repositoryRoot,
+        'packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-provider.ts',
+      ),
+    ),
+    false,
+  );
   const corePortFacade = read(
     'packages/workflow-engine/src/modules/planning-provider/planning-provider-port.ts',
   );
@@ -111,7 +120,7 @@ test('production facades consume public core and OpenSpec package subpaths', () 
     'packages/workflow-engine/src/modules/planning-provider/planning-provider-binding.ts',
   );
   const openspecPortFacade = read(
-    'packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-provider.ts',
+    'packages/workflow-engine/src/composition-root/openspec-planning-provider-production.ts',
   );
   const openspecBindingFacade = read(
     'packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-provider-binding.ts',

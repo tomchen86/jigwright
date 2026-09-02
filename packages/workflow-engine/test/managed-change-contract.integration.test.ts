@@ -19,7 +19,7 @@ import {
   type PlanningProviderPort,
 } from '../src/modules/planning-provider/planning-provider-port.ts';
 import { loadValidatedChangeContract as loadValidatedChangeContractWithReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
-import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
+import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
 import { repositoryPlanningPolicy } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { resolveCurrentOpenSpecProviderBinding } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';

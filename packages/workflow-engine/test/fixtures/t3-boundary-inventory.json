@@ -338,6 +338,13 @@
           ]
         },
         {
+          "path": "packages/workflow-engine/src/composition-root/openspec-planning-provider-production.ts",
+          "contains": [
+            "from '@jigwright/openspec-adapter/planning-provider';",
+            "export function createOpenSpecPlanningProviderPort("
+          ]
+        },
+        {
           "path": "packages/core/src/planning-archive-projection-port.ts",
           "contains": [
             "export type PlanningArchiveProjectionContext = Readonly<{",
