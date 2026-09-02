@@ -663,6 +663,7 @@ function commitPlanningTransitionLocked(
         baselineCommit: initial.head,
         sourceCommit: initial.head,
         activeArtifactPaths: inspection.currentPaths,
+        planningProvider: inspection.planningProvider,
         source: 'worktree',
       });
     const archiveApplicability = testHooks.aroundArchiveApplicability

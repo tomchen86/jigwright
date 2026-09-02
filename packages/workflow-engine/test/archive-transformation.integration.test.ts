@@ -5,6 +5,7 @@ import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
 import { createArchiveTransformation } from '../src/application/archive/archive-transformation.ts';
+import { createOpenSpecPlanningArchiveProjectionPort } from '../src/composition-root/planning-archive-projection-production.ts';
 import {
   commitSession,
   finalizeTask,
@@ -21,6 +22,22 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+
+test('archive transformation reaches planning-provider archive projection only through its port', () => {
+  const source = fs.readFileSync(
+    new URL(
+      '../src/application/archive/archive-transformation.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(source, /openspec-adapter\/validation-payload/);
+  assert.doesNotMatch(source, /openspec-executor/);
+  assert.doesNotMatch(source, /\bcreateOpenSpecProcess\b/);
+  assert.doesNotMatch(source, /\bresolveOpenSpecInstallation\b/);
+  assert.doesNotMatch(source, /\bparseOpenSpecValidationPayloadV1\b/);
+});
 
 test('archive transformation returns an exact full-index patch without mutating the real worktree', () => {
   const repository = completedFixture();
@@ -62,6 +79,39 @@ test('archive transformation returns an exact full-index patch without mutating 
       'specs/demo/spec.md',
       'tasks.md',
     ]);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive transformation refuses a bound provider projection that rejects rebuilt specs', () => {
+  const repository = completedFixture();
+  try {
+    const before = realState(repository);
+    const productionPort = createOpenSpecPlanningArchiveProjectionPort();
+    assert.throws(
+      () =>
+        withArchiveEligibility(repository, 'demo-change', (eligible) =>
+          createArchiveTransformation(eligible, {
+            archiveProjectionPort: {
+              ...productionPort,
+              validateProjectedSpecs: (context) => ({
+                ...productionPort.validateProjectedSpecs(context),
+                valid: false,
+                diagnostics: [
+                  {
+                    level: 'ERROR',
+                    path: 'openspec/specs/demo/spec.md',
+                    message: 'The bound provider rejected rebuilt specs.',
+                  },
+                ],
+              }),
+            },
+          }),
+        ),
+      (error) => isWorkflowError(error, 'ARCHIVE_REBUILT_SPECS_INVALID'),
+    );
+    assert.deepEqual(realState(repository), before);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
@@ -118,7 +168,7 @@ for (const fault of [
             withArchiveEligibility(repository, 'demo-change', (eligible) =>
               createArchiveTransformation(eligible, {
                 testHooks: {
-                  aroundOpenSpecArchive: (invoke) =>
+                  aroundArchivePreparation: (invoke) =>
                     withArchiveFaultEnabled(repository, fault[0], invoke),
                 },
               }),
@@ -198,10 +248,7 @@ function withArchiveFaultEnabled<T>(
     'node_modules/@fission-ai/openspec/bin/openspec.js',
   );
   const disabled = fs.readFileSync(binaryPath, 'utf8');
-  const enabled = disabled.replace(
-    `'DISABLED_${marker}'`,
-    `'${marker}'`,
-  );
+  const enabled = disabled.replace(`'DISABLED_${marker}'`, `'${marker}'`);
   assert.notEqual(enabled, disabled);
   fs.writeFileSync(binaryPath, enabled);
   try {

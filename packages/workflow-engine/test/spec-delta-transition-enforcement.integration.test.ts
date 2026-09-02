@@ -102,7 +102,7 @@ test('archive returns every rejected rebuilt-spec issue without mutating the rea
     assert.throws(
       () =>
         commitArchiveTransition(repository, 'demo-change', process.env, {
-          aroundOpenSpecValidation: (invoke) =>
+          aroundProjectedSpecValidation: (invoke) =>
             withRejectedSpecValidation(repository, invoke),
         }),
       (error: unknown) =>
@@ -201,10 +201,7 @@ function writeDroppingDelta(repository: string): void {
   );
 }
 
-function withRejectedSpecValidation<T>(
-  repository: string,
-  action: () => T,
-): T {
+function withRejectedSpecValidation<T>(repository: string, action: () => T): T {
   const executablePath = path.join(
     repository,
     'node_modules/@fission-ai/openspec/bin/openspec.js',

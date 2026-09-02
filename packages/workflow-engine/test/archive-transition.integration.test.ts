@@ -349,7 +349,7 @@ test('archive transition rejects silently ignored delta outcomes', () => {
       () =>
         withPlanningIgnoredDeltaDisabled(repository, delta, () =>
           commitArchiveTransition(repository, 'demo-change', process.env, {
-            aroundOpenSpecArchive: (invoke) =>
+            aroundArchivePreparation: (invoke) =>
               withPlanningIgnoredDeltaEnabled(repository, invoke),
           }),
         ),

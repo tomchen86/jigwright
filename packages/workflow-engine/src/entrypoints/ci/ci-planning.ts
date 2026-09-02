@@ -60,6 +60,7 @@ import {
   planningProviderBindingPath,
   requiredPlanningArtifactPaths,
 } from '../../modules/source/planning-paths.ts';
+import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
 import type { PlanningTaskState } from '../../runtime/storage-journal/planning-report.ts';
 import { normalizeChangedPath } from '../../runtime/session-workspace/paths.ts';
 
@@ -516,8 +517,9 @@ export function validateCiPlanningCommit(
   );
 
   let beforeTasks: ParsedTask[] | undefined;
+  let planningProvider: ResolvedPlanningProviderBinding;
   if (beforeEntries.length === 0) {
-    const planningProvider = resolveHistoricalOpenSpecPlanningTransitionBinding(
+    planningProvider = resolveHistoricalOpenSpecPlanningTransitionBinding(
       repositoryRoot,
       facts.parents[0],
       facts.hash,
@@ -553,7 +555,7 @@ export function validateCiPlanningCommit(
       parentSchema.schemaName,
       parentSchema.currentSchemaName,
     );
-    resolveHistoricalOpenSpecPlanningTransitionBinding(
+    planningProvider = resolveHistoricalOpenSpecPlanningTransitionBinding(
       repositoryRoot,
       facts.parents[0],
       facts.hash,
@@ -593,6 +595,7 @@ export function validateCiPlanningCommit(
     activeArtifactPaths: afterEntries.map(
       ({ path: artifactPath }) => artifactPath,
     ),
+    planningProvider,
     source: 'commit',
   });
   return {

@@ -30,6 +30,7 @@
     "./managed-transition-trailers": "./src/managed-transition-trailers.ts",
     "./markdown-sections": "./src/markdown-sections.ts",
     "./planning-provider-binding": "./src/planning-provider-binding.ts",
+    "./planning-archive-projection-port": "./src/planning-archive-projection-port.ts",
     "./planning-provider-port": "./src/planning-provider-port.ts",
     "./planning-task-history": "./src/planning-task-history.ts",
     "./repository-path": "./src/repository-path.ts",

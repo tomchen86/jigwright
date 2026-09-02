@@ -32,6 +32,7 @@ import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 import { loadStableValidatedChangeContract } from '../../composition-root/validated-contract-context.ts';
 import { completionDocumentPaths } from '../../runtime/managed-documents/validation/managed-documents.ts';
 import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
+import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
 
 export type ArchiveEligibility = {
   changeId: string;
@@ -49,6 +50,7 @@ export type ArchiveEligibility = {
   baseRef: string;
   base: string;
   contractDigest: string;
+  planningProvider: ResolvedPlanningProviderBinding;
   artifactDigests: Record<string, string>;
   artifactModes: Record<string, '100644' | '100755'>;
   taskCommits: Array<TaskCommit & { taskId: string }>;
@@ -155,6 +157,7 @@ function stableRefreshAuthority(eligibility: ArchiveEligibility) {
     baseRef: eligibility.baseRef,
     base: eligibility.base,
     contractDigest: eligibility.contractDigest,
+    planningProvider: eligibility.planningProvider,
     artifactDigests: eligibility.artifactDigests,
     artifactModes: eligibility.artifactModes,
     taskCommits: eligibility.taskCommits,
@@ -429,6 +432,7 @@ function inspectEligibility(
     baseRef,
     base,
     contractDigest: contract.contractDigest,
+    planningProvider: contract.planningProvider,
     artifactDigests: contract.artifactDigests,
     artifactModes: contract.artifactModes,
     taskCommits,

@@ -2,8 +2,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import { parseOpenSpecValidationPayloadV1 } from '@jigwright/openspec-adapter/validation-payload';
-
 import type { ArchiveEligibility } from './archive-eligibility.ts';
 import {
   assertSpecDeltaPreconditions,
@@ -23,6 +21,15 @@ import {
   WorkflowError,
   workflowError,
 } from '../../foundation/errors/errors.ts';
+import {
+  inspectPlanningArchiveReadiness,
+  preparePlanningArchiveProjection,
+  validatePlanningArchiveProjectedSpecs,
+  type PlanningArchiveProjection,
+  type PlanningArchiveProjectionContext,
+  type PlanningArchiveProjectionPort,
+} from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import { createOpenSpecPlanningArchiveProjectionPort } from '../../composition-root/planning-archive-projection-production.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
 import {
   discoverRepository,
@@ -31,10 +38,6 @@ import {
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import {
-  createOpenSpecProcess,
-  resolveOpenSpecInstallation,
-} from '../../adapters/planning/openspec/documents/openspec-executor.ts';
 import { renderHandoffFromTrackedFacts } from '../../adapters/consumer/repository/handoff/handoff.ts';
 import { repositoryHandoffRelativePath } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
@@ -47,6 +50,7 @@ import {
   assertChangeId,
   normalizeChangedPath,
 } from '../../runtime/session-workspace/paths.ts';
+import type { ResolvedPlanningProviderBinding } from '../../modules/planning-provider/planning-provider-binding.ts';
 
 export type ArchiveTransformation = {
   changeId: string;
@@ -58,7 +62,7 @@ export type ArchiveTransformation = {
   patchDigest: string;
   tree: string;
   archivedArtifactDigests: Record<string, string>;
-  openspecVersion: '1.6.0';
+  providerVersion: string;
   totals?: ArchiveTotals;
 };
 
@@ -69,13 +73,14 @@ export type ArchiveApplicabilityProjectionInput = {
   baselineCommit: string;
   sourceCommit: string;
   activeArtifactPaths: string[];
+  planningProvider: ResolvedPlanningProviderBinding;
   source: 'worktree' | 'commit';
   now?: Date;
 };
 
 export type ArchiveTransformationTestHooks = {
-  aroundOpenSpecArchive?<T>(invoke: () => T): T;
-  aroundOpenSpecValidation?<T>(invoke: () => T): T;
+  aroundArchivePreparation?<T>(invoke: () => T): T;
+  aroundProjectedSpecValidation?<T>(invoke: () => T): T;
 };
 
 type ArchiveTotals = {
@@ -98,11 +103,14 @@ export function createArchiveTransformation(
   options: {
     now?: () => Date;
     testHooks?: ArchiveTransformationTestHooks;
+    archiveProjectionPort?: PlanningArchiveProjectionPort;
   } = {},
 ): ArchiveTransformation {
   assertEligibilityCurrent(eligibility);
   assertEligibilityArtifactManifest(eligibility);
-  const installation = resolveOpenSpecInstallation(eligibility.repositoryRoot);
+  const archiveProjectionPort =
+    options.archiveProjectionPort ??
+    createOpenSpecPlanningArchiveProjectionPort();
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;
   if (!temporaryBase) {
     throw archiveError(
@@ -125,21 +133,36 @@ export function createArchiveTransformation(
     ]);
     worktreeAdded = true;
     assertDetachedWorktree(worktree, eligibility);
-    const openspec = createOpenSpecProcess(installation, {
-      executionRoot: worktree,
-    });
-    let document: { value: unknown; status: number };
+    const context = archiveProjectionContext(eligibility, worktree);
+    let projection: PlanningArchiveProjection;
     try {
-      const invoke = () => openspec.archive(eligibility.changeId);
-      document = options.testHooks?.aroundOpenSpecArchive
-        ? options.testHooks.aroundOpenSpecArchive(invoke)
+      const readiness = inspectPlanningArchiveReadiness(
+        archiveProjectionPort,
+        context,
+      );
+      if (!readiness.ready) {
+        throw archiveError(
+          'ARCHIVE_PROVIDER_NOT_READY',
+          'The bound planning provider is not ready to prepare archive projection.',
+          { diagnostics: readiness.diagnostics },
+        );
+      }
+      const invoke = () =>
+        preparePlanningArchiveProjection(archiveProjectionPort, context);
+      projection = options.testHooks?.aroundArchivePreparation
+        ? options.testHooks.aroundArchivePreparation(invoke)
         : invoke();
     } catch (error) {
+      if (
+        error instanceof WorkflowError &&
+        error.code === 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'
+      ) {
+        throw error;
+      }
       throw archiveFailure(error);
     }
-    const payload = parseArchivePayload(
-      document.value,
-      worktree,
+    const payload = archivePayloadFromProjection(
+      projection,
       eligibility,
       options.now ?? (() => new Date()),
     );
@@ -157,14 +180,28 @@ export function createArchiveTransformation(
       worktree,
       eligibility,
       payload,
-      installation.version,
+      projection.providerVersion,
       [...registryProjection.outputPaths, ...handoffOutputPaths].sort(
         compareCanonicalStrings,
       ),
     );
-    const validate = () => validateRebuiltSpecs(openspec, worktree);
-    if (options.testHooks?.aroundOpenSpecValidation) {
-      options.testHooks.aroundOpenSpecValidation(validate);
+    const validate = () => {
+      const validation = validatePlanningArchiveProjectedSpecs(
+        archiveProjectionPort,
+        context,
+      );
+      if (!validation.valid) {
+        throw archiveError(
+          'ARCHIVE_REBUILT_SPECS_INVALID',
+          'Strict validation rejected rebuilt base specs.',
+          withinDiagnosticBudget({ rejectedSpecs: validation.diagnostics })
+            ? { rejectedSpecs: validation.diagnostics }
+            : {},
+        );
+      }
+    };
+    if (options.testHooks?.aroundProjectedSpecValidation) {
+      options.testHooks.aroundProjectedSpecValidation(validate);
     } else {
       validate();
     }
@@ -220,14 +257,14 @@ export function refreshArchiveManagedHandoff(
 }
 
 /**
- * Execute the same pinned public OpenSpec archive used by the real archive
- * transition, but only inside a disposable detached worktree. Planning uses a
- * byte-exact overlay of its reviewed worktree artifacts; CI uses only the
- * immutable planning commit. Neither path imports OpenSpec private modules or
- * mutates a repository ref.
+ * Execute a bound planning-provider archive projection only inside a
+ * disposable detached worktree. Planning uses a byte-exact overlay of its
+ * reviewed worktree artifacts; CI uses only the immutable planning commit.
+ * The application retains all Git, ref, and authority ownership.
  */
 export function createArchiveApplicabilityProjection(
   input: ArchiveApplicabilityProjectionInput,
+  options: { archiveProjectionPort?: PlanningArchiveProjectionPort } = {},
 ): SpecDeltaPreflightRecord {
   const repository = discoverRepository(input.repositoryRoot);
   const { baselineCommit, changeId, changeRoot, sourceCommit, validatedAt } =
@@ -237,7 +274,9 @@ export function createArchiveApplicabilityProjection(
     activeRoot,
     input.activeArtifactPaths,
   );
-  const installation = resolveOpenSpecInstallation(repository.repositoryRoot);
+  const archiveProjectionPort =
+    options.archiveProjectionPort ??
+    createOpenSpecPlanningArchiveProjectionPort();
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;
   if (!temporaryBase) {
     throw archiveError(
@@ -296,26 +335,44 @@ export function createArchiveApplicabilityProjection(
         specInput.delta,
       );
     }
-    const openspec = createOpenSpecProcess(installation, {
-      executionRoot: worktree,
-    });
-    let document: { value: unknown; status: number };
+    const context = archiveApplicabilityProjectionContext(
+      input,
+      repository.repositoryRoot,
+      worktree,
+      sourceCommit,
+    );
+    let projection: PlanningArchiveProjection;
     try {
-      document = openspec.archive(changeId);
+      const readiness = inspectPlanningArchiveReadiness(
+        archiveProjectionPort,
+        context,
+      );
+      if (!readiness.ready) {
+        throw archiveError(
+          'ARCHIVE_PROVIDER_NOT_READY',
+          'The bound planning provider is not ready to prepare archive projection.',
+          { diagnostics: readiness.diagnostics },
+        );
+      }
+      projection = preparePlanningArchiveProjection(
+        archiveProjectionPort,
+        context,
+      );
     } catch (error) {
+      if (
+        error instanceof WorkflowError &&
+        error.code === 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'
+      ) {
+        throw error;
+      }
       throw archiveFailure(error);
     }
-    const payload = parsePublicArchivePayload(
-      document.value,
-      worktree,
-      changeId,
-    );
+    const payload = publicArchivePayloadFromProjection(projection);
     if (!payload.specsUpdated || payload.totals === undefined) {
-      throw invalidPayload();
+      throw archiveProjectionInvalid();
     }
     const archivedRoot = `${changeRoot}/archive/${payload.archivedAs}`;
     assertPreflightArchiveDestination(
-      worktree,
       changeRoot,
       changeId,
       payload,
@@ -327,7 +384,19 @@ export function createArchiveApplicabilityProjection(
       archivedRoot,
       reviewedArtifacts,
     );
-    validateRebuiltSpecs(openspec, worktree);
+    const validation = validatePlanningArchiveProjectedSpecs(
+      archiveProjectionPort,
+      context,
+    );
+    if (!validation.valid) {
+      throw archiveError(
+        'ARCHIVE_REBUILT_SPECS_INVALID',
+        'Strict validation rejected rebuilt base specs.',
+        withinDiagnosticBudget({ rejectedSpecs: validation.diagnostics })
+          ? { rejectedSpecs: validation.diagnostics }
+          : {},
+      );
+    }
 
     assertProjectionChangedPaths(
       worktree,
@@ -711,7 +780,6 @@ function readProjectionSpecInputs(
 }
 
 function assertPreflightArchiveDestination(
-  worktree: string,
   changeRoot: string,
   changeId: string,
   payload: PublicArchivePayload,
@@ -727,9 +795,9 @@ function assertPreflightArchiveDestination(
     !Number.isFinite(parsed.getTime()) ||
     utcDate(parsed) !== date ||
     path.posix.dirname(archivedRoot) !== `${changeRoot}/archive` ||
-    payload.archivePath !== path.join(worktree, archivedRoot)
+    payload.archivePath !== archivedRoot
   ) {
-    throw invalidPayload();
+    throw archiveProjectionInvalid();
   }
 }
 
@@ -932,7 +1000,7 @@ function verifyTransformation(
   worktree: string,
   eligibility: ArchiveEligibility,
   payload: ArchivePayload,
-  openspecVersion: '1.6.0',
+  providerVersion: string,
   managedOutputPaths: readonly string[],
 ): ArchiveTransformation {
   const activeRoot = eligibility.activeRoot;
@@ -1048,7 +1116,7 @@ function verifyTransformation(
     patchDigest: crypto.createHash('sha256').update(patch).digest('hex'),
     tree,
     archivedArtifactDigests,
-    openspecVersion,
+    providerVersion,
     ...(payload.totals ? { totals: payload.totals } : {}),
   };
 }
@@ -1119,66 +1187,64 @@ function stageTemporaryProjection(
   }
 }
 
-function validateRebuiltSpecs(
-  openspec: ReturnType<typeof createOpenSpecProcess>,
-  worktree: string,
-): void {
-  const executed = openspec.validateAllSpecs();
-  const validation = parseOpenSpecValidationPayloadV1(
-    executed.value,
-    {
-      repositoryRoot: worktree,
-      expectedType: 'spec',
-    },
-    invalidOpenSpecPayload,
-  );
-  if (executed.status !== 0 || !validation.valid) {
-    // The rejected items name the requirement and scenario that failed. Losing
-    // them leaves a maintainer with a verdict and no repair instructions.
-    const rejected = validation.items
-      .filter(({ valid }) => !valid)
-      .map(({ id, issues }) => ({ spec: id, issues }));
+function archiveProjectionContext(
+  eligibility: ArchiveEligibility,
+  projectionRoot: string,
+): PlanningArchiveProjectionContext {
+  if (
+    eligibility.planningProvider.binding.planningRoot !== eligibility.activeRoot
+  ) {
     throw archiveError(
-      'ARCHIVE_REBUILT_SPECS_INVALID',
-      'Strict validation rejected rebuilt base specs.',
-      withinDiagnosticBudget(rejected) ? { rejectedSpecs: rejected } : {},
+      'ARCHIVE_TRANSFORMATION_TREE_INVALID',
+      'Archive planning-provider binding does not own the exact active change root.',
     );
   }
+  return {
+    repositoryRoot: eligibility.repositoryRealPath,
+    projectionRoot: fs.realpathSync(projectionRoot),
+    sourceRevision: eligibility.head,
+    changeId: eligibility.changeId,
+    planningProvider: eligibility.planningProvider,
+  };
 }
 
-function invalidOpenSpecPayload(): WorkflowError {
-  return workflowError(
-    'OPENSPEC_PAYLOAD_INVALID',
-    'OpenSpec returned a payload that does not match the pinned operation contract.',
-    ExitCode.unsafeEnvironment,
-  );
+function archiveApplicabilityProjectionContext(
+  input: ArchiveApplicabilityProjectionInput,
+  repositoryRoot: string,
+  projectionRoot: string,
+  sourceRevision: string,
+): PlanningArchiveProjectionContext {
+  if (
+    input.planningProvider.binding.planningRoot !==
+    `${input.changeRoot}/${input.changeId}`
+  ) {
+    throw archiveError(
+      'ARCHIVE_APPLICABILITY_INPUT_INVALID',
+      'Archive applicability requires one exact planning-provider binding root.',
+    );
+  }
+  return {
+    repositoryRoot: fs.realpathSync(repositoryRoot),
+    projectionRoot: fs.realpathSync(projectionRoot),
+    sourceRevision,
+    changeId: input.changeId,
+    planningProvider: input.planningProvider,
+  };
 }
 
-function parseArchivePayload(
-  value: unknown,
-  worktree: string,
+function archivePayloadFromProjection(
+  projection: PlanningArchiveProjection,
   eligibility: ArchiveEligibility,
   now: () => Date,
 ): ArchivePayload {
-  const parsed = parsePublicArchivePayload(
-    value,
-    worktree,
-    eligibility.changeId,
-  );
+  const parsed = publicArchivePayloadFromProjection(projection);
   const expectedName = path.basename(eligibility.archiveDestination);
-  const expectedPath = path.join(worktree, eligibility.archiveDestination);
   if (
+    !parsed.specsUpdated ||
     parsed.archivedAs !== expectedName ||
-    parsed.archivePath !== expectedPath
+    parsed.archivePath !== eligibility.archiveDestination
   ) {
-    const archive = (value as { archive: Record<string, unknown> }).archive;
-    assertAdjacentUtcRollover(
-      archive,
-      worktree,
-      eligibility,
-      expectedName,
-      now,
-    );
+    assertAdjacentUtcRollover(parsed, eligibility, expectedName, now);
   }
   return {
     archivedAs: parsed.archivedAs,
@@ -1187,48 +1253,19 @@ function parseArchivePayload(
   };
 }
 
-function parsePublicArchivePayload(
-  value: unknown,
-  worktree: string,
-  changeId: string,
+function publicArchivePayloadFromProjection(
+  projection: PlanningArchiveProjection,
 ): PublicArchivePayload {
-  if (!isRecord(value) || !hasExactKeys(value, ['archive', 'root'])) {
-    throw invalidPayload();
-  }
-  const root = value.root;
-  const archive = value.archive;
-  if (
-    !isRecord(root) ||
-    !hasExactKeys(root, ['path', 'source']) ||
-    root.path !== worktree ||
-    root.source !== 'nearest' ||
-    !isRecord(archive) ||
-    !hasArchiveKeys(archive) ||
-    archive.change !== changeId ||
-    archive.specsUpdated !== true ||
-    typeof archive.archivedAs !== 'string' ||
-    typeof archive.path !== 'string' ||
-    path.basename(archive.path) !== archive.archivedAs ||
-    path.normalize(archive.path) !== archive.path ||
-    !archive.path.startsWith(`${worktree}${path.sep}`)
-  ) {
-    throw invalidPayload();
-  }
-  const totals = archive.totals;
-  if (totals !== undefined && !isTotals(totals)) {
-    throw invalidPayload();
-  }
   return {
-    archivedAs: archive.archivedAs,
-    archivePath: archive.path,
-    specsUpdated: true,
-    ...(totals ? { totals } : {}),
+    archivedAs: projection.archiveName,
+    archivePath: projection.archivePath,
+    specsUpdated: projection.specsUpdated,
+    ...(projection.totals === undefined ? {} : { totals: projection.totals }),
   };
 }
 
 function assertAdjacentUtcRollover(
-  archive: Record<string, unknown>,
-  worktree: string,
+  payload: PublicArchivePayload,
   eligibility: ArchiveEligibility,
   expectedName: string,
   now: () => Date,
@@ -1240,13 +1277,13 @@ function assertAdjacentUtcRollover(
     : '';
   const rolloverDate = nextUtcDate(expectedDate);
   const rolloverName = `${rolloverDate}${suffix}`;
-  const rolloverPath = path.join(worktree, archiveParent, rolloverName);
+  const rolloverPath = `${archiveParent}/${rolloverName}`;
   if (
     path.posix.dirname(eligibility.archiveDestination) !== archiveParent ||
-    archive.archivedAs !== rolloverName ||
-    archive.path !== rolloverPath
+    payload.archivedAs !== rolloverName ||
+    payload.archivePath !== rolloverPath
   ) {
-    throw invalidPayload();
+    throw archiveProjectionInvalid();
   }
 
   const observedAt = now();
@@ -1255,7 +1292,7 @@ function assertAdjacentUtcRollover(
     !Number.isFinite(observedAt.getTime()) ||
     utcDate(observedAt) !== rolloverDate
   ) {
-    throw invalidPayload();
+    throw archiveProjectionInvalid();
   }
   throw archiveError(
     'ARCHIVE_UTC_DATE_ROLLOVER',
@@ -1265,10 +1302,10 @@ function assertAdjacentUtcRollover(
 }
 
 function nextUtcDate(value: string): string {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw invalidPayload();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) throw archiveProjectionInvalid();
   const date = new Date(`${value}T00:00:00.000Z`);
   if (!Number.isFinite(date.getTime()) || utcDate(date) !== value) {
-    throw invalidPayload();
+    throw archiveProjectionInvalid();
   }
   date.setUTCDate(date.getUTCDate() + 1);
   return utcDate(date);
@@ -1596,48 +1633,20 @@ function orderedRepairHintKeys(value: Record<string, unknown>): string[] {
 function archiveFailure(error: unknown) {
   return workflowError(
     'OPENSPEC_ARCHIVE_FAILED',
-    'Pinned OpenSpec archive execution failed inside the temporary worktree.',
+    'Bound planning-provider archive projection failed inside the temporary worktree.',
     error instanceof WorkflowError ? error.exitCode : ExitCode.verification,
     { details: boundedArchiveCauseDiagnostic(error) },
   );
-}
-
-function isTotals(value: unknown): value is ArchiveTotals {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, ['added', 'modified', 'removed', 'renamed']) &&
-    ['added', 'modified', 'removed', 'renamed'].every(
-      (key) => Number.isSafeInteger(value[key]) && Number(value[key]) >= 0,
-    )
-  );
-}
-
-function hasArchiveKeys(value: Record<string, unknown>): boolean {
-  const keys = Object.keys(value).sort();
-  return (
-    JSON.stringify(keys) ===
-      JSON.stringify(['archivedAs', 'change', 'path', 'specsUpdated']) ||
-    JSON.stringify(keys) ===
-      JSON.stringify(['archivedAs', 'change', 'path', 'specsUpdated', 'totals'])
-  );
-}
-
-function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  return hasKeys(value, keys) && Object.keys(value).length === keys.length;
-}
-
-function hasKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  return keys.every((key) => Object.hasOwn(value, key));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function invalidPayload() {
+function archiveProjectionInvalid(): WorkflowError {
   return archiveError(
     'OPENSPEC_ARCHIVE_PAYLOAD_INVALID',
-    'OpenSpec archive returned an invalid root, identity, or destination.',
+    'Planning-provider archive projection returned an invalid identity or destination.',
   );
 }
 

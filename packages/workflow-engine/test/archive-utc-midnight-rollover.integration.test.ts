@@ -173,7 +173,7 @@ test('archive does not reinterpret an escaped payload as a UTC rollover', () => 
       () =>
         commitArchiveTransition(repository, 'demo-change', process.env, {
           now: clock.now,
-          aroundOpenSpecArchive: (invoke) =>
+          aroundArchivePreparation: (invoke) =>
             withPlanningFaultEnabled(repository, 'ARCHIVE_ESCAPE', invoke),
         }),
       (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
@@ -212,7 +212,7 @@ test('archive requires exact payload identity and shape before recognizing a UTC
         () =>
           commitArchiveTransition(repository, 'demo-change', process.env, {
             now: clock.now,
-            aroundOpenSpecArchive: (invoke) =>
+            aroundArchivePreparation: (invoke) =>
               withFixtureOpenSpecSource(repository, malformedSource, invoke),
           }),
         (error) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID'),
@@ -237,9 +237,8 @@ test('archive bounds a second adjacent UTC rollover without a third attempt', ()
       () =>
         commitArchiveTransition(repository, 'demo-change', process.env, {
           now: clock.now,
-          aroundOpenSpecArchive: (invoke) => {
-            const date =
-              archiveCalls++ === 0 ? ARCHIVE_DATE : '2026-08-11';
+          aroundArchivePreparation: (invoke) => {
+            const date = archiveCalls++ === 0 ? ARCHIVE_DATE : '2026-08-11';
             return withArchiveOutputDate(invoke, date);
           },
         }),
