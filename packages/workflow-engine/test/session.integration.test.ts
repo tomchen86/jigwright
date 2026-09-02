@@ -2548,6 +2548,87 @@ test('update-base replays a finished non-final task branch and recomputes local 
   }
 });
 
+test('update-base rolls back when the selected local ref changes before receipt publication', () => {
+  const repository = createFixtureRepository();
+  let fixture: { parent: string; worktree: string } | undefined;
+  try {
+    const prepared = prepareFinishedNonFinalTaskForBaseUpdate(repository);
+    fixture = prepared.fixture;
+    fs.writeFileSync(
+      path.join(repository, 'src/base-update.ts'),
+      'export const baseUpdate = true;\n',
+    );
+    git(repository, ['add', 'src/base-update.ts']);
+    git(repository, ['commit', '-m', 'Advance fixture base']);
+    const ontoCommit = git(repository, ['rev-parse', 'main']).trim();
+    const before = snapshotTaskPreflightState(fixture.worktree);
+    let movedOntoCommit: string | undefined;
+
+    assert.throws(
+      () =>
+        updateTaskSessionBase(
+          fixture!.worktree,
+          'demo-change',
+          'main',
+          process.env,
+          {
+            beforeReceiptPublication(context) {
+              assert.deepEqual(context, { ontoRef: 'main', ontoCommit });
+              fs.writeFileSync(
+                path.join(repository, 'src/base-drift.ts'),
+                'export const baseDrift = true;\n',
+              );
+              git(repository, ['add', 'src/base-drift.ts']);
+              git(repository, [
+                'commit',
+                '-m',
+                'Advance selected base during update',
+              ]);
+              movedOntoCommit = git(repository, ['rev-parse', 'main']).trim();
+            },
+          },
+        ),
+      (error) => {
+        assert.equal(
+          isWorkflowError(error, 'UPDATE_BASE_TARGET_CHANGED'),
+          true,
+        );
+        assert.deepEqual((error as WorkflowError).details, {
+          ontoRef: 'main',
+          expectedOntoCommit: ontoCommit,
+          observedOntoCommit: movedOntoCommit,
+        });
+        return true;
+      },
+    );
+    assert.notEqual(movedOntoCommit, undefined);
+    const after = snapshotTaskPreflightState(fixture.worktree);
+    assert.deepEqual(
+      {
+        head: after.head,
+        tree: after.tree,
+        status: after.status,
+        runtime: after.runtime,
+      },
+      {
+        head: before.head,
+        tree: before.tree,
+        status: before.status,
+        runtime: before.runtime,
+      },
+    );
+    assert.equal(
+      git(repository, ['rev-parse', 'main']).trim(),
+      movedOntoCommit,
+    );
+  } finally {
+    if (fixture !== undefined) {
+      removeConcurrentTaskWorktree(repository, fixture);
+    }
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('update-base revalidates active writers after acquiring the lifecycle lock', () => {
   const repository = createFixtureRepository();
   let fixture: { parent: string; worktree: string } | undefined;

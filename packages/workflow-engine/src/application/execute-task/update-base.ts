@@ -78,6 +78,11 @@ type GeneratedProjectionSnapshot = Readonly<{
 type TaskBaseUpdateTestHooks = Readonly<{
   /** Test-only interleaving cut after the advisory snapshot and before lock acquisition. */
   afterFinishedSessionPreflight?: () => void;
+  /** Test-only interleaving cut after reassessment and before receipt publication. */
+  beforeReceiptPublication?: (context: {
+    ontoRef: string;
+    ontoCommit: string;
+  }) => void;
 }>;
 
 /**
@@ -131,6 +136,7 @@ export function updateTaskSessionBase(
         ontoRef,
         environment,
         assertRepositoryLock,
+        testHooks,
       );
     });
   });
@@ -203,6 +209,7 @@ function updateFinishedTaskBaseLocked(
   ontoRef: string,
   environment: NodeJS.ProcessEnv,
   assertRepositoryLock: () => void,
+  testHooks: TaskBaseUpdateTestHooks,
 ): TaskBaseUpdateResult {
   const before = discoverRepository(cwd);
   assertRepositoryLock();
@@ -347,7 +354,23 @@ function updateFinishedTaskBaseLocked(
       afterReplay.head,
       environment,
     );
+    testHooks.beforeReceiptPublication?.({ ontoRef, ontoCommit });
     assertRepositoryLock();
+    const observedOntoCommit = resolveOntoCommit(cwd, ontoRef);
+    if (observedOntoCommit !== ontoCommit) {
+      throw workflowError(
+        'UPDATE_BASE_TARGET_CHANGED',
+        'The selected local base ref changed during update-base.',
+        ExitCode.staleState,
+        {
+          details: {
+            ontoRef,
+            expectedOntoCommit: ontoCommit,
+            observedOntoCommit,
+          },
+        },
+      );
+    }
     const checkIds = [
       ...new Set(assurance.checks.map(({ checkId }) => checkId)),
     ].sort();
