@@ -678,6 +678,23 @@ test('retired finalize-task cannot mutate while preferred finalize resumes one d
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(repository, 'demo-change', '1.1');
+    recordGovernanceFinding(
+      {
+        repositoryRoot: repository,
+        runtimeRoot: runtimeRoot(repository),
+        sessionId: session.sessionId,
+        changeId: session.changeId,
+        branch: git(repository, ['branch', '--show-current']).trim(),
+        head: git(repository, ['rev-parse', 'HEAD']).trim(),
+        tree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
+      },
+      {
+        schemaVersion: 1,
+        text: 'Triage this observation after finalization.',
+        sourceRefs: [],
+      },
+      () => '2026-09-02T03:00:00.000Z',
+    );
     fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
 
     const beforeRetiredCommand = snapshotRepositoryObservation(repository);
@@ -725,11 +742,28 @@ test('retired finalize-task cannot mutate while preferred finalize resumes one d
       '--json',
     ]);
     assert.equal(preferred.status, 0, preferred.stderr);
-    const preferredResult = JSON.parse(preferred.stdout).result as {
-      transactionId: string;
-      tree: string;
-      commitHash: string;
+    const preferredOutput = JSON.parse(preferred.stdout) as {
+      result: {
+        transactionId: string;
+        tree: string;
+        commitHash: string;
+      };
+      intakeCounts: unknown;
+      nextSteps: Array<{ command: string; why: string }>;
     };
+    const preferredResult = preferredOutput.result;
+    assert.deepEqual(preferredOutput.intakeCounts, {
+      schemaVersion: 1,
+      inbox: 0,
+      pendingFindings: 1,
+      backlog: 0,
+    });
+    assert.equal(
+      preferredOutput.nextSteps[0]?.command,
+      'pnpm workflow finding list --json',
+    );
+    assert.match(preferredOutput.nextSteps[0]?.why ?? '', /1 pending Finding/u);
+    assert.equal(preferredOutput.nextSteps.length <= 3, true);
     assert.equal(preferredResult.transactionId, transactionId);
     assert.equal(preferredResult.tree, candidateTree);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
