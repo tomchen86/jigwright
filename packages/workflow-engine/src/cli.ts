@@ -107,6 +107,8 @@ import {
   inspectExecutionJob,
   listExecutionJobs,
   prepareProviderReplacement,
+  watchExecutionJob,
+  type ExecutionJobInspection,
 } from './runtime/provider-execution/execution-runtime.ts';
 import { pruneProviderRuntime } from './runtime/provider-execution/provider-retention.ts';
 import {
@@ -322,6 +324,13 @@ import {
 } from './modules/guidance/next-steps/workflow-guidance.ts';
 
 type CommandResult = Record<string, unknown>;
+type RunCliAsyncDependencies = Readonly<{
+  watchJob?: (
+    cwd: string,
+    jobId: string,
+  ) => AsyncIterable<ExecutionJobInspection>;
+  writeStdout?: (chunk: string) => void;
+}>;
 const STANDALONE_COMMAND_FLAGS = new Set(['--resume']);
 const toolingRequire = createRequire(import.meta.url);
 const OPTION_SHAPED_TEXT_VALUE_OPTIONS = new Set([
@@ -368,11 +377,33 @@ export function runCli(argv: string[], cwd = process.cwd()): number {
 export async function runCliAsync(
   argv: string[],
   cwd = process.cwd(),
+  dependencies: RunCliAsyncDependencies = {},
 ): Promise<number> {
   const json = hasTerminalJsonOutputFlag(argv);
   const args = json ? argv.slice(0, -1) : [...argv];
 
   try {
+    if (args[0] === 'job' && args[1] === 'watch' && args.length === 3) {
+      const watchJob = dependencies.watchJob ?? watchExecutionJob;
+      const writeStdout =
+        dependencies.writeStdout ??
+        ((chunk: string) => {
+          process.stdout.write(chunk);
+        });
+      for await (const observation of watchJob(cwd, args[2]!)) {
+        printSuccess(
+          {
+            command: 'job',
+            action: 'watch',
+            ok: true,
+            result: observation,
+          },
+          json,
+          writeStdout,
+        );
+      }
+      return 0;
+    }
     const result = await dispatchAsync(args, cwd);
     printSuccess(
       json
@@ -4242,7 +4273,7 @@ function executionGrantUsage(): WorkflowError {
 
 function executionJobUsage(): WorkflowError {
   return usage(
-    'Usage: pnpm workflow job <list|status <job-id>|prune --limit <count>|retry-pump --limit <count>|retry-schedules|retry-receipts [schedule-id]|retry-request <job-id> --timeout <milliseconds>|retry <job-id> --grant <grant-id>|retry-preview <job-id> --timeout <milliseconds>> [--json]',
+    'Usage: pnpm workflow job <list|status <job-id>|watch <job-id>|prune --limit <count>|retry-pump --limit <count>|retry-schedules|retry-receipts [schedule-id]|retry-request <job-id> --timeout <milliseconds>|retry <job-id> --grant <grant-id>|retry-preview <job-id> --timeout <milliseconds>> [--json]',
   );
 }
 
@@ -4488,6 +4519,7 @@ function usageText(): string {
     '  pnpm workflow openspec-assets <generate|check|install-prompts --codex-home <path>> [--json]',
     '  pnpm workflow job list [--json]',
     '  pnpm workflow job status <job-id> [--json]',
+    '  pnpm workflow job watch <job-id> [--json]',
     '  pnpm workflow job prune --limit <count> [--json]',
     '  pnpm workflow job retry-pump --limit <count> [--json]',
     '  pnpm workflow job retry-schedules [--json]',
@@ -4561,17 +4593,23 @@ function usageText(): string {
   ].join('\n');
 }
 
-function printSuccess(result: CommandResult, json: boolean): void {
+function printSuccess(
+  result: CommandResult,
+  json: boolean,
+  write: (chunk: string) => void = (chunk) => {
+    process.stdout.write(chunk);
+  },
+): void {
   if (json) {
-    process.stdout.write(`${JSON.stringify(result)}\n`);
+    write(`${JSON.stringify(result)}\n`);
     return;
   }
 
   if (result.command === 'help' && typeof result.usage === 'string') {
-    process.stdout.write(`${result.usage}\n`);
+    write(`${result.usage}\n`);
     return;
   }
-  process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);
+  write(`${JSON.stringify(result, null, 2)}\n`);
 }
 
 function announceFinalizeCheckEscalation(

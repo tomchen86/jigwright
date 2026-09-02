@@ -9,6 +9,7 @@ import {
   inspectExecutionJob,
   listExecutionJobs,
   prepareProviderReplacement,
+  watchExecutionJob,
 } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { requestExecutionReplacement } from '../src/application/control-plane/execution-replacement.ts';
 import { canonicalExecutionBudgetGrantRequest } from '../src/modules/authority/execution-governance.ts';
@@ -234,6 +235,177 @@ test('runtime status exposes scheduled, running, and cancelled without raw proce
     assert.equal(cancelled?.runtimeStatus, 'cancelled');
     assert.equal(cancelled?.job.status, 'cancelled');
     assert.equal(cancelled?.attempts[0]?.status, 'cancelled');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('job watch emits only changed durable projections through terminal cancellation', async () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-runtime-watch-terminal',
+      300_000,
+      'investigation-runtime-watch-terminal',
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: 'investigation-runtime-watch-terminal',
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T09:30:00.000Z',
+    });
+    const [scheduled] = listExecutionJobs(repository);
+    assert.ok(scheduled);
+    const jobId = scheduled.job.jobId;
+    const invocationDirectories = fs.readdirSync(runtime.invocations);
+    let claim: ReturnType<typeof claimProviderInvocation> | null = null;
+    let polls = 0;
+    let inspections = 0;
+    const observations = [];
+
+    for await (const observation of watchExecutionJob(
+      repository,
+      jobId,
+      { pollIntervalMs: 5 },
+      {
+        inspectJob(cwd, requestedJobId) {
+          inspections += 1;
+          return inspectExecutionJob(cwd, requestedJobId);
+        },
+        async waitForPoll(intervalMs) {
+          assert.equal(intervalMs, 5);
+          polls += 1;
+          if (polls === 1) {
+            claim = claimProviderInvocation(runtime, request.invocationId, {
+              workerId: 'worker-runtime-watch-terminal',
+              leaseDurationMs: request.limits.timeoutMs,
+              now: '2026-08-03T09:31:00.000Z',
+            });
+          } else if (polls === 3) {
+            assert.ok(claim);
+            failProviderInvocation(runtime, request.invocationId, {
+              expectedRevision: claim.record.revision,
+              leaseGeneration: claim.record.leaseGeneration,
+              leaseToken: claim.leaseToken,
+              failure: {
+                kind: 'retryable',
+                code: 'PROVIDER_PROCESS_CANCELLED',
+                message: 'The caller cancelled this provider turn.',
+              },
+              now: '2026-08-03T09:32:00.000Z',
+            });
+          }
+        },
+      },
+    )) {
+      observations.push(observation);
+    }
+
+    assert.deepEqual(
+      observations.map(({ runtimeStatus }) => runtimeStatus),
+      ['scheduled', 'running', 'cancelled'],
+    );
+    assert.equal(polls, 3);
+    assert.equal(inspections, 4);
+    assert.equal(observations.at(-1)?.job.attemptCount, 1);
+    assert.deepEqual(
+      fs.readdirSync(runtime.invocations),
+      invocationDirectories,
+    );
+    const cliWatch = runWorkflowCli(repository, [
+      'job',
+      'watch',
+      jobId,
+      '--json',
+    ]);
+    assert.equal(cliWatch.status, 0, cliWatch.stderr);
+    const cliObservations = cliWatch.stdout.trim().split('\n');
+    assert.equal(cliObservations.length, 1);
+    const cliEnvelope = JSON.parse(cliObservations[0]!) as {
+      action: string;
+      result: ExecutionJobResult;
+    };
+    assert.equal(cliEnvelope.action, 'watch');
+    assert.equal(cliEnvelope.result.runtimeStatus, 'cancelled');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('aborting job watch stops observation without changing durable execution state', async () => {
+  const repository = createFixtureRepository();
+  try {
+    const runtime = loadInvestigationRuntimeContext(repository).runtime;
+    const manifest = createManifest(repository);
+    const request = createRequest(
+      repository,
+      manifest,
+      'invocation-runtime-watch-abort',
+      300_000,
+      'investigation-runtime-watch-abort',
+    );
+    createDirectProviderInvocation(repository, runtime, {
+      investigationId: 'investigation-runtime-watch-abort',
+      changeId: CHANGE_ID,
+      attempt: 1,
+      manifest,
+      request,
+      createdAt: '2026-08-03T09:40:00.000Z',
+    });
+    const [scheduled] = listExecutionJobs(repository);
+    assert.ok(scheduled);
+    const jobPath = executionJobStatePath(runtime, scheduled.job.jobId);
+    const invocationPath = path.join(
+      runtime.invocations,
+      request.invocationId,
+      'state.json',
+    );
+    const jobBytes = fs.readFileSync(jobPath);
+    const invocationBytes = fs.readFileSync(invocationPath);
+    const controller = new AbortController();
+    let polls = 0;
+    const observations = [];
+
+    for await (const observation of watchExecutionJob(
+      repository,
+      scheduled.job.jobId,
+      { signal: controller.signal, pollIntervalMs: 5 },
+      {
+        async waitForPoll() {
+          polls += 1;
+          controller.abort();
+        },
+      },
+    )) {
+      observations.push(observation);
+    }
+
+    assert.deepEqual(
+      observations.map(({ runtimeStatus }) => runtimeStatus),
+      ['scheduled'],
+    );
+    assert.equal(polls, 1);
+    assert.deepEqual(fs.readFileSync(jobPath), jobBytes);
+    assert.deepEqual(fs.readFileSync(invocationPath), invocationBytes);
+    await assert.rejects(
+      async () => {
+        for await (const _observation of watchExecutionJob(
+          repository,
+          scheduled.job.jobId,
+          { pollIntervalMs: 0 },
+        )) {
+          // Invalid polling bounds fail before any observation.
+        }
+      },
+      (error) =>
+        isWorkflowError(error, 'EXECUTION_RUNTIME_WATCH_OPTIONS_INVALID'),
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -5,6 +5,9 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { ExitCode } from '../src/foundation/errors/errors.ts';
+import { runCli, runCliAsync } from '../src/cli.ts';
+import type { ExecutionJobInspection } from '../src/runtime/provider-execution/execution-runtime.ts';
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 test('package CLI dispatches against an explicit external repository root', () => {
@@ -294,6 +297,80 @@ test('main CLI exposes the bounded provider retry pump and durable schedule quer
         [],
       );
     }
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('job watch is async-only, streams one terminal envelope, and is advertised in help', async () => {
+  const repository = createFixtureRepository();
+  const jobId = 'job-watch-terminal-fixture';
+  const terminal = {
+    schemaVersion: 1,
+    runtimeStatus: 'completed',
+  } as ExecutionJobInspection;
+  const calls: Array<{ cwd: string; jobId: string }> = [];
+  let stdout = '';
+  const exitCode = await runCliAsync(
+    ['job', 'watch', jobId, '--json'],
+    repository,
+    {
+      watchJob: async function* (cwd, requestedJobId) {
+        calls.push({ cwd, jobId: requestedJobId });
+        yield terminal;
+      },
+      writeStdout(chunk) {
+        stdout += chunk;
+      },
+    },
+  );
+  try {
+    assert.equal(exitCode, 0);
+    assert.deepEqual(calls, [{ cwd: repository, jobId }]);
+    const lines = stdout.trim().split('\n');
+    assert.equal(lines.length, 1);
+    assert.deepEqual(JSON.parse(lines[0]!), {
+      command: 'job',
+      action: 'watch',
+      ok: true,
+      result: terminal,
+    });
+
+    const originalStderrWrite = process.stderr.write;
+    let stderr = '';
+    process.stderr.write = ((chunk: string | Uint8Array) => {
+      stderr += chunk.toString();
+      return true;
+    }) as typeof process.stderr.write;
+    try {
+      assert.equal(
+        runCli(['job', 'watch', jobId, '--json'], repository),
+        ExitCode.usage,
+      );
+    } finally {
+      process.stderr.write = originalStderrWrite;
+    }
+    const failure = JSON.parse(stderr) as {
+      error: { code: string; message: string };
+    };
+    assert.equal(failure.error.code, 'INVALID_USAGE');
+    assert.match(failure.error.message, /job <list\|status/u);
+
+    const help = spawnSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'help',
+        '--json',
+      ],
+      { cwd: repository, encoding: 'utf8' },
+    );
+    assert.equal(help.status, 0, help.stderr);
+    assert.match(
+      (JSON.parse(help.stdout) as { usage: string }).usage,
+      /pnpm workflow job watch <job-id> \[--json\]/u,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

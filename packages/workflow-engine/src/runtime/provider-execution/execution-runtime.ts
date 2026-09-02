@@ -34,6 +34,8 @@ import type { ProviderInvocationRequest } from '../../modules/provider-orchestra
 
 const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
 const MAX_PROVIDER_TIMEOUT_MS = 3_600_000;
+const DEFAULT_JOB_WATCH_POLL_INTERVAL_MS = 1_000;
+const MAX_JOB_WATCH_POLL_INTERVAL_MS = 60_000;
 
 export type ExecutionResultView = {
   attemptId: string;
@@ -62,6 +64,16 @@ export type ExecutionJobInspection = {
   results: ExecutionResultView[];
   latestFailure: ExecutionFailureView | null;
 };
+
+export type ExecutionJobWatchOptions = Readonly<{
+  signal?: AbortSignal;
+  pollIntervalMs?: number;
+}>;
+
+export type ExecutionJobWatchDependencies = Readonly<{
+  inspectJob?: typeof inspectExecutionJob;
+  waitForPoll?: (intervalMs: number, signal?: AbortSignal) => Promise<void>;
+}>;
 
 export type ProviderReplacementPreview = {
   schemaVersion: 1;
@@ -127,6 +139,40 @@ export function inspectExecutionJob(
     );
   }
   return inspection;
+}
+
+/**
+ * Observe one durable Job without acquiring authority over its lifecycle.
+ * Quiet polls emit nothing; only the Job writer can create Attempts or move
+ * the terminal state observed here.
+ */
+export async function* watchExecutionJob(
+  cwd: string,
+  requestedJobId: string,
+  options: ExecutionJobWatchOptions = {},
+  dependencies: ExecutionJobWatchDependencies = {},
+): AsyncGenerator<ExecutionJobInspection, void, void> {
+  const { signal, pollIntervalMs } = assertExecutionJobWatchOptions(options);
+  const { inspectJob, waitForPoll } =
+    assertExecutionJobWatchDependencies(dependencies);
+  if (executionJobWatchAborted(signal)) return;
+
+  let observation = inspectJob(cwd, requestedJobId);
+  let observationIdentity = canonicalJson(observation);
+  yield observation;
+  if (isExecutionRuntimeTerminal(observation.runtimeStatus)) return;
+
+  while (!executionJobWatchAborted(signal)) {
+    await waitForPoll(pollIntervalMs, signal);
+    if (executionJobWatchAborted(signal)) return;
+    const current = inspectJob(cwd, requestedJobId);
+    const currentIdentity = canonicalJson(current);
+    if (currentIdentity === observationIdentity) continue;
+    observation = current;
+    observationIdentity = currentIdentity;
+    yield observation;
+    if (isExecutionRuntimeTerminal(observation.runtimeStatus)) return;
+  }
 }
 
 export function prepareProviderReplacement(
@@ -444,6 +490,76 @@ function assertRuntimeJobId(value: string): string {
     );
   }
   return value;
+}
+
+function assertExecutionJobWatchOptions(
+  options: ExecutionJobWatchOptions,
+): Required<Pick<ExecutionJobWatchOptions, 'pollIntervalMs'>> &
+  Pick<ExecutionJobWatchOptions, 'signal'> {
+  const pollIntervalMs =
+    options.pollIntervalMs ?? DEFAULT_JOB_WATCH_POLL_INTERVAL_MS;
+  if (
+    !Number.isSafeInteger(pollIntervalMs) ||
+    pollIntervalMs < 1 ||
+    pollIntervalMs > MAX_JOB_WATCH_POLL_INTERVAL_MS ||
+    (options.signal !== undefined &&
+      (!(options.signal instanceof AbortSignal) ||
+        typeof options.signal.aborted !== 'boolean'))
+  ) {
+    throw executionJobWatchOptionsInvalid();
+  }
+  return {
+    pollIntervalMs,
+    ...(options.signal === undefined ? {} : { signal: options.signal }),
+  };
+}
+
+function assertExecutionJobWatchDependencies(
+  dependencies: ExecutionJobWatchDependencies,
+): Required<ExecutionJobWatchDependencies> {
+  const inspectJob = dependencies.inspectJob ?? inspectExecutionJob;
+  const waitForPoll = dependencies.waitForPoll ?? waitForExecutionJobPoll;
+  if (typeof inspectJob !== 'function' || typeof waitForPoll !== 'function') {
+    throw executionJobWatchOptionsInvalid();
+  }
+  return { inspectJob, waitForPoll };
+}
+
+function executionJobWatchOptionsInvalid() {
+  return workflowError(
+    'EXECUTION_RUNTIME_WATCH_OPTIONS_INVALID',
+    'Execution Job watch options are invalid.',
+    ExitCode.usage,
+  );
+}
+
+function isExecutionRuntimeTerminal(
+  status: ExecutionJobInspection['runtimeStatus'],
+): boolean {
+  return (
+    status === 'completed' || status === 'failed' || status === 'cancelled'
+  );
+}
+
+function executionJobWatchAborted(signal?: AbortSignal): boolean {
+  return signal?.aborted === true;
+}
+
+function waitForExecutionJobPoll(
+  intervalMs: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  if (signal?.aborted === true) return Promise.resolve();
+  return new Promise((resolve) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const finish = () => {
+      if (timer !== undefined) clearTimeout(timer);
+      signal?.removeEventListener('abort', finish);
+      resolve();
+    };
+    timer = setTimeout(finish, intervalMs);
+    signal?.addEventListener('abort', finish, { once: true });
+  });
 }
 
 function assertExactTimestamp(value: string): string {
