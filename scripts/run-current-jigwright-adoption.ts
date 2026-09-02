@@ -23,6 +23,9 @@ const CURRENT_HOOKS = Object.freeze([
   'pre-push',
   'post-merge',
 ] as const);
+const CURRENT_ADOPTION_IGNORED_OUTPUT_ROOTS = Object.freeze([
+  'node_modules',
+] as const);
 const CURRENT_OPENSPEC_INTEGRATION_ASSET_PATHS = Object.freeze([
   '.agents/skills/openspec-explore/SKILL.md',
   '.agents/skills/openspec-propose/SKILL.md',
@@ -61,6 +64,8 @@ export type CurrentJigwrightCommandObservationV1 = Readonly<{
 export type CurrentJigwrightRepositoryStateFingerprintV1 = Readonly<{
   refs: Sha256Digest;
   tracked: Sha256Digest;
+  localGitConfig: Sha256Digest;
+  ignoredWorkingState: Sha256Digest;
   privateRuntime: Sha256Digest;
 }>;
 
@@ -324,7 +329,14 @@ export function runCurrentJigwrightAdoption(
     private: true,
     type: 'module',
   });
-  writeText(path.join(consumerRoot, '.gitignore'), 'node_modules/\n');
+  writeText(
+    path.join(consumerRoot, '.gitignore'),
+    '.consumer-local/\nnode_modules/\n',
+  );
+  writeText(
+    path.join(consumerRoot, '.consumer-local', 'state.txt'),
+    'consumer-owned local state\n',
+  );
   writeJson(path.join(consumerRoot, 'workflow', 'config.json'), {
     schemaVersion: 1,
     repositoryName: 'jigwright-current-adoption-consumer',
@@ -898,7 +910,9 @@ function collectCurrentLocalCutoverEvidence(
     }),
   );
 
-  const before = repositoryStateFingerprint(input.consumerRoot);
+  const before = inspectCurrentJigwrightRepositoryStateFingerprintV1(
+    input.consumerRoot,
+  );
   const preCommit = observeHookProxy(input.consumerRoot, 'pre-commit', []);
   requireSuccessfulHook(preCommit, 'pre-commit');
   const malformedCommitMessage = observeMalformedCommitMessageHook(
@@ -921,7 +935,9 @@ function collectCurrentLocalCutoverEvidence(
   );
   const postMerge = observeHookProxy(input.consumerRoot, 'post-merge', ['0']);
   requireSuccessfulHook(postMerge, 'post-merge');
-  const after = repositoryStateFingerprint(input.consumerRoot);
+  const after = inspectCurrentJigwrightRepositoryStateFingerprintV1(
+    input.consumerRoot,
+  );
   if (!sameJson(before, after)) {
     throw new Error('Current hook probes changed repository state.');
   }
@@ -1267,7 +1283,7 @@ function normalizeJsonStrings(
   return value;
 }
 
-function repositoryStateFingerprint(
+export function inspectCurrentJigwrightRepositoryStateFingerprintV1(
   repositoryRoot: string,
 ): CurrentJigwrightRepositoryStateFingerprintV1 {
   const commonDirectory = path.resolve(
@@ -1277,10 +1293,53 @@ function repositoryStateFingerprint(
   return Object.freeze({
     refs: digestBytes(git(repositoryRoot, ['show-ref', '--head'])),
     tracked: digestBytes(git(repositoryRoot, ['ls-files', '-s', '-z'])),
+    localGitConfig: digestBytes(
+      gitRaw(repositoryRoot, [
+        'config',
+        '--local',
+        '--no-includes',
+        '--null',
+        '--list',
+      ]),
+    ),
+    ignoredWorkingState: fingerprintIgnoredWorkingState(repositoryRoot),
     privateRuntime: fingerprintFilesystemTree(
       path.join(commonDirectory, 'workflow-engine'),
     ),
   });
+}
+
+function fingerprintIgnoredWorkingState(repositoryRoot: string): Sha256Digest {
+  const ignoredPaths = gitRaw(repositoryRoot, [
+    'ls-files',
+    '--others',
+    '--ignored',
+    '--exclude-standard',
+    '--directory',
+    '--no-empty-directory',
+    '-z',
+  ])
+    .toString('utf8')
+    .split('\0')
+    .filter((relativePath) => relativePath.length > 0)
+    .filter((relativePath) => {
+      const normalized = relativePath.replace(/\/+$/u, '');
+      return !CURRENT_ADOPTION_IGNORED_OUTPUT_ROOTS.some(
+        (outputRoot) =>
+          normalized === outputRoot || normalized.startsWith(`${outputRoot}/`),
+      );
+    })
+    .sort();
+  return digestBytes(
+    ignoredPaths
+      .map(
+        (relativePath) =>
+          `${relativePath}\0${fingerprintFilesystemTree(
+            path.join(repositoryRoot, relativePath),
+          )}`,
+      )
+      .join('\n'),
+  );
 }
 
 function fingerprintFilesystemTree(root: string): Sha256Digest {
@@ -1332,7 +1391,9 @@ function collectCurrentV3ComparisonFacts(
     profileDigest: Sha256Digest;
   }>,
 ): CurrentJigwrightV3ComparisonFactsV1 {
-  const before = repositoryStateFingerprint(input.consumerRoot);
+  const before = inspectCurrentJigwrightRepositoryStateFingerprintV1(
+    input.consumerRoot,
+  );
   const guide = observeJigwrightCommand(input.executable, input.consumerRoot, [
     'guide',
   ]);
@@ -1372,7 +1433,9 @@ function collectCurrentV3ComparisonFacts(
     throw new Error('Current Central Grant comparison facts are invalid.');
   }
 
-  const after = repositoryStateFingerprint(input.consumerRoot);
+  const after = inspectCurrentJigwrightRepositoryStateFingerprintV1(
+    input.consumerRoot,
+  );
   if (!sameJson(before, after)) {
     throw new Error('Current-v3 read-only probes changed repository state.');
   }
@@ -2100,9 +2163,17 @@ function isStateFingerprint(
 ): value is CurrentJigwrightRepositoryStateFingerprintV1 {
   return (
     isRecord(value) &&
-    hasExactKeys(value, ['refs', 'tracked', 'privateRuntime']) &&
+    hasExactKeys(value, [
+      'refs',
+      'tracked',
+      'localGitConfig',
+      'ignoredWorkingState',
+      'privateRuntime',
+    ]) &&
     isSha256Digest(value.refs) &&
     isSha256Digest(value.tracked) &&
+    isSha256Digest(value.localGitConfig) &&
+    isSha256Digest(value.ignoredWorkingState) &&
     isSha256Digest(value.privateRuntime)
   );
 }
@@ -2574,7 +2645,8 @@ export function verifyCurrentJigwrightAdoptionArtifacts(
   ) {
     throw new Error('Current Jigwright vector evidence is invalid.');
   }
-  const currentState = repositoryStateFingerprint(consumerRoot);
+  const currentState =
+    inspectCurrentJigwrightRepositoryStateFingerprintV1(consumerRoot);
   if (
     !sameJson(currentState, report.comparison.source.state.after) ||
     !sameJson(currentState, report.comparison.installed.state.after) ||
@@ -2838,6 +2910,19 @@ function git(
   environment: NodeJS.ProcessEnv = {},
 ): string {
   return runRequired('git', args, repository, environment);
+}
+
+function gitRaw(repository: string, args: string[]): Buffer {
+  const result = spawnSync('git', args, {
+    cwd: repository,
+    encoding: 'buffer',
+    env: process.env,
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed.`);
+  }
+  return Buffer.from(result.stdout);
 }
 
 function isRecord(value: unknown): value is JsonRecord {

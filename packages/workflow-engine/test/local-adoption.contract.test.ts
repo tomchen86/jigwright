@@ -8,6 +8,7 @@ import test from 'node:test';
 
 import {
   assessCurrentJigwrightAdoptionFreshness,
+  inspectCurrentJigwrightRepositoryStateFingerprintV1,
   inspectCurrentJigwrightAdoptionFreshness,
   runCurrentJigwrightAdoption,
   verifyCurrentJigwrightAdoptionComparisonV1,
@@ -74,6 +75,32 @@ test('current-v3 source and installed facts have a recomputable tamper verifier'
         value.source.state.after.refs = sha256('tampered-refs');
       },
     },
+    {
+      name: 'local Git config fingerprint drift',
+      mutate(value) {
+        value.source.state.after.localGitConfig = sha256('tampered-config');
+      },
+    },
+    {
+      name: 'local Git config fingerprint omission',
+      mutate(value) {
+        delete value.source.state.after.localGitConfig;
+      },
+    },
+    {
+      name: 'ignored working-state fingerprint drift',
+      mutate(value) {
+        value.source.state.after.ignoredWorkingState = sha256(
+          'tampered-ignored-state',
+        );
+      },
+    },
+    {
+      name: 'ignored working-state fingerprint omission',
+      mutate(value) {
+        delete value.source.state.after.ignoredWorkingState;
+      },
+    },
   ];
   for (const { name, mutate } of tamperCases) {
     const tampered = structuredClone(comparison);
@@ -137,7 +164,81 @@ test('standalone adoption freshness reports only the exact current clean source'
   );
 });
 
-test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover with a read-only status', () => {
+test('repository state fingerprint binds local Git config and ignored non-runtime consumer state without leaking values', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-adoption-fingerprint-'),
+  );
+  try {
+    const runGit = (args: string[]) => {
+      const result = spawnSync('git', args, {
+        cwd: repositoryRoot,
+        encoding: 'utf8',
+      });
+      assert.equal(result.status, 0, result.stderr);
+    };
+    runGit(['init', '-b', 'main']);
+    runGit(['config', 'user.email', 'jigwright@example.test']);
+    runGit(['config', 'user.name', 'Jigwright Adoption']);
+    fs.writeFileSync(
+      path.join(repositoryRoot, '.gitignore'),
+      '.consumer-local/\nnode_modules/\n',
+    );
+    fs.writeFileSync(path.join(repositoryRoot, 'tracked.txt'), 'tracked\n');
+    fs.mkdirSync(path.join(repositoryRoot, '.consumer-local'));
+    fs.writeFileSync(
+      path.join(repositoryRoot, '.consumer-local', 'state.txt'),
+      'consumer-owned local state\n',
+    );
+    runGit(['add', '--', '.gitignore', 'tracked.txt']);
+    runGit(['commit', '-m', 'Create fingerprint fixture']);
+
+    const before =
+      inspectCurrentJigwrightRepositoryStateFingerprintV1(repositoryRoot);
+    const secretValue =
+      'https://fixture-user:fixture-value@example.test/private.git';
+    runGit(['config', '--local', 'adoption.test-url', secretValue]);
+    const configChanged =
+      inspectCurrentJigwrightRepositoryStateFingerprintV1(repositoryRoot);
+    assert.notEqual(configChanged.localGitConfig, before.localGitConfig);
+    assert.equal(configChanged.refs, before.refs);
+    assert.equal(configChanged.tracked, before.tracked);
+    assert.equal(configChanged.privateRuntime, before.privateRuntime);
+    assert.equal(configChanged.ignoredWorkingState, before.ignoredWorkingState);
+    assert.equal(JSON.stringify(configChanged).includes(secretValue), false);
+
+    runGit(['config', '--local', '--unset-all', 'adoption.test-url']);
+    fs.writeFileSync(
+      path.join(repositoryRoot, '.consumer-local', 'state.txt'),
+      'consumer-owned local state changed\n',
+    );
+    const ignoredChanged =
+      inspectCurrentJigwrightRepositoryStateFingerprintV1(repositoryRoot);
+    assert.equal(ignoredChanged.localGitConfig, before.localGitConfig);
+    assert.equal(ignoredChanged.refs, before.refs);
+    assert.equal(ignoredChanged.tracked, before.tracked);
+    assert.equal(ignoredChanged.privateRuntime, before.privateRuntime);
+    assert.notEqual(
+      ignoredChanged.ignoredWorkingState,
+      before.ignoredWorkingState,
+    );
+
+    fs.mkdirSync(path.join(repositoryRoot, 'node_modules'));
+    fs.writeFileSync(
+      path.join(repositoryRoot, 'node_modules', 'expected-install.txt'),
+      'expected installation output\n',
+    );
+    const installOutputChanged =
+      inspectCurrentJigwrightRepositoryStateFingerprintV1(repositoryRoot);
+    assert.equal(
+      installOutputChanged.ignoredWorkingState,
+      ignoredChanged.ignoredWorkingState,
+    );
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover with a read-only status', async (t) => {
   const adoptionRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-current-adoption-'),
   );
@@ -459,6 +560,63 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
       assert.notEqual(fs.statSync(proxyPath).mode & 0o111, 0);
     }
 
+    await t.test(
+      'persisted adoption rejects repository-local Git config drift without exposing config values',
+      () => {
+        const secretValue =
+          'https://fixture-user:fixture-value@example.test/private.git';
+        const reportBytes = fs.readFileSync(persistedReportPath);
+        try {
+          const configured = spawnSync(
+            'git',
+            ['config', '--local', 'adoption.test-url', secretValue],
+            { cwd: consumerRoot, encoding: 'utf8' },
+          );
+          assert.equal(configured.status, 0, configured.stderr);
+          assert.throws(
+            () =>
+              inspectCurrentJigwrightAdoptionFreshness(
+                process.cwd(),
+                adoptionRoot,
+              ),
+            /state fingerprint is invalid/u,
+          );
+          assert.deepEqual(fs.readFileSync(persistedReportPath), reportBytes);
+          assert.equal(reportBytes.includes(secretValue), false);
+        } finally {
+          spawnSync(
+            'git',
+            ['config', '--local', '--unset-all', 'adoption.test-url'],
+            { cwd: consumerRoot, encoding: 'utf8' },
+          );
+        }
+      },
+    );
+
+    await t.test(
+      'persisted adoption rejects ignored non-runtime consumer file content drift',
+      () => {
+        const ignoredRoot = path.join(consumerRoot, '.consumer-local');
+        const ignoredPath = path.join(ignoredRoot, 'state.txt');
+        const originalBytes = fs.readFileSync(ignoredPath);
+        const reportBytes = fs.readFileSync(persistedReportPath);
+        try {
+          fs.writeFileSync(ignoredPath, 'consumer-owned local state changed\n');
+          assert.throws(
+            () =>
+              inspectCurrentJigwrightAdoptionFreshness(
+                process.cwd(),
+                adoptionRoot,
+              ),
+            /state fingerprint is invalid/u,
+          );
+          assert.deepEqual(fs.readFileSync(persistedReportPath), reportBytes);
+        } finally {
+          fs.writeFileSync(ignoredPath, originalBytes);
+        }
+      },
+    );
+
     const falsePilot = structuredClone(report) as any;
     falsePilot.consumer.localCutover.realPilot = true;
     assert.throws(
@@ -486,6 +644,8 @@ function currentComparisonFixture(): CurrentJigwrightAdoptionComparisonV1 {
   const state = {
     refs: sha256('refs'),
     tracked: sha256('tracked'),
+    localGitConfig: sha256('local-git-config'),
+    ignoredWorkingState: sha256('ignored-working-state'),
     privateRuntime: sha256('private-runtime'),
   };
   const facts = {
