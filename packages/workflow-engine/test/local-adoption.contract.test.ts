@@ -617,6 +617,35 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
       },
     );
 
+    await t.test(
+      'persisted adoption rejects unstaged tracked byte drift without changing injected bytes or report',
+      () => {
+        const trackedPath = path.join(consumerRoot, 'docs', 'adoption.md');
+        const originalBytes = fs.readFileSync(trackedPath);
+        const injectedBytes = Buffer.from('# Injected tracked drift\n');
+        const reportBytes = fs.readFileSync(persistedReportPath);
+        try {
+          fs.writeFileSync(trackedPath, injectedBytes);
+          assert.throws(
+            () =>
+              inspectCurrentJigwrightAdoptionFreshness(
+                process.cwd(),
+                adoptionRoot,
+              ),
+            /Current Jigwright consumer history is invalid\./u,
+          );
+          assert.deepEqual(fs.readFileSync(trackedPath), injectedBytes);
+          assert.deepEqual(fs.readFileSync(persistedReportPath), reportBytes);
+        } finally {
+          fs.writeFileSync(trackedPath, originalBytes);
+        }
+        assert.deepEqual(
+          inspectCurrentJigwrightAdoptionFreshness(process.cwd(), adoptionRoot),
+          expectedFreshness,
+        );
+      },
+    );
+
     const falsePilot = structuredClone(report) as any;
     falsePilot.consumer.localCutover.realPilot = true;
     assert.throws(
