@@ -145,6 +145,7 @@ import {
   type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
 } from './modules/authority/protected-task-apply-descendant-settlement-grant.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
+import { inspectGovernanceIntakeCounts } from './modules/governance-intake/intake-summary.ts';
 import type {
   WorkItemReviewV1,
   WorkRegistryGrantRequiredDetailsV1,
@@ -1748,10 +1749,12 @@ function dispatch(args: string[], cwd: string): CommandResult {
       }
       const resolvedTaskId = resolveOpenTaskId(cwd, changeId, taskId);
       try {
+        const result = openTask(cwd, changeId, resolvedTaskId, mandateTaskId);
         return {
           command,
           ok: true,
-          result: openTask(cwd, changeId, resolvedTaskId, mandateTaskId),
+          result,
+          intakeCounts: currentGovernanceIntakeCounts(cwd),
         };
       } catch (error) {
         throw contextualizeOpenTaskError(cwd, changeId, resolvedTaskId, error);
@@ -2562,11 +2565,13 @@ function dispatch(args: string[], cwd: string): CommandResult {
     }
     case 'status': {
       requireArgumentCount(command, rest, 0, 1);
+      const intakeCounts = currentGovernanceIntakeCounts(cwd);
       if (rest[0]) {
         if (rest[0].startsWith('investigation-')) {
           return {
             command,
             ok: true,
+            intakeCounts,
             result: getProposeStatus(cwd, rest[0], {
               consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
               consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
@@ -2579,7 +2584,12 @@ function dispatch(args: string[], cwd: string): CommandResult {
             openTaskStatus.state === 'opening' ||
             openTaskStatus.state === 'recovery-required'
           ) {
-            return { command, ok: true, openTask: openTaskStatus };
+            return {
+              command,
+              ok: true,
+              intakeCounts,
+              openTask: openTaskStatus,
+            };
           }
           const session = getSession(cwd, openTaskStatus.sessionId);
           const statusRoot = sessionStatusRepositoryRoot(cwd, session);
@@ -2593,6 +2603,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
           return {
             command,
             ok: true,
+            intakeCounts,
             openTask: openTaskStatus,
             session,
             ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
@@ -2623,6 +2634,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
         return {
           command,
           ok: true,
+          intakeCounts,
           session,
           ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
           taskStrategy: inspectTaskStrategyLifecycle(
@@ -2644,6 +2656,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
       return {
         command,
         ok: true,
+        intakeCounts,
         sessions,
         taskStrategies: sessions.map((session) => {
           const statusRoot = sessionStatusRepositoryRoot(cwd, session);
@@ -3046,15 +3059,18 @@ function dispatch(args: string[], cwd: string): CommandResult {
         result: runRepositoryHook(cwd, hook ?? '', hookArgs),
       };
     }
-    case 'complete-task':
+    case 'complete-task': {
       requireArgumentCount(command, rest, 1, 1);
+      const result = completeTask(cwd, rest[0], process.env, {
+        consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+      });
       return {
         command,
         ok: true,
-        result: completeTask(cwd, rest[0], process.env, {
-          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-        }),
+        result,
+        intakeCounts: currentGovernanceIntakeCounts(cwd),
       };
+    }
     case 'finish':
       requireArgumentCount(command, rest, 1, 1);
       return {
@@ -3092,6 +3108,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
           consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
           onCheckEscalation: announceFinalizeCheckEscalation,
         }),
+        intakeCounts: currentGovernanceIntakeCounts(cwd),
       };
     }
     case 'finalize-recover': {
@@ -3585,6 +3602,15 @@ function sessionStatusRepositoryRoot(
   return session.state === 'active' || session.state === 'revising'
     ? session.repositoryRoot
     : callerRoot;
+}
+
+function currentGovernanceIntakeCounts(cwd: string) {
+  const repository = discoverRepository(cwd);
+  const config = loadWorkflowConfig(repository.repositoryRoot);
+  return inspectGovernanceIntakeCounts(
+    repository.repositoryRoot,
+    runtimePaths(repository.gitCommonDirectory, config.runtimeDirectory).root,
+  );
 }
 
 type TaskDiffReviewCliInput =

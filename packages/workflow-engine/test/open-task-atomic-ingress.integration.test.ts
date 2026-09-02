@@ -60,16 +60,36 @@ test('ordinary open-task crash recovery preserves explicit no-mandate authority'
     ]);
     assert.equal(status.status, 0, status.stderr);
     const statusPayload = JSON.parse(status.stdout) as {
+      intakeCounts: Record<string, unknown>;
       openTask: { recoveryCommand: string };
     };
+    assert.deepEqual(statusPayload.intakeCounts, {
+      schemaVersion: 1,
+      inbox: 0,
+      pendingFindings: 0,
+      backlog: 0,
+    });
     assert.doesNotMatch(statusPayload.openTask.recoveryCommand, /--mandate/u);
 
-    const result = openTask(
-      fixture.repository,
+    const opened = runWorkflowCli(fixture.repository, [
+      'open-task',
       fixture.changeId,
+      '--task',
       '1.1',
-      undefined,
-    );
+      '--json',
+    ]);
+    assert.equal(opened.status, 0, opened.stderr);
+    const openedPayload = JSON.parse(opened.stdout) as {
+      result: ReturnType<typeof openTask>;
+      intakeCounts: Record<string, unknown>;
+    };
+    assert.deepEqual(openedPayload.intakeCounts, {
+      schemaVersion: 1,
+      inbox: 0,
+      pendingFindings: 0,
+      backlog: 0,
+    });
+    const result = openedPayload.result;
     assert.equal(result.recovered, true);
     assert.equal(result.mandateTaskId, null);
     const session = readSessionFile(

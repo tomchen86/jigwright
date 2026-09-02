@@ -32,10 +32,12 @@ import {
   configureChecks,
   createFixtureRepository,
   git,
+  runtimeRoot,
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import { recordGovernanceFinding } from '../src/modules/governance-intake/governance-intake.ts';
 
 const cliPath = path.join(
   sourceRepositoryRoot,
@@ -256,20 +258,55 @@ test('JSON status stays read-only and same-digest resume emits at most three cat
     const statusBefore = snapshotRepositoryObservation(repository);
     const emptyStatus = runCli(repository, ['status', '--json']);
     assert.equal(emptyStatus.status, 0, emptyStatus.stderr);
-    assert.deepEqual(
-      (JSON.parse(emptyStatus.stdout) as { nextSteps: unknown }).nextSteps,
-      [
-        {
-          command: 'pnpm workflow guide --json',
-          why: workflowCommandGuidance('guide').purpose,
-        },
-      ],
-    );
+    const emptyStatusOutput = JSON.parse(emptyStatus.stdout) as {
+      intakeCounts: unknown;
+      nextSteps: unknown;
+    };
+    assert.deepEqual(emptyStatusOutput.intakeCounts, {
+      schemaVersion: 1,
+      inbox: 0,
+      pendingFindings: 0,
+      backlog: 0,
+    });
+    assert.deepEqual(emptyStatusOutput.nextSteps, [
+      {
+        command: 'pnpm workflow guide --json',
+        why: workflowCommandGuidance('guide').purpose,
+      },
+    ]);
     assert.deepEqual(snapshotRepositoryObservation(repository), statusBefore);
 
     git(repository, ['checkout', '-b', 'work/demo-change']);
     prepareCurrentV3Change(repository);
     const session = startSession(repository, 'demo-change', '1.1');
+    recordGovernanceFinding(
+      {
+        repositoryRoot: repository,
+        runtimeRoot: runtimeRoot(repository),
+        sessionId: session.sessionId,
+        changeId: session.changeId,
+        branch: git(repository, ['branch', '--show-current']).trim(),
+        head: git(repository, ['rev-parse', 'HEAD']).trim(),
+        tree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
+      },
+      {
+        schemaVersion: 1,
+        text: 'Triage this current task observation.',
+        sourceRefs: [],
+      },
+      () => '2026-09-02T02:00:00.000Z',
+    );
+    const countedStatus = runCli(repository, [
+      'status',
+      session.sessionId,
+      '--json',
+    ]);
+    assert.equal(countedStatus.status, 0, countedStatus.stderr);
+    assert.deepEqual(
+      (JSON.parse(countedStatus.stdout) as { intakeCounts: unknown })
+        .intakeCounts,
+      { schemaVersion: 1, inbox: 0, pendingFindings: 1, backlog: 0 },
+    );
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.writeFileSync(implementationPath, 'export const value = 1;\n');
     reviseTask(repository, session.sessionId, 'Keep the reviewed plan.');
