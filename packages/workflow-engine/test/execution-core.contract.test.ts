@@ -18,18 +18,12 @@ import {
   acceptAttemptResult,
   assertReadOnlyProbe,
   assertWorkflowRecord,
-  canonicalAttemptRecord,
-  canonicalJobRecord,
-  canonicalWorkflowRecord,
   classifyExecutionFailure,
   createExecutionJob,
   createFailureDescriptor,
   createReplacementAttempt,
   decideRetry,
   leaseAttempt,
-  parseAttemptRecord,
-  parseJobRecord,
-  parseWorkflowRecord,
   projectProviderInvocationRecord,
   type ExecutionPolicySnapshot,
   type JobRecord,
@@ -124,10 +118,6 @@ function createJob(
 test('execution Workflow records use the core V2 codec with exact engine error mapping', () => {
   const coreRecord = assertExecutionWorkflowRecordV2(WORKFLOW);
   assert.deepEqual(assertWorkflowRecord(coreRecord), coreRecord);
-  assert.deepEqual(
-    parseWorkflowRecord(canonicalWorkflowRecord(coreRecord)),
-    coreRecord,
-  );
 
   for (const [candidate, message] of [
     [{ ...WORKFLOW, status: 'paused' }, 'Workflow record is invalid.'],
@@ -162,10 +152,6 @@ test('execution Jobs use the core retry policy with exact engine error mapping',
   const corePolicy = assertExecutionRetryPolicyV1(RETRY_POLICY);
   const created = createJob(POLICY_300, SEMANTIC_SPEC, corePolicy);
   assert.deepEqual(created.job.retryPolicy, corePolicy);
-  assert.deepEqual(
-    parseJobRecord(canonicalJobRecord(created.job)).retryPolicy,
-    corePolicy,
-  );
 
   for (const [candidate, message] of [
     [
@@ -194,10 +180,6 @@ test('execution Jobs use the core SemanticJobSpec with exact engine error mappin
   const coreSpec = assertSemanticJobSpecV1(SEMANTIC_SPEC);
   const created = createJob(POLICY_300, coreSpec);
   assert.deepEqual(created.job.semanticSpec, coreSpec);
-  assert.deepEqual(
-    parseJobRecord(canonicalJobRecord(created.job)).semanticSpec,
-    coreSpec,
-  );
 
   assert.throws(
     () =>
@@ -832,33 +814,17 @@ test('execution core retains no unattached EnvironmentSnapshot API', () => {
   assert.equal('classifyEnvironmentDrift' in executionCore, false);
 });
 
-test('execution records round-trip only through strict canonical bytes', () => {
-  const initial = createJob();
-  const workflowBytes = canonicalWorkflowRecord(WORKFLOW);
-  const jobBytes = canonicalJobRecord(initial.job);
-  const attemptBytes = canonicalAttemptRecord(initial.attempt);
-
-  assert.deepEqual(parseWorkflowRecord(workflowBytes), WORKFLOW);
-  assert.deepEqual(parseJobRecord(jobBytes), initial.job);
-  assert.deepEqual(parseAttemptRecord(attemptBytes), initial.attempt);
-
-  for (const raw of [
-    workflowBytes.slice(0, -1),
-    workflowBytes.replace('{"blocker"', '{ "blocker"'),
-    `${workflowBytes}\n`,
+test('execution core exposes no legacy record canonicalization facades', () => {
+  for (const exportName of [
+    'canonicalWorkflowRecord',
+    'parseWorkflowRecord',
+    'canonicalJobRecord',
+    'parseJobRecord',
+    'canonicalAttemptRecord',
+    'parseAttemptRecord',
   ]) {
-    assert.throws(
-      () => parseWorkflowRecord(raw),
-      (error) => isWorkflowError(error, 'EXECUTION_RECORD_NONCANONICAL'),
-    );
+    assert.equal(exportName in executionCore, false, exportName);
   }
-
-  const overKeyed = JSON.parse(workflowBytes) as Record<string, unknown>;
-  overKeyed.untrusted = true;
-  assert.throws(
-    () => parseWorkflowRecord(`${JSON.stringify(overKeyed)}\n`),
-    (error) => isWorkflowError(error, 'EXECUTION_RECORD_INVALID'),
-  );
 });
 
 function isWorkflowError(error: unknown, code: string): boolean {
