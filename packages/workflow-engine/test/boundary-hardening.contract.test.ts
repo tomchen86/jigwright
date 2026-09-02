@@ -217,6 +217,10 @@ test('help omits retired Work Registry, Issue, and raw maintenance commands', ()
   }
   assert.doesNotMatch(output, /\bmigrate-issues\b/);
   assert.doesNotMatch(output, /pnpm workflow issue\b/);
+  assert.match(
+    output,
+    /pnpm workflow finding <[^\n]*link <finding-id> --change <change-id>/,
+  );
   assert.doesNotMatch(
     output,
     /pnpm workflow intervention (?:checkpoint|worktree|prepare-adoption|adopt)\b/,
