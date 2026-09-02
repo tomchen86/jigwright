@@ -1,8 +1,8 @@
 {
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
-  "frozenEdgeCount": 829,
-  "frozenIdentityDigest": "sha256:7c07700f881763bc7e892d5bc2e03235a87147619b5217d212f8266e85f25afc",
+  "frozenEdgeCount": 832,
+  "frozenIdentityDigest": "sha256:237ae527c8c4c0abeca75802b3292641c13ac2dd3d150ee319e4e58b8311288c",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -868,7 +868,7 @@
       "rule": "application-to-adapters",
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
@@ -877,6 +877,14 @@
       "reasonId": "legacy.application-to-adapters",
       "retirementPhase": "post-layout-application-port-inversion",
       "status": "retired"
+    },
+    {
+      "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
+      "to": "packages/workflow-engine/src/composition-root/planning-archive-projection-production.ts",
+      "rule": "application-to-composition-root",
+      "reasonId": "legacy.application-to-composition-root",
+      "retirementPhase": "post-layout-application-port-inversion",
+      "status": "active"
     },
     {
       "from": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
@@ -3700,7 +3708,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
@@ -3708,7 +3716,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
@@ -3716,7 +3724,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
@@ -3737,6 +3745,14 @@
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
       "to": "packages/workflow-engine/src/modules/governance-intake/work-registry.ts",
+      "rule": "entrypoint-bypass-composition-root",
+      "reasonId": "legacy.entrypoint-bypass-composition-root",
+      "retirementPhase": "post-layout-composition-root-extraction",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
+      "to": "packages/workflow-engine/src/modules/planning-provider/planning-archive-projection-port.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
@@ -4145,6 +4161,14 @@
     {
       "from": "packages/workflow-engine/src/entrypoints/ci/ci-planning.ts",
       "to": "packages/workflow-engine/src/modules/lifecycle/planning-amendment-decision.ts",
+      "rule": "entrypoint-bypass-composition-root",
+      "reasonId": "legacy.entrypoint-bypass-composition-root",
+      "retirementPhase": "post-layout-composition-root-extraction",
+      "status": "active"
+    },
+    {
+      "from": "packages/workflow-engine/src/entrypoints/ci/ci-planning.ts",
+      "to": "packages/workflow-engine/src/modules/planning-provider/planning-provider-binding.ts",
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",

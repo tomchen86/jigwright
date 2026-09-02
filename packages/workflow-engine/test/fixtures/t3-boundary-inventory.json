@@ -23,18 +23,18 @@
     "jsonSchemaIdIdentityDigest": "sha256:039d2e047631c04623b5c0e10a3ec896ea5995d2037c8e46322a5f24f727a025"
   },
   "workflowJsonReferenceBaseline": {
-    "sourceOccurrences": 190,
+    "sourceOccurrences": 191,
     "sourceFileCount": 63,
-    "sourceIdentityDigest": "sha256:2191fd1a35aefd45cedd16a2020801e10db50537fa66f16d658f3fb8f5075b66",
+    "sourceIdentityDigest": "sha256:988b6d7277623026021b57242c5c9da280da5f1cefbb3f6f23810efd66924f69",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
     "scriptsOccurrences": 6,
     "scriptsFileCount": 2,
     "scriptsIdentityDigest": "sha256:1f345ef74b41c3660a6c76727fec65f127a7890f0edc43456535b5bec528f9b2",
-    "recoveryOccurrences": 32,
+    "recoveryOccurrences": 33,
     "recoveryFileCount": 12,
-    "recoveryIdentityDigest": "sha256:d3c34fd2b53a44189b3afaf4ca03ea99061cecdf4c29c35da6c4629571c5c1ef",
+    "recoveryIdentityDigest": "sha256:bac6ecaedd59e9810b68f4011ed2821719933764f10498f1dff67b32b8667d2a",
     "recoverySplitPathJoinOccurrences": 2,
     "recoverySplitPathJoinFileCount": 2,
     "recoverySplitPathJoinIdentityDigest": "sha256:538aa23fac0f07a95f7c853e57185ef7561617caa3ce5a3032e6ea3969a7426d",
@@ -49,7 +49,8 @@
       "workflow/path-roles.json",
       "workflow/protected-capabilities.json",
       "workflow/repository-consumer.json",
-      "workflow/role-provider-default.json"
+      "workflow/role-provider-default.json",
+      "workflow/work-registry-policy.json"
     ],
     "splitPathJoinOccurrences": 3,
     "splitPathJoinFileCount": 3,
@@ -256,8 +257,8 @@
     {
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
-      "state": "coupled",
-      "t3Disposition": "Planning inspection, validation and propose authoring cross production planning composition roots; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. The propose application consumes a neutral read-only authoring port and reviewed-asset projection while OpenSpec construction stays in composition. Archive application/CI projection and remaining OpenSpec path assumptions stay coupled, so standalone adapter extraction is incomplete.",
+      "state": "partial",
+      "t3Disposition": "Planning inspection, validation and propose authoring cross production planning composition roots; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. The propose application consumes a neutral read-only authoring port and reviewed-asset projection while OpenSpec construction stays in composition. Archive application and immutable CI replay now consume the exact planning archive projection port, while OpenSpec execution/parsing remains in composition; standalone adapter extraction and root/path seams remain.",
       "evidence": [
         {
           "path": "packages/core/src/planning-task-history.ts",
@@ -323,10 +324,33 @@
           ]
         },
         {
+          "path": "packages/core/src/planning-archive-projection-port.ts",
+          "contains": [
+            "export type PlanningArchiveProjectionContext = Readonly<{",
+            "mode: 'projection' | 'replay';",
+            "export function preparePlanningArchiveProjection("
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/planning-archive-projection-production.ts",
+          "contains": [
+            "export function createOpenSpecPlanningArchiveProjectionPort()",
+            "function inspectArchiveReplayReadiness(",
+            "function openSpecArchiveProcess("
+          ]
+        },
+        {
           "path": "packages/workflow-engine/src/application/archive/archive-transformation.ts",
           "contains": [
-            "createOpenSpecProcess,",
-            "../../adapters/planning/openspec/documents/openspec-executor.ts"
+            "preparePlanningArchiveProjection,",
+            "type PlanningArchiveProjectionPort,"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/entrypoints/ci/ci-archive.ts",
+          "contains": [
+            "preparePlanningArchiveProjection,",
+            "createOpenSpecPlanningArchiveProjectionPort"
           ]
         },
         {

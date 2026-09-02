@@ -88,7 +88,7 @@
     {
       "path": "node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:69c8fac7f3d19cef9b4ad24408746a0386bb98508bc40a28fa6c5ba1a4b6825b"
+      "digest": "sha256:7073791bf36001d2785f119e5ea25a9a51192735cb924c46fbe5e14feb00b22a"
     },
     {
       "path": "node_modules/@jigwright/core/src/agent-runtime-port.ts",
@@ -176,6 +176,11 @@
       "digest": "sha256:3e5cf3a30ee484d5fdfa0c488b577218454d3ed25702054df3b3e94d972d76d2"
     },
     {
+      "path": "node_modules/@jigwright/core/src/planning-archive-projection-port.ts",
+      "mode": "100644",
+      "digest": "sha256:8dcce3b89b4c6f6b1cd9cbf2da2973ac99a130aef607427bec92634f7b720e09"
+    },
+    {
       "path": "node_modules/@jigwright/core/src/planning-provider-binding.ts",
       "mode": "100644",
       "digest": "sha256:541b3700a41972fbd19964a2cb06c9f0930a9c4c2eae99f249bb9e137751c420"
@@ -198,7 +203,7 @@
     {
       "path": "node_modules/@jigwright/core/src/repository-consumer-port.ts",
       "mode": "100644",
-      "digest": "sha256:6cd236045d57abe448b2df8347802fd06f2cd22a350c7c1d31b5130fa1d50fc7"
+      "digest": "sha256:0c6bb27d96f02aa5822ccca6bf7886a2f7a22adf5fa5d800c3bb2405de602f40"
     },
     {
       "path": "node_modules/@jigwright/core/src/repository-path.ts",
@@ -318,7 +323,7 @@
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
       "mode": "100644",
-      "digest": "sha256:37c1a213e8c15bb1cb715d79880aaa3702b6c058f241d104eff4f3fc7c711cc0"
+      "digest": "sha256:b41a098f4bd9c9f04644380c352e3d715988898def9f82dbb6abeb733d02a85e"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/check-registry-adapter.ts",
@@ -513,7 +518,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:f8f1c1d7d70720d030c00cea0e32fc1b9bcc0ea244ba617059f16de9cc7f36ed"
+      "digest": "sha256:ceefc8fa191ec4f1f47dc549c1971937ecbdefced7c4cc15d1ad9cf1974b4777"
     },
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
@@ -523,7 +528,7 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:268cf0edbb64ccc7ef26c7a273a78d3dccd33c329fbe9745f178b809cf7b8a6b"
+      "digest": "sha256:67e2fbdac43f7f58084d36eca58f1e80bd53e400b959653e5f0768f388c237ac"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
@@ -703,7 +708,7 @@
     {
       "path": "src/application/propose/planning-transition.ts",
       "mode": "100644",
-      "digest": "sha256:60b624d0edd2f85929c1bfaf4849b7d88649f336ad5892ceb30b7bfa185157ff"
+      "digest": "sha256:5f4b81ee79c3064696c726fe9e9a81cc2b67e90a5435d567f59a392e070c5824"
     },
     {
       "path": "src/application/propose/propose-orchestrator.ts",
@@ -723,7 +728,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:c5e4c1d96a807da4e362cf25e07bfe0a463f025df3fc400d7df031268874cdce"
+      "digest": "sha256:78fc349869b0a3ffb6d1cc6f52280bcbdcbe7bdcf38ba1df1328c58a11e0fa8d"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -851,6 +856,11 @@
       "digest": "sha256:faa9efb9298b28ef1b3b85b348a504d4bb6760ca1121bfa6d308bc5ecfd8a153"
     },
     {
+      "path": "src/composition-root/planning-archive-projection-production.ts",
+      "mode": "100644",
+      "digest": "sha256:e487bc0deda371d03d6f8b21518e800ec234f0aecb2fb3858e2708fcfdf4f761"
+    },
+    {
       "path": "src/composition-root/planning-provider-authoring-production.ts",
       "mode": "100644",
       "digest": "sha256:1eef7bb8041a5d29e138329262e20cc2cdd1a5b3060b347dee183f22b130a60a"
@@ -938,7 +948,7 @@
     {
       "path": "src/entrypoints/ci/ci-archive.ts",
       "mode": "100644",
-      "digest": "sha256:f45de1142371fe1664edc11c380255c227bb4d88a98f97284fc54b8a8874dc51"
+      "digest": "sha256:3474291c54f59618ad1563ccd6530f8e5cee8251fbd15ccf0fafbc173810c7db"
     },
     {
       "path": "src/entrypoints/ci/ci-attestation.ts",
@@ -968,7 +978,7 @@
     {
       "path": "src/entrypoints/ci/ci-planning.ts",
       "mode": "100644",
-      "digest": "sha256:b58062657d710d135c82caa9ac8b3bdd00062aa8ace9970806ff53b68b305575"
+      "digest": "sha256:b570a1c7828397ad7bd0c11f42c47d23e37692a579792cc711953b2cd1321d9d"
     },
     {
       "path": "src/entrypoints/ci/ci-routing.ts",
@@ -1128,7 +1138,7 @@
     {
       "path": "src/modules/assurance/plan-review-validation.ts",
       "mode": "100644",
-      "digest": "sha256:28d9b7147f652ad62b7099985a24d6ab36fda6256e058d4c8baab3d58f2275a5"
+      "digest": "sha256:fbb70dea6a7dffa3fba8b7c5eb83b5b8c8945620a3f4e599466c56b4e651425a"
     },
     {
       "path": "src/modules/assurance/plan-review.ts",
@@ -1398,7 +1408,7 @@
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
       "mode": "100644",
-      "digest": "sha256:d1232d529a0d63fd8d1af30209d35fe545d62a029b43201be3486dbdce8cb996"
+      "digest": "sha256:07f21dacb9e7a676397e266585d4c7e7d13bc6b6c0718b5dd8181ab9c1ea42f4"
     },
     {
       "path": "src/modules/governance-intake/work-registry-grant.ts",
@@ -1408,7 +1418,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:cf1172660ef1a10ca9bfcd43f6a804ad2da9532752208b17b65cdd622270ea0c"
+      "digest": "sha256:97d962eb261fa9fdf5b3b559be35e430d95af324c902c0d6c6a2beec228a22e8"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1576,6 +1586,11 @@
       "digest": "sha256:3b29b5ca0c592072dc097cd5198c37c33ab0b733c4ece4717fa4808737f7e185"
     },
     {
+      "path": "src/modules/planning-provider/planning-archive-projection-port.ts",
+      "mode": "100644",
+      "digest": "sha256:fd68fa43b8ff61fa4c11341b66fe45920bb1ae92a44ca5ce11f8cf08d564e241"
+    },
+    {
       "path": "src/modules/planning-provider/planning-provider-authoring-port.ts",
       "mode": "100644",
       "digest": "sha256:4febe929acbab233742220981e29233f6ad8ae89174efd2edf05d6ee5a2ece06"
@@ -1728,7 +1743,7 @@
     {
       "path": "src/modules/repository-consumer/repository-consumer-config.ts",
       "mode": "100644",
-      "digest": "sha256:555d20d577e654cc0dcf6f6e6e395af936c27ac46799b10a6215f74c6adeda32"
+      "digest": "sha256:db7119c8e66cf9801b77c29e257f51d4ba2092be6ef3a1ed47bbb9e55004bbb4"
     },
     {
       "path": "src/modules/source/check-command.ts",

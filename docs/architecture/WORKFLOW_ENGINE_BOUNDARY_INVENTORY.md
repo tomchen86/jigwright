@@ -116,7 +116,7 @@ lifecycle reducer was introduced.
 
 <!-- coupling:openspec-direct-dependency -->
 
-### OpenSpec direct dependency — coupled
+### OpenSpec direct dependency — partial
 
 Planning inspection, plan-commit validation and task-history policy, plus CI
 planning task replay now cross the production planning composition root. The
@@ -127,10 +127,11 @@ propose-orchestrator, open-task, finalize, and the archive verifier runtime no
 longer invert through the OpenSpec planning contract or CI entrypoint facade.
 Propose authoring now consumes a neutral read-only authoring port and reviewed
 asset projection; OpenSpec construction and provider-specific asset definitions
-stay in the production composition root. Archive application, CI archive, and
-remaining OpenSpec path assumptions still stay coupled. The remaining work is
-standalone adapter extraction and those archive/path seams, not absence of the
-planning ports.
+stay in the production composition root. Archive application and immutable CI
+replay now use the exact planning-archive projection port, while OpenSpec
+execution and payload parsing stay in composition. The remaining work is
+standalone adapter extraction and root/path seams, not direct archive execution
+outside the port.
 
 The planning seam retains all eight planning-provider responsibilities:
 provider provenance, artifact inventory, task/source anchors, readiness

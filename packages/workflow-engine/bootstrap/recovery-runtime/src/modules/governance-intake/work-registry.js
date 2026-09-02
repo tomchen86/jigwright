@@ -3,9 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 import { canonicalJson } from '@jigwright/core/canonical-json';
+import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, runGit, } from "../../runtime/repository-transaction/git.js";
-import { repositoryConsumerConfigurationExists, repositoryConsumerPath, repositoryWorkRegistryConfiguration, repositoryWorkRegistryConfigurationOrNull, } from "../repository-consumer/repository-consumer-config.js";
+import { repositoryConsumerConfigurationExists, repositoryConsumerPath, repositoryWorkRegistryConfiguration, } from "../repository-consumer/repository-consumer-config.js";
 import { listGovernanceSources, readGovernanceSource, } from "./governance-intake.js";
 const WORK_ITEM_FILE_MODE = 0o644;
 const WORK_REGISTRY_PRIVATE_FILE_MODE = 0o600;
@@ -459,8 +460,7 @@ function traceGovernanceSourceUnlocked(repositoryRoot, requestedSourceId) {
         workItems: [],
         origins: [],
     };
-    if (!repositoryConsumerConfigurationExists(repositoryRoot) ||
-        repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null) {
+    if (!repositoryConsumerConfigurationExists(repositoryRoot)) {
         return coreTrace;
     }
     return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => {
@@ -570,18 +570,12 @@ function validateWorkRegistryProjectionsUnlocked(repositoryRoot) {
  * archive parent so the projection can be replayed independently in CI.
  */
 export function reconcileArchivedWorkItems(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt) {
-    if (repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null) {
-        return { closedItemIds: [], outputPaths: [] };
-    }
     return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt));
 }
 function reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt) {
     const changeId = changeIdentity(requestedChangeId);
     const closedAt = canonicalTimestamp(requestedClosedAt);
-    const workRegistry = repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-    if (workRegistry === null) {
-        return { closedItemIds: [], outputPaths: [] };
-    }
+    const workRegistry = repositoryWorkRegistryConfiguration(repositoryRoot);
     const changeOriginRoot = workRegistry.changeOriginRoot;
     if (!new RegExp(`^${escapeRegExp(changeOriginRoot)}/archive/\\d{4}-\\d{2}-\\d{2}-${changeId}$`).test(archivedChangeRoot)) {
         throw registryInvalid('Archived change root is invalid.');
@@ -636,7 +630,7 @@ export function validateWorkRegistry(repositoryRoot, testHooks = {}) {
 }
 function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
     const sourceIds = new Set();
-    const sources = listGovernanceSources(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot);
+    const sources = listGovernanceSources(repositoryRoot);
     for (const source of sources) {
         if (sourceIds.has(source.id)) {
             throw registryInvalid('Governance Source identity is duplicated.');
@@ -706,15 +700,10 @@ function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
  * its immutable detached-worktree replay.
  */
 export function validateCurrentChangeOrigin(repositoryRoot, requestedChangeId) {
-    if (repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null) {
-        return;
-    }
     withOptionalWorkRegistryPromotionLock(repositoryRoot, () => validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId));
 }
 function validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId) {
-    const configuration = repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-    if (configuration === null)
-        return;
+    const configuration = repositoryWorkRegistryConfiguration(repositoryRoot);
     const changeId = changeIdentity(requestedChangeId);
     const originPath = path.join(repositoryConsumerPath(repositoryRoot, configuration.changeOriginRoot), changeId, 'origin.json');
     if (readOptionalPlainFile(originPath) === null)
@@ -2738,7 +2727,7 @@ function renderBacklogProjection(repositoryRoot, items) {
 function renderBacklogSourceLink(repositoryRoot, sourceRef) {
     const digest = sourceRef.slice('SRC-'.length);
     const registry = repositoryWorkRegistryConfiguration(repositoryRoot);
-    const target = path.posix.join(registry.sourceRoot, digest.slice(0, 2), `${digest}.json`);
+    const target = path.posix.join(GOVERNANCE_SOURCE_LEDGER_ROOT, digest.slice(0, 2), `${digest}.json`);
     const relative = path.posix.relative(path.posix.dirname(registry.backlogPath), target);
     return `[${sourceRef}](${relative})`;
 }
@@ -2866,7 +2855,7 @@ function findOriginForChange(repositoryRoot, changeId) {
     return matches[0];
 }
 function readSourceValue(repositoryRoot, sourceRef) {
-    return readGovernanceSource(repositoryRoot, sourceRef, repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot);
+    return readGovernanceSource(repositoryRoot, sourceRef);
 }
 function replaceTextFile(filePath, content) {
     fs.mkdirSync(path.dirname(filePath), { recursive: true });
