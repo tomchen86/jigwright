@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:af0e3ecab16166f2c077ce167db5546d461cc0e7054d988f48910ad15f885cc7"
+      "digest": "sha256:b94186e55e77cec281df7cb811e7fd0d76c469766cf7f685985166785aacd564"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -448,12 +448,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/governance-intake/governance-intake.js",
       "mode": "100644",
-      "digest": "sha256:c6546282c75c7ab07c19a60239f23067cdc3c5b504ddb70f2eac8ea5b76ac770"
+      "digest": "sha256:bf5081392461a07befc2b8a7d51402f5a193b554322fbd046953c42d5046e7f3"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry.js",
       "mode": "100644",
-      "digest": "sha256:68988186c6f5e8803926351527d240236d527a4354cc0a27e31ce24f754a8c0b"
+      "digest": "sha256:afd39a0e1cf07049489dba575d624986ad9ccd1056743e4288008c78925f4cea"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
@@ -513,7 +513,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-manifest.js",
       "mode": "100644",
-      "digest": "sha256:b852ff587ef33a6e985b9d02a54153ff4f98d0763398fb849d8852a164850983"
+      "digest": "sha256:22cfe47afa5195bbb4cf03cc6792798686ef1b8ba149850c70139c6983a93e09"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/manifest/investigation-materializer.js",
@@ -838,7 +838,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:b50523e9ba9f5182e5086d3b2af293c63e5143a69750bda538ec729f8fe49039"
+      "digest": "sha256:c7b85761648a6140d887591bb263fd862fbdbd54eb17765c3bf1aa1461879007"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-native-session-store.js",

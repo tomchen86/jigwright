@@ -52,8 +52,67 @@ export function createWorkItem(repositoryRoot, input, dependencies = {}) {
     createCanonicalFile(path.join(repositoryRoot, ...relativePath.split('/')), item);
     return { item, relativePath };
 }
+export function createWorkItemAfterExactSourceTextRecheck(repositoryRoot, exactText, input, dependencies = {}) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const inputSources = sourceReferences(input.sourceRefs).map((sourceRef) => readSourceValue(repositoryRoot, sourceRef));
+        if (!inputSources.some(({ text }) => text === exactText)) {
+            throw registryInvalid('Work Item exact-wording recheck requires its captured Source.');
+        }
+        const matches = findWorkItemsByExactSourceText(repositoryRoot, exactText).filter(({ closure, stage }) => closure === null && stage !== 'closed');
+        if (matches.length > 0)
+            return { created: false, matches };
+        return {
+            created: true,
+            ...createWorkItem(repositoryRoot, input, dependencies),
+        };
+    });
+}
+export function ensureFindingConversionWorkItem(repositoryRoot, requestedFindingId, input, createdAt) {
+    if (!/^FND-[0-9a-f]{64}$/.test(requestedFindingId)) {
+        throw registryInvalid('Governance Finding identity is invalid.');
+    }
+    const deterministicId = `WORK-${requestedFindingId
+        .slice('FND-'.length, 'FND-'.length + 26)
+        .toUpperCase()}`;
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const existing = listWorkItems(repositoryRoot).find(({ id }) => id === deterministicId);
+        const ensured = createWorkItem(repositoryRoot, input, {
+            now: () => createdAt,
+            createId: () => deterministicId,
+        });
+        return { ...ensured, created: existing === undefined };
+    });
+}
+export function attachSourceToWorkItem(repositoryRoot, requestedId, requestedSourceRef) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const id = workItemId(requestedId);
+        const itemPath = findWorkItemPath(repositoryRoot, id);
+        const item = readWorkItem(itemPath);
+        if (item.closure !== null || item.stage === 'closed') {
+            throw registryInvalid('A closed Work Item cannot receive a Source.');
+        }
+        const sourceRef = sourceReferences([requestedSourceRef])[0];
+        readSource(repositoryRoot, sourceRef);
+        const sourceRefs = sourceReferences([
+            ...new Set([...item.sourceRefs, sourceRef]),
+        ]);
+        const next = {
+            ...item,
+            sourceRefs,
+            interpretation: {
+                summary: linkedSourceInterpretationSummary(sourceRefs),
+                status: 'agent-derived',
+            },
+        };
+        if (canonicalJson(next) === canonicalJson(item)) {
+            return { item, updated: false };
+        }
+        replaceCanonicalFile(itemPath, next);
+        return { item: next, updated: true };
+    });
+}
 export function prepareWorkItemPromotionSurvey(repositoryRoot, requestedId, requestedChangeId, declaration) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, requestedId, requestedChangeId, declaration));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, requestedId, requestedChangeId, declaration));
 }
 function prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, requestedId, requestedChangeId, declaration) {
     const item = showWorkItem(repositoryRoot, requestedId);
@@ -109,7 +168,7 @@ export function assertOrdinaryWorkRegistryTransition(repositoryRoot, transition,
     throw workflowError('WORK_REGISTRY_GRANT_REQUIRED', `Repository policy requires Central Grant for the ${transition} transition.`, ExitCode.guard, { recovery, ...(details === undefined ? {} : { details }) });
 }
 export function showWorkItem(repositoryRoot, requestedId) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => showWorkItemUnlocked(repositoryRoot, requestedId));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => showWorkItemUnlocked(repositoryRoot, requestedId));
 }
 function showWorkItemUnlocked(repositoryRoot, requestedId) {
     if (!/^WORK-[0-9A-HJKMNP-TV-Z]{26}$/.test(requestedId) &&
@@ -125,7 +184,7 @@ function showWorkItemUnlocked(repositoryRoot, requestedId) {
     return matches[0];
 }
 export function applyWorkItemReview(repositoryRoot, requestedId, review, now = () => new Date().toISOString()) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => applyWorkItemReviewUnlocked(repositoryRoot, requestedId, review, now));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => applyWorkItemReviewUnlocked(repositoryRoot, requestedId, review, now));
 }
 function applyWorkItemReviewUnlocked(repositoryRoot, requestedId, review, now) {
     const id = workItemId(requestedId);
@@ -261,7 +320,7 @@ export function hasExactWorkItemPromotionReceipt(repositoryRoot, requestedId, re
     });
 }
 export function observeWorkItemPromotionSurveyDigest(repositoryRoot, requestedId, requestedChangeId) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
 }
 function observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId) {
     const item = showWorkItem(repositoryRoot, requestedId);
@@ -270,7 +329,7 @@ function observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedI
     return assertPromotionSurveyCurrent(repositoryRoot, assertChangeDirectory(repositoryRoot, changeId), item, changeId);
 }
 export function readWorkItemPromotionSurveyDigest(repositoryRoot, requestedId, requestedChangeId) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
 }
 function readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId) {
     const item = showWorkItem(repositoryRoot, requestedId);
@@ -283,7 +342,7 @@ function readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, 
  * creates no planning, lifecycle, priority, or transition authority.
  */
 export function linkSourceToChange(repositoryRoot, requestedSourceId, requestedChangeId) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => linkSourceToChangeUnlocked(repositoryRoot, requestedSourceId, requestedChangeId));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => linkSourceToChangeUnlocked(repositoryRoot, requestedSourceId, requestedChangeId));
 }
 function linkSourceToChangeUnlocked(repositoryRoot, requestedSourceId, requestedChangeId) {
     const [sourceRef] = sourceReferences([requestedSourceId]);
@@ -305,7 +364,7 @@ function linkSourceToChangeUnlocked(repositoryRoot, requestedSourceId, requested
     return { origin, originPath, created: true };
 }
 export function listWorkItems(repositoryRoot) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => listWorkItemPaths(repositoryRoot)
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => listWorkItemPaths(repositoryRoot)
         .map((itemPath) => readWorkItem(itemPath))
         .sort((left, right) => left.id.localeCompare(right.id)));
 }
@@ -364,7 +423,7 @@ export function recommendWorkItemPriorities(repositoryRoot) {
     });
 }
 export function inspectWorkRegistry(repositoryRoot) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => inspectWorkRegistryUnlocked(repositoryRoot));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => inspectWorkRegistryUnlocked(repositoryRoot));
 }
 function inspectWorkRegistryUnlocked(repositoryRoot) {
     const validated = validateWorkRegistry(repositoryRoot);
@@ -428,8 +487,11 @@ export function searchWorkItems(repositoryRoot, requestedQuery) {
         ].some((value) => value.toLowerCase().includes(query));
     });
 }
+export function findWorkItemsByExactSourceText(repositoryRoot, exactText) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => listWorkItems(repositoryRoot).filter((item) => item.sourceRefs.some((sourceRef) => readSourceValue(repositoryRoot, sourceRef).text === exactText)));
+}
 export function traceWorkItem(repositoryRoot, requestedId, testHooks = {}) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => traceWorkItemUnlocked(repositoryRoot, requestedId, testHooks));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => traceWorkItemUnlocked(repositoryRoot, requestedId, testHooks));
 }
 function traceWorkItemUnlocked(repositoryRoot, requestedId, testHooks) {
     const item = showWorkItem(repositoryRoot, requestedId);
@@ -463,7 +525,7 @@ function traceGovernanceSourceUnlocked(repositoryRoot, requestedSourceId) {
     if (!repositoryConsumerConfigurationExists(repositoryRoot)) {
         return coreTrace;
     }
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
         const workItems = listWorkItems(repositoryRoot)
             .filter((item) => item.sourceRefs.includes(source.id))
             .map((item) => {
@@ -491,7 +553,7 @@ function traceGovernanceSourceUnlocked(repositoryRoot, requestedSourceId) {
     });
 }
 export function renderWorkRegistry(repositoryRoot) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => renderWorkRegistryUnlocked(repositoryRoot));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => renderWorkRegistryUnlocked(repositoryRoot));
 }
 function renderWorkRegistryUnlocked(repositoryRoot) {
     validateWorkRegistry(repositoryRoot);
@@ -516,7 +578,7 @@ function renderWorkRegistryUnlocked(repositoryRoot) {
  * the whole current projection set must be complete and byte-current.
  */
 export function validateWorkRegistryProjections(repositoryRoot) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => validateWorkRegistryProjectionsUnlocked(repositoryRoot));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => validateWorkRegistryProjectionsUnlocked(repositoryRoot));
 }
 function validateWorkRegistryProjectionsUnlocked(repositoryRoot) {
     validateWorkRegistry(repositoryRoot);
@@ -570,7 +632,7 @@ function validateWorkRegistryProjectionsUnlocked(repositoryRoot) {
  * archive parent so the projection can be replayed independently in CI.
  */
 export function reconcileArchivedWorkItems(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt));
 }
 function reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, archivedChangeRoot, requestedClosedAt) {
     const changeId = changeIdentity(requestedChangeId);
@@ -626,7 +688,7 @@ function reconcileArchivedWorkItemsUnlocked(repositoryRoot, requestedChangeId, a
     };
 }
 export function validateWorkRegistry(repositoryRoot, testHooks = {}) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => validateWorkRegistryUnlocked(repositoryRoot, testHooks));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => validateWorkRegistryUnlocked(repositoryRoot, testHooks));
 }
 function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
     const sourceIds = new Set();
@@ -694,13 +756,13 @@ function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
     return { itemCount: itemIds.size, sourceCount: sourceIds.size };
 }
 /**
- * Admit an optional current change origin through the same citation and
+ * Validate a current change origin when present through the same citation and
  * bidirectional-link validation used by the public registry validator. The
  * current planning contract calls this boundary for both its live checkout and
  * its immutable detached-worktree replay.
  */
 export function validateCurrentChangeOrigin(repositoryRoot, requestedChangeId) {
-    withOptionalWorkRegistryPromotionLock(repositoryRoot, () => validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId));
+    withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId));
 }
 function validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId) {
     const configuration = repositoryWorkRegistryConfiguration(repositoryRoot);
@@ -1010,7 +1072,7 @@ function parseOrigin(existingText) {
 }
 const ORIGIN_KEYS = ['schemaVersion', 'sourceRefs', 'workItemRefs'];
 function listWorkItemPaths(repositoryRoot) {
-    return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => listWorkItemPathsUnlocked(repositoryRoot));
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => listWorkItemPathsUnlocked(repositoryRoot));
 }
 function listWorkItemPathsUnlocked(repositoryRoot) {
     const itemsRoot = repositoryConsumerPath(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).itemRoot);
@@ -1335,7 +1397,7 @@ function withWorkRegistryPromotionLock(repositoryRoot, operation) {
         throw operationError;
     return result;
 }
-function withOptionalWorkRegistryPromotionLock(repositoryRoot, operation) {
+function withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, operation) {
     const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
     if (runtime === null) {
         return operation();
@@ -2588,6 +2650,9 @@ function createCanonicalFile(filePath, value) {
             readWorkItemRecord(filePath).serialized === content) {
             return;
         }
+        if (isNodeError(error) && error.code === 'EEXIST') {
+            throw registryInvalid('A different Work Item already owns this identity.');
+        }
         throw error;
     }
 }
@@ -2883,6 +2948,9 @@ function boundedText(value, maximum, field) {
         throw registryInvalid(`Work Item ${field} is invalid.`);
     }
     return value;
+}
+function linkedSourceInterpretationSummary(sourceRefs) {
+    return boundedText(`Interpret and disposition linked Sources: ${sourceRefs.join(', ')}.`, 2_000, 'summary');
 }
 function changeIdentity(value) {
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value)) {

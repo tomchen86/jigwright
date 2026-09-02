@@ -1711,6 +1711,7 @@ function normalizeIntent(value) {
     assertExactKeys(record, [
         'schemaVersion',
         'summary',
+        'sourceRefs',
         'explicitPaths',
         'explicitSymbols',
         'explicitConfigKeys',
@@ -1719,6 +1720,7 @@ function normalizeIntent(value) {
     if (record.schemaVersion !== 1) {
         throw unrepresentable('Normalized intent schema is malformed.');
     }
+    const sourceRefs = normalizeSourceReferences(record.sourceRefs);
     const explicitPaths = normalizeTextArray(record.explicitPaths);
     const explicitSymbols = normalizeTextArray(record.explicitSymbols);
     const explicitConfigKeys = normalizeTextArray(record.explicitConfigKeys);
@@ -1739,11 +1741,25 @@ function normalizeIntent(value) {
     return {
         schemaVersion: 1,
         summary: boundedText(record.summary, 'intent summary'),
+        sourceRefs,
         explicitPaths,
         explicitSymbols,
         explicitConfigKeys,
         renamePairs,
     };
+}
+function normalizeSourceReferences(value) {
+    if (!Array.isArray(value) ||
+        value.some((entry) => typeof entry !== 'string' || !/^SRC-[0-9a-f]{64}$/.test(entry))) {
+        throw unrepresentable('Governance Source reference array is malformed.');
+    }
+    const sourceRefs = value;
+    const sorted = [...sourceRefs].sort((left, right) => left.localeCompare(right));
+    if (canonicalJson(sourceRefs) !== canonicalJson(sorted)) {
+        throw unrepresentable('Governance Source references are not canonical.');
+    }
+    assertUnique(sourceRefs, 'Governance Source references');
+    return [...sourceRefs];
 }
 function normalizeAuthoring(value) {
     const record = assertRecord(value);

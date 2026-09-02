@@ -14,16 +14,16 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:03c2a6a4e2164cd759e592a28a0fbdf87e03c8c8f90241f6a441dae674a529f6`.
+Current production inventory digest: `sha256:c954968bb9ec3d208834c047a1942863685e9070dcb41b7a285a65eef784726f`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
-| Primary workflow JSON literals             |         190 |    63 |
+| Primary workflow JSON literals             |         191 |    63 |
 | Primary split path joins/resolves          |           3 |     3 |
 | Primary dynamic workflow-root enumerations |           1 |     1 |
 | Bootstrap workflow JSON literals           |           9 |     3 |
 | Root tooling workflow JSON literals        |           6 |     2 |
-| Recovery workflow JSON literals            |          32 |    12 |
+| Recovery workflow JSON literals            |          33 |    12 |
 | Recovery split path joins                  |           2 |     2 |
 | Workflow artifact package-path leaves      |        1269 |     6 |
 

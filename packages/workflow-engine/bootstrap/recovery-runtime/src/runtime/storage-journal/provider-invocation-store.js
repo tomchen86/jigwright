@@ -31,6 +31,7 @@ import { parseTaskDiffReviewScope, parseTaskDiffReviewSubject, } from "../../mod
 import { TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA, TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR, assertTaskStrategyImplementationManifest, } from "../../modules/provider-orchestration/task-strategy-provider-contract.js";
 import { runtimePaths, withRepositoryLifecycleOperation, } from "../session-workspace/session-store.js";
 const DIGEST = /^[0-9a-f]{64}$/;
+const SOURCE_REFERENCE = /^SRC-[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
 const MAX_BLIND_MANIFEST_BYTES = 262_144;
 const MAX_INTENT_SUMMARY_BYTES = 4_096;
@@ -2217,6 +2218,7 @@ function assertNormalizedChangeIntent(value) {
         !hasExactKeys(value, [
             'schemaVersion',
             'summary',
+            'sourceRefs',
             'explicitPaths',
             'explicitSymbols',
             'explicitConfigKeys',
@@ -2224,6 +2226,7 @@ function assertNormalizedChangeIntent(value) {
         ]) ||
         value.schemaVersion !== 1 ||
         !isBoundedBlindText(value.summary, MAX_INTENT_SUMMARY_BYTES) ||
+        !isCanonicalSourceReferenceArray(value.sourceRefs) ||
         !isUniqueBoundedBlindStringArray(value.explicitPaths) ||
         !isUniqueBoundedBlindStringArray(value.explicitSymbols) ||
         !isUniqueBoundedBlindStringArray(value.explicitConfigKeys) ||
@@ -2247,6 +2250,14 @@ function assertNormalizedChangeIntent(value) {
         seenPairs.add(key);
     }
     return deepFreeze(structuredClone(value));
+}
+function isCanonicalSourceReferenceArray(value) {
+    if (!Array.isArray(value) ||
+        value.length > MAX_INTENT_FACTS_PER_KIND ||
+        !value.every((entry) => typeof entry === 'string' && SOURCE_REFERENCE.test(entry))) {
+        return false;
+    }
+    return value.every((entry, index) => index === 0 || value[index - 1].localeCompare(entry) < 0);
 }
 function isUniqueBoundedBlindStringArray(value) {
     if (!Array.isArray(value) ||

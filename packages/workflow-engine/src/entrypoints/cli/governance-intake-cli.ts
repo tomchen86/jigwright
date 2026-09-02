@@ -7,9 +7,12 @@ import {
   type GovernanceSourceAuthoringV1,
 } from '@jigwright/core/governance-source';
 
-import { renderGovernanceIntakeHandoff } from '../../composition-root/governance-intake-production.ts';
+import {
+  assertExistingGovernanceIntakeChange,
+  renderGovernanceIntakeHandoff,
+  resolveGovernanceIntakeRuntimeRoot,
+} from '../../composition-root/governance-intake-production.ts';
 import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   captureGovernanceSource,
@@ -48,8 +51,6 @@ import {
   type WorkItemPromotionSurveyDeclarationV1,
   type WorkItemReviewV1,
 } from '../../modules/governance-intake/work-registry.ts';
-import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
-import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;
@@ -390,7 +391,7 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (command === 'finding' && args.length === 2 && args[0] === 'convert') {
       const runtimeRoot = (
-        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+        dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
       const finding = listGovernanceFindings(runtimeRoot).find(
         ({ id }) => id === args[1],
@@ -475,9 +476,9 @@ export function dispatchGovernanceIntakeCommand(
       args[0] === 'link' &&
       args[2] === '--change'
     ) {
-      const changeId = assertExistingManagedChange(cwd, args[3]!);
+      const changeId = assertExistingGovernanceIntakeChange(cwd, args[3]!);
       const runtimeRoot = (
-        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+        dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
       const linked = linkGovernanceFinding(
         runtimeRoot,
@@ -497,7 +498,7 @@ export function dispatchGovernanceIntakeCommand(
         (args.length === 2 && args[0] === 'list' && args[1] === '--all'))
     ) {
       const runtimeRoot = (
-        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+        dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
       const includeTerminal = args[1] === '--all';
       return {
@@ -514,7 +515,7 @@ export function dispatchGovernanceIntakeCommand(
       args[2] === '--reason'
     ) {
       const runtimeRoot = (
-        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+        dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
       const result = dismissGovernanceFinding(
         runtimeRoot,
@@ -566,42 +567,6 @@ export function dispatchGovernanceIntakeCommand(
   );
 }
 
-function assertExistingManagedChange(
-  cwd: string,
-  requestedChangeId: string,
-): string {
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedChangeId)) {
-    throw intakeUsage('Finding link change identity is invalid.');
-  }
-  const repositoryRoot = fs.realpathSync(cwd);
-  const config = loadWorkflowConfig(repositoryRoot);
-  const changeRoot = path.resolve(repositoryRoot, config.changeRoot);
-  const relativeChangeRoot = path.relative(repositoryRoot, changeRoot);
-  const changeRootStats = fs.lstatSync(changeRoot, { throwIfNoEntry: false });
-  if (
-    relativeChangeRoot.startsWith(`..${path.sep}`) ||
-    path.isAbsolute(relativeChangeRoot) ||
-    !changeRootStats?.isDirectory() ||
-    changeRootStats.isSymbolicLink() ||
-    fs.realpathSync(changeRoot) !== changeRoot
-  ) {
-    throw intakeUsage('Configured change root is unsafe.');
-  }
-  const changeDirectory = path.join(changeRoot, requestedChangeId);
-  const changeStats = fs.lstatSync(changeDirectory, {
-    throwIfNoEntry: false,
-  });
-  if (
-    !changeStats?.isDirectory() ||
-    changeStats.isSymbolicLink() ||
-    fs.realpathSync(changeDirectory) !== changeDirectory ||
-    path.dirname(changeDirectory) !== changeRoot
-  ) {
-    throw intakeUsage('Finding link requires one existing plain change.');
-  }
-  return requestedChangeId;
-}
-
 function resolveActiveSession(
   cwd: string,
   sessionId: string,
@@ -616,12 +581,6 @@ function resolveActiveSession(
     head: context.git.head,
     tree: context.git.tree,
   };
-}
-
-function resolveFindingRuntimeRoot(cwd: string): string {
-  const git = discoverRepository(cwd);
-  const config = loadWorkflowConfig(git.repositoryRoot);
-  return runtimePaths(git.gitCommonDirectory, config.runtimeDirectory).root;
 }
 
 function readInput(cwd: string, inputPath: string): unknown {
