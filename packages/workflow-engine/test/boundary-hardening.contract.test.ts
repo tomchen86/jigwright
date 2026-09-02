@@ -135,32 +135,57 @@ test('task reports require explicit planning assurance while authority reports o
   }
 });
 
-test('tracked report schema admits only current planning-assurance forms including R-007', () => {
-  const schema = JSON.parse(
-    fs.readFileSync(
-      new URL('../../../workflow/schemas/report.schema.json', import.meta.url),
-      'utf8',
-    ),
-  ) as {
-    $defs: {
-      planningAssurance: {
-        anyOf: Array<{
-          properties?: { reviewRoleResultForm: { enum: string[] } };
-        }>;
-      };
-    };
-  };
-  assert.deepEqual(
-    schema.$defs.planningAssurance.anyOf[1]?.properties?.reviewRoleResultForm
-      .enum,
-    [
+test('tracked report and session schemas constrain the exact R-007 assurance tuple', () => {
+  for (const schemaName of ['report', 'session']) {
+    const schema = JSON.parse(
+      fs.readFileSync(
+        new URL(
+          `../../../workflow/schemas/${schemaName}.schema.json`,
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    ) as PlanningAssuranceSchema;
+    const objectSchema = schema.$defs.planningAssurance.anyOf[1];
+    assert.deepEqual(objectSchema?.properties?.reviewRoleResultForm.enum, [
       'ordinary-provider',
       'granted-same-provider',
       'granted-role-context-sharing',
       'granted-caller-supplied',
       'direct-human-attestation',
-    ],
-  );
+    ]);
+
+    const r007 = {
+      reviewRoleResultForm: 'granted-role-context-sharing',
+      reviewGrantId: null,
+      reviewGrantEnvelopeDigest: null,
+      reviewGrantUseDigest: null,
+      reviewGrantTransitionDigest: null,
+      directHumanReviewAttestationDigest: null,
+      requiredIndependence: 'provider-independent',
+      achievedIndependence: 'session-independent',
+      degradationAuthorized: true,
+    };
+    assert.equal(satisfiesR007Schema(objectSchema, r007), true, schemaName);
+
+    const invalidOverrides: Array<Record<string, unknown>> = [
+      { reviewGrantId: '15af2c1c-e391-4b53-87f8-6cd6fc870627' },
+      { reviewGrantEnvelopeDigest: 'a'.repeat(64) },
+      { reviewGrantUseDigest: 'b'.repeat(64) },
+      { reviewGrantTransitionDigest: 'c'.repeat(64) },
+      { directHumanReviewAttestationDigest: 'd'.repeat(64) },
+      { requiredIndependence: 'session-independent' },
+      { achievedIndependence: 'provider-independent' },
+      { degradationAuthorized: false },
+    ];
+    for (const override of invalidOverrides) {
+      assert.equal(
+        satisfiesR007Schema(objectSchema, { ...r007, ...override }),
+        false,
+        `${schemaName}: ${Object.keys(override)[0]}`,
+      );
+    }
+  }
 });
 
 test('repository lifecycle cleanup preserves operation and release failures', () => {
@@ -433,6 +458,44 @@ function report(): WorkflowReport {
     createdAt: '2026-01-01T00:00:00.000Z',
     planningAssurance: null,
   };
+}
+
+type PlanningAssuranceObjectSchema = {
+  properties?: { reviewRoleResultForm: { enum: string[] } };
+  allOf?: Array<{
+    if: {
+      properties: { reviewRoleResultForm: { const: string } };
+      required: string[];
+    };
+    then: {
+      properties: Record<string, { const: unknown } | { type: 'null' }>;
+    };
+  }>;
+};
+
+type PlanningAssuranceSchema = {
+  $defs: {
+    planningAssurance: {
+      anyOf: Array<PlanningAssuranceObjectSchema | undefined>;
+    };
+  };
+};
+
+function satisfiesR007Schema(
+  schema: PlanningAssuranceObjectSchema | undefined,
+  value: Record<string, unknown>,
+): boolean {
+  const conditional = schema?.allOf?.[0];
+  assert.deepEqual(conditional?.if, {
+    properties: {
+      reviewRoleResultForm: { const: 'granted-role-context-sharing' },
+    },
+    required: ['reviewRoleResultForm'],
+  });
+  assert.ok(conditional);
+  return Object.entries(conditional.then.properties).every(([key, rule]) =>
+    'const' in rule ? value[key] === rule.const : value[key] === null,
+  );
 }
 
 function aggregateContains(

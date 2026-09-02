@@ -275,7 +275,35 @@
             "advisoryVerdict": {
               "enum": ["advisory-approve", "advisory-reject"]
             }
-          }
+          },
+          "allOf": [
+            {
+              "if": {
+                "properties": {
+                  "reviewRoleResultForm": {
+                    "const": "granted-role-context-sharing"
+                  }
+                },
+                "required": ["reviewRoleResultForm"]
+              },
+              "then": {
+                "properties": {
+                  "reviewGrantId": { "type": "null" },
+                  "reviewGrantEnvelopeDigest": { "type": "null" },
+                  "reviewGrantUseDigest": { "type": "null" },
+                  "reviewGrantTransitionDigest": { "type": "null" },
+                  "directHumanReviewAttestationDigest": { "type": "null" },
+                  "requiredIndependence": {
+                    "const": "provider-independent"
+                  },
+                  "achievedIndependence": {
+                    "const": "session-independent"
+                  },
+                  "degradationAuthorized": { "const": true }
+                }
+              }
+            }
+          ]
         }
       ]
     }
