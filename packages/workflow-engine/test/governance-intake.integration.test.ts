@@ -494,7 +494,8 @@ test('configured consumers keep Work Registry available and the Source ledger en
     );
 
     const handoff = renderHandoff(repositoryRoot);
-    assert.doesNotMatch(handoff, /Work Registry|Work backlog/u);
+    assert.match(handoff, /Git-native Work Registry/u);
+    assert.match(handoff, /\[Work backlog\]\(BACKLOG\.md\)/u);
     assert.deepEqual(
       dispatchGovernanceIntakeCommand('work-item', ['list'], repositoryRoot),
       { action: 'list', items: [] },

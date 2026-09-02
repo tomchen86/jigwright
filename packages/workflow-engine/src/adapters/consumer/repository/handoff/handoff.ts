@@ -172,16 +172,10 @@ function buildHandoff(
       ? contract.tasks.slice(currentIndex + 1)[0]
       : undefined;
   const blockers = readBlockers(repositoryRoot, readContext?.readText);
-  const registryEnabled = hasWorkRegistryInventory(
-    repositoryRoot,
-    readContext?.readText,
-  );
   return [
     '# Current and Next Steps',
     '',
-    registryEnabled
-      ? 'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and the Git-native Work Registry.'
-      : 'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records.',
+    'This generated handoff contains semantic project state only. Its sources are tracked OpenSpec change records and the Git-native Work Registry.',
     '',
     '## Current Change',
     '',
@@ -218,11 +212,7 @@ function buildHandoff(
     '- [Roadmap](ROADMAP.md)',
     '- [Change records](../openspec/changes/)',
     '- [Base specifications](../openspec/specs/)',
-    ...(registryEnabled
-      ? [
-          `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
-        ]
-      : []),
+    `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
     '- [System architecture](architecture/ARCHITECTURE.md)',
     '',
   ].join('\n');
@@ -253,16 +243,10 @@ function buildRoutingHandoff(
         );
   const blockers = readBlockers(repositoryRoot, readContext?.readText);
   const unassigned = blockers;
-  const registryEnabled = hasWorkRegistryInventory(
-    repositoryRoot,
-    readContext?.readText,
-  );
   return [
     '# Current and Next Steps',
     '',
-    registryEnabled
-      ? 'This generated repository inventory is derived from controlled lifecycle, task, Work Registry, and archive facts.'
-      : 'This generated repository inventory is derived from controlled lifecycle, task, and archive facts.',
+    'This generated repository inventory is derived from controlled lifecycle, task, Work Registry, and archive facts.',
     '',
     '## Current Work',
     '',
@@ -322,11 +306,7 @@ function buildRoutingHandoff(
     '- [Change lifecycle](../openspec/change-lifecycle.json)',
     '- [Change records](../openspec/changes/)',
     '- [Base specifications](../openspec/specs/)',
-    ...(registryEnabled
-      ? [
-          `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
-        ]
-      : []),
+    `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
     '',
   ].join('\n');
 }
@@ -665,13 +645,6 @@ type WorkRegistryHandoffInventory = Readonly<{
   }>[];
   blockedItemIds: readonly string[];
 }>;
-
-function hasWorkRegistryInventory(
-  repositoryRoot: string,
-  readText?: RepositoryTextReader,
-): boolean {
-  return readWorkRegistryInventory(repositoryRoot, readText) !== null;
-}
 
 function readWorkRegistryInventory(
   repositoryRoot: string,
