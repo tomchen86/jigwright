@@ -891,6 +891,11 @@
       "digest": "sha256:37649d93a4bf22e565117db389229aab76920c9c94c9ed992d90a78ebc483e80"
     },
     {
+      "path": "src/composition-root/provider-availability-pilot-production.ts",
+      "mode": "100644",
+      "digest": "sha256:7ce613ee56939587215d6a0f097e98898e60e9a4275b54fce5e4889f2e3c3be0"
+    },
+    {
       "path": "src/composition-root/provider-invocation-cancellation-grant-production.ts",
       "mode": "100644",
       "digest": "sha256:ea1dd832690386c9eb804c5a5a0f3a3f9868a80b28f0cd2c8c4fb2696e4070d4"
@@ -1013,7 +1018,7 @@
     {
       "path": "src/entrypoints/cli/ai-adapter-cli.ts",
       "mode": "100644",
-      "digest": "sha256:2e52cdd74b9297d7007dc3ae6001d941b24a95e0c4ed1ad30b145005bc9e5a78"
+      "digest": "sha256:8c4641de53b1766f8b9fa29986ea6ffbf81e2279d1c97d1d1253f713ce51f45b"
     },
     {
       "path": "src/entrypoints/cli/authority-audit-cli.ts",
@@ -1928,7 +1933,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:4c5a1bbc3c78b2d738397b4e6e3a18959dd342e4e6ef52574b4f688d1968b1c3"
+      "digest": "sha256:9461331141bca68da0eff217943b7bdade6c08fc8bd3f94eea5ea5ea1d98de52"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
