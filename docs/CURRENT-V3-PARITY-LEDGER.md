@@ -141,13 +141,13 @@ missing invariant implementation.
 
 ### Operational gates (latest evidence)
 
-| Gate                             | State                                       | Evidence boundary                                                                                                                                                 |
-| -------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Current full gate                | `failed; remediation pending`               | 2,581/2,581 tests observed; 114 failures. No GREEN claim.                                                                                                         |
-| Real provider pilot/adoption     | `pending`                                   | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence.                                                                           |
-| Hosted archive publication       | `pending`                                   | Local publication orchestration is GREEN; no hosted publication was performed.                                                                                    |
-| Exact release/consumer lifecycle | `targeted-green; retained artifact current` | single-package/release-v1 13/13; portability 8/8 across the recorded focused runs; retained `dist/release-v1` rebuilt and verified against the latest clean HEAD. |
-| CAP-019 status-watch             | `targeted-green`                            | durable changed-only watch, CLI streaming, exact two-export installed API, hidden-DI rejection and local adoption are GREEN through `27db969`.                    |
+| Gate                             | State                                               | Evidence boundary                                                                                                                                                                          |
+| -------------------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Current full gate                | `failed; remediation pending`                       | 2,581/2,581 tests observed; 114 failures. No GREEN claim.                                                                                                                                  |
+| Real provider pilot/adoption     | `pending`                                           | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence.                                                                                                    |
+| Hosted archive publication       | `pending`                                           | Local publication orchestration is GREEN; no hosted publication was performed.                                                                                                             |
+| Exact release/consumer lifecycle | `targeted-green; retained artifact pending rebuild` | release-v1 11/11, local adoption 8/8 and the installed two-consumer portability lifecycle 1/1 are GREEN at `c50c750`; retained `dist/release-v1` still needs the final clean-HEAD rebuild. |
+| CAP-019 status-watch             | `targeted-green`                                    | durable changed-only watch, CLI streaming, exact two-export installed API, hidden-DI rejection and local adoption are GREEN through `c50c750`.                                             |
 
 ## Frozen initial CLI audit detail
 
