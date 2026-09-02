@@ -41,6 +41,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Governance Source Ledger Path Is Engine-Owned',
     '### Requirement: Finding Disposition Is Append-Only',
     '### Requirement: Intent-Level Now Starts One Source-Bound Change',
+    '### Requirement: Intent-Level Now Promotes One Eligible Work Item',
     '### Requirement: Intent-Level Later Surface Is One Command',
     '### Requirement: Attach Adds a Source Without Reclassifying Work',
     '### Requirement: Finding Conversion Has One Deterministic Target',
@@ -75,6 +76,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     'D-019',
     '`later <original-text>`',
     '`now <original-text>`',
+    '`now <work-item-id>`',
     '`attach <work-item-id> <original-text>`',
     '`finding convert <finding-id> --now`',
     '`finding link <finding-id> --change <change-id>`',
@@ -101,6 +103,14 @@ test('active governance intake contract covers the current Source-to-work lifecy
     /authored solely by maintainers SHALL bind `not-required`/u,
   );
   assert.match(specification, /SHALL NOT create survey bytes/u);
+  assert.match(
+    specification,
+    /Fail-Grant challenge before creating the change\s+directory, survey, origin/u,
+  );
+  assert.match(
+    specification,
+    /foreign target entry or metadata drift fails stale without overwrite/u,
+  );
   assert.doesNotMatch(
     specification,
     /issues? v1|ISS-\d+|workflow issue|migration window|WORK_REGISTRY_UNAVAILABLE|optional Work Registry/iu,

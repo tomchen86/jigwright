@@ -1058,7 +1058,7 @@ export async function createWorkRegistryFailGrantResult(
   dependencies: WorkRegistryFailGrantDependencies = WORK_REGISTRY_FAIL_GRANT_DEPENDENCIES,
 ): Promise<CommandResult | null> {
   if (
-    args[0] !== 'work-item' ||
+    (args[0] !== 'work-item' && args[0] !== 'now') ||
     !(error instanceof WorkflowError) ||
     error.code !== 'WORK_REGISTRY_GRANT_REQUIRED'
   ) {
@@ -1086,7 +1086,7 @@ export async function createWorkRegistryFailGrantResult(
           proposedReason,
         );
   return {
-    command: 'work-item',
+    command: args[0],
     ok: true,
     result: {
       schemaVersion: 1,
@@ -1177,6 +1177,14 @@ function workRegistryArgsMatch(
       args[1] === 'review' &&
       args[2] === details.workItemId &&
       args[3] === '--input'
+    );
+  }
+  if (args[0] === 'now') {
+    return (
+      args.length === 2 &&
+      args[1] === details.workItemId &&
+      details.changeId ===
+        `work-${details.workItemId.slice('WORK-'.length).toLowerCase()}`
     );
   }
   return (
@@ -4525,6 +4533,7 @@ function usageText(): string {
     '  pnpm workflow adapter verify-availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
     '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>|list|show <source-id>|trace <source-id>> [--json]',
     '  pnpm workflow now <original-text> [--json]',
+    '  pnpm workflow now <work-item-id> [--json]',
     '  pnpm workflow later <original-text> [--json]',
     '  pnpm workflow attach <work-item-id> <original-text> [--json]',
     '  pnpm workflow finding <add --session <session-id> --input <finding-envelope.json>|list [--all]|convert <finding-id> [--now]|link <finding-id> --change <change-id>|dismiss <finding-id> --reason <reason>> [--json]',

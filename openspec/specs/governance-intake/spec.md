@@ -368,6 +368,42 @@ output MUST NOT pretend an investigation already exists.
 - **THEN** retry rechecks the exact Source text and stable change identity
 - **AND** it completes the exact origin citation without accepting unrelated planning paths
 
+### Requirement: Intent-Level Now Promotes One Eligible Work Item
+
+Under D-019, `now <work-item-id>` SHALL preserve inbox review and priority
+authority, then perform the current promotion preparation and promotion as one
+facade only for an eligible reviewed `now` or `next` Work Item. The deterministic
+change identity SHALL be `work-<lowercase Work Item ULID>`. A protected
+promotion MUST emit its exact Fail-Grant challenge before creating the change
+directory, survey, origin, or any other byte. That challenge SHALL bind the
+exact absent or existing change prestate, Source-reference digest, and the
+conditional current-survey facts. Only the accepted registered transition may
+create an absent plain change directory, publish its exact current empty survey
+for an agent premise, and promote the item. Retry after that owned preparation
+or after successful promotion SHALL converge on the same Work Item, Source, and
+change identities without rewriting bytes or refs. Results SHALL echo the cited
+original Source wording and return only executable `work-item show` and `source
+trace` next steps.
+
+#### Scenario: Inbox authority is preserved
+
+- **WHEN** `now <work-item-id>` names an unreviewed inbox item
+- **THEN** it returns exact accept-review and prioritize-now next steps
+- **AND** no Work Item, change, survey, origin, Grant, or Git byte changes
+
+#### Scenario: Eligible current item is promoted once
+
+- **WHEN** the reviewed item and every blocker, Source, survey fact, and target prestate remain exact
+- **THEN** the facade creates or reuses the deterministic change and performs one current promotion
+- **AND** retry returns the same result without a second mutation
+
+#### Scenario: Protected absent target requires Grant before preparation
+
+- **WHEN** repository policy protects promotion and the deterministic change does not exist
+- **THEN** the facade emits one exact Central Grant challenge while the target remains absent
+- **AND** an accepted transition may prepare only an empty directory or its own exact survey before promotion
+- **AND** a foreign target entry or metadata drift fails stale without overwrite
+
 ### Requirement: Intent-Level Later Surface Is One Command
 
 Under D-019, `later <original-text>` SHALL capture one direct-human Governance

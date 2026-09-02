@@ -33,9 +33,11 @@ import {
   assertOrdinaryWorkRegistryTransition,
   createWorkItem,
   createWorkItemAfterExactSourceTextRecheck,
+  ensureWorkItemPromotionChangeDirectory,
   ensureWorkItemPromotionSurveyBinding,
   ensureFindingConversionWorkItem,
   findWorkItemsByExactSourceText,
+  hasExactCurrentWorkItemPromotion,
   inspectWorkRegistry,
   linkSourceToChange,
   listWorkItems,
@@ -52,6 +54,7 @@ import {
   type WorkItemAuthoringV1,
   type WorkItemPromotionSurveyDeclarationV1,
   type WorkItemReviewV1,
+  workItemDigest,
 } from '../../modules/governance-intake/work-registry.ts';
 
 export type GovernanceIntakeCliDependencies = Readonly<{
@@ -90,6 +93,136 @@ export function dispatchGovernanceIntakeCommand(
   dependencies: GovernanceIntakeCliDependencies = {},
 ): Record<string, unknown> {
   try {
+    if (
+      command === 'now' &&
+      args.length === 1 &&
+      /^WORK-[0-9A-HJKMNP-TV-Z]{26}$/u.test(args[0]!)
+    ) {
+      const workItem = showWorkItem(cwd, args[0]!);
+      const originalTexts = workItem.sourceRefs.map(
+        (sourceRef) => readGovernanceSource(cwd, sourceRef).text,
+      );
+      const changeId = `work-${workItem.id
+        .slice('WORK-'.length)
+        .toLowerCase()}`;
+      if (hasExactCurrentWorkItemPromotion(cwd, workItem.id, changeId)) {
+        return {
+          action: 'now',
+          workItemId: workItem.id,
+          sourceRefs: workItem.sourceRefs,
+          originalTexts,
+          promoted: true,
+          changeId,
+          nextSteps: immediateWorkItemNextSteps(
+            workItem.id,
+            workItem.sourceRefs,
+          ),
+        };
+      }
+      if (workItem.stage === 'inbox') {
+        return {
+          action: 'now',
+          workItemId: workItem.id,
+          sourceRefs: workItem.sourceRefs,
+          originalTexts,
+          promoted: false,
+          changeId: null,
+          nextSteps: [
+            `pnpm workflow work-item review ${workItem.id} --input <accept-review.json> --json`,
+            `pnpm workflow work-item review ${workItem.id} --input <prioritize-now-review.json> --json`,
+          ],
+        };
+      }
+      if (
+        workItem.stage !== 'backlog' ||
+        workItem.interpretation.status !== 'maintainer-confirmed'
+      ) {
+        throw workflowError(
+          'WORK_REGISTRY_INVALID',
+          'Immediate Work Item promotion requires a current unpromoted backlog item.',
+          ExitCode.usage,
+        );
+      }
+      if (workItem.lane !== 'now' && workItem.lane !== 'next') {
+        return {
+          action: 'now',
+          workItemId: workItem.id,
+          sourceRefs: workItem.sourceRefs,
+          originalTexts,
+          promoted: false,
+          changeId: null,
+          nextSteps: [
+            `pnpm workflow work-item review ${workItem.id} --input <prioritize-now-review.json> --json`,
+          ],
+        };
+      }
+      if (workItem.blockedBy.length > 0) {
+        const openBlockers = workItem.blockedBy.filter(
+          (blockerId) => showWorkItem(cwd, blockerId).stage !== 'closed',
+        );
+        if (openBlockers.length > 0) {
+          return {
+            action: 'now',
+            workItemId: workItem.id,
+            sourceRefs: workItem.sourceRefs,
+            originalTexts,
+            promoted: false,
+            changeId: null,
+            nextSteps:
+              openBlockers.length <= 3
+                ? openBlockers.map(
+                    (blockerId) =>
+                      `pnpm workflow work-item show ${blockerId} --json`,
+                  )
+                : [
+                    ...openBlockers
+                      .slice(0, 2)
+                      .map(
+                        (blockerId) =>
+                          `pnpm workflow work-item show ${blockerId} --json`,
+                      ),
+                    'pnpm workflow guide --json',
+                  ],
+          };
+        }
+      }
+      const expectedDigest = workItemDigest(workItem);
+      assertOrdinaryWorkRegistryTransition(
+        cwd,
+        'promote',
+        `pnpm workflow grant human request-work-item-promotion ${workItem.id} --change ${changeId} --expected ${expectedDigest} --reason <reason> --json`,
+        {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'promote',
+          transition: 'promote',
+          workItemId: workItem.id,
+          changeId,
+          expectedDigest,
+        },
+      );
+      ensureWorkItemPromotionChangeDirectory(cwd, changeId);
+      ensureWorkItemPromotionSurveyBinding(cwd, workItem.id, changeId);
+      const promoted = promoteWorkItem(
+        cwd,
+        workItem.id,
+        changeId,
+        dependencies.now,
+        expectedDigest,
+      );
+      return {
+        action: 'now',
+        workItemId: promoted.item.id,
+        sourceRefs: promoted.item.sourceRefs,
+        originalTexts,
+        promoted: true,
+        changeId,
+        nextSteps: immediateWorkItemNextSteps(
+          promoted.item.id,
+          promoted.item.sourceRefs,
+        ),
+      };
+    }
     if (command === 'now' && args.length === 1) {
       const exactText = args[0]!;
       const existing = listGovernanceSources(cwd)
@@ -344,7 +477,6 @@ export function dispatchGovernanceIntakeCommand(
       args[2] === '--change' &&
       args[4] === '--expected'
     ) {
-      ensureWorkItemPromotionSurveyBinding(cwd, args[1]!, args[3]!);
       assertOrdinaryWorkRegistryTransition(
         cwd,
         'promote',
@@ -359,6 +491,7 @@ export function dispatchGovernanceIntakeCommand(
           expectedDigest: args[5]!,
         },
       );
+      ensureWorkItemPromotionSurveyBinding(cwd, args[1]!, args[3]!);
       const promoted = promoteWorkItem(
         cwd,
         args[1]!,
@@ -667,7 +800,7 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright now <original-text> | jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> [--now] | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright now <original-text> | jigwright now <work-item-id> | jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> [--now] | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 
@@ -685,6 +818,21 @@ function immediateChangeNextSteps(
     ];
   }
   return ['pnpm workflow now <original-text> --json'];
+}
+function immediateWorkItemNextSteps(
+  workItemId: string,
+  sourceRefs: readonly string[],
+): string[] {
+  const steps = [
+    `pnpm workflow work-item show ${workItemId} --json`,
+    ...sourceRefs
+      .slice(0, 2)
+      .map((sourceRef) => `pnpm workflow source trace ${sourceRef} --json`),
+  ];
+  if (sourceRefs.length > 2) {
+    return [steps[0]!, steps[1]!, 'pnpm workflow guide --json'];
+  }
+  return steps;
 }
 function resolveActiveSession(
   cwd: string,

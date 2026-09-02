@@ -21,13 +21,16 @@ import { grantTransitionPreconditionChanged } from '../authority/grant-transitio
 import {
   applyWorkItemReview,
   hasExactWorkItemPromotionReceipt,
-  observeWorkItemPromotionSurveyBinding,
+  observeWorkItemPromotionPreparationBinding,
+  prepareWorkItemPromotionFromBinding,
   promoteWorkItem,
-  readWorkItemPromotionSurveyBinding,
   showWorkItem,
   workItemDigest,
+  workItemPromotionPreparationMatches,
   type WorkItemPromotionGrantBindingV1,
+  type WorkItemPromotionPreparationBindingV1,
   type WorkItemPromotionSurveyBindingV1,
+  type WorkItemPromotionSurveyV1,
   type WorkItemPromotionTestHooks,
   type WorkItemReviewV1,
 } from './work-registry.ts';
@@ -51,7 +54,7 @@ type PromotionParametersV1 = Readonly<{
   workItemId: string;
   changeId: string;
   expectedDigest: `sha256:${string}`;
-  surveyBinding: WorkItemPromotionSurveyBindingV1;
+  preparationBinding: WorkItemPromotionPreparationBindingV1;
   stateBindingDigest: `sha256:${string}`;
 }>;
 
@@ -129,12 +132,15 @@ export function createWorkRegistryPromotionGrantRequest(
       ExitCode.conflict,
     );
   }
-  const surveyBinding = observeWorkItemPromotionSurveyBinding(
+  const preparationBinding = observeWorkItemPromotionPreparationBinding(
     input.repositoryRoot,
     workItemId,
     changeId,
   );
-  const stateBinding = promotionStateBinding(expectedDigest, surveyBinding);
+  const stateBinding = promotionStateBinding(
+    expectedDigest,
+    preparationBinding,
+  );
   return freezeGrantCanonical({
     sourceModuleId: 'work-registry',
     failureCode: 'work-registry.protected-transition',
@@ -154,7 +160,7 @@ export function createWorkRegistryPromotionGrantRequest(
           workItemId,
           changeId,
           expectedDigest,
-          surveyBinding,
+          preparationBinding,
           stateBindingDigest: stateBinding.digest,
         },
         allowedReasonCodes: [APPROVAL_REASON_CODE],
@@ -219,9 +225,9 @@ export function workRegistryGrantTransitionDefinitions(
           required: [
             'changeId',
             'expectedDigest',
+            'preparationBinding',
             'schemaVersion',
             'stateBindingDigest',
-            'surveyBinding',
             'workItemId',
           ],
         }),
@@ -240,7 +246,9 @@ export function workRegistryGrantTransitionDefinitions(
           challengeId: context.challengeId,
           operationId: context.operationId,
           approvalSubjectDigest: context.approvalSubjectDigest,
-          surveyBinding: context.parameters.surveyBinding,
+          surveyBinding: promotionSurveyBinding(
+            context.parameters.preparationBinding,
+          ),
         };
         context.assertLifecycleOwned();
         if (
@@ -271,6 +279,23 @@ export function workRegistryGrantTransitionDefinitions(
           authorizedState,
           context.parameters.stateBindingDigest,
         );
+        context.assertLifecycleOwned();
+        try {
+          prepareWorkItemPromotionFromBinding(
+            repositoryRoot,
+            context.parameters.workItemId,
+            context.parameters.changeId,
+            context.parameters.preparationBinding,
+          );
+        } catch (error) {
+          if (isPromotionSurveyPreconditionError(error)) {
+            throw grantTransitionPreconditionChanged(
+              'WORK_REGISTRY_GRANT_STALE',
+              'Work Registry promotion preparation changed after Grant approval.',
+            );
+          }
+          throw error;
+        }
         context.assertLifecycleOwned();
         let promoted: ReturnType<typeof promoteWorkItem>;
         try {
@@ -311,14 +336,17 @@ function observeWorkItemPromotionState(
 ): StateBinding {
   const itemBinding = observeWorkItem(repositoryRoot, parameters.workItemId);
   try {
-    return promotionStateBinding(
-      itemBinding.digest,
-      readWorkItemPromotionSurveyBinding(
-        repositoryRoot,
-        parameters.workItemId,
-        parameters.changeId,
-      ),
+    const actual = observeWorkItemPromotionPreparationBinding(
+      repositoryRoot,
+      parameters.workItemId,
+      parameters.changeId,
     );
+    return workItemPromotionPreparationMatches(
+      parameters.preparationBinding,
+      actual,
+    )
+      ? promotionStateBinding(itemBinding.digest, parameters.preparationBinding)
+      : promotionStateBinding(itemBinding.digest, actual);
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
     return {
@@ -337,7 +365,7 @@ function observeWorkItemPromotionState(
 
 function promotionStateBinding(
   itemDigest: string,
-  surveyBinding: WorkItemPromotionSurveyBindingV1,
+  preparationBinding: WorkItemPromotionPreparationBindingV1,
 ): StateBinding {
   return {
     kind: 'work-registry-promotion-state.v1',
@@ -346,7 +374,7 @@ function promotionStateBinding(
         schemaVersion: 1,
         kind: 'work-registry-promotion-state.v1',
         itemDigest: exactDigest(itemDigest),
-        surveyBinding,
+        preparationBinding,
       }),
     ),
   };
@@ -415,9 +443,9 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
     !grantHasExactKeys(value, [
       'changeId',
       'expectedDigest',
+      'preparationBinding',
       'schemaVersion',
       'stateBindingDigest',
-      'surveyBinding',
       'workItemId',
     ]) ||
     value.schemaVersion !== 1
@@ -426,9 +454,11 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
   }
   const expectedDigest = exactDigest(value.expectedDigest);
   const stateBindingDigest = exactDigest(value.stateBindingDigest);
-  const surveyBinding = assertPromotionSurveyBinding(value.surveyBinding);
+  const preparationBinding = assertPromotionPreparationBinding(
+    value.preparationBinding,
+  );
   if (
-    promotionStateBinding(expectedDigest, surveyBinding).digest !==
+    promotionStateBinding(expectedDigest, preparationBinding).digest !==
     stateBindingDigest
   ) {
     throw grantParametersInvalid();
@@ -438,9 +468,205 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
     workItemId: exactWorkItemId(value.workItemId),
     changeId: exactChangeId(value.changeId),
     expectedDigest,
-    surveyBinding,
+    preparationBinding,
     stateBindingDigest,
   };
+}
+
+function assertPromotionPreparationBinding(
+  value: unknown,
+): WorkItemPromotionPreparationBindingV1 {
+  if (
+    !isRecord(value) ||
+    value.schemaVersion !== 1 ||
+    !grantHasExactKeys(value, [
+      'changeTarget',
+      'schemaVersion',
+      'sourceRefsDigest',
+      'surveyPreparation',
+    ])
+  ) {
+    throw grantParametersInvalid();
+  }
+  const sourceRefsDigest = exactDigest(value.sourceRefsDigest);
+  const changeTarget = assertPromotionChangeTarget(value.changeTarget);
+  const surveyPreparation = assertPromotionSurveyPreparation(
+    value.surveyPreparation,
+  );
+  if (
+    surveyPreparation.binding.kind === 'not-required' &&
+    surveyPreparation.binding.sourceRefsDigest !== sourceRefsDigest
+  ) {
+    throw grantParametersInvalid();
+  }
+  return {
+    schemaVersion: 1,
+    changeTarget,
+    sourceRefsDigest,
+    surveyPreparation,
+  };
+}
+
+function assertPromotionChangeTarget(
+  value: unknown,
+): WorkItemPromotionPreparationBindingV1['changeTarget'] {
+  if (!isRecord(value)) throw grantParametersInvalid();
+  if (value.kind === 'absent-change' && grantHasExactKeys(value, ['kind'])) {
+    return { kind: 'absent-change' };
+  }
+  if (
+    value.kind === 'existing-change' &&
+    grantHasExactKeys(value, [
+      'directoryMode',
+      'entries',
+      'kind',
+      'originDigest',
+    ]) &&
+    Number.isInteger(value.directoryMode) &&
+    typeof value.directoryMode === 'number' &&
+    value.directoryMode >= 0 &&
+    value.directoryMode <= 0o777 &&
+    Array.isArray(value.entries) &&
+    (value.originDigest === null || typeof value.originDigest === 'string')
+  ) {
+    const entries = value.entries.map(assertPromotionChangeEntry);
+    if (
+      entries.some((entry, index) =>
+        index === 0 ? false : entries[index - 1]!.path >= entry.path,
+      )
+    ) {
+      throw grantParametersInvalid();
+    }
+    return {
+      kind: 'existing-change',
+      directoryMode: value.directoryMode,
+      entries,
+      originDigest:
+        value.originDigest === null ? null : exactDigest(value.originDigest),
+    };
+  }
+  throw grantParametersInvalid();
+}
+
+function assertPromotionChangeEntry(
+  value: unknown,
+): Extract<
+  WorkItemPromotionPreparationBindingV1['changeTarget'],
+  { kind: 'existing-change' }
+>['entries'][number] {
+  if (
+    !isRecord(value) ||
+    typeof value.path !== 'string' ||
+    value.path.length === 0 ||
+    value.path.startsWith('/') ||
+    value.path.includes('\\') ||
+    /[\0\r\n]/u.test(value.path) ||
+    value.path
+      .split('/')
+      .some(
+        (segment) => segment === '' || segment === '.' || segment === '..',
+      ) ||
+    typeof value.mode !== 'number' ||
+    !Number.isInteger(value.mode) ||
+    value.mode < 0 ||
+    value.mode > 0o777
+  ) {
+    throw grantParametersInvalid();
+  }
+  if (
+    value.kind === 'directory' &&
+    grantHasExactKeys(value, ['kind', 'mode', 'path'])
+  ) {
+    return { path: value.path, kind: 'directory', mode: value.mode };
+  }
+  if (
+    value.kind === 'file' &&
+    grantHasExactKeys(value, ['digest', 'kind', 'mode', 'path'])
+  ) {
+    return {
+      path: value.path,
+      kind: 'file',
+      mode: value.mode,
+      digest: exactDigest(value.digest),
+    };
+  }
+  throw grantParametersInvalid();
+}
+
+function assertPromotionSurveyPreparation(
+  value: unknown,
+): WorkItemPromotionPreparationBindingV1['surveyPreparation'] {
+  if (!isRecord(value)) throw grantParametersInvalid();
+  if (
+    value.kind === 'current-survey' &&
+    grantHasExactKeys(value, ['binding', 'kind'])
+  ) {
+    const binding = assertPromotionSurveyBinding(value.binding);
+    if (binding.kind !== 'current-survey') throw grantParametersInvalid();
+    return { kind: 'current-survey', binding };
+  }
+  if (
+    value.kind === 'not-required' &&
+    grantHasExactKeys(value, ['binding', 'kind'])
+  ) {
+    const binding = assertPromotionSurveyBinding(value.binding);
+    if (binding.kind !== 'not-required') throw grantParametersInvalid();
+    return { kind: 'not-required', binding };
+  }
+  if (
+    value.kind === 'create-current-survey' &&
+    grantHasExactKeys(value, ['binding', 'kind', 'survey'])
+  ) {
+    const binding = assertPromotionSurveyBinding(value.binding);
+    if (binding.kind !== 'current-survey') throw grantParametersInvalid();
+    const survey = assertPromotionSurvey(value.survey);
+    if (grantSha256(`${canonicalJson(survey)}\n`) !== binding.digest) {
+      throw grantParametersInvalid();
+    }
+    return { kind: 'create-current-survey', binding, survey };
+  }
+  throw grantParametersInvalid();
+}
+
+function assertPromotionSurvey(value: unknown): WorkItemPromotionSurveyV1 {
+  if (
+    !isRecord(value) ||
+    !grantHasExactKeys(value, [
+      'changeId',
+      'emptyReason',
+      'schemaVersion',
+      'surveyedCommit',
+      'symbols',
+      'workItemId',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    typeof value.workItemId !== 'string' ||
+    !WORK_ITEM_ID.test(value.workItemId) ||
+    typeof value.changeId !== 'string' ||
+    !CHANGE_ID.test(value.changeId) ||
+    typeof value.surveyedCommit !== 'string' ||
+    !/^[0-9a-f]{40,64}$/u.test(value.surveyedCommit) ||
+    !Array.isArray(value.symbols) ||
+    value.symbols.length !== 0 ||
+    value.emptyReason !==
+      'The agent-authored premise declares no structured repository symbols.'
+  ) {
+    throw grantParametersInvalid();
+  }
+  return {
+    schemaVersion: 1,
+    workItemId: value.workItemId as `WORK-${string}`,
+    changeId: value.changeId,
+    surveyedCommit: value.surveyedCommit,
+    symbols: [],
+    emptyReason: value.emptyReason,
+  };
+}
+
+function promotionSurveyBinding(
+  preparationBinding: WorkItemPromotionPreparationBindingV1,
+): WorkItemPromotionSurveyBindingV1 {
+  return preparationBinding.surveyPreparation.binding;
 }
 
 function assertPromotionSurveyBinding(

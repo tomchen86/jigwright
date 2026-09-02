@@ -305,6 +305,7 @@ test('top-level help advertises every current Governance Source command', () => 
     /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|list\|show <source-id>\|trace <source-id>> \[--json\]/u,
   );
   assert.match(output, /pnpm workflow now <original-text> \[--json\]/u);
+  assert.match(output, /pnpm workflow now <work-item-id> \[--json\]/u);
   assert.match(output, /pnpm workflow later <original-text> \[--json\]/u);
   assert.match(
     output,
@@ -3977,6 +3978,20 @@ test('Work Registry Fail-Grant mapper preserves exact transition semantics', asy
         },
         requestKind: 'promote',
       },
+      {
+        transition: 'promote',
+        args: ['now', workItemId],
+        details: {
+          schemaVersion: 1,
+          kind: 'work-registry-grant-required.v1',
+          operation: 'promote',
+          transition: 'promote',
+          workItemId,
+          changeId: `work-${workItemId.slice('WORK-'.length).toLowerCase()}`,
+          expectedDigest: digest,
+        },
+        requestKind: 'promote',
+      },
     ] as const;
 
     for (const entry of cases) {
@@ -3996,6 +4011,7 @@ test('Work Registry Fail-Grant mapper preserves exact transition semantics', asy
         (result?.result as { transition: string }).transition,
         entry.transition,
       );
+      assert.equal(result?.command, entry.args[0]);
       assert.equal(calls.length, 1);
       assert.equal(calls[0]?.[0], entry.requestKind);
       assert.equal(calls[0]?.[1], repositoryRoot);
@@ -4372,9 +4388,9 @@ test('registered Central Grant promotion binds an exact conditional survey decis
       approvalSubjectDigest: `sha256:${'a'.repeat(64)}`,
       surveyBinding: (
         currentTransition.parameters as {
-          surveyBinding: unknown;
+          preparationBinding: { surveyPreparation: { binding: unknown } };
         }
-      ).surveyBinding,
+      ).preparationBinding.surveyPreparation.binding,
     });
     await assert.rejects(
       executePromotion(
@@ -4401,11 +4417,21 @@ test('registered Central Grant promotion binds an exact conditional survey decis
           ...currentTransition,
           parameters: {
             ...(currentTransition.parameters as Record<string, unknown>),
-            surveyBinding: {
-              schemaVersion: 1,
-              kind: 'not-required',
-              reason: 'pure-maintainer-sources',
-              sourceRefsDigest: `sha256:${'9'.repeat(64)}`,
+            preparationBinding: {
+              ...(
+                currentTransition.parameters as {
+                  preparationBinding: Record<string, unknown>;
+                }
+              ).preparationBinding,
+              surveyPreparation: {
+                kind: 'not-required',
+                binding: {
+                  schemaVersion: 1,
+                  kind: 'not-required',
+                  reason: 'pure-maintainer-sources',
+                  sourceRefsDigest: `sha256:${'9'.repeat(64)}`,
+                },
+              },
             },
           },
         },
@@ -4417,6 +4443,175 @@ test('registered Central Grant promotion binds an exact conditional survey decis
     assert.deepEqual(
       snapshotPromotion(currentItemPath, currentOriginPath, currentSurveyPath),
       afterCurrentPromotion,
+    );
+
+    const foreignTarget = createWorkItem(
+      repositoryRoot,
+      {
+        schemaVersion: 1,
+        kind: 'feature',
+        lane: 'next',
+        title: 'Reject a foreign change after Grant challenge',
+        summary: 'The accepted Grant owns only its exact absent target.',
+        sourceRefs: [agentSource.id],
+      },
+      {
+        now: () => '2026-08-24T05:03:10.000Z',
+        createId: () => 'WORK-01K39R0V00000000000000000S',
+      },
+    );
+    const foreignAccepted = applyWorkItemReview(
+      repositoryRoot,
+      foreignTarget.item.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(foreignTarget.item),
+        summary: foreignTarget.item.interpretation.summary,
+      },
+      () => '2026-08-24T05:03:20.000Z',
+    );
+    runGitForTest(repositoryRoot, ['add', '.']);
+    runGitForTest(repositoryRoot, [
+      'commit',
+      '-m',
+      'Prepare absent promotion target',
+    ]);
+    const foreignTransition = createPromotionChallenge(
+      foreignAccepted.id,
+      'grant-promoted-foreign-target',
+      workItemDigest(foreignAccepted),
+      'abababab-abab-4bab-8bab-abababababab',
+      '2026-08-24T05:03:30.000Z',
+    );
+    const foreignDirectory = path.join(
+      repositoryRoot,
+      'openspec/changes/grant-promoted-foreign-target',
+    );
+    assert.equal(fs.existsSync(foreignDirectory), false);
+    fs.mkdirSync(foreignDirectory, { recursive: true });
+    const foreignPath = path.join(foreignDirectory, 'proposal.md');
+    const foreignBytes = '# Foreign planning state\n';
+    fs.writeFileSync(foreignPath, foreignBytes);
+    fs.chmodSync(foreignDirectory, 0o700);
+    const foreignItemPath = path.join(
+      repositoryRoot,
+      foreignTarget.relativePath,
+    );
+    const foreignItemBytes = fs.readFileSync(foreignItemPath, 'utf8');
+    await assert.rejects(
+      executePromotion(
+        foreignTransition,
+        'operation-work-registry-promotion-foreign-target',
+      ),
+      hasCode('WORK_REGISTRY_GRANT_STALE'),
+    );
+    assert.equal(fs.readFileSync(foreignItemPath, 'utf8'), foreignItemBytes);
+    assert.equal(fs.readFileSync(foreignPath, 'utf8'), foreignBytes);
+    assert.equal(fs.statSync(foreignDirectory).mode & 0o777, 0o700);
+    assert.equal(
+      fs.existsSync(path.join(foreignDirectory, 'origin.json')),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(path.join(foreignDirectory, 'survey.json')),
+      false,
+    );
+
+    const preparedTarget = createWorkItem(
+      repositoryRoot,
+      {
+        schemaVersion: 1,
+        kind: 'feature',
+        lane: 'next',
+        title: 'Recover exact Grant-owned target preparation',
+        summary: 'Only the accepted transition prepares the absent target.',
+        sourceRefs: [agentSource.id],
+      },
+      {
+        now: () => '2026-08-24T05:03:40.000Z',
+        createId: () => 'WORK-01K39R0V00000000000000000T',
+      },
+    );
+    const preparedAccepted = applyWorkItemReview(
+      repositoryRoot,
+      preparedTarget.item.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(preparedTarget.item),
+        summary: preparedTarget.item.interpretation.summary,
+      },
+      () => '2026-08-24T05:03:50.000Z',
+    );
+    runGitForTest(repositoryRoot, ['add', '.']);
+    runGitForTest(repositoryRoot, [
+      'commit',
+      '-m',
+      'Prepare Grant-owned absent target',
+    ]);
+    const preparedTransition = createPromotionChallenge(
+      preparedAccepted.id,
+      'grant-promoted-prepared-target',
+      workItemDigest(preparedAccepted),
+      'acacacac-acac-4cac-8cac-acacacacacac',
+      '2026-08-24T05:04:00.000Z',
+    );
+    const preparedDirectory = path.join(
+      repositoryRoot,
+      'openspec/changes/grant-promoted-prepared-target',
+    );
+    const preparationCrash = new Error('crash after Grant-owned preparation');
+    let preparationAssertions = 0;
+    await assert.rejects(
+      executePromotion(
+        preparedTransition,
+        'operation-work-registry-prepared-target',
+        false,
+        () => {
+          preparationAssertions += 1;
+          if (preparationAssertions === 3) throw preparationCrash;
+        },
+      ),
+      (error) => error === preparationCrash,
+    );
+    assert.equal(
+      showWorkItem(repositoryRoot, preparedAccepted.id).stage,
+      'backlog',
+    );
+    assert.equal(
+      fs.existsSync(path.join(preparedDirectory, 'survey.json')),
+      true,
+    );
+    assert.equal(
+      fs.existsSync(path.join(preparedDirectory, 'origin.json')),
+      false,
+    );
+    const preparedSurveyBytes = fs.readFileSync(
+      path.join(preparedDirectory, 'survey.json'),
+      'utf8',
+    );
+    const preparedOutcome = await executePromotion(
+      preparedTransition,
+      'operation-work-registry-prepared-target',
+      true,
+    );
+    assert.equal(preparedOutcome.outcome, 'completed');
+    assert.equal(
+      showWorkItem(repositoryRoot, preparedAccepted.id).stage,
+      'active',
+    );
+    assert.equal(
+      fs.readFileSync(path.join(preparedDirectory, 'survey.json'), 'utf8'),
+      preparedSurveyBytes,
+    );
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(path.join(preparedDirectory, 'origin.json'), 'utf8'),
+      ),
+      {
+        schemaVersion: 1,
+        sourceRefs: [agentSource.id],
+        workItemRefs: [preparedAccepted.id],
+      },
     );
 
     const stale = prepareCandidate(
@@ -4708,9 +4903,9 @@ test('registered Central Grant promotion binds an exact conditional survey decis
       recoverableReceipt?.grantBinding?.surveyBinding,
       (
         recoverableGrantRequest.candidates[0]?.parameters as {
-          surveyBinding: unknown;
+          preparationBinding: { surveyPreparation: { binding: unknown } };
         }
-      ).surveyBinding,
+      ).preparationBinding.surveyPreparation.binding,
     );
     const recoverableReceiptBytes = fs
       .readdirSync(promotionReceiptRoot)
@@ -5571,6 +5766,268 @@ test('one promote command skips surveys for maintainer premises and prepares a c
           'openspec/changes/protected-maintainer-premise/origin.json',
         ),
       ),
+      false,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('D-019 now work-item preserves inbox authority, promotes ordinary agent work, and keeps protected refusal mutation-free', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-now-work-'));
+  configureRepositoryConsumer(root);
+  try {
+    runGitForTest(root, ['init', '-b', 'main']);
+    runGitForTest(root, ['config', 'user.name', 'Jigwright Test']);
+    runGitForTest(root, ['config', 'user.email', 'jigwright@example.test']);
+    runGitForTest(root, ['add', '.']);
+    runGitForTest(root, ['commit', '-m', 'Initialize current repository']);
+    const maintainerSource = captureGovernanceSource(root, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-intake',
+      capturedAt: '2026-08-24T04:47:00.000Z',
+      contextRef: 'direct-human:workflow-cli',
+      text: 'Promote reviewed maintainer work without a survey.',
+      supersedes: null,
+    }).source;
+    const agentSource = captureGovernanceSource(root, {
+      semanticAuthor: 'agent',
+      capturedBy: 'jigwright-finding-convert',
+      capturedAt: '2026-08-24T04:47:10.000Z',
+      contextRef:
+        'finding:FND-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+      text: 'Promote reviewed agent work with a current survey.',
+      supersedes: null,
+    }).source;
+    const secondSource = captureGovernanceSource(root, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-intake',
+      capturedAt: '2026-08-24T04:47:11.000Z',
+      contextRef: 'direct-human:workflow-cli',
+      text: 'Preserve the second exact premise.',
+      supersedes: null,
+    }).source;
+    const thirdSource = captureGovernanceSource(root, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-intake',
+      capturedAt: '2026-08-24T04:47:12.000Z',
+      contextRef: 'direct-human:workflow-cli',
+      text: 'Preserve the third exact premise.',
+      supersedes: null,
+    }).source;
+    const create = (
+      id: string,
+      lane: 'next' | null,
+      sourceRefs: readonly string[],
+    ) =>
+      createWorkItem(
+        root,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane,
+          title: `Immediate ${id}`,
+          summary: 'Preserve reviewed Work Registry authority.',
+          sourceRefs,
+        },
+        {
+          now: () => '2026-08-24T04:47:20.000Z',
+          createId: () => id,
+        },
+      );
+    const inbox = create('WORK-01K39R0V00000000000000000R', null, [
+      maintainerSource.id,
+    ]);
+    const inboxBytes = fs.readFileSync(path.join(root, inbox.relativePath));
+    const inboxResult = dispatchGovernanceIntakeCommand(
+      'now',
+      [inbox.item.id],
+      root,
+    ) as {
+      promoted: boolean;
+      changeId: string | null;
+      nextSteps: string[];
+    };
+    assert.equal(inboxResult.promoted, false);
+    assert.equal(inboxResult.changeId, null);
+    assert.deepEqual(inboxResult.nextSteps, [
+      `pnpm workflow work-item review ${inbox.item.id} --input <accept-review.json> --json`,
+      `pnpm workflow work-item review ${inbox.item.id} --input <prioritize-now-review.json> --json`,
+    ]);
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, inbox.relativePath)),
+      inboxBytes,
+    );
+
+    const blockerIds = [
+      'WORK-01K39R0V00000000000000000V',
+      'WORK-01K39R0V00000000000000000W',
+      'WORK-01K39R0V00000000000000000X',
+      'WORK-01K39R0V00000000000000000Y',
+    ] as const;
+    for (const blockerId of blockerIds) create(blockerId, null, []);
+    const blocked = create('WORK-01K39R0V00000000000000000Z', 'next', [
+      maintainerSource.id,
+    ]);
+    const blockedAccepted = applyWorkItemReview(
+      root,
+      blocked.item.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(blocked.item),
+        summary: blocked.item.interpretation.summary,
+      },
+      () => '2026-08-24T04:47:21.000Z',
+    );
+    const blockedPrioritized = applyWorkItemReview(
+      root,
+      blocked.item.id,
+      {
+        action: 'prioritize',
+        expectedDigest: workItemDigest(blockedAccepted),
+        lane: 'next',
+        blockedBy: blockerIds,
+      },
+      () => '2026-08-24T04:47:22.000Z',
+    );
+    const blockedBytes = fs.readFileSync(path.join(root, blocked.relativePath));
+    const blockedResult = dispatchGovernanceIntakeCommand(
+      'now',
+      [blocked.item.id],
+      root,
+    );
+    assert.deepEqual(blockedResult.nextSteps, [
+      `pnpm workflow work-item show ${blockerIds[0]} --json`,
+      `pnpm workflow work-item show ${blockerIds[1]} --json`,
+      'pnpm workflow guide --json',
+    ]);
+    assert.deepEqual(showWorkItem(root, blocked.item.id), blockedPrioritized);
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, blocked.relativePath)),
+      blockedBytes,
+    );
+
+    const ordinary = create('WORK-01K39R0V00000000000000000S', 'next', [
+      agentSource.id,
+      secondSource.id,
+      thirdSource.id,
+    ]);
+    const ordinaryAccepted = applyWorkItemReview(
+      root,
+      ordinary.item.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(ordinary.item),
+        summary: ordinary.item.interpretation.summary,
+      },
+      () => '2026-08-24T04:47:30.000Z',
+    );
+    const ordinaryChangeId = `work-${ordinary.item.id
+      .slice('WORK-'.length)
+      .toLowerCase()}`;
+    const ordinaryResult = dispatchGovernanceIntakeCommand(
+      'now',
+      [ordinary.item.id],
+      root,
+      { now: () => '2026-08-24T04:47:40.000Z' },
+    ) as {
+      promoted: boolean;
+      changeId: string;
+      sourceRefs: string[];
+      originalTexts: string[];
+      nextSteps: string[];
+    };
+    assert.equal(ordinaryResult.promoted, true);
+    assert.equal(ordinaryResult.changeId, ordinaryChangeId);
+    assert.deepEqual(ordinaryResult.sourceRefs, ordinaryAccepted.sourceRefs);
+    assert.deepEqual(
+      ordinaryResult.originalTexts,
+      ordinaryAccepted.sourceRefs.map(
+        (sourceRef) => readGovernanceSource(root, sourceRef).text,
+      ),
+    );
+    assert.deepEqual(ordinaryResult.nextSteps, [
+      `pnpm workflow work-item show ${ordinary.item.id} --json`,
+      `pnpm workflow source trace ${ordinaryAccepted.sourceRefs[0]} --json`,
+      'pnpm workflow guide --json',
+    ]);
+    assert.equal(showWorkItem(root, ordinary.item.id).stage, 'active');
+    assert.deepEqual(
+      JSON.parse(
+        fs.readFileSync(
+          path.join(root, 'openspec/changes', ordinaryChangeId, 'origin.json'),
+          'utf8',
+        ),
+      ),
+      {
+        schemaVersion: 1,
+        sourceRefs: ordinaryAccepted.sourceRefs,
+        workItemRefs: [ordinary.item.id],
+      },
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(root, 'openspec/changes', ordinaryChangeId, 'survey.json'),
+      ),
+      true,
+    );
+    const beforeOrdinaryRetry = snapshotPlainTree(root);
+    const beforeOrdinaryRetryRefs = runGitForTest(root, ['show-ref']);
+    const retriedOrdinary = dispatchGovernanceIntakeCommand(
+      'now',
+      [ordinary.item.id],
+      root,
+    );
+    assert.deepEqual(retriedOrdinary, ordinaryResult);
+    assert.deepEqual(snapshotPlainTree(root), beforeOrdinaryRetry);
+    assert.equal(runGitForTest(root, ['show-ref']), beforeOrdinaryRetryRefs);
+
+    const protectedItem = create('WORK-01K39R0V00000000000000000T', 'next', [
+      maintainerSource.id,
+    ]);
+    const protectedAccepted = applyWorkItemReview(
+      root,
+      protectedItem.item.id,
+      {
+        action: 'accept',
+        expectedDigest: workItemDigest(protectedItem.item),
+        summary: protectedItem.item.interpretation.summary,
+      },
+      () => '2026-08-24T04:47:50.000Z',
+    );
+    fs.mkdirSync(path.join(root, 'workflow'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'workflow/work-registry-policy.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transitions: {
+          intake: 'ordinary',
+          prioritize: 'ordinary',
+          promote: 'central-grant',
+        },
+      })}\n`,
+    );
+    const protectedChangeId = `work-${protectedItem.item.id
+      .slice('WORK-'.length)
+      .toLowerCase()}`;
+    const protectedBytes = fs.readFileSync(
+      path.join(root, protectedItem.relativePath),
+    );
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand('now', [protectedItem.item.id], root),
+      hasCode('WORK_REGISTRY_GRANT_REQUIRED'),
+    );
+    assert.deepEqual(
+      fs.readFileSync(path.join(root, protectedItem.relativePath)),
+      protectedBytes,
+    );
+    assert.deepEqual(
+      showWorkItem(root, protectedItem.item.id),
+      protectedAccepted,
+    );
+    assert.equal(
+      fs.existsSync(path.join(root, 'openspec/changes', protectedChangeId)),
       false,
     );
   } finally {
