@@ -408,7 +408,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
       "mode": "100644",
-      "digest": "sha256:ea4697435ce0e09e5ebdcb3bc8f4642b16efc417309d4a8e436d18fc0391f446"
+      "digest": "sha256:0a46c804e26a4a95f972b9d7242204fb81206dfdfdca2a10d9f01932876713a9"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-adapter.ts",
@@ -938,7 +938,7 @@
     {
       "path": "src/composition-root/validated-contract-context.ts",
       "mode": "100644",
-      "digest": "sha256:0405d3b35173d9719878d35028df56722c698388de9267a3e16b1c1acc2b3671"
+      "digest": "sha256:9eab7eb98aa3a083d7f5fea357562a4e2df1eb92f0ab148c8cd6193fcfaa464a"
     },
     {
       "path": "src/entrypoints/ci/ci-archive-tree.ts",
