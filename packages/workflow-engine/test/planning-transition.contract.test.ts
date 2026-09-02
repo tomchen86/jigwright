@@ -130,6 +130,19 @@ test('planning paths admit only the exact Source object cited by the current ori
       ),
     (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
   );
+  assert.throws(
+    () =>
+      assertPlanningPaths(
+        'openspec/changes',
+        'source-bound-change',
+        [],
+        [sourcePath],
+        'jigwright',
+        'jigwright',
+        [sourceRef],
+      ),
+    (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
+  );
 });
 
 test('planning paths select current or non-current grammar explicitly', () => {

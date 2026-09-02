@@ -34,6 +34,15 @@ export function assertPlanningPaths(
   citedSourceRefs: readonly `SRC-${string}`[] = [],
 ): void {
   const sourceObjectPaths = planningSourceObjectPaths(citedSourceRefs);
+  if (
+    sourceObjectPaths.some((sourcePath) => deletedPaths.includes(sourcePath))
+  ) {
+    throw workflowError(
+      'PLANNING_PATHS_INVALID',
+      'Planning cannot delete an immutable cited Source object.',
+      ExitCode.guard,
+    );
+  }
   const additionalExactPaths =
     changeId === 'archive'
       ? []
