@@ -40,6 +40,9 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory',
     '### Requirement: Governance Source Ledger Path Is Engine-Owned',
     '### Requirement: Finding Disposition Is Append-Only',
+    '### Requirement: Intent-Level Later Surface Is One Command',
+    '### Requirement: Attach Adds a Source Without Reclassifying Work',
+    '### Requirement: Finding Conversion Has One Deterministic Target',
     '### Requirement: Governance Intake Counts Are Read-Only',
   ];
 
@@ -68,6 +71,9 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '`workRegistry: null`',
     'D-018',
     'D-019',
+    '`later <original-text>`',
+    '`attach <work-item-id> <original-text>`',
+    '`finding convert <finding-id>`',
   ]) {
     assert.match(
       specification,
@@ -113,6 +119,15 @@ test('production has no disableable Work Registry or configurable Source-root su
     fs.readFileSync(currentWorkRegistrySources[0], 'utf8'),
     /GOVERNANCE_SOURCE_LEDGER_ROOT/u,
   );
+  const workRegistrySource = fs.readFileSync(
+    currentWorkRegistrySources[4],
+    'utf8',
+  );
+  assert.match(workRegistrySource, /export function attachSourceToWorkItem/u);
+  assert.match(
+    workRegistrySource,
+    /export function ensureFindingConversionWorkItem/u,
+  );
   const governanceIntakeSource = fs.readFileSync(
     currentWorkRegistrySources[3],
     'utf8',
@@ -124,6 +139,10 @@ test('production has no disableable Work Registry or configurable Source-root su
   assert.match(
     governanceIntakeSource,
     /export function dismissGovernanceFinding/u,
+  );
+  assert.match(
+    governanceIntakeSource,
+    /export function convertGovernanceFinding/u,
   );
   assert.doesNotMatch(
     governanceIntakeSource,

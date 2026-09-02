@@ -2787,6 +2787,8 @@ function dispatch(args: string[], cwd: string): CommandResult {
     case 'source':
     case 'finding':
     case 'work-item':
+    case 'later':
+    case 'attach':
       return {
         command,
         ok: true,
@@ -4486,7 +4488,9 @@ function usageText(): string {
     '  pnpm workflow adapter availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
     '  pnpm workflow adapter verify-availability-pilot --record <workflow/provider-availability-pilots/name.json> [--json]',
     '  pnpm workflow source <capture --input <source-envelope.json>|link-change <source-id> --change <change-id>|list|show <source-id>|trace <source-id>> [--json]',
-    '  pnpm workflow finding add --session <session-id> --input <finding-envelope.json> [--json]',
+    '  pnpm workflow later <original-text> [--json]',
+    '  pnpm workflow attach <work-item-id> <original-text> [--json]',
+    '  pnpm workflow finding <add --session <session-id> --input <finding-envelope.json>|list [--all]|convert <finding-id>|dismiss <finding-id> --reason <reason>> [--json]',
     '  pnpm workflow work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ... [--json]',
     '  pnpm workflow maintainer grant preflight --profile <profile-id> [--json]',
     '  pnpm workflow maintainer grant approve-and-apply --change <change-id> --task <mandate-task-id> --profile <profile-id> --reason <text> --message <subject> --effects-file <json|none> [--waivers-file <json|none>] [--json]',

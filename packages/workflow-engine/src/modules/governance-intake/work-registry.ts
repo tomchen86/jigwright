@@ -299,6 +299,67 @@ export function createWorkItem(
   return { item, relativePath };
 }
 
+export function ensureFindingConversionWorkItem(
+  repositoryRoot: string,
+  requestedFindingId: string,
+  input: WorkItemAuthoringV1,
+  createdAt: string,
+): {
+  item: WorkItemV1;
+  relativePath: string;
+  created: boolean;
+} {
+  if (!/^FND-[0-9a-f]{64}$/.test(requestedFindingId)) {
+    throw registryInvalid('Governance Finding identity is invalid.');
+  }
+  const deterministicId = `WORK-${requestedFindingId
+    .slice('FND-'.length, 'FND-'.length + 26)
+    .toUpperCase()}`;
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+    const existing = listWorkItems(repositoryRoot).find(
+      ({ id }) => id === deterministicId,
+    );
+    const ensured = createWorkItem(repositoryRoot, input, {
+      now: () => createdAt,
+      createId: () => deterministicId,
+    });
+    return { ...ensured, created: existing === undefined };
+  });
+}
+
+export function attachSourceToWorkItem(
+  repositoryRoot: string,
+  requestedId: string,
+  requestedSourceRef: string,
+): { item: WorkItemV1; updated: boolean } {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+    const id = workItemId(requestedId);
+    const itemPath = findWorkItemPath(repositoryRoot, id);
+    const item = readWorkItem(itemPath);
+    if (item.closure !== null || item.stage === 'closed') {
+      throw registryInvalid('A closed Work Item cannot receive a Source.');
+    }
+    const sourceRef = sourceReferences([requestedSourceRef])[0]!;
+    readSource(repositoryRoot, sourceRef);
+    const sourceRefs = sourceReferences([
+      ...new Set([...item.sourceRefs, sourceRef]),
+    ]);
+    const next: WorkItemV1 = {
+      ...item,
+      sourceRefs,
+      interpretation: {
+        summary: linkedSourceInterpretationSummary(sourceRefs),
+        status: 'agent-derived',
+      },
+    };
+    if (canonicalJson(next) === canonicalJson(item)) {
+      return { item, updated: false };
+    }
+    replaceCanonicalFile(itemPath, next);
+    return { item: next, updated: true };
+  });
+}
+
 export function prepareWorkItemPromotionSurvey(
   repositoryRoot: string,
   requestedId: string,
@@ -935,6 +996,20 @@ export function searchWorkItems(
       ...citedWording,
     ].some((value) => value.toLowerCase().includes(query));
   });
+}
+
+export function findWorkItemsByExactSourceText(
+  repositoryRoot: string,
+  exactText: string,
+): WorkItemV1[] {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
+    listWorkItems(repositoryRoot).filter((item) =>
+      item.sourceRefs.some(
+        (sourceRef) =>
+          readSourceValue(repositoryRoot, sourceRef).text === exactText,
+      ),
+    ),
+  );
 }
 
 export function traceWorkItem(
@@ -4169,6 +4244,11 @@ function createCanonicalFile(filePath: string, value: unknown): void {
     ) {
       return;
     }
+    if (isNodeError(error) && error.code === 'EEXIST') {
+      throw registryInvalid(
+        'A different Work Item already owns this identity.',
+      );
+    }
     throw error;
   }
 }
@@ -4535,6 +4615,16 @@ function boundedText(value: string, maximum: number, field: string): string {
     throw registryInvalid(`Work Item ${field} is invalid.`);
   }
   return value;
+}
+
+function linkedSourceInterpretationSummary(
+  sourceRefs: readonly `SRC-${string}`[],
+): string {
+  return boundedText(
+    `Interpret and disposition linked Sources: ${sourceRefs.join(', ')}.`,
+    2_000,
+    'summary',
+  );
 }
 
 function changeIdentity(value: string): string {

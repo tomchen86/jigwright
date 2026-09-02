@@ -323,6 +323,62 @@ pending Findings across the repository's private runtime.
 - **THEN** listing and disposition fail closed without choosing one record
 - **AND** no Finding or disposition byte is repaired, deleted, or rewritten
 
+### Requirement: Intent-Level Later Surface Is One Command
+
+Under D-019, `later <original-text>` SHALL capture one direct-human Governance
+Source and create one inbox Work Item in the always-available Work Registry
+without requiring a JSON envelope. The facade SHALL use the exact fixed
+authoring defaults `kind: improvement` and `lane: null`. Its title SHALL identify
+the captured Source, and its agent-derived interpretation SHALL not duplicate
+the original wording. Before capture, exact Source wording already cited by a
+Work Item SHALL produce a deterministic attach suggestion and SHALL NOT create a
+second Source or Work Item. The ordinary path SHALL require no Grant.
+
+#### Scenario: Original wording is parked for later
+
+- **WHEN** one caller invokes `later <original-text>` in a current repository
+- **THEN** the original text exists only in one immutable Source and the returned inbox Work Item cites that Source ID
+- **AND** the result returns the original text, Source ID, Work Item ID, and one exact next step
+- **AND** repeating the same wording returns the existing Work Item as a dedupe match without changing Source, Work Item, Git ref, or Grant bytes
+
+### Requirement: Attach Adds a Source Without Reclassifying Work
+
+Under D-019, `attach <work-item-id> <original-text>` SHALL capture or reuse one
+exact Source and append its identity to the requested open Work Item under the
+existing Work Registry lock. The update SHALL preserve kind, stage, lane, title,
+relations, closure, and timeline. Its current interpretation SHALL become
+agent-derived and SHALL bind only the canonically sorted Source identities; it
+MUST NOT copy the original wording. Repeating the exact attachment SHALL be
+byte-idempotent. A closed item or unsafe current record SHALL fail before
+claiming an attachment.
+
+#### Scenario: New wording supplements one inbox item
+
+- **WHEN** `attach <work-item-id> <original-text>` names one current open Work Item
+- **THEN** exactly one Source identity is added and the current interpretation binds all sorted Source IDs
+- **AND** stage, lane, title, timeline, Git refs, and unrelated Work Items remain unchanged
+- **AND** retry reuses the exact Source and leaves the Work Item bytes unchanged
+
+### Requirement: Finding Conversion Has One Deterministic Target
+
+`finding convert <finding-id>` SHALL preserve the immutable Finding, derive one
+stable Work Item identity from it, persist an agent-authored Source for the
+Finding text, and create or reuse the exact inbox item before publishing the
+create-once `converted` receipt. A crash after the item publication but before
+the receipt SHALL truthfully leave the Finding pending; retry SHALL converge to
+the same item and then publish the receipt. A different record at that derived
+identity SHALL fail closed without publishing or rewriting a receipt, Finding,
+or Work Item. Any exact Source already captured before detecting that
+collision remains a truthful append-only record and does not authorize a
+relation of its own.
+
+#### Scenario: Conversion resumes after its item is durable
+
+- **WHEN** conversion stops after the deterministic inbox item is durable but before its receipt exists
+- **THEN** default Finding listing still reports the Finding as pending
+- **AND** retry reuses byte-identical Source and Work Item records and publishes one converted receipt targeting that item
+- **AND** no second Work Item, migration record, Grant, or Git ref is created
+
 ### Requirement: Governance Intake Counts Are Read-Only
 
 The engine SHALL expose one stable read surface with exactly the current

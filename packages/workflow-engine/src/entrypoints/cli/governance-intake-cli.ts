@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import {
+  createGovernanceSourceV1,
   GovernanceSourceError,
   type GovernanceSourceAuthoringV1,
 } from '@jigwright/core/governance-source';
@@ -12,6 +13,7 @@ import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-regi
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   captureGovernanceSource,
+  convertGovernanceFinding,
   dismissGovernanceFinding,
   listGovernanceFindings,
   listGovernanceSources,
@@ -22,8 +24,11 @@ import {
 } from '../../modules/governance-intake/governance-intake.ts';
 import {
   applyWorkItemReview,
+  attachSourceToWorkItem,
   assertOrdinaryWorkRegistryTransition,
   createWorkItem,
+  ensureFindingConversionWorkItem,
+  findWorkItemsByExactSourceText,
   inspectWorkRegistry,
   linkSourceToChange,
   listWorkItems,
@@ -46,6 +51,7 @@ import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;
+  afterFindingConversionWorkItemPersisted?: () => void;
   resolveSession?: (
     cwd: string,
     sessionId: string,
@@ -54,12 +60,99 @@ export type GovernanceIntakeCliDependencies = Readonly<{
 }>;
 
 export function dispatchGovernanceIntakeCommand(
-  command: 'source' | 'finding' | 'work-item',
+  command: 'source' | 'finding' | 'work-item' | 'later' | 'attach',
   args: string[],
   cwd: string,
   dependencies: GovernanceIntakeCliDependencies = {},
 ): Record<string, unknown> {
   try {
+    if (command === 'later' && args.length === 1) {
+      const originalText = args[0]!;
+      const matches = findWorkItemsByExactSourceText(cwd, originalText).filter(
+        ({ closure, stage }) => closure === null && stage !== 'closed',
+      );
+      if (matches.length > 0) {
+        return {
+          action: 'later',
+          originalText,
+          deduplicated: true,
+          matches: matches.map(({ id }) => id),
+          nextSteps: matches
+            .slice(0, 3)
+            .map(
+              ({ id }) => `pnpm workflow attach ${id} <original-text> --json`,
+            ),
+        };
+      }
+      const capturedAt = (
+        dependencies.now ?? (() => new Date().toISOString())
+      )();
+      const source = captureGovernanceSource(cwd, {
+        semanticAuthor: 'maintainer',
+        capturedBy: 'jigwright-intake',
+        capturedAt,
+        contextRef: 'direct-human:workflow-cli',
+        text: originalText,
+        supersedes: null,
+      });
+      const workItem = createWorkItem(
+        cwd,
+        {
+          schemaVersion: 1,
+          kind: 'improvement',
+          lane: null,
+          title: `Review captured Source ${source.source.id}`,
+          summary: 'Interpret and disposition the linked Source.',
+          sourceRefs: [source.source.id],
+        },
+        { now: () => capturedAt },
+      );
+      return {
+        action: 'later',
+        originalText,
+        sourceId: source.source.id,
+        workItemId: workItem.item.id,
+        deduplicated: false,
+        nextSteps: [`pnpm workflow work-item show ${workItem.item.id} --json`],
+      };
+    }
+    if (command === 'attach' && args.length === 2) {
+      const requestedWorkItemId = args[0]!;
+      const originalText = args[1]!;
+      const current = showWorkItem(cwd, requestedWorkItemId);
+      if (current.closure !== null || current.stage === 'closed') {
+        throw intakeUsage('A closed Work Item cannot receive a Source.');
+      }
+      const exactMatch = findWorkItemsByExactSourceText(cwd, originalText).find(
+        ({ id }) => id === current.id,
+      );
+      const existingSourceRef = exactMatch?.sourceRefs.find(
+        (sourceRef) =>
+          readGovernanceSource(cwd, sourceRef).text === originalText,
+      );
+      const source =
+        existingSourceRef === undefined
+          ? captureGovernanceSource(cwd, {
+              semanticAuthor: 'maintainer',
+              capturedBy: 'jigwright-intake',
+              capturedAt: (
+                dependencies.now ?? (() => new Date().toISOString())
+              )(),
+              contextRef: 'direct-human:workflow-cli',
+              text: originalText,
+              supersedes: null,
+            }).source
+          : readGovernanceSource(cwd, existingSourceRef);
+      const attached = attachSourceToWorkItem(cwd, current.id, source.id);
+      return {
+        action: 'attach',
+        originalText,
+        sourceId: source.id,
+        workItemId: attached.item.id,
+        updated: attached.updated,
+        nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
+      };
+    }
     if (
       command === 'source' &&
       args.length === 3 &&
@@ -272,6 +365,87 @@ export function dispatchGovernanceIntakeCommand(
       validateWorkRegistryProjections(cwd);
       return { action: 'validate', ...registry };
     }
+    if (command === 'finding' && args.length === 2 && args[0] === 'convert') {
+      const runtimeRoot = (
+        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+      )(cwd);
+      const finding = listGovernanceFindings(runtimeRoot).find(
+        ({ id }) => id === args[1],
+      );
+      if (finding === undefined) {
+        throw intakeUsage('Governance Finding does not exist.');
+      }
+      const workItemId = `WORK-${finding.id
+        .slice('FND-'.length, 'FND-'.length + 26)
+        .toUpperCase()}`;
+      if (
+        finding.disposition !== 'pending' &&
+        (finding.disposition !== 'converted' ||
+          finding.target?.kind !== 'work-item' ||
+          finding.target.id !== workItemId)
+      ) {
+        throw workflowError(
+          'GOVERNANCE_FINDING_DISPOSITION_COLLISION',
+          'Governance Finding already has a different terminal disposition.',
+          ExitCode.conflict,
+        );
+      }
+      const conversionSourceInput = {
+        semanticAuthor: 'agent',
+        capturedBy: 'jigwright-finding-convert',
+        capturedAt: finding.createdAt,
+        contextRef: `finding:${finding.id}`,
+        text: finding.text,
+        supersedes: null,
+      } as const;
+      const projectedSource = createGovernanceSourceV1(conversionSourceInput);
+      if (finding.disposition === 'converted') {
+        const currentItem = showWorkItem(cwd, workItemId);
+        for (const sourceRef of currentItem.sourceRefs) {
+          readGovernanceSource(cwd, sourceRef);
+        }
+        if (!currentItem.sourceRefs.includes(projectedSource.id)) {
+          throw workflowError(
+            'GOVERNANCE_FINDING_DISPOSITION_COLLISION',
+            'Converted Finding target does not cite its deterministic Source.',
+            ExitCode.conflict,
+          );
+        }
+      }
+      const source = captureGovernanceSource(cwd, conversionSourceInput);
+      const sourceRefs = [
+        ...new Set([...finding.sourceRefs, source.source.id]),
+      ].sort();
+      const ensured = ensureFindingConversionWorkItem(
+        cwd,
+        finding.id,
+        {
+          schemaVersion: 1,
+          kind: 'improvement',
+          lane: null,
+          title: `Review captured Source ${source.source.id}`,
+          summary: 'Interpret and disposition the linked Source.',
+          sourceRefs,
+        },
+        finding.createdAt,
+      );
+      dependencies.afterFindingConversionWorkItemPersisted?.();
+      const converted = convertGovernanceFinding(
+        runtimeRoot,
+        finding.id,
+        ensured.item.id,
+        dependencies.now,
+      );
+      return {
+        action: 'convert',
+        sourceId: source.source.id,
+        workItemId: ensured.item.id,
+        workItemCreated: ensured.created,
+        finding: converted.finding,
+        created: converted.created,
+        nextSteps: [`pnpm workflow work-item show ${ensured.item.id} --json`],
+      };
+    }
     if (
       command === 'finding' &&
       ((args.length === 1 && args[0] === 'list') ||
@@ -343,7 +517,7 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 

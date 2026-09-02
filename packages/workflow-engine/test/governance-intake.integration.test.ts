@@ -53,6 +53,7 @@ import {
   renderWorkRegistry,
   searchWorkItems,
   showWorkItem,
+  listWorkItems,
   traceWorkItem,
   validateWorkRegistry,
   validateWorkRegistryProjections,
@@ -301,6 +302,15 @@ test('top-level help advertises every current Governance Source command', () => 
   assert.match(
     output,
     /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|list\|show <source-id>\|trace <source-id>> \[--json\]/u,
+  );
+  assert.match(output, /pnpm workflow later <original-text> \[--json\]/u);
+  assert.match(
+    output,
+    /pnpm workflow attach <work-item-id> <original-text> \[--json\]/u,
+  );
+  assert.match(
+    output,
+    /pnpm workflow finding <[^\n]*convert <finding-id>[^\n]*> \[--json\]/u,
   );
 });
 
@@ -971,6 +981,351 @@ test('finding list and dismiss resolve the repository runtime without a session 
     assert.equal(dismissed.finding.disposition, 'dismissed');
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('D-019 later and attach preserve original wording only in Sources and converge exactly', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-intent-facade-'),
+  );
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const headBefore = runGitForTest(fixture.repositoryRoot, [
+      'rev-parse',
+      'HEAD',
+    ]);
+    const refsBefore = runGitForTest(fixture.repositoryRoot, ['show-ref']);
+    const original = 'Remember the exact one-command intake wording.';
+    const later = dispatchGovernanceIntakeCommand(
+      'later',
+      [original],
+      fixture.repositoryRoot,
+      { now: () => '2026-08-24T03:20:00.000Z' },
+    ) as {
+      action: string;
+      originalText: string;
+      sourceId: string;
+      workItemId: string;
+      deduplicated: boolean;
+      nextSteps: string[];
+    };
+    assert.equal(later.action, 'later');
+    assert.equal(later.originalText, original);
+    assert.equal(later.deduplicated, false);
+    assert.match(later.sourceId, /^SRC-[0-9a-f]{64}$/u);
+    assert.match(later.workItemId, /^WORK-[0-9A-HJKMNP-TV-Z]{26}$/u);
+    assert.deepEqual(later.nextSteps, [
+      `pnpm workflow work-item show ${later.workItemId} --json`,
+    ]);
+
+    const item = showWorkItem(fixture.repositoryRoot, later.workItemId);
+    assert.deepEqual(
+      {
+        kind: item.kind,
+        stage: item.stage,
+        lane: item.lane,
+        title: item.title,
+        interpretation: item.interpretation,
+        sourceRefs: item.sourceRefs,
+      },
+      {
+        kind: 'improvement',
+        stage: 'inbox',
+        lane: null,
+        title: `Review captured Source ${later.sourceId}`,
+        interpretation: {
+          summary: 'Interpret and disposition the linked Source.',
+          status: 'agent-derived',
+        },
+        sourceRefs: [later.sourceId],
+      },
+    );
+    const itemPath = path.join(
+      fixture.repositoryRoot,
+      'docs/work-registry/items/2026',
+      `${later.workItemId}.yaml`,
+    );
+    assert.doesNotMatch(
+      fs.readFileSync(itemPath, 'utf8'),
+      new RegExp(original),
+    );
+    assert.equal(
+      readGovernanceSource(fixture.repositoryRoot, later.sourceId).text,
+      original,
+    );
+
+    const itemTreeBeforeDedupe = snapshotPlainTree(
+      path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+    );
+    const sourceTreeBeforeDedupe = snapshotPlainTree(fixture.sourceLedgerRoot);
+    const duplicate = dispatchGovernanceIntakeCommand(
+      'later',
+      [original],
+      fixture.repositoryRoot,
+      { now: () => '2026-08-24T03:21:00.000Z' },
+    ) as {
+      deduplicated: boolean;
+      matches: string[];
+      nextSteps: string[];
+    };
+    assert.equal(duplicate.deduplicated, true);
+    assert.deepEqual(duplicate.matches, [later.workItemId]);
+    assert.deepEqual(duplicate.nextSteps, [
+      `pnpm workflow attach ${later.workItemId} <original-text> --json`,
+    ]);
+    assert.deepEqual(
+      snapshotPlainTree(
+        path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+      ),
+      itemTreeBeforeDedupe,
+    );
+    assert.deepEqual(
+      snapshotPlainTree(fixture.sourceLedgerRoot),
+      sourceTreeBeforeDedupe,
+    );
+
+    const supplement = 'Also retain the corrected acceptance boundary.';
+    const beforeAttach = showWorkItem(fixture.repositoryRoot, later.workItemId);
+    const attached = dispatchGovernanceIntakeCommand(
+      'attach',
+      [later.workItemId, supplement],
+      fixture.repositoryRoot,
+      { now: () => '2026-08-24T03:22:00.000Z' },
+    ) as {
+      action: string;
+      originalText: string;
+      sourceId: string;
+      workItemId: string;
+      updated: boolean;
+    };
+    assert.equal(attached.action, 'attach');
+    assert.equal(attached.originalText, supplement);
+    assert.equal(attached.workItemId, later.workItemId);
+    assert.equal(attached.updated, true);
+    const afterAttach = showWorkItem(fixture.repositoryRoot, later.workItemId);
+    assert.deepEqual(
+      {
+        kind: afterAttach.kind,
+        stage: afterAttach.stage,
+        lane: afterAttach.lane,
+        title: afterAttach.title,
+      },
+      {
+        kind: beforeAttach.kind,
+        stage: beforeAttach.stage,
+        lane: beforeAttach.lane,
+        title: beforeAttach.title,
+      },
+    );
+    assert.deepEqual(
+      afterAttach.sourceRefs,
+      [...afterAttach.sourceRefs].sort(),
+    );
+    assert.deepEqual(
+      afterAttach.sourceRefs,
+      [later.sourceId, attached.sourceId].sort(),
+    );
+    assert.deepEqual(afterAttach.interpretation, {
+      summary: `Interpret and disposition linked Sources: ${afterAttach.sourceRefs.join(', ')}.`,
+      status: 'agent-derived',
+    });
+    assert.doesNotMatch(
+      fs.readFileSync(itemPath, 'utf8'),
+      new RegExp(supplement),
+    );
+
+    const afterFirstAttach = fs.readFileSync(itemPath);
+    const attachedAgain = dispatchGovernanceIntakeCommand(
+      'attach',
+      [later.workItemId, supplement],
+      fixture.repositoryRoot,
+      { now: () => '2026-08-24T03:23:00.000Z' },
+    ) as { sourceId: string; updated: boolean };
+    assert.equal(attachedAgain.sourceId, attached.sourceId);
+    assert.equal(attachedAgain.updated, false);
+    assert.deepEqual(fs.readFileSync(itemPath), afterFirstAttach);
+    assert.equal(
+      runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+      headBefore,
+    );
+    assert.equal(
+      runGitForTest(fixture.repositoryRoot, ['show-ref']),
+      refsBefore,
+    );
+
+    const topLevelText = 'Route one inline request through the top-level CLI.';
+    const originalWrite = process.stdout.write;
+    let output = '';
+    process.stdout.write = ((chunk: string | Uint8Array) => {
+      output += chunk.toString();
+      return true;
+    }) as typeof process.stdout.write;
+    try {
+      assert.equal(
+        runCli(['later', topLevelText, '--json'], fixture.repositoryRoot),
+        0,
+      );
+    } finally {
+      process.stdout.write = originalWrite;
+    }
+    const topLevel = JSON.parse(output) as {
+      command: string;
+      result: { action: string; originalText: string; nextSteps: string[] };
+    };
+    assert.equal(topLevel.command, 'later');
+    assert.equal(topLevel.result.action, 'later');
+    assert.equal(topLevel.result.originalText, topLevelText);
+    assert.equal(topLevel.result.nextSteps.length, 1);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('D-019 finding convert resumes one deterministic item before publishing its receipt', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-finding-convert-'),
+  );
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const rawFinding = fs.readFileSync(fixture.finding.path);
+    const itemCountBefore = listWorkItems(fixture.repositoryRoot).length;
+    const sourceCountBefore = listGovernanceSources(
+      fixture.repositoryRoot,
+    ).length;
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['convert', fixture.finding.finding.id],
+          fixture.repositoryRoot,
+          {
+            now: () => '2026-08-24T03:24:00.000Z',
+            resolveRuntimeRoot: () => fixture.runtimeRoot,
+            afterFindingConversionWorkItemPersisted: () => {
+              throw new Error('simulated crash after deterministic item');
+            },
+          },
+        ),
+      /simulated crash after deterministic item/u,
+    );
+    const expectedWorkItemId = `WORK-${fixture.finding.finding.id
+      .slice('FND-'.length, 'FND-'.length + 26)
+      .toUpperCase()}`;
+    const itemAfterCrash = showWorkItem(
+      fixture.repositoryRoot,
+      expectedWorkItemId,
+    );
+    const itemPath = path.join(
+      fixture.repositoryRoot,
+      'docs/work-registry/items/2026',
+      `${expectedWorkItemId}.yaml`,
+    );
+    const itemBytesAfterCrash = fs.readFileSync(itemPath);
+    assert.equal(
+      listWorkItems(fixture.repositoryRoot).length,
+      itemCountBefore + 1,
+    );
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourceCountBefore + 1,
+    );
+    assert.equal(itemAfterCrash.stage, 'inbox');
+    assert.deepEqual(
+      (
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['list'],
+          fixture.repositoryRoot,
+          { resolveRuntimeRoot: () => fixture.runtimeRoot },
+        ) as { findings: Array<{ id: string }> }
+      ).findings.map(({ id }) => id),
+      [fixture.finding.finding.id],
+    );
+
+    const divergent = JSON.parse(itemBytesAfterCrash.toString('utf8')) as {
+      title: string;
+    };
+    divergent.title = 'A divergent deterministic conversion target';
+    fs.writeFileSync(itemPath, `${canonicalJson(divergent)}\n`);
+    const divergentBytes = fs.readFileSync(itemPath);
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['convert', fixture.finding.finding.id],
+          fixture.repositoryRoot,
+          {
+            now: () => '2026-08-24T03:24:30.000Z',
+            resolveRuntimeRoot: () => fixture.runtimeRoot,
+          },
+        ),
+      hasCode('WORK_REGISTRY_INVALID'),
+    );
+    assert.deepEqual(fs.readFileSync(itemPath), divergentBytes);
+    assert.deepEqual(fs.readFileSync(fixture.finding.path), rawFinding);
+    assert.deepEqual(
+      (
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['list'],
+          fixture.repositoryRoot,
+          { resolveRuntimeRoot: () => fixture.runtimeRoot },
+        ) as { findings: Array<{ id: string }> }
+      ).findings.map(({ id }) => id),
+      [fixture.finding.finding.id],
+    );
+    fs.writeFileSync(itemPath, itemBytesAfterCrash);
+
+    const recovered = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['convert', fixture.finding.finding.id],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-08-24T03:25:00.000Z',
+        resolveRuntimeRoot: () => fixture.runtimeRoot,
+      },
+    ) as {
+      action: string;
+      workItemId: string;
+      finding: { disposition: string; target: unknown };
+      created: boolean;
+    };
+    assert.equal(recovered.action, 'convert');
+    assert.equal(recovered.workItemId, expectedWorkItemId);
+    assert.equal(recovered.created, true);
+    assert.deepEqual(recovered.finding.target, {
+      kind: 'work-item',
+      id: expectedWorkItemId,
+    });
+    assert.equal(recovered.finding.disposition, 'converted');
+    assert.equal(
+      listWorkItems(fixture.repositoryRoot).length,
+      itemCountBefore + 1,
+    );
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourceCountBefore + 1,
+    );
+    assert.deepEqual(fs.readFileSync(itemPath), itemBytesAfterCrash);
+    assert.deepEqual(fs.readFileSync(fixture.finding.path), rawFinding);
+
+    const replay = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['convert', fixture.finding.finding.id],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-08-24T03:26:00.000Z',
+        resolveRuntimeRoot: () => fixture.runtimeRoot,
+      },
+    ) as { created: boolean; workItemId: string };
+    assert.equal(replay.created, false);
+    assert.equal(replay.workItemId, expectedWorkItemId);
+    assert.equal(
+      listWorkItems(fixture.repositoryRoot).length,
+      itemCountBefore + 1,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
   }
 });
 

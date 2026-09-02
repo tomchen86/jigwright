@@ -297,6 +297,32 @@ export function dismissGovernanceFinding(
   );
 }
 
+export function convertGovernanceFinding(
+  runtimeRoot: string,
+  requestedFindingId: string,
+  requestedWorkItemId: string,
+  now: () => string = () => new Date().toISOString(),
+): {
+  finding: GovernanceFindingReadModelV1;
+  path: string;
+  created: boolean;
+} {
+  return recordGovernanceFindingDisposition(
+    runtimeRoot,
+    requestedFindingId,
+    {
+      schemaVersion: 1,
+      disposition: 'converted',
+      reason: 'Converted to one deterministic inbox Work Item.',
+      target: {
+        kind: 'work-item',
+        id: requestedWorkItemId as `WORK-${string}`,
+      },
+    },
+    now,
+  );
+}
+
 function recordGovernanceFindingDisposition(
   runtimeRoot: string,
   requestedFindingId: string,
