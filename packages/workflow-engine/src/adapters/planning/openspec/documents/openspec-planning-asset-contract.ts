@@ -520,7 +520,7 @@ function investigationFirstProposeAsset(source: string): string {
     '',
     '**Steps**',
     '',
-    '1. If the request is unclear, ask one open-ended question before starting. Derive a stable change ID. Before creating durable state, verify a clean exact `work/<change-id>` branch and stop otherwise. Create a temporary normalized intent JSON file outside tracked planning artifacts. Its exact top-level keys are `schemaVersion`, `summary`, `explicitPaths`, `explicitSymbols`, `explicitConfigKeys`, and `renamePairs`, with no extras. Set `schemaVersion` to `1`. Use a non-empty string for `summary`. Use string arrays for `explicitPaths`, `explicitSymbols`, and `explicitConfigKeys`. Encode each rename pair with exactly the string keys `from` and `to`. Empty arrays are valid.',
+    '1. If the request is unclear, ask one open-ended question before starting. Derive a stable change ID. Before creating durable state, verify a clean exact `work/<change-id>` branch and stop otherwise. Create a temporary normalized intent JSON file outside tracked planning artifacts. Its exact top-level keys are `schemaVersion`, `summary`, `sourceRefs`, `explicitPaths`, `explicitSymbols`, `explicitConfigKeys`, and `renamePairs`, with no extras. Set `schemaVersion` to `1`. Use a non-empty string for `summary`. Use string arrays for `sourceRefs`, `explicitPaths`, `explicitSymbols`, and `explicitConfigKeys`. Every `sourceRefs` entry must be an existing exact identity beginning with `SRC-` followed by 64 lowercase hexadecimal characters. Encode each rename pair with exactly the string keys `from` and `to`. Empty arrays are valid.',
     '',
     '2. Start the durable wrapper:',
     '',
@@ -664,6 +664,7 @@ export function verifyOpenSpecPlanningAssetContent(
         content.includes('`inputSchema`') &&
         content.includes('`schemaVersion`') &&
         content.includes('`summary`') &&
+        content.includes('`sourceRefs`') &&
         content.includes('`explicitPaths`') &&
         content.includes('`explicitSymbols`') &&
         content.includes('`explicitConfigKeys`') &&

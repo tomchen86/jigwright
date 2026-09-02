@@ -1726,6 +1726,7 @@ function assertInvestigationFirstProposeContract(
   for (const field of [
     'schemaVersion',
     'summary',
+    'sourceRefs',
     'explicitPaths',
     'explicitSymbols',
     'explicitConfigKeys',
