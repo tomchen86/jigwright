@@ -30,6 +30,7 @@ import {
   completeProviderInvocation,
   createProviderInvocation,
   failProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
   providerInvocationManifestDigest,
   storeProviderExecutionPolicySnapshot,
   type BlindSurveyManifest,
@@ -416,22 +417,48 @@ test('multiple provider successes expose one winner and later output as late-dup
   try {
     const runtime = loadInvestigationRuntimeContext(repository).runtime;
     const manifest = createManifest(repository);
-    for (const attempt of [1, 2]) {
-      const request = createRequest(
+    const requests = [1, 2].map((attempt) =>
+      createRequest(
         repository,
         manifest,
         `invocation-runtime-winner-${attempt}`,
         600_000,
-      );
+      ),
+    );
+    for (const [index, request] of requests.entries()) {
       createDirectProviderInvocation(repository, runtime, {
         investigationId: 'investigation-runtime-winner',
         changeId: CHANGE_ID,
-        attempt,
+        attempt: index + 1,
         manifest,
         request,
-        createdAt: `2026-08-03T10:0${attempt}:00.000Z`,
+        createdAt: `2026-08-03T10:0${index + 1}:00.000Z`,
       });
-      completeInvocation(runtime, request, `2026-08-03T10:1${attempt}:00.000Z`);
+    }
+    const claims = requests.map((request, index) =>
+      claimProviderInvocation(runtime, request.invocationId, {
+        workerId: `worker-runtime-winner-${index + 1}`,
+        leaseDurationMs: request.limits.timeoutMs,
+        now: `2026-08-03T10:0${index + 3}:00.000Z`,
+      }),
+    );
+    const acceptances = requests.map((request) =>
+      prepareProviderInvocationAcceptanceBinding(
+        runtime,
+        request.invocationId,
+        'synchronous-no-activity',
+      ),
+    );
+    for (const [index, request] of requests.entries()) {
+      const claim = claims[index]!;
+      completeProviderInvocation(runtime, request.invocationId, {
+        expectedRevision: claim.record.revision,
+        leaseGeneration: claim.record.leaseGeneration,
+        leaseToken: claim.leaseToken,
+        outcome: providerOutcome(request),
+        acceptanceBinding: acceptances[index],
+        now: `2026-08-03T10:1${index + 1}:00.000Z`,
+      });
     }
     const [inspection] = listExecutionJobs(repository);
     assert.ok(inspection);
