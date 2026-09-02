@@ -1307,25 +1307,6 @@ function promoteFixtureWorkItem(
   workItemId: string,
   changeId: string,
 ): void {
-  const inputPath = 'promotion-survey.json';
-  writeJson(path.join(repository, inputPath), {
-    schemaVersion: 1,
-    symbols: [],
-    emptyReason: 'The synthetic consumer introduces no shared symbol.',
-  });
-  try {
-    runCli(repository, [
-      'work-item',
-      'promote-prepare',
-      workItemId,
-      '--change',
-      changeId,
-      '--input',
-      inputPath,
-    ]);
-  } finally {
-    fs.rmSync(path.join(repository, inputPath), { force: true });
-  }
   const item = showFixtureWorkItem(repository, workItemId);
   const expected = `sha256:${crypto
     .createHash('sha256')
@@ -1340,6 +1321,13 @@ function promoteFixtureWorkItem(
     '--expected',
     expected,
   ]);
+  assert.equal(
+    fs.existsSync(
+      path.join(repository, 'openspec/changes', changeId, 'survey.json'),
+    ),
+    false,
+    'a Work Item backed only by maintainer Sources must promote without a survey',
+  );
 }
 
 function showFixtureWorkItem(
