@@ -808,16 +808,17 @@ function snapshotRepositoryObservation(repository: string): {
         .readdirSync(runtimeRoot, { recursive: true, encoding: 'utf8' })
         .map(String)
         .sort()
-        .filter((relativePath) =>
-          fs.lstatSync(path.join(runtimeRoot, relativePath)).isFile(),
-        )
-        .map(
-          (relativePath) =>
-            [
-              relativePath,
-              fs.readFileSync(path.join(runtimeRoot, relativePath), 'hex'),
-            ] as const,
-        )
+        .map((relativePath) => {
+          const absolutePath = path.join(runtimeRoot, relativePath);
+          const stats = fs.lstatSync(absolutePath);
+          const mode = (stats.mode & 0o777).toString(8).padStart(3, '0');
+          return [
+            `${stats.isDirectory() ? 'directory' : 'file'}:${relativePath}`,
+            stats.isFile()
+              ? `${mode}:${fs.readFileSync(absolutePath, 'hex')}`
+              : mode,
+          ] as const;
+        })
     : [];
   return {
     head: git(repository, ['rev-parse', 'HEAD']).trim(),
