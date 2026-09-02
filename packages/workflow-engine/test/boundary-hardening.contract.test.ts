@@ -135,6 +135,34 @@ test('task reports require explicit planning assurance while authority reports o
   }
 });
 
+test('tracked report schema admits only current planning-assurance forms including R-007', () => {
+  const schema = JSON.parse(
+    fs.readFileSync(
+      new URL('../../../workflow/schemas/report.schema.json', import.meta.url),
+      'utf8',
+    ),
+  ) as {
+    $defs: {
+      planningAssurance: {
+        anyOf: Array<{
+          properties?: { reviewRoleResultForm: { enum: string[] } };
+        }>;
+      };
+    };
+  };
+  assert.deepEqual(
+    schema.$defs.planningAssurance.anyOf[1]?.properties?.reviewRoleResultForm
+      .enum,
+    [
+      'ordinary-provider',
+      'granted-same-provider',
+      'granted-role-context-sharing',
+      'granted-caller-supplied',
+      'direct-human-attestation',
+    ],
+  );
+});
+
 test('repository lifecycle cleanup preserves operation and release failures', () => {
   const root = fs.realpathSync(
     fs.mkdtempSync(path.join(os.tmpdir(), 'repository-lock-errors-')),

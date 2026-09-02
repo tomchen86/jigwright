@@ -1540,6 +1540,21 @@ test('tracked session schema exposes only the current WorkflowSession shape', ()
     'worktreeDigest',
     'resources',
   ]);
+  const planningAssurance = schema.$defs.planningAssurance as {
+    anyOf: Array<{
+      properties?: { reviewRoleResultForm: { enum: string[] } };
+    }>;
+  };
+  assert.deepEqual(
+    planningAssurance.anyOf[1]?.properties?.reviewRoleResultForm.enum,
+    [
+      'ordinary-provider',
+      'granted-same-provider',
+      'granted-role-context-sharing',
+      'granted-caller-supplied',
+      'direct-human-attestation',
+    ],
+  );
 });
 
 test('current session reader rejects persisted records missing required check digests', () => {

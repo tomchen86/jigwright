@@ -729,6 +729,12 @@ test('the tracked PlanReview schema exposes every admitted role-result form', ()
         properties: { form: { enum: string[] } };
         allOf: Array<{
           then: {
+            oneOf?: Array<{
+              properties: {
+                requiredIndependence: { const: string };
+                achievedIndependence: { const?: string; enum?: string[] };
+              };
+            }>;
             properties: {
               requiredIndependence?: { const?: string; enum?: string[] };
             };
@@ -759,11 +765,22 @@ test('the tracked PlanReview schema exposes every admitted role-result form', ()
     'direct-human-attestation',
   ]);
   assert.equal(schema.$defs.admittedRoleResultV1.allOf.length, 4);
-  assert.deepEqual(
-    schema.$defs.admittedRoleResultV1.allOf[0]?.then.properties
-      .requiredIndependence?.enum,
-    ['provider-independent', 'session-independent'],
-  );
+  assert.deepEqual(schema.$defs.admittedRoleResultV1.allOf[0]?.then.oneOf, [
+    {
+      properties: {
+        requiredIndependence: { const: 'provider-independent' },
+        achievedIndependence: { const: 'provider-independent' },
+      },
+    },
+    {
+      properties: {
+        requiredIndependence: { const: 'session-independent' },
+        achievedIndependence: {
+          enum: ['provider-independent', 'session-independent'],
+        },
+      },
+    },
+  ]);
   assert.equal(
     schema.$defs.admittedRoleResultV2.properties.schemaVersion.const,
     2,

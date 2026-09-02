@@ -116,16 +116,32 @@
           "then": {
             "properties": {
               "orchestration": { "const": "engine-spawned-provider" },
-              "requiredIndependence": {
-                "enum": ["provider-independent", "session-independent"]
-              },
-              "achievedIndependence": {
-                "enum": ["provider-independent", "session-independent"]
-              },
               "providerInvocation": { "type": "object" },
               "grantUse": { "type": "null" },
               "directHumanReviewAttestation": { "type": "null" }
-            }
+            },
+            "oneOf": [
+              {
+                "properties": {
+                  "requiredIndependence": {
+                    "const": "provider-independent"
+                  },
+                  "achievedIndependence": {
+                    "const": "provider-independent"
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "requiredIndependence": {
+                    "const": "session-independent"
+                  },
+                  "achievedIndependence": {
+                    "enum": ["provider-independent", "session-independent"]
+                  }
+                }
+              }
+            ]
           }
         },
         {

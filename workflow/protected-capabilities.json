@@ -400,8 +400,8 @@
         "workflow/schemas/report.schema.json",
         "workflow/schemas/session.schema.json"
       ],
-      "contentDigest": "sha256:9e308177bc7daa518d05104b56dc1962367745e69f449c65acb2190efa3b00a6",
-      "closureDigest": "sha256:f235faa161f9cf1778390faa916b017711eaaa163b25fbbef454c04101839fe2"
+      "contentDigest": "sha256:a4b83c87d922f6a3c4eb09b14d8c5d8dcad22118d2475bf6871ad8faa5b7e8f6",
+      "closureDigest": "sha256:24cba3e1fa0a56973d5e613ab2ab42dc70dc16483170df0450126b33fef1195d"
     },
     {
       "capability": "recovery.rollback",
