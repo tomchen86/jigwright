@@ -275,17 +275,36 @@ function routeStatusNextSteps(
         )
     : [];
   const primaryChangeId = stringField(inspection, 'primaryChangeId');
-  if (
-    primaryChangeId !== undefined &&
+  const selectedChangeIds = [
+    ...(primaryChangeId !== undefined &&
     changes.some(
       (change) =>
         stringField(change, 'changeId') === primaryChangeId &&
         change.state === 'primary',
     )
-  ) {
-    return projectWorkflowNextSteps(['open-task'], {
-      changeId: primaryChangeId,
-    });
+      ? [primaryChangeId]
+      : []),
+    ...(Array.isArray(inspection?.concurrentChangeIds)
+      ? inspection.concurrentChangeIds.filter(
+          (changeId): changeId is string =>
+            typeof changeId === 'string' &&
+            changes.some(
+              (change) =>
+                stringField(change, 'changeId') === changeId &&
+                change.state === 'concurrent',
+            ),
+        )
+      : []),
+  ].filter((changeId, index, all) => all.indexOf(changeId) === index);
+  if (selectedChangeIds.length > 0) {
+    return limitNextSteps(
+      selectedChangeIds.map((changeId) =>
+        explicitNextStep(
+          'open-task',
+          `pnpm workflow open-task ${shellQuote(changeId)} --json`,
+        ),
+      ),
+    );
   }
   if (inspection?.sourcePresent === false) {
     const active = changes.filter(

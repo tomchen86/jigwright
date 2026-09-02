@@ -394,6 +394,7 @@ test('route status projects only executable current routing next steps', () => {
     sourcePresent: boolean,
     primaryChangeId: string | null,
     changes: Array<{ changeId: string; state: string }>,
+    concurrentChangeIds: string[] = [],
   ) =>
     workflowResultNextSteps({
       command: 'route',
@@ -404,20 +405,47 @@ test('route status projects only executable current routing next steps', () => {
           sourcePresent,
           sourceDigest: null,
           primaryChangeId,
-          concurrentChangeIds: [],
+          concurrentChangeIds,
           changes,
         },
       },
     }).map(({ command }) => command);
 
   assert.deepEqual(
-    routeStatus(true, 'demo-change', [
-      { changeId: 'demo-change', state: 'primary' },
-    ]),
-    ['pnpm workflow open-task demo-change --json'],
+    routeStatus(
+      true,
+      'demo-change',
+      [
+        { changeId: 'demo-change', state: 'primary' },
+        { changeId: 'repair-change', state: 'concurrent' },
+      ],
+      ['repair-change'],
+    ),
+    [
+      'pnpm workflow open-task demo-change --json',
+      'pnpm workflow open-task repair-change --json',
+    ],
+  );
+  assert.deepEqual(
+    routeStatus(
+      true,
+      null,
+      [{ changeId: 'repair-change', state: 'concurrent' }],
+      ['repair-change'],
+    ),
+    ['pnpm workflow open-task repair-change --json'],
   );
   assert.deepEqual(
     routeStatus(true, null, [{ changeId: 'demo-change', state: 'ready' }]),
+    ['pnpm workflow guide --json'],
+  );
+  assert.deepEqual(
+    routeStatus(
+      true,
+      null,
+      [{ changeId: 'repair-change', state: 'ready' }],
+      ['repair-change'],
+    ),
     ['pnpm workflow guide --json'],
   );
   assert.deepEqual(
