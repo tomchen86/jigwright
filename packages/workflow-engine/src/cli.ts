@@ -3527,11 +3527,14 @@ function doctor(cwd: string): CommandResult {
       message: `Worktree has ${git.statusEntries.length} staged, unstaged, or untracked status entries; task session activation will fail.`,
     });
   }
-  if (!fs.existsSync(path.join(git.repositoryRoot, 'openspec/specs'))) {
+  const baseSpecRoot = path.posix.join(
+    path.posix.dirname(config.changeRoot),
+    'specs',
+  );
+  if (!fs.existsSync(path.join(git.repositoryRoot, baseSpecRoot))) {
     warnings.push({
       code: 'NO_BASE_SPECS',
-      message:
-        'openspec/specs does not exist yet; create the current managed base specifications before planning changes.',
+      message: `${baseSpecRoot} does not exist yet; create the current managed base specifications before planning changes.`,
     });
   }
   for (const diagnostic of openspec.diagnostics) {

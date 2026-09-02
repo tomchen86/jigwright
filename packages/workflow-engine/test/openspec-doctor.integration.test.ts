@@ -453,6 +453,66 @@ test('real workflow doctor reports the pinned local OpenSpec installation', () =
   );
 });
 
+test('workflow doctor derives base-spec diagnostics from the configured change root', () => {
+  const configuredRepository = createDoctorFixture();
+  const defaultRepository = createDoctorFixture();
+  try {
+    writeDoctorWorkflowConfig(configuredRepository, 'plans');
+    fs.rmSync(path.join(configuredRepository, 'openspec/specs'), {
+      recursive: true,
+    });
+    fs.mkdirSync(path.join(configuredRepository, 'specs'));
+    initializeDoctorFixtureRepository(configuredRepository);
+
+    const beforeConfigured = doctorFixtureStatus(configuredRepository);
+    const present = runWorkflowDoctor(configuredRepository);
+    assert.equal(
+      present.warnings.some(({ code }) => code === 'NO_BASE_SPECS'),
+      false,
+    );
+    assert.equal(
+      doctorFixtureStatus(configuredRepository),
+      beforeConfigured,
+      'doctor must not mutate a repository with configured base specs',
+    );
+
+    fs.rmSync(path.join(configuredRepository, 'specs'), { recursive: true });
+    const beforeMissingConfigured = doctorFixtureStatus(configuredRepository);
+    const missingConfigured = runWorkflowDoctor(configuredRepository);
+    assert.deepEqual(
+      missingConfigured.warnings.find(({ code }) => code === 'NO_BASE_SPECS'),
+      {
+        code: 'NO_BASE_SPECS',
+        message:
+          'specs does not exist yet; create the current managed base specifications before planning changes.',
+      },
+    );
+    assert.equal(
+      doctorFixtureStatus(configuredRepository),
+      beforeMissingConfigured,
+      'doctor must not repair missing configured base specs',
+    );
+
+    writeDoctorWorkflowConfig(defaultRepository, 'openspec/changes');
+    fs.rmSync(path.join(defaultRepository, 'openspec/specs'), {
+      recursive: true,
+    });
+    initializeDoctorFixtureRepository(defaultRepository);
+    const missingDefault = runWorkflowDoctor(defaultRepository);
+    assert.deepEqual(
+      missingDefault.warnings.find(({ code }) => code === 'NO_BASE_SPECS'),
+      {
+        code: 'NO_BASE_SPECS',
+        message:
+          'openspec/specs does not exist yet; create the current managed base specifications before planning changes.',
+      },
+    );
+  } finally {
+    fs.rmSync(configuredRepository, { recursive: true, force: true });
+    fs.rmSync(defaultRepository, { recursive: true, force: true });
+  }
+});
+
 type DoctorPlanningConfiguration = Readonly<{
   packageSchemaNames: string[];
   requiredSchemaNames: string[];
@@ -617,6 +677,72 @@ function writeRepositoryConsumerConfiguration(
       changeOriginRoot: 'openspec/changes',
     },
     databasePolicy: { adapterId: 'disabled-v1' },
+  });
+}
+
+function initializeDoctorFixtureRepository(repository: string): void {
+  execFileSync('git', ['init', '--quiet', '--initial-branch=main'], {
+    cwd: repository,
+    stdio: 'ignore',
+  });
+  execFileSync('git', ['add', '.'], { cwd: repository, stdio: 'ignore' });
+  execFileSync(
+    'git',
+    [
+      '-c',
+      'user.name=Jigwright Test',
+      '-c',
+      'user.email=jigwright-test@example.invalid',
+      '-c',
+      'commit.gpgSign=false',
+      'commit',
+      '--quiet',
+      '-m',
+      'Create doctor fixture',
+    ],
+    { cwd: repository, stdio: 'ignore' },
+  );
+}
+
+function writeDoctorWorkflowConfig(
+  repository: string,
+  changeRoot: string,
+): void {
+  writeJson(path.join(repository, 'workflow/config.json'), {
+    schemaVersion: 1,
+    repositoryName: 'doctor-fixture',
+    changeRoot,
+    runtimeDirectory: 'workflow-engine',
+    protectedBranches: ['main'],
+    branchTemplate: 'work/{changeId}',
+  });
+}
+
+function runWorkflowDoctor(repository: string): {
+  warnings: Array<{ code: string; message: string }>;
+} {
+  return JSON.parse(
+    execFileSync(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+        'doctor',
+        '--json',
+      ],
+      {
+        cwd: repository,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      },
+    ),
+  ) as { warnings: Array<{ code: string; message: string }> };
+}
+
+function doctorFixtureStatus(repository: string): string {
+  return execFileSync('git', ['status', '--short'], {
+    cwd: repository,
+    encoding: 'utf8',
   });
 }
 
