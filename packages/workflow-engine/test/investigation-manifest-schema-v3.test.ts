@@ -66,6 +66,30 @@ test('the standalone v3 Manifest schema is closed and resolves every local defin
   const definitions = schema.$defs as Record<string, unknown>;
   assert.ok(definitions.ordinaryApplicability);
   assert.ok(definitions.exemptionApplicability);
+  const normalizedIntent = definitions.normalizedIntent as {
+    required: string[];
+    properties: {
+      sourceRefs: {
+        type: string;
+        uniqueItems: boolean;
+        items: { type: string; pattern: string };
+      };
+    };
+  };
+  assert.deepEqual(normalizedIntent.required, [
+    'schemaVersion',
+    'summary',
+    'sourceRefs',
+    'explicitPaths',
+    'explicitSymbols',
+    'explicitConfigKeys',
+    'renamePairs',
+  ]);
+  assert.deepEqual(normalizedIntent.properties.sourceRefs, {
+    type: 'array',
+    uniqueItems: true,
+    items: { type: 'string', pattern: '^SRC-[0-9a-f]{64}$' },
+  });
   walkSchema(schema, (node) => {
     if (node.$ref !== undefined) {
       assert.equal(typeof node.$ref, 'string');

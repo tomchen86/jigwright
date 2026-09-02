@@ -102,6 +102,7 @@
       "required": [
         "schemaVersion",
         "summary",
+        "sourceRefs",
         "explicitPaths",
         "explicitSymbols",
         "explicitConfigKeys",
@@ -110,6 +111,14 @@
       "properties": {
         "schemaVersion": { "const": 1 },
         "summary": { "$ref": "#/$defs/text" },
+        "sourceRefs": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "pattern": "^SRC-[0-9a-f]{64}$"
+          }
+        },
         "explicitPaths": { "$ref": "#/$defs/textArray" },
         "explicitSymbols": { "$ref": "#/$defs/textArray" },
         "explicitConfigKeys": { "$ref": "#/$defs/textArray" },
