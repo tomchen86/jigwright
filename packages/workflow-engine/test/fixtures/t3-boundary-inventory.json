@@ -258,7 +258,7 @@
       "id": "openspec-direct-dependency",
       "plane": "planning-provider",
       "state": "partial",
-      "t3Disposition": "Planning inspection, validation and propose authoring cross production planning composition roots; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. The propose application consumes a neutral read-only authoring port and reviewed-asset projection while OpenSpec construction stays in composition. Archive application and immutable CI replay now consume the exact planning archive projection port, while OpenSpec execution/parsing remains in composition; standalone adapter extraction and root/path seams remain.",
+      "t3Disposition": "Planning inspection, validation and propose authoring cross production planning composition roots; the task-history reducer is core-owned behind an engine error-mapping facade and is consumed by plan-commit plus CI replay. Immutable Git reads are repository-transaction owned: plan-commit, CI-planning, propose-orchestrator, open-task, finalize, and the archive verifier runtime no longer invert through the OpenSpec planning contract or CI entrypoint facade. The propose application consumes a neutral read-only authoring port and reviewed-asset projection while OpenSpec construction stays in composition. Managed-contract loading consumes a caller-composed PlanningProviderPort, verifies it against the tracked binding, and leaves OpenSpec construction in the production composition root. Archive application and immutable CI replay consume the exact planning archive projection port, while OpenSpec execution/parsing remains in composition; standalone adapter extraction and root/path seams remain.",
       "evidence": [
         {
           "path": "packages/core/src/planning-task-history.ts",
@@ -321,6 +321,20 @@
             "createOpenSpecAdapter",
             "OPENSPEC_ASSET_DEFINITIONS",
             "export function createPlanningProviderAuthoringPort("
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/adapters/planning/openspec/documents/managed-change-contract.ts",
+          "contains": [
+            "planningProvider: PlanningProviderPort,",
+            "assertPlanningProviderMatchesBinding(planningProvider, before)"
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/validated-contract-context.ts",
+          "contains": [
+            "createOpenSpecPlanningProviderPort(",
+            "repositoryPlanningConfiguration(initialGit.repositoryRoot)"
           ]
         },
         {

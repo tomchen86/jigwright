@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:6c801a0977f7511092d7e7bfba1511baf2db539564c6fd6b432633320ae89cf2`.
+Current production inventory digest: `sha256:473a9e85b4a38226c87312d512dbbb97d60d1f023a78a484e195327076d394d1`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
@@ -129,9 +129,12 @@ Propose authoring now consumes a neutral read-only authoring port and reviewed
 asset projection; OpenSpec construction and provider-specific asset definitions
 stay in the production composition root. Archive application and immutable CI
 replay now use the exact planning-archive projection port, while OpenSpec
-execution and payload parsing stay in composition. The remaining work is
-standalone adapter extraction and root/path seams, not direct archive execution
-outside the port.
+execution and payload parsing stay in composition. Managed-contract loading now
+consumes a caller-composed `PlanningProviderPort` and verifies it against the
+tracked binding; the OpenSpec provider is constructed only by the production
+composition root. The remaining work is standalone adapter extraction and
+root/path seams, not provider construction or direct archive execution outside
+the ports.
 
 The planning seam retains all eight planning-provider responsibilities:
 provider provenance, artifact inventory, task/source anchors, readiness
