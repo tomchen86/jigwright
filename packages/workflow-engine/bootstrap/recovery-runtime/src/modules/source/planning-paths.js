@@ -1,5 +1,6 @@
 import { OpenSpecPlanningPathError, assertOpenSpecPlanningPaths, requiredOpenSpecPlanningArtifactPaths, } from '@jigwright/openspec-adapter/planning-paths';
 import { PlanningProviderBindingError, planningProviderBindingPath as corePlanningProviderBindingPath, } from '@jigwright/core/planning-provider-binding';
+import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 export function planningProviderBindingPath(changeId) {
     try {
@@ -11,8 +12,14 @@ export function planningProviderBindingPath(changeId) {
         throw workflowError('PLANNING_CHANGE_ID_INVALID', error.message, ExitCode.guard);
     }
 }
-export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedPaths = [], schemaName, currentSchemaName) {
-    const additionalExactPaths = changeId === 'archive' ? [] : [planningProviderBindingPath(changeId)];
+export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedPaths = [], schemaName, currentSchemaName, citedSourceRefs = []) {
+    const sourceObjectPaths = planningSourceObjectPaths(citedSourceRefs);
+    if (sourceObjectPaths.some((sourcePath) => deletedPaths.includes(sourcePath))) {
+        throw workflowError('PLANNING_PATHS_INVALID', 'Planning cannot delete an immutable cited Source object.', ExitCode.guard);
+    }
+    const additionalExactPaths = changeId === 'archive'
+        ? []
+        : [planningProviderBindingPath(changeId), ...sourceObjectPaths];
     try {
         assertOpenSpecPlanningPaths({
             changeRoot,
@@ -29,6 +36,17 @@ export function assertPlanningPaths(changeRoot, changeId, changedPaths, deletedP
             throw error;
         throw mapOpenSpecPlanningPathError(error, schemaName);
     }
+}
+export function planningSourceObjectPaths(citedSourceRefs) {
+    if (JSON.stringify(citedSourceRefs) !==
+        JSON.stringify([...new Set(citedSourceRefs)].sort()) ||
+        citedSourceRefs.some((sourceRef) => !/^SRC-[0-9a-f]{64}$/.test(sourceRef))) {
+        throw workflowError('PLANNING_PATHS_INVALID', 'Planning Source citations must be identity-valid, canonical, and unique.', ExitCode.guard);
+    }
+    return citedSourceRefs.map((sourceRef) => {
+        const digest = sourceRef.slice('SRC-'.length);
+        return `${GOVERNANCE_SOURCE_LEDGER_ROOT}/${digest.slice(0, 2)}/${digest}.json`;
+    });
 }
 function mapOpenSpecPlanningPathError(error, schemaName) {
     if (error.code === 'PLANNING_CHANGE_ID_RESERVED') {

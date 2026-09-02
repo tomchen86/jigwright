@@ -117,6 +117,9 @@ export function prepareWorkItemPromotionSurvey(repositoryRoot, requestedId, requ
 function prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, requestedId, requestedChangeId, declaration) {
     const item = showWorkItem(repositoryRoot, requestedId);
     assertPromotionEligible(repositoryRoot, item);
+    if (!workItemRequiresPromotionSurvey(repositoryRoot, item)) {
+        throw registryInvalid('Promotion survey is only valid for an agent-authored premise.');
+    }
     const changeId = changeIdentity(requestedChangeId);
     const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
     if (declaration.schemaVersion !== 1 ||
@@ -244,7 +247,7 @@ function applyWorkItemReviewUnlocked(repositoryRoot, requestedId, review, now) {
     replaceCanonicalFile(itemPath, next);
     return next;
 }
-export function promoteWorkItem(repositoryRoot, requestedId, requestedChangeId, now = () => new Date().toISOString(), requestedExpectedDigest, requireCurrentSurvey = false, testHooks = {}, grantBinding = null) {
+export function promoteWorkItem(repositoryRoot, requestedId, requestedChangeId, now = () => new Date().toISOString(), requestedExpectedDigest, testHooks = {}, grantBinding = null) {
     const id = workItemId(requestedId);
     const changeId = changeIdentity(requestedChangeId);
     return withWorkRegistryPromotionLock(repositoryRoot, (runtime) => {
@@ -260,11 +263,10 @@ export function promoteWorkItem(repositoryRoot, requestedId, requestedChangeId, 
         }
         assertPromotionEligible(repositoryRoot, item);
         const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
-        if (requireCurrentSurvey) {
-            const surveyDigest = assertPromotionSurveyCurrent(repositoryRoot, changeDirectory, item, changeId);
-            if (grantBinding !== null && surveyDigest !== grantBinding.surveyDigest) {
-                throw promotionGrantStale('Work Registry promotion survey changed after Grant approval.');
-            }
+        const surveyBinding = observePromotionSurveyBinding(repositoryRoot, changeDirectory, item, changeId);
+        if (grantBinding !== null &&
+            canonicalJson(surveyBinding) !== canonicalJson(grantBinding.surveyBinding)) {
+            throw promotionGrantStale('Work Registry promotion survey binding changed after Grant approval.');
         }
         const at = canonicalTimestamp(now());
         const promoted = {
@@ -319,22 +321,348 @@ export function hasExactWorkItemPromotionReceipt(repositoryRoot, requestedId, re
         return (findExactRecoveredWorkItemPromotion(runtime, id, changeId, expectedDigest, grantBinding) !== null);
     });
 }
-export function observeWorkItemPromotionSurveyDigest(repositoryRoot, requestedId, requestedChangeId) {
-    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
+export function hasExactCurrentWorkItemPromotion(repositoryRoot, requestedId, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const item = showWorkItemUnlocked(repositoryRoot, requestedId);
+        const changeId = changeIdentity(requestedChangeId);
+        if (item.stage !== 'active' ||
+            item.closure !== null ||
+            canonicalJson(item.changeRefs) !== canonicalJson([changeId])) {
+            return false;
+        }
+        const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
+        const originSource = readOptionalPlainFile(path.join(changeDirectory, 'origin.json'));
+        if (originSource === null)
+            return false;
+        const origin = parseOrigin(originSource);
+        return (item.sourceRefs.every((sourceRef) => origin.sourceRefs.includes(sourceRef)) && origin.workItemRefs.includes(item.id));
+    });
 }
-function observeWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId) {
+export function ensureWorkItemPromotionSurveyBinding(repositoryRoot, requestedId, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => ensureWorkItemPromotionSurveyBindingUnlocked(repositoryRoot, requestedId, requestedChangeId));
+}
+export function ensureWorkItemPromotionChangeDirectory(repositoryRoot, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => ensureWorkItemPromotionChangeDirectoryUnlocked(repositoryRoot, changeIdentity(requestedChangeId)));
+}
+export function observeWorkItemPromotionPreparationBinding(repositoryRoot, requestedId, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => observeWorkItemPromotionPreparationBindingUnlocked(repositoryRoot, requestedId, requestedChangeId));
+}
+export function prepareWorkItemPromotionFromBinding(repositoryRoot, requestedId, requestedChangeId, expected) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const actual = observeWorkItemPromotionPreparationBindingUnlocked(repositoryRoot, requestedId, requestedChangeId);
+        if (!promotionPreparationMatches(expected, actual)) {
+            throw promotionGrantStale('Work Registry promotion preparation changed after authorization.');
+        }
+        const changeId = changeIdentity(requestedChangeId);
+        const changeDirectory = ensureWorkItemPromotionChangeDirectoryUnlocked(repositoryRoot, changeId);
+        if (expected.surveyPreparation.kind === 'create-current-survey') {
+            const surveyPath = path.join(changeDirectory, 'survey.json');
+            const existing = readOptionalPlainFile(surveyPath);
+            const expectedBytes = `${canonicalJson(expected.surveyPreparation.survey)}\n`;
+            if (existing === null) {
+                replaceCanonicalFile(surveyPath, expected.surveyPreparation.survey);
+            }
+            else if (existing !== expectedBytes) {
+                throw promotionGrantStale('Work Registry promotion survey changed after authorization.');
+            }
+        }
+        const item = showWorkItemUnlocked(repositoryRoot, requestedId);
+        return observePromotionSurveyBinding(repositoryRoot, changeDirectory, item, changeId);
+    });
+}
+export function workItemPromotionPreparationMatches(expected, actual) {
+    return promotionPreparationMatches(expected, actual);
+}
+function observeWorkItemPromotionPreparationBindingUnlocked(repositoryRoot, requestedId, requestedChangeId) {
+    const item = showWorkItemUnlocked(repositoryRoot, requestedId);
+    assertPromotionEligible(repositoryRoot, item);
+    const changeId = changeIdentity(requestedChangeId);
+    const sourceRefsDigest = promotionSourceRefsDigest(item);
+    const changeDirectory = promotionChangeDirectory(repositoryRoot, changeId);
+    const stats = fs.lstatSync(changeDirectory, { throwIfNoEntry: false });
+    if (stats !== undefined && (!stats.isDirectory() || stats.isSymbolicLink())) {
+        throw registryInvalid('Promotion change directory is unsafe.');
+    }
+    const existingEntries = stats === undefined
+        ? null
+        : snapshotPromotionChangeEntries(changeDirectory);
+    const stableStats = fs.lstatSync(changeDirectory, { throwIfNoEntry: false });
+    if ((stats === undefined) !== (stableStats === undefined) ||
+        (stats !== undefined &&
+            stableStats !== undefined &&
+            (!stableStats.isDirectory() ||
+                stableStats.isSymbolicLink() ||
+                stats.dev !== stableStats.dev ||
+                stats.ino !== stableStats.ino ||
+                stats.mode !== stableStats.mode ||
+                stats.mtimeMs !== stableStats.mtimeMs))) {
+        throw registryInvalid('Promotion change directory changed during inspection.');
+    }
+    const originEntry = existingEntries?.find((entry) => entry.path === 'origin.json');
+    if (originEntry?.kind === 'directory') {
+        throw registryInvalid('Promotion change origin is unsafe.');
+    }
+    const changeTarget = stats === undefined
+        ? { kind: 'absent-change' }
+        : {
+            kind: 'existing-change',
+            directoryMode: stableStats.mode & 0o777,
+            entries: existingEntries,
+            originDigest: originEntry?.digest ?? null,
+        };
+    if (!workItemRequiresPromotionSurvey(repositoryRoot, item)) {
+        return {
+            schemaVersion: 1,
+            changeTarget,
+            sourceRefsDigest,
+            surveyPreparation: {
+                kind: 'not-required',
+                binding: promotionNotRequiredBinding(item),
+            },
+        };
+    }
+    if (stats !== undefined) {
+        const source = readOptionalPlainFile(path.join(changeDirectory, 'survey.json'));
+        if (source !== null) {
+            return {
+                schemaVersion: 1,
+                changeTarget,
+                sourceRefsDigest,
+                surveyPreparation: {
+                    kind: 'current-survey',
+                    binding: {
+                        schemaVersion: 1,
+                        kind: 'current-survey',
+                        digest: assertPromotionSurveyCurrent(repositoryRoot, changeDirectory, item, changeId),
+                    },
+                },
+            };
+        }
+    }
+    const survey = projectEmptyPromotionSurvey(repositoryRoot, item, changeId);
+    return {
+        schemaVersion: 1,
+        changeTarget,
+        sourceRefsDigest,
+        surveyPreparation: {
+            kind: 'create-current-survey',
+            binding: {
+                schemaVersion: 1,
+                kind: 'current-survey',
+                digest: workRegistryTextDigest(`${canonicalJson(survey)}\n`),
+            },
+            survey,
+        },
+    };
+}
+function promotionPreparationMatches(expected, actual) {
+    if (expected.schemaVersion !== actual.schemaVersion ||
+        expected.sourceRefsDigest !== actual.sourceRefsDigest) {
+        return false;
+    }
+    const exact = canonicalJson(expected) === canonicalJson(actual);
+    if (exact)
+        return true;
+    if (expected.changeTarget.kind === 'existing-change' &&
+        actual.changeTarget.kind === 'existing-change' &&
+        expected.surveyPreparation.kind === 'create-current-survey' &&
+        (actual.surveyPreparation.kind === 'create-current-survey' ||
+            actual.surveyPreparation.kind === 'current-survey') &&
+        expected.changeTarget.directoryMode === actual.changeTarget.directoryMode &&
+        expected.changeTarget.originDigest === actual.changeTarget.originDigest &&
+        canonicalJson(expected.surveyPreparation.binding) ===
+            canonicalJson(actual.surveyPreparation.binding)) {
+        const preparedEntries = [
+            ...expected.changeTarget.entries,
+            {
+                path: 'survey.json',
+                kind: 'file',
+                mode: WORK_ITEM_FILE_MODE,
+                digest: expected.surveyPreparation.binding.digest,
+            },
+        ].sort((left, right) => left.path.localeCompare(right.path));
+        if (canonicalJson(actual.changeTarget.entries) ===
+            canonicalJson(preparedEntries)) {
+            return true;
+        }
+    }
+    if (expected.changeTarget.kind !== 'absent-change' ||
+        actual.changeTarget.kind !== 'existing-change' ||
+        actual.changeTarget.directoryMode !== 0o755 ||
+        actual.changeTarget.originDigest !== null) {
+        return false;
+    }
+    if (expected.surveyPreparation.kind === 'not-required') {
+        return (actual.changeTarget.entries.length === 0 &&
+            actual.surveyPreparation.kind === 'not-required' &&
+            canonicalJson(expected.surveyPreparation.binding) ===
+                canonicalJson(actual.surveyPreparation.binding));
+    }
+    if (expected.surveyPreparation.kind !== 'create-current-survey')
+        return false;
+    const expectedSurveyEntry = {
+        path: 'survey.json',
+        kind: 'file',
+        mode: WORK_ITEM_FILE_MODE,
+        digest: expected.surveyPreparation.binding.digest,
+    };
+    if (canonicalJson(actual.changeTarget.entries) !== canonicalJson([]) &&
+        canonicalJson(actual.changeTarget.entries) !==
+            canonicalJson([expectedSurveyEntry])) {
+        return false;
+    }
+    return ((actual.surveyPreparation.kind === 'create-current-survey' ||
+        actual.surveyPreparation.kind === 'current-survey') &&
+        canonicalJson(expected.surveyPreparation.binding) ===
+            canonicalJson(actual.surveyPreparation.binding));
+}
+function snapshotPromotionChangeEntries(changeDirectory) {
+    const entries = [];
+    const visit = (directory, prefix) => {
+        const beforeDirectory = fs.lstatSync(directory);
+        if (!beforeDirectory.isDirectory() || beforeDirectory.isSymbolicLink()) {
+            throw registryInvalid('Promotion change entry is unsafe.');
+        }
+        const names = fs.readdirSync(directory).sort();
+        for (const name of names) {
+            const entryPath = path.join(directory, name);
+            const relativePath = prefix ? `${prefix}/${name}` : name;
+            const stats = fs.lstatSync(entryPath);
+            if (stats.isSymbolicLink()) {
+                throw registryInvalid('Promotion change entry is unsafe.');
+            }
+            if (stats.isDirectory()) {
+                entries.push({
+                    path: relativePath,
+                    kind: 'directory',
+                    mode: stats.mode & 0o777,
+                });
+                visit(entryPath, relativePath);
+            }
+            else if (stats.isFile()) {
+                if (stats.nlink !== 1) {
+                    throw registryInvalid('Promotion change entry is unsafe.');
+                }
+                entries.push({
+                    path: relativePath,
+                    kind: 'file',
+                    mode: stats.mode & 0o777,
+                    digest: stablePromotionFileDigest(entryPath, stats),
+                });
+            }
+            else {
+                throw registryInvalid('Promotion change entry is unsafe.');
+            }
+        }
+        const afterDirectory = fs.lstatSync(directory);
+        if (!afterDirectory.isDirectory() ||
+            afterDirectory.isSymbolicLink() ||
+            beforeDirectory.dev !== afterDirectory.dev ||
+            beforeDirectory.ino !== afterDirectory.ino ||
+            beforeDirectory.mode !== afterDirectory.mode ||
+            beforeDirectory.mtimeMs !== afterDirectory.mtimeMs ||
+            canonicalJson(fs.readdirSync(directory).sort()) !== canonicalJson(names)) {
+            throw registryInvalid('Promotion change directory changed during inspection.');
+        }
+    };
+    visit(changeDirectory, '');
+    return entries.sort((left, right) => left.path.localeCompare(right.path));
+}
+function stablePromotionFileDigest(filePath, before) {
+    const bytes = fs.readFileSync(filePath);
+    const after = fs.lstatSync(filePath);
+    if (!after.isFile() ||
+        after.isSymbolicLink() ||
+        after.nlink !== 1 ||
+        before.dev !== after.dev ||
+        before.ino !== after.ino ||
+        before.size !== after.size ||
+        before.mode !== after.mode ||
+        before.mtimeMs !== after.mtimeMs ||
+        bytes.byteLength !== after.size) {
+        throw registryInvalid('Promotion change entry changed during inspection.');
+    }
+    return `sha256:${crypto.createHash('sha256').update(bytes).digest('hex')}`;
+}
+function projectEmptyPromotionSurvey(repositoryRoot, item, changeId) {
+    const surveyedCommit = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+    if (!/^[0-9a-f]{40,64}$/.test(surveyedCommit)) {
+        throw registryInvalid('Promotion survey commit is invalid.');
+    }
+    return {
+        schemaVersion: 1,
+        workItemId: item.id,
+        changeId,
+        surveyedCommit,
+        symbols: [],
+        emptyReason: 'The agent-authored premise declares no structured repository symbols.',
+    };
+}
+function promotionChangeDirectory(repositoryRoot, changeId) {
+    return path.join(repositoryConsumerPath(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).changeOriginRoot), changeId);
+}
+function ensureWorkItemPromotionChangeDirectoryUnlocked(repositoryRoot, changeId) {
+    const changeDirectory = promotionChangeDirectory(repositoryRoot, changeId);
+    const parent = path.dirname(changeDirectory);
+    const parentStats = fs.lstatSync(parent, { throwIfNoEntry: false });
+    if (!parentStats?.isDirectory() || parentStats.isSymbolicLink()) {
+        throw registryInvalid('Promotion change root is unsafe or unavailable.');
+    }
+    const stats = fs.lstatSync(changeDirectory, { throwIfNoEntry: false });
+    if (stats === undefined) {
+        fs.mkdirSync(changeDirectory, { mode: 0o755 });
+        fs.chmodSync(changeDirectory, 0o755);
+    }
+    else if (!stats.isDirectory() || stats.isSymbolicLink()) {
+        throw registryInvalid('Promotion change directory is unsafe.');
+    }
+    return changeDirectory;
+}
+function promotionSourceRefsDigest(item) {
+    return workRegistryTextDigest(canonicalJson({
+        schemaVersion: 1,
+        kind: 'work-registry-promotion-source-refs.v1',
+        sourceRefs: item.sourceRefs,
+    }));
+}
+function promotionNotRequiredBinding(item) {
+    return {
+        schemaVersion: 1,
+        kind: 'not-required',
+        reason: 'pure-maintainer-sources',
+        sourceRefsDigest: promotionSourceRefsDigest(item),
+    };
+}
+function ensureWorkItemPromotionSurveyBindingUnlocked(repositoryRoot, requestedId, requestedChangeId) {
     const item = showWorkItem(repositoryRoot, requestedId);
     assertPromotionEligible(repositoryRoot, item);
     const changeId = changeIdentity(requestedChangeId);
-    return assertPromotionSurveyCurrent(repositoryRoot, assertChangeDirectory(repositoryRoot, changeId), item, changeId);
+    const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
+    if (workItemRequiresPromotionSurvey(repositoryRoot, item) &&
+        readOptionalPlainFile(path.join(changeDirectory, 'survey.json')) === null) {
+        prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, item.id, changeId, {
+            schemaVersion: 1,
+            symbols: [],
+            emptyReason: 'The agent-authored premise declares no structured repository symbols.',
+        });
+    }
+    return observePromotionSurveyBinding(repositoryRoot, changeDirectory, item, changeId);
 }
-export function readWorkItemPromotionSurveyDigest(repositoryRoot, requestedId, requestedChangeId) {
-    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId));
+export function observeWorkItemPromotionSurveyBinding(repositoryRoot, requestedId, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => observeWorkItemPromotionSurveyBindingUnlocked(repositoryRoot, requestedId, requestedChangeId));
 }
-function readWorkItemPromotionSurveyDigestUnlocked(repositoryRoot, requestedId, requestedChangeId) {
+function observeWorkItemPromotionSurveyBindingUnlocked(repositoryRoot, requestedId, requestedChangeId) {
     const item = showWorkItem(repositoryRoot, requestedId);
+    assertPromotionEligible(repositoryRoot, item);
     const changeId = changeIdentity(requestedChangeId);
-    return assertPromotionSurveyCurrent(repositoryRoot, assertChangeDirectory(repositoryRoot, changeId), item, changeId);
+    return observePromotionSurveyBinding(repositoryRoot, assertChangeDirectory(repositoryRoot, changeId), item, changeId);
+}
+export function readWorkItemPromotionSurveyBinding(repositoryRoot, requestedId, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+        const item = showWorkItem(repositoryRoot, requestedId);
+        const changeId = changeIdentity(requestedChangeId);
+        return observePromotionSurveyBinding(repositoryRoot, assertChangeDirectory(repositoryRoot, changeId), item, changeId);
+    });
 }
 /**
  * Immediate work may cite an immutable Source without manufacturing a parking
@@ -762,15 +1090,21 @@ function validateWorkRegistryUnlocked(repositoryRoot, testHooks) {
  * its immutable detached-worktree replay.
  */
 export function validateCurrentChangeOrigin(repositoryRoot, requestedChangeId) {
-    withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId));
+    readCurrentChangeOrigin(repositoryRoot, requestedChangeId);
 }
-function validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId) {
+export function readCurrentChangeOrigin(repositoryRoot, requestedChangeId) {
+    return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => readCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId));
+}
+function readCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId) {
     const configuration = repositoryWorkRegistryConfiguration(repositoryRoot);
     const changeId = changeIdentity(requestedChangeId);
     const originPath = path.join(repositoryConsumerPath(repositoryRoot, configuration.changeOriginRoot), changeId, 'origin.json');
-    if (readOptionalPlainFile(originPath) === null)
-        return;
+    const source = readOptionalPlainFile(originPath);
+    if (source === null)
+        return null;
+    const origin = parseOrigin(source);
     validateWorkRegistry(repositoryRoot);
+    return origin;
 }
 function parseWorkItem(value) {
     if (!isRecord(value) || !hasExactKeys(value, ITEM_KEYS)) {
@@ -1175,6 +1509,28 @@ function assertPromotionSurveyCurrent(repositoryRoot, changeDirectory, item, cha
         throw promotionSurveyRequired('Promotion survey consumer facts do not match the surveyed Git commit.');
     }
     return workRegistryTextDigest(source);
+}
+function observePromotionSurveyBinding(repositoryRoot, changeDirectory, item, changeId) {
+    if (!workItemRequiresPromotionSurvey(repositoryRoot, item)) {
+        return {
+            schemaVersion: 1,
+            kind: 'not-required',
+            reason: 'pure-maintainer-sources',
+            sourceRefsDigest: workRegistryTextDigest(canonicalJson({
+                schemaVersion: 1,
+                kind: 'work-registry-promotion-source-refs.v1',
+                sourceRefs: item.sourceRefs,
+            })),
+        };
+    }
+    return {
+        schemaVersion: 1,
+        kind: 'current-survey',
+        digest: assertPromotionSurveyCurrent(repositoryRoot, changeDirectory, item, changeId),
+    };
+}
+function workItemRequiresPromotionSurvey(repositoryRoot, item) {
+    return item.sourceRefs.some((sourceRef) => readSourceValue(repositoryRoot, sourceRef).semanticAuthor === 'agent');
 }
 function parsePromotionSurvey(source) {
     let value;
@@ -1743,7 +2099,7 @@ function isWorkItemPromotionGrantBinding(value) {
                 'challengeId',
                 'operationId',
                 'schemaVersion',
-                'surveyDigest',
+                'surveyBinding',
             ]) &&
             value.schemaVersion === 1 &&
             typeof value.challengeId === 'string' &&
@@ -1756,8 +2112,25 @@ function isWorkItemPromotionGrantBinding(value) {
             !/[\0\r\n]/u.test(value.operationId) &&
             typeof value.approvalSubjectDigest === 'string' &&
             /^sha256:[0-9a-f]{64}$/.test(value.approvalSubjectDigest) &&
-            typeof value.surveyDigest === 'string' &&
-            /^sha256:[0-9a-f]{64}$/.test(value.surveyDigest)));
+            isWorkItemPromotionSurveyBinding(value.surveyBinding)));
+}
+function isWorkItemPromotionSurveyBinding(value) {
+    return (isRecord(value) &&
+        value.schemaVersion === 1 &&
+        ((value.kind === 'current-survey' &&
+            hasExactKeys(value, ['digest', 'kind', 'schemaVersion']) &&
+            typeof value.digest === 'string' &&
+            /^sha256:[0-9a-f]{64}$/.test(value.digest)) ||
+            (value.kind === 'not-required' &&
+                hasExactKeys(value, [
+                    'kind',
+                    'reason',
+                    'schemaVersion',
+                    'sourceRefsDigest',
+                ]) &&
+                value.reason === 'pure-maintainer-sources' &&
+                typeof value.sourceRefsDigest === 'string' &&
+                /^sha256:[0-9a-f]{64}$/.test(value.sourceRefsDigest))));
 }
 function isPromotionTransactionAfter(value) {
     return (isRecord(value) &&

@@ -473,7 +473,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/planning-contract.ts",
       "mode": "100644",
-      "digest": "sha256:c1a8c0231088e7d0f175e581bf818d39680272bcf511eee5ffd2009858b4159c"
+      "digest": "sha256:e6acf1c4fcfe04720baf555c64bd6cff9b8dafbcca3abd38b4d26313747a35c7"
     },
     {
       "path": "src/adapters/providers/built-in-provider-definition.ts",
@@ -713,7 +713,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:fd08e2a443dff82efccb104e2bd59c86b62e23af84d08c5ac5ae0a31cd6c755f"
+      "digest": "sha256:c39a2ef6b1674af2264370986596905cb45e36afc9dd99425ec4d222c8d1f76d"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -728,7 +728,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:a72cb469027dc3d7d06fd5e78160f3eb5f4f529aa278e0c7eff16b8209fde046"
+      "digest": "sha256:9fe7d48004447109a45dd0440d08a3529d062e9ac18c475d4ced05c251efeda9"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1048,7 +1048,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:e380827ca63986458167ef20cd5d93735fbbdb27e9efc31a215f47292c320f2c"
+      "digest": "sha256:35bc99208026fc4f5d93752eb64ddf22580bfa8020ac1620d69a18006b89b8ec"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1418,12 +1418,12 @@
     {
       "path": "src/modules/governance-intake/work-registry-grant.ts",
       "mode": "100644",
-      "digest": "sha256:08f81a678a619e8734798c2af9bcd82ff60aef76267d48fcd58643403806f593"
+      "digest": "sha256:dca91637b4dfa1beb07f56276bbcbd2aa707e324463a53ec1bf18f48f03ff809"
     },
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:fcc8ad3f44e5787fd7914d7b76d06233145fd08b88a440ce6ae3606ff0cd9f29"
+      "digest": "sha256:a3d1535fd782e18c72a35890eb0193f2ccc60a9c6def8410fc1d943b46f89947"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
@@ -1433,7 +1433,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:594a89b19c0475b05b89591257328df2bf22792771a408b3a30664960dd3e90a"
+      "digest": "sha256:5c44e5df40aa210c7599b6ce7022ed8527b82704a33a6d25dfef5127b9676763"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",
@@ -1773,7 +1773,7 @@
     {
       "path": "src/modules/source/planning-paths.ts",
       "mode": "100644",
-      "digest": "sha256:42c039d28c273fa29b7571b74f5d25d82ad6d8d4d0b0174e317268251d2723b8"
+      "digest": "sha256:80089ee40bf527b1be80899dd80505df739b3d49d22833d975103771592daad6"
     },
     {
       "path": "src/modules/source/planning-role-policy-paths.ts",
@@ -2073,7 +2073,7 @@
     {
       "path": "src/runtime/session-workspace/planning-workspace.ts",
       "mode": "100644",
-      "digest": "sha256:5cc92ed737ff0558fa80572ef8794d0c482097298e63755a039c688fdaf7ad5e"
+      "digest": "sha256:59bd74344a4de21fb23a499e4976abb366e1cc44d757b6525157054ce3ad8829"
     },
     {
       "path": "src/runtime/session-workspace/provider-runtime-authority-paths.ts",
