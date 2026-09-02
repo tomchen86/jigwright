@@ -54,6 +54,21 @@ test.after(() => {
   }
 });
 
+test('CI archive replay reaches planning archive projection only through its port', () => {
+  const source = fs.readFileSync(
+    new URL('../src/entrypoints/ci/ci-archive.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /createOpenSpecPlanningArchiveProjectionPort/u);
+  assert.match(source, /preparePlanningArchiveProjection/u);
+  assert.doesNotMatch(source, /openspec-adapter\/validation-payload/u);
+  assert.doesNotMatch(source, /openspec-executor/u);
+  assert.doesNotMatch(source, /\bcreateOpenSpecProcess\b/u);
+  assert.doesNotMatch(source, /\bresolveOpenSpecInstallation\b/u);
+  assert.doesNotMatch(source, /\bparseOpenSpecValidationPayloadV1\b/u);
+});
+
 test('CI archive validation rejects a duplicate grant in base planning history', () => {
   const repository = createArchiveHistoryRepository();
   try {

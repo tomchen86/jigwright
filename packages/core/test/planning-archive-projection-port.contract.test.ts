@@ -31,6 +31,7 @@ const context: PlanningArchiveProjectionContext = {
   projectionRoot: '/fixture/projection',
   sourceRevision: 'a'.repeat(40),
   changeId: 'demo-change',
+  mode: 'projection',
   planningProvider: {
     binding,
     source: 'explicit',
@@ -114,6 +115,14 @@ test('planning archive projection port rejects forged bindings, port authority, 
           ...context.planningProvider,
           bindingDigest: '0'.repeat(64),
         },
+      }),
+    invalid,
+  );
+  assert.throws(
+    () =>
+      preparePlanningArchiveProjection(port, {
+        ...context,
+        mode: 'unbound' as never,
       }),
     invalid,
   );

@@ -89,8 +89,8 @@ export function resolveHistoricalPlanningProviderForCi(
   commit: string,
   changeRoot: string,
   changeId: string,
-): void {
-  resolveHistoricalOpenSpecProviderBinding(
+) {
+  return resolveHistoricalOpenSpecProviderBinding(
     repositoryRoot,
     commit,
     changeRoot,

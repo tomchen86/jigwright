@@ -20,7 +20,11 @@ import {
   loadWorkflowConfig,
   type ChangeContract,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  ExitCode,
+  WorkflowError,
+  workflowError,
+} from '../../foundation/errors/errors.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
 import {
   archiveCommitMessage,
@@ -38,16 +42,14 @@ import {
 } from '../../application/archive/archive-transformation.ts';
 import { reconcileArchivedWorkItems } from '../../modules/governance-intake/work-registry.ts';
 import {
-  createOpenSpecProcess,
-  resolveOpenSpecInstallation,
-} from '../../adapters/planning/openspec/documents/openspec-executor.ts';
-import {
-  parseSchemaResolution,
-  parseSchemaValidation,
-  parseStatus,
-  parseValidation,
-} from '../../adapters/planning/openspec/documents/openspec-payloads.ts';
-import { inspectOpenSpecSchemaContract } from '../../adapters/planning/openspec/documents/openspec-schema-contract.ts';
+  inspectPlanningArchiveReadiness,
+  preparePlanningArchiveProjection,
+  validatePlanningArchiveProjectedSpecs,
+  type PlanningArchiveProjection,
+  type PlanningArchiveProjectionContext,
+  type PlanningArchiveProjectionPort,
+} from '../../modules/planning-provider/planning-archive-projection-port.ts';
+import { createOpenSpecPlanningArchiveProjectionPort } from '../../composition-root/planning-archive-projection-production.ts';
 
 type ArchiveTotals = {
   added: number;
@@ -98,15 +100,13 @@ export function validateCiArchiveCommit(
     changeId,
     changedPaths,
   );
-  resolveHistoricalPlanningProviderForCi(
+  const planningProvider = resolveHistoricalPlanningProviderForCi(
     repositoryRoot,
     parent,
     config.changeRoot,
     changeId,
   );
-
-  const installation = resolveOpenSpecInstallation(repositoryRoot);
-  const schema = inspectOpenSpecSchemaContract(repositoryRoot);
+  const archiveProjectionPort = createOpenSpecPlanningArchiveProjectionPort();
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;
   if (!temporaryBase) {
     throw archiveError(
@@ -137,13 +137,21 @@ export function validateCiArchiveCommit(
       contract.tasks,
     );
     const checkDefinitions = archiveCheckDefinitions(worktree, contract);
-    const openspec = createOpenSpecProcess(installation, {
-      executionRoot: worktree,
-    });
-    validateOpenSpecInputs(openspec, worktree, changeId, schema);
-    const payload = parseArchivePayload(
-      openspec.archive(changeId),
+    const context = archiveReplayProjectionContext(
+      repositoryRoot,
       worktree,
+      parent,
+      changeId,
+      planningProvider,
+    );
+    if (
+      !inspectPlanningArchiveReadiness(archiveProjectionPort, context).ready
+    ) {
+      throw replayMismatch();
+    }
+    const payload = archivePayloadFromProjection(
+      prepareArchiveProjectionForReplay(archiveProjectionPort, context),
+      config.changeRoot,
       changeId,
     );
     reconcileArchivedWorkItems(
@@ -153,7 +161,12 @@ export function validateCiArchiveCommit(
       archiveReconciliationTimestamp(worktree, parent),
     );
     refreshArchiveManagedHandoff(worktree, parent);
-    validateRebuiltSpecs(openspec, worktree);
+    if (
+      !validatePlanningArchiveProjectedSpecs(archiveProjectionPort, context)
+        .valid
+    ) {
+      throw replayMismatch();
+    }
     const replayPaths = listChangedPaths(worktree, parent);
     if (
       JSON.stringify(normalizeArchivePaths(changedPaths, changeId)) !==
@@ -190,103 +203,56 @@ export function validateCiArchiveCommit(
   }
 }
 
-function validateOpenSpecInputs(
-  openspec: ReturnType<typeof createOpenSpecProcess>,
-  worktree: string,
+function archiveReplayProjectionContext(
+  repositoryRoot: string,
+  projectionRoot: string,
+  sourceRevision: string,
   changeId: string,
-  schema: ReturnType<typeof inspectOpenSpecSchemaContract>,
-): void {
-  openspec.version();
-  for (const expected of [
-    {
-      name: 'spec-driven',
-      source: 'package' as const,
-      path: schema.packageSchema.directory,
-    },
-    {
-      name: schema.currentSchema.name,
-      source: 'project' as const,
-      path: path.join(worktree, 'openspec/schemas', schema.currentSchema.name),
-    },
-  ]) {
-    parseSchemaResolution(openspec.whichSchema(expected.name).value, expected);
-    const validation = parseSchemaValidation(
-      openspec.validateSchema(expected.name).value,
-      expected,
-    );
-    if (!validation.valid) throw replayMismatch();
-  }
-  const status = parseStatus(
-    openspec.status(changeId, schema.currentSchema.name).value,
-    {
-      repositoryRoot: worktree,
-      changeId,
-      schemaName: schema.currentSchema.name,
-      currentSchemaName: schema.currentSchema.name,
-    },
-  );
-  const executed = openspec.validateChange(changeId);
-  const validation = parseValidation(executed.value, {
-    repositoryRoot: worktree,
-    expectedType: 'change',
-    expectedId: changeId,
-  });
-  if (executed.status !== 0 || !status.isComplete || !validation.valid) {
-    throw replayMismatch();
-  }
-}
-
-function parseArchivePayload(
-  executed: { value: unknown; status: number },
-  worktree: string,
-  changeId: string,
-): { archivePath: string; totals: ArchiveTotals } {
-  const value = executed.value;
-  if (executed.status !== 0 || !isRecord(value) || !isRecord(value.archive)) {
-    throw replayMismatch();
-  }
-  const archive = value.archive;
-  const root = value.root;
-  const totals = archive.totals;
-  if (
-    !hasExactKeys(value, ['archive', 'root']) ||
-    !isRecord(root) ||
-    !hasExactKeys(root, ['path', 'source']) ||
-    root.path !== worktree ||
-    root.source !== 'nearest' ||
-    !hasExactKeys(archive, [
-      'archivedAs',
-      'change',
-      'path',
-      'specsUpdated',
-      'totals',
-    ]) ||
-    archive.change !== changeId ||
-    archive.specsUpdated !== true ||
-    typeof archive.archivedAs !== 'string' ||
-    archive.path !==
-      path.join(worktree, 'openspec/changes/archive', archive.archivedAs) ||
-    !isArchiveName(archive.archivedAs, changeId) ||
-    !isTotals(totals)
-  ) {
-    throw replayMismatch();
-  }
+  planningProvider: ReturnType<typeof resolveHistoricalPlanningProviderForCi>,
+): PlanningArchiveProjectionContext {
   return {
-    archivePath: `openspec/changes/archive/${archive.archivedAs}`,
-    totals,
+    repositoryRoot: fs.realpathSync(repositoryRoot),
+    projectionRoot: fs.realpathSync(projectionRoot),
+    sourceRevision,
+    changeId,
+    mode: 'replay',
+    planningProvider,
   };
 }
 
-function validateRebuiltSpecs(
-  openspec: ReturnType<typeof createOpenSpecProcess>,
-  worktree: string,
-): void {
-  const executed = openspec.validateAllSpecs();
-  const validation = parseValidation(executed.value, {
-    repositoryRoot: worktree,
-    expectedType: 'spec',
-  });
-  if (executed.status !== 0 || !validation.valid) throw replayMismatch();
+function prepareArchiveProjectionForReplay(
+  port: PlanningArchiveProjectionPort,
+  context: PlanningArchiveProjectionContext,
+): PlanningArchiveProjection {
+  try {
+    return preparePlanningArchiveProjection(port, context);
+  } catch (error) {
+    if (
+      error instanceof WorkflowError &&
+      (error.code === 'OPENSPEC_ARCHIVE_PAYLOAD_INVALID' ||
+        error.code === 'PLANNING_ARCHIVE_PROJECTION_PORT_INVALID')
+    ) {
+      throw replayMismatch();
+    }
+    throw error;
+  }
+}
+
+function archivePayloadFromProjection(
+  projection: PlanningArchiveProjection,
+  changeRoot: string,
+  changeId: string,
+): { archivePath: string; totals: ArchiveTotals } {
+  const totals = projection.totals;
+  if (
+    !projection.specsUpdated ||
+    totals === undefined ||
+    !isArchiveName(projection.archiveName, changeId) ||
+    projection.archivePath !== `${changeRoot}/archive/${projection.archiveName}`
+  ) {
+    throw replayMismatch();
+  }
+  return { archivePath: projection.archivePath, totals };
 }
 
 function assertTaskEvidence(

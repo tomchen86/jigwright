@@ -1204,6 +1204,7 @@ function archiveProjectionContext(
     projectionRoot: fs.realpathSync(projectionRoot),
     sourceRevision: eligibility.head,
     changeId: eligibility.changeId,
+    mode: 'projection',
     planningProvider: eligibility.planningProvider,
   };
 }
@@ -1228,6 +1229,7 @@ function archiveApplicabilityProjectionContext(
     projectionRoot: fs.realpathSync(projectionRoot),
     sourceRevision,
     changeId: input.changeId,
+    mode: 'projection',
     planningProvider: input.planningProvider,
   };
 }

@@ -36,6 +36,7 @@ export type PlanningArchiveProjectionContext = Readonly<{
   projectionRoot: string;
   sourceRevision: string;
   changeId: string;
+  mode: 'projection' | 'replay';
   planningProvider: ResolvedPlanningProviderBinding;
 }>;
 
@@ -153,6 +154,7 @@ function normalizeContext(
     !isRecord(value) ||
     !hasExactKeys(value, [
       'changeId',
+      'mode',
       'planningProvider',
       'projectionRoot',
       'repositoryRoot',
@@ -166,7 +168,8 @@ function normalizeContext(
     typeof value.sourceRevision !== 'string' ||
     !REVISION.test(value.sourceRevision) ||
     typeof value.changeId !== 'string' ||
-    !CHANGE_ID.test(value.changeId)
+    !CHANGE_ID.test(value.changeId) ||
+    (value.mode !== 'projection' && value.mode !== 'replay')
   ) {
     throw invalidPort();
   }
@@ -179,6 +182,7 @@ function normalizeContext(
     projectionRoot: value.projectionRoot,
     sourceRevision: value.sourceRevision,
     changeId: value.changeId,
+    mode: value.mode,
     planningProvider,
   });
 }

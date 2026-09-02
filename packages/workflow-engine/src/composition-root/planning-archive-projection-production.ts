@@ -18,6 +18,13 @@ import {
   type OpenSpecInstallation,
   type OpenSpecProcess,
 } from '../adapters/planning/openspec/documents/openspec-executor.ts';
+import {
+  parseSchemaResolution,
+  parseSchemaValidation,
+  parseStatus,
+  parseValidation,
+} from '../adapters/planning/openspec/documents/openspec-payloads.ts';
+import { inspectOpenSpecSchemaContract } from '../adapters/planning/openspec/documents/openspec-schema-contract.ts';
 
 const OPENSPEC_PROVIDER_ID = 'openspec' as const;
 const OPENSPEC_ARCHIVE_PROJECTION_CONTRACT_VERSION = 1 as const;
@@ -33,13 +40,31 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
     id: OPENSPEC_PROVIDER_ID,
     contractVersion: OPENSPEC_ARCHIVE_PROJECTION_CONTRACT_VERSION,
     inspectArchiveReadiness(context: PlanningArchiveProjectionContext) {
-      const installation = resolveOpenSpecInstallation(context.repositoryRoot);
+      const { installation, openspec } =
+        context.mode === 'replay'
+          ? openSpecArchiveProcess(context)
+          : {
+              installation: resolveOpenSpecInstallation(context.repositoryRoot),
+            };
+      const ready =
+        context.mode === 'replay'
+          ? inspectArchiveReplayReadiness(context, openspec!)
+          : true;
       return Object.freeze({
         providerId: OPENSPEC_PROVIDER_ID,
         adapterContractVersion: OPENSPEC_ARCHIVE_PROJECTION_CONTRACT_VERSION,
         providerVersion: installation.version,
-        ready: true,
-        diagnostics: Object.freeze([]),
+        ready,
+        diagnostics: ready
+          ? Object.freeze([])
+          : Object.freeze([
+              {
+                level: 'ERROR' as const,
+                path: `${context.planningProvider.binding.planningRoot}/.openspec.yaml`,
+                message:
+                  'The bound planning provider rejected immutable archive replay inputs.',
+              },
+            ]),
       }) satisfies PlanningArchiveReadiness;
     },
     prepareArchive(context: PlanningArchiveProjectionContext) {
@@ -59,6 +84,53 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
       );
     },
   });
+}
+
+function inspectArchiveReplayReadiness(
+  context: PlanningArchiveProjectionContext,
+  openspec: OpenSpecProcess,
+): boolean {
+  openspec.version();
+  const schema = inspectOpenSpecSchemaContract(context.repositoryRoot);
+  for (const expected of [
+    {
+      name: 'spec-driven',
+      source: 'package' as const,
+      path: schema.packageSchema.directory,
+    },
+    {
+      name: schema.currentSchema.name,
+      source: 'project' as const,
+      path: path.join(
+        context.projectionRoot,
+        'openspec/schemas',
+        schema.currentSchema.name,
+      ),
+    },
+  ]) {
+    parseSchemaResolution(openspec.whichSchema(expected.name).value, expected);
+    const validation = parseSchemaValidation(
+      openspec.validateSchema(expected.name).value,
+      expected,
+    );
+    if (!validation.valid) return false;
+  }
+  const status = parseStatus(
+    openspec.status(context.changeId, schema.currentSchema.name).value,
+    {
+      repositoryRoot: context.projectionRoot,
+      changeId: context.changeId,
+      schemaName: schema.currentSchema.name,
+      currentSchemaName: schema.currentSchema.name,
+    },
+  );
+  const executed = openspec.validateChange(context.changeId);
+  const validation = parseValidation(executed.value, {
+    repositoryRoot: context.projectionRoot,
+    expectedType: 'change',
+    expectedId: context.changeId,
+  });
+  return executed.status === 0 && status.isComplete && validation.valid;
 }
 
 function openSpecArchiveProcess(context: PlanningArchiveProjectionContext): {
