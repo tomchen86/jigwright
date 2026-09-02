@@ -139,6 +139,31 @@ test('workflow guide exposes one versioned advisory catalog with finalize as the
   );
 });
 
+test('task completion guidance puts pending Finding triage first without exceeding three steps', () => {
+  const intakeCounts = {
+    schemaVersion: 1,
+    inbox: 2,
+    pendingFindings: 3,
+    backlog: 4,
+  } as const;
+  for (const command of ['complete-task', 'finalize'] as const) {
+    const nextSteps = workflowResultNextSteps({ command, intakeCounts });
+    assert.equal(nextSteps.length <= 3, true);
+    assert.deepEqual(nextSteps[0], {
+      command: 'pnpm workflow finding list --json',
+      why: '3 pending Findings remain. Choose one: pnpm workflow finding convert <finding-id> --json; pnpm workflow finding link <finding-id> --change <change-id> --json; pnpm workflow finding dismiss <finding-id> --reason <reason> --json.',
+    });
+  }
+
+  assert.deepEqual(
+    workflowResultNextSteps({
+      command: 'finalize',
+      intakeCounts: { ...intakeCounts, pendingFindings: 0 },
+    }),
+    projectWorkflowNextSteps(['status']),
+  );
+});
+
 test('update-base guidance requires a finished current branch without an active writer', () => {
   const guidance = workflowCommandGuidance('update-base');
   const contract = [

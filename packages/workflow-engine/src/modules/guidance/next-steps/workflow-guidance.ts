@@ -155,12 +155,44 @@ export function workflowResultNextSteps(
       : (WORKFLOW_GUIDANCE_CATALOG.commands.find(
           ({ id }) => id === commandId,
         ) ?? null);
-  return projectWorkflowNextSteps(
+  const ordinary = projectWorkflowNextSteps(
     entry !== null && entry.successors.length > 0
       ? entry.successors
       : ['guide'],
     bindings,
   );
+  const findingTriage = pendingFindingTriageNextStep(result);
+  return findingTriage === null
+    ? ordinary
+    : limitNextSteps([findingTriage, ...ordinary]);
+}
+
+function pendingFindingTriageNextStep(
+  result: Readonly<Record<string, unknown>>,
+): WorkflowNextStep | null {
+  if (result.command !== 'complete-task' && result.command !== 'finalize') {
+    return null;
+  }
+  const counts = record(result.intakeCounts);
+  if (
+    counts === undefined ||
+    Object.keys(counts).sort().join('\0') !==
+      ['schemaVersion', 'inbox', 'pendingFindings', 'backlog']
+        .sort()
+        .join('\0') ||
+    counts.schemaVersion !== 1 ||
+    !nonnegativeInteger(counts.inbox) ||
+    !nonnegativeInteger(counts.pendingFindings) ||
+    !nonnegativeInteger(counts.backlog) ||
+    counts.pendingFindings === 0
+  ) {
+    return null;
+  }
+  const count = counts.pendingFindings;
+  return Object.freeze({
+    command: 'pnpm workflow finding list --json',
+    why: `${count} pending ${count === 1 ? 'Finding remains' : 'Findings remain'}. Choose one: pnpm workflow finding convert <finding-id> --json; pnpm workflow finding link <finding-id> --change <change-id> --json; pnpm workflow finding dismiss <finding-id> --reason <reason> --json.`,
+  });
 }
 
 function governanceSourceCaptureNextSteps(
@@ -673,6 +705,10 @@ function limitNextSteps(
   );
   if (unique.length <= 3) return Object.freeze(unique);
   return Object.freeze([unique[0]!, unique[1]!, nextStep('guide', {})]);
+}
+
+function nonnegativeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
 function explicitNextStep(
