@@ -410,6 +410,7 @@ function isPlanningAssurance(
     [
       'ordinary-provider',
       'granted-same-provider',
+      'granted-role-context-sharing',
       'granted-caller-supplied',
       'direct-human-attestation',
     ].includes(String(value.reviewRoleResultForm)) &&
@@ -418,7 +419,8 @@ function isPlanningAssurance(
       'caller-supplied',
       'direct-human-review',
     ].includes(String(value.reviewOrchestration)) &&
-    value.requiredIndependence === 'session-independent' &&
+    (value.requiredIndependence === 'provider-independent' ||
+      value.requiredIndependence === 'session-independent') &&
     [
       'provider-independent',
       'principal-independent',
@@ -426,9 +428,42 @@ function isPlanningAssurance(
       'none',
     ].includes(String(value.achievedIndependence)) &&
     typeof value.degradationAuthorized === 'boolean' &&
+    isCurrentPlanningIndependence(value) &&
     ['advisory-approve', 'advisory-reject'].includes(
       String(value.advisoryVerdict),
     )
+  );
+}
+
+function isCurrentPlanningIndependence(
+  value: Record<string, unknown>,
+): boolean {
+  if (value.reviewRoleResultForm === 'ordinary-provider') {
+    return (
+      value.degradationAuthorized === false &&
+      (value.requiredIndependence === 'provider-independent'
+        ? value.achievedIndependence === 'provider-independent'
+        : value.requiredIndependence === 'session-independent' &&
+          (value.achievedIndependence === 'provider-independent' ||
+            value.achievedIndependence === 'session-independent'))
+    );
+  }
+  if (
+    value.reviewRoleResultForm === 'granted-same-provider' ||
+    value.reviewRoleResultForm === 'granted-role-context-sharing'
+  ) {
+    return (
+      value.degradationAuthorized === true &&
+      value.requiredIndependence === 'provider-independent' &&
+      value.achievedIndependence === 'session-independent'
+    );
+  }
+  return (
+    (value.reviewRoleResultForm === 'granted-caller-supplied' ||
+      value.reviewRoleResultForm === 'direct-human-attestation') &&
+    value.degradationAuthorized === true &&
+    value.requiredIndependence === 'provider-independent' &&
+    value.achievedIndependence === 'none'
   );
 }
 

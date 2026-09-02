@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -35,7 +36,10 @@ import { ROLE_CONTEXT_SHARING_POLICY_DIGEST } from '../src/modules/authority/rol
 import { createMaintainerAuditTag } from '../src/modules/authority/maintainer-grant.ts';
 import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attestation.ts';
 import { parseMaintainerPolicy } from '../src/modules/authority/maintainer-policy.ts';
-import { replayCurrentPlanReviewRoleResult } from '../src/modules/assurance/planning-assurance-validator.ts';
+import {
+  createTaskPlanningAssuranceBinding,
+  replayCurrentPlanReviewRoleResult,
+} from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
   agentRolePlanV2Digest,
   type AgentRolePlanBodyV2,
@@ -57,6 +61,10 @@ import {
   roleContextSharingStorePaths,
   storeAvailableRoleContextSharingGrant,
 } from '../src/runtime/storage-journal/role-context-sharing-store.ts';
+import {
+  readImmutableReport,
+  writeImmutableReport,
+} from '../src/runtime/storage-journal/report-store.ts';
 import { createFixtureRepository, isWorkflowError } from './fixture.ts';
 import { createSshSignedFixture } from './support/ssh-signed-fixture.ts';
 
@@ -485,6 +493,55 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
       productionConsumedPlanReviewReplayPort,
     ).resultDigest,
     terminalRoleResult.resultDigest,
+  );
+  const planningAssurance = createTaskPlanningAssuranceBinding(
+    {
+      planReview: { roleResults: [terminalRoleResult] },
+    } as never,
+    {
+      applicabilityKind: 'sealed-investigation',
+      applicabilityDigest: '1'.repeat(64),
+      applicabilityNodeId: '2'.repeat(64),
+      investigationBaseline: {
+        head: repository.head,
+        tree: baselineTree,
+      },
+      planningGenerationId: planningGeneration,
+      planTargetDigest: expected.subjectDigest,
+      reviewNodeId: '3'.repeat(64),
+      reviewResultDigest: '4'.repeat(64),
+      reviewDispositionNodeId: null,
+      reviewRoleResultDigest: terminalRoleResult.resultDigest,
+      reviewRoleResultForm: terminalRoleResult.form,
+      reviewOrchestration: terminalRoleResult.orchestration,
+      requiredIndependence: terminalRoleResult.requiredIndependence,
+      achievedIndependence: terminalRoleResult.achievedIndependence,
+      degradationAuthorized: true,
+      advisoryVerdict: 'advisory-approve',
+    },
+  );
+  assert.equal(planningAssurance?.reviewGrantId, null);
+  assert.equal(planningAssurance?.reviewGrantEnvelopeDigest, null);
+  assert.equal(planningAssurance?.reviewGrantUseDigest, null);
+  assert.equal(planningAssurance?.reviewGrantTransitionDigest, null);
+  const reportsRoot = path.join(
+    repository.gitCommonDirectory,
+    'workflow-engine',
+    'r007-binding-reports',
+  );
+  const reportId = writeImmutableReport(reportsRoot, {
+    schemaVersion: 1,
+    kind: 'check',
+    sessionId: 'session-r007-binding',
+    changeId: expected.changeId,
+    taskId: '1.1',
+    createdAt: NOW.toISOString(),
+    planningAssurance,
+  });
+  assert.deepEqual(
+    readImmutableReport(reportsRoot, 'session-r007-binding', reportId)
+      .planningAssurance,
+    planningAssurance,
   );
   assert.throws(
     () =>

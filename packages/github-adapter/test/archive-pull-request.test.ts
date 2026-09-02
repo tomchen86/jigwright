@@ -69,6 +69,39 @@ test('fake remote prepares and opens only one completed Grant-bound publication 
   );
 });
 
+test('candidate replay accepts strengthened ordinary and exact R-007 assurance', () => {
+  const current = fixtureCandidate();
+  const { kind: _kind, identity: _identity, ...base } = current;
+  for (const planReview of [
+    {
+      ...current.planReview,
+      roleResultForm: 'ordinary-provider' as const,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'provider-independent' as const,
+      degradationAuthorized: false,
+    },
+    {
+      ...current.planReview,
+      roleResultForm: 'granted-role-context-sharing' as const,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'session-independent' as const,
+      degradationAuthorized: true,
+    },
+  ]) {
+    const facts = { ...base, planReview };
+    const candidate: ArchivePullRequestCandidateV1 = {
+      ...facts,
+      kind: 'archive-pull-request-candidate',
+      identity: deriveArchivePullRequestCandidateIdentity(facts),
+    };
+    assert.doesNotThrow(() =>
+      createFakeArchivePullRequestRemote().prepare(
+        fixturePublication(candidate),
+      ),
+    );
+  }
+});
+
 test('prepares a credential-free least-privilege GitHub request', () => {
   const config = fixtureConfig();
   const prepared = prepareGitHubArchivePullRequest(
@@ -323,8 +356,10 @@ function fixtureCandidate(): ArchivePullRequestCandidateV1 {
       nodeId: 'f'.repeat(64),
       resultDigest: '0'.repeat(64),
       advisoryVerdict: 'advisory-approve',
+      roleResultForm: 'ordinary-provider',
       requiredIndependence: 'session-independent',
       achievedIndependence: 'provider-independent',
+      degradationAuthorized: false,
     },
   } as const;
   return {
@@ -334,11 +369,13 @@ function fixtureCandidate(): ArchivePullRequestCandidateV1 {
   };
 }
 
-function fixturePublication(): ArchivePullRequestPublicationV1 {
+function fixturePublication(
+  candidate: ArchivePullRequestCandidateV1 = fixtureCandidate(),
+): ArchivePullRequestPublicationV1 {
   const facts = {
     schemaVersion: 1,
     kind: 'archive-pull-request-publication',
-    candidate: fixtureCandidate(),
+    candidate,
     archive: {
       branch: 'work/archive-demo-change',
       baseCommit: 'b'.repeat(40),

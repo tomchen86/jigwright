@@ -1660,6 +1660,43 @@ test('v3 sessions and every task report pin the exact planning assurance', () =>
   }
 });
 
+test('current session reader preserves R-007 assurance without fabricated standard Grant refs', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentChange(repository);
+    const started = startSession(repository, 'demo-change', '1.1');
+    const sessionPath = path.join(
+      runtimeRoot(repository),
+      'sessions',
+      `${started.sessionId}.json`,
+    );
+    const stored = JSON.parse(fs.readFileSync(sessionPath, 'utf8')) as {
+      planningAssurance: Record<string, unknown>;
+    };
+    stored.planningAssurance = {
+      ...stored.planningAssurance,
+      reviewRoleResultForm: 'granted-role-context-sharing',
+      requiredIndependence: 'provider-independent',
+      achievedIndependence: 'session-independent',
+      degradationAuthorized: true,
+      reviewGrantId: null,
+      reviewGrantEnvelopeDigest: null,
+      reviewGrantUseDigest: null,
+      reviewGrantTransitionDigest: null,
+      directHumanReviewAttestationDigest: null,
+    };
+    fs.writeFileSync(sessionPath, `${JSON.stringify(stored, null, 2)}\n`);
+
+    assert.deepEqual(
+      getSession(repository, started.sessionId).planningAssurance,
+      stored.planningAssurance,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('CI replays v3 planning assurance from Git with the live validator', () => {
   const repository = createFixtureRepository();
   try {

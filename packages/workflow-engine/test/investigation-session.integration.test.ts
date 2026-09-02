@@ -517,7 +517,28 @@ test('structured investigation exemption starts a durable planning branch withou
     assert.equal(Object.hasOwn(planningInput, 'blindManifestDigest'), false);
     const materialized = resumePropose(repository, changeId, planningInput);
     assert.equal(materialized.state, 'waiting-for-plan-review');
-    assert.equal(materialized.planReview?.providerId, 'claude');
+    assert.equal(materialized.planReview?.providerId, 'codex');
+    const exemptionRuntime = investigationRuntimePaths(
+      discoverRepository(repository).gitCommonDirectory,
+      'workflow-engine',
+    );
+    const ordinaryReviewRequest = readProviderInvocationRequest(
+      exemptionRuntime,
+      materialized.planReview!.invocationId,
+    );
+    assert.equal(
+      ordinaryReviewRequest.roleAssignment.requiredIndependence,
+      'session-independent',
+    );
+    assert.equal(
+      ordinaryReviewRequest.roleAssignment.achievedIndependence,
+      'session-independent',
+    );
+    assert.notEqual(
+      ordinaryReviewRequest.roleAssignment.sessionId,
+      `plan-author-${materialized.investigation!.investigationId}`,
+    );
+    assert.equal('grantId' in ordinaryReviewRequest.roleAssignment, false);
     assert.equal(
       fs
         .readFileSync(
@@ -528,10 +549,6 @@ test('structured investigation exemption starts a durable planning branch withou
       false,
     );
 
-    const exemptionRuntime = investigationRuntimePaths(
-      discoverRepository(repository).gitCommonDirectory,
-      'workflow-engine',
-    );
     let reviewOutput = getProposeStatus(
       repository,
       materialized.investigation!.investigationId,

@@ -318,7 +318,7 @@ import {
   type InvestigationFirstPlanningSubject,
 } from '../../modules/assurance/planning-assurance-validator.ts';
 import {
-  resolvePlanReviewRoleTopology,
+  selectPlanReviewRoleTopology,
   type ResolvePlanReviewRoleTopologyInput,
 } from './plan-review-role-topology.ts';
 import type {
@@ -10312,22 +10312,26 @@ function preparePlanReviewInvocation(
     durableRoleContextRequirement === null
       ? createRuntimeId('provider-session')
       : durableRoleContextRequirement.requirement.reviewerPlacement.sessionId;
+  const schedulingCandidates = (['codex', 'claude'] as const).map(
+    (providerId) => ({
+      providerId,
+      sessionId:
+        providerId === author.providerId
+          ? `author-${providerSessionId}`
+          : providerSessionId,
+      enabled: policy.policy.providers[providerId].enabled,
+      available: policy.policy.providers[providerId].enabled,
+    }),
+  );
   const scheduled =
-    durableRoleContextRequirement === null
+    durableRoleContextRequirement === null &&
+    roleTopologyResolution === undefined
       ? scheduleOrdinaryRole({
           role: 'plan-reviewer',
           requestedIndependence: 'session-independent',
           author,
           targetDigest: planning.subject.subjectDigest,
-          candidates: (['codex', 'claude'] as const).map((providerId) => ({
-            providerId,
-            sessionId:
-              providerId === author.providerId
-                ? `author-${providerSessionId}`
-                : providerSessionId,
-            enabled: policy.policy.providers[providerId].enabled,
-            available: policy.policy.providers[providerId].enabled,
-          })),
+          candidates: schedulingCandidates,
         })
       : null;
   const callableProviderIds = (['codex', 'claude'] as const).filter(
@@ -10377,52 +10381,42 @@ function preparePlanReviewInvocation(
     grantAuthorization = reserved.authorization;
     roleTopology = requirement.roleTopology;
   } else if (roleTopologyResolution !== undefined) {
-    if (scheduled === null) {
-      throw workflowError(
-        'PLAN_REVIEW_ROLE_TOPOLOGY_STALE',
-        'PlanReview scheduling state is unavailable.',
-        ExitCode.staleState,
-      );
-    }
-    const reviewer =
-      scheduled.outcome === 'assigned'
-        ? {
-            providerId: scheduled.assignment.providerId,
-            sessionId: scheduled.assignment.sessionId,
-          }
-        : author.providerId !== undefined &&
-            callableProviderIds.includes(author.providerId)
-          ? {
-              providerId: author.providerId,
-              sessionId: providerSessionId,
-            }
-          : null;
-    if (reviewer === null) {
-      throw workflowError(
-        'ROLE_TOPOLOGY_UNSATISFIED',
-        'Plan-review role topology has no callable provider-backed reviewer placement.',
-        ExitCode.guard,
-      );
-    }
-    const topologyInput: ResolvePlanReviewRoleTopologyInput = {
-      repositoryRoot: context.git.repositoryRoot,
-      changeId: status.changeId,
-      planningGeneration: planning.generation.planningGenerationId,
-      author: {
-        providerId: author.providerId,
-        sessionId: author.sessionId,
+    const ordinaryPlacements = schedulingCandidates.flatMap((candidate) => {
+      const outcome = scheduleOrdinaryRole({
+        role: 'plan-reviewer',
+        requestedIndependence: 'session-independent',
+        author,
+        targetDigest: planning.subject.subjectDigest,
+        candidates: [candidate],
+      });
+      return outcome.outcome === 'assigned' ? [outcome.assignment] : [];
+    });
+    const topologyInput: Omit<ResolvePlanReviewRoleTopologyInput, 'reviewer'> =
+      {
+        repositoryRoot: context.git.repositoryRoot,
+        changeId: status.changeId,
+        planningGeneration: planning.generation.planningGenerationId,
+        author: {
+          providerId: author.providerId,
+          sessionId: author.sessionId,
+        },
+        providerPolicyDigest: policy.digest,
+        providerEnabled: {
+          claude: policy.policy.providers.claude.enabled,
+          codex: policy.policy.providers.codex.enabled,
+        },
+      };
+    const selectedTopology = selectPlanReviewRoleTopology(
+      {
+        ...topologyInput,
+        reviewers: ordinaryPlacements.map(({ providerId, sessionId }) => ({
+          providerId,
+          sessionId,
+        })),
       },
-      reviewer,
-      providerPolicyDigest: policy.digest,
-      providerEnabled: {
-        claude: policy.policy.providers.claude.enabled,
-        codex: policy.policy.providers.codex.enabled,
-      },
-    };
-    roleTopology = resolvePlanReviewRoleTopology(
-      topologyInput,
       roleTopologyResolution,
     );
+    roleTopology = selectedTopology.resolution;
     if (roleTopology.disposition === 'topology-unsatisfied') {
       throw workflowError(
         'ROLE_TOPOLOGY_UNSATISFIED',
@@ -10463,14 +10457,36 @@ function preparePlanReviewInvocation(
       );
       return null;
     }
-    if (scheduled.outcome !== 'assigned') {
+    const requiredIndependence = roleTopology.actualRolePairs.find(
+      ({ pair }) => pair === 'author-reviewer',
+    )?.required;
+    const selectedCandidate = schedulingCandidates.find(
+      ({ providerId, sessionId }) =>
+        providerId === selectedTopology.reviewer.providerId &&
+        sessionId === selectedTopology.reviewer.sessionId,
+    );
+    if (requiredIndependence === undefined || selectedCandidate === undefined) {
       throw workflowError(
         'ROLE_TOPOLOGY_UNSATISFIED',
         'A satisfied PlanReview topology has no exact provider assignment.',
         ExitCode.guard,
       );
     }
-    assignment = scheduled.assignment;
+    const strengthenedSchedule = scheduleOrdinaryRole({
+      role: 'plan-reviewer',
+      requestedIndependence: requiredIndependence,
+      author,
+      targetDigest: planning.subject.subjectDigest,
+      candidates: [selectedCandidate],
+    });
+    if (strengthenedSchedule.outcome !== 'assigned') {
+      throw workflowError(
+        'ROLE_TOPOLOGY_UNSATISFIED',
+        'A satisfied PlanReview topology has no exact provider assignment.',
+        ExitCode.guard,
+      );
+    }
+    assignment = strengthenedSchedule.assignment;
   } else if (scheduled?.outcome === 'assigned') {
     assignment = scheduled.assignment;
   } else if (!collaborationGrant) {

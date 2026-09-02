@@ -238,7 +238,7 @@
     {
       "path": "node_modules/@jigwright/github-adapter/src/archive-pull-request.ts",
       "mode": "100644",
-      "digest": "sha256:7b39de08676efcc0d862eb6148f3b00a6b412c80220ec5b9a44bfaf40a909f34"
+      "digest": "sha256:7232c8308ce80d7aaaeaee844ac1223628b9a0c0bdfa9abdac6a50585399acca"
     },
     {
       "path": "node_modules/@jigwright/github-adapter/src/github-app-token.ts",
@@ -343,7 +343,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:b30ffab32c1c8382fac000f52fab926d473594c176ba63fd56eb4dad09abed33"
+      "digest": "sha256:711ec01023eb645526c46ead3c22eae43180181b9cd5962a885087f6075b4a6f"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -518,7 +518,7 @@
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
       "mode": "100644",
-      "digest": "sha256:6aeef7551a0fc40a22224f36fd53601d92a821e36b783eb8834b83e0e66b369e"
+      "digest": "sha256:754a7852d4c78245a80f21efcc753b7dd93b267b39a8cfb2ce99ffd82f50c1b7"
     },
     {
       "path": "src/application/archive/archive-transformation.ts",
@@ -698,7 +698,7 @@
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
       "mode": "100644",
-      "digest": "sha256:20b9731d1d838c87555cda8c6761f52e853c430bf9cfc95e0e27a16e4571a9c7"
+      "digest": "sha256:7727eacde3c123e004ef7afc4eb6d55df4ec6ae59dc413ff988247b1ebb7404f"
     },
     {
       "path": "src/application/propose/planning-transition.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:6c2d560c92f91b3de9933b8e356f7fca54b8f283400c35597dae48690b5e6e91"
+      "digest": "sha256:db27ae7ee01bf460160cd1b9718ea2ce809ac9c407f5c42714dd5c2da28b3650"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -2203,7 +2203,7 @@
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
       "mode": "100644",
-      "digest": "sha256:e71d27de2d11e64698718e03769cf45003ae52bd655c94d918979f69e6669d72"
+      "digest": "sha256:5867343c042359caaf1af14ad704187eb186e33ce3c05f00bc6c9e77ce0403f0"
     },
     {
       "path": "src/runtime/storage-journal/pre-merge-assurance-store.ts",

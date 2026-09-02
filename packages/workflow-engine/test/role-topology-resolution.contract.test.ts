@@ -21,7 +21,10 @@ import {
   type RoleTopologyResolutionDependencyPortV1,
   type RoleTopologyProviderRegistryV1,
 } from '../src/modules/provider-orchestration/role-topology-resolution.ts';
-import { resolvePlanReviewRoleTopology } from '../src/application/propose/plan-review-role-topology.ts';
+import {
+  resolvePlanReviewRoleTopology,
+  selectPlanReviewRoleTopology,
+} from '../src/application/propose/plan-review-role-topology.ts';
 import { createProductionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
 import { isWorkflowError } from './fixture.ts';
 
@@ -629,6 +632,55 @@ test('plan-review resolver uses its required snapshot port and accepts a fresh s
     weakenedResolution.actualRolePairs[0]?.achieved,
     'session-independent',
   );
+});
+
+test('plan-review selection satisfies strengthened topology before considering R-007', () => {
+  const providerRegistry = registry(['claude', 'codex']);
+  const changeOverride = rolePlan(
+    [{ pair: 'author-reviewer', required: 'provider-independent' }],
+    [GRANT_REFERENCE],
+  );
+  let reads = 0;
+  const selected = selectPlanReviewRoleTopology(
+    {
+      repositoryRoot: '/fixture/repository',
+      changeId: CHANGE_ID,
+      planningGeneration: PLANNING_GENERATION,
+      author: { providerId: 'codex', sessionId: 'author-session' },
+      reviewers: [
+        { providerId: 'codex', sessionId: 'reviewer-codex-session' },
+        { providerId: 'claude', sessionId: 'reviewer-claude-session' },
+      ],
+      providerPolicyDigest: PROVIDER_POLICY_DIGEST,
+      providerEnabled: { claude: true, codex: true },
+    },
+    {
+      readResolutionSnapshot() {
+        reads += 1;
+        return {
+          baseCentralConfigurationDigest:
+            changeOverride.baseCentralConfigurationDigest,
+          changeOverride,
+          providerRegistry,
+        };
+      },
+    },
+  );
+  assert.equal(reads, 1);
+  assert.deepEqual(selected.reviewer, {
+    providerId: 'claude',
+    sessionId: 'reviewer-claude-session',
+  });
+  assert.equal(selected.resolution.disposition, 'satisfied');
+  assert.equal(
+    selected.resolution.actualRolePairs[0]?.required,
+    'provider-independent',
+  );
+  assert.equal(
+    selected.resolution.actualRolePairs[0]?.achieved,
+    'provider-independent',
+  );
+  assert.deepEqual(selected.resolution.exactGrantRolePairs, []);
 });
 
 test('production snapshot port owns current plan and reviewed provider-definition capture', () => {

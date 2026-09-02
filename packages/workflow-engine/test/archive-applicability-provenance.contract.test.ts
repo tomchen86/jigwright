@@ -51,6 +51,25 @@ const BASE_REPORT = {
   },
 };
 
+const CURRENT_ASSURANCE = {
+  applicabilityKind: 'sealed-investigation' as const,
+  applicabilityDigest: '1'.repeat(64),
+  applicabilityNodeId: '2'.repeat(64),
+  investigationBaseline: { head: 'a'.repeat(40), tree: 'b'.repeat(40) },
+  planningGenerationId: '3'.repeat(64),
+  planTargetDigest: '4'.repeat(64),
+  reviewNodeId: '5'.repeat(64),
+  reviewResultDigest: '6'.repeat(64),
+  reviewDispositionNodeId: null,
+  reviewRoleResultDigest: '7'.repeat(64),
+  reviewRoleResultForm: 'ordinary-provider' as const,
+  reviewOrchestration: 'engine-spawned-provider' as const,
+  requiredIndependence: 'provider-independent' as const,
+  achievedIndependence: 'provider-independent' as const,
+  degradationAuthorized: false,
+  advisoryVerdict: 'advisory-approve' as const,
+};
+
 function directory(): string {
   return fs.realpathSync(
     fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'planning-report-')),
@@ -76,6 +95,29 @@ test('a plan records the base its preflight was checked against', () => {
     readPlanningTransitionReport(root, id).archiveApplicability,
     record,
   );
+});
+
+test('current planning reports replay strengthened ordinary and R-007 assurance', () => {
+  const root = directory();
+  for (const planningAssurance of [
+    CURRENT_ASSURANCE,
+    {
+      ...CURRENT_ASSURANCE,
+      reviewRoleResultForm: 'granted-role-context-sharing' as const,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'session-independent' as const,
+      degradationAuthorized: true,
+    },
+  ]) {
+    const id = writePlanningTransitionReport(root, {
+      ...BASE_REPORT,
+      planningAssurance,
+    });
+    assert.deepEqual(
+      readPlanningTransitionReport(root, id).planningAssurance,
+      planningAssurance,
+    );
+  }
 });
 
 test('current planning reports reject pre-v3 fields instead of projecting them', () => {

@@ -116,7 +116,9 @@
           "then": {
             "properties": {
               "orchestration": { "const": "engine-spawned-provider" },
-              "requiredIndependence": { "const": "session-independent" },
+              "requiredIndependence": {
+                "enum": ["provider-independent", "session-independent"]
+              },
               "achievedIndependence": {
                 "enum": ["provider-independent", "session-independent"]
               },

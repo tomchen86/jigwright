@@ -37,8 +37,16 @@ export type ArchivePullRequestCandidateV1 = Readonly<{
     nodeId: string;
     resultDigest: string;
     advisoryVerdict: 'advisory-approve';
-    requiredIndependence: 'session-independent';
-    achievedIndependence: 'provider-independent' | 'session-independent';
+    roleResultForm:
+      | 'ordinary-provider'
+      | 'granted-same-provider'
+      | 'granted-role-context-sharing'
+      | 'granted-caller-supplied'
+      | 'direct-human-attestation';
+    requiredIndependence: 'provider-independent' | 'session-independent';
+    achievedIndependence:
+      'provider-independent' | 'session-independent' | 'none';
+    degradationAuthorized: boolean;
   }>;
 }>;
 
@@ -588,17 +596,17 @@ function assertCandidate(
       'nodeId',
       'resultDigest',
       'advisoryVerdict',
+      'roleResultForm',
       'requiredIndependence',
       'achievedIndependence',
+      'degradationAuthorized',
     ]) ||
     typeof candidate.planReview.nodeId !== 'string' ||
     !DIGEST.test(candidate.planReview.nodeId) ||
     typeof candidate.planReview.resultDigest !== 'string' ||
     !DIGEST.test(candidate.planReview.resultDigest) ||
     candidate.planReview.advisoryVerdict !== 'advisory-approve' ||
-    candidate.planReview.requiredIndependence !== 'session-independent' ||
-    (candidate.planReview.achievedIndependence !== 'provider-independent' &&
-      candidate.planReview.achievedIndependence !== 'session-independent')
+    !isCurrentPlanReviewAssurance(candidate.planReview)
   ) {
     throw new TypeError('Archive pull request candidate is invalid.');
   }
@@ -607,6 +615,36 @@ function assertCandidate(
   if (identity !== deriveArchivePullRequestCandidateIdentity(facts)) {
     throw new TypeError('Archive pull request candidate identity is invalid.');
   }
+}
+
+function isCurrentPlanReviewAssurance(value: Record<string, unknown>): boolean {
+  if (value.roleResultForm === 'ordinary-provider') {
+    return (
+      value.degradationAuthorized === false &&
+      (value.requiredIndependence === 'provider-independent'
+        ? value.achievedIndependence === 'provider-independent'
+        : value.requiredIndependence === 'session-independent' &&
+          (value.achievedIndependence === 'provider-independent' ||
+            value.achievedIndependence === 'session-independent'))
+    );
+  }
+  if (
+    value.roleResultForm === 'granted-caller-supplied' ||
+    value.roleResultForm === 'direct-human-attestation'
+  ) {
+    return (
+      value.degradationAuthorized === true &&
+      value.requiredIndependence === 'provider-independent' &&
+      value.achievedIndependence === 'none'
+    );
+  }
+  return (
+    (value.roleResultForm === 'granted-same-provider' ||
+      value.roleResultForm === 'granted-role-context-sharing') &&
+    value.degradationAuthorized === true &&
+    value.requiredIndependence === 'provider-independent' &&
+    value.achievedIndependence === 'session-independent'
+  );
 }
 
 function assertPrepared(prepared: PreparedArchivePullRequestV1): void {

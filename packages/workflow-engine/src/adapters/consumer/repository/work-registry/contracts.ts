@@ -233,6 +233,7 @@ export function isPlanningAssuranceBinding(
     ![
       'ordinary-provider',
       'granted-same-provider',
+      'granted-role-context-sharing',
       'granted-caller-supplied',
       'direct-human-attestation',
     ].includes(String(value.reviewRoleResultForm)) ||
@@ -261,7 +262,14 @@ export function isPlanningAssuranceBinding(
   ) {
     return false;
   }
-  const hasGrant = value.reviewRoleResultForm !== 'ordinary-provider';
+  const hasStandardGrant = [
+    'granted-same-provider',
+    'granted-caller-supplied',
+    'direct-human-attestation',
+  ].includes(String(value.reviewRoleResultForm));
+  const hasDegradationAuthority =
+    hasStandardGrant ||
+    value.reviewRoleResultForm === 'granted-role-context-sharing';
   const grantRefs = [
     value.reviewGrantId,
     value.reviewGrantEnvelopeDigest,
@@ -270,11 +278,9 @@ export function isPlanningAssuranceBinding(
   ];
   return (
     grantRefs.every((reference) =>
-      hasGrant ? reference !== null : reference === null,
+      hasStandardGrant ? reference !== null : reference === null,
     ) &&
-    value.degradationAuthorized ===
-      (hasGrant ||
-        value.reviewRoleResultForm === 'granted-role-context-sharing') &&
+    value.degradationAuthorized === hasDegradationAuthority &&
     (value.degradationAuthorized
       ? value.requiredIndependence === 'provider-independent' &&
         value.achievedIndependence !== 'provider-independent'

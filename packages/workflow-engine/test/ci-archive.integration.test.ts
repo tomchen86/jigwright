@@ -471,7 +471,7 @@ function createArchivedFixtureTemplate(): ArchivedFixture {
     runner(input) {
       return {
         invocationId: prepared.invocationId,
-        providerId: 'claude',
+        providerId: input.request.providerId,
         purpose: 'task-diff-review',
         requestDigest: input.request.requestDigest,
         semanticOutput: submission,
@@ -485,10 +485,13 @@ function createArchivedFixtureTemplate(): ArchivedFixture {
         },
         sameUserProcessConfined: false,
         residuals: [...PROVIDER_RUNNER_RESIDUALS],
-        executable: builtInProviderExecutableIdentityForTest('claude'),
+        executable: builtInProviderExecutableIdentityForTest(
+          input.request.providerId,
+        ),
         elapsedMs: 8,
-        providerDefinitionSnapshot:
-          builtInProviderDefinitionSnapshotForTest('claude'),
+        providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
+          input.request.providerId,
+        ),
       };
     },
   });

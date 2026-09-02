@@ -61,12 +61,19 @@ export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   reviewNodeId: string;
   reviewResultDigest: string;
   advisoryVerdict: 'advisory-approve' | 'advisory-reject';
+  reviewRoleResultForm:
+    | 'ordinary-provider'
+    | 'granted-same-provider'
+    | 'granted-role-context-sharing'
+    | 'granted-caller-supplied'
+    | 'direct-human-attestation';
   requiredIndependence: 'provider-independent' | 'session-independent';
   achievedIndependence:
     | 'provider-independent'
     | 'principal-independent'
     | 'session-independent'
     | 'none';
+  degradationAuthorized: boolean;
 }>;
 
 export type ArchivePullRequestAuthorizationFactsV1 = Readonly<{
@@ -323,8 +330,10 @@ export function discoverArchivePullRequestCandidate(
     reviewNodeId: contract.planningAssurance.reviewNodeId,
     reviewResultDigest: contract.planningAssurance.reviewResultDigest,
     advisoryVerdict: contract.planningAssurance.advisoryVerdict,
+    reviewRoleResultForm: contract.planningAssurance.reviewRoleResultForm,
     requiredIndependence: contract.planningAssurance.requiredIndependence,
     achievedIndependence: contract.planningAssurance.achievedIndependence,
+    degradationAuthorized: contract.planningAssurance.degradationAuthorized,
   });
 }
 
@@ -455,13 +464,11 @@ export function projectArchivePullRequestCandidate(
   if (
     input.manifestSchemaVersion !== 3 ||
     input.advisoryVerdict !== 'advisory-approve' ||
-    input.requiredIndependence !== 'session-independent' ||
-    (input.achievedIndependence !== 'provider-independent' &&
-      input.achievedIndependence !== 'session-independent')
+    !isCurrentArchivePlanReviewAssurance(input)
   ) {
     throw archivePrError(
       'ARCHIVE_PR_CURRENT_ASSURANCE_REQUIRED',
-      'Archive PR candidates require current Manifest v3 authority and a session-independent approving PlanReview.',
+      'Archive PR candidates require current Manifest v3 authority and an approving current PlanReview.',
     );
   }
   const identityFacts = {
@@ -488,8 +495,11 @@ export function projectArchivePullRequestCandidate(
       nodeId: input.reviewNodeId,
       resultDigest: input.reviewResultDigest,
       advisoryVerdict: input.advisoryVerdict,
+      roleResultForm: input.reviewRoleResultForm,
       requiredIndependence: input.requiredIndependence,
-      achievedIndependence: input.achievedIndependence,
+      achievedIndependence: input.achievedIndependence as
+        'provider-independent' | 'session-independent' | 'none',
+      degradationAuthorized: input.degradationAuthorized,
     },
   } as const;
   return Object.freeze({
@@ -501,6 +511,38 @@ export function projectArchivePullRequestCandidate(
       .update(canonicalJson(identityFacts))
       .digest('hex'),
   });
+}
+
+function isCurrentArchivePlanReviewAssurance(
+  input: ArchivePullRequestCandidateProjectionInput,
+): boolean {
+  if (input.reviewRoleResultForm === 'ordinary-provider') {
+    return (
+      input.degradationAuthorized === false &&
+      (input.requiredIndependence === 'provider-independent'
+        ? input.achievedIndependence === 'provider-independent'
+        : input.requiredIndependence === 'session-independent' &&
+          (input.achievedIndependence === 'provider-independent' ||
+            input.achievedIndependence === 'session-independent'))
+    );
+  }
+  if (
+    input.reviewRoleResultForm === 'granted-same-provider' ||
+    input.reviewRoleResultForm === 'granted-role-context-sharing'
+  ) {
+    return (
+      input.degradationAuthorized === true &&
+      input.requiredIndependence === 'provider-independent' &&
+      input.achievedIndependence === 'session-independent'
+    );
+  }
+  return (
+    (input.reviewRoleResultForm === 'granted-caller-supplied' ||
+      input.reviewRoleResultForm === 'direct-human-attestation') &&
+    input.degradationAuthorized === true &&
+    input.requiredIndependence === 'provider-independent' &&
+    input.achievedIndependence === 'none'
+  );
 }
 
 export function openArchivePullRequest(

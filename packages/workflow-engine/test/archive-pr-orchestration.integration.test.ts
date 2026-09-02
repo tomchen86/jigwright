@@ -154,11 +154,53 @@ test('candidate projection rejects historical or non-independent assurance', () 
         reviewNodeId: 'e'.repeat(64),
         reviewResultDigest: 'f'.repeat(64),
         advisoryVerdict: 'advisory-approve',
+        reviewRoleResultForm: 'ordinary-provider',
         requiredIndependence: 'session-independent',
         achievedIndependence: 'none',
+        degradationAuthorized: false,
       }),
     (error) => isWorkflowError(error, 'ARCHIVE_PR_CURRENT_ASSURANCE_REQUIRED'),
   );
+});
+
+test('candidate projection preserves strengthened ordinary and exact R-007 assurance', () => {
+  const base = {
+    repositoryId: 'portable-fixture',
+    changeId: 'demo-change',
+    branch: 'main',
+    head: 'a'.repeat(40),
+    tree: 'b'.repeat(40),
+    remoteName: 'origin' as const,
+    remoteTrackingRef: 'refs/remotes/origin/main',
+    remoteHead: 'a'.repeat(40),
+    remoteTree: 'b'.repeat(40),
+    manifestSchemaVersion: 3,
+    manifestDigest: 'c'.repeat(64),
+    investigationTargetDigest: 'd'.repeat(64),
+    reviewNodeId: 'e'.repeat(64),
+    reviewResultDigest: 'f'.repeat(64),
+    advisoryVerdict: 'advisory-approve' as const,
+  };
+  const strengthened = projectArchivePullRequestCandidate({
+    ...base,
+    reviewRoleResultForm: 'ordinary-provider',
+    requiredIndependence: 'provider-independent',
+    achievedIndependence: 'provider-independent',
+    degradationAuthorized: false,
+  } as never);
+  assert.equal(
+    strengthened.planReview.requiredIndependence,
+    'provider-independent',
+  );
+  const r007 = projectArchivePullRequestCandidate({
+    ...base,
+    reviewRoleResultForm: 'granted-role-context-sharing',
+    requiredIndependence: 'provider-independent',
+    achievedIndependence: 'session-independent',
+    degradationAuthorized: true,
+  } as never);
+  assert.equal(r007.planReview.roleResultForm, 'granted-role-context-sharing');
+  assert.equal(r007.planReview.degradationAuthorized, true);
 });
 
 test('tracked archive manual-dispatch contract is pinned and inert', () => {
