@@ -139,15 +139,15 @@ INV-011 is implemented, but the latest authentic full-gate run observed all
 2,581 tests with 114 failures. It therefore remains an operational gate, not a
 missing invariant implementation.
 
-### Operational gates at `01f92a9`
+### Operational gates (latest evidence)
 
-| Gate                             | State                         | Evidence boundary                                                                       |
-| -------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
-| Current full gate                | `failed; remediation pending` | 2,581/2,581 tests observed; 114 failures. No GREEN claim.                               |
-| Real provider pilot/adoption     | `pending`                     | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence. |
-| Hosted archive publication       | `pending`                     | Local publication orchestration is GREEN; no hosted publication was performed.          |
-| Exact release/consumer lifecycle | `targeted-green`              | single-package/release-v1 13/13; portability 8/8 across the recorded focused runs.      |
-| CAP-019 status-watch             | `targeted-green`              | durable changed-only watch and CLI streaming regressions are GREEN at `84b644f`.        |
+| Gate                             | State                                       | Evidence boundary                                                                                                                                                 |
+| -------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Current full gate                | `failed; remediation pending`               | 2,581/2,581 tests observed; 114 failures. No GREEN claim.                                                                                                         |
+| Real provider pilot/adoption     | `pending`                                   | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence.                                                                           |
+| Hosted archive publication       | `pending`                                   | Local publication orchestration is GREEN; no hosted publication was performed.                                                                                    |
+| Exact release/consumer lifecycle | `targeted-green; retained artifact current` | single-package/release-v1 13/13; portability 8/8 across the recorded focused runs; retained `dist/release-v1` rebuilt and verified against the latest clean HEAD. |
+| CAP-019 status-watch             | `targeted-green`                            | durable changed-only watch and CLI streaming regressions are GREEN at `84b644f`.                                                                                  |
 
 ## Frozen initial CLI audit detail
 
