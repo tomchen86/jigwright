@@ -9,6 +9,7 @@ import {
   readGovernanceSource,
 } from '../../modules/governance-intake/governance-intake.ts';
 import {
+  ensureWorkItemPromotionChangeDirectory,
   linkSourceToChange,
   readCurrentChangeOrigin,
 } from '../../modules/governance-intake/work-registry.ts';
@@ -27,7 +28,6 @@ import {
   type AssuranceAssessmentReport,
 } from '../../modules/assurance/assurance-assessment-chain.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
-import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   COLLABORATION_GRANT_POLICY_DIGEST,
@@ -5167,13 +5167,10 @@ function materializeImmediateSource(
   changeId: string,
   source: ReturnType<typeof readGovernanceSource>,
 ): void {
-  const config = loadWorkflowConfig(repositoryRoot);
-  const changeDirectory = path.join(
+  const changeDirectory = ensureWorkItemPromotionChangeDirectory(
     repositoryRoot,
-    config.changeRoot,
     changeId,
   );
-  ensurePlainDirectory(changeDirectory);
   const existingOrigin = readCurrentChangeOrigin(repositoryRoot, changeId);
   if (existingOrigin !== null) {
     if (
