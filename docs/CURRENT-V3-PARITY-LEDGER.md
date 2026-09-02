@@ -1,6 +1,6 @@
 # Current-v3 product parity ledger
 
-**Status:** Authoritative initial inventory; parity is not complete
+**Status:** Implemented parity re-audit complete; operational gates remain open
 
 **Requirement:** R-014 — full current-v3 product parity (owner directive; source provenance below)
 
@@ -9,9 +9,9 @@
 
 **Target audit base:** official `jigwright@6ed62e9`
 
-**Live import checkpoint:** `jigwright-package-side@4b2d543` (2026-09-02).
-This preserves the frozen semantic denominator; only rows explicitly updated
-below claim a newer live target state.
+**Live audit checkpoint:** `jigwright-package-side@01f92a9` (2026-09-02).
+This preserves the frozen semantic denominator while recording the reviewed
+current target. CAP-019 remains the sole local code gap at this checkpoint.
 
 This ledger implements D-017. Clean-slate removes historical formats and
 consumer baggage; it does not reduce the current-v3 product. The quarry is
@@ -34,9 +34,9 @@ an allowed terminal disposition.
 
 | Ledger                                | Ported | Already equivalent | Port required | Retirement review | Legacy-only retired |
 | ------------------------------------- | -----: | -----------------: | ------------: | ----------------: | ------------------: |
-| CLI routes (70 rows)                  |      2 |                  6 |            49 |                11 |                   2 |
-| Capabilities (40 rows)                |      2 |                  7 |            31 |                 0 |                   0 |
-| Correctness invariants (34 rows)      |      0 |                 14 |            20 |                 0 |                   0 |
+| CLI routes (70 rows)                  |     54 |                  5 |             0 |                 0 |                  11 |
+| Capabilities (40 rows)                |     32 |                  7 |             1 |                 0 |                   0 |
+| Correctness invariants (34 rows)      |     20 |                 14 |             0 |                 0 |                   0 |
 | Approved retirement families (7 rows) |      0 |                  0 |             0 |                 0 |                   7 |
 
 ## Disposition rules
@@ -62,11 +62,98 @@ Filename words such as `legacy`, `v1`, or `v2` are not sufficient by
 themselves. For example, a currently supported provider wire protocol may use a
 v1 schema name without being a legacy workflow-state reader.
 
-## CLI surface ledger
+## Authoritative live re-audit
+
+The disposition maps in this section supersede the initial row-by-row gap text
+preserved below. That older text remains the frozen discovery record; it must
+not be used as the current implementation status.
+
+### CLI disposition map
+
+- `already-equivalent`: CLI-002, CLI-006, CLI-013, CLI-014, CLI-043.
+- `legacy-only-retired`: CLI-029, CLI-031, CLI-041, CLI-047, CLI-048,
+  CLI-049, CLI-050, CLI-051, CLI-052, CLI-053, CLI-063.
+- `ported`: every other CLI row from CLI-001 through CLI-070.
+
+The 54 ported routes are reachable from the production CLI at `01f92a9`.
+Their nearest rerunnable evidence is grouped by behavior rather than duplicated
+seventy times:
+
+| Rows                                                                | Production boundary                                                                                                                                                                                      | Targeted evidence                                                                                                                       |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| CLI-001, CLI-003–CLI-005, CLI-015, CLI-037–CLI-039, CLI-054–CLI-062 | boundary/conformance, repository diagnostics, current OpenSpec validation and planning, registered checks, CI, authority plans, managed documents, hooks, guidance and exact package release dispatchers | boundary, contracts, OpenSpec assets, CI, authority-plan, managed-document, guidance, portability and single-package release suites     |
+| CLI-007–CLI-012, CLI-032–CLI-036, CLI-064–CLI-068                   | atomic open-task, current investigation/propose, archive, base refresh, plan amendment/revision, task strategy, unified status, check/complete/finish/commit/finalize and recovery dispatchers           | open-task atomic ingress, investigation-session, completion, update-base, task-strategy, finalize recovery and workflow-guidance suites |
+| CLI-016–CLI-028, CLI-030, CLI-045–CLI-046, CLI-070                  | Grant Core families, bounded effects, Job/Attempt, assurance, retention, intervention/control-plane, audit, Task Mandate, maintainer and human-resolution production composition                         | Grant, execution-runtime/store, retention, control-plane, authority-audit, Task Mandate and human-resolution contracts                  |
+| CLI-040, CLI-042, CLI-044, CLI-069                                  | AI adapter evaluation/pilot records, Source capture/linking, current Work Registry and archive pull-request publication orchestration                                                                    | AI adapter/availability 11/11; governance intake 45/45; archive publication contracts                                                   |
+
+CLI-040 and CLI-069 are implemented routes, but real provider-pilot evidence and
+real hosted publication remain operational gates. Their route disposition does
+not claim those external operations succeeded.
+
+### Capability disposition map
+
+- `already-equivalent`: CAP-004, CAP-005, CAP-018, CAP-025, CAP-035,
+  CAP-036, CAP-037.
+- `port-required`: CAP-019 only. Durable status exists, but the required
+  status-watch entry point is not present at `01f92a9`.
+- `ported`: every other capability row from CAP-001 through CAP-040.
+
+Evidence groups for the 32 ported capabilities:
+
+| Rows                             | Production boundary                                                                                                                                                                       | Targeted evidence                                                                                                                 |
+| -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| CAP-001–CAP-003, CAP-006–CAP-015 | current schema/Manifest/PlanReview, protected Apply, atomic task/finalize/recovery, managed documents and handoff                                                                         | current-v3 Manifest, PlanReview, task-mandate, open-task, finalize, recovery, document-refresh and handoff suites                 |
+| CAP-016–CAP-017                  | immutable Source/Finding/WHY knowledge plus always-built-in Work Registry with `now`/`later`/`attach`, exact dispositions, sourceRefs and conditional promotion survey                    | governance-intake 45/45 and source/semantic-reuse contracts                                                                       |
+| CAP-020–CAP-024, CAP-026–CAP-027 | provider config/identity, durable Job/Attempt, role topology, native sessions, data-egress policy and current Grant/effect families                                                       | provider adapter, execution store/runtime, role assignment, native-session, collaboration/role-context and external-effect suites |
+| CAP-028–CAP-034, CAP-038–CAP-040 | archive/publication orchestration, hooks/CI, authority/control-plane recovery, retention/metrics, OpenSpec assets, audit, amendment provenance and availability-pilot record verification | archive, CI, authority-plan, control-plane, retention, metrics, OpenSpec assets, audit, amendment and availability-pilot suites   |
+
+CAP-010 is implemented but its authentic current full gate is failed/pending.
+CAP-028 is implemented but real hosted publication is pending. CAP-040 is
+implemented but the real non-DB provider pilot/adoption is pending.
+
+### Correctness-invariant disposition map
+
+- `already-equivalent`: INV-001, INV-002, INV-003, INV-004, INV-005,
+  INV-008, INV-010, INV-015, INV-017, INV-023, INV-026, INV-028, INV-029,
+  INV-030.
+- `ported`: INV-006, INV-007, INV-009, INV-011, INV-012, INV-013, INV-014,
+  INV-016, INV-018, INV-019, INV-020, INV-021, INV-022, INV-024, INV-025,
+  INV-027, INV-031, INV-032, INV-033, INV-034.
+
+The re-audit tied each ported invariant to a production caller and rerunnable
+test family:
+
+| Rows                                      | Production enforcement                                                                                                                                                | Nearest rerunnable evidence                                                                      |
+| ----------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| INV-006–INV-007, INV-011–INV-014, INV-016 | prepared transactions, exact external-effect idempotency, terminal check coverage, managed staging/commit trailers, atomic open-task and exact finalize/base recovery | transaction crash-window, external-effect, completion/finalize, open-task and update-base suites |
+| INV-009                                   | Task Mandate and protected-path classification bind the actual diff to exact authorized scope                                                                         | task-mandate, protected Apply and completion suites                                              |
+| INV-018                                   | executable realpath/inode/mode/digest is observed before and after admission                                                                                          | provider-adapters and provider-config dry-run suites                                             |
+| INV-019–INV-020                           | native-session claim precedes launch; one Attempt accepts one completion; quiet observation alone never terminalizes or duplicates paid work                          | native-session store, async provider process, execution-store/runtime and automatic-retry suites |
+| INV-021–INV-022                           | exact role/provider/session topology and repository-owned data-egress policy are durable inputs without Git authority                                                 | role-assignment/store, role-context-sharing and provider-adapters suites                         |
+| INV-024–INV-025                           | domain-separated Grants bind exact subject/proof/expiry/nonce/consumption; TaskDiff output remains advisory until authenticated closure and Final Assurance           | Grant Core/family, TaskDiff artifact/provider-output and external-continuation suites            |
+| INV-027, INV-031–INV-033                  | deterministic managed projections; immutable base/head CI replay; bounded retention; external audit/refusal chains                                                    | handoff/document-refresh, CI planning/archive, retention and authority-audit suites              |
+| INV-034                                   | reviewed TypeScript regenerates pinned built-in, harness, recovery, protected, dependency and T3 artifacts; generated mirrors do not decide authority                 | workspace-closure, protected-capability, module-dependency, T3 and generator checks              |
+
+INV-011 is implemented, but the latest authentic full-gate run observed all
+2,581 tests with 114 failures. It therefore remains an operational gate, not a
+missing invariant implementation.
+
+### Operational gates at `01f92a9`
+
+| Gate                             | State                         | Evidence boundary                                                                       |
+| -------------------------------- | ----------------------------- | --------------------------------------------------------------------------------------- |
+| Current full gate                | `failed; remediation pending` | 2,581/2,581 tests observed; 114 failures. No GREEN claim.                               |
+| Real provider pilot/adoption     | `pending`                     | Local fake/smoke and signed pilot-record contracts are not empirical provider evidence. |
+| Hosted archive publication       | `pending`                     | Local publication orchestration is GREEN; no hosted publication was performed.          |
+| Exact release/consumer lifecycle | `targeted-green`              | single-package/release-v1 13/13; portability 8/8 across the recorded focused runs.      |
+| CAP-019 status-watch             | `port-required`               | `job status` exists; durable `job watch` is the remaining local implementation gap.     |
+
+## Frozen initial CLI audit detail
 
 The source routes come from the production dispatchers in
 `packages/workflow-engine/src/cli.ts` at the frozen commit. Rows enumerate every
-synchronous route, async-only route, and help alias.
+synchronous route, async-only route, and help alias. Dispositions in this table
+are the initial discovery values and are superseded by the live map above.
 
 | ID      | Frozen route and subcommands                                                                                                | Disposition           | Official target or gap                                                                                                                                                                                                                              |
 | ------- | --------------------------------------------------------------------------------------------------------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -141,7 +228,7 @@ synchronous route, async-only route, and help alias.
 | CLI-069 | async `archive-pr prepare/open`                                                                                             | `already-equivalent`  | `archive.publication-request` and `archive.publish` provide the clean single-package current replacement; the frozen `open` production path was disabled.                                                                                           |
 | CLI-070 | `help`, `--help`, `-h` aliases                                                                                              | `port-required`       | `guide` exists, but the three ordinary help aliases are not admitted.                                                                                                                                                                               |
 
-## Capability ledger
+## Frozen initial capability audit detail
 
 | ID      | Current-v3 capability                                                                       | Disposition          | Evidence or missing production path                                                                                                                                                                                                                                                                                  |
 | ------- | ------------------------------------------------------------------------------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -186,7 +273,7 @@ synchronous route, async-only route, and help alias.
 | CAP-039 | Plan amendment and contribution/revision provenance                                         | `port-required`      | No amendment transition or revision contribution record.                                                                                                                                                                                                                                                             |
 | CAP-040 | Provider availability pilot and real-pilot verification distinction                         | `port-required`      | No implementation-ready or real-pilot record lifecycle.                                                                                                                                                                                                                                                              |
 
-## Correctness-invariant ledger
+## Frozen initial correctness-invariant audit detail
 
 | ID      | Current-v3 invariant                                                                                     | Disposition          | Evidence or gap                                                                                                       |
 | ------- | -------------------------------------------------------------------------------------------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------- |
