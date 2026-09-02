@@ -15,6 +15,7 @@ import {
   persistInterventionEngineArtifact,
   readMaintenanceGrantForParent,
 } from '../src/application/control-plane/intervention-maintenance.ts';
+import { createTaskSessionIsolationBinding } from '../src/runtime/session-workspace/session-store.ts';
 
 const NOW = new Date('2026-08-03T10:00:00.000Z');
 const SOURCE_REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../../..');
@@ -119,9 +120,17 @@ function fixture() {
         artifacts: { guard: digest('guard-parent-A') },
         allowedPaths: ['packages/workflow-engine/**'],
         requiredChecks: ['workflow-engine-test'],
+        isolation: createTaskSessionIsolationBinding({
+          routingRole: 'single',
+          routingWorksetDigest: digest('parent-A-routing-workset'),
+          concurrencyEnabled: false,
+          repositoryRoot: repositoryRealPath,
+          resources: [],
+        }),
         requiredCheckDigests: {
           'workflow-engine-test': digest('workflow-engine-test-definition'),
         },
+        planningAssurance: null,
         createdAt: NOW.toISOString(),
       },
       null,
