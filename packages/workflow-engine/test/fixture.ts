@@ -853,7 +853,7 @@ export function writeReadyV3ExemptChange(
     providerId: 'claude' as const,
     sessionId: 'fixture-plan-review-session',
     targetDigest: subjectContext.subject.subjectDigest,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
     achievedIndependence: 'provider-independent' as const,
   };
   const snapshotRelativePaths = [

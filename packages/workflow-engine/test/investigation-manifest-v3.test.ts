@@ -1244,7 +1244,7 @@ test('raw-byte anchors replay identically for a non-UTF-8 Git path in another cl
       knowledgeReuseDecisions: [],
       investigationRoleResults: [
         {
-          role: 'blind-surveyor' as const,
+          role: 'reviewer-pre-anchor' as const,
           targetDigest: digest('raw-role-target'),
           providerId: 'codex',
           sessionId: 'raw-path-session',
@@ -1464,7 +1464,7 @@ function ordinaryAuthoringState(
       knowledgeReuseDecisions: [],
       investigationRoleResults: [
         {
-          role: 'blind-surveyor',
+          role: 'reviewer-pre-anchor',
           targetDigest: digest('survey-target'),
           providerId: 'codex',
           sessionId: 'survey-session',

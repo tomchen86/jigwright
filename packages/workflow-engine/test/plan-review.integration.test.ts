@@ -58,14 +58,14 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
   const subject = createPlanReviewSubject({
     generation,
     reviewPolicyDigest: 'a'.repeat(64),
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   });
   const assignment = {
     role: 'plan-reviewer' as const,
     providerId: 'claude' as const,
     sessionId: 'review-session',
     targetDigest: subject.subjectDigest,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
     achievedIndependence: 'provider-independent' as const,
   };
   const submission = {
@@ -209,7 +209,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
     generation,
     target,
     expectedReviewPolicyDigest: 'a'.repeat(64),
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
     independenceAuthorization,
     repositoryEvidence: {
       tree: subject.investigationBaseline.tree,
@@ -245,7 +245,7 @@ test('exact PlanReview composes target, generation, challenge, terms, and adviso
       generation,
       target,
       expectedReviewPolicyDigest: 'a'.repeat(64),
-      requiredIndependence: 'provider-independent',
+      requiredIndependence: 'session-independent',
       independenceAuthorization,
       repositoryEvidence: {
         tree: subject.investigationBaseline.tree,

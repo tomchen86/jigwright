@@ -92,7 +92,8 @@ export function isPlanningAssuranceBinding(value) {
         !isNullableDigest(value.reviewGrantUseDigest) ||
         !isNullableDigest(value.reviewGrantTransitionDigest) ||
         !isNullableDigest(value.directHumanReviewAttestationDigest) ||
-        value.requiredIndependence !== 'provider-independent' ||
+        (value.requiredIndependence !== 'provider-independent' &&
+            value.requiredIndependence !== 'session-independent') ||
         ![
             'provider-independent',
             'principal-independent',
@@ -111,10 +112,16 @@ export function isPlanningAssuranceBinding(value) {
         value.reviewGrantTransitionDigest,
     ];
     return (grantRefs.every((reference) => hasGrant ? reference !== null : reference === null) &&
-        value.degradationAuthorized === hasGrant &&
-        (hasGrant
-            ? value.achievedIndependence !== 'provider-independent'
-            : value.achievedIndependence === 'provider-independent') &&
+        value.degradationAuthorized ===
+            (hasGrant ||
+                value.reviewRoleResultForm === 'granted-role-context-sharing') &&
+        (value.degradationAuthorized
+            ? value.requiredIndependence === 'provider-independent' &&
+                value.achievedIndependence !== 'provider-independent'
+            : value.requiredIndependence === 'provider-independent'
+                ? value.achievedIndependence === 'provider-independent'
+                : value.achievedIndependence === 'provider-independent' ||
+                    value.achievedIndependence === 'session-independent') &&
         (value.reviewRoleResultForm === 'direct-human-attestation'
             ? value.directHumanReviewAttestationDigest !== null
             : value.directHumanReviewAttestationDigest === null));
@@ -902,7 +909,7 @@ export function parseExecutionArtifact(value, expectedChangeId, tasks, guard, ch
                 candidate.enforcement !== 'planned' ||
                 candidate.requiredImplementerIndependence !==
                     (candidate.strategy === 'cross-agent-tdd'
-                        ? 'provider-independent'
+                        ? 'session-independent'
                         : 'none')) {
                 throw invalid();
             }

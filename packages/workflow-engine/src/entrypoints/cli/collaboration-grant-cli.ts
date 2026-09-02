@@ -251,7 +251,7 @@ function isRolePair(
   return (
     (phase === 'blind-survey' &&
       authorRole === 'investigation-author' &&
-      conflictingRole === 'blind-surveyor') ||
+      conflictingRole === 'plan-reviewer') ||
     (phase === 'plan-review' &&
       authorRole === 'plan-author' &&
       conflictingRole === 'plan-reviewer') ||

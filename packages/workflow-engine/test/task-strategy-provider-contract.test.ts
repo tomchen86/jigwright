@@ -64,7 +64,16 @@ test('task implementation assignment binds one exact RED subject and provider re
   });
   assert.equal(scheduled.outcome, 'assigned');
   if (scheduled.outcome !== 'assigned') return;
-  assert.equal(scheduled.assignment.providerId, 'claude');
+  assert.equal(scheduled.assignment.providerId, 'codex');
+  assert.equal(scheduled.assignment.sessionId, 'implementation-session');
+  assert.equal(
+    scheduled.assignment.requiredIndependence,
+    'session-independent',
+  );
+  assert.equal(
+    scheduled.assignment.achievedIndependence,
+    'session-independent',
+  );
 
   const request = createProviderInvocationRequest({
     invocationId: `invocation-task-implementation-${'3'.repeat(64)}`,

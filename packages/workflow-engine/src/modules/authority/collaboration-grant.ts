@@ -180,14 +180,11 @@ export type CollaborationLifecyclePhase =
 export type CollaborationAuthorRole =
   'investigation-author' | 'plan-author' | 'task-implementer' | 'red-author';
 export type CollaborationConflictingRole =
-  | 'blind-surveyor'
-  | 'plan-reviewer'
-  | 'task-diff-reviewer'
-  | 'task-implementer';
+  'plan-reviewer' | 'task-diff-reviewer' | 'task-implementer';
 export type CollaborationRolePair =
   | {
       authorRole: 'investigation-author';
-      conflictingRole: 'blind-surveyor';
+      conflictingRole: 'plan-reviewer';
     }
   | {
       authorRole: 'plan-author';
@@ -1194,7 +1191,7 @@ function assertRolePhase(
   const valid =
     (phase === 'blind-survey' &&
       rolePair.authorRole === 'investigation-author' &&
-      rolePair.conflictingRole === 'blind-surveyor') ||
+      rolePair.conflictingRole === 'plan-reviewer') ||
     (phase === 'plan-review' &&
       rolePair.authorRole === 'plan-author' &&
       rolePair.conflictingRole === 'plan-reviewer') ||

@@ -223,7 +223,7 @@ function installOrdinaryManifest(repository: string): InvestigationManifestV3 {
       knowledgeReuseDecisions: [],
       investigationRoleResults: [
         {
-          role: 'blind-surveyor',
+          role: 'reviewer-pre-anchor',
           targetDigest: digest('survey-target'),
           providerId: 'codex',
           sessionId: 'survey-session',

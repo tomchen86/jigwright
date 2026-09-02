@@ -827,7 +827,7 @@ type ProposeGrantAuthorization =
   | RoleContextSharingPlanReviewAuthorizationV1;
 
 const BLIND_SURVEY_GRANT_REASON =
-  'No provider-independent blind surveyor is callable for this exact investigation.';
+  'No session-independent Reviewer pre-anchor turn is callable for this exact investigation.';
 const PLAN_REVIEW_GRANT_REASON =
   'No provider-independent exact-plan reviewer is callable for this exact planning generation.';
 
@@ -854,7 +854,7 @@ function blindSurveyGrantRequest(input: {
     lifecyclePhase: 'blind-survey',
     rolePair: {
       authorRole: 'investigation-author',
-      conflictingRole: 'blind-surveyor',
+      conflictingRole: 'plan-reviewer',
     },
     availableActor: {
       kind: 'provider',
@@ -913,7 +913,7 @@ function collaborationGrantRequiredOutput(input: {
   >;
   grantRequest: CollaborationGrantRequest | null;
   lifecyclePhase: 'blind-survey' | 'plan-review';
-  conflictingRole: 'blind-surveyor' | 'plan-reviewer';
+  conflictingRole: 'plan-reviewer';
 }): OrdinaryProposeOutput {
   return {
     schemaVersion: 1,
@@ -1288,7 +1288,8 @@ export function startPropose(
     available: adapterPolicy.policy.providers[providerId].enabled,
   }));
   const scheduled = scheduleOrdinaryRole({
-    role: 'blind-surveyor',
+    role: 'plan-reviewer',
+    purpose: 'survey',
     author,
     targetDigest: intentDigest,
     candidates,
@@ -1309,7 +1310,7 @@ export function startPropose(
       actorResolution,
       grantRequest,
       lifecyclePhase: 'blind-survey',
-      conflictingRole: 'blind-surveyor',
+      conflictingRole: 'plan-reviewer',
     });
   }
   if (scheduled.outcome !== 'assigned' && grantRequest === null) {
@@ -1491,7 +1492,7 @@ export function startPropose(
           assertOwned,
         );
         assignment = authorizeGrantedOrdinaryRole({
-          role: 'blind-surveyor',
+          role: 'plan-reviewer',
           author,
           targetDigest: intentDigest,
           reservation,
@@ -4285,7 +4286,7 @@ function materializePlanReviewResult(
         target: reservation.planning.target,
         expectedReviewPolicyDigest:
           reservation.planning.policies.reviewPolicyDigest,
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: roleResult.requiredIndependence,
         independenceAuthorization: {
           kind: 'admitted-role-result',
           roleResult,
@@ -8242,7 +8243,7 @@ function buildProposeInvestigationManifestV3(
 function investigationV3RoleResult(
   role: AdmittedRoleResult,
 ): InvestigationV3RoleResult {
-  if (role.role !== 'blind-surveyor' && role.role !== 'plan-reviewer') {
+  if (role.role !== 'plan-reviewer') {
     throw workflowError(
       'SEMANTIC_COMPLETENESS_FAILURE',
       'Non-investigation role cannot enter the Investigation v3 Manifest.',
@@ -8307,8 +8308,8 @@ function investigationV3RoleResult(
   };
   return {
     role:
-      role.role === 'blind-surveyor'
-        ? 'blind-surveyor'
+      role.content.kind === 'blind-survey'
+        ? 'reviewer-pre-anchor'
         : 'investigation-reviewer',
     targetDigest: investigationV3BareDigest(role.targetDigest),
     providerId: role.participant.providerId,
@@ -10315,6 +10316,7 @@ function preparePlanReviewInvocation(
     durableRoleContextRequirement === null
       ? scheduleOrdinaryRole({
           role: 'plan-reviewer',
+          requestedIndependence: 'session-independent',
           author,
           targetDigest: planning.subject.subjectDigest,
           candidates: (['codex', 'claude'] as const).map((providerId) => ({
@@ -11259,7 +11261,10 @@ function assertDurablePlanReviewRoleTopology(
     expectation.assignment !== null &&
     (expectation.assignment.role !== 'plan-reviewer' ||
       'grantId' in expectation.assignment ||
-      expectation.assignment.achievedIndependence !== 'provider-independent' ||
+      expectation.assignment.requiredIndependence !== 'session-independent' ||
+      (expectation.assignment.achievedIndependence !== 'provider-independent' &&
+        expectation.assignment.achievedIndependence !==
+          'session-independent') ||
       reviewerPlacement.logicalProviderId !==
         expectation.assignment.providerId ||
       reviewerPlacement.sessionId !== expectation.assignment.sessionId)
@@ -11311,7 +11316,8 @@ function assertDurablePlanReviewRoleTopology(
       ? exactRolePairs.length !== 0 ||
         value.explicitEligibility.status !== 'not-required' ||
         value.explicitEligibility.explicitlyListed !== false ||
-        actualPair.achieved !== 'provider-independent'
+        (actualPair.achieved !== 'provider-independent' &&
+          actualPair.achieved !== 'session-independent')
       : exactRolePairs.length === 0 ||
         value.explicitEligibility.status !== 'listed' ||
         value.explicitEligibility.explicitlyListed !== true)
@@ -12033,12 +12039,16 @@ function assertPlanReviewGrantAuthorization(
     if (
       value !== null ||
       author.providerId === null ||
-      request.providerId === author.providerId ||
-      request.roleAssignment.achievedIndependence !== 'provider-independent'
+      request.roleAssignment.requiredIndependence !== 'session-independent' ||
+      (request.roleAssignment.achievedIndependence !== 'provider-independent' &&
+        request.roleAssignment.achievedIndependence !==
+          'session-independent') ||
+      (request.providerId === author.providerId &&
+        request.roleAssignment.sessionId === author.sessionId)
     ) {
       throw workflowError(
         'PLAN_REVIEW_REQUEST_STALE',
-        'Ordinary plan-review authorization is not provider-independent.',
+        'Ordinary plan-review authorization is not session-independent.',
         ExitCode.staleState,
       );
     }
@@ -13417,9 +13427,14 @@ function assertProposeGrantAuthorization(
   if (!('grantId' in request.roleAssignment)) {
     if (
       value !== null ||
-      request.providerId === actor.providerId ||
-      request.roleAssignment.requiredIndependence !== 'provider-independent' ||
-      request.roleAssignment.achievedIndependence !== 'provider-independent'
+      request.roleAssignment.role !== 'plan-reviewer' ||
+      request.purpose !== 'survey' ||
+      request.roleAssignment.requiredIndependence !== 'session-independent' ||
+      (request.roleAssignment.achievedIndependence !== 'provider-independent' &&
+        request.roleAssignment.achievedIndependence !==
+          'session-independent') ||
+      (request.providerId === actor.providerId &&
+        request.roleAssignment.sessionId === `author-${actor.providerId}`)
     ) {
       throw proposeAuthorizationInvalid();
     }
@@ -13454,7 +13469,7 @@ function assertProposeGrantAuthorization(
     canonicalJson(expectedBinding.rolePair) !==
       canonicalJson({
         authorRole: 'investigation-author',
-        conflictingRole: 'blind-surveyor',
+        conflictingRole: 'plan-reviewer',
       }) ||
     canonicalJson(expectedBinding.availableActor) !==
       canonicalJson({

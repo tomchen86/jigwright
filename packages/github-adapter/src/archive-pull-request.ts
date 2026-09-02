@@ -37,8 +37,8 @@ export type ArchivePullRequestCandidateV1 = Readonly<{
     nodeId: string;
     resultDigest: string;
     advisoryVerdict: 'advisory-approve';
-    requiredIndependence: 'provider-independent';
-    achievedIndependence: 'provider-independent';
+    requiredIndependence: 'session-independent';
+    achievedIndependence: 'provider-independent' | 'session-independent';
   }>;
 }>;
 
@@ -596,8 +596,9 @@ function assertCandidate(
     typeof candidate.planReview.resultDigest !== 'string' ||
     !DIGEST.test(candidate.planReview.resultDigest) ||
     candidate.planReview.advisoryVerdict !== 'advisory-approve' ||
-    candidate.planReview.requiredIndependence !== 'provider-independent' ||
-    candidate.planReview.achievedIndependence !== 'provider-independent'
+    candidate.planReview.requiredIndependence !== 'session-independent' ||
+    (candidate.planReview.achievedIndependence !== 'provider-independent' &&
+      candidate.planReview.achievedIndependence !== 'session-independent')
   ) {
     throw new TypeError('Archive pull request candidate is invalid.');
   }

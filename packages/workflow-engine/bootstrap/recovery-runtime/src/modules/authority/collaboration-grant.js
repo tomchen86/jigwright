@@ -688,7 +688,7 @@ function assertRolePhase(phase, rolePair) {
     }
     const valid = (phase === 'blind-survey' &&
         rolePair.authorRole === 'investigation-author' &&
-        rolePair.conflictingRole === 'blind-surveyor') ||
+        rolePair.conflictingRole === 'plan-reviewer') ||
         (phase === 'plan-review' &&
             rolePair.authorRole === 'plan-author' &&
             rolePair.conflictingRole === 'plan-reviewer') ||

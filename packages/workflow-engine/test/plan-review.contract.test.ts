@@ -616,7 +616,7 @@ test('planning generation and review subject bind exact v3 Manifest identities',
   const subject = createPlanReviewSubject({
     generation,
     reviewPolicyDigest: DIGESTS.reviewPolicy,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   });
   assert.equal(subject.manifestDigest, input.manifestDigest);
   assert.equal(
@@ -685,7 +685,7 @@ test('planning generation and review subjects recompute rather than trust caller
       createPlanReviewSubject({
         generation: forgedGeneration,
         reviewPolicyDigest: DIGESTS.reviewPolicy,
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: 'session-independent',
       }),
     (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
   );
@@ -759,11 +759,11 @@ test('planning generation and review subjects recompute rather than trust caller
 
   const accessorInput = {
     reviewPolicyDigest: DIGESTS.reviewPolicy,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
   } as {
     generation: PlanningGeneration;
     reviewPolicyDigest: string;
-    requiredIndependence: 'provider-independent';
+    requiredIndependence: 'session-independent';
   };
   Object.defineProperty(accessorInput, 'generation', {
     enumerable: true,
@@ -798,7 +798,7 @@ test('PlanReview requires complete coverage and evidence-bound challenge or no-c
     evidence: [
       {
         kind: 'investigation-role-result',
-        role: 'blind-surveyor',
+        role: 'reviewer-pre-anchor',
         requestDigest: DIGESTS.investigationNode,
         resultDigest: DIGESTS.investigationResult,
       } as never,
@@ -877,6 +877,75 @@ test('PlanReview requires complete coverage and evidence-bound challenge or no-c
         }),
       (error) => isWorkflowError(error, 'PLAN_REVIEW_INVALID'),
     );
+  }
+});
+
+test('PlanReview preserves strengthened and exact-Grant independence labels', () => {
+  const context = reviewContext();
+  const submission = challengeSubmission();
+  const assignments = [
+    {
+      ...context.assignment,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'provider-independent' as const,
+    },
+    {
+      role: 'plan-reviewer' as const,
+      providerId: 'codex' as const,
+      sessionId: 'review-session-r007',
+      targetDigest: context.subject.subjectDigest,
+      requiredIndependence: 'provider-independent' as const,
+      achievedIndependence: 'session-independent' as const,
+      authorityKind: 'role-context-sharing-grant.v1' as const,
+      roleContextSharingGrantId: '12345678-1234-4123-8123-123456789abc',
+      authorizedEffect: 'role-context-sharing-degradation' as const,
+      exactRolePairs: ['author-reviewer'] as const,
+      contextGeneration: 1,
+      sessionGeneration: 1,
+      sharedEngineSessionId: 'investigation-r007',
+      providerDefinitionDigest: 'a'.repeat(64),
+      reservationReceiptDigest: 'b'.repeat(64),
+    },
+  ];
+
+  for (const [index, assignment] of assignments.entries()) {
+    const providerEvidence = createCurrentPlanReviewProviderEvidenceForTest({
+      subject: context.subject,
+      assignment,
+      submission,
+      targetSnapshotNode: context.targetSnapshotNode,
+      policyDigest: DIGESTS.reviewPolicy,
+      invocationId: `plan-review-strengthened-${index}`,
+      runtimeObservation: 'current',
+    });
+    const providerResultNode = rememberProviderResult(
+      createPlanReviewProviderResultNode({
+        subject: context.subject,
+        assignment,
+        request: providerEvidence.request,
+        result: providerEvidence.result,
+        targetSnapshotNode: context.targetSnapshotNode,
+      }),
+      context.targetSnapshotNode,
+    );
+    const reviewNode = createPlanReviewNode({
+      subject: context.subject,
+      assignment,
+      providerResultNode,
+      submission,
+    });
+    const review = readPlanReviewNode(reviewNode);
+    assert.equal(review.requiredIndependence, 'provider-independent');
+    assert.equal(review.achievedIndependence, assignment.achievedIndependence);
+    if (index === 0) {
+      const validation = validatePlanReview({
+        ...currentValidationInput(context, reviewNode),
+        requiredIndependence: 'provider-independent',
+      });
+      assert.equal(validation.current, true);
+      assert.equal(validation.eligible, true);
+      assert.equal(validation.degradationAuthorized, false);
+    }
   }
 });
 
@@ -997,7 +1066,7 @@ test('advisory verdict never replaces hard currentness and disposition gates', (
   const staleSubject = createPlanReviewSubject({
     generation: changedGeneration,
     reviewPolicyDigest: DIGESTS.reviewPolicy,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   });
   const staleContext = {
     target: changedTarget,
@@ -1563,7 +1632,7 @@ function generationInput(target: PlanTarget) {
     },
     investigationDependencies: [
       {
-        role: 'blind-surveyor',
+        role: 'reviewer-pre-anchor',
         nodeId: DIGESTS.investigationNode,
         resultDigest: DIGESTS.investigationResult,
       },
@@ -1606,14 +1675,14 @@ function reviewContext(): {
   const subject = createPlanReviewSubject({
     generation,
     reviewPolicyDigest: DIGESTS.reviewPolicy,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   });
   const assignment: RoleAssignment = {
     role: 'plan-reviewer',
     providerId: 'claude',
     sessionId: 'review-session',
     targetDigest: subject.subjectDigest,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
     achievedIndependence: 'provider-independent',
   };
   const materializationNode = createEvidenceNode({
@@ -2100,7 +2169,7 @@ function currentValidationInput(
     generation: context.generation,
     target: context.target,
     expectedReviewPolicyDigest: DIGESTS.reviewPolicy,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
     independenceAuthorization: admittedRoleAuthorization(providerResultNode),
     repositoryEvidence: repositoryEvidenceFor(
       reviewNode,

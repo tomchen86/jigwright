@@ -77,7 +77,7 @@
             "direct-human-attestation"
           ]
         },
-        "role": { "enum": ["blind-surveyor", "plan-reviewer"] },
+        "role": { "const": "plan-reviewer" },
         "targetDigest": { "$ref": "#/$defs/digest" },
         "assignment": { "type": "object" },
         "author": { "type": "object" },
@@ -89,7 +89,9 @@
             "direct-human-review"
           ]
         },
-        "requiredIndependence": { "const": "provider-independent" },
+        "requiredIndependence": {
+          "enum": ["provider-independent", "session-independent"]
+        },
         "achievedIndependence": {
           "enum": ["provider-independent", "session-independent", "none"]
         },
@@ -114,7 +116,10 @@
           "then": {
             "properties": {
               "orchestration": { "const": "engine-spawned-provider" },
-              "achievedIndependence": { "const": "provider-independent" },
+              "requiredIndependence": { "const": "session-independent" },
+              "achievedIndependence": {
+                "enum": ["provider-independent", "session-independent"]
+              },
               "providerInvocation": { "type": "object" },
               "grantUse": { "type": "null" },
               "directHumanReviewAttestation": { "type": "null" }
@@ -129,6 +134,7 @@
           "then": {
             "properties": {
               "orchestration": { "const": "engine-spawned-provider" },
+              "requiredIndependence": { "const": "provider-independent" },
               "achievedIndependence": { "const": "session-independent" },
               "providerInvocation": { "type": "object" },
               "grantUse": { "type": "object" },
@@ -144,6 +150,7 @@
           "then": {
             "properties": {
               "orchestration": { "const": "caller-supplied" },
+              "requiredIndependence": { "const": "provider-independent" },
               "achievedIndependence": { "const": "none" },
               "providerInvocation": { "type": "null" },
               "grantUse": { "type": "object" },
@@ -159,6 +166,7 @@
           "then": {
             "properties": {
               "orchestration": { "const": "direct-human-review" },
+              "requiredIndependence": { "const": "provider-independent" },
               "achievedIndependence": { "const": "none" },
               "providerInvocation": { "type": "null" },
               "grantUse": { "type": "object" },

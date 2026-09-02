@@ -61,7 +61,7 @@ export type ArchivePullRequestCandidateProjectionInput = Readonly<{
   reviewNodeId: string;
   reviewResultDigest: string;
   advisoryVerdict: 'advisory-approve' | 'advisory-reject';
-  requiredIndependence: 'provider-independent';
+  requiredIndependence: 'provider-independent' | 'session-independent';
   achievedIndependence:
     | 'provider-independent'
     | 'principal-independent'
@@ -455,12 +455,13 @@ export function projectArchivePullRequestCandidate(
   if (
     input.manifestSchemaVersion !== 3 ||
     input.advisoryVerdict !== 'advisory-approve' ||
-    input.requiredIndependence !== 'provider-independent' ||
-    input.achievedIndependence !== 'provider-independent'
+    input.requiredIndependence !== 'session-independent' ||
+    (input.achievedIndependence !== 'provider-independent' &&
+      input.achievedIndependence !== 'session-independent')
   ) {
     throw archivePrError(
       'ARCHIVE_PR_CURRENT_ASSURANCE_REQUIRED',
-      'Archive PR candidates require current Manifest v3 authority and a provider-independent approving PlanReview.',
+      'Archive PR candidates require current Manifest v3 authority and a session-independent approving PlanReview.',
     );
   }
   const identityFacts = {

@@ -431,7 +431,7 @@ function createCallerCorrectionFixture(): string {
         implementationPathScopes: ['src/**'],
         redCheck: 'red',
         greenChecks: ['green-fail', 'red'],
-        requiredImplementerIndependence: 'provider-independent' as const,
+        requiredImplementerIndependence: 'session-independent' as const,
       };
     },
   });

@@ -1424,11 +1424,9 @@ function parseAssignment(value: unknown): TaskDiffReviewAssignment {
   const implementerProviderId = nullableIdentity(value.implementerProviderId);
   const implementationSessionId = identity(value.implementationSessionId);
   const reviewerPrincipalId = identity(value.reviewerPrincipalId);
-  if (implementerPrincipalId === reviewerPrincipalId) {
-    throw independenceInvalid();
-  }
   if (value.achievedIndependence === 'none') {
     if (
+      implementerPrincipalId === reviewerPrincipalId ||
       value.reviewerProviderId !== null ||
       value.reviewerSessionId !== null ||
       (value.degradedForm !== 'caller-supplied' &&
@@ -1472,16 +1470,17 @@ function parseAssignment(value: unknown): TaskDiffReviewAssignment {
   const commonInvalid =
     assignment.implementationSessionId === assignment.reviewerSessionId;
   const ordinaryInvalid =
-    assignment.achievedIndependence === 'provider-independent' &&
-    (assignment.implementerProviderId === null ||
-      assignment.implementerProviderId === assignment.reviewerProviderId ||
-      assignment.degradedForm !== null ||
-      assignment.grantUseDigest !== null);
+    assignment.degradedForm === null &&
+    (assignment.grantUseDigest !== null ||
+      assignment.implementerProviderId === null ||
+      (assignment.implementerProviderId === assignment.reviewerProviderId
+        ? assignment.achievedIndependence !== 'session-independent'
+        : assignment.achievedIndependence !== 'provider-independent'));
   const grantedInvalid =
-    assignment.achievedIndependence === 'session-independent' &&
-    (assignment.implementerProviderId === null ||
+    assignment.degradedForm === 'same-provider-fresh-session' &&
+    (assignment.achievedIndependence !== 'session-independent' ||
+      assignment.implementerProviderId === null ||
       assignment.implementerProviderId !== assignment.reviewerProviderId ||
-      assignment.degradedForm !== 'same-provider-fresh-session' ||
       assignment.grantUseDigest === null);
   if (commonInvalid || ordinaryInvalid || grantedInvalid) {
     throw independenceInvalid();
@@ -2617,7 +2616,7 @@ function finalAssuranceInvalid() {
 function independenceInvalid() {
   return workflowError(
     'TASK_DIFF_REVIEW_INDEPENDENCE_INVALID',
-    'TaskDiffReview requires a fresh provider-independent reviewer assignment.',
+    'TaskDiffReview requires a fresh session-independent reviewer assignment.',
     ExitCode.guard,
   );
 }

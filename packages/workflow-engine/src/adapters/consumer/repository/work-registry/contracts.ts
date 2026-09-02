@@ -168,7 +168,7 @@ export type PlanningAssuranceSummary = {
     | 'direct-human-attestation';
   reviewOrchestration:
     'engine-spawned-provider' | 'caller-supplied' | 'direct-human-review';
-  requiredIndependence: 'provider-independent';
+  requiredIndependence: 'provider-independent' | 'session-independent';
   achievedIndependence:
     | 'provider-independent'
     | 'principal-independent'
@@ -246,7 +246,8 @@ export function isPlanningAssuranceBinding(
     !isNullableDigest(value.reviewGrantUseDigest) ||
     !isNullableDigest(value.reviewGrantTransitionDigest) ||
     !isNullableDigest(value.directHumanReviewAttestationDigest) ||
-    value.requiredIndependence !== 'provider-independent' ||
+    (value.requiredIndependence !== 'provider-independent' &&
+      value.requiredIndependence !== 'session-independent') ||
     ![
       'provider-independent',
       'principal-independent',
@@ -271,10 +272,16 @@ export function isPlanningAssuranceBinding(
     grantRefs.every((reference) =>
       hasGrant ? reference !== null : reference === null,
     ) &&
-    value.degradationAuthorized === hasGrant &&
-    (hasGrant
-      ? value.achievedIndependence !== 'provider-independent'
-      : value.achievedIndependence === 'provider-independent') &&
+    value.degradationAuthorized ===
+      (hasGrant ||
+        value.reviewRoleResultForm === 'granted-role-context-sharing') &&
+    (value.degradationAuthorized
+      ? value.requiredIndependence === 'provider-independent' &&
+        value.achievedIndependence !== 'provider-independent'
+      : value.requiredIndependence === 'provider-independent'
+        ? value.achievedIndependence === 'provider-independent'
+        : value.achievedIndependence === 'provider-independent' ||
+          value.achievedIndependence === 'session-independent') &&
     (value.reviewRoleResultForm === 'direct-human-attestation'
       ? value.directHumanReviewAttestationDigest !== null
       : value.directHumanReviewAttestationDigest === null)
@@ -333,7 +340,7 @@ export type CrossAgentTddExecution = ExecutionCommon & {
   implementationPathScopes: string[];
   redCheck: string;
   greenChecks: string[];
-  requiredImplementerIndependence: 'provider-independent';
+  requiredImplementerIndependence: 'session-independent';
 };
 
 export type TddSingleAgentExecution = ExecutionCommon & {
@@ -1620,7 +1627,7 @@ export function parseExecutionArtifact(
         candidate.enforcement !== 'planned' ||
         candidate.requiredImplementerIndependence !==
           (candidate.strategy === 'cross-agent-tdd'
-            ? 'provider-independent'
+            ? 'session-independent'
             : 'none')
       ) {
         throw invalid();

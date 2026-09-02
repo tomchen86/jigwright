@@ -469,7 +469,7 @@
         "provenanceDigest"
       ],
       "properties": {
-        "role": { "enum": ["blind-surveyor", "investigation-reviewer"] },
+        "role": { "enum": ["reviewer-pre-anchor", "investigation-reviewer"] },
         "targetDigest": { "$ref": "#/$defs/digest" },
         "providerId": { "$ref": "#/$defs/nullableText" },
         "sessionId": { "$ref": "#/$defs/nullableText" },

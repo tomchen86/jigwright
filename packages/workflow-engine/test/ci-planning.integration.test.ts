@@ -1748,7 +1748,7 @@ function appendSyntheticGrantRoleResult(
 }
 
 function syntheticGrantedRoleResult(
-  role: 'blind-surveyor' | 'plan-reviewer',
+  role: 'plan-reviewer' | 'plan-reviewer',
   grantUse: {
     grantId: string;
     signedEnvelopeDigest: string;
@@ -1757,8 +1757,7 @@ function syntheticGrantedRoleResult(
   digestDigit: string,
 ): unknown {
   const digest = digestDigit.repeat(64);
-  const contentKind =
-    role === 'blind-surveyor' ? 'blind-survey' : 'plan-review';
+  const contentKind = role === 'plan-reviewer' ? 'blind-survey' : 'plan-review';
   return {
     schemaVersion: 1,
     form: 'granted-caller-supplied',
@@ -1802,7 +1801,7 @@ function refreshFixturePlanReview(repository: string): void {
     providerId: 'claude' as const,
     sessionId: 'fixture-current-plan-review-session',
     targetDigest: context.subject.subjectDigest,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
     achievedIndependence: 'provider-independent' as const,
   };
   const snapshotRelativePaths = [

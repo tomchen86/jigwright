@@ -147,7 +147,7 @@ function providerRequest(input: {
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: `${input.invocationId}-session`,
       targetDigest,

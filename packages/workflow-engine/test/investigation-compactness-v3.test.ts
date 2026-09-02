@@ -214,7 +214,7 @@ test('production-scale v3 measures compact persisted bytes with authority replay
         knowledgeReuseDecisions: [],
         investigationRoleResults: [
           {
-            role: 'blind-surveyor',
+            role: 'reviewer-pre-anchor',
             targetDigest: digest('production-scale-role-target'),
             providerId: 'codex',
             sessionId: 'production-scale-session',

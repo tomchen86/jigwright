@@ -386,42 +386,25 @@ test('plan-commit authorizes an exact reviewed current investigation exemption a
   }
 });
 
-test('plan-commit rejects a stale current target and a same-provider ordinary review', () => {
-  for (const variant of ['stale-target', 'same-provider-review'] as const) {
-    const repository = createFixtureRepository();
-    try {
-      git(repository, ['checkout', '-b', 'work/demo-change']);
-      const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
-      writeReadyV3ExemptChange(repository);
-      if (variant === 'stale-target') {
-        fs.appendFileSync(
-          path.join(repository, 'openspec/changes/demo-change/proposal.md'),
-          '\nUnreviewed target change.\n',
-        );
-      } else {
-        const reviewPath = path.join(
-          repository,
-          'openspec/changes/demo-change/plan-review.json',
-        );
-        const review = JSON.parse(fs.readFileSync(reviewPath, 'utf8')) as {
-          roleResults: Array<{
-            author: { providerId: string | null };
-          }>;
-        };
-        review.roleResults[0]!.author.providerId = 'claude';
-        fs.writeFileSync(reviewPath, `${canonicalJson(review)}\n`);
-      }
+test('plan-commit rejects a stale current target', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const baselineHead = git(repository, ['rev-parse', 'HEAD']).trim();
+    writeReadyV3ExemptChange(repository);
+    fs.appendFileSync(
+      path.join(repository, 'openspec/changes/demo-change/proposal.md'),
+      '\nUnreviewed target change.\n',
+    );
 
-      assert.throws(
-        () => commitPlanningTransition(repository, 'demo-change'),
-        (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
-        variant,
-      );
-      assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
-      assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
-    } finally {
-      fs.rmSync(repository, { recursive: true, force: true });
-    }
+    assert.throws(
+      () => commitPlanningTransition(repository, 'demo-change'),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
+    );
+    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), baselineHead);
+    assert.equal(git(repository, ['diff', '--cached', '--name-only']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

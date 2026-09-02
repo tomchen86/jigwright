@@ -386,13 +386,13 @@ test('role independence keeps provider, session, and principal dimensions separa
   );
 });
 
-test('ordinary role scheduling selects an alternate or requires a grant', () => {
+test('ordinary role scheduling uses fresh sessions and preserves explicit provider diversity', () => {
   const author = participant({
     providerId: 'codex',
     sessionId: 'author-session',
   });
   const scheduled = scheduleOrdinaryRole({
-    role: 'blind-surveyor',
+    role: 'plan-reviewer',
     author,
     targetDigest: DIGESTS.target,
     candidates: [
@@ -414,46 +414,87 @@ test('ordinary role scheduling selects an alternate or requires a grant', () => 
   if (scheduled.outcome !== 'assigned') {
     assert.fail('expected an assigned alternate provider');
   }
-  assert.equal(scheduled.assignment.providerId, 'claude');
+  assert.equal(scheduled.assignment.providerId, 'codex');
   assert.equal(
     scheduled.assignment.requiredIndependence,
-    'provider-independent',
+    'session-independent',
   );
   assert.equal(
     scheduled.assignment.achievedIndependence,
+    'session-independent',
+  );
+
+  const providerDiverse = scheduleOrdinaryRole({
+    role: 'plan-reviewer',
+    author,
+    targetDigest: DIGESTS.target,
+    requestedIndependence: 'provider-independent',
+    candidates: [
+      {
+        providerId: 'codex',
+        sessionId: 'codex-survey',
+        enabled: true,
+        available: true,
+      },
+      {
+        providerId: 'claude',
+        sessionId: 'claude-survey',
+        enabled: true,
+        available: true,
+      },
+    ],
+  });
+  assert.equal(providerDiverse.outcome, 'assigned');
+  if (providerDiverse.outcome !== 'assigned') {
+    assert.fail('expected an explicitly provider-diverse assignment');
+  }
+  assert.equal(providerDiverse.assignment.providerId, 'claude');
+  assert.equal(
+    providerDiverse.assignment.achievedIndependence,
     'provider-independent',
   );
 
+  const sameProviderReviewer = scheduleOrdinaryRole({
+    role: 'plan-reviewer',
+    purpose: 'survey',
+    author,
+    targetDigest: DIGESTS.target,
+    candidates: [
+      {
+        providerId: 'codex',
+        sessionId: 'fresh-codex-review',
+        enabled: true,
+        available: true,
+      },
+      {
+        providerId: 'claude',
+        sessionId: 'claude-review',
+        enabled: false,
+        available: true,
+      },
+    ],
+  });
+  assert.equal(sameProviderReviewer.outcome, 'assigned');
+  if (sameProviderReviewer.outcome !== 'assigned') {
+    assert.fail('expected a fresh Reviewer session assignment');
+  }
+  assert.deepEqual(sameProviderReviewer.assignment, {
+    role: 'plan-reviewer',
+    providerId: 'codex',
+    sessionId: 'fresh-codex-review',
+    targetDigest: DIGESTS.target,
+    requiredIndependence: 'session-independent',
+    achievedIndependence: 'session-independent',
+  });
+  const preAnchorRequest = createProviderInvocationRequest({
+    ...requestInput(sameProviderReviewer.assignment),
+    purpose: 'survey',
+  });
+  assert.equal(preAnchorRequest.roleAssignment.role, 'plan-reviewer');
+  assert.equal(preAnchorRequest.purpose, 'survey');
   assert.deepEqual(
     scheduleOrdinaryRole({
       role: 'plan-reviewer',
-      author,
-      targetDigest: DIGESTS.target,
-      candidates: [
-        {
-          providerId: 'codex',
-          sessionId: 'fresh-codex-review',
-          enabled: true,
-          available: true,
-        },
-        {
-          providerId: 'claude',
-          sessionId: 'claude-review',
-          enabled: false,
-          available: true,
-        },
-      ],
-    }),
-    {
-      outcome: 'collaboration-grant-required',
-      role: 'plan-reviewer',
-      requiredIndependence: 'provider-independent',
-      reason: 'NO_PROVIDER_INDEPENDENT_CANDIDATE',
-    },
-  );
-  assert.deepEqual(
-    scheduleOrdinaryRole({
-      role: 'blind-surveyor',
       author,
       targetDigest: DIGESTS.target,
       candidates: [
@@ -467,15 +508,15 @@ test('ordinary role scheduling selects an alternate or requires a grant', () => 
     }),
     {
       outcome: 'collaboration-grant-required',
-      role: 'blind-surveyor',
-      requiredIndependence: 'provider-independent',
-      reason: 'NO_PROVIDER_INDEPENDENT_CANDIDATE',
+      role: 'plan-reviewer',
+      requiredIndependence: 'session-independent',
+      reason: 'NO_REQUIRED_INDEPENDENCE_CANDIDATE',
     },
   );
   assert.throws(
     () =>
       scheduleOrdinaryRole({
-        role: 'blind-surveyor',
+        role: 'plan-reviewer',
         author,
         targetDigest: DIGESTS.target,
         candidates: [
@@ -489,16 +530,20 @@ test('ordinary role scheduling selects an alternate or requires a grant', () => 
       }),
     (error) => isWorkflowError(error, 'PROVIDER_UNKNOWN'),
   );
-  assert.throws(
-    () =>
-      scheduleOrdinaryRole({
-        role: 'blind-surveyor',
-        author,
-        targetDigest: DIGESTS.target,
-        requestedIndependence: 'session-independent',
-        candidates: [],
-      }),
-    (error) => isWorkflowError(error, 'ROLE_INDEPENDENCE_DOWNGRADE'),
+  assert.deepEqual(
+    scheduleOrdinaryRole({
+      role: 'plan-reviewer',
+      author,
+      targetDigest: DIGESTS.target,
+      requestedIndependence: 'provider-independent',
+      candidates: [],
+    }),
+    {
+      outcome: 'collaboration-grant-required',
+      role: 'plan-reviewer',
+      requiredIndependence: 'provider-independent',
+      reason: 'NO_REQUIRED_INDEPENDENCE_CANDIDATE',
+    },
   );
 });
 
@@ -1022,7 +1067,7 @@ function participant(override: Partial<RoleParticipant> = {}): RoleParticipant {
 
 function surveyAssignment(): RoleAssignment {
   const scheduled = scheduleOrdinaryRole({
-    role: 'blind-surveyor',
+    role: 'plan-reviewer',
     author: participant({
       providerId: 'codex',
       sessionId: 'author-session',
@@ -1074,7 +1119,7 @@ function requestInput(assignment: ProviderRoleAssignment) {
 
 function grantedSameProviderAssignment(): GrantedSameProviderRoleAssignment {
   return {
-    role: 'blind-surveyor',
+    role: 'plan-reviewer',
     providerId: 'codex',
     sessionId: 'fresh-session',
     targetDigest: DIGESTS.target,

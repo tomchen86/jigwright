@@ -204,6 +204,23 @@ export function assertTaskStrategyExecutionGate(
       implementationResult.subjectDigest &&
     implementationResult.roleResult.assignment.providerId ===
       record?.implementer.providerId;
+  const ordinarySessionIndependenceCurrent =
+    implementationResult !== null &&
+    implementationResult.output.patchDigest === record?.patchDigest &&
+    implementationResult.output.sourceTree === sourceTree &&
+    implementationResult.roleResult.form === 'ordinary-provider' &&
+    implementationResult.roleResult.grantUse === null &&
+    implementationResult.roleResult.assignment.providerId ===
+      record?.implementer.providerId &&
+    implementationResult.roleResult.assignment.sessionId !== null &&
+    implementationResult.roleResult.assignment.sessionId !==
+      transaction.sessionId &&
+    implementationResult.roleResult.assignment.requiredIndependence ===
+      'session-independent' &&
+    (implementationResult.roleResult.assignment.achievedIndependence ===
+      'session-independent' ||
+      implementationResult.roleResult.assignment.achievedIndependence ===
+        'provider-independent');
   const callerDegradationCurrent =
     record?.implementer.providerId === null &&
     callerImplementationResult !== null &&
@@ -276,6 +293,7 @@ export function assertTaskStrategyExecutionGate(
         canonicalJson(transaction.author)) ||
     (task.strategy === 'cross-agent-tdd' &&
       record.implementer.providerId === transaction.author.providerId &&
+      !ordinarySessionIndependenceCurrent &&
       !sameProviderDegradationCurrent)
   ) {
     throw workflowError(

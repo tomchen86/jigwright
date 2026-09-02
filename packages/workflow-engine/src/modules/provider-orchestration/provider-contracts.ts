@@ -58,11 +58,20 @@ export const MAX_PROVIDER_LIMITS = Object.freeze({
 });
 
 const ROLE_PURPOSE: Record<EngineProviderRole, CapabilityPurpose> = {
-  'blind-surveyor': 'survey',
   'plan-reviewer': 'plan-review',
   'task-diff-reviewer': 'task-diff-review',
   'task-implementer': 'task-implementation',
 };
+
+function roleSupportsPurpose(
+  role: EngineProviderRole,
+  purpose: CapabilityPurpose,
+): boolean {
+  return (
+    ROLE_PURPOSE[role] === purpose ||
+    (role === 'plan-reviewer' && purpose === 'survey')
+  );
+}
 
 export type ProviderLimits = {
   timeoutMs: number;
@@ -384,7 +393,7 @@ export function createProviderInvocationRequest(
   if (
     input.providerId !== input.roleAssignment.providerId ||
     input.targetDigest !== input.roleAssignment.targetDigest ||
-    ROLE_PURPOSE[input.roleAssignment.role] !== input.purpose
+    !roleSupportsPurpose(input.roleAssignment.role, input.purpose)
   ) {
     throw requestInvalid();
   }
@@ -665,22 +674,24 @@ function isOutputSchema(value: unknown): value is ProviderOutputSchema {
 export function isProviderRoleAssignment(
   value: unknown,
 ): value is ProviderRoleAssignment {
-  // An ordinary role assignment used by an invocation request is valid only
-  // when both independence fields are provider-independent; a forged assignment
-  // that weakens either field is rejected.
+  // An ordinary role assignment used by an invocation request must meet its
+  // recorded floor. Provider-independent work may satisfy the ordinary session
+  // floor, but same-provider work must record session independence honestly.
   const ordinary =
     isRecord(value) &&
     hasExactKeys(value, ROLE_ASSIGNMENT_KEYS) &&
-    (value.role === 'blind-surveyor' ||
-      value.role === 'plan-reviewer' ||
+    (value.role === 'plan-reviewer' ||
       value.role === 'task-diff-reviewer' ||
       value.role === 'task-implementer') &&
     isProviderId(value.providerId) &&
     isNonEmptyString(value.sessionId) &&
     typeof value.targetDigest === 'string' &&
     HEX64.test(value.targetDigest) &&
-    value.requiredIndependence === 'provider-independent' &&
-    value.achievedIndependence === 'provider-independent';
+    ((value.requiredIndependence === 'provider-independent' &&
+      value.achievedIndependence === 'provider-independent') ||
+      (value.requiredIndependence === 'session-independent' &&
+        (value.achievedIndependence === 'session-independent' ||
+          value.achievedIndependence === 'provider-independent')));
   if (ordinary) {
     return true;
   }
@@ -748,8 +759,7 @@ function isGrantedSameProviderAssignment(
   if (
     !isRecord(value) ||
     !hasExactKeys(value, GRANTED_ROLE_ASSIGNMENT_KEYS) ||
-    (value.role !== 'blind-surveyor' &&
-      value.role !== 'plan-reviewer' &&
+    (value.role !== 'plan-reviewer' &&
       value.role !== 'task-diff-reviewer' &&
       value.role !== 'task-implementer') ||
     !isProviderId(value.providerId) ||

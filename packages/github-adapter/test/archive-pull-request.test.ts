@@ -323,7 +323,7 @@ function fixtureCandidate(): ArchivePullRequestCandidateV1 {
       nodeId: 'f'.repeat(64),
       resultDigest: '0'.repeat(64),
       advisoryVerdict: 'advisory-approve',
-      requiredIndependence: 'provider-independent',
+      requiredIndependence: 'session-independent',
       achievedIndependence: 'provider-independent',
     },
   } as const;

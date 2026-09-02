@@ -1,8 +1,11 @@
 # managed-provider-orchestration Specification
 
 ## Purpose
+
 TBD - created by archiving change establish-investigation-first-planning. Update Purpose after archive.
+
 ## Requirements
+
 ### Requirement: Provider Execution Uses a Reviewed Built-In Registry
 
 The workflow engine SHALL select AI providers only from a reviewed built-in provider registry. The initial registry MUST provide Codex and Claude adapters with declared capabilities.
@@ -88,34 +91,34 @@ Contradictory recognized signals MUST pause or fail actor resolution rather than
 
 ### Requirement: Independence Is Enforced Relative to Roles
 
-The workflow engine SHALL express every role-separation requirement at an explicit dimension, including principal independence, provider independence, session independence, or no independence. Ordinary blind-survey and PlanReview assignments SHALL require provider independence relative to the author being challenged; repository or caller policy MUST NOT lower either ordinary requirement. The scheduler MUST satisfy the required dimension, or pause for an eligible exact collaboration grant whose result remains visibly degraded.
+The workflow engine SHALL express every role-separation requirement at an explicit dimension, including principal independence, provider independence, session independence, or no independence. The ordinary Author, Builder, and Reviewer floor SHALL be session independence between logical roles. Blind survey is the Reviewer's sealed pre-anchor turn, not a fourth role or a mandatory alternate-provider call. Repository or caller policy MUST NOT lower the ordinary floor; reviewed risk policy MAY strengthen an exact transition to provider independence. The scheduler MUST satisfy the effective dimension, or pause for an eligible exact Grant whose result remains visibly below that policy.
 
 Provider inequality and session inequality MUST NOT be treated as interchangeable.
 
-#### Scenario: Plan reviewer requires provider independence
+#### Scenario: Plan reviewer uses a fresh session
 
-- **GIVEN** provider A authored the plan and review policy requires provider independence
+- **GIVEN** provider A authored the plan and ordinary review policy requires session independence
 - **WHEN** the scheduler assigns a reviewer
-- **THEN** it selects an eligible provider other than A
-- **OR** the transition pauses for an eligible collaboration continuation grant
+- **THEN** it selects a fresh eligible session, which may use provider A or another provider
+- **AND** records session or provider independence according to the actual assignment
 
-#### Scenario: Blind surveyor requires provider independence
+#### Scenario: Reviewer begins with a sealed pre-anchor turn
 
 - **GIVEN** provider A is the investigation author
-- **WHEN** the scheduler assigns the ordinary blind-survey role
-- **THEN** it selects an eligible provider other than A
-- **OR** the transition pauses for an eligible collaboration continuation grant
+- **WHEN** the scheduler assigns the Reviewer's survey-purpose pre-anchor turn
+- **THEN** it selects a fresh eligible Reviewer session before Author conclusions or Builder transcripts become visible
+- **AND** it does not create a fourth logical role
 
 #### Scenario: Repository attempts to lower an ordinary role
 
-- **GIVEN** repository or caller configuration requests session-only or no independence for blind survey or PlanReview
+- **GIVEN** repository or caller configuration requests principal-only or no independence for an ordinary role
 - **WHEN** role policy is validated
 - **THEN** validation fails
-- **AND** the ordinary provider-independence requirement remains effective
+- **AND** the ordinary session-independence requirement remains effective
 
 #### Scenario: Same provider uses a fresh authorized session
 
-- **GIVEN** degraded policy permits the same provider in a fresh session
+- **GIVEN** the same provider is callable in a fresh engine-spawned session
 - **WHEN** the assignment is recorded
 - **THEN** it is labeled session-independent
 - **AND** it is not labeled provider-independent
@@ -163,7 +166,7 @@ A malformed result, mismatched binding, excessive output, timeout, signal, spawn
 
 #### Scenario: Durable prepared work is dispatched
 
-- **GIVEN** a current prepared blind-survey or PlanReview invocation
+- **GIVEN** a current prepared Reviewer pre-anchor or PlanReview invocation
 - **WHEN** the resumable wrapper dispatches provider work
 - **THEN** a lifecycle-owned worker claims that exact invocation under a fenced lease
 - **AND** it uses the code-owned schema, validator, and fixed built-in adapter for the bound purpose

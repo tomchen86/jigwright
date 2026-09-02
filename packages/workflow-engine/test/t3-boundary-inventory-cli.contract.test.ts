@@ -217,6 +217,6 @@ test('jigwright verifies the public language-neutral conformance corpus', () => 
     status: 'current',
     domainCount: 9,
     vectorSetDigest:
-      'sha256:8cfc3ceb27018db1ae2c66622e5ad98c0ee87fbcbab8dabcddd9938847f0c9f0',
+      'sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a',
   });
 });

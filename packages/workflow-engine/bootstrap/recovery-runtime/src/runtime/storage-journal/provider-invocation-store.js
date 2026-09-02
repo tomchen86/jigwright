@@ -2537,7 +2537,7 @@ function assertBlindInvocationBinding(changeId, manifest, manifestDigest, reques
         manifest.baseCommit !== request.baseCommit ||
         manifest.baseTree !== request.baseTree ||
         request.purpose !== 'survey' ||
-        request.roleAssignment.role !== 'blind-surveyor' ||
+        request.roleAssignment.role !== 'plan-reviewer' ||
         request.capabilityProfile !== 'repository-read-only' ||
         request.targetDigest !== blindSurveyIntentDigest(manifest) ||
         request.inputManifestDigest !== manifestDigest ||

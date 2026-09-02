@@ -308,7 +308,7 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
           lifecyclePhase: 'blind-survey',
           rolePair: {
             authorRole: 'investigation-author',
-            conflictingRole: 'blind-surveyor',
+            conflictingRole: 'plan-reviewer',
           },
           availableActor: {
             kind: 'provider',
@@ -373,7 +373,7 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
     });
     const assignmentFor = (reservation: GrantReservation) =>
       roleScheduler.authorizeGrantedOrdinaryRole({
-        role: 'blind-surveyor',
+        role: 'plan-reviewer',
         author: participant(`author-${reservation.envelope.payload.grantId}`),
         targetDigest: TARGET_DIGEST,
         reservation,
@@ -600,7 +600,7 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       replay: blindReplay,
     });
     assert.equal(replayedBlindSurvey.form, 'granted-same-provider');
-    assert.equal(replayedBlindSurvey.role, 'blind-surveyor');
+    assert.equal(replayedBlindSurvey.role, 'plan-reviewer');
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
     const replayInput = {
       repositoryRoot: clone.repositoryRoot,

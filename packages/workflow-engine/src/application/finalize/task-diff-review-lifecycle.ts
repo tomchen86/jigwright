@@ -649,7 +649,7 @@ export function withTaskDiffReviewProviderLifecycleOperation<T>(
 }
 
 /**
- * Reserve one exact, provider-independent TaskDiffReview. The reservation is
+ * Reserve one exact, session-independent TaskDiffReview. The reservation is
  * immutable and replay-safe; it does not launch the provider or advance the
  * finalize transaction.
  */
@@ -7263,7 +7263,7 @@ function taskDiffReviewGrantRequestForProvider(input: {
     availableActor: input.availableActor,
     degradedForm: 'same-provider-fresh-session',
     reason:
-      'No provider-independent TaskDiffReview reviewer is enabled for this exact candidate.',
+      'No session-independent TaskDiffReview reviewer is enabled for this exact candidate.',
     ttlMinutes: 30,
     maxUses: 1,
   };
@@ -7473,7 +7473,7 @@ function createNewTaskDiffReviewContinuationReservation(
   if (reviewerProviderId === undefined) {
     throw workflowError(
       'TASK_DIFF_REVIEW_CONTINUATION_REVIEWER_REQUIRED',
-      'Challenge continuation requires a provider-independent reviewer in a fresh session.',
+      'Challenge continuation requires a Reviewer in a fresh independent session.',
       ExitCode.guard,
     );
   }
@@ -7503,7 +7503,7 @@ function createNewTaskDiffReviewContinuationReservation(
   ) {
     throw workflowError(
       'TASK_DIFF_REVIEW_CONTINUATION_REVIEWER_REQUIRED',
-      'Challenge continuation requires the original provider-independent reviewer in a fresh session.',
+      'Challenge continuation requires the original Reviewer provider in a fresh session.',
       ExitCode.guard,
     );
   }
@@ -8239,7 +8239,7 @@ function assertCurrentTaskDiffReviewBinding(
       },
       degradedForm: 'same-provider-fresh-session',
       reason:
-        'No provider-independent TaskDiffReview reviewer is enabled for this exact candidate.',
+        'No session-independent TaskDiffReview reviewer is enabled for this exact candidate.',
       ttlMinutes: 30,
       maxUses: 1,
     };

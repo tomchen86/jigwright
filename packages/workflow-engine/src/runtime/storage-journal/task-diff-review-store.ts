@@ -1434,15 +1434,19 @@ function taskDiffRoleAssignmentMatchesReservation(
   if (
     assignment.role !== 'task-diff-reviewer' ||
     assignment.providerId !== providerId ||
-    assignment.targetDigest !== subjectDigest ||
-    assignment.requiredIndependence !== 'provider-independent'
+    assignment.targetDigest !== subjectDigest
   ) {
     return false;
   }
   if (!('grantId' in assignment)) {
-    return assignment.achievedIndependence === 'provider-independent';
+    return (
+      assignment.requiredIndependence === 'session-independent' &&
+      (assignment.achievedIndependence === 'provider-independent' ||
+        assignment.achievedIndependence === 'session-independent')
+    );
   }
   return (
+    assignment.requiredIndependence === 'provider-independent' &&
     assignment.degradedForm === 'same-provider-fresh-session' &&
     assignment.achievedIndependence === 'session-independent' &&
     assignment.providerIndependent === false &&

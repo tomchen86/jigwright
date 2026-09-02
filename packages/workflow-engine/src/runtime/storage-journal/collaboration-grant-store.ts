@@ -72,11 +72,7 @@ const verifiedConsumedCollaborationGrantReplays = new WeakMap<
 >();
 
 export type CollaborationGrantedAssignmentRecord = {
-  role:
-    | 'blind-surveyor'
-    | 'plan-reviewer'
-    | 'task-diff-reviewer'
-    | 'task-implementer';
+  role: 'plan-reviewer' | 'task-diff-reviewer' | 'task-implementer';
   providerId: 'codex' | 'claude' | null;
   sessionId: string | null;
   targetDigest: string;

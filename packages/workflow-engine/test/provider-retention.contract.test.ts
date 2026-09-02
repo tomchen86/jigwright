@@ -1701,7 +1701,7 @@ function createRequest(
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: `provider-session-${investigationId}`,
       targetDigest,

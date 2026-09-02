@@ -228,11 +228,19 @@ export function replayCurrentPlanReviewRoleResult(
   let replayed: AdmittedRoleResult;
   if (stored.form === 'ordinary-provider') {
     if (
-      stored.author.providerId === null ||
-      stored.author.providerId === stored.assignment.providerId
+      stored.author.sessionId === null ||
+      stored.assignment.sessionId === null ||
+      stored.author.sessionId === stored.assignment.sessionId ||
+      (stored.requiredIndependence === 'session-independent'
+        ? stored.achievedIndependence !== 'provider-independent' &&
+          stored.achievedIndependence !== 'session-independent'
+        : stored.requiredIndependence !== 'provider-independent' ||
+          stored.achievedIndependence !== 'provider-independent' ||
+          stored.author.providerId === null ||
+          stored.author.providerId === stored.assignment.providerId)
     ) {
       throw planningNotReady(
-        'Ordinary PlanReview must record a provider distinct from the plan author.',
+        'Ordinary PlanReview must record a session distinct from the plan author.',
       );
     }
     replayed = admitRoleResult({
@@ -351,7 +359,7 @@ export function deriveInvestigationFirstPlanningSubject(
   const subject = createPlanReviewSubject({
     generation,
     reviewPolicyDigest: policies.reviewPolicyDigest,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   });
   return {
     manifest,
@@ -503,7 +511,7 @@ export function validateInvestigationFirstPlanningReadiness(
     generation: context.generation,
     target: context.target,
     expectedReviewPolicyDigest: context.policies.reviewPolicyDigest,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: roleResult.requiredIndependence,
     independenceAuthorization: {
       kind: 'admitted-role-result',
       roleResult,
@@ -568,7 +576,7 @@ export function validateInvestigationFirstPlanningReadiness(
     reviewRoleResultDigest: roleResult.resultDigest,
     reviewRoleResultForm: roleResult.form,
     reviewOrchestration: roleResult.orchestration,
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: roleResult.requiredIndependence,
     achievedIndependence: roleResult.achievedIndependence,
     degradationAuthorized: validation.degradationAuthorized,
     advisoryVerdict: validation.advisoryVerdict,

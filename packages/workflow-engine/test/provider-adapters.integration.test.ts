@@ -1355,7 +1355,7 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
       purpose: 'survey',
       providerId: 'claude',
       roleAssignment: {
-        role: 'blind-surveyor',
+        role: 'plan-reviewer',
         providerId: 'claude',
         sessionId: 'runtime-v1-bridge-session',
         targetDigest: '1'.repeat(64),
@@ -2180,7 +2180,7 @@ test('production host-wrapper artifacts remain an exact provider lifecycle closu
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: 'provider-session-host-wrapper-lifecycle',
       targetDigest,
@@ -5297,7 +5297,7 @@ function providerRequestInput(
     purpose,
     providerId,
     roleAssignment: {
-      role: purpose === 'plan-review' ? 'plan-reviewer' : 'blind-surveyor',
+      role: purpose === 'plan-review' ? 'plan-reviewer' : 'plan-reviewer',
       providerId,
       sessionId: 'provider-session-test',
       targetDigest: 'b'.repeat(64),

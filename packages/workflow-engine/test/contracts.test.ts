@@ -1340,7 +1340,7 @@ test('execution artifacts use one exact strategy variant per task without claimi
         implementationPathScopes: ['src/features/**'],
         redCheck: 'fixture',
         greenChecks: ['fixture'],
-        requiredImplementerIndependence: 'provider-independent' as const,
+        requiredImplementerIndependence: 'session-independent' as const,
       },
       {
         ...common,
@@ -1503,7 +1503,7 @@ test('execution artifacts use one exact strategy variant per task without claimi
       },
       {
         ...variants[3],
-        requiredImplementerIndependence: 'provider-independent',
+        requiredImplementerIndependence: 'session-independent',
       },
     ];
     for (const task of invalid) {

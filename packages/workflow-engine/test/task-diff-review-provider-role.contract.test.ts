@@ -31,7 +31,7 @@ import {
 
 const TARGET = '3'.repeat(64);
 
-test('task-diff-reviewer is a distinct provider-independent read-only role and manifest purpose', () => {
+test('task-diff-reviewer is a fresh session-independent read-only Reviewer turn', () => {
   assert.equal(
     requireProviderCapability(
       'claude',
@@ -43,11 +43,11 @@ test('task-diff-reviewer is a distinct provider-independent read-only role and m
   const assignment = taskDiffAssignment();
   assert.deepEqual(assignment, {
     role: 'task-diff-reviewer',
-    providerId: 'claude',
+    providerId: 'codex',
     sessionId: 'task-diff-review-session',
     targetDigest: TARGET,
-    requiredIndependence: 'provider-independent',
-    achievedIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
+    achievedIndependence: 'session-independent',
   });
 
   const request = taskDiffRequest(assignment);
@@ -91,7 +91,7 @@ test('task-diff-review provider output admits only exact engine-spawned invocati
       engineSpawned: false,
     }),
     participant: participant({
-      providerId: 'claude',
+      providerId: 'codex',
       sessionId: 'task-diff-review-session',
       identityAssurance: 'adapter-assigned',
       engineSpawned: true,
@@ -143,7 +143,7 @@ function taskDiffAssignment(): RoleAssignment {
     targetDigest: TARGET,
     candidates: [
       {
-        providerId: 'claude',
+        providerId: 'codex',
         sessionId: 'task-diff-review-session',
         enabled: true,
         available: true,

@@ -307,7 +307,9 @@
             "directHumanReviewAttestationDigest": {
               "$ref": "#/$defs/nullableDigest"
             },
-            "requiredIndependence": { "const": "provider-independent" },
+            "requiredIndependence": {
+              "enum": ["provider-independent", "session-independent"]
+            },
             "achievedIndependence": {
               "enum": [
                 "provider-independent",

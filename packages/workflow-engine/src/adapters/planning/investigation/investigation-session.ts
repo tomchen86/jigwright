@@ -3456,7 +3456,7 @@ function assertStartBinding(
     request.baseCommit !== manifest.baseCommit ||
     request.baseTree !== manifest.baseTree ||
     request.purpose !== 'survey' ||
-    request.roleAssignment.role !== 'blind-surveyor' ||
+    request.roleAssignment.role !== 'plan-reviewer' ||
     request.targetDigest !== intentDigest ||
     request.roleAssignment.targetDigest !== intentDigest ||
     request.inputManifestDigest !== manifestDigest ||
@@ -3630,7 +3630,7 @@ function assertReplacementRequestBinding(
 ): void {
   if (
     request.purpose !== 'survey' ||
-    request.roleAssignment.role !== 'blind-surveyor' ||
+    request.roleAssignment.role !== 'plan-reviewer' ||
     request.baseCommit !== session.baseline.head ||
     request.baseTree !== session.baseline.tree ||
     request.targetDigest !== session.intentDigest ||

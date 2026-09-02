@@ -30,7 +30,7 @@ import {
   TASK_DIFF_REVIEW_COVERAGE,
 } from '../src/modules/assurance/task-diff-review.ts';
 
-test('TaskDiffReview record canonically binds a fresh provider-independent assignment and complete coverage', () => {
+test('TaskDiffReview record canonically binds a fresh session-independent assignment and complete coverage', () => {
   const input = reviewInput();
   const record = createTaskDiffReviewRecord(input);
   const reordered = createTaskDiffReviewRecord({
@@ -52,12 +52,23 @@ test('TaskDiffReview record canonically binds a fresh provider-independent assig
   assert.deepEqual(record, reordered);
   assert.deepEqual(record.coverage, TASK_DIFF_REVIEW_COVERAGE);
   assert.deepEqual(record.riskPathDispositions, []);
-  assert.equal(record.assignment.achievedIndependence, 'provider-independent');
+  assert.equal(record.assignment.achievedIndependence, 'session-independent');
   assert.match(record.recordDigest, /^[0-9a-f]{64}$/);
   assert.deepEqual(parseTaskDiffReviewRecord(structuredClone(record)), record);
   assert.deepEqual(
     assertTaskDiffReviewContentSatisfied(input.subject, record, null),
     record,
+  );
+  const samePrincipal = createTaskDiffReviewRecord({
+    ...input,
+    assignment: {
+      ...input.assignment,
+      reviewerPrincipalId: input.assignment.implementerPrincipalId,
+    },
+  });
+  assert.equal(
+    samePrincipal.assignment.reviewerPrincipalId,
+    samePrincipal.assignment.implementerPrincipalId,
   );
 });
 
@@ -344,18 +355,11 @@ test('risk-path dispositions correlate challenges to the exact anchored path', (
   );
 });
 
-test('TaskDiffReview record rejects same-provider, reused-session, and incomplete review claims', () => {
+test('TaskDiffReview record permits a fresh same-provider session and rejects reused-session or incomplete claims', () => {
   const input = reviewInput();
-  assert.throws(
-    () =>
-      createTaskDiffReviewRecord({
-        ...input,
-        assignment: {
-          ...input.assignment,
-          reviewerProviderId: input.assignment.implementerProviderId,
-        } as TaskDiffReviewAssignment,
-      }),
-    hasCode('TASK_DIFF_REVIEW_INDEPENDENCE_INVALID'),
+  assert.equal(
+    createTaskDiffReviewRecord(input).assignment.reviewerProviderId,
+    input.assignment.implementerProviderId,
   );
   assert.throws(
     () =>
@@ -1215,10 +1219,10 @@ function reviewInput(
       implementerPrincipalId: 'provider-b:implementer',
       implementerProviderId: 'provider-b',
       implementationSessionId: 'implementation-session-1',
-      reviewerPrincipalId: 'provider-a:reviewer',
-      reviewerProviderId: 'provider-a',
+      reviewerPrincipalId: 'provider-b:reviewer',
+      reviewerProviderId: 'provider-b',
       reviewerSessionId: 'review-session-2',
-      achievedIndependence: 'provider-independent',
+      achievedIndependence: 'session-independent',
       degradedForm: null,
       grantUseDigest: null,
     },

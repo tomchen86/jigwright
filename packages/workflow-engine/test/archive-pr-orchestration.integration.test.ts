@@ -154,7 +154,7 @@ test('candidate projection rejects historical or non-independent assurance', () 
         reviewNodeId: 'e'.repeat(64),
         reviewResultDigest: 'f'.repeat(64),
         advisoryVerdict: 'advisory-approve',
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: 'session-independent',
         achievedIndependence: 'none',
       }),
     (error) => isWorkflowError(error, 'ARCHIVE_PR_CURRENT_ASSURANCE_REQUIRED'),

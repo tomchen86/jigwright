@@ -220,12 +220,15 @@ function validateTaskStrategyPatchWithAuthority(
   ) {
     throw workflowError(
       'TASK_STRATEGY_IMPLEMENTER_REQUIRED',
-      'Cross-agent TDD forbids the RED author from supplying the implementation patch.',
+      'Cross-agent TDD requires the implementation patch to come from a fresh session.',
       ExitCode.guard,
       {
-        details: { redAuthor: transaction.author.providerId },
+        details: {
+          redAuthor: transaction.author.providerId,
+          redAuthorSessionId: transaction.sessionId,
+        },
         recovery:
-          'Use a provider-independent implementer or an exact bounded collaboration grant.',
+          'Use a session-independent implementer or an exact bounded collaboration grant.',
       },
     );
   }
@@ -1019,8 +1022,9 @@ function resolvePatchImplementer(
         assurance: 'adapter-assigned' as const,
       }),
       allowsSameProvider:
-        'grantId' in attempt.assignment &&
-        attempt.assignment.degradedForm === 'same-provider-fresh-session',
+        attempt.assignment.sessionId !== transaction.sessionId ||
+        ('grantId' in attempt.assignment &&
+          attempt.assignment.degradedForm === 'same-provider-fresh-session'),
       sourceTree: reservation.subject.sourceTree,
     });
   }
@@ -1081,9 +1085,10 @@ function resolvePatchImplementer(
         assurance: 'adapter-assigned' as const,
       }),
       allowsSameProvider:
-        binding.roleResult.form === 'granted-same-provider' &&
-        binding.roleResult.grantUse?.degradedForm ===
-          'same-provider-fresh-session',
+        binding.roleResult.assignment.sessionId !== transaction.sessionId ||
+        (binding.roleResult.form === 'granted-same-provider' &&
+          binding.roleResult.grantUse?.degradedForm ===
+            'same-provider-fresh-session'),
       sourceTree: reservation.subject.sourceTree,
     });
   }

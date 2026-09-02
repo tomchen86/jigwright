@@ -356,7 +356,15 @@ function assertPlanReviewAuthorizationGrantOwnership(input) {
     }
     if (grantAuthorization !== null ||
         author.providerId === null ||
-        author.providerId === assignment.providerId) {
+        author.sessionId === null ||
+        (assignment.requiredIndependence !== 'session-independent' &&
+            assignment.requiredIndependence !== 'provider-independent') ||
+        (assignment.achievedIndependence !== 'provider-independent' &&
+            assignment.achievedIndependence !== 'session-independent') ||
+        (assignment.requiredIndependence === 'provider-independent' &&
+            assignment.achievedIndependence !== 'provider-independent') ||
+        (author.providerId === assignment.providerId &&
+            author.sessionId === assignment.sessionId)) {
         throw refInvalid();
     }
     return 'ordinary';
@@ -1705,8 +1713,10 @@ function isTaskDiffReviewAssignmentForActor(value, actor, subjectDigest) {
         return false;
     }
     if (!('grantId' in value)) {
-        return (value.providerId !== actor.providerId &&
-            value.achievedIndependence === 'provider-independent');
+        return (value.requiredIndependence === 'session-independent' &&
+            value.sessionId !== actor.sessionId &&
+            (value.achievedIndependence === 'provider-independent' ||
+                value.achievedIndependence === 'session-independent'));
     }
     return (value.degradedForm === 'same-provider-fresh-session' &&
         value.providerId === actor.providerId &&
@@ -1726,8 +1736,10 @@ function isTaskStrategyImplementationAssignmentForAuthor(value, author, subjectD
         return false;
     }
     if (!('grantId' in value)) {
-        return (value.providerId !== author.providerId &&
-            value.achievedIndependence === 'provider-independent');
+        return (value.requiredIndependence === 'session-independent' &&
+            value.sessionId !== author.sessionId &&
+            (value.achievedIndependence === 'provider-independent' ||
+                value.achievedIndependence === 'session-independent'));
     }
     return (value.degradedForm === 'same-provider-fresh-session' &&
         value.providerId === author.providerId &&

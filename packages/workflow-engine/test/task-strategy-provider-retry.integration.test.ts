@@ -6,12 +6,10 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { issueCollaborationGrant } from '../src/modules/authority/collaboration-grant.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
 import { readExecutionJobState } from '../src/runtime/storage-journal/execution-store.ts';
 import { runGitWithEnvironment } from '../src/runtime/repository-transaction/git.ts';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
-import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import {
   readProviderInvocation,
@@ -26,7 +24,6 @@ import {
   assertTaskStrategyImplementationProviderOwnerCurrent,
   beginTaskStrategyImplementation,
   inspectTaskStrategyImplementation,
-  type TaskStrategyImplementationStatus,
 } from '../src/application/execute-task/task-strategy-implementation-lifecycle.ts';
 import {
   inspectTaskStrategyLifecycle,
@@ -43,7 +40,6 @@ import {
   inspectSession,
 } from '../src/application/finalize/verification.ts';
 import {
-  authoritativeCollaborationGrantVerifierForTest,
   configureChecks,
   createFixtureRepository,
   git,
@@ -381,13 +377,6 @@ test('correction provider transport retry keeps one correction round and binds t
 
 test('repeated failure requires an authenticated strategy change and replays that exact retry mode', () => {
   const repository = createRetryFixture();
-  const policy = JSON.parse(
-    fs.readFileSync(
-      path.join(repository, 'workflow/maintainer-policy.json'),
-      'utf8',
-    ),
-  ) as { trustedSigners: Array<{ identity: string }> };
-  const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
   try {
     const { sessionId, waiting } = openFailedImplementation(repository);
     const second = resumeTaskStrategy(repository, sessionId);
@@ -396,28 +385,7 @@ test('repeated failure requires an authenticated strategy change and replays tha
     if (second.invocationId === null) return;
     failProviderTransport(repository, second.invocationId);
 
-    const paused = resumeTaskStrategy(repository, sessionId);
-    assert.equal(paused.state, 'collaboration-grant-required');
-    if (paused.state !== 'collaboration-grant-required') return;
-    const inputSchema = paused.inputSchema as Extract<
-      TaskStrategyImplementationStatus,
-      { state: 'collaboration-grant-required' }
-    >['inputSchema'];
-    const request = inputSchema.grantRequest;
-    assert.notEqual(request, null);
-    if (request === null) return;
-    assert.equal(request.degradedForm, 'same-provider-fresh-session');
-    assert.equal(request.availableActor.kind, 'provider');
-    if (request.availableActor.kind !== 'provider') return;
-    assert.equal(request.availableActor.providerId, 'codex');
-    const issued = issueCollaborationGrant(repository, request, { signer });
-
-    const third = resumeTaskStrategy(repository, sessionId, {
-      collaborationGrant: {
-        grantId: issued.grantId,
-        verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-      },
-    });
+    const third = resumeTaskStrategy(repository, sessionId);
     assert.equal(third.state, 'waiting-for-provider');
     assert.notEqual(third.invocationId, null);
     if (third.invocationId === null) return;
@@ -431,7 +399,10 @@ test('repeated failure requires an authenticated strategy change and replays tha
     if (retry?.schemaVersion !== 3) return;
     assert.equal(retry.replacement.retryMode, 'strategy-change');
     assert.ok(retry.replacement.strategyChanges.length > 0);
-    assert.equal(retry.request.providerId, 'codex');
+    assert.notEqual(
+      retry.request.providerId,
+      readProviderInvocationRequest(runtime, second.invocationId).providerId,
+    );
     assert.notEqual(
       retry.request.roleAssignment.sessionId,
       waiting.assignment.sessionId,
@@ -461,16 +432,11 @@ test('repeated failure requires an authenticated strategy change and replays tha
     completeProvider(
       repository,
       third.invocationId,
-      'codex',
+      retry.request.providerId,
       taskImplementationOutput(sessionId, red.red.candidateTree, patch),
     );
     assert.equal(
-      resumeTaskStrategy(repository, sessionId, {
-        collaborationGrant: {
-          grantId: issued.grantId,
-          verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-        },
-      }).state,
+      resumeTaskStrategy(repository, sessionId).state,
       'patch-imported',
     );
   } finally {
@@ -596,7 +562,7 @@ function createRetryFixture(
         implementationPathScopes: ['src/**'],
         redCheck: 'red',
         greenChecks: ['green-fail', 'red'],
-        requiredImplementerIndependence: 'provider-independent' as const,
+        requiredImplementerIndependence: 'session-independent' as const,
       };
     },
   });
@@ -764,40 +730,4 @@ function hasRetryDenialRecovery(
     typeof (error as Error & { recovery: unknown }).recovery === 'string' &&
     (error as Error & { recovery: string }).recovery ===
       `pnpm workflow resume ${sessionId} --json`;
-}
-
-function collaborationSigner(identity: string): MaintainerSignerProvider {
-  return {
-    assertHumanPresent() {},
-    identity() {
-      return identity;
-    },
-    sign(payload, namespace) {
-      return collaborationSignature(payload, namespace ?? '');
-    },
-    verify(payload, signature, observedIdentity, namespace) {
-      if (
-        observedIdentity !== identity ||
-        signature !== collaborationSignature(payload, namespace ?? '')
-      ) {
-        throw workflowError(
-          'MAINTAINER_SIGNATURE_INVALID',
-          'Fixture collaboration signature is invalid.',
-          ExitCode.verification,
-        );
-      }
-    },
-  };
-}
-
-function collaborationSignature(payload: string, namespace: string): string {
-  const encoded = createHash('sha256')
-    .update(`${namespace}\0${payload}`)
-    .digest('base64');
-  return [
-    '-----BEGIN SSH SIGNATURE-----',
-    encoded,
-    '-----END SSH SIGNATURE-----',
-    '',
-  ].join('\n');
 }

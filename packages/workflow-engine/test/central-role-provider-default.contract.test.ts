@@ -16,7 +16,7 @@ import {
 const logicalProviders = ['claude', 'codex', 'gemini', 'local'] as const;
 const sourceRepositoryRoot = path.resolve(import.meta.dirname, '../../..');
 
-test('repository central default keeps the current three-role floor provider-independent', () => {
+test('repository central default keeps three separately ranked role placements', () => {
   const configuration = parseCentralRoleProviderDefault(
     fs.readFileSync(
       path.join(sourceRepositoryRoot, 'workflow/role-provider-default.json'),

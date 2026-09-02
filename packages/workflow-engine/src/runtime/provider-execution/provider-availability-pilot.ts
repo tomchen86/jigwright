@@ -71,7 +71,7 @@ const PROVIDERS = Object.freeze(['codex', 'claude'] as const);
 
 export type ProviderAvailabilityPilotObservation = Readonly<{
   providerId: ProviderId;
-  role: 'blind-surveyor';
+  role: 'plan-reviewer';
   state: 'succeeded' | 'unavailable' | 'failed';
   resolutionStatus: ProviderResolution['status'];
   version: string | null;
@@ -320,7 +320,7 @@ function runAvailableProvider(input: {
   };
   const targetDigest = blindSurveyIntentDigest(manifest);
   const scheduled = scheduleOrdinaryRole({
-    role: 'blind-surveyor',
+    role: 'plan-reviewer',
     author: {
       providerId: counterparty,
       sessionId: `${pilotId}-${counterparty}-author`,
@@ -487,7 +487,7 @@ function successfulObservation(
 ): ProviderAvailabilityPilotObservation {
   return Object.freeze({
     providerId,
-    role: 'blind-surveyor' as const,
+    role: 'plan-reviewer' as const,
     state: 'succeeded' as const,
     resolutionStatus: 'available' as const,
     version: resolution.version ?? null,
@@ -520,7 +520,7 @@ function unavailableObservation(
 ): ProviderAvailabilityPilotObservation {
   return Object.freeze({
     providerId,
-    role: 'blind-surveyor' as const,
+    role: 'plan-reviewer' as const,
     state: 'unavailable' as const,
     resolutionStatus: resolution.status,
     version: resolution.version ?? null,
@@ -551,7 +551,7 @@ function failedObservation(
 ): ProviderAvailabilityPilotObservation {
   return Object.freeze({
     providerId,
-    role: 'blind-surveyor' as const,
+    role: 'plan-reviewer' as const,
     state: 'failed' as const,
     resolutionStatus: 'available' as const,
     version: resolution.version ?? null,
@@ -789,7 +789,7 @@ function assertPilotObservation(
       'cost',
     ]) ||
     value.providerId !== expectedProviderId ||
-    value.role !== 'blind-surveyor' ||
+    value.role !== 'plan-reviewer' ||
     !['succeeded', 'unavailable', 'failed'].includes(value.state as string) ||
     !isResolutionStatus(value.resolutionStatus) ||
     (value.version !== null && typeof value.version !== 'string') ||

@@ -418,7 +418,7 @@ function isPlanningAssurance(
       'caller-supplied',
       'direct-human-review',
     ].includes(String(value.reviewOrchestration)) &&
-    value.requiredIndependence === 'provider-independent' &&
+    value.requiredIndependence === 'session-independent' &&
     [
       'provider-independent',
       'principal-independent',

@@ -92,7 +92,7 @@
           "manifestDigest": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
           "investigationTargetDigest": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
           "reviewPolicyDigest": "eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
-          "requiredIndependence": "provider-independent",
+          "requiredIndependence": "session-independent",
           "investigationBaseline": {
             "head": "1111111111111111111111111111111111111111",
             "tree": "2222222222222222222222222222222222222222"
@@ -100,7 +100,7 @@
           "investigationDependencies": [],
           "investigationRequirements": []
         },
-        "subjectDigest": "dfda112addc06c44b291c4f165d5e69c1a5833715f1b7f96694726c516d4a7bd",
+        "subjectDigest": "0de28e1aaabf4ab6496997fedd4c0e249f2da4b0c8a42d9a6359fcc54840611d",
         "mismatchedManifestDigest": "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
       }
     ],
@@ -243,5 +243,5 @@
       }
     ]
   },
-  "vectorSetDigest": "sha256:8cfc3ceb27018db1ae2c66622e5ad98c0ee87fbcbab8dabcddd9938847f0c9f0"
+  "vectorSetDigest": "sha256:b2113b55d86f6fd83cac7a1f3c62cea5df3b27a9feb0e5df5be011de694b089a"
 }

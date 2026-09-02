@@ -576,16 +576,17 @@
       "id": "role-assurance",
       "plane": "agent-runtime-policy",
       "state": "landed",
-      "t3Disposition": "Characterize the landed four-role and provider-independent floor until the independently scheduled pre-anchor/session-independent policy migration lands.",
+      "t3Disposition": "The landed three-role scheduler treats Blind as the Reviewer's sealed pre-anchor turn and enforces session independence as the ordinary floor; reviewed risk policy may strengthen an exact transition to provider independence.",
       "evidence": [
         {
           "path": "packages/workflow-engine/src/modules/provider-orchestration/role-scheduler.ts",
           "contains": [
-            "export type OrdinaryRole = 'blind-surveyor' | 'plan-reviewer';",
+            "export type OrdinaryRole = 'plan-reviewer';",
             "export type TaskDiffReviewRole = 'task-diff-reviewer';",
             "export type TaskImplementerRole = 'task-implementer';",
-            "requiredIndependence: 'provider-independent';",
-            "collaboration grant produces a precisely labeled degraded contribution."
+            "input.requestedIndependence ?? 'session-independent';",
+            "collaboration grant produces a precisely labeled",
+            "below-floor contribution."
           ]
         }
       ],

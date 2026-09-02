@@ -370,7 +370,7 @@ export const PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
                     required: ['kind', 'role', 'requestDigest', 'resultDigest'],
                     properties: {
                         kind: { enum: ['investigation-role-result'] },
-                        role: { enum: ['blind-surveyor', 'investigation-reviewer'] },
+                        role: { enum: ['reviewer-pre-anchor', 'investigation-reviewer'] },
                         requestDigest: { type: 'string', pattern: '^[0-9a-f]{64}$' },
                         resultDigest: { type: 'string', pattern: '^[0-9a-f]{64}$' },
                     },
@@ -500,8 +500,8 @@ export function createPlanReviewSubject(input) {
         reviewPolicyDigest !== generationPolicy) {
         throw planReviewInvalid('Plan review policy digest must match the planning generation.');
     }
-    if (requiredIndependence !== 'provider-independent') {
-        throw planReviewInvalid('Plan review requires provider-independent separation.');
+    if (requiredIndependence !== 'session-independent') {
+        throw planReviewInvalid('Plan review requires session-independent separation.');
     }
     const baseline = assertBaseline(generation.investigationBaseline);
     const dependencies = assertDependencies(generation.investigationDependencies);
@@ -547,7 +547,7 @@ export function assertPlanReviewSubject(value) {
         !isDigest(record.manifestDigest) ||
         !isDigest(record.investigationTargetDigest) ||
         !isDigest(record.reviewPolicyDigest) ||
-        record.requiredIndependence !== 'provider-independent') {
+        record.requiredIndependence !== 'session-independent') {
         throw planReviewInvalid('Plan review subject binding is malformed.');
     }
     const investigationBaseline = assertBaseline(record.investigationBaseline);
@@ -561,7 +561,7 @@ export function assertPlanReviewSubject(value) {
         manifestDigest: record.manifestDigest,
         investigationTargetDigest: record.investigationTargetDigest,
         reviewPolicyDigest: record.reviewPolicyDigest,
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: 'session-independent',
         investigationBaseline,
         investigationDependencies,
         investigationRequirements,
@@ -812,7 +812,7 @@ export function createPlanReviewNode(input) {
         proposedTerms: normalized.proposedTerms,
         residualRisk: normalized.residualRisk,
         uncertainty: normalized.uncertainty,
-        requiredIndependence: subject.requiredIndependence,
+        requiredIndependence: assignment.requiredIndependence,
         achievedIndependence: assignment.achievedIndependence,
     };
     const submissionDigest = planReviewSubmissionDigest(submission);
@@ -889,7 +889,8 @@ export function readPlanReviewNode(node) {
     const scopeAssessment = assertScopeAssessment(output.scopeAssessment, findings);
     if (output.requiredIndependence !== assignment.requiredIndependence ||
         output.achievedIndependence !== assignment.achievedIndependence ||
-        assignment.requiredIndependence !== 'provider-independent') {
+        (assignment.requiredIndependence !== 'session-independent' &&
+            assignment.requiredIndependence !== 'provider-independent')) {
         throw planReviewInvalid('Plan review independence labels are unexpected.');
     }
     const normalizedSubmission = assertPlanReviewSubmission({
@@ -1251,7 +1252,8 @@ function assertAssignmentForSubjectDigest(value, subjectDigest) {
         Buffer.byteLength(value.sessionId, 'utf8') >
             PLAN_REVIEW_LIMITS.maxAuthorBytes ||
         value.targetDigest !== subjectDigest ||
-        value.requiredIndependence !== 'provider-independent') {
+        (value.requiredIndependence !== 'session-independent' &&
+            value.requiredIndependence !== 'provider-independent')) {
         throw planReviewInvalid('Plan reviewer assignment does not bind the subject.');
     }
     return structuredClone(value);
@@ -1681,7 +1683,7 @@ function assertEvidence(value) {
         const role = value.role;
         const requestDigest = value.requestDigest;
         const resultDigest = value.resultDigest;
-        if ((role !== 'blind-surveyor' && role !== 'investigation-reviewer') ||
+        if ((role !== 'reviewer-pre-anchor' && role !== 'investigation-reviewer') ||
             !isDigest(requestDigest) ||
             !isDigest(resultDigest)) {
             throw planReviewInvalid('Investigation role-result evidence is malformed.');

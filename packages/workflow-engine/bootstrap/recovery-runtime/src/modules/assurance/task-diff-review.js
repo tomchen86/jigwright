@@ -20,7 +20,7 @@ export const TASK_DIFF_REVIEW_COVERAGE = Object.freeze([
 const TASK_DIFF_REVIEW_POLICY = Object.freeze({
     schemaVersion: 1,
     kind: 'task-diff-review-policy.v1',
-    requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
     behavioralStrategies: ['cross-agent-tdd'],
     mechanicallySatisfiedStrategies: ['mechanical-transform', 'direct-reviewed'],
     riskyPathRoles: [
@@ -100,7 +100,7 @@ export function createTaskDiffReviewSubject(input) {
         reviewPolicyDigest: TASK_DIFF_REVIEW_POLICY_DIGEST,
         reviewRequirement,
         documentationRequirement,
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: 'session-independent',
         coverage: TASK_DIFF_REVIEW_COVERAGE,
     };
     return parseTaskDiffReviewSubject({
@@ -256,7 +256,7 @@ export function parseTaskDiffReviewSubject(value) {
         value.schemaVersion !== 1 ||
         value.kind !== 'task-diff-review-subject.v1' ||
         value.reviewPolicyDigest !== TASK_DIFF_REVIEW_POLICY_DIGEST ||
-        value.requiredIndependence !== 'provider-independent' ||
+        value.requiredIndependence !== 'session-independent' ||
         canonicalJson(value.coverage) !== canonicalJson(TASK_DIFF_REVIEW_COVERAGE)) {
         throw subjectInvalid();
     }
@@ -290,7 +290,7 @@ export function parseTaskDiffReviewSubject(value) {
         reviewPolicyDigest: TASK_DIFF_REVIEW_POLICY_DIGEST,
         reviewRequirement,
         documentationRequirement,
-        requiredIndependence: 'provider-independent',
+        requiredIndependence: 'session-independent',
         coverage: TASK_DIFF_REVIEW_COVERAGE,
     };
     if (subject.patchDigest !== patchDigest(transitions) ||

@@ -47,7 +47,7 @@ function createRequest(outputSchema: ProviderOutputSchema) {
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: 'provider-session-output-schema-current',
       targetDigest,

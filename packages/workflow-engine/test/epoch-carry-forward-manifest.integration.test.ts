@@ -394,7 +394,7 @@ function providerRequest(invocationId: string, manifestValue: unknown) {
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: `${invocationId}-session`,
       targetDigest,

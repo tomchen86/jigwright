@@ -131,7 +131,7 @@
       ],
       "properties": {
         "providerId": { "enum": ["codex", "claude"] },
-        "role": { "const": "blind-surveyor" },
+        "role": { "const": "plan-reviewer" },
         "state": { "enum": ["succeeded", "unavailable", "failed"] },
         "resolutionStatus": {
           "enum": [

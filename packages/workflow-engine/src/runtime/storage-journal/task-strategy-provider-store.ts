@@ -1113,7 +1113,7 @@ function isCurrentImplementationRoleResult(value: AdmittedRoleResult): boolean {
       sha256(canonicalJson({ schema: 'admitted-role-result.v1', ...body })) ||
     value.role !== 'task-implementer' ||
     value.orchestration !== 'engine-spawned-provider' ||
-    value.requiredIndependence !== 'provider-independent' ||
+    value.requiredIndependence !== 'session-independent' ||
     value.content.kind !== 'task-implementation' ||
     value.content.contentDigest !== value.content.resultDigest ||
     value.content.current !== true ||
@@ -1132,7 +1132,8 @@ function isCurrentImplementationRoleResult(value: AdmittedRoleResult): boolean {
   if (!('grantId' in value.assignment)) {
     return (
       value.form === 'ordinary-provider' &&
-      value.achievedIndependence === 'provider-independent' &&
+      (value.achievedIndependence === 'provider-independent' ||
+        value.achievedIndependence === 'session-independent') &&
       value.grantUse === null
     );
   }

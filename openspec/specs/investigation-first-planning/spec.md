@@ -53,28 +53,28 @@ Security, migration, shared-contract, public-API, rename/removal, and behavioral
 - **THEN** validation fails
 - **AND** the empty nodes do not satisfy breadth or depth claims
 
-### Requirement: Investigation Uses Three Term Sources With a Blind Independent Pass
+### Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
-The workflow engine SHALL derive a non-removable engine search floor, accept a typed main-agent term contribution, and on the ordinary path obtain a provider-independent blind survey contribution before sealing the effective term union. Every main-agent term MUST include normalized kind/value plus bounded non-empty rationale and expected relationship to the change. The survey provider MUST differ from the investigation author's provider; only an eligible exact collaboration grant may replace that ordinary contribution with a visibly degraded alternative.
+The workflow engine SHALL derive a non-removable engine search floor, accept a typed Author term contribution, and obtain a session-independent Reviewer pre-anchor contribution before sealing the effective term union. Blind is the Reviewer's sealed first turn, not a fourth role: its request MUST be sealed before Author terms, conclusions, plan drafts, or Builder transcripts become visible. The ordinary Reviewer MAY use the same provider as the Author when it runs in a fresh engine-spawned session, and the achieved independence MUST be recorded honestly. A reviewed risk policy MAY strengthen the floor to provider independence; only an eligible exact Grant may authorize a visible below-policy continuation. Every Author term MUST include normalized kind/value plus bounded non-empty rationale and expected relationship to the change.
 
 The floor SHALL deterministically include every valid term derivable from available machine-readable facts: explicit paths, symbols, and configuration keys in normalized intent; both old and new identifiers for rename, removal, or transformation intent; renamed or removed path basenames and stems available from a pinned diff; and reviewed generated or mirror counterparts of a derived subject. Every floor term SHALL retain the source fact and derivation rule. If any qualifying fact exists, the engine MUST NOT emit an empty or incomplete floor.
 
-If no qualifying fact exists, the engine SHALL record a typed `noDerivableFloorFacts` result naming every checked category. That result MUST NOT be represented as a breadth contribution, and sealing SHALL still require non-empty main and ordinary provider-independent survey term contributions.
+If no qualifying fact exists, the engine SHALL record a typed `noDerivableFloorFacts` result naming every checked category. That result MUST NOT be represented as a breadth contribution, and sealing SHALL still require non-empty Author and Reviewer pre-anchor term contributions at the effective independence floor.
 
-The blind request MUST contain the normalized intent, pinned repository baseline, read-only repository access, and a structured architecture-level survey question. It MUST be sealed before the engine reads the main contribution and MUST NOT contain the engine floor, main-agent terms, prior hit lists, or prior conclusions.
+The Reviewer pre-anchor request MUST contain the normalized intent, pinned repository baseline, read-only repository access, and a structured architecture-level survey question. It MUST be sealed before the engine reads the Author contribution and MUST NOT contain the engine floor, Author terms, prior hit lists, prior conclusions, plan drafts, or Builder transcripts.
 
 Term identity and scan deduplication SHALL depend on normalized kind, value, and matching semantics, while the contribution digest SHALL include rationale and expected relationship and preserve those fields per source. The engine validates their structure and binding but MUST NOT claim either explanation is true.
 
-#### Scenario: Blind survey input is constructed
+#### Scenario: Reviewer pre-anchor input is constructed
 
 - **GIVEN** a normalized intent and pinned baseline
-- **WHEN** the blind survey manifest is sealed
+- **WHEN** the Reviewer pre-anchor survey manifest is sealed
 - **THEN** it contains the intent, baseline, read-only capability, and survey schema
 - **AND** it does not contain the engine floor, main terms, prior hits, or prior conclusions
 
 #### Scenario: Effective term union is sealed
 
-- **GIVEN** current engine, main-agent, and blind-survey contributions
+- **GIVEN** current engine, Author, and Reviewer pre-anchor contributions
 - **WHEN** the investigation term union is sealed
 - **THEN** every accepted term from each source appears in the effective union
 - **AND** every term retains all source provenance
@@ -104,15 +104,15 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **GIVEN** every reviewed machine-readable derivation category is empty
 - **WHEN** the engine derives the search floor
 - **THEN** it records `noDerivableFloorFacts` with the checked categories
-- **AND** investigation cannot seal without non-empty main and ordinary provider-independent survey contributions
+- **AND** investigation cannot seal without non-empty Author and Reviewer pre-anchor contributions at the effective independence floor
 
-#### Scenario: Independent provider is unavailable under an eligible grant
+#### Scenario: Strengthened provider floor is unavailable under an eligible Grant
 
-- **GIVEN** the workflow has paused because no alternate provider can perform the blind pass
-- **WHEN** an exact human continuation grant authorizes a degraded survey contribution
-- **THEN** the degraded contribution replaces rather than satisfies the ordinary provider-independent blind contribution
+- **GIVEN** reviewed risk policy has strengthened the Reviewer pre-anchor turn to provider independence and no alternate provider is callable
+- **WHEN** an exact Grant authorizes a below-policy Reviewer contribution
+- **THEN** the contribution replaces rather than satisfies the strengthened provider-independent requirement
 - **AND** its actual independence level remains explicit
-- **AND** the engine does not describe the degraded contribution as blind or provider-independent when it was not
+- **AND** the engine does not describe the contribution as provider-independent when it was not
 
 ### Requirement: Search Terms Have a Bounded Governed Lifecycle
 

@@ -46,7 +46,7 @@ export const TASK_STRATEGY_IMPLEMENTATION_POLICY = deepFreeze({
   schemaVersion: 1,
   kind: 'task-strategy-implementation-policy.v1',
   capabilityProfile: 'repository-read-only',
-  crossAgentIndependence: 'provider-independent',
+  crossAgentIndependence: 'session-independent',
   frozenTestsImmutable: true,
   engineGreenRequired: true,
   providerOutputAuthority: 'advisory-patch-only',

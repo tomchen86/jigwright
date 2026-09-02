@@ -342,7 +342,7 @@ function startSupersedeFixture(repository: string) {
     purpose: 'survey',
     providerId: 'claude',
     roleAssignment: {
-      role: 'blind-surveyor',
+      role: 'plan-reviewer',
       providerId: 'claude',
       sessionId: 'provider-session-supersede-reason',
       targetDigest: intentDigest,

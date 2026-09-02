@@ -297,7 +297,7 @@ test('the tracked Collaboration Grant schema is exact current V2', () => {
         policyDigest:
           'bb689839bcaa521293058978dc8e3a1e7666dd47b2e2c07cdeb622fbb1fad7b4',
         authorRole: 'investigation-author',
-        conflictingRole: 'blind-surveyor',
+        conflictingRole: 'plan-reviewer',
       },
       {
         phase: 'plan-review',

@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:da87f1f598970151d5e73ee89a70362ac7bee65ac5e74ac577c1b8b7bcc1ec94`.
+Current production inventory digest: `sha256:a64a1e6bc8df3cc1f63c4f4c8d44b7feec17ef4b1f45746721b6b9cc9767b65c`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
@@ -211,9 +211,9 @@ investigation replay and consumer namespace bytes are absent.
 
 ### Role assurance — landed
 
-The role scheduler and provider-independent floor are production behavior.
-Their separately planned pre-anchor/session-independent migration is not part
-of this inventory slice.
+The three-role scheduler and session-independent ordinary floor are production
+behavior. Blind is the Reviewer's sealed pre-anchor first turn; reviewed risk
+policy may strengthen an exact transition to provider independence.
 
 <!-- coupling:runtime-distribution -->
 

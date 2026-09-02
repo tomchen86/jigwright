@@ -123,7 +123,7 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     baseCentralConfigurationDigest,
     roleLanes: [],
     pairwiseRequirements: [
-      { pair: 'author-reviewer', required: 'session-independent' },
+      { pair: 'author-reviewer', required: 'provider-independent' },
     ],
     customWrapperPolicy: 'forbidden',
     grantReferences: [GRANT_ID, APPROVAL_GRANT_ID],
@@ -174,7 +174,7 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     manifestDigest: '7'.repeat(64),
     investigationTargetDigest: '8'.repeat(64),
     reviewPolicyDigest: '6'.repeat(64),
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: 'session-independent' as const,
     investigationBaseline: { head: repository.head, tree: baselineTree },
     investigationDependencies: [],
     investigationRequirements: [],

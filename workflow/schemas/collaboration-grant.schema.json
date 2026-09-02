@@ -73,7 +73,7 @@
               "required": ["authorRole", "conflictingRole"],
               "properties": {
                 "authorRole": { "const": "investigation-author" },
-                "conflictingRole": { "const": "blind-surveyor" }
+                "conflictingRole": { "const": "plan-reviewer" }
               }
             },
             {
@@ -184,7 +184,7 @@
               "rolePair": {
                 "properties": {
                   "authorRole": { "const": "investigation-author" },
-                  "conflictingRole": { "const": "blind-surveyor" }
+                  "conflictingRole": { "const": "plan-reviewer" }
                 }
               }
             }

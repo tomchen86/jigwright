@@ -198,12 +198,15 @@ export function validatePlanReview(
   ) {
     staleReasons.add('REVIEW_POLICY_MISMATCH');
   }
-  if (subject.requiredIndependence !== input.requiredIndependence) {
+  if (
+    subject.requiredIndependence !== 'session-independent' ||
+    (input.requiredIndependence !== 'session-independent' &&
+      input.requiredIndependence !== 'provider-independent')
+  ) {
     staleReasons.add('INDEPENDENCE_MISMATCH');
   }
   if (
     review.assignment.targetDigest !== subject.subjectDigest ||
-    review.assignment.requiredIndependence !== input.requiredIndependence ||
     review.requiredIndependence !== input.requiredIndependence
   ) {
     staleReasons.add('REVIEW_BINDING_MISMATCH');
@@ -262,7 +265,9 @@ export function validatePlanReview(
     admittedRoleResult.assignment.providerId !== review.assignment.providerId ||
     admittedRoleResult.assignment.sessionId !== review.assignment.sessionId ||
     admittedRoleResult.assignment.targetDigest !==
-      review.assignment.targetDigest
+      review.assignment.targetDigest ||
+    canonicalJson(admittedRoleResult.assignment) !==
+      canonicalJson(review.assignment)
   ) {
     staleReasons.add('REVIEW_ROLE_RESULT_MISMATCH');
   }
@@ -296,7 +301,10 @@ export function validatePlanReview(
   const current = staleReasons.size === 0;
   const independenceSatisfied =
     review.requiredIndependence === input.requiredIndependence &&
-    (achievedIndependence === review.requiredIndependence ||
+    ((review.requiredIndependence === 'session-independent' &&
+      (achievedIndependence === 'session-independent' ||
+        achievedIndependence === 'provider-independent')) ||
+      achievedIndependence === review.requiredIndependence ||
       degradationAuthorized);
 
   const eligible =
@@ -542,7 +550,8 @@ function isAdmittedRoleResultShape(
     DIGEST_PATTERN.test(value.targetDigest) &&
     typeof value.resultDigest === 'string' &&
     DIGEST_PATTERN.test(value.resultDigest) &&
-    value.requiredIndependence === 'provider-independent' &&
+    (value.requiredIndependence === 'session-independent' ||
+      value.requiredIndependence === 'provider-independent') &&
     [
       'provider-independent',
       'principal-independent',

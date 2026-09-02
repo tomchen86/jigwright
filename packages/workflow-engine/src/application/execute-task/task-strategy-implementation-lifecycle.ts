@@ -2594,7 +2594,7 @@ function implementationGrantRequest(
     },
     degradedForm: 'same-provider-fresh-session',
     reason:
-      'No provider-independent task implementer is enabled for this exact sealed RED subject.',
+      'No session-independent task implementer is enabled for this exact sealed RED subject.',
     ttlMinutes: 30,
     maxUses: 1,
   };

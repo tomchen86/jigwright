@@ -43,10 +43,11 @@ import {
 /**
  * Role independence is always expressed at an explicit dimension. Provider
  * inequality, principal inequality, and session inequality are never
- * interchangeable, and the ordinary blind-survey and plan-review roles require
- * provider independence relative to the author being challenged. Repository or
- * caller policy cannot lower either ordinary requirement; only an eligible
- * collaboration grant produces a precisely labeled degraded contribution.
+ * interchangeable. The ordinary floor is session independence relative to the
+ * role being challenged; an explicit risk policy may require provider
+ * independence. Repository or caller policy cannot lower the session floor,
+ * and only an eligible collaboration grant produces a precisely labeled
+ * below-floor contribution.
  */
 export type IndependenceDimension =
   | 'provider-independent'
@@ -54,7 +55,7 @@ export type IndependenceDimension =
   | 'session-independent'
   | 'none';
 
-export type OrdinaryRole = 'blind-surveyor' | 'plan-reviewer';
+export type OrdinaryRole = 'plan-reviewer';
 export type TaskDiffReviewRole = 'task-diff-reviewer';
 export type TaskImplementerRole = 'task-implementer';
 export type EngineProviderRole =
@@ -106,6 +107,7 @@ export type RoleAssignment = {
 
 export type ScheduleOrdinaryRoleInput = {
   role: EngineProviderRole;
+  purpose?: CapabilityPurpose;
   author: RoleParticipant;
   targetDigest: string;
   candidates: RoleCandidate[];
@@ -121,7 +123,7 @@ export type ScheduleOrdinaryRoleResult =
       outcome: 'collaboration-grant-required';
       role: EngineProviderRole;
       requiredIndependence: IndependenceDimension;
-      reason: 'NO_PROVIDER_INDEPENDENT_CANDIDATE';
+      reason: 'NO_REQUIRED_INDEPENDENCE_CANDIDATE';
     };
 
 export type GrantedRoleAssignment = {
@@ -219,7 +221,7 @@ type AdmittedRoleResultCommon = {
   participant: RecordedRoleParticipant;
   orchestration:
     'engine-spawned-provider' | 'caller-supplied' | 'direct-human-review';
-  requiredIndependence: 'provider-independent';
+  requiredIndependence: 'provider-independent' | 'session-independent';
   achievedIndependence: IndependenceDimension;
   content: RoleContentAdmission;
   providerInvocation: RoleProviderInvocationEvidence | null;
@@ -307,7 +309,8 @@ export function assertAdmittedRoleResultRecord(
     !/^[0-9a-f]{64}$/.test(resultDigest) ||
     resultDigest !== expectedDigest ||
     !/^[0-9a-f]{64}$/.test(record.targetDigest) ||
-    record.requiredIndependence !== 'provider-independent' ||
+    (record.requiredIndependence !== 'provider-independent' &&
+      record.requiredIndependence !== 'session-independent') ||
     !record.assignment ||
     typeof record.assignment !== 'object' ||
     record.assignment.role !== record.role ||
@@ -486,11 +489,20 @@ export type AuthorizeGrantedOrdinaryRoleInput = {
 };
 
 const ROLE_CAPABILITY: Record<EngineProviderRole, CapabilityPurpose> = {
-  'blind-surveyor': 'survey',
   'plan-reviewer': 'plan-review',
   'task-diff-reviewer': 'task-diff-review',
   'task-implementer': 'task-implementation',
 };
+
+function roleSupportsPurpose(
+  role: EngineProviderRole,
+  purpose: CapabilityPurpose,
+): boolean {
+  return (
+    ROLE_CAPABILITY[role] === purpose ||
+    (role === 'plan-reviewer' && purpose === 'survey')
+  );
+}
 
 /**
  * Assess independence of a candidate relative to the author being challenged.
@@ -539,35 +551,43 @@ export function assessRoleIndependence(
 }
 
 /**
- * Schedule an ordinary survey, plan-review, or exact task-diff-review role.
- * The requirement is fixed at provider independence; requesting a weaker
+ * Schedule an ordinary role at the session-independent floor, or at an
+ * explicitly requested provider-independent risk floor. A weaker or unrelated
  * dimension fails closed.
  * Every runtime candidate ID is checked against the code-owned registry and the
- * required role capability, so an unknown candidate fails closed rather than
- * being launched. The first enabled, available, provider-independent candidate
- * is assigned; otherwise the transition pauses for an eligible collaboration
- * grant.
+ * required purpose capability, so an unknown candidate fails closed rather
+ * than being launched. The first enabled, available candidate meeting the
+ * requested floor is assigned; otherwise the transition pauses for an eligible
+ * collaboration grant.
  */
 export function scheduleOrdinaryRole(
   input: ScheduleOrdinaryRoleInput,
 ): ScheduleOrdinaryRoleResult {
-  const requiredIndependence: IndependenceDimension = 'provider-independent';
+  const requiredIndependence: IndependenceDimension =
+    input.requestedIndependence ?? 'session-independent';
 
   if (
-    input.requestedIndependence !== undefined &&
-    input.requestedIndependence !== requiredIndependence
+    requiredIndependence !== 'session-independent' &&
+    requiredIndependence !== 'provider-independent'
   ) {
     throw workflowError(
       'ROLE_INDEPENDENCE_DOWNGRADE',
-      `Ordinary role "${input.role}" requires ${requiredIndependence}; ` +
-        `it cannot be lowered to ${input.requestedIndependence}.`,
+      `Ordinary role "${input.role}" requires at least session-independent; ` +
+        `it cannot use ${requiredIndependence}.`,
       ExitCode.guard,
     );
   }
 
   // Every candidate ID must be a reviewed provider that supports the required
   // capability; an unknown candidate fails closed before any selection.
-  const capability = ROLE_CAPABILITY[input.role];
+  const capability = input.purpose ?? ROLE_CAPABILITY[input.role];
+  if (!roleSupportsPurpose(input.role, capability)) {
+    throw workflowError(
+      'ROLE_CAPABILITY_INVALID',
+      `Role "${input.role}" cannot perform ${capability}.`,
+      ExitCode.guard,
+    );
+  }
   for (const candidate of input.candidates) {
     requireProviderCapability(
       candidate.providerId,
@@ -580,13 +600,16 @@ export function scheduleOrdinaryRole(
     if (!candidate.enabled || !candidate.available) {
       return false;
     }
-    return assessRoleIndependence(input.author, {
+    const independence = assessRoleIndependence(input.author, {
       providerId: candidate.providerId,
       sessionId: candidate.sessionId,
       principalId: undefined,
       identityAssurance: 'adapter-assigned',
       engineSpawned: true,
-    }).providerIndependent;
+    });
+    return requiredIndependence === 'provider-independent'
+      ? independence.providerIndependent
+      : independence.sessionIndependent;
   });
 
   if (!selected) {
@@ -594,7 +617,7 @@ export function scheduleOrdinaryRole(
       outcome: 'collaboration-grant-required',
       role: input.role,
       requiredIndependence,
-      reason: 'NO_PROVIDER_INDEPENDENT_CANDIDATE',
+      reason: 'NO_REQUIRED_INDEPENDENCE_CANDIDATE',
     };
   }
 
@@ -604,7 +627,13 @@ export function scheduleOrdinaryRole(
     sessionId: selected.sessionId,
     targetDigest: input.targetDigest,
     requiredIndependence,
-    achievedIndependence: 'provider-independent',
+    achievedIndependence: assessRoleIndependence(input.author, {
+      providerId: selected.providerId,
+      sessionId: selected.sessionId,
+      principalId: undefined,
+      identityAssurance: 'adapter-assigned',
+      engineSpawned: true,
+    }).achievedIndependence,
   });
 
   return { outcome: 'assigned', assignment };
@@ -613,9 +642,9 @@ export function scheduleOrdinaryRole(
 /**
  * Apply an already validated and atomically reserved collaboration grant to
  * one exact ordinary-role conflict. This is intentionally additive to
- * `scheduleOrdinaryRole`: an ordinary `RoleAssignment` remains provider
- * independent, while degraded assignments have a distinct type that cannot be
- * accepted by provider-independent request contracts.
+ * `scheduleOrdinaryRole`: an ordinary `RoleAssignment` satisfies the requested
+ * session- or provider-independent floor, while degraded assignments have a
+ * distinct type that cannot be mistaken for an ordinary result.
  *
  * The function derives achieved independence and orchestration from the actual
  * participant and callable-provider set. Callers cannot supply either claim.
@@ -666,9 +695,8 @@ export function authorizeGrantedOrdinaryRole(
   if (
     payload.targetDigest !== input.targetDigest ||
     payload.rolePair.conflictingRole !== input.role ||
-    (input.role === 'blind-surveyor' &&
-      payload.lifecyclePhase !== 'blind-survey') ||
     (input.role === 'plan-reviewer' &&
+      payload.lifecyclePhase !== 'blind-survey' &&
       payload.lifecyclePhase !== 'plan-review') ||
     (input.role === 'task-diff-reviewer' &&
       payload.lifecyclePhase !== 'task-diff-review') ||
@@ -972,23 +1000,20 @@ function admitRoleResultCore(
   const author = normalizeRecordedParticipant(input.author);
   const participant = normalizeRecordedParticipant(input.participant);
   if (
-    (assignment.role !== 'blind-surveyor' &&
-      assignment.role !== 'plan-reviewer' &&
+    (assignment.role !== 'plan-reviewer' &&
       assignment.role !== 'task-diff-reviewer' &&
       assignment.role !== 'task-implementer') ||
     !/^[0-9a-f]{64}$/.test(assignment.targetDigest)
   ) {
     throw roleResultInvalid();
   }
-  const expectedContentKind =
-    assignment.role === 'blind-surveyor'
-      ? 'blind-survey'
-      : assignment.role === 'plan-reviewer'
-        ? 'plan-review'
-        : assignment.role === 'task-diff-reviewer'
-          ? 'task-diff-review'
-          : 'task-implementation';
-  if (content.kind !== expectedContentKind) {
+  const contentMatchesRole =
+    assignment.role === 'plan-reviewer'
+      ? content.kind === 'blind-survey' || content.kind === 'plan-review'
+      : assignment.role === 'task-diff-reviewer'
+        ? content.kind === 'task-diff-review'
+        : content.kind === 'task-implementation';
+  if (!contentMatchesRole) {
     throw roleResultInvalid();
   }
 
@@ -1020,7 +1045,7 @@ function admitRoleResultCore(
     );
     form = 'ordinary-provider';
     orchestration = 'engine-spawned-provider';
-    achievedIndependence = 'provider-independent';
+    achievedIndependence = assignment.achievedIndependence;
   } else {
     if (
       canonicalJson(author) !== canonicalJson(assignment.author) ||
@@ -1100,7 +1125,8 @@ function admitRoleResultCore(
     author,
     participant,
     orchestration,
-    requiredIndependence: 'provider-independent' as const,
+    requiredIndependence: assignment.requiredIndependence as
+      'provider-independent' | 'session-independent',
     achievedIndependence,
     content,
     providerInvocation,
@@ -1177,16 +1203,18 @@ function isOrdinaryRoleAssignment(
   return (
     !('grantId' in value) &&
     hasExactKeys(value, ORDINARY_ASSIGNMENT_KEYS) &&
-    (value.role === 'blind-surveyor' ||
-      value.role === 'plan-reviewer' ||
+    (value.role === 'plan-reviewer' ||
       value.role === 'task-diff-reviewer' ||
       value.role === 'task-implementer') &&
     isProviderId(value.providerId) &&
     typeof value.sessionId === 'string' &&
     value.sessionId.length > 0 &&
     /^[0-9a-f]{64}$/.test(value.targetDigest) &&
-    value.requiredIndependence === 'provider-independent' &&
-    value.achievedIndependence === 'provider-independent'
+    (value.requiredIndependence === 'provider-independent'
+      ? value.achievedIndependence === 'provider-independent'
+      : value.requiredIndependence === 'session-independent' &&
+        (value.achievedIndependence === 'session-independent' ||
+          value.achievedIndependence === 'provider-independent'))
   );
 }
 

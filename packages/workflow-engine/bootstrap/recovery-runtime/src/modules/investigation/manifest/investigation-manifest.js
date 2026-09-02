@@ -269,8 +269,8 @@ function buildOrdinaryApplicability(repositoryRoot, state, parentIdentity) {
         authoring: replayAuthoring,
     });
     const investigationRoleResults = normalizeRoleResults(state.ordinary.investigationRoleResults);
-    if (!investigationRoleResults.some(({ role }) => role === 'blind-surveyor')) {
-        throw new ManifestValidationError('SEMANTIC_COMPLETENESS_FAILURE', 'Ordinary investigation requires an admitted blind-surveyor result.');
+    if (!investigationRoleResults.some(({ role }) => role === 'reviewer-pre-anchor')) {
+        throw new ManifestValidationError('SEMANTIC_COMPLETENESS_FAILURE', 'Ordinary investigation requires an admitted Reviewer pre-anchor result.');
     }
     const whyOverlays = normalizeWhyOverlays(state.ordinary.whyOverlays);
     const knowledgeReuseDecisions = normalizeKnowledgeReuseDecisions(state.ordinary.knowledgeReuseDecisions);
@@ -710,7 +710,7 @@ function normalizeRoleResults(values) {
             'grantUse',
             'roleContextSharingUse',
         ]);
-        if (record.role !== 'blind-surveyor' &&
+        if (record.role !== 'reviewer-pre-anchor' &&
             record.role !== 'investigation-reviewer') {
             throw unrepresentable('Investigation role is not investigation-owned.');
         }

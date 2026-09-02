@@ -143,6 +143,7 @@ import {
   runtimeRoot,
   sourceRepositoryRoot,
   builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
@@ -656,45 +657,54 @@ test('structured investigation exemption starts a durable planning branch withou
       ),
       nativeValidationFailureBytes,
     );
-    runProviderWorker(repository, reviewOutput.planReview!.invocationId, {
-      runner(input): ProviderRunnerReport {
-        return fakeRunnerReport(
-          input.request,
-          {
-            schemaVersion: 2,
-            verdict: 'advisory-approve',
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: { kind: 'challenges' },
-            findings: [
-              {
-                kind: 'challenge',
-                severity: 'medium',
-                category: 'missing-scope',
-                currentChangeImpact: 'required',
-                summary:
-                  'Confirm the declared documentation scope has no runtime behavior dependency.',
-                evidence: [
-                  {
-                    kind: 'repository-location',
-                    path: 'docs/WORKFLOW.md',
-                    line: 1,
-                    observation:
-                      'The declared target is a tracked Markdown workflow guide.',
-                  },
-                ],
-              },
-            ],
-            proposedTerms: [],
-            suggestions: [],
-            residualRisk:
-              'The reviewer cannot prove that prose has no indirect behavioral consequence.',
-            uncertainty:
-              'Eligibility remains an advisory semantic judgment over exact tracked scope.',
-          },
-          input.invocationDirectory,
-        );
+    const reviewWorker = runProviderWorker(
+      repository,
+      reviewOutput.planReview!.invocationId,
+      {
+        runner(input): ProviderRunnerReport {
+          return fakeRunnerReport(
+            input.request,
+            {
+              schemaVersion: 2,
+              verdict: 'advisory-approve',
+              coverage: [...PLAN_REVIEW_COVERAGE],
+              scopeAssessment: { kind: 'challenges' },
+              findings: [
+                {
+                  kind: 'challenge',
+                  severity: 'medium',
+                  category: 'missing-scope',
+                  currentChangeImpact: 'required',
+                  summary:
+                    'Confirm the declared documentation scope has no runtime behavior dependency.',
+                  evidence: [
+                    {
+                      kind: 'repository-location',
+                      path: 'docs/WORKFLOW.md',
+                      line: 1,
+                      observation:
+                        'The declared target is a tracked Markdown workflow guide.',
+                    },
+                  ],
+                },
+              ],
+              proposedTerms: [],
+              suggestions: [],
+              residualRisk:
+                'The reviewer cannot prove that prose has no indirect behavioral consequence.',
+              uncertainty:
+                'Eligibility remains an advisory semantic judgment over exact tracked scope.',
+            },
+            input.invocationDirectory,
+          );
+        },
       },
-    });
+    );
+    assert.equal(
+      reviewWorker.state,
+      'succeeded',
+      JSON.stringify(reviewWorker.failure),
+    );
     const awaitingDisposition = resumePropose(
       repository,
       changeId,
@@ -942,7 +952,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     });
 
     assert.equal(started.state, 'awaiting-main-terms');
-    assert.equal(started.investigation?.provider.providerId, 'claude');
+    assert.equal(started.investigation?.provider.providerId, 'codex');
     assert.equal(providerRuns, 1);
     const replayedStart = startPropose(repository, changeId, intent, {
       explicitActor: 'codex',
@@ -971,7 +981,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     assert.equal(
       getInvestigationStatus(repository, started.investigation!.investigationId)
         .provider.providerId,
-      'claude',
+      'codex',
     );
     assert.equal(
       fs.existsSync(path.join(repository, 'openspec/changes', changeId)),
@@ -1172,12 +1182,12 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     assert.equal(
       trackedInvestigation.applicability.semanticDelta
         .investigationRoleResults[0].role,
-      'blind-surveyor',
+      'reviewer-pre-anchor',
     );
     assert.equal(
       trackedInvestigation.applicability.semanticDelta
         .investigationRoleResults[0].achievedIndependence,
-      'provider-independent',
+      'session-independent',
     );
     assert.match(
       trackedInvestigation.investigationApproval.investigationTargetDigest,
@@ -1405,7 +1415,7 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     );
     assert.equal(
       topologyAuthorizationOutput.roleTopology.actualRolePairs[0]?.achieved,
-      'provider-independent',
+      'session-independent',
     );
     assert.equal(
       topologyAuthorization.exactInputDigests.roleTopology,
@@ -2160,54 +2170,67 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     );
     const surveyRoleResult =
       trackedInvestigation.applicability.semanticDelta.investigationRoleResults.find(
-        ({ role }: { role: string }) => role === 'blind-surveyor',
+        ({ role }: { role: string }) => role === 'reviewer-pre-anchor',
       );
     assert.ok(surveyRoleResult);
     const surveyEvidence =
       planningInvestigationRoleResultDependency(surveyRoleResult);
-    runProviderWorker(repository, reviewOutput.planReview!.invocationId, {
-      runner(input): ProviderRunnerReport {
-        const semanticOutput = {
-          schemaVersion: 2 as const,
-          verdict: 'advisory-approve' as const,
-          coverage: [...PLAN_REVIEW_COVERAGE],
-          scopeAssessment: {
-            kind: 'no-challenge' as const,
-            evidence: [
-              {
-                kind: 'investigation-role-result' as const,
-                role: 'blind-surveyor' as const,
-                requestDigest: surveyEvidence.nodeId,
-                resultDigest: surveyEvidence.resultDigest,
-              },
+    const preAnchorReviewWorker = runProviderWorker(
+      repository,
+      reviewOutput.planReview!.invocationId,
+      {
+        runner(input): ProviderRunnerReport {
+          const semanticOutput = {
+            schemaVersion: 2 as const,
+            verdict: 'advisory-approve' as const,
+            coverage: [...PLAN_REVIEW_COVERAGE],
+            scopeAssessment: {
+              kind: 'no-challenge' as const,
+              evidence: [
+                {
+                  kind: 'investigation-role-result' as const,
+                  role: 'reviewer-pre-anchor' as const,
+                  requestDigest: surveyEvidence.nodeId,
+                  resultDigest: surveyEvidence.resultDigest,
+                },
+              ],
+            },
+            findings: [],
+            proposedTerms: [
+              { kind: 'symbol' as const, value: 'ReviewOnlyNeedle' },
             ],
-          },
-          findings: [],
-          proposedTerms: [
-            { kind: 'symbol' as const, value: 'ReviewOnlyNeedle' },
-          ],
-          suggestions: [],
-          residualRisk:
-            'The exact review cannot prove semantic breadth completeness.',
-          uncertainty:
-            'The provider is observed read-only but not same-user confined.',
-        };
-        return fakeRunnerReport(
-          input.request,
-          semanticOutput,
-          input.invocationDirectory,
-        );
+            suggestions: [],
+            residualRisk:
+              'The exact review cannot prove semantic breadth completeness.',
+            uncertainty:
+              'The provider is observed read-only but not same-user confined.',
+          };
+          return fakeRunnerReport(
+            input.request,
+            semanticOutput,
+            input.invocationDirectory,
+          );
+        },
       },
-    });
+    );
+    assert.equal(
+      preAnchorReviewWorker.state,
+      'succeeded',
+      JSON.stringify(preAnchorReviewWorker.failure),
+    );
+    const succeededReviewStatus = getProposeStatus(
+      repository,
+      materialized.investigation!.investigationId,
+    );
+    assert.equal(
+      succeededReviewStatus.planReview?.state,
+      'succeeded',
+      JSON.stringify(succeededReviewStatus.planReview),
+    );
     const reopened = resumePropose(
       repository,
       changeId,
-      createPlanReviewProgressEnvelope(
-        getProposeStatus(
-          repository,
-          materialized.investigation!.investigationId,
-        ),
-      ),
+      createPlanReviewProgressEnvelope(succeededReviewStatus),
     );
     assert.equal(reopened.state, 'awaiting-group-dispositions');
     assert.equal(reopened.work?.termSources.reviewer, 1);
@@ -9419,18 +9442,7 @@ function fakeRunnerReport(
     },
     sameUserProcessConfined: false,
     residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: {
-      candidatePath: '/opt/homebrew/bin/claude',
-      realPath: '/opt/homebrew/bin/claude',
-      device: '1',
-      inode: '2',
-      mode: 0o100755,
-      uid: 501,
-      gid: 20,
-      size: 1024,
-      mtimeNs: '123456789',
-      sha256: 'b'.repeat(64),
-    },
+    executable: builtInProviderExecutableIdentityForTest(request.providerId),
     elapsedMs: 5,
     providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
       request.providerId,
@@ -9508,11 +9520,11 @@ function providerRequestInput(
     purpose: 'survey' as const,
     providerId: 'claude' as const,
     roleAssignment: {
-      role: 'blind-surveyor' as const,
+      role: 'plan-reviewer' as const,
       providerId: 'claude' as const,
       sessionId: `provider-session-${invocationId}`,
       targetDigest: fixture.intentDigest,
-      requiredIndependence: 'provider-independent' as const,
+      requiredIndependence: 'session-independent' as const,
       achievedIndependence: 'provider-independent' as const,
     },
     capabilityProfile: 'repository-read-only' as const,

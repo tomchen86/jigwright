@@ -255,7 +255,7 @@ test('cross-agent TDD rejects manual implementation bytes without an engine-impo
   }
 });
 
-test('single-agent TDD keeps the RED gate and engine GREEN evidence without false role symmetry', () => {
+test('single-agent TDD keeps the RED gate and uses a fresh Reviewer session', () => {
   const { repository, counterPath } = createCrossAgentFixture(
     'assertion',
     'tdd-single-agent',
@@ -315,13 +315,15 @@ test('single-agent TDD keeps the RED gate and engine GREEN evidence without fals
     assert.equal(review.state, 'waiting-for-provider');
     if (review.state !== 'waiting-for-provider') return;
     assert.equal(review.implementationActor.providerId, 'codex');
-    assert.equal(review.assignment.providerId, 'claude');
+    assert.equal(review.assignment.providerId, 'codex');
+    assert.equal(review.assignment.requiredIndependence, 'session-independent');
+    assert.equal(review.assignment.achievedIndependence, 'session-independent');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('cross-agent RED schedules one provider-independent implementation reservation before launch', () => {
+test('cross-agent RED schedules one session-independent implementation reservation before launch', () => {
   const { repository } = createCrossAgentFixture('assertion');
   try {
     const session = startSession(repository, 'demo-change', '1.1');
@@ -342,19 +344,30 @@ test('cross-agent RED schedules one provider-independent implementation reservat
     assert.equal(waiting.state, 'waiting-for-provider');
     if (waiting.state !== 'waiting-for-provider') return;
     assert.equal(waiting.assignment.role, 'task-implementer');
-    assert.equal(waiting.assignment.providerId, 'claude');
+    assert.equal(waiting.assignment.providerId, 'codex');
+    assert.equal(
+      waiting.assignment.requiredIndependence,
+      'session-independent',
+    );
+    assert.equal(
+      waiting.assignment.achievedIndependence,
+      'session-independent',
+    );
     assert.equal(waiting.subject.transactionDigest, red.recordDigest);
     assert.equal(waiting.subject.sourceTree, red.red.candidateTree);
     assert.deepEqual(
       beginTaskStrategyImplementation(repository, session.sessionId),
       waiting,
     );
-    const beforeInspection = snapshotTree(runtimeRoot(repository));
+    const beforeInspection = snapshotPersistentTree(runtimeRoot(repository));
     assert.deepEqual(
       inspectTaskStrategyImplementation(repository, session.sessionId),
       waiting,
     );
-    assert.deepEqual(snapshotTree(runtimeRoot(repository)), beforeInspection);
+    assert.deepEqual(
+      snapshotPersistentTree(runtimeRoot(repository)),
+      beforeInspection,
+    );
 
     const implementationPath = path.join(repository, 'src/feature.ts');
     fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
@@ -380,7 +393,7 @@ test('cross-agent RED schedules one provider-independent implementation reservat
         assert.equal(input.request.writeAllowedPaths.length, 0);
         return {
           invocationId: waiting.invocationId,
-          providerId: 'claude',
+          providerId: input.providerId,
           purpose: 'task-implementation',
           requestDigest: input.request.requestDigest,
           semanticOutput: output,
@@ -422,12 +435,15 @@ test('cross-agent RED schedules one provider-independent implementation reservat
       fs.readFileSync(implementationPath, 'utf8'),
       'export const feature = true;\n',
     );
-    const afterImport = snapshotTree(runtimeRoot(repository));
+    const afterImport = snapshotPersistentTree(runtimeRoot(repository));
     assert.equal(
       inspectTaskStrategyImplementation(repository, session.sessionId).state,
       'patch-imported',
     );
-    assert.deepEqual(snapshotTree(runtimeRoot(repository)), afterImport);
+    assert.deepEqual(
+      snapshotPersistentTree(runtimeRoot(repository)),
+      afterImport,
+    );
 
     const resultPath = path.join(
       runtimeRoot(repository),
@@ -658,7 +674,7 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
       "throw new Error('feature behavior is not implemented');\n",
     );
 
-    const beforeStatus = snapshotTree(runtimeRoot(repository));
+    const beforeStatus = snapshotPersistentTree(runtimeRoot(repository));
     const authored = runWorkflowCli(
       repository,
       ['status', session.sessionId, '--json'],
@@ -675,7 +691,10 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
       authoredOutput.nextSteps[0]?.command,
       `pnpm workflow resume ${session.sessionId} --json`,
     );
-    assert.deepEqual(snapshotTree(runtimeRoot(repository)), beforeStatus);
+    assert.deepEqual(
+      snapshotPersistentTree(runtimeRoot(repository)),
+      beforeStatus,
+    );
 
     const first = runWorkflowCli(
       repository,
@@ -692,6 +711,12 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
     };
     assert.equal(firstOutput.result.state, 'waiting-for-provider');
     assert.match(firstOutput.result.transactionDigest, /^[0-9a-f]{64}$/);
+    const firstInspection = inspectTaskStrategyImplementation(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(firstInspection.state, 'waiting-for-provider');
+    if (firstInspection.state !== 'waiting-for-provider') return;
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
     let dispatchedInvocationId: string | null = null;
     const dispatched = dispatchPreparedTaskStrategyProvider(
@@ -726,7 +751,7 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
     assert.deepEqual(replayOutput.result, firstOutput.result);
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
 
-    const beforeWaitingStatus = snapshotTree(runtimeRoot(repository));
+    const beforeWaitingStatus = snapshotPersistentTree(runtimeRoot(repository));
     const waitingStatus = runWorkflowCli(
       repository,
       ['status', session.sessionId, '--json'],
@@ -747,7 +772,7 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
       `pnpm workflow status ${session.sessionId} --json`,
     );
     assert.deepEqual(
-      snapshotTree(runtimeRoot(repository)),
+      snapshotPersistentTree(runtimeRoot(repository)),
       beforeWaitingStatus,
     );
 
@@ -762,7 +787,7 @@ test('routine status and resume drive one durable cross-agent TDD transaction to
     completeTaskImplementationProvider(
       repository,
       firstOutput.result.invocationId,
-      'claude',
+      firstInspection.assignment.providerId,
       taskImplementationOutput(session.sessionId, red.red.candidateTree, patch),
     );
     assert.equal(
@@ -1405,7 +1430,7 @@ test('routine strategy resume leaves ordinary tasks outside Mode A ceremony', ()
     writeReadyV3ExemptChange(repository, 'demo-change');
     commitPlanningTransition(repository, 'demo-change');
     const session = startSession(repository, 'demo-change', '1.1');
-    const before = snapshotTree(runtimeRoot(repository));
+    const before = snapshotPersistentTree(runtimeRoot(repository));
 
     const resumed = runWorkflowCli(repository, [
       'resume',
@@ -1423,13 +1448,13 @@ test('routine strategy resume leaves ordinary tasks outside Mode A ceremony', ()
       output.nextSteps[0]?.command,
       `pnpm workflow check ${session.sessionId} --json`,
     );
-    assert.deepEqual(snapshotTree(runtimeRoot(repository)), before);
+    assert.deepEqual(snapshotPersistentTree(runtimeRoot(repository)), before);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('routine strategy resume exposes the existing collaboration-grant pause without partial provider state', () => {
+test('routine strategy resume schedules a fresh same-provider implementation session', () => {
   const { repository, counterPath } = createCrossAgentFixture(
     'assertion',
     'cross-agent-tdd',
@@ -1442,52 +1467,59 @@ test('routine strategy resume exposes the existing collaboration-grant pause wit
       path.join(repository, 'test/feature.test.mjs'),
       "throw new Error('feature behavior is not implemented');\n",
     );
-    const paused = runWorkflowCli(
+    const resumed = runWorkflowCli(
       repository,
       ['resume', session.sessionId, '--json'],
       { AGENT: 'codex', WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH: '1' },
     );
-    assert.equal(paused.status, 0, paused.stderr);
-    const output = JSON.parse(paused.stdout) as {
+    assert.equal(resumed.status, 0, resumed.stderr);
+    const output = JSON.parse(resumed.stdout) as {
       result: {
         state: string;
-        invocationId: null;
-        inputSchema: {
-          kind: string;
-          allowedDegradedForms: string[];
-          resumeOption: string;
+        invocationId: string;
+        assignment: {
+          providerId: string;
+          requiredIndependence: string;
+          achievedIndependence: string;
         };
       };
       nextSteps: Array<{ command: string }>;
     };
-    assert.equal(output.result.state, 'collaboration-grant-required');
-    assert.equal(output.result.invocationId, null);
-    assert.equal(
-      output.result.inputSchema.kind,
-      'collaboration-grant-selection',
+    assert.equal(output.result.state, 'waiting-for-provider');
+    assert.match(
+      output.result.invocationId,
+      /^invocation-task-implementation-/,
     );
-    assert.deepEqual(output.result.inputSchema.allowedDegradedForms, [
-      'same-provider-fresh-session',
-    ]);
-    assert.equal(output.result.inputSchema.resumeOption, '--grant <grant-id>');
+    const inspection = inspectTaskStrategyImplementation(
+      repository,
+      session.sessionId,
+    );
+    assert.equal(inspection.state, 'waiting-for-provider');
+    if (inspection.state !== 'waiting-for-provider') return;
+    assert.equal(inspection.assignment.providerId, 'codex');
+    assert.equal(
+      inspection.assignment.requiredIndependence,
+      'session-independent',
+    );
+    assert.equal(
+      inspection.assignment.achievedIndependence,
+      'session-independent',
+    );
     assert.deepEqual(
       output.nextSteps.map(({ command }) => command),
       [
         `pnpm workflow status ${session.sessionId} --json`,
-        'pnpm workflow guide --json',
+        `pnpm workflow resume ${session.sessionId} --json`,
       ],
     );
     assert.equal(fs.readFileSync(counterPath, 'utf8'), '1');
-    assert.equal(
-      inspectTaskStrategyImplementation(repository, session.sessionId).state,
-      'ready',
-    );
+    assert.equal(inspection.invocationId, output.result.invocationId);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 
-test('cross-agent implementation shortage pauses on the existing typed collaboration grant boundary', () => {
+test('cross-agent implementation uses the sole provider in a fresh session', () => {
   const { repository } = createCrossAgentFixture(
     'assertion',
     'cross-agent-tdd',
@@ -1505,19 +1537,22 @@ test('cross-agent implementation shortage pauses on the existing typed collabora
       environment: {},
     });
 
-    const paused = beginTaskStrategyImplementation(
+    const waiting = beginTaskStrategyImplementation(
       repository,
       session.sessionId,
     );
-    assert.equal(paused.state, 'collaboration-grant-required');
-    if (paused.state !== 'collaboration-grant-required') return;
+    assert.equal(waiting.state, 'waiting-for-provider');
+    if (waiting.state !== 'waiting-for-provider') return;
     assert.equal(
-      paused.inputSchema.grantRequest?.degradedForm,
-      'same-provider-fresh-session',
+      waiting.assignment.requiredIndependence,
+      'session-independent',
     );
-    assert.deepEqual(paused.inputSchema.allowedDegradedForms, [
-      'same-provider-fresh-session',
-    ]);
+    assert.equal(
+      waiting.assignment.achievedIndependence,
+      'session-independent',
+    );
+    assert.equal(waiting.assignment.providerId, 'codex');
+    assert.equal('grantId' in waiting.assignment, false);
     assert.equal(
       fs.existsSync(
         path.join(
@@ -1525,11 +1560,11 @@ test('cross-agent implementation shortage pauses on the existing typed collabora
           'investigations/refs/task-strategy-implementations',
           session.sessionId,
           'subjects',
-          paused.subject.subjectDigest,
+          waiting.subject.subjectDigest,
           'reservation.json',
         ),
       ),
-      false,
+      true,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -2020,329 +2055,6 @@ test('durable consumed caller grant resumes the exact patch after interruption',
       repository,
       session.sessionId,
       exactInput,
-    );
-    assert.equal(resumed.state, 'patch-imported');
-    assert.equal(
-      fs.readFileSync(implementationPath, 'utf8'),
-      'export const feature = true;\n',
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('same-provider shortage resumes only through the existing signed collaboration grant', () => {
-  const { repository, counterPath } = createCrossAgentFixture(
-    'assertion',
-    'cross-agent-tdd',
-    { codex: true, claude: false },
-    true,
-  );
-  const policy = JSON.parse(
-    fs.readFileSync(
-      path.join(repository, 'workflow/maintainer-policy.json'),
-      'utf8',
-    ),
-  ) as { trustedSigners: Array<{ identity: string }> };
-  const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
-  try {
-    const session = startSession(repository, 'demo-change', '1.1');
-    fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
-    fs.writeFileSync(
-      path.join(repository, 'test/feature.test.mjs'),
-      "throw new Error('feature behavior is not implemented');\n",
-    );
-    sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
-    const paused = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-    );
-    assert.equal(paused.state, 'collaboration-grant-required');
-    if (paused.state !== 'collaboration-grant-required') return;
-    const request = paused.inputSchema
-      .grantRequest as CollaborationGrantRequest;
-    const issued = issueCollaborationGrant(repository, request, { signer });
-
-    const waiting = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-      {
-        collaborationGrant: {
-          grantId: issued.grantId,
-          verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-        },
-      },
-    );
-    assert.equal(waiting.state, 'waiting-for-provider');
-    if (waiting.state !== 'waiting-for-provider') return;
-    assert.equal(waiting.assignment.providerId, 'codex');
-    assert.equal(
-      waiting.assignment.achievedIndependence,
-      'session-independent',
-    );
-    assert.equal('grantId' in waiting.assignment, true);
-
-    const red = inspectTaskStrategyTransaction(repository, session.sessionId)!;
-    const implementationPath = path.join(repository, 'src/feature.ts');
-    fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
-    fs.writeFileSync(implementationPath, 'export const feature = true;\n');
-    const patch = diffAgainstTree(repository, red.red.candidateTree, [
-      'src/feature.ts',
-    ]);
-    fs.rmSync(implementationPath);
-    const output = {
-      schemaVersion: 1 as const,
-      kind: 'task-strategy-patch-output.v1' as const,
-      sessionId: session.sessionId,
-      sourceTree: red.red.candidateTree,
-      patchBase64: patch.toString('base64'),
-      patchDigest: sha256Buffer(patch),
-    };
-    const completed = runProviderWorker(repository, waiting.invocationId, {
-      runner(input) {
-        return {
-          invocationId: waiting.invocationId,
-          providerId: 'codex',
-          purpose: 'task-implementation',
-          requestDigest: input.request.requestDigest,
-          semanticOutput: output,
-          semanticOutputDigest: sha256Buffer(
-            Buffer.from(canonicalJson(output)),
-          ),
-          assurance: 'unchanged-governed-projection',
-          projection: {
-            unchanged: true,
-            changedCategories: [],
-            beforeDigest: '8'.repeat(64),
-            afterDigest: '8'.repeat(64),
-          },
-          sameUserProcessConfined: false,
-          residuals: [...PROVIDER_RUNNER_RESIDUALS],
-          executable: builtInProviderExecutableIdentityForTest(
-            input.providerId,
-          ),
-          elapsedMs: 8,
-          providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
-            input.providerId,
-          ),
-        };
-      },
-    });
-    assert.equal(completed.state, 'succeeded');
-
-    const imported = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-      {
-        collaborationGrant: {
-          grantId: issued.grantId,
-          verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-        },
-      },
-    );
-    assert.equal(imported.state, 'patch-imported');
-    assert.equal(
-      inspectCollaborationGrants(
-        fs.realpathSync(path.join(repository, '.git')),
-        issued.grantId,
-      )[0]?.state,
-      'consumed',
-    );
-    assert.equal(
-      fs.readFileSync(implementationPath, 'utf8'),
-      'export const feature = true;\n',
-    );
-    const checked = checkSession(repository, session.sessionId, {
-      environment: { AGENT: 'codex' },
-    });
-    assert.equal(checked.passed, true);
-    assert.equal(fs.readFileSync(counterPath, 'utf8'), '2');
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('grant-backed implementation validates frozen tests before consuming the grant', () => {
-  const { repository } = createCrossAgentFixture(
-    'assertion',
-    'cross-agent-tdd',
-    { codex: true, claude: false },
-    true,
-  );
-  const policy = JSON.parse(
-    fs.readFileSync(
-      path.join(repository, 'workflow/maintainer-policy.json'),
-      'utf8',
-    ),
-  ) as { trustedSigners: Array<{ identity: string }> };
-  const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
-  try {
-    const session = startSession(repository, 'demo-change', '1.1');
-    const testPath = path.join(repository, 'test/feature.test.mjs');
-    const originalTest =
-      "throw new Error('feature behavior is not implemented');\n";
-    fs.mkdirSync(path.dirname(testPath), { recursive: true });
-    fs.writeFileSync(testPath, originalTest);
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
-    const paused = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-    );
-    assert.equal(paused.state, 'collaboration-grant-required');
-    if (paused.state !== 'collaboration-grant-required') return;
-    const issued = issueCollaborationGrant(
-      repository,
-      paused.inputSchema.grantRequest as CollaborationGrantRequest,
-      { signer },
-    );
-    const waiting = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-      {
-        collaborationGrant: {
-          grantId: issued.grantId,
-          verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-        },
-      },
-    );
-    assert.equal(waiting.state, 'waiting-for-provider');
-    if (waiting.state !== 'waiting-for-provider') return;
-
-    fs.writeFileSync(testPath, "throw new Error('weakened');\n");
-    const patch = diffAgainstTree(repository, red.red.candidateTree, [
-      'test/feature.test.mjs',
-    ]);
-    fs.writeFileSync(testPath, originalTest);
-    const output = taskImplementationOutput(
-      session.sessionId,
-      red.red.candidateTree,
-      patch,
-    );
-    completeTaskImplementationProvider(
-      repository,
-      waiting.invocationId,
-      'codex',
-      output,
-    );
-
-    assert.throws(
-      () =>
-        beginTaskStrategyImplementation(repository, session.sessionId, {
-          collaborationGrant: {
-            grantId: issued.grantId,
-            verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-          },
-        }),
-      hasCode('TASK_STRATEGY_PATCH_FROZEN_PATH'),
-    );
-    assert.equal(
-      inspectCollaborationGrants(
-        fs.realpathSync(path.join(repository, '.git')),
-        issued.grantId,
-      )[0]?.state,
-      'reserved',
-    );
-    assert.equal(fs.readFileSync(testPath, 'utf8'), originalTest);
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
-
-test('durable consumed implementation grant resumes exact patch import after interruption', () => {
-  const { repository } = createCrossAgentFixture(
-    'assertion',
-    'cross-agent-tdd',
-    { codex: true, claude: false },
-    true,
-  );
-  const policy = JSON.parse(
-    fs.readFileSync(
-      path.join(repository, 'workflow/maintainer-policy.json'),
-      'utf8',
-    ),
-  ) as { trustedSigners: Array<{ identity: string }> };
-  const signer = collaborationSigner(policy.trustedSigners[0]!.identity);
-  try {
-    const session = startSession(repository, 'demo-change', '1.1');
-    fs.mkdirSync(path.join(repository, 'test'), { recursive: true });
-    fs.writeFileSync(
-      path.join(repository, 'test/feature.test.mjs'),
-      "throw new Error('feature behavior is not implemented');\n",
-    );
-    const red = sealTaskStrategyRed(repository, session.sessionId, {
-      explicitActor: 'codex',
-      environment: {},
-    });
-    const paused = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-    );
-    assert.equal(paused.state, 'collaboration-grant-required');
-    if (paused.state !== 'collaboration-grant-required') return;
-    const issued = issueCollaborationGrant(
-      repository,
-      paused.inputSchema.grantRequest as CollaborationGrantRequest,
-      { signer },
-    );
-    const waiting = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
-      {
-        collaborationGrant: {
-          grantId: issued.grantId,
-          verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-        },
-      },
-    );
-    assert.equal(waiting.state, 'waiting-for-provider');
-    if (waiting.state !== 'waiting-for-provider') return;
-    const implementationPath = path.join(repository, 'src/feature.ts');
-    fs.mkdirSync(path.dirname(implementationPath), { recursive: true });
-    fs.writeFileSync(implementationPath, 'export const feature = true;\n');
-    const patch = diffAgainstTree(repository, red.red.candidateTree, [
-      'src/feature.ts',
-    ]);
-    fs.rmSync(implementationPath);
-    completeTaskImplementationProvider(
-      repository,
-      waiting.invocationId,
-      'codex',
-      taskImplementationOutput(session.sessionId, red.red.candidateTree, patch),
-    );
-
-    assert.throws(
-      () =>
-        beginTaskStrategyImplementation(repository, session.sessionId, {
-          collaborationGrant: {
-            grantId: issued.grantId,
-            verifier: authoritativeCollaborationGrantVerifierForTest(signer),
-          },
-          testCrashAfter: 'provider-result-persisted',
-        }),
-      /provider result persistence/,
-    );
-    assert.equal(fs.existsSync(implementationPath), false);
-    assert.equal(
-      inspectCollaborationGrants(
-        fs.realpathSync(path.join(repository, '.git')),
-        issued.grantId,
-      )[0]?.state,
-      'consumed',
-    );
-    assert.equal(
-      inspectTaskStrategyImplementation(repository, session.sessionId).state,
-      'provider-succeeded-awaiting-import',
-    );
-
-    const resumed = beginTaskStrategyImplementation(
-      repository,
-      session.sessionId,
     );
     assert.equal(resumed.state, 'patch-imported');
     assert.equal(
@@ -3230,7 +2942,7 @@ function createCrossAgentFixture(
         ? {
             ...common,
             strategy,
-            requiredImplementerIndependence: 'provider-independent',
+            requiredImplementerIndependence: 'session-independent',
           }
         : {
             ...common,
@@ -3520,4 +3232,12 @@ function snapshotTree(root: string): Array<{
   };
   visit(root);
   return entries;
+}
+
+function snapshotPersistentTree(root: string): ReturnType<typeof snapshotTree> {
+  return snapshotTree(root).map((entry) =>
+    entry.kind === 'directory' && path.basename(entry.path) === 'locks'
+      ? { ...entry, mtimeMs: 0 }
+      : entry,
+  );
 }

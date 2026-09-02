@@ -781,14 +781,14 @@ test('provider availability pilot durably verifies a credential-safe ordinary Co
         {
           providerId: 'codex',
           state: 'succeeded',
-          role: 'blind-surveyor',
+          role: 'plan-reviewer',
           achievedIndependence: 'provider-independent',
           grantUsed: false,
         },
         {
           providerId: 'claude',
           state: 'succeeded',
-          role: 'blind-surveyor',
+          role: 'plan-reviewer',
           achievedIndependence: 'provider-independent',
           grantUsed: false,
         },

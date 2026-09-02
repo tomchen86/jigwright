@@ -131,7 +131,7 @@ function writeRolePlan(repository: string, plan: AgentRolePlanV2): string {
   return destination;
 }
 
-test('current central floor resolves an exact provider-independent actual pair and emits four bound digests', () => {
+test('current central floor records stronger provider independence and emits four bound digests', () => {
   const resolution = resolveRoleTopologyV1({
     changeId: CHANGE_ID,
     planningGeneration: PLANNING_GENERATION,
@@ -160,7 +160,7 @@ test('current central floor resolves an exact provider-independent actual pair a
   assert.deepEqual(resolution.actualRolePairs, [
     {
       pair: 'author-reviewer',
-      required: 'provider-independent',
+      required: 'session-independent',
       achieved: 'provider-independent',
       left: resolution.actualPlacements[0],
       right: resolution.actualPlacements[1],
@@ -182,7 +182,7 @@ test('current central floor resolves an exact provider-independent actual pair a
   }
 });
 
-test('resolution digests and exact grant pairs are directly compatible with role-context binding fields', () => {
+test('session-independent resolution digests are directly compatible with role-context binding fields', () => {
   const resolution = resolveRoleTopologyV1({
     changeId: CHANGE_ID,
     planningGeneration: PLANNING_GENERATION,
@@ -209,8 +209,8 @@ test('resolution digests and exact grant pairs are directly compatible with role
     ],
   });
 
-  assert.equal(resolution.disposition, 'exact-grant-required');
-  assert.deepEqual(resolution.exactGrantRolePairs, ['author-reviewer']);
+  assert.equal(resolution.disposition, 'satisfied');
+  assert.deepEqual(resolution.exactGrantRolePairs, []);
   assert.equal(resolution.centralRoleConfigurationDigest.length, 64);
   assert.equal(resolution.changeOverrideDigest.length, 64);
   assert.equal(resolution.providerRegistryDigest.length, 64);
@@ -228,12 +228,12 @@ test('resolution digests and exact grant pairs are directly compatible with role
       changeOverrideDigest: resolution.changeOverrideDigest,
       providerRegistryDigest: resolution.providerRegistryDigest,
       eligibilityPolicyDigest: resolution.eligibilityPolicyDigest,
-      rolePairs: ['author-reviewer'],
+      rolePairs: [],
     },
   );
 });
 
-test('logical aliases in one provider family are not provider-independent', () => {
+test('logical aliases in one provider family satisfy the ordinary fresh-session floor', () => {
   const resolution = resolveRoleTopologyV1({
     changeId: CHANGE_ID,
     planningGeneration: PLANNING_GENERATION,
@@ -278,8 +278,8 @@ test('logical aliases in one provider family are not provider-independent', () =
   });
 
   assert.equal(resolution.actualRolePairs[0]?.achieved, 'session-independent');
-  assert.deepEqual(resolution.exactGrantRolePairs, ['author-reviewer']);
-  assert.equal(resolution.disposition, 'exact-grant-required');
+  assert.deepEqual(resolution.exactGrantRolePairs, []);
+  assert.equal(resolution.disposition, 'satisfied');
 });
 
 test('application topology bridge has no adapter or runtime value imports', () => {
@@ -549,7 +549,7 @@ test('a policy-disabled provider cannot form an admitted actual topology', () =>
   );
 });
 
-test('plan-review resolver uses its required snapshot port and returns the exact active grant pair', () => {
+test('plan-review resolver uses its required snapshot port and accepts a fresh same-provider session', () => {
   const providerRegistry = registry(['claude', 'codex']);
   let changeOverride: AgentRolePlanV2 | null = null;
   const requests: Parameters<
@@ -623,8 +623,8 @@ test('plan-review resolver uses its required snapshot port and returns the exact
     },
     dependencies,
   );
-  assert.equal(weakenedResolution.disposition, 'exact-grant-required');
-  assert.deepEqual(weakenedResolution.exactGrantRolePairs, ['author-reviewer']);
+  assert.equal(weakenedResolution.disposition, 'satisfied');
+  assert.deepEqual(weakenedResolution.exactGrantRolePairs, []);
   assert.equal(
     weakenedResolution.actualRolePairs[0]?.achieved,
     'session-independent',
@@ -776,7 +776,7 @@ test('production snapshot refuses cross-file role policy drift', () => {
   }
 });
 
-test('production CLI injects the topology snapshot port into start and resume', () => {
+test('production CLI injects the topology snapshot port into start, resume, and immediate intake', () => {
   const source = fs.readFileSync(
     new URL('../src/cli.ts', import.meta.url),
     'utf8',
@@ -789,6 +789,6 @@ test('production CLI injects the topology snapshot port into start and resume', 
     source.match(
       /roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu,
     )?.length,
-    2,
+    3,
   );
 });

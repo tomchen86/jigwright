@@ -81,7 +81,7 @@ export const INVESTIGATION_MANIFEST_V3_KIND =
   'manifest-first-investigation' as const;
 
 export type InvestigationV3RoleResult = {
-  role: 'blind-surveyor' | 'investigation-reviewer';
+  role: 'reviewer-pre-anchor' | 'investigation-reviewer';
   targetDigest: string;
   providerId: string | null;
   sessionId: string | null;
@@ -828,10 +828,12 @@ function buildOrdinaryApplicability(
   const investigationRoleResults = normalizeRoleResults(
     state.ordinary.investigationRoleResults,
   );
-  if (!investigationRoleResults.some(({ role }) => role === 'blind-surveyor')) {
+  if (
+    !investigationRoleResults.some(({ role }) => role === 'reviewer-pre-anchor')
+  ) {
     throw new ManifestValidationError(
       'SEMANTIC_COMPLETENESS_FAILURE',
-      'Ordinary investigation requires an admitted blind-surveyor result.',
+      'Ordinary investigation requires an admitted Reviewer pre-anchor result.',
     );
   }
   const whyOverlays = normalizeWhyOverlays(state.ordinary.whyOverlays);
@@ -1397,7 +1399,7 @@ function normalizeRoleResults(
       'roleContextSharingUse',
     ]);
     if (
-      record.role !== 'blind-surveyor' &&
+      record.role !== 'reviewer-pre-anchor' &&
       record.role !== 'investigation-reviewer'
     ) {
       throw unrepresentable('Investigation role is not investigation-owned.');

@@ -127,9 +127,9 @@ export type ResolveRoleTopologyInputV1 = Readonly<{
 }>;
 
 /**
- * The current landed scheduler requires provider independence for every
- * ordinary Author/Builder/Reviewer boundary. This code-owned value records that
- * behavior as the compatibility floor; a per-change plan cannot mutate it.
+ * The ordinary Author/Builder/Reviewer floor requires distinct sessions. A
+ * per-change plan may strengthen a pair to provider independence, but cannot
+ * lower the central floor.
  */
 export const CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1 = deepFreeze({
   schemaVersion: 1 as const,
@@ -137,15 +137,15 @@ export const CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1 = deepFreeze({
   pairwiseRequirements: [
     {
       pair: 'author-builder' as const,
-      required: 'provider-independent' as const,
+      required: 'session-independent' as const,
     },
     {
       pair: 'author-reviewer' as const,
-      required: 'provider-independent' as const,
+      required: 'session-independent' as const,
     },
     {
       pair: 'builder-reviewer' as const,
-      required: 'provider-independent' as const,
+      required: 'session-independent' as const,
     },
   ],
 });
@@ -227,6 +227,9 @@ export function resolveRoleTopologyV1(
   );
   const actualRolePairs: ActualRolePairV1[] = [];
   const exactGrantRolePairs: AgentRolePair[] = [];
+  const grantReferences = Object.freeze([
+    ...(changeOverride?.grantReferences ?? []),
+  ]);
 
   for (const pair of ROLE_PAIR_ORDER) {
     const [leftRole, rightRole] = ROLE_PAIR_MEMBERS[pair];
@@ -240,7 +243,13 @@ export function resolveRoleTopologyV1(
       right,
       providerFamilyByLogicalId,
     );
-    if (INDEPENDENCE_RANK[achieved] < INDEPENDENCE_RANK[centralRequired]) {
+    const belowCentralFloor =
+      INDEPENDENCE_RANK[achieved] < INDEPENDENCE_RANK[centralRequired];
+    const belowStrengthenedOverride =
+      INDEPENDENCE_RANK[achieved] < INDEPENDENCE_RANK[required] &&
+      overrideByPair.has(pair) &&
+      grantReferences.length > 0;
+    if (belowCentralFloor || belowStrengthenedOverride) {
       exactGrantRolePairs.push(pair);
     }
     actualRolePairs.push(
@@ -256,17 +265,9 @@ export function resolveRoleTopologyV1(
     );
   }
 
-  const grantReferences = Object.freeze([
-    ...(changeOverride?.grantReferences ?? []),
-  ]);
   const grantPairsAreExplicitlyAllowed = exactGrantRolePairs.every((pair) => {
     const overrideRequired = overrideByPair.get(pair);
-    const actual = actualRolePairs.find((entry) => entry.pair === pair);
-    return (
-      overrideRequired !== undefined &&
-      actual !== undefined &&
-      INDEPENDENCE_RANK[actual.achieved] >= INDEPENDENCE_RANK[overrideRequired]
-    );
+    return overrideRequired !== undefined;
   });
   const explicitEligibility: ExplicitRoleTopologyEligibilityV1 =
     exactGrantRolePairs.length === 0
@@ -289,11 +290,12 @@ export function resolveRoleTopologyV1(
   const hasTopologyMismatch = actualRolePairs.some(
     ({ meetsOrExceedsConfiguredTopology }) => !meetsOrExceedsConfiguredTopology,
   );
-  const disposition = hasTopologyMismatch
-    ? ('topology-unsatisfied' as const)
-    : exactGrantRolePairs.length > 0
+  const disposition =
+    exactGrantRolePairs.length > 0
       ? ('exact-grant-required' as const)
-      : ('satisfied' as const);
+      : hasTopologyMismatch
+        ? ('topology-unsatisfied' as const)
+        : ('satisfied' as const);
 
   return deepFreeze({
     schemaVersion: 1 as const,
