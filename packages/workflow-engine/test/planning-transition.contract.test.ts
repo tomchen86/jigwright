@@ -91,6 +91,47 @@ test('planning paths accept only the exact named OpenSpec planning grammar', () 
   }
 });
 
+test('planning paths admit only the exact Source object cited by the current origin', () => {
+  const sourceRef = `SRC-${'a'.repeat(64)}` as const;
+  const sourcePath = `workflow/source-ledger/objects/sha256/aa/${'a'.repeat(64)}.json`;
+  assert.doesNotThrow(() =>
+    assertPlanningPaths(
+      'openspec/changes',
+      'source-bound-change',
+      ['openspec/changes/source-bound-change/origin.json', sourcePath],
+      [],
+      'jigwright',
+      'jigwright',
+      [sourceRef],
+    ),
+  );
+  assert.throws(
+    () =>
+      assertPlanningPaths(
+        'openspec/changes',
+        'source-bound-change',
+        [sourcePath],
+        [],
+        'jigwright',
+        'jigwright',
+      ),
+    (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
+  );
+  assert.throws(
+    () =>
+      assertPlanningPaths(
+        'openspec/changes',
+        'source-bound-change',
+        [`workflow/source-ledger/objects/sha256/bb/${'b'.repeat(64)}.json`],
+        [],
+        'jigwright',
+        'jigwright',
+        [sourceRef],
+      ),
+    (error) => isWorkflowError(error, 'PLANNING_PATHS_INVALID'),
+  );
+});
+
 test('planning paths select current or non-current grammar explicitly', () => {
   const investigationPath = 'openspec/changes/demo-change/investigation.json';
   const v2Paths = [

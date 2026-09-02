@@ -19,6 +19,7 @@ import {
 } from '../repository-transaction/git.ts';
 import { assertChangeId } from './paths.ts';
 import { assertPlanningPaths } from '../../modules/source/planning-paths.ts';
+import { readCurrentChangeOrigin } from '../../modules/governance-intake/work-registry.ts';
 import {
   runtimePaths,
   withRepositoryLifecycleOperation,
@@ -319,6 +320,8 @@ function validateReusableWorkspace(input: {
         [],
         currentSchemaName,
         currentSchemaName,
+        readCurrentChangeOrigin(input.worktreePath, input.changeId)
+          ?.sourceRefs ?? [],
       );
     } catch {
       throw planningWorkspaceError(

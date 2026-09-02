@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -55,6 +56,7 @@ import {
 
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;
+  afterNowSourceCaptured?: () => void;
   afterFindingConversionWorkItemPersisted?: () => void;
   afterLaterSourceCaptured?: () => void;
   resolveSession?: (
@@ -62,15 +64,83 @@ export type GovernanceIntakeCliDependencies = Readonly<{
     sessionId: string,
   ) => GovernanceFindingContextV1;
   resolveRuntimeRoot?: (cwd: string) => string;
+  startImmediateChange?: (
+    cwd: string,
+    changeId: string,
+    intent: Readonly<{
+      schemaVersion: 1;
+      summary: string;
+      sourceRefs: readonly `SRC-${string}`[];
+      explicitPaths: readonly string[];
+      explicitSymbols: readonly string[];
+      explicitConfigKeys: readonly string[];
+      renamePairs: readonly Readonly<{ from: string; to: string }>[];
+    }>,
+    immediateSource: Readonly<{
+      sourceId: `SRC-${string}`;
+      exactText: string;
+    }>,
+  ) => unknown;
 }>;
 
 export function dispatchGovernanceIntakeCommand(
-  command: 'source' | 'finding' | 'work-item' | 'later' | 'attach',
+  command: 'source' | 'finding' | 'work-item' | 'now' | 'later' | 'attach',
   args: string[],
   cwd: string,
   dependencies: GovernanceIntakeCliDependencies = {},
 ): Record<string, unknown> {
   try {
+    if (command === 'now' && args.length === 1) {
+      const exactText = args[0]!;
+      const existing = listGovernanceSources(cwd)
+        .filter(
+          (source) =>
+            source.semanticAuthor === 'maintainer' &&
+            source.supersedes === null &&
+            source.text === exactText,
+        )
+        .sort((left, right) => left.id.localeCompare(right.id))[0];
+      const captured =
+        existing === undefined
+          ? captureGovernanceSource(cwd, {
+              semanticAuthor: 'maintainer',
+              capturedBy: 'jigwright-intake',
+              capturedAt: (
+                dependencies.now ?? (() => new Date().toISOString())
+              )(),
+              contextRef: 'direct-human:workflow-cli',
+              text: exactText,
+              supersedes: null,
+            })
+          : null;
+      if (captured !== null) dependencies.afterNowSourceCaptured?.();
+      const source = captured?.source ?? existing!;
+      const changeId = `source-${crypto.createHash('sha256').update(exactText).digest('hex')}`;
+      const intent = {
+        schemaVersion: 1 as const,
+        summary: `Implement the immediate change cited by ${source.id}.`,
+        sourceRefs: [source.id],
+        explicitPaths: [],
+        explicitSymbols: [],
+        explicitConfigKeys: [],
+        renamePairs: [],
+      };
+      if (dependencies.startImmediateChange === undefined) {
+        throw intakeUsage('Immediate change start dependency is unavailable.');
+      }
+      const propose = dependencies.startImmediateChange(cwd, changeId, intent, {
+        sourceId: source.id,
+        exactText,
+      });
+      return {
+        action: 'now',
+        originalText: exactText,
+        sourceId: source.id,
+        changeId,
+        propose,
+        nextSteps: immediateChangeNextSteps(changeId, propose),
+      };
+    }
     if (command === 'later' && args.length === 1) {
       const originalText = args[0]!;
       const matches = findWorkItemsByExactSourceText(cwd, originalText).filter(
@@ -390,7 +460,11 @@ export function dispatchGovernanceIntakeCommand(
       validateWorkRegistryProjections(cwd);
       return { action: 'validate', ...registry };
     }
-    if (command === 'finding' && args.length === 2 && args[0] === 'convert') {
+    if (
+      command === 'finding' &&
+      (args.length === 2 || (args.length === 3 && args[2] === '--now')) &&
+      args[0] === 'convert'
+    ) {
       const runtimeRoot = (
         dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
@@ -461,7 +535,7 @@ export function dispatchGovernanceIntakeCommand(
         ensured.item.id,
         dependencies.now,
       );
-      return {
+      const result = {
         action: 'convert',
         sourceId: source.source.id,
         workItemId: ensured.item.id,
@@ -469,6 +543,35 @@ export function dispatchGovernanceIntakeCommand(
         finding: converted.finding,
         created: converted.created,
         nextSteps: [`pnpm workflow work-item show ${ensured.item.id} --json`],
+      };
+      if (args[2] !== '--now') return result;
+      if (dependencies.startImmediateChange === undefined) {
+        throw intakeUsage('Immediate change start dependency is unavailable.');
+      }
+      const changeId = `source-${crypto.createHash('sha256').update(finding.text).digest('hex')}`;
+      const propose = dependencies.startImmediateChange(
+        cwd,
+        changeId,
+        {
+          schemaVersion: 1,
+          summary: `Implement the immediate change cited by ${source.source.id}.`,
+          sourceRefs: [source.source.id],
+          explicitPaths: [],
+          explicitSymbols: [],
+          explicitConfigKeys: [],
+          renamePairs: [],
+        },
+        { sourceId: source.source.id, exactText: finding.text },
+      );
+      return {
+        ...result,
+        originalText: finding.text,
+        immediateChange: {
+          sourceId: source.source.id,
+          changeId,
+          propose,
+        },
+        nextSteps: immediateChangeNextSteps(changeId, propose),
       };
     }
     if (
@@ -564,10 +667,25 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright now <original-text> | jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> [--now] | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 
+function immediateChangeNextSteps(
+  _changeId: string,
+  propose: unknown,
+): string[] {
+  if (
+    isRecord(propose) &&
+    isRecord(propose.investigation) &&
+    typeof propose.investigation.investigationId === 'string'
+  ) {
+    return [
+      `pnpm workflow status ${propose.investigation.investigationId} --json`,
+    ];
+  }
+  return ['pnpm workflow now <original-text> --json'];
+}
 function resolveActiveSession(
   cwd: string,
   sessionId: string,

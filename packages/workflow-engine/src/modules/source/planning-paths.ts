@@ -7,6 +7,7 @@ import {
   PlanningProviderBindingError,
   planningProviderBindingPath as corePlanningProviderBindingPath,
 } from '@jigwright/core/planning-provider-binding';
+import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
@@ -30,9 +31,13 @@ export function assertPlanningPaths(
   deletedPaths: readonly string[] = [],
   schemaName: string,
   currentSchemaName: string,
+  citedSourceRefs: readonly `SRC-${string}`[] = [],
 ): void {
+  const sourceObjectPaths = planningSourceObjectPaths(citedSourceRefs);
   const additionalExactPaths =
-    changeId === 'archive' ? [] : [planningProviderBindingPath(changeId)];
+    changeId === 'archive'
+      ? []
+      : [planningProviderBindingPath(changeId), ...sourceObjectPaths];
   try {
     assertOpenSpecPlanningPaths({
       changeRoot,
@@ -47,6 +52,26 @@ export function assertPlanningPaths(
     if (!(error instanceof OpenSpecPlanningPathError)) throw error;
     throw mapOpenSpecPlanningPathError(error, schemaName);
   }
+}
+
+export function planningSourceObjectPaths(
+  citedSourceRefs: readonly `SRC-${string}`[],
+): string[] {
+  if (
+    JSON.stringify(citedSourceRefs) !==
+      JSON.stringify([...new Set(citedSourceRefs)].sort()) ||
+    citedSourceRefs.some((sourceRef) => !/^SRC-[0-9a-f]{64}$/.test(sourceRef))
+  ) {
+    throw workflowError(
+      'PLANNING_PATHS_INVALID',
+      'Planning Source citations must be identity-valid, canonical, and unique.',
+      ExitCode.guard,
+    );
+  }
+  return citedSourceRefs.map((sourceRef) => {
+    const digest = sourceRef.slice('SRC-'.length);
+    return `${GOVERNANCE_SOURCE_LEDGER_ROOT}/${digest.slice(0, 2)}/${digest}.json`;
+  });
 }
 
 function mapOpenSpecPlanningPathError(

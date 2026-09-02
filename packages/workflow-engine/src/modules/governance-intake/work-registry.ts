@@ -1533,15 +1533,22 @@ export function validateCurrentChangeOrigin(
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
-  withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
-    validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId),
+  readCurrentChangeOrigin(repositoryRoot, requestedChangeId);
+}
+
+export function readCurrentChangeOrigin(
+  repositoryRoot: string,
+  requestedChangeId: string,
+): ChangeOriginV1 | null {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
+    readCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId),
   );
 }
 
-function validateCurrentChangeOriginUnlocked(
+function readCurrentChangeOriginUnlocked(
   repositoryRoot: string,
   requestedChangeId: string,
-): void {
+): ChangeOriginV1 | null {
   const configuration = repositoryWorkRegistryConfiguration(repositoryRoot);
   const changeId = changeIdentity(requestedChangeId);
   const originPath = path.join(
@@ -1549,8 +1556,11 @@ function validateCurrentChangeOriginUnlocked(
     changeId,
     'origin.json',
   );
-  if (readOptionalPlainFile(originPath) === null) return;
+  const source = readOptionalPlainFile(originPath);
+  if (source === null) return null;
+  const origin = parseOrigin(source);
   validateWorkRegistry(repositoryRoot);
+  return origin;
 }
 
 function parseWorkItem(value: unknown): WorkItemV1 {

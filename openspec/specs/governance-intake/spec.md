@@ -340,6 +340,34 @@ pending Findings across the repository's private runtime.
 - **THEN** listing and disposition fail closed without choosing one record
 - **AND** no Finding or disposition byte is repaired, deleted, or rewritten
 
+### Requirement: Intent-Level Now Starts One Source-Bound Change
+
+Under D-019, `now <original-text>` SHALL capture or deterministically reuse one
+direct-human Governance Source and start the change named
+`source-<sha256(exact-original-text)>` without a JSON intent envelope. The
+normalized propose intent SHALL cite that exact Source ID and SHALL NOT copy the
+original wording. The owned planning worktree SHALL contain the same canonical
+Source object and an exact `origin.json` citation before proposal work proceeds.
+Only Source-object paths cited by that validated current origin may cross the
+planning-path boundary. Retry after Source capture or after a source-only
+workspace bootstrap SHALL converge without a second Source, change, origin, or
+planning workspace. Every result SHALL echo the original text, Source ID,
+change ID, current propose state, and one truthful next step; actor-resolution
+output MUST NOT pretend an investigation already exists.
+
+#### Scenario: One immediate sentence starts planning
+
+- **WHEN** a caller invokes `now <original-text>` with one resolved current actor
+- **THEN** one stable change and planning workspace cite the captured Source through `origin.json`
+- **AND** the Source is the only planning path outside the named change tree
+- **AND** retry returns the same Source and change identities without copying the original text into the intent
+
+#### Scenario: Capture or workspace bootstrap stops early
+
+- **WHEN** immediate intake stops after Source capture or after copying the Source before origin publication
+- **THEN** retry rechecks the exact Source text and stable change identity
+- **AND** it completes the exact origin citation without accepting unrelated planning paths
+
 ### Requirement: Intent-Level Later Surface Is One Command
 
 Under D-019, `later <original-text>` SHALL capture one direct-human Governance
@@ -394,7 +422,11 @@ the same item and then publish the receipt. A different record at that derived
 identity SHALL fail closed without publishing or rewriting a receipt, Finding,
 or Work Item. Any exact Source already captured before detecting that
 collision remains a truthful append-only record and does not authorize a
-relation of its own.
+relation of its own. `finding convert <finding-id> --now` SHALL first complete
+that same durable inbox item and converted receipt, then start the stable
+immediate change from the already-created agent Source. The converted item
+SHALL remain inbox; the immediate origin SHALL cite that same Source ID, and no
+maintainer-authored duplicate of the Finding text may be created.
 
 #### Scenario: Conversion resumes after its item is durable
 
@@ -402,6 +434,13 @@ relation of its own.
 - **THEN** default Finding listing still reports the Finding as pending
 - **AND** retry reuses byte-identical Source and Work Item records and publishes one converted receipt targeting that item
 - **AND** no second Work Item, migration record, Grant, or Git ref is created
+
+#### Scenario: Converted Finding is escalated immediately
+
+- **WHEN** `finding convert <finding-id> --now` names one pending or exactly converted Finding
+- **THEN** conversion first publishes or reuses its deterministic inbox item and receipt
+- **AND** the stable immediate change cites the conversion's same agent Source while the Work Item remains inbox
+- **AND** the result echoes the original Finding text and one truthful propose next step
 
 ### Requirement: Finding Link Is a Receipt-Only Relation
 

@@ -24,8 +24,10 @@ import { assertPlanningTaskHistory } from '../../../../modules/planning-provider
 import { normalizeChangedPath } from '../../../../runtime/session-workspace/paths.ts';
 import {
   assertPlanningPaths,
+  planningSourceObjectPaths,
   requiredPlanningArtifactPaths,
 } from '../../../../modules/source/planning-paths.ts';
+import { readCurrentChangeOrigin } from '../../../../modules/governance-intake/work-registry.ts';
 import { loadStableValidatedChangeContract } from '../../../../composition-root/validated-contract-context.ts';
 import type { PlanningTransitionReport } from '../../../../runtime/storage-journal/planning-report.ts';
 import type { ResolvedPlanningProviderBinding } from '../../../../modules/planning-provider/planning-provider-binding.ts';
@@ -105,6 +107,8 @@ export function inspectPlanningTransition(
   const schemaName = readManagedSchemaName(repositoryRoot, metadataPath);
   const currentSchemaName =
     loadRepositoryPlanningPolicy(repositoryRoot).currentSchemaName;
+  const sourceRefs =
+    readCurrentChangeOrigin(repositoryRoot, changeId)?.sourceRefs ?? [];
   assertPlanningPaths(
     changeRoot,
     changeId,
@@ -112,6 +116,7 @@ export function inspectPlanningTransition(
     deletedPaths,
     schemaName,
     currentSchemaName,
+    sourceRefs,
   );
   const currentPaths = assertPlanningArtifactTree(
     repositoryRoot,
@@ -147,8 +152,15 @@ export function inspectPlanningTransition(
   if (
     transitionKind === 'introduction' &&
     (baselinePaths.length > 0 ||
-      JSON.stringify([...currentPaths, bindingPath].sort()) !==
-        JSON.stringify(changedPaths))
+      JSON.stringify(
+        [
+          ...currentPaths,
+          bindingPath,
+          ...planningSourceObjectPaths(sourceRefs).filter((sourcePath) =>
+            changedPaths.includes(sourcePath),
+          ),
+        ].sort(),
+      ) !== JSON.stringify(changedPaths))
   ) {
     throw workflowError(
       'PLANNING_INTRODUCTION_INVALID',
@@ -218,6 +230,7 @@ function assertPlanningArtifactTree(
     [],
     schemaName,
     currentSchemaName,
+    readCurrentChangeOrigin(repositoryRoot, changeId)?.sourceRefs ?? [],
   );
   const required = requiredPlanningArtifactPaths(
     changeRoot,

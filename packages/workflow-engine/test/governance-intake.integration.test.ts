@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -303,6 +304,7 @@ test('top-level help advertises every current Governance Source command', () => 
     output,
     /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|list\|show <source-id>\|trace <source-id>> \[--json\]/u,
   );
+  assert.match(output, /pnpm workflow now <original-text> \[--json\]/u);
   assert.match(output, /pnpm workflow later <original-text> \[--json\]/u);
   assert.match(
     output,
@@ -310,7 +312,7 @@ test('top-level help advertises every current Governance Source command', () => 
   );
   assert.match(
     output,
-    /pnpm workflow finding <[^\n]*convert <finding-id>[^\n]*> \[--json\]/u,
+    /pnpm workflow finding <[^\n]*convert <finding-id> \[--now\][^\n]*> \[--json\]/u,
   );
 });
 
@@ -1181,6 +1183,106 @@ test('D-019 later and attach preserve original wording only in Sources and conve
   }
 });
 
+test('D-019 now converges exact wording on one Source and stable immediate change after capture crash', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-now-intent-'));
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const sourceCountBefore = listGovernanceSources(
+      fixture.repositoryRoot,
+    ).length;
+    const original =
+      'Start this exact immediate change without a parking item.';
+    const expectedChangeId = `source-${crypto.createHash('sha256').update(original).digest('hex')}`;
+    const crash = new Error('simulated crash after now Source capture');
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'now',
+          [original],
+          fixture.repositoryRoot,
+          {
+            now: () => '2026-08-24T03:23:30.000Z',
+            afterNowSourceCaptured() {
+              throw crash;
+            },
+            startImmediateChange() {
+              assert.fail('crash must precede immediate propose');
+            },
+          },
+        ),
+      (error) => error === crash,
+    );
+    const afterCrashSources = listGovernanceSources(fixture.repositoryRoot);
+    assert.equal(afterCrashSources.length, sourceCountBefore + 1);
+    const immediateSource = afterCrashSources.find(
+      (source) => source.text === original,
+    );
+    assert.ok(immediateSource);
+
+    const starts: Array<{
+      changeId: string;
+      intent: Record<string, unknown>;
+      immediateSource: unknown;
+    }> = [];
+    const runNow = () =>
+      dispatchGovernanceIntakeCommand(
+        'now',
+        [original],
+        fixture.repositoryRoot,
+        {
+          now: () => '2026-08-24T03:24:00.000Z',
+          startImmediateChange(_cwd, changeId, intent, immediateSource) {
+            starts.push({ changeId, intent, immediateSource });
+            return { state: 'awaiting-main-terms' };
+          },
+        },
+      ) as {
+        action: string;
+        sourceId: string;
+        changeId: string;
+        propose: { state: string };
+        originalText: string;
+        nextSteps: string[];
+      };
+    const first = runNow();
+    const retry = runNow();
+    assert.equal(first.action, 'now');
+    assert.equal(first.changeId, expectedChangeId);
+    assert.equal(retry.changeId, expectedChangeId);
+    assert.equal(first.originalText, original);
+    assert.equal(first.sourceId, immediateSource.id);
+    assert.equal(retry.sourceId, first.sourceId);
+    assert.equal(first.propose.state, 'awaiting-main-terms');
+    assert.deepEqual(first.nextSteps, [
+      'pnpm workflow now <original-text> --json',
+    ]);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourceCountBefore + 1,
+    );
+    assert.equal(starts.length, 2);
+    for (const start of starts) {
+      assert.equal(start.changeId, expectedChangeId);
+      assert.deepEqual(start.intent, {
+        schemaVersion: 1,
+        summary: `Implement the immediate change cited by ${first.sourceId}.`,
+        sourceRefs: [first.sourceId],
+        explicitPaths: [],
+        explicitSymbols: [],
+        explicitConfigKeys: [],
+        renamePairs: [],
+      });
+      assert.deepEqual(start.immediateSource, {
+        sourceId: first.sourceId,
+        exactText: original,
+      });
+      assert.doesNotMatch(JSON.stringify(start.intent), new RegExp(original));
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('D-019 concurrent later calls converge on at most one Work Item', () => {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-later-concurrency-'),
@@ -1357,6 +1459,7 @@ test('D-019 finding convert resumes one deterministic item before publishing its
       },
     ) as {
       action: string;
+      sourceId: string;
       workItemId: string;
       finding: { disposition: string; target: unknown };
       created: boolean;
@@ -1394,6 +1497,58 @@ test('D-019 finding convert resumes one deterministic item before publishing its
     assert.equal(
       listWorkItems(fixture.repositoryRoot).length,
       itemCountBefore + 1,
+    );
+
+    let immediateStart:
+      | {
+          changeId: string;
+          intent: Record<string, unknown>;
+          source: { sourceId: string; exactText: string };
+        }
+      | undefined;
+    const sourceCountBeforeNow = listGovernanceSources(
+      fixture.repositoryRoot,
+    ).length;
+    const immediate = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['convert', fixture.finding.finding.id, '--now'],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-08-24T03:27:00.000Z',
+        resolveRuntimeRoot: () => fixture.runtimeRoot,
+        startImmediateChange(_cwd, changeId, intent, source) {
+          immediateStart = { changeId, intent, source };
+          return {
+            state: 'awaiting-main-terms',
+            investigation: { investigationId: 'investigation-finding-now' },
+          };
+        },
+      },
+    ) as {
+      originalText: string;
+      sourceId: string;
+      immediateChange: {
+        sourceId: string;
+        changeId: string;
+        propose: { state: string };
+      };
+      nextSteps: string[];
+    };
+    assert.equal(immediate.originalText, fixture.finding.finding.text);
+    assert.equal(immediate.sourceId, recovered.sourceId);
+    assert.equal(immediate.immediateChange.sourceId, recovered.sourceId);
+    assert.equal(immediateStart?.source.sourceId, recovered.sourceId);
+    assert.equal(
+      immediateStart?.source.exactText,
+      fixture.finding.finding.text,
+    );
+    assert.deepEqual(immediateStart?.intent.sourceRefs, [recovered.sourceId]);
+    assert.deepEqual(immediate.nextSteps, [
+      'pnpm workflow status investigation-finding-now --json',
+    ]);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourceCountBeforeNow,
     );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });

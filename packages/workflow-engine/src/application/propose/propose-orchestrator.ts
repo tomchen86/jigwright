@@ -4,7 +4,14 @@ import path from 'node:path';
 
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../../modules/authority/optional-grants-package.ts';
 import { repositoryPlanningConfiguration } from '../../modules/repository-consumer/repository-consumer-config.ts';
-import { readGovernanceSource } from '../../modules/governance-intake/governance-intake.ts';
+import {
+  captureGovernanceSource,
+  readGovernanceSource,
+} from '../../modules/governance-intake/governance-intake.ts';
+import {
+  linkSourceToChange,
+  readCurrentChangeOrigin,
+} from '../../modules/governance-intake/work-registry.ts';
 
 import {
   resolveActorIdentity,
@@ -20,6 +27,7 @@ import {
   type AssuranceAssessmentReport,
 } from '../../modules/assurance/assurance-assessment-chain.ts';
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
+import { ensurePlainDirectory } from '../../runtime/repository-transaction/filesystem-safety.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   COLLABORATION_GRANT_POLICY_DIGEST,
@@ -416,6 +424,10 @@ export type ProposeOptions = {
   providerDispatcher?: ProposeProviderDispatcher;
   taskMandateId?: string;
   taskMandateValidation?: TaskMandateOptions;
+  immediateSource?: Readonly<{
+    sourceId: `SRC-${string}`;
+    exactText: string;
+  }>;
   roleTopologyResolution?: RoleTopologyResolutionDependencyPortV1;
   collaborationGrant?: {
     grantId: string;
@@ -1197,6 +1209,12 @@ export function startPropose(
 
   const repository = discoverRepository(cwd);
   assertCurrentGovernanceSources(repository.repositoryRoot, intent.sourceRefs);
+  const immediateSource = resolveImmediateSource(
+    repository.repositoryRoot,
+    changeId,
+    intent,
+    options.immediateSource,
+  );
   if (options.taskMandateId === undefined) {
     assertTaskMandateOptional(
       repository.repositoryRoot,
@@ -1205,7 +1223,12 @@ export function startPropose(
     );
   }
 
-  cwd = resolveProposePlanningWorkspace(cwd, changeId, 'start');
+  cwd = resolveProposePlanningWorkspace(
+    cwd,
+    changeId,
+    'start',
+    immediateSource,
+  );
 
   const mandateAuthorization = options.taskMandateId
     ? authorizeTaskMandateOperation(
@@ -1834,6 +1857,11 @@ function prepareExemptionPlanningScaffold(
   const scaffoldEntries = new Map([
     ['.openspec.yaml', metadataBytes],
     ['investigation.json', investigationBytes],
+    ...(session.intent.sourceRefs.length > 0
+      ? ([
+          ['origin.json', currentChangeOriginBytes(session.intent.sourceRefs)],
+        ] as const)
+      : []),
   ]);
   assertPlanningTargetsCompatible(
     changeDirectory,
@@ -5032,6 +5060,7 @@ function resolveProposePlanningWorkspace(
   cwd: string,
   changeId: string,
   mode: 'start' | 'resume' | 'status',
+  immediateSource: ReturnType<typeof readGovernanceSource> | null = null,
 ): string {
   const repository = discoverRepository(cwd);
   const revising = currentRevisingTaskSession(cwd, changeId);
@@ -5051,16 +5080,31 @@ function resolveProposePlanningWorkspace(
     if (mode === 'status') {
       return record.worktreePath;
     }
-    return preparePlanningDraftWorkspace(cwd, changeId, {
+    if (immediateSource !== null) {
+      materializeImmediateSource(
+        record.worktreePath,
+        changeId,
+        immediateSource,
+      );
+    }
+    const prepared = preparePlanningDraftWorkspace(cwd, changeId, {
       baseCommit: record.baseCommit,
       ...(repository.repositoryRealPath === record.worktreePath
         ? { adoptCurrentWorktree: true }
         : { workspaceParent: path.dirname(record.worktreePath) }),
-    }).worktreePath;
+    });
+    return prepared.worktreePath;
   }
   if (repository.branch === expectedBranch) {
     if (mode === 'status') {
       return repository.repositoryRealPath;
+    }
+    if (immediateSource !== null) {
+      materializeImmediateSource(
+        repository.repositoryRealPath,
+        changeId,
+        immediateSource,
+      );
     }
     return preparePlanningDraftWorkspace(cwd, changeId, {
       baseCommit: repository.head,
@@ -5074,9 +5118,122 @@ function resolveProposePlanningWorkspace(
       ExitCode.staleState,
     );
   }
-  return preparePlanningDraftWorkspace(cwd, changeId, {
+  const prepared = preparePlanningDraftWorkspace(cwd, changeId, {
     baseCommit: repository.head,
-  }).worktreePath;
+  });
+  if (immediateSource !== null) {
+    materializeImmediateSource(
+      prepared.worktreePath,
+      changeId,
+      immediateSource,
+    );
+  }
+  return prepared.worktreePath;
+}
+
+function resolveImmediateSource(
+  repositoryRoot: string,
+  changeId: string,
+  intent: NormalizedChangeIntent,
+  binding: ProposeOptions['immediateSource'],
+): ReturnType<typeof readGovernanceSource> | null {
+  if (binding === undefined) return null;
+  if (
+    !/^SRC-[0-9a-f]{64}$/.test(binding.sourceId) ||
+    typeof binding.exactText !== 'string' ||
+    changeId !==
+      `source-${crypto.createHash('sha256').update(binding.exactText).digest('hex')}` ||
+    canonicalJson(intent.sourceRefs) !== canonicalJson([binding.sourceId])
+  ) {
+    throw workflowError(
+      'PROPOSE_INTENT_INVALID',
+      'Immediate propose binding does not match its exact Source intent.',
+      ExitCode.usage,
+    );
+  }
+  const source = readGovernanceSource(repositoryRoot, binding.sourceId);
+  if (source.text !== binding.exactText || source.supersedes !== null) {
+    throw workflowError(
+      'PROPOSE_INTENT_INVALID',
+      'Immediate propose Source no longer matches its exact captured wording.',
+      ExitCode.usage,
+    );
+  }
+  return source;
+}
+
+function materializeImmediateSource(
+  repositoryRoot: string,
+  changeId: string,
+  source: ReturnType<typeof readGovernanceSource>,
+): void {
+  const config = loadWorkflowConfig(repositoryRoot);
+  const changeDirectory = path.join(
+    repositoryRoot,
+    config.changeRoot,
+    changeId,
+  );
+  ensurePlainDirectory(changeDirectory);
+  const existingOrigin = readCurrentChangeOrigin(repositoryRoot, changeId);
+  if (existingOrigin !== null) {
+    if (
+      canonicalJson(existingOrigin) !==
+      canonicalJson({
+        schemaVersion: 1,
+        sourceRefs: [source.id],
+        workItemRefs: [],
+      })
+    ) {
+      throw workflowError(
+        'PROPOSE_INPUT_STALE',
+        'Immediate propose origin no longer cites exactly its captured Source.',
+        ExitCode.staleState,
+      );
+    }
+    if (
+      canonicalJson(readGovernanceSource(repositoryRoot, source.id)) !==
+      canonicalJson(source)
+    ) {
+      throw workflowError(
+        'PROPOSE_INPUT_STALE',
+        'Immediate propose Source bytes no longer match the captured Source.',
+        ExitCode.staleState,
+      );
+    }
+    return;
+  }
+  const captured = captureGovernanceSource(repositoryRoot, {
+    semanticAuthor: source.semanticAuthor,
+    capturedBy: source.capturedBy,
+    capturedAt: source.capturedAt,
+    contextRef: source.contextRef,
+    text: source.text,
+    supersedes: source.supersedes,
+  });
+  if (captured.source.id !== source.id) {
+    throw workflowError(
+      'PROPOSE_INPUT_STALE',
+      'Immediate propose Source identity changed during workspace bootstrap.',
+      ExitCode.staleState,
+    );
+  }
+  linkSourceToChange(repositoryRoot, source.id, changeId);
+  const publishedOrigin = readCurrentChangeOrigin(repositoryRoot, changeId);
+  if (
+    publishedOrigin === null ||
+    canonicalJson(publishedOrigin) !==
+      canonicalJson({
+        schemaVersion: 1,
+        sourceRefs: [source.id],
+        workItemRefs: [],
+      })
+  ) {
+    throw workflowError(
+      'PROPOSE_INPUT_STALE',
+      'Immediate propose origin publication did not converge exactly.',
+      ExitCode.staleState,
+    );
+  }
 }
 
 function getProposeStatusInternal(
@@ -7727,6 +7884,11 @@ function preparePlanningScaffold(
   const scaffoldEntries = new Map([
     ['.openspec.yaml', metadataBytes],
     ['investigation.json', investigationBytes],
+    ...(rebuilt.intent.sourceRefs.length > 0
+      ? ([
+          ['origin.json', currentChangeOriginBytes(rebuilt.intent.sourceRefs)],
+        ] as const)
+      : []),
   ]);
   if (materializeScaffold) {
     if (assertOwned === undefined) {
