@@ -379,6 +379,24 @@ relation of its own.
 - **AND** retry reuses byte-identical Source and Work Item records and publishes one converted receipt targeting that item
 - **AND** no second Work Item, migration record, Grant, or Git ref is created
 
+### Requirement: Finding Link Is a Receipt-Only Relation
+
+`finding link <finding-id> --change <change-id>` SHALL require one exact
+existing plain change directory inside the configured change root, then publish
+only the create-once `linked` Finding disposition receipt. The receipt SHALL
+name the requested change and SHALL NOT write `origin.json`, add Source or Work
+Item references, widen a task path, create a Grant, or mutate planning, Git, or
+repository projection bytes. The same exact link SHALL be idempotent. Missing,
+symbolic-link, escaped, or otherwise unsafe change targets and conflicting
+terminal dispositions SHALL fail before receipt publication.
+
+#### Scenario: A Finding links to a non-current existing change
+
+- **WHEN** `finding link <finding-id> --change <change-id>` names a contained plain managed change directory
+- **THEN** one immutable linked receipt records that change target and the original Finding remains byte-identical
+- **AND** the target change, task scope, origin, Source, Work Item, Git ref, and Grant bytes remain unchanged
+- **AND** retry returns the same terminal relation without another receipt
+
 ### Requirement: Governance Intake Counts Are Read-Only
 
 The engine SHALL expose one stable read surface with exactly the current

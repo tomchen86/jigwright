@@ -1329,6 +1329,171 @@ test('D-019 finding convert resumes one deterministic item before publishing its
   }
 });
 
+test('D-019 finding link records only one exact existing change target', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-finding-link-'),
+  );
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const linkedChangeRoot = path.join(
+      fixture.repositoryRoot,
+      'openspec/changes/linked-change',
+    );
+    fs.mkdirSync(linkedChangeRoot, { recursive: true });
+    fs.writeFileSync(
+      path.join(linkedChangeRoot, 'origin.json'),
+      `${canonicalJson({ schemaVersion: 1, sourceRefs: [], workItemRefs: [] })}\n`,
+    );
+    fs.writeFileSync(path.join(linkedChangeRoot, 'tasks.md'), '- [ ] T1\n');
+    runGitForTest(fixture.repositoryRoot, ['add', '.']);
+    runGitForTest(fixture.repositoryRoot, [
+      'commit',
+      '-m',
+      'Track independent change target',
+    ]);
+    const missing = recordGovernanceFinding(
+      {
+        ...fixture.findingContext,
+        sessionId: 'session-missing-link-target',
+      },
+      {
+        schemaVersion: 1,
+        text: 'Do not link this Finding to a missing change.',
+        sourceRefs: [fixture.source.source.id],
+      },
+      () => '2026-08-24T03:16:00.000Z',
+    );
+    const symlinked = recordGovernanceFinding(
+      {
+        ...fixture.findingContext,
+        sessionId: 'session-symlink-link-target',
+      },
+      {
+        schemaVersion: 1,
+        text: 'Do not follow a change-directory symbolic link.',
+        sourceRefs: [fixture.source.source.id],
+      },
+      () => '2026-08-24T03:17:00.000Z',
+    );
+    const externalChange = path.join(root, 'external-change');
+    fs.mkdirSync(externalChange);
+    fs.symlinkSync(
+      externalChange,
+      path.join(fixture.repositoryRoot, 'openspec/changes/symlinked-change'),
+    );
+    const repositoryBefore = {
+      head: runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+      refs: runGitForTest(fixture.repositoryRoot, ['show-ref']),
+      status: runGitForTest(fixture.repositoryRoot, [
+        'status',
+        '--porcelain=v1',
+        '-z',
+      ]),
+      change: snapshotPlainTree(linkedChangeRoot),
+      sources: snapshotPlainTree(fixture.sourceLedgerRoot),
+      items: snapshotPlainTree(
+        path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+      ),
+    };
+    const rawFinding = fs.readFileSync(fixture.finding.path);
+    const dependencies = {
+      now: () => '2026-08-24T03:18:00.000Z',
+      resolveRuntimeRoot: () => fixture.runtimeRoot,
+    };
+
+    const linked = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['link', fixture.finding.finding.id, '--change', 'linked-change'],
+      fixture.repositoryRoot,
+      dependencies,
+    ) as {
+      action: string;
+      created: boolean;
+      finding: { disposition: string; target: unknown; reason: string | null };
+    };
+    assert.equal(linked.action, 'link');
+    assert.equal(linked.created, true);
+    assert.deepEqual(linked.finding.target, {
+      kind: 'change',
+      id: 'linked-change',
+    });
+    assert.equal(linked.finding.disposition, 'linked');
+    assert.equal(
+      linked.finding.reason,
+      'Linked to one existing change without widening its task scope.',
+    );
+    assert.deepEqual(fs.readFileSync(fixture.finding.path), rawFinding);
+    assert.deepEqual(
+      {
+        head: runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+        refs: runGitForTest(fixture.repositoryRoot, ['show-ref']),
+        status: runGitForTest(fixture.repositoryRoot, [
+          'status',
+          '--porcelain=v1',
+          '-z',
+        ]),
+        change: snapshotPlainTree(linkedChangeRoot),
+        sources: snapshotPlainTree(fixture.sourceLedgerRoot),
+        items: snapshotPlainTree(
+          path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+        ),
+      },
+      repositoryBefore,
+    );
+    assert.equal(
+      (
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['link', fixture.finding.finding.id, '--change', 'linked-change'],
+          fixture.repositoryRoot,
+          dependencies,
+        ) as { created: boolean }
+      ).created,
+      false,
+    );
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          [
+            'dismiss',
+            fixture.finding.finding.id,
+            '--reason',
+            'Conflicting terminal disposition.',
+          ],
+          fixture.repositoryRoot,
+          dependencies,
+        ),
+      hasCode('GOVERNANCE_FINDING_DISPOSITION_COLLISION'),
+    );
+
+    for (const scenario of [
+      { findingId: missing.finding.id, changeId: 'missing-change' },
+      { findingId: symlinked.finding.id, changeId: 'symlinked-change' },
+    ]) {
+      const findingsBefore = snapshotPlainTree(
+        path.join(fixture.runtimeRoot, 'findings'),
+      );
+      assert.throws(
+        () =>
+          dispatchGovernanceIntakeCommand(
+            'finding',
+            ['link', scenario.findingId, '--change', scenario.changeId],
+            fixture.repositoryRoot,
+            dependencies,
+          ),
+        hasCode('GOVERNANCE_INTAKE_INVALID'),
+      );
+      assert.deepEqual(
+        snapshotPlainTree(path.join(fixture.runtimeRoot, 'findings')),
+        findingsBefore,
+      );
+    }
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test('Finding readers fail closed on unsafe records and sidecars without repair', () => {
   const cases = [
     {

@@ -323,6 +323,32 @@ export function convertGovernanceFinding(
   );
 }
 
+export function linkGovernanceFinding(
+  runtimeRoot: string,
+  requestedFindingId: string,
+  requestedChangeId: string,
+  now: () => string = () => new Date().toISOString(),
+): {
+  finding: GovernanceFindingReadModelV1;
+  path: string;
+  created: boolean;
+} {
+  return recordGovernanceFindingDisposition(
+    runtimeRoot,
+    requestedFindingId,
+    {
+      schemaVersion: 1,
+      disposition: 'linked',
+      reason: 'Linked to one existing change without widening its task scope.',
+      target: {
+        kind: 'change',
+        id: requestedChangeId,
+      },
+    },
+    now,
+  );
+}
+
 function recordGovernanceFindingDisposition(
   runtimeRoot: string,
   requestedFindingId: string,

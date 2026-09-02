@@ -15,6 +15,7 @@ import {
   captureGovernanceSource,
   convertGovernanceFinding,
   dismissGovernanceFinding,
+  linkGovernanceFinding,
   listGovernanceFindings,
   listGovernanceSources,
   readGovernanceSource,
@@ -448,6 +449,28 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (
       command === 'finding' &&
+      args.length === 4 &&
+      args[0] === 'link' &&
+      args[2] === '--change'
+    ) {
+      const changeId = assertExistingManagedChange(cwd, args[3]!);
+      const runtimeRoot = (
+        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+      )(cwd);
+      const linked = linkGovernanceFinding(
+        runtimeRoot,
+        args[1]!,
+        changeId,
+        dependencies.now,
+      );
+      return {
+        action: 'link',
+        finding: linked.finding,
+        created: linked.created,
+      };
+    }
+    if (
+      command === 'finding' &&
       ((args.length === 1 && args[0] === 'list') ||
         (args.length === 2 && args[0] === 'list' && args[1] === '--all'))
     ) {
@@ -517,8 +540,44 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
+}
+
+function assertExistingManagedChange(
+  cwd: string,
+  requestedChangeId: string,
+): string {
+  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(requestedChangeId)) {
+    throw intakeUsage('Finding link change identity is invalid.');
+  }
+  const repositoryRoot = fs.realpathSync(cwd);
+  const config = loadWorkflowConfig(repositoryRoot);
+  const changeRoot = path.resolve(repositoryRoot, config.changeRoot);
+  const relativeChangeRoot = path.relative(repositoryRoot, changeRoot);
+  const changeRootStats = fs.lstatSync(changeRoot, { throwIfNoEntry: false });
+  if (
+    relativeChangeRoot.startsWith(`..${path.sep}`) ||
+    path.isAbsolute(relativeChangeRoot) ||
+    !changeRootStats?.isDirectory() ||
+    changeRootStats.isSymbolicLink() ||
+    fs.realpathSync(changeRoot) !== changeRoot
+  ) {
+    throw intakeUsage('Configured change root is unsafe.');
+  }
+  const changeDirectory = path.join(changeRoot, requestedChangeId);
+  const changeStats = fs.lstatSync(changeDirectory, {
+    throwIfNoEntry: false,
+  });
+  if (
+    !changeStats?.isDirectory() ||
+    changeStats.isSymbolicLink() ||
+    fs.realpathSync(changeDirectory) !== changeDirectory ||
+    path.dirname(changeDirectory) !== changeRoot
+  ) {
+    throw intakeUsage('Finding link requires one existing plain change.');
+  }
+  return requestedChangeId;
 }
 
 function resolveActiveSession(

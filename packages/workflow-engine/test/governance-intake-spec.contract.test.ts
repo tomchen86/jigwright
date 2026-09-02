@@ -43,6 +43,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Intent-Level Later Surface Is One Command',
     '### Requirement: Attach Adds a Source Without Reclassifying Work',
     '### Requirement: Finding Conversion Has One Deterministic Target',
+    '### Requirement: Finding Link Is a Receipt-Only Relation',
     '### Requirement: Governance Intake Counts Are Read-Only',
   ];
 
@@ -74,6 +75,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '`later <original-text>`',
     '`attach <work-item-id> <original-text>`',
     '`finding convert <finding-id>`',
+    '`finding link <finding-id> --change <change-id>`',
   ]) {
     assert.match(
       specification,
@@ -143,6 +145,10 @@ test('production has no disableable Work Registry or configurable Source-root su
   assert.match(
     governanceIntakeSource,
     /export function convertGovernanceFinding/u,
+  );
+  assert.match(
+    governanceIntakeSource,
+    /export function linkGovernanceFinding/u,
   );
   assert.doesNotMatch(
     governanceIntakeSource,
