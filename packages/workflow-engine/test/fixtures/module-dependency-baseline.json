@@ -4444,7 +4444,7 @@
       "rule": "entrypoint-bypass-composition-root",
       "reasonId": "legacy.entrypoint-bypass-composition-root",
       "retirementPhase": "post-layout-composition-root-extraction",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/entrypoints/cli/authority-audit-cli.ts",

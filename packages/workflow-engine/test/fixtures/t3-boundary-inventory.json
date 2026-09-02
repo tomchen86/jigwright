@@ -97,14 +97,22 @@
       "id": "availability-pilot",
       "plane": "provider-runtime",
       "state": "partial",
-      "t3Disposition": "Preserve the current verifier without consumer pilot data; a real Jigwright pilot remains an explicit operational gate and must not be inferred or rewritten from historical consumer evidence.",
+      "t3Disposition": "The exact-baseline record and verifier are isolated from provider effects; production composition injects the reviewed probe, runner, clock, and UUID into the runtime pilot. A real Jigwright pilot remains an explicit operational gate and must not be inferred or rewritten from historical consumer evidence.",
       "evidence": [
         {
           "path": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
           "contains": [
             "const PROVIDERS = Object.freeze(['codex', 'claude'] as const);",
             "authority: 'empirical-observation-only';",
+            "export function createProviderAvailabilityPilotRunner(",
             "export function verifyProviderAvailabilityPilot("
+          ]
+        },
+        {
+          "path": "packages/workflow-engine/src/composition-root/provider-availability-pilot-production.ts",
+          "contains": [
+            "probe: probeBuiltInProviderFamilyEvidence,",
+            "runProvider: runBuiltInProvider"
           ]
         }
       ],

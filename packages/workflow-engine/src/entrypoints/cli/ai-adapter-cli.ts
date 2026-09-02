@@ -10,7 +10,7 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   runProviderAvailabilityPilot,
   verifyProviderAvailabilityPilot,
-} from '../../runtime/provider-execution/provider-availability-pilot.ts';
+} from '../../composition-root/provider-availability-pilot-production.ts';
 
 export function dispatchAiAdapterCommand(
   args: string[],

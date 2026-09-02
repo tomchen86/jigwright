@@ -15,7 +15,7 @@ import { DEFAULT_AI_ADAPTER_RETRY_ACCOUNTING } from '../src/runtime/provider-exe
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { evaluateAiAdapter } from '../src/runtime/provider-execution/ai-adapter-evaluation.ts';
 import {
-  createProviderAvailabilityPilotRunnerForTesting,
+  createProviderAvailabilityPilotRunner,
   verifyProviderAvailabilityPilot,
 } from '../src/runtime/provider-execution/provider-availability-pilot.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../src/runtime/provider-execution/provider-runner.ts';
@@ -38,6 +38,37 @@ const REQUIRED_CONTROLS = [
   'resource-limits',
   'immutable-runtime',
 ];
+
+test('provider availability effects are wired only by production composition', () => {
+  const runtimeSource = fs.readFileSync(
+    new URL(
+      '../src/runtime/provider-execution/provider-availability-pilot.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+
+  assert.doesNotMatch(runtimeSource, /runProvider:\s*runBuiltInProvider/u);
+  assert.doesNotMatch(runtimeSource, /probeBuiltInProviderFamilyEvidence/u);
+
+  const compositionSource = fs.readFileSync(
+    new URL(
+      '../src/composition-root/provider-availability-pilot-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const cliSource = fs.readFileSync(
+    new URL('../src/entrypoints/cli/ai-adapter-cli.ts', import.meta.url),
+    'utf8',
+  );
+  assert.match(compositionSource, /runBuiltInProvider/u);
+  assert.match(compositionSource, /probeBuiltInProviderFamilyEvidence/u);
+  assert.match(
+    cliSource,
+    /composition-root\/provider-availability-pilot-production\.ts/u,
+  );
+});
 
 test('AI adapter evaluation denies launch on every platform without side effects', () => {
   const repository = createFixtureRepository();
@@ -666,7 +697,7 @@ test('provider availability pilot durably verifies a credential-safe ordinary Co
   ];
   let tick = 0;
   try {
-    const runPilot = createProviderAvailabilityPilotRunnerForTesting({
+    const runPilot = createProviderAvailabilityPilotRunner({
       now() {
         return new Date(Date.UTC(2026, 7, 15, 0, 0, tick++));
       },
@@ -807,7 +838,7 @@ test('provider availability pilot records adapter unavailability without launchi
   const repository = createFixtureRepository();
   let launches = 0;
   try {
-    const runPilot = createProviderAvailabilityPilotRunnerForTesting({
+    const runPilot = createProviderAvailabilityPilotRunner({
       now: () => new Date('2026-08-15T01:00:00.000Z'),
       randomUUID: () => '33333333-3333-4333-8333-333333333333',
       probe(providerId) {
@@ -881,7 +912,7 @@ test('provider availability pilot refuses synthetic or authority-forged AgentRun
       ],
     ] as const) {
       let launches = 0;
-      const runPilot = createProviderAvailabilityPilotRunnerForTesting({
+      const runPilot = createProviderAvailabilityPilotRunner({
         now: () => new Date('2026-08-15T02:00:00.000Z'),
         randomUUID: () => '44444444-4444-4444-8444-444444444444',
         probe() {

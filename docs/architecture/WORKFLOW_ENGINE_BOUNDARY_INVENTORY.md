@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:d6e08a5951a635550011926a166b57237a8c5d406ad8227d78f562ac12768cae`.
+Current production inventory digest: `sha256:da87f1f598970151d5e73ee89a70362ac7bee65ac5e74ac577c1b8b7bcc1ec94`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
@@ -69,10 +69,12 @@ identity, reviewed command profiles, or provider capabilities.
 
 ### Availability pilot — partial
 
-The Codex/Claude verifier owns the exact-baseline, policy-bound availability
-decision format. Consumer pilot evidence is not carried into Jigwright; the
-real Jigwright pilot remains an explicit operational gate. A generic probe may
-feed the verifier but must not create a second decision authority or convert a
+The exact-baseline, policy-bound availability record and verifier are isolated
+from provider effects. Production composition now injects the reviewed probe,
+runner, clock, and UUID into the runtime pilot; the record module no longer
+selects provider execution itself. Consumer pilot evidence is not carried into
+Jigwright, and the real Jigwright pilot remains an explicit operational gate.
+A generic probe must not create a second decision authority or convert a
 pending pilot into an inferred pass.
 
 <!-- coupling:central-grant-shadow-authority -->

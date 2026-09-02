@@ -49,18 +49,14 @@ import {
   listBuiltInProviders,
   type ProviderId,
 } from '../../modules/provider-orchestration/provider-registry.ts';
-import {
-  runBuiltInProvider,
-  type ProviderPreflightOptions,
-  type ProviderResolution,
-  type ProviderRunInput,
-  type ProviderRunOptions,
+import type {
+  ProviderPreflightOptions,
+  ProviderResolution,
+  ProviderRunInput,
+  ProviderRunOptions,
 } from './provider-runner.ts';
 import { scheduleOrdinaryRole } from '../../modules/provider-orchestration/role-scheduler.ts';
-import {
-  admitBuiltInProviderFamilyEvidence,
-  probeBuiltInProviderFamilyEvidence,
-} from './agent-runtime-probe-evidence.ts';
+import { admitBuiltInProviderFamilyEvidence } from './agent-runtime-probe-evidence.ts';
 
 const SHA256 = /^[0-9a-f]{64}$/u;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/u;
@@ -137,7 +133,7 @@ export type ProviderAvailabilityPilotRunResult = Readonly<{
 
 type PilotRunOptions = Readonly<{ recordPath?: string }>;
 
-type PilotDependencies = Readonly<{
+export type ProviderAvailabilityPilotDependencies = Readonly<{
   now: () => Date;
   randomUUID: () => string;
   probe: (
@@ -150,27 +146,9 @@ type PilotDependencies = Readonly<{
   ) => ProviderRunnerReport;
 }>;
 
-const productionDependencies: PilotDependencies = Object.freeze({
-  now: () => new Date(),
-  randomUUID: () => crypto.randomUUID(),
-  probe: probeBuiltInProviderFamilyEvidence,
-  runProvider: runBuiltInProvider,
-});
-
-export function runProviderAvailabilityPilot(
-  cwd: string,
-  options: PilotRunOptions = {},
-): ProviderAvailabilityPilotRunResult {
-  return runProviderAvailabilityPilotWithDependencies(
-    cwd,
-    options,
-    productionDependencies,
-  );
-}
-
-/** Tests may substitute bounded provider effects; production cannot. */
-export function createProviderAvailabilityPilotRunnerForTesting(
-  dependencies: PilotDependencies,
+/** Compose bounded provider effects without giving them record authority. */
+export function createProviderAvailabilityPilotRunner(
+  dependencies: ProviderAvailabilityPilotDependencies,
 ): (
   cwd: string,
   options?: PilotRunOptions,
@@ -198,7 +176,7 @@ export function verifyProviderAvailabilityPilot(
 function runProviderAvailabilityPilotWithDependencies(
   cwd: string,
   options: PilotRunOptions,
-  dependencies: PilotDependencies,
+  dependencies: ProviderAvailabilityPilotDependencies,
 ): ProviderAvailabilityPilotRunResult {
   const repository = discoverRepository(cwd);
   if (repository.statusEntries.length !== 0) {
@@ -302,7 +280,7 @@ function runAvailableProvider(input: {
   runToken: string;
   providerId: ProviderId;
   resolution: ProviderResolution;
-  dependencies: PilotDependencies;
+  dependencies: ProviderAvailabilityPilotDependencies;
 }): ProviderAvailabilityPilotObservation {
   const {
     repository,
