@@ -8,6 +8,9 @@ data.
 
 - `docs/WORKFLOW.md` is the operator and contributor workflow guide.
 - `docs/ROADMAP.md` records current migration and release priorities.
+- `docs/DECISION-REGISTER.md` records accepted product-boundary decisions.
+- `docs/CURRENT-V3-PARITY-LEDGER.md` keeps the frozen current-v3 denominator
+  and its explicit live dispositions.
 - `docs/CURRENT_AND_NEXT_STEPS.md` is the generated current handoff.
 - `docs/architecture/` describes the package and engine boundaries.
 - `openspec/specs/` contains normative product requirements.
