@@ -534,7 +534,7 @@ function investigationFirstProposeAsset(source: string): string {
     '   pnpm workflow source show <source-id> --json',
     '   ```',
     '',
-    '   Use the returned exact selected wording when writing proposal, design, spec, and plan prose. Mark quotations and claims grounded in those Sources as `source-backed`, and mark interpretations or extensions as `agent-derived`. Sources remain optional. Do not require the Work Registry for an uncited change, copy an entire Source record into planning or Manifest artifacts, or treat Source provenance as transition authority.',
+    '   Use the returned exact selected wording when writing proposal, design, spec, and plan prose. Mark quotations and claims grounded in those Sources as `source-backed`, and mark interpretations or extensions as `agent-derived`. A change may cite zero Sources. Do not require the Work Registry for an uncited change, copy an entire Source record into planning or Manifest artifacts, or treat Source provenance as transition authority.',
     '',
     '4. Read the returned `state`, `nextAction`, and `inputSchema` exactly. Preserve every returned binding value. Fill only the caller-owned contribution requested by that schema, using `work` and any `authoredInstructions` as constraints. Keep each task guard’s `requiredChecks` targeted to that task. The engine owns terminal full-gate escalation. Do not directly create or overwrite engine-owned `investigation.json`, `execution.json`, `plan-review.json`, or managed ledger fields.',
     '',
@@ -675,7 +675,7 @@ export function verifyOpenSpecPlanningAssetContent(
         content.includes('exact selected wording') &&
         content.includes('`source-backed`') &&
         content.includes('`agent-derived`') &&
-        content.includes('Sources remain optional') &&
+        content.includes('A change may cite zero Sources') &&
         content.includes('Do not require the Work Registry') &&
         content.includes('copy an entire Source record') &&
         content.includes('treat Source provenance as transition authority') &&

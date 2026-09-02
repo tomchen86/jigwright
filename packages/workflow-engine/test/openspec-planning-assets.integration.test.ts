@@ -411,7 +411,7 @@ test('governed propose assets use the investigation-first checkpoint wrapper wit
       'exact selected wording',
       '`source-backed`',
       '`agent-derived`',
-      'Sources remain optional',
+      'A change may cite zero Sources',
       'Do not require the Work Registry',
       'copy an entire Source record',
       'treat Source provenance as transition authority',
@@ -1761,7 +1761,7 @@ function assertInvestigationFirstProposeContract(
   );
   assert.match(
     content,
-    /Sources remain optional/i,
+    /A change may cite zero Sources/i,
     message('makes Governance Sources mandatory'),
   );
   assert.match(
