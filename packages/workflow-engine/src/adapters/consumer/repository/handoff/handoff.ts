@@ -28,7 +28,6 @@ import {
   repositoryConsumerPath,
   repositoryDocumentConfiguration,
   repositoryWorkRegistryConfiguration,
-  repositoryWorkRegistryConfigurationOrNull,
 } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 
 const LEGACY_SECTIONS = [
@@ -678,9 +677,7 @@ function readWorkRegistryInventory(
   repositoryRoot: string,
   readText?: RepositoryTextReader,
 ): WorkRegistryHandoffInventory | null {
-  const workRegistry =
-    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-  if (workRegistry === null) return null;
+  const workRegistry = repositoryWorkRegistryConfiguration(repositoryRoot);
   const inventoryPath = workRegistry.inventoryPath;
   const source = readText
     ? readText(inventoryPath)

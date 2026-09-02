@@ -5,6 +5,7 @@ import { TextDecoder } from 'node:util';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import type { GovernanceSourceV1 } from '@jigwright/core/governance-source';
+import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -16,7 +17,6 @@ import {
   repositoryConsumerConfigurationExists,
   repositoryConsumerPath,
   repositoryWorkRegistryConfiguration,
-  repositoryWorkRegistryConfigurationOrNull,
 } from '../repository-consumer/repository-consumer-config.ts';
 import {
   listGovernanceSources,
@@ -1017,10 +1017,7 @@ function traceGovernanceSourceUnlocked(
     workItems: [] as WorkItemV1[],
     origins: [] as string[],
   };
-  if (
-    !repositoryConsumerConfigurationExists(repositoryRoot) ||
-    repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null
-  ) {
+  if (!repositoryConsumerConfigurationExists(repositoryRoot)) {
     return coreTrace;
   }
   return withOptionalWorkRegistryPromotionLock(repositoryRoot, () => {
@@ -1192,9 +1189,6 @@ export function reconcileArchivedWorkItems(
   archivedChangeRoot: string,
   requestedClosedAt: string,
 ): { closedItemIds: string[]; outputPaths: string[] } {
-  if (repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null) {
-    return { closedItemIds: [], outputPaths: [] };
-  }
   return withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
     reconcileArchivedWorkItemsUnlocked(
       repositoryRoot,
@@ -1213,11 +1207,7 @@ function reconcileArchivedWorkItemsUnlocked(
 ): { closedItemIds: string[]; outputPaths: string[] } {
   const changeId = changeIdentity(requestedChangeId);
   const closedAt = canonicalTimestamp(requestedClosedAt);
-  const workRegistry =
-    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-  if (workRegistry === null) {
-    return { closedItemIds: [], outputPaths: [] };
-  }
+  const workRegistry = repositoryWorkRegistryConfiguration(repositoryRoot);
   const changeOriginRoot = workRegistry.changeOriginRoot;
   if (
     !new RegExp(
@@ -1309,10 +1299,7 @@ function validateWorkRegistryUnlocked(
   sourceCount: number;
 } {
   const sourceIds = new Set<string>();
-  const sources = listGovernanceSources(
-    repositoryRoot,
-    repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
-  );
+  const sources = listGovernanceSources(repositoryRoot);
   for (const source of sources) {
     if (sourceIds.has(source.id)) {
       throw registryInvalid('Governance Source identity is duplicated.');
@@ -1386,9 +1373,6 @@ export function validateCurrentChangeOrigin(
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
-  if (repositoryWorkRegistryConfigurationOrNull(repositoryRoot) === null) {
-    return;
-  }
   withOptionalWorkRegistryPromotionLock(repositoryRoot, () =>
     validateCurrentChangeOriginUnlocked(repositoryRoot, requestedChangeId),
   );
@@ -1398,9 +1382,7 @@ function validateCurrentChangeOriginUnlocked(
   repositoryRoot: string,
   requestedChangeId: string,
 ): void {
-  const configuration =
-    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-  if (configuration === null) return;
+  const configuration = repositoryWorkRegistryConfiguration(repositoryRoot);
   const changeId = changeIdentity(requestedChangeId);
   const originPath = path.join(
     repositoryConsumerPath(repositoryRoot, configuration.changeOriginRoot),
@@ -4352,7 +4334,7 @@ function renderBacklogSourceLink(
   const digest = sourceRef.slice('SRC-'.length);
   const registry = repositoryWorkRegistryConfiguration(repositoryRoot);
   const target = path.posix.join(
-    registry.sourceRoot,
+    GOVERNANCE_SOURCE_LEDGER_ROOT,
     digest.slice(0, 2),
     `${digest}.json`,
   );
@@ -4523,11 +4505,7 @@ function readSourceValue(
   repositoryRoot: string,
   sourceRef: `SRC-${string}`,
 ): GovernanceSourceV1 {
-  return readGovernanceSource(
-    repositoryRoot,
-    sourceRef,
-    repositoryWorkRegistryConfiguration(repositoryRoot).sourceRoot,
-  );
+  return readGovernanceSource(repositoryRoot, sourceRef);
 }
 
 function replaceTextFile(filePath: string, content: string): void {

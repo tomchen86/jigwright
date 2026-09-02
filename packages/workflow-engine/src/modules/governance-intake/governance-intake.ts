@@ -10,6 +10,7 @@ import {
   type GovernanceSourceAuthoringV1,
   type GovernanceSourceV1,
 } from '@jigwright/core/governance-source';
+import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
@@ -43,7 +44,6 @@ export type GovernanceFindingV1 = Readonly<{
   sourceRefs: readonly `SRC-${string}`[];
 }>;
 
-const SOURCE_LEDGER_ROOT = 'workflow/source-ledger/objects/sha256';
 const SOURCE_ID = /^SRC-[0-9a-f]{64}$/;
 const SOURCE_FILE_MODE = 0o644;
 const FINDING_FILE_MODE = 0o600;
@@ -73,10 +73,9 @@ export function captureGovernanceSource(
 export function readGovernanceSource(
   repositoryRoot: string,
   requestedSourceId: string,
-  sourceRoot: string = SOURCE_LEDGER_ROOT,
 ): GovernanceSourceV1 {
   const sourceId = sourceReference(requestedSourceId);
-  const relativePath = governanceSourceRelativePath(sourceId, sourceRoot);
+  const relativePath = governanceSourceRelativePath(sourceId);
   const sourcePath = path.join(repositoryRoot, ...relativePath.split('/'));
   const bytes = readStableGovernanceBytes(sourcePath, SOURCE_FILE_MODE, () =>
     intakeInvalid('Governance Source must resolve to one plain record.'),
@@ -100,9 +99,11 @@ export function readGovernanceSource(
 
 export function listGovernanceSources(
   repositoryRoot: string,
-  sourceRoot: string = SOURCE_LEDGER_ROOT,
 ): GovernanceSourceV1[] {
-  const ledgerRoot = path.join(repositoryRoot, ...sourceRoot.split('/'));
+  const ledgerRoot = path.join(
+    repositoryRoot,
+    ...GOVERNANCE_SOURCE_LEDGER_ROOT.split('/'),
+  );
   let rootStats: fs.Stats | undefined;
   try {
     rootStats = fs.lstatSync(ledgerRoot, { throwIfNoEntry: false });
@@ -150,9 +151,7 @@ export function listGovernanceSources(
       if (prefix.name !== digest.slice(0, 2)) {
         throw intakeInvalid('Governance Source path prefix is invalid.');
       }
-      sources.push(
-        readGovernanceSource(repositoryRoot, `SRC-${digest}`, sourceRoot),
-      );
+      sources.push(readGovernanceSource(repositoryRoot, `SRC-${digest}`));
     }
   }
   return sources.sort((left, right) => left.id.localeCompare(right.id));
@@ -229,12 +228,13 @@ function normalizeFindingInput(input: GovernanceFindingAuthoringV1): {
   return { text: input.text, sourceRefs };
 }
 
-function governanceSourceRelativePath(
-  sourceId: `SRC-${string}`,
-  sourceRoot: string = SOURCE_LEDGER_ROOT,
-): string {
+function governanceSourceRelativePath(sourceId: `SRC-${string}`): string {
   const digest = sourceId.slice('SRC-'.length);
-  return path.posix.join(sourceRoot, digest.slice(0, 2), `${digest}.json`);
+  return path.posix.join(
+    GOVERNANCE_SOURCE_LEDGER_ROOT,
+    digest.slice(0, 2),
+    `${digest}.json`,
+  );
 }
 
 function sourceReference(value: string): `SRC-${string}` {

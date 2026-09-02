@@ -138,7 +138,7 @@ recovery direction; task ingress MUST NOT silently switch focus or edit routing.
 ### Requirement: Handoff Is a Derived Repository Projection
 
 The configured handoff SHALL be regenerated from the same coherent routing
-inspection used by status plus current task, archive, and optional Work Registry
+inspection used by status plus current task, archive, and Work Registry
 facts. It SHALL present current, concurrent, ready, resumable, blocked, parked,
 and pending-archive groups without reading its previous bytes to select a
 change. Archiving one identity SHALL remove only that identity from active
@@ -149,3 +149,9 @@ groups, and zero active changes SHALL remain explicit rather than guessed.
 - **WHEN** controlled source and repository facts select a different inventory
 - **THEN** rendering ignores the old selection and emits the current derived groups
 - **AND** committed replay produces the same handoff without private runtime state
+
+#### Scenario: Built-in Work Registry has zero items
+
+- **WHEN** the repository has no Work Item records or inventory projection
+- **THEN** handoff renders the current routing and task facts without Work backlog rows
+- **AND** it does not infer that the built-in Work Registry capability is unavailable

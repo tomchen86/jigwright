@@ -2,13 +2,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';
 
-import type {
-  RepositoryConsumerConfigurationV1,
-  RepositoryConsumerPortV1,
-  RepositoryDatabasePolicyConfigurationV1,
-  RepositoryDocumentConfigurationV1,
-  RepositoryPlanningConfigurationV1,
-  RepositoryWorkRegistryConfigurationV1,
+import {
+  GOVERNANCE_SOURCE_LEDGER_ROOT,
+  type RepositoryConsumerConfigurationV1,
+  type RepositoryConsumerPortV1,
+  type RepositoryDatabasePolicyConfigurationV1,
+  type RepositoryDocumentConfigurationV1,
+  type RepositoryPlanningConfigurationV1,
+  type RepositoryWorkRegistryConfigurationV1,
 } from '@jigwright/core/repository-consumer-port';
 import {
   RepositoryPathError,
@@ -29,6 +30,16 @@ const MAX_CONFIG_BYTES = 64 * 1024;
 const UTF8 = new TextDecoder('utf-8', { fatal: true });
 const SAFE_ID = /^[a-z][a-z0-9-]{0,63}$/u;
 const SAFE_SCHEMA_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const DEFAULT_WORK_REGISTRY_CONFIGURATION: RepositoryWorkRegistryConfigurationV1 =
+  Object.freeze({
+    adapterId: 'filesystem-work-registry-v1',
+    itemRoot: 'docs/work-registry/items',
+    inventoryPath: 'docs/work-registry/inventory.json',
+    backlogPath: 'docs/BACKLOG.md',
+    historyRoot: 'docs/work-history',
+    transitionPolicyPath: 'workflow/work-registry-policy.json',
+    changeOriginRoot: 'openspec/changes',
+  });
 
 export type LoadedRepositoryConsumerConfiguration = Readonly<{
   configuration: RepositoryConsumerConfigurationV1;
@@ -69,10 +80,9 @@ export function loadRepositoryConsumerConfiguration(
 }
 
 /**
- * Report only whether the optional repository-consumer configuration entry is
- * present. A true result does not admit the entry: every consumer must still
- * pass it through the strict loader, so an unsafe or invalid entry cannot be
- * treated as absent.
+ * Report only whether the repository-consumer configuration file is present.
+ * Core Source capture and correction-chain reads may operate before a consumer
+ * config exists. A present file must still pass the strict loader.
  */
 export function repositoryConsumerConfigurationExists(
   requestedRepositoryRoot: string,
@@ -100,21 +110,6 @@ export function repositoryPlanningConfiguration(
 export function repositoryWorkRegistryConfiguration(
   repositoryRoot: string,
 ): RepositoryWorkRegistryConfigurationV1 {
-  const configuration =
-    repositoryWorkRegistryConfigurationOrNull(repositoryRoot);
-  if (configuration === null) {
-    throw configError(
-      'WORK_REGISTRY_UNAVAILABLE',
-      'This repository has not enabled the optional Work Registry.',
-      ExitCode.guard,
-    );
-  }
-  return configuration;
-}
-
-export function repositoryWorkRegistryConfigurationOrNull(
-  repositoryRoot: string,
-): RepositoryWorkRegistryConfigurationV1 | null {
   return productionRepositoryConsumerPort.load(repositoryRoot).workRegistry;
 }
 
@@ -138,8 +133,9 @@ export function repositoryConsumerPath(
 export function parseRepositoryConsumerConfiguration(
   value: unknown,
 ): RepositoryConsumerConfigurationV1 {
+  if (!isRecord(value)) throw configInvalid();
+  const hasExplicitWorkRegistry = Object.hasOwn(value, 'workRegistry');
   if (
-    !isRecord(value) ||
     !hasExactKeys(value, [
       'adapterId',
       'consumerId',
@@ -147,7 +143,7 @@ export function parseRepositoryConsumerConfiguration(
       'documents',
       'planning',
       'schemaVersion',
-      'workRegistry',
+      ...(hasExplicitWorkRegistry ? ['workRegistry'] : []),
     ]) ||
     value.schemaVersion !== 1 ||
     value.adapterId !== 'configured-repository-v1' ||
@@ -173,20 +169,23 @@ export function parseRepositoryConsumerConfiguration(
     !isRecord(value.documents) ||
     !hasExactKeys(value.documents, ['adapterId', 'handoffPath']) ||
     typeof value.documents.adapterId !== 'string' ||
-    !isWorkRegistryConfiguration(value.workRegistry) ||
     !isRecord(value.databasePolicy) ||
     !hasExactKeys(value.databasePolicy, ['adapterId']) ||
     typeof value.databasePolicy.adapterId !== 'string'
   ) {
     throw configInvalid();
   }
-  const workRegistry =
-    value.workRegistry as RepositoryWorkRegistryConfigurationV1 | null;
+  if (hasExplicitWorkRegistry && value.workRegistry === null) {
+    throw workRegistryDisabledInvalid();
+  }
+  const workRegistry = hasExplicitWorkRegistry
+    ? value.workRegistry
+    : DEFAULT_WORK_REGISTRY_CONFIGURATION;
+  if (!isWorkRegistryConfiguration(workRegistry)) throw configInvalid();
   if (
     value.planning.providerId !== 'openspec' ||
     value.documents.adapterId !== 'filesystem-documents-v1' ||
-    (workRegistry !== null &&
-      workRegistry.adapterId !== 'filesystem-work-registry-v1') ||
+    workRegistry.adapterId !== 'filesystem-work-registry-v1' ||
     !['postgresql-disposable-v1', 'disabled-v1'].includes(
       value.databasePolicy.adapterId,
     )
@@ -217,23 +216,23 @@ export function parseRepositoryConsumerConfiguration(
   }
   const documents = value.documents as Record<string, unknown>;
   const documentPaths = [documents.handoffPath].map(safePathValue);
-  const registryPaths =
-    workRegistry === null
-      ? []
-      : [
-          workRegistry.itemRoot,
-          workRegistry.inventoryPath,
-          workRegistry.backlogPath,
-          workRegistry.historyRoot,
-          workRegistry.sourceRoot,
-          workRegistry.transitionPolicyPath,
-          workRegistry.changeOriginRoot,
-        ].map(safePathValue);
+  const registryPaths = [
+    workRegistry.itemRoot,
+    workRegistry.inventoryPath,
+    workRegistry.backlogPath,
+    workRegistry.historyRoot,
+    workRegistry.transitionPolicyPath,
+    workRegistry.changeOriginRoot,
+  ].map(safePathValue);
+  const managedPaths = [
+    ...documentPaths,
+    GOVERNANCE_SOURCE_LEDGER_ROOT,
+    ...registryPaths,
+  ];
   if (
     new Set(documentPaths).size !== documentPaths.length ||
     new Set(registryPaths).size !== registryPaths.length ||
-    new Set([...documentPaths, ...registryPaths]).size !==
-      documentPaths.length + registryPaths.length
+    new Set(managedPaths).size !== managedPaths.length
   ) {
     throw configInvalid();
   }
@@ -253,19 +252,15 @@ export function parseRepositoryConsumerConfiguration(
       adapterId: 'filesystem-documents-v1',
       handoffPath: documentPaths[0]!,
     },
-    workRegistry:
-      workRegistry === null
-        ? null
-        : {
-            adapterId: 'filesystem-work-registry-v1',
-            itemRoot: registryPaths[0]!,
-            inventoryPath: registryPaths[1]!,
-            backlogPath: registryPaths[2]!,
-            historyRoot: registryPaths[3]!,
-            sourceRoot: registryPaths[4]!,
-            transitionPolicyPath: registryPaths[5]!,
-            changeOriginRoot: registryPaths[6]!,
-          },
+    workRegistry: {
+      adapterId: 'filesystem-work-registry-v1',
+      itemRoot: registryPaths[0]!,
+      inventoryPath: registryPaths[1]!,
+      backlogPath: registryPaths[2]!,
+      historyRoot: registryPaths[3]!,
+      transitionPolicyPath: registryPaths[4]!,
+      changeOriginRoot: registryPaths[5]!,
+    },
     databasePolicy: { adapterId: value.databasePolicy.adapterId },
   });
 }
@@ -276,17 +271,13 @@ function assertConfiguredPathsInsideRepository(
 ): void {
   const paths = [
     configuration.documents.handoffPath,
-    ...(configuration.workRegistry === null
-      ? []
-      : [
-          configuration.workRegistry.itemRoot,
-          configuration.workRegistry.inventoryPath,
-          configuration.workRegistry.backlogPath,
-          configuration.workRegistry.historyRoot,
-          configuration.workRegistry.sourceRoot,
-          configuration.workRegistry.transitionPolicyPath,
-          configuration.workRegistry.changeOriginRoot,
-        ]),
+    GOVERNANCE_SOURCE_LEDGER_ROOT,
+    configuration.workRegistry.itemRoot,
+    configuration.workRegistry.inventoryPath,
+    configuration.workRegistry.backlogPath,
+    configuration.workRegistry.historyRoot,
+    configuration.workRegistry.transitionPolicyPath,
+    configuration.workRegistry.changeOriginRoot,
   ];
   try {
     for (const configuredPath of paths) {
@@ -416,21 +407,19 @@ function isSchemaNames(value: unknown, allowEmpty: boolean): value is string[] {
 
 function isWorkRegistryConfiguration(
   value: unknown,
-): value is RepositoryWorkRegistryConfigurationV1 | null {
+): value is RepositoryWorkRegistryConfigurationV1 {
   return (
-    value === null ||
-    (isRecord(value) &&
-      hasExactKeys(value, [
-        'adapterId',
-        'backlogPath',
-        'changeOriginRoot',
-        'historyRoot',
-        'inventoryPath',
-        'itemRoot',
-        'sourceRoot',
-        'transitionPolicyPath',
-      ]) &&
-      typeof value.adapterId === 'string')
+    isRecord(value) &&
+    hasExactKeys(value, [
+      'adapterId',
+      'backlogPath',
+      'changeOriginRoot',
+      'historyRoot',
+      'inventoryPath',
+      'itemRoot',
+      'transitionPolicyPath',
+    ]) &&
+    typeof value.adapterId === 'string'
   );
 }
 
@@ -452,7 +441,7 @@ function deepFreeze<T extends RepositoryConsumerConfigurationV1>(value: T): T {
   Object.freeze(value.planning.managedSchemaNames);
   Object.freeze(value.planning);
   Object.freeze(value.documents);
-  if (value.workRegistry !== null) Object.freeze(value.workRegistry);
+  Object.freeze(value.workRegistry);
   Object.freeze(value.databasePolicy);
   return Object.freeze(value);
 }
@@ -461,6 +450,14 @@ function configInvalid(): ReturnType<typeof workflowError> {
   return configError(
     'REPOSITORY_CONSUMER_CONFIG_INVALID',
     'Repository consumer configuration does not match schema version 1.',
+    ExitCode.verification,
+  );
+}
+
+function workRegistryDisabledInvalid(): ReturnType<typeof workflowError> {
+  return configError(
+    'REPOSITORY_CONSUMER_CONFIG_INVALID',
+    'D-018 keeps the Work Registry built in; workRegistry: null is invalid.',
     ExitCode.verification,
   );
 }

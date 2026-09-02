@@ -54,7 +54,6 @@ function fixtureConfiguration(
       inventoryPath: 'state/work/inventory.json',
       backlogPath: 'notebook/backlog.md',
       historyRoot: 'notebook/history',
-      sourceRoot: 'state/sources',
       transitionPolicyPath: 'state/work/policy.json',
       changeOriginRoot: 'plans',
     }),

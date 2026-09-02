@@ -204,6 +204,34 @@ test('the public fixture repository-consumer port exposes only current document 
   }
 });
 
+test('the public fixture repository-consumer port exposes only current Work Registry keys', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-fixture-port-work-registry-'),
+  );
+  try {
+    const configuration = createFixtureRepositoryConsumerPortV1(
+      repositoryRoot,
+      {
+        repositoryName: 'orbit-fixture',
+        planningSchema: 'orbit-spec-v1',
+        documentAdapter: 'orbit-notebook-v1',
+      },
+    ).load(repositoryRoot);
+
+    assert.deepEqual(Object.keys(configuration.workRegistry).sort(), [
+      'adapterId',
+      'backlogPath',
+      'changeOriginRoot',
+      'historyRoot',
+      'inventoryPath',
+      'itemRoot',
+      'transitionPolicyPath',
+    ]);
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
 test('consumer-neutral package sources reject every known expense-app coupling class', () => {
   const sourceRoots = [
     path.resolve(packageRoot, '../core/src'),

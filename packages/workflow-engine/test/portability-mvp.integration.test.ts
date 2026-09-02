@@ -180,7 +180,7 @@ test('the tracked Jigwright package configuration is explicit', () => {
   assert.equal(loaded.configuration.databasePolicy.adapterId, 'disabled-v1');
 });
 
-test('repository consumer documents accept only adapterId and handoffPath', () => {
+test('repository consumer documents and Work Registry accept only current keys', () => {
   const repository = createConsumerRepository('orbit-consumer');
   try {
     const configuration = orbitConsumerConfiguration();
@@ -198,6 +198,15 @@ test('repository consumer documents accept only adapterId and handoffPath', () =
       loaded.configuration.workRegistry,
       configuration.workRegistry,
     );
+    assert.deepEqual(Object.keys(loaded.configuration.workRegistry).sort(), [
+      'adapterId',
+      'backlogPath',
+      'changeOriginRoot',
+      'historyRoot',
+      'inventoryPath',
+      'itemRoot',
+      'transitionPolicyPath',
+    ]);
 
     for (const [legacyKey, legacyPath] of [
       ['issueLogPath', 'notebook/issue-index.md'],
@@ -226,6 +235,47 @@ test('repository consumer documents accept only adapterId and handoffPath', () =
     assert.throws(
       () => loadRepositoryConsumerConfiguration(repository),
       hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+    );
+
+    writeJson(path.join(repository, 'workflow/repository-consumer.json'), {
+      ...configuration,
+      workRegistry: null,
+    });
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repository),
+      hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+    );
+
+    writeJson(path.join(repository, 'workflow/repository-consumer.json'), {
+      ...configuration,
+      workRegistry: {
+        ...configuration.workRegistry,
+        sourceRoot: 'state/sources',
+      },
+    });
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repository),
+      hasWorkflowCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
+    );
+
+    const { workRegistry: _workRegistry, ...defaultedConfiguration } =
+      configuration;
+    writeJson(
+      path.join(repository, 'workflow/repository-consumer.json'),
+      defaultedConfiguration,
+    );
+    assert.deepEqual(
+      loadRepositoryConsumerConfiguration(repository).configuration
+        .workRegistry,
+      {
+        adapterId: 'filesystem-work-registry-v1',
+        itemRoot: 'docs/work-registry/items',
+        inventoryPath: 'docs/work-registry/inventory.json',
+        backlogPath: 'docs/BACKLOG.md',
+        historyRoot: 'docs/work-history',
+        transitionPolicyPath: 'workflow/work-registry-policy.json',
+        changeOriginRoot: 'openspec/changes',
+      },
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -2156,7 +2206,6 @@ function orbitConsumerConfiguration(): RepositoryConsumerConfigurationV1 & {
       inventoryPath: 'state/work/inventory.json',
       backlogPath: 'notebook/backlog.md',
       historyRoot: 'notebook/history',
-      sourceRoot: 'state/sources',
       transitionPolicyPath: 'state/work/policy.json',
       changeOriginRoot: 'plans',
     },

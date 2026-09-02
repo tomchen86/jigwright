@@ -60,9 +60,9 @@ linked Work Items, and current or archived change `origin.json` citations.
 Change and planning artifacts SHALL store Source identities rather than copied
 Source records.
 
-#### Scenario: Sources are listed without optional governance
+#### Scenario: Sources are listed when there are no Work Items
 
-- **WHEN** a repository has Source records but no Work Registry configuration
+- **WHEN** a repository has Source records but no Work Item records
 - **THEN** `source list` returns their exact selected wording in stable Source-ID order
 - **AND** every returned Source passes the same identity and canonical-byte validation as `source show`
 
@@ -72,11 +72,11 @@ Source records.
 - **THEN** `source trace` reports that change origin
 - **AND** the Source gains no lifecycle, priority, check, or transition authority
 
-#### Scenario: Optional Work Registry is absent
+#### Scenario: Built-in Work Registry has zero items
 
-- **WHEN** a repository has Source records but no Work Registry configuration
+- **WHEN** a configured repository has Source records and zero Work Items
 - **THEN** `source list`, `source show`, and correction-chain `source trace` remain available
-- **AND** optional Work Item and change-origin relations are returned as empty
+- **AND** Work Item and change-origin relations are returned as empty
 
 ### Requirement: Every Governance Citation Resolves
 
@@ -97,7 +97,7 @@ Source, deleting the citation, or rewriting historical bytes.
 
 ### Requirement: Work Registry Search Resolves Linked Source Wording
 
-An installed Work Registry SHALL allow a caller to find a Work Item by the
+The built-in Work Registry SHALL allow a caller to find a Work Item by the
 exact text of any identity-valid Source it cites. Search SHALL return the
 canonical Work Item without copying Source text into the item, a projection,
 or a search index. Every cited Source SHALL be validated during the search;
@@ -113,7 +113,7 @@ item-only match.
 
 ### Requirement: Work Items Use Stable Per-Item Records
 
-An installed Work Registry SHALL persist each current Work Item as one exact,
+The built-in Work Registry SHALL persist each current Work Item as one exact,
 canonical record under
 `docs/work-registry/items/<created-year>/WORK-<ULID>.yaml`. The Work Item path
 MUST remain stable across lifecycle changes. `stage`, `lane`, and `blockedBy`
@@ -180,7 +180,7 @@ both tracked inputs, and recover the same prepared transaction after a crash.
 
 ### Requirement: Work Registry Read Surfaces Are Deterministic
 
-The installed registry SHALL expose `list`, `show`, `search`, `trace`,
+The built-in registry SHALL expose `list`, `show`, `search`, `trace`,
 `recommend`, `inventory`, `render`, and `validate`. Every composite read MUST
 use one coherent item/origin snapshot and validate every traversed Source and
 relation. Render SHALL derive the backlog, inventory, history, and configured
@@ -206,8 +206,7 @@ claims grounded in those Sources as `source-backed`, and mark interpretations
 or extensions as `agent-derived`. Planning and change artifacts SHALL retain
 immutable Source identities without copying an entire Source record. This
 provenance distinction SHALL NOT grant planning, policy, check, or transition
-authority and SHALL NOT require the optional Work Registry for an uncited
-change.
+authority and SHALL NOT require a Work Item for an uncited change.
 
 #### Scenario: A proposed change cites maintainer wording
 
@@ -221,8 +220,8 @@ Archive reconciliation SHALL derive linked Work Items from the canonical
 archived change origin, require the same bidirectional relationship admitted
 before archive, close only those active items with outcome `delivered`, and
 regenerate exact current projections. It SHALL preserve every Source and Work
-Item timeline and SHALL be idempotent for the same archive facts. When the Work
-Registry is disabled, archive reconciliation SHALL return no Work Item effects.
+Item timeline and SHALL be idempotent for the same archive facts. An archived
+change with zero linked Work Items SHALL produce no Work Item effects.
 
 #### Scenario: One linked change is archived
 
@@ -230,26 +229,60 @@ Registry is disabled, archive reconciliation SHALL return no Work Item effects.
 - **THEN** each exactly linked active Work Item closes once with the archived change identity
 - **AND** a second reconciliation preserves the same record and projection bytes
 
-### Requirement: Work Registry Is an Explicit Optional Capability
+#### Scenario: An archived change has no linked Work Items
 
-A configured repository SHALL represent an installed Work Registry with its
-strict adapter configuration and SHALL represent a disabled Work Registry with
-the required exact value `workRegistry: null`. Omitting the key or supplying an
-unknown adapter MUST remain invalid. Disabling the Work Registry MUST NOT
-disable Governance Source capture or reading, generic handoff rendering, or
-archive processing that has no Work Items to reconcile.
+- **WHEN** the canonical archived origin has no `workItemRefs`
+- **THEN** archive reconciliation returns no Work Item output paths
+- **AND** Source, Work Registry, handoff, and Git bytes remain unchanged
 
-#### Scenario: Configured consumer disables the Work Registry
+### Requirement: Work Registry Is Always Available While Work Item Use Is Optional
 
-- **WHEN** a valid repository consumer configuration sets `workRegistry` to `null`
-- **THEN** Source capture, list, show, and correction-only trace remain available
-- **AND** generic handoff and archive processing omit Work Registry projections
-- **AND** a Work Item command fails with `WORK_REGISTRY_UNAVAILABLE` before mutation
+A configured repository SHALL always have the built-in Work Registry available.
+The repository MAY have zero Work Items, and a change MAY cite a Source directly
+without first creating a Work Item. The `workRegistry` configuration key MAY be
+omitted to select engine-owned default paths or MAY contain one exact current
+path configuration. The value `workRegistry: null` MUST fail with
+`REPOSITORY_CONSUMER_CONFIG_INVALID` under D-018 rather than disabling the
+capability or preserving a dormant null branch.
 
-#### Scenario: Work Registry capability key is missing
+#### Scenario: Configured consumer has zero Work Items
 
-- **WHEN** a repository consumer configuration omits `workRegistry`
-- **THEN** configuration validation fails rather than inferring enabled or disabled behavior
+- **WHEN** a valid configured repository has no Work Item records or inventory projection
+- **THEN** Work Item list and Source-to-work trace return empty Work Item facts
+- **AND** Source capture, generic handoff, and archive processing remain available
+
+#### Scenario: Work Registry configuration selects defaults
+
+- **WHEN** a repository consumer configuration omits the `workRegistry` key
+- **THEN** the engine supplies its exact current Work Registry default paths
+- **AND** it does not infer a disabled capability
+
+#### Scenario: Configured consumer attempts to disable the Work Registry
+
+- **WHEN** a repository consumer configuration supplies `workRegistry: null`
+- **THEN** configuration validation fails with `REPOSITORY_CONSUMER_CONFIG_INVALID`
+- **AND** no Source, Work Item, projection, lock, or Git byte changes
+
+### Requirement: Governance Source Ledger Path Is Engine-Owned
+
+Every Governance Source writer, reader, list operation, Work Item citation,
+backlog link, trace, and validator SHALL resolve the Source ledger only at
+`workflow/source-ledger/objects/sha256`. Work Registry configuration MUST NOT
+contain `sourceRoot`; an attempted override is an unknown extra key and MUST
+fail with `REPOSITORY_CONSUMER_CONFIG_INVALID` before reading or writing either
+the fixed ledger or the requested path.
+
+#### Scenario: A configuration attempts to redirect Sources
+
+- **WHEN** an otherwise valid Work Registry configuration supplies `sourceRoot`
+- **THEN** configuration validation rejects the extra key
+- **AND** the fixed Source ledger and requested path remain unchanged
+
+#### Scenario: Core Source capture precedes repository consumer configuration
+
+- **WHEN** a caller captures or reads an identity-valid Source before a repository consumer configuration exists
+- **THEN** the engine uses the fixed core-owned ledger path
+- **AND** it creates no Work Item or repository configuration
 
 ### Requirement: Findings Remain Independent of Task Write Scope
 

@@ -12,13 +12,15 @@ export type RepositoryDocumentConfigurationV1 = Readonly<{
   handoffPath: string;
 }>;
 
+export const GOVERNANCE_SOURCE_LEDGER_ROOT =
+  'workflow/source-ledger/objects/sha256';
+
 export type RepositoryWorkRegistryConfigurationV1 = Readonly<{
   adapterId: string;
   itemRoot: string;
   inventoryPath: string;
   backlogPath: string;
   historyRoot: string;
-  sourceRoot: string;
   transitionPolicyPath: string;
   changeOriginRoot: string;
 }>;
@@ -33,7 +35,7 @@ export type RepositoryConsumerConfigurationV1 = Readonly<{
   consumerId: string;
   planning: RepositoryPlanningConfigurationV1;
   documents: RepositoryDocumentConfigurationV1;
-  workRegistry: RepositoryWorkRegistryConfigurationV1 | null;
+  workRegistry: RepositoryWorkRegistryConfigurationV1;
   databasePolicy: RepositoryDatabasePolicyConfigurationV1;
 }>;
 

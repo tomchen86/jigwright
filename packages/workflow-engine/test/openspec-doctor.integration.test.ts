@@ -672,7 +672,6 @@ function writeRepositoryConsumerConfiguration(
       inventoryPath: 'docs/work-registry/inventory.json',
       backlogPath: 'docs/BACKLOG.md',
       historyRoot: 'docs/work-history',
-      sourceRoot: 'workflow/source-ledger/objects/sha256',
       transitionPolicyPath: 'workflow/work-registry-policy.json',
       changeOriginRoot: 'openspec/changes',
     },

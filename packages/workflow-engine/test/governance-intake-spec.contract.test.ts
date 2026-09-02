@@ -6,6 +6,27 @@ const specificationUrl = new URL(
   '../../../openspec/specs/governance-intake/spec.md',
   import.meta.url,
 );
+const changeRoutingSpecificationUrl = new URL(
+  '../../../openspec/specs/change-routing/spec.md',
+  import.meta.url,
+);
+const currentWorkRegistrySources = [
+  new URL('../../core/src/repository-consumer-port.ts', import.meta.url),
+  new URL('../../fixture-adapter/src/repository-consumer.ts', import.meta.url),
+  new URL(
+    '../src/modules/repository-consumer/repository-consumer-config.ts',
+    import.meta.url,
+  ),
+  new URL(
+    '../src/modules/governance-intake/governance-intake.ts',
+    import.meta.url,
+  ),
+  new URL('../src/modules/governance-intake/work-registry.ts', import.meta.url),
+  new URL(
+    '../src/adapters/consumer/repository/handoff/handoff.ts',
+    import.meta.url,
+  ),
+] as const;
 
 test('active governance intake contract covers the current Source-to-work lifecycle', () => {
   const specification = fs.readFileSync(specificationUrl, 'utf8');
@@ -16,6 +37,8 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Work Registry Read Surfaces Are Deterministic',
     '### Requirement: Planning Prose Distinguishes Source-Backed Claims',
     '### Requirement: Archive Reconciles Linked Work Items Deterministically',
+    '### Requirement: Work Registry Is Always Available While Work Item Use Is Optional',
+    '### Requirement: Governance Source Ledger Path Is Engine-Owned',
   ];
 
   for (const requirement of requirements) {
@@ -39,7 +62,9 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '`agent-derived`',
     '`sourceRefs`',
     '`workItemRefs`',
-    '`WORK_REGISTRY_UNAVAILABLE`',
+    '`workflow/source-ledger/objects/sha256`',
+    '`workRegistry: null`',
+    'D-018',
   ]) {
     assert.match(
       specification,
@@ -53,7 +78,37 @@ test('active governance intake contract covers the current Source-to-work lifecy
   assert.match(specification, /current survey/u);
   assert.doesNotMatch(
     specification,
-    /issues? v1|ISS-\d+|workflow issue|migration window/iu,
+    /issues? v1|ISS-\d+|workflow issue|migration window|WORK_REGISTRY_UNAVAILABLE|optional Work Registry/iu,
+  );
+
+  const changeRoutingSpecification = fs.readFileSync(
+    changeRoutingSpecificationUrl,
+    'utf8',
+  );
+  assert.match(
+    changeRoutingSpecification,
+    /current task, archive, and Work Registry\s+facts/u,
+  );
+  assert.match(
+    changeRoutingSpecification,
+    /#### Scenario: Built-in Work Registry has zero items/u,
+  );
+  assert.doesNotMatch(changeRoutingSpecification, /optional Work Registry/iu);
+});
+
+test('production has no optional Work Registry or configurable Source-root surface', () => {
+  for (const sourceUrl of currentWorkRegistrySources) {
+    const source = fs.readFileSync(sourceUrl, 'utf8');
+    assert.doesNotMatch(
+      source,
+      /repositoryWorkRegistryConfigurationOrNull|WORK_REGISTRY_UNAVAILABLE|\bsourceRoot\b/u,
+      sourceUrl.pathname,
+    );
+  }
+
+  assert.match(
+    fs.readFileSync(currentWorkRegistrySources[0], 'utf8'),
+    /GOVERNANCE_SOURCE_LEDGER_ROOT/u,
   );
 });
 

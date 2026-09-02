@@ -382,7 +382,7 @@ test('Source capture projects exact ownerless show and trace next steps', () => 
   }
 });
 
-test('Source list preserves exact wording without the optional Work Registry', () => {
+test('Source list preserves exact wording before repository consumer configuration exists', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-core-list-'),
   );
@@ -436,9 +436,9 @@ test('Source list preserves exact wording without the optional Work Registry', (
   }
 });
 
-test('configured consumers can disable Work Registry without disabling core Source or lifecycle', () => {
+test('configured consumers keep Work Registry available and the Source ledger engine-owned', () => {
   const repositoryRoot = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'jigwright-optional-work-registry-'),
+    path.join(os.tmpdir(), 'jigwright-built-in-work-registry-'),
   );
   configureRepositoryConsumer(repositoryRoot);
   const configPath = path.join(
@@ -448,23 +448,29 @@ test('configured consumers can disable Work Registry without disabling core Sour
   const configured = JSON.parse(fs.readFileSync(configPath, 'utf8')) as Record<
     string,
     unknown
-  >;
-  configured.workRegistry = null;
-  const disabledConfigBytes = `${JSON.stringify(configured)}\n`;
-  fs.writeFileSync(configPath, disabledConfigBytes);
+  > & { workRegistry: Record<string, unknown> };
+  const currentConfigBytes = `${JSON.stringify(configured)}\n`;
+  fs.writeFileSync(configPath, currentConfigBytes);
   try {
-    assert.equal(
+    const workRegistry =
       loadRepositoryConsumerConfiguration(repositoryRoot).configuration
-        .workRegistry,
-      null,
-    );
+        .workRegistry;
+    assert.deepEqual(Object.keys(workRegistry).sort(), [
+      'adapterId',
+      'backlogPath',
+      'changeOriginRoot',
+      'historyRoot',
+      'inventoryPath',
+      'itemRoot',
+      'transitionPolicyPath',
+    ]);
 
     const source = captureGovernanceSource(repositoryRoot, {
       semanticAuthor: 'maintainer',
       capturedBy: 'jigwright',
       capturedAt: '2026-08-24T03:10:30.000Z',
       contextRef: 'direct-human:thread/turn-42',
-      text: 'Source capture must not require the Work Registry.\n',
+      text: 'Source capture uses the fixed core-owned ledger.\n',
       supersedes: null,
     }).source;
     assert.deepEqual(
@@ -489,6 +495,10 @@ test('configured consumers can disable Work Registry without disabling core Sour
 
     const handoff = renderHandoff(repositoryRoot);
     assert.doesNotMatch(handoff, /Work Registry|Work backlog/u);
+    assert.deepEqual(
+      dispatchGovernanceIntakeCommand('work-item', ['list'], repositoryRoot),
+      { action: 'list', items: [] },
+    );
     const sourcePath = path.join(
       repositoryRoot,
       'workflow/source-ledger/objects/sha256',
@@ -499,36 +509,63 @@ test('configured consumers can disable Work Registry without disabling core Sour
     assert.deepEqual(
       reconcileArchivedWorkItems(
         repositoryRoot,
-        'optional-registry-change',
-        'openspec/changes/archive/2026-08-24-optional-registry-change',
+        'zero-work-item-change',
+        'openspec/changes/archive/2026-08-24-zero-work-item-change',
         '2026-08-24T03:11:00.000Z',
       ),
       { closedItemIds: [], outputPaths: [] },
     );
-    assert.throws(
-      () =>
-        dispatchGovernanceIntakeCommand('work-item', ['list'], repositoryRoot),
-      hasCode('WORK_REGISTRY_UNAVAILABLE'),
-    );
-    assert.equal(fs.readFileSync(configPath, 'utf8'), disabledConfigBytes);
+    assert.equal(fs.readFileSync(configPath, 'utf8'), currentConfigBytes);
     assert.equal(fs.readFileSync(sourcePath, 'utf8'), sourceBytes);
     assert.equal(
       fs.existsSync(path.join(repositoryRoot, 'docs/work-registry')),
       false,
     );
 
-    const { workRegistry: _workRegistry, ...missingWorkRegistry } = configured;
-    fs.writeFileSync(configPath, `${JSON.stringify(missingWorkRegistry)}\n`);
+    fs.writeFileSync(
+      configPath,
+      `${JSON.stringify({ ...configured, workRegistry: null })}\n`,
+    );
+    assert.throws(
+      () => loadRepositoryConsumerConfiguration(repositoryRoot),
+      (error) =>
+        hasCode('REPOSITORY_CONSUMER_CONFIG_INVALID')(error) &&
+        error instanceof Error &&
+        /D-018/u.test(error.message),
+    );
+    assert.equal(fs.readFileSync(sourcePath, 'utf8'), sourceBytes);
+
+    fs.writeFileSync(
+      configPath,
+      `${JSON.stringify({
+        ...configured,
+        workRegistry: {
+          ...configured.workRegistry,
+          sourceRoot: 'state/sources',
+        },
+      })}\n`,
+    );
     assert.throws(
       () => loadRepositoryConsumerConfiguration(repositoryRoot),
       hasCode('REPOSITORY_CONSUMER_CONFIG_INVALID'),
     );
+    assert.equal(fs.readFileSync(sourcePath, 'utf8'), sourceBytes);
+
+    const { workRegistry: _workRegistry, ...defaultedConfiguration } =
+      configured;
+    fs.writeFileSync(configPath, `${JSON.stringify(defaultedConfiguration)}\n`);
+    assert.deepEqual(
+      loadRepositoryConsumerConfiguration(repositoryRoot).configuration
+        .workRegistry,
+      configured.workRegistry,
+    );
+    assert.equal(fs.readFileSync(sourcePath, 'utf8'), sourceBytes);
   } finally {
     fs.rmSync(repositoryRoot, { recursive: true, force: true });
   }
 });
 
-test('Source trace only treats an absent repository consumer config as optional', () => {
+test('Source trace stays core-only before repository consumer configuration exists', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-core-trace-'),
   );
@@ -761,7 +798,7 @@ test('source and finding CLI routes parse exact input envelopes', () => {
   }
 });
 
-test('optional Work Registry creates one stable item and promotes exact provenance', () => {
+test('built-in Work Registry creates one stable item and promotes exact provenance', () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-registry-'),
   );
@@ -773,7 +810,7 @@ test('optional Work Registry creates one stable item and promotes exact provenan
       capturedBy: 'jigwright',
       capturedAt: '2026-08-24T03:20:00.000Z',
       contextRef: 'direct-human:thread/turn-44',
-      text: 'Make the Work Registry optional.\n',
+      text: 'Keep Work Item use optional.\n',
       supersedes: null,
     }).source;
     const created = createWorkItem(
@@ -4388,7 +4425,6 @@ function configureRepositoryConsumer(repositoryRoot: string): void {
         inventoryPath: 'docs/work-registry/inventory.json',
         backlogPath: 'docs/BACKLOG.md',
         historyRoot: 'docs/work-history',
-        sourceRoot: 'workflow/source-ledger/objects/sha256',
         transitionPolicyPath: 'workflow/work-registry-policy.json',
         changeOriginRoot: 'openspec/changes',
       },
