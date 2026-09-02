@@ -297,3 +297,45 @@ promotion into normative planning or transition facts.
 - **WHEN** an active session records a bounded Finding about work outside its task paths
 - **THEN** the engine stores the Finding with current session and Git facts
 - **AND** no repository lifecycle transition is authorized by the Finding
+
+### Requirement: Finding Disposition Is Append-Only
+
+Under D-019, the engine SHALL keep each original private `FND-*.json` record immutable. A
+Finding read model SHALL expose exactly one `disposition` value from `pending`,
+`converted`, `linked`, or `dismissed`, together with its reason, target, and
+terminal time. Absence of a terminal receipt means `pending`; a terminal value
+MUST come from one create-once canonical sidecar beside the original Finding.
+The current `dismiss` command SHALL require a non-empty reason, write a null
+target, preserve the original Finding bytes, and remain visible through
+`finding list --all`. The ordinary `finding list` command SHALL return only
+pending Findings across the repository's private runtime.
+
+#### Scenario: A caller dismisses one pending Finding
+
+- **WHEN** `finding dismiss <finding-id> --reason <reason>` resolves one identity-valid pending Finding
+- **THEN** one immutable terminal receipt records `dismissed`, the exact reason, a null target, and the current time
+- **AND** the original Finding, Source, Work Item, Git ref, and tracked projection bytes remain unchanged
+- **AND** the Finding disappears from the default list but remains in `finding list --all`
+
+#### Scenario: Finding storage is ambiguous or unsafe
+
+- **WHEN** runtime-wide listing observes an unsafe directory, noncanonical name, path mismatch, hard link, mode drift, invalid bytes, orphan receipt, or duplicate identity
+- **THEN** listing and disposition fail closed without choosing one record
+- **AND** no Finding or disposition byte is repaired, deleted, or rewritten
+
+### Requirement: Governance Intake Counts Are Read-Only
+
+The engine SHALL expose one stable read surface with exactly the current
+`inbox`, `pendingFindings`, and `backlog` counts. Work Item counts SHALL come
+from the validated current Work Registry inventory, and pending Finding counts
+SHALL cover every safely validated session directory in the repository's
+private runtime. Reading the aggregate MUST NOT create or update a Source,
+Finding, disposition, Work Item, tracked projection, or Git ref of its own. It
+MAY enter the existing Work Registry read boundary, which can finish one exact
+previously prepared crash-recovery transaction before returning current counts.
+
+#### Scenario: One Finding is dismissed
+
+- **WHEN** the runtime contains two identity-valid pending Findings and one is dismissed
+- **THEN** `pendingFindings` decreases by one while inbox and backlog counts remain exact
+- **AND** every original Finding and tracked repository byte remains unchanged

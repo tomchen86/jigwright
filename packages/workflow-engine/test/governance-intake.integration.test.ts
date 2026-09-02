@@ -7,10 +7,13 @@ import test from 'node:test';
 
 import {
   captureGovernanceSource,
+  dismissGovernanceFinding,
   listGovernanceSources,
+  listGovernanceFindings,
   readGovernanceSource,
   recordGovernanceFinding,
 } from '../src/modules/governance-intake/governance-intake.ts';
+import { inspectGovernanceIntakeCounts } from '../src/modules/governance-intake/intake-summary.ts';
 import {
   createWorkRegistryPromotionGrantRequest,
   createWorkRegistryReviewGrantRequest,
@@ -709,6 +712,393 @@ test('finding capture binds active session and Git facts outside task paths', ()
     assert.equal(fs.statSync(result.path).mode & 0o777, 0o600);
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('Finding disposition is append-only and runtime-wide counts stay read-only', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-finding-disposition-'),
+  );
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const second = recordGovernanceFinding(
+      {
+        ...fixture.findingContext,
+        sessionId: 'session-second-task',
+        branch: 'work/second-task',
+      },
+      {
+        schemaVersion: 1,
+        text: 'A second pending observation must be counted runtime-wide.',
+        sourceRefs: [fixture.source.source.id],
+      },
+      () => '2026-08-24T03:16:00.000Z',
+    );
+    const firstRawBytes = fs.readFileSync(fixture.finding.path);
+    const secondRawBytes = fs.readFileSync(second.path);
+    const trackedBefore = {
+      head: runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+      refs: runGitForTest(fixture.repositoryRoot, ['show-ref']),
+      status: runGitForTest(fixture.repositoryRoot, [
+        'status',
+        '--porcelain=v1',
+        '-z',
+      ]),
+      items: snapshotPlainTree(
+        path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+      ),
+      sources: snapshotPlainTree(fixture.sourceLedgerRoot),
+    };
+    const runtimeDependency = {
+      now: () => '2026-08-24T03:17:00.000Z',
+      resolveRuntimeRoot: () => fixture.runtimeRoot,
+    };
+
+    assert.deepEqual(
+      inspectGovernanceIntakeCounts(
+        fixture.repositoryRoot,
+        fixture.runtimeRoot,
+      ),
+      { schemaVersion: 1, inbox: 1, pendingFindings: 2, backlog: 0 },
+    );
+    const pending = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['list'],
+      fixture.repositoryRoot,
+      runtimeDependency,
+    ) as { action: string; findings: Array<{ id: string }> };
+    assert.equal(pending.action, 'list');
+    assert.deepEqual(
+      pending.findings.map(({ id }) => id),
+      [fixture.finding.finding.id, second.finding.id].sort(),
+    );
+    const findingsBeforeBlankReason = snapshotPlainTree(
+      path.join(fixture.runtimeRoot, 'findings'),
+    );
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['dismiss', second.finding.id, '--reason', '   '],
+          fixture.repositoryRoot,
+          runtimeDependency,
+        ),
+      hasCode('GOVERNANCE_INTAKE_INVALID'),
+    );
+    assert.deepEqual(
+      snapshotPlainTree(path.join(fixture.runtimeRoot, 'findings')),
+      findingsBeforeBlankReason,
+    );
+
+    const dismissed = dispatchGovernanceIntakeCommand(
+      'finding',
+      [
+        'dismiss',
+        fixture.finding.finding.id,
+        '--reason',
+        'Superseded by direct maintainer evidence.',
+      ],
+      fixture.repositoryRoot,
+      runtimeDependency,
+    ) as {
+      action: string;
+      created: boolean;
+      finding: {
+        id: string;
+        disposition: string;
+        reason: string | null;
+        target: unknown;
+        disposedAt: string | null;
+      };
+    };
+    assert.equal(dismissed.action, 'dismiss');
+    assert.equal(dismissed.created, true);
+    assert.deepEqual(
+      {
+        id: dismissed.finding.id,
+        disposition: dismissed.finding.disposition,
+        reason: dismissed.finding.reason,
+        target: dismissed.finding.target,
+        disposedAt: dismissed.finding.disposedAt,
+      },
+      {
+        id: fixture.finding.finding.id,
+        disposition: 'dismissed',
+        reason: 'Superseded by direct maintainer evidence.',
+        target: null,
+        disposedAt: '2026-08-24T03:17:00.000Z',
+      },
+    );
+    assert.equal(
+      dismissGovernanceFinding(
+        fixture.runtimeRoot,
+        fixture.finding.finding.id,
+        'Superseded by direct maintainer evidence.',
+        () => '2026-08-24T03:18:00.000Z',
+      ).created,
+      false,
+    );
+
+    assert.deepEqual(
+      inspectGovernanceIntakeCounts(
+        fixture.repositoryRoot,
+        fixture.runtimeRoot,
+      ),
+      { schemaVersion: 1, inbox: 1, pendingFindings: 1, backlog: 0 },
+    );
+    assert.deepEqual(
+      (
+        dispatchGovernanceIntakeCommand(
+          'finding',
+          ['list'],
+          fixture.repositoryRoot,
+          runtimeDependency,
+        ) as { findings: Array<{ id: string }> }
+      ).findings.map(({ id }) => id),
+      [second.finding.id],
+    );
+    const all = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['list', '--all'],
+      fixture.repositoryRoot,
+      runtimeDependency,
+    ) as {
+      findings: Array<{ id: string; disposition: string }>;
+    };
+    assert.deepEqual(
+      all.findings.map(({ id, disposition }) => ({ id, disposition })),
+      [
+        { id: fixture.finding.finding.id, disposition: 'dismissed' },
+        { id: second.finding.id, disposition: 'pending' },
+      ].sort((left, right) => left.id.localeCompare(right.id)),
+    );
+
+    const dispositionPath = path.join(
+      path.dirname(fixture.finding.path),
+      `${fixture.finding.finding.id}.disposition.json`,
+    );
+    const dispositionBytes = fs.readFileSync(dispositionPath);
+    assert.throws(
+      () =>
+        dismissGovernanceFinding(
+          fixture.runtimeRoot,
+          fixture.finding.finding.id,
+          'A conflicting terminal reason.',
+          () => '2026-08-24T03:19:00.000Z',
+        ),
+      hasCode('GOVERNANCE_FINDING_DISPOSITION_COLLISION'),
+    );
+    assert.deepEqual(fs.readFileSync(fixture.finding.path), firstRawBytes);
+    assert.deepEqual(fs.readFileSync(second.path), secondRawBytes);
+    assert.deepEqual(fs.readFileSync(dispositionPath), dispositionBytes);
+    assert.deepEqual(
+      {
+        head: runGitForTest(fixture.repositoryRoot, ['rev-parse', 'HEAD']),
+        refs: runGitForTest(fixture.repositoryRoot, ['show-ref']),
+        status: runGitForTest(fixture.repositoryRoot, [
+          'status',
+          '--porcelain=v1',
+          '-z',
+        ]),
+        items: snapshotPlainTree(
+          path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
+        ),
+        sources: snapshotPlainTree(fixture.sourceLedgerRoot),
+      },
+      trackedBefore,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('finding list and dismiss resolve the repository runtime without a session argument', () => {
+  const repositoryRoot = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-finding-runtime-resolution-'),
+  );
+  try {
+    configureRepositoryConsumer(repositoryRoot);
+    runGitForTest(repositoryRoot, ['init', '-b', 'main']);
+    runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
+    runGitForTest(repositoryRoot, [
+      'config',
+      'user.email',
+      'jigwright@example.test',
+    ]);
+    fs.writeFileSync(path.join(repositoryRoot, 'README.md'), 'fixture\n');
+    runGitForTest(repositoryRoot, ['add', '.']);
+    runGitForTest(repositoryRoot, ['commit', '-m', 'Initialize fixture']);
+    const runtimeRoot = path.join(repositoryRoot, '.git', 'jigwright-runtime');
+    fs.mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
+    const recorded = recordGovernanceFinding(
+      {
+        repositoryRoot,
+        runtimeRoot,
+        sessionId: 'session-runtime-resolution',
+        changeId: 'runtime-resolution',
+        branch: 'main',
+        head: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD']),
+        tree: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD^{tree}']),
+      },
+      {
+        schemaVersion: 1,
+        text: 'Resolve this Finding from the Git-common runtime.',
+        sourceRefs: [],
+      },
+      () => '2026-08-24T03:16:00.000Z',
+    );
+
+    const listed = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['list'],
+      repositoryRoot,
+    ) as { findings: Array<{ id: string }> };
+    assert.deepEqual(
+      listed.findings.map(({ id }) => id),
+      [recorded.finding.id],
+    );
+    const dismissed = dispatchGovernanceIntakeCommand(
+      'finding',
+      [
+        'dismiss',
+        recorded.finding.id,
+        '--reason',
+        'Resolved during the current task.',
+      ],
+      repositoryRoot,
+      { now: () => '2026-08-24T03:17:00.000Z' },
+    ) as { finding: { disposition: string } };
+    assert.equal(dismissed.finding.disposition, 'dismissed');
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
+});
+
+test('Finding readers fail closed on unsafe records and sidecars without repair', () => {
+  const cases = [
+    {
+      name: 'noncanonical entry name',
+      expectedCode: 'GOVERNANCE_FINDING_STORE_UNSAFE',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.writeFileSync(
+          path.join(path.dirname(fixture.finding.path), 'README.md'),
+          'poison\n',
+          { mode: 0o600 },
+        );
+      },
+    },
+    {
+      name: 'symbolic-link session directory',
+      expectedCode: 'GOVERNANCE_FINDING_STORE_UNSAFE',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const target = path.join(fixture.root, 'linked-session');
+        fs.mkdirSync(target, { mode: 0o700 });
+        fs.symlinkSync(
+          target,
+          path.join(fixture.runtimeRoot, 'findings', 'session-linked'),
+        );
+      },
+    },
+    {
+      name: 'Finding hard link',
+      expectedCode: 'GOVERNANCE_FINDING_STORE_UNSAFE',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        fs.linkSync(
+          fixture.finding.path,
+          path.join(fixture.root, 'finding-hardlink.json'),
+        );
+      },
+    },
+    {
+      name: 'Finding identity drift',
+      expectedCode: 'GOVERNANCE_INTAKE_INVALID',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const finding = JSON.parse(
+          fs.readFileSync(fixture.finding.path, 'utf8'),
+        ) as Record<string, unknown>;
+        finding.text = 'Tampered Finding text.';
+        fs.writeFileSync(fixture.finding.path, `${JSON.stringify(finding)}\n`, {
+          mode: 0o600,
+        });
+      },
+    },
+    {
+      name: 'disposition sidecar mode drift',
+      expectedCode: 'GOVERNANCE_FINDING_STORE_UNSAFE',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const recorded = dismissGovernanceFinding(
+          fixture.runtimeRoot,
+          fixture.finding.finding.id,
+          'No longer actionable.',
+          () => '2026-08-24T03:17:00.000Z',
+        );
+        fs.chmodSync(recorded.path, 0o644);
+      },
+    },
+    {
+      name: 'disposition sidecar payload drift',
+      expectedCode: 'GOVERNANCE_INTAKE_INVALID',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const recorded = dismissGovernanceFinding(
+          fixture.runtimeRoot,
+          fixture.finding.finding.id,
+          'No longer actionable.',
+          () => '2026-08-24T03:17:00.000Z',
+        );
+        fs.writeFileSync(recorded.path, '{}\n', { mode: 0o600 });
+      },
+    },
+    {
+      name: 'disposition sidecar session-path drift',
+      expectedCode: 'GOVERNANCE_INTAKE_INVALID',
+      poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
+        const recorded = dismissGovernanceFinding(
+          fixture.runtimeRoot,
+          fixture.finding.finding.id,
+          'No longer actionable.',
+          () => '2026-08-24T03:17:00.000Z',
+        );
+        const otherSession = path.join(
+          fixture.runtimeRoot,
+          'findings',
+          'session-other-task',
+        );
+        fs.mkdirSync(otherSession, { mode: 0o700 });
+        fs.renameSync(
+          recorded.path,
+          path.join(otherSession, path.basename(recorded.path)),
+        );
+      },
+    },
+  ] as const;
+
+  for (const scenario of cases) {
+    const root = fs.mkdtempSync(
+      path.join(os.tmpdir(), 'jigwright-finding-reader-safety-'),
+    );
+    try {
+      const fixture = createGovernancePersistenceFixture(root);
+      scenario.poison(fixture);
+      const findingRoot = path.join(fixture.runtimeRoot, 'findings');
+      const before = snapshotPlainTree(findingRoot);
+      assert.throws(
+        () => listGovernanceFindings(fixture.runtimeRoot),
+        hasCode(scenario.expectedCode),
+        scenario.name,
+      );
+      assert.throws(
+        () =>
+          inspectGovernanceIntakeCounts(
+            fixture.repositoryRoot,
+            fixture.runtimeRoot,
+          ),
+        hasCode(scenario.expectedCode),
+        scenario.name,
+      );
+      assert.deepEqual(snapshotPlainTree(findingRoot), before, scenario.name);
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
   }
 });
 

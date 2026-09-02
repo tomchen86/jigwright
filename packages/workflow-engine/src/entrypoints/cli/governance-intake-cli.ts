@@ -8,9 +8,12 @@ import {
 
 import { renderGovernanceIntakeHandoff } from '../../composition-root/governance-intake-production.ts';
 import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
+import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   captureGovernanceSource,
+  dismissGovernanceFinding,
+  listGovernanceFindings,
   listGovernanceSources,
   readGovernanceSource,
   recordGovernanceFinding,
@@ -38,6 +41,8 @@ import {
   type WorkItemPromotionSurveyDeclarationV1,
   type WorkItemReviewV1,
 } from '../../modules/governance-intake/work-registry.ts';
+import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
+import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
 
 export type GovernanceIntakeCliDependencies = Readonly<{
   now?: () => string;
@@ -45,6 +50,7 @@ export type GovernanceIntakeCliDependencies = Readonly<{
     cwd: string,
     sessionId: string,
   ) => GovernanceFindingContextV1;
+  resolveRuntimeRoot?: (cwd: string) => string;
 }>;
 
 export function dispatchGovernanceIntakeCommand(
@@ -268,6 +274,43 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (
       command === 'finding' &&
+      ((args.length === 1 && args[0] === 'list') ||
+        (args.length === 2 && args[0] === 'list' && args[1] === '--all'))
+    ) {
+      const runtimeRoot = (
+        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+      )(cwd);
+      const includeTerminal = args[1] === '--all';
+      return {
+        action: 'list',
+        findings: listGovernanceFindings(runtimeRoot).filter(
+          (finding) => includeTerminal || finding.disposition === 'pending',
+        ),
+      };
+    }
+    if (
+      command === 'finding' &&
+      args.length === 4 &&
+      args[0] === 'dismiss' &&
+      args[2] === '--reason'
+    ) {
+      const runtimeRoot = (
+        dependencies.resolveRuntimeRoot ?? resolveFindingRuntimeRoot
+      )(cwd);
+      const result = dismissGovernanceFinding(
+        runtimeRoot,
+        args[1]!,
+        args[3]!,
+        dependencies.now,
+      );
+      return {
+        action: 'dismiss',
+        finding: result.finding,
+        created: result.created,
+      };
+    }
+    if (
+      command === 'finding' &&
       args.length === 5 &&
       args[0] === 'add' &&
       args[1] === '--session' &&
@@ -300,7 +343,7 @@ export function dispatchGovernanceIntakeCommand(
     throw error;
   }
   throw intakeUsage(
-    'Usage: jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding add --session <session-id> --input <finding-envelope.json> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
+    'Usage: jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
   );
 }
 
@@ -318,6 +361,12 @@ function resolveActiveSession(
     head: context.git.head,
     tree: context.git.tree,
   };
+}
+
+function resolveFindingRuntimeRoot(cwd: string): string {
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  return runtimePaths(git.gitCommonDirectory, config.runtimeDirectory).root;
 }
 
 function readInput(cwd: string, inputPath: string): unknown {

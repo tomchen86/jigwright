@@ -39,6 +39,8 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '### Requirement: Archive Reconciles Linked Work Items Deterministically',
     '### Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory',
     '### Requirement: Governance Source Ledger Path Is Engine-Owned',
+    '### Requirement: Finding Disposition Is Append-Only',
+    '### Requirement: Governance Intake Counts Are Read-Only',
   ];
 
   for (const requirement of requirements) {
@@ -65,6 +67,7 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '`workflow/source-ledger/objects/sha256`',
     '`workRegistry: null`',
     'D-018',
+    'D-019',
   ]) {
     assert.match(
       specification,
@@ -109,6 +112,22 @@ test('production has no disableable Work Registry or configurable Source-root su
   assert.match(
     fs.readFileSync(currentWorkRegistrySources[0], 'utf8'),
     /GOVERNANCE_SOURCE_LEDGER_ROOT/u,
+  );
+  const governanceIntakeSource = fs.readFileSync(
+    currentWorkRegistrySources[3],
+    'utf8',
+  );
+  assert.match(
+    governanceIntakeSource,
+    /export function listGovernanceFindings/u,
+  );
+  assert.match(
+    governanceIntakeSource,
+    /export function dismissGovernanceFinding/u,
+  );
+  assert.doesNotMatch(
+    governanceIntakeSource,
+    /export function recordGovernanceFindingDisposition/u,
   );
 });
 
