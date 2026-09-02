@@ -161,7 +161,7 @@ export function workflowResultNextSteps(
       : ['guide'],
     bindings,
   );
-  const findingTriage = pendingFindingTriageNextStep(result);
+  const findingTriage = pendingFindingTriageNextStep(result, bindings);
   return findingTriage === null
     ? ordinary
     : limitNextSteps([findingTriage, ...ordinary]);
@@ -169,6 +169,7 @@ export function workflowResultNextSteps(
 
 function pendingFindingTriageNextStep(
   result: Readonly<Record<string, unknown>>,
+  bindings: WorkflowNextStepBindings,
 ): WorkflowNextStep | null {
   if (result.command !== 'complete-task' && result.command !== 'finalize') {
     return null;
@@ -189,9 +190,14 @@ function pendingFindingTriageNextStep(
     return null;
   }
   const count = counts.pendingFindings;
+  const currentChange =
+    bindings.changeId !== undefined &&
+    /^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(bindings.changeId)
+      ? shellQuote(bindings.changeId)
+      : '<change-id>';
   return Object.freeze({
     command: 'pnpm workflow finding list --json',
-    why: `${count} pending ${count === 1 ? 'Finding remains' : 'Findings remain'}. Choose one: pnpm workflow finding convert <finding-id> --json; pnpm workflow finding link <finding-id> --change <change-id> --json; pnpm workflow finding dismiss <finding-id> --reason <reason> --json.`,
+    why: `${count} pending ${count === 1 ? 'Finding remains' : 'Findings remain'}. Choose one: pnpm workflow finding convert <finding-id> --json; pnpm workflow finding link <finding-id> --change ${currentChange} --json; pnpm workflow finding dismiss <finding-id> --reason <reason> --json.`,
   });
 }
 

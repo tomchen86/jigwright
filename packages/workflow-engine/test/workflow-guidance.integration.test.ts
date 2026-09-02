@@ -763,6 +763,17 @@ test('retired finalize-task cannot mutate while preferred finalize resumes one d
       'pnpm workflow finding list --json',
     );
     assert.match(preferredOutput.nextSteps[0]?.why ?? '', /1 pending Finding/u);
+    assert.match(
+      preferredOutput.nextSteps[0]?.why ?? '',
+      new RegExp(
+        `finding link <finding-id> --change ${session.changeId} --json`,
+        'u',
+      ),
+    );
+    assert.doesNotMatch(
+      preferredOutput.nextSteps[0]?.why ?? '',
+      /finding link <finding-id> --change <change-id>/u,
+    );
     assert.equal(preferredOutput.nextSteps.length <= 3, true);
     assert.equal(preferredResult.transactionId, transactionId);
     assert.equal(preferredResult.tree, candidateTree);
