@@ -70,6 +70,9 @@ test('single Jigwright tarball ships current installed CLI guidance', () => {
       normalizedReadme,
       /does not publish an npm package or perform real external operations/u,
     );
+    assert.match(normalizedReadme, /Work Registry is always built in/u);
+    assert.match(normalizedReadme, /Work Item use is not mandatory/u);
+    assert.doesNotMatch(normalizedReadme, /optional Work Registry/iu);
     for (const retiredWording of [
       /migration repository/iu,
       /package-side engine/iu,

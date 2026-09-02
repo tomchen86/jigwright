@@ -10,6 +10,8 @@ const changeRoutingSpecificationUrl = new URL(
   '../../../openspec/specs/change-routing/spec.md',
   import.meta.url,
 );
+const readmeUrl = new URL('../../../README.md', import.meta.url);
+const agentsUrl = new URL('../../../AGENTS.md', import.meta.url);
 const currentWorkRegistrySources = [
   new URL('../../core/src/repository-consumer-port.ts', import.meta.url),
   new URL('../../fixture-adapter/src/repository-consumer.ts', import.meta.url),
@@ -178,6 +180,15 @@ test('production has no disableable Work Registry or configurable Source-root su
     governanceIntakeSource,
     /export function recordGovernanceFindingDisposition/u,
   );
+});
+
+test('active repository guidance states the always-built-in Work Registry contract', () => {
+  for (const guidanceUrl of [readmeUrl, agentsUrl]) {
+    const guidance = fs.readFileSync(guidanceUrl, 'utf8');
+    assert.match(guidance, /Work Registry is always built in/u);
+    assert.match(guidance, /Work Item use is not mandatory/u);
+    assert.doesNotMatch(guidance, /optional Work Registry/iu);
+  }
 });
 
 function escapeRegExp(value: string): string {

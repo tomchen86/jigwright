@@ -163,6 +163,10 @@ explicitly disposable database.
 Use TypeScript and focused modules with explicit boundaries. Do not change, split, or refactor source solely because it exceeds 500 lines. Core must depend
 on ports, not directly on optional Grants or integration implementations.
 
+The Work Registry is always built in. Work Item use is not mandatory; a
+repository may have zero Work Items, and agents may cite immutable Sources
+directly without treating the registry as unavailable.
+
 Do not manually stage or commit managed lifecycle changes. Use the workflow
 commands and preserve the exact check evidence they return. Do not publish,
 push, sign, or perform real external operations without explicit authority.
