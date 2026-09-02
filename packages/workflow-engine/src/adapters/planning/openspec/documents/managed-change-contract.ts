@@ -10,7 +10,6 @@ import {
   type ManagedSchemaName,
   readManagedSchemaName,
   repositoryCurrentSchemaName,
-  repositoryPlanningPolicy,
 } from '../../../consumer/repository/work-registry/contracts.ts';
 import { workflowContractArtifactPaths } from '../../../consumer/repository/work-registry/contract-artifacts.ts';
 import {
@@ -18,7 +17,6 @@ import {
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
 import { resolveOpenSpecInstallation } from './openspec-adapter.ts';
-import { createOpenSpecPlanningProviderPort } from './openspec-planning-provider.ts';
 import {
   inspectOpenSpecSchemaContract,
   type OpenSpecSchemaContract,
@@ -42,6 +40,7 @@ import type {
 import {
   evaluatePlanningProvider,
   type PlanningProviderDiagnostic,
+  type PlanningProviderPort,
 } from '../../../../modules/planning-provider/planning-provider-port.ts';
 
 export type ManagedChangeDiagnostic = PlanningProviderDiagnostic;
@@ -78,6 +77,7 @@ export function loadValidatedChangeContract(
   requestedChangeId: string,
   planningProviderReader: PlanningProviderBindingReaderPort,
   consumedPlanReviewReplay: ConsumedPlanReviewReplayPort,
+  planningProvider: PlanningProviderPort,
 ): ValidatedChangeContract {
   const root = canonicalRepositoryRoot(repositoryRoot);
   const before = inspectSnapshot(
@@ -99,7 +99,7 @@ export function loadValidatedChangeContract(
     );
   }
   const providerEvaluation = evaluatePlanningProvider(
-    createOpenSpecPlanningProviderPort(root, repositoryPlanningPolicy(root)),
+    assertPlanningProviderMatchesBinding(planningProvider, before),
     {
       repositoryRoot: root,
       planningRoot: before.planningProvider.binding.planningRoot,
@@ -173,6 +173,24 @@ export function loadValidatedChangeContract(
     planningAssurance,
     planningProvider: after.planningProvider,
   };
+}
+
+function assertPlanningProviderMatchesBinding(
+  planningProvider: PlanningProviderPort,
+  snapshot: ContractSnapshot,
+): PlanningProviderPort {
+  if (
+    planningProvider.id !== snapshot.planningProvider.binding.providerId ||
+    planningProvider.contractVersion !==
+      snapshot.planningProvider.binding.adapterContractVersion
+  ) {
+    throw workflowError(
+      'PLANNING_PROVIDER_BINDING_MISMATCH',
+      'The caller-composed planning provider does not match the tracked provider binding.',
+      ExitCode.verification,
+    );
+  }
+  return planningProvider;
 }
 
 function inspectSnapshot(

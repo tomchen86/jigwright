@@ -19,6 +19,8 @@ import {
   type PlanningProviderPort,
 } from '../src/modules/planning-provider/planning-provider-port.ts';
 import { loadValidatedChangeContract as loadValidatedChangeContractWithReader } from '../src/adapters/planning/openspec/documents/managed-change-contract.ts';
+import { createOpenSpecPlanningProviderPort } from '../src/adapters/planning/openspec/documents/openspec-planning-provider.ts';
+import { repositoryPlanningPolicy } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import { parseValidation } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { resolveCurrentOpenSpecProviderBinding } from '../src/adapters/planning/openspec/documents/openspec-provider-binding.ts';
 import { planningProviderBindingReader } from '../src/runtime/repository-transaction/planning-provider-binding-store.ts';
@@ -38,12 +40,20 @@ import {
 
 const CHANGE_ID = 'fixture-managed-change';
 
-function loadValidatedChangeContract(repositoryRoot: string, changeId: string) {
+function loadValidatedChangeContract(
+  repositoryRoot: string,
+  changeId: string,
+  planningProvider: PlanningProviderPort = createOpenSpecPlanningProviderPort(
+    repositoryRoot,
+    repositoryPlanningPolicy(repositoryRoot),
+  ),
+) {
   return loadValidatedChangeContractWithReader(
     repositoryRoot,
     changeId,
     planningProviderBindingReader,
     ordinaryPlanReviewReplayPortForTest,
+    planningProvider,
   );
 }
 
@@ -240,6 +250,53 @@ test('planning-provider binding is canonical and plane-specific', () => {
       ),
     (error) => isWorkflowError(error, 'PROVIDER_BINDING_INVALID'),
   );
+});
+
+test('validated managed contract consumes the caller-composed planning-provider port', () => {
+  const repository = createManagedRepository();
+  let installationCalls = 0;
+  let validationCalls = 0;
+  let inspectionCalls = 0;
+  const rejected = Object.freeze({
+    id: 'openspec',
+    contractVersion: 1,
+    inspectInstallation: () => {
+      installationCalls += 1;
+      return {
+        providerId: 'openspec',
+        adapterContractVersion: 1,
+        providerVersion: '1.6.0',
+        installationDigest: 'a'.repeat(64),
+      };
+    },
+    validateChange: () => {
+      validationCalls += 1;
+      return rejectedChangeResult();
+    },
+    inspectChange: () => {
+      inspectionCalls += 1;
+      return rejectedChangeResult();
+    },
+  }) satisfies PlanningProviderPort;
+  try {
+    assert.throws(
+      () => loadValidatedChangeContract(repository, CHANGE_ID, rejected),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_INVALID'),
+    );
+    assert.throws(
+      () =>
+        loadValidatedChangeContract(repository, CHANGE_ID, {
+          ...rejected,
+          id: 'other-provider',
+        }),
+      (error) => isWorkflowError(error, 'PLANNING_PROVIDER_BINDING_MISMATCH'),
+    );
+    assert.equal(installationCalls, 1);
+    assert.equal(validationCalls, 1);
+    assert.equal(inspectionCalls, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
 });
 
 test('planning-provider readers reject unsafe current binding files', () => {
@@ -581,6 +638,22 @@ test('strict validation rejects unsafe diagnostics and valid/error contradiction
     );
   }
 });
+
+function rejectedChangeResult(): PlanningProviderChangeResult {
+  return Object.freeze({
+    readiness: 'ready',
+    blockers: Object.freeze([]),
+    valid: false,
+    diagnostics: Object.freeze([
+      Object.freeze({
+        level: 'ERROR' as const,
+        path: 'proposal.md',
+        message: 'Rejected by the caller-composed planning provider.',
+      }),
+    ]),
+    validationDigest: 'b'.repeat(64),
+  });
+}
 
 function createManagedRepository(): string {
   const repository = fs.realpathSync(
