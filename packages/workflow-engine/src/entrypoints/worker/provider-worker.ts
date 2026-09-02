@@ -17,7 +17,7 @@ import type {
   AgentRuntimeCompletionReceipt,
   AgentRuntimeHostExecutionBindingV1,
   AgentRuntimeHostProbeEvidenceV1,
-  AgentRuntimePort,
+  ProviderWorkerRuntimePort,
   AgentRuntimeProcessProgressProjection,
   AgentRuntimeSingleShotInput,
   AgentRuntimeSingleShotOptions,
@@ -140,11 +140,11 @@ export type ProviderWorkerOptions = {
   platform?: NodeJS.Platform;
   environment?: NodeJS.ProcessEnv;
   signal?: AbortSignal;
-  agentRuntime?: AgentRuntimePort;
+  agentRuntime?: ProviderWorkerRuntimePort;
   /** Explicit host-owned config path; production may supply the same path by env. */
   agentProviderConfigPath?: string;
   /** @deprecated Use the complete `agentRuntime` port injection seam. */
-  runner?: AgentRuntimePort['runSingleShot'];
+  runner?: ProviderWorkerRuntimePort['runSingleShot'];
   automaticRetry?: {
     enabled?: boolean;
     now?: string;
@@ -289,7 +289,7 @@ export async function runProviderWorkerAsync(
 }
 
 type ProviderWorkerExecution = (
-  agentRuntime: AgentRuntimePort,
+  agentRuntime: ProviderWorkerRuntimePort,
   input: AgentRuntimeSingleShotInput,
   options: AgentRuntimeSingleShotOptions,
 ) => AgentRuntimeSingleShotReport | Promise<AgentRuntimeSingleShotReport>;
@@ -1114,14 +1114,16 @@ function resolveCurrentAssignment(
   });
 }
 
-function resolveAgentRuntime(options: ProviderWorkerOptions): AgentRuntimePort {
+function resolveAgentRuntime(
+  options: ProviderWorkerOptions,
+): ProviderWorkerRuntimePort {
   if (options.agentRuntime !== undefined) {
     return options.agentRuntime;
   }
   if (options.runner !== undefined) {
     const runner = options.runner;
     // The deprecated test seam stays explicitly synchronous-only. Every
-    // injected AgentRuntimePort, by contrast, now has the complete async API.
+    // injected ProviderWorkerRuntimePort, by contrast, now has the complete async API.
     return {
       runSingleShot: runner,
       async runSingleShotAsync() {

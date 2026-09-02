@@ -1,10 +1,10 @@
-import type { AgentRuntimePort } from '../modules/provider-orchestration/agent-runtime-port.ts';
+import type { ProviderWorkerRuntimePort } from '../modules/provider-orchestration/agent-runtime-port.ts';
 import { runBuiltInProvider } from '../runtime/provider-execution/provider-runner.ts';
 import { runBuiltInProviderThroughAgentRuntimeV1 } from './agent-runtime-v1-production.ts';
 import { runHostWrapperProviderThroughAgentRuntimeV1 } from './agent-runtime-host-wrapper-production.ts';
 
 /** Production adapter retaining sync compatibility while exposing async launch. */
-const builtInAgentRuntime: AgentRuntimePort = {
+const builtInAgentRuntime: ProviderWorkerRuntimePort = {
   runSingleShot(input, options) {
     if (input.nativeSessionTurn !== undefined) {
       throw new TypeError(
@@ -35,7 +35,7 @@ export type {
   AgentRuntimeHostExecutionBindingV1,
   AgentRuntimeHostProbeEvidenceV1,
   AgentRuntimeNativeSessionTurnControllerV1,
-  AgentRuntimePort,
+  ProviderWorkerRuntimePort,
   AgentRuntimeProcessActivity,
   AgentRuntimeProcessProgressProjection,
   AgentRuntimeProcessTermination,

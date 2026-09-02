@@ -250,11 +250,12 @@ export type AgentRuntimeAsyncSingleShotOptions = AgentRuntimeSingleShotOptions &
 export type AgentRuntimeSingleShotReport = ProviderRunnerReport;
 
 /**
- * Core-owned execution port for the landed synchronous provider behavior.
- * The async compatibility method adds process activity/cancellation without
- * claiming protocol-level progress, resumable sessions, or in-flight reattach.
+ * Engine-owned provider-worker compatibility port for the landed synchronous
+ * behavior. The public AgentRuntimePortV1 remains core-owned; this bridge adds
+ * process activity/cancellation without claiming protocol-level progress,
+ * resumable sessions, or in-flight reattach.
  */
-export interface AgentRuntimePort {
+export interface ProviderWorkerRuntimePort {
   runSingleShot(
     input: AgentRuntimeSingleShotInput,
     options: AgentRuntimeSingleShotOptions,

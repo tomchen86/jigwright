@@ -20,7 +20,7 @@ import {
   startPropose,
 } from '../src/application/propose/propose-orchestrator.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
-import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
+import type { ProviderWorkerRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type {
   InvestigationManifestV3,
   InvestigationPlanReviewCoverageRequirementV3,
@@ -835,8 +835,8 @@ function fakeRunnerReport(
 }
 
 function createCurrentAgentRuntime(
-  runSingleShot: AgentRuntimePort['runSingleShot'],
-): AgentRuntimePort {
+  runSingleShot: ProviderWorkerRuntimePort['runSingleShot'],
+): ProviderWorkerRuntimePort {
   return {
     runSingleShot,
     async runSingleShotAsync(input, options) {

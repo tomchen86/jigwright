@@ -25,7 +25,7 @@ import {
   writeEvidenceNode,
 } from '../src/runtime/storage-journal/evidence-object-store.ts';
 import { projectProviderInvocationExecution } from '../src/modules/provider-orchestration/execution-core.ts';
-import type { AgentRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
+import type { ProviderWorkerRuntimePort } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import type { ProviderInvocationAcceptanceBinding } from '../src/modules/provider-orchestration/agent-runtime-port.ts';
 import {
   createAgentRuntimeHostExecutionBindingV1,
@@ -143,6 +143,24 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 
+test('public AgentRuntime identity is core-owned and the engine compatibility port is worker-scoped', () => {
+  const workerPortSource = fs.readFileSync(
+    new URL(
+      '../src/modules/provider-orchestration/agent-runtime-port.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
+  const corePortSource = fs.readFileSync(
+    new URL('../../core/src/agent-runtime-port.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(corePortSource, /export interface AgentRuntimePortV1/u);
+  assert.match(workerPortSource, /export interface ProviderWorkerRuntimePort/u);
+  assert.doesNotMatch(workerPortSource, /export interface AgentRuntimePort\b/u);
+});
+
 test('synchronous CLI refuses the hidden provider worker before repository access', () => {
   const directory = fs.mkdtempSync(
     path.join(os.tmpdir(), 'provider-worker-sync-cli-'),
@@ -213,7 +231,7 @@ test('hidden provider-worker CLI command dispatches the async worker entry', asy
 });
 
 for (const objectFormat of ['sha1', 'sha256'] as const) {
-  test(`async provider worker completes the exact durable invocation through AgentRuntimePort on ${objectFormat}`, async () => {
+  test(`async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on ${objectFormat}`, async () => {
     const repository = createFixtureRepository({ objectFormat });
     const changeId = `worker-${objectFormat}`;
     try {
@@ -248,12 +266,12 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
       let launches = 0;
       let launchBinding:
         | Parameters<
-            NonNullable<AgentRuntimePort['runSingleShotAsync']>
+            NonNullable<ProviderWorkerRuntimePort['runSingleShotAsync']>
           >[0]['acceptanceBinding']
         | null = null;
       let runtimeSignal: AbortSignal | null = null;
       const controller = new AbortController();
-      const agentRuntime: AgentRuntimePort = {
+      const agentRuntime: ProviderWorkerRuntimePort = {
         runSingleShot() {
           assert.fail('production async worker must not use runSingleShot');
         },
@@ -561,7 +579,7 @@ test('async provider worker durably binds a wrapper protocol receipt to its acce
     const request = readProviderInvocationRequest(runtime, invocationId);
     let launches = 0;
     let protocolReceipt: ProviderWrapperProtocolReceipt | null = null;
-    const agentRuntime: AgentRuntimePort = {
+    const agentRuntime: ProviderWorkerRuntimePort = {
       runSingleShot() {
         assert.fail('async worker must not call the sync runtime');
       },
@@ -730,7 +748,7 @@ test('async built-in worker durably records semantic rejection after a validated
     const request = readProviderInvocationRequest(runtime, invocationId);
     let launches = 0;
     let protocolReceipt: ProviderWrapperProtocolReceipt | null = null;
-    const agentRuntime: AgentRuntimePort = {
+    const agentRuntime: ProviderWorkerRuntimePort = {
       runSingleShot() {
         assert.fail('built-in rejection fixture must use the async worker');
       },
@@ -829,7 +847,7 @@ test('async provider worker seals a truthful rejected-after-result native termin
   let nativeClaimDigest: string | null = null;
   let nativeCompletionDigest: string | null = null;
   try {
-    const agentRuntime: AgentRuntimePort = {
+    const agentRuntime: ProviderWorkerRuntimePort = {
       runSingleShot() {
         assert.fail('native rejection fixture must use the async worker');
       },
@@ -1105,7 +1123,7 @@ test(
       const launched = new Promise<void>((resolve) => {
         markLaunched = resolve;
       });
-      const agentRuntime: AgentRuntimePort = {
+      const agentRuntime: ProviderWorkerRuntimePort = {
         runSingleShot() {
           assert.fail('async cancellation fixture must not use runSingleShot');
         },
@@ -1200,7 +1218,7 @@ test(
         markLaunched = resolve;
       });
       let cancellationSignalObserved = false;
-      const agentRuntime: AgentRuntimePort = {
+      const agentRuntime: ProviderWorkerRuntimePort = {
         runSingleShot() {
           assert.fail('success-race fixture must use the async runtime');
         },
@@ -1284,7 +1302,7 @@ test(
         finishProvider = resolve;
       });
       let abortObserved = false;
-      const agentRuntime: AgentRuntimePort = {
+      const agentRuntime: ProviderWorkerRuntimePort = {
         runSingleShot() {
           assert.fail('forged-cancellation fixture must use the async runtime');
         },
@@ -1398,7 +1416,7 @@ for (const fixture of [
       const request = readProviderInvocationRequest(runtime, invocationId);
       let launches = 0;
       let protocolReceipt: ProviderWrapperProtocolReceipt | null = null;
-      const agentRuntime: AgentRuntimePort = {
+      const agentRuntime: ProviderWorkerRuntimePort = {
         runSingleShot() {
           assert.fail('async worker must not call the sync runtime');
         },
@@ -1585,7 +1603,7 @@ test('async provider worker rejects fabricated host-wrapper evidence without exa
     );
     let claimedState: string | null = null;
     let protocolReceipt: ProviderWrapperSessionProtocolReceipt | null = null;
-    const agentRuntime: AgentRuntimePort = {
+    const agentRuntime: ProviderWorkerRuntimePort = {
       runSingleShot() {
         assert.fail('host-wrapper receipt fixture must use the async runtime');
       },

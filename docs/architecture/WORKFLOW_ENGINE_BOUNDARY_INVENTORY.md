@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:fda15e1314ab7f585d0426d767a8d28b3c3c65218084f0ab99c00b152cad0b50`.
+Current production inventory digest: `sha256:d6e08a5951a635550011926a166b57237a8c5d406ad8227d78f562ac12768cae`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
@@ -176,12 +176,12 @@ repository configuration and keeps identity coverage for both surfaces.
 ### Provider-plane separation — partial
 
 Planning providers, agent runtimes, and grant verification have distinct engine
-contracts. `@jigwright/core` owns the neutral Grant verifier contract while the
-workflow engine retains only composition sealing and error mapping. Required
-planning-binding paths and optional agent-role-plan paths also have separate
-readers; an absent optional agent plan does not weaken or replace the required
-planning contract. Core ownership of the Agent Runtime port and direct adoption
-of a public `@jigwright/agent-runtime` execution port remain incomplete.
+contracts. `@jigwright/core` owns the public Agent Runtime v1 and neutral Grant
+verifier contracts, while the workflow engine's single-shot bridge is explicitly
+named `ProviderWorkerRuntimePort`. Required planning-binding paths and optional
+agent-role-plan paths also have separate readers; an absent optional agent plan
+does not weaken or replace the required planning contract. Direct adoption of
+the public `@jigwright/agent-runtime` execution port remains incomplete.
 
 <!-- coupling:provider-runner -->
 

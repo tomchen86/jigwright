@@ -472,15 +472,19 @@
       "id": "provider-plane-separation",
       "plane": "core-ports",
       "state": "partial",
-      "t3Disposition": "PlanningProviderPort, AgentRuntimePort, and GrantVerifierPort are distinct contracts. GrantVerifierPort is core-owned while the workflow engine retains only composition sealing and error mapping; planning bindings remain separate from optional agent-role plans. Core ownership of the AgentRuntimePort and direct @jigwright/agent-runtime port adoption remain incomplete.",
+      "t3Disposition": "PlanningProviderPort, AgentRuntimePortV1, and GrantVerifierPort are distinct core-owned contracts. The workflow engine's single-shot compatibility bridge is explicitly ProviderWorkerRuntimePort, while planning bindings remain separate from optional agent-role plans. Direct @jigwright/agent-runtime execution-port adoption remains incomplete.",
       "evidence": [
         {
           "path": "packages/core/src/planning-provider-port.ts",
           "contains": ["export interface PlanningProviderPort {"]
         },
         {
+          "path": "packages/core/src/agent-runtime-port.ts",
+          "contains": ["export interface AgentRuntimePortV1<"]
+        },
+        {
           "path": "packages/workflow-engine/src/modules/provider-orchestration/agent-runtime-port.ts",
-          "contains": ["export interface AgentRuntimePort {"]
+          "contains": ["export interface ProviderWorkerRuntimePort {"]
         },
         {
           "path": "packages/core/src/grant-verifier-port.ts",
