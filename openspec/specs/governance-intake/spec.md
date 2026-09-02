@@ -159,18 +159,35 @@ act as a second authority or bypass an accepted Grant Core result.
 ### Requirement: Promotion Atomically Links Work and Source Provenance
 
 Promotion SHALL require one `maintainer-confirmed` `backlog` Work Item in lane
-`now` or `next`, closed blockers, the exact expected item digest, and a current
-survey of declared repository symbols. It SHALL atomically change the Work Item
-to `active` and merge the Work Item's immutable `sourceRefs` plus its identity
-into the existing change `origin.json` `sourceRefs` and `workItemRefs`.
-Promotion MUST preserve unrelated origin relations, use compare-and-swap for
-both tracked inputs, and recover the same prepared transaction after a crash.
+`now` or `next`, closed blockers, and the exact expected item digest. A Work
+Item citing any agent-authored Source SHALL bind a current survey of declared
+repository symbols; one `promote` command SHALL prepare an explicit empty
+declaration only when that survey is absent. Empty `sourceRefs` and Sources
+authored solely by maintainers SHALL bind `not-required` with the exact
+`sourceRefs` digest and SHALL NOT create survey bytes. It SHALL atomically change
+the Work Item to `active` and merge the Work Item's immutable `sourceRefs` plus
+its identity into the existing change `origin.json` `sourceRefs` and
+`workItemRefs`. Promotion MUST preserve unrelated origin relations, use
+compare-and-swap for both tracked inputs, and recover the same prepared
+transaction after a crash.
 
 #### Scenario: Current promotion succeeds
 
-- **WHEN** an eligible reviewed Work Item, current survey, expected digest, and change identity still agree
+- **WHEN** an eligible reviewed Work Item, conditional survey binding, expected digest, and change identity still agree
 - **THEN** the item and origin publish one bidirectional relationship
 - **AND** the origin stores identities rather than copied Source or Work Item records
+
+#### Scenario: Agent premise has no survey yet
+
+- **WHEN** an eligible Work Item cites an agent-authored Source and no survey file exists
+- **THEN** one promotion command prepares an explicit empty-declaration current survey and promotes
+- **AND** an existing stale or tampered survey is rejected without overwrite
+
+#### Scenario: Maintainer premise needs no survey artifact
+
+- **WHEN** an eligible Work Item has empty Source references or cites only maintainer-authored Sources
+- **THEN** promotion binds the exact `not-required` decision and Source-reference digest
+- **AND** no survey file is created
 
 #### Scenario: Either tracked input changes
 
@@ -406,8 +423,9 @@ terminal dispositions SHALL fail before receipt publication.
 
 ### Requirement: Governance Intake Counts Are Read-Only
 
-The engine SHALL expose one stable read surface with exactly the current
-`inbox`, `pendingFindings`, and `backlog` counts. Work Item counts SHALL come
+The engine SHALL expose `intakeCounts` with exactly the current `inbox`,
+`pendingFindings`, and `backlog` counts in `status`, successful `open-task`
+session-start, and `handoff validate` read outputs. Work Item counts SHALL come
 from the validated current Work Registry inventory, and pending Finding counts
 SHALL cover every safely validated session directory in the repository's
 private runtime. Reading the aggregate MUST NOT create or update a Source,

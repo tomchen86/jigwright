@@ -76,6 +76,10 @@ test('active governance intake contract covers the current Source-to-work lifecy
     '`attach <work-item-id> <original-text>`',
     '`finding convert <finding-id>`',
     '`finding link <finding-id> --change <change-id>`',
+    '`intakeCounts`',
+    '`status`',
+    '`open-task`',
+    '`handoff validate`',
   ]) {
     assert.match(
       specification,
@@ -86,7 +90,15 @@ test('active governance intake contract covers the current Source-to-work lifecy
 
   assert.match(specification, /registered Central Grant transition/u);
   assert.match(specification, /compare-and-swap/u);
-  assert.match(specification, /current survey/u);
+  assert.match(
+    specification,
+    /agent-authored Source SHALL bind a current survey/u,
+  );
+  assert.match(
+    specification,
+    /authored solely by maintainers SHALL bind `not-required`/u,
+  );
+  assert.match(specification, /SHALL NOT create survey bytes/u);
   assert.doesNotMatch(
     specification,
     /issues? v1|ISS-\d+|workflow issue|migration window|WORK_REGISTRY_UNAVAILABLE|optional Work Registry/iu,

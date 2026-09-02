@@ -32,6 +32,7 @@ import {
   assertOrdinaryWorkRegistryTransition,
   createWorkItem,
   createWorkItemAfterExactSourceTextRecheck,
+  ensureWorkItemPromotionSurveyBinding,
   ensureFindingConversionWorkItem,
   findWorkItemsByExactSourceText,
   inspectWorkRegistry,
@@ -273,6 +274,7 @@ export function dispatchGovernanceIntakeCommand(
       args[2] === '--change' &&
       args[4] === '--expected'
     ) {
+      ensureWorkItemPromotionSurveyBinding(cwd, args[1]!, args[3]!);
       assertOrdinaryWorkRegistryTransition(
         cwd,
         'promote',
@@ -293,7 +295,6 @@ export function dispatchGovernanceIntakeCommand(
         args[3]!,
         dependencies.now,
         args[5]!,
-        true,
       );
       return {
         action: 'promote',

@@ -21,12 +21,13 @@ import { grantTransitionPreconditionChanged } from '../authority/grant-transitio
 import {
   applyWorkItemReview,
   hasExactWorkItemPromotionReceipt,
-  observeWorkItemPromotionSurveyDigest,
+  observeWorkItemPromotionSurveyBinding,
   promoteWorkItem,
-  readWorkItemPromotionSurveyDigest,
+  readWorkItemPromotionSurveyBinding,
   showWorkItem,
   workItemDigest,
   type WorkItemPromotionGrantBindingV1,
+  type WorkItemPromotionSurveyBindingV1,
   type WorkItemPromotionTestHooks,
   type WorkItemReviewV1,
 } from './work-registry.ts';
@@ -50,7 +51,7 @@ type PromotionParametersV1 = Readonly<{
   workItemId: string;
   changeId: string;
   expectedDigest: `sha256:${string}`;
-  surveyDigest: `sha256:${string}`;
+  surveyBinding: WorkItemPromotionSurveyBindingV1;
   stateBindingDigest: `sha256:${string}`;
 }>;
 
@@ -128,12 +129,12 @@ export function createWorkRegistryPromotionGrantRequest(
       ExitCode.conflict,
     );
   }
-  const surveyDigest = observeWorkItemPromotionSurveyDigest(
+  const surveyBinding = observeWorkItemPromotionSurveyBinding(
     input.repositoryRoot,
     workItemId,
     changeId,
   );
-  const stateBinding = promotionStateBinding(expectedDigest, surveyDigest);
+  const stateBinding = promotionStateBinding(expectedDigest, surveyBinding);
   return freezeGrantCanonical({
     sourceModuleId: 'work-registry',
     failureCode: 'work-registry.protected-transition',
@@ -153,7 +154,7 @@ export function createWorkRegistryPromotionGrantRequest(
           workItemId,
           changeId,
           expectedDigest,
-          surveyDigest,
+          surveyBinding,
           stateBindingDigest: stateBinding.digest,
         },
         allowedReasonCodes: [APPROVAL_REASON_CODE],
@@ -220,7 +221,7 @@ export function workRegistryGrantTransitionDefinitions(
             'expectedDigest',
             'schemaVersion',
             'stateBindingDigest',
-            'surveyDigest',
+            'surveyBinding',
             'workItemId',
           ],
         }),
@@ -239,7 +240,7 @@ export function workRegistryGrantTransitionDefinitions(
           challengeId: context.challengeId,
           operationId: context.operationId,
           approvalSubjectDigest: context.approvalSubjectDigest,
-          surveyDigest: context.parameters.surveyDigest,
+          surveyBinding: context.parameters.surveyBinding,
         };
         context.assertLifecycleOwned();
         if (
@@ -279,7 +280,6 @@ export function workRegistryGrantTransitionDefinitions(
             context.parameters.changeId,
             now,
             context.parameters.expectedDigest,
-            true,
             testHooks,
             grantBinding,
           );
@@ -310,29 +310,34 @@ function observeWorkItemPromotionState(
   parameters: PromotionParametersV1,
 ): StateBinding {
   const itemBinding = observeWorkItem(repositoryRoot, parameters.workItemId);
-  let surveyDigest: `sha256:${string}`;
   try {
-    surveyDigest = readWorkItemPromotionSurveyDigest(
-      repositoryRoot,
-      parameters.workItemId,
-      parameters.changeId,
+    return promotionStateBinding(
+      itemBinding.digest,
+      readWorkItemPromotionSurveyBinding(
+        repositoryRoot,
+        parameters.workItemId,
+        parameters.changeId,
+      ),
     );
   } catch (error) {
     if (!(error instanceof WorkflowError)) throw error;
-    surveyDigest = grantSha256(
-      canonicalJson({
-        schemaVersion: 1,
-        kind: 'work-registry-promotion-survey-unavailable.v1',
-        errorCode: error.code,
-      }),
-    );
+    return {
+      kind: 'work-registry-promotion-state.v1',
+      digest: grantSha256(
+        canonicalJson({
+          schemaVersion: 1,
+          kind: 'work-registry-promotion-state-unavailable.v1',
+          itemDigest: itemBinding.digest,
+          errorCode: error.code,
+        }),
+      ),
+    };
   }
-  return promotionStateBinding(itemBinding.digest, surveyDigest);
 }
 
 function promotionStateBinding(
   itemDigest: string,
-  surveyDigest: string,
+  surveyBinding: WorkItemPromotionSurveyBindingV1,
 ): StateBinding {
   return {
     kind: 'work-registry-promotion-state.v1',
@@ -341,7 +346,7 @@ function promotionStateBinding(
         schemaVersion: 1,
         kind: 'work-registry-promotion-state.v1',
         itemDigest: exactDigest(itemDigest),
-        surveyDigest: exactDigest(surveyDigest),
+        surveyBinding,
       }),
     ),
   };
@@ -412,7 +417,7 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
       'expectedDigest',
       'schemaVersion',
       'stateBindingDigest',
-      'surveyDigest',
+      'surveyBinding',
       'workItemId',
     ]) ||
     value.schemaVersion !== 1
@@ -421,9 +426,9 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
   }
   const expectedDigest = exactDigest(value.expectedDigest);
   const stateBindingDigest = exactDigest(value.stateBindingDigest);
-  const surveyDigest = exactDigest(value.surveyDigest);
+  const surveyBinding = assertPromotionSurveyBinding(value.surveyBinding);
   if (
-    promotionStateBinding(expectedDigest, surveyDigest).digest !==
+    promotionStateBinding(expectedDigest, surveyBinding).digest !==
     stateBindingDigest
   ) {
     throw grantParametersInvalid();
@@ -433,9 +438,45 @@ function assertPromotionParameters(value: unknown): PromotionParametersV1 {
     workItemId: exactWorkItemId(value.workItemId),
     changeId: exactChangeId(value.changeId),
     expectedDigest,
-    surveyDigest,
+    surveyBinding,
     stateBindingDigest,
   };
+}
+
+function assertPromotionSurveyBinding(
+  value: unknown,
+): WorkItemPromotionSurveyBindingV1 {
+  if (!isRecord(value) || value.schemaVersion !== 1) {
+    throw grantParametersInvalid();
+  }
+  if (
+    value.kind === 'current-survey' &&
+    grantHasExactKeys(value, ['digest', 'kind', 'schemaVersion'])
+  ) {
+    return {
+      schemaVersion: 1,
+      kind: 'current-survey',
+      digest: exactDigest(value.digest),
+    };
+  }
+  if (
+    value.kind === 'not-required' &&
+    grantHasExactKeys(value, [
+      'kind',
+      'reason',
+      'schemaVersion',
+      'sourceRefsDigest',
+    ]) &&
+    value.reason === 'pure-maintainer-sources'
+  ) {
+    return {
+      schemaVersion: 1,
+      kind: 'not-required',
+      reason: 'pure-maintainer-sources',
+      sourceRefsDigest: exactDigest(value.sourceRefsDigest),
+    };
+  }
+  throw grantParametersInvalid();
 }
 
 function assertReview(value: unknown): WorkItemReviewV1 {

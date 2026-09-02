@@ -107,6 +107,19 @@ export type WorkItemPromotionSurveyV1 = Readonly<{
   emptyReason: string | null;
 }>;
 
+export type WorkItemPromotionSurveyBindingV1 =
+  | Readonly<{
+      schemaVersion: 1;
+      kind: 'current-survey';
+      digest: `sha256:${string}`;
+    }>
+  | Readonly<{
+      schemaVersion: 1;
+      kind: 'not-required';
+      reason: 'pure-maintainer-sources';
+      sourceRefsDigest: `sha256:${string}`;
+    }>;
+
 export type WorkItemPriorityRecommendationV1 = Readonly<{
   workItemId: `WORK-${string}`;
   currentLane: WorkItemLaneV1;
@@ -171,7 +184,7 @@ export type WorkItemPromotionGrantBindingV1 = Readonly<{
   challengeId: string;
   operationId: string;
   approvalSubjectDigest: `sha256:${string}`;
-  surveyDigest: `sha256:${string}`;
+  surveyBinding: WorkItemPromotionSurveyBindingV1;
 }>;
 
 type WorkItemPromotionTransactionV1 = Readonly<{
@@ -421,6 +434,11 @@ function prepareWorkItemPromotionSurveyUnlocked(
 ): { survey: WorkItemPromotionSurveyV1; relativePath: string } {
   const item = showWorkItem(repositoryRoot, requestedId);
   assertPromotionEligible(repositoryRoot, item);
+  if (!workItemRequiresPromotionSurvey(repositoryRoot, item)) {
+    throw registryInvalid(
+      'Promotion survey is only valid for an agent-authored premise.',
+    );
+  }
   const changeId = changeIdentity(requestedChangeId);
   const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
   if (
@@ -624,7 +642,6 @@ export function promoteWorkItem(
   requestedChangeId: string,
   now: () => string = () => new Date().toISOString(),
   requestedExpectedDigest?: string,
-  requireCurrentSurvey = false,
   testHooks: WorkItemPromotionTestHooks = {},
   grantBinding: WorkItemPromotionGrantBindingV1 | null = null,
 ): { item: WorkItemV1; originPath: string } {
@@ -654,18 +671,19 @@ export function promoteWorkItem(
     }
     assertPromotionEligible(repositoryRoot, item);
     const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
-    if (requireCurrentSurvey) {
-      const surveyDigest = assertPromotionSurveyCurrent(
-        repositoryRoot,
-        changeDirectory,
-        item,
-        changeId,
+    const surveyBinding = observePromotionSurveyBinding(
+      repositoryRoot,
+      changeDirectory,
+      item,
+      changeId,
+    );
+    if (
+      grantBinding !== null &&
+      canonicalJson(surveyBinding) !== canonicalJson(grantBinding.surveyBinding)
+    ) {
+      throw promotionGrantStale(
+        'Work Registry promotion survey binding changed after Grant approval.',
       );
-      if (grantBinding !== null && surveyDigest !== grantBinding.surveyDigest) {
-        throw promotionGrantStale(
-          'Work Registry promotion survey changed after Grant approval.',
-        );
-      }
     }
     const at = canonicalTimestamp(now());
     const promoted: WorkItemV1 = {
@@ -766,13 +784,13 @@ export function hasExactWorkItemPromotionReceipt(
   });
 }
 
-export function observeWorkItemPromotionSurveyDigest(
+export function ensureWorkItemPromotionSurveyBinding(
   repositoryRoot: string,
   requestedId: string,
   requestedChangeId: string,
-): `sha256:${string}` {
+): WorkItemPromotionSurveyBindingV1 {
   return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
-    observeWorkItemPromotionSurveyDigestUnlocked(
+    ensureWorkItemPromotionSurveyBindingUnlocked(
       repositoryRoot,
       requestedId,
       requestedChangeId,
@@ -780,29 +798,41 @@ export function observeWorkItemPromotionSurveyDigest(
   );
 }
 
-function observeWorkItemPromotionSurveyDigestUnlocked(
+function ensureWorkItemPromotionSurveyBindingUnlocked(
   repositoryRoot: string,
   requestedId: string,
   requestedChangeId: string,
-): `sha256:${string}` {
+): WorkItemPromotionSurveyBindingV1 {
   const item = showWorkItem(repositoryRoot, requestedId);
   assertPromotionEligible(repositoryRoot, item);
   const changeId = changeIdentity(requestedChangeId);
-  return assertPromotionSurveyCurrent(
+  const changeDirectory = assertChangeDirectory(repositoryRoot, changeId);
+  if (
+    workItemRequiresPromotionSurvey(repositoryRoot, item) &&
+    readOptionalPlainFile(path.join(changeDirectory, 'survey.json')) === null
+  ) {
+    prepareWorkItemPromotionSurveyUnlocked(repositoryRoot, item.id, changeId, {
+      schemaVersion: 1,
+      symbols: [],
+      emptyReason:
+        'The agent-authored premise declares no structured repository symbols.',
+    });
+  }
+  return observePromotionSurveyBinding(
     repositoryRoot,
-    assertChangeDirectory(repositoryRoot, changeId),
+    changeDirectory,
     item,
     changeId,
   );
 }
 
-export function readWorkItemPromotionSurveyDigest(
+export function observeWorkItemPromotionSurveyBinding(
   repositoryRoot: string,
   requestedId: string,
   requestedChangeId: string,
-): `sha256:${string}` {
+): WorkItemPromotionSurveyBindingV1 {
   return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () =>
-    readWorkItemPromotionSurveyDigestUnlocked(
+    observeWorkItemPromotionSurveyBindingUnlocked(
       repositoryRoot,
       requestedId,
       requestedChangeId,
@@ -810,19 +840,37 @@ export function readWorkItemPromotionSurveyDigest(
   );
 }
 
-function readWorkItemPromotionSurveyDigestUnlocked(
+function observeWorkItemPromotionSurveyBindingUnlocked(
   repositoryRoot: string,
   requestedId: string,
   requestedChangeId: string,
-): `sha256:${string}` {
+): WorkItemPromotionSurveyBindingV1 {
   const item = showWorkItem(repositoryRoot, requestedId);
+  assertPromotionEligible(repositoryRoot, item);
   const changeId = changeIdentity(requestedChangeId);
-  return assertPromotionSurveyCurrent(
+  return observePromotionSurveyBinding(
     repositoryRoot,
     assertChangeDirectory(repositoryRoot, changeId),
     item,
     changeId,
   );
+}
+
+export function readWorkItemPromotionSurveyBinding(
+  repositoryRoot: string,
+  requestedId: string,
+  requestedChangeId: string,
+): WorkItemPromotionSurveyBindingV1 {
+  return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
+    const item = showWorkItem(repositoryRoot, requestedId);
+    const changeId = changeIdentity(requestedChangeId);
+    return observePromotionSurveyBinding(
+      repositoryRoot,
+      assertChangeDirectory(repositoryRoot, changeId),
+      item,
+      changeId,
+    );
+  });
 }
 
 /**
@@ -2038,6 +2086,48 @@ function assertPromotionSurveyCurrent(
   return workRegistryTextDigest(source);
 }
 
+function observePromotionSurveyBinding(
+  repositoryRoot: string,
+  changeDirectory: string,
+  item: WorkItemV1,
+  changeId: string,
+): WorkItemPromotionSurveyBindingV1 {
+  if (!workItemRequiresPromotionSurvey(repositoryRoot, item)) {
+    return {
+      schemaVersion: 1,
+      kind: 'not-required',
+      reason: 'pure-maintainer-sources',
+      sourceRefsDigest: workRegistryTextDigest(
+        canonicalJson({
+          schemaVersion: 1,
+          kind: 'work-registry-promotion-source-refs.v1',
+          sourceRefs: item.sourceRefs,
+        }),
+      ),
+    };
+  }
+  return {
+    schemaVersion: 1,
+    kind: 'current-survey',
+    digest: assertPromotionSurveyCurrent(
+      repositoryRoot,
+      changeDirectory,
+      item,
+      changeId,
+    ),
+  };
+}
+
+function workItemRequiresPromotionSurvey(
+  repositoryRoot: string,
+  item: WorkItemV1,
+): boolean {
+  return item.sourceRefs.some(
+    (sourceRef) =>
+      readSourceValue(repositoryRoot, sourceRef).semanticAuthor === 'agent',
+  );
+}
+
 function parsePromotionSurvey(source: string): WorkItemPromotionSurveyV1 {
   let value: unknown;
   try {
@@ -2793,7 +2883,7 @@ function isWorkItemPromotionGrantBinding(
         'challengeId',
         'operationId',
         'schemaVersion',
-        'surveyDigest',
+        'surveyBinding',
       ]) &&
       value.schemaVersion === 1 &&
       typeof value.challengeId === 'string' &&
@@ -2806,8 +2896,30 @@ function isWorkItemPromotionGrantBinding(
       !/[\0\r\n]/u.test(value.operationId) &&
       typeof value.approvalSubjectDigest === 'string' &&
       /^sha256:[0-9a-f]{64}$/.test(value.approvalSubjectDigest) &&
-      typeof value.surveyDigest === 'string' &&
-      /^sha256:[0-9a-f]{64}$/.test(value.surveyDigest))
+      isWorkItemPromotionSurveyBinding(value.surveyBinding))
+  );
+}
+
+function isWorkItemPromotionSurveyBinding(
+  value: unknown,
+): value is WorkItemPromotionSurveyBindingV1 {
+  return (
+    isRecord(value) &&
+    value.schemaVersion === 1 &&
+    ((value.kind === 'current-survey' &&
+      hasExactKeys(value, ['digest', 'kind', 'schemaVersion']) &&
+      typeof value.digest === 'string' &&
+      /^sha256:[0-9a-f]{64}$/.test(value.digest)) ||
+      (value.kind === 'not-required' &&
+        hasExactKeys(value, [
+          'kind',
+          'reason',
+          'schemaVersion',
+          'sourceRefsDigest',
+        ]) &&
+        value.reason === 'pure-maintainer-sources' &&
+        typeof value.sourceRefsDigest === 'string' &&
+        /^sha256:[0-9a-f]{64}$/.test(value.sourceRefsDigest)))
   );
 }
 

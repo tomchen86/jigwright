@@ -1929,7 +1929,6 @@ test('Work Item promotion recovers one exact item-origin transaction after every
           ${JSON.stringify(changeId)},
           () => ${JSON.stringify(promotedAt)},
           ${JSON.stringify(workItemDigest(accepted))},
-          false,
           { ${crashCut}() { process.exit(86); } },
         );
       `;
@@ -2205,7 +2204,6 @@ test('composite Work Registry readers hold the promotion lock across item-origin
               ${JSON.stringify(changeId)},
               () => '2026-08-24T03:40:00.000Z',
               ${JSON.stringify(workItemDigest(accepted))},
-              false,
               {
                 afterOriginPublished() {
                   fs.writeFileSync(${JSON.stringify(originMarker)}, 'origin');
@@ -2392,7 +2390,6 @@ test('Work Item promotion resumes durable rollback after hard crashes in either 
           ${JSON.stringify(changeId)},
           () => ${JSON.stringify(`2026-08-24T03:5${index}:45.000Z`)},
           ${JSON.stringify(workItemDigest(accepted))},
-          false,
           {
             ${rollbackCase.failHook}() { throw new Error('force rollback'); },
             ${rollbackCase.crashHook}() { process.exit(87); },
@@ -2530,7 +2527,6 @@ test('Work Item promotion CAS preserves a concurrent canonical origin update aft
           'promotion-cas',
           () => '2026-08-24T03:42:00.000Z',
           workItemDigest(accepted),
-          false,
           {
             afterOriginPublished() {
               fs.writeFileSync(originPath, concurrentOrigin, {
@@ -2607,7 +2603,6 @@ test('Work Item promotion CAS preserves a concurrent canonical origin update aft
           'promotion-parent-capability',
           () => '2026-08-24T03:44:00.000Z',
           workItemDigest(capabilityAccepted),
-          false,
           {
             afterOriginParentCapabilityAcquired() {
               fs.renameSync(
@@ -4007,7 +4002,7 @@ test('registered Central Grant review transition applies the exact reviewed item
   }
 });
 
-test('registered Central Grant promotion applies one current surveyed linkage and rejects replay or stale survey without mutation', async () => {
+test('registered Central Grant promotion binds an exact conditional survey decision and rejects replay or stale evidence without mutation', async () => {
   const repositoryRoot = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-work-grant-promotion-'),
   );
@@ -4020,11 +4015,20 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       'user.email',
       'jigwright@example.test',
     ]);
+    const agentSource = captureGovernanceSource(repositoryRoot, {
+      semanticAuthor: 'agent',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T04:57:30.000Z',
+      contextRef: 'session:protected-promotion-survey',
+      text: 'Bind protected promotion to current agent survey evidence.\n',
+      supersedes: null,
+    }).source;
     const prepareCandidate = (
       workItemId: string,
       changeId: string,
       createdAt: string,
       acceptedAt: string,
+      sourceRefs: readonly string[] = [agentSource.id],
     ) => {
       const created = createWorkItem(
         repositoryRoot,
@@ -4034,7 +4038,7 @@ test('registered Central Grant promotion applies one current surveyed linkage an
           lane: 'next',
           title: `Grant promotion for ${changeId}`,
           summary: 'Central Grant applies one exact surveyed promotion.',
-          sourceRefs: [],
+          sourceRefs,
         },
         {
           now: () => createdAt,
@@ -4125,7 +4129,9 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       origin: fs.existsSync(originPath)
         ? fs.readFileSync(originPath, 'utf8')
         : null,
-      survey: fs.readFileSync(surveyPath, 'utf8'),
+      survey: fs.existsSync(surveyPath)
+        ? fs.readFileSync(surveyPath, 'utf8')
+        : null,
       head: runGitForTest(repositoryRoot, ['rev-parse', 'HEAD']),
       refs: runGitForTest(repositoryRoot, ['show-ref']),
       status: runGitForTest(repositoryRoot, ['status', '--porcelain=v1', '-z']),
@@ -4136,6 +4142,7 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       'grant-promoted-current',
       '2026-08-24T04:58:00.000Z',
       '2026-08-24T04:59:00.000Z',
+      [],
     );
     runGitForTest(repositoryRoot, ['add', '.']);
     runGitForTest(repositoryRoot, [
@@ -4143,16 +4150,6 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       '-m',
       'Prepare current promotion',
     ]);
-    const currentSurvey = prepareWorkItemPromotionSurvey(
-      repositoryRoot,
-      current.accepted.id,
-      'grant-promoted-current',
-      {
-        schemaVersion: 1,
-        symbols: [],
-        emptyReason: 'No load-bearing symbols for this local acceptance.',
-      },
-    );
     const currentTransition = createPromotionChallenge(
       current.accepted.id,
       'grant-promoted-current',
@@ -4177,10 +4174,7 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       current.created.relativePath,
     );
     const currentOriginPath = path.join(current.changeDirectory, 'origin.json');
-    const currentSurveyPath = path.join(
-      repositoryRoot,
-      currentSurvey.relativePath,
-    );
+    const currentSurveyPath = path.join(current.changeDirectory, 'survey.json');
     assert.deepEqual(showWorkItem(repositoryRoot, current.accepted.id), {
       ...current.accepted,
       stage: 'active',
@@ -4221,8 +4215,11 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       challengeId: currentTransition.challengeId,
       operationId: 'operation-work-registry-promotion',
       approvalSubjectDigest: `sha256:${'a'.repeat(64)}`,
-      surveyDigest: (currentTransition.parameters as { surveyDigest: string })
-        .surveyDigest,
+      surveyBinding: (
+        currentTransition.parameters as {
+          surveyBinding: unknown;
+        }
+      ).surveyBinding,
     });
     await assert.rejects(
       executePromotion(
@@ -4249,7 +4246,12 @@ test('registered Central Grant promotion applies one current surveyed linkage an
           ...currentTransition,
           parameters: {
             ...(currentTransition.parameters as Record<string, unknown>),
-            surveyDigest: `sha256:${'9'.repeat(64)}`,
+            surveyBinding: {
+              schemaVersion: 1,
+              kind: 'not-required',
+              reason: 'pure-maintainer-sources',
+              sourceRefsDigest: `sha256:${'9'.repeat(64)}`,
+            },
           },
         },
         'operation-work-registry-promotion',
@@ -4536,7 +4538,7 @@ test('registered Central Grant promotion applies one current surveyed linkage an
           challengeId: string;
           operationId: string;
           approvalSubjectDigest: string;
-          surveyDigest: string;
+          surveyBinding: unknown;
         } | null;
       }>
     ).find((entry) => entry.workItemId === recoverable.accepted.id);
@@ -4547,9 +4549,13 @@ test('registered Central Grant promotion applies one current surveyed linkage an
       recoverableReceipt?.grantBinding?.approvalSubjectDigest ?? '',
       /^sha256:[0-9a-f]{64}$/,
     );
-    assert.match(
-      recoverableReceipt?.grantBinding?.surveyDigest ?? '',
-      /^sha256:[0-9a-f]{64}$/,
+    assert.deepEqual(
+      recoverableReceipt?.grantBinding?.surveyBinding,
+      (
+        recoverableGrantRequest.candidates[0]?.parameters as {
+          surveyBinding: unknown;
+        }
+      ).surveyBinding,
     );
     const recoverableReceiptBytes = fs
       .readdirSync(promotionReceiptRoot)
@@ -5111,6 +5117,15 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
     runGitForTest(root, ['add', 'src']);
     runGitForTest(root, ['commit', '-m', 'Add survey facts']);
 
+    const source = captureGovernanceSource(root, {
+      semanticAuthor: 'agent',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T04:42:30.000Z',
+      contextRef: 'session:survey-current-consumers',
+      text: 'Inspect current consumers before promotion.\n',
+      supersedes: null,
+    }).source;
+
     const item = createWorkItem(
       root,
       {
@@ -5119,7 +5134,7 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
         lane: 'next',
         title: 'Survey current consumers',
         summary: 'Inspect current consumers before promotion.',
-        sourceRefs: [],
+        sourceRefs: [source.id],
       },
       {
         now: () => '2026-08-24T04:43:00.000Z',
@@ -5147,7 +5162,6 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
           'survey-change',
           () => '2026-08-24T04:44:00.000Z',
           workItemDigest(accepted),
-          true,
         ),
       (error: unknown) =>
         typeof error === 'object' &&
@@ -5203,7 +5217,6 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
           'survey-change',
           () => '2026-08-24T04:44:00.000Z',
           workItemDigest(accepted),
-          true,
         ),
       hasCode('WORK_REGISTRY_SURVEY_REQUIRED'),
     );
@@ -5218,9 +5231,193 @@ test('promotion recomputes immutable consumers and rejects poisoned same-head su
       'survey-change',
       () => '2026-08-24T04:44:00.000Z',
       workItemDigest(accepted),
-      true,
     );
     assert.equal(promoted.item.stage, 'active');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('one promote command skips surveys for maintainer premises and prepares a current empty survey for agent premises', () => {
+  const root = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-conditional-promotion-survey-'),
+  );
+  configureRepositoryConsumer(root);
+  try {
+    runGitForTest(root, ['init', '-b', 'main']);
+    runGitForTest(root, ['config', 'user.name', 'Jigwright Test']);
+    runGitForTest(root, ['config', 'user.email', 'jigwright@example.test']);
+    const maintainerSource = captureGovernanceSource(root, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T04:45:00.000Z',
+      contextRef: 'direct-human:thread/turn-45',
+      text: 'Promote this reviewed maintainer premise.\n',
+      supersedes: null,
+    }).source;
+    const agentSource = captureGovernanceSource(root, {
+      semanticAuthor: 'agent',
+      capturedBy: 'jigwright',
+      capturedAt: '2026-08-24T04:45:10.000Z',
+      contextRef: 'session:conditional-survey',
+      text: 'Promote this reviewed agent premise.\n',
+      supersedes: null,
+    }).source;
+    const prepare = (
+      id: string,
+      changeId: string,
+      sourceRefs: readonly string[],
+    ) => {
+      const created = createWorkItem(
+        root,
+        {
+          schemaVersion: 1,
+          kind: 'feature',
+          lane: 'next',
+          title: `Conditional survey for ${changeId}`,
+          summary: 'Bind survey evidence only to agent-authored premises.',
+          sourceRefs,
+        },
+        {
+          now: () => '2026-08-24T04:45:20.000Z',
+          createId: () => id,
+        },
+      );
+      const accepted = applyWorkItemReview(
+        root,
+        created.item.id,
+        {
+          action: 'accept',
+          expectedDigest: workItemDigest(created.item),
+          summary: created.item.interpretation.summary,
+        },
+        () => '2026-08-24T04:45:30.000Z',
+      );
+      fs.mkdirSync(path.join(root, 'openspec/changes', changeId), {
+        recursive: true,
+      });
+      return accepted;
+    };
+    const maintainer = prepare(
+      'WORK-01K39R0V00000000000000000N',
+      'maintainer-premise',
+      [maintainerSource.id],
+    );
+    const agent = prepare('WORK-01K39R0V00000000000000000P', 'agent-premise', [
+      agentSource.id,
+    ]);
+    const protectedMaintainer = prepare(
+      'WORK-01K39R0V00000000000000000Q',
+      'protected-maintainer-premise',
+      [maintainerSource.id],
+    );
+    runGitForTest(root, ['add', '.']);
+    runGitForTest(root, ['commit', '-m', 'Prepare conditional surveys']);
+
+    assert.equal(
+      dispatchGovernanceIntakeCommand(
+        'work-item',
+        [
+          'promote',
+          maintainer.id,
+          '--change',
+          'maintainer-premise',
+          '--expected',
+          workItemDigest(maintainer),
+        ],
+        root,
+        { now: () => '2026-08-24T04:46:00.000Z' },
+      ).action,
+      'promote',
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(root, 'openspec/changes/maintainer-premise/survey.json'),
+      ),
+      false,
+    );
+
+    assert.equal(
+      dispatchGovernanceIntakeCommand(
+        'work-item',
+        [
+          'promote',
+          agent.id,
+          '--change',
+          'agent-premise',
+          '--expected',
+          workItemDigest(agent),
+        ],
+        root,
+        { now: () => '2026-08-24T04:46:10.000Z' },
+      ).action,
+      'promote',
+    );
+    const agentSurvey = JSON.parse(
+      fs.readFileSync(
+        path.join(root, 'openspec/changes/agent-premise/survey.json'),
+        'utf8',
+      ),
+    );
+    assert.deepEqual(agentSurvey.symbols, []);
+    assert.match(agentSurvey.emptyReason, /agent-authored premise/u);
+
+    fs.mkdirSync(path.join(root, 'workflow'), { recursive: true });
+    fs.writeFileSync(
+      path.join(root, 'workflow/work-registry-policy.json'),
+      `${JSON.stringify({
+        schemaVersion: 1,
+        transitions: {
+          intake: 'ordinary',
+          prioritize: 'ordinary',
+          promote: 'central-grant',
+        },
+      })}\n`,
+    );
+    const protectedItemPath = path.join(
+      root,
+      'docs/work-registry/items/2026',
+      `${protectedMaintainer.id}.yaml`,
+    );
+    const protectedItemBytes = fs.readFileSync(protectedItemPath, 'utf8');
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'work-item',
+          [
+            'promote',
+            protectedMaintainer.id,
+            '--change',
+            'protected-maintainer-premise',
+            '--expected',
+            workItemDigest(protectedMaintainer),
+          ],
+          root,
+        ),
+      hasCode('WORK_REGISTRY_GRANT_REQUIRED'),
+    );
+    assert.equal(
+      fs.readFileSync(protectedItemPath, 'utf8'),
+      protectedItemBytes,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          root,
+          'openspec/changes/protected-maintainer-premise/survey.json',
+        ),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(
+          root,
+          'openspec/changes/protected-maintainer-premise/origin.json',
+        ),
+      ),
+      false,
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
