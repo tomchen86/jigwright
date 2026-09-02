@@ -318,7 +318,7 @@
     {
       "path": "package.json",
       "mode": "100644",
-      "digest": "sha256:ad1c36608c2bbb777cdd6ddb3e981a0a563c20575fa99e057c8dfa279ca1bc3f"
+      "digest": "sha256:d0a231e1f0d0f351b7a0105ceb82ab8468ffdeb1f8dbc8ff4f79e3df7528ce90"
     },
     {
       "path": "src/adapters/consumer/repository/handoff/handoff.ts",
@@ -904,6 +904,11 @@
       "path": "src/composition-root/public/central-grant.ts",
       "mode": "100644",
       "digest": "sha256:d1404c9ba79029e401c99f16dcebb0de2c74de8691a117d84885a8f22db0dcad"
+    },
+    {
+      "path": "src/composition-root/public/execution-job.ts",
+      "mode": "100644",
+      "digest": "sha256:b485e5aab61c13d3e36cb56bceb0bbb7fc2a27bed769d02171a300a09c0c3a32"
     },
     {
       "path": "src/composition-root/public/manifest-v3.ts",
