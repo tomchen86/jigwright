@@ -451,11 +451,6 @@
       "digest": "sha256:871cfa897919d869ea5d58289e37914bf4fff1786da54ca4db8af06c87095a4c"
     },
     {
-      "path": "src/adapters/planning/openspec/documents/openspec-planning-provider.ts",
-      "mode": "100644",
-      "digest": "sha256:625e2fc16c6f63fa2b49a2df0425a488ac2732106ab9a33f30a42dbebf7e3b37"
-    },
-    {
       "path": "src/adapters/planning/openspec/documents/openspec-provenance.ts",
       "mode": "100644",
       "digest": "sha256:922a08ec2dba5d45bbd2ff1bc2d6d087db0d4ef606035b6f7f09ccce76d57537"
@@ -851,6 +846,11 @@
       "digest": "sha256:8b568b09d564f6140b69278ff5c03a77e60ae1db4cc1215a606d43c487456a9e"
     },
     {
+      "path": "src/composition-root/openspec-planning-provider-production.ts",
+      "mode": "100644",
+      "digest": "sha256:07012a84e49ce9ec67c90e69da5856a5b00e47ff1fb89046eb1de230dafeaff0"
+    },
+    {
       "path": "src/composition-root/optional-grants-package-production.ts",
       "mode": "100644",
       "digest": "sha256:faa9efb9298b28ef1b3b85b348a504d4bb6760ca1121bfa6d308bc5ecfd8a153"
@@ -938,7 +938,7 @@
     {
       "path": "src/composition-root/validated-contract-context.ts",
       "mode": "100644",
-      "digest": "sha256:9eab7eb98aa3a083d7f5fea357562a4e2df1eb92f0ab148c8cd6193fcfaa464a"
+      "digest": "sha256:7f2eadc38a9f1009f66a8347781a24abd8aba58ca1ade96f70dcceaccaa08090"
     },
     {
       "path": "src/entrypoints/ci/ci-archive-tree.ts",
