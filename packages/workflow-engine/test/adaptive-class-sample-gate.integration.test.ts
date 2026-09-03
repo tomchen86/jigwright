@@ -36,7 +36,10 @@ import {
 } from '../src/application/propose/propose-orchestrator.ts';
 import { installPlanReviewAuthority } from './plan-review-authority-fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
-import { builtInProviderDefinitionSnapshotForTest } from './fixture.ts';
+import {
+  builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
+} from './fixture.ts';
 
 const TERM = 'AdaptiveSampleNeedle';
 const FIRST_MARKER = 'FIRST_ADAPTIVE_CLASS';
@@ -516,18 +519,7 @@ function fakePlanReviewRunnerReport(
     },
     sameUserProcessConfined: false,
     residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: {
-      candidatePath: '/opt/homebrew/bin/claude',
-      realPath: '/opt/homebrew/bin/claude',
-      device: '1',
-      inode: '2',
-      mode: 0o100755,
-      uid: 501,
-      gid: 20,
-      size: 1024,
-      mtimeNs: '123456789',
-      sha256: 'b'.repeat(64),
-    },
+    executable: builtInProviderExecutableIdentityForTest(request.providerId),
     elapsedMs: 5,
     providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
       request.providerId,
