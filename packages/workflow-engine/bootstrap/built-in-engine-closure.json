@@ -1418,7 +1418,7 @@
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
       "mode": "100644",
-      "digest": "sha256:6fb52d3745bbe0f8e29ec45033f8c72c6bcfcffa1273a2d7f9e404260ba32ca1"
+      "digest": "sha256:2c6edc3a9731edf043562c6c0e1d9d68fa51167ccd64489b9aed07c353dfd54b"
     },
     {
       "path": "src/modules/governance-intake/intake-summary.ts",
@@ -1433,7 +1433,7 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:30bca9b9b8725ebed367bc918d09d65ce635c77b4dfd113bdbb5cc3dbd529d50"
+      "digest": "sha256:1b928161af0b586bd618cf25cf49ad517ac096314a70e9eec4e68fa91433072a"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",

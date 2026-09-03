@@ -1,3 +1,22 @@
+/**
+ * Governance Sources and Findings: the immutable intake substrate.
+ *
+ * A Source is selected wording captured once, content-addressed under the fixed
+ * source ledger and never edited; a correction is a new Source that supersedes
+ * the old one. A Finding is an agent's private mid-task observation bound to its
+ * session and Git facts, with one append-only disposition.
+ *
+ * Invariants:
+ * - Object identity and text digest are recomputed on every read; drift fails
+ *   the read instead of repairing the record.
+ * - Downstream records cite Source identities and never copy Source text.
+ * - Capture is create-only: the same text yields the same identity, and the
+ *   same identity with different bytes is a collision, not an update.
+ *
+ * Depends on: the core governance-source codec and canonical JSON.
+ * Failure modes: GOVERNANCE_SOURCE_COLLISION; a dangling supersedes or Source
+ * reference is rejected before anything is published.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

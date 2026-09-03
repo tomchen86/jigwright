@@ -1,3 +1,23 @@
+/**
+ * Projects the protected capability manifest: for each protected capability,
+ * the reviewed entrypoints and dependency sources with their content and closure
+ * digests, plus the grant verifier composition binding when the grants package
+ * is present.
+ *
+ * Invariants:
+ * - The manifest bytes are generator-owned; `--check` compares them exactly, so
+ *   never reformat the file by hand or with prettier.
+ * - Digests come from the current tree, so regenerate after the built-in
+ *   closure and the harness bootstrap runtime, in that order.
+ * - The authorization.verify capability must list every collaboration grant
+ *   composition source; an omission is an error, never a silent widening.
+ *
+ * Depends on: the grants package manifest, grant-verifier-composition, and the
+ * collaboration grant sources.
+ * Failure modes: PROTECTED_CAPABILITY_CLOSURE_DIGEST_MISMATCH and
+ * COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE at runtime; the contract
+ * test "manifest is generator-current" fails first.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

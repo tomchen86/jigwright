@@ -1,3 +1,26 @@
+/**
+ * The built-in Work Registry: one canonical YAML record per Work Item, the
+ * lifecycle inbox, backlog, active, closed, the lanes now, next, later and
+ * icebox, reviewed intake and priority, promotion into a change origin, archive
+ * reconciliation, and the deterministic backlog, inventory, history and handoff
+ * projections.
+ *
+ * Invariants:
+ * - Stage, lane and blockers are independent facts; the interpretation records
+ *   whether it is agent-derived or maintainer-confirmed.
+ * - Every mutation binds the exact current item digest and uses
+ *   compare-and-swap; a retry converges on the same bytes and never overwrites
+ *   a concurrent update.
+ * - Projections are derived from canonical records and are never authority;
+ *   validation rejects a drifted projection.
+ * - Always available: a repository may hold zero items, and the registry cannot
+ *   be configured off.
+ *
+ * Depends on: governance-intake.ts for Sources, the repository consumer
+ * configuration, and the change origin under the change root.
+ * Failure modes: an incoherent relation is rejected without moving or rewriting
+ * the record; a stale expected digest fails the reviewed transition.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

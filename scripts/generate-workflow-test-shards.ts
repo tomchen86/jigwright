@@ -1,3 +1,24 @@
+/**
+ * Regenerates the full-gate test topology: one wrapper per package test, the
+ * generated import region of the contracts legacy family, the package-test
+ * runner, and the shard manifest that assigns every physical test to a shard by
+ * longest-processing-time over the previous run's telemetry.
+ *
+ * Invariants:
+ * - Every physical test is owned exactly once, by a root, a family import or a
+ *   wrapper; the inventory refuses to generate on any drift instead of guessing.
+ * - Generation needs the telemetry and run id of a completed full gate, and
+ *   every test present in that telemetry but retired since must be declared
+ *   with --retired-test.
+ * - The own-test counts pinned for the two roots in workflow-test-inventory.ts
+ *   are bumped deliberately when tests are added, never inferred.
+ *
+ * Depends on: workflow-test-inventory.ts and the last full-gate telemetry.
+ * Failure modes, one layer at a time: "wrapper inventory drifted", "absent from
+ * the legacy families", "must retain N own tests", "telemetry names an unknown
+ * physical test". Fix in that order, then update the counts asserted in
+ * workflow-test-inventory.contract.test.ts.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

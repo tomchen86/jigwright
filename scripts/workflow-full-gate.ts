@@ -1,3 +1,21 @@
+/**
+ * Runs the current-only full gate: every shard wrapper from the tracked shard
+ * manifest under one run lock, with progress, per-test telemetry and a durable
+ * run record under the private runtime, so status and failures can be read
+ * long after the terminal is gone.
+ *
+ * Invariants:
+ * - Refuses to start unless the test inventory matches the tree exactly.
+ * - One run at a time per tree identity; a stale lock is quarantined, not deleted.
+ * - Results are read from the run record with --status, --failures and
+ *   --timings, never from a transcript.
+ *
+ * Depends on: workflow-test-inventory.ts, the tracked shard manifest, and
+ * full-gate-reporter.ts.
+ * Failure modes: a drifted inventory exits within a second with FULL GATE
+ * FAILED TO START; battery power or Low Power Mode can produce spurious
+ * subprocess deadline failures, so run on mains power.
+ */
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

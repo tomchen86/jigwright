@@ -1,3 +1,19 @@
+/**
+ * Renders the built-in engine closure: the exact set of source files that make
+ * up the built-in engine, as a manifest plus a TypeScript digest pin that sealed
+ * bootstrap bindings compare against.
+ *
+ * Invariants:
+ * - `--check` never mutates; `--write` replaces the manifest and the pin together.
+ * - The pin is derived from the rendered manifest bytes and is never edited by hand.
+ * - Any change to a file inside the closure moves the pin, so regenerate this
+ *   first, then the harness bootstrap runtime, then the protected capability
+ *   manifest, in that order.
+ *
+ * Depends on: workspace-source-closure.ts for file discovery.
+ * Failure modes: a stale pin makes every sealed bootstrap parent binding disagree
+ * with the recovery runtime's copy of the same pin.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

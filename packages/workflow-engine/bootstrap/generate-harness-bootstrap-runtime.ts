@@ -1,3 +1,21 @@
+/**
+ * Compiles the recovery runtime: a JavaScript copy of the harness bootstrap
+ * closure that runs without the TypeScript loader when the engine itself is the
+ * thing being repaired. Renders the compiled tree, its dependency manifest and
+ * the runtime pin.
+ *
+ * Invariants:
+ * - The compiled tree, manifest and pin are replaced together or not at all.
+ * - The recovery copy of built-in-engine-closure-pin must equal the TypeScript
+ *   pin; regenerate after every built-in closure change.
+ * - `--check` compares a fresh staged compilation against the committed tree
+ *   byte for byte.
+ *
+ * Depends on: harness-bootstrap-dependency-closure.json; run
+ * generate-built-in-engine-closure.ts first.
+ * Failure modes: a stale recovery copy fails sealed bootstrap with an
+ * engineBinding digest mismatch.
+ */
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
