@@ -143,7 +143,7 @@
 
 ## 6b. 新 consumer 的套用方法：`jigwright init` / `doctor` / `upgrade`
 
-現況：沒有 init。CLI 只有 `openspec-assets install-prompts`；新 consumer 靠手工複製 13 個 policy JSON、schemas、openspec config 與 docs。shared-expense-tracker 的 engine 路徑殘留就是手工複製的產物。
+現況：打包後的單一 package 有 `jigwright init`，但它只寫 `workflow/jigwright-profile.json`（D-006 的 ordinary floor profile，已存在即拒絕重寫），不建 policy、schemas、openspec config 或 docs；monorepo 的 `pnpm workflow` 沒有對應動詞。新 consumer 其餘仍靠手工複製，shared-expense-tracker 的 engine 路徑殘留就是手工複製的產物。
 
 原則：**engine 出機制與預設，consumer 只持有內容**。比照 D-018「省略 `workRegistry` 即採 engine 預設」，init 寫最少的檔案，其餘預設留在 engine 內部，consumer 要覆蓋才落地成檔。
 
