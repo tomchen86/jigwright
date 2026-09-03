@@ -61,9 +61,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1269,
+    "occurrences": 1291,
     "fileCount": 6,
-    "identityDigest": "sha256:c521b29ea04f1463a1ba770d55d3dffa26e9ab4c335951bcf40b9fe29ab99a76"
+    "identityDigest": "sha256:a484d8895b53ab9650fd50f07cbe88ae4550dc06154e29d3eca2546fa98de1f6"
   },
   "couplings": [
     {
