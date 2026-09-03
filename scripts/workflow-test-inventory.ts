@@ -46,7 +46,7 @@ const FAMILY_LOADERS = Object.freeze({
 });
 const ROOT_OWN_TEST_COUNTS = Object.freeze({
   [CONTRACTS_ROOT]: 37,
-  [SESSION_ROOT]: 41,
+  [SESSION_ROOT]: 56,
 });
 const SHA256_PATTERN = /^sha256:[0-9a-f]{64}$/;
 
