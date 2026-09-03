@@ -4573,9 +4573,11 @@ function assertProviderInvocationBinding(
       request.targetDigest !== manifest.subject.subjectDigest ||
       request.inputManifestDigest !== manifestDigest ||
       request.roleAssignment.targetDigest !== request.targetDigest ||
-      request.providerId !== manifest.review.assignment.reviewerProviderId ||
-      request.roleAssignment.providerId !==
-        manifest.review.assignment.reviewerProviderId ||
+      !continuationProviderMatchesReview(manifest.review, request.providerId) ||
+      !continuationProviderMatchesReview(
+        manifest.review,
+        request.roleAssignment.providerId,
+      ) ||
       request.roleAssignment.sessionId ===
         manifest.review.assignment.reviewerSessionId ||
       !matchesPersistedProviderOutputSchema(
@@ -4622,6 +4624,18 @@ function assertProviderInvocationBinding(
   ) {
     throw invocationInvalid();
   }
+}
+
+function continuationProviderMatchesReview(
+  review: TaskDiffReviewRecord,
+  providerId: ProviderId,
+): boolean {
+  const originalReviewer = review.assignment.reviewerProviderId;
+  if (originalReviewer === null) return true;
+  const implementationProvider = review.assignment.implementerProviderId;
+  return originalReviewer === implementationProvider
+    ? providerId !== implementationProvider
+    : providerId === originalReviewer;
 }
 
 function createPlanReviewSnapshotFiles(

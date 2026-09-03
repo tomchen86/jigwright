@@ -7464,12 +7464,14 @@ function createNewTaskDiffReviewContinuationReservation(
     throw reviewNotSatisfied();
   }
   const reviewerProviderId =
-    preferredProviderId ??
-    (['codex', 'claude'] as const).find(
-      (providerId) =>
-        policy.policy.providers[providerId].enabled &&
-        providerId !== implementationActor.providerId,
-    );
+    preferredProviderId !== null &&
+    preferredProviderId !== implementationActor.providerId
+      ? preferredProviderId
+      : (['codex', 'claude'] as const).find(
+          (providerId) =>
+            policy.policy.providers[providerId].enabled &&
+            providerId !== implementationActor.providerId,
+        );
   if (reviewerProviderId === undefined) {
     throw workflowError(
       'TASK_DIFF_REVIEW_CONTINUATION_REVIEWER_REQUIRED',
@@ -8009,6 +8011,20 @@ function assertReservationCurrent(
   }
 }
 
+function continuationProviderMatchesReview(
+  review: TaskDiffReviewRecord,
+  implementationActor: RecordedRoleParticipant,
+  providerId: string,
+): boolean {
+  const originalReviewer = review.assignment.reviewerProviderId;
+  if (originalReviewer === null) return true;
+  const implementationProvider =
+    implementationActor.providerId ?? review.assignment.implementerProviderId;
+  return originalReviewer === implementationProvider
+    ? providerId !== implementationProvider
+    : providerId === originalReviewer;
+}
+
 function assertContinuationReservationCurrent(
   context: ReturnType<typeof loadActiveSessionContext>,
   current: CurrentTaskDiffReviewForProviderContinuation,
@@ -8046,9 +8062,11 @@ function assertContinuationReservationCurrent(
     reservation.request.roleAssignment.sessionId ===
       current.review.assignment.reviewerSessionId ||
     !policy.policy.providers[providerId].enabled ||
-    providerId === current.implementationActor.providerId ||
-    (current.review.assignment.reviewerProviderId !== null &&
-      providerId !== current.review.assignment.reviewerProviderId) ||
+    !continuationProviderMatchesReview(
+      current.review,
+      current.implementationActor,
+      providerId,
+    ) ||
     canonicalJson(reservation.manifest.review) !==
       canonicalJson(current.review) ||
     canonicalJson(reservation.manifest.response) !==
@@ -8089,9 +8107,16 @@ function assertContinuationReservationBound(
       canonicalJson(reviewReservation.implementationActor) ||
     canonicalJson(reservation.review) !== canonicalJson(review) ||
     canonicalJson(reservation.response) !== canonicalJson(response) ||
-    reservation.request.providerId !== review.assignment.reviewerProviderId ||
-    reservation.request.roleAssignment.providerId !==
-      review.assignment.reviewerProviderId ||
+    !continuationProviderMatchesReview(
+      review,
+      reservation.implementationActor,
+      reservation.request.providerId,
+    ) ||
+    !continuationProviderMatchesReview(
+      review,
+      reservation.implementationActor,
+      reservation.request.roleAssignment.providerId,
+    ) ||
     reservation.request.roleAssignment.sessionId ===
       review.assignment.reviewerSessionId ||
     canonicalJson(reservation.manifest.review) !== canonicalJson(review) ||

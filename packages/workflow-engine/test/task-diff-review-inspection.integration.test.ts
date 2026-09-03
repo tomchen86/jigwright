@@ -316,7 +316,15 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
       prepared.implementationActor.identityAssurance,
       'self-declared',
     );
-    assert.equal(prepared.assignment.providerId, 'claude');
+    assert.equal(prepared.assignment.providerId, 'codex');
+    assert.notEqual(
+      prepared.assignment.sessionId,
+      prepared.implementationActor.sessionId,
+    );
+    assert.equal(
+      prepared.assignment.requiredIndependence,
+      'session-independent',
+    );
     assert.equal(prepared.assignment.role, 'task-diff-reviewer');
     assert.equal(
       prepared.assignment.targetDigest,
@@ -363,7 +371,7 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
       runner(input) {
         return {
           invocationId: prepared.invocationId,
-          providerId: 'claude',
+          providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: input.request.requestDigest,
           semanticOutput: submission,
@@ -393,7 +401,7 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
     assert.equal(reviewed.state, 'satisfied');
     assert.equal(reviewed.review.subjectDigest, prepared.subject.subjectDigest);
     assert.equal(reviewed.review.assignment.implementerProviderId, 'codex');
-    assert.equal(reviewed.review.assignment.reviewerProviderId, 'claude');
+    assert.equal(reviewed.review.assignment.reviewerProviderId, 'codex');
     assert.deepEqual(
       assertCurrentTaskDiffReviewSatisfied(repository, session.sessionId),
       reviewed.review,
@@ -560,7 +568,7 @@ test('finalize pauses before staging for a required review and resumes without r
         runner(input) {
           return {
             invocationId: prepared.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: submission,
@@ -684,7 +692,7 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
           );
           return {
             invocationId: first.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: firstSubmission,
@@ -769,7 +777,7 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
           );
           return {
             invocationId: second.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: secondSubmission,
@@ -996,7 +1004,7 @@ test('an unchanged candidate reuses its review across fresh check evidence witho
           writeFixtureProviderRuntime(input.invocationDirectory, submission);
           return {
             invocationId: prepared.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: submission,
@@ -1149,7 +1157,7 @@ test('review-diff CLI resumes the durable happy path from ready through fixed-ru
         runner(input) {
           return {
             invocationId: startedResult.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: submission,
@@ -1239,7 +1247,7 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
           writeFixtureProviderRuntime(input.invocationDirectory, challenged);
           return {
             invocationId: prepared.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput: challenged,
@@ -1366,7 +1374,7 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
           );
           return {
             invocationId: continuation.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput,
@@ -1488,7 +1496,7 @@ test('an accepted continuation decision requires a new candidate and never satis
         writeFixtureProviderRuntime(input.invocationDirectory, challenged);
         return {
           invocationId: prepared.invocationId,
-          providerId: 'claude',
+          providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: input.request.requestDigest,
           semanticOutput: challenged,
@@ -1549,7 +1557,7 @@ test('an accepted continuation decision requires a new candidate and never satis
           );
           return {
             invocationId: continuation.invocationId,
-            providerId: 'claude',
+            providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
             semanticOutput,

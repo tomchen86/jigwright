@@ -1046,10 +1046,17 @@ function parseTaskDiffReviewContinuationReservation(
     request.authorizationNodeId !== record.authorizationNodeId ||
     request.targetDigest !== subject.subjectDigest ||
     request.inputManifestDigest !== sha256(canonicalJson(manifest)) ||
-    request.providerId !== review.assignment.reviewerProviderId ||
+    !continuationProviderMatchesReview(
+      review,
+      implementationActor,
+      request.providerId,
+    ) ||
     request.roleAssignment.role !== 'task-diff-reviewer' ||
-    request.roleAssignment.providerId !==
-      review.assignment.reviewerProviderId ||
+    !continuationProviderMatchesReview(
+      review,
+      implementationActor,
+      request.roleAssignment.providerId,
+    ) ||
     request.roleAssignment.sessionId === review.assignment.reviewerSessionId ||
     request.outputSchema.id !==
       TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA.id ||
@@ -1459,6 +1466,20 @@ function taskDiffRoleAssignmentMatchesReservation(
     assignment.participant.sessionId === assignment.sessionId &&
     assignment.participant.engineSpawned === true
   );
+}
+
+function continuationProviderMatchesReview(
+  review: TaskDiffReviewRecord,
+  implementationActor: RecordedRoleParticipant,
+  providerId: ProviderId,
+): boolean {
+  const originalReviewer = review.assignment.reviewerProviderId;
+  if (originalReviewer === null) return true;
+  const implementationProvider =
+    implementationActor.providerId ?? review.assignment.implementerProviderId;
+  return originalReviewer === implementationProvider
+    ? providerId !== implementationProvider
+    : providerId === originalReviewer;
 }
 
 function isAdmittedTaskDiffRoleResultShape(

@@ -198,7 +198,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
 
   assert.match(
     retryScheduler,
-    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleResultReplayPort/,
+    /ProcessProviderFailureRetryOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
   );
   assert.match(
     retryScheduler,
@@ -206,7 +206,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   );
   assert.match(
     executionReplacement,
-    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedRoleResultReplayPort/,
+    /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
   );
   const replacementStatusCalls = [
     ...executionReplacement.matchAll(/getProposeStatus\(([\s\S]*?)\);/g),
@@ -220,7 +220,7 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
   }
   assert.match(
     providerWorker,
-    /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedRoleResultReplayPort/,
+    /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
   assert.match(
     cli,
