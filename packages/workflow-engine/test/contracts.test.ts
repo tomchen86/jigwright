@@ -78,8 +78,10 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
     ),
     false,
   );
-  assert.deepEqual(Object.keys(governanceIntakeProduction), [
+  assert.deepEqual(Object.keys(governanceIntakeProduction).sort(), [
+    'assertExistingGovernanceIntakeChange',
     'renderGovernanceIntakeHandoff',
+    'resolveGovernanceIntakeRuntimeRoot',
   ]);
   for (const exportName of [
     'updateLegacyIssueCompatibilityAlias',

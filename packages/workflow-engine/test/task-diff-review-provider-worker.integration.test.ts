@@ -84,7 +84,7 @@ test('activated final task review binds documentation closure into commit and CI
       runner() {
         return {
           invocationId: fixture.invocationId,
-          providerId: 'claude',
+          providerId: fixture.request.providerId,
           purpose: 'task-diff-review',
           requestDigest: fixture.request.requestDigest,
           semanticOutput: submission,
@@ -98,10 +98,13 @@ test('activated final task review binds documentation closure into commit and CI
           },
           sameUserProcessConfined: false,
           residuals: [...PROVIDER_RUNNER_RESIDUALS],
-          executable: builtInProviderExecutableIdentityForTest('claude'),
+          executable: builtInProviderExecutableIdentityForTest(
+            fixture.request.providerId,
+          ),
           elapsedMs: 8,
-          providerDefinitionSnapshot:
-            builtInProviderDefinitionSnapshotForTest('claude'),
+          providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
+            fixture.request.providerId,
+          ),
         };
       },
     });
@@ -443,7 +446,7 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
         assert.equal(input.request.writeAllowedPaths.length, 0);
         return {
           invocationId: fixture.invocationId,
-          providerId: 'claude',
+          providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: fixture.request.requestDigest,
           semanticOutput: submission,

@@ -335,7 +335,7 @@ test('authority plan recovers a crash after local apply and rejects changed inte
     assert.equal(recovered.localApplication?.grantId, grantId);
     assert.equal(
       recovered.localApplication?.publishCommand,
-      `git push git@github.com:tomchen86/expense-app.git refs/tags/workflow-authority/${grantId}:refs/tags/workflow-authority/${grantId}`,
+      `git push git@github.com:tomchen86/jigwright.git refs/tags/workflow-authority/${grantId}:refs/tags/workflow-authority/${grantId}`,
     );
     assert.doesNotMatch(
       recovered.localApplication!.publishCommand,

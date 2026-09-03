@@ -333,10 +333,13 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
             },
             sameUserProcessConfined: false,
             residuals: [...PROVIDER_RUNNER_RESIDUALS],
-            executable: executableIdentity(),
+            executable: executableIdentity(request.providerId),
             elapsedMs: 7,
             providerDefinitionSnapshot:
-              resolveBuiltInProviderDefinitionSnapshot('claude', 'darwin')!,
+              resolveBuiltInProviderDefinitionSnapshot(
+                request.providerId,
+                'darwin',
+              )!,
           };
         },
       };
@@ -443,7 +446,7 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         PROVIDER_RUNNER_RESIDUALS,
       );
       const definitionSnapshot = resolveBuiltInProviderDefinitionSnapshot(
-        'claude',
+        request.providerId,
         'darwin',
       )!;
       assert.deepEqual(
@@ -455,7 +458,7 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         sha256(
           canonicalJson({
             providerDefinitionDigest: definitionSnapshot.definitionDigest,
-            executable: executableIdentity(),
+            executable: executableIdentity(request.providerId),
           }),
         ),
       );
@@ -3608,7 +3611,7 @@ function successfulWorkerReport(
     },
     sameUserProcessConfined: false as const,
     residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: executableIdentity(),
+    executable: executableIdentity(request.providerId),
     elapsedMs: 7,
     providerDefinitionSnapshot: resolveBuiltInProviderDefinitionSnapshot(
       request.providerId,
@@ -3617,10 +3620,14 @@ function successfulWorkerReport(
   };
 }
 
-function executableIdentity() {
+function executableIdentity(providerId: 'codex' | 'claude' = 'claude') {
+  const candidatePath = resolveBuiltInProviderDefinitionSnapshot(
+    providerId,
+    'darwin',
+  )!.executableCandidates[0]!;
   return {
-    candidatePath: '/opt/homebrew/bin/claude',
-    realPath: '/opt/homebrew/bin/claude',
+    candidatePath,
+    realPath: candidatePath,
     device: '1',
     inode: '2',
     mode: 0o100755,

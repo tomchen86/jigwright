@@ -80,7 +80,13 @@ test('provider-native session foundation has one explicit production composition
 
   assert.deepEqual(consumers, [
     'composition-root/change-role-assignment-production.ts',
+    'modules/provider-orchestration/agent-runtime-durable-authority.ts',
+    'modules/provider-orchestration/agent-runtime-host-execution-binding.ts',
     'modules/provider-orchestration/agent-runtime-port.ts',
+    'modules/provider-orchestration/agent-runtime-protocol.ts',
+    'runtime/session-workspace/provider-runtime-authority-paths.ts',
+    'runtime/storage-journal/investigation-session-store.ts',
+    'runtime/storage-journal/provider-invocation-store.ts',
   ]);
   const workerSource = fs.readFileSync(
     path.join(sourceRoot, 'entrypoints/worker/provider-worker.ts'),
