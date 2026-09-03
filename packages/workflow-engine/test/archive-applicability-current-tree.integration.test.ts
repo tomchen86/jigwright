@@ -128,13 +128,19 @@ test('amend-plan executes the pinned public OpenSpec archive projection', () => 
 
     assert.throws(
       () =>
-        commitPlanAmendment(repository, 'demo-change', {
-          reason: 'archive-applicability-failure',
-          executionImpact: 'none',
-        }, process.env, {
-          aroundArchiveApplicability: (invoke) =>
-            withRejectedPublicArchive(repository, invoke),
-        }),
+        commitPlanAmendment(
+          repository,
+          'demo-change',
+          {
+            reason: 'archive-applicability-failure',
+            executionImpact: 'none',
+          },
+          process.env,
+          {
+            aroundArchiveApplicability: (invoke) =>
+              withRejectedPublicArchive(repository, invoke),
+          },
+        ),
       (error: unknown) => isWorkflowError(error, 'OPENSPEC_ARCHIVE_FAILED'),
     );
   } finally {
@@ -144,6 +150,7 @@ test('amend-plan executes the pinned public OpenSpec archive projection', () => 
 
 function createCurrentDeltaFixture(): string {
   const repository = createFixtureRepository();
+  removeLegacyFixtureChange(repository);
   fs.mkdirSync(path.join(repository, 'openspec/specs/demo'), {
     recursive: true,
   });
@@ -162,6 +169,10 @@ function createCurrentDeltaFixture(): string {
       '',
     ].join('\n'),
   );
+  git(repository, ['add', '-A']);
+  git(repository, ['commit', '-m', 'Configure current delta fixture']);
+  syncOriginMain(repository);
+  writeFixtureChangeSkeleton(repository);
   fs.writeFileSync(
     path.join(repository, DELTA_SPEC_PATH),
     [
@@ -179,10 +190,70 @@ function createCurrentDeltaFixture(): string {
       '',
     ].join('\n'),
   );
-  git(repository, ['add', '-A']);
-  git(repository, ['commit', '-m', 'Configure current delta fixture']);
-  syncOriginMain(repository);
   return repository;
+}
+
+function removeLegacyFixtureChange(repository: string): void {
+  fs.rmSync(path.join(repository, 'openspec/changes/demo-change'), {
+    recursive: true,
+    force: true,
+  });
+  fs.rmSync(
+    path.join(repository, 'workflow/change-providers/demo-change.json'),
+    { force: true },
+  );
+  fs.mkdirSync(path.join(repository, 'openspec/changes'), {
+    recursive: true,
+  });
+  fs.writeFileSync(path.join(repository, 'openspec/changes/.gitkeep'), '');
+}
+
+function writeFixtureChangeSkeleton(repository: string): void {
+  const changeDirectory = path.join(repository, 'openspec/changes/demo-change');
+  fs.mkdirSync(path.join(changeDirectory, 'specs/demo'), {
+    recursive: true,
+  });
+  fs.writeFileSync(path.join(changeDirectory, 'proposal.md'), '# Proposal\n');
+  fs.writeFileSync(path.join(changeDirectory, 'design.md'), '# Design\n');
+  fs.writeFileSync(
+    path.join(changeDirectory, 'tasks.md'),
+    '# Tasks\n\n- [ ] 1.1 Demo task\n',
+  );
+  fs.writeFileSync(
+    path.join(changeDirectory, 'guard.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        changeId: 'demo-change',
+        tasks: {
+          '1.1': { allowedPaths: ['src/**'], requiredChecks: ['fixture'] },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  fs.mkdirSync(path.join(repository, 'workflow/change-providers'), {
+    recursive: true,
+  });
+  fs.writeFileSync(
+    path.join(repository, 'workflow/change-providers/demo-change.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        changeId: 'demo-change',
+        providerId: 'openspec',
+        adapterContractVersion: 1,
+        providerRequirement: {
+          package: '@fission-ai/openspec',
+          version: '1.6.0',
+        },
+        planningRoot: 'openspec/changes/demo-change',
+      },
+      null,
+      2,
+    )}\n`,
+  );
 }
 
 function removeCurrentBaseSpec(repository: string): void {
@@ -223,10 +294,7 @@ function prepareReviewedCorrection(repository: string): void {
   writeReadyV3ExemptChange(repository);
 }
 
-function withRejectedPublicArchive<T>(
-  repository: string,
-  action: () => T,
-): T {
+function withRejectedPublicArchive<T>(repository: string, action: () => T): T {
   const executable = path.join(
     repository,
     'node_modules/@fission-ai/openspec/bin/openspec.js',
@@ -235,9 +303,9 @@ function withRejectedPublicArchive<T>(
   const archiveBranch = "if (process.argv[2] === 'archive') {";
   assert.equal(source.includes(archiveBranch), true);
   const rejected = source.replace(
-      archiveBranch,
-      `${archiveBranch}\n  process.stderr.write('public amendment archive projection invoked');\n  process.exit(23);\n}\n${archiveBranch}`,
-    );
+    archiveBranch,
+    `${archiveBranch}\n  process.stderr.write('public amendment archive projection invoked');\n  process.exit(23);\n}\n${archiveBranch}`,
+  );
   fs.writeFileSync(executable, rejected);
   try {
     return action();

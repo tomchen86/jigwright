@@ -55,7 +55,11 @@ test('plan applicability preserves SHA-256 Git object identity', () => {
 test('CI replays applicability from the immutable planning commit through the public archive', () => {
   const repository = createFixtureRepository();
   try {
+    removeLegacyFixtureChange(repository);
+    git(repository, ['add', '-A']);
+    git(repository, ['commit', '-m', 'Remove legacy fixture change']);
     git(repository, ['checkout', '-b', 'work/demo-change']);
+    writeFixtureChangeSkeleton(repository);
     fs.appendFileSync(
       path.join(repository, 'openspec/changes/demo-change/design.md'),
       '\nImmutable public archive replay is required.\n',
@@ -77,6 +81,86 @@ test('CI replays applicability from the immutable planning commit through the pu
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
+
+function removeLegacyFixtureChange(repository: string): void {
+  fs.rmSync(path.join(repository, 'openspec/changes/demo-change'), {
+    recursive: true,
+    force: true,
+  });
+  fs.rmSync(
+    path.join(repository, 'workflow/change-providers/demo-change.json'),
+    { force: true },
+  );
+  fs.mkdirSync(path.join(repository, 'openspec/changes'), {
+    recursive: true,
+  });
+  fs.writeFileSync(path.join(repository, 'openspec/changes/.gitkeep'), '');
+}
+
+function writeFixtureChangeSkeleton(repository: string): void {
+  const changeDirectory = path.join(repository, 'openspec/changes/demo-change');
+  fs.mkdirSync(path.join(changeDirectory, 'specs/demo'), {
+    recursive: true,
+  });
+  fs.writeFileSync(path.join(changeDirectory, 'proposal.md'), '# Proposal\n');
+  fs.writeFileSync(path.join(changeDirectory, 'design.md'), '# Design\n');
+  fs.writeFileSync(
+    path.join(changeDirectory, 'tasks.md'),
+    '# Tasks\n\n- [ ] 1.1 Demo task\n',
+  );
+  fs.writeFileSync(
+    path.join(changeDirectory, 'guard.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        changeId: 'demo-change',
+        tasks: {
+          '1.1': { allowedPaths: ['src/**'], requiredChecks: ['fixture'] },
+        },
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  fs.writeFileSync(
+    path.join(changeDirectory, 'specs/demo/spec.md'),
+    [
+      '# Delta',
+      '',
+      '## ADDED Requirements',
+      '',
+      '### Requirement: Demo behavior',
+      '',
+      'The fixture keeps one current delta for archive replay.',
+      '',
+      '#### Scenario: Demo succeeds',
+      '',
+      '- **THEN** the behavior succeeds',
+      '',
+    ].join('\n'),
+  );
+  fs.mkdirSync(path.join(repository, 'workflow/change-providers'), {
+    recursive: true,
+  });
+  fs.writeFileSync(
+    path.join(repository, 'workflow/change-providers/demo-change.json'),
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        changeId: 'demo-change',
+        providerId: 'openspec',
+        adapterContractVersion: 1,
+        providerRequirement: {
+          package: '@fission-ai/openspec',
+          version: '1.6.0',
+        },
+        planningRoot: 'openspec/changes/demo-change',
+      },
+      null,
+      2,
+    )}\n`,
+  );
+}
 
 test('plan applicability rejects a public archive that rewrites a reviewed artifact', () => {
   const repository = createFixtureRepository();
