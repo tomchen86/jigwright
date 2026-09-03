@@ -1591,7 +1591,7 @@ function finalizePortableTask(
       acceptanceAttemptId:
         worker.result.completionReceipt.acceptanceBinding.executionAttemptId,
       hostPhase: 'native-terminal',
-      hostProfile: 'claude-portable',
+      hostProfile: 'codex-portable',
       hostAssignmentBound: true,
       probeInvocationId: started.result.invocationId,
       probeRequestDigest:

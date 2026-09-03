@@ -137,7 +137,7 @@ function handleTurn(requestPath, submissionPath, turn) {
     request.invocationId !== turn.invocationId ||
     request.requestDigest !== turn.requestDigest ||
     request.purpose !== 'task-diff-review' ||
-    request.providerId !== 'claude' ||
+    request.providerId !== 'codex' ||
     request.roleAssignment?.providerId !== request.providerId ||
     request.capabilityProfile !== 'repository-read-only' ||
     !Array.isArray(request.writeAllowedPaths) ||
