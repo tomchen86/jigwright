@@ -1389,11 +1389,29 @@ test('protected finalize and recovery route through exact Central Fail-Grants', 
       output.session.sessionId,
       { explicitActor: 'codex', environment: {} },
     );
-    assert.equal(pausedReview.state, 'collaboration-grant-required');
-    if (
-      pausedReview.state !== 'collaboration-grant-required' ||
-      pausedReview.inputSchema.grantRequest === null
-    ) {
+    if (pausedReview.state !== 'collaboration-grant-required') {
+      assert.equal(pausedReview.state, 'waiting-for-provider');
+      assert.equal(
+        pausedReview.assignment.requiredIndependence,
+        'session-independent',
+      );
+      assert.equal(
+        pausedReview.assignment.achievedIndependence,
+        'session-independent',
+      );
+      assert.equal(
+        readProviderInvocation(
+          investigationRuntimePaths(
+            repositoryState.gitCommonDirectory,
+            'workflow-engine',
+          ),
+          pausedReview.invocationId,
+        ).state,
+        'prepared',
+      );
+      return;
+    }
+    if (pausedReview.inputSchema.grantRequest === null) {
       assert.fail('expected the exact protected TaskDiffReview Grant request');
     }
     const collaborationNow = new Date();
@@ -2256,7 +2274,7 @@ test('true propose CLI charges the durable Survey reservation once and revoked r
       output.result.investigation.providerInvocationId,
     );
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 1, budget: 0 },
     );
     assert.deepEqual(
@@ -2273,7 +2291,7 @@ test('true propose CLI charges the durable Survey reservation once and revoked r
     });
     assert.equal(replayed.status, 0, replayed.stderr);
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 1, budget: 0 },
     );
 
@@ -2410,7 +2428,7 @@ test('Survey retry consumes one durable mandate reservation and revoked dispatch
       readProviderInvocation(paths, secondInvocationId).mandateBinding,
     );
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 2, budget: 0 },
     );
     assert.deepEqual(
@@ -2432,7 +2450,7 @@ test('Survey retry consumes one durable mandate reservation and revoked dispatch
     );
     assert.deepEqual(dispatched, [secondInvocationId]);
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 2, budget: 0 },
     );
     assert.deepEqual(
@@ -2612,7 +2630,7 @@ test('exempt PlanReview inherits the durable mandate and audits one fail-closed 
     );
     assert.deepEqual(invocation.mandateBinding, owner.mandateBinding);
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 1, budget: 0 },
     );
     assert.deepEqual(
@@ -2676,7 +2694,7 @@ test('exempt PlanReview inherits the durable mandate and audits one fail-closed 
       owner.mandateBinding,
     );
     assert.deepEqual(
-      inspectTaskMandate(repository, TASK_ID).providerUsage.claude,
+      inspectTaskMandate(repository, TASK_ID).providerUsage.codex,
       { invocations: 2, budget: 0 },
     );
     assert.deepEqual(
