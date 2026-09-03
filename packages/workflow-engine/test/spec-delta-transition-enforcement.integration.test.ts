@@ -156,6 +156,17 @@ function createScenarioFixture(): string {
     path.join(repository, 'openspec/changes/demo-change/specs/demo/spec.md'),
     preservingDelta(),
   );
+  const currentSchemaName = JSON.parse(
+    fs.readFileSync(
+      path.join(repository, 'workflow/repository-consumer.json'),
+      'utf8',
+    ),
+  ) as { planning: { currentSchemaName: string } };
+  fs.writeFileSync(
+    path.join(repository, 'openspec/changes/demo-change/.openspec.yaml'),
+    `schema: ${currentSchemaName.planning.currentSchemaName}\ncreated: 2026-07-15\n`,
+  );
+  writeReadyV3ExemptChange(repository);
   git(repository, ['add', '-A']);
   git(repository, ['commit', '-m', 'Configure scenario fixture']);
   syncOriginMain(repository);
