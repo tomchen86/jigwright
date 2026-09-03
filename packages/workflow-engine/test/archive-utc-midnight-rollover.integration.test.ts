@@ -354,28 +354,15 @@ function withFixtureOpenSpecSource<T>(
 }
 
 function withArchiveOutputDate<T>(action: () => T, date: string): T {
-  const document = action() as {
-    status: number;
-    value: {
-      root: { path: string; source: string };
-      archive: Record<string, unknown>;
-    };
+  const projection = action() as {
+    archiveName: string;
+    archivePath: string;
   };
   const archiveName = `${date}-demo-change`;
   return {
-    ...document,
-    value: {
-      ...document.value,
-      archive: {
-        ...document.value.archive,
-        archivedAs: archiveName,
-        path: path.join(
-          document.value.root.path,
-          'openspec/changes/archive',
-          archiveName,
-        ),
-      },
-    },
+    ...projection,
+    archiveName,
+    archivePath: path.posix.join('openspec/changes/archive', archiveName),
   } as T;
 }
 
