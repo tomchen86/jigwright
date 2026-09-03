@@ -7067,7 +7067,14 @@ function listPackageTypescriptFiles(
     if (entry.isSymbolicLink()) throw builtInClosureMismatch();
     if (entry.isDirectory()) {
       files.push(...listPackageTypescriptFiles(packageRoot, absolute));
-    } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+    } else if (
+      entry.isFile() &&
+      entry.name.endsWith('.ts') &&
+      // macOS may materialize extended attributes as AppleDouble sidecars
+      // during npm tarball extraction. They are metadata, not source files,
+      // and must not change the authenticated TypeScript closure inventory.
+      !entry.name.startsWith('._')
+    ) {
       const relative = path.relative(packageRoot, absolute);
       if (relative.startsWith('..') || path.isAbsolute(relative)) {
         throw builtInClosureMismatch();
