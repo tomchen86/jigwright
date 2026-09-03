@@ -35,6 +35,7 @@ import {
   sourceRepositoryRoot,
   writeReadyV3ExemptChange,
   builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
 } from './fixture.ts';
 
 test('authenticated changes-required Final Assurance can cancel its exact checked finalize transaction', () => {
@@ -279,8 +280,8 @@ function completeProviderReview(
       writeFixtureProviderRuntime(input.invocationDirectory, semanticOutput);
       return {
         invocationId,
-        providerId: 'claude',
-        purpose: 'task-diff-review',
+        providerId: input.request.providerId,
+        purpose: input.request.purpose,
         requestDigest: input.request.requestDigest,
         semanticOutput,
         semanticOutputDigest: sha256(canonicalJson(semanticOutput)),
@@ -293,10 +294,12 @@ function completeProviderReview(
         },
         sameUserProcessConfined: false,
         residuals: [...PROVIDER_RUNNER_RESIDUALS],
-        executable: executableIdentity(),
+        executable: builtInProviderExecutableIdentityForTest(
+          input.request.providerId,
+        ),
         elapsedMs: 7,
         providerDefinitionSnapshot:
-          builtInProviderDefinitionSnapshotForTest('claude'),
+          builtInProviderDefinitionSnapshotForTest(input.request.providerId),
       };
     },
   });
@@ -369,21 +372,6 @@ function writeFixtureProviderRuntime(
   ] as const) {
     fs.writeFileSync(path.join(runtime, name), content, { mode: 0o600 });
   }
-}
-
-function executableIdentity() {
-  return {
-    candidatePath: '/opt/homebrew/bin/claude',
-    realPath: '/opt/homebrew/bin/claude',
-    device: '1',
-    inode: '2',
-    mode: 0o100755,
-    uid: 501,
-    gid: 20,
-    size: 1024,
-    mtimeNs: '123456789',
-    sha256: 'b'.repeat(64),
-  };
 }
 
 function readActiveTransaction(

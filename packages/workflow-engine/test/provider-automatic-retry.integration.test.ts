@@ -30,6 +30,7 @@ import {
 import { prepareExecutionMandate } from './execution-mandate-fixture.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
   createFixtureRepository,
   git,
 } from './fixture.ts';
@@ -1121,18 +1122,7 @@ function successfulWorkerReport(
     },
     sameUserProcessConfined: false as const,
     residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: {
-      candidatePath: '/opt/homebrew/bin/claude',
-      realPath: '/opt/homebrew/bin/claude',
-      device: '1',
-      inode: '2',
-      mode: 0o100755,
-      uid: 501,
-      gid: 20,
-      size: 1024,
-      mtimeNs: '123456789',
-      sha256: 'c'.repeat(64),
-    },
+    executable: builtInProviderExecutableIdentityForTest(request.providerId),
     elapsedMs: 1,
     providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
       request.providerId,
