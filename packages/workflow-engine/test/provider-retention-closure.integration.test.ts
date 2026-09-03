@@ -23,6 +23,7 @@ import {
   claimProviderInvocation,
   completeProviderInvocation,
   createProviderInvocation,
+  failProviderInvocation,
   providerInvocationManifestDigest,
   readProviderInvocation,
   readProviderInvocationManifest,
@@ -270,7 +271,6 @@ function preparePrunableProviderRuntime(changeId: string) {
       projection.invocationId,
     );
     completeInvocation(runtimeContext.runtime, firstRequest);
-    createRawRuntime(runtimeContext.runtime, firstRequest);
 
     const prunableInvocationId = `invocation-${changeId}-late-duplicate`;
     const replacement = createProviderInvocationRequest({
@@ -305,7 +305,11 @@ function preparePrunableProviderRuntime(changeId: string) {
       request: replacement,
       mandateBinding: mandate.binding,
     });
-    completeInvocation(runtimeContext.runtime, replacement);
+    // A completed first attempt owns the Job acceptance slot under the
+    // current execution contract.  The late duplicate is therefore recorded
+    // as a truthful failed attempt; its raw runtime remains eligible for the
+    // retention scenarios without pretending that a second result won.
+    failInvocation(runtimeContext.runtime, replacement);
     createRawRuntime(runtimeContext.runtime, replacement);
 
     const attempt = listExecutionJobStates(runtimeContext.runtime)
@@ -367,6 +371,26 @@ function completeInvocation(
   });
 }
 
+function failInvocation(
+  runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
+  request: ProviderInvocationRequest,
+): void {
+  const claim = claimProviderInvocation(runtime, request.invocationId, {
+    workerId: `worker-${request.invocationId}`,
+    leaseDurationMs: request.limits.timeoutMs,
+  });
+  failProviderInvocation(runtime, request.invocationId, {
+    expectedRevision: claim.record.revision,
+    leaseGeneration: claim.record.leaseGeneration,
+    leaseToken: claim.leaseToken,
+    failure: {
+      kind: 'retryable',
+      code: 'PROVIDER_RETENTION_FIXTURE_RETRY',
+      message: 'The retention fixture deliberately retries its first attempt.',
+    },
+  });
+}
+
 function providerOutcome(
   request: ProviderInvocationRequest,
 ): ProviderProcessOutcome {
@@ -417,32 +441,33 @@ function createRawRuntime(
   const state = JSON.parse(fs.readFileSync(statePath, 'utf8')) as {
     result: { runtimeObservation: unknown } | null;
   };
-  assert.ok(state.result);
-  state.result.runtimeObservation = {
-    assurance: 'unchanged-governed-projection',
-    projection: {
-      unchanged: true,
-      changedCategories: [],
-      beforeDigest: 'a'.repeat(64),
-      afterDigest: 'a'.repeat(64),
-    },
-    sameUserProcessConfined: false,
-    residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: {
-      candidatePath: '/fixture/provider',
-      realPath: '/fixture/provider',
-      device: '1',
-      inode: '2',
-      mode: 0o100755,
-      uid: 1,
-      gid: 1,
-      size: 1,
-      mtimeNs: '1',
-      sha256: 'b'.repeat(64),
-    },
-    elapsedMs: 10,
-  };
-  fs.writeFileSync(statePath, `${canonicalJson(state)}\n`, { mode: 0o600 });
+  if (state.result !== null) {
+    state.result.runtimeObservation = {
+      assurance: 'unchanged-governed-projection',
+      projection: {
+        unchanged: true,
+        changedCategories: [],
+        beforeDigest: 'a'.repeat(64),
+        afterDigest: 'a'.repeat(64),
+      },
+      sameUserProcessConfined: false,
+      residuals: [...PROVIDER_RUNNER_RESIDUALS],
+      executable: {
+        candidatePath: '/fixture/provider',
+        realPath: '/fixture/provider',
+        device: '1',
+        inode: '2',
+        mode: 0o100755,
+        uid: 1,
+        gid: 1,
+        size: 1,
+        mtimeNs: '1',
+        sha256: 'b'.repeat(64),
+      },
+      elapsedMs: 10,
+    };
+    fs.writeFileSync(statePath, `${canonicalJson(state)}\n`, { mode: 0o600 });
+  }
   const directory = path.join(
     runtime.invocations,
     request.invocationId,
