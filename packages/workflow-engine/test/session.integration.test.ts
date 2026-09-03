@@ -1715,7 +1715,7 @@ test('current session reader preserves R-007 assurance without fabricated standa
 test('CI replays v3 planning assurance from Git with the live validator', () => {
   const repository = createFixtureRepository();
   try {
-    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3IntroductionFixture(repository, 'demo-change');
     const ready = prepareCurrentChange(repository);
     const planCommit = git(repository, ['rev-parse', 'HEAD']).trim();
 
