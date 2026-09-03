@@ -76,6 +76,7 @@ try {
       process.exit(0);
     }
     const readOnlyInspection = isReadOnlyRepositoryInspectionInvocation(argv);
+    let localAdoptionIncomplete = false;
     if (fence !== null && isSealedInterventionInvocation(argv)) {
       invocation = sealedInterventionInvocation(argv);
     } else {
@@ -88,8 +89,15 @@ try {
         ) {
           throw error;
         }
+        localAdoptionIncomplete = true;
       }
-      if (!isReadOnlyHelpInvocation(argv) && !readOnlyInspection) {
+      if (
+        !isReadOnlyHelpInvocation(argv) &&
+        (!readOnlyInspection ||
+          (fence !== null &&
+            !localAdoptionIncomplete &&
+            !isBoundedSessionStatusInvocation(argv)))
+      ) {
         assertParentInterventionFenceCleared(fence, local);
       }
       const global =
@@ -210,6 +218,14 @@ function isReadOnlySessionStatusInvocation(argv: readonly string[]): boolean {
     !argv[1].startsWith('-') &&
     !argv[1].includes('\0') &&
     !argv[1].includes('\n')
+  );
+}
+
+function isBoundedSessionStatusInvocation(argv: readonly string[]): boolean {
+  return (
+    (argv.length === 2 || (argv.length === 3 && argv[2] === '--json')) &&
+    argv[0] === 'status' &&
+    isBoundedNonOptionArgument(argv[1])
   );
 }
 
