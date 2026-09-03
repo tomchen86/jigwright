@@ -37,6 +37,7 @@ import {
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
+  builtInProviderExecutableIdentityForTest,
   createFixtureRepository,
   fixtureCurrentSchemaName,
   git,
@@ -815,18 +816,7 @@ function fakeRunnerReport(
     },
     sameUserProcessConfined: false,
     residuals: [...PROVIDER_RUNNER_RESIDUALS],
-    executable: {
-      candidatePath: '/opt/homebrew/bin/claude',
-      realPath: '/opt/homebrew/bin/claude',
-      device: '1',
-      inode: '2',
-      mode: 0o100755,
-      uid: 501,
-      gid: 20,
-      size: 1024,
-      mtimeNs: '123456789',
-      sha256: 'b'.repeat(64),
-    },
+    executable: builtInProviderExecutableIdentityForTest(request.providerId),
     elapsedMs: 5,
     providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
       request.providerId,
