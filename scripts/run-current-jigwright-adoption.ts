@@ -1662,7 +1662,7 @@ const planReviewFields = {
   manifestDigest: verified.manifestDigest,
   investigationTargetDigest: verified.investigationTargetDigest,
   reviewPolicyDigest: sha256('current-v3-plan-review-policy'),
-  requiredIndependence: 'provider-independent',
+    requiredIndependence: 'session-independent',
   investigationBaseline: { head, tree },
   investigationDependencies: [],
   investigationRequirements: [],
