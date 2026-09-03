@@ -220,8 +220,7 @@ test('role-config CLI shows and atomically configures declarative central rules 
       (error: unknown) =>
         error instanceof Error &&
         'code' in error &&
-        error.code ===
-          'CENTRAL_ROLE_PROVIDER_DEFAULT_EXPLICIT_RANKING_REQUIRED',
+        error.code === 'AGENT_PROVIDER_CONFIG_INVALID',
     );
 
     const cli = spawnSync(
