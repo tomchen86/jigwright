@@ -688,7 +688,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:fe9db3e78e5056477e724798a2809650caf07233f951ede9c60981d829d7ae32"
+      "digest": "sha256:0c91298c360117866d537bffdf7dae71b5b3fbd9854c62dcf08004cd258d6762"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -2223,7 +2223,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-store.ts",
       "mode": "100644",
-      "digest": "sha256:1a3a8f2c534666bd8d94b6956ce3d6da1a92a8bec812fef4af06411942a9e4e9"
+      "digest": "sha256:a03c7c39fb77491420f252ae0116b34e0749d6466b468047e470365590ab1069"
     },
     {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
@@ -2273,7 +2273,7 @@
     {
       "path": "src/runtime/storage-journal/task-diff-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:8867b50a11a62bf6f6c093f3054736cd40951bbb87567fb288f1e99af59389e5"
+      "digest": "sha256:f16b345b02a9683599ce0aa671806f3d06692db55a27d77f647049ba25f7f457"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-store.ts",
