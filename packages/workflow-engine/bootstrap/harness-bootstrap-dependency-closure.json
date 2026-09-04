@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:b0208a26c8d94bcc31abf864f0bd2f7efceeb384692f8d0d4bf9240d7659ef8c"
+      "digest": "sha256:efc784e4f37dfa9d0cac057c0b93272bad10e9f71c99cff254e4eb20330a2cbc"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -733,7 +733,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git.js",
       "mode": "100644",
-      "digest": "sha256:37632c9ea62dc1564ed2843a89ce349d066fd42fd92126780a996225d1529b80"
+      "digest": "sha256:36c63bd8684eac8180b86417efadea58687ec8ab3892548692367ac4e12bd217"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/package-closure.js",
@@ -823,7 +823,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
       "mode": "100644",
-      "digest": "sha256:5e77f36a89f023471599634c95657f0075243d9397c4f6bae9d201394ac935d8"
+      "digest": "sha256:ca1485f2ad2e9253dfd6799cfa84b32a5f5a4dad2fb93707d56d2736227d02e9"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",

@@ -428,7 +428,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-executor.ts",
       "mode": "100644",
-      "digest": "sha256:2f29d7c30a8cb6d98011dbd5c7d026d933961912aee20e433f544433a75d9188"
+      "digest": "sha256:297394d961b2e138954a9d419b55993b8dc367ba417625665a87a853c3dc5d19"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-payload-primitives.ts",
@@ -553,7 +553,7 @@
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:5b11900f7f96e7c4061b8bd61c9994e8762824eb5ab5d51232c6829616595308"
+      "digest": "sha256:000ed86f9981ca6d350eebb9d0bc3c481dd3175316af0496ae2ad2a63531799d"
     },
     {
       "path": "src/application/control-plane/human-revocation.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:db27ae7ee01bf460160cd1b9718ea2ce809ac9c407f5c42714dd5c2da28b3650"
+      "digest": "sha256:af3191316d9f516b0a7645fd5aedaf8fea416c8cc260c50e41db7918a4a4c6ff"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -723,7 +723,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:7ee103f47fffa7d68a0dce5b7156d0530c15adf91cf258ab97ed3e121cec8403"
+      "digest": "sha256:f87e11f799cde71a4b305dfa1d6c3599ffa28e26b78f91ed066b2a7ec8bc224c"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -1058,7 +1058,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:35bc99208026fc4f5d93752eb64ddf22580bfa8020ac1620d69a18006b89b8ec"
+      "digest": "sha256:fb4469be3302f8c6c0ebb3ddca01dddfe3abae836cb180613c5f2d11c6c7c2d5"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1488,7 +1488,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-full-blob.ts",
       "mode": "100644",
-      "digest": "sha256:f1226df04a95be6167c96dfda8189546927e594a01a8c4d9d543332ae15304c1"
+      "digest": "sha256:f0f8443ce372b5d5d0cf06f891d669635a114b3c97607c705fd50d50c34577c9"
     },
     {
       "path": "src/modules/investigation/domain/investigation-groups.ts",
@@ -2048,7 +2048,7 @@
     {
       "path": "src/runtime/repository-transaction/git.ts",
       "mode": "100644",
-      "digest": "sha256:c4e95f9cdff62d122fc10e3891034bf0e0f0b15f3bc98964b12cf35aa14a401f"
+      "digest": "sha256:ff7721240939ba9c80b36557acc60ce909fc90bd2e02413a1878a8e8727eab79"
     },
     {
       "path": "src/runtime/repository-transaction/package-closure.ts",
@@ -2178,7 +2178,7 @@
     {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:99dd6c7f1c9f26660a70a2e7efca7eaf6551701e71ae4c25537e0b1436f98f56"
+      "digest": "sha256:e392522551600e71115c937e49829c47f1156f0c75f40c63f9ab5f70f1b140d9"
     },
     {
       "path": "src/runtime/storage-journal/investigation-v3-failure-store.ts",
