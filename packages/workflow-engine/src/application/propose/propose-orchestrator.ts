@@ -1338,7 +1338,7 @@ export function startPropose(
       'PROPOSE_PROTECTED_BASE_UNAVAILABLE',
       'The configured protected remote-tracking base is unavailable; an exact Fail-Grant challenge is required before initialization.',
       ExitCode.staleState,
-      { details: { protectedBaseRef } },
+      { details: { protectedBaseRef, changeId } },
     );
   }
 

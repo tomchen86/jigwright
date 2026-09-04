@@ -1016,20 +1016,30 @@ export async function createProposeProtectedBaseFailGrantResult(
   requestGrant: typeof requestProtectedBaseInitializationGrant = requestProtectedBaseInitializationGrant,
 ): Promise<CommandResult | null> {
   if (
-    args[0] !== 'propose' ||
     !(error instanceof WorkflowError) ||
     error.code !== 'PROPOSE_PROTECTED_BASE_UNAVAILABLE'
   ) {
     return null;
   }
-  const changeId = args[1];
-  if (changeId === undefined) return null;
+  // The intent-level facades (`now`, `finding convert --now`) start the same
+  // propose and must reach the same Fail-Grant decision instead of a raw error.
+  const startsPropose =
+    args[0] === 'propose' ||
+    args[0] === 'now' ||
+    (args[0] === 'finding' && args.includes('--now'));
+  const changeId =
+    args[0] === 'propose'
+      ? args[1]
+      : typeof error.details?.changeId === 'string'
+        ? error.details.changeId
+        : undefined;
+  if (!startsPropose || changeId === undefined) return null;
   const grant = await requestGrant(
     cwd,
     'Authorize create-only initialization of the empty canonical remote protected base from the exact current commit so governed planning can continue.',
   );
   return {
-    command: 'propose',
+    command: args[0]!,
     ok: true,
     result: {
       schemaVersion: 1,
