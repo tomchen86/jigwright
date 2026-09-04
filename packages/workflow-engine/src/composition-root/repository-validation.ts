@@ -113,6 +113,27 @@ export function validateRepositoryStateAtCommit(
   }
 }
 
+/**
+ * A change directory holding nothing but `origin.json` is a promotion that has
+ * not been proposed yet: the Work Item reserved the identity and no planning
+ * artifact exists to validate. Treating it as a malformed change made the
+ * promotion impossible to commit with hooks enabled, which left the reservation
+ * stranded between two commands.
+ */
+function isUnproposedChangeReservation(
+  repositoryRoot: string,
+  changeRoot: string,
+  changeId: string,
+): boolean {
+  const directory = path.join(repositoryRoot, changeRoot, changeId);
+  const entries = fs.readdirSync(directory, { withFileTypes: true });
+  return (
+    entries.length === 1 &&
+    entries[0]!.isFile() &&
+    entries[0]!.name === 'origin.json'
+  );
+}
+
 function listLiveChangeIds(
   repositoryRoot: string,
   changeRoot: string,
@@ -128,6 +149,10 @@ function listLiveChangeIds(
         !entry.name.startsWith('.'),
     )
     .map((entry) => entry.name)
+    .filter(
+      (changeId) =>
+        !isUnproposedChangeReservation(repositoryRoot, changeRoot, changeId),
+    )
     .sort();
 }
 

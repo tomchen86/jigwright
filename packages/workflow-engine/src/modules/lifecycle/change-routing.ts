@@ -765,7 +765,15 @@ function observeChanges(
   const changeRoot = path.join(repositoryRoot, config.changeRoot);
   const active = fs
     .readdirSync(changeRoot, { withFileTypes: true })
-    .filter((entry) => entry.isDirectory() && entry.name !== 'archive')
+    .filter(
+      (entry) =>
+        entry.isDirectory() &&
+        entry.name !== 'archive' &&
+        // A directory holding nothing but `origin.json` is a promotion that
+        // has not been proposed yet: it has reserved an identity and has no
+        // tasks to route.
+        !isUnproposedChangeReservation(path.join(changeRoot, entry.name)),
+    )
     .map((entry) =>
       observeChange(
         repositoryRoot,
@@ -796,6 +804,15 @@ function observeChanges(
     [...active, ...archived].sort((left, right) =>
       left.changeId.localeCompare(right.changeId),
     ),
+  );
+}
+
+function isUnproposedChangeReservation(directory: string): boolean {
+  const entries = fs.readdirSync(directory, { withFileTypes: true });
+  return (
+    entries.length === 1 &&
+    entries[0]!.isFile() &&
+    entries[0]!.name === 'origin.json'
   );
 }
 

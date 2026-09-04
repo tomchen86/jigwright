@@ -1320,3 +1320,38 @@ function routingGrantPolicy() {
     { registry: codeOwnedApprovalModuleRegistry() },
   );
 }
+
+test('a promoted change with no plan yet is not routed as a malformed change', () => {
+  const repository = createFixtureRepository();
+  try {
+    writeChange(repository, 'planned-change', false);
+    const before = prepareChangeRoutingReview(repository, {
+      schemaVersion: 1,
+      action: { kind: 'clear-focus' },
+    }).expectedRepositoryFactsDigest;
+
+    // `now <work-item-id>` reserves the identity and writes origin.json alone.
+    // Until propose runs there is no plan to route, and treating the
+    // reservation as a broken change made it impossible to commit.
+    const reservation = path.join(
+      repository,
+      'openspec/changes/promoted-change',
+    );
+    fs.mkdirSync(reservation, { recursive: true });
+    fs.writeFileSync(
+      path.join(reservation, 'origin.json'),
+      `${JSON.stringify({ schemaVersion: 1 })}\n`,
+    );
+    // Routing ignores it entirely: the observed repository facts are the same
+    // as they were before the reservation existed.
+    assert.equal(
+      prepareChangeRoutingReview(repository, {
+        schemaVersion: 1,
+        action: { kind: 'clear-focus' },
+      }).expectedRepositoryFactsDigest,
+      before,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
