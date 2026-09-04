@@ -81,9 +81,10 @@ export function resolveOpenSpecInstallation(
       throw new Error('OpenSpec dependency is not pinned exactly');
     }
     const provenance = verifyOpenSpecSupplyChain(root);
+    const installationRoot = openSpecInstallationRoot(root);
     const resolved = resolveDeclaredPackage(
-      root,
-      rootManifestPath,
+      installationRoot,
+      path.join(installationRoot, 'package.json'),
       PACKAGE_NAME,
       PINNED_OPENSPEC_VERSION,
     );
@@ -98,7 +99,7 @@ export function resolveOpenSpecInstallation(
     const packageDirectory = fs.realpathSync(
       path.dirname(resolved.manifestPath),
     );
-    assertInside(root, packageDirectory);
+    assertInside(installationRoot, packageDirectory);
     const bin = readBin(resolved.manifest.bin);
     const unresolvedBinPath = path.resolve(packageDirectory, bin);
     const binStats = fs.lstatSync(unresolvedBinPath);
@@ -455,6 +456,44 @@ function positiveLimit(value: number): number {
   return value;
 }
 
+/**
+ * A linked worktree (planning or task) shares the repository's dependency
+ * install with the primary worktree instead of carrying its own node_modules.
+ * The declaration and lock pins are still read from the worktree being
+ * validated; only the installed package is looked up in the primary worktree
+ * when the linked worktree has none of its own.
+ */
+function openSpecInstallationRoot(root: string): string {
+  const localEntry = path.join(root, 'node_modules', PACKAGE_NAME);
+  if (fs.lstatSync(localEntry, { throwIfNoEntry: false })) {
+    return root;
+  }
+  const gitLink = path.join(root, '.git');
+  const linkStats = fs.lstatSync(gitLink, { throwIfNoEntry: false });
+  if (!linkStats?.isFile()) {
+    return root;
+  }
+  const gitDirectory = fs
+    .readFileSync(gitLink, 'utf8')
+    .match(/^gitdir:\s*(.+?)\s*$/m)?.[1];
+  if (gitDirectory === undefined) {
+    return root;
+  }
+  const worktreeRecord = fs.realpathSync(path.resolve(root, gitDirectory));
+  const commonDirectory = path.dirname(path.dirname(worktreeRecord));
+  if (
+    path.basename(path.dirname(worktreeRecord)) !== 'worktrees' ||
+    path.basename(commonDirectory) !== '.git'
+  ) {
+    return root;
+  }
+  const primaryRoot = path.dirname(commonDirectory);
+  return fs.lstatSync(path.join(primaryRoot, 'node_modules', PACKAGE_NAME), {
+    throwIfNoEntry: false,
+  })
+    ? primaryRoot
+    : root;
+}
 function assertInside(root: string, target: string): void {
   const relative = path.relative(root, target);
   if (
