@@ -23,6 +23,7 @@ import {
 } from '../src/application/finalize/task-diff-review-lifecycle.ts';
 import {
   createTaskDiffReviewChallengeResponse,
+  taskDiffReviewProviderSubmission,
   type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
@@ -70,7 +71,7 @@ test('authenticated changes-required Final Assurance can cancel its exact checke
       repository,
       prepared.invocationId,
       prepared.subject.subjectDigest,
-      challenged,
+      taskDiffReviewProviderSubmission(challenged),
     );
     const reviewed = reconcileTaskDiffReview(repository, session.sessionId);
     if (!('review' in reviewed)) assert.fail('expected a completed review');
@@ -298,8 +299,9 @@ function completeProviderReview(
           input.request.providerId,
         ),
         elapsedMs: 7,
-        providerDefinitionSnapshot:
-          builtInProviderDefinitionSnapshotForTest(input.request.providerId),
+        providerDefinitionSnapshot: builtInProviderDefinitionSnapshotForTest(
+          input.request.providerId,
+        ),
       };
     },
   });

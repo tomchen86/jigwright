@@ -38,7 +38,10 @@ import { readChangeSchemaName } from '../src/adapters/consumer/repository/work-r
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { createOpenSpecPlanningProviderPort } from '../src/composition-root/openspec-planning-provider-production.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
-import type { TaskDiffReviewSubmission } from '../src/modules/assurance/task-diff-review-artifact.ts';
+import {
+  taskDiffReviewProviderSubmission,
+  type TaskDiffReviewSubmission,
+} from '../src/modules/assurance/task-diff-review-artifact.ts';
 import type {
   IntegrationDeltaReviewRequest,
   IntegrationDeltaReviewSubmission,
@@ -1679,7 +1682,9 @@ function writePortableProviderSubmission(
       schemaVersion: 1,
       kind: 'portability-task-diff-provider-input.v1',
       invocationId,
-      submission,
+      // The sidecar is what the host wrapper writes as its semantic output, so
+      // it carries the authored wire form the provider boundary parses.
+      submission: taskDiffReviewProviderSubmission(submission),
     })}\n`,
     { flag: 'wx', mode: 0o600 },
   );

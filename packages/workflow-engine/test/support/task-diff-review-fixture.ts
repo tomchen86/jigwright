@@ -15,7 +15,10 @@ import {
 } from '../../src/application/finalize/task-diff-review-lifecycle.ts';
 import { runProviderWorker } from '../../src/entrypoints/worker/provider-worker.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../../src/modules/assurance/task-diff-review.ts';
-import type { TaskDiffReviewSubmission } from '../../src/modules/assurance/task-diff-review-artifact.ts';
+import {
+  taskDiffReviewProviderSubmission,
+  type TaskDiffReviewSubmission,
+} from '../../src/modules/assurance/task-diff-review-artifact.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../src/runtime/provider-execution/provider-runner.ts';
 import {
   builtInProviderDefinitionSnapshotForTest,
@@ -40,7 +43,11 @@ export function commitCurrentFixtureTask(
   const session = startSession(repository, changeId, taskId);
   const target = path.join(repository, implementationPath);
   fs.mkdirSync(path.dirname(target), { recursive: true });
-  const sourceRevision = git(repository, ['rev-parse', '--short=12', 'HEAD']).trim();
+  const sourceRevision = git(repository, [
+    'rev-parse',
+    '--short=12',
+    'HEAD',
+  ]).trim();
   fs.writeFileSync(
     target,
     options.implementation ??
@@ -118,18 +125,24 @@ export function satisfyCurrentTaskDiffReview(
         'The synthetic implementation changes no public or operator documentation contract.',
     },
   };
+  // A provider writes the authored wire form, so the bytes, the reported
+  // output, and the digest over it are all reduced once, together.
+  const providerSubmission = taskDiffReviewProviderSubmission(submission);
   const worker = runProviderWorker(repository, prepared.invocationId, {
     runner(input) {
-      writeFixtureProviderRuntime(input.invocationDirectory, submission);
+      writeFixtureProviderRuntime(
+        input.invocationDirectory,
+        providerSubmission,
+      );
       return {
         invocationId: prepared.invocationId,
         providerId: input.providerId,
         purpose: 'task-diff-review',
         requestDigest: input.request.requestDigest,
-        semanticOutput: submission,
+        semanticOutput: providerSubmission,
         semanticOutputDigest: crypto
           .createHash('sha256')
-          .update(canonicalJson(submission))
+          .update(canonicalJson(providerSubmission))
           .digest('hex'),
         assurance: 'unchanged-governed-projection',
         projection: {

@@ -57,6 +57,7 @@ import {
 import {
   createTaskDiffReviewChallengeResponse,
   createTaskDiffReviewRecord,
+  taskDiffReviewProviderSubmission,
   type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
@@ -367,6 +368,7 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
       reviewedBlobObjectId,
       prepared.subject,
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     const worker = runProviderWorker(repository, prepared.invocationId, {
       runner(input) {
         return {
@@ -374,8 +376,8 @@ test('review-diff lifecycle binds a fresh provider reviewer to the exact Workflo
           providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: input.request.requestDigest,
-          semanticOutput: submission,
-          semanticOutputDigest: sha256(canonicalJson(submission)),
+          semanticOutput: providerSubmission,
+          semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
           assurance: 'unchanged-governed-projection',
           projection: {
             unchanged: true,
@@ -458,7 +460,9 @@ test('review-diff refuses an evaluator-only result without a fixed-runner observ
         stdout: JSON.stringify(
           providerWireResult(
             request,
-            validTaskDiffSubmission(reviewedBlobObjectId, prepared.subject),
+            taskDiffReviewProviderSubmission(
+              validTaskDiffSubmission(reviewedBlobObjectId, prepared.subject),
+            ),
           ),
         ),
         stderr: '',
@@ -563,6 +567,7 @@ test('finalize pauses before staging for a required review and resumes without r
       reviewedBlobObjectId,
       prepared.subject,
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     assert.equal(
       runProviderWorker(repository, prepared.invocationId, {
         runner(input) {
@@ -571,8 +576,8 @@ test('finalize pauses before staging for a required review and resumes without r
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: submission,
-            semanticOutputDigest: sha256(canonicalJson(submission)),
+            semanticOutput: providerSubmission,
+            semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -683,20 +688,24 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
     )?.after?.objectId;
     assert.ok(firstBlob);
     const firstSubmission = validTaskDiffSubmission(firstBlob, first.subject);
+    const firstProviderSubmission =
+      taskDiffReviewProviderSubmission(firstSubmission);
     assert.equal(
       runProviderWorker(repository, first.invocationId, {
         runner(input) {
           writeFixtureProviderRuntime(
             input.invocationDirectory,
-            firstSubmission,
+            firstProviderSubmission,
           );
           return {
             invocationId: first.invocationId,
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: firstSubmission,
-            semanticOutputDigest: sha256(canonicalJson(firstSubmission)),
+            semanticOutput: firstProviderSubmission,
+            semanticOutputDigest: sha256(
+              canonicalJson(firstProviderSubmission),
+            ),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -768,20 +777,24 @@ test('a corrected ordinary candidate recovers one exact common supersession afte
       secondBlob,
       second.subject,
     );
+    const secondProviderSubmission =
+      taskDiffReviewProviderSubmission(secondSubmission);
     assert.equal(
       runProviderWorker(repository, second.invocationId, {
         runner(input) {
           writeFixtureProviderRuntime(
             input.invocationDirectory,
-            secondSubmission,
+            secondProviderSubmission,
           );
           return {
             invocationId: second.invocationId,
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: secondSubmission,
-            semanticOutputDigest: sha256(canonicalJson(secondSubmission)),
+            semanticOutput: secondProviderSubmission,
+            semanticOutputDigest: sha256(
+              canonicalJson(secondProviderSubmission),
+            ),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -998,17 +1011,21 @@ test('an unchanged candidate reuses its review across fresh check evidence witho
       reviewedBlobObjectId,
       prepared.subject,
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     assert.equal(
       runProviderWorker(repository, prepared.invocationId, {
         runner(input) {
-          writeFixtureProviderRuntime(input.invocationDirectory, submission);
+          writeFixtureProviderRuntime(
+            input.invocationDirectory,
+            providerSubmission,
+          );
           return {
             invocationId: prepared.invocationId,
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: submission,
-            semanticOutputDigest: sha256(canonicalJson(submission)),
+            semanticOutput: providerSubmission,
+            semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -1152,6 +1169,7 @@ test('review-diff CLI resumes the durable happy path from ready through fixed-ru
       reviewedBlobObjectId,
       inspectTaskDiffReviewStatus(repository, session.sessionId).subject,
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     assert.equal(
       runProviderWorker(repository, startedResult.invocationId, {
         runner(input) {
@@ -1160,8 +1178,8 @@ test('review-diff CLI resumes the durable happy path from ready through fixed-ru
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: submission,
-            semanticOutputDigest: sha256(canonicalJson(submission)),
+            semanticOutput: providerSubmission,
+            semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -1241,17 +1259,24 @@ test('advisory dispositions cannot close a challenge until the shared verifier m
       blobObjectId,
       prepared.subject,
     );
+    const challengedProviderSubmission =
+      taskDiffReviewProviderSubmission(challenged);
     assert.equal(
       runProviderWorker(repository, prepared.invocationId, {
         runner(input) {
-          writeFixtureProviderRuntime(input.invocationDirectory, challenged);
+          writeFixtureProviderRuntime(
+            input.invocationDirectory,
+            challengedProviderSubmission,
+          );
           return {
             invocationId: prepared.invocationId,
             providerId: input.providerId,
             purpose: 'task-diff-review',
             requestDigest: input.request.requestDigest,
-            semanticOutput: challenged,
-            semanticOutputDigest: sha256(canonicalJson(challenged)),
+            semanticOutput: challengedProviderSubmission,
+            semanticOutputDigest: sha256(
+              canonicalJson(challengedProviderSubmission),
+            ),
             assurance: 'unchanged-governed-projection',
             projection: {
               unchanged: true,
@@ -1491,16 +1516,23 @@ test('an accepted continuation decision requires a new candidate and never satis
       blobObjectId,
       prepared.subject,
     );
+    const challengedProviderSubmission =
+      taskDiffReviewProviderSubmission(challenged);
     runProviderWorker(repository, prepared.invocationId, {
       runner(input) {
-        writeFixtureProviderRuntime(input.invocationDirectory, challenged);
+        writeFixtureProviderRuntime(
+          input.invocationDirectory,
+          challengedProviderSubmission,
+        );
         return {
           invocationId: prepared.invocationId,
           providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: input.request.requestDigest,
-          semanticOutput: challenged,
-          semanticOutputDigest: sha256(canonicalJson(challenged)),
+          semanticOutput: challengedProviderSubmission,
+          semanticOutputDigest: sha256(
+            canonicalJson(challengedProviderSubmission),
+          ),
           assurance: 'unchanged-governed-projection',
           projection: {
             unchanged: true,

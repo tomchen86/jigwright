@@ -29,9 +29,10 @@ import {
   TASK_DIFF_REVIEW_COVERAGE,
   type TaskDiffReviewSubject,
 } from '../src/modules/assurance/task-diff-review.ts';
-import type {
-  TaskDiffReviewContinuationSubmission,
-  TaskDiffReviewSubmission,
+import {
+  taskDiffReviewProviderSubmission,
+  type TaskDiffReviewContinuationSubmission,
+  type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   configureChecks,
@@ -109,7 +110,7 @@ test('review-diff publicly journals and resumes authenticated provider challenge
     completeFakeProvider(
       repository,
       prepared.invocationId,
-      challenged,
+      taskDiffReviewProviderSubmission(challenged),
       prepared.subject.subjectDigest,
     );
     const reviewed = reconcileTaskDiffReview(repository, session.sessionId);

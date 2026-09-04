@@ -21,6 +21,7 @@ import {
 import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
+  taskDiffReviewProviderSubmission,
   type TaskDiffReviewSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
@@ -77,7 +78,7 @@ test('task-diff-reviewer is a fresh session-independent read-only Reviewer turn'
 test('task-diff-review provider output admits only exact engine-spawned invocation evidence', () => {
   const assignment = taskDiffAssignment();
   const request = taskDiffRequest(assignment);
-  const output = validSubmission();
+  const output = taskDiffReviewProviderSubmission(validSubmission());
   const result = evaluateProviderProcess(
     request,
     processOutcome(providerResult(request, output)),
