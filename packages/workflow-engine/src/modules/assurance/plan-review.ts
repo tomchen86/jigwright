@@ -794,6 +794,23 @@ export const PLAN_REVIEW_OUTPUT_VALIDATOR = Object.freeze({
       return false;
     }
   },
+  explain(value: unknown) {
+    try {
+      assertPlanReviewProviderSubmission(value);
+      return [];
+    } catch (error) {
+      return [
+        {
+          path: '/',
+          code: 'PLAN_REVIEW_INVALID',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Plan review submission failed its bound semantic validator.',
+        },
+      ];
+    }
+  },
 });
 
 /**

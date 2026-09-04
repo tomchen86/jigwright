@@ -169,6 +169,17 @@ export type ProviderOutputValidator = {
   version: number;
   digest: string;
   validate(value: unknown): boolean;
+  /**
+   * Why `validate` said no, as a path/code/message triple. Optional because a
+   * validator may have nothing to add, but a semantic validator that rejects
+   * without saying which field it rejected leaves a retry no better informed
+   * than the attempt it replaces.
+   */
+  explain?(value: unknown): {
+    path: string;
+    code: string;
+    message: string;
+  }[];
 };
 
 /**

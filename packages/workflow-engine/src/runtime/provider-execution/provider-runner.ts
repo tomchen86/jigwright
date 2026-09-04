@@ -1661,6 +1661,10 @@ function validateSemanticOutput(input: ProviderRunInput, value: unknown): void {
       input.semanticOutputSchema,
       frozen,
     );
+    // A repair that only says "it failed" makes the next attempt a re-roll: the
+    // provider sees its own output back and no reason to change it. Prefer the
+    // validator's own account of which field it rejected and why.
+    const semanticErrors = validator.explain?.(frozen) ?? [];
     throw nativeOutputInvalid({
       repairKind: validationErrors.length === 0 ? 'semantic' : 'schema',
       previousOutput: frozen,
