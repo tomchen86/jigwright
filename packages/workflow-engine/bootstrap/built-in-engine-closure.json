@@ -818,7 +818,7 @@
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:2be3dc8418c787e574494799a65c1dce343ce414b4d9ac6cc14878fd09497e01"
+      "digest": "sha256:59866eb1fc77f97ba340db35b74cbd2036be970bfb13bd77ce013201ac1df0b0"
     },
     {
       "path": "src/composition-root/grant-production.ts",

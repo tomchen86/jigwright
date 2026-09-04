@@ -82,6 +82,7 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
     'assertExistingGovernanceIntakeChange',
     'renderGovernanceIntakeHandoff',
     'resolveGovernanceIntakeRuntimeRoot',
+    'resolveRepositoryFindingScope',
   ]);
   for (const exportName of [
     'updateLegacyIssueCompatibilityAlias',

@@ -21,7 +21,7 @@ export function renderGovernanceIntakeHandoff(repositoryRoot: string): string {
  * reserved scope keeps these notes in their own directory and marks them as
  * belonging to no change, which is exactly what they record.
  */
-export const REPOSITORY_FINDING_SCOPE = 'repository';
+const REPOSITORY_FINDING_SCOPE = 'repository';
 
 export function resolveRepositoryFindingScope(
   cwd: string,

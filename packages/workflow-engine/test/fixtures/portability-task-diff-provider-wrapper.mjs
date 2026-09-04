@@ -167,11 +167,12 @@ function handleTurn(requestPath, submissionPath, turn) {
   ) {
     throw new TypeError('Portable TaskDiff provider sidecar is invalid.');
   }
+  // The sidecar carries exactly what this wrapper emits as its semantic
+  // output, which is the authored wire form: the engine fills in the schema
+  // version, the coverage list, and the scope assessment on the other side.
   assertExactKeys(sidecar.submission, [
-    'schemaVersion',
     'verdict',
-    'coverage',
-    'scopeAssessment',
+    'scopeEvidence',
     'findings',
     'suggestions',
     'riskPathDispositions',
@@ -180,9 +181,8 @@ function handleTurn(requestPath, submissionPath, turn) {
     'documentationAssessment',
   ]);
   if (
-    sidecar.submission.schemaVersion !== 1 ||
     sidecar.submission.verdict !== 'advisory-approve' ||
-    !Array.isArray(sidecar.submission.coverage) ||
+    !Array.isArray(sidecar.submission.scopeEvidence) ||
     !Array.isArray(sidecar.submission.findings) ||
     !Array.isArray(sidecar.submission.suggestions) ||
     !Array.isArray(sidecar.submission.riskPathDispositions)
