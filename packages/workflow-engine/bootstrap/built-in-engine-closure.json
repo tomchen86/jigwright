@@ -403,7 +403,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:d6882ccf63e1c77349ca4b751ba4ca869db98c4f75cf92ae8f7186fe514fd905"
+      "digest": "sha256:47bce4c70d76db72923e4fa4aabbfe2b1c5370e37f5090ade99dd552f06d0fbf"
     },
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
@@ -688,7 +688,7 @@
     {
       "path": "src/application/finalize/task-diff-review-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:0c91298c360117866d537bffdf7dae71b5b3fbd9854c62dcf08004cd258d6762"
+      "digest": "sha256:db779e332716b955889c3e6714ccb5fa33a95581bcf593e22783fc353a11a284"
     },
     {
       "path": "src/application/finalize/verification.ts",
@@ -708,7 +708,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:af3191316d9f516b0a7645fd5aedaf8fea416c8cc260c50e41db7918a4a4c6ff"
+      "digest": "sha256:d847bd75bb16f9af87f83cb846712c8a1c714cd1c7e414388f1a3b5257d7ad38"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -723,7 +723,7 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:f87e11f799cde71a4b305dfa1d6c3599ffa28e26b78f91ed066b2a7ec8bc224c"
+      "digest": "sha256:82563e40707f140c7447b96690eaf500353f91fe85e5ac3ee8c5591b890aca0f"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -923,7 +923,7 @@
     {
       "path": "src/composition-root/repository-validation.ts",
       "mode": "100644",
-      "digest": "sha256:ca835a3ea3723083bfe39238e699cc9b7a9f060b7583c3ba3924b77e9bb35dea"
+      "digest": "sha256:bad9abc4ae6f322ce1a348cafe1af50a7b8e411c15d8847815cd6a91dbf1ae78"
     },
     {
       "path": "src/composition-root/role-context-sharing-grant-approval-production.ts",
@@ -1058,7 +1058,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:fb4469be3302f8c6c0ebb3ddca01dddfe3abae836cb180613c5f2d11c6c7c2d5"
+      "digest": "sha256:13d92371160d86378efd833ec5e9e96ddc642b19f7a059090f2af541556e6b0e"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1153,7 +1153,7 @@
     {
       "path": "src/modules/assurance/plan-review.ts",
       "mode": "100644",
-      "digest": "sha256:d167890eadf47f14df6082142ad9075b2bb7cea3fce56ff9750488b88dc02e47"
+      "digest": "sha256:e6c9219fb4524877d88ce3cfa52247e8ae4356e2eb296c16f097c62c82ac35e1"
     },
     {
       "path": "src/modules/assurance/plan-target.ts",
@@ -1193,7 +1193,7 @@
     {
       "path": "src/modules/assurance/task-diff-review-artifact.ts",
       "mode": "100644",
-      "digest": "sha256:006e933ca90614d2694f664bc50a2a1c0fb37675ae008f0987f9ca2e6e35aa57"
+      "digest": "sha256:43b4cbd8ce7ab6bb0d08daeed0203401f7f30024b06aff91b53308e6c240643d"
     },
     {
       "path": "src/modules/assurance/task-diff-review-input.ts",
@@ -1503,7 +1503,7 @@
     {
       "path": "src/modules/investigation/domain/investigation-scanner.ts",
       "mode": "100644",
-      "digest": "sha256:9e813dc92df7be22679267d97f575f6ef206069bd3d30fa49f7e09f47c823453"
+      "digest": "sha256:61f5d65f713096822917ebe99ae9e59acee37e9889ed553bd1faa5f35b744726"
     },
     {
       "path": "src/modules/investigation/domain/investigation-terms.ts",
@@ -1563,7 +1563,7 @@
     {
       "path": "src/modules/lifecycle/change-routing.ts",
       "mode": "100644",
-      "digest": "sha256:d3020385926997085b08d1f9bb5e907f5d10801768b1c7b064026fecf05a9198"
+      "digest": "sha256:11412fd8c64f1a313ff12340fed140cefe411a4899a201823365ae9e01bb1376"
     },
     {
       "path": "src/modules/lifecycle/context-manifest-contract.ts",
@@ -1713,7 +1713,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:d65864d5ed6fca2e023330d7c893c8796726dbaeafbf50f6f0e3a8f9e91aea43"
+      "digest": "sha256:4f628578f48fa401e9430403c3d1a8a9fd63c2c77fa555ebe09608273f2daba2"
     },
     {
       "path": "src/modules/provider-orchestration/provider-native-session.ts",
@@ -1978,7 +1978,7 @@
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
-      "digest": "sha256:fe069e4b897a7b557528e83fe54334b54da5ecde767536b7574863b3c8e7a1df"
+      "digest": "sha256:6f3bed498298254de9eeb7a75c60865da286fe929e542335651db81e591f7130"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",

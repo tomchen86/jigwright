@@ -4,7 +4,58 @@ import { canonicalJson } from "../../../foundation/canonical-json/canonical-json
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
 import { assertInvestigationLimits, INVESTIGATION_LIMITS, normalizeInvestigationTerm, } from "./investigation-terms.js";
 import { workflowTrackedObjectReaderPort, } from "../../../runtime/repository-transaction/tracked-tree-reader.js";
-const POLICY_SCHEMA = 'investigation-scan-policy.v1';
+const POLICY_SCHEMA = 'investigation-scan-policy.v2';
+/**
+ * Tracked paths whose content is produced from other tracked content.
+ *
+ * A content or symbol match inside a generated artifact is a copy of a match
+ * the same scan already has at the source, so admitting it adds a group to
+ * disposition, a row to review, and nothing to what is known. Coverage reports
+ * and lock files were the largest single source of that noise in practice.
+ *
+ * The rule applies only to terms that did not name a path: a `literal-path`
+ * term names its target deliberately, and a change that really is about a lock
+ * file has to stay investigable. Excluded entries are recorded in the scan
+ * inventory rather than dropped silently.
+ */
+const GENERATED_DIRECTORY_SEGMENTS = new Set([
+    '.next',
+    '.nuxt',
+    '.output',
+    '.svelte-kit',
+    '.turbo',
+    'coverage',
+    'dist',
+    'node_modules',
+]);
+const GENERATED_FILE_NAMES = new Set([
+    'Cargo.lock',
+    'Gemfile.lock',
+    'composer.lock',
+    'go.sum',
+    'npm-shrinkwrap.json',
+    'package-lock.json',
+    'pnpm-lock.yaml',
+    'poetry.lock',
+    'yarn.lock',
+]);
+const GENERATED_FILE_SUFFIXES = [
+    '.css.map',
+    '.js.map',
+    '.min.css',
+    '.min.js',
+];
+function isGeneratedArtifactPath(utf8Path) {
+    if (utf8Path === null)
+        return false;
+    const segments = utf8Path.split('/');
+    if (segments.some((segment) => GENERATED_DIRECTORY_SEGMENTS.has(segment))) {
+        return true;
+    }
+    const name = segments.at(-1) ?? '';
+    return (GENERATED_FILE_NAMES.has(name) ||
+        GENERATED_FILE_SUFFIXES.some((suffix) => name.endsWith(suffix)));
+}
 export const SCAN_HIT_MAX_CONTEXT_BYTES = 512;
 export function hitContextWindow(haystack, byteOffset, byteLength) {
     if (!Number.isSafeInteger(byteOffset) ||
@@ -77,7 +128,13 @@ export function scanInvestigationTreeFacts(request) {
     });
     assertOperationalScanBudget(operationalDeadline, scanCpuStart, limits.maxScanCpuMillis);
     const policyDigest = computePolicyDigest(limits);
-    const inventory = buildInventoryFacts(snapshot);
+    const generatedEntries = snapshot.entries.filter((entry) => entry.skipReason === undefined &&
+        isGeneratedArtifactPath(entry.path.utf8));
+    const generatedObjectIds = new Set(generatedEntries.map((entry) => entry.objectId));
+    const sourceEntries = generatedEntries.length === 0
+        ? snapshot.entries
+        : snapshot.entries.filter((entry) => !generatedObjectIds.has(entry.objectId));
+    const inventory = buildInventoryFacts(snapshot, generatedEntries);
     const violations = [];
     if (snapshot.budgetExceeded) {
         violations.push({ code: 'SCANNED_BYTE_LIMIT_EXCEEDED' });
@@ -89,7 +146,9 @@ export function scanInvestigationTreeFacts(request) {
     const perTermHits = [];
     let totalHits = 0;
     for (const term of terms) {
-        const collected = collectTermHits(term, snapshot.entries, limits.maxHitsPerTerm, remainingScanWork, operationalDeadline, scanCpuStart, limits.maxScanCpuMillis);
+        const collected = collectTermHits(term, 
+        // A path term names its target, so it still sees generated artifacts.
+        term.kind === 'literal-path' ? snapshot.entries : sourceEntries, limits.maxHitsPerTerm, remainingScanWork, operationalDeadline, scanCpuStart, limits.maxScanCpuMillis);
         if (collected.workLimitExceeded) {
             violations.push({ code: 'SCAN_WORK_LIMIT_EXCEEDED' });
             break;
@@ -321,17 +380,27 @@ function sortHits(hits) {
         return left.byteOffset - right.byteOffset;
     });
 }
-function buildInventoryFacts(snapshot) {
-    const skippedObjects = snapshot.entries
-        .filter((entry) => entry.skipReason !== undefined)
-        .map((entry) => ({
-        path: { rawBase64: entry.path.rawBase64, utf8: entry.path.utf8 },
-        objectId: entry.objectId,
-        objectType: entry.objectType,
-        mode: entry.mode,
-        byteSize: entry.byteSize,
-        reason: entry.skipReason,
-    }));
+function buildInventoryFacts(snapshot, generatedEntries = []) {
+    const skippedObjects = [
+        ...snapshot.entries
+            .filter((entry) => entry.skipReason !== undefined)
+            .map((entry) => ({
+            path: { rawBase64: entry.path.rawBase64, utf8: entry.path.utf8 },
+            objectId: entry.objectId,
+            objectType: entry.objectType,
+            mode: entry.mode,
+            byteSize: entry.byteSize,
+            reason: entry.skipReason,
+        })),
+        ...generatedEntries.map((entry) => ({
+            path: { rawBase64: entry.path.rawBase64, utf8: entry.path.utf8 },
+            objectId: entry.objectId,
+            objectType: entry.objectType,
+            mode: entry.mode,
+            byteSize: entry.byteSize,
+            reason: 'generated-artifact',
+        })),
+    ].sort((left, right) => left.objectId < right.objectId ? -1 : left.objectId > right.objectId ? 1 : 0);
     return {
         treeDigest: snapshot.treeDigest,
         skippedObjects,
@@ -340,6 +409,11 @@ function buildInventoryFacts(snapshot) {
 function computePolicyDigest(limits) {
     return sha256(canonicalJson({
         schema: POLICY_SCHEMA,
+        generatedArtifacts: {
+            directorySegments: [...GENERATED_DIRECTORY_SEGMENTS].sort(),
+            fileNames: [...GENERATED_FILE_NAMES].sort(),
+            fileSuffixes: [...GENERATED_FILE_SUFFIXES],
+        },
         limits: {
             maxHitsPerTerm: limits.maxHitsPerTerm,
             maxTotalHits: limits.maxTotalHits,
