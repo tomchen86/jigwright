@@ -659,7 +659,6 @@ export type ProposeFullBlobWork = {
   path: string;
   objectId: string;
   contentSha256: string;
-  contentBase64: string;
 };
 
 export type ProposeAssuranceAssessment = AssuranceAssessmentReport & {
@@ -5484,6 +5483,7 @@ function renderProposeOutput(
     };
   }
 
+  const work = workFromRebuilt(rebuilt, []);
   return {
     schemaVersion: 1,
     kind: 'workflow-propose',
@@ -5493,8 +5493,8 @@ function renderProposeOutput(
     investigation: status,
     createdDate,
     actorResolution,
-    inputSchema: inputSchemaForStatus(cwd, status),
-    work: workFromRebuilt(rebuilt, []),
+    inputSchema: inputSchemaForStatus(cwd, status, work),
+    work,
     materializedArtifacts: null,
     planReview: null,
     planningTransition: null,
@@ -5833,7 +5833,7 @@ function renderMaterializedProposeOutput(
       createdDate,
       actorResolution,
       inputSchema: retryable
-        ? {
+        ? withEnvelopeTemplate({
             schemaVersion: 1,
             kind: 'plan-review-retry',
             binding: {
@@ -5855,7 +5855,7 @@ function renderMaterializedProposeOutput(
             requiredAcknowledgement: {
               acknowledgeProviderCost: true,
             },
-          }
+          })
         : null,
       work,
       materializedArtifacts,
@@ -6013,7 +6013,7 @@ function planReviewProgressSchema(
   status: ProposeLifecycleStatus,
   reservation: PlanReviewReservation,
 ): Record<string, unknown> {
-  return {
+  return withEnvelopeTemplate({
     schemaVersion: 1,
     kind: 'plan-review-progress',
     required: {
@@ -6023,7 +6023,7 @@ function planReviewProgressSchema(
       invocationId: reservation.request.invocationId,
       requestDigest: reservation.request.requestDigest,
     },
-  };
+  });
 }
 
 function planReviewDispositionSchema(
@@ -6792,7 +6792,6 @@ function workFromRebuilt(
         path: entry.path.utf8 ?? `base64:${entry.path.rawBase64}`,
         objectId: entry.blob.objectId,
         contentSha256: entry.blob.contentSha256,
-        contentBase64: entry.blob.contentBase64,
       })),
     authoredInstructions,
   };
@@ -12556,20 +12555,31 @@ function writeManagedEntries(
 function inputSchemaForStatus(
   cwd: string,
   status: InvestigationStatus,
+  work: ProposeWork,
 ): Record<string, unknown> | null {
   if (status.checkpoint !== null) {
+    const binding = {
+      investigationId: status.investigationId,
+      changeId: status.changeId,
+      expectedRevision: status.revision,
+      baseline: status.baseline,
+      intentDigest: status.intentDigest,
+      blindManifestDigest: status.blindManifestDigest,
+    };
     return {
       schemaVersion: 1,
       kind: 'investigation-checkpoint',
       checkpointKind: status.checkpoint.kind,
       checkpointId: status.checkpoint.checkpointId,
-      binding: {
-        investigationId: status.investigationId,
-        changeId: status.changeId,
-        expectedRevision: status.revision,
-        baseline: status.baseline,
-        intentDigest: status.intentDigest,
-        blindManifestDigest: status.blindManifestDigest,
+      binding,
+      // The exact envelope to submit: copy it, replace every <...> placeholder,
+      // and keep the rest byte-for-byte. Unfilled placeholders are rejected.
+      template: {
+        schemaVersion: 1,
+        kind: status.checkpoint.kind,
+        checkpointId: status.checkpoint.checkpointId,
+        ...binding,
+        payload: checkpointPayloadTemplate(status.checkpoint.kind, work),
       },
     };
   }
@@ -12577,11 +12587,11 @@ function inputSchemaForStatus(
     status.nextAction === 'wait-for-provider' ||
     status.nextAction === 'resume-provider-result'
   ) {
-    return {
+    return withEnvelopeTemplate({
       schemaVersion: 1,
       kind: 'provider-progress',
       binding: createProviderProgressEnvelope(status),
-    };
+    });
   }
   if (
     status.nextAction === 'retry-provider' &&
@@ -12593,7 +12603,7 @@ function inputSchemaForStatus(
       context.runtime,
       status.providerInvocationId,
     );
-    return {
+    return withEnvelopeTemplate({
       schemaVersion: 1,
       kind: 'provider-retry',
       binding: {
@@ -12614,9 +12624,94 @@ function inputSchemaForStatus(
       requiredAcknowledgement: {
         acknowledgeProviderCost: true,
       },
-    };
+    });
   }
   return null;
+}
+/**
+ * Every resume input is the flat envelope `{schemaVersion, kind, ...fields}`;
+ * the schema keeps its `binding`/`required` description and also carries that
+ * envelope verbatim as `template`, so a caller copies instead of reassembling.
+ */
+function withEnvelopeTemplate(
+  schema: Record<string, unknown>,
+): Record<string, unknown> {
+  const fields = (schema.binding ?? schema.required) as
+    | Record<string, unknown>
+    | undefined;
+  if (fields === undefined) return schema;
+  const acknowledgement = (schema.requiredAcknowledgement ?? {}) as Record<
+    string,
+    unknown
+  >;
+  return {
+    ...schema,
+    template: {
+      schemaVersion: 1,
+      kind: schema.kind,
+      ...fields,
+      ...acknowledgement,
+    },
+  };
+}
+const AGENT_PLACEHOLDER = '<agent identity>';
+const GENERATED_ARTIFACT_PATH =
+  /(?:^|\/)(?:coverage|dist|build|out|\.next|\.turbo|target)\/|(?:^|\/)[^/]*(?:-lock\.(?:json|ya?ml)|\.lock|\.min\.[a-z]+|\.map|\.snap)$/;
+/**
+ * Skeleton payload for the pending checkpoint. Groups whose every path is a
+ * build or coverage artifact arrive pre-classified as `generated`; everything
+ * else carries `<...>` placeholders the caller must replace.
+ */
+function checkpointPayloadTemplate(
+  kind: 'main-terms' | 'group-dispositions' | 'why-answers',
+  work: ProposeWork,
+): Record<string, unknown> {
+  if (kind === 'main-terms') {
+    return {
+      reference: '<the owner wording these terms locate>',
+      terms: [
+        {
+          kind: '<literal-content | literal-path | symbol | config-key>',
+          value: '<exact term to search for>',
+          rationale: '<why this term locates the change>',
+          expectedRelationship: '<how its hits relate to the change>',
+        },
+      ],
+    };
+  }
+  if (kind === 'group-dispositions') {
+    return {
+      dispositions: work.groups.map((group) =>
+        group.paths.length > 0 &&
+        group.paths.every((entry) => GENERATED_ARTIFACT_PATH.test(entry))
+          ? {
+              groupId: group.groupId,
+              classification: 'generated',
+              rationale:
+                'Build, coverage, or lock artifact: tooling output that is never a planning input and never edited by hand.',
+              author: AGENT_PLACEHOLDER,
+            }
+          : {
+              groupId: group.groupId,
+              classification:
+                '<load-bearing | test-or-mirror | generated | incidental-reference | irrelevant>',
+              rationale: '<why this classification>',
+              author: AGENT_PLACEHOLDER,
+            },
+      ),
+    };
+  }
+  return {
+    answers: work.fullBlobManifest.map((entry) => ({
+      manifestEntryId: entry.manifestEntryId,
+      why: `<why ${entry.path} is load-bearing for this change>`,
+      protectedInvariant: '<behaviour that must survive the change>',
+      reviewerQuestion: '<what a reviewer should verify here>',
+      answer: '<the answer, from reading the whole file>',
+      semanticAuthor: AGENT_PLACEHOLDER,
+      readComplete: false,
+    })),
+  };
 }
 
 function planningContributionSchema(

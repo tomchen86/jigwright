@@ -1973,20 +1973,20 @@ export function advertisedHumanResolutions(
 export function assertInvestigationCheckpointEnvelope(
   value: unknown,
 ): InvestigationCheckpointEnvelope {
+  if (!isRecord(value)) {
+    throw checkpointInvalid('the envelope must be a JSON object');
+  }
+  const keysProblem = exactKeysProblem(value, CHECKPOINT_ENVELOPE_KEYS);
+  if (keysProblem !== null) {
+    throw checkpointInvalid(`envelope ${keysProblem}`);
+  }
+  if (!isCheckpointKind(value.kind)) {
+    throw checkpointInvalid(
+      `kind must be the checkpointKind named by inputSchema (main-terms, group-dispositions, or why-answers), received ${JSON.stringify(value.kind)}`,
+    );
+  }
   if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'checkpointId',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'intentDigest',
-      'blindManifestDigest',
-      'payload',
-    ]) ||
+    !hasExactKeys(value, [...CHECKPOINT_ENVELOPE_KEYS]) ||
     value.schemaVersion !== 1 ||
     !isCheckpointKind(value.kind) ||
     typeof value.checkpointId !== 'string' ||
@@ -4393,6 +4393,34 @@ function assertMainTermsPayload(
   }
 }
 
+function dispositionProblem(
+  item: unknown,
+  index: number,
+  classifications: ReadonlySet<string>,
+  seen: ReadonlySet<string>,
+): string | null {
+  const row = `dispositions[${index}]`;
+  if (!isRecord(item)) return `${row} must be an object`;
+  const keysProblem = exactKeysProblem(item, DISPOSITION_KEYS);
+  if (keysProblem !== null) return `${row} ${keysProblem}`;
+  if (typeof item.groupId !== 'string' || !DIGEST.test(item.groupId)) {
+    return `${row}.groupId must be a groupId from work.groups`;
+  }
+  if (seen.has(item.groupId)) return `${row}.groupId repeats an earlier row`;
+  if (
+    typeof item.classification !== 'string' ||
+    !classifications.has(item.classification)
+  ) {
+    return `${row}.classification must be one of ${[...classifications].join(', ')}, received ${JSON.stringify(item.classification)}`;
+  }
+  if (typeof item.rationale !== 'string' || item.rationale.trim().length === 0) {
+    return `${row}.rationale must explain the classification`;
+  }
+  if (typeof item.author !== 'string' || item.author.trim().length === 0) {
+    return `${row}.author must name who classified the group`;
+  }
+  return null;
+}
 function assertGroupDispositionsPayload(
   value: unknown,
 ): asserts value is GroupDispositionsPayload {
@@ -4406,7 +4434,9 @@ function assertGroupDispositionsPayload(
     !Array.isArray(value.dispositions) ||
     value.dispositions.length > INVESTIGATION_LIMITS.maxHitDispositionWorkItems
   ) {
-    throw checkpointInvalid();
+    throw checkpointInvalid(
+      'payload must be { dispositions: [...] } with one row per group in work.groups',
+    );
   }
   if (value.classes !== undefined) {
     if (
@@ -4452,15 +4482,12 @@ function assertGroupDispositionsPayload(
     'incidental-reference',
     'irrelevant',
   ]);
-  for (const item of value.dispositions) {
+  for (const [index, item] of value.dispositions.entries()) {
+    const problem = dispositionProblem(item, index, classifications, seen);
+    if (problem !== null) throw checkpointInvalid(problem);
     if (
       !isRecord(item) ||
-      !hasExactKeys(item, [
-        'groupId',
-        'classification',
-        'rationale',
-        'author',
-      ]) ||
+      !hasExactKeys(item, [...DISPOSITION_KEYS]) ||
       typeof item.groupId !== 'string' ||
       !DIGEST.test(item.groupId) ||
       typeof item.classification !== 'string' ||
@@ -4486,21 +4513,17 @@ function assertWhyAnswersPayload(
     !Array.isArray(value.answers) ||
     value.answers.length > INVESTIGATION_LIMITS.maxHitDispositionWorkItems
   ) {
-    throw checkpointInvalid();
+    throw checkpointInvalid(
+      'payload must be { answers: [...] } with one row per manifest entry',
+    );
   }
   const seen = new Set<string>();
-  for (const answer of value.answers) {
+  for (const [index, answer] of value.answers.entries()) {
+    const problem = whyAnswerProblem(answer, index, seen);
+    if (problem !== null) throw checkpointInvalid(problem);
     if (
       !isRecord(answer) ||
-      !hasExactKeys(answer, [
-        'manifestEntryId',
-        'why',
-        'protectedInvariant',
-        'reviewerQuestion',
-        'answer',
-        'semanticAuthor',
-        'readComplete',
-      ]) ||
+      !hasExactKeys(answer, [...WHY_ANSWER_KEYS]) ||
       typeof answer.manifestEntryId !== 'string' ||
       !DIGEST.test(answer.manifestEntryId) ||
       !isSemanticText(answer.why) ||
@@ -4518,6 +4541,45 @@ function assertWhyAnswersPayload(
   }
 }
 
+function whyAnswerProblem(
+  answer: unknown,
+  index: number,
+  seen: ReadonlySet<string>,
+): string | null {
+  const row = `answers[${index}]`;
+  if (!isRecord(answer)) return `${row} must be an object`;
+  const keysProblem = exactKeysProblem(answer, WHY_ANSWER_KEYS);
+  if (keysProblem !== null) return `${row} ${keysProblem}`;
+  if (
+    typeof answer.manifestEntryId !== 'string' ||
+    !DIGEST.test(answer.manifestEntryId)
+  ) {
+    return `${row}.manifestEntryId must be a manifestEntryId from work.fullBlobManifest`;
+  }
+  if (seen.has(answer.manifestEntryId)) {
+    return `${row}.manifestEntryId repeats an earlier row`;
+  }
+  for (const field of [
+    'why',
+    'protectedInvariant',
+    'reviewerQuestion',
+    'answer',
+  ] as const) {
+    if (!isSemanticText(answer[field])) {
+      return `${row}.${field} ${SEMANTIC_TEXT_RULE}`;
+    }
+  }
+  if (
+    typeof answer.semanticAuthor !== 'string' ||
+    answer.semanticAuthor.trim().length === 0
+  ) {
+    return `${row}.semanticAuthor must name who authored the answer`;
+  }
+  if (answer.readComplete !== true) {
+    return `${row}.readComplete must be true, set only after reading the whole blob`;
+  }
+  return null;
+}
 function isSemanticText(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -9559,13 +9621,54 @@ function investigationCasMismatch(expected: number, observed: number) {
   );
 }
 
-function checkpointInvalid() {
+function checkpointInvalid(reason?: string) {
   return workflowError(
     'INVESTIGATION_CHECKPOINT_INVALID',
-    'Investigation caller checkpoint is malformed, unbounded, or unbound.',
+    reason === undefined
+      ? 'Investigation caller checkpoint is malformed, unbounded, or unbound.'
+      : `Investigation caller checkpoint is malformed, unbounded, or unbound: ${reason}.`,
     ExitCode.usage,
   );
 }
+/** Name the exact key mismatch so a caller can repair the envelope blind. */
+function exactKeysProblem(
+  value: Record<string, unknown>,
+  keys: readonly string[],
+): string | null {
+  const missing = keys.filter((key) => !(key in value));
+  const unexpected = Object.keys(value).filter((key) => !keys.includes(key));
+  if (missing.length === 0 && unexpected.length === 0) return null;
+  return [
+    missing.length > 0 ? `missing keys [${missing.join(', ')}]` : null,
+    unexpected.length > 0 ? `unexpected keys [${unexpected.join(', ')}]` : null,
+  ]
+    .filter((part) => part !== null)
+    .join(', ');
+}
+const CHECKPOINT_ENVELOPE_KEYS = [
+  'schemaVersion',
+  'kind',
+  'checkpointId',
+  'investigationId',
+  'changeId',
+  'expectedRevision',
+  'baseline',
+  'intentDigest',
+  'blindManifestDigest',
+  'payload',
+] as const;
+const WHY_ANSWER_KEYS = [
+  'manifestEntryId',
+  'why',
+  'protectedInvariant',
+  'reviewerQuestion',
+  'answer',
+  'semanticAuthor',
+  'readComplete',
+] as const;
+const DISPOSITION_KEYS = ['groupId', 'classification', 'rationale', 'author'] as const;
+const SEMANTIC_TEXT_RULE =
+  'must be plain prose: non-empty, without <...> or {{...}} placeholders, markup, or TODO markers';
 
 function scanSaturationAcceptanceInvalid() {
   return workflowError(

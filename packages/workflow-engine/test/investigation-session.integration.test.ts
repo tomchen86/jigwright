@@ -1083,9 +1083,9 @@ test('fake-backed propose composes breadth and depth before materializing an unc
     );
     assert.ok(
       afterDispositions.work?.fullBlobManifest.some((entry) =>
-        Buffer.from(entry.contentBase64, 'base64')
-          .toString('utf8')
-          .includes('Needle'),
+        spawnSync('git', ['-C', repository, 'cat-file', '-p', entry.objectId], {
+          encoding: 'utf8',
+        }).stdout.includes('Needle'),
       ),
     );
 
@@ -1754,6 +1754,12 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       kind: 'plan-review-retry',
       binding: retryBinding,
       requiredAcknowledgement: {
+        acknowledgeProviderCost: true,
+      },
+      template: {
+        schemaVersion: 1,
+        kind: 'plan-review-retry',
+        ...retryBinding,
         acknowledgeProviderCost: true,
       },
     });
@@ -8950,6 +8956,27 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
             canonicalJson(failedInvestigation.provider.failure),
           ),
         },
+      template: {
+        schemaVersion: 1,
+        kind: 'provider-retry',
+
+        investigationId,
+        changeId,
+        expectedRevision: failedInvestigation.revision,
+        baseline: failedInvestigation.baseline,
+        intentDigest: failedInvestigation.intentDigest,
+        blindManifestDigest: failedInvestigation.blindManifestDigest,
+        failedInvocation: {
+          invocationId: firstInvocationId,
+          attempt: failedInvestigation.provider.attempt,
+          revision: failedInvestigation.provider.revision,
+          requestDigest: firstRequest.requestDigest,
+          failureDigest: sha256(
+            canonicalJson(failedInvestigation.provider.failure),
+          ),
+        },
+        acknowledgeProviderCost: true,
+      },
       },
       requiredAcknowledgement: {
         acknowledgeProviderCost: true,
