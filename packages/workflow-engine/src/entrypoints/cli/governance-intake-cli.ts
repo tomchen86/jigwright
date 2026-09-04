@@ -225,6 +225,7 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (command === 'now' && args.length === 1) {
       const exactText = args[0]!;
+      assertIntentText(exactText, 'pnpm workflow now "<original text>" --json');
       const existing = listGovernanceSources(cwd)
         .filter(
           (source) =>
@@ -276,6 +277,10 @@ export function dispatchGovernanceIntakeCommand(
     }
     if (command === 'later' && args.length === 1) {
       const originalText = args[0]!;
+      assertIntentText(
+        originalText,
+        'pnpm workflow later "<original text>" --json',
+      );
       const matches = findWorkItemsByExactSourceText(cwd, originalText).filter(
         ({ closure, stage }) => closure === null && stage !== 'closed',
       );
@@ -347,6 +352,10 @@ export function dispatchGovernanceIntakeCommand(
     if (command === 'attach' && args.length === 2) {
       const requestedWorkItemId = args[0]!;
       const originalText = args[1]!;
+      assertIntentText(
+        originalText,
+        'pnpm workflow attach <work-item-id> "<original text>" --json',
+      );
       const current = showWorkItem(cwd, requestedWorkItemId);
       if (current.closure !== null || current.stage === 'closed') {
         throw intakeUsage('A closed Work Item cannot receive a Source.');
@@ -947,6 +956,13 @@ function hasExactKeys(
   );
 }
 
+function assertIntentText(text: string, usage: string): void {
+  if (text.trim().length === 0 || text.startsWith('-')) {
+    throw intakeUsage(
+      `Original text must be plain wording, not a flag or empty. Usage: ${usage}`,
+    );
+  }
+}
 function intakeUsage(message: string) {
   return workflowError('GOVERNANCE_INTAKE_INVALID', message, ExitCode.usage);
 }
