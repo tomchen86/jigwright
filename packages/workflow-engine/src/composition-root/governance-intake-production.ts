@@ -6,6 +6,7 @@ import {
   loadWorkflowConfig,
   repositoryHandoffRelativePath,
 } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import type { GovernanceFindingContextV1 } from '../modules/governance-intake/governance-intake.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
 import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
@@ -13,6 +14,28 @@ import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
 export function renderGovernanceIntakeHandoff(repositoryRoot: string): string {
   renderHandoff(repositoryRoot);
   return repositoryHandoffRelativePath(repositoryRoot);
+}
+
+/**
+ * The repository-scoped staging context used when no task session is open. The
+ * reserved scope keeps these notes in their own directory and marks them as
+ * belonging to no change, which is exactly what they record.
+ */
+export const REPOSITORY_FINDING_SCOPE = 'repository';
+
+export function resolveRepositoryFindingScope(
+  cwd: string,
+): GovernanceFindingContextV1 {
+  const git = discoverRepository(cwd);
+  return {
+    repositoryRoot: git.repositoryRoot,
+    runtimeRoot: resolveGovernanceIntakeRuntimeRoot(cwd),
+    sessionId: REPOSITORY_FINDING_SCOPE,
+    changeId: REPOSITORY_FINDING_SCOPE,
+    branch: git.branch ?? REPOSITORY_FINDING_SCOPE,
+    head: git.head,
+    tree: git.tree,
+  };
 }
 
 export function resolveGovernanceIntakeRuntimeRoot(cwd: string): string {
