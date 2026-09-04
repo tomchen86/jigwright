@@ -560,19 +560,12 @@ test('structured investigation exemption starts a durable planning branch withou
         return fakeRunnerReport(
           input.request,
           {
-            schemaVersion: 2,
             verdict: 'advisory-approve',
-            coverage: [
-              ...PLAN_REVIEW_COVERAGE.slice(0, -1),
-              PLAN_REVIEW_COVERAGE[0],
-            ],
-            scopeAssessment: { kind: 'challenges' },
+            scopeEvidence: [],
             findings: [
               {
-                kind: 'challenge',
                 severity: 'medium',
                 category: 'missing-scope',
-                currentChangeImpact: 'required',
                 summary:
                   'Confirm the declared documentation scope has no runtime behavior dependency.',
                 evidence: [
@@ -591,7 +584,7 @@ test('structured investigation exemption starts a durable planning branch withou
             residualRisk:
               'The reviewer cannot prove that prose has no indirect behavioral consequence.',
             uncertainty:
-              'This intentionally duplicates one coverage area to exercise native validator failure recovery.',
+              'This intentionally omits scope evidence to exercise native validator failure recovery.',
           },
           input.invocationDirectory,
         );
@@ -682,16 +675,20 @@ test('structured investigation exemption starts a durable planning branch withou
           return fakeRunnerReport(
             input.request,
             {
-              schemaVersion: 2,
               verdict: 'advisory-approve',
-              coverage: [...PLAN_REVIEW_COVERAGE],
-              scopeAssessment: { kind: 'challenges' },
+              scopeEvidence: [
+                {
+                  kind: 'repository-location',
+                  path: 'docs/WORKFLOW.md',
+                  line: 1,
+                  observation:
+                    'The declared target is a tracked Markdown workflow guide.',
+                },
+              ],
               findings: [
                 {
-                  kind: 'challenge',
                   severity: 'medium',
                   category: 'missing-scope',
-                  currentChangeImpact: 'required',
                   summary:
                     'Confirm the declared documentation scope has no runtime behavior dependency.',
                   evidence: [
@@ -2204,20 +2201,15 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       {
         runner(input): ProviderRunnerReport {
           const semanticOutput = {
-            schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: {
-              kind: 'no-challenge' as const,
-              evidence: [
-                {
-                  kind: 'investigation-role-result' as const,
-                  role: 'reviewer-pre-anchor' as const,
-                  requestDigest: surveyEvidence.nodeId,
-                  resultDigest: surveyEvidence.resultDigest,
-                },
-              ],
-            },
+            scopeEvidence: [
+              {
+                kind: 'investigation-role-result' as const,
+                role: 'reviewer-pre-anchor' as const,
+                requestDigest: surveyEvidence.nodeId,
+                resultDigest: surveyEvidence.resultDigest,
+              },
+            ],
             findings: [],
             proposedTerms: [
               { kind: 'symbol' as const, value: 'ReviewOnlyNeedle' },
@@ -2501,16 +2493,20 @@ test('fake-backed propose composes breadth and depth before materializing an unc
         return fakeRunnerReport(
           input.request,
           {
-            schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: { kind: 'challenges' as const },
+            scopeEvidence: [
+              {
+                kind: 'repository-location' as const,
+                path: 'src/investigation-target.ts',
+                line: 4,
+                observation:
+                  'The reviewer-only term is now represented in the tracked target.',
+              },
+            ],
             findings: [
               {
-                kind: 'challenge' as const,
                 severity: 'medium' as const,
                 category: 'missing-scope',
-                currentChangeImpact: 'required' as const,
                 summary:
                   'Confirm the adjacent provider worker remains covered.',
                 evidence: [
@@ -2878,16 +2874,24 @@ test('fake-backed propose composes breadth and depth before materializing an unc
         return fakeRunnerReport(
           input.request,
           {
-            schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: { kind: 'challenges' as const },
+            scopeEvidence: [
+              {
+                kind: 'repository-location' as const,
+                path: 'src/investigation-target.ts',
+                line: 4,
+                observation:
+                  'The reviewer-only term is now represented in the tracked target.',
+              },
+              ...requiredCoverageEvidence.filter(
+                ({ path: targetPath }) =>
+                  targetPath !== 'src/investigation-target.ts',
+              ),
+            ],
             findings: [
               {
-                kind: 'challenge' as const,
                 severity: 'medium' as const,
                 category: 'missing-scope',
-                currentChangeImpact: 'required' as const,
                 summary:
                   'Confirm the adjacent provider worker remains covered.',
                 evidence: [
@@ -3523,16 +3527,20 @@ test('reviewer reopen limit preserves exact materialization evidence for human r
     const runReviewWithNovelTerm = (term: string) => {
       const invocationId = reviewStatus.planReview!.invocationId;
       const semanticOutput = {
-        schemaVersion: 2 as const,
         verdict: 'advisory-approve' as const,
-        coverage: [...PLAN_REVIEW_COVERAGE],
-        scopeAssessment: { kind: 'challenges' as const },
+        scopeEvidence: [
+          {
+            kind: 'repository-location' as const,
+            path: 'src/reviewer-reopen-target.ts',
+            line: 1,
+            observation:
+              'The fixture target exposes the reviewer-term symbols.',
+          },
+        ],
         findings: [
           {
-            kind: 'challenge' as const,
             severity: 'medium' as const,
             category: 'missing-scope',
-            currentChangeImpact: 'required' as const,
             summary: 'Keep the reviewer reopen target in scope.',
             evidence: [
               {

@@ -16,6 +16,7 @@ import {
 import {
   PLAN_REVIEW_COVERAGE,
   type PlanReviewSubmission,
+  planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -267,7 +268,7 @@ function createReconciliationFixture(): string {
     runner(input): ProviderRunnerReport {
       return fakePlanReviewRunnerReport(
         input.request,
-        noChallengeSubmission(),
+        planReviewProviderSubmission(noChallengeSubmission()),
         input.invocationDirectory,
       );
     },

@@ -178,6 +178,7 @@ import {
 import {
   acknowledgeReviewerTermInputClosureUnderAuthority,
   blockInvestigationForReviewerTermsUnderAuthority,
+  blockInvestigationForPlanReviewRetryUnderAuthority,
   decideReviewerTermReopen,
   getInvestigationStatus,
   inspectReviewerTermResolutionAuthorization,
@@ -287,6 +288,7 @@ import {
   assertAuthorizedPlanReviewChallengeClosure,
   createAuthorizedPlanReviewDispositionNode,
   createPlanReviewDispositionNode,
+  canonicalizePlanReviewProviderSubmission,
   createPlanReviewNode,
   createPlanReviewProviderResultNode,
   createPlanReviewTargetSnapshotNode,
@@ -3244,14 +3246,41 @@ function resumePlanReviewRetry(
               currentExecutionPolicy.policy.limits.aggregateOutputBytes,
           },
         });
-      const retryAuthorization = assertPlanReviewRetryExecutionDecision(
-        context.runtime,
-        failed,
-        failedRequest,
-        replacementRequest,
-        currentExecutionPolicy,
-        options.executionGrantAuthorization,
-      );
+      let retryAuthorization: ReturnType<
+        typeof assertPlanReviewRetryExecutionDecision
+      >;
+      try {
+        retryAuthorization = assertPlanReviewRetryExecutionDecision(
+          context.runtime,
+          failed,
+          failedRequest,
+          replacementRequest,
+          currentExecutionPolicy,
+          options.executionGrantAuthorization,
+        );
+      } catch (error) {
+        // A denied or strategy-changing decision has no plan-review executor,
+        // so refusing here would end the change with no move left. Park it on
+        // human action instead: the failure is stated and a person decides.
+        if (!isUnexecutablePlanReviewRetry(error)) throw error;
+        return {
+          blockedInvestigation: blockInvestigationForPlanReviewRetryUnderAuthority(
+            cwd,
+            input.changeId,
+            input.investigationId,
+            {
+              expectedRevision: status.revision,
+              failedInvocationId: failed.invocationId,
+              attempt: failed.attempt,
+              retryReasonCode: String(
+                (error as WorkflowError).details?.reasonCode ?? 'unknown',
+              ),
+              failureCode: failed.failure?.code ?? 'unknown',
+            },
+            assertOwned,
+          ),
+        };
+      }
       const replacementSnapshotFiles = readPriorPlanReviewSnapshotFiles(
         context.runtime,
         reservation.manifest,
@@ -3309,6 +3338,13 @@ function resumePlanReviewRetry(
       return replacement;
     },
   );
+  if ('blockedInvestigation' in retried) {
+    return getProposeStatus(
+      cwd,
+      input.investigationId,
+      options.collaborationGrantValidation,
+    );
+  }
   const output = getProposeStatus(
     cwd,
     input.investigationId,
@@ -3322,6 +3358,15 @@ function resumePlanReviewRetry(
     cwd,
     input.investigationId,
     options.collaborationGrantValidation,
+  );
+}
+
+/** A retry decision a plan review has no executor for. */
+function isUnexecutablePlanReviewRetry(error: unknown): boolean {
+  return (
+    error instanceof WorkflowError &&
+    (error.code === 'PLAN_REVIEW_RETRY_STRATEGY_CHANGE_REQUIRED' ||
+      error.code === 'PLAN_REVIEW_RETRY_DECISION_DENIED')
   );
 }
 
@@ -4004,7 +4049,9 @@ function materializePlanReviewResult(
       ExitCode.verification,
     );
   }
-  const submission = result.output as PlanReviewSubmission;
+  // `result.output` is what the provider wrote, so it must be completed with
+  // the engine-derived fields before it is a canonical submission.
+  const submission = canonicalizePlanReviewProviderSubmission(result.output);
   const providerResultNode = createPlanReviewProviderResultNode({
     subject: reservation.subject,
     assignment: reservation.assignment,

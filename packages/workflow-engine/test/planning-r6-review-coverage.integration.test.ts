@@ -1,4 +1,10 @@
 import assert from 'node:assert/strict';
+
+import {
+  blockInvestigationForPlanReviewRetryUnderAuthority,
+  getInvestigationStatus,
+} from '../src/adapters/planning/investigation/investigation-session.ts';
+import { readInvestigationSession } from '../src/runtime/storage-journal/investigation-session-store.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -12,6 +18,7 @@ import {
   PLAN_REVIEW_COVERAGE,
   type PlanReviewReport,
   type PlanReviewSubmission,
+  planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
 import { assertInvestigationPlanReviewCoverageRequirementSatisfied } from '../src/modules/assurance/plan-review-coverage.ts';
 import type {
@@ -686,7 +693,7 @@ function completeProviderReview(
     runner(input): ProviderRunnerReport {
       return fakePlanReviewRunnerReport(
         input.request,
-        submission,
+        planReviewProviderSubmission(submission),
         input.invocationDirectory,
       );
     },
@@ -963,3 +970,76 @@ function prefixedSha256(value: string): string {
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+test('an unexecutable plan-review retry parks the change on human action', () => {
+  const prepared = prepareCoverageReview('r6-plan-review-retry-blocked', {
+    includeLedger: false,
+  });
+  try {
+    const before = getInvestigationStatus(
+      prepared.repository,
+      prepared.investigationId,
+    );
+    assert.equal(before.state, 'investigation-sealed');
+
+    // The retry decision engine can refuse every automatic replacement, and a
+    // plan review has no executor for that refusal. The change must still have
+    // a move: it parks on human action rather than ending on an error.
+    const blocked = blockInvestigationForPlanReviewRetryUnderAuthority(
+      prepared.repository,
+      prepared.changeId,
+      prepared.investigationId,
+      {
+        expectedRevision: before.revision,
+        failedInvocationId: prepared.invocationId,
+        attempt: 2,
+        retryReasonCode: 'REPEATED_FAILURE_FINGERPRINT',
+        failureCode: 'PROVIDER_NATIVE_OUTPUT_INVALID',
+      },
+      () => {},
+    );
+    assert.equal(blocked.state, 'human-action-required');
+    const session = readInvestigationSession(
+      investigationRuntimePaths(
+        discoverRepository(prepared.repository).gitCommonDirectory,
+        'workflow-engine',
+      ),
+      prepared.investigationId,
+    );
+    assert.ok(session.blocker !== null && 'reasonCode' in session.blocker);
+    assert.equal(session.blocker.reasonCode, 'PLAN_REVIEW_RETRY_EXHAUSTED');
+    assert.equal(session.blocker.blockedTransition, 'admit-plan-review');
+    assert.equal(session.blocker.facts.attempt, 2);
+    assert.equal(
+      session.blocker.facts.failureCode,
+      'PROVIDER_NATIVE_OUTPUT_INVALID',
+    );
+    assert.ok(
+      session.blocker.availableResolutions.some(({ kind }) => kind === 'abort'),
+      'a parked change must advertise at least one working human exit',
+    );
+
+    // A second call cannot re-park an already blocked investigation.
+    assert.throws(
+      () =>
+        blockInvestigationForPlanReviewRetryUnderAuthority(
+          prepared.repository,
+          prepared.changeId,
+          prepared.investigationId,
+          {
+            expectedRevision: blocked.revision,
+            failedInvocationId: prepared.invocationId,
+            attempt: 3,
+            retryReasonCode: 'REPEATED_FAILURE_FINGERPRINT',
+            failureCode: 'PROVIDER_NATIVE_OUTPUT_INVALID',
+          },
+          () => {},
+        ),
+      (error: unknown) =>
+        (error as { code?: string }).code ===
+        'PLAN_REVIEW_RETRY_BLOCKER_INVALID',
+    );
+  } finally {
+    prepared.dispose();
+  }
+});

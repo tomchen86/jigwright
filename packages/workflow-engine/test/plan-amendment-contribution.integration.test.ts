@@ -436,16 +436,21 @@ test('an amendment contribution replaces the executed prior generation without r
       {
         agentRuntime: createCurrentAgentRuntime((input) =>
           fakeRunnerReport(input.request, {
-            schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: { kind: 'challenges' as const },
+            scopeEvidence: [
+              ...coverageEvidence,
+              {
+                kind: 'planning-location' as const,
+                path: `openspec/changes/${CHANGE_ID}/specs/demo/spec.md`,
+                line: 1,
+                observation:
+                  'The corrected delta restores the dropped identity.',
+              },
+            ],
             findings: [
               {
-                kind: 'challenge' as const,
                 severity: 'medium' as const,
                 category: 'missing-scope',
-                currentChangeImpact: 'required' as const,
                 summary:
                   'Confirm the restored scenario keeps its original body form.',
                 evidence: [
@@ -743,16 +748,20 @@ test('novel reviewer terms reopen an amendment whose prior review is committed b
       {
         agentRuntime: createCurrentAgentRuntime((input) =>
           fakeRunnerReport(input.request, {
-            schemaVersion: 2 as const,
             verdict: 'advisory-approve' as const,
-            coverage: [...PLAN_REVIEW_COVERAGE],
-            scopeAssessment: { kind: 'challenges' as const },
+            scopeEvidence: [
+              {
+                kind: 'planning-location' as const,
+                path: `openspec/changes/${CHANGE_ID}/specs/demo/spec.md`,
+                line: 1,
+                observation:
+                  'The corrected delta restores the dropped identity.',
+              },
+            ],
             findings: [
               {
-                kind: 'challenge' as const,
                 severity: 'medium' as const,
                 category: 'missing-scope',
-                currentChangeImpact: 'required' as const,
                 summary:
                   'Confirm the restored scenario keeps its original body form.',
                 evidence: [

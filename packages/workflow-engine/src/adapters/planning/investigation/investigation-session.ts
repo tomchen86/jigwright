@@ -2539,6 +2539,79 @@ function blockInvestigationForReviewerTermsInternal(
   );
 }
 
+export type BlockInvestigationForPlanReviewRetryInput = {
+  expectedRevision: number;
+  failedInvocationId: string;
+  attempt: number;
+  retryReasonCode: string;
+  failureCode: string;
+};
+
+/**
+ * Park a sealed investigation on human action when its plan review cannot be
+ * retried. The retry decision engine can conclude that no further automatic
+ * attempt is authorized, and for a plan review no executor answers that
+ * conclusion, so the alternative to this blocker is a refusal with no exit at
+ * all. Blocking states the failure and hands the change to a person, which is
+ * what an expensive, repeatedly failing retry is supposed to do.
+ */
+export function blockInvestigationForPlanReviewRetryUnderAuthority(
+  cwd: string,
+  changeId: string,
+  requestedInvestigationId: string,
+  input: BlockInvestigationForPlanReviewRetryInput,
+  assertOwned: () => void,
+): InvestigationStatus {
+  return withInvestigationMutation(
+    cwd,
+    requestedInvestigationId,
+    (context, current) => {
+      if (
+        current.revision !== input.expectedRevision ||
+        !Number.isSafeInteger(input.attempt) ||
+        input.attempt < 1
+      ) {
+        throw workflowError(
+          'PLAN_REVIEW_RETRY_BLOCKER_STALE',
+          'Plan-review retry blocker is not bound to the current attempt.',
+          ExitCode.staleState,
+        );
+      }
+      if (current.state !== 'investigation-sealed' || current.blocker !== null) {
+        throw workflowError(
+          'PLAN_REVIEW_RETRY_BLOCKER_INVALID',
+          'Only a currently sealed investigation can await plan-review retry human resolution.',
+          ExitCode.guard,
+        );
+      }
+      const blocker = createInvestigationHumanActionBlocker({
+        reasonCode: 'PLAN_REVIEW_RETRY_EXHAUSTED',
+        blockedTransition: 'admit-plan-review',
+        facts: {
+          failedInvocationId: input.failedInvocationId,
+          attempt: input.attempt,
+          retryReasonCode: input.retryReasonCode,
+          failureCode: input.failureCode,
+        },
+      });
+      const next = compareAndSwapInvestigationSession(
+        context.runtime,
+        current.investigationId,
+        current.revision,
+        (session) => ({
+          ...session,
+          revision: session.revision + 1,
+          state: 'human-action-required',
+          blocker,
+          updatedAt: new Date().toISOString(),
+        }),
+      );
+      return statusFromSession(context, next);
+    },
+    { changeId: assertChangeId(changeId), assertOwned },
+  );
+}
+
 type AcknowledgeReviewerTermInputClosureInput = {
   expectedRevision: number;
   pendingReviewDigest: string;

@@ -18,7 +18,9 @@ import type {
 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
 import {
   PLAN_REVIEW_COVERAGE,
+  type PlanReviewSubmission,
   readPlanReviewNode,
+  planReviewProviderSubmission,
 } from '../src/modules/assurance/plan-review.ts';
 import type { ProviderInvocationRequest } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -199,7 +201,9 @@ function preparePlanCommit(
     runner(input): ProviderRunnerReport {
       return fakePlanReviewRunnerReport(
         input.request,
-        planReviewOutput(requiredCoveragePaths(fixture.repository, changeId)),
+        planReviewProviderSubmission(
+          planReviewOutput(requiredCoveragePaths(fixture.repository, changeId)),
+        ),
         input.invocationDirectory,
       );
     },
@@ -428,7 +432,9 @@ function planningPayload(changeId: string) {
   };
 }
 
-function planReviewOutput(requiredPaths: readonly string[]) {
+function planReviewOutput(
+  requiredPaths: readonly string[],
+): PlanReviewSubmission {
   return {
     schemaVersion: 2,
     verdict: 'advisory-approve',
