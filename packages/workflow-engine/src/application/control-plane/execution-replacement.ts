@@ -201,6 +201,29 @@ export function requestExecutionReplacement(
       const previous = inspection.attempts.at(-1);
       const grantBase = inspection.latestFailure?.decision.requiredGrant;
       if (
+        grantBase === undefined &&
+        previous?.failure !== null &&
+        inspection.acceptedAttemptId === null &&
+        (source.record.purpose === 'survey' ||
+          source.record.purpose === 'plan-review')
+      ) {
+        // A planning Attempt that needs no execution-budget grant is retried
+        // by the propose lifecycle that owns it; the job surface only carries
+        // grant-bound replacements.
+        const envelope =
+          source.record.purpose === 'survey'
+            ? 'provider-retry'
+            : 'plan-review-retry';
+        throw workflowError(
+          'EXECUTION_REPLACEMENT_GRANT_NOT_AVAILABLE',
+          `The failed ${source.record.purpose} Attempt needs no execution-budget grant; retry it through propose with the ${envelope} envelope from inputSchema.template.`,
+          ExitCode.guard,
+          {
+            recovery: `pnpm workflow propose ${source.record.changeId} --resume --input <${envelope}.json> --json`,
+          },
+        );
+      }
+      if (
         previous === undefined ||
         previous.failure === null ||
         grantBase === undefined ||
