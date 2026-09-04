@@ -27,6 +27,7 @@ import {
   type GovernanceFindingAuthoringV1,
   type GovernanceFindingContextV1,
 } from '../../modules/governance-intake/governance-intake.ts';
+import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
 import {
   applyWorkItemReview,
   attachSourceToWorkItem,
@@ -67,6 +68,7 @@ export type GovernanceIntakeCliDependencies = Readonly<{
     sessionId: string,
   ) => GovernanceFindingContextV1;
   resolveRuntimeRoot?: (cwd: string) => string;
+  resolveRepositoryScope?: (cwd: string) => GovernanceFindingContextV1;
   startImmediateChange?: (
     cwd: string,
     changeId: string,
@@ -775,6 +777,29 @@ export function dispatchGovernanceIntakeCommand(
         created: result.created,
       };
     }
+    // Staging a note is about where the writer may write, not about whether a
+    // task happens to be open. Without a session the note is repository-scoped
+    // and still reaches `finding list` and `finding convert`; requiring a
+    // session meant an observation made between tasks had nowhere to go.
+    if (
+      command === 'finding' &&
+      args.length === 3 &&
+      args[0] === 'add' &&
+      args[1] === '--input'
+    ) {
+      const input = parseFindingInput(readInput(cwd, args[2]!));
+      const context = (
+        dependencies.resolveRepositoryScope ?? resolveRepositoryFindingScope
+      )(cwd);
+      const result = recordGovernanceFinding(context, input, dependencies.now);
+      return {
+        action: 'add',
+        findingId: result.finding.id,
+        sessionId: result.finding.sessionId,
+        path: result.path,
+        created: result.created,
+      };
+    }
     if (
       command === 'finding' &&
       args.length === 5 &&
@@ -843,6 +868,28 @@ function immediateWorkItemNextSteps(
   }
   return steps;
 }
+/**
+ * The repository-scoped staging context used when no task session is open. The
+ * reserved scope keeps these notes in their own directory and marks them as
+ * belonging to no change, which is exactly what they record.
+ */
+export const REPOSITORY_FINDING_SCOPE = 'repository';
+
+function resolveRepositoryFindingScope(
+  cwd: string,
+): GovernanceFindingContextV1 {
+  const git = discoverRepository(cwd);
+  return {
+    repositoryRoot: git.repositoryRoot,
+    runtimeRoot: resolveGovernanceIntakeRuntimeRoot(cwd),
+    sessionId: REPOSITORY_FINDING_SCOPE,
+    changeId: REPOSITORY_FINDING_SCOPE,
+    branch: git.branch ?? REPOSITORY_FINDING_SCOPE,
+    head: git.head,
+    tree: git.tree,
+  };
+}
+
 function resolveActiveSession(
   cwd: string,
   sessionId: string,

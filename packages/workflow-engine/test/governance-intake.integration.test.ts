@@ -1916,6 +1916,38 @@ test('source and finding CLI routes parse exact input envelopes', () => {
     );
     assert.equal(finding.action, 'add');
 
+    // An observation made between tasks still has somewhere to go: without a
+    // session the note is repository-scoped rather than refused.
+    const unsessioned = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['add', '--input', findingInput],
+      repositoryRoot,
+      {
+        now: () => '2026-08-24T03:16:30.000Z',
+        resolveRepositoryScope: () => ({
+          repositoryRoot,
+          runtimeRoot,
+          sessionId: 'repository',
+          changeId: 'repository',
+          branch: 'work/current-change',
+          head: 'a'.repeat(40),
+          tree: 'b'.repeat(40),
+        }),
+      },
+    );
+    assert.equal(unsessioned.action, 'add');
+    assert.equal(unsessioned.sessionId, 'repository');
+    const listed = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['list'],
+      repositoryRoot,
+      { resolveRuntimeRoot: () => runtimeRoot },
+    ) as { findings: Array<{ id: string }> };
+    assert.ok(
+      listed.findings.some(({ id }) => id === unsessioned.findingId),
+      'a repository-scoped note must be listed like any other Finding',
+    );
+
     const workItem = dispatchGovernanceIntakeCommand(
       'work-item',
       ['create', '--input', workItemInput],
