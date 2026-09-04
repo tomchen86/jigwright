@@ -10138,3 +10138,28 @@ function assertTrackedInvestigationManifestPublication(
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
+
+test('a rejected propose envelope names the envelope and the offending keys', () => {
+  // A caller assembles these by hand, so a refusal that names neither the
+  // envelope nor the key sends them to the engine source to find out which of
+  // eight shapes was meant.
+  assert.throws(
+    () =>
+      resumePropose('/not/a/git/repository', 'some-change', {
+        schemaVersion: 1,
+        kind: 'plan-review-progress',
+        investigationId: 'investigation-x',
+        changeId: 'some-change',
+        subjectDigest: 'a'.repeat(64),
+        invocationId: 'invocation-x',
+      }),
+    (error: unknown) => {
+      const { code, message } = error as { code?: string; message?: string };
+      assert.equal(code, 'PROPOSE_INPUT_INVALID');
+      assert.match(String(message), /plan-review-progress/);
+      assert.match(String(message), /missing requestDigest/);
+      return true;
+    },
+  );
+});
+

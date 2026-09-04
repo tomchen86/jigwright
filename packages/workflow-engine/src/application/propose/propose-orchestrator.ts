@@ -3264,21 +3264,22 @@ function resumePlanReviewRetry(
         // human action instead: the failure is stated and a person decides.
         if (!isUnexecutablePlanReviewRetry(error)) throw error;
         return {
-          blockedInvestigation: blockInvestigationForPlanReviewRetryUnderAuthority(
-            cwd,
-            input.changeId,
-            input.investigationId,
-            {
-              expectedRevision: status.revision,
-              failedInvocationId: failed.invocationId,
-              attempt: failed.attempt,
-              retryReasonCode: String(
-                (error as WorkflowError).details?.reasonCode ?? 'unknown',
-              ),
-              failureCode: failed.failure?.code ?? 'unknown',
-            },
-            assertOwned,
-          ),
+          blockedInvestigation:
+            blockInvestigationForPlanReviewRetryUnderAuthority(
+              cwd,
+              input.changeId,
+              input.investigationId,
+              {
+                expectedRevision: status.revision,
+                failedInvocationId: failed.invocationId,
+                attempt: failed.attempt,
+                retryReasonCode: String(
+                  (error as WorkflowError).details?.reasonCode ?? 'unknown',
+                ),
+                failureCode: failed.failure?.code ?? 'unknown',
+              },
+              assertOwned,
+            ),
         };
       }
       const replacementSnapshotFiles = readPriorPlanReviewSnapshotFiles(
@@ -12684,8 +12685,7 @@ function withEnvelopeTemplate(
   schema: Record<string, unknown>,
 ): Record<string, unknown> {
   const fields = (schema.binding ?? schema.required) as
-    | Record<string, unknown>
-    | undefined;
+    Record<string, unknown> | undefined;
   if (fields === undefined) return schema;
   const acknowledgement = (schema.requiredAcknowledgement ?? {}) as Record<
     string,
@@ -12847,19 +12847,20 @@ function assertProposeInput(value: unknown): ProposeInput {
 function assertExemptionPlanningContributionEnvelope(
   value: unknown,
 ): ExemptionPlanningContributionEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'expectedRevision',
+    'baseline',
+    'intentDigest',
+    'applicabilityDigest',
+    'payload',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'intentDigest',
-      'applicabilityDigest',
-      'payload',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'exemption-planning-contribution' ||
     typeof value.investigationId !== 'string' ||
@@ -12871,7 +12872,9 @@ function assertExemptionPlanningContributionEnvelope(
     typeof value.applicabilityDigest !== 'string' ||
     !DIGEST.test(value.applicabilityDigest)
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('exemption-planning-contribution', KEYS, value),
+    );
   }
   return {
     schemaVersion: 1,
@@ -12889,17 +12892,18 @@ function assertExemptionPlanningContributionEnvelope(
 function assertPlanReviewProgressEnvelope(
   value: unknown,
 ): PlanReviewProgressEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'subjectDigest',
+    'invocationId',
+    'requestDigest',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'subjectDigest',
-      'invocationId',
-      'requestDigest',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'plan-review-progress' ||
     typeof value.investigationId !== 'string' ||
@@ -12910,7 +12914,9 @@ function assertPlanReviewProgressEnvelope(
     typeof value.requestDigest !== 'string' ||
     !DIGEST.test(value.requestDigest)
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('plan-review-progress', KEYS, value),
+    );
   }
   return value as PlanReviewProgressEnvelope;
 }
@@ -12918,18 +12924,19 @@ function assertPlanReviewProgressEnvelope(
 function assertPlanReviewDispositionsEnvelope(
   value: unknown,
 ): PlanReviewDispositionsEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'subjectDigest',
+    'reviewNodeId',
+    'reviewResultDigest',
+    'dispositions',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'subjectDigest',
-      'reviewNodeId',
-      'reviewResultDigest',
-      'dispositions',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'plan-review-dispositions' ||
     typeof value.investigationId !== 'string' ||
@@ -12942,7 +12949,9 @@ function assertPlanReviewDispositionsEnvelope(
     !DIGEST.test(value.reviewResultDigest) ||
     !Array.isArray(value.dispositions)
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('plan-review-dispositions', KEYS, value),
+    );
   }
   return value as PlanReviewDispositionsEnvelope;
 }
@@ -12950,19 +12959,20 @@ function assertPlanReviewDispositionsEnvelope(
 function assertPlanningContributionEnvelope(
   value: unknown,
 ): PlanningContributionEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'expectedRevision',
+    'baseline',
+    'intentDigest',
+    'blindManifestDigest',
+    'payload',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'intentDigest',
-      'blindManifestDigest',
-      'payload',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'planning-contribution' ||
     typeof value.investigationId !== 'string' ||
@@ -12975,7 +12985,9 @@ function assertPlanningContributionEnvelope(
     typeof value.blindManifestDigest !== 'string' ||
     !DIGEST.test(value.blindManifestDigest)
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('planning-contribution', KEYS, value),
+    );
   }
   return {
     schemaVersion: 1,
@@ -12993,18 +13005,19 @@ function assertPlanningContributionEnvelope(
 function assertProviderProgressEnvelope(
   value: unknown,
 ): ProviderProgressEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'expectedRevision',
+    'baseline',
+    'intentDigest',
+    'blindManifestDigest',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'intentDigest',
-      'blindManifestDigest',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'provider-progress' ||
     typeof value.investigationId !== 'string' ||
@@ -13017,26 +13030,29 @@ function assertProviderProgressEnvelope(
     typeof value.blindManifestDigest !== 'string' ||
     !DIGEST.test(value.blindManifestDigest)
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('provider-progress', KEYS, value),
+    );
   }
   return value as ProviderProgressEnvelope;
 }
 
 function assertProviderRetryEnvelope(value: unknown): ProviderRetryEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'expectedRevision',
+    'baseline',
+    'intentDigest',
+    'blindManifestDigest',
+    'failedInvocation',
+    'acknowledgeProviderCost',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'intentDigest',
-      'blindManifestDigest',
-      'failedInvocation',
-      'acknowledgeProviderCost',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'provider-retry' ||
     typeof value.investigationId !== 'string' ||
@@ -13067,7 +13083,7 @@ function assertProviderRetryEnvelope(value: unknown): ProviderRetryEnvelope {
     !DIGEST.test(value.failedInvocation.failureDigest) ||
     value.acknowledgeProviderCost !== true
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(envelopeKeyDetail('provider-retry', KEYS, value));
   }
   return value as ProviderRetryEnvelope;
 }
@@ -13075,21 +13091,22 @@ function assertProviderRetryEnvelope(value: unknown): ProviderRetryEnvelope {
 function assertPlanReviewRetryEnvelope(
   value: unknown,
 ): PlanReviewRetryEnvelope {
+  const KEYS = [
+    'schemaVersion',
+    'kind',
+    'investigationId',
+    'changeId',
+    'expectedRevision',
+    'baseline',
+    'subjectDigest',
+    'planningGenerationId',
+    'expectedReservationNodeId',
+    'failedInvocation',
+    'acknowledgeProviderCost',
+  ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'investigationId',
-      'changeId',
-      'expectedRevision',
-      'baseline',
-      'subjectDigest',
-      'planningGenerationId',
-      'expectedReservationNodeId',
-      'failedInvocation',
-      'acknowledgeProviderCost',
-    ]) ||
+    !hasExactKeys(value, [...KEYS]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'plan-review-retry' ||
     typeof value.investigationId !== 'string' ||
@@ -13122,7 +13139,9 @@ function assertPlanReviewRetryEnvelope(
     !DIGEST.test(value.failedInvocation.failureDigest) ||
     value.acknowledgeProviderCost !== true
   ) {
-    throw proposeInputInvalid();
+    throw proposeInputInvalid(
+      envelopeKeyDetail('plan-review-retry', KEYS, value),
+    );
   }
   return value as PlanReviewRetryEnvelope;
 }
@@ -13912,12 +13931,42 @@ function sha256(value: string | Buffer): string {
   return crypto.createHash('sha256').update(value).digest('hex');
 }
 
-function proposeInputInvalid() {
+function proposeInputInvalid(detail?: string) {
   return workflowError(
     'PROPOSE_INPUT_INVALID',
-    'Propose input does not match a supported typed envelope.',
+    detail === undefined
+      ? 'Propose input does not match a supported typed envelope.'
+      : `Propose input does not match a supported typed envelope. ${detail}`,
     ExitCode.usage,
   );
+}
+
+/**
+ * Say which envelope was expected and exactly how the supplied one differs.
+ *
+ * A caller that resumes a change assembles these by hand from the status
+ * output, and a refusal that names neither the envelope nor the offending key
+ * sends them to the engine source to find out which of eight shapes was meant.
+ */
+function envelopeKeyDetail(
+  kind: string,
+  keys: readonly string[],
+  value: unknown,
+): string {
+  const expected = [...keys].sort();
+  if (!isRecord(value)) {
+    return `A ${kind} envelope must be a JSON object carrying exactly: ${expected.join(', ')}.`;
+  }
+  const supplied = Object.keys(value).sort();
+  const missing = expected.filter((key) => !supplied.includes(key));
+  const unexpected = supplied.filter((key) => !expected.includes(key));
+  const differences = [
+    missing.length > 0 ? `missing ${missing.join(', ')}` : null,
+    unexpected.length > 0 ? `unexpected ${unexpected.join(', ')}` : null,
+  ].filter((entry): entry is string => entry !== null);
+  return differences.length > 0
+    ? `A ${kind} envelope must carry exactly: ${expected.join(', ')} (${differences.join('; ')}).`
+    : `A ${kind} envelope carries the right keys, so one of its values is malformed. Expected: ${expected.join(', ')}.`;
 }
 
 function proposeAuthorizationInvalid() {
