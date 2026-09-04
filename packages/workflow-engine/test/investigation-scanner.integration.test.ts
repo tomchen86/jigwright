@@ -1633,3 +1633,56 @@ function restoreEnvironment(name: string, value: string | undefined): void {
     process.env[name] = value;
   }
 }
+
+test('generated artifacts are excluded from content scans but not from path terms', () => {
+  const treeOid = 'a'.repeat(40);
+  const trackedObjectReader = createFixtureTrackedObjectReaderPort([
+    {
+      kind: 'jigwright.fixture-tracked-tree.v1',
+      treeOid,
+      files: {
+        'src/CategoryForm.tsx': 'export const CategoryForm = true;\n',
+        'coverage/clover.xml': '<file name="CategoryForm.tsx" />\n',
+        'pnpm-lock.yaml': "packages:\n  CategoryForm: '1.0.0'\n",
+        'dist/bundle.js': 'var CategoryForm = 1;\n',
+      },
+    },
+  ]);
+  const scan = (term: ReturnType<typeof termWithProvenance>) => {
+    const result = scanInvestigationTreeFacts({
+      repositoryRoot: '/not/a/git/repository',
+      treeOid,
+      terms: [term],
+      trackedObjectReader,
+    });
+    assert.equal(result.outcome, 'ready');
+    if (result.outcome !== 'ready') assert.fail('expected a ready scan');
+    return result.facts;
+  };
+
+  // A match inside a coverage report, a lock file, or a bundle is a copy of
+  // the match the same scan already has at the source.
+  const content = scan(termWithProvenance('literal-content', 'CategoryForm'));
+  assert.deepEqual(
+    content.terms[0]?.hits.map((hit) => hit.path.utf8),
+    ['src/CategoryForm.tsx'],
+  );
+  assert.deepEqual(
+    content.inventory.skippedObjects
+      .filter(({ reason }) => reason === 'generated-artifact')
+      .map(({ path }) => path.utf8)
+      .sort(),
+    ['coverage/clover.xml', 'dist/bundle.js', 'pnpm-lock.yaml'],
+    'an excluded artifact is recorded, not dropped silently',
+  );
+
+  // A path term names its target, so a change that really is about a lock file
+  // stays investigable.
+  assert.deepEqual(
+    scan(termWithProvenance('literal-path', 'pnpm-lock.yaml')).terms[0]?.hits.map(
+      (hit) => hit.path.utf8,
+    ),
+    ['pnpm-lock.yaml'],
+  );
+});
+
