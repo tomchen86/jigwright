@@ -818,7 +818,7 @@
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:f4e556e8e51822a4f11eb9eac51c053b1bd2e4b5151b041532ec5733b181d812"
+      "digest": "sha256:2be3dc8418c787e574494799a65c1dce343ce414b4d9ac6cc14878fd09497e01"
     },
     {
       "path": "src/composition-root/grant-production.ts",
@@ -1058,7 +1058,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:13d92371160d86378efd833ec5e9e96ddc642b19f7a059090f2af541556e6b0e"
+      "digest": "sha256:b94bce3aca82d540fea0d51ec2199cf2201698b2ecacae12f1b8e8308ff0a448"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
