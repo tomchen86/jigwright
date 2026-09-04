@@ -890,6 +890,11 @@ function listRepositoryIgnoredPaths(repositoryRoot: string): string[] {
       '--others',
       '--ignored',
       '--exclude-per-directory=.gitignore',
+      // An ignored directory is one canonical record, exactly like an ignored
+      // nested repository: enumerating every file inside dependency trees such
+      // as node_modules exhausts the projection budget without governing
+      // anything, because ignored content is never a provider input.
+      '--directory',
       '-z',
       '--',
     ]),
