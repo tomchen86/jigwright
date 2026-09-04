@@ -2607,19 +2607,14 @@ test('below-floor current role assignment blocks worker claim and detached spawn
     }
 
     const submission = {
-      schemaVersion: 2 as const,
       verdict: 'advisory-approve' as const,
-      coverage: [...PLAN_REVIEW_COVERAGE],
-      scopeAssessment: {
-        kind: 'no-challenge' as const,
-        evidence: [
-          {
-            kind: 'investigation-node' as const,
-            nodeId: ready.applicabilityNode.nodeId,
-            resultDigest: ready.applicabilityNode.resultDigest,
-          },
-        ],
-      },
+      scopeEvidence: [
+        {
+          kind: 'investigation-node' as const,
+          nodeId: ready.applicabilityNode.nodeId,
+          resultDigest: ready.applicabilityNode.resultDigest,
+        },
+      ],
       findings: [],
       proposedTerms: [],
       suggestions: [],
@@ -2862,19 +2857,14 @@ test('provider worker selects the code-owned exact PlanReview contract', () => {
       ],
     });
     const submission = {
-      schemaVersion: 2 as const,
       verdict: 'advisory-approve' as const,
-      coverage: [...PLAN_REVIEW_COVERAGE],
-      scopeAssessment: {
-        kind: 'no-challenge' as const,
-        evidence: [
-          {
-            kind: 'investigation-node' as const,
-            nodeId: ready.applicabilityNode.nodeId,
-            resultDigest: ready.applicabilityNode.resultDigest,
-          },
-        ],
-      },
+      scopeEvidence: [
+        {
+          kind: 'investigation-node' as const,
+          nodeId: ready.applicabilityNode.nodeId,
+          resultDigest: ready.applicabilityNode.resultDigest,
+        },
+      ],
       findings: [],
       proposedTerms: [],
       suggestions: [],

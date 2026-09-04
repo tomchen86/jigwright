@@ -3646,7 +3646,7 @@ test('lifecycle invocation selection rolls semantic provider context once and st
 
 test('managed prompt exposes the scope and v3 structured coverage contracts only to plan review', () => {
   const scopeAssessmentInstruction =
-    'The output "scopeAssessment" is scope-only: set kind "challenges" if and only if at least one "findings" entry has category "missing-scope" or "missing-consumers"; otherwise set kind "no-challenge" with at least one evidence item, even when "findings" contains challenges in other categories.';
+    'The output "scopeEvidence" array cites what you read to assess scope. Report a scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories.';
   const structuredCoverageInstruction =
     'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeAssessment, a finding, or a suggestion. Extra evidence is allowed; omitting a required row is rejected at plan commit.';
   for (const purpose of ['survey', 'plan-review'] as const) {

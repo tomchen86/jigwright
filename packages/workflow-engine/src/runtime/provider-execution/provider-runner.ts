@@ -1095,13 +1095,11 @@ const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
     'Independently review the complete bound planning target for missing scope, weak WHY rationale, unsupported invariants, contradictions, and testability gaps.',
     'Use only the reviewed read/search capability surface.',
     'Return only output that conforms to the bound output schema.',
-    // The bound schema cannot express coverage uniqueness: a structured-output
-    // endpoint rejects `uniqueItems`, so the constraint lives only in
-    // `assertCoverage`. A duplicated area is rejected after the provider has
-    // already spent an attempt; retry preserves that failure and requires a
-    // fresh, explicitly cost-acknowledged replacement, so prevent it here.
-    'The output "coverage" array must list every one of the seven coverage areas exactly once; a repeated area is rejected.',
-    'The output "scopeAssessment" is scope-only: set kind "challenges" if and only if at least one "findings" entry has category "missing-scope" or "missing-consumers"; otherwise set kind "no-challenge" with at least one evidence item, even when "findings" contains challenges in other categories.',
+    // Coverage, the scope-assessment kind, and every constant discriminator are
+    // filled in by the engine from what was actually submitted, so there is no
+    // derived field here for a provider to contradict.
+    'Review all seven coverage areas; report what you find as "findings" entries whose category names the area.',
+    'The output "scopeEvidence" array cites what you read to assess scope. Report a scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories.',
     // Advisory only: the engine scans every proposed term across the whole
     // pinned tree under a fixed per-term hit ceiling, and a term that exceeds
     // it currently has no recovery exit. A provider cannot count hits, so this
@@ -1667,16 +1665,18 @@ function validateSemanticOutput(input: ProviderRunInput, value: unknown): void {
       repairKind: validationErrors.length === 0 ? 'semantic' : 'schema',
       previousOutput: frozen,
       validationErrors:
-        validationErrors.length === 0
-          ? [
-              {
-                path: '/',
-                code: 'SEMANTIC_VALIDATION_FAILED',
-                message:
-                  'Output matched the structural schema but failed the bound semantic validator.',
-              },
-            ]
-          : validationErrors,
+        validationErrors.length > 0
+          ? validationErrors
+          : semanticErrors.length > 0
+            ? semanticErrors
+            : [
+                {
+                  path: '/',
+                  code: 'SEMANTIC_VALIDATION_FAILED',
+                  message:
+                    'Output matched the structural schema but failed the bound semantic validator.',
+                },
+              ],
     });
   }
 }

@@ -1788,19 +1788,14 @@ function completePlanReviewInvocation(
     'synchronous-no-activity',
   );
   const submission = {
-    schemaVersion: 2,
     verdict: 'advisory-approve',
-    coverage: [...PLAN_REVIEW_COVERAGE],
-    scopeAssessment: {
-      kind: 'no-challenge',
-      evidence: [
-        {
-          kind: 'investigation-node',
-          nodeId: applicabilityNodeId,
-          resultDigest: applicabilityResultDigest,
-        },
-      ],
-    },
+    scopeEvidence: [
+      {
+        kind: 'investigation-node',
+        nodeId: applicabilityNodeId,
+        resultDigest: applicabilityResultDigest,
+      },
+    ],
     findings: [],
     proposedTerms: [],
     suggestions: [],

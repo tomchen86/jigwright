@@ -47,7 +47,7 @@ import {
 const PLAN_REVIEW_TYPE = 'plan-review';
 const PLAN_REVIEW_SCHEMA = 'plan-review.v2';
 const PLAN_REVIEW_EVALUATOR = 'plan-review.v2';
-const PLAN_REVIEW_OUTPUT_SCHEMA_ID = 'plan-review-output.v2';
+const PLAN_REVIEW_OUTPUT_SCHEMA_ID = 'plan-review-output.v3';
 const PLAN_REVIEW_NODE_OUTPUT_SCHEMA_ID = 'plan-review-node-output.v2';
 
 const PROVIDER_RESULT_TYPE = 'plan-review-provider-result';
@@ -206,6 +206,24 @@ const SUBMISSION_KEYS = [
   'uncertainty',
 ] as const;
 
+/**
+ * What a provider actually authors. Everything else in a submission is derived
+ * by the engine: the schema version and the complete coverage list are engine
+ * constants, `scopeAssessment.kind` is a function of the finding categories,
+ * and each finding's `kind`/`currentChangeImpact` follow from the array it was
+ * submitted in. Asking a provider to restate a value the engine already knows
+ * only creates a place for the two to disagree, and a disagreement over a
+ * derived field used to discard an otherwise usable review.
+ */
+const PROVIDER_SUBMISSION_KEYS = [
+  'verdict',
+  'scopeEvidence',
+  'findings',
+  'proposedTerms',
+  'suggestions',
+  'residualRisk',
+  'uncertainty',
+] as const;
 const OUTPUT_KEYS = [
   'schemaVersion',
   'planningGenerationId',
@@ -524,7 +542,8 @@ const PLAN_REVIEW_SCHEMA_GRAMMAR = {
   schema: 'plan-review-output-grammar.v2',
   id: PLAN_REVIEW_OUTPUT_SCHEMA_ID,
   version: 2,
-  submissionKeys: [...SUBMISSION_KEYS],
+  submissionKeys: [...PROVIDER_SUBMISSION_KEYS],
+  canonicalSubmissionKeys: [...SUBMISSION_KEYS],
   storedOutputKeys: [...OUTPUT_KEYS],
   subjectKeys: [...SUBJECT_KEYS],
   roleAssignmentKeys: [...ROLE_ASSIGNMENT_KEYS],
@@ -557,14 +576,7 @@ const PLAN_REVIEW_SCHEMA_GRAMMAR = {
   coverage: [...PLAN_REVIEW_COVERAGE],
   verdicts: [...VERDICTS],
   challenge: {
-    submissionKeys: [
-      'kind',
-      'severity',
-      'category',
-      'currentChangeImpact',
-      'summary',
-      'evidence',
-    ],
+    submissionKeys: ['severity', 'category', 'summary', 'evidence'],
     storedKeys: [
       'findingId',
       'kind',
@@ -578,14 +590,7 @@ const PLAN_REVIEW_SCHEMA_GRAMMAR = {
     impact: 'required',
   },
   suggestion: {
-    submissionKeys: [
-      'kind',
-      'severity',
-      'category',
-      'currentChangeImpact',
-      'summary',
-      'evidence',
-    ],
+    submissionKeys: ['severity', 'summary', 'evidence'],
     storedKeys: [
       'suggestionId',
       'kind',
@@ -602,6 +607,8 @@ const PLAN_REVIEW_SCHEMA_GRAMMAR = {
     challengesKeys: ['kind'],
     noChallengeKeys: ['kind', 'evidence'],
     requiredScopeChallengeCategories: ['missing-consumers', 'missing-scope'],
+    derivedFromFindingCategories: true,
+    providerKey: 'scopeEvidence',
   },
   evidence: {
     kinds: [...EVIDENCE_KINDS],
@@ -628,9 +635,13 @@ const PLAN_REVIEW_GRAMMAR_DIGEST = sha256(
 );
 
 /**
- * The provider-facing JSON Schema. Its comment binds the stricter code-owned
- * semantic grammar (coverage completeness, finding/category pairings, sorted
- * uniqueness, and evidence rules) that JSON Schema alone cannot express.
+ * The provider-facing JSON Schema. It asks only for what a reviewer actually
+ * authors; the engine fills in the schema version, the complete coverage list,
+ * the scope-assessment kind, and every constant discriminator before the
+ * canonical validator runs, so a provider has no derived field to contradict.
+ * Its comment binds the stricter code-owned semantic grammar (finding/category
+ * pairings, sorted uniqueness, and evidence rules) that JSON Schema alone
+ * cannot express.
  *
  * The shape is additionally constrained by what a structured-output endpoint
  * accepts: `oneOf` is rejected outright, a `const` must carry a sibling `type`,
@@ -647,38 +658,13 @@ export const PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
   $comment: `workflow-semantic-grammar-sha256:${PLAN_REVIEW_GRAMMAR_DIGEST}`,
   type: 'object',
   additionalProperties: false,
-  required: [...SUBMISSION_KEYS],
+  required: [...PROVIDER_SUBMISSION_KEYS],
   properties: {
-    schemaVersion: { type: 'integer', const: 2 },
     verdict: { enum: [...VERDICTS] },
-    coverage: {
+    scopeEvidence: {
       type: 'array',
-      minItems: PLAN_REVIEW_COVERAGE.length,
-      maxItems: PLAN_REVIEW_COVERAGE.length,
-      items: { enum: [...PLAN_REVIEW_COVERAGE] },
-    },
-    scopeAssessment: {
-      anyOf: [
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['kind'],
-          properties: { kind: { type: 'string', const: 'challenges' } },
-        },
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['kind', 'evidence'],
-          properties: {
-            kind: { type: 'string', const: 'no-challenge' },
-            evidence: {
-              type: 'array',
-              minItems: 1,
-              items: { $ref: '#/$defs/evidence' },
-            },
-          },
-        },
-      ],
+      minItems: 1,
+      items: { $ref: '#/$defs/evidence' },
     },
     findings: {
       type: 'array',
@@ -740,19 +726,10 @@ export const PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
     finding: {
       type: 'object',
       additionalProperties: false,
-      required: [
-        'kind',
-        'severity',
-        'category',
-        'currentChangeImpact',
-        'summary',
-        'evidence',
-      ],
+      required: ['severity', 'category', 'summary', 'evidence'],
       properties: {
-        kind: { type: 'string', const: 'challenge' },
         severity: { enum: [...SEVERITIES] },
         category: { enum: [...PLAN_REVIEW_COVERAGE] },
-        currentChangeImpact: { type: 'string', const: 'required' },
         summary: { type: 'string', minLength: 1 },
         evidence: {
           type: 'array',
@@ -764,22 +741,9 @@ export const PLAN_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
     suggestion: {
       type: 'object',
       additionalProperties: false,
-      required: [
-        'kind',
-        'severity',
-        'category',
-        'currentChangeImpact',
-        'summary',
-        'evidence',
-      ],
+      required: ['severity', 'summary', 'evidence'],
       properties: {
-        kind: { type: 'string', const: 'suggestion' },
         severity: { enum: [...SEVERITIES] },
-        category: { type: 'string', const: 'follow-up' },
-        currentChangeImpact: {
-          type: 'string',
-          const: 'independent-follow-up',
-        },
         summary: { type: 'string', minLength: 1 },
         evidence: { type: 'array', items: { $ref: '#/$defs/evidence' } },
       },
@@ -808,7 +772,7 @@ const PLAN_REVIEW_OUTPUT_DIGEST = sha256(
  */
 export const PLAN_REVIEW_OUTPUT_SCHEMA = Object.freeze({
   id: PLAN_REVIEW_OUTPUT_SCHEMA_ID,
-  version: 2,
+  version: 3,
   digest: PLAN_REVIEW_OUTPUT_DIGEST,
 });
 
@@ -820,11 +784,11 @@ export const PLAN_REVIEW_OUTPUT_SCHEMA = Object.freeze({
  */
 export const PLAN_REVIEW_OUTPUT_VALIDATOR = Object.freeze({
   id: PLAN_REVIEW_OUTPUT_SCHEMA_ID,
-  version: 2,
+  version: 3,
   digest: PLAN_REVIEW_OUTPUT_DIGEST,
   validate(value: unknown): boolean {
     try {
-      assertPlanReviewSubmission(value);
+      assertPlanReviewProviderSubmission(value);
       return true;
     } catch {
       return false;
@@ -1011,7 +975,7 @@ export function createPlanReviewProviderResultNode(
   const assignment = assertAssignment(input.assignment, subject);
   const request = assertPlanReviewProviderRequest(input.request, assignment);
   const result = assertPlanReviewProviderProcessResult(input.result, request);
-  const normalized = assertPlanReviewSubmission(result.output);
+  const normalized = assertPlanReviewProviderSubmission(result.output);
   assertSubmissionEvidenceBindings(normalized, subject);
   const targetSnapshot = assertProviderTargetSnapshot(
     input.targetSnapshotNode,
@@ -1106,7 +1070,7 @@ export function assertCurrentPlanReviewProviderResultNode(
   const request = assertPlanReviewProviderRequest(output.request, assignment);
   const result = assertPlanReviewProviderProcessResult(output.result, request);
   const submission = canonicalSubmission(
-    assertPlanReviewSubmission(result.output),
+    assertPlanReviewProviderSubmission(result.output),
   );
   if (
     node.policyDigest !== request.policyDigest ||
@@ -1257,6 +1221,19 @@ export function planReviewSubmissionDigest(
       submission,
     }),
   );
+}
+
+/**
+ * Canonicalize what a provider actually wrote, filling in every engine-derived
+ * field. Exposed so the derivation is observable rather than only reachable
+ * through a stored provider result.
+ */
+export function canonicalizePlanReviewProviderSubmission(
+  value: unknown,
+): PlanReviewSubmission {
+  return deepFreeze(
+    canonicalSubmission(assertPlanReviewProviderSubmission(value)),
+  ) as PlanReviewSubmission;
 }
 
 export function canonicalizePlanReviewSubmission(
@@ -2059,7 +2036,7 @@ function assertProviderResult(
     storedAssignment,
   );
   const result = assertPlanReviewProviderProcessResult(output.result, request);
-  const normalizedSubmission = assertPlanReviewSubmission(result.output);
+  const normalizedSubmission = assertPlanReviewProviderSubmission(result.output);
   assertSubmissionEvidenceBindings(normalizedSubmission, subject);
   const submission = canonicalSubmission(normalizedSubmission);
   if (
@@ -2172,6 +2149,115 @@ function assertPlanReviewSubmission(value: unknown): NormalizedSubmission {
     proposedTerms,
     residualRisk,
     uncertainty,
+  };
+}
+
+/**
+ * Complete a provider submission into the canonical form the rest of the engine
+ * stores and replays. Every field filled in here is one the engine already
+ * knows, so a provider cannot disagree with it: the scope-assessment kind is
+ * read off the finding categories, and each entry's discriminators follow from
+ * the array it arrived in. The completed value is then validated exactly as a
+ * caller-supplied submission, so no rule is relaxed by this path.
+ */
+function completeProviderSubmission(value: unknown): unknown {
+  if (!isRecord(value) || !hasExactKeys(value, PROVIDER_SUBMISSION_KEYS)) {
+    throw planReviewInvalid(
+      `Plan review provider submission must carry exactly: ${[...PROVIDER_SUBMISSION_KEYS].join(', ')}.`,
+    );
+  }
+  const findings = isDenseArray(value.findings) ? value.findings : undefined;
+  const suggestions = isDenseArray(value.suggestions)
+    ? value.suggestions
+    : undefined;
+  if (findings === undefined || suggestions === undefined) {
+    throw planReviewInvalid(
+      'Plan review provider findings and suggestions must be arrays.',
+    );
+  }
+  // Scope evidence is authored on every submission, so the rule holds on its
+  // own field: it never depends on what the findings say. When a scope
+  // challenge is present, that challenge carries the evidence forward and the
+  // assessment records only the kind.
+  const scopeEvidence = assertEvidenceArray(value.scopeEvidence);
+  const scopeChallenged = findings.some(
+    (entry) =>
+      isRecord(entry) &&
+      (entry.category === 'missing-scope' ||
+        entry.category === 'missing-consumers'),
+  );
+  return {
+    schemaVersion: 2,
+    verdict: value.verdict,
+    coverage: [...PLAN_REVIEW_COVERAGE],
+    scopeAssessment: scopeChallenged
+      ? { kind: 'challenges' }
+      : { kind: 'no-challenge', evidence: scopeEvidence },
+    findings: findings.map((entry) =>
+      isRecord(entry)
+        ? { ...entry, kind: 'challenge', currentChangeImpact: 'required' }
+        : entry,
+    ),
+    proposedTerms: value.proposedTerms,
+    suggestions: suggestions.map((entry) =>
+      isRecord(entry)
+        ? {
+            ...entry,
+            kind: 'suggestion',
+            category: 'follow-up',
+            currentChangeImpact: 'independent-follow-up',
+          }
+        : entry,
+    ),
+    residualRisk: value.residualRisk,
+    uncertainty: value.uncertainty,
+  };
+}
+
+/** Validate a raw provider submission in its authored wire form. */
+function assertPlanReviewProviderSubmission(
+  value: unknown,
+): NormalizedSubmission {
+  return assertPlanReviewSubmission(completeProviderSubmission(value));
+}
+
+/**
+ * Reduce a canonical submission to the authored wire form. The inverse of
+ * `completeProviderSubmission`, used where a caller must emit exactly what a
+ * provider would have written.
+ */
+export function planReviewProviderSubmission(
+  submission: PlanReviewSubmission,
+): Record<string, unknown> {
+  const scopeEvidence =
+    submission.scopeAssessment.kind === 'no-challenge'
+      ? submission.scopeAssessment.evidence
+      : submission.findings.flatMap(({ category, evidence }) =>
+          category === 'missing-scope' || category === 'missing-consumers'
+            ? evidence
+            : [],
+        );
+  return {
+    verdict: submission.verdict,
+    scopeEvidence: scopeEvidence.map((entry) => ({ ...entry })),
+    findings: submission.findings.map(
+      ({ severity, category, summary, evidence }) => ({
+        severity,
+        category,
+        summary,
+        evidence: evidence.map((entry) => ({ ...entry })),
+      }),
+    ),
+    proposedTerms: submission.proposedTerms.map((term) => ({ ...term })),
+    suggestions: submission.suggestions.map(
+      ({ severity, summary, evidence }) => ({
+        severity,
+        summary,
+        evidence: evidence.map((entry) => ({ ...entry })),
+      }),
+    ),
+    residualRisk: submission.residualRisk,
+    uncertainty: submission.uncertainty,
   };
 }
 

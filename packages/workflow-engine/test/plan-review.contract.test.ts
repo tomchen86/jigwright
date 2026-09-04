@@ -27,6 +27,8 @@ import {
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_CHALLENGE_CLOSURE_NAMESPACE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
+  canonicalizePlanReviewProviderSubmission,
+  planReviewProviderSubmission,
   PLAN_REVIEW_OUTPUT_VALIDATOR,
   planReviewSubmissionDigest,
   planReviewSubjectDigest,
@@ -171,26 +173,28 @@ test('v3 authoring builds global PlanReview coverage as a direct payload', () =>
 });
 
 test('plan review v2 requires finding severity, residual risk, and explicit uncertainty', () => {
-  assert.equal(PLAN_REVIEW_OUTPUT_SCHEMA.version, 2);
-  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.version, 2);
+  assert.equal(PLAN_REVIEW_OUTPUT_SCHEMA.version, 3);
+  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.version, 3);
 
-  const missingResidualRisk = structuredClone(
-    challengeSubmission(),
-  ) as unknown as Record<string, unknown>;
+  const missingResidualRisk = providerSubmission();
   delete missingResidualRisk.residualRisk;
   assert.equal(
     PLAN_REVIEW_OUTPUT_VALIDATOR.validate(missingResidualRisk),
     false,
   );
 
-  const invalidSeverity = structuredClone(challengeSubmission()) as unknown as {
+  const invalidSeverity = providerSubmission() as unknown as {
     findings: Array<Record<string, unknown>>;
   };
   invalidSeverity.findings[0]!.severity = 'urgent';
   assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(invalidSeverity), false);
+  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(providerSubmission()), true);
+
+  // A canonical submission is not a provider submission: the fields it carries
+  // beyond the authored ones are exactly the ones a provider must not restate.
   assert.equal(
     PLAN_REVIEW_OUTPUT_VALIDATOR.validate(challengeSubmission()),
-    true,
+    false,
   );
 });
 
@@ -950,54 +954,59 @@ test('PlanReview preserves strengthened and exact-Grant independence labels', ()
 });
 
 test('PlanReview scope assessment tracks only scope-category findings', () => {
-  const noScopeEvidence = [
+  const scopeEvidence = [
     {
       kind: 'investigation-node' as const,
       nodeId: DIGESTS.investigationNode,
       resultDigest: DIGESTS.investigationResult,
     },
   ];
+
+  // The scope assessment is read off the finding categories, so a provider has
+  // no field in which to contradict it and every combination is submittable.
+  const scoped = canonicalizePlanReviewProviderSubmission(
+    providerSubmission({ scopeEvidence }),
+  );
+  assert.equal(scoped.scopeAssessment.kind, 'challenges');
+
   const contradictoryOnly = challengeSubmission();
   contradictoryOnly.findings[0] = {
     ...contradictoryOnly.findings[0]!,
     category: 'contradictory-artifacts',
     summary: 'Two planning artifacts assign incompatible completion work.',
   };
-  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(contradictoryOnly), false);
-
-  const contradictoryWithNoScopeChallenge = structuredClone(contradictoryOnly);
-  contradictoryWithNoScopeChallenge.scopeAssessment = {
+  const unscoped = canonicalizePlanReviewProviderSubmission(
+    providerSubmission({ scopeEvidence }, contradictoryOnly),
+  );
+  assert.deepEqual(unscoped.scopeAssessment, {
     kind: 'no-challenge',
-    evidence: noScopeEvidence,
-  };
-  assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(contradictoryWithNoScopeChallenge),
-    true,
-  );
-
-  assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(challengeSubmission()),
-    true,
-  );
+    evidence: scopeEvidence,
+  });
 
   const missingConsumer = challengeSubmission();
   missingConsumer.findings[0] = {
     ...missingConsumer.findings[0]!,
     category: 'missing-consumers',
   };
-  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(missingConsumer), true);
+  assert.equal(
+    canonicalizePlanReviewProviderSubmission(
+      providerSubmission({ scopeEvidence }, missingConsumer),
+    ).scopeAssessment.kind,
+    'challenges',
+  );
 
   const mixed = challengeSubmission();
   mixed.findings.push(contradictoryOnly.findings[0]!);
-  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(mixed), true);
-
-  const missingScopeWithNoScopeChallenge = challengeSubmission();
-  missingScopeWithNoScopeChallenge.scopeAssessment = {
-    kind: 'no-challenge',
-    evidence: noScopeEvidence,
-  };
   assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(missingScopeWithNoScopeChallenge),
+    canonicalizePlanReviewProviderSubmission(
+      providerSubmission({ scopeEvidence }, mixed),
+    ).scopeAssessment.kind,
+    'challenges',
+  );
+
+  // Scope evidence is always authored, so there is no cross-field rule to break.
+  assert.equal(
+    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(providerSubmission({ scopeEvidence: [] })),
     false,
   );
 });
@@ -1454,21 +1463,20 @@ test('PlanReview output schema is code-owned and rejects generic semantic action
     PLAN_REVIEW_OUTPUT_SCHEMA.version,
   );
   assert.notEqual(reviewNode.outputSchema, PLAN_REVIEW_OUTPUT_SCHEMA.id);
-  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(valid), true);
+  assert.equal(PLAN_REVIEW_OUTPUT_VALIDATOR.validate(providerSubmission()), true);
   assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...valid,
-      proposals: [{ action: 'create-issue', title: 'Bypass' }],
-    }),
+    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(
+      providerSubmission({
+        proposals: [{ action: 'create-issue', title: 'Bypass' }],
+      }),
+    ),
     false,
   );
   assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...valid,
-      verdict: 'advisory-approve',
-      scopeAssessment: {
-        kind: 'no-challenge',
-        evidence: [
+    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(
+      providerSubmission({
+        verdict: 'advisory-approve',
+        scopeEvidence: [
           {
             kind: 'repository-location',
             path: ' ',
@@ -1476,16 +1484,17 @@ test('PlanReview output schema is code-owned and rejects generic semantic action
             observation: ' ',
           },
         ],
-      },
-      findings: [],
-    }),
+        findings: [],
+      }),
+    ),
     false,
   );
   assert.equal(
-    PLAN_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...valid,
-      proposedTerms: [{ kind: 'symbol', value: 'invalid\nterm' }],
-    }),
+    PLAN_REVIEW_OUTPUT_VALIDATOR.validate(
+      providerSubmission({
+        proposedTerms: [{ kind: 'symbol', value: 'invalid\nterm' }],
+      }),
+    ),
     false,
   );
   assert.equal(
@@ -2101,6 +2110,18 @@ function challengeSubmission(
     uncertainty: 'No additional uncertainty identified.',
     ...overrides,
   };
+}
+
+/**
+ * What a provider actually writes: the canonical submission minus every field
+ * the engine derives. Overrides land on the wire form so a test can express an
+ * invalid provider submission that has no canonical counterpart.
+ */
+function providerSubmission(
+  overrides: Record<string, unknown> = {},
+  submission: PlanReviewSubmission = challengeSubmission(),
+): Record<string, unknown> {
+  return { ...planReviewProviderSubmission(submission), ...overrides };
 }
 
 function suggestion(summary: string) {

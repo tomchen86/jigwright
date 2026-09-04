@@ -30,6 +30,7 @@ import {
   createPlanReviewProviderResultNode,
   createPlanReviewTargetSnapshotNode,
   canonicalizePlanReviewSubmission,
+  planReviewProviderSubmission,
   PLAN_REVIEW_COVERAGE,
   PLAN_REVIEW_OUTPUT_SCHEMA,
   type PlanReviewSubject,
@@ -205,7 +206,11 @@ export function createCurrentPlanReviewProviderEvidenceForTest(input: {
     policyDigest: input.policyDigest,
     limits: { timeoutMs: 60_000, aggregateOutputBytes: 1_048_576 },
   });
-  const output = canonicalizePlanReviewSubmission(input.submission);
+  // The stored provider result holds exactly the bytes a provider would have
+  // written, which is the authored wire form rather than the canonical one.
+  const output = planReviewProviderSubmission(
+    canonicalizePlanReviewSubmission(input.submission),
+  );
   const outputDigest = crypto
     .createHash('sha256')
     .update(
