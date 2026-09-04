@@ -13,20 +13,19 @@ import {
   TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
   TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA,
   type TaskDiffReviewSubmission,
+  taskDiffReviewProviderSubmission,
+  parseTaskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from '../src/modules/assurance/task-diff-review.ts';
 
 test('TaskDiffReview provider output schema and validator bind the complete semantic grammar', () => {
   const submission = validSubmission();
-  const reversed = {
-    ...submission,
-    coverage: [...submission.coverage].reverse(),
-  };
-
-  assert.equal(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(submission), true);
+  const authored = taskDiffReviewProviderSubmission(submission);
+  assert.equal(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(authored), true);
+  // Coverage is engine-filled, so its order can no longer be authored wrong.
   assert.deepEqual(
-    parseTaskDiffReviewSubmission(reversed),
-    parseTaskDiffReviewSubmission(submission),
+    parseTaskDiffReviewProviderSubmission(authored).coverage,
+    submission.coverage,
   );
   assert.deepEqual(TASK_DIFF_REVIEW_OUTPUT_SCHEMA, {
     id: 'workflow.task-diff-review-output.v1',
@@ -39,24 +38,21 @@ test('TaskDiffReview provider output schema and validator bind the complete sema
   assert.deepEqual(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR, {
     ...TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
     validate: TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate,
+    explain: TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.explain,
   });
 });
 
 test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence-free conclusions', () => {
-  const submission = validSubmission();
+  const canonical = validSubmission();
+  const submission = taskDiffReviewProviderSubmission(canonical) as Record<
+    string,
+    unknown
+  > & { suggestions: TaskDiffReviewSubmission['suggestions'] };
   const invalid: unknown[] = [
     (({ riskPathDispositions: _riskPathDispositions, ...rest }) => rest)(
       submission,
     ),
-    { ...submission, coverage: submission.coverage.slice(1) },
-    {
-      ...submission,
-      coverage: [...submission.coverage.slice(0, -1), submission.coverage[0]],
-    },
-    {
-      ...submission,
-      scopeAssessment: { kind: 'no-challenge', evidence: [] },
-    },
+    { ...submission, scopeEvidence: [] },
     {
       ...submission,
       unexpectedSemanticAction: 'approve-and-commit',
@@ -107,43 +103,33 @@ test('TaskDiffReview provider output rejects incomplete, duplicate, and evidence
   }
 });
 
-test('TaskDiffReview provider output requires challenges and scope assessment to agree', () => {
+test('TaskDiffReview derives the scope assessment from its findings', () => {
   const submission = validSubmission();
+  const authored = taskDiffReviewProviderSubmission(submission);
   const challenge = {
-    kind: 'challenge' as const,
     severity: 'high' as const,
     category: 'correctness-and-invariants' as const,
-    currentChangeImpact: 'required' as const,
     summary: 'The changed branch may violate the task invariant.',
-    evidence:
-      submission.scopeAssessment.kind === 'no-challenge'
-        ? submission.scopeAssessment.evidence
-        : [],
+    evidence: authored.scopeEvidence,
   };
 
+  // The scope assessment is read off the findings, so a provider has no field
+  // in which to contradict it and every combination is submittable.
+  assert.equal(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(authored), true);
   assert.equal(
     TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...submission,
+      ...authored,
       verdict: 'advisory-reject',
-      scopeAssessment: { kind: 'challenges' },
       findings: [challenge],
+      riskPathDispositions: (
+        authored.riskPathDispositions as TaskDiffReviewSubmission['riskPathDispositions']
+      ).map((entry) => ({ ...entry, outcome: 'challenge-raised' as const })),
     }),
     true,
   );
-  assert.equal(
-    TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...submission,
-      scopeAssessment: { kind: 'challenges' },
-    }),
-    false,
-  );
-  assert.equal(
-    TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate({
-      ...submission,
-      findings: [challenge],
-    }),
-    false,
-  );
+
+  // A canonical submission is not a provider submission.
+  assert.equal(TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(submission), false);
 });
 
 test('TaskDiffReview continuation output is advisory structured evidence, not a closure credential', () => {

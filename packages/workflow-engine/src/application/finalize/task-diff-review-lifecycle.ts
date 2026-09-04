@@ -132,6 +132,7 @@ import {
   type TaskDiffAuthenticatedReviewerAuthority,
   type TaskDiffReviewContinuationSubmission,
   type TaskDiffReviewRecord,
+  completeTaskDiffReviewProviderSubmission,
 } from '../../modules/assurance/task-diff-review-artifact.ts';
 import type { ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 import {
@@ -5247,7 +5248,11 @@ export function reconcileTaskDiffReview(
             degradedForm,
             grantUseDigest,
           },
-          submission: invocation.result.output as never,
+          // The provider result holds what the reviewer wrote, so it must be
+          // completed with the engine-derived fields before it is a record.
+          submission: completeTaskDiffReviewProviderSubmission(
+            invocation.result.output,
+          ) as never,
         });
         const resultNode = createEvidenceNode({
           type: 'task-diff-review-provider-result',

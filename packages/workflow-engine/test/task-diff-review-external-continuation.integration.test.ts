@@ -45,6 +45,7 @@ import {
   type TaskDiffFinalAssuranceException,
   type TaskDiffReviewContinuationSubmission,
   type TaskDiffReviewSubmission,
+  taskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   readTaskDiffExternalContinuationBinding,
@@ -943,6 +944,9 @@ function completeFakeProvider(
   output: TaskDiffReviewSubmission | TaskDiffReviewContinuationSubmission,
   subjectDigest: string,
 ) {
+  // A worker receives what a provider wrote, which is the authored wire form.
+  const authored =
+    'coverage' in output ? taskDiffReviewProviderSubmission(output) : output;
   return runProviderWorker(repository, invocationId, {
     runner(input) {
       const runtime = path.join(input.invocationDirectory, 'runtime');
@@ -950,7 +954,7 @@ function completeFakeProvider(
       for (const [name, content] of [
         ['prompt.json', '{}\n'],
         ['schema.json', '{}\n'],
-        ['semantic-output.json', `${canonicalJson(output)}\n`],
+        ['semantic-output.json', `${canonicalJson(authored)}\n`],
       ] as const) {
         fs.writeFileSync(path.join(runtime, name), content, { mode: 0o600 });
       }
@@ -959,8 +963,8 @@ function completeFakeProvider(
         providerId: input.request.providerId,
         purpose: 'task-diff-review' as const,
         requestDigest: input.request.requestDigest,
-        semanticOutput: output,
-        semanticOutputDigest: digest(output),
+        semanticOutput: authored,
+        semanticOutputDigest: digest(authored),
         assurance: 'unchanged-governed-projection' as const,
         projection: {
           unchanged: true as const,

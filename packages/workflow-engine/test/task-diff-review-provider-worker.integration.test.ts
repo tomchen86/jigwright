@@ -46,6 +46,7 @@ import {
   TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
   type TaskDiffReviewContinuationSubmission,
   type TaskDiffReviewSubmission,
+  taskDiffReviewProviderSubmission,
 } from '../src/modules/assurance/task-diff-review-artifact.ts';
 import {
   beginTaskDiffReview,
@@ -80,6 +81,7 @@ test('activated final task review binds documentation closure into commit and CI
           'The internal fixture implementation changes no public or operator documentation contract.',
       },
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     runProviderWorker(fixture.repository, fixture.invocationId, {
       runner() {
         return {
@@ -87,8 +89,8 @@ test('activated final task review binds documentation closure into commit and CI
           providerId: fixture.request.providerId,
           purpose: 'task-diff-review',
           requestDigest: fixture.request.requestDigest,
-          semanticOutput: submission,
-          semanticOutputDigest: sha256(canonicalJson(submission)),
+          semanticOutput: providerSubmission,
+          semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
           assurance: 'unchanged-governed-projection',
           projection: {
             unchanged: true,
@@ -437,6 +439,7 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
           'The synthetic implementation changes no public or operator documentation contract.',
       },
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     const result = runProviderWorker(fixture.repository, fixture.invocationId, {
       runner(input) {
         assert.equal(
@@ -449,8 +452,8 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
           providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: fixture.request.requestDigest,
-          semanticOutput: submission,
-          semanticOutputDigest: sha256(canonicalJson(submission)),
+          semanticOutput: providerSubmission,
+          semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
           assurance: 'unchanged-governed-projection',
           projection: {
             unchanged: true,
@@ -487,7 +490,7 @@ test('provider worker durably executes the code-owned TaskDiffReview contract wi
         canonicalJson({
           id: TASK_DIFF_REVIEW_OUTPUT_SCHEMA.id,
           version: TASK_DIFF_REVIEW_OUTPUT_SCHEMA.version,
-          output: submission,
+          output: providerSubmission,
         }),
       ),
     );
@@ -507,6 +510,7 @@ test('TaskDiffReview worker preserves terminal facts and releases its fence afte
       fixture.reviewedBlobObjectId,
       fixture.riskPathDispositions,
     );
+    const providerSubmission = taskDiffReviewProviderSubmission(submission);
     const result = runProviderWorker(fixture.repository, fixture.invocationId, {
       runner(input) {
         abortSession(
@@ -519,8 +523,8 @@ test('TaskDiffReview worker preserves terminal facts and releases its fence afte
           providerId: input.providerId,
           purpose: 'task-diff-review',
           requestDigest: input.request.requestDigest,
-          semanticOutput: submission,
-          semanticOutputDigest: sha256(canonicalJson(submission)),
+          semanticOutput: providerSubmission,
+          semanticOutputDigest: sha256(canonicalJson(providerSubmission)),
           assurance: 'unchanged-governed-projection',
           projection: {
             unchanged: true,
@@ -791,16 +795,21 @@ function completeProviderInvocation(
   semanticOutput:
     TaskDiffReviewSubmission | TaskDiffReviewContinuationSubmission,
 ) {
+  // A worker receives what a provider wrote, which is the authored wire form.
+  const authored =
+    'coverage' in semanticOutput
+      ? taskDiffReviewProviderSubmission(semanticOutput)
+      : semanticOutput;
   return runProviderWorker(repository, invocationId, {
     runner(input) {
-      writeFixtureProviderRuntime(input.invocationDirectory, semanticOutput);
+      writeFixtureProviderRuntime(input.invocationDirectory, authored);
       return {
         invocationId,
         providerId: input.request.providerId,
         purpose: 'task-diff-review' as const,
         requestDigest: input.request.requestDigest,
-        semanticOutput,
-        semanticOutputDigest: sha256(canonicalJson(semanticOutput)),
+        semanticOutput: authored,
+        semanticOutputDigest: sha256(canonicalJson(authored)),
         assurance: 'unchanged-governed-projection' as const,
         projection: {
           unchanged: true as const,

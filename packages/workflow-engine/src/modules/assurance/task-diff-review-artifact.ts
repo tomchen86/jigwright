@@ -141,6 +141,22 @@ export type TaskDiffDocumentationAssessment =
       notes: string;
     }>;
 
+/**
+ * What a reviewer actually authors. The schema version, the complete coverage
+ * list, the scope-assessment kind, and each entry's discriminators are all
+ * values the engine already holds, so asking for them again only creates a
+ * place for the two to disagree.
+ */
+const PROVIDER_SUBMISSION_KEYS = [
+  'verdict',
+  'scopeEvidence',
+  'findings',
+  'suggestions',
+  'riskPathDispositions',
+  'residualRisk',
+  'uncertainty',
+] as const;
+
 export type TaskDiffReviewSubmission = Readonly<{
   schemaVersion: 1;
   verdict: TaskDiffReviewVerdict;
@@ -168,49 +184,14 @@ export type TaskDiffReviewSubmission = Readonly<{
 export const TASK_DIFF_REVIEW_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
   type: 'object',
   additionalProperties: false,
-  required: [
-    'schemaVersion',
-    'verdict',
-    'coverage',
-    'scopeAssessment',
-    'findings',
-    'suggestions',
-    'riskPathDispositions',
-    'residualRisk',
-    'uncertainty',
-  ],
+  required: [...PROVIDER_SUBMISSION_KEYS],
   properties: {
-    schemaVersion: { type: 'integer', const: 1 },
     verdict: { enum: [...VERDICTS] },
-    coverage: {
+    scopeEvidence: {
       type: 'array',
-      minItems: TASK_DIFF_REVIEW_COVERAGE.length,
-      maxItems: TASK_DIFF_REVIEW_COVERAGE.length,
-      items: { enum: [...TASK_DIFF_REVIEW_COVERAGE] },
-    },
-    scopeAssessment: {
-      anyOf: [
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['kind'],
-          properties: { kind: { type: 'string', const: 'challenges' } },
-        },
-        {
-          type: 'object',
-          additionalProperties: false,
-          required: ['kind', 'evidence'],
-          properties: {
-            kind: { type: 'string', const: 'no-challenge' },
-            evidence: {
-              type: 'array',
-              minItems: 1,
-              maxItems: MAX_EVIDENCE,
-              items: { $ref: '#/$defs/evidence' },
-            },
-          },
-        },
-      ],
+      minItems: 1,
+      maxItems: MAX_EVIDENCE,
+      items: { $ref: '#/$defs/evidence' },
     },
     findings: {
       type: 'array',
@@ -417,10 +398,27 @@ export const TASK_DIFF_REVIEW_OUTPUT_VALIDATOR = Object.freeze({
   digest: TASK_DIFF_REVIEW_OUTPUT_SCHEMA_DIGEST,
   validate(value: unknown): boolean {
     try {
-      parseTaskDiffReviewSubmission(value);
+      parseTaskDiffReviewProviderSubmission(value);
       return true;
     } catch {
       return false;
+    }
+  },
+  explain(value: unknown) {
+    try {
+      parseTaskDiffReviewProviderSubmission(value);
+      return [];
+    } catch (error) {
+      return [
+        {
+          path: '/',
+          code: 'TASK_DIFF_REVIEW_INVALID',
+          message:
+            error instanceof Error
+              ? error.message
+              : 'Task diff review submission failed its bound semantic validator.',
+        },
+      ];
     }
   },
 });
@@ -1243,6 +1241,94 @@ function normalizeSubmission(
 }
 
 /** Strictly parse and canonically normalize provider semantic output. */
+/** Complete an authored submission into the canonical form. */
+export function completeTaskDiffReviewProviderSubmission(
+  value: unknown,
+): unknown {
+  if (
+    !isRecord(value) ||
+    (!hasExactKeys(value, PROVIDER_SUBMISSION_KEYS) &&
+      !hasExactKeys(value, [
+        ...PROVIDER_SUBMISSION_KEYS,
+        'documentationAssessment',
+      ]))
+  ) {
+    throw recordInvalid();
+  }
+  const findings = Array.isArray(value.findings) ? value.findings : undefined;
+  const suggestions = Array.isArray(value.suggestions)
+    ? value.suggestions
+    : undefined;
+  if (findings === undefined || suggestions === undefined) {
+    throw recordInvalid();
+  }
+  const { scopeEvidence, ...rest } = value;
+  return {
+    ...rest,
+    schemaVersion: 1,
+    coverage: [...TASK_DIFF_REVIEW_COVERAGE],
+    scopeAssessment:
+      findings.length > 0
+        ? { kind: 'challenges' }
+        : { kind: 'no-challenge', evidence: scopeEvidence },
+    findings: findings.map((entry) =>
+      isRecord(entry)
+        ? { ...entry, kind: 'challenge', currentChangeImpact: 'required' }
+        : entry,
+    ),
+    suggestions: suggestions.map((entry) =>
+      isRecord(entry)
+        ? {
+            ...entry,
+            kind: 'suggestion',
+            currentChangeImpact: 'independent-follow-up',
+          }
+        : entry,
+    ),
+  };
+}
+
+/** Reduce a canonical submission to the authored wire form. */
+export function taskDiffReviewProviderSubmission(
+  submission: TaskDiffReviewSubmission,
+): Record<string, unknown> {
+  const {
+    schemaVersion: _schemaVersion,
+    coverage: _coverage,
+    scopeAssessment,
+    findings,
+    suggestions,
+    ...rest
+  } = submission;
+  return {
+    ...rest,
+    scopeEvidence:
+      scopeAssessment.kind === 'no-challenge'
+        ? scopeAssessment.evidence.map((entry) => ({ ...entry }))
+        : findings.flatMap(({ evidence }) =>
+            evidence.map((entry) => ({ ...entry })),
+          ),
+    findings: findings.map(
+      ({ kind: _kind, currentChangeImpact: _impact, ...finding }) => ({
+        ...finding,
+      }),
+    ),
+    suggestions: suggestions.map(
+      ({ kind: _kind, currentChangeImpact: _impact, ...suggestion }) => ({
+        ...suggestion,
+      }),
+    ),
+  };
+}
+
+export function parseTaskDiffReviewProviderSubmission(
+  value: unknown,
+): TaskDiffReviewSubmission {
+  return parseTaskDiffReviewSubmission(
+    completeTaskDiffReviewProviderSubmission(value),
+  );
+}
+
 export function parseTaskDiffReviewSubmission(
   value: unknown,
 ): TaskDiffReviewSubmission {

@@ -1115,7 +1115,7 @@ const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
     'Independently review the exact bound candidate tree and its base-to-candidate blob and mode transitions.',
     'Use only the reviewed read/search capability surface and do not mutate the worktree, index, refs, runtime, or any repository file.',
     'Return only output that conforms to the bound task-diff-review output schema.',
-    'The output "coverage" array must list every required review area exactly once; duplicate or omitted coverage is rejected.',
+    'Review every required area; report what you find as "findings" entries whose category names the area. The output "scopeEvidence" array cites what you read to assess scope, and the engine derives the scope assessment from the findings.',
     'The output "riskPathDispositions" array must contain exactly one row for every subject.reviewRequirement.riskPaths entry covered by reviewScope, with the exact path and role; do not include ordinary paths.',
     'Inspect correctness and invariants, plan alignment, test adequacy, path scope, trust boundaries, dangling consumers, and generated or mirror consistency.',
     'When subject.documentationRequirement.required is true, review the complete changeBaseTree-to-candidateTree change and return exactly one documentationAssessment: updated with every changed documentation path, generated-verified with exact source/generated paths and check evidence, no-impact with a concrete rationale only when no documentation path changed, or needs-changes with exact documentation remediation paths. Omission is rejected. When it is false, omit documentationAssessment.',
