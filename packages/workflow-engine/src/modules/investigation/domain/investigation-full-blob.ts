@@ -152,9 +152,13 @@ export function deriveInvestigationFullBlobFacts(input: {
         relationshipsToChange,
       };
       return Object.freeze({
+        // The WHY row answers for these bytes at this path, so its identity is
+        // the bytes at the path: hits, terms, and groups may move around a file
+        // between revisions without asking for the same reading twice.
         manifestEntryId: sha256({
           schema: 'investigation.full-blob-fact.v3',
-          ...fields,
+          path: fields.path,
+          blob: { objectId: blob.objectId, contentSha256: blob.contentSha256 },
         }),
         ...fields,
       });

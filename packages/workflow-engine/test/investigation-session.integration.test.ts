@@ -2441,13 +2441,9 @@ test('fake-backed propose composes breadth and depth before materializing an unc
       ),
     );
     assert.equal(reviewerDispositions.state, 'awaiting-ledger-answers');
-    assert.ok((reviewerDispositions.work?.fullBlobManifest.length ?? 0) > 0);
-    assert.equal(
-      reviewerDispositions.work?.fullBlobManifest.some(({ manifestEntryId }) =>
-        initialManifestEntryIds.has(manifestEntryId),
-      ),
-      false,
-    );
+    // The reviewer terms added hits to files whose bytes did not change, so
+    // every prior WHY row is reused and nothing is asked twice.
+    assert.equal(reviewerDispositions.work?.fullBlobManifest.length, 0);
     const replanned = resumePropose(
       repository,
       changeId,
@@ -8956,6 +8952,10 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
             canonicalJson(failedInvestigation.provider.failure),
           ),
         },
+      },
+      requiredAcknowledgement: {
+        acknowledgeProviderCost: true,
+      },
       template: {
         schemaVersion: 1,
         kind: 'provider-retry',
@@ -8975,10 +8975,6 @@ test('propose retry envelope authorizes one idempotent replacement survey', () =
             canonicalJson(failedInvestigation.provider.failure),
           ),
         },
-        acknowledgeProviderCost: true,
-      },
-      },
-      requiredAcknowledgement: {
         acknowledgeProviderCost: true,
       },
     });
