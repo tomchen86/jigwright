@@ -9,7 +9,10 @@ import {
 import type { GovernanceFindingContextV1 } from '../modules/governance-intake/governance-intake.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';
-import { runtimePaths } from '../runtime/session-workspace/session-store.ts';
+import {
+  readSessionFile,
+  runtimePaths,
+} from '../runtime/session-workspace/session-store.ts';
 
 export function renderGovernanceIntakeHandoff(repositoryRoot: string): string {
   renderHandoff(repositoryRoot);
@@ -38,6 +41,38 @@ export function resolveRepositoryFindingScope(
   };
 }
 
+/**
+ * The active task session whose worktree is `cwd`, if any. Intake verbs use it
+ * to decide where an observation lands: inside a task it is staged as a
+ * Finding so the task diff stays scoped; outside one it goes straight to the
+ * inbox. Unreadable session files are skipped rather than blocking intake.
+ */
+export function findActiveTaskSessionId(cwd: string): string | null {
+  const git = discoverRepository(cwd);
+  const config = loadWorkflowConfig(git.repositoryRoot);
+  const runtime = runtimePaths(git.gitCommonDirectory, config.runtimeDirectory);
+  if (
+    !fs.statSync(runtime.sessions, { throwIfNoEntry: false })?.isDirectory()
+  ) {
+    return null;
+  }
+  const here = git.repositoryRealPath;
+  for (const entry of fs.readdirSync(runtime.sessions).sort()) {
+    if (!entry.endsWith('.json')) continue;
+    try {
+      const session = readSessionFile(path.join(runtime.sessions, entry));
+      if (
+        session.state === 'active' &&
+        fs.realpathSync(session.repositoryRoot) === here
+      ) {
+        return session.sessionId;
+      }
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
 export function resolveGovernanceIntakeRuntimeRoot(cwd: string): string {
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);

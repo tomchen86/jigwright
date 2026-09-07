@@ -10,6 +10,7 @@ import {
 
 import {
   assertExistingGovernanceIntakeChange,
+  findActiveTaskSessionId,
   renderGovernanceIntakeHandoff,
   resolveGovernanceIntakeRuntimeRoot,
   resolveRepositoryFindingScope,
@@ -69,6 +70,8 @@ export type GovernanceIntakeCliDependencies = Readonly<{
   ) => GovernanceFindingContextV1;
   resolveRuntimeRoot?: (cwd: string) => string;
   resolveRepositoryScope?: (cwd: string) => GovernanceFindingContextV1;
+  /** The task session covering `cwd`, or null when no task is running there. */
+  resolveTaskScope?: (cwd: string) => GovernanceFindingContextV1 | null;
   startImmediateChange?: (
     cwd: string,
     changeId: string,
@@ -84,7 +87,7 @@ export type GovernanceIntakeCliDependencies = Readonly<{
     immediateSource: Readonly<{
       sourceId: `SRC-${string}`;
       exactText: string;
-    }>,
+    }> | null,
   ) => unknown;
 }>;
 
@@ -225,9 +228,44 @@ export function dispatchGovernanceIntakeCommand(
         ),
       };
     }
-    if (command === 'now' && args.length === 1) {
-      const exactText = args[0]!;
+    if (command === 'now' && (args.length === 1 || args.length === 3)) {
+      const { value: kindFlag, rest } = takeFlag(args, '--kind');
+      if (rest.length !== 1) throw intakeUsage(INTAKE_USAGE);
+      const exactText = rest[0]!;
       assertIntentText(exactText, 'pnpm workflow now "<original text>" --json');
+      const kind = intakeKind(kindFlag);
+      if (dependencies.startImmediateChange === undefined) {
+        throw intakeUsage('Immediate change start dependency is unavailable.');
+      }
+      const changeId = `source-${crypto.createHash('sha256').update(exactText).digest('hex')}`;
+      if (!isRequirementKind(kind)) {
+        // An observation starts a change without a Source: nothing here is a
+        // requirement the implementation must be read against.
+        const intent = {
+          schemaVersion: 1 as const,
+          summary: exactText,
+          sourceRefs: [],
+          explicitPaths: [],
+          explicitSymbols: [],
+          explicitConfigKeys: [],
+          renamePairs: [],
+        };
+        const propose = dependencies.startImmediateChange(
+          cwd,
+          changeId,
+          intent,
+          null,
+        );
+        return {
+          action: 'now',
+          originalText: exactText,
+          kind,
+          sourceId: null,
+          changeId,
+          propose,
+          nextSteps: immediateChangeNextSteps(changeId, propose),
+        };
+      }
       const existing = listGovernanceSources(cwd)
         .filter(
           (source) =>
@@ -251,7 +289,6 @@ export function dispatchGovernanceIntakeCommand(
           : null;
       if (captured !== null) dependencies.afterNowSourceCaptured?.();
       const source = captured?.source ?? existing!;
-      const changeId = `source-${crypto.createHash('sha256').update(exactText).digest('hex')}`;
       const intent = {
         schemaVersion: 1 as const,
         summary: `Implement the immediate change cited by ${source.id}.`,
@@ -261,9 +298,6 @@ export function dispatchGovernanceIntakeCommand(
         explicitConfigKeys: [],
         renamePairs: [],
       };
-      if (dependencies.startImmediateChange === undefined) {
-        throw intakeUsage('Immediate change start dependency is unavailable.');
-      }
       const propose = dependencies.startImmediateChange(cwd, changeId, intent, {
         sourceId: source.id,
         exactText,
@@ -271,18 +305,92 @@ export function dispatchGovernanceIntakeCommand(
       return {
         action: 'now',
         originalText: exactText,
+        kind,
         sourceId: source.id,
         changeId,
         propose,
         nextSteps: immediateChangeNextSteps(changeId, propose),
       };
     }
-    if (command === 'later' && args.length === 1) {
-      const originalText = args[0]!;
+    if (command === 'later' && (args.length === 1 || args.length === 3)) {
+      const { value: kindFlag, rest } = takeFlag(args, '--kind');
+      if (rest.length !== 1) throw intakeUsage(INTAKE_USAGE);
+      const originalText = rest[0]!;
       assertIntentText(
         originalText,
         'pnpm workflow later "<original text>" --json',
       );
+      const kind = intakeKind(kindFlag);
+      const capturedAt = (
+        dependencies.now ?? (() => new Date().toISOString())
+      )();
+      // Inside a task the registry is off-limits and an observation must not
+      // land in the task diff, so it is staged as a Finding and flushed to the
+      // inbox at triage. Outside a task the inbox is the front door.
+      const taskScope = (dependencies.resolveTaskScope ?? resolveTaskScope)(
+        cwd,
+      );
+      if (taskScope !== null) {
+        const staged = recordGovernanceFinding(
+          taskScope,
+          { schemaVersion: 1, text: originalText, sourceRefs: [] },
+          dependencies.now,
+        );
+        return {
+          action: 'later',
+          originalText,
+          kind,
+          staged: 'finding',
+          findingId: staged.finding.id,
+          sessionId: staged.finding.sessionId,
+          changeId: staged.finding.changeId,
+          created: staged.created,
+          nextSteps: [
+            `pnpm workflow finding convert ${staged.finding.id} --kind ${kind} --json`,
+          ],
+        };
+      }
+      if (!isRequirementKind(kind)) {
+        // An observation goes to the inbox as it is: no Source, because it is
+        // not wording the implementation must be read against.
+        const matches = findOpenWorkItemsBySummary(cwd, originalText);
+        if (matches.length > 0) {
+          return {
+            action: 'later',
+            originalText,
+            kind,
+            sourceId: null,
+            sourceLinked: false,
+            deduplicated: true,
+            matches: matches.map(({ id }) => id),
+            nextSteps: matches
+              .slice(0, 3)
+              .map(({ id }) => `pnpm workflow work-item show ${id} --json`),
+          };
+        }
+        const created = createWorkItem(
+          cwd,
+          {
+            schemaVersion: 1,
+            kind,
+            lane: null,
+            title: clipTitle(originalText),
+            summary: originalText,
+            sourceRefs: [],
+          },
+          { now: () => capturedAt },
+        );
+        return {
+          action: 'later',
+          originalText,
+          kind,
+          sourceId: null,
+          sourceLinked: false,
+          workItemId: created.item.id,
+          deduplicated: false,
+          nextSteps: [`pnpm workflow work-item show ${created.item.id} --json`],
+        };
+      }
       const matches = findWorkItemsByExactSourceText(cwd, originalText).filter(
         ({ closure, stage }) => closure === null && stage !== 'closed',
       );
@@ -290,6 +398,7 @@ export function dispatchGovernanceIntakeCommand(
         return {
           action: 'later',
           originalText,
+          kind,
           sourceId: null,
           sourceLinked: false,
           deduplicated: true,
@@ -301,9 +410,6 @@ export function dispatchGovernanceIntakeCommand(
             ),
         };
       }
-      const capturedAt = (
-        dependencies.now ?? (() => new Date().toISOString())
-      )();
       const source = captureGovernanceSource(cwd, {
         semanticAuthor: 'maintainer',
         capturedBy: 'jigwright-intake',
@@ -318,7 +424,7 @@ export function dispatchGovernanceIntakeCommand(
         originalText,
         {
           schemaVersion: 1,
-          kind: 'improvement',
+          kind,
           lane: null,
           title: `Review captured Source ${source.source.id}`,
           summary: 'Interpret and disposition the linked Source.',
@@ -330,6 +436,7 @@ export function dispatchGovernanceIntakeCommand(
         return {
           action: 'later',
           originalText,
+          kind,
           sourceId: source.source.id,
           sourceLinked: false,
           deduplicated: true,
@@ -344,6 +451,7 @@ export function dispatchGovernanceIntakeCommand(
       return {
         action: 'later',
         originalText,
+        kind,
         sourceId: source.source.id,
         sourceLinked: true,
         workItemId: workItem.item.id,
@@ -351,24 +459,55 @@ export function dispatchGovernanceIntakeCommand(
         nextSteps: [`pnpm workflow work-item show ${workItem.item.id} --json`],
       };
     }
-    if (command === 'attach' && args.length === 2) {
-      const requestedWorkItemId = args[0]!;
-      const originalText = args[1]!;
-      assertIntentText(
-        originalText,
-        'pnpm workflow attach <work-item-id> "<original text>" --json',
-      );
+    if (command === 'attach' && (args.length === 2 || args.length === 4)) {
+      const { value: supersedes, rest } = takeFlag(args, '--supersedes');
+      if (rest.length !== 2) throw intakeUsage(INTAKE_USAGE);
+      const requestedWorkItemId = rest[0]!;
+      const wordingOrSource = rest[1]!;
       const current = showWorkItem(cwd, requestedWorkItemId);
       if (current.closure !== null || current.stage === 'closed') {
         throw intakeUsage('A closed Work Item cannot receive a Source.');
       }
+      if (SOURCE_ID.test(wordingOrSource)) {
+        // An existing Source is linked as it is: the wording already lives in
+        // the ledger and is never minted twice.
+        if (supersedes !== null) {
+          throw intakeUsage(
+            'Linking an existing Source cannot also supersede one; capture new wording instead.',
+          );
+        }
+        const source = readGovernanceSource(cwd, wordingOrSource);
+        const attached = attachSourceToWorkItem(cwd, current.id, source.id);
+        return {
+          action: 'attach',
+          originalText: source.text,
+          sourceId: source.id,
+          supersedes: null,
+          workItemId: attached.item.id,
+          updated: attached.updated,
+          nextSteps: [
+            `pnpm workflow work-item show ${attached.item.id} --json`,
+          ],
+        };
+      }
+      const originalText = wordingOrSource;
+      assertIntentText(
+        originalText,
+        'pnpm workflow attach <work-item-id> "<original text>" --json',
+      );
+      if (supersedes !== null && !SOURCE_ID.test(supersedes)) {
+        throw intakeUsage('--supersedes needs an existing Source identity.');
+      }
+      const supersedesRef = supersedes as `SRC-${string}` | null;
       const exactMatch = findWorkItemsByExactSourceText(cwd, originalText).find(
         ({ id }) => id === current.id,
       );
-      const existingSourceRef = exactMatch?.sourceRefs.find(
-        (sourceRef) =>
-          readGovernanceSource(cwd, sourceRef).text === originalText,
-      );
+      const existingSourceRef = exactMatch?.sourceRefs.find((sourceRef) => {
+        const source = readGovernanceSource(cwd, sourceRef);
+        return (
+          source.text === originalText && source.supersedes === supersedesRef
+        );
+      });
       const source =
         existingSourceRef === undefined
           ? captureGovernanceSource(cwd, {
@@ -379,7 +518,7 @@ export function dispatchGovernanceIntakeCommand(
               )(),
               contextRef: 'direct-human:workflow-cli',
               text: originalText,
-              supersedes: null,
+              supersedes: supersedesRef,
             }).source
           : readGovernanceSource(cwd, existingSourceRef);
       const attached = attachSourceToWorkItem(cwd, current.id, source.id);
@@ -387,6 +526,7 @@ export function dispatchGovernanceIntakeCommand(
         action: 'attach',
         originalText,
         sourceId: source.id,
+        supersedes,
         workItemId: attached.item.id,
         updated: attached.updated,
         nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
@@ -604,16 +744,19 @@ export function dispatchGovernanceIntakeCommand(
       validateWorkRegistryProjections(cwd);
       return { action: 'validate', ...registry };
     }
-    if (
-      command === 'finding' &&
-      (args.length === 2 || (args.length === 3 && args[2] === '--now')) &&
-      args[0] === 'convert'
-    ) {
+    if (command === 'finding' && args[0] === 'convert' && args.length >= 2) {
+      const { value: kindFlag, rest } = takeFlag(args.slice(1), '--kind');
+      const now = rest.includes('--now');
+      const positional = rest.filter((entry) => entry !== '--now');
+      if (positional.length !== 1 || rest.length - positional.length > 1) {
+        throw intakeUsage(INTAKE_USAGE);
+      }
+      const kind = intakeKind(kindFlag ?? 'bug');
       const runtimeRoot = (
         dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
       )(cwd);
       const finding = listGovernanceFindings(runtimeRoot).find(
-        ({ id }) => id === args[1],
+        ({ id }) => id === positional[0],
       );
       if (finding === undefined) {
         throw intakeUsage('Governance Finding does not exist.');
@@ -633,41 +776,20 @@ export function dispatchGovernanceIntakeCommand(
           ExitCode.conflict,
         );
       }
-      const conversionSourceInput = {
-        semanticAuthor: 'agent',
-        capturedBy: 'jigwright-finding-convert',
-        capturedAt: finding.createdAt,
-        contextRef: `finding:${finding.id}`,
-        text: finding.text,
-        supersedes: null,
-      } as const;
-      const projectedSource = createGovernanceSourceV1(conversionSourceInput);
-      if (finding.disposition === 'converted') {
-        const currentItem = showWorkItem(cwd, workItemId);
-        for (const sourceRef of currentItem.sourceRefs) {
-          readGovernanceSource(cwd, sourceRef);
-        }
-        if (!currentItem.sourceRefs.includes(projectedSource.id)) {
-          throw workflowError(
-            'GOVERNANCE_FINDING_DISPOSITION_COLLISION',
-            'Converted Finding target does not cite its deterministic Source.',
-            ExitCode.conflict,
-          );
-        }
-      }
-      const source = captureGovernanceSource(cwd, conversionSourceInput);
-      const sourceRefs = [
-        ...new Set([...finding.sourceRefs, source.source.id]),
-      ].sort();
+      // A Finding is an observation, so converting it mints no Source: the
+      // inbox item carries the note itself and only the Sources the Finding
+      // already cited.
+      const sourceRefs = [...new Set(finding.sourceRefs)].sort();
+      for (const sourceRef of sourceRefs) readGovernanceSource(cwd, sourceRef);
       const ensured = ensureFindingConversionWorkItem(
         cwd,
         finding.id,
         {
           schemaVersion: 1,
-          kind: 'improvement',
+          kind,
           lane: null,
-          title: `Review captured Source ${source.source.id}`,
-          summary: 'Interpret and disposition the linked Source.',
+          title: clipTitle(finding.text),
+          summary: finding.text,
           sourceRefs,
         },
         finding.createdAt,
@@ -681,14 +803,15 @@ export function dispatchGovernanceIntakeCommand(
       );
       const result = {
         action: 'convert',
-        sourceId: source.source.id,
+        kind,
+        sourceId: null,
         workItemId: ensured.item.id,
         workItemCreated: ensured.created,
         finding: converted.finding,
         created: converted.created,
         nextSteps: [`pnpm workflow work-item show ${ensured.item.id} --json`],
       };
-      if (args[2] !== '--now') return result;
+      if (!now) return result;
       if (dependencies.startImmediateChange === undefined) {
         throw intakeUsage('Immediate change start dependency is unavailable.');
       }
@@ -698,23 +821,19 @@ export function dispatchGovernanceIntakeCommand(
         changeId,
         {
           schemaVersion: 1,
-          summary: `Implement the immediate change cited by ${source.source.id}.`,
-          sourceRefs: [source.source.id],
+          summary: finding.text,
+          sourceRefs,
           explicitPaths: [],
           explicitSymbols: [],
           explicitConfigKeys: [],
           renamePairs: [],
         },
-        { sourceId: source.source.id, exactText: finding.text },
+        null,
       );
       return {
         ...result,
         originalText: finding.text,
-        immediateChange: {
-          sourceId: source.source.id,
-          changeId,
-          propose,
-        },
+        immediateChange: { sourceId: null, changeId, propose },
         nextSteps: immediateChangeNextSteps(changeId, propose),
       };
     }
@@ -833,11 +952,66 @@ export function dispatchGovernanceIntakeCommand(
     }
     throw error;
   }
-  throw intakeUsage(
-    'Usage: jigwright now <original-text> | jigwright now <work-item-id> | jigwright later <original-text> | jigwright attach <work-item-id> <original-text> | jigwright source <capture --input <source-envelope.json> | list | show <source-id> | trace <source-id> | link-change <source-id> --change <change-id>> | jigwright finding <add --session <session-id> --input <finding-envelope.json> | list [--all] | convert <finding-id> [--now] | link <finding-id> --change <change-id> | dismiss <finding-id> --reason <reason>> | jigwright work-item <create|review|promote-prepare|promote|list|show|search|trace|recommend|inventory|render|validate> ...',
-  );
+  throw intakeUsage(INTAKE_USAGE);
 }
 
+const SOURCE_ID = /^SRC-[0-9a-f]{64}$/u;
+const INTAKE_KINDS = [
+  'feature',
+  'bug',
+  'improvement',
+  'chore',
+  'research',
+] as const;
+type IntakeKind = (typeof INTAKE_KINDS)[number];
+/** Wording that describes what the system should do; only these mint a Source. */
+const REQUIREMENT_KINDS: ReadonlySet<IntakeKind> = new Set([
+  'feature',
+  'improvement',
+]);
+const INTAKE_USAGE =
+  'Usage: jigwright now "<original text>" [--kind <kind>] | jigwright later "<original text>" [--kind <kind>] | jigwright attach <work-item-id> "<original text>"|<SRC-id> [--supersedes <SRC-id>] | jigwright finding convert <finding-id> [--kind <kind>] [--now]; kind = feature|bug|improvement|chore|research (default improvement; convert defaults to bug)';
+function takeFlag(
+  args: readonly string[],
+  flag: string,
+): { value: string | null; rest: string[] } {
+  const index = args.indexOf(flag);
+  if (index === -1) return { value: null, rest: [...args] };
+  const value = args[index + 1];
+  if (value === undefined || value.startsWith('-')) {
+    throw intakeUsage(`${flag} needs a value. ${INTAKE_USAGE}`);
+  }
+  return {
+    value,
+    rest: [...args.slice(0, index), ...args.slice(index + 2)],
+  };
+}
+function intakeKind(value: string | null): IntakeKind {
+  if (value === null) return 'improvement';
+  if (!(INTAKE_KINDS as readonly string[]).includes(value)) {
+    throw intakeUsage(`Unknown kind "${value}". ${INTAKE_USAGE}`);
+  }
+  return value as IntakeKind;
+}
+function isRequirementKind(kind: IntakeKind): boolean {
+  return REQUIREMENT_KINDS.has(kind);
+}
+function clipTitle(text: string): string {
+  const oneLine = text.replace(/\s+/gu, ' ').trim();
+  return oneLine.length <= 160 ? oneLine : `${oneLine.slice(0, 159)}…`;
+}
+function findOpenWorkItemsBySummary(cwd: string, text: string) {
+  return listWorkItems(cwd).filter(
+    (item) =>
+      item.closure === null &&
+      item.stage !== 'closed' &&
+      item.interpretation.summary === text,
+  );
+}
+function resolveTaskScope(cwd: string): GovernanceFindingContextV1 | null {
+  const sessionId = findActiveTaskSessionId(cwd);
+  return sessionId === null ? null : resolveActiveSession(cwd, sessionId);
+}
 function immediateChangeNextSteps(
   _changeId: string,
   propose: unknown,

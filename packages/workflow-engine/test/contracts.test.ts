@@ -80,6 +80,7 @@ test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   );
   assert.deepEqual(Object.keys(governanceIntakeProduction).sort(), [
     'assertExistingGovernanceIntakeChange',
+    'findActiveTaskSessionId',
     'renderGovernanceIntakeHandoff',
     'resolveGovernanceIntakeRuntimeRoot',
     'resolveRepositoryFindingScope',

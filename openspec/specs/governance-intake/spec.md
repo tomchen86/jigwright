@@ -355,12 +355,25 @@ planning workspace. Every result SHALL echo the original text, Source ID,
 change ID, current propose state, and one truthful next step; actor-resolution
 output MUST NOT pretend an investigation already exists.
 
+`--kind <kind>` SHALL select any registered Work Item kind, defaulting to
+`improvement`. Requirement kinds (`feature`, `improvement`) SHALL use the
+Source-bound path above. Observation kinds (`bug`, `chore`, `research`) SHALL
+start the same deterministic change without minting a Source and SHALL carry
+the complete original wording in the normalized intent summary, without title
+truncation.
+
 #### Scenario: One immediate sentence starts planning
 
 - **WHEN** a caller invokes `now <original-text>` with one resolved current actor
 - **THEN** one stable change and planning workspace cite the captured Source through `origin.json`
 - **AND** the Source is the only planning path outside the named change tree
 - **AND** retry returns the same Source and change identities without copying the original text into the intent
+
+#### Scenario: An immediate observation retains its complete wording
+
+- **WHEN** a caller invokes `now <original-text> --kind bug`
+- **THEN** the normalized intent contains the complete original text and cites no newly minted Source
+- **AND** wording beyond the Work Item title limit remains available to planning
 
 #### Scenario: Capture or workspace bootstrap stops early
 
@@ -409,11 +422,20 @@ trace` next steps.
 Under D-019, `later <original-text>` SHALL capture one direct-human Governance
 Source and create one inbox Work Item in the always-available Work Registry
 without requiring a JSON envelope. The facade SHALL use the exact fixed
-authoring defaults `kind: improvement` and `lane: null`. Its title SHALL identify
-the captured Source, and its agent-derived interpretation SHALL not duplicate
-the original wording. Before capture, exact Source wording already cited by a
-Work Item SHALL produce a deterministic attach suggestion and SHALL NOT create a
-second Source or Work Item. The ordinary path SHALL require no Grant.
+authoring defaults `kind: improvement` and `lane: null`; `--kind <kind>` SHALL
+select any registered Work Item kind. Only requirement kinds (`feature`,
+`improvement`) describe what the system should do and SHALL capture a Source;
+observation kinds (`bug`, `chore`, `research`) SHALL create the inbox item
+carrying the wording as its interpretation summary and SHALL NOT mint a Source,
+deduplicating on exact summary among open Work Items. When a Source is
+captured, its title SHALL identify the captured Source, and its agent-derived
+interpretation SHALL not duplicate the original wording. Before capture, exact
+Source wording already cited by a Work Item SHALL produce a deterministic attach
+suggestion and SHALL NOT create a second Source or Work Item. Invoked inside an
+active task session, `later` SHALL stage the wording as a repository Finding
+bound to that session instead of writing the Work Registry, so the task diff
+stays scoped; conversion flushes it to the inbox. The ordinary path SHALL
+require no Grant.
 
 #### Scenario: Original wording is parked for later
 
@@ -421,6 +443,18 @@ second Source or Work Item. The ordinary path SHALL require no Grant.
 - **THEN** the original text exists only in one immutable Source and the returned inbox Work Item cites that Source ID
 - **AND** the result returns the original text, Source ID, Work Item ID, and one exact next step
 - **AND** repeating the same wording returns the existing Work Item as a dedupe match without changing Source, Work Item, Git ref, or Grant bytes
+
+#### Scenario: An observation is parked without a Source
+
+- **WHEN** one caller invokes `later <original-text> --kind bug` outside any task session
+- **THEN** one inbox Work Item of kind `bug` carries the wording as its interpretation summary and cites no Source
+- **AND** the Governance Source ledger is unchanged and repeating the wording returns that Work Item as a dedupe match
+
+#### Scenario: Wording noted inside a task is staged as a Finding
+
+- **WHEN** one caller invokes `later <original-text>` while a task session covers the working tree
+- **THEN** one pending Finding bound to that session records the wording and no Work Registry or Source bytes change
+- **AND** the result names the `finding convert` next step that flushes it to the inbox
 
 #### Scenario: Concurrent exact wording converges
 
@@ -440,6 +474,13 @@ MUST NOT copy the original wording. Repeating the exact attachment SHALL be
 byte-idempotent. A closed item or unsafe current record SHALL fail before
 claiming an attachment.
 
+`attach <work-item-id> <SRC-id>` SHALL link that existing Source without
+minting another, and `attach <work-item-id> <original-text> --supersedes
+<SRC-id>` SHALL capture the wording as a correction that supersedes the named
+Source while the Work Item keeps citing both records. Repeating the same
+correction SHALL reuse the existing Source. Attaching a Source to an observation
+kind SHALL preserve the observation's interpretation summary.
+
 #### Scenario: New wording supplements one inbox item
 
 - **WHEN** `attach <work-item-id> <original-text>` names one current open Work Item
@@ -450,32 +491,34 @@ claiming an attachment.
 ### Requirement: Finding Conversion Has One Deterministic Target
 
 `finding convert <finding-id>` SHALL preserve the immutable Finding, derive one
-stable Work Item identity from it, persist an agent-authored Source for the
-Finding text, and create or reuse the exact inbox item before publishing the
-create-once `converted` receipt. A crash after the item publication but before
+stable Work Item identity from it, and create or reuse the exact inbox item
+before publishing the create-once `converted` receipt. A Finding is an
+observation, so conversion SHALL NOT mint a Source: the inbox item carries the
+Finding text as its interpretation summary, defaults to `kind: bug` unless
+`--kind <kind>` names another registered kind, and cites only the Sources the
+Finding already cited. A crash after the item publication but before
 the receipt SHALL truthfully leave the Finding pending; retry SHALL converge to
 the same item and then publish the receipt. A different record at that derived
 identity SHALL fail closed without publishing or rewriting a receipt, Finding,
-or Work Item. Any exact Source already captured before detecting that
-collision remains a truthful append-only record and does not authorize a
-relation of its own. `finding convert <finding-id> --now` SHALL first complete
-that same durable inbox item and converted receipt, then start the stable
-immediate change from the already-created agent Source. The converted item
-SHALL remain inbox; the immediate origin SHALL cite that same Source ID, and no
-maintainer-authored duplicate of the Finding text may be created.
+or Work Item. `finding convert <finding-id> --now` SHALL first complete that
+same durable inbox item and converted receipt, then start the stable immediate
+change whose intent cites only the Finding's already-cited Sources. The
+intent summary SHALL retain the complete Finding text. The converted item
+SHALL remain inbox, and no maintainer-authored duplicate of the Finding text
+may be created.
 
 #### Scenario: Conversion resumes after its item is durable
 
 - **WHEN** conversion stops after the deterministic inbox item is durable but before its receipt exists
 - **THEN** default Finding listing still reports the Finding as pending
-- **AND** retry reuses byte-identical Source and Work Item records and publishes one converted receipt targeting that item
+- **AND** retry reuses the byte-identical Work Item record, mints no Source, and publishes one converted receipt targeting that item
 - **AND** no second Work Item, migration record, Grant, or Git ref is created
 
 #### Scenario: Converted Finding is escalated immediately
 
 - **WHEN** `finding convert <finding-id> --now` names one pending or exactly converted Finding
 - **THEN** conversion first publishes or reuses its deterministic inbox item and receipt
-- **AND** the stable immediate change cites the conversion's same agent Source while the Work Item remains inbox
+- **AND** the stable immediate change carries only the Finding's already-cited Sources while the Work Item remains inbox
 - **AND** the result echoes the original Finding text and one truthful propose next step
 
 ### Requirement: Finding Link Is a Receipt-Only Relation

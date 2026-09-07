@@ -304,16 +304,22 @@ test('top-level help advertises every current Governance Source command', () => 
     output,
     /pnpm workflow source <capture [^\n]+\|link-change [^\n]+\|list\|show <source-id>\|trace <source-id>> \[--json\]/u,
   );
-  assert.match(output, /pnpm workflow now <original-text> \[--json\]/u);
-  assert.match(output, /pnpm workflow now <work-item-id> \[--json\]/u);
-  assert.match(output, /pnpm workflow later <original-text> \[--json\]/u);
   assert.match(
     output,
-    /pnpm workflow attach <work-item-id> <original-text> \[--json\]/u,
+    /pnpm workflow now <original-text> \[--kind <kind>\] \[--json\]/u,
+  );
+  assert.match(output, /pnpm workflow now <work-item-id> \[--json\]/u);
+  assert.match(
+    output,
+    /pnpm workflow later <original-text> \[--kind <kind>\] \[--json\]/u,
   );
   assert.match(
     output,
-    /pnpm workflow finding <[^\n]*convert <finding-id> \[--now\][^\n]*> \[--json\]/u,
+    /pnpm workflow attach <work-item-id> <original-text>\|<SRC-id> \[--supersedes <SRC-id>\] \[--json\]/u,
+  );
+  assert.match(
+    output,
+    /pnpm workflow finding <[^\n]*convert <finding-id> \[--kind <kind>\] \[--now\][^\n]*> \[--json\]/u,
   );
 });
 
@@ -1401,7 +1407,7 @@ test('D-019 finding convert resumes one deterministic item before publishing its
     );
     assert.equal(
       listGovernanceSources(fixture.repositoryRoot).length,
-      sourceCountBefore + 1,
+      sourceCountBefore,
     );
     assert.equal(itemAfterCrash.stage, 'inbox');
     assert.deepEqual(
@@ -1479,7 +1485,7 @@ test('D-019 finding convert resumes one deterministic item before publishing its
     );
     assert.equal(
       listGovernanceSources(fixture.repositoryRoot).length,
-      sourceCountBefore + 1,
+      sourceCountBefore,
     );
     assert.deepEqual(fs.readFileSync(itemPath), itemBytesAfterCrash);
     assert.deepEqual(fs.readFileSync(fixture.finding.path), rawFinding);
@@ -1504,7 +1510,7 @@ test('D-019 finding convert resumes one deterministic item before publishing its
       | {
           changeId: string;
           intent: Record<string, unknown>;
-          source: { sourceId: string; exactText: string };
+          source: { sourceId: string; exactText: string } | null;
         }
       | undefined;
     const sourceCountBeforeNow = listGovernanceSources(
@@ -1527,23 +1533,25 @@ test('D-019 finding convert resumes one deterministic item before publishing its
       },
     ) as {
       originalText: string;
-      sourceId: string;
+      sourceId: string | null;
       immediateChange: {
-        sourceId: string;
+        sourceId: string | null;
         changeId: string;
         propose: { state: string };
       };
       nextSteps: string[];
     };
     assert.equal(immediate.originalText, fixture.finding.finding.text);
-    assert.equal(immediate.sourceId, recovered.sourceId);
-    assert.equal(immediate.immediateChange.sourceId, recovered.sourceId);
-    assert.equal(immediateStart?.source.sourceId, recovered.sourceId);
-    assert.equal(
-      immediateStart?.source.exactText,
-      fixture.finding.finding.text,
+    assert.equal(immediate.sourceId, null);
+    assert.equal(immediate.immediateChange.sourceId, null);
+    // An observation starts its change without a Source binding; only the
+    // Sources the Finding already cited travel into the intent.
+    assert.equal(immediateStart?.source, null);
+    assert.deepEqual(
+      immediateStart?.intent.sourceRefs,
+      fixture.finding.finding.sourceRefs,
     );
-    assert.deepEqual(immediateStart?.intent.sourceRefs, [recovered.sourceId]);
+    assert.equal(immediateStart?.intent.summary, fixture.finding.finding.text);
     assert.deepEqual(immediate.nextSteps, [
       'pnpm workflow status investigation-finding-now --json',
     ]);
@@ -6286,3 +6294,289 @@ function hasCode(expectedCode: string): (error: unknown) => boolean {
     'code' in error &&
     error.code === expectedCode;
 }
+
+test('later --kind bug parks an observation in the inbox without minting a Source', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-later-bug-'));
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const sourcesBefore = listGovernanceSources(fixture.repositoryRoot).length;
+    const text = 'Group list flashes white when scrolled quickly.';
+    const first = dispatchGovernanceIntakeCommand(
+      'later',
+      [text, '--kind', 'bug'],
+      fixture.repositoryRoot,
+      { now: () => '2026-09-05T01:00:00.000Z', resolveTaskScope: () => null },
+    ) as {
+      action: string;
+      kind: string;
+      sourceId: string | null;
+      workItemId: string;
+      deduplicated: boolean;
+    };
+    assert.equal(first.action, 'later');
+    assert.equal(first.kind, 'bug');
+    assert.equal(first.sourceId, null);
+    assert.equal(first.deduplicated, false);
+    const item = showWorkItem(fixture.repositoryRoot, first.workItemId);
+    assert.deepEqual(
+      {
+        kind: item.kind,
+        stage: item.stage,
+        lane: item.lane,
+        title: item.title,
+        summary: item.interpretation.summary,
+        status: item.interpretation.status,
+        sourceRefs: item.sourceRefs,
+      },
+      {
+        kind: 'bug',
+        stage: 'inbox',
+        lane: null,
+        title: text,
+        summary: text,
+        status: 'agent-derived',
+        sourceRefs: [],
+      },
+    );
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesBefore,
+      'an observation must not mint a Source',
+    );
+    const second = dispatchGovernanceIntakeCommand(
+      'later',
+      [text, '--kind', 'bug'],
+      fixture.repositoryRoot,
+      { now: () => '2026-09-05T01:00:01.000Z', resolveTaskScope: () => null },
+    ) as { deduplicated: boolean; matches: string[]; sourceId: string | null };
+    assert.equal(second.deduplicated, true);
+    assert.deepEqual(second.matches, [first.workItemId]);
+    assert.equal(second.sourceId, null);
+    const longText = `${text}\n${'Reproduction detail. '.repeat(12)}Keep this final detail.`;
+    let immediateIntent: Record<string, unknown> | undefined;
+    const immediate = dispatchGovernanceIntakeCommand(
+      'now',
+      [longText, '--kind', 'bug'],
+      fixture.repositoryRoot,
+      {
+        startImmediateChange(_cwd, _changeId, intent, source) {
+          immediateIntent = intent;
+          assert.equal(source, null);
+          return { state: 'investigating' };
+        },
+      },
+    ) as { originalText: string; sourceId: string | null };
+    assert.equal(immediate.originalText, longText);
+    assert.equal(immediate.sourceId, null);
+    assert.equal(immediateIntent?.summary, longText);
+    assert.deepEqual(immediateIntent?.sourceRefs, []);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesBefore,
+    );
+    dispatchGovernanceIntakeCommand(
+      'attach',
+      [first.workItemId, fixture.source.source.id],
+      fixture.repositoryRoot,
+    );
+    const linkedObservation = showWorkItem(
+      fixture.repositoryRoot,
+      first.workItemId,
+    );
+    assert.equal(linkedObservation.interpretation.summary, text);
+    assert.deepEqual(linkedObservation.sourceRefs, [fixture.source.source.id]);
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'later',
+          [text, '--kind', 'wish'],
+          fixture.repositoryRoot,
+          { resolveTaskScope: () => null },
+        ),
+      /Unknown kind/u,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('attach links an existing Source by id and captures a superseding correction', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-attach-src-'));
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const deps = {
+      now: () => '2026-09-05T01:10:00.000Z',
+      resolveTaskScope: () => null,
+    };
+    const later = dispatchGovernanceIntakeCommand(
+      'later',
+      ['Show the inline error under the name field.', '--kind', 'feature'],
+      fixture.repositoryRoot,
+      deps,
+    ) as { workItemId: string; sourceId: `SRC-${string}` };
+    assert.match(later.sourceId, /^SRC-[0-9a-f]{64}$/u);
+    const sourcesAfterLater = listGovernanceSources(
+      fixture.repositoryRoot,
+    ).length;
+    const linked = dispatchGovernanceIntakeCommand(
+      'attach',
+      [later.workItemId, fixture.source.source.id],
+      fixture.repositoryRoot,
+      deps,
+    ) as {
+      sourceId: `SRC-${string}`;
+      supersedes: string | null;
+      updated: boolean;
+      originalText: string;
+    };
+    assert.equal(linked.sourceId, fixture.source.source.id);
+    assert.equal(linked.supersedes, null);
+    assert.equal(linked.updated, true);
+    assert.equal(linked.originalText, fixture.source.source.text);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesAfterLater,
+      'linking an existing Source must not mint another',
+    );
+    assert.deepEqual(
+      [
+        ...showWorkItem(fixture.repositoryRoot, later.workItemId).sourceRefs,
+      ].sort(),
+      [later.sourceId, fixture.source.source.id].sort(),
+    );
+    const corrected = dispatchGovernanceIntakeCommand(
+      'attach',
+      [
+        later.workItemId,
+        'Show the inline error under the name field, in red.',
+        '--supersedes',
+        later.sourceId,
+      ],
+      fixture.repositoryRoot,
+      { ...deps, now: () => '2026-09-05T01:11:00.000Z' },
+    ) as { sourceId: `SRC-${string}`; supersedes: string | null };
+    assert.equal(corrected.supersedes, later.sourceId);
+    assert.equal(
+      readGovernanceSource(fixture.repositoryRoot, corrected.sourceId)
+        .supersedes,
+      later.sourceId,
+    );
+    assert.ok(
+      showWorkItem(
+        fixture.repositoryRoot,
+        later.workItemId,
+      ).sourceRefs.includes(corrected.sourceId),
+    );
+    const sourcesAfterCorrection = listGovernanceSources(
+      fixture.repositoryRoot,
+    ).length;
+    const repeated = dispatchGovernanceIntakeCommand(
+      'attach',
+      [
+        later.workItemId,
+        'Show the inline error under the name field, in red.',
+        '--supersedes',
+        later.sourceId,
+      ],
+      fixture.repositoryRoot,
+      { ...deps, now: () => '2026-09-05T01:12:00.000Z' },
+    ) as { sourceId: string; updated: boolean };
+    assert.equal(repeated.sourceId, corrected.sourceId);
+    assert.equal(repeated.updated, false);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesAfterCorrection,
+    );
+    assert.throws(
+      () =>
+        dispatchGovernanceIntakeCommand(
+          'attach',
+          [
+            later.workItemId,
+            fixture.source.source.id,
+            '--supersedes',
+            later.sourceId,
+          ],
+          fixture.repositoryRoot,
+          deps,
+        ),
+      /cannot also supersede/u,
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('later inside an active task stages a Finding and convert flushes it to the inbox without a Source', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-later-task-'));
+  try {
+    const fixture = createGovernancePersistenceFixture(root);
+    const itemsDirectory = path.join(
+      fixture.repositoryRoot,
+      'docs/work-registry/items/2026',
+    );
+    const itemsBefore = fs.readdirSync(itemsDirectory).length;
+    const sourcesBefore = listGovernanceSources(fixture.repositoryRoot).length;
+    const text = 'The retry path dead-ends after two identical failures.';
+    const staged = dispatchGovernanceIntakeCommand(
+      'later',
+      [text, '--kind', 'bug'],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-09-05T01:20:00.000Z',
+        resolveTaskScope: () => fixture.findingContext,
+      },
+    ) as {
+      staged: string;
+      findingId: string;
+      sessionId: string;
+      kind: string;
+      nextSteps: string[];
+    };
+    assert.equal(staged.staged, 'finding');
+    assert.match(staged.findingId, /^FND-[0-9a-f]{64}$/u);
+    assert.equal(staged.sessionId, fixture.findingContext.sessionId);
+    assert.equal(staged.kind, 'bug');
+    assert.deepEqual(staged.nextSteps, [
+      `pnpm workflow finding convert ${staged.findingId} --kind bug --json`,
+    ]);
+    assert.equal(fs.readdirSync(itemsDirectory).length, itemsBefore);
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesBefore,
+    );
+    const pending = listGovernanceFindings(fixture.runtimeRoot).find(
+      ({ id }) => id === staged.findingId,
+    );
+    assert.equal(pending?.text, text);
+    assert.deepEqual(pending?.sourceRefs, []);
+    const converted = dispatchGovernanceIntakeCommand(
+      'finding',
+      ['convert', staged.findingId, '--kind', 'bug'],
+      fixture.repositoryRoot,
+      {
+        now: () => '2026-09-05T01:21:00.000Z',
+        resolveRuntimeRoot: () => fixture.runtimeRoot,
+      },
+    ) as { sourceId: string | null; kind: string; workItemId: string };
+    assert.equal(converted.sourceId, null);
+    assert.equal(converted.kind, 'bug');
+    const item = showWorkItem(fixture.repositoryRoot, converted.workItemId);
+    assert.deepEqual(
+      {
+        kind: item.kind,
+        stage: item.stage,
+        summary: item.interpretation.summary,
+        sourceRefs: item.sourceRefs,
+      },
+      { kind: 'bug', stage: 'inbox', summary: text, sourceRefs: [] },
+    );
+    assert.equal(
+      listGovernanceSources(fixture.repositoryRoot).length,
+      sourcesBefore,
+      'converting an observation must not mint a Source',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
