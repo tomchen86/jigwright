@@ -1848,11 +1848,15 @@ test('production host-wrapper preserves cancelled process activity for the durab
   const observed: ProviderRuntimeProtocolReceipt[] = [];
   const activities: string[] = [];
   const cancellation = new AbortController();
+  const readyPath = path.join(hostDirectory, 'provider-ready');
   const boundInput = bindRunnerInputToInvestigationOwner(
     fixture.input,
     'investigation-host-wrapper-cancelled',
   );
-  let timer: NodeJS.Timeout | null = null;
+  // Probe completion precedes native startup; wait for its SIGTERM handler.
+  fs.watchFile(readyPath, { interval: 10 }, (current) => {
+    if (current.size > 0) cancellation.abort();
+  });
   try {
     await assert.rejects(
       runHostWrapperProviderThroughAgentRuntimeV1(
@@ -1864,9 +1868,6 @@ test('production host-wrapper preserves cancelled process activity for the durab
         {
           platform: process.platform,
           signal: cancellation.signal,
-          onHostProbeEvidence() {
-            timer = setTimeout(() => cancellation.abort(), 250);
-          },
           onActivity(event) {
             activities.push(event.type);
           },
@@ -1895,7 +1896,7 @@ test('production host-wrapper preserves cancelled process activity for the durab
       },
     ]);
   } finally {
-    if (timer !== null) clearTimeout(timer);
+    fs.unwatchFile(readyPath);
     fixture.cleanup();
     fs.rmSync(hostDirectory, { recursive: true, force: true });
   }
@@ -5056,7 +5057,7 @@ function canonicalHostWrapperFixture(
       ? "emit({ schemaVersion: 2, type: 'result', sequence, outputSlot: 'primary' });"
       : terminal === 'error'
         ? "emit({ schemaVersion: 2, type: 'error', sequence, code: 'FIXTURE_REJECTED' });"
-        : "process.once('SIGTERM', () => { emit({ schemaVersion: 2, type: 'cancel-ack', sequence }); setTimeout(() => process.exit(0), 10); }); setInterval(() => {}, 1000);";
+        : "process.once('SIGTERM', () => { emit({ schemaVersion: 2, type: 'cancel-ack', sequence }); setTimeout(() => process.exit(0), 10); }); fs.writeFileSync(new URL('./provider-ready', import.meta.url), 'ready'); setInterval(() => {}, 1000);";
   return `import fs from 'node:fs';
 
 const action = process.argv[2] === 'host-resume' ? 'resume' : 'start';
@@ -5077,6 +5078,7 @@ if (request.kind === 'agent-runtime-host-wrapper-probe-request.v1') {
   });
   process.exit(0);
 }
+${terminal === 'cancelled' ? 'await new Promise((resolve) => setTimeout(resolve, 500));' : ''}
 write(request.outputFile, {
   reference: request.invocationId,
   terms: [{ kind: 'symbol', value: 'protectedBranches' }],
