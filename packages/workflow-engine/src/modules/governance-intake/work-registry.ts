@@ -470,7 +470,9 @@ export function attachSourceToWorkItem(
       ...item,
       sourceRefs,
       interpretation: {
-        summary: linkedSourceInterpretationSummary(sourceRefs),
+        summary: ['bug', 'chore', 'research'].includes(item.kind)
+          ? item.interpretation.summary
+          : linkedSourceInterpretationSummary(sourceRefs),
         status: 'agent-derived',
       },
     };
