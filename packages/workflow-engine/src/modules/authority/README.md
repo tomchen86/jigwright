@@ -6,14 +6,14 @@
 
 Keep Grant Core as the single place that decides whether an exact operation may proceed, while the other modules report facts and recovery choices. This follows the [recorded requirements](../../../../../docs/REQUIREMENTS.md): an authorized continuation can reuse completed work without adding another veto or pretending a skipped check passed. Use inspection to understand current authority, approval to authorize the bound operation, and recovery to continue its recorded transaction.
 
-Confirmed at commit: `1985948f2539c04769d83404f0473f5a85a12f22`
+Confirmed at commit: `fa1eab4fc25bd29bd01e7567d6785046592789a2`
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:2ea1065856d25fd716d7f4146d355ed5fbd3ae86272bcb2ee69bc05930aea827 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:f13897f88ab07a9980ec296aa0b361dec6458d84fa619a87eb89f6c646b92052 -->
 
 <!-- prettier-ignore-start -->
 
-1 file changed in this module since confirmation.
+0 files changed in this module since confirmation.
 
 ## Commands
 
