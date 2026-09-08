@@ -8,12 +8,13 @@
  */
 import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { findingRecordLocation, findingRecordPath, publishFindingRefRecord, readFindingRef, } from "./governance-finding-ref.js";
+import { findingRecordLocation, findingRecordPath, } from "./governance-finding-ref.js";
 import { TextDecoder } from 'node:util';
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import crypto from 'node:crypto';
 export function createGovernanceFindingOperations(bindings) {
-    const { readGovernanceSource, intakeInvalid, isRecord, hasExactKeys, sourceReference, } = bindings;
+    const { readGovernanceSource, intakeInvalid, isRecord, hasExactKeys, sourceReference, findingRef, } = bindings;
+    const { readFindingRef, publishFindingRefRecord } = findingRef;
     const FINDING_ID = /^FND-[0-9a-f]{64}$/;
     const FINDING_RECORD_NAME = /^(FND-[0-9a-f]{64})\.json$/;
     const FINDING_DISPOSITION_RECORD_NAME = /^(FND-[0-9a-f]{64})\.disposition\.json$/;

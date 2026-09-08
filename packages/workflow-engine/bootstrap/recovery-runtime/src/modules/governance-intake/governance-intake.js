@@ -103,16 +103,14 @@ function sourceReference(value) {
 function intakeInvalid(message) {
     return workflowError('GOVERNANCE_INTAKE_INVALID', message, ExitCode.usage);
 }
-const governanceFindingOperations = createGovernanceFindingOperations({
-    readGovernanceSource,
-    intakeInvalid,
-    isRecord,
-    hasExactKeys,
-    sourceReference,
-});
-export const recordGovernanceFinding = governanceFindingOperations.recordGovernanceFinding;
-export const listGovernanceFindings = governanceFindingOperations.listGovernanceFindings;
-export const dismissGovernanceFinding = governanceFindingOperations.dismissGovernanceFinding;
-export const convertGovernanceFinding = governanceFindingOperations.convertGovernanceFinding;
-export const linkGovernanceFinding = governanceFindingOperations.linkGovernanceFinding;
-const GOVERNANCE_FINDING_DISPOSITION_KIND = governanceFindingOperations.GOVERNANCE_FINDING_DISPOSITION_KIND;
+export function createGovernanceFindingServices(findingRef) {
+    return createGovernanceFindingOperations({
+        findingRef,
+        readGovernanceSource,
+        intakeInvalid,
+        isRecord,
+        hasExactKeys,
+        sourceReference,
+    });
+}
+const GOVERNANCE_FINDING_DISPOSITION_KIND = 'governance-finding-disposition.v1';
