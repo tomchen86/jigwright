@@ -1,6 +1,10 @@
 # Jigwright Repository Instructions
 
-## R-000 Product Purpose and Trust Model
+## Jigwright
+
+<!-- jigwright:region id=guidance.agent-section v=1 digest=sha256:524d82e1ca08f7efd895c5ba2fb458f32305edbd69b282f9181a0721554d1f74 -->
+
+<!-- prettier-ignore-start -->
 
 ### Product purpose
 
@@ -68,6 +72,16 @@ model by default.
   concrete correctness, recovery, cost, or data-exposure risk on an active
   production path. A control that mainly adds ceremony or risks deadlock must
   be simplified or removed.
+
+
+- R-000: Jigwright is an AI-agent coding harness. Security governance is supporting infrastructure, not the product objective.
+- Transcribe the user's wording verbatim and echo `originalText` exactly; preserve whitespace and line breaks, without paraphrasing or summarizing.
+- Record your own observations as a Finding during an active task. Outside a task, use observation intake (bug/chore/research) without inventing a user Source.
+- When blocked or unsure of the next workflow step, run `pnpm workflow guide` and follow the returned guidance.
+
+<!-- prettier-ignore-end -->
+
+<!-- /jigwright:region -->
 
 This repository is current-only. Preserve all current-v3 product capabilities
 and correctness invariants. Do not restore v1/v2 readers, migrations,

@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { renderAgentGuidanceRules } from '../src/modules/guidance/catalog/agent-rule-registry.ts';
 import { renderAgentRuleSources } from '../../../scripts/generate-agent-rule-sources.ts';
 import { createGovernanceSourceV1 } from '@jigwright/core/governance-source';
+import { resolveGovernanceSourceAlias } from '../src/modules/governance-intake/source-aliases.ts';
 
 test('agent rules are generated from current purpose, exact-text and command sources', () => {
   const root = new URL('../../../', import.meta.url);
   const expected = renderAgentRuleSources(
-    fs.readFileSync(new URL('AGENTS.md', root), 'utf8'),
+    resolveGovernanceSourceAlias(fileURLToPath(root), 'R-000')
+      .map((source) => source.text)
+      .join('\n\n'),
   );
   assert.equal(
     fs.readFileSync(

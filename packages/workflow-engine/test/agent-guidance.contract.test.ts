@@ -14,6 +14,7 @@ import {
   statusAgentGuidance,
 } from '../src/modules/adoption/agent-guidance.ts';
 import { dispatchAgentGuidanceCommand } from '../src/entrypoints/cli/agent-guidance-cli.ts';
+import { captureGovernanceSource } from '../src/modules/governance-intake/governance-intake.ts';
 
 function fixture(t: test.TestContext): string {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-guidance-'));
@@ -22,6 +23,45 @@ function fixture(t: test.TestContext): string {
 }
 
 const quiet = { onDiff: () => {} };
+
+test('configured owner Sources are projected verbatim and remain the sole wording authority', (t) => {
+  const root = fixture(t);
+  const source = captureGovernanceSource(root, {
+    semanticAuthor: 'maintainer',
+    capturedBy: 'test',
+    capturedAt: '2026-09-08T00:00:00.000Z',
+    contextRef: 'direct-human:test',
+    text: '### Product purpose\n\n  原話\r\n不改寫\n',
+    supersedes: null,
+  }).source;
+  fs.writeFileSync(
+    path.join(root, AGENT_GUIDANCE_CONFIG),
+    JSON.stringify({
+      targets: [],
+      sourceRefs: [source.id],
+    }),
+  );
+  installAgentGuidance(root, ['AGENTS.md'], quiet);
+  const projected = fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8');
+  assert.ok(projected.includes(source.text));
+  assert.equal(projected.includes(source.id), false);
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(root, AGENT_GUIDANCE_CONFIG), 'utf8'))
+      .sourceRefs,
+    [source.id],
+  );
+  assert.equal(statusAgentGuidance(root).targets[0].state, 'current');
+  fs.writeFileSync(
+    path.join(root, 'AGENTS.md'),
+    projected.replace('原話', '改寫'),
+  );
+  assert.equal(statusAgentGuidance(root).targets[0].state, 'drifted');
+  refreshAgentGuidance(root, quiet);
+  assert.equal(
+    fs.readFileSync(path.join(root, 'AGENTS.md'), 'utf8'),
+    projected,
+  );
+});
 
 test('install without explicit targets only suggests existing conventional files', (t) => {
   const root = fixture(t);

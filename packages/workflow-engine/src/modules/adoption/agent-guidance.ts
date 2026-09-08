@@ -7,6 +7,7 @@ import { assertPolicyPathInsideRepository } from '@jigwright/core/runtime-path-k
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { replaceTextAtomic } from '../../foundation/filesystem/atomic-text.ts';
 import { renderAgentGuidanceRules } from '../guidance/catalog/agent-rule-registry.ts';
+import { readGovernanceSource } from '../governance-intake/governance-intake.ts';
 import { createProjectionService } from '../projection/projection-service.ts';
 
 export const AGENT_GUIDANCE_CONFIG = 'workflow/agent-guidance.json';
@@ -29,8 +30,15 @@ export function guidanceSuggestions(repositoryRoot: string): string[] {
 export function readAgentGuidanceTargets(
   repositoryRoot: string,
 ): AgentGuidanceTarget[] {
+  return readAgentGuidanceConfiguration(repositoryRoot).targets;
+}
+
+function readAgentGuidanceConfiguration(repositoryRoot: string): {
+  targets: AgentGuidanceTarget[];
+  sourceRefs?: string[];
+} {
   const configPath = checkedPath(repositoryRoot, AGENT_GUIDANCE_CONFIG);
-  if (!fs.existsSync(configPath)) return [];
+  if (!fs.existsSync(configPath)) return { targets: [] };
   let config: unknown;
   try {
     config = JSON.parse(readUtf8(configPath));
@@ -53,7 +61,20 @@ export function readAgentGuidanceTargets(
       'target paths must be unique; labels do not identify targets',
     );
   }
-  return targets;
+  if ('sourceRefs' in config) {
+    if (
+      !Array.isArray(config.sourceRefs) ||
+      !config.sourceRefs.every(
+        (ref: unknown) =>
+          typeof ref === 'string' && /^SRC-[a-f0-9]{64}$/u.test(ref),
+      ) ||
+      new Set(config.sourceRefs).size !== config.sourceRefs.length
+    ) {
+      throw invalidConfig('sourceRefs must contain unique Source references');
+    }
+    return { targets, sourceRefs: config.sourceRefs };
+  }
+  return { targets };
 }
 
 export function installAgentGuidance(
@@ -69,7 +90,8 @@ export function installAgentGuidance(
       confirmationRequired: true,
     };
   }
-  const existing = readAgentGuidanceTargets(repositoryRoot);
+  const existingConfig = readAgentGuidanceConfiguration(repositoryRoot);
+  const existing = existingConfig.targets;
   const requested = new Map<string, AgentGuidanceTarget>();
   for (const value of requestedTargets) {
     const target = parseTarget(
@@ -84,7 +106,16 @@ export function installAgentGuidance(
   }
   // Validate every destination, including config, before projecting any target.
   const configPath = checkedPath(repositoryRoot, AGENT_GUIDANCE_CONFIG);
-  const config = `${JSON.stringify({ targets: [...merged.values()] }, null, 2)}\n`;
+  const config = `${JSON.stringify(
+    {
+      targets: [...merged.values()],
+      ...(existingConfig.sourceRefs === undefined
+        ? {}
+        : { sourceRefs: existingConfig.sourceRefs }),
+    },
+    null,
+    2,
+  )}\n`;
   const previousConfig = fs.existsSync(configPath)
     ? readUtf8(configPath)
     : null;
@@ -177,7 +208,19 @@ function guidanceService(
       {
         id: PROJECTION_ID,
         source: () => {
-          const content = renderAgentGuidanceRules();
+          const { sourceRefs = [] } =
+            readAgentGuidanceConfiguration(repositoryRoot);
+          const wording = [
+            ...sourceRefs.map(
+              (ref) => readGovernanceSource(repositoryRoot, ref).text,
+            ),
+            renderAgentGuidanceRules(),
+          ].join('\n\n');
+          // Exact Source text is generated content; formatters must not reflow it.
+          const content =
+            sourceRefs.length === 0
+              ? wording
+              : `\n<!-- prettier-ignore-start -->\n\n${wording}\n\n<!-- prettier-ignore-end -->\n`;
           return targets.map((target) => ({ path: target.path, content }));
         },
       },
