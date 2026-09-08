@@ -5,6 +5,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import {
   isPlanningAssuranceBinding,
+  loadChangeContract,
   loadWorkflowConfig,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -1094,7 +1095,12 @@ function recoverPreparedPlanningRevision(
       'write-tree',
     ]).trim();
     if (currentIndexTree === journal.indexTree) {
-      refreshPlanningDocuments(discovered.repositoryRoot, journal.changeId);
+      refreshPlanningDocuments(
+        discovered.repositoryRoot,
+        journal.changeId,
+        loadChangeContract(discovered.repositoryRoot, journal.changeId)
+          .investigation?.manifest,
+      );
       const expectedChanged = [
         ...journal.planChangedPaths!,
         ...journal.implementationPaths,

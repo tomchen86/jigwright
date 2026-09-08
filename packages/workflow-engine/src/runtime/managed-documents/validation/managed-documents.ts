@@ -9,6 +9,7 @@ import {
 } from '../../repository-transaction/atomic-text.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import { engineProjectionPathsForTransition } from '../../../modules/projection/engine-projection-registry.ts';
+import type { InvestigationManifestV3 } from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
 import { systemSpecPaths } from '../../../modules/source/system-documents.ts';
 import { workingSystemDescriptionSnapshot } from './system-document-snapshot.ts';
@@ -162,8 +163,9 @@ export function applyGeneratedDocumentMutations(
 export function refreshPlanningDocuments(
   repositoryRoot: string,
   changeId: string,
+  manifest: InvestigationManifestV3 | undefined,
 ): GeneratedDocumentMutation[] {
-  const ledger = planPlanningSemanticLedger(repositoryRoot, changeId);
+  const ledger = planPlanningSemanticLedger(repositoryRoot, changeId, manifest);
   const mutations = [
     ...ledger,
     ...planPlanningHandoffDocuments(repositoryRoot, changeId),

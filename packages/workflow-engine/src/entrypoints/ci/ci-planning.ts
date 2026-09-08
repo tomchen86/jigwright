@@ -1,4 +1,3 @@
-import { planPlanningSemanticLedger } from '../../runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -18,7 +17,6 @@ import {
   type AmendPlanManagedTrailers,
 } from '../../modules/lifecycle/managed-trailers.ts';
 import {
-  loadCommittedChangeContract,
   loadWorkflowConfig,
   parsePlanReviewArtifact,
   parseTasks,
@@ -50,6 +48,7 @@ import {
   agentRolePlanV2Path,
   amendmentLeftWorkMarkedDone,
   assertPlanningTaskHistory,
+  loadCommittedPlanningDocumentProjection,
   partitionPlanningRolePolicyPaths,
   resolveHistoricalOpenSpecPlanningTransitionBinding,
   resolveHistoricalOpenSpecProviderBinding,
@@ -689,18 +688,19 @@ function replayPlanningTree(
     if (engineProjectionPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md')) {
       validateHandoffForChange(worktree, changeId);
     }
-    if (planPlanningSemanticLedger(worktree, changeId).length > 0) {
+    const { contract, semanticLedgerMutations } =
+      loadCommittedPlanningDocumentProjection(
+        worktree,
+        commit,
+        changeId,
+        schemaName,
+      );
+    if (semanticLedgerMutations.length > 0) {
       throw ciPlanningError(
         'CI_PLANNING_SEMANTIC_LEDGER_DRIFT',
         'Planning semantic bindings differ from the exact baseline source projection.',
       );
     }
-    const contract = loadCommittedChangeContract(
-      worktree,
-      commit,
-      changeId,
-      schemaName,
-    );
     const readiness = validateInvestigationFirstPlanningReadiness(
       worktree,
       contract,

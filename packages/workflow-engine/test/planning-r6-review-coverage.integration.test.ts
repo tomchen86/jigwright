@@ -36,6 +36,7 @@ import { commitPlanningTransition } from '../src/application/propose/planning-tr
 import { readLedgerIndex } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
 import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
 import { planPlanningSemanticLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 
 test('planning commits and replays the exact semantic binding projection', () => {
   const prepared = prepareCoverageReview('r6-ledger-plan-projection', {
@@ -55,6 +56,22 @@ test('planning commits and replays the exact semantic binding projection', () =>
       ),
     );
     const commit = git(prepared.repository, ['rev-parse', 'HEAD']).trim();
+    assert.ok(
+      Object.keys(readLedgerIndex(prepared.repository).subjects).length > 0,
+    );
+    assert.deepEqual(
+      planPlanningSemanticLedger(
+        prepared.repository,
+        prepared.changeId,
+        loadChangeContract(prepared.repository, prepared.changeId).investigation
+          ?.manifest,
+      ),
+      [],
+    );
+    fs.rmSync(runtimeRoot(prepared.repository), {
+      recursive: true,
+      force: true,
+    });
     const committed = validateCiPlanningCommit(
       prepared.repository,
       commit,
@@ -62,13 +79,6 @@ test('planning commits and replays the exact semantic binding projection', () =>
     );
     assert.ok(
       committed.changedPaths.includes('workflow/semantic-ledger/index.json'),
-    );
-    assert.ok(
-      Object.keys(readLedgerIndex(prepared.repository).subjects).length > 0,
-    );
-    assert.deepEqual(
-      planPlanningSemanticLedger(prepared.repository, prepared.changeId),
-      [],
     );
   } finally {
     prepared.dispose();
@@ -96,6 +106,7 @@ import {
   createFixtureRepository,
   git,
   isWorkflowError,
+  runtimeRoot,
   writeReadyV3ExemptChange,
   builtInProviderExecutableIdentityForTest,
   builtInProviderDefinitionSnapshotForTest,

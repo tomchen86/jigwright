@@ -4,7 +4,10 @@ import path from 'node:path';
 
 import { createArchiveApplicabilityProjection } from '../archive/archive-transformation.ts';
 import type { ArchiveApplicabilityRecord } from '../../runtime/storage-journal/planning-report.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+import {
+  loadChangeContract,
+  loadWorkflowConfig,
+} from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -589,6 +592,8 @@ function commitPlanningTransitionLocked(
     generatedMutations = refreshPlanningDocuments(
       initial.repositoryRoot,
       changeId,
+      loadChangeContract(initial.repositoryRoot, changeId).investigation
+        ?.manifest,
     );
     engineProjectionPaths = generatedMutations
       .map((mutation) => mutation.path)

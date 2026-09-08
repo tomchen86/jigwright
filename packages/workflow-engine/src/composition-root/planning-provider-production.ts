@@ -1,3 +1,13 @@
+/**
+ * Assembles planning validation, historical provider bindings and committed document projections.
+ *
+ * Invariants:
+ * - Historical replay loads the contract from its exact commit before projecting document bytes.
+ * - Provider and role policy readers preserve the selected repository authority.
+ *
+ * Depends on: Planning adapters, committed contracts, provider binding readers and semantic ledger.
+ * Failure modes: Wrong assembly selects stale authority or reports spurious planning drift.
+ */
 import {
   inspectPlanningTransition as inspectPlanningTransitionWithReader,
   resolveHistoricalOpenSpecPlanningTransitionBinding as resolveHistoricalOpenSpecPlanningTransitionBindingWithReader,
@@ -15,6 +25,8 @@ import {
 } from '../modules/source/planning-role-provider-policy-reader.ts';
 import { planningProviderBindingReader } from '../runtime/repository-transaction/planning-provider-binding-store.ts';
 import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { loadCommittedChangeContract } from '../adapters/consumer/repository/work-registry/contracts.ts';
+import { planPlanningSemanticLedger } from '../runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 
 export {
   agentRolePlanV2Path,
@@ -74,6 +86,28 @@ export function validatePlanningTransition(
     changeId,
     schemaName,
   );
+}
+
+export function loadCommittedPlanningDocumentProjection(
+  repositoryRoot: string,
+  commit: string,
+  changeId: string,
+  schemaName: Parameters<typeof loadCommittedChangeContract>[3],
+) {
+  const contract = loadCommittedChangeContract(
+    repositoryRoot,
+    commit,
+    changeId,
+    schemaName,
+  );
+  return {
+    contract,
+    semanticLedgerMutations: planPlanningSemanticLedger(
+      repositoryRoot,
+      changeId,
+      contract.investigation?.manifest,
+    ),
+  };
 }
 
 export function resolveHistoricalOpenSpecPlanningTransitionBinding(

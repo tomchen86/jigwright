@@ -893,7 +893,12 @@ function restorePreparedPlanningProjection(
     return { path: projectionPath, before, after };
   });
   try {
-    refreshPlanningDocuments(repositoryRoot, journal.changeId);
+    refreshPlanningDocuments(
+      repositoryRoot,
+      journal.changeId,
+      loadChangeContract(repositoryRoot, journal.changeId).investigation
+        ?.manifest,
+    );
     for (const mutation of mutations) {
       if (
         readPlainProjectionFile(repositoryRoot, mutation.path) !==

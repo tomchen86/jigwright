@@ -4,11 +4,14 @@
  * Invariants:
  * - Explanations remain in source headers; import edges bind actual snapshot bytes.
  * - Replays preserve immutable objects and move the index through explicit supersession.
+ * - The caller supplies its validated Manifest; projection never reselects live authority.
+ *
+ * Depends on: Validated Manifest facts, repository snapshots and immutable semantic ledger records.
+ * Failure modes: Wrong authority makes replay stale; wrong bindings drift the semantic index.
  */
 
 import crypto from 'node:crypto';
 import { readFileAtCommit } from '../../repository-transaction/git.ts';
-import { loadChangeContract } from '../../../adapters/consumer/repository/work-registry/contracts.ts';
 import { PROPOSE_POLICY_DIGEST } from '../../../modules/provider-orchestration/provider-contracts.ts';
 import type { GeneratedDocumentMutation } from '../validation/managed-documents.ts';
 import { readImportDependencies } from '../../../modules/source/import-dependencies.ts';
@@ -18,7 +21,10 @@ import path from 'node:path';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
-import type { InvestigationWhyOverlayV3 } from '../../../modules/investigation/manifest/investigation-manifest.ts';
+import type {
+  InvestigationManifestV3,
+  InvestigationWhyOverlayV3,
+} from '../../../modules/investigation/manifest/investigation-manifest.ts';
 import { normalizeExactRepositoryPath } from '../../session-workspace/paths.ts';
 import type { ActualMutation } from '../../../modules/why-knowledge/semantic-reconciliation.ts';
 import {
@@ -167,9 +173,9 @@ function projectPlanningWhyClaims(input: {
 export function planPlanningSemanticLedger(
   repositoryRoot: string,
   changeId: string,
+  manifest: InvestigationManifestV3 | undefined,
 ): GeneratedDocumentMutation[] {
-  const contract = loadChangeContract(repositoryRoot, changeId);
-  const applicability = contract.investigation?.manifest.applicability;
+  const applicability = manifest?.applicability;
   if (
     applicability?.kind !== 'ordinary' ||
     applicability.semanticDelta.whyOverlays.length === 0
