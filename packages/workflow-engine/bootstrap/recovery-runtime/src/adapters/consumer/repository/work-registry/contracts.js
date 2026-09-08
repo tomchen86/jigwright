@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { createWorkflowNamespaceConfig, } from '@jigwright/core/workflow-namespace';
 import { canonicalJson } from "../../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../../../foundation/errors/errors.js";
 import { validateForAuthority, } from "../../../../modules/investigation/manifest/investigation-manifest.js";
@@ -19,11 +18,11 @@ import { validateCurrentChangeOrigin } from "../../../../modules/governance-inta
 import { assertCurrentPlanReviewProviderResultNode, readPlanReviewNode, readPlanReviewTargetSnapshotNode, } from "../../../../modules/assurance/plan-review.js";
 import { assertAdmittedRoleResultRecord } from "../../../../modules/provider-orchestration/role-scheduler.js";
 import { assertChangeId, assertPolicyPathInsideRepository, assertTaskId, matchesAllowedPath, normalizePolicyPath, } from "../../../../runtime/session-workspace/paths.js";
-import { PATH_ROLES, } from "../../../../modules/source/path-role-registry.js";
 import { parseCheckCommand, parseChecksConfigSource, } from "../../../../modules/source/check-command.js";
 import { planningProviderBindingPath } from "../../../../modules/source/planning-paths.js";
 import { repositoryConsumerPath, repositoryDocumentConfiguration, repositoryPlanningConfiguration, } from "../../../../modules/repository-consumer/repository-consumer-config.js";
-export { parseCheckCommand };
+import { parseWorkflowConfig, workflowNamespaceConfig, } from "../../../../modules/repository-consumer/workflow-config.js";
+export { parseCheckCommand, workflowNamespaceConfig };
 export function repositoryCurrentSchemaName(repositoryRoot) {
     return repositoryPlanningConfiguration(repositoryRoot).currentSchemaName;
 }
@@ -133,96 +132,11 @@ export function isPlanningAssuranceBinding(value) {
 }
 export function loadWorkflowConfig(repositoryRoot) {
     const configPath = path.join(repositoryRoot, 'workflow/config.json');
-    const value = readJson(configPath, 'workflow configuration');
-    if (!isRecord(value) ||
-        value.schemaVersion !== 1 ||
-        typeof value.repositoryName !== 'string' ||
-        (value.consumerNamespace !== undefined &&
-            typeof value.consumerNamespace !== 'string') ||
-        Object.hasOwn(value, 'acceptedLegacySchemaPrefixes') ||
-        typeof value.changeRoot !== 'string' ||
-        typeof value.runtimeDirectory !== 'string' ||
-        !isStringArray(value.protectedBranches) ||
-        typeof value.branchTemplate !== 'string' ||
-        !value.branchTemplate.includes('{changeId}') ||
-        (value.allTasksTerminalChecks !== undefined &&
-            !isTerminalCheckPolicyArray(value.allTasksTerminalChecks)) ||
-        (value.taskAuthorization !== undefined &&
-            !isTaskAuthorizationPolicy(value.taskAuthorization))) {
-        throw invalidContract('INVALID_WORKFLOW_CONFIG', 'workflow/config.json does not match schema version 1.', configPath);
+    const configuration = parseWorkflowConfig(readJson(configPath, 'workflow configuration'), configPath);
+    if (configuration.taskAuthorization !== undefined) {
+        assertPolicyPathInsideRepository(repositoryRoot, configuration.taskAuthorization.pathRoleRegistry);
     }
-    normalizePolicyPath(value.changeRoot);
-    normalizePolicyPath(value.runtimeDirectory);
-    workflowNamespaceConfig(value);
-    if (value.taskAuthorization !== undefined) {
-        const registryPath = normalizePolicyPath(value.taskAuthorization.pathRoleRegistry);
-        if (registryPath !== 'workflow/path-roles.json') {
-            throw invalidContract('INVALID_WORKFLOW_CONFIG', 'Task authorization requires the reviewed workflow/path-roles.json registry.', configPath);
-        }
-        assertPolicyPathInsideRepository(repositoryRoot, registryPath);
-    }
-    return {
-        ...value,
-        ...(value.allTasksTerminalChecks === undefined
-            ? {}
-            : {
-                allTasksTerminalChecks: value.allTasksTerminalChecks.map((policy) => ({
-                    checkId: policy.checkId,
-                    subsumes: [...policy.subsumes],
-                })),
-            }),
-        ...(value.taskAuthorization === undefined
-            ? {}
-            : {
-                taskAuthorization: {
-                    pathRoleRegistry: value.taskAuthorization.pathRoleRegistry,
-                    mandateRequiredRoles: [
-                        ...value.taskAuthorization
-                            .mandateRequiredRoles,
-                    ],
-                },
-            }),
-    };
-}
-/** Resolve the consumer-owned namespace for neutral current records. */
-export function workflowNamespaceConfig(config) {
-    return createWorkflowNamespaceConfig({
-        consumerNamespace: config.consumerNamespace ?? config.repositoryName,
-    });
-}
-function isTaskAuthorizationPolicy(value) {
-    if (!isRecord(value) ||
-        !hasExactKeys(value, ['pathRoleRegistry', 'mandateRequiredRoles']) ||
-        typeof value.pathRoleRegistry !== 'string' ||
-        !isStringArray(value.mandateRequiredRoles) ||
-        value.mandateRequiredRoles.length === 0) {
-        return false;
-    }
-    const knownRoles = new Set(PATH_ROLES);
-    return (value.mandateRequiredRoles.every((role) => knownRoles.has(role)) &&
-        new Set(value.mandateRequiredRoles).size ===
-            value.mandateRequiredRoles.length &&
-        JSON.stringify(value.mandateRequiredRoles) ===
-            JSON.stringify([...value.mandateRequiredRoles].sort()));
-}
-function isTerminalCheckPolicyArray(value) {
-    if (!Array.isArray(value) || value.length === 0)
-        return false;
-    const checkIds = new Set();
-    for (const policy of value) {
-        if (!isRecord(policy) ||
-            !hasExactKeys(policy, ['checkId', 'subsumes']) ||
-            typeof policy.checkId !== 'string' ||
-            !CHECK_ID_PATTERN.test(policy.checkId) ||
-            checkIds.has(policy.checkId) ||
-            !isStringArray(policy.subsumes) ||
-            policy.subsumes.some((checkId) => !CHECK_ID_PATTERN.test(checkId) || checkId === policy.checkId) ||
-            new Set(policy.subsumes).size !== policy.subsumes.length) {
-            return false;
-        }
-        checkIds.add(policy.checkId);
-    }
-    return true;
+    return configuration;
 }
 export function loadChecksConfig(repositoryRoot) {
     const checksPath = path.join(repositoryRoot, 'workflow/checks.json');

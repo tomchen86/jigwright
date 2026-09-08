@@ -3,6 +3,10 @@ export type WorkflowGuidanceStatus =
 
 export const MANAGED_WORKFLOW_COMMAND_IDS = [
   'guide',
+  'guidance-install',
+  'guidance-refresh',
+  'guidance-remove',
+  'guidance-status',
   'route',
   'route-status',
   'task-preflight',
@@ -70,6 +74,28 @@ const TASK_PREFLIGHT_USAGE =
   'pnpm workflow task-preflight <change-id> [--task <task-id>] [--json]';
 
 const MANAGED_WORKFLOW_COMMAND_DEFINITIONS = [
+  ...(['install', 'refresh', 'remove', 'status'] as const).map((action) => ({
+    id: `guidance-${action}` as const,
+    route: ['guidance', action],
+    usage: [
+      `pnpm workflow guidance ${action}${action === 'install' ? ' [path ...]' : ''} [--json]`,
+    ],
+    status:
+      action === 'status' ? ('read-only' as const) : ('preferred' as const),
+    purpose: `${action[0]!.toUpperCase()}${action.slice(1)} the generated region in explicitly configured agent instruction files.`,
+    preconditions:
+      action === 'install'
+        ? [
+            'Only explicit Markdown targets are installed; no paths returns suggestions without writing.',
+          ]
+        : [],
+    consequences: [
+      action === 'status'
+        ? 'Recomputes drift without writing.'
+        : 'Preserves all bytes outside the managed marker region and shows each diff before writing.',
+    ],
+    successors: [] as ManagedWorkflowCommandId[],
+  })),
   {
     id: 'guide',
     route: ['guide'],

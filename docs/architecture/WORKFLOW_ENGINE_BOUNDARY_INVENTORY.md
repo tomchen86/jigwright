@@ -14,20 +14,20 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:bb56f629313f3476e03571b5794d99c3ceb03c09cc48d042da4359e8b77024c8`.
+Current production inventory digest: `sha256:ee3c0d28cf6880bb50d805d69849e150964b09990014f20c1c22ee1c5d34742d`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
-| Primary workflow JSON literals             |         191 |    63 |
+| Primary workflow JSON literals             |         198 |    66 |
 | Primary split path joins/resolves          |           3 |     3 |
 | Primary dynamic workflow-root enumerations |           1 |     1 |
 | Bootstrap workflow JSON literals           |           9 |     3 |
 | Root tooling workflow JSON literals        |           9 |     2 |
-| Recovery workflow JSON literals            |          33 |    12 |
+| Recovery workflow JSON literals            |          34 |    13 |
 | Recovery split path joins                  |           2 |     2 |
-| Workflow artifact package-path leaves      |        1291 |     6 |
+| Workflow artifact package-path leaves      |        1303 |     6 |
 
-The primary literals cover 11 unique paths. Split joins and dynamic directory
+The primary literals cover 14 unique paths. Split joins and dynamic directory
 enumeration are authenticated separately from direct literals. Bootstrap,
 tooling-script, and generated recovery observations are also pinned separately
 from the primary extraction workload.
@@ -172,6 +172,16 @@ the engine to the consumer repository layout. Path-bearing values in checks,
 maintainer policy/profiles, path roles, protected capabilities, CI policy, and
 test shards form a second remap surface. T3 replaces these with validated
 repository configuration and keeps identity coverage for both surfaces.
+
+The adoption module owns the new `workflow/agent-guidance.json` target list
+and the init question destinations, including `workflow/jigwright-profile.json`.
+These configuration paths and the shared workflow config parser add seven
+literal occurrences that remain visible in the scanner. The six new projection
+and adoption test entries add twelve package-path leaves to the generated shard
+manifest.
+
+The generated recovery runtime includes the shared workflow config parser;
+its one additional JSON path occurrence is pinned in the recovery scope.
 
 <!-- coupling:provider-plane-separation -->
 

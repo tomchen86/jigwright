@@ -1,6 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
+export {
+  deferredIntakeDestination,
+  INTAKE_KINDS,
+  isRequirementKind,
+} from '../modules/governance-intake/intake-policy.ts';
+
 import { renderHandoff } from '../adapters/consumer/repository/handoff/handoff.ts';
 import {
   loadWorkflowConfig,

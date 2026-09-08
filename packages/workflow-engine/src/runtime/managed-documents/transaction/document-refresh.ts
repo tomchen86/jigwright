@@ -17,6 +17,7 @@ import { discoverRepository } from '../../repository-transaction/git.ts';
 import { markdownHeadings } from '../contracts/markdown-sections.ts';
 import { normalizeChangedPath } from '../../session-workspace/paths.ts';
 import { runtimePaths } from '../../session-workspace/session-store.ts';
+import { spliceProjectionRegion } from '../../../modules/projection/projection-service.ts';
 
 type ProposalRecord = ContentRecord & {
   kind: 'document-refresh-proposal';
@@ -215,9 +216,11 @@ function replaceSection(
     );
   }
   const normalized = replacement.trimEnd();
-  return nextHeading !== undefined
-    ? `${current.slice(0, start)}${normalized}\n\n${current.slice(end)}`
-    : `${current.slice(0, start)}${normalized}\n`;
+  return spliceProjectionRegion(
+    current,
+    { start, end },
+    `${normalized}${nextHeading !== undefined ? '\n\n' : '\n'}`,
+  );
 }
 
 function assertCuratedTarget(repositoryRoot: string, value: string): string {

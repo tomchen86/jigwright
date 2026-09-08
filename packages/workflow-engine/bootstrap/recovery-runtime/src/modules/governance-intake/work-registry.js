@@ -28,6 +28,7 @@ import { TextDecoder } from 'node:util';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { GOVERNANCE_SOURCE_LEDGER_ROOT } from '@jigwright/core/repository-consumer-port';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
+import { createProjectionService, } from "../projection/projection-service.js";
 import { publishPreparedExclusiveLock, reclaimDeadPreparedLock, runGit, } from "../../runtime/repository-transaction/git.js";
 import { repositoryConsumerConfigurationExists, repositoryConsumerPath, repositoryWorkRegistryConfiguration, } from "../repository-consumer/repository-consumer-config.js";
 import { listGovernanceSources, readGovernanceSource, } from "./governance-intake.js";
@@ -912,21 +913,86 @@ export function renderWorkRegistry(repositoryRoot) {
     return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => renderWorkRegistryUnlocked(repositoryRoot));
 }
 function renderWorkRegistryUnlocked(repositoryRoot) {
-    validateWorkRegistry(repositoryRoot);
-    const items = listWorkItems(repositoryRoot);
-    const registry = repositoryWorkRegistryConfiguration(repositoryRoot);
-    const backlogPath = repositoryConsumerPath(repositoryRoot, registry.backlogPath);
-    replaceTextFile(backlogPath, renderBacklogProjection(repositoryRoot, items));
-    const inventoryPath = repositoryConsumerPath(repositoryRoot, registry.inventoryPath);
-    replaceCanonicalFile(inventoryPath, inspectWorkRegistry(repositoryRoot));
-    const historyPaths = [...closedWorkItemsByYear(items).entries()]
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([year, closed]) => {
-        const historyPath = path.join(repositoryConsumerPath(repositoryRoot, registry.historyRoot), `${year}.md`);
-        replaceTextFile(historyPath, renderHistoryProjection(year, closed));
-        return historyPath;
-    });
+    const service = workRegistryProjectionService(repositoryRoot);
+    const backlogPath = service.project('registry.backlog')[0].path;
+    const inventoryPath = service.project('registry.inventory')[0].path;
+    const historyPaths = service
+        .project('registry.work-history')
+        .map(({ path }) => path);
     return { backlogPath, inventoryPath, historyPaths };
+}
+/** Sources are snapshots of validated records; the service owns projection IO. */
+export function workRegistryProjectionBindings(repositoryRoot) {
+    validateWorkRegistryUnlocked(repositoryRoot, {});
+    const registry = repositoryWorkRegistryConfiguration(repositoryRoot);
+    const items = listWorkItemsUnlocked(repositoryRoot);
+    const backlog = [
+        {
+            path: repositoryConsumerPath(repositoryRoot, registry.backlogPath),
+            content: renderBacklogProjection(repositoryRoot, items),
+        },
+    ];
+    const inventory = [
+        {
+            path: repositoryConsumerPath(repositoryRoot, registry.inventoryPath),
+            content: `${canonicalJson(inspectWorkRegistryUnlocked(repositoryRoot))}\n`,
+        },
+    ];
+    const history = [...closedWorkItemsByYear(items).entries()]
+        .sort(([left], [right]) => left.localeCompare(right))
+        .map(([year, closed]) => ({
+        path: path.join(repositoryConsumerPath(repositoryRoot, registry.historyRoot), `${year}.md`),
+        content: renderHistoryProjection(year, closed),
+    }));
+    return [
+        {
+            id: 'registry.backlog',
+            targetPaths: backlog.map(({ path }) => path),
+            source: () => backlog,
+        },
+        {
+            id: 'registry.inventory',
+            targetPaths: inventory.map(({ path }) => path),
+            source: () => inventory,
+        },
+        {
+            id: 'registry.work-history',
+            targetPaths: history.map(({ path }) => path),
+            source: () => history,
+        },
+    ];
+}
+function workRegistryProjectionService(repositoryRoot, bindings = workRegistryProjectionBindings(repositoryRoot)) {
+    return createProjectionService(bindings, {
+        read: readOptionalPlainFile,
+        write: replaceTextFile,
+    });
+}
+export function inspectWorkRegistryProjectionStatus(repositoryRoot) {
+    const statuses = workRegistryProjectionService(repositoryRoot).status();
+    const historyRoot = repositoryConsumerPath(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).historyRoot);
+    const stats = fs.lstatSync(historyRoot, { throwIfNoEntry: false });
+    if (stats !== undefined) {
+        if (!stats.isDirectory() || stats.isSymbolicLink())
+            throw projectionDrift('Work Registry history root is unsafe.');
+        const expected = new Set(statuses
+            .filter(({ id }) => id === 'registry.work-history')
+            .map(({ path }) => path));
+        for (const entry of fs.readdirSync(historyRoot)) {
+            const target = path.join(historyRoot, entry);
+            if (!expected.has(target))
+                statuses.push({
+                    id: 'registry.work-history',
+                    path: target,
+                    state: 'unexpected',
+                    version: null,
+                    expectedVersion: 1,
+                    digest: null,
+                    expectedDigest: null,
+                });
+        }
+    }
+    return statuses;
 }
 /**
  * Verify deterministic registry views after a consumer has activated them.
@@ -952,14 +1018,8 @@ function validateWorkRegistryProjectionsUnlocked(repositoryRoot) {
         (!historyStats.isDirectory() || historyStats.isSymbolicLink())) {
         throw projectionDrift('Work Registry history root is unsafe.');
     }
-    const items = listWorkItems(repositoryRoot);
-    const expected = new Map([
-        [backlogPath, renderBacklogProjection(repositoryRoot, items)],
-        [inventoryPath, `${canonicalJson(inspectWorkRegistry(repositoryRoot))}\n`],
-    ]);
-    for (const [year, closed] of closedWorkItemsByYear(items)) {
-        expected.set(path.join(historyRoot, `${year}.md`), renderHistoryProjection(year, closed));
-    }
+    const bindings = workRegistryProjectionBindings(repositoryRoot);
+    const expected = new Map(bindings.flatMap((binding) => binding.source().map(({ path, content }) => [path, content])));
     const actualHistoryPaths = historyStats === undefined
         ? []
         : fs.readdirSync(historyRoot, { withFileTypes: true }).map((entry) => {
@@ -975,9 +1035,9 @@ function validateWorkRegistryProjectionsUnlocked(repositoryRoot) {
         actualHistoryPaths.some((filePath) => !expected.has(filePath))) {
         throw projectionDrift('Work Registry history projection is stale.');
     }
-    for (const [filePath, content] of expected) {
-        if (readOptionalPlainFile(filePath) !== content) {
-            throw projectionDrift(`Work Registry projection is stale: ${path.relative(repositoryRoot, filePath).replaceAll(path.sep, '/')}`);
+    for (const status of workRegistryProjectionService(repositoryRoot, bindings).status()) {
+        if (status.state !== 'current') {
+            throw projectionDrift(`Work Registry projection is stale: ${path.relative(repositoryRoot, status.path).replaceAll(path.sep, '/')}`);
         }
     }
     return { projectionCount: expected.size };

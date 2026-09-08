@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:31eac1bcca1b9cd638d84358902ab03771d2191e6cf6067942a4b51b2d5ed468"
+      "digest": "sha256:d3db91f4673e247b2dae6a5045e23e9b4365ef66d023b69ef5eaa6cea8dc1ff8"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -58,7 +58,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/package.json",
       "mode": "100644",
-      "digest": "sha256:c3e66cafec146c36d81f42a764861e9671e4824ab77bfa3700363c93ee176f38"
+      "digest": "sha256:8afb4beed2ba6c579db3604cf353eb90ac4f8bf1e7c35697431ceb35f60d867a"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/agent-runtime-port.js",
@@ -118,7 +118,7 @@
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/governance-source.js",
       "mode": "100644",
-      "digest": "sha256:7f1af628543342775882ab22831b0670a6e6b2bb086b4d2955461c63de7ac901"
+      "digest": "sha256:4b33c872dcc9b5cd52e3c71fdb181aa0227e52f123295e9c3db9367fe4844e4a"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/grant-verifier-port.js",
@@ -129,6 +129,11 @@
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/job-attempt-runtime.js",
       "mode": "100644",
       "digest": "sha256:48e5e8b02e1cd553a72fae3ac0cc7819f1f9fbd85b7ea604a38494ee02506308"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/markdown-sections.js",
+      "mode": "100644",
+      "digest": "sha256:7e982b0b6855f69368095f83b3e7d26d22bab3d26483792ca7d4034f38a20a15"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/core/src/planning-provider-binding.js",
@@ -223,7 +228,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:79de89306fb0a19acbc1608f6024918fbef1941741dbd23ec6e24439646ce070"
+      "digest": "sha256:2be03acf7c3f40826a13e98dbab538cf2934014835e164c5007a479ab0ce0404"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
@@ -453,7 +458,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry.js",
       "mode": "100644",
-      "digest": "sha256:6822d5b32b0826e8b9c1455f4dee34facd03a293bab28483a421f4496f436a1f"
+      "digest": "sha256:d0b930d69ea83800ab518a82707ebeffa8a496a4d198f3e3774f121b845b95d9"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
@@ -538,7 +543,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/projection/engine-projection-registry.js",
       "mode": "100644",
-      "digest": "sha256:f2f96adedfb181a53dd6d6e9c37438fb58dd87189889b3837b634d19b35ff4c6"
+      "digest": "sha256:a269f74ff491a45c4e5b0597bd829345ce36129638a1a63aa2017d303671bce2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/projection/projection-service.js",
+      "mode": "100644",
+      "digest": "sha256:68018f08aa33ee2ec013a180efbe033a05e91a44a35586b4a78be26ff8ed5b91"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/provider-orchestration/actor-identity.js",
@@ -644,6 +654,11 @@
       "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/repository-consumer-config.js",
       "mode": "100644",
       "digest": "sha256:9a9062229a6c174d42d7d800a35ed1d65e0ee48401b7460ec1aa08ffb44be58b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/repository-consumer/workflow-config.js",
+      "mode": "100644",
+      "digest": "sha256:e6ff0fa1abc44f1504f4ee05d3d7459a1d10f8fe026ea7e8e2376d1a4ea4ea62"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/source/check-command.js",

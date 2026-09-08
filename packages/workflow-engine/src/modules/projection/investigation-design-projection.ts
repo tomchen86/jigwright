@@ -2,6 +2,10 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';
+import {
+  createProjectionService,
+  type ProjectionBinding,
+} from './projection-service.ts';
 
 const START = '<!-- workflow:investigation-ledger:start v1 -->';
 const END = '<!-- workflow:investigation-ledger:end v1 -->';
@@ -17,10 +21,35 @@ export function projectInvestigationManifestLedger(
   design: string,
   whyOverlays: readonly InvestigationWhyOverlayV3[],
 ): string {
-  const region = locateLedgerRegion(design);
-  const prefix = design.slice(0, region.start);
-  const suffix = design.slice(region.end);
-  return `${prefix}${renderManifestLedgerRegion(whyOverlays)}${suffix}`;
+  const service = createProjectionService(
+    [
+      investigationManifestProjectionBinding([
+        { path: 'design.md', whyOverlays },
+      ]),
+    ],
+    { read: () => design, write: () => {} },
+  );
+  return service.project('investigation.why-ledger')[0]!.after;
+}
+
+/** Bind preloaded Manifest snapshots while preserving the existing WHY marker
+ * format and errors. No filesystem or semantic ledger authority is introduced. */
+export function investigationManifestProjectionBinding(
+  snapshots: readonly Readonly<{
+    path: string;
+    whyOverlays: readonly InvestigationWhyOverlayV3[];
+  }>[],
+): ProjectionBinding {
+  return {
+    id: 'investigation.why-ledger',
+    targetPaths: snapshots.map(({ path }) => path),
+    source: () =>
+      snapshots.map(({ path, whyOverlays }) => ({
+        path,
+        content: renderManifestLedgerRegion(whyOverlays),
+      })),
+    region: { locate: locateLedgerRegion, render: (content) => content },
+  };
 }
 
 /** Confirm the tracked managed region is the exact v3 overlay projection. */

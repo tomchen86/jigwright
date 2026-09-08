@@ -2,11 +2,6 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import {
-  createWorkflowNamespaceConfig,
-  type WorkflowNamespaceConfig,
-} from '@jigwright/core/workflow-namespace';
-
 import { canonicalJson } from '../../../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,
@@ -62,10 +57,6 @@ import {
   normalizePolicyPath,
 } from '../../../../runtime/session-workspace/paths.ts';
 import {
-  PATH_ROLES,
-  type PathRole,
-} from '../../../../modules/source/path-role-registry.ts';
-import {
   parseCheckCommand,
   parseChecksConfigSource,
   type CheckDefinition,
@@ -79,7 +70,16 @@ import {
   repositoryPlanningConfiguration,
 } from '../../../../modules/repository-consumer/repository-consumer-config.ts';
 
-export { parseCheckCommand };
+import {
+  parseWorkflowConfig,
+  workflowNamespaceConfig,
+  type WorkflowConfig,
+  type TerminalCheckPolicy,
+  type TaskAuthorizationPolicy,
+} from '../../../../modules/repository-consumer/workflow-config.ts';
+
+export { parseCheckCommand, workflowNamespaceConfig };
+export type { WorkflowConfig, TerminalCheckPolicy, TaskAuthorizationPolicy };
 export type { CheckDefinition, ChecksConfig, ParsedCheckCommand };
 
 export function repositoryCurrentSchemaName(
@@ -104,28 +104,6 @@ export function repositoryHandoffRelativePath(repositoryRoot: string): string {
 }
 
 const CHECK_ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-export type WorkflowConfig = {
-  schemaVersion: 1;
-  repositoryName: string;
-  consumerNamespace?: string;
-  changeRoot: string;
-  runtimeDirectory: string;
-  protectedBranches: string[];
-  branchTemplate: string;
-  allTasksTerminalChecks?: TerminalCheckPolicy[];
-  taskAuthorization?: TaskAuthorizationPolicy;
-};
-
-export type TerminalCheckPolicy = {
-  checkId: string;
-  subsumes: string[];
-};
-
-export type TaskAuthorizationPolicy = {
-  pathRoleRegistry: string;
-  mandateRequiredRoles: PathRole[];
-};
 
 export type TaskPolicy = {
   allowedPaths: string[];
@@ -431,132 +409,17 @@ export type ChangeContract = {
 
 export function loadWorkflowConfig(repositoryRoot: string): WorkflowConfig {
   const configPath = path.join(repositoryRoot, 'workflow/config.json');
-  const value = readJson(configPath, 'workflow configuration');
-
-  if (
-    !isRecord(value) ||
-    value.schemaVersion !== 1 ||
-    typeof value.repositoryName !== 'string' ||
-    (value.consumerNamespace !== undefined &&
-      typeof value.consumerNamespace !== 'string') ||
-    Object.hasOwn(value, 'acceptedLegacySchemaPrefixes') ||
-    typeof value.changeRoot !== 'string' ||
-    typeof value.runtimeDirectory !== 'string' ||
-    !isStringArray(value.protectedBranches) ||
-    typeof value.branchTemplate !== 'string' ||
-    !value.branchTemplate.includes('{changeId}') ||
-    (value.allTasksTerminalChecks !== undefined &&
-      !isTerminalCheckPolicyArray(value.allTasksTerminalChecks)) ||
-    (value.taskAuthorization !== undefined &&
-      !isTaskAuthorizationPolicy(value.taskAuthorization))
-  ) {
-    throw invalidContract(
-      'INVALID_WORKFLOW_CONFIG',
-      'workflow/config.json does not match schema version 1.',
-      configPath,
-    );
-  }
-
-  normalizePolicyPath(value.changeRoot);
-  normalizePolicyPath(value.runtimeDirectory);
-  workflowNamespaceConfig(value as WorkflowConfig);
-  if (value.taskAuthorization !== undefined) {
-    const registryPath = normalizePolicyPath(
-      (value.taskAuthorization as TaskAuthorizationPolicy).pathRoleRegistry,
-    );
-    if (registryPath !== 'workflow/path-roles.json') {
-      throw invalidContract(
-        'INVALID_WORKFLOW_CONFIG',
-        'Task authorization requires the reviewed workflow/path-roles.json registry.',
-        configPath,
-      );
-    }
-    assertPolicyPathInsideRepository(repositoryRoot, registryPath);
-  }
-
-  return {
-    ...value,
-    ...(value.allTasksTerminalChecks === undefined
-      ? {}
-      : {
-          allTasksTerminalChecks: (
-            value.allTasksTerminalChecks as TerminalCheckPolicy[]
-          ).map((policy) => ({
-            checkId: policy.checkId,
-            subsumes: [...policy.subsumes],
-          })),
-        }),
-    ...(value.taskAuthorization === undefined
-      ? {}
-      : {
-          taskAuthorization: {
-            pathRoleRegistry: (
-              value.taskAuthorization as TaskAuthorizationPolicy
-            ).pathRoleRegistry,
-            mandateRequiredRoles: [
-              ...(value.taskAuthorization as TaskAuthorizationPolicy)
-                .mandateRequiredRoles,
-            ],
-          },
-        }),
-  } as WorkflowConfig;
-}
-
-/** Resolve the consumer-owned namespace for neutral current records. */
-export function workflowNamespaceConfig(
-  config: WorkflowConfig,
-): WorkflowNamespaceConfig {
-  return createWorkflowNamespaceConfig({
-    consumerNamespace: config.consumerNamespace ?? config.repositoryName,
-  });
-}
-
-function isTaskAuthorizationPolicy(
-  value: unknown,
-): value is TaskAuthorizationPolicy {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, ['pathRoleRegistry', 'mandateRequiredRoles']) ||
-    typeof value.pathRoleRegistry !== 'string' ||
-    !isStringArray(value.mandateRequiredRoles) ||
-    value.mandateRequiredRoles.length === 0
-  ) {
-    return false;
-  }
-  const knownRoles = new Set<string>(PATH_ROLES);
-  return (
-    value.mandateRequiredRoles.every((role) => knownRoles.has(role)) &&
-    new Set(value.mandateRequiredRoles).size ===
-      value.mandateRequiredRoles.length &&
-    JSON.stringify(value.mandateRequiredRoles) ===
-      JSON.stringify([...value.mandateRequiredRoles].sort())
+  const configuration = parseWorkflowConfig(
+    readJson(configPath, 'workflow configuration'),
+    configPath,
   );
-}
-
-function isTerminalCheckPolicyArray(
-  value: unknown,
-): value is TerminalCheckPolicy[] {
-  if (!Array.isArray(value) || value.length === 0) return false;
-  const checkIds = new Set<string>();
-  for (const policy of value) {
-    if (
-      !isRecord(policy) ||
-      !hasExactKeys(policy, ['checkId', 'subsumes']) ||
-      typeof policy.checkId !== 'string' ||
-      !CHECK_ID_PATTERN.test(policy.checkId) ||
-      checkIds.has(policy.checkId) ||
-      !isStringArray(policy.subsumes) ||
-      policy.subsumes.some(
-        (checkId) =>
-          !CHECK_ID_PATTERN.test(checkId) || checkId === policy.checkId,
-      ) ||
-      new Set(policy.subsumes).size !== policy.subsumes.length
-    ) {
-      return false;
-    }
-    checkIds.add(policy.checkId);
+  if (configuration.taskAuthorization !== undefined) {
+    assertPolicyPathInsideRepository(
+      repositoryRoot,
+      configuration.taskAuthorization.pathRoleRegistry,
+    );
   }
-  return true;
+  return configuration;
 }
 
 export function loadChecksConfig(repositoryRoot: string): ChecksConfig {

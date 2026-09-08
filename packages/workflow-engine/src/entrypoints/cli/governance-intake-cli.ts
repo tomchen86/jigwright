@@ -18,6 +18,11 @@ import {
 import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
+  deferredIntakeDestination,
+  INTAKE_KINDS,
+  isRequirementKind,
+} from '../../composition-root/governance-intake-production.ts';
+import {
   captureGovernanceSource,
   convertGovernanceFinding,
   dismissGovernanceFinding,
@@ -330,7 +335,7 @@ export function dispatchGovernanceIntakeCommand(
       const taskScope = (dependencies.resolveTaskScope ?? resolveTaskScope)(
         cwd,
       );
-      if (taskScope !== null) {
+      if (taskScope !== null && deferredIntakeDestination(true) === 'finding') {
         const staged = recordGovernanceFinding(
           taskScope,
           { schemaVersion: 1, text: originalText, sourceRefs: [] },
@@ -956,19 +961,7 @@ export function dispatchGovernanceIntakeCommand(
 }
 
 const SOURCE_ID = /^SRC-[0-9a-f]{64}$/u;
-const INTAKE_KINDS = [
-  'feature',
-  'bug',
-  'improvement',
-  'chore',
-  'research',
-] as const;
 type IntakeKind = (typeof INTAKE_KINDS)[number];
-/** Wording that describes what the system should do; only these mint a Source. */
-const REQUIREMENT_KINDS: ReadonlySet<IntakeKind> = new Set([
-  'feature',
-  'improvement',
-]);
 const INTAKE_USAGE =
   'Usage: jigwright now "<original text>" [--kind <kind>] | jigwright later "<original text>" [--kind <kind>] | jigwright attach <work-item-id> "<original text>"|<SRC-id> [--supersedes <SRC-id>] | jigwright finding convert <finding-id> [--kind <kind>] [--now]; kind = feature|bug|improvement|chore|research (default improvement; convert defaults to bug)';
 function takeFlag(
@@ -992,9 +985,6 @@ function intakeKind(value: string | null): IntakeKind {
     throw intakeUsage(`Unknown kind "${value}". ${INTAKE_USAGE}`);
   }
   return value as IntakeKind;
-}
-function isRequirementKind(kind: IntakeKind): boolean {
-  return REQUIREMENT_KINDS.has(kind);
 }
 function clipTitle(text: string): string {
   const oneLine = text.replace(/\s+/gu, ' ').trim();

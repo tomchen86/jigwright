@@ -34,9 +34,9 @@ test('current-v3 source and installed facts have a recomputable tamper verifier'
       },
     },
     {
-      name: 'error drift',
+      name: 'repeated-init status drift',
       mutate(value) {
-        value.source.init.repeated.payload.error.code = 'TAMPERED';
+        value.source.init.repeated.payload.result.status = 'TAMPERED';
       },
     },
     {
@@ -345,10 +345,7 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
         },
       },
     );
-    assert.equal(
-      report.bootstrap.repeatedInit.errorClass,
-      'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
-    );
+    assert.equal(report.bootstrap.repeatedInit.status, 'unchanged');
     assert.equal(report.bootstrap.policyUnchanged, true);
     assert.equal(report.bootstrap.guide, 'workflow-command-guide.v1');
     assert.deepEqual(report.publicSurfaces, {
@@ -690,17 +687,15 @@ function currentComparisonFixture(): CurrentJigwrightAdoptionComparisonV1 {
           digest: sha256('profile'),
         },
       }),
-      repeated: command(
-        {
-          ok: false,
-          error: {
-            code: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
-            message: 'Jigwright init never rewrites policy.',
-          },
+      repeated: command({
+        ok: true,
+        result: {
+          kind: 'jigwright-init-result.v1',
+          status: 'unchanged',
+          path: 'workflow/jigwright-profile.json',
+          digest: sha256('profile'),
         },
-        12,
-        'stderr',
-      ),
+      }),
       profileDigest: sha256('profile'),
     },
     commands: {

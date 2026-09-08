@@ -227,8 +227,8 @@ export type CurrentJigwrightAdoptionReportV1 = Readonly<{
       digest: `sha256:${string}`;
     }>;
     repeatedInit: Readonly<{
-      exitCode: 12;
-      errorClass: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED';
+      exitCode: 0;
+      status: 'unchanged';
     }>;
     policyUnchanged: true;
     guide: 'workflow-command-guide.v1';
@@ -621,8 +621,8 @@ export function runCurrentJigwrightAdoption(
         digest: init.digest,
       }),
       repeatedInit: Object.freeze({
-        exitCode: 12 as const,
-        errorClass: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED' as const,
+        exitCode: 0 as const,
+        status: 'unchanged' as const,
       }),
       policyUnchanged: true as const,
       guide: 'workflow-command-guide.v1' as const,
@@ -1200,14 +1200,15 @@ function requireRepeatedInit(
   profilePath: string,
   expectedBytes: Buffer,
 ): void {
-  const error = isRecord(observation.payload.error)
-    ? observation.payload.error
+  const result = isRecord(observation.payload.result)
+    ? observation.payload.result
     : null;
   if (
-    observation.exitCode !== 12 ||
-    observation.stream !== 'stderr' ||
-    observation.payload.ok !== false ||
-    error?.code !== 'JIGWRIGHT_INIT_ALREADY_CONFIGURED' ||
+    observation.exitCode !== 0 ||
+    observation.stream !== 'stdout' ||
+    observation.payload.ok !== true ||
+    result?.kind !== 'jigwright-init-result.v1' ||
+    result.status !== 'unchanged' ||
     !fs.readFileSync(profilePath).equals(expectedBytes)
   ) {
     throw new Error('Current Jigwright init did not preserve policy bytes.');
@@ -2142,14 +2143,15 @@ function isFreshInitPayload(
 function isRepeatedInitPayload(
   observation: CurrentJigwrightCommandObservationV1,
 ): boolean {
-  const error = isRecord(observation.payload.error)
-    ? observation.payload.error
+  const result = isRecord(observation.payload.result)
+    ? observation.payload.result
     : null;
   return (
-    observation.exitCode === 12 &&
-    observation.stream === 'stderr' &&
-    observation.payload.ok === false &&
-    error?.code === 'JIGWRIGHT_INIT_ALREADY_CONFIGURED'
+    observation.exitCode === 0 &&
+    observation.stream === 'stdout' &&
+    observation.payload.ok === true &&
+    result?.kind === 'jigwright-init-result.v1' &&
+    result.status === 'unchanged'
   );
 }
 
@@ -2314,8 +2316,8 @@ export function verifyCurrentJigwrightAdoptionReportV1(
     !isSha256Digest(init.digest) ||
     repeatedInit === null ||
     !sameJson(repeatedInit, {
-      exitCode: 12,
-      errorClass: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
+      exitCode: 0,
+      status: 'unchanged',
     }) ||
     value.bootstrap.policyUnchanged !== true ||
     value.bootstrap.guide !== 'workflow-command-guide.v1' ||
