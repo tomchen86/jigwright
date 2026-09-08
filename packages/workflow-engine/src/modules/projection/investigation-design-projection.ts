@@ -1,4 +1,3 @@
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';
@@ -12,7 +11,7 @@ const END = '<!-- workflow:investigation-ledger:end v1 -->';
 const MARKER_NAMESPACE = '<!-- workflow:investigation-ledger:';
 
 /**
- * Replace the managed ledger with the compact Manifest-v3 WHY representation.
+ * Replace the managed ledger with readable Manifest-v3 WHY explanations.
  * This is a direct Manifest projection: it consumes no historical EvidenceNode
  * envelope and preserves every authored byte outside the existing ledger
  * markers.
@@ -128,41 +127,29 @@ function renderManifestRow(
   index: number,
 ): string {
   return [
-    `### Manifest v3 load-bearing source ${index + 1}`,
+    `### ${renderProse(overlay.pathIdentity.utf8 ?? `Source ${index + 1} (path is not representable as UTF-8)`)}`,
     '',
-    `- Overlay ID: ${renderValue(overlay.overlayId)}`,
-    `- Path identity: ${renderValue(overlay.pathIdentity)}`,
-    `- Blob OID: ${renderValue(overlay.blobOid)}`,
-    `- Content SHA-256: ${renderValue(overlay.contentSha256)}`,
-    `- Group refs: ${renderValue(overlay.groupRefs)}`,
-    `- Source anchors: ${renderValue(overlay.anchors)}`,
-    `- Why: ${renderValue(overlay.why)}`,
-    `- Protected invariant: ${renderValue(overlay.protectedInvariant)}`,
-    `- Reviewer question: ${renderValue(overlay.reviewerQuestion)}`,
-    `- Answer: ${renderValue(overlay.answer)}`,
-    `- Semantic author: ${renderValue(overlay.semanticAuthor)}`,
-    `- Read complete: ${renderValue(overlay.readComplete)}`,
-    `- Semantic assurance: ${renderValue(
-      overlay.semanticAssurance,
-    )} — actor-attested, not engine-verified`,
+    renderProse(overlay.why),
+    '',
+    `Protected invariant: ${renderProse(overlay.protectedInvariant)}`,
+    '',
+    `Reviewer question: ${renderProse(overlay.reviewerQuestion)}`,
+    '',
+    `Answer: ${renderProse(overlay.answer)}`,
+    '',
+    `Source locations: ${overlay.anchors.map(({ byteRange }) => `bytes ${byteRange.start}–${byteRange.end}`).join('; ')}.`,
+    '',
+    'Reviewed claim; full source reading is actor-attested. Structured provenance remains in the investigation Manifest.',
   ].join('\n');
 }
 
-/**
- * Render exact canonical JSON in a real Markdown code span whose delimiter is
- * longer than every backtick run in the value. HTML delimiter characters stay
- * entity-escaped so a literal managed marker cannot reappear in the source.
- */
-function renderValue(value: unknown): string {
-  const rendered = canonicalJson(value)
+/** Escape Markdown syntax while keeping the explanation readable as prose. */
+function renderProse(value: string): string {
+  return value
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-  const runs = rendered.match(/`+/g) ?? [];
-  const delimiter = '`'.repeat(
-    runs.reduce((longest, run) => Math.max(longest, run.length), 0) + 1,
-  );
-  return `${delimiter}${rendered}${delimiter}`;
+    .replace(/>/g, '&gt;')
+    .replace(/([\\`*_[\]()#|])/g, '\\$1');
 }
 
 function ledgerInvalid(

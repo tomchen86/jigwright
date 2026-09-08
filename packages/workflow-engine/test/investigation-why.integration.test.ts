@@ -58,10 +58,15 @@ test('Manifest v3 WHY overlays render and validate the exact managed design regi
     projectInvestigationManifestLedger(projected, overlays),
     projected,
   );
-  assert.match(projected, /Manifest v3 load-bearing source 1/);
+  assert.match(projected, /### src\/load-bearing\.ts/);
   assert.match(projected, /src\/load-bearing\.ts/);
-  assert.match(projected, new RegExp(overlays[0]!.overlayId));
-  assert.match(projected, /Source anchors/);
+  assert.equal(projected.includes(overlays[0]!.overlayId), false);
+  assert.match(projected, /Source locations: bytes/);
+  assert.match(projected, /The v3 overlay explains the load-bearing source\./);
+  assert.doesNotMatch(
+    projected,
+    /Overlay ID:|Blob OID:|Semantic author:|"why"/,
+  );
   assert.match(projected, /Authored prefix\./);
   assert.match(projected, /Authored suffix\./);
   assert.deepEqual(
@@ -118,24 +123,24 @@ test('Manifest v3 projection is fence-aware, injection-safe, and idempotent', ()
   assert.match(projected, /Authored prefix\./);
   assert.match(projected, /Authored suffix\./);
   assert.match(projected, /src\/load-bearing\.ts/);
-  assert.match(projected, new RegExp(overlays[0]!.overlayId));
-  assert.match(projected, new RegExp(overlays[0]!.contentSha256));
-  assert.match(projected, new RegExp(overlays[0]!.groupRefs[0]!.leafDigest));
-  assert.match(projected, /actor-attested-not-engine-verified/);
-  assert.match(projected, /Read complete: `true`/);
-  assert.match(projected, /actor-attested, not engine-verified/);
+  assert.equal(projected.includes(overlays[0]!.overlayId), false);
+  assert.equal(projected.includes(overlays[0]!.contentSha256), false);
+  assert.equal(
+    projected.includes(overlays[0]!.groupRefs[0]!.leafDigest),
+    false,
+  );
+  assert.match(
+    projected,
+    /Reviewed claim; full source reading is actor-attested\./,
+  );
   assert.equal(projected.includes(injectedMarker), false);
   assert.match(
     projected,
     /&lt;!-- workflow:investigation-ledger:end v1 --&gt; is not authority/,
   );
-  const whyLine = projected
-    .split('\n')
-    .find((line) => line.startsWith('- Why: '));
-  assert.ok(whyLine);
-  const codeSpan = /^- Why: (`+)(.*)\1$/.exec(whyLine);
-  assert.ok(codeSpan);
-  assert.equal(codeSpan[2]!.includes(codeSpan[1]!), false);
+  assert.equal(projected.includes(injectedMarkdown), false);
+  assert.ok(projected.includes('\\[click\\]\\(javascript:alert\\(1\\)\\)'));
+  assert.equal(overlays[0]!.why.includes(injectedMarkdown), true);
   assert.deepEqual(
     validateInvestigationManifestLedgerProjection(projected, overlays),
     { valid: true, rowCount: 1 },
