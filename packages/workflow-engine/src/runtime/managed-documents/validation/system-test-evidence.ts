@@ -8,6 +8,9 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { normalizeExactRepositoryPath } from '@jigwright/core/repository-path';
 import { runGit } from '../../repository-transaction/git.ts';
@@ -32,16 +35,38 @@ type TestObservation = {
   completedAt: string;
   sourceBindings: Record<string, string>;
   sourceStable: boolean;
+  requestedTests: readonly { file: string; name: string }[];
   tests: readonly FullGateTestTelemetryRecord[];
   digest: string;
 };
+
+const observationEntry =
+  process.argv[1] !== undefined &&
+  pathToFileURL(process.argv[1]).href === import.meta.url;
 
 export async function observeSystemDocumentTests(
   repositoryRoot: string,
   selected: readonly { file: string; name: string }[],
 ): Promise<TestObservation> {
+  // A rooted child also works on Node 22, without mutating the caller's cwd or
+  // inheriting an outer test runner's execution context or eval arguments.
+  if (!observationEntry) {
+    const { NODE_TEST_CONTEXT: _testContext, ...environment } = process.env;
+    const { stdout } = await promisify(execFile)(
+      process.execPath,
+      [
+        '--experimental-strip-types',
+        fileURLToPath(import.meta.url),
+        repositoryRoot,
+        JSON.stringify(selected),
+      ],
+      { cwd: repositoryRoot, env: environment, maxBuffer: 16 * 1024 * 1024 },
+    );
+    return JSON.parse(stdout) as TestObservation;
+  }
   const before = systemTestSourceBindings(
     workingSystemDescriptionSnapshot(repositoryRoot),
+    objectFormat(repositoryRoot),
   );
   const projector = createFullGateTelemetryProjector({ repositoryRoot });
   const { run } = await import('node:test');
@@ -75,11 +100,15 @@ export async function observeSystemDocumentTests(
       canonicalJson(
         systemTestSourceBindings(
           workingSystemDescriptionSnapshot(repositoryRoot),
+          objectFormat(repositoryRoot),
         ),
       ),
+    requestedTests: selected,
     tests: projector.records.filter(
       (test) =>
-        test.file !== null && selection.has(`${test.file}#${test.name}`),
+        test.file !== null &&
+        (selection.has(`${test.file}#${test.name}`) ||
+          fileFailed(repositoryRoot, test)),
     ),
   };
   const observation = { ...body, digest: digest(canonicalJson(body)) };
@@ -97,11 +126,15 @@ export function systemDocumentTestOutcomes(
   repositoryRoot: string,
   snapshot: SystemDescriptionSnapshot,
 ): SystemTestOutcomeReader {
-  const current = systemTestSourceBindings(snapshot);
+  const current = systemTestSourceBindings(
+    snapshot,
+    objectFormat(repositoryRoot),
+  );
   const observations: {
     completedAt: string;
     current: boolean;
     tests: readonly FullGateTestTelemetryRecord[];
+    requestedTests: readonly { file: string; name: string }[];
   }[] = [];
   const state = stateRoot(repositoryRoot);
   const bounded = path.join(state, 'test-observations');
@@ -115,6 +148,13 @@ export function systemDocumentTestOutcomes(
         body.authority !== 'observational-only' ||
         typeof body.completedAt !== 'string' ||
         !Array.isArray(body.tests) ||
+        !Array.isArray(body.requestedTests) ||
+        !body.requestedTests.every(
+          (test) =>
+            typeof test?.file === 'string' &&
+            normalizeExactRepositoryPath(test.file) === test.file &&
+            typeof test.name === 'string',
+        ) ||
         recordedDigest !== digest(canonicalJson(body))
       )
         continue;
@@ -122,9 +162,10 @@ export function systemDocumentTestOutcomes(
       observations.push({
         completedAt: body.completedAt,
         current:
-          body.sourceStable &&
+          body.sourceStable === true &&
           canonicalJson(body.sourceBindings) === canonicalJson(current),
         tests: body.tests,
+        requestedTests: body.requestedTests,
       });
     } catch {
       /* Incomplete local observations cannot supply proof. */
@@ -180,25 +221,37 @@ export function systemDocumentTestOutcomes(
         completedAt: body.completedAt,
         current:
           body.identityStable === true &&
-          canonicalJson(bindings) ===
-            canonicalJson(
-              body.identity.bindings.projectedTreeOid.length === 64
-                ? systemTestSourceBindings(snapshot, 'sha256')
-                : current,
-            ),
+          canonicalJson(bindings) === canonicalJson(current),
         tests: records,
+        requestedTests: [],
       });
     } catch {
       /* A missing or incomplete gate is not a passing observation. */
     }
   }
   const results = new Map<string, ReturnType<SystemTestOutcomeReader>>();
+  const failedFiles = new Map<string, ReturnType<SystemTestOutcomeReader>>();
   observations.sort(
     (left, right) =>
       Number(right.current) - Number(left.current) ||
       right.completedAt.localeCompare(left.completedAt),
   );
   for (const observation of observations) {
+    const outcomes = new Map<string, ReturnType<SystemTestOutcomeReader>>(
+      observation.requestedTests.map((test) => [
+        `${test.file}#${test.name}`,
+        'missing',
+      ]),
+    );
+    const failures = new Set(
+      observation.tests
+        .filter((test) => fileFailed(repositoryRoot, test))
+        .map((test) => test.file!),
+    );
+    for (const file of failures) {
+      if (!failedFiles.has(file))
+        failedFiles.set(file, observation.current ? 'not-passed' : 'stale');
+    }
     for (const test of observation.tests) {
       if (
         test.file === null ||
@@ -206,11 +259,45 @@ export function systemDocumentTestOutcomes(
       )
         continue;
       const key = `${test.file}#${test.name}`;
+      const previous = outcomes.get(key);
+      if (
+        previous === undefined ||
+        previous === 'missing' ||
+        severity(test.outcome) > severity(previous)
+      )
+        outcomes.set(key, test.outcome);
+    }
+    for (const [key, outcome] of outcomes) {
+      const file = key.slice(0, key.indexOf('#'));
       if (!results.has(key))
-        results.set(key, observation.current ? test.outcome : 'stale');
+        results.set(
+          key,
+          observation.current
+            ? failures.has(file)
+              ? 'not-passed'
+              : (failedFiles.get(file) ?? outcome)
+            : 'stale',
+        );
     }
   }
-  return (file, name) => results.get(`${file}#${name}`) ?? 'missing';
+  return (file, name) =>
+    results.get(`${file}#${name}`) ?? failedFiles.get(file) ?? 'missing';
+}
+
+function fileFailed(root: string, test: FullGateTestTelemetryRecord): boolean {
+  return (
+    test.file !== null &&
+    test.outcome === 'not-passed' &&
+    [test.file, path.join(root, test.file)].includes(test.name)
+  );
+}
+function severity(outcome: ReturnType<SystemTestOutcomeReader>): number {
+  return ['passed', 'todo', 'skipped', 'not-passed'].indexOf(outcome);
+}
+function objectFormat(root: string): 'sha1' | 'sha256' {
+  return runGit(root, ['rev-parse', '--show-object-format']).trim() === 'sha256'
+    ? 'sha256'
+    : 'sha1';
 }
 
 function stateRoot(root: string): string {
@@ -231,4 +318,20 @@ function jsonFiles(root: string): string[] {
 }
 function digest(value: string | Buffer): string {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+if (observationEntry) {
+  const root = process.argv[2];
+  const selected: unknown = JSON.parse(process.argv[3] ?? 'null');
+  if (
+    !root ||
+    !Array.isArray(selected) ||
+    !selected.every(
+      (test) => typeof test?.file === 'string' && typeof test.name === 'string',
+    )
+  )
+    throw new Error('Invalid document test observation request.');
+  void observeSystemDocumentTests(root, selected).then((result) =>
+    process.stdout.write(JSON.stringify(result)),
+  );
 }

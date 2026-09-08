@@ -20,12 +20,14 @@ test('bounded documents tests retain exact native outcomes and reject stale sour
     execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
     fs.writeFileSync(
       path.join(root, 'example.test.mjs'),
-      "import test from 'node:test';\ntest('pass exactly', () => {});\ntest.skip('skip honestly', () => {});\ntest('fail honestly', () => { throw new Error('expected failure'); });\n",
+      "import test from 'node:test';\nimport assert from 'node:assert/strict';\nimport fs from 'node:fs';\nif (fs.existsSync(new URL('.git/stop', import.meta.url))) throw new Error('module failed before tests');\ntest('pass exactly', () => {});\ntest.skip('skip honestly', () => {});\ntest('fail honestly', () => { throw new Error('expected failure'); });\ntest('repository working directory', () => assert.equal(fs.realpathSync(process.cwd()), fs.realpathSync(import.meta.dirname)));\ntest('duplicate name', () => {});\ntest('duplicate name', () => { throw new Error('second case failed'); });\n",
     );
     const selected = [
       { file: 'example.test.mjs', name: 'pass exactly' },
       { file: 'example.test.mjs', name: 'skip honestly' },
       { file: 'example.test.mjs', name: 'fail honestly' },
+      { file: 'example.test.mjs', name: 'repository working directory' },
+      { file: 'example.test.mjs', name: 'duplicate name' },
     ];
     const { NODE_TEST_CONTEXT: _testContext, ...environment } = process.env;
     const entry = new URL(
@@ -39,12 +41,12 @@ test('bounded documents tests retain exact native outcomes and reject stale sour
     );
     const observation = JSON.parse(
       execFileSync(process.execPath, [runner, root], {
-        cwd: root,
+        cwd: path.join(root, '.git'),
         env: environment,
         encoding: 'utf8',
       }),
     );
-    assert.equal(observation.tests.length, 3);
+    assert.equal(observation.tests.length, 6);
     let outcomes = systemDocumentTestOutcomes(
       root,
       workingSystemDescriptionSnapshot(root),
@@ -52,6 +54,11 @@ test('bounded documents tests retain exact native outcomes and reject stale sour
     assert.equal(outcomes('example.test.mjs', 'pass exactly'), 'passed');
     assert.equal(outcomes('example.test.mjs', 'skip honestly'), 'skipped');
     assert.equal(outcomes('example.test.mjs', 'fail honestly'), 'not-passed');
+    assert.equal(
+      outcomes('example.test.mjs', 'repository working directory'),
+      'passed',
+    );
+    assert.equal(outcomes('example.test.mjs', 'duplicate name'), 'not-passed');
     assert.equal(outcomes('example.test.mjs', 'invented name'), 'missing');
     fs.writeFileSync(
       path.join(root, 'spec.md'),
@@ -61,7 +68,18 @@ test('bounded documents tests retain exact native outcomes and reject stale sour
       root,
       workingSystemDescriptionSnapshot(root),
     );
-    assert.equal(outcomes('example.test.mjs', 'pass exactly'), 'passed');
+    assert.equal(outcomes('example.test.mjs', 'pass exactly'), 'stale');
+    fs.unlinkSync(path.join(root, 'spec.md'));
+    fs.writeFileSync(path.join(root, '.git/stop'), 'stop');
+    execFileSync(process.execPath, [runner, root], {
+      cwd: root,
+      env: environment,
+    });
+    outcomes = systemDocumentTestOutcomes(
+      root,
+      workingSystemDescriptionSnapshot(root),
+    );
+    assert.notEqual(outcomes('example.test.mjs', 'pass exactly'), 'passed');
     fs.appendFileSync(
       path.join(root, 'example.test.mjs'),
       '\n// changed source\n',

@@ -5,15 +5,13 @@ import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-own
 
 export { readSystemDescriptionSnapshot as workingSystemDescriptionSnapshot } from '../../repository-transaction/system-description-snapshot.ts';
 
-/** Contract metadata and its three outputs do not make their own proof stale. */
+/** Generated proof views cannot invalidate themselves; contracts remain test inputs. */
 export function isSystemTestSource(candidate: string): boolean {
-  return (
-    !candidate.endsWith('/spec.md') &&
-    candidate !== 'spec.md' &&
-    !['docs/SPEC_MAP.md', 'docs/COVERAGE.md', 'docs/REQUIREMENTS.md'].includes(
-      candidate,
-    )
-  );
+  return ![
+    'docs/SPEC_MAP.md',
+    'docs/COVERAGE.md',
+    'docs/REQUIREMENTS.md',
+  ].includes(candidate);
 }
 
 export function systemTestSourceBindings(
