@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "aliases": {
+    "R-000": {
+      "title": "Product Purpose and Trust Model",
+      "sourceRefs": [
+        "SRC-5a56b9d773c073a429dfbc7d271fdd00d18d873752bb86ca0540662433bfb1ba"
+      ]
+    },
+    "R-001": {
+      "title": "Unattended use of external providers",
+      "sourceRefs": [
+        "SRC-e409f641aba2947e8f5a23dd057181ca362fed6348a51df6dd81fdab0a1ee991",
+        "SRC-54c1e39f1343f6a9538602c16dd99b8fefa0c4c3539fd2839abfd3503fa06c5c"
+      ]
+    },
+    "R-002": {
+      "title": "Interactive and resumable agent sessions",
+      "sourceRefs": [
+        "SRC-a5f746505b5738932e8c8c648d89e2dd275e0ce4502b9a2a77b31c46f41f6d96",
+        "SRC-8df5a46f9553f2d7780f4af6009ba5b4c53711117047023cf49a28b135e7e9ef"
+      ]
+    },
+    "R-003": {
+      "title": "Provider execution status and progress",
+      "sourceRefs": [
+        "SRC-4dfedfd57c8bf30b9c5892431cbdbfb7952d51e9877672ea55e55c71de4e232e"
+      ]
+    },
+    "R-004": {
+      "title": "Controls must prove their value",
+      "sourceRefs": [
+        "SRC-459cec11803c0490b521562706c0ceeecdde9e7c6d420c77fc341dd343d94b56",
+        "SRC-889571644ae46dcc7f53472f6b35caf1827da6bff34fed891b7e68eef7a07d76"
+      ]
+    },
+    "R-005": {
+      "title": "Minimum role and session model",
+      "sourceRefs": [
+        "SRC-a0050aa57c1a5f5fd83361c1a033ffc98529ecebf92ad977e73b506ead644ae0",
+        "SRC-0af41f94cfd4d4b5de9f5532a58d6e53268916fc1e16aa631569e16895c59dc4"
+      ]
+    },
+    "R-006": {
+      "title": "Blind work must justify its value",
+      "sourceRefs": [
+        "SRC-67bbbc84dfd555c7db9a781233649bd962d8195f54ee982e52e1923b18b83735"
+      ]
+    },
+    "R-007": {
+      "title": "Human-authorized role sharing",
+      "sourceRefs": [
+        "SRC-5cdc4849e2c39d2af2dce4a96fd95b92fac190f87813f6ac59779ece7ab8aafb"
+      ]
+    },
+    "R-008": {
+      "title": "Keep waiver and later-review tracking simple",
+      "sourceRefs": [
+        "SRC-2cface4d177944a73e1a9b92e0c296c7dd164d8971c28dfa51f174408eda6401"
+      ]
+    },
+    "R-009": {
+      "title": "User-configurable providers and role assignment",
+      "sourceRefs": [
+        "SRC-a56ac1533168972a6383b21bd8ed414ffe5d4360ca14a080cd854f2af5b7af70",
+        "SRC-b22a65010565f7f7758291b4aa29991f3cf7a3dd0fbdd2b1fe343c1369d83bb9",
+        "SRC-7d9b1c9e61d4f43d2c5c4be96f9ba57cff79e9833ed339aef537334a79ef11ce",
+        "SRC-581c9289ce5361d1052b0c507a331b20c6d468b861c03716cb91c7fb8ac56e87"
+      ]
+    },
+    "R-010": {
+      "title": "Validate and dry-run provider configuration",
+      "sourceRefs": [
+        "SRC-81439cb192f0f300bf90beaa8b3a1c1014b5de87e8ebd45948a2c49f7b6a149a"
+      ]
+    },
+    "R-011": {
+      "title": "Grants and Provider Services are separate modules",
+      "sourceRefs": [
+        "SRC-baa079861a38b5a7932c0e0fdbcca89ca6b73b16a02fedff2084b66f7a55bf98"
+      ]
+    },
+    "R-012": {
+      "title": "Modular external package direction",
+      "sourceRefs": [
+        "SRC-b22a65010565f7f7758291b4aa29991f3cf7a3dd0fbdd2b1fe343c1369d83bb9",
+        "SRC-adfb310a0167161d27aa5cab617b425f9bb366020a00f3e7d06d8f2487759a96"
+      ]
+    },
+    "R-013": {
+      "title": "Requirements and plan-document style",
+      "sourceRefs": [
+        "SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d",
+        "SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c"
+      ]
+    },
+    "R-014": {
+      "title": "Full current-v3 product parity",
+      "sourceRefs": [
+        "SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad",
+        "SRC-6b5b80a18688d895cae8bcf92e405cd89c15befafb9c23c3ceeb0e9f9238b85a",
+        "SRC-eb30638046c5cbcf2b55d7029d28f837c7facefcfc127cd83d5a8d50fdbe3c2e",
+        "SRC-8d4788af3da025528d1bb47388e7140776de69a188bd1ccbc5aade5866641da3"
+      ]
+    }
+  }
+}

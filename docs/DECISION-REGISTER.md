@@ -276,6 +276,21 @@ official repository.
   `finding link` may target a non-current change but `nextSteps` offers only
   the current one. No Finding state machine, UI, or automatic triage.
 
+### D-020 — One Source authority, readable projections
+
+- **Status:** `accepted` (owner 2026-09-05; imported 2026-09-08)
+- **Sources:** [One authority, many readable views](../workflow/source-ledger/objects/sha256/9e/9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e.json);
+  [Fail-Grant without dead ends](../workflow/source-ledger/objects/sha256/be/be69144599ec1bdbbe9a4ee5e6636d0a044e7404b465f5fc5c209ffa4381ca77.json).
+- **Decision:** The Governance Source ledger is the sole authority for captured
+  owner wording. Canonical downstream records cite Sources; generated views
+  print their exact wording and readable titles for people and agents. IDs and
+  digests belong to verification output rather than readable document prose.
+- **Consequence:** BACKLOG, REQUIREMENTS, module READMEs and the repository's
+  R-000 guidance are projections. Regeneration never creates a second Source
+  authority. Missing required document dispositions request an exact Grant
+  with a continuation path. This supersedes D-005's unavailable-capability
+  fail-closed wording; accepting a Grant never fabricates a passed check.
+
 ## Superseded decisions and approaches
 
 | ID    | Status       | Superseded approach                                                                         | Current decision |
