@@ -33,17 +33,19 @@ now <text>   ─┼─▶ Source ledger ─▶ propose ─▶ [ open-task ─▶
 finding …    ─┘   Work Registry     │              │            │              │
                                     ▼              ▼            ▼              ▼
                           openspec/changes/<id>/   session +    checks +      deltas applied to
-                          proposal, design,        guard.json   managed       docs/SPEC_MAP.md,
+                          proposal, design,        guard.json   managed       colocated spec.md,
                           spec deltas, tasks       write scope  commit        handoff regenerated,
                                                                               Work Items closed
 ```
 
 **Intake.** Wording from a person is captured verbatim, once, as an immutable
 Governance Source under `workflow/source-ledger/`; everything downstream cites
-its identity instead of copying the text. `later` parks a Source as an inbox
-Work Item, `now` starts a change that cites the Source directly, and `attach`
-adds wording to an existing item. Findings are an agent's private mid-task
-observations; each ends as converted, linked, or dismissed. The backlog grows
+its identity; readable projections print the original wording. `later` parks
+work for later, `now` requests immediate work, and `attach` adds a Source to an
+existing item. `correct` captures revised wording while retaining the earlier
+Source and updating its selected citations. Findings are observations retained
+with their dispositions on a dedicated Git ref; each ends as converted,
+linked, or dismissed. The backlog grows
 only through reviewed intake, and the Work Registry is always available even
 when a repository holds zero Work Items.
 
@@ -62,7 +64,8 @@ checks, escalates to the full gate when the change becomes all-terminal, stages
 exactly that tree, and creates one managed commit carrying `Change:` and
 `Task:` trailers. The transaction is replay-safe.
 
-**Closure.** `archive` applies the requirement deltas to `docs/SPEC_MAP.md`,
+**Closure.** `archive` applies requirement deltas to their colocated `spec.md`
+owners, indexed by the generated `docs/SPEC_MAP.md`,
 regenerates the handoff, closes the Work Items linked through the change's
 `origin.json`, and moves the change under `openspec/changes/archive/`.
 
@@ -80,7 +83,7 @@ are author, builder, and reviewer, assigned by `workflow/role-provider-default.j
 
 | Question                                                  | Look in                                                        |
 | --------------------------------------------------------- | -------------------------------------------------------------- |
-| What must the product do?                                 | `docs/SPEC_MAP.md<capability>/spec.md`                         |
+| What must the product do?                                 | Colocated `spec.md` files, indexed by `docs/SPEC_MAP.md`       |
 | Why is a change being made, and what may each task touch? | `openspec/changes/<id>/`                                       |
 | What was decided, and what is still open?                 | `docs/DECISION-REGISTER.md`                                    |
 | What is active, blocked, and next?                        | `docs/CURRENT_AND_NEXT_STEPS.md` (generated)                   |
