@@ -1,3 +1,13 @@
+/**
+ * Persists task-strategy green failures and correction policy records.
+ *
+ * Invariants:
+ * - Failure fingerprints and patch heads retain exact canonical binding and replay checks.
+ * - Private writes and correction locks keep their existing order and scope.
+ *
+ * Depends on: observed check failures, private investigation files, and correction policy bounds.
+ * Failure modes: a correction targets the wrong failed check or repeats an already recorded state.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 
@@ -14,7 +24,7 @@ import {
   privatePathExists,
   readPrivateCanonicalJson,
   withPrivateRuntimeLock,
-} from './investigation-session-store.ts';
+} from './investigation-private-files.ts';
 import {
   assertSessionId,
   type InvestigationRuntimePaths,

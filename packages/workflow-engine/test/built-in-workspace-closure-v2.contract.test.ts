@@ -1,3 +1,4 @@
+import { BOOTSTRAP_RUNTIME_NAMES } from './support/bootstrap-runtime-fixture.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -326,25 +327,28 @@ function createWorkspaceClosureFixture(): {
     ].join('\n'),
     { mode: 0o644 },
   );
-  fs.copyFileSync(
-    path.join(WORKFLOW_ENGINE_ROOT, 'bootstrap/canonical-json.ts'),
-    path.join(workflowBootstrap, 'canonical-json.ts'),
-  );
+  for (const name of BOOTSTRAP_RUNTIME_NAMES) {
+    if (
+      name === 'built-in-engine-closure-pin.ts' ||
+      name === 'control-plane-trust.ts'
+    )
+      continue;
+    fs.copyFileSync(
+      path.join(WORKFLOW_ENGINE_ROOT, 'bootstrap', name),
+      path.join(workflowBootstrap, name),
+    );
+  }
   const productionSource = fs.readFileSync(
     path.join(WORKFLOW_ENGINE_ROOT, 'bootstrap/control-plane-trust.ts'),
     'utf8',
   );
   fs.writeFileSync(
     path.join(workflowBootstrap, 'control-plane-trust.ts'),
-    `${productionSource}\nexport { assertBuiltInClosureTrackedAtProvenance, bootstrapPaths, builtInSupervisorExecutableSource, createBuiltInControlPlaneEngineArtifact, materializeBuiltInClosure, verifiedBuiltInEngineClosure, verifyClosureManifest };\n`,
+    `${productionSource}\nexport { assertBuiltInClosureTrackedAtProvenance, createBuiltInControlPlaneEngineArtifact, materializeBuiltInClosure, verifiedBuiltInEngineClosure, verifyClosureManifest } from './control-plane-bootstrap-closure.ts';\nexport { bootstrapPaths } from './control-plane-bootstrap-files.ts';\nexport { builtInSupervisorExecutableSource } from './control-plane-bootstrap-executable.ts';\n`,
     { mode: 0o644 },
   );
 
-  const bootstrapRuntimeFiles = [
-    'built-in-engine-closure-pin.ts',
-    'canonical-json.ts',
-    'control-plane-trust.ts',
-  ].map((name) => {
+  const bootstrapRuntimeFiles = BOOTSTRAP_RUNTIME_NAMES.map((name) => {
     const bytes = fs.readFileSync(path.join(workflowBootstrap, name));
     return {
       path: `bootstrap/${name}`,

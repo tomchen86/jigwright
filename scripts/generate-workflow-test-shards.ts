@@ -11,7 +11,7 @@
  *   every test present in that telemetry but retired since must be declared
  *   with --retired-test.
  * - The own-test counts pinned for the two roots in workflow-test-inventory.ts
- *   are bumped deliberately when tests are added, never inferred.
+ *   are updated deliberately when cases are added or moved, never inferred.
  *
  * Depends on: workflow-test-inventory.ts and the last full-gate telemetry.
  * Failure modes, one layer at a time: "wrapper inventory drifted", "absent from

@@ -22,17 +22,17 @@
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 198,
-    "sourceFileCount": 77,
-    "sourceIdentityDigest": "sha256:24eeb55bf87b95b1c5327d51b68fa3f2e3b2c3ce0919a7a00f63dec34b59f875",
+    "sourceFileCount": 86,
+    "sourceIdentityDigest": "sha256:c6089fe6f9f03d9d337ae9dc993b892f3826e45d0679304ddec2d0f68b98cbfd",
     "bootstrapOccurrences": 9,
-    "bootstrapFileCount": 3,
-    "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
+    "bootstrapFileCount": 5,
+    "bootstrapIdentityDigest": "sha256:432682b5fdec882fb94edab081ba6a2e8398dd59def9979f507ca68833300fcf",
     "scriptsOccurrences": 9,
     "scriptsFileCount": 2,
     "scriptsIdentityDigest": "sha256:b06cb9fb946db6de556f5c7f48df6465670e612a8cafe574fa32107ee5398187",
     "recoveryOccurrences": 34,
-    "recoveryFileCount": 13,
-    "recoveryIdentityDigest": "sha256:9b87480de91d42c5156ed3ca5de7eddfcd3839f4e1f7f90b69b57d80dc1aafaf",
+    "recoveryFileCount": 14,
+    "recoveryIdentityDigest": "sha256:e55d1c8c67257f3fda16e4a6e3ab4b9610a0000c20c54b95c15448b55eb03e6e",
     "recoverySplitPathJoinOccurrences": 2,
     "recoverySplitPathJoinFileCount": 2,
     "recoverySplitPathJoinIdentityDigest": "sha256:538aa23fac0f07a95f7c853e57185ef7561617caa3ce5a3032e6ea3969a7426d",
@@ -61,9 +61,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1442,
+    "occurrences": 2404,
     "fileCount": 6,
-    "identityDigest": "sha256:7ccfb3b830750293a54248366517a90a4e570daa33fa487fd3af447c459dd6c1"
+    "identityDigest": "sha256:1e997559ed105d1be5d6e791b0bc1ea3d994fbd340c5356afa789759a9fd0693"
   },
   "couplings": [
     {
@@ -100,9 +100,14 @@
       "t3Disposition": "The exact-baseline record and verifier are isolated from provider effects; production composition injects the reviewed probe, runner, clock, and UUID into the runtime pilot. A real Jigwright pilot remains an explicit operational gate and must not be inferred or rewritten from historical consumer evidence.",
       "evidence": [
         {
+          "path": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-record.ts",
+          "contains": [
+            "const PROVIDERS = Object.freeze(['codex', 'claude'] as const);"
+          ]
+        },
+        {
           "path": "packages/workflow-engine/src/runtime/provider-execution/provider-availability-pilot.ts",
           "contains": [
-            "const PROVIDERS = Object.freeze(['codex', 'claude'] as const);",
             "authority: 'empirical-observation-only';",
             "export function createProviderAvailabilityPilotRunner(",
             "export function verifyProviderAvailabilityPilot("
@@ -184,7 +189,7 @@
           ]
         },
         {
-          "path": "packages/workflow-engine/src/modules/authority/collaboration-grant.ts",
+          "path": "packages/workflow-engine/src/modules/authority/collaboration-grant-codec.ts",
           "contains": [
             "from './optional-grants-package.ts';",
             "'role-independence-degradation-only' as const",
@@ -250,7 +255,7 @@
           ]
         },
         {
-          "path": "packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts",
+          "path": "packages/workflow-engine/src/modules/provider-orchestration/execution-record-types.ts",
           "contains": [
             "from '@jigwright/core/job-attempt-runtime';",
             "from '@jigwright/core/execution-workflow-record';",
@@ -300,7 +305,7 @@
           ]
         },
         {
-          "path": "packages/workflow-engine/src/runtime/repository-transaction/git.ts",
+          "path": "packages/workflow-engine/src/runtime/repository-transaction/git-command.ts",
           "contains": [
             "export function readFileAtCommit(",
             "`:(literal)${filePath}`"

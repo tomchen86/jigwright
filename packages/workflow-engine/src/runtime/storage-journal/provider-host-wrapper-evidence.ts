@@ -94,69 +94,14 @@ export function digestHostWrapperRuntimeEntries(
           } => entry.artifact !== null,
         );
   if (retainedArtifacts.length > 0) {
-    const hostBinding =
-      runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-        ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
-        : null;
-    if (hostBinding === null) throw makeError();
-    const retainedNames = new Set(retainedArtifacts.map(({ name }) => name));
-    const hasProbeRequest = retainedNames.has(
-      'host-wrapper-probe-runtime/request.json',
+    return digestRetainedHostWrapperRuntimeEntries(
+      paths,
+      probeDirectory,
+      turnDirectory,
+      runtimeEvidence,
+      retainedArtifacts,
+      makeError,
     );
-    const hasProbeResult = retainedNames.has(
-      'host-wrapper-probe-runtime/probe-result.json',
-    );
-    const hasTurnRequest = retainedNames.has(
-      'host-wrapper-runtime/request.json',
-    );
-    const hasSemanticOutput = retainedNames.has(
-      'host-wrapper-runtime/semantic-output.json',
-    );
-    const retainedAssignmentFailure =
-      hostBinding.phase === 'assignment-admitted' &&
-      runtimeEvidence.state === 'failed' &&
-      runtimeEvidence.runtimeReceipt?.schemaVersion === 4 &&
-      runtimeEvidence.runtimeReceipt.protocolReceipt === null &&
-      hasProbeRequest &&
-      hasProbeResult &&
-      !hasTurnRequest &&
-      !hasSemanticOutput;
-    if (
-      hasProbeRequest !== hasProbeResult ||
-      (hostBinding.phase === 'assignment-admitted' &&
-        !retainedAssignmentFailure) ||
-      !hasProbeRequest ||
-      (hostBinding.phase === 'probe-attested' &&
-        (hasTurnRequest || hasSemanticOutput)) ||
-      (hostBinding.phase === 'native-terminal' && !hasTurnRequest) ||
-      (runtimeEvidence.state === 'succeeded' &&
-        (!hasSemanticOutput ||
-          runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
-          runtimeEvidence.runtimeReceipt.protocolReceipt?.kind !==
-            'provider-wrapper-session-protocol-receipt' ||
-          runtimeEvidence.result?.runtimeObservation
-            ?.providerDefinitionBindingDigest !==
-            hostBinding.probe?.providerDefinitionBindingDigest))
-    ) {
-      throw makeError();
-    }
-    if (
-      hostBinding.probe !== null &&
-      retainedArtifacts.some(({ name, artifact }) =>
-        name === 'host-wrapper-probe-runtime/request.json'
-          ? artifact.digest !== hostBinding.probe!.probeRequestFileDigest
-          : name === 'host-wrapper-probe-runtime/probe-result.json'
-            ? artifact.digest !== hostBinding.probe!.probeResultFileDigest
-            : false,
-      )
-    ) {
-      throw makeError();
-    }
-    assertEmptyHostWrapperRetentionMarker(paths, probeDirectory, makeError);
-    assertEmptyHostWrapperRetentionMarker(paths, turnDirectory, makeError);
-    return retainedArtifacts
-      .map(({ name, artifact }) => ({ name, digest: artifact.digest }))
-      .sort((left, right) => left.name.localeCompare(right.name));
   }
   const probe = readHostWrapperDirectoryPhase(
     paths,
@@ -631,4 +576,78 @@ function assertSucceededHostWrapperStateBindings(
   ) {
     throw makeError();
   }
+}
+
+function digestRetainedHostWrapperRuntimeEntries(
+  paths: InvestigationRuntimePaths,
+  probeDirectory: string,
+  turnDirectory: string,
+  runtimeEvidence: ProviderInvocationRuntimeEvidence,
+  retainedArtifacts: Array<{
+    name: (typeof PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS)[number];
+    artifact: NonNullable<ReturnType<typeof providerRetentionArtifact>>;
+  }>,
+  makeError: () => WorkflowError,
+): Array<{ name: string; digest: string }> {
+  const hostBinding =
+    runtimeEvidence.runtimeReceipt?.schemaVersion === 4
+      ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
+      : null;
+  if (hostBinding === null) throw makeError();
+  const retainedNames = new Set(retainedArtifacts.map(({ name }) => name));
+  const hasProbeRequest = retainedNames.has(
+    'host-wrapper-probe-runtime/request.json',
+  );
+  const hasProbeResult = retainedNames.has(
+    'host-wrapper-probe-runtime/probe-result.json',
+  );
+  const hasTurnRequest = retainedNames.has('host-wrapper-runtime/request.json');
+  const hasSemanticOutput = retainedNames.has(
+    'host-wrapper-runtime/semantic-output.json',
+  );
+  const retainedAssignmentFailure =
+    hostBinding.phase === 'assignment-admitted' &&
+    runtimeEvidence.state === 'failed' &&
+    runtimeEvidence.runtimeReceipt?.schemaVersion === 4 &&
+    runtimeEvidence.runtimeReceipt.protocolReceipt === null &&
+    hasProbeRequest &&
+    hasProbeResult &&
+    !hasTurnRequest &&
+    !hasSemanticOutput;
+  if (
+    hasProbeRequest !== hasProbeResult ||
+    (hostBinding.phase === 'assignment-admitted' &&
+      !retainedAssignmentFailure) ||
+    !hasProbeRequest ||
+    (hostBinding.phase === 'probe-attested' &&
+      (hasTurnRequest || hasSemanticOutput)) ||
+    (hostBinding.phase === 'native-terminal' && !hasTurnRequest) ||
+    (runtimeEvidence.state === 'succeeded' &&
+      (!hasSemanticOutput ||
+        runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
+        runtimeEvidence.runtimeReceipt.protocolReceipt?.kind !==
+          'provider-wrapper-session-protocol-receipt' ||
+        runtimeEvidence.result?.runtimeObservation
+          ?.providerDefinitionBindingDigest !==
+          hostBinding.probe?.providerDefinitionBindingDigest))
+  ) {
+    throw makeError();
+  }
+  if (
+    hostBinding.probe !== null &&
+    retainedArtifacts.some(({ name, artifact }) =>
+      name === 'host-wrapper-probe-runtime/request.json'
+        ? artifact.digest !== hostBinding.probe!.probeRequestFileDigest
+        : name === 'host-wrapper-probe-runtime/probe-result.json'
+          ? artifact.digest !== hostBinding.probe!.probeResultFileDigest
+          : false,
+    )
+  ) {
+    throw makeError();
+  }
+  assertEmptyHostWrapperRetentionMarker(paths, probeDirectory, makeError);
+  assertEmptyHostWrapperRetentionMarker(paths, turnDirectory, makeError);
+  return retainedArtifacts
+    .map(({ name, artifact }) => ({ name, digest: artifact.digest }))
+    .sort((left, right) => left.name.localeCompare(right.name));
 }

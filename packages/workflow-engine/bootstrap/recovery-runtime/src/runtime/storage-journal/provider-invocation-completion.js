@@ -298,6 +298,11 @@ export function recoverProviderInvocationCompletionUnderLifecycleLock(paths, req
  */
 export function recoverProviderInvocationNativeContinuationForReplay(paths, requestedInvocationId) {
     const invocationId = assertInvocationId(requestedInvocationId);
+    // Records without a successful result have no continuation authority to
+    // publish. Leave admission to the caller's exact owner-aware lifecycle.
+    const observed = readProviderInvocationForNativeContinuationRecovery(paths, invocationId);
+    if (observed.state !== 'succeeded' || observed.result === null)
+        return null;
     return withProviderWorkerLifecycle(paths, (assertOwned) => {
         assertOwned();
         const current = readProviderInvocationForNativeContinuationRecovery(paths, invocationId);

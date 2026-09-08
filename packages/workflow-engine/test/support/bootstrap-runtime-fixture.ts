@@ -1,0 +1,20 @@
+// Independent fixture inventory for the isolated bootstrap runtime.
+export const BOOTSTRAP_RUNTIME_NAMES = [
+  'built-in-engine-closure-pin.ts',
+  'canonical-json.ts',
+  'control-plane-bootstrap-closure.ts',
+  'control-plane-bootstrap-executable.ts',
+  'control-plane-bootstrap-files.ts',
+  'control-plane-bootstrap-history.ts',
+  'control-plane-bootstrap-initial.ts',
+  'control-plane-bootstrap-local.ts',
+  'control-plane-bootstrap-promotion-records.ts',
+  'control-plane-bootstrap-promotion.ts',
+  'control-plane-bootstrap-protected-records.ts',
+  'control-plane-bootstrap-protected.ts',
+  'control-plane-bootstrap-provenance.ts',
+  'control-plane-bootstrap-quarantine.ts',
+  'control-plane-bootstrap-types.ts',
+  'control-plane-bootstrap-values.ts',
+  'control-plane-trust.ts',
+] as const;

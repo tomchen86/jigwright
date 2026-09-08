@@ -1,3 +1,5 @@
+import { createInterventionArtifactProduction } from './intervention-artifact-production.ts';
+import { createInterventionMaintenancePublication } from './intervention-maintenance-publication.ts';
 import crypto from 'node:crypto';
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -149,120 +151,6 @@ export interface PersistedInterventionEngineArtifact {
   workflowStatus: 'repair-active';
   createdAt: string;
   recordDigest: Sha256Digest;
-}
-
-export function buildAndPersistInterventionEngineArtifact(
-  storageRoot: string,
-  input: {
-    parentChangeId: string;
-    executablePath: string;
-    protocolVersion: number;
-    policySchemaVersion: number;
-    now: Date;
-  },
-): PersistedInterventionEngineArtifact {
-  const intervention = readPersistedIntervention(
-    storageRoot,
-    input.parentChangeId,
-  );
-  const sidecarWorkflow = readPersistedBootstrapSidecarWorkflow(
-    storageRoot,
-    input.parentChangeId,
-  );
-  if (sidecarWorkflow.workflowBinding.status !== 'repair-active') {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_WORKFLOW_NOT_ACTIVE',
-      'Engine artifacts can only be built by the active bootstrap-maintenance Workflow.',
-      ExitCode.conflict,
-    );
-  }
-  if (
-    !Number.isSafeInteger(input.protocolVersion) ||
-    input.protocolVersion < 1 ||
-    !Number.isSafeInteger(input.policySchemaVersion) ||
-    input.policySchemaVersion < 1
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_VERSION_INVALID',
-      'Engine artifact protocol and policy schema versions must be positive integers.',
-      ExitCode.usage,
-    );
-  }
-  const childWorkspacePath = intervention.childWorkspace.childWorkspacePath;
-  const childRepository = discoverRepository(childWorkspacePath);
-  if (
-    childRepository.repositoryRealPath !== childWorkspacePath ||
-    childRepository.branch !==
-      `work/${intervention.relationship.interventionChangeId}` ||
-    childRepository.head !== intervention.checkpoint.baseOid
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_WORKSPACE_MISMATCH',
-      'Engine artifact must be built from the exact reserved child worktree and checkpoint base.',
-      ExitCode.verification,
-    );
-  }
-  const executablePath = assertScopedChildArtifactPath(
-    childWorkspacePath,
-    input.executablePath,
-  );
-  const executableBytes = readBoundedArtifactSource(
-    childWorkspacePath,
-    executablePath,
-  );
-  const executableDigest = digest(executableBytes);
-  const sourceDigestBeforeSmoke = interventionSourceDigest(childWorkspacePath);
-  const probe = runArtifactProbe(executablePath, '--bootstrap-probe');
-  const health = runArtifactProbe(executablePath, '--health-check');
-  const sourceDigest = interventionSourceDigest(childWorkspacePath);
-  if (sourceDigest !== sourceDigestBeforeSmoke) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SOURCE_DRIFT',
-      'Engine source changed while the candidate smoke contract was running.',
-      ExitCode.staleState,
-    );
-  }
-  if (
-    probe.kind !== 'engine-bootstrap-probe.v1' ||
-    probe.started !== true ||
-    probe.sessionSchema !== intervention.parent.sessionSchema ||
-    health.kind !== 'engine-health.v1' ||
-    health.healthy !== true ||
-    health.sessionSchema !== intervention.parent.sessionSchema
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SMOKE_FAILED',
-      'Candidate engine did not pass the bootstrap and health smoke contract.',
-      ExitCode.verification,
-    );
-  }
-  const smokeReportDigest = digest(
-    canonicalJson({
-      kind: 'intervention-engine-smoke-report.v1',
-      executableDigest,
-      sourceDigest,
-      probe,
-      health,
-    }),
-  );
-  const artifact = createEngineArtifact({
-    sourceChangeId: intervention.relationship.interventionChangeId,
-    sourceDigest,
-    executableDigest,
-    protocolVersion: input.protocolVersion,
-    canReadSessionSchemas: [intervention.parent.sessionSchema],
-    writesSessionSchema: intervention.parent.sessionSchema,
-    policySchemaVersion: input.policySchemaVersion,
-    smokeReportDigest,
-    workflowBindingDigest:
-      sidecarWorkflow.workflowBinding.workflowBindingDigest,
-  });
-  return persistInterventionEngineArtifact(storageRoot, {
-    parentChangeId: input.parentChangeId,
-    artifact,
-    executablePath,
-    now: input.now,
-  });
 }
 
 export function maintenanceGrantId(
@@ -678,441 +566,6 @@ export function terminalizeExpiredMaintenanceGrantForParent(
   return deepFreeze(structuredClone(next));
 }
 
-export function persistInterventionEngineArtifact(
-  storageRoot: string,
-  input: {
-    parentChangeId: string;
-    artifact: EngineArtifact;
-    executablePath: string;
-    now: Date;
-    testObserveArtifactRecordPublication?: (
-      phase:
-        | 'file-fsynced'
-        | 'target-linked'
-        | 'target-directory-fsynced'
-        | 'temporary-cleaned',
-    ) => void;
-    testAfterArtifactExecutableOpenedBeforeRead?: () => void;
-    testAfterWorkflowBindingVerifiedBeforeArtifactPersisted?: () => void;
-    testAfterArtifactPersistedBeforeSidecar?: () => void;
-  },
-): PersistedInterventionEngineArtifact {
-  const intervention = readPersistedIntervention(
-    storageRoot,
-    input.parentChangeId,
-  );
-  const sidecarWorkflow = readPersistedBootstrapSidecarWorkflow(
-    storageRoot,
-    input.parentChangeId,
-  );
-  if (sidecarWorkflow.workflowBinding.status !== 'repair-active') {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_WORKFLOW_NOT_ACTIVE',
-      'Engine artifacts can be persisted only while the bootstrap-maintenance Workflow is repair-active.',
-      ExitCode.conflict,
-    );
-  }
-  const workflowBindingDigest = activeBootstrapMaintenanceWorkflowBindingDigest(
-    sidecarWorkflow.workflowBinding,
-  );
-  const artifact = verifyArtifact(input.artifact);
-  if (
-    artifact.sourceChangeId !== intervention.relationship.interventionChangeId
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_BINDING_MISMATCH',
-      'Engine artifact was not produced by the persisted intervention.',
-      ExitCode.verification,
-    );
-  }
-  if (
-    artifact.workflowBindingDigest !== undefined &&
-    artifact.workflowBindingDigest !== workflowBindingDigest
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_WORKFLOW_BINDING_MISMATCH',
-      'Engine artifact belongs to a different bootstrap-maintenance Workflow binding.',
-      ExitCode.verification,
-    );
-  }
-  const executablePath = verifyArtifactExecutable(
-    intervention.childWorkspace.childWorkspacePath,
-    input.executablePath,
-    artifact.executableDigest,
-    input.testAfterArtifactExecutableOpenedBeforeRead,
-  );
-  const record = withRecordDigest({
-    kind: 'persisted-intervention-engine-artifact.v2' as const,
-    parentChangeId: input.parentChangeId,
-    interventionChangeId: intervention.relationship.interventionChangeId,
-    checkpointId: intervention.checkpoint.checkpointId,
-    artifact,
-    executablePath,
-    workflowBindingDigest,
-    workflowStatus: 'repair-active' as const,
-    createdAt: exactDate(input.now).toISOString(),
-  });
-  const paths = maintenancePaths(storageRoot);
-  ensurePrivateDirectory(paths.artifacts);
-  const target = storedArtifactRecordPath(storageRoot, artifact.artifactId);
-  const serializedRecord = `${canonicalJson(record)}\n`;
-  if (
-    reconcilePrivateFileExclusivePublication(target, serializedRecord) ||
-    fs.existsSync(target)
-  ) {
-    const existing = readInterventionEngineArtifact(
-      storageRoot,
-      artifact.artifactId,
-    );
-    if (
-      existing.parentChangeId !== record.parentChangeId ||
-      existing.interventionChangeId !== record.interventionChangeId ||
-      existing.checkpointId !== record.checkpointId ||
-      canonicalJson(existing.artifact) !== canonicalJson(record.artifact) ||
-      existing.executablePath !== record.executablePath ||
-      existing.workflowBindingDigest !== record.workflowBindingDigest ||
-      existing.workflowStatus !== record.workflowStatus
-    ) {
-      throw workflowError(
-        'INTERVENTION_ENGINE_ARTIFACT_CONFLICT',
-        'Artifact id is already bound to different intervention bytes.',
-        ExitCode.conflict,
-      );
-    }
-    assertArtifactWorkflowStillActive(
-      storageRoot,
-      input.parentChangeId,
-      sidecarWorkflow.recordDigest,
-      workflowBindingDigest,
-    );
-    recordBootstrapSidecarArtifactReady(storageRoot, {
-      parentChangeId: existing.parentChangeId,
-      artifact: existing.artifact,
-      evidenceDigest: existing.recordDigest,
-      readyAt: existing.createdAt,
-    });
-    return existing;
-  }
-  input.testAfterWorkflowBindingVerifiedBeforeArtifactPersisted?.();
-  assertArtifactWorkflowStillActive(
-    storageRoot,
-    input.parentChangeId,
-    sidecarWorkflow.recordDigest,
-    workflowBindingDigest,
-  );
-  createPrivateFileExclusive(
-    target,
-    serializedRecord,
-    input.testObserveArtifactRecordPublication,
-  );
-  input.testAfterArtifactPersistedBeforeSidecar?.();
-  assertArtifactWorkflowStillActive(
-    storageRoot,
-    input.parentChangeId,
-    sidecarWorkflow.recordDigest,
-    workflowBindingDigest,
-  );
-  recordBootstrapSidecarArtifactReady(storageRoot, {
-    parentChangeId: record.parentChangeId,
-    artifact: record.artifact,
-    evidenceDigest: record.recordDigest,
-    readyAt: record.createdAt,
-  });
-  return deepFreeze(structuredClone(record));
-}
-
-function assertArtifactWorkflowStillActive(
-  storageRoot: string,
-  parentChangeId: string,
-  expectedSidecarRecordDigest: Sha256Digest,
-  expectedWorkflowBindingDigest: Sha256Digest,
-): void {
-  const current = readPersistedBootstrapSidecarWorkflow(
-    storageRoot,
-    parentChangeId,
-  );
-  if (
-    current.recordDigest !== expectedSidecarRecordDigest ||
-    current.workflowBinding.status !== 'repair-active' ||
-    current.workflowBinding.workflowBindingDigest !==
-      expectedWorkflowBindingDigest
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_WORKFLOW_NOT_ACTIVE',
-      'Bootstrap-maintenance Workflow changed before the artifact record could be persisted.',
-      ExitCode.staleState,
-    );
-  }
-}
-
-export function readInterventionEngineArtifact(
-  storageRoot: string,
-  artifactId: string,
-): PersistedInterventionEngineArtifact {
-  const record = readStoredInterventionEngineArtifact(storageRoot, artifactId);
-  const intervention = readPersistedIntervention(
-    storageRoot,
-    record.parentChangeId,
-  );
-  const artifact = verifyArtifact(record.artifact);
-  if (
-    artifact.artifactId !== artifactId ||
-    record.interventionChangeId !==
-      intervention.relationship.interventionChangeId ||
-    record.checkpointId !== intervention.checkpoint.checkpointId
-  ) {
-    throw artifactRecordCorrupt();
-  }
-  const sidecarWorkflow = readPersistedBootstrapSidecarWorkflow(
-    storageRoot,
-    record.parentChangeId,
-  );
-  if (
-    record.workflowBindingDigest !==
-      (sidecarWorkflow.workflowBinding.status === 'repair-active'
-        ? sidecarWorkflow.workflowBinding.workflowBindingDigest
-        : activeBootstrapMaintenanceWorkflowBindingDigest(
-            sidecarWorkflow.workflowBinding,
-          )) ||
-    (artifact.workflowBindingDigest !== undefined &&
-      artifact.workflowBindingDigest !== record.workflowBindingDigest)
-  ) {
-    throw artifactRecordCorrupt();
-  }
-  verifyArtifactExecutable(
-    intervention.childWorkspace.childWorkspacePath,
-    record.executablePath,
-    artifact.executableDigest,
-  );
-  return deepFreeze(structuredClone({ ...record, artifact }));
-}
-
-export function preparePersistedEngineAdoptionFromArtifactRecord(
-  storageRoot: string,
-  input: {
-    txId: string;
-    parentChangeId: string;
-    artifactId: Sha256Digest;
-    maintenanceGrantEnvelope: HarnessMaintenanceGrantEnvelope;
-    priorLocalAdoptions: number;
-    testAfterArtifactSnapshotBeforeParentLock?: () => void;
-  },
-  dependencies: Parameters<typeof preparePersistedEngineAdoption>[2],
-) {
-  const record = readInterventionEngineArtifact(storageRoot, input.artifactId);
-  if (record.parentChangeId !== input.parentChangeId) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_WORKFLOW_BINDING_REQUIRED',
-      'Engine adoption requires the exact persisted v2 artifact record for the active bootstrap-maintenance Workflow.',
-      ExitCode.verification,
-    );
-  }
-  input.testAfterArtifactSnapshotBeforeParentLock?.();
-  return preparePersistedEngineAdoption(
-    storageRoot,
-    {
-      txId: input.txId,
-      parentChangeId: input.parentChangeId,
-      artifact: record.artifact,
-      artifactAuthority: {
-        recordDigest: record.recordDigest,
-        createdAt: record.createdAt,
-        workflowBindingDigest: record.workflowBindingDigest,
-      },
-      maintenanceGrantEnvelope: input.maintenanceGrantEnvelope,
-      priorLocalAdoptions: input.priorLocalAdoptions,
-    },
-    dependencies,
-  );
-}
-
-function interventionSourceDigest(childWorkspacePath: string): Sha256Digest {
-  const changed = runGit(childWorkspacePath, [
-    'diff',
-    '--name-only',
-    '--no-renames',
-    '-z',
-    'HEAD',
-    '--',
-  ]);
-  const untracked = runGit(childWorkspacePath, [
-    'ls-files',
-    '--others',
-    '--exclude-standard',
-    '-z',
-  ]);
-  const paths = [
-    ...new Set([...splitNul(changed), ...splitNul(untracked)]),
-  ].sort();
-  let totalBytes = 0;
-  const entries = paths.map((relativePath) => {
-    assertMaintenanceScopedRelativePath(relativePath);
-    const target = path.join(childWorkspacePath, relativePath);
-    const stats = fs.lstatSync(target, { throwIfNoEntry: false });
-    if (!stats) {
-      return { path: relativePath, kind: 'deleted' as const };
-    }
-    if (
-      !stats.isFile() ||
-      stats.isSymbolicLink() ||
-      stats.nlink !== 1 ||
-      stats.size > MAX_EXECUTABLE_BYTES
-    ) {
-      throw workflowError(
-        'INTERVENTION_ENGINE_BUILD_SOURCE_UNSAFE',
-        `Engine source snapshot contains an unsafe entry: ${relativePath}`,
-        ExitCode.unsafeEnvironment,
-      );
-    }
-    totalBytes += stats.size;
-    if (totalBytes > MAX_SOURCE_SNAPSHOT_BYTES) {
-      throw workflowError(
-        'INTERVENTION_ENGINE_BUILD_SOURCE_TOO_LARGE',
-        'Engine source snapshot exceeds the bounded build limit.',
-        ExitCode.guard,
-      );
-    }
-    return {
-      path: relativePath,
-      kind: 'file' as const,
-      mode: (stats.mode & 0o111) === 0 ? '100644' : '100755',
-      contentDigest: digest(fs.readFileSync(target)),
-    };
-  });
-  const head = runGit(childWorkspacePath, ['rev-parse', 'HEAD']).trim();
-  return digest(
-    canonicalJson({
-      kind: 'intervention-engine-source-snapshot.v1',
-      head,
-      entries,
-    }),
-  );
-}
-
-function assertScopedChildArtifactPath(
-  childWorkspacePath: string,
-  requestedPath: string,
-): string {
-  if (
-    typeof requestedPath !== 'string' ||
-    !path.isAbsolute(requestedPath) ||
-    path.resolve(requestedPath) !== requestedPath
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_PATH_INVALID',
-      'Engine executable path must be exact, normalized, and absolute.',
-      ExitCode.usage,
-    );
-  }
-  const childRoot = fs.realpathSync(childWorkspacePath);
-  const relativePath = path.relative(childRoot, requestedPath);
-  if (
-    relativePath.length === 0 ||
-    relativePath.startsWith('..') ||
-    path.isAbsolute(relativePath)
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_PATH_OUTSIDE_SCOPE',
-      'Engine executable must stay inside the reserved child worktree.',
-      ExitCode.guard,
-    );
-  }
-  assertMaintenanceScopedRelativePath(relativePath);
-  return requestedPath;
-}
-
-function assertMaintenanceScopedRelativePath(relativePath: string): void {
-  const normalized = relativePath.split(path.sep).join('/');
-  if (
-    normalized !== relativePath ||
-    normalized.length === 0 ||
-    normalized.startsWith('/') ||
-    normalized.split('/').some((part) => part === '' || part === '..') ||
-    (!normalized.startsWith('packages/workflow-engine/') &&
-      !normalized.startsWith('packages/harness-runtime/'))
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SCOPE_VIOLATION',
-      `Engine build changed a path outside the signed maintenance scope: ${relativePath}`,
-      ExitCode.guard,
-    );
-  }
-}
-
-function readBoundedArtifactSource(
-  childWorkspacePath: string,
-  filePath: string,
-): Buffer {
-  try {
-    return readStableArtifactExecutable(childWorkspacePath, filePath).bytes;
-  } catch {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_EXECUTABLE_UNSAFE',
-      'Candidate engine must be a bounded canonical single-link executable.',
-      ExitCode.unsafeEnvironment,
-    );
-  }
-}
-
-function runArtifactProbe(
-  executablePath: string,
-  mode: '--bootstrap-probe' | '--health-check',
-): Record<string, unknown> {
-  const result = spawnSync(executablePath, [mode], {
-    cwd: path.dirname(executablePath),
-    encoding: 'utf8',
-    timeout: ENGINE_PROBE_TIMEOUT_MS,
-    maxBuffer: 1024 * 1024,
-    env: {
-      PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin`,
-      LANG: 'C',
-      LC_ALL: 'C',
-      TMPDIR: path.dirname(executablePath),
-    },
-  });
-  if (
-    result.error ||
-    result.status !== 0 ||
-    typeof result.stdout !== 'string'
-  ) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SMOKE_FAILED',
-      `Candidate engine ${mode} command failed.`,
-      ExitCode.verification,
-    );
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(result.stdout);
-  } catch {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SMOKE_INVALID',
-      `Candidate engine ${mode} output is not JSON.`,
-      ExitCode.verification,
-    );
-  }
-  if (!isRecord(value)) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_SMOKE_INVALID',
-      `Candidate engine ${mode} output must be an object.`,
-      ExitCode.verification,
-    );
-  }
-  return value;
-}
-
-function splitNul(value: string): string[] {
-  if (value.length === 0) return [];
-  if (!value.endsWith('\0')) {
-    throw workflowError(
-      'INTERVENTION_ENGINE_BUILD_GIT_OUTPUT_INVALID',
-      'Git source snapshot output was not NUL terminated.',
-      ExitCode.verification,
-    );
-  }
-  return value.slice(0, -1).split('\0');
-}
-
 function maintenancePaths(storageRoot: string) {
   const root = interventionControlPersistencePaths(storageRoot).root;
   return {
@@ -1139,391 +592,6 @@ function interventionArtifactRecordPath(
     maintenancePaths(storageRoot).artifacts,
     `${artifactId.slice('sha256:'.length)}.json`,
   );
-}
-
-function verifyArtifact(artifact: EngineArtifact): EngineArtifact {
-  const rebuilt = createEngineArtifact(artifact);
-  if (rebuilt.artifactId !== artifact.artifactId) throw artifactRecordCorrupt();
-  return rebuilt;
-}
-
-function verifyArtifactExecutable(
-  childWorkspacePath: string,
-  requestedPath: string,
-  expectedDigest: Sha256Digest,
-  testAfterOpenedBeforeRead?: () => void,
-): string {
-  try {
-    const stable = readStableArtifactExecutable(
-      childWorkspacePath,
-      requestedPath,
-      testAfterOpenedBeforeRead,
-    );
-    if (digest(stable.bytes) !== expectedDigest)
-      throw new Error('digest drift');
-    return stable.executablePath;
-  } catch {
-    throw workflowError(
-      'INTERVENTION_ENGINE_ARTIFACT_DRIFT',
-      'Persisted engine artifact executable is missing, unsafe, or changed.',
-      ExitCode.verification,
-    );
-  }
-}
-
-function readStableArtifactExecutable(
-  childWorkspacePath: string,
-  requestedPath: string,
-  testAfterOpenedBeforeRead?: () => void,
-): { executablePath: string; bytes: Buffer } {
-  if (
-    typeof requestedPath !== 'string' ||
-    !path.isAbsolute(requestedPath) ||
-    path.resolve(requestedPath) !== requestedPath
-  ) {
-    throw new Error('non-canonical executable path');
-  }
-  const childRoot = fs.realpathSync(childWorkspacePath);
-  if (childRoot !== childWorkspacePath) {
-    throw new Error('non-canonical child workspace');
-  }
-  const relative = path.relative(childRoot, requestedPath);
-  if (
-    relative.length === 0 ||
-    relative.startsWith('..') ||
-    path.isAbsolute(relative)
-  ) {
-    throw new Error('executable outside child workspace');
-  }
-
-  const descriptor = fs.openSync(
-    requestedPath,
-    fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW,
-  );
-  try {
-    const before = fs.fstatSync(descriptor, { bigint: true });
-    assertStableArtifactExecutable(before);
-    testAfterOpenedBeforeRead?.();
-    const bytes = fs.readFileSync(descriptor);
-    const after = fs.fstatSync(descriptor, { bigint: true });
-    const current = fs.lstatSync(requestedPath, {
-      bigint: true,
-      throwIfNoEntry: false,
-    });
-    let currentRealPath: string | null = null;
-    try {
-      currentRealPath = fs.realpathSync(requestedPath);
-    } catch {
-      // The stable identity comparison below fails closed.
-    }
-    if (
-      current === undefined ||
-      current.isSymbolicLink() ||
-      currentRealPath !== requestedPath ||
-      bytes.length !== Number(before.size) ||
-      !sameArtifactExecutableIdentity(before, after) ||
-      !sameArtifactExecutableIdentity(before, current)
-    ) {
-      throw new Error('executable pathname changed during verification');
-    }
-    return { executablePath: requestedPath, bytes };
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function assertStableArtifactExecutable(stats: fs.BigIntStats): void {
-  if (
-    !stats.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.nlink !== 1n ||
-    stats.size < 1n ||
-    stats.size > BigInt(MAX_EXECUTABLE_BYTES)
-  ) {
-    throw new Error('unsafe executable inode');
-  }
-}
-
-function sameArtifactExecutableIdentity(
-  expected: fs.BigIntStats,
-  observed: fs.BigIntStats,
-): boolean {
-  return (
-    observed.isFile() &&
-    !observed.isSymbolicLink() &&
-    expected.dev === observed.dev &&
-    expected.ino === observed.ino &&
-    expected.mode === observed.mode &&
-    expected.nlink === observed.nlink &&
-    expected.size === observed.size &&
-    expected.mtimeNs === observed.mtimeNs &&
-    expected.ctimeNs === observed.ctimeNs
-  );
-}
-
-function ensurePrivateDirectory(directory: string): void {
-  fs.mkdirSync(directory, { recursive: true, mode: PRIVATE_DIRECTORY_MODE });
-  const stats = fs.lstatSync(directory);
-  if (
-    !stats.isDirectory() ||
-    stats.isSymbolicLink() ||
-    (stats.mode & 0o777) !== PRIVATE_DIRECTORY_MODE
-  ) {
-    throw workflowError(
-      'INTERVENTION_MAINTENANCE_STORAGE_UNSAFE',
-      'Maintenance records require private plain directories.',
-      ExitCode.unsafeEnvironment,
-    );
-  }
-}
-
-function createPrivateFileExclusive(
-  filePath: string,
-  content: string,
-  testObservePublication?: (
-    phase:
-      | 'file-fsynced'
-      | 'target-linked'
-      | 'target-directory-fsynced'
-      | 'temporary-cleaned',
-  ) => void,
-): void {
-  const directory = path.dirname(filePath);
-  const temporary = privatePublicationTemporaryPath(filePath);
-  const descriptor = fs.openSync(
-    temporary,
-    fs.constants.O_WRONLY |
-      fs.constants.O_CREAT |
-      fs.constants.O_EXCL |
-      fs.constants.O_NOFOLLOW,
-    PRIVATE_FILE_MODE,
-  );
-  try {
-    fs.fchmodSync(descriptor, PRIVATE_FILE_MODE);
-    fs.writeFileSync(descriptor, content, 'utf8');
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-  testObservePublication?.('file-fsynced');
-  finishPrivateFileExclusivePublication(
-    filePath,
-    temporary,
-    content,
-    testObservePublication,
-  );
-}
-
-function reconcilePrivateFileExclusivePublication(
-  filePath: string,
-  content: string,
-): boolean {
-  const temporary = privatePublicationTemporaryPath(filePath);
-  const targetExists = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  const temporaryExists = fs.lstatSync(temporary, { throwIfNoEntry: false });
-  if (targetExists === undefined && temporaryExists === undefined) return false;
-  if (temporaryExists === undefined) return true;
-  const prepared = readPrivatePublicationFile(
-    temporary,
-    targetExists === undefined ? 1n : 2n,
-  );
-  if (!sameArtifactPublicationReplay(prepared.content, content)) {
-    throw artifactPublicationCorrupt();
-  }
-  if (targetExists === undefined) {
-    finishPrivateFileExclusivePublication(
-      filePath,
-      temporary,
-      prepared.content,
-    );
-    return true;
-  }
-  const target = readPrivatePublicationFile(filePath, 2n);
-  if (
-    target.content !== prepared.content ||
-    target.stats.dev !== prepared.stats.dev ||
-    target.stats.ino !== prepared.stats.ino
-  ) {
-    throw artifactPublicationCorrupt();
-  }
-  finishPrivateFileExclusivePublication(filePath, temporary, prepared.content);
-  return true;
-}
-
-function finishPrivateFileExclusivePublication(
-  filePath: string,
-  temporary: string,
-  content: string,
-  testObservePublication?: (
-    phase:
-      | 'file-fsynced'
-      | 'target-linked'
-      | 'target-directory-fsynced'
-      | 'temporary-cleaned',
-  ) => void,
-): void {
-  const directory = path.dirname(filePath);
-  if (fs.lstatSync(filePath, { throwIfNoEntry: false }) === undefined) {
-    fs.linkSync(temporary, filePath);
-    testObservePublication?.('target-linked');
-  }
-  assertExactPrivatePublicationPair(filePath, temporary, content);
-  fsyncDirectory(directory);
-  testObservePublication?.('target-directory-fsynced');
-  assertExactPrivatePublicationPair(filePath, temporary, content);
-  fs.unlinkSync(temporary);
-  fsyncDirectory(directory);
-  assertExactPrivatePublicationFile(filePath, content, 1n);
-  testObservePublication?.('temporary-cleaned');
-}
-
-function assertExactPrivatePublicationPair(
-  filePath: string,
-  temporary: string,
-  content: string,
-): void {
-  const target = assertExactPrivatePublicationFile(filePath, content, 2n);
-  const prepared = assertExactPrivatePublicationFile(temporary, content, 2n);
-  if (target.dev !== prepared.dev || target.ino !== prepared.ino) {
-    throw artifactPublicationCorrupt();
-  }
-}
-
-function assertExactPrivatePublicationFile(
-  filePath: string,
-  content: string,
-  expectedLinks: bigint,
-): fs.BigIntStats {
-  const observed = readPrivatePublicationFile(filePath, expectedLinks);
-  if (observed.content !== content) throw artifactPublicationCorrupt();
-  return observed.stats;
-}
-
-function readPrivatePublicationFile(
-  filePath: string,
-  expectedLinks: bigint,
-): { stats: fs.BigIntStats; content: string } {
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(
-      filePath,
-      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW,
-    );
-  } catch {
-    throw artifactPublicationCorrupt();
-  }
-  try {
-    const before = fs.fstatSync(descriptor, { bigint: true });
-    const raw = fs.readFileSync(descriptor, 'utf8');
-    const after = fs.fstatSync(descriptor, { bigint: true });
-    const current = fs.lstatSync(filePath, {
-      bigint: true,
-      throwIfNoEntry: false,
-    });
-    if (
-      current === undefined ||
-      !before.isFile() ||
-      before.isSymbolicLink() ||
-      before.nlink !== expectedLinks ||
-      (before.mode & 0o777n) !== BigInt(PRIVATE_FILE_MODE) ||
-      !sameArtifactExecutableIdentity(before, after) ||
-      !sameArtifactExecutableIdentity(before, current)
-    ) {
-      throw artifactPublicationCorrupt();
-    }
-    return { stats: before, content: raw };
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function sameArtifactPublicationReplay(
-  observedContent: string,
-  candidateContent: string,
-): boolean {
-  try {
-    const observed = JSON.parse(observedContent) as unknown;
-    const candidate = JSON.parse(candidateContent) as unknown;
-    if (
-      !isRecord(observed) ||
-      !isRecord(candidate) ||
-      `${canonicalJson(observed)}\n` !== observedContent ||
-      `${canonicalJson(candidate)}\n` !== candidateContent ||
-      !verifyRecordDigest(observed) ||
-      !verifyRecordDigest(candidate) ||
-      typeof observed.createdAt !== 'string' ||
-      Number.isNaN(Date.parse(observed.createdAt)) ||
-      new Date(observed.createdAt).toISOString() !== observed.createdAt
-    ) {
-      return false;
-    }
-    const {
-      createdAt: _observedCreatedAt,
-      recordDigest: _observedRecordDigest,
-      ...observedIdentity
-    } = observed;
-    const {
-      createdAt: _candidateCreatedAt,
-      recordDigest: _candidateRecordDigest,
-      ...candidateIdentity
-    } = candidate;
-    return canonicalJson(observedIdentity) === canonicalJson(candidateIdentity);
-  } catch {
-    return false;
-  }
-}
-
-function privatePublicationTemporaryPath(filePath: string): string {
-  return `${filePath}.pending`;
-}
-
-function replacePrivateFileAtomic(filePath: string, content: string): void {
-  const temporary = `${filePath}.${crypto.randomUUID()}.tmp`;
-  createPrivateFileExclusive(temporary, content);
-  fs.renameSync(temporary, filePath);
-  fsyncDirectory(path.dirname(filePath));
-}
-
-function fsyncDirectory(directory: string): void {
-  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-  try {
-    const stats = fs.fstatSync(descriptor);
-    if (!stats.isDirectory())
-      throw new Error('publication parent is not a directory');
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function readCanonicalPrivateFile(filePath: string, notFoundCode: string) {
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!stats) {
-    throw workflowError(
-      notFoundCode,
-      'Persisted maintenance record was not found.',
-      ExitCode.conflict,
-    );
-  }
-  if (
-    !stats.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.nlink !== 1 ||
-    (stats.mode & 0o777) !== PRIVATE_FILE_MODE ||
-    stats.size < 1 ||
-    stats.size > MAX_RECORD_BYTES
-  ) {
-    throw maintenanceRecordCorrupt();
-  }
-  const raw = fs.readFileSync(filePath, 'utf8');
-  let value: unknown;
-  try {
-    value = JSON.parse(raw);
-  } catch {
-    throw maintenanceRecordCorrupt();
-  }
-  if (`${canonicalJson(value)}\n` !== raw) throw maintenanceRecordCorrupt();
-  return value;
 }
 
 function withRecordDigest<T extends Record<string, unknown>>(
@@ -1687,3 +755,127 @@ function deepFreeze<T>(value: T): T {
   }
   return value;
 }
+
+export type InterventionArtifactProductionBindings = {
+  readPersistedIntervention: typeof readPersistedIntervention;
+  readPersistedBootstrapSidecarWorkflow: typeof readPersistedBootstrapSidecarWorkflow;
+  workflowError: typeof workflowError;
+  ExitCode: typeof ExitCode;
+  discoverRepository: typeof discoverRepository;
+  digest: typeof digest;
+  canonicalJson: typeof canonicalJson;
+  createEngineArtifact: typeof createEngineArtifact;
+  activeBootstrapMaintenanceWorkflowBindingDigest: typeof activeBootstrapMaintenanceWorkflowBindingDigest;
+  withRecordDigest: typeof withRecordDigest;
+  exactDate: typeof exactDate;
+  maintenancePaths: typeof maintenancePaths;
+  ensurePrivateDirectory: typeof ensurePrivateDirectory;
+  storedArtifactRecordPath: typeof storedArtifactRecordPath;
+  reconcilePrivateFileExclusivePublication: typeof reconcilePrivateFileExclusivePublication;
+  fs: typeof fs;
+  recordBootstrapSidecarArtifactReady: typeof recordBootstrapSidecarArtifactReady;
+  createPrivateFileExclusive: typeof createPrivateFileExclusive;
+  deepFreeze: typeof deepFreeze;
+  readStoredInterventionEngineArtifact: typeof readStoredInterventionEngineArtifact;
+  artifactRecordCorrupt: typeof artifactRecordCorrupt;
+  preparePersistedEngineAdoption: typeof preparePersistedEngineAdoption;
+  runGit: typeof runGit;
+  path: typeof path;
+  MAX_EXECUTABLE_BYTES: typeof MAX_EXECUTABLE_BYTES;
+  MAX_SOURCE_SNAPSHOT_BYTES: typeof MAX_SOURCE_SNAPSHOT_BYTES;
+  spawnSync: typeof spawnSync;
+  ENGINE_PROBE_TIMEOUT_MS: typeof ENGINE_PROBE_TIMEOUT_MS;
+  isRecord: typeof isRecord;
+};
+export type InterventionArtifactProductionBindingsTypes = {
+  PersistedInterventionEngineArtifact: PersistedInterventionEngineArtifact;
+  EngineArtifact: EngineArtifact;
+  Sha256Digest: Sha256Digest;
+  HarnessMaintenanceGrantEnvelope: HarnessMaintenanceGrantEnvelope;
+  preparePersistedEngineAdoption: typeof preparePersistedEngineAdoption;
+};
+
+const {
+  buildAndPersistInterventionEngineArtifact,
+  persistInterventionEngineArtifact,
+  readInterventionEngineArtifact,
+  preparePersistedEngineAdoptionFromArtifactRecord,
+  sameArtifactExecutableIdentity,
+} = createInterventionArtifactProduction(() => ({
+  readPersistedIntervention,
+  readPersistedBootstrapSidecarWorkflow,
+  workflowError,
+  ExitCode,
+  discoverRepository,
+  digest,
+  canonicalJson,
+  createEngineArtifact,
+  activeBootstrapMaintenanceWorkflowBindingDigest,
+  withRecordDigest,
+  exactDate,
+  maintenancePaths,
+  ensurePrivateDirectory,
+  storedArtifactRecordPath,
+  reconcilePrivateFileExclusivePublication,
+  fs,
+  recordBootstrapSidecarArtifactReady,
+  createPrivateFileExclusive,
+  deepFreeze,
+  readStoredInterventionEngineArtifact,
+  artifactRecordCorrupt,
+  preparePersistedEngineAdoption,
+  runGit,
+  path,
+  MAX_EXECUTABLE_BYTES,
+  MAX_SOURCE_SNAPSHOT_BYTES,
+  spawnSync,
+  ENGINE_PROBE_TIMEOUT_MS,
+  isRecord,
+}));
+export {
+  buildAndPersistInterventionEngineArtifact,
+  persistInterventionEngineArtifact,
+  readInterventionEngineArtifact,
+  preparePersistedEngineAdoptionFromArtifactRecord,
+};
+
+export type InterventionMaintenancePublicationBindings = {
+  fs: typeof fs;
+  PRIVATE_DIRECTORY_MODE: typeof PRIVATE_DIRECTORY_MODE;
+  workflowError: typeof workflowError;
+  ExitCode: typeof ExitCode;
+  path: typeof path;
+  PRIVATE_FILE_MODE: typeof PRIVATE_FILE_MODE;
+  artifactPublicationCorrupt: typeof artifactPublicationCorrupt;
+  sameArtifactExecutableIdentity: typeof sameArtifactExecutableIdentity;
+  isRecord: typeof isRecord;
+  canonicalJson: typeof canonicalJson;
+  verifyRecordDigest: typeof verifyRecordDigest;
+  crypto: typeof crypto;
+  MAX_RECORD_BYTES: typeof MAX_RECORD_BYTES;
+  maintenanceRecordCorrupt: typeof maintenanceRecordCorrupt;
+};
+export type InterventionMaintenancePublicationBindingsTypes = {};
+
+const {
+  ensurePrivateDirectory,
+  createPrivateFileExclusive,
+  reconcilePrivateFileExclusivePublication,
+  replacePrivateFileAtomic,
+  readCanonicalPrivateFile,
+} = createInterventionMaintenancePublication(() => ({
+  fs,
+  PRIVATE_DIRECTORY_MODE,
+  workflowError,
+  ExitCode,
+  path,
+  PRIVATE_FILE_MODE,
+  artifactPublicationCorrupt,
+  sameArtifactExecutableIdentity,
+  isRecord,
+  canonicalJson,
+  verifyRecordDigest,
+  crypto,
+  MAX_RECORD_BYTES,
+  maintenanceRecordCorrupt,
+}));

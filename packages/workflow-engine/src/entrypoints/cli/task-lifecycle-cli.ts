@@ -281,98 +281,9 @@ export function dispatchTaskLifecycleCommand(
         }),
       };
     }
-    case 'propose': {
-      const providerDispatcher =
-        process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
-          ? undefined
-          : dispatchProviderWorker;
-      const changeId = rest[0];
-      if (changeId && rest[1] === '--resume') {
-        const { values } = parseProposeOptions(rest.slice(2), [
-          '--input',
-          '--grant',
-          '--role-context-grant',
-        ]);
-        const input = values.get('--input');
-        if (!input) {
-          throw proposeUsage();
-        }
-        const grantId = values.get('--grant');
-        const roleContextSharingGrantId = values.get('--role-context-grant');
-        if (grantId !== undefined && roleContextSharingGrantId !== undefined) {
-          throw proposeUsage();
-        }
-        const collaborationGrant =
-          grantId === undefined
-            ? undefined
-            : currentCollaborationGrantSelection(cwd, grantId);
-        return {
-          command,
-          ok: true,
-          result: resumeProposeFromFile(cwd, changeId, input, {
-            ...(providerDispatcher ? { providerDispatcher } : {}),
-            roleTopologyResolution: productionRoleTopologyResolutionPort,
-            ...(roleContextSharingGrantId === undefined
-              ? {}
-              : {
-                  roleContextSharingGrant:
-                    currentRoleContextSharingGrantSelection(
-                      cwd,
-                      roleContextSharingGrantId,
-                    ),
-                }),
-            ...(collaborationGrant === undefined
-              ? {}
-              : {
-                  collaborationGrant,
-                }),
-            collaborationGrantValidation: {
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-              consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
-              ...(collaborationGrant === undefined
-                ? {}
-                : { verifier: collaborationGrant.verifier }),
-            },
-          }),
-        };
-      }
-      if (changeId) {
-        const { values } = parseProposeOptions(
-          rest.slice(1),
-          ['--intent', '--actor', '--grant', '--mandate'],
-          [],
-        );
-        const intent = values.get('--intent');
-        const mandateTaskId = values.get('--mandate');
-        if (!intent) {
-          throw proposeUsage();
-        }
-        return {
-          command,
-          ok: true,
-          result: startProposeFromFile(cwd, changeId, intent, {
-            ...(values.get('--actor') === undefined
-              ? {}
-              : { explicitActor: values.get('--actor') }),
-            environment: process.env,
-            ...(mandateTaskId === undefined
-              ? {}
-              : { taskMandateId: mandateTaskId }),
-            ...(providerDispatcher ? { providerDispatcher } : {}),
-            roleTopologyResolution: productionRoleTopologyResolutionPort,
-            ...(values.get('--grant') === undefined
-              ? {}
-              : {
-                  collaborationGrant: currentCollaborationGrantSelection(
-                    cwd,
-                    values.get('--grant')!,
-                  ),
-                }),
-          }),
-        };
-      }
-      throw proposeUsage();
-    }
+    case 'propose':
+      return dispatchProposeCommand(command, rest, cwd);
+
     case 'revise-task': {
       const sessionId = rest[0];
       const reason = optionValue(rest.slice(1), '--reason');
@@ -412,182 +323,12 @@ export function dispatchTaskLifecycleCommand(
         result: resumeTask(cwd, sessionId, { approvalId }),
       };
     }
-    case 'resume': {
-      const sessionId = rest[0];
-      const actor = optionValue(rest.slice(1), '--actor');
-      const grantId = optionValue(rest.slice(1), '--grant');
-      const inputPath = optionValue(rest.slice(1), '--input');
-      const validArguments =
-        rest.length === 1 ||
-        (rest.length === 3 && rest[1] === '--actor' && actor !== undefined) ||
-        (rest.length === 3 && rest[1] === '--grant' && grantId !== undefined) ||
-        (rest.length === 3 &&
-          rest[1] === '--input' &&
-          inputPath !== undefined) ||
-        (rest.length === 5 &&
-          rest[1] === '--actor' &&
-          actor !== undefined &&
-          rest[3] === '--grant' &&
-          grantId !== undefined);
-      if (!sessionId || !validArguments) {
-        throw usage(
-          'Usage: pnpm workflow resume <session-id> [--actor <provider>] [--grant <grant-id>] [--input <typed-envelope.json>] [--json]',
-        );
-      }
-      let redRevisionRequest;
-      if (inputPath !== undefined) {
-        try {
-          redRevisionRequest = parseTaskStrategyRedRevisionRequest(
-            JSON.parse(
-              fs.readFileSync(path.resolve(cwd, inputPath), 'utf8'),
-            ) as unknown,
-          );
-        } catch (error) {
-          if (error instanceof WorkflowError) throw error;
-          throw workflowError(
-            'TASK_STRATEGY_RED_REVISION_REQUEST_INVALID',
-            'Task strategy resume input must be a readable typed RED revision envelope.',
-            ExitCode.usage,
-          );
-        }
-      }
-      const result = resumeTaskStrategy(cwd, sessionId, {
-        ...(actor === undefined ? {} : { explicitActor: actor }),
-        ...(grantId === undefined
-          ? {}
-          : {
-              collaborationGrant: currentCollaborationGrantSelection(
-                cwd,
-                grantId,
-              ),
-            }),
-        ...(redRevisionRequest === undefined ? {} : { redRevisionRequest }),
-      });
-      let providerDispatch = null;
-      if (process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH !== '1') {
-        providerDispatch = dispatchPreparedTaskStrategyProvider(cwd, result);
-      }
-      return {
-        command,
-        ok: true,
-        result,
-        ...(providerDispatch === null ? {} : { providerDispatch }),
-      };
-    }
-    case 'status': {
-      requireArgumentCount(command, rest, 0, 1);
-      const intakeCounts = currentGovernanceIntakeCounts(cwd);
-      if (rest[0]) {
-        if (rest[0].startsWith('investigation-')) {
-          return {
-            command,
-            ok: true,
-            intakeCounts,
-            result: getProposeStatus(cwd, rest[0], {
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-              consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
-            }),
-          };
-        }
-        const openTaskStatus = findOpenTaskLifecycleStatus(cwd, rest[0]);
-        if (openTaskStatus !== null) {
-          if (
-            openTaskStatus.state === 'opening' ||
-            openTaskStatus.state === 'recovery-required'
-          ) {
-            return {
-              command,
-              ok: true,
-              intakeCounts,
-              openTask: openTaskStatus,
-            };
-          }
-          const session = getSession(cwd, openTaskStatus.sessionId);
-          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-          const finalizeStatus = inspectFinalizeRecoveryStatus(
-            statusRoot,
-            session.sessionId,
-            {
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-            },
-          );
-          return {
-            command,
-            ok: true,
-            intakeCounts,
-            openTask: openTaskStatus,
-            session,
-            ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-            taskStrategy: inspectTaskStrategyLifecycle(
-              statusRoot,
-              session.sessionId,
-            ),
-            taskRevision: inspectTaskRevisionStatus(
-              statusRoot,
-              session.sessionId,
-            ),
-            taskCommits: findTaskCommits(
-              statusRoot,
-              session.changeId,
-              session.taskId,
-            ),
-          };
-        }
-        const session = getSession(cwd, rest[0]);
-        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-        const finalizeStatus = inspectFinalizeRecoveryStatus(
-          statusRoot,
-          session.sessionId,
-          {
-            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-          },
-        );
-        return {
-          command,
-          ok: true,
-          intakeCounts,
-          session,
-          ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
-          taskStrategy: inspectTaskStrategyLifecycle(
-            statusRoot,
-            session.sessionId,
-          ),
-          taskRevision: inspectTaskRevisionStatus(
-            statusRoot,
-            session.sessionId,
-          ),
-          taskCommits: findTaskCommits(
-            statusRoot,
-            session.changeId,
-            session.taskId,
-          ),
-        };
-      }
-      const sessions = listSessions(cwd);
-      return {
-        command,
-        ok: true,
-        intakeCounts,
-        sessions,
-        taskStrategies: sessions.map((session) => {
-          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-          return inspectTaskStrategyLifecycle(statusRoot, session.sessionId);
-        }),
-        taskRevisions: sessions.map((session) => {
-          const statusRoot = sessionStatusRepositoryRoot(cwd, session);
-          return inspectTaskRevisionStatus(statusRoot, session.sessionId);
-        }),
-        taskCommits: sessions.map((session) => ({
-          changeId: session.changeId,
-          taskId: session.taskId,
-          commits: findTaskCommits(
-            sessionStatusRepositoryRoot(cwd, session),
-            session.changeId,
-            session.taskId,
-          ),
-        })),
-      };
-    }
+    case 'resume':
+      return dispatchResumeCommand(command, rest, cwd);
+
+    case 'status':
+      return dispatchStatusCommand(command, rest, cwd);
+
     case 'check':
       requireArgumentCount(command, rest, 1, 1);
       return { command, ok: true, result: checkSession(cwd, rest[0]) };
@@ -676,243 +417,9 @@ export function dispatchTaskLifecycleCommand(
         }),
       };
     }
-    case 'review-diff': {
-      if (rest.length === 2 && rest[0] === 'inspect') {
-        return {
-          command,
-          ok: true,
-          result: inspectTaskDiffReviewSubject(cwd, rest[1]),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'status') {
-        return {
-          command,
-          ok: true,
-          result: inspectTaskDiffReviewStatus(cwd, rest[1]),
-        };
-      }
-      if (rest.length === 2 && rest[0] === 'reconcile') {
-        let status;
-        try {
-          status = inspectTaskDiffReviewStatus(cwd, rest[1]);
-        } catch (error) {
-          if (
-            !(error instanceof WorkflowError) ||
-            error.code !==
-              'TASK_DIFF_REVIEW_SUPERSESSION_RECONCILIATION_REQUIRED'
-          ) {
-            throw error;
-          }
-          return {
-            command,
-            ok: true,
-            result: reconcileTaskDiffReview(cwd, rest[1], {
-              collaborationGrantValidation: {
-                consumedRoleResultReplay:
-                  productionConsumedRoleResultReplayPort,
-              },
-            }),
-          };
-        }
-        if (status.state === 'external-reconciliation-required') {
-          return {
-            command,
-            ok: true,
-            result: reconcileExternalTaskDiffReview(cwd, rest[1], {
-              consumedReplayVerifier:
-                taskDiffConsumedCollaborationGrantReplayVerifier(
-                  cwd,
-                  status.grantId,
-                ),
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-            }),
-          };
-        }
-        const grantSelection =
-          'assignment' in status && 'grantId' in status.assignment
-            ? taskDiffCollaborationGrantSelection(
-                cwd,
-                status.assignment.grantId,
-              )
-            : undefined;
-        return {
-          command,
-          ok: true,
-          result:
-            'response' in status
-              ? reconcileTaskDiffReviewContinuation(
-                  cwd,
-                  rest[1],
-                  status.response.responseDigest,
-                  {
-                    consumedRoleResultReplay:
-                      productionConsumedRoleResultReplayPort,
-                  },
-                )
-              : reconcileTaskDiffReview(cwd, rest[1], {
-                  collaborationGrantValidation: {
-                    consumedRoleResultReplay:
-                      productionConsumedRoleResultReplayPort,
-                    ...(grantSelection !== undefined &&
-                    'verifier' in grantSelection
-                      ? { verifier: grantSelection.verifier }
-                      : {}),
-                  },
-                }),
-        };
-      }
-      const sessionId = rest[0];
-      const actor = optionValue(rest.slice(1), '--actor');
-      const grantId = optionValue(rest.slice(1), '--grant');
-      const inputPath = optionValue(rest.slice(1), '--input');
-      const collaborationGrantSelection =
-        grantId === undefined
-          ? undefined
-          : taskDiffCollaborationGrantSelection(cwd, grantId);
-      const validStartArguments =
-        rest.length === 1 ||
-        (rest.length === 3 && rest[1] === '--actor' && actor !== undefined) ||
-        (rest.length === 3 && rest[1] === '--grant' && grantId !== undefined) ||
-        (rest.length === 3 &&
-          rest[1] === '--input' &&
-          inputPath !== undefined) ||
-        (rest.length === 5 &&
-          rest[1] === '--actor' &&
-          actor !== undefined &&
-          rest[3] === '--grant' &&
-          grantId !== undefined) ||
-        (rest.length === 5 &&
-          rest[1] === '--input' &&
-          inputPath !== undefined &&
-          rest[3] === '--grant' &&
-          grantId !== undefined);
-      if (sessionId && validStartArguments) {
-        let status;
-        if (inputPath !== undefined) {
-          const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
-          if (parsedInput.route === 'provider-response') {
-            if (grantId !== undefined) throw taskDiffReviewUsage();
-            status = beginTaskDiffReviewContinuationFromInput(
-              cwd,
-              sessionId,
-              parsedInput.input,
-              {
-                consumedRoleResultReplay:
-                  productionConsumedRoleResultReplayPort,
-              },
-            );
-          } else if (parsedInput.route === 'external-initial') {
-            status = submitExternalTaskDiffReview(
-              cwd,
-              sessionId,
-              parsedInput.input,
-              {
-                consumedRoleResultReplay:
-                  productionConsumedRoleResultReplayPort,
-                ...(collaborationGrantSelection === undefined
-                  ? {}
-                  : { collaborationGrant: collaborationGrantSelection }),
-              },
-            );
-          } else {
-            const current = loadCurrentAuthenticatedTaskDiffReview(
-              cwd,
-              sessionId,
-              {
-                consumedRoleResultReplay:
-                  productionConsumedRoleResultReplayPort,
-              },
-            );
-            const response = createTaskDiffReviewChallengeResponse({
-              review: current.review,
-              responses: parsedInput.input.responses,
-            });
-            status = submitExternalTaskDiffReviewContinuation(
-              cwd,
-              sessionId,
-              response,
-              {
-                schemaVersion: 1,
-                kind: 'task-diff-review-closure-input.v1',
-                subjectDigest: parsedInput.input.subjectDigest,
-                reviewRecordDigest: parsedInput.input.reviewRecordDigest,
-                responseDigest: response.responseDigest,
-                proposedDispositions: parsedInput.input.proposedDispositions,
-              },
-              {
-                consumedRoleResultReplay:
-                  productionConsumedRoleResultReplayPort,
-                ...(collaborationGrantSelection === undefined
-                  ? {}
-                  : { collaborationGrant: collaborationGrantSelection }),
-              },
-            );
-          }
-        } else {
-          status = inspectTaskDiffReviewStatus(cwd, sessionId);
-          if (
-            status.state === 'ready' ||
-            actor !== undefined ||
-            grantId !== undefined
-          ) {
-            status = beginTaskDiffReview(cwd, sessionId, {
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-              ...(actor === undefined ? {} : { explicitActor: actor }),
-              ...(grantId === undefined
-                ? {}
-                : {
-                    collaborationGrant: collaborationGrantSelection,
-                  }),
-            });
-          }
-        }
-        if (status.state === 'provider-succeeded-awaiting-reconciliation') {
-          const reconciliationGrantSelection =
-            'grantId' in status.assignment
-              ? taskDiffCollaborationGrantSelection(
-                  cwd,
-                  status.assignment.grantId,
-                )
-              : collaborationGrantSelection;
-          status =
-            'response' in status
-              ? reconcileTaskDiffReviewContinuation(
-                  cwd,
-                  sessionId,
-                  status.response.responseDigest,
-                  {
-                    consumedRoleResultReplay:
-                      productionConsumedRoleResultReplayPort,
-                  },
-                )
-              : reconcileTaskDiffReview(cwd, sessionId, {
-                  collaborationGrantValidation: {
-                    consumedRoleResultReplay:
-                      productionConsumedRoleResultReplayPort,
-                    ...(reconciliationGrantSelection !== undefined &&
-                    'verifier' in reconciliationGrantSelection
-                      ? { verifier: reconciliationGrantSelection.verifier }
-                      : {}),
-                  },
-                });
-        }
-        if (status.state === 'waiting-for-provider') {
-          const runtime = loadInvestigationRuntimeContext(cwd).runtime;
-          const invocation = readProviderInvocation(
-            runtime,
-            status.invocationId,
-          );
-          if (
-            invocation.state === 'prepared' &&
-            process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH !== '1'
-          ) {
-            dispatchProviderWorker(cwd, invocation.invocationId);
-          }
-        }
-        return { command, ok: true, result: status };
-      }
-      throw taskDiffReviewUsage();
-    }
+    case 'review-diff':
+      return dispatchReviewDiffCommand(command, rest, cwd);
+
     case 'rollback-completion': {
       const sessionId = rest[0];
       const reason = optionValue(rest.slice(1), '--reason');
@@ -974,5 +481,519 @@ export function dispatchTaskLifecycleCommand(
       throw usage(
         command ? `Unknown workflow command: ${command}` : usageText(),
       );
+  }
+}
+
+function dispatchProposeCommand(
+  command: 'propose',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    const providerDispatcher =
+      process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
+        ? undefined
+        : dispatchProviderWorker;
+    const changeId = rest[0];
+    if (changeId && rest[1] === '--resume') {
+      const { values } = parseProposeOptions(rest.slice(2), [
+        '--input',
+        '--grant',
+        '--role-context-grant',
+      ]);
+      const input = values.get('--input');
+      if (!input) {
+        throw proposeUsage();
+      }
+      const grantId = values.get('--grant');
+      const roleContextSharingGrantId = values.get('--role-context-grant');
+      if (grantId !== undefined && roleContextSharingGrantId !== undefined) {
+        throw proposeUsage();
+      }
+      const collaborationGrant =
+        grantId === undefined
+          ? undefined
+          : currentCollaborationGrantSelection(cwd, grantId);
+      return {
+        command,
+        ok: true,
+        result: resumeProposeFromFile(cwd, changeId, input, {
+          ...(providerDispatcher ? { providerDispatcher } : {}),
+          roleTopologyResolution: productionRoleTopologyResolutionPort,
+          ...(roleContextSharingGrantId === undefined
+            ? {}
+            : {
+                roleContextSharingGrant:
+                  currentRoleContextSharingGrantSelection(
+                    cwd,
+                    roleContextSharingGrantId,
+                  ),
+              }),
+          ...(collaborationGrant === undefined
+            ? {}
+            : {
+                collaborationGrant,
+              }),
+          collaborationGrantValidation: {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+            ...(collaborationGrant === undefined
+              ? {}
+              : { verifier: collaborationGrant.verifier }),
+          },
+        }),
+      };
+    }
+    if (changeId) {
+      const { values } = parseProposeOptions(
+        rest.slice(1),
+        ['--intent', '--actor', '--grant', '--mandate'],
+        [],
+      );
+      const intent = values.get('--intent');
+      const mandateTaskId = values.get('--mandate');
+      if (!intent) {
+        throw proposeUsage();
+      }
+      return {
+        command,
+        ok: true,
+        result: startProposeFromFile(cwd, changeId, intent, {
+          ...(values.get('--actor') === undefined
+            ? {}
+            : { explicitActor: values.get('--actor') }),
+          environment: process.env,
+          ...(mandateTaskId === undefined
+            ? {}
+            : { taskMandateId: mandateTaskId }),
+          ...(providerDispatcher ? { providerDispatcher } : {}),
+          roleTopologyResolution: productionRoleTopologyResolutionPort,
+          ...(values.get('--grant') === undefined
+            ? {}
+            : {
+                collaborationGrant: currentCollaborationGrantSelection(
+                  cwd,
+                  values.get('--grant')!,
+                ),
+              }),
+        }),
+      };
+    }
+    throw proposeUsage();
+  }
+}
+
+function dispatchResumeCommand(
+  command: 'resume',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    const sessionId = rest[0];
+    const actor = optionValue(rest.slice(1), '--actor');
+    const grantId = optionValue(rest.slice(1), '--grant');
+    const inputPath = optionValue(rest.slice(1), '--input');
+    const validArguments =
+      rest.length === 1 ||
+      (rest.length === 3 && rest[1] === '--actor' && actor !== undefined) ||
+      (rest.length === 3 && rest[1] === '--grant' && grantId !== undefined) ||
+      (rest.length === 3 && rest[1] === '--input' && inputPath !== undefined) ||
+      (rest.length === 5 &&
+        rest[1] === '--actor' &&
+        actor !== undefined &&
+        rest[3] === '--grant' &&
+        grantId !== undefined);
+    if (!sessionId || !validArguments) {
+      throw usage(
+        'Usage: pnpm workflow resume <session-id> [--actor <provider>] [--grant <grant-id>] [--input <typed-envelope.json>] [--json]',
+      );
+    }
+    let redRevisionRequest;
+    if (inputPath !== undefined) {
+      try {
+        redRevisionRequest = parseTaskStrategyRedRevisionRequest(
+          JSON.parse(
+            fs.readFileSync(path.resolve(cwd, inputPath), 'utf8'),
+          ) as unknown,
+        );
+      } catch (error) {
+        if (error instanceof WorkflowError) throw error;
+        throw workflowError(
+          'TASK_STRATEGY_RED_REVISION_REQUEST_INVALID',
+          'Task strategy resume input must be a readable typed RED revision envelope.',
+          ExitCode.usage,
+        );
+      }
+    }
+    const result = resumeTaskStrategy(cwd, sessionId, {
+      ...(actor === undefined ? {} : { explicitActor: actor }),
+      ...(grantId === undefined
+        ? {}
+        : {
+            collaborationGrant: currentCollaborationGrantSelection(
+              cwd,
+              grantId,
+            ),
+          }),
+      ...(redRevisionRequest === undefined ? {} : { redRevisionRequest }),
+    });
+    let providerDispatch = null;
+    if (process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH !== '1') {
+      providerDispatch = dispatchPreparedTaskStrategyProvider(cwd, result);
+    }
+    return {
+      command,
+      ok: true,
+      result,
+      ...(providerDispatch === null ? {} : { providerDispatch }),
+    };
+  }
+}
+
+function dispatchStatusCommand(
+  command: 'status',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    requireArgumentCount(command, rest, 0, 1);
+    const intakeCounts = currentGovernanceIntakeCounts(cwd);
+    if (rest[0]) {
+      if (rest[0].startsWith('investigation-')) {
+        return {
+          command,
+          ok: true,
+          intakeCounts,
+          result: getProposeStatus(cwd, rest[0], {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+          }),
+        };
+      }
+      const openTaskStatus = findOpenTaskLifecycleStatus(cwd, rest[0]);
+      if (openTaskStatus !== null) {
+        if (
+          openTaskStatus.state === 'opening' ||
+          openTaskStatus.state === 'recovery-required'
+        ) {
+          return {
+            command,
+            ok: true,
+            intakeCounts,
+            openTask: openTaskStatus,
+          };
+        }
+        const session = getSession(cwd, openTaskStatus.sessionId);
+        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+        const finalizeStatus = inspectFinalizeRecoveryStatus(
+          statusRoot,
+          session.sessionId,
+          {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+          },
+        );
+        return {
+          command,
+          ok: true,
+          intakeCounts,
+          openTask: openTaskStatus,
+          session,
+          ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
+          taskStrategy: inspectTaskStrategyLifecycle(
+            statusRoot,
+            session.sessionId,
+          ),
+          taskRevision: inspectTaskRevisionStatus(
+            statusRoot,
+            session.sessionId,
+          ),
+          taskCommits: findTaskCommits(
+            statusRoot,
+            session.changeId,
+            session.taskId,
+          ),
+        };
+      }
+      const session = getSession(cwd, rest[0]);
+      const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+      const finalizeStatus = inspectFinalizeRecoveryStatus(
+        statusRoot,
+        session.sessionId,
+        {
+          consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+        },
+      );
+      return {
+        command,
+        ok: true,
+        intakeCounts,
+        session,
+        ...(finalizeStatus ? { finalize: finalizeStatus } : {}),
+        taskStrategy: inspectTaskStrategyLifecycle(
+          statusRoot,
+          session.sessionId,
+        ),
+        taskRevision: inspectTaskRevisionStatus(statusRoot, session.sessionId),
+        taskCommits: findTaskCommits(
+          statusRoot,
+          session.changeId,
+          session.taskId,
+        ),
+      };
+    }
+    const sessions = listSessions(cwd);
+    return {
+      command,
+      ok: true,
+      intakeCounts,
+      sessions,
+      taskStrategies: sessions.map((session) => {
+        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+        return inspectTaskStrategyLifecycle(statusRoot, session.sessionId);
+      }),
+      taskRevisions: sessions.map((session) => {
+        const statusRoot = sessionStatusRepositoryRoot(cwd, session);
+        return inspectTaskRevisionStatus(statusRoot, session.sessionId);
+      }),
+      taskCommits: sessions.map((session) => ({
+        changeId: session.changeId,
+        taskId: session.taskId,
+        commits: findTaskCommits(
+          sessionStatusRepositoryRoot(cwd, session),
+          session.changeId,
+          session.taskId,
+        ),
+      })),
+    };
+  }
+}
+
+function dispatchReviewDiffCommand(
+  command: 'review-diff',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    if (rest.length === 2 && rest[0] === 'inspect') {
+      return {
+        command,
+        ok: true,
+        result: inspectTaskDiffReviewSubject(cwd, rest[1]),
+      };
+    }
+    if (rest.length === 2 && rest[0] === 'status') {
+      return {
+        command,
+        ok: true,
+        result: inspectTaskDiffReviewStatus(cwd, rest[1]),
+      };
+    }
+    if (rest.length === 2 && rest[0] === 'reconcile') {
+      let status;
+      try {
+        status = inspectTaskDiffReviewStatus(cwd, rest[1]);
+      } catch (error) {
+        if (
+          !(error instanceof WorkflowError) ||
+          error.code !== 'TASK_DIFF_REVIEW_SUPERSESSION_RECONCILIATION_REQUIRED'
+        ) {
+          throw error;
+        }
+        return {
+          command,
+          ok: true,
+          result: reconcileTaskDiffReview(cwd, rest[1], {
+            collaborationGrantValidation: {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            },
+          }),
+        };
+      }
+      if (status.state === 'external-reconciliation-required') {
+        return {
+          command,
+          ok: true,
+          result: reconcileExternalTaskDiffReview(cwd, rest[1], {
+            consumedReplayVerifier:
+              taskDiffConsumedCollaborationGrantReplayVerifier(
+                cwd,
+                status.grantId,
+              ),
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+          }),
+        };
+      }
+      const grantSelection =
+        'assignment' in status && 'grantId' in status.assignment
+          ? taskDiffCollaborationGrantSelection(cwd, status.assignment.grantId)
+          : undefined;
+      return {
+        command,
+        ok: true,
+        result:
+          'response' in status
+            ? reconcileTaskDiffReviewContinuation(
+                cwd,
+                rest[1],
+                status.response.responseDigest,
+                {
+                  consumedRoleResultReplay:
+                    productionConsumedRoleResultReplayPort,
+                },
+              )
+            : reconcileTaskDiffReview(cwd, rest[1], {
+                collaborationGrantValidation: {
+                  consumedRoleResultReplay:
+                    productionConsumedRoleResultReplayPort,
+                  ...(grantSelection !== undefined &&
+                  'verifier' in grantSelection
+                    ? { verifier: grantSelection.verifier }
+                    : {}),
+                },
+              }),
+      };
+    }
+    const sessionId = rest[0];
+    const actor = optionValue(rest.slice(1), '--actor');
+    const grantId = optionValue(rest.slice(1), '--grant');
+    const inputPath = optionValue(rest.slice(1), '--input');
+    const collaborationGrantSelection =
+      grantId === undefined
+        ? undefined
+        : taskDiffCollaborationGrantSelection(cwd, grantId);
+    const validStartArguments =
+      rest.length === 1 ||
+      (rest.length === 3 && rest[1] === '--actor' && actor !== undefined) ||
+      (rest.length === 3 && rest[1] === '--grant' && grantId !== undefined) ||
+      (rest.length === 3 && rest[1] === '--input' && inputPath !== undefined) ||
+      (rest.length === 5 &&
+        rest[1] === '--actor' &&
+        actor !== undefined &&
+        rest[3] === '--grant' &&
+        grantId !== undefined) ||
+      (rest.length === 5 &&
+        rest[1] === '--input' &&
+        inputPath !== undefined &&
+        rest[3] === '--grant' &&
+        grantId !== undefined);
+    if (sessionId && validStartArguments) {
+      let status;
+      if (inputPath !== undefined) {
+        const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
+        if (parsedInput.route === 'provider-response') {
+          if (grantId !== undefined) throw taskDiffReviewUsage();
+          status = beginTaskDiffReviewContinuationFromInput(
+            cwd,
+            sessionId,
+            parsedInput.input,
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            },
+          );
+        } else if (parsedInput.route === 'external-initial') {
+          status = submitExternalTaskDiffReview(
+            cwd,
+            sessionId,
+            parsedInput.input,
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+              ...(collaborationGrantSelection === undefined
+                ? {}
+                : { collaborationGrant: collaborationGrantSelection }),
+            },
+          );
+        } else {
+          const current = loadCurrentAuthenticatedTaskDiffReview(
+            cwd,
+            sessionId,
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            },
+          );
+          const response = createTaskDiffReviewChallengeResponse({
+            review: current.review,
+            responses: parsedInput.input.responses,
+          });
+          status = submitExternalTaskDiffReviewContinuation(
+            cwd,
+            sessionId,
+            response,
+            {
+              schemaVersion: 1,
+              kind: 'task-diff-review-closure-input.v1',
+              subjectDigest: parsedInput.input.subjectDigest,
+              reviewRecordDigest: parsedInput.input.reviewRecordDigest,
+              responseDigest: response.responseDigest,
+              proposedDispositions: parsedInput.input.proposedDispositions,
+            },
+            {
+              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+              ...(collaborationGrantSelection === undefined
+                ? {}
+                : { collaborationGrant: collaborationGrantSelection }),
+            },
+          );
+        }
+      } else {
+        status = inspectTaskDiffReviewStatus(cwd, sessionId);
+        if (
+          status.state === 'ready' ||
+          actor !== undefined ||
+          grantId !== undefined
+        ) {
+          status = beginTaskDiffReview(cwd, sessionId, {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            ...(actor === undefined ? {} : { explicitActor: actor }),
+            ...(grantId === undefined
+              ? {}
+              : {
+                  collaborationGrant: collaborationGrantSelection,
+                }),
+          });
+        }
+      }
+      if (status.state === 'provider-succeeded-awaiting-reconciliation') {
+        const reconciliationGrantSelection =
+          'grantId' in status.assignment
+            ? taskDiffCollaborationGrantSelection(
+                cwd,
+                status.assignment.grantId,
+              )
+            : collaborationGrantSelection;
+        status =
+          'response' in status
+            ? reconcileTaskDiffReviewContinuation(
+                cwd,
+                sessionId,
+                status.response.responseDigest,
+                {
+                  consumedRoleResultReplay:
+                    productionConsumedRoleResultReplayPort,
+                },
+              )
+            : reconcileTaskDiffReview(cwd, sessionId, {
+                collaborationGrantValidation: {
+                  consumedRoleResultReplay:
+                    productionConsumedRoleResultReplayPort,
+                  ...(reconciliationGrantSelection !== undefined &&
+                  'verifier' in reconciliationGrantSelection
+                    ? { verifier: reconciliationGrantSelection.verifier }
+                    : {}),
+                },
+              });
+      }
+      if (status.state === 'waiting-for-provider') {
+        const runtime = loadInvestigationRuntimeContext(cwd).runtime;
+        const invocation = readProviderInvocation(runtime, status.invocationId);
+        if (
+          invocation.state === 'prepared' &&
+          process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH !== '1'
+        ) {
+          dispatchProviderWorker(cwd, invocation.invocationId);
+        }
+      }
+      return { command, ok: true, result: status };
+    }
+    throw taskDiffReviewUsage();
   }
 }

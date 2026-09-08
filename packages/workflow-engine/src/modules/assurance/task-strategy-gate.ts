@@ -193,72 +193,17 @@ export function assertTaskStrategyExecutionGate(
       inspection.session.sessionId,
       implementationSubject.subjectDigest,
     );
-  const sameProviderDegradationCurrent =
-    implementationResult !== null &&
-    implementationResult.output.patchDigest === record?.patchDigest &&
-    implementationResult.output.sourceTree === sourceTree &&
-    implementationResult.roleResult.form === 'granted-same-provider' &&
-    implementationResult.roleResult.grantUse?.degradedForm ===
-      'same-provider-fresh-session' &&
-    implementationResult.roleResult.grantUse.targetDigest ===
-      implementationResult.subjectDigest &&
-    implementationResult.roleResult.assignment.providerId ===
-      record?.implementer.providerId;
-  const ordinarySessionIndependenceCurrent =
-    implementationResult !== null &&
-    implementationResult.output.patchDigest === record?.patchDigest &&
-    implementationResult.output.sourceTree === sourceTree &&
-    implementationResult.roleResult.form === 'ordinary-provider' &&
-    implementationResult.roleResult.grantUse === null &&
-    implementationResult.roleResult.assignment.providerId ===
-      record?.implementer.providerId &&
-    implementationResult.roleResult.assignment.sessionId !== null &&
-    implementationResult.roleResult.assignment.sessionId !==
-      transaction.sessionId &&
-    implementationResult.roleResult.assignment.requiredIndependence ===
-      'session-independent' &&
-    (implementationResult.roleResult.assignment.achievedIndependence ===
-      'session-independent' ||
-      implementationResult.roleResult.assignment.achievedIndependence ===
-        'provider-independent');
-  const callerDegradationCurrent =
-    record?.implementer.providerId === null &&
-    callerImplementationResult !== null &&
-    callerImplementationResult.output.patchDigest === record.patchDigest &&
-    callerImplementationResult.output.sourceTree === sourceTree &&
-    callerImplementationResult.subjectDigest ===
-      callerImplementationResult.roleResult.targetDigest &&
-    callerImplementationResult.roleResult.form === 'granted-caller-supplied' &&
-    callerImplementationResult.roleResult.orchestration === 'caller-supplied' &&
-    callerImplementationResult.roleResult.providerInvocation === null &&
-    callerImplementationResult.roleResult.directHumanReviewAttestation ===
-      null &&
-    callerImplementationResult.roleResult.assignment.providerId === null &&
-    callerImplementationResult.roleResult.assignment.sessionId === null &&
-    'grantId' in callerImplementationResult.roleResult.assignment &&
-    callerImplementationResult.roleResult.assignment.grantId ===
-      record.implementer.grantId &&
-    callerImplementationResult.roleResult.assignment.degradedForm ===
-      'caller-supplied' &&
-    callerImplementationResult.roleResult.participant.providerId === null &&
-    callerImplementationResult.roleResult.participant.sessionId === null &&
-    callerImplementationResult.roleResult.participant.principalId ===
-      record.implementer.principalId &&
-    callerImplementationResult.roleResult.participant.identityAssurance ===
-      record.implementer.assurance &&
-    callerImplementationResult.roleResult.participant.engineSpawned === false &&
-    callerImplementationResult.roleResult.grantUse?.grantId ===
-      record.implementer.grantId &&
-    callerImplementationResult.roleResult.grantUse.degradedForm ===
-      'caller-supplied' &&
-    callerImplementationResult.roleResult.grantUse.targetDigest ===
-      callerImplementationResult.subjectDigest &&
-    callerImplementationResult.roleResult.grantUse.structuredContent.kind ===
-      'task-implementation' &&
-    callerImplementationResult.roleResult.grantUse.structuredContent.nodeId ===
-      callerImplementationResult.submissionNodeId &&
-    callerImplementationResult.roleResult.grantUse.structuredContent
-      .resultDigest === callerImplementationResult.submissionResultDigest;
+  const {
+    sameProviderDegradationCurrent,
+    ordinarySessionIndependenceCurrent,
+    callerDegradationCurrent,
+  } = currentImplementationAuthorityBindings({
+    record,
+    implementationResult,
+    callerImplementationResult,
+    sourceTree,
+    transaction,
+  });
   if (
     record === null ||
     receipt === null ||
@@ -384,4 +329,100 @@ function redStale() {
 
 function sha256(value: string): string {
   return crypto.createHash('sha256').update(value).digest('hex');
+}
+
+/** Match observed implementation identities to their ordinary or exact granted authority. */
+function currentImplementationAuthorityBindings(input: {
+  record: ReturnType<typeof readTaskStrategyPatchRecord>;
+  implementationResult: ReturnType<
+    typeof readTaskStrategyImplementationResultBinding
+  >;
+  callerImplementationResult: ReturnType<
+    typeof readTaskStrategyCallerImplementationBinding
+  >;
+  sourceTree: string;
+  transaction: NonNullable<ReturnType<typeof readTaskStrategyTransaction>>;
+}): {
+  sameProviderDegradationCurrent: boolean;
+  ordinarySessionIndependenceCurrent: boolean;
+  callerDegradationCurrent: boolean;
+} {
+  const {
+    record,
+    implementationResult,
+    callerImplementationResult,
+    sourceTree,
+    transaction,
+  } = input;
+  const sameProviderDegradationCurrent =
+    implementationResult !== null &&
+    implementationResult.output.patchDigest === record?.patchDigest &&
+    implementationResult.output.sourceTree === sourceTree &&
+    implementationResult.roleResult.form === 'granted-same-provider' &&
+    implementationResult.roleResult.grantUse?.degradedForm ===
+      'same-provider-fresh-session' &&
+    implementationResult.roleResult.grantUse.targetDigest ===
+      implementationResult.subjectDigest &&
+    implementationResult.roleResult.assignment.providerId ===
+      record?.implementer.providerId;
+  const ordinarySessionIndependenceCurrent =
+    implementationResult !== null &&
+    implementationResult.output.patchDigest === record?.patchDigest &&
+    implementationResult.output.sourceTree === sourceTree &&
+    implementationResult.roleResult.form === 'ordinary-provider' &&
+    implementationResult.roleResult.grantUse === null &&
+    implementationResult.roleResult.assignment.providerId ===
+      record?.implementer.providerId &&
+    implementationResult.roleResult.assignment.sessionId !== null &&
+    implementationResult.roleResult.assignment.sessionId !==
+      transaction.sessionId &&
+    implementationResult.roleResult.assignment.requiredIndependence ===
+      'session-independent' &&
+    (implementationResult.roleResult.assignment.achievedIndependence ===
+      'session-independent' ||
+      implementationResult.roleResult.assignment.achievedIndependence ===
+        'provider-independent');
+  const callerDegradationCurrent =
+    record?.implementer.providerId === null &&
+    callerImplementationResult !== null &&
+    callerImplementationResult.output.patchDigest === record.patchDigest &&
+    callerImplementationResult.output.sourceTree === sourceTree &&
+    callerImplementationResult.subjectDigest ===
+      callerImplementationResult.roleResult.targetDigest &&
+    callerImplementationResult.roleResult.form === 'granted-caller-supplied' &&
+    callerImplementationResult.roleResult.orchestration === 'caller-supplied' &&
+    callerImplementationResult.roleResult.providerInvocation === null &&
+    callerImplementationResult.roleResult.directHumanReviewAttestation ===
+      null &&
+    callerImplementationResult.roleResult.assignment.providerId === null &&
+    callerImplementationResult.roleResult.assignment.sessionId === null &&
+    'grantId' in callerImplementationResult.roleResult.assignment &&
+    callerImplementationResult.roleResult.assignment.grantId ===
+      record.implementer.grantId &&
+    callerImplementationResult.roleResult.assignment.degradedForm ===
+      'caller-supplied' &&
+    callerImplementationResult.roleResult.participant.providerId === null &&
+    callerImplementationResult.roleResult.participant.sessionId === null &&
+    callerImplementationResult.roleResult.participant.principalId ===
+      record.implementer.principalId &&
+    callerImplementationResult.roleResult.participant.identityAssurance ===
+      record.implementer.assurance &&
+    callerImplementationResult.roleResult.participant.engineSpawned === false &&
+    callerImplementationResult.roleResult.grantUse?.grantId ===
+      record.implementer.grantId &&
+    callerImplementationResult.roleResult.grantUse.degradedForm ===
+      'caller-supplied' &&
+    callerImplementationResult.roleResult.grantUse.targetDigest ===
+      callerImplementationResult.subjectDigest &&
+    callerImplementationResult.roleResult.grantUse.structuredContent.kind ===
+      'task-implementation' &&
+    callerImplementationResult.roleResult.grantUse.structuredContent.nodeId ===
+      callerImplementationResult.submissionNodeId &&
+    callerImplementationResult.roleResult.grantUse.structuredContent
+      .resultDigest === callerImplementationResult.submissionResultDigest;
+  return {
+    sameProviderDegradationCurrent,
+    ordinarySessionIndependenceCurrent,
+    callerDegradationCurrent,
+  };
 }

@@ -5492,7 +5492,7 @@
       "rule": "module-to-runtime",
       "reasonId": "legacy.module-to-runtime",
       "retirementPhase": "post-layout-module-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/modules/authority/collaboration-grant.ts",
@@ -6604,7 +6604,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts",
@@ -6628,7 +6628,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/runtime/storage-journal/investigation-session-store.ts",
@@ -6748,7 +6748,7 @@
       "rule": "runtime-to-adapters",
       "reasonId": "legacy.runtime-to-adapters",
       "retirementPhase": "post-layout-runtime-port-inversion",
-      "status": "active"
+      "status": "retired"
     }
   ]
 }

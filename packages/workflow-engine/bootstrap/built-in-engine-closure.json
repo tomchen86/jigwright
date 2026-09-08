@@ -343,7 +343,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contract-parsers.ts",
       "mode": "100644",
-      "digest": "sha256:9e5d9947af7f6738d5c1a17ffa5fdc36628c72d5b4fea7f361951f4979f654ad"
+      "digest": "sha256:a5b82d0c1b6e664f419958248c3e6c3cbc3567a732fee8f0222c1eeedbd48ad1"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
@@ -406,9 +406,19 @@
       "digest": "sha256:41bf219405ce9a9fd42b8fc4c9d3a58fc38939e810d496f2503f962ff8560f12"
     },
     {
+      "path": "src/adapters/planning/investigation/human-resolution-grant-management.ts",
+      "mode": "100644",
+      "digest": "sha256:c4c00637cdf2bbb958854bd7f61a0231d005d7e53c9e332f5073e18012be93e2"
+    },
+    {
+      "path": "src/adapters/planning/investigation/human-resolution-lifecycle.ts",
+      "mode": "100644",
+      "digest": "sha256:15d471d74b9547a960a1f8070814907c551e1e8f3b1efb360b306b696e3e2656"
+    },
+    {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:47bce4c70d76db72923e4fa4aabbfe2b1c5370e37f5090ade99dd552f06d0fbf"
+      "digest": "sha256:e44ed1e96b44246eff9339ea0f2d5ae49ccde48fbae15dde3ab48158a664bf0d"
     },
     {
       "path": "src/adapters/planning/openspec/documents/managed-change-contract.ts",
@@ -419,6 +429,11 @@
       "path": "src/adapters/planning/openspec/documents/openspec-adapter.ts",
       "mode": "100644",
       "digest": "sha256:30d922a5180ee22139e74b9163e33d62331e12860fcdcc8c1be001169b804235"
+    },
+    {
+      "path": "src/adapters/planning/openspec/documents/openspec-asset-command-surface.ts",
+      "mode": "100644",
+      "digest": "sha256:a41bb412fdea1263fb8774778aca1beacf6ed811ae34462a594f3e5b0bdc9c3d"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-doctor-payload.ts",
@@ -448,7 +463,7 @@
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-asset-contract.ts",
       "mode": "100644",
-      "digest": "sha256:3e3db59a39d9c606e62a57214c8c171371e950c66b55e2300a963f83cebcb4c3"
+      "digest": "sha256:bafa22e3b38f6d923e843b52e96ae2d851c25e2aac866030879a9a5f7f39fe29"
     },
     {
       "path": "src/adapters/planning/openspec/documents/openspec-planning-assets.ts",
@@ -516,6 +531,11 @@
       "digest": "sha256:160122dbfb6f78ae7e7946d7f22642c83b436c5935a2cb2605de836b2af17b7c"
     },
     {
+      "path": "src/application/archive/archive-diagnostics.ts",
+      "mode": "100644",
+      "digest": "sha256:785377ed3a7df88ec79ca988055b3459c615487692d4718a1bb3bae8c065e8e5"
+    },
+    {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
       "digest": "sha256:ceefc8fa191ec4f1f47dc549c1971937ecbdefced7c4cc15d1ad9cf1974b4777"
@@ -528,7 +548,7 @@
     {
       "path": "src/application/archive/archive-transformation.ts",
       "mode": "100644",
-      "digest": "sha256:67e2fbdac43f7f58084d36eca58f1e80bd53e400b959653e5f0768f388c237ac"
+      "digest": "sha256:81e75a9aa50da7d031e7747078935e4929912e816da689c852a8d99d8ff77e4a"
     },
     {
       "path": "src/application/archive/archive-transition.ts",
@@ -541,49 +561,179 @@
       "digest": "sha256:14e6319e30f8cbc31e2adee2305a12c71142fe9419a24746403e2b9da3954a63"
     },
     {
+      "path": "src/application/control-plane/authority-plan-records.ts",
+      "mode": "100644",
+      "digest": "sha256:20d6e52e176ae2166e1ac1a3767b0c86fb6f8fef01f82474bf34ac9356dfba63"
+    },
+    {
+      "path": "src/application/control-plane/authority-plan-worktree.ts",
+      "mode": "100644",
+      "digest": "sha256:b8a4b0b5139d2fa7e6d2ce34b71decdab8f9610ce68b8add32e24dfce2173138"
+    },
+    {
       "path": "src/application/control-plane/authority-plan.ts",
       "mode": "100644",
-      "digest": "sha256:40a21d6a56d56103a945836b256ff226fb2d1e96bd6f16f8ebe1005a6739da8a"
+      "digest": "sha256:f04f25315970f21940a9e06d9a9b02afc32b357a3a7309e1775834ef24b93c96"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-candidate-material.ts",
+      "mode": "100644",
+      "digest": "sha256:e22635b434864d59365e11e5ff366ff53a2fd4a4abc957e74a02422bc06db2a0"
     },
     {
       "path": "src/application/control-plane/control-plane-promotion-producer.ts",
       "mode": "100644",
-      "digest": "sha256:fe2fceab060c35b9d4210a1d4902fd9296ce2e142d33d46248ab1a1fbf12afb8"
+      "digest": "sha256:b2113194006441b3c94f0855753b029feaaaaba1ea41e8bc56fe4e6d0d09d049"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-updater-approval.ts",
+      "mode": "100644",
+      "digest": "sha256:3d42bb5cd47c2ad4c38a13272f601a4e90fc9edc3e331cf2660f5eadbc80d891"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-updater-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:d0a802b3adf2e3281ca06ecf314bfc4162c01bfeb86a9582b4837ed3406bc4c4"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-updater-recovery.ts",
+      "mode": "100644",
+      "digest": "sha256:45db5320b2e9faa7121493316a582b5f8fae24486327ccf8d9a680edf6d5a70f"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-updater-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:a7921d4be8d06c9f743e5a695a7cc57875c0c68b11bdc2b552d8256b77550ff2"
+    },
+    {
+      "path": "src/application/control-plane/control-plane-updater-supervisor.ts",
+      "mode": "100644",
+      "digest": "sha256:b80d62b5e843093ccb5447dc7135b17742163ade79359440f3f36d0b304a4275"
+    },
+    {
+      "path": "src/application/control-plane/engine-metrics-computation.ts",
+      "mode": "100644",
+      "digest": "sha256:7dca8282e5ddc52dc1f28d55573153189d60bdb701a0b345a82767a1ac9349e7"
     },
     {
       "path": "src/application/control-plane/engine-metrics.ts",
       "mode": "100644",
-      "digest": "sha256:813ffbd60f2da28a0b9b2499232cd3c4628a286f99af6f10bb4f9b07944958a8"
+      "digest": "sha256:471e7a9f2e17b1e68e4f8b0edddfcfd32446f36ef05031397230c5ea2b7ee0e0"
+    },
+    {
+      "path": "src/application/control-plane/execution-replacement-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:41e022854947a3af7720b8bb1db00cbfd2b9f8adbf1e2bd32cd5e1b995bfb4ca"
+    },
+    {
+      "path": "src/application/control-plane/execution-replacement-records.ts",
+      "mode": "100644",
+      "digest": "sha256:bb1f765032e7a2038f9ad117a986ca8251addbba585dc1a2a2f3d2e26bd00222"
     },
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:000ed86f9981ca6d350eebb9d0bc3c481dd3175316af0496ae2ad2a63531799d"
+      "digest": "sha256:481e0b66543286e75bcd8c1a9ceff75371f351fb535e17184ffb18cedd4f4ea8"
+    },
+    {
+      "path": "src/application/control-plane/harness-bootstrap-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:5f9455ad28c3917585a9f765d27b4537897cbae2036a4557c02dda503e3f3ba0"
+    },
+    {
+      "path": "src/application/control-plane/harness-bootstrap-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:5ea15d78c52d45babd5e375b86a1dfb4977f11bd7266352b7c6190e699e81f3f"
+    },
+    {
+      "path": "src/application/control-plane/harness-bootstrap-external-input.ts",
+      "mode": "100644",
+      "digest": "sha256:a428eeaa35533efd7f2cb41705f1c0ed8cc75028267266700178680160b88710"
+    },
+    {
+      "path": "src/application/control-plane/harness-bootstrap-production.ts",
+      "mode": "100644",
+      "digest": "sha256:6be3ba667498f870b01b1c869429d22eb3e3dd2b1140a48661e384f001386186"
+    },
+    {
+      "path": "src/application/control-plane/harness-bootstrap-recovery-commands.ts",
+      "mode": "100644",
+      "digest": "sha256:524e4bc8cf18588e6d1d6847b90cc64d70f1570c7ac84cea849eb532cbb772a0"
     },
     {
       "path": "src/application/control-plane/human-revocation.ts",
       "mode": "100644",
-      "digest": "sha256:62ebdf08b339030328bdb2f382e0dfea8ab61c212827bb05ded1dce4d860c799"
+      "digest": "sha256:4db2a8902ffdd0f0adf749347b48001238e432382a8a9e14741a9237fc813e27"
+    },
+    {
+      "path": "src/application/control-plane/intervention-artifact-production.ts",
+      "mode": "100644",
+      "digest": "sha256:4a8bcccc17abe7ba545755f614dd71ec34e7f4a613d764213eb386b1a4fe04f1"
+    },
+    {
+      "path": "src/application/control-plane/intervention-bootstrap-abandonment.ts",
+      "mode": "100644",
+      "digest": "sha256:ef4a7b2eca120b4bb1d85da9386e401dbbcf8d30224d561d4f15771be5c5499d"
+    },
+    {
+      "path": "src/application/control-plane/intervention-bootstrap-child-worktree.ts",
+      "mode": "100644",
+      "digest": "sha256:c73e87e4c61e99153b512af30490ca3ae20053a927ccc2f789a0e00f3b6c9b3e"
+    },
+    {
+      "path": "src/application/control-plane/intervention-bootstrap-engine.ts",
+      "mode": "100644",
+      "digest": "sha256:e6151654d2261290ecb7e61333fca61665f1d6a2a69fcc695099622e1f059a78"
+    },
+    {
+      "path": "src/application/control-plane/intervention-bootstrap-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:eee46b805d7c9dcca79767389ccee858d052e6b2a1b0e75c9b8e41d1891b4b47"
+    },
+    {
+      "path": "src/application/control-plane/intervention-bootstrap-workspace.ts",
+      "mode": "100644",
+      "digest": "sha256:89445d55600c50b6cdcc532be35731c7a4c452adf1540c65b07f16b4737a3879"
     },
     {
       "path": "src/application/control-plane/intervention-control-bootstrap.ts",
       "mode": "100644",
-      "digest": "sha256:43ac06bc913943683d5773a57cd63859796b8dc0fdafd132dc349fba3447eaab"
+      "digest": "sha256:cd27608e4284387cfd7013135b20bbeb295d3d0233edade448eab0a38153c915"
     },
     {
       "path": "src/application/control-plane/intervention-control-updater.ts",
       "mode": "100644",
-      "digest": "sha256:c515bfd15484f421f4ef0a4ff5c5a40c744492ce362ac7ec663e814b3e06ed88"
+      "digest": "sha256:75bdb7e605572152ae5a3c63222469c5492b1e935c806016e7439e1deed77187"
+    },
+    {
+      "path": "src/application/control-plane/intervention-maintenance-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:99c4cc4347721f329a9c901f669adb01cd552c196de2b6ba8881e77314d64ae8"
     },
     {
       "path": "src/application/control-plane/intervention-maintenance.ts",
       "mode": "100644",
-      "digest": "sha256:acc3ae940a539f83777db0fbbe372b0830a2675439b3579c3b6e8c5c37d73391"
+      "digest": "sha256:9d3648183b7949b7ee0e61b0d7104f619d4ebdcf2547cdfda766d7ae9267d6a0"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-apply-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:2914b85e659db01779b9d13dc6dc749a8bcaca77d001cf263f691b6715c33c65"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-apply-checks.ts",
+      "mode": "100644",
+      "digest": "sha256:a9258d1fef7b86ab2487bcc2563d1bd786e29b296c20a4996c78ee76e24d314b"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-apply-reissue.ts",
+      "mode": "100644",
+      "digest": "sha256:34d95ba22ffd324f6f65bca38e18bfd1e3317b4050f20a55b921bd8d9a4f8714"
     },
     {
       "path": "src/application/control-plane/maintainer-approve.ts",
       "mode": "100644",
-      "digest": "sha256:fd228c2fd0f3a6b58278ae7a08c5f039bce328ba56eb55076a6ae5278dad45cc"
+      "digest": "sha256:a32817605e84d2c7f1f1381203109adf459baf36a2949be0c000e13424ce1da7"
     },
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
@@ -601,14 +751,39 @@
       "digest": "sha256:969d40ac66d3871f0032011493417b2abc73e9572fb93dc8d44399b0337bf632"
     },
     {
+      "path": "src/application/control-plane/maintainer-recovery-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:77ef974a0f302f862fa1a59d96da693ae1ebe3b814ca4a816526a04085fd5d34"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-recovery-journal.ts",
+      "mode": "100644",
+      "digest": "sha256:cd075b34ccd3c2a9e9839dbb3b2f42ed867042cb94109c51b8bbe4103b4cea78"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-recovery-terminalization.ts",
+      "mode": "100644",
+      "digest": "sha256:028e0fba2026c6aa2b1a40566ad4e49d976f4d8ee4625093f08bdccf3e37dd81"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-recovery-verification.ts",
+      "mode": "100644",
+      "digest": "sha256:84cdfb2346fa37edc77b9e9f0335c9e2596f147b4b73f7d7103dbec90b271a66"
+    },
+    {
       "path": "src/application/control-plane/maintainer-recovery.ts",
       "mode": "100644",
-      "digest": "sha256:3b8e68ca9010044eb51fd40cf87b60acb64f5a277a5515aff04d510b1f39f5de"
+      "digest": "sha256:72817616789e795cc85700ab25a13d54255a10d3865c13c6f94f7dc00a7562ec"
+    },
+    {
+      "path": "src/application/control-plane/maintainer-session-inspection.ts",
+      "mode": "100644",
+      "digest": "sha256:6c7adcfa0548006e41fdca6464b281396a622980de119ae59c12135f6c4a4975"
     },
     {
       "path": "src/application/control-plane/maintainer-session.ts",
       "mode": "100644",
-      "digest": "sha256:5bfdc8890d91587250f99e49ea6ea863dfe8bdf6683571b50faa1ca73a4d9e07"
+      "digest": "sha256:2525e101f0ee7ade5810b8418b13a1f2b024a1590a272c4dd819a2a30709f78d"
     },
     {
       "path": "src/application/execute-task/open-task.ts",
@@ -631,6 +806,11 @@
       "digest": "sha256:deecf0a10ecc2bd8328235d2aae50495beea03b3aaad2e3938243b92e215c7a1"
     },
     {
+      "path": "src/application/execute-task/task-strategy-caller-admission.ts",
+      "mode": "100644",
+      "digest": "sha256:2b2bd51941c485bda787546bb4c279a49db8068be2e1df3b066be59f4d626a69"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-correction.ts",
       "mode": "100644",
       "digest": "sha256:8d0d0ca05e174e020648bc79923566335c0721d0013e5ea8b83db8e114395887"
@@ -641,9 +821,14 @@
       "digest": "sha256:d1ae9f9f119e647d7f311d60e697f49e2d739b5a64c9b40eb90745c2f5bd9716"
     },
     {
+      "path": "src/application/execute-task/task-strategy-implementation-context.ts",
+      "mode": "100644",
+      "digest": "sha256:5cd545bf79a4f1eb88588bf3a03b5ae52870d1e9760d1f6fa301559af67c69dc"
+    },
+    {
       "path": "src/application/execute-task/task-strategy-implementation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:b0503eb7e27eb3104fd5fd3abbb717027cd85b3582b9363c6978bf111adc3753"
+      "digest": "sha256:58fd3ee338661f2398a03fc2eaebd4dee545e285d63a7794e628d10eea6af510"
     },
     {
       "path": "src/application/execute-task/task-strategy-lifecycle.ts",
@@ -654,6 +839,16 @@
       "path": "src/application/execute-task/task-strategy-patch.ts",
       "mode": "100644",
       "digest": "sha256:39589d8473c0391e8480c0a99d5a9462ee57c233d1763eaede2b34343608efa6"
+    },
+    {
+      "path": "src/application/execute-task/task-strategy-provider-reservations.ts",
+      "mode": "100644",
+      "digest": "sha256:4b9dac3831d58bf5158ceb4ffe7458d6ae6b4a07f38a0a6d3fa19e2aefc4d299"
+    },
+    {
+      "path": "src/application/execute-task/task-strategy-provider-results.ts",
+      "mode": "100644",
+      "digest": "sha256:b32c052c7c4b5d9b3ab509ae986391c24bd964140547047a7eb8c4308a30ebaa"
     },
     {
       "path": "src/application/execute-task/task-strategy-red-revision.ts",
@@ -806,6 +1001,11 @@
       "digest": "sha256:c960a2252b4524ab3cebad9b11eaf23829ea7954452c3f71a0728ec1c8433652"
     },
     {
+      "path": "src/application/propose/propose-blind-survey-admission.ts",
+      "mode": "100644",
+      "digest": "sha256:4e114b06aa4d3582bdb3685ba938ddc340be573b59e45d523b6b38e40f745dc9"
+    },
+    {
       "path": "src/application/propose/propose-common.ts",
       "mode": "100644",
       "digest": "sha256:bab86a971ecde20f4fd17b0adff3ea522071e01a78fbb1a35bdb04f349843f36"
@@ -888,7 +1088,7 @@
     {
       "path": "src/application/propose/propose-reviewer-terms.ts",
       "mode": "100644",
-      "digest": "sha256:4ba652f88c2421a23973f5ea4000fdc08af3eee28e1569a754e5f451f11de558"
+      "digest": "sha256:ee15dbe4472d1d967e9d2259108c7c13c2da2b6838233744c3935050a47c8213"
     },
     {
       "path": "src/application/propose/propose-runtime.ts",
@@ -916,14 +1116,24 @@
       "digest": "sha256:cded8148e1774da1181052afa06dbecd35810efa06646360d5e43276447bf492"
     },
     {
+      "path": "src/application/revise/task-revision-implementation-snapshot.ts",
+      "mode": "100644",
+      "digest": "sha256:fd25cb6f75fc5d19b50c1b2f6ab356d61508a5087c0cf0e431e4236697562a2f"
+    },
+    {
+      "path": "src/application/revise/task-revision-journal.ts",
+      "mode": "100644",
+      "digest": "sha256:eceeb8613698bc733692a6ebe1091e3c10c0ffce06cf044a400d0bb91b2e5948"
+    },
+    {
       "path": "src/application/revise/task-revision.ts",
       "mode": "100644",
-      "digest": "sha256:d3dfe7d8d1362e2f21f165b412bd602e76b9b08fb5e42b1e1d5068d64c1ae6a8"
+      "digest": "sha256:641b066cbbc6c8483ffcd4b3d34cab2d91b1d4c182c43f81d7358e455f68930b"
     },
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:ef3a5e50a8a2cdfdc685128a3e613097c74002c6c31f2426a224975dfc3a0155"
+      "digest": "sha256:9a51bb0c0ee425a78f3fd1ffaab61c58e603af18f323a71123eb785ef9555c28"
     },
     {
       "path": "src/composition-root/agent-guidance-production.ts",
@@ -1019,6 +1229,11 @@
       "path": "src/composition-root/cli-command-services.ts",
       "mode": "100644",
       "digest": "sha256:55151f8417f1ee6d81d02cf7a3217abe7dc82d9daaef6d64449db3e94b410c6d"
+    },
+    {
+      "path": "src/composition-root/cli-operational-services.ts",
+      "mode": "100644",
+      "digest": "sha256:b35549d80b0d2dad413bedadfb806e2cd6e4923178a1b750de556215b458af14"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -1268,7 +1483,12 @@
     {
       "path": "src/entrypoints/cli/authority-management-cli.ts",
       "mode": "100644",
-      "digest": "sha256:327fb7ae2d213734e48b7de73d322a33a9b60294939596c4aa4da6c1221160e4"
+      "digest": "sha256:24c19e2b012bb0abf6eec1423beaae910ec48a6e3bcc7124bcdf4354cf955b2d"
+    },
+    {
+      "path": "src/entrypoints/cli/boundary-cli.ts",
+      "mode": "100644",
+      "digest": "sha256:1934237af93c800f0e5cd3437d07663258c56c6bb5d2a5e249ffbc3eb28510cf"
     },
     {
       "path": "src/entrypoints/cli/central-role-provider-default-cli.ts",
@@ -1279,6 +1499,11 @@
       "path": "src/entrypoints/cli/change-routing-cli.ts",
       "mode": "100644",
       "digest": "sha256:48c28af9dc13eef3898411d4fa2339d12d3eb24ff50f004c97ee9708de96a8b2"
+    },
+    {
+      "path": "src/entrypoints/cli/ci-cli.ts",
+      "mode": "100644",
+      "digest": "sha256:2277aa643734d928040735a94604c1aa46ac7c63a1e578644be95b7eac4e5f90"
     },
     {
       "path": "src/entrypoints/cli/cli-input.ts",
@@ -1308,7 +1533,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:46da2fbd3c98e948351fdb1bcd19021b4b049fdb0b2a086f88b11d9773ef43ea"
+      "digest": "sha256:fe5558a8ff0b0c3f20928b043819cc7bcbd16c8c52e68a6a720f2a7c3c71430c"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1331,6 +1556,11 @@
       "digest": "sha256:2964e96b0dcb0db1187352c16a3375fecb8e6a288a1fa3a57e880bb39c20d2bd"
     },
     {
+      "path": "src/entrypoints/cli/provider-operations-cli.ts",
+      "mode": "100644",
+      "digest": "sha256:ff554b9b0be26fd2387f60b903b0812c8d59cbd7fc5e6fc14aec2ea3cd7daec5"
+    },
+    {
       "path": "src/entrypoints/cli/role-context-sharing-grant-cli.ts",
       "mode": "100644",
       "digest": "sha256:3f97579e635c9e576415452f3ded3a71524fa4022656bbe098001e046b89c44a"
@@ -1338,7 +1568,7 @@
     {
       "path": "src/entrypoints/cli/task-lifecycle-cli.ts",
       "mode": "100644",
-      "digest": "sha256:145852fd042dedfe1a87ad23336014a3778c3ea3967046e31c3e13a77a6893df"
+      "digest": "sha256:401c88a0a3f8290e76b8a3e626a1ae49ced29810e07c0412b5833e71caa1705f"
     },
     {
       "path": "src/entrypoints/cli/task-review-cli-input.ts",
@@ -1388,7 +1618,7 @@
     {
       "path": "src/harness-bootstrap.ts",
       "mode": "100644",
-      "digest": "sha256:4027f34e9af0ab2f8aa3b2d5882d07c98a509b66f531e053df87716b4e446f9b"
+      "digest": "sha256:0244061c764408a4fd2b11608370f4e5e7a67cf76952a55ab0f664fc8cc100ed"
     },
     {
       "path": "src/modules/adoption/agent-guidance.ts",
@@ -1426,6 +1656,16 @@
       "digest": "sha256:9fd56092ffd1d9142cb5e58dc006c438e85320eb05a47e8c429b2093769da061"
     },
     {
+      "path": "src/modules/assurance/plan-review-disposition.ts",
+      "mode": "100644",
+      "digest": "sha256:0833986c34e550720b59b50091858e5d8e3e4fa410031593df408f522673e49b"
+    },
+    {
+      "path": "src/modules/assurance/plan-review-submission.ts",
+      "mode": "100644",
+      "digest": "sha256:e83026557e87afcacdf08ce77fdde2563c1a954c55e6713424dfb874a6dfaf66"
+    },
+    {
       "path": "src/modules/assurance/plan-review-target-snapshot.ts",
       "mode": "100644",
       "digest": "sha256:bae84ae04952396e8801613826613f55ca976dec75aed964effdfb97caf95947"
@@ -1443,7 +1683,7 @@
     {
       "path": "src/modules/assurance/plan-review.ts",
       "mode": "100644",
-      "digest": "sha256:c84294d22a78cf2d716c879106a51f38555d7840b20c644f291f870d92634ea0"
+      "digest": "sha256:fc07e2fbf3f5d46bf44112191db7649cd9fe8a9e001226f34e599de36a7f6322"
     },
     {
       "path": "src/modules/assurance/plan-target.ts",
@@ -1451,9 +1691,19 @@
       "digest": "sha256:58d165c6375ccf99d3d02853b8b208bad413343fbb1af713dda20f959353dc05"
     },
     {
+      "path": "src/modules/assurance/planning-assurance-binding.ts",
+      "mode": "100644",
+      "digest": "sha256:75afb2b7aa797e1e02393447da30be45cf52cf360272b82df23a1fef85f762b4"
+    },
+    {
+      "path": "src/modules/assurance/planning-assurance-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:a133c569a2e3b367a2333667696460f79c6c87ab825b80691042788f57f78514"
+    },
+    {
       "path": "src/modules/assurance/planning-assurance-validator.ts",
       "mode": "100644",
-      "digest": "sha256:33048b016cb14ebfd97143c708d02c26c4d8977b928f4df968b544e6a5a878a1"
+      "digest": "sha256:2d63b6bce597aa2b4816b3ed53c796c8ae28ff1326bbd8e27210213143764c65"
     },
     {
       "path": "src/modules/assurance/pre-merge-assurance.ts",
@@ -1481,9 +1731,19 @@
       "digest": "sha256:75f1252acebd3ec37467ba3f0ca83b385e767e7810d4f1fd7c886e27d1f0f3a7"
     },
     {
+      "path": "src/modules/assurance/task-diff-final-assurance-artifact.ts",
+      "mode": "100644",
+      "digest": "sha256:c89560b2c73cfe0e547fc90b422cc82d3c340561f9ab23ddae6f6e28f4633a28"
+    },
+    {
       "path": "src/modules/assurance/task-diff-review-artifact.ts",
       "mode": "100644",
-      "digest": "sha256:43b4cbd8ce7ab6bb0d08daeed0203401f7f30024b06aff91b53308e6c240643d"
+      "digest": "sha256:5d912a9191157291d759b91fa63910c5ae0b7ce223d4c1c6f48a9c7838a92183"
+    },
+    {
+      "path": "src/modules/assurance/task-diff-review-continuation-submission.ts",
+      "mode": "100644",
+      "digest": "sha256:d3bd1f2915e5990d149315081804d61547ec1fd09441b28160146594b49c1c62"
     },
     {
       "path": "src/modules/assurance/task-diff-review-input.ts",
@@ -1494,6 +1754,11 @@
       "path": "src/modules/assurance/task-diff-review-lineage.ts",
       "mode": "100644",
       "digest": "sha256:f9f6cad55a925c3a70e18679ff0649298fd972f239d02ceb455a9616c49bab42"
+    },
+    {
+      "path": "src/modules/assurance/task-diff-review-submission.ts",
+      "mode": "100644",
+      "digest": "sha256:8a337bdc576216617ea80ebdc7c76ee0e2ed8c29cf8faae6b3f30a2876cc07cd"
     },
     {
       "path": "src/modules/assurance/task-diff-review.ts",
@@ -1508,7 +1773,7 @@
     {
       "path": "src/modules/assurance/task-strategy-gate.ts",
       "mode": "100644",
-      "digest": "sha256:dcdb6df298998c1f4699edf90f3a2280bf0f7419c6cf6dd54a1e8867569a3f3f"
+      "digest": "sha256:84acfd1fb046b57ab8783bb309d45f0db4d6844939269770380cc571956fe1c8"
     },
     {
       "path": "src/modules/authority/archive-pr-grant.ts",
@@ -1531,19 +1796,69 @@
       "digest": "sha256:a08c0095888f17e1d3f6efc345637f0cbc463a363b3e04fdb1e230851a4dd2e3"
     },
     {
+      "path": "src/modules/authority/collaboration-grant-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:97b5952aa0f8507be44af2f53a585669db297771414def402e218217eb7d6f33"
+    },
+    {
       "path": "src/modules/authority/collaboration-grant.ts",
       "mode": "100644",
-      "digest": "sha256:57b7ea5db56cee2f3ca9cde10556a53e7c9e62b2d3a1ad773847be00e0ea713d"
+      "digest": "sha256:dfbda5803dc40bb5f60fdc284f4d119da5ae16e646fb9e0660acec5494db1bc8"
+    },
+    {
+      "path": "src/modules/authority/control-plane-recovery-grant-records.ts",
+      "mode": "100644",
+      "digest": "sha256:7af0e4270cf4d110d2debf80d19fc0a1f90e40cac55d7f75ae46ecb639f44886"
+    },
+    {
+      "path": "src/modules/authority/control-plane-recovery-grant-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:558d01b099eee2c2f9728791b6b25c24fcb1005559b0b09bc88291d8a40127c5"
     },
     {
       "path": "src/modules/authority/control-plane-recovery-grant.ts",
       "mode": "100644",
-      "digest": "sha256:0596648a4f3f0ef049a36ab367545e9237dbf79ccd752480783abea7634f8cc5"
+      "digest": "sha256:eda9e9749a81fe3a6f2b7178b22095f9e06071416b516585ea9d50b64cf9fb63"
     },
     {
       "path": "src/modules/authority/execution-governance-context.ts",
       "mode": "100644",
       "digest": "sha256:1e04cb699070b4579d5868503fa99fdeb7c4a57ac2f08f359a6019e921f12fa8"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-epoch-store.ts",
+      "mode": "100644",
+      "digest": "sha256:d3182816802ce146755ff4cd1b8e07aa0b2aae6903c36b049d961b8b06a38567"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-evidence-store.ts",
+      "mode": "100644",
+      "digest": "sha256:79705aa99945161e79ab2e9b3379ecc4ec76ef5f10a42b8e174b5435e26f2ba8"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-grant-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:894ff44bc041512e065466bac0dfea360047de3bbef407af12152ddf226be32f"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-grant-store.ts",
+      "mode": "100644",
+      "digest": "sha256:847625bbc9bb95b8273760097c5d2c0164db4d5a42f65c7a38f75b21da2cb6aa"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-locks.ts",
+      "mode": "100644",
+      "digest": "sha256:25cda6b8a6dead1105331ed7ea985066dba795fc06aa6fe018a99221971a7476"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-private-files.ts",
+      "mode": "100644",
+      "digest": "sha256:ae02448079f10a96f1c59bf1c0812b54ca9735cc740d5e659996513ab50bef72"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-prune-recovery.ts",
+      "mode": "100644",
+      "digest": "sha256:e0a0d9899e50b253d37f3329bf15a6e5c0b841442c48e9318ff71c436cba266a"
     },
     {
       "path": "src/modules/authority/execution-governance-repair.ts",
@@ -1556,6 +1871,16 @@
       "digest": "sha256:17e6d6ae131e649cccd04e262d7f1d79c03bf5c1fbe9588f8ad7a00e58ad196b"
     },
     {
+      "path": "src/modules/authority/execution-governance-store-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:a7468bd07e026dadfd2632745d4e6ad420110684c73685304e245b5f52efaba3"
+    },
+    {
+      "path": "src/modules/authority/execution-governance-store-objects.ts",
+      "mode": "100644",
+      "digest": "sha256:29bf83f1ddf58b1ea906eb201ec8b138737a26cf7b2b4c1c42ba5ebc610b56da"
+    },
+    {
       "path": "src/modules/authority/execution-governance-values.ts",
       "mode": "100644",
       "digest": "sha256:eb8816213bb1555d0548b2519664bcab708824b082151ae9e55de9b51f0d62a3"
@@ -1563,12 +1888,42 @@
     {
       "path": "src/modules/authority/execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:2a905f3184699fc446235348023be5c7aa50fe94f25e519660fdfaa7edecad8f"
+      "digest": "sha256:097c01edeaa42272d5366b41960060bfdd7ad46cb17c13002cf6db815193d98c"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:2c8d347acbd529a9c8ba0b714751317d2f4b7b6201bc1895a0e1e4da9ba138a4"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-envelope.ts",
+      "mode": "100644",
+      "digest": "sha256:340dfb8ccb47a88784cca7f55461f93819cfa06621122845dc07645cbfdeaad1"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-reconciliation.ts",
+      "mode": "100644",
+      "digest": "sha256:4b9159f25b447da3487982bc81063f26f051b008b82d642e5842cb4999a314b4"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-records.ts",
+      "mode": "100644",
+      "digest": "sha256:b02b90057eb167f9e454276568c3bbc432978a6d4bc75685fdb8b95840e03ebf"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-store.ts",
+      "mode": "100644",
+      "digest": "sha256:a47ae74ce4edc753f5c765792cb839babe8b724534a9ea459c15d1c242cca75b"
+    },
+    {
+      "path": "src/modules/authority/external-effect-grant-transaction.ts",
+      "mode": "100644",
+      "digest": "sha256:1871fde6acb4f233409582c353578c7ef90d44d143594a5ea2f748d7ac17fbb8"
     },
     {
       "path": "src/modules/authority/external-effect-grant.ts",
       "mode": "100644",
-      "digest": "sha256:fe1952d296f358bd89fcbba22f7c3a58a61d7bb057a38addce2a79ff8133cf0f"
+      "digest": "sha256:ce2c3d37568150b07e44946401cc9e2db96ce2e9dd3aa9bd60532806b14dda73"
     },
     {
       "path": "src/modules/authority/git-authority-candidate-apply-grant.ts",
@@ -1621,34 +1976,99 @@
       "digest": "sha256:dd9a142634188875b514f52fa2f7a5615ed35dead1a969d01f1564a0bb595772"
     },
     {
+      "path": "src/modules/authority/human-revocation-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:55c2b5d05bbdeeb88625b2e20cbd9754ccaaed769245347e24949e9d2b5c0ec8"
+    },
+    {
+      "path": "src/modules/authority/immutable-git-candidate-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:e51b70ae106186b868e104a336e7d463add19043cfbde55fa93c4d50ff231d43"
+    },
+    {
       "path": "src/modules/authority/immutable-git-candidate.ts",
       "mode": "100644",
-      "digest": "sha256:195e88be956795a2fd51617f24a95970d9078be8e4ffe69ef1da600de1b1221b"
+      "digest": "sha256:4c0320bb28465e3860dc9a4c88bfbce11735a7f4d77546038f6a2c680594a464"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-adoption.ts",
+      "mode": "100644",
+      "digest": "sha256:d4fe780408b05a5453a49fd16482571269073f194f2081c74b619193ecba86d6"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-promotion-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:5c0a155650786db0a986fa0a7317a202552bc8fa815d782b4405ef2382914e8f"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-promotion-material.ts",
+      "mode": "100644",
+      "digest": "sha256:b62522b9bca721f2b3c4bea0721e8b1920bf49bb78cfadc3463cb42532626665"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-protected-manifest.ts",
+      "mode": "100644",
+      "digest": "sha256:0b1b159f5f96fc884dee23db0492c90968885ec195cbc9c97312e8490427bc5d"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-review.ts",
+      "mode": "100644",
+      "digest": "sha256:6611556ebeeb0ff44603442a829b10b8b8c7221455e0c65222b53d1e0a9b7654"
+    },
+    {
+      "path": "src/modules/authority/intervention-control-values.ts",
+      "mode": "100644",
+      "digest": "sha256:bced39f503bee1018173f53f750fae331f23668de7f112859f76925c71c6a4ab"
     },
     {
       "path": "src/modules/authority/intervention-control.ts",
       "mode": "100644",
-      "digest": "sha256:2bfc28ee330c8c793012c5acc4e0c3bdee091c4c4f481f73658fa1730ecf2943"
+      "digest": "sha256:891554f6e4f9a10527a9b8fdc7a8b449a462a8497c85b08f81a35f691b87caed"
+    },
+    {
+      "path": "src/modules/authority/maintainer-candidate-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:b9745183754b99c58d496cbd5e9b1467d48bcf1b008ef4cb22ba28bce605badc"
+    },
+    {
+      "path": "src/modules/authority/maintainer-candidate-ref-ledger.ts",
+      "mode": "100644",
+      "digest": "sha256:84af87d13e1277033e53dafeeb4d380ac5af17f75cd9816a1a30b690b9124a45"
     },
     {
       "path": "src/modules/authority/maintainer-candidate.ts",
       "mode": "100644",
-      "digest": "sha256:fcbd1f2fba0d4dd95530c113c52b9ef6820ee3829dad9c7fdf39d2a987cbfcfa"
+      "digest": "sha256:eb1acacede0311b9200a6d9a29123540f016a0dda036bb3e90509e5d83826a75"
+    },
+    {
+      "path": "src/modules/authority/maintainer-grant-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:af94c6ca86b2c0a5e106126a86cb925f0ec0463e8d5b2ffead059895266d7289"
+    },
+    {
+      "path": "src/modules/authority/maintainer-grant-v2-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:706972ae51ae0d7e414a15f8e86b41b530a8050213f52b6857c086eede3ea725"
     },
     {
       "path": "src/modules/authority/maintainer-grant-v2.ts",
       "mode": "100644",
-      "digest": "sha256:654e907260fccbe45033942ffca5aea039885edceecee84c8f77ff0182e81df6"
+      "digest": "sha256:c5c839eb98d0f969bdc2e070e1d223f06f80a542f852075a4261b79635fa1de7"
     },
     {
       "path": "src/modules/authority/maintainer-grant.ts",
       "mode": "100644",
-      "digest": "sha256:4febd91eecaf7dfb64a6b4e284c24900ca6cfa1accf43e3b5c7b99d40f0d617f"
+      "digest": "sha256:c6d49358c3be1cb89b9c05006a0c0ec754c5a8565708ffd6f86186a1acd28164"
+    },
+    {
+      "path": "src/modules/authority/maintainer-manifest-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:dd5b00bd72ea8e18030a9923793bfd16b7d2595515bc58fcaf0e87f9f85cb5e6"
     },
     {
       "path": "src/modules/authority/maintainer-manifest.ts",
       "mode": "100644",
-      "digest": "sha256:310091aacd80005c22d9715aa8b3ea244cb78cf17bcd7a77b7f4fd183b60ec78"
+      "digest": "sha256:44a518cd54a726986f845180f2f14479a86e9b16886a7640603dd5a04ac66664"
     },
     {
       "path": "src/modules/authority/maintainer-policy.ts",
@@ -1691,6 +2111,46 @@
       "digest": "sha256:0af29f0966e02f2be87b8ff6e78700b4b54b8ccc9179b333c228273fc75da15a"
     },
     {
+      "path": "src/modules/authority/recovery-authority-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:ade0103b19f9a99d30342b1b2a7426a320b954624bc9dc140e9f72527cfaabac"
+    },
+    {
+      "path": "src/modules/authority/recovery-authority-store.ts",
+      "mode": "100644",
+      "digest": "sha256:6120e4709de2ffaf5257fd88fab09937eed875a904fecee59910ff84adfecbc4"
+    },
+    {
+      "path": "src/modules/authority/recovery-operational-trust-root.ts",
+      "mode": "100644",
+      "digest": "sha256:15a7ae2b5503a406d4a8e4bfd05cddde81de762f14df9e1feed5df9fa095ffd5"
+    },
+    {
+      "path": "src/modules/authority/recovery-quarantine-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:9b8c0e4e8bc493a8b17d6b6069873c4308a5f47fffc28b804bff425dae595ecc"
+    },
+    {
+      "path": "src/modules/authority/recovery-quarantine-store.ts",
+      "mode": "100644",
+      "digest": "sha256:f12fea96743658090e1c6f7c6f655a16020be50ee38e9fc42b1b363cd6a5cbca"
+    },
+    {
+      "path": "src/modules/authority/recovery-trust-root-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:7d6be6fe770e5ea1b96d5ce279cb84a6ac619c739efab6519186d24c6869fc4a"
+    },
+    {
+      "path": "src/modules/authority/recovery-trust-root-store.ts",
+      "mode": "100644",
+      "digest": "sha256:e68bfb0d6eac861ffbae70301a95a27820501a5dbaaf64789eeec5b22f2c04eb"
+    },
+    {
+      "path": "src/modules/authority/recovery-trust-root-values.ts",
+      "mode": "100644",
+      "digest": "sha256:dfc60cb433dbab37184de9f54948d425fe6f86be257039726d12a8c8e5b40e6a"
+    },
+    {
       "path": "src/modules/authority/role-context-sharing-consumed-replay.ts",
       "mode": "100644",
       "digest": "sha256:011ac3308c14c04367bc3d01b0120b3cd7bec5ffb83f7503609e3f70e019ab6d"
@@ -1711,24 +2171,69 @@
       "digest": "sha256:3a8eae56e97f57e26a39b21c11aae92a9d713c780f2daacef692f2a9e5ab5f64"
     },
     {
+      "path": "src/modules/authority/role-independence-continuation-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:43ee4390c81aed4eff38e62e860bfd90b2e943f01a73df827c0651f9c8d8969a"
+    },
+    {
       "path": "src/modules/authority/role-independence-continuation-grant.ts",
       "mode": "100644",
-      "digest": "sha256:1401cc728fa392a071e93ff92d0cfb484235615edf79614cd8fb29f6109e5503"
+      "digest": "sha256:e602aee40b46f16dea82067e7c354a2038761fa3db8ef066789785ec7094a7a1"
+    },
+    {
+      "path": "src/modules/authority/task-mandate-audit.ts",
+      "mode": "100644",
+      "digest": "sha256:619006c739cbb72b5cf7f3db61e30638f432eb2081c64a65ad7058fc9a30f57c"
+    },
+    {
+      "path": "src/modules/authority/task-mandate-policy.ts",
+      "mode": "100644",
+      "digest": "sha256:fd9d83d27ae5c79648ade3eabcb06016b9ab15a845a87e2e9a55636707189205"
+    },
+    {
+      "path": "src/modules/authority/task-mandate-provider-lifecycle.ts",
+      "mode": "100644",
+      "digest": "sha256:7147f651d816d31391ae8d83f5efbb88662a3fea4826b1d944d537fa93a44617"
+    },
+    {
+      "path": "src/modules/authority/task-mandate-records.ts",
+      "mode": "100644",
+      "digest": "sha256:1b7832ea462822761c65b0dbe698e970deb0951f11fbb9dc9767fb1b67f1fe29"
+    },
+    {
+      "path": "src/modules/authority/task-mandate-store.ts",
+      "mode": "100644",
+      "digest": "sha256:f7273ca81bd4d73e4b2d7172c7ba4274f38ef6f61cedb6bfd69f87dbbbbab4d7"
     },
     {
       "path": "src/modules/authority/task-mandate.ts",
       "mode": "100644",
-      "digest": "sha256:5d7ba33384e86a45fac77060df6d3037b110e99d06bda7a2cbe2bc28814fcea0"
+      "digest": "sha256:991a126e38831e520a460b3671674983ac7807e0ce9dc33cca5908ccb950380c"
+    },
+    {
+      "path": "src/modules/authority/task-revision-approval-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:877cb7768b4d774f3f75caf3e371ebf07f4008a9f74b443c5d0550903686ad05"
     },
     {
       "path": "src/modules/authority/task-revision-approval.ts",
       "mode": "100644",
-      "digest": "sha256:2df399295acbf3dfd0de53fdaad62f4a0d2efd03b450964a1e45d410ffd3b638"
+      "digest": "sha256:87334287cd0db52a6008edf4762c9da661e1219cee3d194771511a91e24b3476"
+    },
+    {
+      "path": "src/modules/governance-intake/governance-findings.ts",
+      "mode": "100644",
+      "digest": "sha256:8b079dc54209c5d1d1e5a41390339a33ba66c19f19553cea435c50ade8d368a7"
+    },
+    {
+      "path": "src/modules/governance-intake/governance-intake-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:91eddb39dd650f3f7055cac4842c3729568e1b27cac472a48b61f909d2bd1e0f"
     },
     {
       "path": "src/modules/governance-intake/governance-intake.ts",
       "mode": "100644",
-      "digest": "sha256:2c6edc3a9731edf043562c6c0e1d9d68fa51167ccd64489b9aed07c353dfd54b"
+      "digest": "sha256:990030069fa7559a55eba04f6216eaa77b5c6e846c504375dbc7b0d96ab41479"
     },
     {
       "path": "src/modules/governance-intake/intake-policy.ts",
@@ -1746,9 +2251,24 @@
       "digest": "sha256:dca91637b4dfa1beb07f56276bbcbd2aa707e324463a53ec1bf18f48f03ff809"
     },
     {
+      "path": "src/modules/governance-intake/work-registry-projections.ts",
+      "mode": "100644",
+      "digest": "sha256:d32ce784ca7a08573c3a6ce4b195ba8e226be49f8dc737d511a789d217a28223"
+    },
+    {
+      "path": "src/modules/governance-intake/work-registry-promotion-preparation.ts",
+      "mode": "100644",
+      "digest": "sha256:618320f29266211727a9ab575c1415d24f2cc06339ea0af82a8f60d31501991f"
+    },
+    {
       "path": "src/modules/governance-intake/work-registry-promotion-transaction.ts",
       "mode": "100644",
       "digest": "sha256:a57cd9f4273011245f6f23a2b88dfd90fd433039e14db70fa203250d1b8b095a"
+    },
+    {
+      "path": "src/modules/governance-intake/work-registry-queries.ts",
+      "mode": "100644",
+      "digest": "sha256:6e0b81801fdcc2355e924f4d8634c3d3a9156f8e472aa8ce3124888ac9a43329"
     },
     {
       "path": "src/modules/governance-intake/work-registry-record.ts",
@@ -1756,9 +2276,14 @@
       "digest": "sha256:10a52b432b87e2f59e0038311f3f0e3d1df2179308974980a2c3172d8fb77a81"
     },
     {
+      "path": "src/modules/governance-intake/work-registry-storage.ts",
+      "mode": "100644",
+      "digest": "sha256:dab5d3348f6ab258066de374a2c3ced2980fec9b6d66c1118f8bd9baf37f1d68"
+    },
+    {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:cdd47020e5dc1dd430aa165e075c39b65fe37a043c6a927b1690833095a34987"
+      "digest": "sha256:fc431992c91ce67ae6d51fce72f62f267b91e94188fb8f2feb1ace3a9f985c0f"
     },
     {
       "path": "src/modules/guidance/catalog/agent-rule-registry.ts",
@@ -1856,9 +2381,24 @@
       "digest": "sha256:5eb2c2885478e0e38a54ff8a89578289104a24ef4e494f9d1135f46d9606a8ad"
     },
     {
+      "path": "src/modules/investigation/manifest/investigation-manifest-requirements.ts",
+      "mode": "100644",
+      "digest": "sha256:ebacf7d12891d04ca8ee0ae25cd486933cc4023e95675871e97663402477965c"
+    },
+    {
+      "path": "src/modules/investigation/manifest/investigation-manifest-semantic-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:e64a09b54e45c6611649c2b16b4f552f3a1c5f50c6e3a27bedc9fba1296e3ddf"
+    },
+    {
+      "path": "src/modules/investigation/manifest/investigation-manifest-values.ts",
+      "mode": "100644",
+      "digest": "sha256:1ed7fe14e3907a40eb627ec973433579f8cb4004676656735e88a351787693dd"
+    },
+    {
       "path": "src/modules/investigation/manifest/investigation-manifest.ts",
       "mode": "100644",
-      "digest": "sha256:1bd33df2758c15b1b6e41f33397f6c04b4b9649bc606908e38ef8d420c8ec1ea"
+      "digest": "sha256:f58113c50b5f2672c1e31002ffa31ce0df5d0b23db19374e9deb83aca83b6aab"
     },
     {
       "path": "src/modules/investigation/manifest/investigation-materializer.ts",
@@ -2046,9 +2586,34 @@
       "digest": "sha256:1b3872b2f340589892621761a657280f13f39c9baf2cd5249f761c684d048043"
     },
     {
+      "path": "src/modules/provider-orchestration/execution-attempts.ts",
+      "mode": "100644",
+      "digest": "sha256:4a9311a045d0d6da9a1762e2b96d326b9e695ea958fa4b67dd9037c46a2f6c4a"
+    },
+    {
       "path": "src/modules/provider-orchestration/execution-core.ts",
       "mode": "100644",
-      "digest": "sha256:580c55d9da17d1b91039aba801489287f47d6505a635b86468dd48fab8d4c08c"
+      "digest": "sha256:e46f3a034c539baa49c599933fbf74e2f0170dcc10bb7c7109bffc294c465948"
+    },
+    {
+      "path": "src/modules/provider-orchestration/execution-record-types.ts",
+      "mode": "100644",
+      "digest": "sha256:9f40502e9bffae5663bf4ff80b324d10a143444fd0b650132a86ddec2a17eed4"
+    },
+    {
+      "path": "src/modules/provider-orchestration/execution-records.ts",
+      "mode": "100644",
+      "digest": "sha256:e6687247ef64cfd5ddbdb959e059401dd3b941d68c87c492097b22e62130c4d4"
+    },
+    {
+      "path": "src/modules/provider-orchestration/execution-retry.ts",
+      "mode": "100644",
+      "digest": "sha256:731c394541cab88ceae559fe2897c2f2d71a4e23d6045012a8b3d93d6433e13b"
+    },
+    {
+      "path": "src/modules/provider-orchestration/execution-values.ts",
+      "mode": "100644",
+      "digest": "sha256:5a987f263d4276e113414c5f9ed6f02eb020078284ef0caddbfc782e0ebb1151"
     },
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
@@ -2076,9 +2641,14 @@
       "digest": "sha256:5c23f0d01ceea523536811e2f5a94db60d284a9d004726cc50f5782ef7c86036"
     },
     {
+      "path": "src/modules/provider-orchestration/role-result-admission.ts",
+      "mode": "100644",
+      "digest": "sha256:35d97ab6fafae872e611438a78e8975e2ce2036c460be7b8c1cb982e1990a6ba"
+    },
+    {
       "path": "src/modules/provider-orchestration/role-scheduler.ts",
       "mode": "100644",
-      "digest": "sha256:530aedde1263ee816a1ab5cb9aea0bc8b109aaded69f9e1a68fd2ed02d4a6770"
+      "digest": "sha256:658cf5690bc3c140cb267f414d8a2759b5f78f29d3a9210e8b8a6986ba22f92c"
     },
     {
       "path": "src/modules/provider-orchestration/role-topology-resolution.ts",
@@ -2178,17 +2748,17 @@
     {
       "path": "src/recovery-authority.ts",
       "mode": "100644",
-      "digest": "sha256:e50a3bb73bc6e0d4d31e741ef5c8231359350f542d5b68897806f00e1db3a8e8"
+      "digest": "sha256:8bce0c403edeec921efc6e755573f411eb0666d310b9cdf684821d410849feb4"
     },
     {
       "path": "src/recovery-quarantine.ts",
       "mode": "100644",
-      "digest": "sha256:0ba209b77a13487ae1c51374412765fc63808b8316ce363d30712066c6b37fec"
+      "digest": "sha256:7f435a0f91dfaab72ce539e00986063b642b76eb8e80985deff637ed1951d94d"
     },
     {
       "path": "src/recovery-trust-root-restore.ts",
       "mode": "100644",
-      "digest": "sha256:56c5eeac6b35b47fc0203bb1c2a77fe16b84a043c356cdbf58c4bff27d29bdcf"
+      "digest": "sha256:0cac5b56320e7d5b98e1c51fb0f815a2e2694229c22c4c45a866b5df99183b23"
     },
     {
       "path": "src/runtime/managed-documents/contracts/documentation-closure.ts",
@@ -2211,9 +2781,34 @@
       "digest": "sha256:c05e5a807294f38e0b3eda9f68df8e580eedb00184b16b04ea0188acd83383f4"
     },
     {
+      "path": "src/runtime/managed-documents/transaction/investigation-publication-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:f2986b572fc57895b3725339961311e0bb10cae29a9703b3a31a93e761b94e39"
+    },
+    {
+      "path": "src/runtime/managed-documents/transaction/investigation-publication-files.ts",
+      "mode": "100644",
+      "digest": "sha256:f5cd758c8704c44ca39dbf8c3c233c84bbb2e8f5d40ff1ed383953bde0a49bde"
+    },
+    {
+      "path": "src/runtime/managed-documents/transaction/investigation-publication-observation.ts",
+      "mode": "100644",
+      "digest": "sha256:ae307b95cd031938a1f184e34b8ae2ef59903d290ff48ca060c530406e0dd044"
+    },
+    {
+      "path": "src/runtime/managed-documents/transaction/investigation-publication-records.ts",
+      "mode": "100644",
+      "digest": "sha256:156d235a72e7f76ac0028d0bead9decb3ba9939a82ab710d45d62d45ac4efdc6"
+    },
+    {
+      "path": "src/runtime/managed-documents/transaction/investigation-publication-values.ts",
+      "mode": "100644",
+      "digest": "sha256:7f78f931228361e44149e1e6c4dc369d872693f2195481a42968ae1571b94fe4"
+    },
+    {
       "path": "src/runtime/managed-documents/transaction/investigation-publication.ts",
       "mode": "100644",
-      "digest": "sha256:1e8a73e64b96e39565fc2cd0a41557eb4f45d08fee85929971a0936bac5974c8"
+      "digest": "sha256:de72cad77782ccdea1605c28f3db9433dd87e38d888e1c65b7bcce86992e4c00"
     },
     {
       "path": "src/runtime/managed-documents/transaction/semantic-ledger-projection.ts",
@@ -2278,22 +2873,37 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:d2acf5633252b962428e9c34413c9041b77e17fe56c06eb9a3a9a33762ef1dc0"
+      "digest": "sha256:08fad47c6ebd9ee560fd3a22adb047fc7ecce47911e10e41592b1cb8f6570bf2"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:839ff14b417f454da7b5fb9d75ed1922bd1302e8881c9bc4366e7ddd2d896e84"
+      "digest": "sha256:a6fc74e5815d0be491a71bfd6a97717d7d13f851550857692ae1d11b7514d1e8"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-availability-record.ts",
+      "mode": "100644",
+      "digest": "sha256:965b378e437d846d407234cd5f811b12c8917bb994511bc81a35fd2b5a6c82f6"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-governance.ts",
       "mode": "100644",
-      "digest": "sha256:e7a9c8b409bc438ad9f04950217073f1a9a4e7632250090202820edb3b3eccb0"
+      "digest": "sha256:1a6c017b541b728b15b1918c506615d4e40be202752d6216622ff713d19d64ad"
     },
     {
       "path": "src/runtime/provider-execution/provider-execution-policy-authority.ts",
       "mode": "100644",
       "digest": "sha256:4197a0d7df4d43b752da6671a6cc4a0eda35467f291f153a07c35d6e6035e065"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-execution-projection.ts",
+      "mode": "100644",
+      "digest": "sha256:44e65959124b5801bba738551a5b90f2462da3572cd2085f0077f6f773934d92"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-governance-values.ts",
+      "mode": "100644",
+      "digest": "sha256:c77cbaf44f473bd8d18bd9b45e0d782c0e06833278dd40d5096b384062550c38"
     },
     {
       "path": "src/runtime/provider-execution/provider-invocation-supersession-schema.ts",
@@ -2303,7 +2913,7 @@
     {
       "path": "src/runtime/provider-execution/provider-invocation-supersession.ts",
       "mode": "100644",
-      "digest": "sha256:e241267299afedbf7a21abd6bc0b726035818f3838a7ea09c0f61aebf2925e9a"
+      "digest": "sha256:f4b132b00faa65eac8c91d6ab63ea5787d71eb81ac3d7335e5d3449c81551a2a"
     },
     {
       "path": "src/runtime/provider-execution/provider-probe-executor.ts",
@@ -2311,19 +2921,99 @@
       "digest": "sha256:ef3e4ea3258af398f6202344ce88c86182e02c94a7c8346173db92e21a353e7d"
     },
     {
+      "path": "src/runtime/provider-execution/provider-repair-governance.ts",
+      "mode": "100644",
+      "digest": "sha256:5a173e6a16189b1f2bfb940a7a040f19b50552ad969f5826aff66bc2496e6dae"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retention-artifacts.ts",
+      "mode": "100644",
+      "digest": "sha256:d0270a2c8d863009975e6e7db1a1e5b821a4656a6784365aff36e7b9af159431"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retention-files.ts",
+      "mode": "100644",
+      "digest": "sha256:5f3caa5e7e1d1bb6685ed2ea72711b795cb10bbd208009809386dee142fd6aa4"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retention-observation.ts",
+      "mode": "100644",
+      "digest": "sha256:f0a27e1a03090027cb2d6dc56e2255c37c68c836046fa054c53f03c7bcbd379a"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retention-transaction.ts",
+      "mode": "100644",
+      "digest": "sha256:dbeda23ccf63b1bcaef16295efa308ff24380da9676d5758e115a538fea55e5e"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retention-values.ts",
+      "mode": "100644",
+      "digest": "sha256:f0968ef13cbf0ab07a5dffce9f380b5cad63d661e1bb9aacc2d2e1fbec389124"
+    },
+    {
       "path": "src/runtime/provider-execution/provider-retention.ts",
       "mode": "100644",
-      "digest": "sha256:541805ae50b6e0bc8a7c09243b3d42803bb7e73e0b639faa04a57d55cba986f1"
+      "digest": "sha256:c34087c126864f840c3fd421a1a45e1996a2bd02a200d427c6c04263a12c2348"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retry-record.ts",
+      "mode": "100644",
+      "digest": "sha256:7d3124916517a9d467552ce9e78291bea029ff065d763312e07696ec6a0305ac"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-scheduler.ts",
       "mode": "100644",
-      "digest": "sha256:8c30650b1de3aaf7f204ef43ac1f2a644565b53a14d177db5b5de2d1236d1d74"
+      "digest": "sha256:9fa3398ea0d1becd75cbe400ce9d2acd8fe5195e56f6b19b641b425cadf76ea4"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-retry-store.ts",
+      "mode": "100644",
+      "digest": "sha256:912eacea6407135c248f0bfc407df71e383a4e1a804b1684ddb93a0dd4d0be90"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-files.ts",
+      "mode": "100644",
+      "digest": "sha256:9b13d8e1dfa98281c9383f2fde5d1b260b76488565896657428e5ff39269cde1"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-output.ts",
+      "mode": "100644",
+      "digest": "sha256:ff0afdb24716eba1a1f51b4dd1a79f36f7b0421163287c0e3c591e327f69bd93"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-preflight.ts",
+      "mode": "100644",
+      "digest": "sha256:5c42561b4326a73d63d8272b042718d263a44cff44298f71927a475a415f20f3"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-prompts.ts",
+      "mode": "100644",
+      "digest": "sha256:49e2b7e0451ebd832ea2a587f514fec876778cdb28f394792b6e946d36c32011"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-slots.ts",
+      "mode": "100644",
+      "digest": "sha256:ff7d1f36a7acb58f54cfb378443258892de309d14c91391ab8c988aba197885d"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-runner-values.ts",
+      "mode": "100644",
+      "digest": "sha256:42edb85fc53d1243fad4f562c2d651e4e413666038effea064ad6cc599a9c00d"
     },
     {
       "path": "src/runtime/provider-execution/provider-runner.ts",
       "mode": "100644",
-      "digest": "sha256:6f3bed498298254de9eeb7a75c60865da286fe929e542335651db81e591f7130"
+      "digest": "sha256:ac65599c2fd16553da1177b48ba9ed62c3f94a526d16ba860d3b0c4bcb26bb94"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-supersession-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:bd3a2940669573b63293ab648d7aed9c287d4c505804900dcfecc72b39d747a8"
+    },
+    {
+      "path": "src/runtime/provider-execution/provider-supersession-values.ts",
+      "mode": "100644",
+      "digest": "sha256:0fceffe372584b1dfea9e3edd615cacc2d831c02d9464e9777732ca6c0146533"
     },
     {
       "path": "src/runtime/provider-execution/retention-control.ts",
@@ -2386,14 +3076,74 @@
       "digest": "sha256:07fe08967e1555479db2737f23fbb889f35a58ba1cea797269559d11576ba594"
     },
     {
+      "path": "src/runtime/repository-transaction/git-command.ts",
+      "mode": "100644",
+      "digest": "sha256:8dfa882a052b00976e28db88d32b3e8e19c72331413ea331a8b6bb4dcc1f20f5"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-commit-history.ts",
+      "mode": "100644",
+      "digest": "sha256:60fb7d352796e53d1e29adb04b2388652932840e747d5cf151210c0736c8ae27"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-commit-messages.ts",
+      "mode": "100644",
+      "digest": "sha256:3ec9a0000e1b9a6d3779bbcdfdda863aa8dca328310e3f0c21ad0c82eaf8f888"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-commit-objects.ts",
+      "mode": "100644",
+      "digest": "sha256:6e3e45ef9b7c4d682bc8354331aa98ca9533deb50f5b51d7a387cf14878e7f8d"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-exact-staging.ts",
+      "mode": "100644",
+      "digest": "sha256:aabd83c5ac218531a2306439eeb9a4fb99cc205135a9e6987cc304bdb86b4922"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-projection-files.ts",
+      "mode": "100644",
+      "digest": "sha256:89bdf7bc4bebee4a19ce510b1a5bc91b8ce620c22c6d7d294c7de6a16a5ba9e1"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-tracked-paths.ts",
+      "mode": "100644",
+      "digest": "sha256:99645661c716b6c9ffd37ac87bc7ac2aaf3b68eb571fd80c70f9990e908557df"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-transition-values.ts",
+      "mode": "100644",
+      "digest": "sha256:ea485417c5e787a3898ed509bcf83f04545e44e933ebe214aa525b17da68fdd7"
+    },
+    {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
       "mode": "100644",
-      "digest": "sha256:519818eb7b75519fc7e68d5981641219032c754dd57da24af123abb84fa2092e"
+      "digest": "sha256:d9683660228b06be5b9384895e8149a11a3b9e940a90906886290d62e4147327"
+    },
+    {
+      "path": "src/runtime/repository-transaction/git-working-state.ts",
+      "mode": "100644",
+      "digest": "sha256:ba59cce1fc902bbcdbb3bd9dd71acd8fe7beea608a22698cba9c3c2bd360c7d8"
     },
     {
       "path": "src/runtime/repository-transaction/git.ts",
       "mode": "100644",
-      "digest": "sha256:ff7721240939ba9c80b36557acc60ce909fc90bd2e02413a1878a8e8727eab79"
+      "digest": "sha256:193e964c180795c031c2c298ecf53d5c33abcad3e95b563b41512683bc079fc0"
+    },
+    {
+      "path": "src/runtime/repository-transaction/governed-artifact-fingerprints.ts",
+      "mode": "100644",
+      "digest": "sha256:c2dc32ab33f32bc4b4859410efc0d446eaaf83311f6f33591f85aa01f576d47c"
+    },
+    {
+      "path": "src/runtime/repository-transaction/governed-git-fingerprints.ts",
+      "mode": "100644",
+      "digest": "sha256:8d7188685f083276c0ca16e1b3dadb0f7c066a06c652c38ffb4713c358cd14d3"
+    },
+    {
+      "path": "src/runtime/repository-transaction/governed-provider-projection.ts",
+      "mode": "100644",
+      "digest": "sha256:1a97172f6001f24d96cd8007846064f92b82674ad531ac72ae54201180d89374"
     },
     {
       "path": "src/runtime/repository-transaction/package-closure.ts",
@@ -2411,6 +3161,11 @@
       "digest": "sha256:28a201b5a075c8bdee0c0a7419f739e2ebb36d4c9137ffe60ae81ceb40bca54e"
     },
     {
+      "path": "src/runtime/repository-transaction/post-approval-budget.ts",
+      "mode": "100644",
+      "digest": "sha256:290715fc6878810773592c733d2213e30ab30291d5064ec6fa4249e23dbfeab6"
+    },
+    {
       "path": "src/runtime/repository-transaction/tracked-tree-reader.ts",
       "mode": "100644",
       "digest": "sha256:027320c5c0204bfe123b22a56e52f24930efee0e08c5497587a86cef670cc42f"
@@ -2423,7 +3178,7 @@
     {
       "path": "src/runtime/session-workspace/planning-lock.ts",
       "mode": "100644",
-      "digest": "sha256:7452b58d64a74d146ef2792363ac7eec27d86c1c6f15a74dffc1b1793aa0da08"
+      "digest": "sha256:3fe0971e9256379d9ad1c9a5e2fe17a4913fe9c90e5455cd41e0be333ba56be2"
     },
     {
       "path": "src/runtime/session-workspace/planning-workspace.ts",
@@ -2436,9 +3191,44 @@
       "digest": "sha256:97b19501eaab98f1a3db8e0586fa7adc6adbe18d99bb1a938080b444af3bc258"
     },
     {
+      "path": "src/runtime/session-workspace/repository-lifecycle-lock.ts",
+      "mode": "100644",
+      "digest": "sha256:955641e0a8c008417c77a1453bfad77c1c497044100d9bdaa4ee59252941ee63"
+    },
+    {
+      "path": "src/runtime/session-workspace/session-operation-locks.ts",
+      "mode": "100644",
+      "digest": "sha256:2304e43bbddcfac128601db4ad54b39655c972b2f57deb8497b90550bfd21307"
+    },
+    {
+      "path": "src/runtime/session-workspace/session-store-values.ts",
+      "mode": "100644",
+      "digest": "sha256:2f1f0872780f78e14fb04e838e61afb64e7fdf0d570d30b2eb8c24e6add3295c"
+    },
+    {
       "path": "src/runtime/session-workspace/session-store.ts",
       "mode": "100644",
-      "digest": "sha256:6202f6d7c056654ac3fe424da5040e6a2ac25f24c2df2e1a234c64cee22f210b"
+      "digest": "sha256:cb886351e822091948c8ff91adc3dd65d39dacf4c65a221ff7794d4bf6b0e468"
+    },
+    {
+      "path": "src/runtime/session-workspace/workflow-session-admission.ts",
+      "mode": "100644",
+      "digest": "sha256:bca5f9d6df853d59e38b353bb858d329d6b492f34673cfe358b1e924bf1d7ffc"
+    },
+    {
+      "path": "src/runtime/session-workspace/workflow-session-isolation.ts",
+      "mode": "100644",
+      "digest": "sha256:1148bd0af531406a28224e3817007e5d9b3c225875d8e1ee640402ea83116fcd"
+    },
+    {
+      "path": "src/runtime/session-workspace/workflow-session-records.ts",
+      "mode": "100644",
+      "digest": "sha256:2264a16a8983461f5bc7c53f240dd0f1c07d68420c9339a3395cda07ee88858c"
+    },
+    {
+      "path": "src/runtime/session-workspace/workflow-session-worktrees.ts",
+      "mode": "100644",
+      "digest": "sha256:2661b8be21f18ab48698755ed5ba344601727685d2d1560cb8fa7ea7633eb865"
     },
     {
       "path": "src/runtime/storage-journal/archive-publication-store.ts",
@@ -2451,14 +3241,69 @@
       "digest": "sha256:23f76da3a1a7275389c1256a556e52b0b43b445aabb53e0f4e33c999937ec468"
     },
     {
+      "path": "src/runtime/storage-journal/authority-audit-anchor-records.ts",
+      "mode": "100644",
+      "digest": "sha256:d7f82ec3204983958c6447a371d32c16f29d2274c5be1a236a35ebb6502cdd05"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:4b6bfdb13bec9afc6c5fb0ce3a594b89a4309c3704c10790c1006b442ca2b609"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-destruction-records.ts",
+      "mode": "100644",
+      "digest": "sha256:770d6be19ad9c314267a8c0a7a915d778f30f52da5f1fe1a322889c7baa291fe"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-layout.ts",
+      "mode": "100644",
+      "digest": "sha256:d01a22d3f633d92d58f8b7846cba16bd6c76b41b1f8c0c29028e52204cd1d4c8"
+    },
+    {
       "path": "src/runtime/storage-journal/authority-audit-ledger.ts",
       "mode": "100644",
-      "digest": "sha256:2ae6d7589662bd9e17ac31d3b6ad4d61fbcdacbac03527e546e6ef450bd5acbe"
+      "digest": "sha256:543b409003b8f5b52b8da5e2435c78700499584926eff7274aef1c2057e99e3b"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-locks.ts",
+      "mode": "100644",
+      "digest": "sha256:cbdc8ad3f801e180cc6bc86a8999f2474d75a79623a97bcaca61ffb427b819fb"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-maintenance.ts",
+      "mode": "100644",
+      "digest": "sha256:fc8a91fe7eaee9793955e181d51fb461d0ebc2325e184b1343206d4d85badb4d"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-private-files.ts",
+      "mode": "100644",
+      "digest": "sha256:a7050a92839e63a46f2d8401ad49bb462b0c63b70a9d12b7a08d435b1af30e5a"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-protected.ts",
+      "mode": "100644",
+      "digest": "sha256:af677e3ad42f02116fbcf311b71082778ee15bc1b6ef7ae82622a44fab16a9e6"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-record-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:d22e9de2f5ffacfb706805692cdf3c40a91d5cae09ea857c9ac22e48e7f1e821"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-record-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:1a5df31d228be894164e2979e1a291fd12e646ac94dcb63953beffab853621dd"
     },
     {
       "path": "src/runtime/storage-journal/authority-audit-service.ts",
       "mode": "100644",
       "digest": "sha256:1bfff1246649c9857fdc9e66cba8c382973b3af21bf6f71a3402f7930700b928"
+    },
+    {
+      "path": "src/runtime/storage-journal/authority-audit-values.ts",
+      "mode": "100644",
+      "digest": "sha256:8d8c1d78f7eea83faf112e610e53a51c82e4f7327c69ff8539bba4e1fbc18374"
     },
     {
       "path": "src/runtime/storage-journal/change-role-assignment-grant-store.ts",
@@ -2471,9 +3316,44 @@
       "digest": "sha256:5d9ba72ecb4951d771a54fe417ba2c3f9b3cdf878707420a4ae0bff6afc795b8"
     },
     {
+      "path": "src/runtime/storage-journal/collaboration-grant-consumption.ts",
+      "mode": "100644",
+      "digest": "sha256:16c5ba8639d3d17fe04e271c0396686de218d712d4a2a3ef5f147781ee191ead"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-private-files.ts",
+      "mode": "100644",
+      "digest": "sha256:d068f5babc0e26cbaa0fdfe5caf16c9861e538d9436c3a9376e4beb0184ec046"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-records.ts",
+      "mode": "100644",
+      "digest": "sha256:e3e026fde47b366fd139015c1a15c0baff5fc0242189f76ea830fa0030aa59ba"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-reservation.ts",
+      "mode": "100644",
+      "digest": "sha256:bd5b678fc44cbe161da6b627c71bd8fec09993419c3d5c5179fabe16a49e2e76"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-store-types.ts",
+      "mode": "100644",
+      "digest": "sha256:7f75ad5f480f28f25f67ab0afe64536c2c6a7da6415bd73aff19e3a772a83bbe"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-store-values.ts",
+      "mode": "100644",
+      "digest": "sha256:6fda87e8a7ab3c2c5d0e3d4eb7b06818db55aa12ce29db8fe7afd99f531d7df3"
+    },
+    {
       "path": "src/runtime/storage-journal/collaboration-grant-store.ts",
       "mode": "100644",
-      "digest": "sha256:4c9ad6050be619ac98cdf54cc34d5a4563e73aacf10d66e5952803336724bf8f"
+      "digest": "sha256:bc8239afdb02b28474291c3e77b6c03570374bf7fc1cc5c70766509e0bec1829"
+    },
+    {
+      "path": "src/runtime/storage-journal/collaboration-grant-use-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:a5ddbaf17631beb5f1bf961935f752d1aeedbce9085f5fb4e5fbafb2c72ed24a"
     },
     {
       "path": "src/runtime/storage-journal/content-record-store.ts",
@@ -2481,19 +3361,119 @@
       "digest": "sha256:c5d5ab277097406b08ba6308d0ab5658a75c9dfeaffd6981f830d7bf899bd214"
     },
     {
+      "path": "src/runtime/storage-journal/control-plane-history-chain.ts",
+      "mode": "100644",
+      "digest": "sha256:78a6083a42ae2b399c66d84efaf372dc76d2bd9fd985e3a551780d185bb96af9"
+    },
+    {
+      "path": "src/runtime/storage-journal/control-plane-history-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:f1a580f8727a65d80eb32cd9125067d93fa04ae6e4fc9f00934d3c3701638ab2"
+    },
+    {
+      "path": "src/runtime/storage-journal/control-plane-history-files.ts",
+      "mode": "100644",
+      "digest": "sha256:c90ed95ac4cb9978aced256b261f425594f83bc97cc7d5f9a7c55db57074e39d"
+    },
+    {
+      "path": "src/runtime/storage-journal/control-plane-history-values.ts",
+      "mode": "100644",
+      "digest": "sha256:31f2f1df3cb36760e17667e8832d081616c2cd7c1753a329e9e5c3d7b7248768"
+    },
+    {
       "path": "src/runtime/storage-journal/control-plane-supervisor-history.ts",
       "mode": "100644",
-      "digest": "sha256:ee7557c6328a38efae71464962eb8d5a4c5d012acc5f6800f24a1e79c3f12e61"
+      "digest": "sha256:ec0bd57e723551c4304d4ac5f227aa7660a6264b481d2655fcc1157231e1fb79"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-node-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:23048b3c17a74b2778ef8340a33a7796be6992f19c349d0a988d58e5ba45af8a"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-node-store.ts",
+      "mode": "100644",
+      "digest": "sha256:6656c3400076f68cd84b7668a30328650ff2a17455ee6adda3a81245582467a0"
     },
     {
       "path": "src/runtime/storage-journal/evidence-object-store.ts",
       "mode": "100644",
-      "digest": "sha256:e05954b444fefb9bfaaa4d257cfd4db6396e6eea9873bccd3b64f5fbc4f84496"
+      "digest": "sha256:e6319e7ad52c9013f5e34fb17f124a95757271a176ecc0da645a1adaa7433d49"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-plan-review-grants.ts",
+      "mode": "100644",
+      "digest": "sha256:6b02d27ae96fd62a71113579d19b6e12c15ec107eac3d15a84ddf0365f17afea"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-plan-review-ownership.ts",
+      "mode": "100644",
+      "digest": "sha256:a74ddc3f53bdfa558d78233ee73c780d07e5ef8f9804e88a74b40c375e1ddd96"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-planning-ownership.ts",
+      "mode": "100644",
+      "digest": "sha256:3b4ddfc2d5082192749daa6291a700ded0c909dc5a226bfca28ff150b1cd1548"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-private-files.ts",
+      "mode": "100644",
+      "digest": "sha256:d5179d2261a4c7d09fe91c831f8d637b3f08d1a846e6fd3aba0980c081d31a17"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-ref-closure.ts",
+      "mode": "100644",
+      "digest": "sha256:8ff9e843b5f73dbd3ff868fb8aff002892945020a56095688022a74ce9c4ff64"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-ref-lock.ts",
+      "mode": "100644",
+      "digest": "sha256:43a69fce25bacca64c4ad7c2902e2e29c23f76cc87ca77c6b8599553d5cb190e"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-ref-store.ts",
+      "mode": "100644",
+      "digest": "sha256:d9e0e578b24d142c48c3c0fac4016cf0ff2340bc0fb877172f9c12d1cca4c003"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-store-values.ts",
+      "mode": "100644",
+      "digest": "sha256:9cb88a2779bb4c0ce094ec842ccb9b4c9a50b6667ceb3e660123758134f39f87"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-task-invocation-ownership.ts",
+      "mode": "100644",
+      "digest": "sha256:26015733f5ca4d8b2dadd21345c32728b70e32e309940ccf111f95344c941d95"
+    },
+    {
+      "path": "src/runtime/storage-journal/evidence-unsafe-observation.ts",
+      "mode": "100644",
+      "digest": "sha256:f3a381e0d8466fadb06f522ad07a388d711e822acc1b7b424f16f316725137a3"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-provider-projection.ts",
+      "mode": "100644",
+      "digest": "sha256:4e0f7a7d8d8d4b4e714c9abef53792862c266122bf8ba43fe1436faed873f987"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-state-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:290255e9dcae5eb72048a9d588d783081731d4df6ec2e21471933577a1a52092"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-state-files.ts",
+      "mode": "100644",
+      "digest": "sha256:fec48464d4ca88708fb17be9e4abee534fc9fdfcfd0855ad19fd189e80190693"
+    },
+    {
+      "path": "src/runtime/storage-journal/execution-state-values.ts",
+      "mode": "100644",
+      "digest": "sha256:5f92771689bc5dcbee8fd4708933f44e96f39218b5ee2fc58981e7560a5bd9ae"
     },
     {
       "path": "src/runtime/storage-journal/execution-store.ts",
       "mode": "100644",
-      "digest": "sha256:0bd22d193f9c3c79157b1e20b5de4dc29f45ff234487e65ec2c1f3f1a46c6e5c"
+      "digest": "sha256:8e12487fa820dfea531dd5a6e02a09ca155f85d86b3af1f011c239e29a5d915f"
     },
     {
       "path": "src/runtime/storage-journal/external-effect-audit.ts",
@@ -2511,9 +3491,74 @@
       "digest": "sha256:9bc3aa13f4b168b48c6ddbeb95f191298de64c24806735c7929a53e918a18b2c"
     },
     {
+      "path": "src/runtime/storage-journal/human-resolution-archive.ts",
+      "mode": "100644",
+      "digest": "sha256:a313ef7c9b35e7ca70aa80d168039e4fe792695a42f520e54b6b9b710fbfb10e"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:f322a516e93b6952bd150bbb75deb11b17d4ee6fc672343c181c71cc78527dd2"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-evidence-binding.ts",
+      "mode": "100644",
+      "digest": "sha256:ce721f84cd038f88fb0ce0e0321ac47c10deae1b7a2274508d03e289cebba53a"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-grant-lock.ts",
+      "mode": "100644",
+      "digest": "sha256:9056efa6635d44ed1b79dc49199762d4135510dac215e71c20b5f33fe7875dd4"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-grant-publication-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:5e9fb6c1eadeb6a2453e8e3179bec2d01f14fe9da57683527ad88d26c6f988ae"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-grant-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:5f957380073a80863eab741a41a81b4035fdd10642c36ba14888ea8c338d4314"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-grant-store.ts",
+      "mode": "100644",
+      "digest": "sha256:266973fa40aed64e2aed7cfe3a8e5154504e8b75e7a8f3b75c71c78377332d15"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-journal-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:75e614197ae6200acc55b54fe499cc3f158edd305b5c5e1be5d33b10853d9886"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-journal.ts",
+      "mode": "100644",
+      "digest": "sha256:ddcd57a3758f91e57dac5504188c5e4f883d307497dee203a54b0878d1afb085"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-nodes.ts",
+      "mode": "100644",
+      "digest": "sha256:38546bd5a6018b3c3b55db9210a1a8327667a27cca403c9652abf6928521865b"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-provider-state.ts",
+      "mode": "100644",
+      "digest": "sha256:57b4945a62366d8f90a0b88b2172ada57789691075926410faff824bf78a04a5"
+    },
+    {
+      "path": "src/runtime/storage-journal/human-resolution-state.ts",
+      "mode": "100644",
+      "digest": "sha256:1e4c551a85679825eb7297df803f12850b7160aca0512b92a9ac9b458cf8196a"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-adoption-store.ts",
+      "mode": "100644",
+      "digest": "sha256:0c1eaddb8f3a5bd3486ef77c2b141624d186d87d67ad44092b298b506ff74b8f"
+    },
+    {
       "path": "src/runtime/storage-journal/intervention-control-persistence.ts",
       "mode": "100644",
-      "digest": "sha256:ecd2fd3d9e50df17723f1488b040014fb5e39c0758cc3fee3820eed1568f478b"
+      "digest": "sha256:51911f23ce689e60e120219e04d3c30a207d7cc36123972434f850c29320bc60"
     },
     {
       "path": "src/runtime/storage-journal/intervention-engine-artifact-store.ts",
@@ -2521,14 +3566,89 @@
       "digest": "sha256:200acd8b9a1e5ede8380fb0de296c6605f6c845a8e0d630f51d5eaf617bd65cc"
     },
     {
+      "path": "src/runtime/storage-journal/intervention-persistence-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:ba6b4b35bee965dba018c84e05a5f7b6c45ab9c284c9aad772011820555a759b"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-persistence-files.ts",
+      "mode": "100644",
+      "digest": "sha256:183bf0c2b4a6996640bdb437da02ef68364c0bb2b6f32fa346cb54eec1e0d134"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-persistence-locks.ts",
+      "mode": "100644",
+      "digest": "sha256:3a0af2eb3a65a8b8409ac63f0e865d58ec1724995bd0cac30cc2cd2722a32bf8"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-persistence-paths.ts",
+      "mode": "100644",
+      "digest": "sha256:b1cfc737d7a04bd8b9e79be6b9a4245cdb263581f1e496b0bda792830e3f3bd3"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-persistence-values.ts",
+      "mode": "100644",
+      "digest": "sha256:52b162b92497bcb844bc6651f3e8a5fb19118e561cb7db54fa541813055a767d"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-plan-store.ts",
+      "mode": "100644",
+      "digest": "sha256:bb1ed9d36a3e42785cab7134e690c98a7de6fcb1156c1c140e6b35d1f56bcf17"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-promotion-store.ts",
+      "mode": "100644",
+      "digest": "sha256:98665c40d81b69a229102f09c38341cc66f09481f3e59b5992cf5004a2752c32"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-sidecar-records.ts",
+      "mode": "100644",
+      "digest": "sha256:aad5141d44ecc288d7ecc06c5c0d764b1a002a0c64abf633b4bbab9d3063e4ae"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-sidecar-store.ts",
+      "mode": "100644",
+      "digest": "sha256:6727972e9ac496aedfe465f8808bf0bec297fdf7931926dcaff4fd1a81691b83"
+    },
+    {
+      "path": "src/runtime/storage-journal/intervention-update-store.ts",
+      "mode": "100644",
+      "digest": "sha256:3ea2d0ff9bdd6769242c21fd05a1b9cf870ce8f2d78f5ad0d3f0c324ccc71985"
+    },
+    {
+      "path": "src/runtime/storage-journal/investigation-checkpoint-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:5456b6bbabde9f5120fdedf1962cf4dbc0dce38482c7df251407efc070eb5720"
+    },
+    {
       "path": "src/runtime/storage-journal/investigation-private-files.ts",
       "mode": "100644",
       "digest": "sha256:f0a31dbcdcb701661bcbfd97bd1cf5c33fba89c5e89bae541c4a2d71406dc8b4"
     },
     {
+      "path": "src/runtime/storage-journal/investigation-resolution-values.ts",
+      "mode": "100644",
+      "digest": "sha256:b3dea4f06e7e82814088c3084bb81d499c9600b10c0a9885d5fa21cd7fbf9f76"
+    },
+    {
+      "path": "src/runtime/storage-journal/investigation-session-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:2a03e6c4760aa0e0bf6b69455740cb8ae0d3344fca5305a8789af938289673d4"
+    },
+    {
+      "path": "src/runtime/storage-journal/investigation-session-records.ts",
+      "mode": "100644",
+      "digest": "sha256:dc55080c1006186c5d68f5998f376af075aa1db1f39802959fb53be1e4d53aa3"
+    },
+    {
       "path": "src/runtime/storage-journal/investigation-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:c4be82e104ed2c0eda7e7cba17b45ee8f3d18bea5e60b324e2f42342777c3d2c"
+      "digest": "sha256:f3e72b305c0019719ceb7468b3485e32686802bdf01249bfeb5026d83def6dd4"
+    },
+    {
+      "path": "src/runtime/storage-journal/investigation-session-types.ts",
+      "mode": "100644",
+      "digest": "sha256:96328359f1f18fa28d994e8b2e21432d3bce26f3ef581a434ab78ed360757b79"
     },
     {
       "path": "src/runtime/storage-journal/investigation-store-values.ts",
@@ -2546,6 +3666,21 @@
       "digest": "sha256:9feba3bfacc1947acf62bab3062d09f56b4a919661be1af3d7e842cb1ef3ff07"
     },
     {
+      "path": "src/runtime/storage-journal/maintainer-grant-files.ts",
+      "mode": "100644",
+      "digest": "sha256:b52b31c4594f00af3bb1bc611ecf96aa43d16e594db010f6e814ceac78cf49bc"
+    },
+    {
+      "path": "src/runtime/storage-journal/maintainer-grant-records.ts",
+      "mode": "100644",
+      "digest": "sha256:33877d561b58b5bfcbf9bd52977a66ff94e8c4502a16928dfd7a0455a14aba8b"
+    },
+    {
+      "path": "src/runtime/storage-journal/maintainer-grant-values.ts",
+      "mode": "100644",
+      "digest": "sha256:eb7593ed47b3b91888ac3dd0b5b2f47be2177e7c3243bb3b8e53e4f701ab89a4"
+    },
+    {
       "path": "src/runtime/storage-journal/maintainer-report.ts",
       "mode": "100644",
       "digest": "sha256:501c6091657db541821b20c933dbb9608000978b2be7a3c95dfc870fb0888621"
@@ -2553,7 +3688,7 @@
     {
       "path": "src/runtime/storage-journal/maintainer-store.ts",
       "mode": "100644",
-      "digest": "sha256:a038958277ea2e9b3353ef4113a3fa4527cf836cc5ee287b4194db6a28ad868d"
+      "digest": "sha256:50f8c62c8c1f0107c7fdf9b962e6848f7bd38657544fbb483b187b778b60e6ca"
     },
     {
       "path": "src/runtime/storage-journal/planning-report.ts",
@@ -2568,7 +3703,7 @@
     {
       "path": "src/runtime/storage-journal/propose-exemption-store.ts",
       "mode": "100644",
-      "digest": "sha256:382d4b50f74c351eea9aa1a7742c29a3efe45d8fd189d1162ff23356ab8b75d0"
+      "digest": "sha256:381ab0506c4d050d0e4dd945f630475653615f9e95166609d17bb4dd2509ffc8"
     },
     {
       "path": "src/runtime/storage-journal/provider-execution-admission-authority.ts",
@@ -2578,7 +3713,7 @@
     {
       "path": "src/runtime/storage-journal/provider-host-wrapper-evidence.ts",
       "mode": "100644",
-      "digest": "sha256:0ce38346efa01eedae13cfd8a4d6919a4b2e4f0df5a6b84d1cabf6b418fc1ef9"
+      "digest": "sha256:cb2301410dd662d1b4f47d96bf330d177423fa4a172188107a8309ca75777fdd"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
@@ -2593,7 +3728,22 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-completion.ts",
       "mode": "100644",
-      "digest": "sha256:127774354e87d1de3b6a2528c8987a87786b8863a6f0dc2d4817f6e5af8826fa"
+      "digest": "sha256:928aa847a7fbc75e03fc68dc2e1c89bc8894023722ae97ca8c02eb86e86fc166"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
+      "mode": "100644",
+      "digest": "sha256:02ebdddc3187dd571ddb9e28a84c8b9bb41c837440ea156137298b167fed9c63"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-invocation-manifest-validation.ts",
+      "mode": "100644",
+      "digest": "sha256:0fe55bded181e76a196c525c7085a84256a3c6154c8596402870966ed3155c99"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-invocation-output-validation.ts",
+      "mode": "100644",
+      "digest": "sha256:a5064adcfcf6db950ef3e3720d6b52ebee684cf80d3c2014500943bb368e6146"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-policy.ts",
@@ -2623,7 +3773,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-validation.ts",
       "mode": "100644",
-      "digest": "sha256:0721d8dabe9bc33de801652e162e0659c95f8c8004da84f2f188338cbb7ba35a"
+      "digest": "sha256:37a3a4b19172ddf8bfc27bd06f6af89a8dbc38a25bbc1c56ac690f625368868c"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-workers.ts",
@@ -2631,9 +3781,39 @@
       "digest": "sha256:4455084ccd38b30cf5d7194f75ae6fa2a1af492205a2577b5a7527e8bb1fead2"
     },
     {
+      "path": "src/runtime/storage-journal/provider-native-session-chain.ts",
+      "mode": "100644",
+      "digest": "sha256:06474fd4963857002f78a21955fb639cfb861d44298e56382586d99cfd98d34a"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-native-session-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:e1c2b714fbf8b4f54a5cf922cfbe45c99b0fe4987be3f7c48d3772ad98115240"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-native-session-files.ts",
+      "mode": "100644",
+      "digest": "sha256:7e9abdea90a6d099b1f2ea780e9ab00f7ca7278f7e0b5d4b871edba4e5e7cdb0"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-native-session-publication-recovery.ts",
+      "mode": "100644",
+      "digest": "sha256:a0e1fcada7e9b88e93d2845cc77c39742ea494c88b09a29622077da0089c5580"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-native-session-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:deaefe7e335f9249e2764604a03081e852c9eaded5ac000865a1727d9db122cd"
+    },
+    {
       "path": "src/runtime/storage-journal/provider-native-session-store.ts",
       "mode": "100644",
-      "digest": "sha256:81ecb05887e7241bf4bb7a7be9909fd98c184a35ade8c8a62d5ab4d58559c8d2"
+      "digest": "sha256:9481dbb0d112ce4abd0932523ea98d08d7740e7d94c311ec3c19ccebd1fd4d4c"
+    },
+    {
+      "path": "src/runtime/storage-journal/provider-native-session-values.ts",
+      "mode": "100644",
+      "digest": "sha256:baae3aff5f554f4da13e0fca5d9a5c662072c18e2da6cd95ae373092c4a86933"
     },
     {
       "path": "src/runtime/storage-journal/provider-retention-catalog.ts",
@@ -2658,7 +3838,7 @@
     {
       "path": "src/runtime/storage-journal/provider-runtime-retention.ts",
       "mode": "100644",
-      "digest": "sha256:c2b0bb40f43392b0564cad6e99078d0e0d6aa56dde700792d223fd424c6113ee"
+      "digest": "sha256:01a9c5478478098553864d66a32d360b788a10c5bf37777a92135a913b1a2633"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",
@@ -2686,24 +3866,94 @@
       "digest": "sha256:c0231b6e1660947b415811172d24dbd5b83770029974c74daf307875d21d1731"
     },
     {
+      "path": "src/runtime/storage-journal/task-diff-external-authority-records.ts",
+      "mode": "100644",
+      "digest": "sha256:e0903906cae563404c3efdcda5832c1b97165281bc59e727fb806700ffb08d5b"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-external-content-records.ts",
+      "mode": "100644",
+      "digest": "sha256:130d5897017e89a60554914a3e7bc8c5151eb1608cfcf15a930cebf71cc95420"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-external-store-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:946eaa3e504ad3941b4c9a9a97a766c8d9cf6c1d91999be4e8ca72f9ab6a44ff"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-external-store-inventory.ts",
+      "mode": "100644",
+      "digest": "sha256:63692552eb86eba9b0259c4f9b32829f2c49cb7c2cea9c1617d75faff4559435"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-external-store-paths.ts",
+      "mode": "100644",
+      "digest": "sha256:aaa517c31e7fa69b256e997d436b92ccd27250ebd5a258ee20e9f3f46f9d710e"
+    },
+    {
       "path": "src/runtime/storage-journal/task-diff-review-external-store.ts",
       "mode": "100644",
-      "digest": "sha256:777ce8c163db7026175d77e728bf58c29e6572f5c06ee0f3bab15d4036fc9644"
+      "digest": "sha256:47887e2edbf797735f29a14d596bdb48303a6837feb713dc0ba902a80db81984"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-review-lineage-store.ts",
+      "mode": "100644",
+      "digest": "sha256:f3771865752462dd3fa93a7565d145099e0855ad05644259c1395072cb903c76"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-review-manifest-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:5b4db3f53e46464dfacd3d859c3c64fa22ff1d4957792980781559c2fd55d768"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-review-record-codec.ts",
+      "mode": "100644",
+      "digest": "sha256:00fc5afdd118a45b1f5b67327b0b7c4fcfe9ce02e9e5e13123ed785049f00630"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-review-store-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:1ddd3caef4bd6f484ba1c7b11110e4e3b008af15ef51ac3649c21e173893a01d"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-diff-review-store-inventory.ts",
+      "mode": "100644",
+      "digest": "sha256:303c076795413963c4d28ffc7d6a14fa9a96be59d4ec7e26634a7711c6af86a3"
     },
     {
       "path": "src/runtime/storage-journal/task-diff-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:f16b345b02a9683599ce0aa671806f3d06692db55a27d77f647049ba25f7f457"
+      "digest": "sha256:2ba78bf8b554c59ea23e36b4f21d8847bb8a6697525ec97180cfd6e583769e9b"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-correction-round-authority.ts",
+      "mode": "100644",
+      "digest": "sha256:8af2e6a466ea1a29965aff8a874f848175f526382e419aa791dd1afef75e09a2"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-correction-round-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:ecd8d910aa7e4aac4baf864f8325af18172a898c593b2b8434756367ceb12c53"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-round-store.ts",
       "mode": "100644",
-      "digest": "sha256:e4a5fba9027a20cc3bee770088725e03fef5d7e1989c39f2c781edd04dbc47e5"
+      "digest": "sha256:8809afc7f861f8acac4a8b7ecfa3c2403570429c7de0b60646b9b659ae9ec6b1"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-correction-round-values.ts",
+      "mode": "100644",
+      "digest": "sha256:2d231c69ecd26e28041f3b97c66afd32d08cbdb05cf3ac89f055c5b13e5d0a1d"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-correction-store.ts",
       "mode": "100644",
-      "digest": "sha256:24a3af8f7f362a6662499cb9a2b744b9650ff1ab25cfe94625a99061aa8c53d1"
+      "digest": "sha256:c2e3caa371984b74f7ff2bad60b76256884fde4d551d70de7b00c71bf5e11dc1"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-current-ref.ts",
+      "mode": "100644",
+      "digest": "sha256:4be044ecd8df2b0b55cbfcc9703ae8282886792cdad8bd25a50c82c8d3841be8"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-patch-store.ts",
@@ -2711,19 +3961,54 @@
       "digest": "sha256:788c480cb423e84eb76c428c9931f359f2cb048d69cc2e35e1fff7ac6dbac47a"
     },
     {
+      "path": "src/runtime/storage-journal/task-strategy-provider-attempts.ts",
+      "mode": "100644",
+      "digest": "sha256:87ecef7180daaba81ced7fed77965b67a06d89faa9872ccb3620ca4975e553f0"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-provider-authority.ts",
+      "mode": "100644",
+      "digest": "sha256:575225925d5ae35fb4e123bbc185b2d5c7b7018f4bad33f3c6c062d83ef6356d"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-provider-record-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:377d3e260ccb25f511e03c7853f242f189ccc82cbeb35f2d3620639022ab775e"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-provider-store-values.ts",
+      "mode": "100644",
+      "digest": "sha256:76ff72d23257f339040d1bd6a7aebcaf5a87dc94662e85879d85dbba64e08441"
+    },
+    {
       "path": "src/runtime/storage-journal/task-strategy-provider-store.ts",
       "mode": "100644",
-      "digest": "sha256:b2a371c31e972f3760ff3c08ffb7306a83a64a88b38774092a49ab5443acf5c2"
+      "digest": "sha256:ac416f6052954b05ed3733faae4652828af4d27f1040aa25713107fab18efdcc"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-red-revision-contract.ts",
+      "mode": "100644",
+      "digest": "sha256:133cadb0ad2ca893d14433c78414271143cbe05f69a0d66c5b0c8a14237788aa"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-red-revision-store.ts",
       "mode": "100644",
-      "digest": "sha256:9135c669e6e2cf17aae043e8f6c5779160079d52370f95ad5da721c02ecc0b51"
+      "digest": "sha256:e045fce6b10630a5c8c16805b27b24eb2486584995d09ebad03ba4cc3ee250d9"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-red-revision-values.ts",
+      "mode": "100644",
+      "digest": "sha256:7a2db78d3ad221204316fcc203674afa812ecce6127552ebed166ad810cb56ee"
     },
     {
       "path": "src/runtime/storage-journal/task-strategy-store.ts",
       "mode": "100644",
-      "digest": "sha256:ba8ff2f0b8f73e6d466a2968f2c25fd93c128f16659ec1326b1297d7515a1412"
+      "digest": "sha256:deae5393382d2dcfc7a77f0c5ace750eaaa29f9734f6e6fcc003613d53fb75de"
+    },
+    {
+      "path": "src/runtime/storage-journal/task-strategy-transactions.ts",
+      "mode": "100644",
+      "digest": "sha256:d4f9d718cf074d9af545820cb16dc67c5523854b6ea0997a048b27b887a84268"
     }
   ]
 }

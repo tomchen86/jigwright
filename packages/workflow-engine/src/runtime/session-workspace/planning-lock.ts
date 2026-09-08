@@ -1,3 +1,13 @@
+/**
+ * Acquires per-change authority for planning and task-revision transitions.
+ *
+ * Invariants:
+ * - Repository, session, and change locks retain their existing acquisition and revalidation order.
+ * - Human-resolution barriers and active-session checks run before protected transitions.
+ *
+ * Depends on: workflow session records, repository lifecycle locks, and human-resolution journals.
+ * Failure modes: concurrent planning writes, stale lock ownership, or transitions during human resolution.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -8,7 +18,7 @@ import {
   publishPreparedExclusiveLock,
   reclaimDeadPreparedLock,
 } from '../repository-transaction/filesystem-safety.ts';
-import { assertHumanResolutionLifecycleBarrier } from '../storage-journal/investigation-session-store.ts';
+import { assertHumanResolutionLifecycleBarrier } from '../storage-journal/human-resolution-journal.ts';
 import {
   assertOwnedLock,
   listConflictingActiveWorkflowSessionIds,

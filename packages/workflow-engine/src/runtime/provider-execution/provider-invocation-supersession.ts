@@ -1,53 +1,66 @@
-import crypto from 'node:crypto';
+/**
+ * Prepare, finalize, and recover one exact provider supersession relation transaction.
+ *
+ * Invariants:
+ * - Predecessor and successor binding checks, durable relation writes, and crash phases stay ordered.
+ * - Recovery remains with the prepare and finalize transaction that it completes.
+ *
+ * Depends on: supersession schema storage, stable evidence snapshots, and exact invocation entries.
+ * Failure modes: A replacement can point to stale evidence or leave ambiguous current endpoints.
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../../modules/provider-orchestration/execution-core.ts';
-import { ExitCode, WorkflowError } from '../../foundation/errors/errors.ts';
+import { WorkflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
-  assertPrivateInvestigationDirectory,
-  createPrivateCanonicalJson,
+  withPrivateRuntimeLock,
   privatePathExists,
   readPrivateCanonicalJson,
-  withPrivateRuntimeLock,
-} from '../storage-journal/investigation-session-store.ts';
+  createPrivateCanonicalJson,
+  assertPrivateInvestigationDirectory,
+} from '../storage-journal/investigation-private-files.ts';
 import {
-  assertInvocationId,
   type InvestigationRuntimePaths,
+  assertInvocationId,
 } from '../session-workspace/paths.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type { ProviderInvocationRecord } from '../storage-journal/provider-invocation-store.ts';
 import {
-  providerRetentionArtifact,
-  readCompleteProviderRetentionReceipt,
-} from '../storage-journal/provider-retention-receipt.ts';
-import {
+  type ProviderInvocationEvidenceSnapshot,
+  type ProviderInvocationSupersessionTransaction,
+  providerInvocationSupersessionUnsafe,
+  providerInvocationSupersessionTransactionPath,
   assertProviderInvocationSupersessionTransaction,
-  createProviderInvocationEvidenceSnapshot,
-  createProviderInvocationSupersessionEdge,
-  createProviderInvocationSupersessionIndex,
-  createProviderInvocationSupersessionReceipt,
-  createProviderInvocationSupersessionTransaction,
-  createProviderInvocationSupersessionTransactionPointer,
-  inspectProviderInvocationSupersessionRelations,
   providerInvocationSupersessionConflict,
+  providerInvocationSupersessionTransactionPointerPath,
+  createProviderInvocationSupersessionTransactionPointer,
+  createProviderInvocationSupersessionEdge,
+  createProviderInvocationSupersessionTransaction,
+  providerInvocationSupersessionPaths,
+  type ProviderInvocationSupersessionEdge,
+  providerInvocationSupersessionReceiptPath,
   providerInvocationSupersessionEdgePath,
   providerInvocationSupersessionPredecessorIndexPath,
-  providerInvocationSupersessionReceiptPath,
-  providerInvocationSupersessionPaths,
+  createProviderInvocationSupersessionIndex,
   providerInvocationSupersessionSuccessorIndexPath,
-  providerInvocationSupersessionTransactionPath,
-  providerInvocationSupersessionTransactionPointerPath,
-  providerInvocationSupersessionUnsafe,
-  type ProviderInvocationEvidenceSnapshot,
-  type ProviderInvocationSupersessionEdge,
+  createProviderInvocationSupersessionReceipt,
   type ProviderInvocationSupersessionRelations,
-  type ProviderInvocationSupersessionTransaction,
+  inspectProviderInvocationSupersessionRelations,
 } from './provider-invocation-supersession-schema.ts';
+import {
+  currentEvidenceSnapshot,
+  assertSnapshotStableCurrent,
+} from './provider-supersession-evidence.ts';
+import {
+  isTimestamp,
+  deepFreeze,
+  isRecord,
+} from './provider-supersession-values.ts';
 
-const MAX_EVIDENCE_ARTIFACT_BYTES = 1_048_576;
 const MAX_SUPERSESSION_TRANSACTIONS = 4_096;
+
 const TRANSACTION_FILE = /^[0-9a-f]{64}\.json$/;
 
 type ProviderInvocationEntry = Readonly<{
@@ -725,223 +738,6 @@ function assertEdgeCurrent(
   }
 }
 
-function assertSnapshotStableCurrent(
-  paths: InvestigationRuntimePaths,
-  expected: ProviderInvocationEvidenceSnapshot,
-  record: ProviderInvocationRecord,
-  request: ProviderInvocationRequest,
-  terminalExact: boolean,
-): void {
-  const current = currentEvidenceSnapshot(paths, record, request, expected);
-  for (const key of [
-    'invocationId',
-    'attempt',
-    'requestDigest',
-    'manifestDigest',
-    'subjectDigest',
-    'createdAt',
-  ] as const) {
-    if (current[key] !== expected[key]) {
-      throw providerInvocationSupersessionUnsafe();
-    }
-  }
-  if (
-    terminalExact &&
-    (current.promptDigest !== expected.promptDigest ||
-      current.rawOutputDigest !== expected.rawOutputDigest ||
-      current.semanticOutputDigest !== expected.semanticOutputDigest ||
-      current.terminalStatus !== expected.terminalStatus ||
-      current.terminalAt !== expected.terminalAt ||
-      current.failureCode !== expected.failureCode ||
-      current.invocationRevision !== expected.invocationRevision)
-  ) {
-    throw providerInvocationSupersessionUnsafe();
-  }
-  if (
-    !terminalExact &&
-    (expected.terminalStatus !== null ||
-      expected.terminalAt !== null ||
-      expected.failureCode !== null ||
-      expected.invocationRevision !== 0)
-  ) {
-    // The successor snapshot records its immutable prepared identity. Its
-    // state/revision may advance after publication, but the snapshot itself
-    // must never masquerade as terminal evidence.
-    if (
-      expected.terminalStatus !== null ||
-      expected.terminalAt !== null ||
-      expected.failureCode !== null ||
-      expected.invocationRevision !== 0
-    ) {
-      throw providerInvocationSupersessionUnsafe();
-    }
-  }
-}
-
-function currentEvidenceSnapshot(
-  paths: InvestigationRuntimePaths,
-  record: ProviderInvocationRecord,
-  request: ProviderInvocationRequest,
-  retainedFallback?: ProviderInvocationEvidenceSnapshot,
-): ProviderInvocationEvidenceSnapshot {
-  const prompt = artifactDigest(paths, record, 'runtime/prompt.json');
-  const raw = artifactDigest(paths, record, 'runtime/semantic-output.json');
-  const observedSemanticOutputDigest =
-    record.result !== null
-      ? digestText(canonicalJson(record.result.output))
-      : failedSemanticOutputDigest(paths, record);
-  const semanticOutputDigest =
-    observedSemanticOutputDigest === null &&
-    retainedFallback !== undefined &&
-    retainedFallback.rawOutputDigest === raw
-      ? retainedFallback.semanticOutputDigest
-      : observedSemanticOutputDigest;
-  return createProviderInvocationEvidenceSnapshot({
-    schemaVersion: 1,
-    kind: 'provider-invocation-evidence-snapshot',
-    invocationId: record.invocationId,
-    attempt: record.attempt,
-    requestDigest: record.requestDigest,
-    manifestDigest: record.manifestDigest,
-    subjectDigest: request.targetDigest,
-    promptDigest: prompt,
-    rawOutputDigest: raw,
-    semanticOutputDigest,
-    terminalStatus:
-      record.state === 'succeeded' || record.state === 'failed'
-        ? record.state
-        : null,
-    terminalAt:
-      record.state === 'succeeded' || record.state === 'failed'
-        ? record.updatedAt
-        : null,
-    failureCode: record.state === 'failed' ? record.failure!.code : null,
-    invocationRevision: record.revision,
-    createdAt: record.createdAt,
-  });
-}
-
-function failedSemanticOutputDigest(
-  paths: InvestigationRuntimePaths,
-  record: ProviderInvocationRecord,
-): string | null {
-  const evidencePath = path.join(
-    paths.invocations,
-    record.invocationId,
-    'repair-evidence.json',
-  );
-  if (
-    !privatePathExists(
-      paths,
-      evidencePath,
-      providerInvocationSupersessionUnsafe,
-    )
-  ) {
-    return null;
-  }
-  const value = readPrivateCanonicalJson(
-    paths,
-    evidencePath,
-    providerInvocationSupersessionUnsafe,
-  );
-  if (
-    !isRecord(value) ||
-    value.kind !== 'provider-repair-evidence' ||
-    value.failedInvocationId !== record.invocationId ||
-    !isRecord(value.repairContext) ||
-    !Object.hasOwn(value.repairContext, 'previousOutput')
-  ) {
-    throw providerInvocationSupersessionUnsafe();
-  }
-  return digestText(canonicalJson(value.repairContext.previousOutput));
-}
-
-function artifactDigest(
-  paths: InvestigationRuntimePaths,
-  record: ProviderInvocationRecord,
-  name: 'runtime/prompt.json' | 'runtime/semantic-output.json',
-): string | null {
-  const filePath = path.join(
-    paths.invocations,
-    record.invocationId,
-    ...name.split('/'),
-  );
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (stats) {
-    const content = readPrivateArtifact(paths, filePath);
-    return content.byteLength === 0 ? null : digestBuffer(content);
-  }
-  if (record.state !== 'succeeded' && record.state !== 'failed') return null;
-  const receipt = readCompleteProviderRetentionReceipt(
-    paths,
-    record.invocationId,
-    {
-      requestDigest: record.requestDigest,
-      manifestDigest: record.manifestDigest,
-      invocationRevision: record.revision,
-      terminalState: record.state,
-      terminalAt: record.updatedAt,
-    },
-  );
-  const retained =
-    receipt === null ? null : providerRetentionArtifact(receipt, name);
-  return retained === null || retained.bytes === 0 ? null : retained.digest;
-}
-
-function readPrivateArtifact(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-): Buffer {
-  const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (
-    !before ||
-    !before.isFile() ||
-    before.isSymbolicLink() ||
-    before.nlink !== 1 ||
-    (before.mode & 0o777) !== 0o600 ||
-    before.size > MAX_EVIDENCE_ARTIFACT_BYTES ||
-    fs.realpathSync(filePath) !== path.resolve(filePath) ||
-    !path.resolve(filePath).startsWith(`${path.resolve(paths.root)}${path.sep}`)
-  ) {
-    throw providerInvocationSupersessionUnsafe();
-  }
-  const descriptor = fs.openSync(
-    filePath,
-    fs.constants.O_RDONLY |
-      (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
-  );
-  try {
-    const opened = fs.fstatSync(descriptor);
-    if (!sameFile(before, opened)) throw providerInvocationSupersessionUnsafe();
-    const content = fs.readFileSync(descriptor);
-    const afterOpened = fs.fstatSync(descriptor);
-    const afterPath = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (
-      !afterPath ||
-      !sameFile(opened, afterOpened) ||
-      !sameFile(afterOpened, afterPath) ||
-      opened.size !== content.byteLength ||
-      opened.mtimeMs !== afterOpened.mtimeMs ||
-      opened.ctimeMs !== afterOpened.ctimeMs
-    ) {
-      throw providerInvocationSupersessionUnsafe();
-    }
-    return content;
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function sameFile(left: fs.Stats, right: fs.Stats): boolean {
-  return (
-    left.dev === right.dev &&
-    left.ino === right.ino &&
-    left.size === right.size &&
-    left.nlink === right.nlink &&
-    (right.mode & 0o777) === 0o600
-  );
-}
-
 function readTransactionForSuccessor(
   paths: InvestigationRuntimePaths,
   requestedSuccessorInvocationId: string,
@@ -1019,32 +815,4 @@ function simulateCrash(
   if (selected === phase) {
     throw new SimulatedProviderInvocationSupersessionCrash(phase);
   }
-}
-
-function digestBuffer(value: Buffer): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function digestText(value: string): string {
-  return digestBuffer(Buffer.from(value, 'utf8'));
-}
-
-function isTimestamp(value: string): boolean {
-  return (
-    Number.isFinite(Date.parse(value)) &&
-    new Date(value).toISOString() === value
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function deepFreeze<T>(value: T): T {
-  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
-    return value;
-  }
-  Object.freeze(value);
-  for (const child of Object.values(value)) deepFreeze(child);
-  return value;
 }
