@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { taskSystemDocumentContext } from '../../runtime/managed-documents/validation/task-system-document-context.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -152,6 +153,7 @@ export type OpenTaskResult = Readonly<{
   allowedPaths: readonly string[];
   requiredChecks: readonly string[];
   recovered: boolean;
+  systemDocuments: ReturnType<typeof taskSystemDocumentContext>;
 }>;
 
 export type OpenTaskOptions = Readonly<{
@@ -507,6 +509,7 @@ function existingPlanResult(
     allowedPaths: Object.freeze([...session.allowedPaths]),
     requiredChecks: Object.freeze([...session.requiredChecks]),
     recovered: false,
+    systemDocuments: taskSystemDocumentContext(session),
   });
 }
 
@@ -1640,6 +1643,7 @@ function resultFrom(
     allowedPaths: [...session.allowedPaths],
     requiredChecks: [...session.requiredChecks],
     recovered,
+    systemDocuments: taskSystemDocumentContext(session),
   };
 }
 
