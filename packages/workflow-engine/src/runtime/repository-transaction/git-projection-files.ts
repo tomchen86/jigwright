@@ -243,7 +243,8 @@ export type GovernedProjectionBudget = {
   remainingBytes: number;
 };
 
-export // macOS may asynchronously rewrite com.apple.provenance and bump ctime without
+// macOS may asynchronously rewrite com.apple.provenance and bump ctime without
 // any governed change, so the projection omits volatile ctime on Darwin exactly
 // as the persisted repository projection does.
-const INCLUDE_VOLATILE_PROJECTION_METADATA = process.platform !== 'darwin';
+export const INCLUDE_VOLATILE_PROJECTION_METADATA =
+  process.platform !== 'darwin';
