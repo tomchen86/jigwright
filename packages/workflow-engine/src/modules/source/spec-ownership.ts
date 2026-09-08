@@ -97,6 +97,7 @@ export function parseSystemSpec(
         continue;
       }
       if (level === 3 && title.startsWith('Requirement: ')) {
+        purpose = false;
         requirement = {
           title: title.slice(13),
           sources: [],
