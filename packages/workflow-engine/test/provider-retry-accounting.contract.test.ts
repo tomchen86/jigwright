@@ -1,3 +1,13 @@
+/**
+ * Verifies conservative provider retry accounting and rejects retired policy readers.
+ *
+ * Invariants:
+ * - Every Attempt consumes one durable charge and retries preserve bounded budgets.
+ * - The policy and retry implementation scan keeps the original V1 rejection assertions.
+ *
+ * Depends on: invocation storage modules, adapter policy, execution projection, and fixture repositories.
+ * Failure modes: retries undercharge work, exceed budgets, or accept retired policy state.
+ */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -40,13 +50,13 @@ import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 const CREATED_AT = '2026-08-03T08:00:00.000Z';
 
 test('provider policy and retry readers contain no V1 cleanup parsers', () => {
-  const invocationStore = fs.readFileSync(
-    new URL(
-      '../src/runtime/storage-journal/provider-invocation-store.ts',
-      import.meta.url,
-    ),
-    'utf8',
-  );
+  const storeRoot = new URL('../src/runtime/storage-journal/', import.meta.url);
+  const invocationStore = fs
+    .readdirSync(storeRoot)
+    .filter((name) => /^provider-invocation-.*\.ts$/u.test(name))
+    .sort()
+    .map((name) => fs.readFileSync(new URL(name, storeRoot), 'utf8'))
+    .join('\n');
   const adapterPolicy = fs.readFileSync(
     new URL(
       '../src/runtime/provider-execution/ai-adapter-policy.ts',

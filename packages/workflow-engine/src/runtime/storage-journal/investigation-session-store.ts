@@ -1,14 +1,140 @@
+/**
+ * Persists investigation sessions, checkpoints, and human-resolution state with provider checks delegated.
+ *
+ * Invariants:
+ * - Session revisions and current refs retain their existing CAS and monotonic transition checks.
+ * - Human-resolution grants and journals preserve exact replay, quarantine, and publication order.
+ *
+ * Depends on: investigation records, private runtime files, and provider lifecycle and evidence validators.
+ * Failure modes: stale investigation state, repeated resolution effects, or incorrect provider ownership.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
-import { parseAiAdapterPolicyDocument } from '../provider-execution/ai-adapter-policy.ts';
+import {
+  type HumanRevocationAuthorization,
+  type HumanRevocationOptions,
+  assertHumanRevocationAuthorization,
+  authorizeHumanRevocation,
+  canonicalHumanRevocationAuthorization,
+  digestHumanRevocationSubject,
+} from '../../application/control-plane/human-revocation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  parseClassDisposition,
+  ExitCode,
+  workflowError,
+  WorkflowError,
+} from '../../foundation/errors/errors.ts';
+import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage-policy.ts';
+import {
+  type WorkflowSupersedeReason,
+  validateWorkflowSupersedeReason,
+  WORKFLOW_SUPERSEDE_REASONS,
+} from '../../modules/authority/intervention-control.ts';
+import {
   type ClassDisposition,
+  parseClassDisposition,
 } from '../../modules/investigation/domain/class-disposition.ts';
-import type { SampleAudit } from '../../modules/investigation/domain/class-sample-audit.ts';
+import { type SampleAudit } from '../../modules/investigation/domain/class-sample-audit.ts';
+import { type InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
+import {
+  type InvestigationMainTermInput,
+  type InvestigationTermKind,
+  INVESTIGATION_LIMITS,
+  previewInvestigationTermUnion,
+} from '../../modules/investigation/domain/investigation-terms.ts';
+import { type InvestigationWhyCheckpointAnswer } from '../../modules/investigation/manifest/investigation-why-domain.ts';
+import {
+  type ProviderInvocationRequest,
+  PROPOSE_POLICY_DIGEST,
+  recreateProviderInvocationRequest,
+} from '../../modules/provider-orchestration/provider-contracts.ts';
+import { inspectProviderInvocationSupersessionRelations } from '../provider-execution/provider-invocation-supersession-schema.ts';
+import {
+  type InvestigationRuntimePaths,
+  assertChangeId,
+  assertInvestigationId,
+  assertInvocationId,
+} from '../session-workspace/paths.ts';
+import { deriveAuthorityAuditRepositoryId } from './authority-audit-ledger.ts';
+import {
+  type InvestigationEvidenceRefsClosure,
+  exactUnsafePathObservationDigest,
+  observeInvestigationEvidenceRefsAmbiguities,
+  readEvidenceNode,
+  readInvestigationEvidenceRefsClosure,
+  resolvePlanReviewInvocationOwner,
+} from './evidence-object-store.ts';
+import {
+  assertPrivateFile,
+  assertPrivateInvestigationDirectory,
+  canonicalPrivateContent,
+  createPrivateCanonicalJson,
+  createPrivateRawFile,
+  ensurePrivateInvestigationDirectory,
+  fsyncDirectory,
+  MAX_HUMAN_RESOLUTION_BYTES,
+  privatePathExists,
+  readPrivateBuffer,
+  readPrivateCanonicalJson,
+  readPrivateFile,
+  walkPrivateDirectory,
+  withPrivateRuntimeLock,
+  writePrivateCanonicalJsonAtomic,
+} from './investigation-private-files.ts';
+import {
+  deepFreeze,
+  DIGEST,
+  hasExactKeys,
+  isDigest,
+  isRecord,
+  isStringArray,
+  isTaskMandateBinding,
+  isTimestamp,
+  providerInvocationUnsafe,
+  sha256,
+} from './investigation-store-values.ts';
+import {
+  type ProposeExemptionSession,
+  isProposeExemptionInvestigationId,
+  readProposeExemptionSession,
+} from './propose-exemption-store.ts';
+import {
+  assertProviderInvocationOutputManifestBinding,
+  assertProviderRuntimeDurableAuthorities,
+} from './provider-runtime-authority.ts';
+import {
+  type ProviderInvocationLifecycleProjection,
+  type ProviderInvocationLifecycleScan,
+  assertProviderExecutionPolicySnapshot,
+  assertProviderInvocationRuntimeEvidence,
+  isProviderInvocationFailureShape,
+  isProviderInvocationLifecycleLease,
+} from './provider-runtime-evidence-contract.ts';
+import {
+  digestPrivateDirectoryEntries,
+  PROVIDER_POLICY_ROOT_FILE,
+} from './provider-runtime-retention.ts';
+
+export {
+  assertPrivateInvestigationDirectory,
+  createPrivateCanonicalJson,
+  ensurePrivateInvestigationDirectory,
+  privatePathExists,
+  readPrivateCanonicalJson,
+  withPrivateRuntimeLock,
+  writePrivateCanonicalJsonAtomic,
+} from './investigation-private-files.ts';
+export {
+  assertProviderRuntimeDurableAuthorities,
+  assertProviderRuntimeTerminalAuthorityPreflight,
+  readAcceptedProviderInvocationRuntimeReceiptAuthority,
+} from './provider-runtime-authority.ts';
+export type { ProviderInvocationRuntimeGeneration } from './provider-runtime-authority.ts';
+export type {
+  ProviderInvocationLifecycleProjection,
+  ProviderInvocationLifecycleScan,
+} from './provider-runtime-evidence-contract.ts';
 
 const SAMPLE_AUDIT_OUTCOMES = new Set([
   'passed',
@@ -16,183 +142,26 @@ const SAMPLE_AUDIT_OUTCOMES = new Set([
   'rationale-wrong',
   'type-wrong',
 ]);
-import { deriveAuthorityAuditRepositoryId } from './authority-audit-ledger.ts';
-import {
-  exactUnsafePathObservationDigest,
-  readEvidenceNode,
-  readEvidenceRefs,
-  readInvestigationEvidenceRefsClosure,
-  observeInvestigationEvidenceRefsAmbiguities,
-  resolvePlanReviewInvocationOwner,
-  type InvestigationEvidenceRefsClosure,
-} from './evidence-object-store.ts';
-import {
-  ExitCode,
-  WorkflowError,
-  workflowError,
-} from '../../foundation/errors/errors.ts';
-import { assertReadOnlyProbe } from '../../modules/provider-orchestration/execution-core.ts';
-import {
-  assertHumanRevocationAuthorization,
-  authorizeHumanRevocation,
-  canonicalHumanRevocationAuthorization,
-  digestHumanRevocationSubject,
-  type HumanRevocationAuthorization,
-  type HumanRevocationOptions,
-} from '../../application/control-plane/human-revocation.ts';
-import {
-  publishPreparedExclusiveLock,
-  reclaimDeadPreparedLock,
-} from '../repository-transaction/filesystem-safety.ts';
-import type { InvestigationDispositionInput } from '../../modules/investigation/domain/investigation-groups.ts';
-import type { InvestigationWhyCheckpointAnswer } from '../../modules/investigation/manifest/investigation-why-domain.ts';
-import {
-  INVESTIGATION_LIMITS,
-  previewInvestigationTermUnion,
-  type InvestigationMainTermInput,
-  type InvestigationTermKind,
-} from '../../modules/investigation/domain/investigation-terms.ts';
-import {
-  PLAN_REVIEW_OUTPUT_SCHEMA,
-  PLAN_REVIEW_OUTPUT_VALIDATOR,
-} from '../../modules/assurance/plan-review.ts';
-import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage-policy.ts';
-import {
-  TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
-  TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR,
-  TASK_DIFF_REVIEW_OUTPUT_SCHEMA,
-  TASK_DIFF_REVIEW_OUTPUT_VALIDATOR,
-} from '../../modules/assurance/task-diff-review-artifact.ts';
-import {
-  TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA,
-  TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR,
-} from '../../modules/provider-orchestration/task-strategy-implementation-output.ts';
-import {
-  WORKFLOW_SUPERSEDE_REASONS,
-  validateWorkflowSupersedeReason,
-  type WorkflowSupersedeReason,
-} from '../../modules/authority/intervention-control.ts';
-import { assertProviderInvocationCancellationRequestV1 } from '../../modules/authority/provider-invocation-cancellation-grant.ts';
-import {
-  PROPOSE_POLICY_DIGEST,
-  recreateProviderInvocationRequest,
-  type ProviderInvocationRequest,
-  type ProviderProcessResult,
-} from '../../modules/provider-orchestration/provider-contracts.ts';
-import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  validateBlindSurveyOutput,
-} from '../../modules/provider-orchestration/blind-survey-output.ts';
-import type { AgentRuntimeCompletionReceipt } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-import {
-  assertAgentRuntimeCompletionReceipt,
-  assertProviderProcessResult,
-} from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-import {
-  assertAgentRuntimeDurableAssignmentAuthorityV1,
-  assertAgentRuntimeDurableNativeSessionAuthorityV1,
-  assertChangeRoleAssignmentRefV1,
-  assertProviderNativeSessionClaimRefV1,
-  assertProviderNativeSessionCompletionRefV1,
-} from '../../modules/provider-orchestration/agent-runtime-durable-authority.ts';
-import {
-  assertProviderNativeSessionCompletionV1,
-  assertProviderNativeSessionHandleV1,
-} from '../../modules/provider-orchestration/provider-native-session.ts';
-import { inspectProviderInvocationSupersessionRelations } from '../provider-execution/provider-invocation-supersession-schema.ts';
-import {
-  assertDurableProviderExecutionBudgetAuthority,
-  validateProviderExecutionBudgetAuthority,
-} from '../provider-execution/provider-execution-policy-authority.ts';
-import {
-  PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS,
-  providerRetentionArtifact,
-  providerRetentionReviewRootArtifact,
-  readCompleteProviderRetentionReceipt,
-  readProviderRetentionReceipt,
-} from './provider-retention-receipt.ts';
-import {
-  MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
-  assertDurableExecutionAdmissionState,
-  assertProviderExecutionAdmissionAuthority,
-  providerExecutionAdmissionAuthorityPath,
-  type ProviderExecutionAdmissionAuthority,
-} from './provider-execution-admission-authority.ts';
-import {
-  isProposeExemptionInvestigationId,
-  readProposeExemptionSession,
-  type ProposeExemptionSession,
-} from './propose-exemption-store.ts';
-import {
-  assertChangeId,
-  assertInvestigationId,
-  assertInvocationId,
-  type InvestigationRuntimePaths,
-} from '../session-workspace/paths.ts';
-import {
-  changeRoleAssignmentObjectPathV1,
-  changeRoleAssignmentRefPathV1,
-  changeRoleAssignmentStorePathsV1,
-  providerNativeSessionClaimObjectPathV1,
-  providerNativeSessionClaimRefPathV1,
-  providerNativeSessionCompletionObjectPathV1,
-  providerNativeSessionCompletionRefPathV1,
-  providerNativeSessionContinuationAuthorityObjectPathV1,
-  providerNativeSessionHandleObjectPathV1,
-  providerNativeSessionStorePathsV1,
-} from '../session-workspace/provider-runtime-authority-paths.ts';
 
-const DIGEST = /^[0-9a-f]{64}$/;
-const PROVIDER_REPAIR_DIGEST = /^sha256:[0-9a-f]{64}$/;
 const GIT_OBJECT_ID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+
 const CHECKPOINT_ID = /^checkpoint-[0-9a-f]{64}$/;
+
 const ACTIVE_HUMAN_RESOLUTION_JOURNAL = /^([a-z0-9]+(?:-[a-z0-9]+)*)\.json$/;
+
 const ACTIVE_HUMAN_RESOLUTION_JOURNAL_TEMPORARY =
   /^[a-z0-9]+(?:-[a-z0-9]+)*\.json\.[1-9][0-9]*\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
+
 const HUMAN_RESOLUTION_GRANT_FILE =
   /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json$/;
+
 const HUMAN_RESOLUTION_GRANT_TEMPORARY =
   /^([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.json\.[1-9][0-9]*\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/;
+
 const MAX_CHECKPOINT_BYTES = 1_048_576;
-const MAX_HUMAN_RESOLUTION_BYTES = 1_048_576;
-const MAX_PROVIDER_ASSIGNMENT_AUTHORITY_BYTES = 2 * 1_024 * 1_024;
-const MAX_PROVIDER_NATIVE_AUTHORITY_BYTES = 512 * 1_024;
-const MAX_PROVIDER_AUTHORITY_REF_BYTES = 2 * 1_024;
-const MAX_PROVIDER_CONTINUATION_AUTHORITY_BYTES = 8 * 1_024;
-const MAX_PROVIDER_COMPLETION_CANDIDATE_BYTES = 16 * 1_024 * 1_024;
-const MAX_PROVIDER_ADMISSION_AUTHORITY_FILES = 10_000;
-const PROVIDER_ADMISSION_AUTHORITY_FILE = /^[0-9a-f]{64}\.json$/u;
-const PROVIDER_ADMISSION_AUTHORITY_TEMPORARY =
-  /^[0-9a-f]{64}\.json\.[1-9][0-9]*\.[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.tmp$/u;
-const BLIND_PROVIDER_CORE_ROOT_FILES = [
-  'manifest.json',
-  'request.json',
-  'state.json',
-] as const;
-const PROVIDER_POLICY_ROOT_FILE = 'execution-policy.json';
-const BLIND_PROVIDER_RUNTIME_FILES = [
-  'prompt.json',
-  'schema.json',
-  'semantic-output.json',
-] as const;
-const HOST_WRAPPER_PROBE_DIRECTORY = 'host-wrapper-probe-runtime';
-const HOST_WRAPPER_PROBE_FILES = ['probe-result.json', 'request.json'] as const;
-const HOST_WRAPPER_TURN_DIRECTORY = 'host-wrapper-runtime';
-const HOST_WRAPPER_TURN_FILES = [
-  'request.json',
-  'semantic-output.json',
-] as const;
-const HOST_WRAPPER_DIRECTORIES = [
-  HOST_WRAPPER_PROBE_DIRECTORY,
-  HOST_WRAPPER_TURN_DIRECTORY,
-] as const;
-const MAX_HOST_WRAPPER_PROBE_BYTES = 64 * 1_024;
-const OPTIONAL_PROVIDER_ROOT_FILES = [
-  'cancellation-request.json',
-  'repair-evidence.json',
-  'repair-lineage.json',
-] as const;
+
 const HUMAN_RESOLUTION_SCHEMA = 'investigation-human-resolution.v2';
+
 const HUMAN_RESOLUTION_DECISION_SCHEMAS = Object.freeze({
   'resume-with-capability': {
     schemaVersion: 1,
@@ -246,11 +215,6 @@ const HUMAN_RESOLUTION_DECISION_SCHEMAS = Object.freeze({
     parameters: {},
   },
 });
-const NO_FOLLOW_CREATE =
-  fs.constants.O_RDWR |
-  fs.constants.O_CREAT |
-  fs.constants.O_EXCL |
-  fs.constants.O_NOFOLLOW;
 
 export type InvestigationSessionState =
   | 'actor-resolution-required'
@@ -352,39 +316,6 @@ export type InvestigationResolutionStateEnvelope = {
   blockerDigest: string | null;
   ambiguityDigest: string | null;
 };
-
-export type ProviderInvocationLifecycleProjection = Readonly<{
-  invocationId: string;
-  investigationId: string;
-  ownerInvestigationId: string;
-  changeId: string;
-  purpose: 'survey' | 'plan-review' | 'task-diff-review';
-  attempt: number;
-  revision: number;
-  state: 'prepared' | 'leased' | 'succeeded' | 'failed';
-  policySnapshot: 'recorded';
-  requestDigest: string;
-  manifestDigest: string;
-  nonce: string;
-  failureKind: 'retryable' | 'repository-reconciliation-required' | null;
-  leaseGeneration: number;
-  lease: Readonly<{
-    generation: number;
-    workerId: string;
-    tokenDigest: string;
-    acquiredAt: string;
-    expiresAt: string;
-  }> | null;
-}>;
-
-export type ProviderInvocationLifecycleScan = Readonly<{
-  projections: readonly ProviderInvocationLifecycleProjection[];
-  unsafeInvocations: readonly Readonly<{
-    invocationId: string;
-    ownerInvestigationId: string | null;
-    observationDigest: string;
-  }>[];
-}>;
 
 export type InvestigationResolutionState = {
   envelope: InvestigationResolutionStateEnvelope;
@@ -1111,20 +1042,6 @@ export function quarantineUnsafeInvestigationStartReservation(
   );
 }
 
-function canonicalPrivateContent(
-  content: string,
-  newlineRequired: boolean,
-): boolean {
-  let value: unknown;
-  try {
-    value = JSON.parse(content);
-  } catch {
-    return false;
-  }
-  const canonical = canonicalJson(value);
-  return content === (newlineRequired ? `${canonical}\n` : canonical);
-}
-
 export function humanResolutionDecisionSchemaDigest(
   kind: HumanResolutionDecision['kind'],
 ): string {
@@ -1235,361 +1152,6 @@ export function assertHumanResolutionConsequences(
     );
   }
   return deepFreeze(structuredClone(value)) as HumanResolutionConsequences;
-}
-
-export function listProviderInvocationLifecycleProjections(
-  paths: InvestigationRuntimePaths,
-): ProviderInvocationLifecycleProjection[] {
-  const scan = scanProviderInvocationLifecycles(paths);
-  const unsafeInvocations = scan.unsafeInvocations.filter(
-    ({ invocationId }) =>
-      !isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId),
-  );
-  if (unsafeInvocations.length > 0) {
-    throw providerInvocationUnsafe();
-  }
-  return [...scan.projections];
-}
-
-export function scanProviderInvocationLifecycles(
-  paths: InvestigationRuntimePaths,
-): ProviderInvocationLifecycleScan {
-  const stats = fs.lstatSync(paths.invocations, { throwIfNoEntry: false });
-  if (!stats) {
-    return deepFreeze({ projections: [], unsafeInvocations: [] });
-  }
-  if (
-    !stats.isDirectory() ||
-    stats.isSymbolicLink() ||
-    !walkPrivateDirectory(
-      paths,
-      paths.invocations,
-      providerInvocationUnsafe,
-      false,
-    )
-  ) {
-    throw providerInvocationUnsafe();
-  }
-  const projections: ProviderInvocationLifecycleProjection[] = [];
-  const unsafeInvocations: Array<{
-    invocationId: string;
-    ownerInvestigationId: string | null;
-    observationDigest: string;
-  }> = [];
-  for (const entry of fs
-    .readdirSync(paths.invocations, { withFileTypes: true })
-    .sort((left, right) => left.name.localeCompare(right.name))) {
-    if (!entry.isDirectory() || entry.isSymbolicLink()) {
-      throw providerInvocationUnsafe();
-    }
-    const invocationId = assertInvocationId(entry.name);
-    try {
-      projections.push(
-        readProviderInvocationLifecycleProjection(paths, invocationId),
-      );
-    } catch {
-      unsafeInvocations.push({
-        invocationId,
-        ownerInvestigationId: tryReadPlanReviewInvocationOwnerHint(
-          paths,
-          invocationId,
-        ),
-        observationDigest: exactUnsafePathObservationDigest(
-          path.join(paths.invocations, invocationId),
-          `provider-invocation:${invocationId}`,
-        ),
-      });
-    }
-  }
-  return deepFreeze({
-    projections,
-    unsafeInvocations,
-  });
-}
-
-function tryReadPlanReviewInvocationOwnerHint(
-  paths: InvestigationRuntimePaths,
-  invocationId: string,
-): string | null {
-  try {
-    const directory = path.join(paths.invocations, invocationId);
-    const request = recreateProviderInvocationRequest(
-      readPrivateCanonicalJson(
-        paths,
-        path.join(directory, 'request.json'),
-        providerInvocationUnsafe,
-      ),
-    );
-    const manifest = readPrivateCanonicalJson(
-      paths,
-      path.join(directory, 'manifest.json'),
-      providerInvocationUnsafe,
-    );
-    if (
-      request.purpose !== 'plan-review' ||
-      !isRecord(manifest) ||
-      manifest.kind !== 'plan-review-manifest' ||
-      typeof manifest.changeId !== 'string'
-    ) {
-      return null;
-    }
-    return resolvePlanReviewInvocationOwner(paths, {
-      changeId: String(manifest.changeId),
-      subject: manifest.subject,
-      assignment: request.roleAssignment,
-      authorizationNodeId: request.authorizationNodeId,
-    });
-  } catch {
-    return null;
-  }
-}
-
-export function readProviderInvocationLifecycleProjection(
-  paths: InvestigationRuntimePaths,
-  requestedInvocationId: string,
-): ProviderInvocationLifecycleProjection {
-  const invocationId = assertInvocationId(requestedInvocationId);
-  const directory = path.join(paths.invocations, invocationId);
-  const value = readPrivateCanonicalJson(
-    paths,
-    path.join(directory, 'state.json'),
-    providerInvocationUnsafe,
-  );
-  const requestValue = readPrivateCanonicalJson(
-    paths,
-    path.join(directory, 'request.json'),
-    providerInvocationUnsafe,
-  );
-  const manifest = readPrivateCanonicalJson(
-    paths,
-    path.join(directory, 'manifest.json'),
-    providerInvocationUnsafe,
-  );
-  let request: ProviderInvocationRequest;
-  try {
-    request = recreateProviderInvocationRequest(requestValue);
-  } catch {
-    throw providerInvocationUnsafe();
-  }
-  const policySnapshotPath = path.join(directory, PROVIDER_POLICY_ROOT_FILE);
-  if (!privatePathExists(paths, policySnapshotPath, providerInvocationUnsafe)) {
-    throw providerInvocationUnsafe();
-  }
-  assertProviderExecutionPolicySnapshot(
-    paths,
-    readPrivateCanonicalJson(
-      paths,
-      policySnapshotPath,
-      providerInvocationUnsafe,
-    ),
-    request,
-  );
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'invocationId',
-      'investigationId',
-      'changeId',
-      ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-        ? ['mandateBinding']
-        : []),
-      'attempt',
-      'revision',
-      'state',
-      'providerId',
-      'purpose',
-      'requestDigest',
-      'manifestDigest',
-      'leaseGeneration',
-      'lease',
-      'result',
-      'failure',
-      ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
-        ? ['runtimeReceipt']
-        : []),
-      'createdAt',
-      'updatedAt',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.invocationId !== invocationId ||
-    typeof value.investigationId !== 'string' ||
-    typeof value.changeId !== 'string' ||
-    (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
-      !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
-    !Number.isSafeInteger(value.attempt) ||
-    (value.attempt as number) < 1 ||
-    !Number.isSafeInteger(value.revision) ||
-    (value.revision as number) < 0 ||
-    !['prepared', 'leased', 'succeeded', 'failed'].includes(
-      String(value.state),
-    ) ||
-    (value.providerId !== 'codex' && value.providerId !== 'claude') ||
-    (value.purpose !== 'survey' &&
-      value.purpose !== 'plan-review' &&
-      value.purpose !== 'task-diff-review' &&
-      value.purpose !== 'task-implementation') ||
-    !isDigest(value.requestDigest) ||
-    !isDigest(value.manifestDigest) ||
-    !isProviderInvocationFailureShape(value.failure) ||
-    !Number.isSafeInteger(value.leaseGeneration) ||
-    (value.leaseGeneration as number) < 0 ||
-    !isProviderInvocationLifecycleLease(value.lease) ||
-    !isTimestamp(value.createdAt) ||
-    !isTimestamp(value.updatedAt) ||
-    !isRecord(manifest) ||
-    manifest.schemaVersion !== 1 ||
-    ![
-      'blind-survey-manifest',
-      'plan-review-manifest',
-      'task-diff-review-manifest',
-      'task-diff-review-continuation-manifest',
-      'task-strategy-implementation-manifest',
-    ].includes(String(manifest.kind)) ||
-    (manifest.kind === 'task-strategy-implementation-manifest'
-      ? !isRecord(manifest.subject) ||
-        manifest.subject.changeId !== value.changeId
-      : manifest.changeId !== value.changeId) ||
-    manifest.repositoryId !== request.repositoryId ||
-    manifest.baseCommit !== request.baseCommit ||
-    manifest.baseTree !== request.baseTree ||
-    manifest.capabilityProfile !== request.capabilityProfile ||
-    request.invocationId !== invocationId ||
-    request.requestDigest !== value.requestDigest ||
-    request.providerId !== value.providerId ||
-    request.purpose !== value.purpose ||
-    sha256(canonicalJson(manifest)) !== value.manifestDigest ||
-    (value.purpose === 'survey' && manifest.kind !== 'blind-survey-manifest') ||
-    (value.purpose === 'plan-review' &&
-      manifest.kind !== 'plan-review-manifest') ||
-    (value.purpose === 'task-diff-review' &&
-      manifest.kind !== 'task-diff-review-manifest' &&
-      manifest.kind !== 'task-diff-review-continuation-manifest') ||
-    (value.purpose === 'task-implementation' &&
-      manifest.kind !== 'task-strategy-implementation-manifest')
-  ) {
-    throw providerInvocationUnsafe();
-  }
-  const runtimeEvidence = assertProviderInvocationRuntimeEvidence(
-    value,
-    request,
-    providerInvocationUnsafe,
-  );
-  assertProviderInvocationOutputManifestBinding(
-    runtimeEvidence,
-    manifest,
-    providerInvocationUnsafe,
-  );
-  assertProviderRuntimeDurableAuthorities(
-    paths,
-    request,
-    runtimeEvidence,
-    runtimeEvidence.result,
-    runtimeEvidence.runtimeReceipt,
-    providerInvocationUnsafe,
-  );
-  assertInvestigationId(value.investigationId);
-  assertChangeId(value.changeId);
-  if (
-    (value.state === 'prepared' &&
-      (value.lease !== null ||
-        value.result !== null ||
-        value.failure !== null)) ||
-    (value.state === 'leased' &&
-      (value.lease === null ||
-        value.result !== null ||
-        value.failure !== null)) ||
-    (value.state === 'succeeded' &&
-      (value.lease !== null ||
-        value.result === null ||
-        value.failure !== null)) ||
-    (value.state === 'failed' &&
-      (value.lease !== null ||
-        value.result !== null ||
-        value.failure === null)) ||
-    (value.lease !== null && value.lease.generation !== value.leaseGeneration)
-  ) {
-    throw providerInvocationUnsafe();
-  }
-  const ownerInvestigationId =
-    value.purpose === 'plan-review'
-      ? resolvePlanReviewInvocationOwner(paths, {
-          changeId: value.changeId,
-          subject: manifest.subject,
-          assignment: request.roleAssignment,
-          authorizationNodeId: request.authorizationNodeId,
-        })
-      : value.investigationId;
-  if (ownerInvestigationId !== value.investigationId) {
-    throw providerInvocationUnsafe();
-  }
-  const supersession = inspectProviderInvocationSupersessionRelations(
-    paths,
-    invocationId,
-    {
-      exists: (filePath) =>
-        privatePathExists(paths, filePath, providerInvocationUnsafe),
-      read: (filePath) =>
-        readPrivateCanonicalJson(paths, filePath, providerInvocationUnsafe),
-    },
-  );
-  const replacementSnapshot = supersession.replacementOf?.supersededBy;
-  const supersededSnapshot = supersession.supersededBy?.replacementOf;
-  for (const snapshot of [replacementSnapshot, supersededSnapshot]) {
-    if (
-      snapshot !== undefined &&
-      (snapshot.invocationId !== invocationId ||
-        snapshot.attempt !== value.attempt ||
-        snapshot.requestDigest !== request.requestDigest ||
-        snapshot.manifestDigest !== value.manifestDigest ||
-        snapshot.subjectDigest !== request.targetDigest ||
-        snapshot.createdAt !== value.createdAt)
-    ) {
-      throw providerInvocationUnsafe();
-    }
-  }
-  if (
-    supersededSnapshot !== undefined &&
-    (value.state !== 'failed' ||
-      supersededSnapshot.terminalStatus !== 'failed' ||
-      supersededSnapshot.terminalAt !== value.updatedAt ||
-      supersededSnapshot.failureCode !==
-        (isRecord(value.failure) ? value.failure.code : null) ||
-      supersededSnapshot.invocationRevision !== value.revision)
-  ) {
-    throw providerInvocationUnsafe();
-  }
-  // Validate the exact private invocation closure here as well as when a
-  // human-resolution digest is projected. Callers that only enumerate
-  // lifecycle projections must not silently accept unknown or malformed
-  // authority files.
-  digestPrivateDirectoryEntries(paths, directory, providerInvocationUnsafe);
-  return deepFreeze({
-    invocationId,
-    investigationId: value.investigationId,
-    ownerInvestigationId,
-    changeId: value.changeId,
-    purpose: value.purpose,
-    attempt: value.attempt,
-    revision: value.revision,
-    state: value.state,
-    policySnapshot: 'recorded',
-    requestDigest: value.requestDigest,
-    manifestDigest: value.manifestDigest,
-    nonce: request.nonce,
-    failureKind: value.failure === null ? null : value.failure.kind,
-    leaseGeneration: value.leaseGeneration,
-    lease:
-      value.lease === null
-        ? null
-        : {
-            generation: value.lease.generation,
-            workerId: value.lease.workerId,
-            tokenDigest: value.lease.tokenDigest,
-            acquiredAt: value.lease.acquiredAt,
-            expiresAt: value.lease.expiresAt,
-          },
-  } as ProviderInvocationLifecycleProjection);
 }
 
 export function inspectInvestigationResolutionState(
@@ -2113,203 +1675,6 @@ export function deriveInvestigationSessionState(
     return 'awaiting-ledger-answers';
   }
   return 'investigation-sealed';
-}
-
-export function ensurePrivateInvestigationDirectory(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  makeError: () => WorkflowError,
-): void {
-  walkPrivateDirectory(paths, directory, makeError, true);
-}
-
-export function assertPrivateInvestigationDirectory(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  makeError: () => WorkflowError,
-): void {
-  walkPrivateDirectory(paths, directory, makeError, false);
-}
-
-export function readPrivateCanonicalJson(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  makeError: () => WorkflowError,
-  maxBytes = MAX_HUMAN_RESOLUTION_BYTES,
-): unknown {
-  walkPrivateDirectory(paths, path.dirname(filePath), makeError, false);
-  const content = readPrivateFile(filePath, makeError, maxBytes);
-  let value: unknown;
-  try {
-    value = JSON.parse(content);
-  } catch {
-    throw makeError();
-  }
-  if (`${canonicalJson(value)}\n` !== content) {
-    throw makeError();
-  }
-  return value;
-}
-
-export function createPrivateCanonicalJson(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  value: unknown,
-  makeError: () => WorkflowError,
-  collisionCode: string,
-  maxBytes = MAX_HUMAN_RESOLUTION_BYTES,
-): void {
-  const content = `${canonicalJson(value)}\n`;
-  if (
-    !Number.isSafeInteger(maxBytes) ||
-    maxBytes < 0 ||
-    Buffer.byteLength(content, 'utf8') > maxBytes
-  ) {
-    throw makeError();
-  }
-  ensurePrivateInvestigationDirectory(paths, path.dirname(filePath), makeError);
-  const existing = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (existing) {
-    if (readPrivateFile(filePath, makeError, maxBytes) === content) {
-      return;
-    }
-    throw workflowError(
-      collisionCode,
-      'A different durable investigation record already exists.',
-      ExitCode.conflict,
-    );
-  }
-  const temporary = writePrivateTemporary(filePath, content);
-  try {
-    const raced = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (raced) {
-      if (readPrivateFile(filePath, makeError, maxBytes) === content) {
-        return;
-      }
-      throw workflowError(
-        collisionCode,
-        'A different durable investigation record already exists.',
-        ExitCode.conflict,
-      );
-    }
-    // Every caller holds the appropriate short store/change lock. Renaming a
-    // fully fsynced private temp is atomic and avoids the crash window where a
-    // temp-to-final hardlink would leave the durable target with nlink=2.
-    fs.renameSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-    assertPrivateFile(fs.lstatSync(filePath), makeError);
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
-export function writePrivateCanonicalJsonAtomic(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  value: unknown,
-  makeError: () => WorkflowError,
-): void {
-  const content = `${canonicalJson(value)}\n`;
-  ensurePrivateInvestigationDirectory(paths, path.dirname(filePath), makeError);
-  const existing = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (existing) {
-    assertPrivateFile(existing, makeError);
-  }
-  const temporary = writePrivateTemporary(filePath, content);
-  try {
-    const current = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (current) {
-      assertPrivateFile(current, makeError);
-    }
-    fs.renameSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-    assertPrivateFile(fs.lstatSync(filePath), makeError);
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
-export function withPrivateRuntimeLock<T>(
-  paths: InvestigationRuntimePaths,
-  lockPath: string,
-  operation: () => T,
-  conflictCode: string,
-  invalidLock: () => WorkflowError,
-): T {
-  ensurePrivateInvestigationDirectory(
-    paths,
-    path.dirname(lockPath),
-    invalidLock,
-  );
-  const ownerToken = crypto.randomUUID();
-  const marker = `${canonicalJson({
-    schemaVersion: 1,
-    ownerToken,
-    pid: process.pid,
-    createdAt: new Date().toISOString(),
-  })}\n`;
-  let descriptor: number | undefined;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      descriptor = publishPreparedExclusiveLock(
-        lockPath,
-        marker,
-        ownerToken,
-        invalidLock,
-      );
-      break;
-    } catch (error) {
-      if (descriptor !== undefined) {
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-      }
-      if (
-        isNodeError(error) &&
-        error.code === 'EEXIST' &&
-        attempt === 0 &&
-        reclaimDeadPrivateRuntimeLock(lockPath, invalidLock)
-      ) {
-        continue;
-      }
-      if (isNodeError(error) && error.code === 'EEXIST') {
-        throw workflowError(
-          conflictCode,
-          'A durable investigation operation is already in progress.',
-          ExitCode.conflict,
-        );
-      }
-      throw error;
-    }
-  }
-  if (descriptor === undefined) {
-    throw invalidLock();
-  }
-  const owned = fs.fstatSync(descriptor);
-  let result: T;
-  try {
-    result = operation();
-  } catch (error) {
-    releasePrivateRuntimeLock(lockPath, descriptor, owned, marker, invalidLock);
-    throw error;
-  }
-  releasePrivateRuntimeLock(lockPath, descriptor, owned, marker, invalidLock);
-  return result;
-}
-
-export function privatePathExists(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  makeError: () => WorkflowError,
-): boolean {
-  if (!walkPrivateDirectory(paths, path.dirname(filePath), makeError, false)) {
-    return false;
-  }
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!stats) {
-    return false;
-  }
-  assertPrivateFile(stats, makeError);
-  return true;
 }
 
 export function createInvestigationHumanActionBlocker(input: {
@@ -4413,7 +3778,10 @@ function dispositionProblem(
   ) {
     return `${row}.classification must be one of ${[...classifications].join(', ')}, received ${JSON.stringify(item.classification)}`;
   }
-  if (typeof item.rationale !== 'string' || item.rationale.trim().length === 0) {
+  if (
+    typeof item.rationale !== 'string' ||
+    item.rationale.trim().length === 0
+  ) {
     return `${row}.rationale must explain the classification`;
   }
   if (typeof item.author !== 'string' || item.author.trim().length === 0) {
@@ -4421,6 +3789,7 @@ function dispositionProblem(
   }
   return null;
 }
+
 function assertGroupDispositionsPayload(
   value: unknown,
 ): asserts value is GroupDispositionsPayload {
@@ -4580,6 +3949,7 @@ function whyAnswerProblem(
   }
   return null;
 }
+
 function isSemanticText(value: unknown): value is string {
   return (
     typeof value === 'string' &&
@@ -4588,221 +3958,6 @@ function isSemanticText(value: unknown): value is string {
     !/\{\{[\s\S]*?\}\}/.test(value) &&
     !/<(?!!)[^>]*>/.test(value)
   );
-}
-
-function writePrivateTemporary(filePath: string, content: string): string {
-  const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(temporary, NO_FOLLOW_CREATE, 0o600);
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, content, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
-    descriptor = undefined;
-    return temporary;
-  } catch (error) {
-    if (descriptor !== undefined) {
-      fs.closeSync(descriptor);
-    }
-    fs.rmSync(temporary, { force: true });
-    throw error;
-  }
-}
-
-function readPrivateFile(
-  filePath: string,
-  makeError: () => WorkflowError,
-  maxBytes = MAX_HUMAN_RESOLUTION_BYTES,
-): string {
-  return readPrivateBuffer(filePath, makeError, maxBytes).toString('utf8');
-}
-
-function readPrivateBuffer(
-  filePath: string,
-  makeError: () => WorkflowError,
-  maxBytes = MAX_HUMAN_RESOLUTION_BYTES,
-): Buffer {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) {
-    throw makeError();
-  }
-  const before = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!before || before.size > maxBytes) {
-    throw makeError();
-  }
-  assertPrivateFile(before, makeError);
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(
-      filePath,
-      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
-    );
-  } catch {
-    throw makeError();
-  }
-  try {
-    const opened = fs.fstatSync(descriptor);
-    assertPrivateFile(opened, makeError);
-    if (
-      opened.dev !== before.dev ||
-      opened.ino !== before.ino ||
-      opened.size > maxBytes
-    ) {
-      throw makeError();
-    }
-    const content = Buffer.alloc(opened.size + 1);
-    let offset = 0;
-    while (offset < content.length) {
-      const count = fs.readSync(
-        descriptor,
-        content,
-        offset,
-        content.length - offset,
-        offset,
-      );
-      if (count === 0) break;
-      offset += count;
-    }
-    const afterDescriptor = fs.fstatSync(descriptor);
-    const afterPath = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (
-      offset !== opened.size ||
-      !afterPath ||
-      !sameStablePrivateFile(opened, afterDescriptor) ||
-      !sameStablePrivateFile(opened, afterPath)
-    ) {
-      throw makeError();
-    }
-    return content.subarray(0, offset);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function walkPrivateDirectory(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  makeError: () => WorkflowError,
-  create: boolean,
-): boolean {
-  const relative = path.relative(paths.base, directory);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    throw makeError();
-  }
-  let current = paths.base;
-  for (const segment of relative.split(path.sep)) {
-    if (!segment) {
-      continue;
-    }
-    current = path.join(current, segment);
-    let stats = fs.lstatSync(current, { throwIfNoEntry: false });
-    if (!stats) {
-      if (!create) {
-        return false;
-      }
-      fs.mkdirSync(current, { mode: 0o700 });
-      fs.chmodSync(current, 0o700);
-      stats = fs.lstatSync(current);
-      fsyncDirectory(path.dirname(current));
-    }
-    if (
-      !stats.isDirectory() ||
-      stats.isSymbolicLink() ||
-      fs.realpathSync(current) !== path.resolve(current) ||
-      (isInsideOrEqual(paths.root, current) && (stats.mode & 0o777) !== 0o700)
-    ) {
-      throw makeError();
-    }
-  }
-  return true;
-}
-
-function releasePrivateRuntimeLock(
-  lockPath: string,
-  descriptor: number,
-  owned: fs.Stats,
-  marker: string,
-  invalidLock: () => WorkflowError,
-): void {
-  const observed = fs.lstatSync(lockPath, { throwIfNoEntry: false });
-  let content: string | undefined;
-  try {
-    const bytes = Buffer.alloc(Buffer.byteLength(marker));
-    const count = fs.readSync(descriptor, bytes, 0, bytes.length, 0);
-    content = bytes.subarray(0, count).toString('utf8');
-  } catch {
-    content = undefined;
-  }
-  fs.closeSync(descriptor);
-  if (
-    !owned.isFile() ||
-    owned.nlink !== 1 ||
-    (owned.mode & 0o777) !== 0o600 ||
-    !observed?.isFile() ||
-    observed.isSymbolicLink() ||
-    observed.nlink !== 1 ||
-    (observed.mode & 0o777) !== 0o600 ||
-    observed.dev !== owned.dev ||
-    observed.ino !== owned.ino ||
-    content !== marker
-  ) {
-    throw invalidLock();
-  }
-  fs.unlinkSync(lockPath);
-  fsyncDirectory(path.dirname(lockPath));
-}
-
-function reclaimDeadPrivateRuntimeLock(
-  lockPath: string,
-  invalidLock: () => WorkflowError,
-): boolean {
-  const result = reclaimDeadPreparedLock(lockPath, (content) => {
-    let value: unknown;
-    try {
-      value = JSON.parse(content);
-    } catch {
-      return null;
-    }
-    if (
-      !isRecord(value) ||
-      !hasExactKeys(value, [
-        'schemaVersion',
-        'ownerToken',
-        'pid',
-        'createdAt',
-      ]) ||
-      value.schemaVersion !== 1 ||
-      typeof value.ownerToken !== 'string' ||
-      !Number.isSafeInteger(value.pid) ||
-      (value.pid as number) < 1 ||
-      !isTimestamp(value.createdAt) ||
-      `${canonicalJson(value)}\n` !== content
-    ) {
-      return null;
-    }
-    return {
-      pid: value.pid as number,
-      ownerToken: value.ownerToken,
-    };
-  });
-  if (result === 'unsafe') {
-    throw invalidLock();
-  }
-  return result === 'absent' || result === 'reclaimed';
-}
-
-function assertPrivateFile(
-  stats: fs.Stats,
-  makeError: () => WorkflowError,
-): void {
-  if (
-    !stats.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.nlink !== 1 ||
-    (stats.mode & 0o777) !== 0o600
-  ) {
-    throw makeError();
-  }
 }
 
 function investigationSessionPath(
@@ -6627,2137 +5782,6 @@ function assertPendingProviderExecutionPolicySnapshot(
   return pending.invocationId;
 }
 
-function isDurablyReservedProviderExecutionPolicySnapshot(
-  paths: InvestigationRuntimePaths,
-  invocationId: string,
-): boolean {
-  const directory = path.join(paths.invocations, invocationId);
-  try {
-    if (
-      canonicalJson(fs.readdirSync(directory).sort()) !==
-      canonicalJson(['execution-policy.json'])
-    ) {
-      return false;
-    }
-    for (const name of fs.readdirSync(paths.refs).sort()) {
-      if (
-        !name.endsWith('.investigation-start.json') &&
-        !/\.provider-retry-[1-9][0-9]*\.json$/.test(name)
-      ) {
-        continue;
-      }
-      const value = readPrivateCanonicalJson(
-        paths,
-        path.join(paths.refs, name),
-        providerInvocationUnsafe,
-      );
-      if (!isRecord(value) || !isRecord(value.request)) {
-        continue;
-      }
-      const retryV2 =
-        value.kind === 'provider-retry-reservation' &&
-        value.schemaVersion === 2;
-      const expectedKeys =
-        value.kind === 'investigation-start-reservation' &&
-        value.schemaVersion === 1
-          ? [
-              'baseline',
-              'branch',
-              'changeId',
-              'createdAt',
-              'gitCommonDirectory',
-              'investigationId',
-              'invocationId',
-              'kind',
-              ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-                ? ['mandateBinding']
-                : []),
-              'manifest',
-              'manifestDigest',
-              'repositoryRoot',
-              'request',
-              'requestDigest',
-              'schemaVersion',
-            ]
-          : retryV2
-            ? [
-                'attempt',
-                'changeId',
-                'createdAt',
-                'investigationId',
-                'invocationId',
-                'kind',
-                'manifestDigest',
-                ...(Object.prototype.hasOwnProperty.call(
-                  value,
-                  'mandateBinding',
-                )
-                  ? ['mandateBinding']
-                  : []),
-                'previousInvocationId',
-                'request',
-                'requestDigest',
-                'schemaVersion',
-                'executionPolicySnapshot',
-                'retryDecision',
-              ]
-            : null;
-      if (
-        expectedKeys === null ||
-        !hasExactKeys(value, expectedKeys) ||
-        value.invocationId !== invocationId
-      ) {
-        continue;
-      }
-      const request = recreateProviderInvocationRequest(value.request);
-      if (
-        request.invocationId !== invocationId ||
-        request.requestDigest !== value.requestDigest
-      ) {
-        continue;
-      }
-      const storedSnapshot = readPrivateCanonicalJson(
-        paths,
-        path.join(directory, 'execution-policy.json'),
-        providerInvocationUnsafe,
-      );
-      assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
-      if (retryV2) {
-        assertProviderExecutionPolicySnapshot(
-          paths,
-          value.executionPolicySnapshot,
-          request,
-        );
-        if (
-          canonicalJson(storedSnapshot) !==
-          canonicalJson(value.executionPolicySnapshot)
-        ) {
-          continue;
-        }
-      }
-      return true;
-    }
-    for (const name of fs.readdirSync(paths.refs).sort()) {
-      if (!name.endsWith('.json')) continue;
-      const changeId = name.slice(0, -'.json'.length);
-      let closure: InvestigationEvidenceRefsClosure;
-      try {
-        assertChangeId(changeId);
-        closure = readInvestigationEvidenceRefsClosure(paths, changeId);
-      } catch {
-        continue;
-      }
-      const refs = closure.snapshot.refs;
-      if (refs === null) continue;
-      const nodeId = refs['propose/plan-review-request'];
-      if (nodeId === undefined) continue;
-      const node = readEvidenceNode(paths, nodeId);
-      const output = node.output;
-      const retryShape = isRecord(output) && output.retry !== null;
-      const closureEntries = closure.entries.filter(
-        (entry) => entry.refName === 'propose/plan-review-request',
-      );
-      if (
-        node.type !== 'plan-review-request-reservation' ||
-        node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
-        node.evaluator !== 'workflow-propose.v1' ||
-        node.policyDigest !== PROPOSE_POLICY_DIGEST ||
-        node.outputSchema !==
-          'workflow.plan-review-request-reservation-output.v3' ||
-        !isRecord(output) ||
-        !hasExactKeys(output, [
-          'investigationId',
-          'changeId',
-          'planning',
-          'subject',
-          'assignment',
-          'author',
-          'materializationNode',
-          'targetSnapshotNode',
-          'manifest',
-          'request',
-          'grantAuthorization',
-          'retry',
-        ]) ||
-        !hasExactKeys(node.exactInputDigests, [
-          'manifest',
-          'request',
-          'subject',
-          'targetSnapshot',
-          ...(retryShape ? ['previousRequest', 'failure'] : []),
-          ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
-        ]) ||
-        !hasExactKeys(node.provenanceParentNodeIds, [
-          'authorization',
-          ...(retryShape ? ['previousRequest'] : []),
-        ]) ||
-        !hasExactKeys(node.semanticParentResultDigests, [
-          'authorization',
-          ...(retryShape ? ['previousRequest'] : []),
-        ]) ||
-        output.changeId !== changeId ||
-        closureEntries.length !== 1 ||
-        closureEntries[0]?.nodeId !== nodeId ||
-        closureEntries[0]?.ownerInvestigationId !== output.investigationId ||
-        !isRecord(output.request)
-      ) {
-        continue;
-      }
-      const request = recreateProviderInvocationRequest(output.request);
-      if (
-        request.invocationId !== invocationId ||
-        request.requestDigest !== node.exactInputDigests.request ||
-        request.authorizationNodeId !==
-          node.provenanceParentNodeIds.authorization
-      ) {
-        continue;
-      }
-      const storedSnapshot = readPrivateCanonicalJson(
-        paths,
-        path.join(directory, 'execution-policy.json'),
-        providerInvocationUnsafe,
-      );
-      assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
-      if (output.retry === null) {
-        // Initial PlanReview publication stores policy before creating the
-        // invocation. A V3 reservation with retry:null is its sole durable
-        // recovery authority for that policy-only crash window. The exact
-        // current refs closure above proves that this is not an orphan or a
-        // rebound V3-labeled object.
-        return true;
-      }
-      if (
-        !isRecord(output.retry) ||
-        !isRecord(output.retry.executionPolicySnapshot)
-      ) {
-        continue;
-      }
-      assertProviderExecutionPolicySnapshot(
-        paths,
-        output.retry.executionPolicySnapshot,
-        request,
-      );
-      if (
-        canonicalJson(storedSnapshot) !==
-        canonicalJson(output.retry.executionPolicySnapshot)
-      ) {
-        continue;
-      }
-      return true;
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
-
-type ProviderInvocationRuntimeEvidence = Readonly<{
-  invocationId: string;
-  revision: number;
-  leaseGeneration: number;
-  state: 'prepared' | 'leased' | 'succeeded' | 'failed';
-  manifestDigest: string;
-  updatedAt: string;
-  result: ProviderProcessResult | null;
-  runtimeReceipt: AgentRuntimeCompletionReceipt | null;
-}>;
-
-export type ProviderInvocationRuntimeGeneration = Readonly<{
-  invocationId: string;
-  revision: number;
-  leaseGeneration: number;
-  state: 'prepared' | 'leased' | 'succeeded' | 'failed';
-  manifestDigest: string;
-  updatedAt: string;
-}>;
-
-function readCurrentProviderAdmissionGeneration(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  makeError: () => WorkflowError,
-): ProviderExecutionAdmissionAuthority | null {
-  if (generation.state !== 'succeeded' && generation.state !== 'failed') {
-    return null;
-  }
-  const directory = path.join(paths.root, 'execution', 'admission-authorities');
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (stats === undefined) return null;
-  if (!stats.isDirectory() || stats.isSymbolicLink()) throw makeError();
-  try {
-    assertPrivateInvestigationDirectory(paths, directory, makeError);
-    const names = fs.readdirSync(directory).sort();
-    if (names.length > MAX_PROVIDER_ADMISSION_AUTHORITY_FILES) {
-      throw makeError();
-    }
-    const matches: ProviderExecutionAdmissionAuthority[] = [];
-    for (const name of names) {
-      if (PROVIDER_ADMISSION_AUTHORITY_TEMPORARY.test(name)) continue;
-      if (!PROVIDER_ADMISSION_AUTHORITY_FILE.test(name)) throw makeError();
-      const authority = assertProviderExecutionAdmissionAuthority(
-        readPrivateCanonicalJson(
-          paths,
-          path.join(directory, name),
-          makeError,
-          MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
-        ),
-        makeError,
-      );
-      if (
-        path.basename(
-          providerExecutionAdmissionAuthorityPath(
-            paths,
-            authority.acceptanceBinding,
-          ),
-        ) !== name
-      ) {
-        throw makeError();
-      }
-      const binding = authority.acceptanceBinding;
-      if (
-        binding.invocationId === generation.invocationId &&
-        binding.requestDigest === request.requestDigest &&
-        binding.invocationRevision + 1 === generation.revision &&
-        binding.leaseGeneration === generation.leaseGeneration
-      ) {
-        matches.push(authority);
-      }
-    }
-    if (matches.length > 1) throw makeError();
-    return matches[0] ?? null;
-  } catch {
-    throw makeError();
-  }
-}
-
-function assertCurrentProviderCompletionCandidateReceipt(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  result: ProviderProcessResult | null,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-): void {
-  if (generation.state !== 'succeeded') return;
-  if (result === null) throw makeError();
-  const candidatePath = path.join(
-    paths.root,
-    'execution',
-    'completion-candidates',
-    `${sha256(generation.invocationId)}.json`,
-  );
-  const stats = fs.lstatSync(candidatePath, { throwIfNoEntry: false });
-  if (stats === undefined) {
-    assertRetainedProviderCompletionCandidateReceipt(
-      paths,
-      request,
-      generation,
-      makeError,
-    );
-    return;
-  }
-  try {
-    const value = readPrivateCanonicalJson(
-      paths,
-      candidatePath,
-      makeError,
-      MAX_PROVIDER_COMPLETION_CANDIDATE_BYTES,
-    );
-    if (
-      !isRecord(value) ||
-      !hasExactKeys(value, [
-        'candidateDigest',
-        'completedAt',
-        'expectedInvocationRevision',
-        'invocationId',
-        'kind',
-        'leaseGeneration',
-        'leaseTokenDigest',
-        'requestDigest',
-        'result',
-        ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
-          ? ['runtimeReceipt']
-          : []),
-        'schemaVersion',
-      ]) ||
-      value.schemaVersion !== 1 ||
-      value.kind !== 'provider-completion-candidate' ||
-      value.invocationId !== generation.invocationId ||
-      value.requestDigest !== request.requestDigest ||
-      !Number.isSafeInteger(value.expectedInvocationRevision) ||
-      (value.expectedInvocationRevision as number) < 0 ||
-      (value.expectedInvocationRevision as number) + 1 !==
-        generation.revision ||
-      !Number.isSafeInteger(value.leaseGeneration) ||
-      (value.leaseGeneration as number) < 1 ||
-      value.leaseGeneration !== generation.leaseGeneration ||
-      !isDigest(value.leaseTokenDigest) ||
-      !isTimestamp(value.completedAt) ||
-      !isDigest(value.candidateDigest) ||
-      canonicalJson(value.result) !== canonicalJson(result)
-    ) {
-      throw makeError();
-    }
-    const body = { ...value };
-    delete body.candidateDigest;
-    if (sha256(canonicalJson(body)) !== value.candidateDigest) {
-      throw makeError();
-    }
-    const candidateReceipt = Object.prototype.hasOwnProperty.call(
-      value,
-      'runtimeReceipt',
-    )
-      ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt, makeError)
-      : null;
-    if (
-      candidateReceipt !== null &&
-      (candidateReceipt.invocationId !== generation.invocationId ||
-        candidateReceipt.requestDigest !== request.requestDigest ||
-        candidateReceipt.leasedRevision !== value.expectedInvocationRevision ||
-        candidateReceipt.terminalRevision !== generation.revision ||
-        candidateReceipt.leaseGeneration !== generation.leaseGeneration ||
-        candidateReceipt.terminalState !== 'succeeded')
-    ) {
-      throw makeError();
-    }
-    if (canonicalJson(receipt) !== canonicalJson(candidateReceipt)) {
-      throw makeError();
-    }
-  } catch {
-    throw makeError();
-  }
-}
-
-function assertRetainedProviderCompletionCandidateReceipt(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  makeError: () => WorkflowError,
-): void {
-  try {
-    const retentionReceipt = readCompleteProviderRetentionReceipt(
-      paths,
-      generation.invocationId,
-      {
-        requestDigest: request.requestDigest,
-        manifestDigest: generation.manifestDigest,
-        invocationRevision: generation.revision,
-        terminalState: 'succeeded',
-        terminalAt: generation.updatedAt,
-      },
-    );
-    const retainedCandidate =
-      retentionReceipt === null
-        ? null
-        : providerRetentionArtifact(retentionReceipt, 'completion-candidate');
-    // The pruning transaction publishes this descriptor only after validating
-    // the complete Job/Attempt, provider record, prompt context, and canonical
-    // candidate bytes. Its complete self-digesting receipt is the durable
-    // replacement for the intentionally deleted raw candidate; terminal state
-    // cannot recreate the candidate's pre-terminal lease bytes.
-    if (retainedCandidate === null) throw makeError();
-  } catch {
-    throw makeError();
-  }
-}
-
-function assertProviderExecutionAdmissionAuthorityForRuntime(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-): void {
-  const authority = readCurrentProviderAdmissionGeneration(
-    paths,
-    request,
-    generation,
-    makeError,
-  );
-  if (authority === null) {
-    if (generation.state === 'succeeded' || receipt?.schemaVersion === 4) {
-      throw makeError();
-    }
-    return;
-  }
-  if (authority.receiptRequirement === 'synchronous-no-activity') {
-    if (receipt !== null) throw makeError();
-    return;
-  }
-  if (
-    receipt?.schemaVersion !== 4 ||
-    receipt.acceptanceBinding.receiptRequirement !== 'schema-v4' ||
-    canonicalJson(authority.acceptanceBinding) !==
-      canonicalJson(receipt.acceptanceBinding) ||
-    authority.acceptanceBindingDigest !== receipt.acceptanceBindingDigest ||
-    authority.executionStateDigest !== receipt.executionStateDigest
-  ) {
-    throw makeError();
-  }
-}
-
-function assertProviderInvocationOutputManifestBinding(
-  runtimeEvidence: ProviderInvocationRuntimeEvidence,
-  manifest: unknown,
-  makeError: () => WorkflowError,
-): void {
-  if (
-    runtimeEvidence.state !== 'succeeded' ||
-    !isRecord(manifest) ||
-    manifest.kind !== 'task-strategy-implementation-manifest'
-  ) {
-    return;
-  }
-  const output = runtimeEvidence.result?.output;
-  if (
-    !isRecord(manifest.subject) ||
-    !isRecord(output) ||
-    output.sessionId !== manifest.subject.sessionId ||
-    output.sourceTree !== manifest.subject.sourceTree
-  ) {
-    throw makeError();
-  }
-}
-
-export function readAcceptedProviderInvocationRuntimeReceiptAuthority(
-  paths: InvestigationRuntimePaths,
-  invocationId: string,
-  makeError: () => WorkflowError = providerInvocationUnsafe,
-): Extract<AgentRuntimeCompletionReceipt, { schemaVersion: 4 }> {
-  const directory = path.join(paths.invocations, invocationId);
-  let request: ProviderInvocationRequest;
-  try {
-    request = recreateProviderInvocationRequest(
-      readPrivateCanonicalJson(
-        paths,
-        path.join(directory, 'request.json'),
-        makeError,
-      ),
-    );
-  } catch {
-    throw makeError();
-  }
-  const evidence = assertProviderInvocationRuntimeEvidence(
-    readPrivateCanonicalJson(
-      paths,
-      path.join(directory, 'state.json'),
-      makeError,
-    ),
-    request,
-    makeError,
-  );
-  if (
-    evidence.state !== 'succeeded' ||
-    evidence.result === null ||
-    evidence.runtimeReceipt?.schemaVersion !== 4 ||
-    evidence.runtimeReceipt.terminalState !== 'succeeded' ||
-    evidence.runtimeReceipt.terminalDisposition !== 'accepted' ||
-    evidence.runtimeReceipt.failureCode !== null ||
-    evidence.runtimeReceipt.protocolReceipt?.kind !==
-      'provider-wrapper-session-protocol-receipt' ||
-    evidence.runtimeReceipt.protocolReceipt.terminal !== 'result' ||
-    evidence.runtimeReceipt.hostExecutionBinding?.phase !== 'native-terminal' ||
-    evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim === null ||
-    evidence.runtimeReceipt.hostExecutionBinding
-      .nativeSessionCompletionDigest === null ||
-    evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
-      .invocationId !== invocationId ||
-    evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
-      .requestDigest !== request.requestDigest ||
-    evidence.runtimeReceipt.hostExecutionBinding.nativeSessionClaim
-      .attemptId !== evidence.runtimeReceipt.executionAttemptId
-  ) {
-    throw makeError();
-  }
-  assertCurrentProviderCompletionCandidateReceipt(
-    paths,
-    request,
-    evidence,
-    evidence.result,
-    evidence.runtimeReceipt,
-    makeError,
-  );
-  assertProviderExecutionAdmissionAuthorityForRuntime(
-    paths,
-    request,
-    evidence,
-    evidence.runtimeReceipt,
-    makeError,
-  );
-  assertProviderHostAssignmentAndProbeAuthorityForRuntime(
-    paths,
-    request,
-    evidence.result,
-    evidence.runtimeReceipt,
-    makeError,
-  );
-  const execution = assertDurableExecutionAdmissionState(
-    readPrivateCanonicalJson(
-      paths,
-      path.join(
-        paths.root,
-        'execution',
-        'jobs',
-        `${sha256(evidence.runtimeReceipt.executionJobId)}.json`,
-      ),
-      makeError,
-      MAX_PROVIDER_EXECUTION_ADMISSION_AUTHORITY_BYTES,
-    ),
-    makeError,
-  );
-  const attempt = execution.attempts.find(
-    ({ attemptId }) =>
-      attemptId === evidence.runtimeReceipt!.executionAttemptId,
-  );
-  const acceptedResult = execution.results.find(
-    ({ attemptId, acceptance }) =>
-      attemptId === evidence.runtimeReceipt!.executionAttemptId &&
-      acceptance === 'accepted',
-  );
-  if (
-    execution.revision <= evidence.runtimeReceipt.executionRevision ||
-    execution.workflow.workflowId !==
-      evidence.runtimeReceipt.acceptanceBinding.ownerWorkflowId ||
-    execution.job.jobId !== evidence.runtimeReceipt.executionJobId ||
-    execution.job.acceptedAttemptId !==
-      evidence.runtimeReceipt.executionAttemptId ||
-    attempt?.status !== 'succeeded' ||
-    attempt.jobId !== evidence.runtimeReceipt.executionJobId ||
-    attempt.leaseGeneration !== evidence.runtimeReceipt.leaseGeneration ||
-    attempt.providerInvocation?.invocationId !== invocationId ||
-    attempt.providerInvocation.invocationRevision !== evidence.revision ||
-    acceptedResult?.outputDigest !== `sha256:${evidence.result.outputDigest}`
-  ) {
-    throw makeError();
-  }
-  return evidence.runtimeReceipt;
-}
-
-function assertProviderHostAssignmentAndProbeAuthorityForRuntime(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  result: ProviderProcessResult | null,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-): void {
-  const hostBinding = receipt?.hostExecutionBinding;
-  if (hostBinding === null || hostBinding === undefined) return;
-  try {
-    const assignment = hostBinding.assignmentBinding;
-    const assignmentPaths = changeRoleAssignmentStorePathsV1(paths);
-    const assignmentRef = assertChangeRoleAssignmentRefV1(
-      readPrivateCanonicalJson(
-        paths,
-        changeRoleAssignmentRefPathV1(
-          assignmentPaths,
-          assignment.changeId,
-          assignment.planningGeneration,
-        ),
-        makeError,
-        MAX_PROVIDER_AUTHORITY_REF_BYTES,
-      ),
-      assignment.changeId,
-      assignment.planningGeneration,
-      makeError,
-    );
-    if (assignmentRef.recordDigest !== assignment.recordDigest) {
-      throw makeError();
-    }
-    const assignmentRecord = readPrivateCanonicalJson(
-      paths,
-      changeRoleAssignmentObjectPathV1(
-        assignmentPaths,
-        assignmentRef.recordDigest,
-      ),
-      makeError,
-      MAX_PROVIDER_ASSIGNMENT_AUTHORITY_BYTES,
-    );
-    assertAgentRuntimeDurableAssignmentAuthorityV1(
-      assignment,
-      assignmentRecord as Parameters<
-        typeof assertAgentRuntimeDurableAssignmentAuthorityV1
-      >[1],
-      {
-        purpose: request.purpose,
-        providerId: request.providerId,
-        inputManifestDigest: request.inputManifestDigest,
-        targetDigest: request.targetDigest,
-      },
-      makeError,
-    );
-    if (
-      hostBinding.probe !== null &&
-      result !== null &&
-      (result.runtimeObservation === null ||
-        canonicalJson(hostBinding.probe.executable) !==
-          canonicalJson(result.runtimeObservation.executable))
-    ) {
-      throw makeError();
-    }
-  } catch {
-    throw makeError();
-  }
-}
-
-function assertProviderHostDurableAuthoritiesForRuntime(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  result: ProviderProcessResult | null,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-  options: Readonly<{
-    allowPendingNativeContinuationAuthority?: boolean;
-  }> = {},
-): void {
-  if (receipt?.schemaVersion !== 4) return;
-  const hostBinding = receipt.hostExecutionBinding;
-  if (hostBinding === null) return;
-  assertProviderHostAssignmentAndProbeAuthorityForRuntime(
-    paths,
-    request,
-    result,
-    receipt,
-    makeError,
-  );
-  try {
-    if (hostBinding.phase !== 'native-terminal') {
-      if (receipt.protocolReceipt !== null) throw makeError();
-      return;
-    }
-    if (
-      hostBinding.nativeSessionClaim === null ||
-      hostBinding.nativeSessionCompletionDigest === null
-    ) {
-      throw makeError();
-    }
-    const nativePaths = providerNativeSessionStorePathsV1(paths);
-    const turns = [];
-    for (let turn = 1; turn <= hostBinding.nativeSessionClaim.turn; turn += 1) {
-      const claimRef = assertProviderNativeSessionClaimRefV1(
-        readPrivateCanonicalJson(
-          paths,
-          providerNativeSessionClaimRefPathV1(
-            nativePaths,
-            hostBinding.nativeSessionClaim.scope.scopeKey,
-            turn,
-          ),
-          makeError,
-          MAX_PROVIDER_AUTHORITY_REF_BYTES,
-        ),
-        hostBinding.nativeSessionClaim.scope.scopeKey,
-        turn,
-        makeError,
-      );
-      const claim = readPrivateCanonicalJson(
-        paths,
-        providerNativeSessionClaimObjectPathV1(
-          nativePaths,
-          claimRef.claimDigest,
-        ),
-        makeError,
-        MAX_PROVIDER_NATIVE_AUTHORITY_BYTES,
-      );
-      const completionRef = assertProviderNativeSessionCompletionRefV1(
-        readPrivateCanonicalJson(
-          paths,
-          providerNativeSessionCompletionRefPathV1(
-            nativePaths,
-            hostBinding.nativeSessionClaim.scope.scopeKey,
-            turn,
-          ),
-          makeError,
-          MAX_PROVIDER_AUTHORITY_REF_BYTES,
-        ),
-        hostBinding.nativeSessionClaim.scope.scopeKey,
-        turn,
-        claimRef.claimDigest,
-        makeError,
-      );
-      const completion = readPrivateCanonicalJson(
-        paths,
-        providerNativeSessionCompletionObjectPathV1(
-          nativePaths,
-          completionRef.completionDigest,
-        ),
-        makeError,
-        MAX_PROVIDER_NATIVE_AUTHORITY_BYTES,
-      );
-      const parsedCompletion =
-        assertProviderNativeSessionCompletionV1(completion);
-      const continuationPath =
-        providerNativeSessionContinuationAuthorityObjectPathV1(
-          nativePaths,
-          parsedCompletion.completionDigest,
-        );
-      const continuationExists =
-        fs.lstatSync(continuationPath, { throwIfNoEntry: false }) !== undefined;
-      const terminalTurn = turn === hostBinding.nativeSessionClaim.turn;
-      if (
-        terminalTurn &&
-        receipt.terminalDisposition === 'accepted' &&
-        !continuationExists &&
-        options.allowPendingNativeContinuationAuthority !== true
-      ) {
-        throw makeError();
-      }
-      if (
-        continuationExists &&
-        terminalTurn &&
-        receipt.terminalDisposition !== 'accepted'
-      ) {
-        throw makeError();
-      }
-      const runtimeReceipt = continuationExists
-        ? terminalTurn
-          ? receipt
-          : readAcceptedProviderInvocationRuntimeReceiptAuthority(
-              paths,
-              parsedCompletion.invocationId,
-              makeError,
-            )
-        : null;
-      const continuationAuthority = continuationExists
-        ? readPrivateCanonicalJson(
-            paths,
-            continuationPath,
-            makeError,
-            MAX_PROVIDER_CONTINUATION_AUTHORITY_BYTES,
-          )
-        : null;
-      turns.push({
-        claim,
-        claimRef,
-        completion: parsedCompletion,
-        completionRef,
-        continuationAuthority,
-        runtimeReceipt,
-      });
-    }
-    const durableNative = assertAgentRuntimeDurableNativeSessionAuthorityV1(
-      {
-        embeddedClaim: hostBinding.nativeSessionClaim,
-        embeddedCompletionDigest: hostBinding.nativeSessionCompletionDigest,
-        turns,
-      },
-      makeError,
-    );
-    const terminalCompletion = durableNative.completion;
-    if (
-      canonicalJson(receipt.protocolReceipt) !==
-        canonicalJson(terminalCompletion.protocolReceipt) ||
-      (receipt.terminalDisposition === 'accepted' &&
-        (terminalCompletion.disposition !== 'usable' ||
-          terminalCompletion.usable !== true ||
-          terminalCompletion.protocolReceipt?.terminal !== 'result')) ||
-      (receipt.terminalDisposition === 'failed-before-result' &&
-        (terminalCompletion.disposition === 'usable' ||
-          terminalCompletion.usable !== false ||
-          terminalCompletion.protocolReceipt?.terminal === 'result')) ||
-      (receipt.terminalDisposition === 'rejected-after-result' &&
-        (terminalCompletion.disposition !== 'rejected' ||
-          terminalCompletion.usable !== false ||
-          terminalCompletion.handleDigest !== null ||
-          terminalCompletion.protocolReceipt?.terminal !== 'result'))
-    ) {
-      throw makeError();
-    }
-    for (const { completion } of durableNative.turns) {
-      if (completion.usable !== true || completion.handleDigest === null) {
-        continue;
-      }
-      assertProviderNativeSessionHandleV1(
-        readPrivateCanonicalJson(
-          paths,
-          providerNativeSessionHandleObjectPathV1(
-            nativePaths,
-            completion.handleDigest,
-          ),
-          makeError,
-          MAX_PROVIDER_NATIVE_AUTHORITY_BYTES,
-        ),
-        { completion, handleDigest: completion.handleDigest },
-      );
-    }
-  } catch {
-    throw makeError();
-  }
-}
-
-export function assertProviderRuntimeDurableAuthorities(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  result: ProviderProcessResult | null,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-  options: Readonly<{
-    allowPendingNativeContinuationAuthority?: boolean;
-  }> = {},
-): void {
-  assertCurrentProviderCompletionCandidateReceipt(
-    paths,
-    request,
-    generation,
-    result,
-    receipt,
-    makeError,
-  );
-  assertProviderExecutionAdmissionAuthorityForRuntime(
-    paths,
-    request,
-    generation,
-    receipt,
-    makeError,
-  );
-  assertProviderHostDurableAuthoritiesForRuntime(
-    paths,
-    request,
-    result,
-    receipt,
-    makeError,
-    options,
-  );
-}
-
-/**
- * Re-admit immutable execution and host authority before publishing a terminal
- * completion candidate or accepted Attempt result. The only relaxed edge is
- * the success continuation marker, which cannot exist until provider state is
- * durably committed.
- */
-export function assertProviderRuntimeTerminalAuthorityPreflight(
-  paths: InvestigationRuntimePaths,
-  request: ProviderInvocationRequest,
-  generation: ProviderInvocationRuntimeGeneration,
-  result: ProviderProcessResult | null,
-  receipt: AgentRuntimeCompletionReceipt | null,
-  makeError: () => WorkflowError,
-): void {
-  if (generation.state !== 'succeeded' && generation.state !== 'failed') {
-    throw makeError();
-  }
-  assertProviderExecutionAdmissionAuthorityForRuntime(
-    paths,
-    request,
-    generation,
-    receipt,
-    makeError,
-  );
-  assertProviderHostDurableAuthoritiesForRuntime(
-    paths,
-    request,
-    result,
-    receipt,
-    makeError,
-    { allowPendingNativeContinuationAuthority: true },
-  );
-}
-
-function assertProviderInvocationRuntimeEvidence(
-  value: unknown,
-  request: ProviderInvocationRequest,
-  makeError: () => WorkflowError,
-): ProviderInvocationRuntimeEvidence {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'invocationId',
-      'investigationId',
-      'changeId',
-      ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
-        ? ['mandateBinding']
-        : []),
-      'attempt',
-      'revision',
-      'state',
-      'providerId',
-      'purpose',
-      'requestDigest',
-      'manifestDigest',
-      'leaseGeneration',
-      'lease',
-      'result',
-      'failure',
-      ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
-        ? ['runtimeReceipt']
-        : []),
-      'createdAt',
-      'updatedAt',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.invocationId !== request.invocationId ||
-    typeof value.investigationId !== 'string' ||
-    typeof value.changeId !== 'string' ||
-    (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
-      !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
-    !Number.isSafeInteger(value.attempt) ||
-    (value.attempt as number) < 1 ||
-    !Number.isSafeInteger(value.revision) ||
-    (value.revision as number) < 0 ||
-    !['prepared', 'leased', 'succeeded', 'failed'].includes(
-      String(value.state),
-    ) ||
-    value.providerId !== request.providerId ||
-    value.purpose !== request.purpose ||
-    value.requestDigest !== request.requestDigest ||
-    !isDigest(value.manifestDigest) ||
-    !Number.isSafeInteger(value.leaseGeneration) ||
-    (value.leaseGeneration as number) < 0 ||
-    !isProviderInvocationLifecycleLease(value.lease) ||
-    !isProviderInvocationFailureShape(value.failure) ||
-    !isTimestamp(value.createdAt) ||
-    !isTimestamp(value.updatedAt)
-  ) {
-    throw makeError();
-  }
-  try {
-    assertInvocationId(value.invocationId);
-    assertInvestigationId(value.investigationId);
-    assertChangeId(value.changeId);
-  } catch {
-    throw makeError();
-  }
-  const result =
-    value.state === 'succeeded'
-      ? assertProviderProcessResult(
-          request,
-          value.result,
-          providerLifecycleOutputValidator(request, makeError),
-          makeError,
-        )
-      : null;
-  const runtimeReceipt = Object.prototype.hasOwnProperty.call(
-    value,
-    'runtimeReceipt',
-  )
-    ? assertAgentRuntimeCompletionReceipt(value.runtimeReceipt, makeError)
-    : null;
-  if (
-    (value.state === 'prepared' &&
-      (value.lease !== null ||
-        value.result !== null ||
-        value.failure !== null)) ||
-    (value.state === 'leased' &&
-      (value.lease === null ||
-        value.result !== null ||
-        value.failure !== null)) ||
-    (value.state === 'succeeded' &&
-      (value.lease !== null || result === null || value.failure !== null)) ||
-    (value.state === 'failed' &&
-      (value.lease !== null ||
-        value.result !== null ||
-        value.failure === null)) ||
-    (value.lease !== null &&
-      value.lease.generation !== value.leaseGeneration) ||
-    (runtimeReceipt !== null &&
-      (runtimeReceipt.terminalState !== value.state ||
-        runtimeReceipt.invocationId !== value.invocationId ||
-        runtimeReceipt.requestDigest !== value.requestDigest ||
-        runtimeReceipt.terminalRevision !== value.revision ||
-        runtimeReceipt.leaseGeneration !== value.leaseGeneration ||
-        (runtimeReceipt.schemaVersion === 4 &&
-          runtimeReceipt.failureCode !==
-            (value.state === 'failed'
-              ? (value.failure as { code: string }).code
-              : null))))
-  ) {
-    throw makeError();
-  }
-  return deepFreeze({
-    invocationId: value.invocationId,
-    revision: value.revision,
-    leaseGeneration: value.leaseGeneration,
-    state: value.state,
-    manifestDigest: value.manifestDigest,
-    updatedAt: value.updatedAt,
-    result,
-    runtimeReceipt,
-  } as ProviderInvocationRuntimeEvidence);
-}
-
-function providerLifecycleOutputValidator(
-  request: ProviderInvocationRequest,
-  makeError: () => WorkflowError,
-): Readonly<{ validate(value: unknown): boolean }> {
-  return Object.freeze({
-    validate(value: unknown): boolean {
-      try {
-        assertHostWrapperSemanticOutput(request, value, makeError);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  });
-}
-
-function digestPrivateDirectoryEntries(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  makeError: () => WorkflowError,
-): Array<{ name: string; digest: string }> {
-  if (!walkPrivateDirectory(paths, directory, makeError, false)) {
-    throw makeError();
-  }
-  const manifestContent = readPrivateFile(
-    path.join(directory, 'manifest.json'),
-    makeError,
-  );
-  let manifest: unknown;
-  try {
-    manifest = JSON.parse(manifestContent);
-  } catch {
-    throw makeError();
-  }
-  const snapshotArtifacts =
-    isRecord(manifest) &&
-    manifest.kind === 'plan-review-manifest' &&
-    manifest.planningTarget !== undefined
-      ? planReviewSnapshotArtifacts(manifest.planningTarget, makeError)
-      : null;
-  const rootNames = fs.readdirSync(directory).sort();
-  const runtimePath = path.join(directory, 'runtime');
-  const runtimeStats = fs.lstatSync(runtimePath, { throwIfNoEntry: false });
-  const reviewRootPath = path.join(directory, 'review-root');
-  const optionalRootFiles = OPTIONAL_PROVIDER_ROOT_FILES.filter((name) =>
-    rootNames.includes(name),
-  );
-  const hostWrapperDirectories = HOST_WRAPPER_DIRECTORIES.filter((name) =>
-    rootNames.includes(name),
-  );
-  const rootFiles = [
-    PROVIDER_POLICY_ROOT_FILE,
-    ...BLIND_PROVIDER_CORE_ROOT_FILES,
-  ];
-  const expectedRootNames = [
-    ...rootFiles,
-    ...optionalRootFiles,
-    ...hostWrapperDirectories,
-    ...(runtimeStats ? ['runtime'] : []),
-    ...(snapshotArtifacts === null ? [] : ['review-root']),
-  ].sort();
-  if (canonicalJson(rootNames) !== canonicalJson(expectedRootNames)) {
-    throw makeError();
-  }
-
-  const files: Array<{ name: string; digest: string }> = rootFiles.map(
-    (name) => {
-      const content = readPrivateFile(path.join(directory, name), makeError);
-      if (Buffer.byteLength(content, 'utf8') > MAX_HUMAN_RESOLUTION_BYTES) {
-        throw makeError();
-      }
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(content);
-      } catch {
-        throw makeError();
-      }
-      if (`${canonicalJson(parsed)}\n` !== content) {
-        throw makeError();
-      }
-      return { name, digest: sha256(content) };
-    },
-  );
-
-  let request: ProviderInvocationRequest;
-  try {
-    request = recreateProviderInvocationRequest(
-      JSON.parse(
-        readPrivateFile(path.join(directory, 'request.json'), makeError),
-      ),
-    );
-  } catch {
-    throw makeError();
-  }
-  let state: unknown;
-  try {
-    state = JSON.parse(
-      readPrivateFile(path.join(directory, 'state.json'), makeError),
-    ) as unknown;
-  } catch {
-    throw makeError();
-  }
-  const runtimeEvidence = assertProviderInvocationRuntimeEvidence(
-    state,
-    request,
-    makeError,
-  );
-  assertProviderInvocationOutputManifestBinding(
-    runtimeEvidence,
-    manifest,
-    makeError,
-  );
-  assertProviderRuntimeDurableAuthorities(
-    paths,
-    request,
-    runtimeEvidence,
-    runtimeEvidence.result,
-    runtimeEvidence.runtimeReceipt,
-    makeError,
-  );
-  let retentionReceipt: ReturnType<
-    typeof readCompleteProviderRetentionReceipt
-  > = null;
-  try {
-    if (
-      isRecord(state) &&
-      Number.isSafeInteger(state.revision) &&
-      (state.revision as number) >= 0 &&
-      (state.state === 'succeeded' || state.state === 'failed') &&
-      typeof state.updatedAt === 'string' &&
-      isTimestamp(state.updatedAt) &&
-      isDigest(state.requestDigest) &&
-      isDigest(state.manifestDigest)
-    ) {
-      retentionReceipt = readCompleteProviderRetentionReceipt(
-        paths,
-        path.basename(directory),
-        {
-          requestDigest: state.requestDigest,
-          manifestDigest: state.manifestDigest,
-          invocationRevision: state.revision as number,
-          terminalState: state.state,
-          terminalAt: state.updatedAt,
-        },
-      );
-    } else if (
-      readProviderRetentionReceipt(paths, path.basename(directory)) !== null
-    ) {
-      throw makeError();
-    }
-  } catch {
-    throw makeError();
-  }
-  const providerDefinitionSnapshot =
-    runtimeEvidence.result?.runtimeObservation?.providerDefinitionSnapshot;
-  const hostExecutionBinding =
-    runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-      ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
-      : null;
-  const retainedHostArtifacts =
-    retentionReceipt === null
-      ? []
-      : PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.filter(
-          (name) => providerRetentionArtifact(retentionReceipt!, name) !== null,
-        );
-  const succeededWithHostWrapper =
-    runtimeEvidence.state === 'succeeded' &&
-    providerDefinitionSnapshot?.kind === 'agent-provider-profile-snapshot' &&
-    providerDefinitionSnapshot.trustTier === 'host-wrapper';
-  const hasHostWrapperArtifacts =
-    hostWrapperDirectories.length > 0 || retainedHostArtifacts.length > 0;
-  if (
-    runtimeEvidence.state === 'succeeded' &&
-    (succeededWithHostWrapper
-      ? hostWrapperDirectories.length !== HOST_WRAPPER_DIRECTORIES.length
-      : hostWrapperDirectories.length !== 0)
-  ) {
-    throw makeError();
-  }
-  if (
-    (hostExecutionBinding === null &&
-      hasHostWrapperArtifacts &&
-      (runtimeEvidence.state === 'succeeded' ||
-        runtimeEvidence.state === 'failed')) ||
-    (hostExecutionBinding !== null &&
-      runtimeEvidence.state !== 'succeeded' &&
-      runtimeEvidence.state !== 'failed') ||
-    (hostExecutionBinding !== null &&
-      hostExecutionBinding.phase !== 'assignment-admitted' &&
-      !hasHostWrapperArtifacts) ||
-    (runtimeEvidence.state === 'succeeded' &&
-      (succeededWithHostWrapper
-        ? hostExecutionBinding?.phase !== 'native-terminal'
-        : hostExecutionBinding !== null))
-  ) {
-    throw makeError();
-  }
-  if (hasHostWrapperArtifacts) {
-    files.push(
-      ...digestHostWrapperRuntimeEntries(
-        paths,
-        directory,
-        request,
-        runtimeEvidence,
-        retentionReceipt,
-        makeError,
-      ),
-    );
-  }
-  for (const name of optionalRootFiles) {
-    const content = readPrivateFile(path.join(directory, name), makeError);
-    if (Buffer.byteLength(content, 'utf8') > MAX_HUMAN_RESOLUTION_BYTES) {
-      throw makeError();
-    }
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(content);
-    } catch {
-      throw makeError();
-    }
-    if (`${canonicalJson(parsed)}\n` !== content) {
-      throw makeError();
-    }
-    assertOptionalProviderRootArtifact(name, parsed, request, makeError);
-    files.push({ name, digest: sha256(content) });
-  }
-
-  const runtimeRequired =
-    runtimeEvidence.result !== null &&
-    runtimeEvidence.result.runtimeObservation !== null &&
-    !succeededWithHostWrapper;
-  const retainedRuntimeArtifacts = BLIND_PROVIDER_RUNTIME_FILES.map((name) =>
-    retentionReceipt === null
-      ? null
-      : providerRetentionArtifact(retentionReceipt, `runtime/${name}`),
-  );
-  const receiptCarriesRuntime = retainedRuntimeArtifacts.every(
-    (artifact) => artifact !== null,
-  );
-  if (
-    retainedRuntimeArtifacts.some((artifact) => artifact !== null) &&
-    !receiptCarriesRuntime
-  ) {
-    throw makeError();
-  }
-  if (!runtimeStats) {
-    if (runtimeRequired && !receiptCarriesRuntime) {
-      throw makeError();
-    }
-    if (receiptCarriesRuntime) {
-      for (
-        let index = 0;
-        index < BLIND_PROVIDER_RUNTIME_FILES.length;
-        index += 1
-      ) {
-        files.push({
-          name: `runtime/${BLIND_PROVIDER_RUNTIME_FILES[index]!}`,
-          digest: retainedRuntimeArtifacts[index]!.digest,
-        });
-      }
-    }
-  } else {
-    if (
-      runtimeStats.isSymbolicLink() ||
-      !runtimeStats.isDirectory() ||
-      !walkPrivateDirectory(paths, runtimePath, makeError, false)
-    ) {
-      throw makeError();
-    }
-    const runtimeNames = fs.readdirSync(runtimePath).sort();
-    const expectedRuntimeNames = [...BLIND_PROVIDER_RUNTIME_FILES].sort();
-    if (
-      receiptCarriesRuntime
-        ? runtimeNames.some(
-            (name) =>
-              !expectedRuntimeNames.includes(
-                name as (typeof BLIND_PROVIDER_RUNTIME_FILES)[number],
-              ),
-          )
-        : canonicalJson(runtimeNames) !== canonicalJson(expectedRuntimeNames)
-    ) {
-      throw makeError();
-    }
-    for (
-      let index = 0;
-      index < BLIND_PROVIDER_RUNTIME_FILES.length;
-      index += 1
-    ) {
-      const name = BLIND_PROVIDER_RUNTIME_FILES[index]!;
-      const retained = retainedRuntimeArtifacts[index];
-      if (!runtimeNames.includes(name)) {
-        if (retained === null) throw makeError();
-        files.push({ name: `runtime/${name}`, digest: retained.digest });
-        continue;
-      }
-      const content = readPrivateBuffer(
-        path.join(runtimePath, name),
-        makeError,
-      );
-      if (content.byteLength > MAX_HUMAN_RESOLUTION_BYTES) {
-        throw makeError();
-      }
-      const contentDigest = sha256(content);
-      if (
-        retained !== null &&
-        (retained.digest !== contentDigest ||
-          retained.bytes !== content.byteLength)
-      ) {
-        throw makeError();
-      }
-      files.push({
-        name: `runtime/${name}`,
-        digest: retained?.digest ?? contentDigest,
-      });
-    }
-  }
-  if (snapshotArtifacts !== null) {
-    const retainedReviewRoot =
-      retentionReceipt === null
-        ? null
-        : providerRetentionArtifact(retentionReceipt, 'review-root');
-    const expectedRetainedReviewRoot = providerRetentionReviewRootArtifact(
-      snapshotArtifacts.map((artifact) => ({
-        name: `review-root/${artifact.snapshotFile}`,
-        digest: artifact.sha256,
-        bytes: artifact.byteLength,
-      })),
-    );
-    if (
-      retainedReviewRoot !== null &&
-      canonicalJson(retainedReviewRoot) !==
-        canonicalJson(expectedRetainedReviewRoot)
-    ) {
-      throw makeError();
-    }
-    const reviewRootStats = fs.lstatSync(reviewRootPath, {
-      throwIfNoEntry: false,
-    });
-    if (
-      !reviewRootStats?.isDirectory() ||
-      reviewRootStats.isSymbolicLink() ||
-      !walkPrivateDirectory(paths, reviewRootPath, makeError, false)
-    ) {
-      throw makeError();
-    }
-    const expectedFiles = snapshotArtifacts
-      .map(({ snapshotFile }) => snapshotFile)
-      .sort();
-    const observedFiles = fs.readdirSync(reviewRootPath).sort();
-    if (
-      retainedReviewRoot === null
-        ? canonicalJson(observedFiles) !== canonicalJson(expectedFiles)
-        : observedFiles.some((name) => !expectedFiles.includes(name))
-    ) {
-      throw makeError();
-    }
-    for (const artifact of snapshotArtifacts) {
-      if (!observedFiles.includes(artifact.snapshotFile)) {
-        if (retainedReviewRoot === null) throw makeError();
-        files.push({
-          name: `review-root/${artifact.snapshotFile}`,
-          digest: artifact.sha256,
-        });
-        continue;
-      }
-      const content = readPrivateBuffer(
-        path.join(reviewRootPath, artifact.snapshotFile),
-        makeError,
-        artifact.byteLength,
-      );
-      if (
-        content.byteLength !== artifact.byteLength ||
-        sha256(content) !== artifact.sha256 ||
-        snapshotLineCount(content) !== artifact.lineCount
-      ) {
-        throw makeError();
-      }
-      files.push({
-        name: `review-root/${artifact.snapshotFile}`,
-        digest: artifact.sha256,
-      });
-    }
-  }
-  return files.sort((left, right) => left.name.localeCompare(right.name));
-}
-
-type HostWrapperArtifact = Readonly<{
-  content: Buffer;
-  digest: string;
-  value: Record<string, unknown> | null;
-}>;
-
-function digestHostWrapperRuntimeEntries(
-  paths: InvestigationRuntimePaths,
-  invocationDirectory: string,
-  request: ProviderInvocationRequest,
-  runtimeEvidence: ProviderInvocationRuntimeEvidence,
-  retentionReceipt: ReturnType<typeof readCompleteProviderRetentionReceipt>,
-  makeError: () => WorkflowError,
-): Array<{ name: string; digest: string }> {
-  if (runtimeEvidence.state === 'prepared') {
-    throw makeError();
-  }
-  const probeDirectory = path.join(
-    invocationDirectory,
-    HOST_WRAPPER_PROBE_DIRECTORY,
-  );
-  const turnDirectory = path.join(
-    invocationDirectory,
-    HOST_WRAPPER_TURN_DIRECTORY,
-  );
-  const retainedArtifacts =
-    retentionReceipt === null
-      ? []
-      : PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS.map((name) => ({
-          name,
-          artifact: providerRetentionArtifact(retentionReceipt, name),
-        })).filter(
-          (
-            entry,
-          ): entry is {
-            name: (typeof PROVIDER_RETENTION_HOST_WRAPPER_ARTIFACTS)[number];
-            artifact: NonNullable<typeof entry.artifact>;
-          } => entry.artifact !== null,
-        );
-  if (retainedArtifacts.length > 0) {
-    const hostBinding =
-      runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-        ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
-        : null;
-    if (hostBinding === null) throw makeError();
-    const retainedNames = new Set(retainedArtifacts.map(({ name }) => name));
-    const hasProbeRequest = retainedNames.has(
-      'host-wrapper-probe-runtime/request.json',
-    );
-    const hasProbeResult = retainedNames.has(
-      'host-wrapper-probe-runtime/probe-result.json',
-    );
-    const hasTurnRequest = retainedNames.has(
-      'host-wrapper-runtime/request.json',
-    );
-    const hasSemanticOutput = retainedNames.has(
-      'host-wrapper-runtime/semantic-output.json',
-    );
-    const retainedAssignmentFailure =
-      hostBinding.phase === 'assignment-admitted' &&
-      runtimeEvidence.state === 'failed' &&
-      runtimeEvidence.runtimeReceipt?.schemaVersion === 4 &&
-      runtimeEvidence.runtimeReceipt.protocolReceipt === null &&
-      hasProbeRequest &&
-      hasProbeResult &&
-      !hasTurnRequest &&
-      !hasSemanticOutput;
-    if (
-      hasProbeRequest !== hasProbeResult ||
-      (hostBinding.phase === 'assignment-admitted' &&
-        !retainedAssignmentFailure) ||
-      !hasProbeRequest ||
-      (hostBinding.phase === 'probe-attested' &&
-        (hasTurnRequest || hasSemanticOutput)) ||
-      (hostBinding.phase === 'native-terminal' && !hasTurnRequest) ||
-      (runtimeEvidence.state === 'succeeded' &&
-        (!hasSemanticOutput ||
-          runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
-          runtimeEvidence.runtimeReceipt.protocolReceipt?.kind !==
-            'provider-wrapper-session-protocol-receipt' ||
-          runtimeEvidence.result?.runtimeObservation
-            ?.providerDefinitionBindingDigest !==
-            hostBinding.probe?.providerDefinitionBindingDigest))
-    ) {
-      throw makeError();
-    }
-    if (
-      hostBinding.probe !== null &&
-      retainedArtifacts.some(({ name, artifact }) =>
-        name === 'host-wrapper-probe-runtime/request.json'
-          ? artifact.digest !== hostBinding.probe!.probeRequestFileDigest
-          : name === 'host-wrapper-probe-runtime/probe-result.json'
-            ? artifact.digest !== hostBinding.probe!.probeResultFileDigest
-            : false,
-      )
-    ) {
-      throw makeError();
-    }
-    assertEmptyHostWrapperRetentionMarker(paths, probeDirectory, makeError);
-    assertEmptyHostWrapperRetentionMarker(paths, turnDirectory, makeError);
-    return retainedArtifacts
-      .map(({ name, artifact }) => ({ name, digest: artifact.digest }))
-      .sort((left, right) => left.name.localeCompare(right.name));
-  }
-  const probe = readHostWrapperDirectoryPhase(
-    paths,
-    probeDirectory,
-    HOST_WRAPPER_PROBE_FILES,
-    ['request.json', 'probe-result.json'],
-    new Map([
-      ['request.json', MAX_HOST_WRAPPER_PROBE_BYTES],
-      ['probe-result.json', MAX_HOST_WRAPPER_PROBE_BYTES],
-    ]),
-    new Set(['request.json']),
-    makeError,
-  );
-  const turnStats = fs.lstatSync(turnDirectory, { throwIfNoEntry: false });
-  const turn =
-    turnStats === undefined
-      ? null
-      : readHostWrapperDirectoryPhase(
-          paths,
-          turnDirectory,
-          HOST_WRAPPER_TURN_FILES,
-          ['request.json', 'semantic-output.json'],
-          new Map([
-            ['request.json', MAX_HUMAN_RESOLUTION_BYTES],
-            [
-              'semantic-output.json',
-              Math.min(
-                MAX_HUMAN_RESOLUTION_BYTES,
-                request.limits.aggregateOutputBytes,
-              ),
-            ],
-          ]),
-          new Set(['request.json']),
-          makeError,
-        );
-
-  const probeRequest = probe.get('request.json')?.value;
-  const probeResult = probe.get('probe-result.json')?.value;
-  const hostBinding =
-    runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-      ? runtimeEvidence.runtimeReceipt.hostExecutionBinding
-      : null;
-  if (hostBinding === null && runtimeEvidence.state !== 'leased') {
-    throw makeError();
-  }
-  const acceptanceBinding =
-    runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-      ? runtimeEvidence.runtimeReceipt.acceptanceBinding
-      : null;
-  if (
-    hostBinding !== null &&
-    ((hostBinding.phase === 'assignment-admitted' &&
-      (runtimeEvidence.state !== 'failed' ||
-        runtimeEvidence.runtimeReceipt?.schemaVersion !== 4 ||
-        runtimeEvidence.runtimeReceipt.protocolReceipt !== null ||
-        turn !== null ||
-        isAuthenticatedHostWrapperProbeResult(probeResult))) ||
-      (hostBinding.phase !== 'assignment-admitted' &&
-        (probeRequest === undefined ||
-          probeResult === undefined ||
-          hostBinding.probe === null)) ||
-      (hostBinding.phase === 'probe-attested' && turn !== null))
-  ) {
-    throw makeError();
-  }
-  const expectedProbeOutputPath = path.join(
-    probeDirectory,
-    'probe-result.json',
-  );
-  if (probeRequest === undefined || probeRequest === null) {
-    if (turn !== null || runtimeEvidence.state === 'succeeded') {
-      throw makeError();
-    }
-    return hostWrapperArtifactDigests([[HOST_WRAPPER_PROBE_DIRECTORY, probe]]);
-  }
-  if (
-    !hasExactKeys(probeRequest, [
-      'schemaVersion',
-      'kind',
-      'invocationId',
-      'requestDigest',
-      'executionAttemptId',
-      'acceptanceBindingDigest',
-      'assignmentBindingDigest',
-      'providerFamily',
-      'profileDigest',
-      'providerDefinitionBindingDigest',
-      'outputFile',
-    ]) ||
-    probeRequest.schemaVersion !== 1 ||
-    probeRequest.kind !== 'agent-runtime-host-wrapper-probe-request.v1' ||
-    probeRequest.invocationId !== request.invocationId ||
-    probeRequest.requestDigest !== request.requestDigest ||
-    !isDigest(probeRequest.acceptanceBindingDigest) ||
-    !isDigest(probeRequest.assignmentBindingDigest) ||
-    (acceptanceBinding !== null &&
-      (probeRequest.executionAttemptId !==
-        acceptanceBinding.executionAttemptId ||
-        probeRequest.acceptanceBindingDigest !==
-          acceptanceBinding.bindingDigest)) ||
-    (hostBinding !== null &&
-      probeRequest.assignmentBindingDigest !==
-        hostBinding.assignmentBindingDigest) ||
-    probeRequest.providerFamily !== request.providerId ||
-    (hostBinding !== null &&
-      (probeRequest.providerFamily !==
-        hostBinding.assignmentBinding.providerProfileSnapshot.family ||
-        probeRequest.profileDigest !==
-          hostBinding.assignmentBinding.providerProfileSnapshot
-            .profileDigest)) ||
-    !isDigest(probeRequest.profileDigest) ||
-    !isDigest(probeRequest.providerDefinitionBindingDigest) ||
-    probeRequest.outputFile !== expectedProbeOutputPath
-  ) {
-    throw makeError();
-  }
-  if (
-    hostBinding?.probe !== null &&
-    hostBinding !== null &&
-    (probe.get('request.json')?.digest !==
-      hostBinding.probe.probeRequestFileDigest ||
-      probe.get('probe-result.json')?.digest !==
-        hostBinding.probe.probeResultFileDigest ||
-      hostBinding.probe.providerDefinitionBindingDigest !==
-        probeRequest.providerDefinitionBindingDigest ||
-      !isRecord(probeResult) ||
-      probeResult.providerVersion !== hostBinding.probe.providerVersion)
-  ) {
-    throw makeError();
-  }
-
-  if (turn === null) {
-    if (
-      runtimeEvidence.state === 'succeeded' ||
-      hostBinding?.phase === 'native-terminal'
-    ) {
-      throw makeError();
-    }
-    return hostWrapperArtifactDigests([[HOST_WRAPPER_PROBE_DIRECTORY, probe]]);
-  }
-  if (
-    (hostBinding !== null &&
-      (hostBinding.phase !== 'native-terminal' ||
-        hostBinding.probe === null)) ||
-    !isAuthenticatedHostWrapperProbeResult(probeResult)
-  ) {
-    throw makeError();
-  }
-
-  const turnRequest = turn.get('request.json')?.value;
-  const expectedSemanticOutputPath = path.join(
-    turnDirectory,
-    'semantic-output.json',
-  );
-  if (turnRequest === undefined || turnRequest === null) {
-    if (runtimeEvidence.state === 'succeeded') throw makeError();
-    return hostWrapperArtifactDigests([
-      [HOST_WRAPPER_PROBE_DIRECTORY, probe],
-      [HOST_WRAPPER_TURN_DIRECTORY, turn],
-    ]);
-  }
-  if (
-    !hasExactKeys(turnRequest, [
-      'schemaVersion',
-      'kind',
-      'invocationId',
-      'requestDigest',
-      'action',
-      'prompt',
-      'outputFile',
-    ]) ||
-    turnRequest.schemaVersion !== 1 ||
-    turnRequest.kind !== 'agent-runtime-host-wrapper-turn-request.v1' ||
-    turnRequest.invocationId !== request.invocationId ||
-    turnRequest.requestDigest !== request.requestDigest ||
-    (turnRequest.action !== 'start' && turnRequest.action !== 'resume') ||
-    typeof turnRequest.prompt !== 'string' ||
-    Buffer.byteLength(turnRequest.prompt, 'utf8') >
-      MAX_HUMAN_RESOLUTION_BYTES ||
-    turnRequest.outputFile !== expectedSemanticOutputPath
-  ) {
-    throw makeError();
-  }
-  let prompt: unknown;
-  try {
-    prompt = JSON.parse(turnRequest.prompt);
-  } catch {
-    throw makeError();
-  }
-  if (
-    !isRecord(prompt) ||
-    !hasExactKeys(prompt, ['schemaVersion', 'kind', 'request']) ||
-    prompt.schemaVersion !== 1 ||
-    prompt.kind !== 'agent-runtime-host-wrapper-request.v1' ||
-    canonicalJson(prompt) !== turnRequest.prompt ||
-    !isRecord(prompt.request)
-  ) {
-    throw makeError();
-  }
-  let promptRequest: ProviderInvocationRequest;
-  try {
-    promptRequest = recreateProviderInvocationRequest(prompt.request);
-  } catch {
-    throw makeError();
-  }
-  if (canonicalJson(promptRequest) !== canonicalJson(request)) {
-    throw makeError();
-  }
-  const terminalProtocolReceipt =
-    runtimeEvidence.runtimeReceipt?.schemaVersion === 4
-      ? runtimeEvidence.runtimeReceipt.protocolReceipt
-      : null;
-  if (
-    terminalProtocolReceipt?.kind ===
-      'provider-wrapper-session-protocol-receipt' &&
-    (terminalProtocolReceipt.sessionAction !== turnRequest.action ||
-      (turnRequest.action === 'start'
-        ? terminalProtocolReceipt.nativeSessionIdentityMode !==
-            'provider-observed' ||
-          terminalProtocolReceipt.expectedNativeSessionIdDigest !== null
-        : terminalProtocolReceipt.nativeSessionIdentityMode !==
-            'engine-supplied' ||
-          terminalProtocolReceipt.expectedNativeSessionIdDigest === null))
-  ) {
-    throw makeError();
-  }
-  const semanticOutput = turn.get('semantic-output.json')?.value;
-  if (runtimeEvidence.state === 'succeeded') {
-    if (semanticOutput === undefined || semanticOutput === null) {
-      throw makeError();
-    }
-    assertSucceededHostWrapperStateBindings(
-      runtimeEvidence,
-      request,
-      probeRequest.profileDigest,
-      turnRequest.action,
-      semanticOutput,
-      makeError,
-    );
-  }
-
-  return hostWrapperArtifactDigests([
-    [HOST_WRAPPER_PROBE_DIRECTORY, probe],
-    [HOST_WRAPPER_TURN_DIRECTORY, turn],
-  ]);
-}
-
-function assertEmptyHostWrapperRetentionMarker(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  makeError: () => WorkflowError,
-): void {
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (
-    !stats?.isDirectory() ||
-    stats.isSymbolicLink() ||
-    !walkPrivateDirectory(paths, directory, makeError, false)
-  ) {
-    throw makeError();
-  }
-  let names: string[];
-  try {
-    names = fs.readdirSync(directory);
-  } catch {
-    throw makeError();
-  }
-  if (names.length !== 0) throw makeError();
-}
-
-function readHostWrapperDirectoryPhase<Name extends string>(
-  paths: InvestigationRuntimePaths,
-  directory: string,
-  expectedFiles: readonly Name[],
-  creationOrder: readonly Name[],
-  maxBytesByName: ReadonlyMap<Name, number>,
-  canonicalJsonFiles: ReadonlySet<Name>,
-  makeError: () => WorkflowError,
-): Map<Name, HostWrapperArtifact> {
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (
-    !stats?.isDirectory() ||
-    stats.isSymbolicLink() ||
-    !walkPrivateDirectory(paths, directory, makeError, false)
-  ) {
-    throw makeError();
-  }
-  let observedFiles: string[];
-  try {
-    observedFiles = fs.readdirSync(directory).sort();
-  } catch {
-    throw makeError();
-  }
-  const allowedFileSets = Array.from(
-    { length: creationOrder.length + 1 },
-    (_, length) => [...creationOrder.slice(0, length)].sort(),
-  );
-  if (
-    !allowedFileSets.some(
-      (allowed) => canonicalJson(allowed) === canonicalJson(observedFiles),
-    ) ||
-    observedFiles.some((name) => !expectedFiles.includes(name as Name))
-  ) {
-    throw makeError();
-  }
-  return new Map(
-    observedFiles.map((observedName) => {
-      const name = observedName as Name;
-      return [
-        name,
-        readBoundedPrivateHostWrapperArtifact(
-          path.join(directory, name),
-          maxBytesByName.get(name) ?? 0,
-          canonicalJsonFiles.has(name),
-          makeError,
-        ),
-      ];
-    }),
-  );
-}
-
-function readBoundedPrivateHostWrapperArtifact(
-  filePath: string,
-  maxBytes: number,
-  canonicalRequired: boolean,
-  makeError: () => WorkflowError,
-): HostWrapperArtifact {
-  if (!Number.isSafeInteger(maxBytes) || maxBytes < 1) {
-    throw makeError();
-  }
-  const absolute = path.resolve(filePath);
-  const before = fs.lstatSync(absolute, { throwIfNoEntry: false });
-  if (!before || absolute !== filePath || before.size > maxBytes) {
-    throw makeError();
-  }
-  assertPrivateFile(before, makeError);
-  let descriptor: number | undefined;
-  let content: Buffer;
-  try {
-    descriptor = fs.openSync(
-      absolute,
-      fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW | fs.constants.O_NONBLOCK,
-    );
-    const opened = fs.fstatSync(descriptor);
-    assertPrivateFile(opened, makeError);
-    if (
-      opened.dev !== before.dev ||
-      opened.ino !== before.ino ||
-      opened.size > maxBytes
-    ) {
-      throw makeError();
-    }
-    const buffer = Buffer.alloc(opened.size + 1);
-    let offset = 0;
-    while (offset < buffer.length) {
-      const count = fs.readSync(
-        descriptor,
-        buffer,
-        offset,
-        buffer.length - offset,
-        offset,
-      );
-      if (count === 0) break;
-      offset += count;
-    }
-    const afterDescriptor = fs.fstatSync(descriptor);
-    const afterPath = fs.lstatSync(absolute, { throwIfNoEntry: false });
-    if (
-      offset !== opened.size ||
-      !afterPath ||
-      !sameStablePrivateFile(opened, afterDescriptor) ||
-      !sameStablePrivateFile(opened, afterPath)
-    ) {
-      throw makeError();
-    }
-    content = buffer.subarray(0, offset);
-  } catch (error) {
-    if (error instanceof WorkflowError) throw error;
-    throw makeError();
-  } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(content.toString('utf8')) as unknown;
-  } catch {
-    value = null;
-  }
-  const parsedRecord = isRecord(value) ? value : null;
-  const canonical =
-    parsedRecord !== null &&
-    Buffer.from(`${canonicalJson(parsedRecord)}\n`, 'utf8').equals(content);
-  if (canonicalRequired && !canonical) {
-    throw makeError();
-  }
-  return {
-    content,
-    digest: sha256(content),
-    value: parsedRecord,
-  };
-}
-
-function sameStablePrivateFile(left: fs.Stats, right: fs.Stats): boolean {
-  return (
-    left.dev === right.dev &&
-    left.ino === right.ino &&
-    left.mode === right.mode &&
-    left.nlink === right.nlink &&
-    left.size === right.size &&
-    left.mtimeMs === right.mtimeMs &&
-    left.ctimeMs === right.ctimeMs
-  );
-}
-
-function isAuthenticatedHostWrapperProbeResult(
-  value: Record<string, unknown> | null | undefined,
-): boolean {
-  return (
-    value !== null &&
-    value !== undefined &&
-    hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'providerVersion',
-      'authentication',
-    ]) &&
-    value.schemaVersion === 1 &&
-    value.kind === 'agent-runtime-host-wrapper-probe-result.v1' &&
-    value.authentication === 'authenticated' &&
-    typeof value.providerVersion === 'string' &&
-    value.providerVersion.length > 0 &&
-    Buffer.byteLength(value.providerVersion, 'utf8') <= 256
-  );
-}
-
-function hostWrapperArtifactDigests(
-  directories: readonly Readonly<
-    [string, ReadonlyMap<string, HostWrapperArtifact>]
-  >[],
-): Array<{ name: string; digest: string }> {
-  return directories
-    .flatMap(([directory, artifacts]) =>
-      [...artifacts.entries()].map(([name, artifact]) => ({
-        name: `${directory}/${name}`,
-        digest: artifact.digest,
-      })),
-    )
-    .sort((left, right) => left.name.localeCompare(right.name));
-}
-
-function assertSucceededHostWrapperStateBindings(
-  runtimeEvidence: ProviderInvocationRuntimeEvidence,
-  request: ProviderInvocationRequest,
-  profileDigest: unknown,
-  action: unknown,
-  semanticOutput: Record<string, unknown>,
-  makeError: () => WorkflowError,
-): void {
-  const result = runtimeEvidence.result;
-  const runtimeObservation = result?.runtimeObservation;
-  const providerDefinitionSnapshot =
-    runtimeObservation?.providerDefinitionSnapshot;
-  const runtimeReceipt = runtimeEvidence.runtimeReceipt;
-  const protocolReceipt =
-    runtimeReceipt?.schemaVersion === 4 ? runtimeReceipt.protocolReceipt : null;
-  const hostExecutionBinding =
-    runtimeReceipt?.schemaVersion === 4
-      ? runtimeReceipt.hostExecutionBinding
-      : null;
-  if (
-    result === null ||
-    canonicalJson(result.output) !== canonicalJson(semanticOutput) ||
-    providerDefinitionSnapshot === undefined ||
-    providerDefinitionSnapshot.kind !== 'agent-provider-profile-snapshot' ||
-    providerDefinitionSnapshot.trustTier !== 'host-wrapper' ||
-    providerDefinitionSnapshot.family !== request.providerId ||
-    providerDefinitionSnapshot.profileDigest !== profileDigest ||
-    hostExecutionBinding?.phase !== 'native-terminal' ||
-    hostExecutionBinding.probe?.providerDefinitionBindingDigest !==
-      runtimeObservation?.providerDefinitionBindingDigest ||
-    protocolReceipt === null ||
-    protocolReceipt.kind !== 'provider-wrapper-session-protocol-receipt' ||
-    protocolReceipt.protocol !== 'harness-jsonl-v2' ||
-    protocolReceipt.sessionAction !== action
-  ) {
-    throw makeError();
-  }
-}
-
-function assertHostWrapperSemanticOutput(
-  request: ProviderInvocationRequest,
-  value: unknown,
-  makeError: () => WorkflowError,
-): void {
-  try {
-    if (request.purpose === 'survey') {
-      if (
-        canonicalJson(request.outputSchema) !==
-          canonicalJson(BLIND_SURVEY_OUTPUT_SCHEMA) ||
-        !validateBlindSurveyOutput(value, request.invocationId)
-      ) {
-        throw makeError();
-      }
-      return;
-    }
-    if (request.purpose === 'plan-review') {
-      if (
-        canonicalJson(request.outputSchema) !==
-          canonicalJson(PLAN_REVIEW_OUTPUT_SCHEMA) ||
-        PLAN_REVIEW_OUTPUT_VALIDATOR.validate(value) !== true
-      ) {
-        throw makeError();
-      }
-      return;
-    }
-    if (request.purpose === 'task-diff-review') {
-      const continuation =
-        canonicalJson(request.outputSchema) ===
-        canonicalJson(TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA);
-      if (
-        continuation
-          ? TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR.validate(value) !==
-            true
-          : canonicalJson(request.outputSchema) !==
-              canonicalJson(TASK_DIFF_REVIEW_OUTPUT_SCHEMA) ||
-            TASK_DIFF_REVIEW_OUTPUT_VALIDATOR.validate(value) !== true
-      ) {
-        throw makeError();
-      }
-      return;
-    }
-    if (
-      request.purpose !== 'task-implementation' ||
-      canonicalJson(request.outputSchema) !==
-        canonicalJson(TASK_STRATEGY_IMPLEMENTATION_OUTPUT_SCHEMA) ||
-      TASK_STRATEGY_IMPLEMENTATION_OUTPUT_VALIDATOR.validate(value) !== true
-    ) {
-      throw makeError();
-    }
-  } catch {
-    throw makeError();
-  }
-}
-
-function planReviewSnapshotArtifacts(
-  value: unknown,
-  makeError: () => WorkflowError,
-): Array<{
-  snapshotFile: string;
-  sha256: string;
-  byteLength: number;
-  lineCount: number;
-}> {
-  if (!isRecord(value) || !Array.isArray(value.artifacts)) {
-    throw makeError();
-  }
-  const artifacts = value.artifacts.map((entry) => {
-    if (
-      !isRecord(entry) ||
-      typeof entry.snapshotFile !== 'string' ||
-      !/^\d{4}\.artifact$/.test(entry.snapshotFile) ||
-      !isDigest(entry.sha256) ||
-      !Number.isSafeInteger(entry.byteLength) ||
-      (entry.byteLength as number) < 0 ||
-      !Number.isSafeInteger(entry.lineCount) ||
-      (entry.lineCount as number) < 0
-    ) {
-      throw makeError();
-    }
-    return {
-      snapshotFile: entry.snapshotFile,
-      sha256: entry.sha256,
-      byteLength: entry.byteLength as number,
-      lineCount: entry.lineCount as number,
-    };
-  });
-  if (
-    new Set(artifacts.map(({ snapshotFile }) => snapshotFile)).size !==
-    artifacts.length
-  ) {
-    throw makeError();
-  }
-  return artifacts;
-}
-
-function snapshotLineCount(content: Buffer): number {
-  if (content.byteLength === 0) return 0;
-  let count = 1;
-  for (const byte of content) {
-    if (byte === 0x0a) count += 1;
-  }
-  return content.at(-1) === 0x0a ? count - 1 : count;
-}
-
 function assertEvidenceClosureTargetBinding(
   paths: InvestigationRuntimePaths,
   targetSession: InvestigationSession,
@@ -9115,29 +6139,6 @@ function normalizeAmbiguityObservations(
     .map(([object, observationDigest]) => ({ object, observationDigest }));
 }
 
-function createPrivateRawFile(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  content: string,
-  makeError: () => WorkflowError,
-): void {
-  ensurePrivateInvestigationDirectory(paths, path.dirname(filePath), makeError);
-  if (fs.lstatSync(filePath, { throwIfNoEntry: false })) {
-    throw makeError();
-  }
-  const temporary = writePrivateTemporary(filePath, content);
-  try {
-    if (fs.lstatSync(filePath, { throwIfNoEntry: false })) {
-      throw makeError();
-    }
-    fs.renameSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-    assertPrivateFile(fs.lstatSync(filePath), makeError);
-  } finally {
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
 function assertCanonicalResolutionEnvelopeBytes(content: string): void {
   if (
     typeof content !== 'string' ||
@@ -9201,23 +6202,6 @@ function isSortedUniqueStrings(values: string[]): boolean {
   );
 }
 
-function isInsideOrEqual(parent: string, candidate: string): boolean {
-  const relative = path.relative(parent, candidate);
-  return (
-    relative === '' ||
-    (!relative.startsWith('..') && !path.isAbsolute(relative))
-  );
-}
-
-function fsyncDirectory(directory: string): void {
-  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-  try {
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
 function isCheckpointKind(
   value: unknown,
 ): value is InvestigationCheckpointKind {
@@ -9237,355 +6221,6 @@ function isBaseline(value: unknown): value is InvestigationSession['baseline'] {
     typeof value.tree === 'string' &&
     GIT_OBJECT_ID.test(value.tree)
   );
-}
-
-function isTaskMandateBinding(value: unknown, changeId: string): boolean {
-  return (
-    isRecord(value) &&
-    hasExactKeys(value, [
-      'schemaVersion',
-      'mandateTaskId',
-      'mandateId',
-      'mandateDigest',
-      'changeId',
-      'externalAuditRoot',
-    ]) &&
-    value.schemaVersion === 1 &&
-    value.changeId === changeId &&
-    typeof value.externalAuditRoot === 'string' &&
-    path.isAbsolute(value.externalAuditRoot) &&
-    path.normalize(value.externalAuditRoot) === value.externalAuditRoot &&
-    typeof value.mandateTaskId === 'string' &&
-    /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.mandateTaskId) &&
-    typeof value.mandateId === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(
-      value.mandateId,
-    ) &&
-    isDigest(value.mandateDigest)
-  );
-}
-
-function isDigest(value: unknown): value is string {
-  return typeof value === 'string' && DIGEST.test(value);
-}
-
-function isTimestamp(value: unknown): value is string {
-  return typeof value === 'string' && !Number.isNaN(Date.parse(value));
-}
-
-function isProviderInvocationFailureShape(value: unknown): value is {
-  kind: 'retryable' | 'repository-reconciliation-required';
-  code: string;
-  message: string;
-  executionKind?: string;
-  retryAfterMs?: number;
-  probe?: unknown;
-} | null {
-  const hasExecutionKind =
-    isRecord(value) && Object.hasOwn(value, 'executionKind');
-  const hasRetryAfter = isRecord(value) && Object.hasOwn(value, 'retryAfterMs');
-  const hasProbe = isRecord(value) && Object.hasOwn(value, 'probe');
-  return (
-    value === null ||
-    (isRecord(value) &&
-      hasExactKeys(value, [
-        'kind',
-        'code',
-        'message',
-        ...(hasExecutionKind ? ['executionKind'] : []),
-        ...(hasRetryAfter ? ['retryAfterMs'] : []),
-        ...(hasProbe ? ['probe'] : []),
-      ]) &&
-      (value.kind === 'retryable' ||
-        value.kind === 'repository-reconciliation-required') &&
-      typeof value.code === 'string' &&
-      value.code.length > 0 &&
-      typeof value.message === 'string' &&
-      value.message.length > 0 &&
-      (!hasExecutionKind ||
-        PROVIDER_EXECUTION_FAILURE_KINDS.has(String(value.executionKind))) &&
-      (!hasRetryAfter ||
-        (Number.isSafeInteger(value.retryAfterMs) &&
-          (value.retryAfterMs as number) >= 0 &&
-          (value.retryAfterMs as number) <= 86_400_000)) &&
-      (!hasProbe || isReadOnlyProbeShape(value.probe)) &&
-      hasProbe === (value.executionKind === 'probe-transient') &&
-      Buffer.byteLength(canonicalJson(value), 'utf8') <= 16_384)
-  );
-}
-
-function isReadOnlyProbeShape(value: unknown): boolean {
-  try {
-    assertReadOnlyProbe(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-const PROVIDER_EXECUTION_FAILURE_KINDS = new Set([
-  'provider-timeout',
-  'network',
-  'rate-limit',
-  'provider-process-crash',
-  'worker-crash',
-  'lease-expiry',
-  'temporary-file-lock',
-  'provider-capacity',
-  'stdout-truncated',
-  'process-nonzero',
-  'json-parse',
-  'schema-mismatch',
-  'missing-required-field',
-  'citation-out-of-range',
-  'probe-transient',
-  'needs-user-decision',
-  'state-corruption',
-  'unknown-side-effect',
-]);
-
-function assertProviderExecutionPolicySnapshot(
-  paths: InvestigationRuntimePaths,
-  value: unknown,
-  request: ProviderInvocationRequest,
-): void {
-  if (
-    !isRecord(value) ||
-    value.kind !== 'provider-execution-policy-snapshot' ||
-    value.invocationId !== request.invocationId ||
-    value.requestDigest !== request.requestDigest ||
-    value.policyDigest !== request.policyDigest ||
-    typeof value.policyDocument !== 'string' ||
-    ![2, 3].includes(value.schemaVersion as number) ||
-    !hasExactKeys(value, [
-      'accountingDigest',
-      'attemptReservation',
-      ...(value.schemaVersion === 3 ? ['authority'] : []),
-      'invocationId',
-      'kind',
-      'policyDigest',
-      'policyDocument',
-      'requestDigest',
-      'retryAccounting',
-      'schemaVersion',
-    ])
-  ) {
-    throw providerInvocationUnsafe();
-  }
-  try {
-    const loaded = parseAiAdapterPolicyDocument(value.policyDocument);
-    if (
-      loaded.digest !== value.policyDigest ||
-      request.limits.aggregateOutputBytes >
-        loaded.policy.limits.aggregateOutputBytes
-    ) {
-      throw providerInvocationUnsafe();
-    }
-    if (value.schemaVersion === 3) {
-      if (loaded.policy.schemaVersion !== 4) {
-        throw providerInvocationUnsafe();
-      }
-      const authority = validateProviderExecutionBudgetAuthority(
-        request,
-        loaded as ReturnType<typeof parseAiAdapterPolicyDocument>,
-        value.authority,
-      );
-      assertDurableProviderExecutionBudgetAuthority(paths.root, authority);
-    } else if (request.limits.timeoutMs > loaded.policy.limits.timeoutMs) {
-      throw providerInvocationUnsafe();
-    }
-    if (value.schemaVersion === 2 || value.schemaVersion === 3) {
-      if (!isRecord(value.attemptReservation)) {
-        throw providerInvocationUnsafe();
-      }
-      const attemptReservation = {
-        runtimeMs: request.limits.timeoutMs,
-        providerCostMicros:
-          loaded.policy.retryAccounting.reservations[request.providerId]
-            .providerCostMicros,
-        providerTokens:
-          loaded.policy.retryAccounting.reservations[request.providerId]
-            .providerTokens,
-      };
-      if (
-        canonicalJson(value.retryAccounting) !==
-          canonicalJson(loaded.policy.retryAccounting) ||
-        canonicalJson(value.attemptReservation) !==
-          canonicalJson(attemptReservation) ||
-        value.accountingDigest !==
-          sha256(
-            canonicalJson({
-              schemaVersion: 1,
-              kind: 'provider-retry-accounting-snapshot',
-              invocationId: request.invocationId,
-              requestDigest: request.requestDigest,
-              policyDigest: request.policyDigest,
-              retryAccounting: loaded.policy.retryAccounting,
-              attemptReservation,
-            }),
-          )
-      ) {
-        throw providerInvocationUnsafe();
-      }
-    }
-  } catch {
-    throw providerInvocationUnsafe();
-  }
-}
-
-function assertOptionalProviderRootArtifact(
-  name: (typeof OPTIONAL_PROVIDER_ROOT_FILES)[number],
-  value: unknown,
-  request: ProviderInvocationRequest,
-  makeError: () => WorkflowError,
-): void {
-  if (name === 'cancellation-request.json') {
-    try {
-      const cancellation = assertProviderInvocationCancellationRequestV1(value);
-      if (cancellation.binding.invocationId !== request.invocationId) {
-        throw makeError();
-      }
-    } catch {
-      throw makeError();
-    }
-    return;
-  }
-  if (!isRecord(value)) {
-    throw makeError();
-  }
-  if (name === 'repair-evidence.json') {
-    if (
-      !hasExactKeys(value, [
-        'contextDigest',
-        'epoch',
-        'evidenceDigest',
-        'failedAttemptId',
-        'failedInvocationId',
-        'failureCode',
-        'failureFingerprint',
-        'jobId',
-        'kind',
-        'recordedAt',
-        'repairContext',
-        'schemaVersion',
-        'workflowId',
-      ]) ||
-      value.schemaVersion !== 1 ||
-      value.kind !== 'provider-repair-evidence' ||
-      value.failedInvocationId !== request.invocationId ||
-      !isTimestamp(value.recordedAt) ||
-      typeof value.evidenceDigest !== 'string' ||
-      !PROVIDER_REPAIR_DIGEST.test(value.evidenceDigest)
-    ) {
-      throw makeError();
-    }
-    const payload = { ...value };
-    delete payload.evidenceDigest;
-    if (`sha256:${sha256(canonicalJson(payload))}` !== value.evidenceDigest) {
-      throw makeError();
-    }
-    return;
-  }
-  if (
-    !hasExactKeys(value, [
-      'contextDigest',
-      'createdAt',
-      'epoch',
-      'failedAttemptId',
-      'failedInvocationId',
-      'failureFingerprint',
-      'jobId',
-      'kind',
-      'lineageDigest',
-      'repairBudget',
-      'repairContext',
-      'repairEvidenceDigest',
-      'repairKind',
-      'replacementAttemptId',
-      'replacementInvocationId',
-      'replacementRequestDigest',
-      'retryMode',
-      'schemaVersion',
-      'workflowId',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'provider-repair-lineage' ||
-    value.retryMode !== 'repair' ||
-    (value.repairKind !== 'schema' && value.repairKind !== 'semantic') ||
-    value.replacementInvocationId !== request.invocationId ||
-    value.replacementRequestDigest !== request.requestDigest ||
-    !isTimestamp(value.createdAt) ||
-    typeof value.lineageDigest !== 'string' ||
-    !PROVIDER_REPAIR_DIGEST.test(value.lineageDigest) ||
-    typeof value.repairEvidenceDigest !== 'string' ||
-    !PROVIDER_REPAIR_DIGEST.test(value.repairEvidenceDigest)
-  ) {
-    throw makeError();
-  }
-  const payload = { ...value };
-  delete payload.lineageDigest;
-  if (`sha256:${sha256(canonicalJson(payload))}` !== value.lineageDigest) {
-    throw makeError();
-  }
-}
-
-function isProviderInvocationLifecycleLease(
-  value: unknown,
-): value is NonNullable<ProviderInvocationLifecycleProjection['lease']> | null {
-  return (
-    value === null ||
-    (isRecord(value) &&
-      hasExactKeys(value, [
-        'generation',
-        'workerId',
-        'tokenDigest',
-        'acquiredAt',
-        'expiresAt',
-      ]) &&
-      Number.isSafeInteger(value.generation) &&
-      (value.generation as number) > 0 &&
-      typeof value.workerId === 'string' &&
-      value.workerId.length > 0 &&
-      isDigest(value.tokenDigest) &&
-      isTimestamp(value.acquiredAt) &&
-      isTimestamp(value.expiresAt) &&
-      Date.parse(value.expiresAt) > Date.parse(value.acquiredAt))
-  );
-}
-
-function isStringArray(value: unknown): value is string[] {
-  return (
-    Array.isArray(value) && value.every((entry) => typeof entry === 'string')
-  );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function hasExactKeys(
-  value: Record<string, unknown>,
-  keys: readonly string[],
-): boolean {
-  const own = Object.keys(value);
-  return (
-    own.length === keys.length &&
-    keys.every((key) => Object.prototype.hasOwnProperty.call(value, key))
-  );
-}
-
-function sha256(value: string | Buffer): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const child of Object.values(value as Record<string, unknown>)) {
-      deepFreeze(child);
-    }
-    Object.freeze(value);
-  }
-  return value;
 }
 
 function sessionUnsafe() {
@@ -9630,6 +6265,7 @@ function checkpointInvalid(reason?: string) {
     ExitCode.usage,
   );
 }
+
 /** Name the exact key mismatch so a caller can repair the envelope blind. */
 function exactKeysProblem(
   value: Record<string, unknown>,
@@ -9645,6 +6281,7 @@ function exactKeysProblem(
     .filter((part) => part !== null)
     .join(', ');
 }
+
 const CHECKPOINT_ENVELOPE_KEYS = [
   'schemaVersion',
   'kind',
@@ -9657,6 +6294,7 @@ const CHECKPOINT_ENVELOPE_KEYS = [
   'blindManifestDigest',
   'payload',
 ] as const;
+
 const WHY_ANSWER_KEYS = [
   'manifestEntryId',
   'why',
@@ -9666,7 +6304,14 @@ const WHY_ANSWER_KEYS = [
   'semanticAuthor',
   'readComplete',
 ] as const;
-const DISPOSITION_KEYS = ['groupId', 'classification', 'rationale', 'author'] as const;
+
+const DISPOSITION_KEYS = [
+  'groupId',
+  'classification',
+  'rationale',
+  'author',
+] as const;
+
 const SEMANTIC_TEXT_RULE =
   'must be plain prose: non-empty, without <...> or {{...}} placeholders, markup, or TODO markers';
 
@@ -9703,14 +6348,6 @@ function humanResolutionRecoveryAmbiguous() {
     'HUMAN_RESOLUTION_RECOVERY_AMBIGUOUS',
     'Human resolution recovery observed state outside the exact journal.',
     ExitCode.staleState,
-  );
-}
-
-function providerInvocationUnsafe() {
-  return workflowError(
-    'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE',
-    'Referenced provider state is missing, unsafe, or non-canonical.',
-    ExitCode.unsafeEnvironment,
   );
 }
 
@@ -9794,6 +6431,581 @@ function sessionLockInvalid() {
   );
 }
 
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
+export function listProviderInvocationLifecycleProjections(
+  paths: InvestigationRuntimePaths,
+): ProviderInvocationLifecycleProjection[] {
+  const scan = scanProviderInvocationLifecycles(paths);
+  const unsafeInvocations = scan.unsafeInvocations.filter(
+    ({ invocationId }) =>
+      !isDurablyReservedProviderExecutionPolicySnapshot(paths, invocationId),
+  );
+  if (unsafeInvocations.length > 0) {
+    throw providerInvocationUnsafe();
+  }
+  return [...scan.projections];
+}
+
+export function scanProviderInvocationLifecycles(
+  paths: InvestigationRuntimePaths,
+): ProviderInvocationLifecycleScan {
+  const stats = fs.lstatSync(paths.invocations, { throwIfNoEntry: false });
+  if (!stats) {
+    return deepFreeze({ projections: [], unsafeInvocations: [] });
+  }
+  if (
+    !stats.isDirectory() ||
+    stats.isSymbolicLink() ||
+    !walkPrivateDirectory(
+      paths,
+      paths.invocations,
+      providerInvocationUnsafe,
+      false,
+    )
+  ) {
+    throw providerInvocationUnsafe();
+  }
+  const projections: ProviderInvocationLifecycleProjection[] = [];
+  const unsafeInvocations: Array<{
+    invocationId: string;
+    ownerInvestigationId: string | null;
+    observationDigest: string;
+  }> = [];
+  for (const entry of fs
+    .readdirSync(paths.invocations, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name))) {
+    if (!entry.isDirectory() || entry.isSymbolicLink()) {
+      throw providerInvocationUnsafe();
+    }
+    const invocationId = assertInvocationId(entry.name);
+    try {
+      projections.push(
+        readProviderInvocationLifecycleProjection(paths, invocationId),
+      );
+    } catch {
+      unsafeInvocations.push({
+        invocationId,
+        ownerInvestigationId: tryReadPlanReviewInvocationOwnerHint(
+          paths,
+          invocationId,
+        ),
+        observationDigest: exactUnsafePathObservationDigest(
+          path.join(paths.invocations, invocationId),
+          `provider-invocation:${invocationId}`,
+        ),
+      });
+    }
+  }
+  return deepFreeze({
+    projections,
+    unsafeInvocations,
+  });
+}
+
+function tryReadPlanReviewInvocationOwnerHint(
+  paths: InvestigationRuntimePaths,
+  invocationId: string,
+): string | null {
+  try {
+    const directory = path.join(paths.invocations, invocationId);
+    const request = recreateProviderInvocationRequest(
+      readPrivateCanonicalJson(
+        paths,
+        path.join(directory, 'request.json'),
+        providerInvocationUnsafe,
+      ),
+    );
+    const manifest = readPrivateCanonicalJson(
+      paths,
+      path.join(directory, 'manifest.json'),
+      providerInvocationUnsafe,
+    );
+    if (
+      request.purpose !== 'plan-review' ||
+      !isRecord(manifest) ||
+      manifest.kind !== 'plan-review-manifest' ||
+      typeof manifest.changeId !== 'string'
+    ) {
+      return null;
+    }
+    return resolvePlanReviewInvocationOwner(paths, {
+      changeId: String(manifest.changeId),
+      subject: manifest.subject,
+      assignment: request.roleAssignment,
+      authorizationNodeId: request.authorizationNodeId,
+    });
+  } catch {
+    return null;
+  }
+}
+
+export function readProviderInvocationLifecycleProjection(
+  paths: InvestigationRuntimePaths,
+  requestedInvocationId: string,
+): ProviderInvocationLifecycleProjection {
+  const invocationId = assertInvocationId(requestedInvocationId);
+  const directory = path.join(paths.invocations, invocationId);
+  const value = readPrivateCanonicalJson(
+    paths,
+    path.join(directory, 'state.json'),
+    providerInvocationUnsafe,
+  );
+  const requestValue = readPrivateCanonicalJson(
+    paths,
+    path.join(directory, 'request.json'),
+    providerInvocationUnsafe,
+  );
+  const manifest = readPrivateCanonicalJson(
+    paths,
+    path.join(directory, 'manifest.json'),
+    providerInvocationUnsafe,
+  );
+  let request: ProviderInvocationRequest;
+  try {
+    request = recreateProviderInvocationRequest(requestValue);
+  } catch {
+    throw providerInvocationUnsafe();
+  }
+  const policySnapshotPath = path.join(directory, PROVIDER_POLICY_ROOT_FILE);
+  if (!privatePathExists(paths, policySnapshotPath, providerInvocationUnsafe)) {
+    throw providerInvocationUnsafe();
+  }
+  assertProviderExecutionPolicySnapshot(
+    paths,
+    readPrivateCanonicalJson(
+      paths,
+      policySnapshotPath,
+      providerInvocationUnsafe,
+    ),
+    request,
+  );
+  if (
+    !isRecord(value) ||
+    !hasExactKeys(value, [
+      'schemaVersion',
+      'invocationId',
+      'investigationId',
+      'changeId',
+      ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
+        ? ['mandateBinding']
+        : []),
+      'attempt',
+      'revision',
+      'state',
+      'providerId',
+      'purpose',
+      'requestDigest',
+      'manifestDigest',
+      'leaseGeneration',
+      'lease',
+      'result',
+      'failure',
+      ...(Object.prototype.hasOwnProperty.call(value, 'runtimeReceipt')
+        ? ['runtimeReceipt']
+        : []),
+      'createdAt',
+      'updatedAt',
+    ]) ||
+    value.schemaVersion !== 1 ||
+    value.invocationId !== invocationId ||
+    typeof value.investigationId !== 'string' ||
+    typeof value.changeId !== 'string' ||
+    (Object.prototype.hasOwnProperty.call(value, 'mandateBinding') &&
+      !isTaskMandateBinding(value.mandateBinding, value.changeId)) ||
+    !Number.isSafeInteger(value.attempt) ||
+    (value.attempt as number) < 1 ||
+    !Number.isSafeInteger(value.revision) ||
+    (value.revision as number) < 0 ||
+    !['prepared', 'leased', 'succeeded', 'failed'].includes(
+      String(value.state),
+    ) ||
+    (value.providerId !== 'codex' && value.providerId !== 'claude') ||
+    (value.purpose !== 'survey' &&
+      value.purpose !== 'plan-review' &&
+      value.purpose !== 'task-diff-review' &&
+      value.purpose !== 'task-implementation') ||
+    !isDigest(value.requestDigest) ||
+    !isDigest(value.manifestDigest) ||
+    !isProviderInvocationFailureShape(value.failure) ||
+    !Number.isSafeInteger(value.leaseGeneration) ||
+    (value.leaseGeneration as number) < 0 ||
+    !isProviderInvocationLifecycleLease(value.lease) ||
+    !isTimestamp(value.createdAt) ||
+    !isTimestamp(value.updatedAt) ||
+    !isRecord(manifest) ||
+    manifest.schemaVersion !== 1 ||
+    ![
+      'blind-survey-manifest',
+      'plan-review-manifest',
+      'task-diff-review-manifest',
+      'task-diff-review-continuation-manifest',
+      'task-strategy-implementation-manifest',
+    ].includes(String(manifest.kind)) ||
+    (manifest.kind === 'task-strategy-implementation-manifest'
+      ? !isRecord(manifest.subject) ||
+        manifest.subject.changeId !== value.changeId
+      : manifest.changeId !== value.changeId) ||
+    manifest.repositoryId !== request.repositoryId ||
+    manifest.baseCommit !== request.baseCommit ||
+    manifest.baseTree !== request.baseTree ||
+    manifest.capabilityProfile !== request.capabilityProfile ||
+    request.invocationId !== invocationId ||
+    request.requestDigest !== value.requestDigest ||
+    request.providerId !== value.providerId ||
+    request.purpose !== value.purpose ||
+    sha256(canonicalJson(manifest)) !== value.manifestDigest ||
+    (value.purpose === 'survey' && manifest.kind !== 'blind-survey-manifest') ||
+    (value.purpose === 'plan-review' &&
+      manifest.kind !== 'plan-review-manifest') ||
+    (value.purpose === 'task-diff-review' &&
+      manifest.kind !== 'task-diff-review-manifest' &&
+      manifest.kind !== 'task-diff-review-continuation-manifest') ||
+    (value.purpose === 'task-implementation' &&
+      manifest.kind !== 'task-strategy-implementation-manifest')
+  ) {
+    throw providerInvocationUnsafe();
+  }
+  const runtimeEvidence = assertProviderInvocationRuntimeEvidence(
+    value,
+    request,
+    providerInvocationUnsafe,
+  );
+  assertProviderInvocationOutputManifestBinding(
+    runtimeEvidence,
+    manifest,
+    providerInvocationUnsafe,
+  );
+  assertProviderRuntimeDurableAuthorities(
+    paths,
+    request,
+    runtimeEvidence,
+    runtimeEvidence.result,
+    runtimeEvidence.runtimeReceipt,
+    providerInvocationUnsafe,
+  );
+  assertInvestigationId(value.investigationId);
+  assertChangeId(value.changeId);
+  if (
+    (value.state === 'prepared' &&
+      (value.lease !== null ||
+        value.result !== null ||
+        value.failure !== null)) ||
+    (value.state === 'leased' &&
+      (value.lease === null ||
+        value.result !== null ||
+        value.failure !== null)) ||
+    (value.state === 'succeeded' &&
+      (value.lease !== null ||
+        value.result === null ||
+        value.failure !== null)) ||
+    (value.state === 'failed' &&
+      (value.lease !== null ||
+        value.result !== null ||
+        value.failure === null)) ||
+    (value.lease !== null && value.lease.generation !== value.leaseGeneration)
+  ) {
+    throw providerInvocationUnsafe();
+  }
+  const ownerInvestigationId =
+    value.purpose === 'plan-review'
+      ? resolvePlanReviewInvocationOwner(paths, {
+          changeId: value.changeId,
+          subject: manifest.subject,
+          assignment: request.roleAssignment,
+          authorizationNodeId: request.authorizationNodeId,
+        })
+      : value.investigationId;
+  if (ownerInvestigationId !== value.investigationId) {
+    throw providerInvocationUnsafe();
+  }
+  const supersession = inspectProviderInvocationSupersessionRelations(
+    paths,
+    invocationId,
+    {
+      exists: (filePath) =>
+        privatePathExists(paths, filePath, providerInvocationUnsafe),
+      read: (filePath) =>
+        readPrivateCanonicalJson(paths, filePath, providerInvocationUnsafe),
+    },
+  );
+  const replacementSnapshot = supersession.replacementOf?.supersededBy;
+  const supersededSnapshot = supersession.supersededBy?.replacementOf;
+  for (const snapshot of [replacementSnapshot, supersededSnapshot]) {
+    if (
+      snapshot !== undefined &&
+      (snapshot.invocationId !== invocationId ||
+        snapshot.attempt !== value.attempt ||
+        snapshot.requestDigest !== request.requestDigest ||
+        snapshot.manifestDigest !== value.manifestDigest ||
+        snapshot.subjectDigest !== request.targetDigest ||
+        snapshot.createdAt !== value.createdAt)
+    ) {
+      throw providerInvocationUnsafe();
+    }
+  }
+  if (
+    supersededSnapshot !== undefined &&
+    (value.state !== 'failed' ||
+      supersededSnapshot.terminalStatus !== 'failed' ||
+      supersededSnapshot.terminalAt !== value.updatedAt ||
+      supersededSnapshot.failureCode !==
+        (isRecord(value.failure) ? value.failure.code : null) ||
+      supersededSnapshot.invocationRevision !== value.revision)
+  ) {
+    throw providerInvocationUnsafe();
+  }
+  // Validate the exact private invocation closure here as well as when a
+  // human-resolution digest is projected. Callers that only enumerate
+  // lifecycle projections must not silently accept unknown or malformed
+  // authority files.
+  digestPrivateDirectoryEntries(paths, directory, providerInvocationUnsafe);
+  return deepFreeze({
+    invocationId,
+    investigationId: value.investigationId,
+    ownerInvestigationId,
+    changeId: value.changeId,
+    purpose: value.purpose,
+    attempt: value.attempt,
+    revision: value.revision,
+    state: value.state,
+    policySnapshot: 'recorded',
+    requestDigest: value.requestDigest,
+    manifestDigest: value.manifestDigest,
+    nonce: request.nonce,
+    failureKind: value.failure === null ? null : value.failure.kind,
+    leaseGeneration: value.leaseGeneration,
+    lease:
+      value.lease === null
+        ? null
+        : {
+            generation: value.lease.generation,
+            workerId: value.lease.workerId,
+            tokenDigest: value.lease.tokenDigest,
+            acquiredAt: value.lease.acquiredAt,
+            expiresAt: value.lease.expiresAt,
+          },
+  } as ProviderInvocationLifecycleProjection);
+}
+
+function isDurablyReservedProviderExecutionPolicySnapshot(
+  paths: InvestigationRuntimePaths,
+  invocationId: string,
+): boolean {
+  const directory = path.join(paths.invocations, invocationId);
+  try {
+    if (
+      canonicalJson(fs.readdirSync(directory).sort()) !==
+      canonicalJson(['execution-policy.json'])
+    ) {
+      return false;
+    }
+    for (const name of fs.readdirSync(paths.refs).sort()) {
+      if (
+        !name.endsWith('.investigation-start.json') &&
+        !/\.provider-retry-[1-9][0-9]*\.json$/.test(name)
+      ) {
+        continue;
+      }
+      const value = readPrivateCanonicalJson(
+        paths,
+        path.join(paths.refs, name),
+        providerInvocationUnsafe,
+      );
+      if (!isRecord(value) || !isRecord(value.request)) {
+        continue;
+      }
+      const retryV2 =
+        value.kind === 'provider-retry-reservation' &&
+        value.schemaVersion === 2;
+      const expectedKeys =
+        value.kind === 'investigation-start-reservation' &&
+        value.schemaVersion === 1
+          ? [
+              'baseline',
+              'branch',
+              'changeId',
+              'createdAt',
+              'gitCommonDirectory',
+              'investigationId',
+              'invocationId',
+              'kind',
+              ...(Object.prototype.hasOwnProperty.call(value, 'mandateBinding')
+                ? ['mandateBinding']
+                : []),
+              'manifest',
+              'manifestDigest',
+              'repositoryRoot',
+              'request',
+              'requestDigest',
+              'schemaVersion',
+            ]
+          : retryV2
+            ? [
+                'attempt',
+                'changeId',
+                'createdAt',
+                'investigationId',
+                'invocationId',
+                'kind',
+                'manifestDigest',
+                ...(Object.prototype.hasOwnProperty.call(
+                  value,
+                  'mandateBinding',
+                )
+                  ? ['mandateBinding']
+                  : []),
+                'previousInvocationId',
+                'request',
+                'requestDigest',
+                'schemaVersion',
+                'executionPolicySnapshot',
+                'retryDecision',
+              ]
+            : null;
+      if (
+        expectedKeys === null ||
+        !hasExactKeys(value, expectedKeys) ||
+        value.invocationId !== invocationId
+      ) {
+        continue;
+      }
+      const request = recreateProviderInvocationRequest(value.request);
+      if (
+        request.invocationId !== invocationId ||
+        request.requestDigest !== value.requestDigest
+      ) {
+        continue;
+      }
+      const storedSnapshot = readPrivateCanonicalJson(
+        paths,
+        path.join(directory, 'execution-policy.json'),
+        providerInvocationUnsafe,
+      );
+      assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
+      if (retryV2) {
+        assertProviderExecutionPolicySnapshot(
+          paths,
+          value.executionPolicySnapshot,
+          request,
+        );
+        if (
+          canonicalJson(storedSnapshot) !==
+          canonicalJson(value.executionPolicySnapshot)
+        ) {
+          continue;
+        }
+      }
+      return true;
+    }
+    for (const name of fs.readdirSync(paths.refs).sort()) {
+      if (!name.endsWith('.json')) continue;
+      const changeId = name.slice(0, -'.json'.length);
+      let closure: InvestigationEvidenceRefsClosure;
+      try {
+        assertChangeId(changeId);
+        closure = readInvestigationEvidenceRefsClosure(paths, changeId);
+      } catch {
+        continue;
+      }
+      const refs = closure.snapshot.refs;
+      if (refs === null) continue;
+      const nodeId = refs['propose/plan-review-request'];
+      if (nodeId === undefined) continue;
+      const node = readEvidenceNode(paths, nodeId);
+      const output = node.output;
+      const retryShape = isRecord(output) && output.retry !== null;
+      const closureEntries = closure.entries.filter(
+        (entry) => entry.refName === 'propose/plan-review-request',
+      );
+      if (
+        node.type !== 'plan-review-request-reservation' ||
+        node.nodeSchema !== 'workflow.plan-review-request-reservation.v3' ||
+        node.evaluator !== 'workflow-propose.v1' ||
+        node.policyDigest !== PROPOSE_POLICY_DIGEST ||
+        node.outputSchema !==
+          'workflow.plan-review-request-reservation-output.v3' ||
+        !isRecord(output) ||
+        !hasExactKeys(output, [
+          'investigationId',
+          'changeId',
+          'planning',
+          'subject',
+          'assignment',
+          'author',
+          'materializationNode',
+          'targetSnapshotNode',
+          'manifest',
+          'request',
+          'grantAuthorization',
+          'retry',
+        ]) ||
+        !hasExactKeys(node.exactInputDigests, [
+          'manifest',
+          'request',
+          'subject',
+          'targetSnapshot',
+          ...(retryShape ? ['previousRequest', 'failure'] : []),
+          ...(retryShape ? ['executionPolicySnapshot', 'retryDecision'] : []),
+        ]) ||
+        !hasExactKeys(node.provenanceParentNodeIds, [
+          'authorization',
+          ...(retryShape ? ['previousRequest'] : []),
+        ]) ||
+        !hasExactKeys(node.semanticParentResultDigests, [
+          'authorization',
+          ...(retryShape ? ['previousRequest'] : []),
+        ]) ||
+        output.changeId !== changeId ||
+        closureEntries.length !== 1 ||
+        closureEntries[0]?.nodeId !== nodeId ||
+        closureEntries[0]?.ownerInvestigationId !== output.investigationId ||
+        !isRecord(output.request)
+      ) {
+        continue;
+      }
+      const request = recreateProviderInvocationRequest(output.request);
+      if (
+        request.invocationId !== invocationId ||
+        request.requestDigest !== node.exactInputDigests.request ||
+        request.authorizationNodeId !==
+          node.provenanceParentNodeIds.authorization
+      ) {
+        continue;
+      }
+      const storedSnapshot = readPrivateCanonicalJson(
+        paths,
+        path.join(directory, 'execution-policy.json'),
+        providerInvocationUnsafe,
+      );
+      assertProviderExecutionPolicySnapshot(paths, storedSnapshot, request);
+      if (output.retry === null) {
+        // Initial PlanReview publication stores policy before creating the
+        // invocation. A V3 reservation with retry:null is its sole durable
+        // recovery authority for that policy-only crash window. The exact
+        // current refs closure above proves that this is not an orphan or a
+        // rebound V3-labeled object.
+        return true;
+      }
+      if (
+        !isRecord(output.retry) ||
+        !isRecord(output.retry.executionPolicySnapshot)
+      ) {
+        continue;
+      }
+      assertProviderExecutionPolicySnapshot(
+        paths,
+        output.retry.executionPolicySnapshot,
+        request,
+      );
+      if (
+        canonicalJson(storedSnapshot) !==
+        canonicalJson(output.retry.executionPolicySnapshot)
+      ) {
+        continue;
+      }
+      return true;
+    }
+  } catch {
+    return false;
+  }
+  return false;
 }
