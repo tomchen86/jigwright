@@ -23,7 +23,7 @@ type InstallationDiagnostic = {
   ok: boolean;
   packageName: typeof OPENSPEC_PACKAGE_NAME;
   declaredVersion: '1.6.0';
-  lockfileVersion: '9.0' | null;
+  lockfileVersion: string | null;
   lockedVersion: string | null;
   integrity: string | null;
   buildScriptsAllowed: boolean | null;

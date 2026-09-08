@@ -17,6 +17,7 @@ import {
   workflowError,
 } from '../../../../foundation/errors/errors.ts';
 import { resolveOpenSpecInstallation } from './openspec-adapter.ts';
+import { openSpecSupplyChainPaths } from './openspec-provenance.ts';
 import {
   inspectOpenSpecSchemaContract,
   type OpenSpecSchemaContract,
@@ -264,8 +265,9 @@ function inspectSnapshot(
     ...schema.trackedPaths,
     ...Object.values(schema.packageSchema.files).map(({ path }) => path),
     path.join(repositoryRoot, 'package.json'),
-    path.join(repositoryRoot, 'pnpm-lock.yaml'),
-    path.join(repositoryRoot, 'pnpm-workspace.yaml'),
+    ...openSpecSupplyChainPaths(repositoryRoot).map((relativePath) =>
+      path.join(repositoryRoot, relativePath),
+    ),
     ...runtimeFiles,
     path.join(repositoryRoot, planningProvider.artifactPath),
   ]);

@@ -124,7 +124,7 @@ export function resolveOpenSpecInstallation(
     }
     throw workflowError(
       'OPENSPEC_INSTALLATION_INVALID',
-      'The exact project-local OpenSpec 1.6.0 installation is unavailable or unsafe.',
+      `The exact project-local OpenSpec 1.6.0 installation is unavailable or unsafe.${error instanceof Error ? ` ${error.message}` : ''}`,
       ExitCode.unsafeEnvironment,
     );
   }
