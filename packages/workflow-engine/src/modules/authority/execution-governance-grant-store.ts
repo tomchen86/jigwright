@@ -4,9 +4,6 @@
  * Invariants:
  * - Stored grant records remain canonical, current-schema, single-link private files.
  * - Grant directory checks and exact-byte removal retain their existing error semantics.
- *
- * Depends on: grant record codecs and private filesystem primitives.
- * Failure modes: unsafe grant records accepted, missing grant state, or removal of changed evidence.
  */
 import fs from 'node:fs';
 import path from 'node:path';

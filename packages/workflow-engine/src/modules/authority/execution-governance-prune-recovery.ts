@@ -5,9 +5,6 @@
  * - The before-catalog digest aborts a prepared prune; the exact after digest permits completion.
  * - Objects still referenced by the manifest or catalog survive receipt recovery.
  * - Deletion and receipt completion preserve their existing directory-fsync order.
- *
- * Depends on: prune and catalog codecs, content objects, and private file publication.
- * Failure modes: deletion before catalog publication, lost referenced objects, or ambiguous prepared receipts.
  */
 import fs from 'node:fs';
 import path from 'node:path';

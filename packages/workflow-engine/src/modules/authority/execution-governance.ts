@@ -4,9 +4,6 @@
  * Invariants:
  * - Grant state changes retain exact request, mandate, receipt, and audit-event bindings.
  * - Pending publication and repeated consumption or revocation preserve their existing replay order.
- *
- * Depends on: grant codecs and private storage, authority audit, and refusal evidence.
- * Failure modes: unaudited grant use, duplicate consumption, or grant state that disagrees with its audit trail.
  */
 import fs from 'node:fs';
 import path from 'node:path';

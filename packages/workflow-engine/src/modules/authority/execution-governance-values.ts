@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest prefixes, size bounds, canonical ordering, and error identities retain exact bytes.
  * - Validators reject malformed values without coercing their persisted representation.
- *
- * Depends on: canonical JSON, SHA-256, and the workflow error contract.
- * Failure modes: divergent evidence digests, accepted malformed records, or changed error codes.
  */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -5,9 +5,6 @@
  * - Grant creation uses a no-overwrite hard link; workflow creation keeps its lock-bound rename.
  * - Replacement, fsync, descriptor cleanup, and temporary cleanup retain their exact sequence.
  * - Private reads preserve no-follow, mode, size, and link-count validation.
- *
- * Depends on: Node filesystem operations, canonical store errors, and execution value bounds.
- * Failure modes: overwritten immutable records, partial durable state, descriptor leaks, or unsafe file reads.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
