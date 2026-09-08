@@ -1,14 +1,14 @@
-# governance-intake Specification
+# Governance Intake
+capabilities: [governance-intake]
 
 ## Purpose
 
-Define immutable Governance Sources, task-independent Findings, and truthful
-Source-to-work provenance without granting lifecycle, priority, or transition
-authority.
+Preserve original requirement wording and organize work, findings, provenance, and promotion without allowing a projection to replace its records.
 
 ## Requirements
 
 ### Requirement: Governance Sources Preserve Selected Wording Exactly
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The engine SHALL capture selected UTF-8 wording as an append-only,
 content-addressed Source under
@@ -23,17 +23,20 @@ provenance; it does not manufacture external authentication or transition
 authority.
 
 #### Scenario: Maintainer wording is captured and shown
+covers: #Requirement: Governance Sources Preserve Selected Wording Exactly
 
 - **WHEN** a caller captures selected maintainer wording with explicit direct-human provenance
 - **THEN** the engine stores the exact selected bytes without paraphrase
 - **AND** `source show` returns the identity-valid canonical Source
 
 #### Scenario: Stored Source bytes or identity drift
+covers: #Requirement: Governance Sources Preserve Selected Wording Exactly
 
 - **WHEN** a Source path, canonical bytes, text digest, or object identity no longer agrees
 - **THEN** Source reading fails without rewriting the record
 
 ### Requirement: Corrections Preserve Earlier Sources
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 A correction SHALL create a new Source whose `supersedes` field resolves to an
 existing identity-valid Source. The engine MUST NOT edit, delete, redirect, or
@@ -41,17 +44,20 @@ silently migrate the earlier Source, and citations to the earlier Source SHALL
 remain replayable.
 
 #### Scenario: A maintainer corrects earlier wording
+covers: #Requirement: Corrections Preserve Earlier Sources
 
 - **WHEN** the corrected wording cites an existing predecessor Source
 - **THEN** both immutable Sources remain readable
 - **AND** `source trace` reports the correction relation
 
 #### Scenario: A correction cites an absent Source
+covers: #Requirement: Corrections Preserve Earlier Sources
 
 - **WHEN** `supersedes` names no identity-valid Source object
 - **THEN** capture fails before publishing the correction
 
 ### Requirement: Source Trace Exposes Provenance Without Copying Authority
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The Source read surface SHALL provide `list`, `show`, and `trace`. List SHALL
 return every identity-valid canonical Source in stable Source-ID order. Trace
@@ -61,24 +67,28 @@ Change and planning artifacts SHALL store Source identities rather than copied
 Source records.
 
 #### Scenario: Sources are listed when there are no Work Items
+covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
 
 - **WHEN** a repository has Source records but no Work Item records
 - **THEN** `source list` returns their exact selected wording in stable Source-ID order
 - **AND** every returned Source passes the same identity and canonical-byte validation as `source show`
 
 #### Scenario: Immediate work cites a Source directly
+covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
 
 - **WHEN** an existing change `origin.json` cites a Source without a parking Work Item
 - **THEN** `source trace` reports that change origin
 - **AND** the Source gains no lifecycle, priority, check, or transition authority
 
 #### Scenario: Built-in Work Registry has zero items
+covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
 
 - **WHEN** a configured repository has Source records and zero Work Items
 - **THEN** `source list`, `source show`, and correction-chain `source trace` remain available
 - **AND** Work Item and change-origin relations are returned as empty
 
 ### Requirement: Every Governance Citation Resolves
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Every Source identity in a Source correction, Finding, Work Item, or change
 `origin.json` SHALL resolve to one canonical identity-valid Source object.
@@ -86,16 +96,19 @@ Governance validation MUST reject a dangling citation rather than inventing a
 Source, deleting the citation, or rewriting historical bytes.
 
 #### Scenario: A Finding cites a missing Source
+covers: #Requirement: Every Governance Citation Resolves
 
 - **WHEN** Finding capture names a syntactically valid but absent Source identity
 - **THEN** capture fails before publishing the Finding
 
 #### Scenario: A change origin cites a missing Source
+covers: #Requirement: Every Governance Citation Resolves
 
 - **WHEN** registry validation reads an `origin.json` with a dangling `sourceRefs` entry
 - **THEN** validation fails without changing the origin or Source ledger
 
 ### Requirement: Work Registry Search Resolves Linked Source Wording
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The built-in Work Registry SHALL allow a caller to find a Work Item by the
 exact text of any identity-valid Source it cites. Search SHALL return the
@@ -105,6 +118,7 @@ missing or invalid Source bytes MUST fail rather than silently degrading to an
 item-only match.
 
 #### Scenario: Exact maintainer wording finds a linked Work Item
+covers: #Requirement: Work Registry Search Resolves Linked Source Wording
 
 - **WHEN** a Work Item cites a canonical Source whose exact selected wording matches the query
 - **THEN** `work-item search` returns that unchanged Work Item
@@ -112,6 +126,7 @@ item-only match.
 - **AND** no lifecycle, priority, or transition authority is created
 
 ### Requirement: Work Items Use Stable Per-Item Records
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The built-in Work Registry SHALL persist each current Work Item as one exact,
 canonical record under
@@ -123,6 +138,7 @@ blockers, change identities, aliases, timeline events, and closure facts MUST
 be canonical, internally coherent, and validated without inventing history.
 
 #### Scenario: A new current Work Item is parked
+covers: #Requirement: Work Items Use Stable Per-Item Records
 
 - **WHEN** a caller creates one valid Work Item from explicit current input
 - **THEN** the registry writes one `inbox` item at its creation-year path
@@ -130,11 +146,13 @@ be canonical, internally coherent, and validated without inventing history.
 - **AND** no priority, planning, or transition authority is created
 
 #### Scenario: A persisted relation is incoherent
+covers: #Requirement: Work Items Use Stable Per-Item Records
 
 - **WHEN** a Work Item path, canonical bytes, blocker, Source reference, change link, timeline, or closure disagrees
 - **THEN** the registry rejects the record without moving or rewriting it
 
 ### Requirement: Reviewed Work Item Decisions Use Grant Core
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Priority recommendation SHALL be read-only and SHALL expose its current lane,
 recommended lane, and explicit reasons. Intake, priority application, and
@@ -145,18 +163,21 @@ accepted transition. A Source, Finding, recommendation, or Work Item MUST NOT
 act as a second authority or bypass an accepted Grant Core result.
 
 #### Scenario: Priority is inspected without application
+covers: #Requirement: Reviewed Work Item Decisions Use Grant Core
 
 - **WHEN** a caller requests the current priority recommendation
 - **THEN** the registry returns explicit recommendation reasons
 - **AND** no Work Item, projection, Git ref, or private journal is changed
 
 #### Scenario: Protected review needs exact authorization
+covers: #Requirement: Reviewed Work Item Decisions Use Grant Core
 
 - **WHEN** current policy requires a Grant for the requested reviewed transition
 - **THEN** the ordinary command emits one exact Fail-Grant challenge before mutation
 - **AND** only the registered transition consumer may apply the accepted current decision
 
 ### Requirement: Promotion Atomically Links Work and Source Provenance
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Promotion SHALL require one `maintainer-confirmed` `backlog` Work Item in lane
 `now` or `next`, closed blockers, and the exact expected item digest. A Work
@@ -172,30 +193,35 @@ compare-and-swap for both tracked inputs, and recover the same prepared
 transaction after a crash.
 
 #### Scenario: Current promotion succeeds
+covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 - **WHEN** an eligible reviewed Work Item, conditional survey binding, expected digest, and change identity still agree
 - **THEN** the item and origin publish one bidirectional relationship
 - **AND** the origin stores identities rather than copied Source or Work Item records
 
 #### Scenario: Agent premise has no survey yet
+covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 - **WHEN** an eligible Work Item cites an agent-authored Source and no survey file exists
 - **THEN** one promotion command prepares an explicit empty-declaration current survey and promotes
 - **AND** an existing stale or tampered survey is rejected without overwrite
 
 #### Scenario: Maintainer premise needs no survey artifact
+covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 - **WHEN** an eligible Work Item has empty Source references or cites only maintainer-authored Sources
 - **THEN** promotion binds the exact `not-required` decision and Source-reference digest
 - **AND** no survey file is created
 
 #### Scenario: Either tracked input changes
+covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 - **WHEN** the Work Item or origin no longer matches the prepared promotion
 - **THEN** promotion fails or rolls back without a partial relationship
 - **AND** retry never overwrites a concurrent canonical update
 
 ### Requirement: Work Registry Read Surfaces Are Deterministic
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The built-in registry SHALL expose `list`, `show`, `search`, `trace`,
 `recommend`, `inventory`, `render`, and `validate`. Every composite read MUST
@@ -205,17 +231,20 @@ handoff views deterministically from canonical records; those views and any
 search cache SHALL NOT become authority.
 
 #### Scenario: A caller traces one Work Item
+covers: #Requirement: Work Registry Read Surfaces Are Deterministic
 
 - **WHEN** the Work Item and all cited records are canonical
 - **THEN** trace returns the unchanged item, its canonical Sources, and linked current or archived origins
 - **AND** the read creates no lifecycle or transition fact
 
 #### Scenario: A projection drifts
+covers: #Requirement: Work Registry Read Surfaces Are Deterministic
 
 - **WHEN** a generated backlog, inventory, history, or handoff byte no longer matches canonical records
 - **THEN** validation rejects the projection rather than treating it as registry authority
 
 ### Requirement: Planning Prose Distinguishes Source-Backed Claims
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The generated planning interface SHALL instruct callers to resolve cited
 Sources through `source show`, preserve their exact selected wording, mark
@@ -226,12 +255,14 @@ provenance distinction SHALL NOT grant planning, policy, check, or transition
 authority and SHALL NOT require a Work Item for an uncited change.
 
 #### Scenario: A proposed change cites maintainer wording
+covers: #Requirement: Planning Prose Distinguishes Source-Backed Claims
 
 - **WHEN** the request names a canonical Source identity
 - **THEN** the planning guidance directs the caller to the current Source read surface
 - **AND** source-backed wording remains distinguishable from agent-derived interpretation
 
 ### Requirement: Archive Reconciles Linked Work Items Deterministically
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Archive reconciliation SHALL derive linked Work Items from the canonical
 archived change origin, require the same bidirectional relationship admitted
@@ -241,18 +272,21 @@ Item timeline and SHALL be idempotent for the same archive facts. An archived
 change with zero linked Work Items SHALL produce no Work Item effects.
 
 #### Scenario: One linked change is archived
+covers: #Requirement: Archive Reconciles Linked Work Items Deterministically
 
 - **WHEN** current item, origin, archive identity, and compare-and-swap facts agree
 - **THEN** each exactly linked active Work Item closes once with the archived change identity
 - **AND** a second reconciliation preserves the same record and projection bytes
 
 #### Scenario: An archived change has no linked Work Items
+covers: #Requirement: Archive Reconciles Linked Work Items Deterministically
 
 - **WHEN** the canonical archived origin has no `workItemRefs`
 - **THEN** archive reconciliation returns no Work Item output paths
 - **AND** Source, Work Registry, handoff, and Git bytes remain unchanged
 
 ### Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 A configured repository SHALL always have the built-in Work Registry available.
 The repository MAY have zero Work Items, and a change MAY cite a Source directly
@@ -263,24 +297,28 @@ path configuration. The value `workRegistry: null` MUST fail with
 capability or preserving a dormant null branch.
 
 #### Scenario: Configured consumer has zero Work Items
+covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
 
 - **WHEN** a valid configured repository has no Work Item records or inventory projection
 - **THEN** Work Item list and Source-to-work trace return empty Work Item facts
 - **AND** Source capture, generic handoff, and archive processing remain available
 
 #### Scenario: Work Registry configuration selects defaults
+covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
 
 - **WHEN** a repository consumer configuration omits the `workRegistry` key
 - **THEN** the engine supplies its exact current Work Registry default paths
 - **AND** it does not infer a disabled capability
 
 #### Scenario: Configured consumer attempts to disable the Work Registry
+covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
 
 - **WHEN** a repository consumer configuration supplies `workRegistry: null`
 - **THEN** configuration validation fails with `REPOSITORY_CONSUMER_CONFIG_INVALID`
 - **AND** no Source, Work Item, projection, lock, or Git byte changes
 
 ### Requirement: Governance Source Ledger Path Is Engine-Owned
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Every Governance Source writer, reader, list operation, Work Item citation,
 backlog link, trace, and validator SHALL resolve the Source ledger only at
@@ -290,18 +328,21 @@ fail with `REPOSITORY_CONSUMER_CONFIG_INVALID` before reading or writing either
 the fixed ledger or the requested path.
 
 #### Scenario: A configuration attempts to redirect Sources
+covers: #Requirement: Governance Source Ledger Path Is Engine-Owned
 
 - **WHEN** an otherwise valid Work Registry configuration supplies `sourceRoot`
 - **THEN** configuration validation rejects the extra key
 - **AND** the fixed Source ledger and requested path remain unchanged
 
 #### Scenario: Core Source capture precedes repository consumer configuration
+covers: #Requirement: Governance Source Ledger Path Is Engine-Owned
 
 - **WHEN** a caller captures or reads an identity-valid Source before a repository consumer configuration exists
 - **THEN** the engine uses the fixed core-owned ledger path
 - **AND** it creates no Work Item or repository configuration
 
 ### Requirement: Findings Remain Independent of Task Write Scope
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 A Finding SHALL bind its exact text to the active session, change, branch, head,
 and tree in engine-owned private runtime storage. Finding capture SHALL remain
@@ -310,12 +351,14 @@ scope. A Finding is an agent-authored observation and MUST be revalidated before
 promotion into normative planning or transition facts.
 
 #### Scenario: Mid-task observation is outside allowed paths
+covers: #Requirement: Findings Remain Independent of Task Write Scope
 
 - **WHEN** an active session records a bounded Finding about work outside its task paths
 - **THEN** the engine stores the Finding with current session and Git facts
 - **AND** no repository lifecycle transition is authorized by the Finding
 
 ### Requirement: Finding Disposition Is Append-Only
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Under D-019, the engine SHALL keep each original private `FND-*.json` record immutable. A
 Finding read model SHALL expose exactly one `disposition` value from `pending`,
@@ -328,6 +371,7 @@ target, preserve the original Finding bytes, and remain visible through
 pending Findings across the repository's private runtime.
 
 #### Scenario: A caller dismisses one pending Finding
+covers: #Requirement: Finding Disposition Is Append-Only
 
 - **WHEN** `finding dismiss <finding-id> --reason <reason>` resolves one identity-valid pending Finding
 - **THEN** one immutable terminal receipt records `dismissed`, the exact reason, a null target, and the current time
@@ -335,12 +379,14 @@ pending Findings across the repository's private runtime.
 - **AND** the Finding disappears from the default list but remains in `finding list --all`
 
 #### Scenario: Finding storage is ambiguous or unsafe
+covers: #Requirement: Finding Disposition Is Append-Only
 
 - **WHEN** runtime-wide listing observes an unsafe directory, noncanonical name, path mismatch, hard link, mode drift, invalid bytes, orphan receipt, or duplicate identity
 - **THEN** listing and disposition fail closed without choosing one record
 - **AND** no Finding or disposition byte is repaired, deleted, or rewritten
 
 ### Requirement: Intent-Level Now Starts One Source-Bound Change
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Under D-019, `now <original-text>` SHALL capture or deterministically reuse one
 direct-human Governance Source and start the change named
@@ -363,6 +409,7 @@ the complete original wording in the normalized intent summary, without title
 truncation.
 
 #### Scenario: One immediate sentence starts planning
+covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
 
 - **WHEN** a caller invokes `now <original-text>` with one resolved current actor
 - **THEN** one stable change and planning workspace cite the captured Source through `origin.json`
@@ -370,18 +417,21 @@ truncation.
 - **AND** retry returns the same Source and change identities without copying the original text into the intent
 
 #### Scenario: An immediate observation retains its complete wording
+covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
 
 - **WHEN** a caller invokes `now <original-text> --kind bug`
 - **THEN** the normalized intent contains the complete original text and cites no newly minted Source
 - **AND** wording beyond the Work Item title limit remains available to planning
 
 #### Scenario: Capture or workspace bootstrap stops early
+covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
 
 - **WHEN** immediate intake stops after Source capture or after copying the Source before origin publication
 - **THEN** retry rechecks the exact Source text and stable change identity
 - **AND** it completes the exact origin citation without accepting unrelated planning paths
 
 ### Requirement: Intent-Level Now Promotes One Eligible Work Item
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Under D-019, `now <work-item-id>` SHALL preserve inbox review and priority
 authority, then perform the current promotion preparation and promotion as one
@@ -399,18 +449,21 @@ original Source wording and return only executable `work-item show` and `source
 trace` next steps.
 
 #### Scenario: Inbox authority is preserved
+covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
 
 - **WHEN** `now <work-item-id>` names an unreviewed inbox item
 - **THEN** it returns exact accept-review and prioritize-now next steps
 - **AND** no Work Item, change, survey, origin, Grant, or Git byte changes
 
 #### Scenario: Eligible current item is promoted once
+covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
 
 - **WHEN** the reviewed item and every blocker, Source, survey fact, and target prestate remain exact
 - **THEN** the facade creates or reuses the deterministic change and performs one current promotion
 - **AND** retry returns the same result without a second mutation
 
 #### Scenario: Protected absent target requires Grant before preparation
+covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
 
 - **WHEN** repository policy protects promotion and the deterministic change does not exist
 - **THEN** the facade emits one exact Central Grant challenge while the target remains absent
@@ -418,6 +471,7 @@ trace` next steps.
 - **AND** a foreign target entry or metadata drift fails stale without overwrite
 
 ### Requirement: Intent-Level Later Surface Is One Command
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Under D-019, `later <original-text>` SHALL capture one direct-human Governance
 Source and create one inbox Work Item in the always-available Work Registry
@@ -438,6 +492,7 @@ stays scoped; conversion flushes it to the inbox. The ordinary path SHALL
 require no Grant.
 
 #### Scenario: Original wording is parked for later
+covers: #Requirement: Intent-Level Later Surface Is One Command
 
 - **WHEN** one caller invokes `later <original-text>` in a current repository
 - **THEN** the original text exists only in one immutable Source and the returned inbox Work Item cites that Source ID
@@ -445,18 +500,21 @@ require no Grant.
 - **AND** repeating the same wording returns the existing Work Item as a dedupe match without changing Source, Work Item, Git ref, or Grant bytes
 
 #### Scenario: An observation is parked without a Source
+covers: #Requirement: Intent-Level Later Surface Is One Command
 
 - **WHEN** one caller invokes `later <original-text> --kind bug` outside any task session
 - **THEN** one inbox Work Item of kind `bug` carries the wording as its interpretation summary and cites no Source
 - **AND** the Governance Source ledger is unchanged and repeating the wording returns that Work Item as a dedupe match
 
 #### Scenario: Wording noted inside a task is staged as a Finding
+covers: #Requirement: Intent-Level Later Surface Is One Command
 
 - **WHEN** one caller invokes `later <original-text>` while a task session covers the working tree
 - **THEN** one pending Finding bound to that session records the wording and no Work Registry or Source bytes change
 - **AND** the result names the `finding convert` next step that flushes it to the inbox
 
 #### Scenario: Concurrent exact wording converges
+covers: #Requirement: Intent-Level Later Surface Is One Command
 
 - **WHEN** two `later` calls both pass their initial exact-wording search before either publishes a Work Item
 - **THEN** a Work Registry locked recheck allows at most one inbox Work Item to cite that wording
@@ -464,6 +522,7 @@ require no Grant.
 - **AND** any Source captured by the loser remains an immutable unreferenced record and no Work Item relation is overwritten
 
 ### Requirement: Attach Adds a Source Without Reclassifying Work
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 Under D-019, `attach <work-item-id> <original-text>` SHALL capture or reuse one
 exact Source and append its identity to the requested open Work Item under the
@@ -482,6 +541,7 @@ correction SHALL reuse the existing Source. Attaching a Source to an observation
 kind SHALL preserve the observation's interpretation summary.
 
 #### Scenario: New wording supplements one inbox item
+covers: #Requirement: Attach Adds a Source Without Reclassifying Work
 
 - **WHEN** `attach <work-item-id> <original-text>` names one current open Work Item
 - **THEN** exactly one Source identity is added and the current interpretation binds all sorted Source IDs
@@ -489,6 +549,7 @@ kind SHALL preserve the observation's interpretation summary.
 - **AND** retry reuses the exact Source and leaves the Work Item bytes unchanged
 
 ### Requirement: Finding Conversion Has One Deterministic Target
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 `finding convert <finding-id>` SHALL preserve the immutable Finding, derive one
 stable Work Item identity from it, and create or reuse the exact inbox item
@@ -508,6 +569,7 @@ SHALL remain inbox, and no maintainer-authored duplicate of the Finding text
 may be created.
 
 #### Scenario: Conversion resumes after its item is durable
+covers: #Requirement: Finding Conversion Has One Deterministic Target
 
 - **WHEN** conversion stops after the deterministic inbox item is durable but before its receipt exists
 - **THEN** default Finding listing still reports the Finding as pending
@@ -515,6 +577,7 @@ may be created.
 - **AND** no second Work Item, migration record, Grant, or Git ref is created
 
 #### Scenario: Converted Finding is escalated immediately
+covers: #Requirement: Finding Conversion Has One Deterministic Target
 
 - **WHEN** `finding convert <finding-id> --now` names one pending or exactly converted Finding
 - **THEN** conversion first publishes or reuses its deterministic inbox item and receipt
@@ -522,6 +585,7 @@ may be created.
 - **AND** the result echoes the original Finding text and one truthful propose next step
 
 ### Requirement: Finding Link Is a Receipt-Only Relation
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 `finding link <finding-id> --change <change-id>` SHALL require one exact
 existing plain change directory inside the configured change root, then publish
@@ -533,6 +597,7 @@ symbolic-link, escaped, or otherwise unsafe change targets and conflicting
 terminal dispositions SHALL fail before receipt publication.
 
 #### Scenario: A Finding links to a non-current existing change
+covers: #Requirement: Finding Link Is a Receipt-Only Relation
 
 - **WHEN** `finding link <finding-id> --change <change-id>` names a contained plain managed change directory
 - **THEN** one immutable linked receipt records that change target and the original Finding remains byte-identical
@@ -540,6 +605,7 @@ terminal dispositions SHALL fail before receipt publication.
 - **AND** retry returns the same terminal relation without another receipt
 
 ### Requirement: Governance Intake Counts Are Read-Only
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-0408dddc65a5758a691e9983cf58bd2ce8d4e57fdda050921ef8ae52c9cf008d, SRC-97b40d0f3a0dafef3ba209328634e01914d7eb7167b7b77846df66d7465f034c]
 
 The engine SHALL expose `intakeCounts` with exactly the current `inbox`,
 `pendingFindings`, and `backlog` counts in `status`, successful `open-task`
@@ -552,6 +618,7 @@ MAY enter the existing Work Registry read boundary, which can finish one exact
 previously prepared crash-recovery transaction before returning current counts.
 
 #### Scenario: One Finding is dismissed
+covers: #Requirement: Governance Intake Counts Are Read-Only
 
 - **WHEN** the runtime contains two identity-valid pending Findings and one is dismissed
 - **THEN** `pendingFindings` decreases by one while inbox and backlog counts remain exact

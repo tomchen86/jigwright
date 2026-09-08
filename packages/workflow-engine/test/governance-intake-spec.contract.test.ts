@@ -6,11 +6,11 @@ import * as governanceFindings from '../src/modules/governance-intake/governance
 import * as governanceIntake from '../src/modules/governance-intake/governance-intake.ts';
 
 const specificationUrl = new URL(
-  '../../../openspec/specs/governance-intake/spec.md',
+  '../src/modules/governance-intake/spec.md',
   import.meta.url,
 );
 const changeRoutingSpecificationUrl = new URL(
-  '../../../openspec/specs/change-routing/spec.md',
+  '../src/modules/lifecycle/spec.md',
   import.meta.url,
 );
 const readmeUrl = new URL('../../../README.md', import.meta.url);

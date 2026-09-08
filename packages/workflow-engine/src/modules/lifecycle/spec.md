@@ -1,15 +1,14 @@
-# change-routing Specification
+# Lifecycle
+capabilities: [change-routing]
 
 ## Purpose
 
-Define current local repository routing as a deterministic, inspectable, and
-recoverable engine capability. Routing selects a managed writer workset without
-creating planning authority, guessing lifecycle state, or reading a previous
-handoff as input.
+Route work using the current lifecycle source and provide recoverable, reviewed admission decisions and derived repository handoffs.
 
 ## Requirements
 
 ### Requirement: Routing Status Exposes Current Repository Inventory
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The engine SHALL expose a read-only `route status` command backed by the
 production routing inspection boundary. It SHALL derive every current and
@@ -29,6 +28,7 @@ transition exists, status SHALL direct the caller to the read-only guide rather
 than inventing a change.
 
 #### Scenario: Mixed repository state is inspected
+covers: #Requirement: Routing Status Exposes Current Repository Inventory
 
 - **WHEN** a repository contains ready, blocked, parked, resumable, completed, archived, or recovering changes
 - **THEN** `route status` reports every change under its exact derived state
@@ -36,12 +36,14 @@ than inventing a change.
 - **AND** no repository or private runtime byte changes
 
 #### Scenario: Current planning authority is unavailable
+covers: #Requirement: Routing Status Exposes Current Repository Inventory
 
 - **WHEN** an unfinished change cannot pass current Manifest v3 and independent PlanReview validation
 - **THEN** status reports that change as `recovery-required`
 - **AND** historical inspection is diagnostic only and cannot make the change current
 
 ### Requirement: Controlled Lifecycle Source Owns Explicit Routing
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 Explicit routing SHALL be stored only in
 `openspec/change-lifecycle.json`. The current source SHALL contain its exact
@@ -57,17 +59,20 @@ intent or review input, but it MUST NOT hand-edit or directly stage the
 controlled source.
 
 #### Scenario: A change is blocked explicitly
+covers: #Requirement: Controlled Lifecycle Source Owns Explicit Routing
 
 - **WHEN** a valid routing intent blocks one unfinished task on a canonical blocker
 - **THEN** the next source preserves the reason, task, blocker identity, and resume condition
 - **AND** satisfaction later yields `resume-available` without automatically resuming or focusing the change
 
 #### Scenario: Controlled bytes are staged by hand
+covers: #Requirement: Controlled Lifecycle Source Owns Explicit Routing
 
 - **WHEN** a caller stages even an otherwise valid lifecycle source outside the managed routing transition
 - **THEN** hooks and CI reject the unauthorized projection
 
 ### Requirement: Routing Review Is Current and Recoverable
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 `route prepare` SHALL produce one exact current routing review that binds the
 observed source digest, repository-facts digest, intended action, next source
@@ -84,17 +89,20 @@ partial private journal step, retry SHALL reconcile the same transition and
 MUST NOT duplicate or guess it.
 
 #### Scenario: Reviewed facts remain current
+covers: #Requirement: Routing Review Is Current and Recoverable
 
 - **WHEN** the source, repository facts, current planning authority, and reviewed next source still agree
 - **THEN** apply publishes one exact routing transition and its derived handoff
 - **AND** replay returns the same source, report, and commit identity
 
 #### Scenario: Reviewed facts drift
+covers: #Requirement: Routing Review Is Current and Recoverable
 
 - **WHEN** the lifecycle source, task tree, Manifest, PlanReview, or intended workset changes after prepare
 - **THEN** apply fails before source, handoff, index, or ref mutation
 
 ### Requirement: Grant Core Owns Protected Continuation
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 When a parked change or a manual external blocker requires an authorized
 continuation, routing SHALL submit the exact state-bound candidate as a
@@ -109,18 +117,21 @@ cannot change the recorded blocker, Source bytes, task facts, or current
 planning-authority result.
 
 #### Scenario: Manual continuation has no Grant
+covers: #Requirement: Grant Core Owns Protected Continuation
 
 - **WHEN** a caller prepares resume for a protected current routing record without accepted authority
 - **THEN** the engine returns one exact Fail-Grant challenge and retry command
 - **AND** lifecycle, report, index, and Git refs remain unchanged
 
 #### Scenario: Exact registered continuation is accepted
+covers: #Requirement: Grant Core Owns Protected Continuation
 
 - **WHEN** retry supplies the one completed Grant record bound to the unchanged routing state
 - **THEN** preparation may clear the blocked or parked disposition
 - **AND** it still does not auto-focus the resumed change
 
 ### Requirement: Writer Admission Requires Managed Routing
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 When no controlled source exists and at most one unfinished change is present,
 the engine MAY admit that change in the neutral single-writer role. Once the
@@ -130,12 +141,14 @@ Every other request SHALL fail with `CHANGE_ROUTING_REQUIRED` and an exact
 recovery direction; task ingress MUST NOT silently switch focus or edit routing.
 
 #### Scenario: Multiple changes have no selected writer
+covers: #Requirement: Writer Admission Requires Managed Routing
 
 - **WHEN** a caller opens a task for a ready change outside the managed workset
 - **THEN** ingress fails with `CHANGE_ROUTING_REQUIRED`
 - **AND** the caller can inspect status and prepare an explicit review without mutation
 
 ### Requirement: Handoff Is a Derived Repository Projection
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The configured handoff SHALL be regenerated from the same coherent routing
 inspection used by status plus current task, archive, and Work Registry
@@ -145,12 +158,14 @@ change. Archiving one identity SHALL remove only that identity from active
 groups, and zero active changes SHALL remain explicit rather than guessed.
 
 #### Scenario: Previous handoff names another change
+covers: #Requirement: Handoff Is a Derived Repository Projection
 
 - **WHEN** controlled source and repository facts select a different inventory
 - **THEN** rendering ignores the old selection and emits the current derived groups
 - **AND** committed replay produces the same handoff without private runtime state
 
 #### Scenario: Built-in Work Registry has zero items
+covers: #Requirement: Handoff Is a Derived Repository Projection
 
 - **WHEN** the repository has no Work Item records or inventory projection
 - **THEN** handoff renders the current routing and task facts without Work backlog rows

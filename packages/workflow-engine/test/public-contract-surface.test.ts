@@ -114,7 +114,7 @@ test('active OpenSpec specifications are current-v3 only', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
   const specifications = [
     {
-      path: 'openspec/specs/investigation-first-planning/spec.md',
+      path: 'packages/workflow-engine/src/modules/investigation/spec.md',
       currentRequirements: [
         'Manifest v3 and PlanReview Remain Separate Authorities',
         '`investigation.json` SHALL contain only the current schema-v3 Manifest',
@@ -132,7 +132,7 @@ test('active OpenSpec specifications are current-v3 only', () => {
       ],
     },
     {
-      path: 'openspec/specs/investigation-evidence-and-why/spec.md',
+      path: 'packages/workflow-engine/spec.md',
       currentRequirements: [
         'Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git',
         'strict replay contract',
@@ -161,7 +161,7 @@ test('active OpenSpec specifications are current-v3 only', () => {
       ],
     },
     {
-      path: 'openspec/specs/workflow-assurance/spec.md',
+      path: 'packages/workflow-engine/spec.md',
       currentRequirements: [
         'Whole-Change Documentation Closure',
         'For every managed change, the workflow engine SHALL require one authenticated',
@@ -866,7 +866,7 @@ test('documentation entry point is a project overview and archive policy remains
   assert.match(readme, /^# Jigwright Documentation$/m);
   assert.match(readme, /current-v3/i);
   assert.match(readme, /docs\/WORKFLOW\.md/);
-  assert.match(readme, /openspec\/specs/);
+  assert.match(readme, /SPEC_MAP\.md/);
   assert.doesNotMatch(readme, /expense-app/i);
   assert.doesNotMatch(readme, /apps\/(?:api|mobile|web)/);
   assert.doesNotMatch(readme, /^# Documentation Entry Point$/m);
@@ -878,7 +878,8 @@ test('documentation entry point is a project overview and archive policy remains
     enforcement: 'planned',
   });
   assert.ok(documentPolicy.documents['docs/ROADMAP.md']);
-  assert.ok(documentPolicy.documents['openspec/specs/**']);
+  assert.ok(documentPolicy.documents['spec.md']);
+  assert.ok(documentPolicy.documents['packages/workflow-engine/spec.md']);
   assert.ok(documentPolicy.documents['openspec/changes/**']);
   assert.equal(documentPolicy.documents['docs/REQUIREMENT_LOG.md'], undefined);
   assert.equal(documentPolicy.documents['docs/UPDATE_CHECKLIST.md'], undefined);

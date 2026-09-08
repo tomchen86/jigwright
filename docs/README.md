@@ -15,7 +15,7 @@ data.
 - `docs/architecture/` describes the package and engine boundaries.
 - [Native agent guidance](features/AGENT_GUIDANCE.md) covers instruction-file
   regions, drift inspection, and incremental init setup.
-- `openspec/specs/` contains normative product requirements.
+- `docs/SPEC_MAP.md` contains normative product requirements.
 - `openspec/changes/` contains governed current and archived change artifacts.
 
 Archived change artifacts are immutable historical evidence. They do not

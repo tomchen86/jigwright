@@ -1,18 +1,21 @@
-# investigation-first-planning Specification
+# Investigation
+capabilities: [investigation-first-planning]
 
 ## Purpose
 
-TBD - created by archiving change establish-investigation-first-planning. Update Purpose after archive.
+Make investigation and its declared exceptions explicit before planning authority, with bounded term discovery and complete tracked-tree scanning.
 
 ## Requirements
 
 ### Requirement: Current Investigation Applicability Gates Authoritative Planning
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The workflow engine SHALL bind each investigation applicability decision to a structured change intent and pinned repository baseline. It MUST NOT authorize or materialize the authoritative design or planning transition until the current applicability ref selects either a current sealed investigation or a current eligible structured investigation exemption.
 
 Non-authoritative scratch material MUST NOT be adopted automatically as authoritative planning input.
 
 #### Scenario: Design is requested before investigation seal
+covers: #Requirement: Current Investigation Applicability Gates Authoritative Planning
 
 - **GIVEN** a change has neither a current sealed investigation nor an eligible current investigation exemption
 - **WHEN** authoritative design materialization is requested
@@ -20,6 +23,7 @@ Non-authoritative scratch material MUST NOT be adopted automatically as authorit
 - **AND** any scratch or unmanaged design remains non-authoritative and unmodified
 
 #### Scenario: Investigation inputs drift after sealing
+covers: #Requirement: Current Investigation Applicability Gates Authoritative Planning
 
 - **GIVEN** an investigation was sealed for one intent and repository baseline
 - **WHEN** the material intent or pinned baseline changes
@@ -27,12 +31,14 @@ Non-authoritative scratch material MUST NOT be adopted automatically as authorit
 - **AND** planning remains blocked until the changed investigation is sealed
 
 ### Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The workflow engine SHALL permit an `investigation-exemption` only for documentation-only, formatting-only, deterministic-generated-projection, or time-boxed-research work that neither modifies nor relies on existing non-trivial behavior. The exemption MUST bind category, exact baseline and normalized intent, normalized declared paths/scope, bounded non-empty rationale, semantic author/provenance, `nonTrivialBehaviorReliance: none-declared`, applicable research budget, and the code-owned exemption-policy digest.
 
 Security, migration, shared-contract, public-API, rename/removal, and behavioral work MUST be ineligible. The exact-plan review target MUST contain and challenge the exemption. Only scan, hit disposition, and WHY-ledger requirements are exempted; every other planning and execution gate remains required. The engine MUST NOT represent an exemption as an empty sealed investigation or claim that exemption proves breadth or depth.
 
 #### Scenario: Eligible documentation-only change uses an exemption
+covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
 
 - **GIVEN** a documentation-only change neither changes nor relies on non-trivial behavior
 - **WHEN** its exact structured exemption and PlanReview are validated
@@ -40,6 +46,7 @@ Security, migration, shared-contract, public-API, rename/removal, and behavioral
 - **AND** all non-investigation planning, review, task, check, and Git gates still apply
 
 #### Scenario: Behavioral work requests an exemption
+covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
 
 - **GIVEN** a change modifies behavior, security, migration, a shared contract, public API, or a rename/removal
 - **WHEN** investigation exemption eligibility is evaluated
@@ -47,6 +54,7 @@ Security, migration, shared-contract, public-API, rename/removal, and behavioral
 - **AND** the ordinary sealed-investigation path remains required
 
 #### Scenario: Exemption contains empty investigation stand-ins
+covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
 
 - **GIVEN** an exemption artifact contains empty term, scan, disposition, or WHY nodes as if they were completed evidence
 - **WHEN** the applicability branch is validated
@@ -54,6 +62,7 @@ Security, migration, shared-contract, public-API, rename/removal, and behavioral
 - **AND** the empty nodes do not satisfy breadth or depth claims
 
 ### Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The workflow engine SHALL derive a non-removable engine search floor, accept a typed Author term contribution, and obtain a session-independent Reviewer pre-anchor contribution before sealing the effective term union. Blind is the Reviewer's sealed first turn, not a fourth role: its request MUST be sealed before Author terms, conclusions, plan drafts, or Builder transcripts become visible. The ordinary Reviewer MAY use the same provider as the Author when it runs in a fresh engine-spawned session, and the achieved independence MUST be recorded honestly. A reviewed risk policy MAY strengthen the floor to provider independence; only an eligible exact Grant may authorize a visible below-policy continuation. Every Author term MUST include normalized kind/value plus bounded non-empty rationale and expected relationship to the change.
 
@@ -66,6 +75,7 @@ The Reviewer pre-anchor request MUST contain the normalized intent, pinned repos
 Term identity and scan deduplication SHALL depend on normalized kind, value, and matching semantics, while the contribution digest SHALL include rationale and expected relationship and preserve those fields per source. The engine validates their structure and binding but MUST NOT claim either explanation is true.
 
 #### Scenario: Reviewer pre-anchor input is constructed
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** a normalized intent and pinned baseline
 - **WHEN** the Reviewer pre-anchor survey manifest is sealed
@@ -73,6 +83,7 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** it does not contain the engine floor, main terms, prior hits, or prior conclusions
 
 #### Scenario: Effective term union is sealed
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** current engine, Author, and Reviewer pre-anchor contributions
 - **WHEN** the investigation term union is sealed
@@ -80,12 +91,14 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** every term retains all source provenance
 
 #### Scenario: Main term omits semantic metadata
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** a main-agent term has kind and value but lacks rationale or expected relationship
 - **WHEN** the contribution is validated
 - **THEN** it is rejected before term sealing
 
 #### Scenario: Multiple sources contribute the same term
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** main and survey contributions normalize to the same term identity
 - **WHEN** the effective union is built
@@ -93,6 +106,7 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** each source contribution retains its own provenance and semantic metadata
 
 #### Scenario: Qualifying floor facts exist
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** normalized intent or pinned diff contains an explicit path, symbol, configuration key, rename/removal identifier, or reviewed generated/mirror counterpart
 - **WHEN** the engine derives the search floor
@@ -100,6 +114,7 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** an empty or incomplete floor fails validation
 
 #### Scenario: No floor fact is derivable
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** every reviewed machine-readable derivation category is empty
 - **WHEN** the engine derives the search floor
@@ -107,6 +122,7 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** investigation cannot seal without non-empty Author and Reviewer pre-anchor contributions at the effective independence floor
 
 #### Scenario: Strengthened provider floor is unavailable under an eligible Grant
+covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
 
 - **GIVEN** reviewed risk policy has strengthened the Reviewer pre-anchor turn to provider independence and no alternate provider is callable
 - **WHEN** an exact Grant authorizes a below-policy Reviewer contribution
@@ -115,12 +131,14 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 - **AND** the engine does not describe the contribution as provider-independent when it was not
 
 ### Requirement: Search Terms Have a Bounded Governed Lifecycle
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The workflow engine SHALL accept only fixed typed term kinds with deterministic matching semantics. It SHALL normalize and deduplicate terms and MUST preview per-term and aggregate resource cost before sealing them.
 
 An engine-floor term MUST NOT be removed or superseded by an agent. An agent-contributed term MAY leave the effective set only through an explicit, reasoned, audit-visible investigation revision.
 
 #### Scenario: Proposed term exceeds a resource bound
+covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
 
 - **GIVEN** a term exceeds an applicable term, hit, classification-work, time, compute, or scanned-byte bound
 - **WHEN** term sealing is requested
@@ -128,6 +146,7 @@ An engine-floor term MUST NOT be removed or superseded by an agent. An agent-con
 - **AND** the result requires rejection or a narrower proposal without creating unbounded work
 
 #### Scenario: Agent attempts to remove an engine-floor term
+covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
 
 - **GIVEN** an engine-floor term is effective
 - **WHEN** an agent contribution or revision attempts to remove it
@@ -135,6 +154,7 @@ An engine-floor term MUST NOT be removed or superseded by an agent. An agent-con
 - **AND** the engine-floor term remains effective
 
 #### Scenario: Agent term is superseded through revision
+covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
 
 - **GIVEN** an agent-contributed term is mistaken or operationally unusable
 - **WHEN** an authorized revision supplies a reasoned supersession
@@ -142,12 +162,14 @@ An engine-floor term MUST NOT be removed or superseded by an agent. An agent-con
 - **AND** its original value, provenance, and supersession reason remain auditable
 
 ### Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The workflow engine SHALL deterministically scan every effective sealed term against the pinned Git-tracked tree. The scan SHALL include tracked paths and text blobs across source, tests, documentation, configuration, hooks, mirrors, generated contracts, and every governed mutation class.
 
 The scan MUST NOT use task `allowedPaths` as a breadth boundary and MUST NOT read untracked files, ignored files, repository-external paths, environment files, or credentials. Every effective sealed term MUST have a current scan result before investigation can be sealed.
 
 #### Scenario: Relevant hit is outside planned task paths
+covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 
 - **GIVEN** a sealed term matches a tracked file outside planned task paths
 - **WHEN** the governed scan runs
@@ -155,24 +177,28 @@ The scan MUST NOT use task `allowedPaths` as a breadth boundary and MUST NOT rea
 - **AND** task `allowedPaths` do not hide it
 
 #### Scenario: Untracked or ignored file contains a term
+covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 
 - **GIVEN** a sealed term occurs only in an untracked or ignored file
 - **WHEN** the governed scan runs
 - **THEN** that file content is not read or reported as a tracked-tree hit
 
 #### Scenario: Sealed term has no current scan
+covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 
 - **GIVEN** an effective sealed term lacks a scan bound to the current tree and scan policy
 - **WHEN** investigation sealing is requested
 - **THEN** sealing fails
 
 #### Scenario: Sealed term has zero hits
+covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 
 - **GIVEN** a sealed term was scanned against the complete governed tracked tree and has no hits
 - **WHEN** currentness is evaluated
 - **THEN** the zero-hit scan is accepted as a current result
 
 #### Scenario: Blob cannot be scanned as governed text
+covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 
 - **GIVEN** a tracked object is binary, invalid UTF-8, oversized, or otherwise unsupported by the governed text policy
 - **WHEN** the scanner encounters it
@@ -180,12 +206,14 @@ The scan MUST NOT use task `allowedPaths` as a breadth boundary and MUST NOT rea
 - **AND** it does not silently claim that the object's content was scanned
 
 ### Requirement: Propose Is a Durable Resumable Planning Wrapper
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 The routine `workflow propose` surface SHALL persist investigation state, start the blind work before main-agent semantic input is consumed, emit typed caller work envelopes, and resume from the last durable checkpoint. It MUST NOT require one long-lived process or an interactive TTY questionnaire for routine agent input.
 
 The wrapper SHALL assemble existing planning and plan-commit prerequisites without replacing their authority or exposing a separate routine review journey.
 
 #### Scenario: Caller must provide main terms
+covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 
 - **GIVEN** an investigation has started and its blind request is sealed
 - **WHEN** the wrapper needs the caller's term contribution
@@ -193,6 +221,7 @@ The wrapper SHALL assemble existing planning and plan-commit prerequisites witho
 - **AND** the blind provider work may proceed independently
 
 #### Scenario: Process exits while provider work is pending
+covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 
 - **GIVEN** a durable investigation has pending provider work
 - **WHEN** the initiating CLI process exits or is interrupted
@@ -200,6 +229,7 @@ The wrapper SHALL assemble existing planning and plan-commit prerequisites witho
 - **AND** the caller is not required to restart investigation from the beginning
 
 #### Scenario: Planning prerequisites become current
+covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 
 - **GIVEN** investigation, planning materialization, PlanReview, and challenge dispositions are current
 - **WHEN** the propose wrapper reaches its terminal planning step
@@ -207,12 +237,14 @@ The wrapper SHALL assemble existing planning and plan-commit prerequisites witho
 - **AND** it does not hand-author a commit or bypass plan-transition validation
 
 ### Requirement: Manifest v3 and PlanReview Remain Separate Authorities
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 `investigation.json` SHALL contain only the current schema-v3 Manifest and its investigation attestation. `plan-review.json` SHALL remain a separate artifact bound to the exact `manifestDigest`, `investigationTargetDigest`, planning generation, complete plan target, reviewer result, challenges, dispositions, and provenance. A change to baseline, intent, terms, evaluator/policy versions, roots, Groups, Dispositions, WHY, knowledge references, exceptions, or provenance MUST stale both the investigation seal and any PlanReview that targeted it.
 
 Any degraded-continuation reference SHALL appear only where the published central Fail-Grant contract requires it. Investigation v3 MUST NOT invent a local reference field or placement rule.
 
 #### Scenario: Manifest semantics change after PlanReview
+covers: #Requirement: Manifest v3 and PlanReview Remain Separate Authorities
 
 - **GIVEN** PlanReview binds one exact v3 Manifest target
 - **WHEN** any replay input, semantic delta, derived commitment, provenance, or attestation changes

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import test from 'node:test';
 
 const specificationUrl = new URL(
-  '../../../openspec/specs/change-routing/spec.md',
+  '../src/modules/lifecycle/spec.md',
   import.meta.url,
 );
 

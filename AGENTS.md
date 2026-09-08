@@ -88,7 +88,7 @@ and correctness invariants. Do not restore v1/v2 readers, migrations,
 shadow/parity implementations, consumer application data, or consumer-specific
 namespaces.
 
-Normative requirements live in `openspec/specs/`. Governed changes live in
+Normative requirements live in colocated `spec.md` files; `docs/SPEC_MAP.md` lists local and inherited ownership. Governed changes live in
 `openspec/changes/<change-id>/`. Runtime sessions, locks, reports, Git
 validation, completion authority, and managed documents belong to the
 executable engine rather than Markdown or an agent claim.

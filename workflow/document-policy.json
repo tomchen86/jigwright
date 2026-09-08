@@ -57,14 +57,47 @@
       "mode": "immutable",
       "enforcement": "planned"
     },
-    "openspec/specs/**": {
-      "mode": "normative"
-    },
     "openspec/changes/**": {
       "mode": "change-artifact"
     },
     ".agents/skills/spectra-*/**": {
       "mode": "reference"
+    },
+    "packages/workflow-engine/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/adoption/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/assurance/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/authority/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/governance-intake/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/guidance/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/investigation/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/lifecycle/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/projection/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/provider-orchestration/spec.md": {
+      "mode": "normative"
+    },
+    "packages/workflow-engine/src/modules/source/spec.md": {
+      "mode": "normative"
+    },
+    "spec.md": {
+      "mode": "normative"
     }
   }
 }

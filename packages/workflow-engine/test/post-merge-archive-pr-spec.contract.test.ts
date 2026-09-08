@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const specificationUrl = new URL(
-  '../../../openspec/specs/post-merge-archive-pr/spec.md',
-  import.meta.url,
-);
+const specificationUrl = new URL('../spec.md', import.meta.url);
 
 test('active post-merge-archive-pr contract covers current local orchestration', () => {
   const specification = fs.readFileSync(specificationUrl, 'utf8');

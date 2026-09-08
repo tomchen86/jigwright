@@ -33,7 +33,7 @@ now <text>   ─┼─▶ Source ledger ─▶ propose ─▶ [ open-task ─▶
 finding …    ─┘   Work Registry     │              │            │              │
                                     ▼              ▼            ▼              ▼
                           openspec/changes/<id>/   session +    checks +      deltas applied to
-                          proposal, design,        guard.json   managed       openspec/specs/,
+                          proposal, design,        guard.json   managed       docs/SPEC_MAP.md,
                           spec deltas, tasks       write scope  commit        handoff regenerated,
                                                                               Work Items closed
 ```
@@ -62,7 +62,7 @@ checks, escalates to the full gate when the change becomes all-terminal, stages
 exactly that tree, and creates one managed commit carrying `Change:` and
 `Task:` trailers. The transaction is replay-safe.
 
-**Closure.** `archive` applies the requirement deltas to `openspec/specs/`,
+**Closure.** `archive` applies the requirement deltas to `docs/SPEC_MAP.md`,
 regenerates the handoff, closes the Work Items linked through the change's
 `origin.json`, and moves the change under `openspec/changes/archive/`.
 
@@ -80,7 +80,7 @@ are author, builder, and reviewer, assigned by `workflow/role-provider-default.j
 
 | Question                                                  | Look in                                                        |
 | --------------------------------------------------------- | -------------------------------------------------------------- |
-| What must the product do?                                 | `openspec/specs/<capability>/spec.md`                          |
+| What must the product do?                                 | `docs/SPEC_MAP.md<capability>/spec.md`                         |
 | Why is a change being made, and what may each task touch? | `openspec/changes/<id>/`                                       |
 | What was decided, and what is still open?                 | `docs/DECISION-REGISTER.md`                                    |
 | What is active, blocked, and next?                        | `docs/CURRENT_AND_NEXT_STEPS.md` (generated)                   |

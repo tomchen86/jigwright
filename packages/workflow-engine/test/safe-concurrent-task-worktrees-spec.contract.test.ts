@@ -2,10 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
-const specificationUrl = new URL(
-  '../../../openspec/specs/safe-concurrent-task-worktrees/spec.md',
-  import.meta.url,
-);
+const specificationUrl = new URL('../spec.md', import.meta.url);
 
 test('active safe-concurrent-task-worktrees contract covers current local execution', () => {
   const specification = fs.readFileSync(specificationUrl, 'utf8');

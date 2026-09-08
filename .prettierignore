@@ -6,3 +6,17 @@ packages/workflow-engine/bootstrap/recovery-runtime
 *.snap
 pnpm-lock.yaml
 .DS_Store
+
+# OpenSpec validates canonical specs; keep each metadata field on its own line.
+/spec.md
+packages/workflow-engine/spec.md
+packages/workflow-engine/src/modules/adoption/spec.md
+packages/workflow-engine/src/modules/assurance/spec.md
+packages/workflow-engine/src/modules/authority/spec.md
+packages/workflow-engine/src/modules/governance-intake/spec.md
+packages/workflow-engine/src/modules/guidance/spec.md
+packages/workflow-engine/src/modules/investigation/spec.md
+packages/workflow-engine/src/modules/lifecycle/spec.md
+packages/workflow-engine/src/modules/projection/spec.md
+packages/workflow-engine/src/modules/provider-orchestration/spec.md
+packages/workflow-engine/src/modules/source/spec.md
