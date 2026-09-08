@@ -866,32 +866,6 @@ covers: #Requirement: Authorized Planning Transition
 - **THEN** only its authorized planning paths are staged
 - **AND** the commit uses `Change: <change-id>` and `Transition: plan`
 
-### Requirement: Single Integration Bootstrap Exception
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The assurance verifier SHALL treat only the first exact
-`integrate-openspec-with-workflow` dependency-and-planning baseline as valid
-without a planning report.
-
-#### Scenario: Exact bootstrap baseline is inspected
-covers: #Requirement: Single Integration Bootstrap Exception
-
-- **GIVEN** the transition has `Change: integrate-openspec-with-workflow` and
-  `Transition: plan`
-- **AND** its diff contains only the exact OpenSpec dependency pin, lockfile
-  resolution, denied optional build script, and unchecked named planning tree
-- **WHEN** bootstrap verification runs
-- **THEN** the baseline is accepted without a planning report
-
-#### Scenario: Bootstrap exception is widened or replayed
-covers: #Requirement: Single Integration Bootstrap Exception
-
-- **GIVEN** a candidate changes another dependency, script, workspace policy,
-  code path, base spec, archive, document, or checkbox
-- **OR** the named exception has already been consumed
-- **WHEN** bootstrap verification runs
-- **THEN** the candidate is rejected
-
 ### Requirement: Workflow-Owned Archive Authorization
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -1207,43 +1181,6 @@ covers: #Requirement: CI plan replay rejects duplicate planning-tree entries
 
 - **WHEN** a planning commit's trees contain only unique paths
 - **THEN** validation behaves exactly as before
-
-### Requirement: CI replay accepts bootstrap planning-tree repair revisions
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-CI plan replay SHALL tolerate a required planning artifact missing from a
-revision's before tree only when the same revision adds that artifact, and
-the resulting tree MUST satisfy the unmodified canonical completeness
-contract. Every other before-tree or after-tree incompleteness MUST keep
-failing closed.
-
-#### Scenario: Repair revision adds the missing artifact
-covers: #Requirement: CI replay accepts bootstrap planning-tree repair revisions
-
-- **WHEN** a revision's before tree lacks a required planning artifact and
-  the revision adds it while the resulting tree is complete and canonical
-- **THEN** CI plan replay accepts the revision
-
-#### Scenario: Repair combines with noise deletion
-covers: #Requirement: CI replay accepts bootstrap planning-tree repair revisions
-
-- **WHEN** a repair revision also deletes a non-canonical file inside the
-  named change's own tree
-- **THEN** CI plan replay accepts the revision under the existing
-  deletion-only allowance
-
-#### Scenario: Before tree stays incomplete
-covers: #Requirement: CI replay accepts bootstrap planning-tree repair revisions
-
-- **WHEN** a revision's before tree lacks a required planning artifact and
-  the revision does not add it
-- **THEN** CI plan replay fails closed
-
-#### Scenario: After tree is incomplete
-covers: #Requirement: CI replay accepts bootstrap planning-tree repair revisions
-
-- **WHEN** any revision produces a tree missing a required planning artifact
-- **THEN** CI plan replay fails closed
 
 ### Requirement: Candidate Discovery Is Read-Only and Current
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -2240,3 +2177,37 @@ test: packages/workflow-engine/test/system-document-disposition.contract.test.ts
 - **WHEN** a README remains but its managed explanation is removed or unreadable
 - **THEN** the document still needs disposition and cannot be confirmed as still-valid
 - **AND** an explicit reason can defer that obligation
+
+### Requirement: Current Planning Replay Requires Complete Parent and Result Trees
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Current-schema CI planning replay SHALL require complete canonical planning artifacts in an existing revision's parent and result trees. Adding an artifact in the result SHALL NOT retroactively make an incomplete current-schema parent valid. The existing deletion-only allowance for noncanonical planning noise SHALL remain available when current required artifacts are otherwise valid.
+
+#### Scenario: Adding an artifact does not repair the historical parent
+covers: #Requirement: Current Planning Replay Requires Complete Parent and Result Trees
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI rejects a current-schema parent missing a required artifact even when the revision repairs it
+
+- **WHEN** a revision adds `execution.json` that was absent from its current-schema parent
+- **THEN** replay rejects the incomplete parent rather than accepting a bootstrap exception
+
+#### Scenario: An unrepaired parent remains invalid
+covers: #Requirement: Current Planning Replay Requires Complete Parent and Result Trees
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI still rejects a revision whose before tree stays incomplete
+
+- **WHEN** required parent artifacts remain absent across a revision
+- **THEN** replay reports the missing artifact
+
+#### Scenario: An incomplete resulting tree is rejected
+covers: #Requirement: Current Planning Replay Requires Complete Parent and Result Trees
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI rejects an incomplete planning tree and a non-canonical plan message
+
+- **WHEN** a planning commit lacks a required resulting artifact
+- **THEN** replay rejects the incomplete planning tree
+
+#### Scenario: Removing noise preserves a complete planning revision
+covers: #Requirement: Current Planning Replay Requires Complete Parent and Result Trees
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI accepts a revision that deletes non-canonical planning noise
+
+- **WHEN** a valid current revision removes a noncanonical file inside its own planning tree
+- **THEN** the existing deletion-only allowance accepts that removal
+- **AND** required planning artifacts still satisfy their current contracts

@@ -4,9 +4,7 @@ capabilities: [investigation-first-planning]
 ## Purpose
 
 Make investigation and its declared exceptions explicit before planning authority, with bounded term discovery and complete tracked-tree scanning.
-
 ## Requirements
-
 ### Requirement: Current Investigation Applicability Gates Authoritative Planning
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -130,37 +128,6 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 - **AND** its actual independence level remains explicit
 - **AND** the engine does not describe the contribution as provider-independent when it was not
 
-### Requirement: Search Terms Have a Bounded Governed Lifecycle
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The workflow engine SHALL accept only fixed typed term kinds with deterministic matching semantics. It SHALL normalize and deduplicate terms and MUST preview per-term and aggregate resource cost before sealing them.
-
-An engine-floor term MUST NOT be removed or superseded by an agent. An agent-contributed term MAY leave the effective set only through an explicit, reasoned, audit-visible investigation revision.
-
-#### Scenario: Proposed term exceeds a resource bound
-covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
-
-- **GIVEN** a term exceeds an applicable term, hit, classification-work, time, compute, or scanned-byte bound
-- **WHEN** term sealing is requested
-- **THEN** the term remains unsealed
-- **AND** the result requires rejection or a narrower proposal without creating unbounded work
-
-#### Scenario: Agent attempts to remove an engine-floor term
-covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
-
-- **GIVEN** an engine-floor term is effective
-- **WHEN** an agent contribution or revision attempts to remove it
-- **THEN** the operation fails
-- **AND** the engine-floor term remains effective
-
-#### Scenario: Agent term is superseded through revision
-covers: #Requirement: Search Terms Have a Bounded Governed Lifecycle
-
-- **GIVEN** an agent-contributed term is mistaken or operationally unusable
-- **WHEN** an authorized revision supplies a reasoned supersession
-- **THEN** the term may leave the effective set
-- **AND** its original value, provenance, and supersession reason remain auditable
-
 ### Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -250,3 +217,40 @@ covers: #Requirement: Manifest v3 and PlanReview Remain Separate Authorities
 - **WHEN** any replay input, semantic delta, derived commitment, provenance, or attestation changes
 - **THEN** the old PlanReview is stale
 - **AND** a fresh exact-plan review is required independently of investigation validation
+
+### Requirement: Search Terms Form Bounded Provenance-Preserving Unions
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The workflow engine SHALL accept fixed typed terms with deterministic case-sensitive literal matching, normalize their identities, deduplicate equal terms and retain each distinct contribution's provenance. It SHALL preview source and effective resource bounds without silently dropping proposed terms. The engine-derived floor MUST remain complete under recomputation. Accepted checkpoint input SHALL replay exactly; divergent stale input MUST NOT rewrite the accepted contribution as a supersession.
+
+#### Scenario: Proposed terms exceed a resource bound
+covers: #Requirement: Search Terms Form Bounded Provenance-Preserving Unions
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#term preview reports source and effective overage without dropping proposals
+
+- **WHEN** proposed source or effective term counts exceed their configured bounds
+- **THEN** preview requires narrowing and reports the exceeded bound
+- **AND** it retains the proposals instead of silently truncating the union
+
+#### Scenario: The engine floor is recomputed exactly
+covers: #Requirement: Search Terms Form Bounded Provenance-Preserving Unions
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#engine floor is complete, provenance-preserving, and validates by recomputation
+
+- **WHEN** a purported floor omits a required derived term
+- **THEN** recomputation rejects the incomplete floor
+- **AND** valid floor terms retain their derivation provenance
+
+#### Scenario: Equal terms retain all contribution provenance
+covers: #Requirement: Search Terms Form Bounded Provenance-Preserving Unions
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#typed terms preserve exact bytes, deduplicate semantics, and retain every provenance
+
+- **WHEN** multiple sources contribute the same typed literal
+- **THEN** the union uses one semantic term identity with all distinct provenance
+- **AND** a different kind or literal retains its own identity
+
+#### Scenario: An accepted checkpoint cannot be overwritten by a divergent replay
+covers: #Requirement: Search Terms Form Bounded Provenance-Preserving Unions
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#checkpoint transitions replay exactly and reject divergent stale input
+
+- **WHEN** a caller repeats accepted main terms or changes a term in a stale checkpoint envelope
+- **THEN** exact input returns the same result without changing its durable record
+- **AND** divergent input is rejected rather than replacing the accepted terms

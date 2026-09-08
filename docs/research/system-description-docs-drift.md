@@ -10,6 +10,15 @@ Authority and attestation scenario bindings remain under review. Further discrep
 
 The four concrete authority discrepancies were reconciled by [the current-authority delta](system-description-docs-deltas/current-authority.md): removed public authority-session commands, the retired authority-maintenance commit form, unconditional policy rollback prohibitions, and an old real-pilot procedure. Current candidate/receipt and Central Grant tests establish the replacement implementation contracts. Release tests establish only that missing pilot evidence stays pending and fabricated completion is rejected; no real pilot was run or claimed. The original authority requirements remain in `9c63c49`, and existing attestation/history requirements retain their separate scope.
 
+Further current behavior is recorded separately:
+
+- [Current intake](system-description-docs-deltas/current-intake.md) replaces private-runtime Finding storage facts with dedicated Git history, adds the Source correction transaction and preserves original Source history. The actual owner-authorized data migration has its own dated report.
+- [Current planning](system-description-docs-deltas/current-planning.md) removes the retired bootstrap artifact-repair and one-time integration exceptions. Current CI rejects incomplete current-schema parents, while valid deletion of planning noise remains allowed.
+- [Readable registry and module references](system-description-docs-deltas/current-registry-projections.md) replaces the obsolete byte-identical human view promise with Phase C's readable BACKLOG and WHY contracts, keeps machine inventory stable, and binds the generated module READMEs.
+- [Current investigation terms](system-description-docs-deltas/current-investigation-terms.md) retains bounded typed union, provenance and engine-floor checks. It replaces the unsupported term-removal procedure with the current exact-checkpoint behavior.
+
+Two preserved structural-repair scenarios now share a real native integration test: a colocated base missing Purpose makes archive applicability fail; a heading-only repair restores strict validation and archive applicability while preserving its purpose prose, requirements and scenarios. This exposed and fixed the adapter's rejection of the pinned validator's legitimate multiline repair explanation; it did not introduce an automatic legacy repair command.
+
 ## Reconciliation applied after Phase C step 5
 
 The raw migration is retained at `9c63c49`. The following separate deltas were applied with the pinned native OpenSpec spec builder and checked by the engine's archive-delta verifier. Unaffected requirement blocks retain their text (apart from trailing section separation). Test results remain a separate obligation; these edits do not mark coverage passed.
