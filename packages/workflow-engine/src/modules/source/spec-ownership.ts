@@ -35,6 +35,7 @@ export type SystemSpec = {
 export type SystemDescriptionSnapshot = Readonly<{
   listPaths(): readonly string[];
   readText(relativePath: string): string | undefined;
+  readBytes?(relativePath: string): Uint8Array | undefined;
 }>;
 
 export function findContainingSpec(
