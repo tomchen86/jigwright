@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { dispatchBoundaryCommand } from './entrypoints/cli/boundary-cli.ts';
+import { renderHumanCommandResult } from './entrypoints/cli/human-command-output.ts';
 import {
   dispatchExecutionJobCommand,
   dispatchRetentionCommand,
@@ -134,12 +135,12 @@ export function runCli(argv: string[], cwd = process.cwd()): number {
   try {
     const result = dispatch(args, cwd);
     printSuccess(
-      json
-        ? { ...result, nextSteps: workflowResultNextSteps(result, args) }
-        : result,
+      { ...result, nextSteps: workflowResultNextSteps(result, args) },
       json,
     );
-    return 0;
+    return result.command === 'doctor' && result.ok === false
+      ? ExitCode.verification
+      : 0;
   } catch (error) {
     const workflowFailure =
       error instanceof WorkflowError
@@ -190,12 +191,12 @@ export async function runCliAsync(
     }
     const result = await dispatchAsync(args, cwd);
     printSuccess(
-      json
-        ? { ...result, nextSteps: workflowResultNextSteps(result, args) }
-        : result,
+      { ...result, nextSteps: workflowResultNextSteps(result, args) },
       json,
     );
-    return 0;
+    return result.command === 'doctor' && result.ok === false
+      ? ExitCode.verification
+      : 0;
   } catch (error) {
     const workflowFailure =
       error instanceof WorkflowError
@@ -416,7 +417,7 @@ function printSuccess(
     write(`${result.usage}\n`);
     return;
   }
-  write(`${JSON.stringify(result, null, 2)}\n`);
+  write(renderHumanCommandResult(result));
 }
 
 function printFailure(
@@ -436,7 +437,7 @@ function printFailure(
 
   const rendered = json
     ? JSON.stringify(result)
-    : JSON.stringify(result, null, 2);
+    : renderHumanCommandResult(result).replace(/\n$/u, '');
   process.stderr.write(`${rendered}\n`);
 }
 

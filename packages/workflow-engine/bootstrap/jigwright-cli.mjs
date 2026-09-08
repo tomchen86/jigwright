@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 import {
   configuredJigwrightEnvironment,
   initializeJigwrightConsumer,
+  renderHumanCommandResult,
 } from './jigwright-init.mjs';
 
 let invocation;
@@ -23,7 +24,11 @@ if (argv[0] === 'init') {
     const result = await initializeJigwrightConsumer(repositoryRoot, {
       argv: argv.slice(1),
     });
-    process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
+    process.stdout.write(
+      argv.at(-1) === '--json'
+        ? `${JSON.stringify({ ok: true, result })}\n`
+        : renderHumanCommandResult({ command: 'init', ok: true, result }),
+    );
     process.exit(0);
   } catch (error) {
     printJigwrightFailure(error, 'JIGWRIGHT_INIT_FAILED');
@@ -132,16 +137,19 @@ function repositoryRootInvalid() {
 }
 
 function printJigwrightFailure(error, fallbackCode) {
+  const result = {
+    ok: false,
+    error: {
+      code:
+        error && typeof error === 'object' && 'code' in error
+          ? error.code
+          : fallbackCode,
+      message: error instanceof Error ? error.message : String(error),
+    },
+  };
   process.stderr.write(
-    `${JSON.stringify({
-      ok: false,
-      error: {
-        code:
-          error && typeof error === 'object' && 'code' in error
-            ? error.code
-            : fallbackCode,
-        message: error instanceof Error ? error.message : String(error),
-      },
-    })}\n`,
+    process.argv.at(-1) === '--json'
+      ? `${JSON.stringify(result)}\n`
+      : renderHumanCommandResult(result),
   );
 }

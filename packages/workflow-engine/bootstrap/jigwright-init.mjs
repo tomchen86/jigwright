@@ -15,3 +15,14 @@ const setup = await import(setupModule.href);
 export const initializeJigwrightConsumer = setup.initializeJigwrightConsumer;
 export const configuredJigwrightEnvironment =
   setup.configuredJigwrightEnvironment;
+
+const outputModule = fs.existsSync(
+  new URL('./installed-runtime.json', import.meta.url),
+)
+  ? new URL(
+      '../dist/runtime/entrypoints/cli/human-command-output.js',
+      import.meta.url,
+    )
+  : new URL('../src/entrypoints/cli/human-command-output.ts', import.meta.url);
+export const renderHumanCommandResult = (await import(outputModule.href))
+  .renderHumanCommandResult;
