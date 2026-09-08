@@ -22,6 +22,7 @@ import {
 } from './workflow-session-isolation.ts';
 import { normalizePolicyPath, matchesAllowedPath } from './paths.ts';
 import fs from 'node:fs';
+import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
 
 export function listActiveWorkflowSessionIds(
   runtime: ReturnType<typeof runtimePaths>,
@@ -162,13 +163,21 @@ function taskSerializedScopeKinds(
     },
     { kind: 'remote-effect', root: '.github' },
   ];
-  return definitions
+  const kinds = definitions
     .filter(({ root }) =>
       allowedPaths.some((allowedPath) =>
         taskWritePatternsOverlap(allowedPath, `${root}/**`),
       ),
     )
     .map(({ kind }) => kind);
+  // Containing an inherited spec does not make ordinary module scope a
+  // repository-wide contract operation; only an explicit spec path does.
+  if (
+    allowedPaths.some(isBaseSpecificationPath) &&
+    !kinds.includes('base-spec')
+  )
+    kinds.unshift('base-spec');
+  return kinds;
 }
 
 function taskSessionIdentityConflict(
