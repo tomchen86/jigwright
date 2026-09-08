@@ -5,9 +5,6 @@
  * - A sealed seed and member set produce the same samples regardless of input order.
  * - Missing answers, unsolicited answers, and repeated failures retain their exact outcomes.
  * - Failed classes require individual dispositions before a plan can commit.
- *
- * Depends on: class membership, recorded sample outcomes, and workflow errors.
- * Failure modes: incomplete review is accepted or valid class compression is rejected.
  */
 import crypto from 'node:crypto';
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";

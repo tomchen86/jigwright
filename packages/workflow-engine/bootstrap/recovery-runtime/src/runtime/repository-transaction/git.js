@@ -4,9 +4,6 @@
  * Invariants:
  * - Existing Git APIs preserve their signatures, errors, output bytes, and shared budget state.
  * - Repository and governed fingerprints retain their exact framing and category order.
- *
- * Depends on: Git command execution, working state, governed projections, and admission timing.
- * Failure modes: callers execute unbounded commands or compare incompatible repository evidence.
  */
 export { publishPreparedExclusiveLock, reclaimDeadPreparedLock, } from "./filesystem-safety.js";
 export { protectedBranchRef, readFileAtCommit, resolveGitExecutable, runGit, runGitBuffer, runGitWithEnvironment, } from "./git-command.js";

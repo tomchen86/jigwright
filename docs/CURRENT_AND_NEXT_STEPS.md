@@ -26,6 +26,6 @@ None.
 
 - [Roadmap](ROADMAP.md)
 - [Change records](../openspec/changes/)
-- [Base specifications](../openspec/specs/)
+- [Base specifications](SPEC_MAP.md)
 - [Work backlog](BACKLOG.md)
 - [System architecture](architecture/ARCHITECTURE.md)

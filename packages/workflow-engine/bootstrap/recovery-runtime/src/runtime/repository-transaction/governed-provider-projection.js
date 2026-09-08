@@ -4,9 +4,6 @@
  * Invariants:
  * - Category sampling order and total projection digest framing stay unchanged.
  * - A shared bounded budget covers every sampled Git, worktree, planning, and runtime category.
- *
- * Depends on: Git and artifact fingerprints plus framed projection budgets.
- * Failure modes: provider work is accepted after guarded inputs changed or unchanged inputs fail comparison.
  */
 import crypto from 'node:crypto';
 import { ExitCode, workflowError, WorkflowError, } from "../../foundation/errors/errors.js";

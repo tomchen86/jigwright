@@ -4,9 +4,6 @@
  * Invariants:
  * - Policy snapshots retain their schema, canonical bytes, and exact request binding.
  * - Durable execution budget authority is checked before accepting stored policy.
- *
- * Depends on: AI adapter policy, execution budget authority, and private investigation storage.
- * Failure modes: Policy drift changes retry accounting or admits an invocation without matching authority.
  */
 import path from 'node:path';
 import { parseAiAdapterPolicyDocument, } from "../provider-execution/ai-adapter-policy.js";

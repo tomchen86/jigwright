@@ -4,9 +4,6 @@
  * Invariants:
  * - Projection ownership and generations come from validated records and policy snapshots.
  * - Unsafe invocations stay observable instead of silently disappearing from recovery scans.
- *
- * Depends on: provider artifact validation, evidence owners, and private runtime files.
- * Failure modes: provider work disappears from resolution state or is attributed to another investigation.
  */
 import fs from 'node:fs';
 import path from 'node:path';

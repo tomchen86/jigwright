@@ -1,9 +1,15 @@
-/** Session-private Finding records and append-only dispositions. Immutable Source resolution is bound by the intake facade. */
+/**
+ * Capture exact Finding observations and resolve their append-only dispositions.
+ *
+ * Invariants:
+ * - Finding identity binds the original wording and capture context forever.
+ * - One terminal disposition may be replayed but never replaced.
+ * - Git persistence stays outside task files and preserves canonical record bytes.
+ */
 import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';
-import { publishCreateOnlyCanonical, FINDING_FILE_MODE, readStableGovernanceBytes, sameGovernanceFileSnapshot, } from "./governance-intake-storage.js";
+import { findingRecordLocation, findingRecordPath, publishFindingRefRecord, readFindingRef, } from "./governance-finding-ref.js";
 import { TextDecoder } from 'node:util';
-import fs from 'node:fs';
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import crypto from 'node:crypto';
 export function createGovernanceFindingOperations(bindings) {
@@ -11,8 +17,6 @@ export function createGovernanceFindingOperations(bindings) {
     const FINDING_ID = /^FND-[0-9a-f]{64}$/;
     const FINDING_RECORD_NAME = /^(FND-[0-9a-f]{64})\.json$/;
     const FINDING_DISPOSITION_RECORD_NAME = /^(FND-[0-9a-f]{64})\.disposition\.json$/;
-    const FINDING_SESSION_DIRECTORY = /^[A-Za-z0-9][A-Za-z0-9._@:-]{0,511}$/;
-    const FINDING_DIRECTORY_MODE = 0o700;
     const GOVERNANCE_FINDING_DISPOSITION_KIND = 'governance-finding-disposition.v1';
     function recordGovernanceFinding(context, input, now = () => new Date().toISOString()) {
         const normalized = normalizeFindingInput(input);
@@ -35,11 +39,10 @@ export function createGovernanceFindingOperations(bindings) {
             ...payload,
             id: `FND-${digestHex(canonicalJson(payload))}`,
         };
-        const directory = path.join(context.runtimeRoot, 'findings', finding.sessionId);
-        ensurePrivateFindingDirectory(context.runtimeRoot, directory);
-        const findingPath = path.join(directory, `${finding.id}.json`);
-        const created = publishCreateOnlyCanonical(findingPath, finding, FINDING_FILE_MODE, 'GOVERNANCE_FINDING_COLLISION');
-        return { finding, path: findingPath, created };
+        const recordPath = findingRecordPath(finding.sessionId, finding.id);
+        listGovernanceFindings(context.runtimeRoot);
+        const created = publishFindingRefRecord(context.runtimeRoot, recordPath, Buffer.from(`${canonicalJson(finding)}\n`));
+        return { finding, path: findingRecordLocation(recordPath), created };
     }
     function listGovernanceFindings(runtimeRoot) {
         const store = readGovernanceFindingStore(runtimeRoot);
@@ -83,15 +86,16 @@ export function createGovernanceFindingOperations(bindings) {
             },
         }, now);
     }
-    function linkGovernanceFinding(runtimeRoot, requestedFindingId, requestedChangeId, now = () => new Date().toISOString()) {
+    function linkGovernanceFinding(runtimeRoot, requestedFindingId, requestedTarget, now = () => new Date().toISOString()) {
         return recordGovernanceFindingDisposition(runtimeRoot, requestedFindingId, {
             schemaVersion: 1,
             disposition: 'linked',
-            reason: 'Linked to one existing change without widening its task scope.',
-            target: {
-                kind: 'change',
-                id: requestedChangeId,
-            },
+            reason: typeof requestedTarget === 'string'
+                ? 'Linked to one existing change without widening its task scope.'
+                : 'Linked to one existing Work Item without creating another inbox item.',
+            target: typeof requestedTarget === 'string'
+                ? { kind: 'change', id: requestedTarget }
+                : requestedTarget,
         }, now);
     }
     function recordGovernanceFindingDisposition(runtimeRoot, requestedFindingId, input, now = () => new Date().toISOString()) {
@@ -101,7 +105,8 @@ export function createGovernanceFindingOperations(bindings) {
         if (current === undefined) {
             throw intakeInvalid('Governance Finding does not exist.');
         }
-        const dispositionPath = path.join(path.resolve(runtimeRoot), 'findings', current.sessionId, `${findingId}.disposition.json`);
+        const recordPath = findingRecordPath(current.sessionId, findingId, true);
+        const dispositionPath = findingRecordLocation(recordPath);
         if (current.disposition !== 'pending') {
             if (current.disposition === normalized.disposition &&
                 current.reason === normalized.reason &&
@@ -119,8 +124,22 @@ export function createGovernanceFindingOperations(bindings) {
             target: normalized.target,
             recordedAt: canonicalTimestamp(now()),
         };
-        ensurePrivateFindingDirectory(runtimeRoot, path.dirname(dispositionPath));
-        const created = publishCreateOnlyCanonical(dispositionPath, receipt, FINDING_FILE_MODE, 'GOVERNANCE_FINDING_DISPOSITION_COLLISION');
+        if (Date.parse(receipt.recordedAt) < Date.parse(current.createdAt)) {
+            throw intakeInvalid('Governance Finding disposition predates its immutable Finding.');
+        }
+        let created;
+        try {
+            created = publishFindingRefRecord(runtimeRoot, recordPath, Buffer.from(`${canonicalJson(receipt)}\n`));
+        }
+        catch (error) {
+            // A concurrent identical decision can carry a different capture time.
+            const observed = listGovernanceFindings(runtimeRoot).find(({ id }) => id === findingId);
+            if (observed?.disposition !== normalized.disposition ||
+                observed.reason !== normalized.reason ||
+                canonicalJson(observed.target) !== canonicalJson(normalized.target))
+                throw error;
+            return { finding: observed, path: dispositionPath, created: false };
+        }
         const finding = listGovernanceFindings(runtimeRoot).find((candidate) => candidate.id === findingId);
         if (finding === undefined || finding.disposition === 'pending') {
             throw intakeInvalid('Governance Finding disposition was not published.');
@@ -128,51 +147,30 @@ export function createGovernanceFindingOperations(bindings) {
         return { finding, path: dispositionPath, created };
     }
     function readGovernanceFindingStore(runtimeRoot) {
-        const findingRoot = path.join(path.resolve(runtimeRoot), 'findings');
-        const sessionEntries = readStablePrivateFindingDirectory(findingRoot, true);
         const findings = new Map();
         const dispositions = new Map();
-        for (const sessionEntry of sessionEntries) {
-            if (sessionEntry.isSymbolicLink() ||
-                !sessionEntry.isDirectory() ||
-                !FINDING_SESSION_DIRECTORY.test(sessionEntry.name)) {
-                throw findingStoreUnsafe();
+        for (const [recordPath, bytes] of readFindingRef(runtimeRoot).records) {
+            const [, session, name] = recordPath.split('/');
+            const dispositionMatch = FINDING_DISPOSITION_RECORD_NAME.exec(name);
+            if (dispositionMatch !== null) {
+                const findingId = findingReference(dispositionMatch[1]);
+                if (dispositions.has(findingId))
+                    throw intakeInvalid('Governance Finding disposition is ambiguous.');
+                const receipt = readGovernanceFindingDispositionReceipt(bytes, findingId);
+                dispositions.set(findingId, { receipt, path: recordPath });
+                continue;
             }
-            const sessionRoot = path.join(findingRoot, sessionEntry.name);
-            for (const recordEntry of readStablePrivateFindingDirectory(sessionRoot)) {
-                if (recordEntry.isSymbolicLink() || !recordEntry.isFile()) {
-                    throw findingStoreUnsafe();
-                }
-                const dispositionMatch = FINDING_DISPOSITION_RECORD_NAME.exec(recordEntry.name);
-                if (dispositionMatch !== null) {
-                    const findingId = findingReference(dispositionMatch[1]);
-                    if (dispositions.has(findingId)) {
-                        throw intakeInvalid('Governance Finding disposition is ambiguous.');
-                    }
-                    const recordPath = path.join(sessionRoot, recordEntry.name);
-                    const receipt = readGovernanceFindingDispositionReceipt(recordPath, findingId);
-                    dispositions.set(findingId, { receipt, path: recordPath });
-                    continue;
-                }
-                const findingMatch = FINDING_RECORD_NAME.exec(recordEntry.name);
-                if (findingMatch === null)
-                    throw findingStoreUnsafe();
-                const findingId = findingReference(findingMatch[1]);
-                if (findings.has(findingId)) {
-                    throw intakeInvalid('Governance Finding identity is ambiguous.');
-                }
-                const recordPath = path.join(sessionRoot, recordEntry.name);
-                const finding = readGovernanceFindingRecord(recordPath, findingId);
-                if (finding.sessionId !== sessionEntry.name) {
-                    throw intakeInvalid('Governance Finding session and path do not agree.');
-                }
-                findings.set(findingId, { finding, path: recordPath });
-            }
+            const findingId = findingReference(FINDING_RECORD_NAME.exec(name)[1]);
+            if (findings.has(findingId))
+                throw intakeInvalid('Governance Finding identity is ambiguous.');
+            const finding = readGovernanceFindingRecord(bytes, findingId);
+            if (finding.sessionId !== session)
+                throw intakeInvalid('Governance Finding session and path do not agree.');
+            findings.set(findingId, { finding, path: recordPath });
         }
         return { findings, dispositions };
     }
-    function readGovernanceFindingRecord(recordPath, expectedFindingId) {
-        const bytes = readStableGovernanceBytes(recordPath, FINDING_FILE_MODE, findingStoreUnsafe);
+    function readGovernanceFindingRecord(bytes, expectedFindingId) {
         let serialized;
         let value;
         try {
@@ -189,8 +187,7 @@ export function createGovernanceFindingOperations(bindings) {
         }
         return finding;
     }
-    function readGovernanceFindingDispositionReceipt(recordPath, expectedFindingId) {
-        const bytes = readStableGovernanceBytes(recordPath, FINDING_FILE_MODE, findingStoreUnsafe);
+    function readGovernanceFindingDispositionReceipt(bytes, expectedFindingId) {
         let serialized;
         let value;
         try {
@@ -298,7 +295,7 @@ export function createGovernanceFindingOperations(bindings) {
         const target = findingDispositionTarget(input.target);
         if ((input.disposition === 'dismissed' && target !== null) ||
             (input.disposition === 'converted' && target?.kind !== 'work-item') ||
-            (input.disposition === 'linked' && target?.kind !== 'change')) {
+            (input.disposition === 'linked' && target === null)) {
             throw intakeInvalid('Governance Finding disposition target is invalid.');
         }
         return {
@@ -325,51 +322,6 @@ export function createGovernanceFindingOperations(bindings) {
             return { kind: 'change', id: value.id };
         }
         throw intakeInvalid('Governance Finding disposition target is invalid.');
-    }
-    function readStablePrivateFindingDirectory(directory, allowMissing = false) {
-        let before;
-        try {
-            before = fs.lstatSync(directory, {
-                bigint: true,
-                throwIfNoEntry: false,
-            });
-        }
-        catch {
-            throw findingStoreUnsafe();
-        }
-        if (before === undefined) {
-            if (allowMissing)
-                return [];
-            throw findingStoreUnsafe();
-        }
-        if (!isSafeGovernanceDirectory(before))
-            throw findingStoreUnsafe();
-        try {
-            const entries = fs
-                .readdirSync(directory, { withFileTypes: true })
-                .sort((left, right) => left.name.localeCompare(right.name));
-            const after = fs.lstatSync(directory, {
-                bigint: true,
-                throwIfNoEntry: false,
-            });
-            if (after === undefined ||
-                !isSafeGovernanceDirectory(after) ||
-                !sameGovernanceFileSnapshot(before, after)) {
-                throw findingStoreUnsafe();
-            }
-            return entries;
-        }
-        catch {
-            throw findingStoreUnsafe();
-        }
-    }
-    function isSafeGovernanceDirectory(stats) {
-        return (stats.isDirectory() &&
-            !stats.isSymbolicLink() &&
-            (process.platform === 'win32' ||
-                (stats.mode & 511n) === BigInt(FINDING_DIRECTORY_MODE)) &&
-            (typeof process.getuid !== 'function' ||
-                stats.uid === BigInt(process.getuid())));
     }
     function findingReference(value) {
         if (!FINDING_ID.test(value)) {
@@ -454,28 +406,6 @@ export function createGovernanceFindingOperations(bindings) {
             sourceRefs: findingSourceReferences(input.sourceRefs, false),
         };
     }
-    function ensurePrivateFindingDirectory(runtimeRoot, targetDirectory) {
-        const resolvedRoot = path.resolve(runtimeRoot);
-        const resolvedTarget = path.resolve(targetDirectory);
-        if (resolvedTarget !== resolvedRoot &&
-            !resolvedTarget.startsWith(`${resolvedRoot}${path.sep}`)) {
-            throw intakeInvalid('Governance Finding path escapes its runtime root.');
-        }
-        fs.mkdirSync(resolvedTarget, { recursive: true, mode: 0o700 });
-        let current = resolvedRoot;
-        for (const segment of path
-            .relative(resolvedRoot, resolvedTarget)
-            .split(path.sep)) {
-            if (segment.length > 0)
-                current = path.join(current, segment);
-            const stats = fs.lstatSync(current);
-            if (!stats.isDirectory() ||
-                stats.isSymbolicLink() ||
-                (stats.mode & 0o077) !== 0) {
-                throw workflowError('GOVERNANCE_FINDING_STORE_UNSAFE', 'Governance Finding storage must use private plain directories.', ExitCode.unsafeEnvironment);
-            }
-        }
-    }
     function boundedIdentifier(value, kind) {
         if (!/^[A-Za-z0-9][A-Za-z0-9._/@:-]{0,511}$/.test(value)) {
             throw intakeInvalid(`Governance Finding ${kind} identity is invalid.`);
@@ -497,9 +427,6 @@ export function createGovernanceFindingOperations(bindings) {
     }
     function digestHex(value) {
         return crypto.createHash('sha256').update(value, 'utf8').digest('hex');
-    }
-    function findingStoreUnsafe() {
-        return workflowError('GOVERNANCE_FINDING_STORE_UNSAFE', 'Governance Finding storage must contain only private canonical records.', ExitCode.unsafeEnvironment);
     }
     function findingDispositionCollision() {
         return workflowError('GOVERNANCE_FINDING_DISPOSITION_COLLISION', 'Governance Finding already has a different terminal disposition.', ExitCode.conflict);

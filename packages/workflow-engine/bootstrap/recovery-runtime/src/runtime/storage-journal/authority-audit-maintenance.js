@@ -5,9 +5,6 @@
  * - The durable journal and tombstone precede checkpoint publication and prefix deletion.
  * - Checkpoint history remains linked to exact policy, predecessor, and destruction evidence.
  * - Recovery preserves every publication, directory-fsync, and journal-removal boundary.
- *
- * Depends on: record codecs, protected tombstones, private publication, and retention contracts.
- * Failure modes: lost audit prefixes, mismatched checkpoint history, or incomplete maintenance replay.
  */
 import fs from 'node:fs';
 import path from 'node:path';

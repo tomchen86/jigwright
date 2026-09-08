@@ -5,9 +5,6 @@
  * - Catalog mutations retain current context and catalog-generation checks.
  * - Prune receipts become durable before catalog publication and object deletion.
  * - Pinned evidence and current manifest content remain reachable after pruning.
- *
- * Depends on: retention policy, store codecs, content objects, workflow locks, and prune recovery.
- * Failure modes: lost active evidence, stale catalog updates, or a prune receipt that cannot be recovered.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

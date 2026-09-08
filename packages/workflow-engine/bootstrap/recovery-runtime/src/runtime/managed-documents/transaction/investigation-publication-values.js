@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical path spelling, digest bytes, and failure identity remain stable.
  * - Shared helpers perform no publication or recovery transition.
- *
- * Depends on: canonical JSON, workflow errors, and publication naming rules.
- * Failure modes: changed journal identities, unsafe path admission, or inconsistent publication failures.
  */
 import { workflowError, ExitCode } from "../../../foundation/errors/errors.js";
 import path from 'node:path';

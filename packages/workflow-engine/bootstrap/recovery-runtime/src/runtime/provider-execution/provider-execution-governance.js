@@ -4,9 +4,6 @@
  * Invariants:
  * - Context digests, epoch rollover, retention bindings, and authority checks stay exact.
  * - Public repair APIs continue through the original entrypoint.
- *
- * Depends on: durable context governance, provider requests, repair governance, and runtime evidence.
- * Failure modes: Stale context can be launched or retained evidence can lose its exact owner.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

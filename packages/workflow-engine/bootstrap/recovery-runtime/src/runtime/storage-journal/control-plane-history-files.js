@@ -4,9 +4,6 @@
  * Invariants:
  * - Directories and files retain exact private modes and canonical containment checks.
  * - Record byte bounds and filesystem synchronization semantics remain unchanged.
- *
- * Depends on: history identifiers, filesystem metadata, and bounded UTF-8 reads.
- * Failure modes: unsafe paths or oversized records enter durable supervisor replay.
  */
 import fs from 'node:fs';
 import path from 'node:path';

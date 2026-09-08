@@ -4,9 +4,6 @@
  * Invariants:
  * - Existing callers retain the same public functions, types, and persisted record contracts.
  * - Each operation remains owned by its original lock and publication sequence.
- *
- * Depends on: intervention stores, sidecar records, and shared private persistence primitives.
- * Failure modes: incompatible callers, lost workflow bindings, or operations routed to the wrong durable owner.
  */
 export { interventionControlPersistencePaths, interventionRecordPath, persistedBootstrapSidecarSessionPath, engineAdoptionRecordPath, bootstrapSidecarPromotionPinPath, controlPlaneUpdateRecordPath, } from "./intervention-persistence-paths.js";
 export { persistInterventionPlan, readPersistedIntervention, } from "./intervention-plan-store.js";

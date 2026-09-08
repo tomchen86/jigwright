@@ -4,9 +4,6 @@
  * Invariants:
  * - Temporary bytes are synced before linking and parent syncs retain their order.
  * - Existing targets require exact canonical equality before replay succeeds.
- *
- * Depends on: Publication recovery, bounded file reads, and native session record validation.
- * Failure modes: A crash leaves ambiguous publication or a conflicting record overwrites authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

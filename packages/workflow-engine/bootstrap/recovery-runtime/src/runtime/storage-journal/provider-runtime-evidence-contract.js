@@ -4,9 +4,6 @@
  * Invariants:
  * - Requests, leases, completion receipts, and purpose-specific outputs remain exactly bound.
  * - Terminal and nonterminal evidence keep their existing admission and failure rules.
- *
- * Depends on: provider contracts, output validators, policy parsing, and private record value checks.
- * Failure modes: unbound provider output is accepted or valid execution evidence becomes unreadable.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { PLAN_REVIEW_OUTPUT_SCHEMA, PLAN_REVIEW_OUTPUT_VALIDATOR, } from "../../modules/assurance/plan-review.js";

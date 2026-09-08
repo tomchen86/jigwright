@@ -4,9 +4,6 @@
  * Invariants:
  * - Serialization retains its existing JSON byte order and trailing newline.
  * - Digest, timestamp, and error validation retain their original acceptance rules.
- *
- * Depends on: canonical JSON values and workflow error contracts.
- * Failure modes: changed durable bytes, inconsistent comparisons, or misleading grant-state errors.
  */
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export const DIGEST = /^[0-9a-f]{64}$/;

@@ -4,9 +4,6 @@
  * Invariants:
  * - Storage roots and derived filenames retain their canonical identity and path validation.
  * - Record and operation namespaces remain distinct and preserve existing directory permissions.
- *
- * Depends on: private directory checks, persistence contracts, and canonical identity filenames.
- * Failure modes: path aliases, namespace collisions, or records stored outside their durable owner.
  */
 import fs from 'node:fs';
 import path from 'node:path';

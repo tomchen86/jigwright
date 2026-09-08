@@ -5,10 +5,10 @@
 ## Product Purpose and Trust Model
 
 > ### Product purpose
-> 
+>
 > Jigwright is an AI-agent coding harness. It exists to improve the development
 > outcomes of well-intentioned AI agents by:
-> 
+>
 > - preserving working memory and durable state;
 > - preventing drift from approved plans and task scope;
 > - avoiding duplicated, omitted, or incorrectly repeated work;
@@ -19,7 +19,7 @@
 >   implementation; and
 > - improving completion accuracy, development speed, and cost efficiency while
 >   reducing engine and workflow complexity.
-> 
+>
 > Security governance is supporting infrastructure, not the product objective.
 > Controls must not impose disproportionate process cost, materially slow the
 > ordinary development path, or create avoidable deadlocks. An agent must not
@@ -27,16 +27,16 @@
 > make a workflow step permanently unskippable, or add approval, signing, review,
 > or evidence ceremony merely because stricter behavior appears safer. Such an
 > escalation is a product decision and requires explicit owner direction.
-> 
+>
 > The default delivery order is the simplest usable production path first,
 > followed by the correctness and recovery boundaries needed to keep facts and
 > durable state truthful. Security-only edge cases, adversarial hardening, and
 > additional ceremony that do not protect an active production path are deferred;
 > they must not block ordinary capability delivery or expand the product threat
 > model by default.
-> 
+>
 > ### Trust model
-> 
+>
 > - Agents are assumed to be well-intentioned but capable of mistakes,
 >   forgetting, misjudgment, or plan drift.
 > - Malicious, adversarial, or Byzantine agents are not the core product's
@@ -70,16 +70,19 @@
 >   concrete correctness, recovery, cost, or data-exposure risk on an active
 >   production path. A control that mainly adds ceremony or risks deadlock must
 >   be simplified or removed.
-> 
+>
 
 - [Explicit Markdown Guidance Targets](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Stable Region Identity and User Ownership](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Rules Share Maintained Sources](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Centralized Incremental Adoption Setup](../packages/workflow-engine/src/modules/adoption/spec.md)
+- [Policy Transitions Preserve Observations and Exact Grant Authority](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Local Verification Does Not Claim Real Pilot Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Declarative Projection Catalog](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Deterministic Shared Projection Services](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Preserve Existing Projection Contracts](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Curated Refresh Shares Region Splicing](../packages/workflow-engine/src/modules/projection/spec.md)
+- [Hosted Enforcement Observations Remain Exact and Separate From Local Preparation](../spec.md)
 
 ## Unattended use of external providers
 
@@ -236,6 +239,7 @@ No linked contract yet.
 - [Finding Conversion Has One Deterministic Target](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Finding Link Is a Receipt-Only Relation](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Governance Intake Counts Are Read-Only](../packages/workflow-engine/src/modules/governance-intake/spec.md)
+- [Selected Source Corrections Update Active Provenance Recoverably](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Agent Guide Uses Supported Planning Entry Points](../packages/workflow-engine/src/modules/guidance/spec.md)
 - [Agent Guide Explains Every Workflow Command](../packages/workflow-engine/src/modules/guidance/spec.md)
 - [Source Size Does Not Authorize Churn](../packages/workflow-engine/src/modules/guidance/spec.md)
@@ -243,7 +247,7 @@ No linked contract yet.
 ## Full current-v3 product parity
 
 > 正確公式應該是：
-> 
+>
 > ```bash
 > 新 Jigwright
 > = 舊 engine 的全部 current-v3 產品能力
@@ -251,9 +255,9 @@ No linked contract yet.
 > − shadow/parity 與歷史相容層
 > − expense-app 專屬資料和 adapter
 > ```
-> 
+>
 > 而不是：
-> 
+>
 > ```text
 > 新 Jigwright = 重新設計的精簡版 engine
 > ```
@@ -261,7 +265,7 @@ No linked contract yet.
 > 目前的 `plan create`、`task start/check/complete` 可以作為內部 primitives，但不應取代原本成熟的產品介面。保留 `propose/open-task/finalize` 也不是「legacy compatibility」；它們本來就是你設計的 current product workflow。
 
 > 可以刪除的只有：
-> 
+>
 > - v1/v2 readers、records、migration、replay
 > - legacy recovery formats
 > - shadow/parity／embedded comparison
@@ -272,7 +276,6 @@ No linked contract yet.
 
 > 任何項目都不能因為沒有被注意到就消失；`retired` 必須能證明它只服務 v1/v2／歷史相容，或經你明確批准。
 
-- [Archive evidence honors the canonical-evidence epoch](../packages/workflow-engine/spec.md)
 - [Provider Shortage Pauses Without Partial Transition](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Are Human-Issued and Exactly Bound](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Authorize Only Visible Independence Degradation](../packages/workflow-engine/spec.md)
@@ -285,20 +288,17 @@ No linked contract yet.
 - [Load-Bearing Evidence Requires a Full-Blob WHY Ledger](../packages/workflow-engine/spec.md)
 - [Non-Load-Bearing Evidence Remains Explicit](../packages/workflow-engine/spec.md)
 - [Investigation Exemption Does Not Manufacture Evidence](../packages/workflow-engine/spec.md)
-- [Design Ledger Is an Engine-Managed Projection](../packages/workflow-engine/spec.md)
 - [Investigation Evidence Uses Provenance and Semantic Digests](../packages/workflow-engine/spec.md)
 - [Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git](../packages/workflow-engine/spec.md)
 - [Investigation v3 Is Manifest-First](../packages/workflow-engine/spec.md)
 - [v3 Applicability and Validation Boundaries Are Exact](../packages/workflow-engine/spec.md)
 - [Every v3 Failure Delegates Continuation to Central Grant Core](../packages/workflow-engine/spec.md)
-- [Reusable Knowledge Remains Separate From Per-Change WHY](../packages/workflow-engine/spec.md)
 - [Descendant Reuse Preserves Original Provenance](../packages/workflow-engine/spec.md)
 - [Exact Project-Local OpenSpec Surface](../packages/workflow-engine/spec.md)
 - [Typed and Isolated OpenSpec Adapter](../packages/workflow-engine/spec.md)
 - [Project-Local Managed Change Schema](../packages/workflow-engine/spec.md)
 - [Combined Change Readiness](../packages/workflow-engine/spec.md)
 - [Authorized Planning Transition](../packages/workflow-engine/spec.md)
-- [Single Integration Bootstrap Exception](../packages/workflow-engine/spec.md)
 - [Workflow-Owned Archive Authorization](../packages/workflow-engine/spec.md)
 - [Isolated Archive Transformation](../packages/workflow-engine/spec.md)
 - [Stable Archive Identity](../packages/workflow-engine/spec.md)
@@ -311,7 +311,6 @@ No linked contract yet.
 - [Planning transitions may delete non-canonical tree noise](../packages/workflow-engine/spec.md)
 - [Generated OpenSpec Asset Format Scope Is Exact](../packages/workflow-engine/spec.md)
 - [CI plan replay rejects duplicate planning-tree entries](../packages/workflow-engine/spec.md)
-- [CI replay accepts bootstrap planning-tree repair revisions](../packages/workflow-engine/spec.md)
 - [Candidate Discovery Is Read-Only and Current](../packages/workflow-engine/spec.md)
 - [Local Preparation Reuses Core Archive Authority](../packages/workflow-engine/spec.md)
 - [Prepared Publication Payload Is Exact and Durable](../packages/workflow-engine/spec.md)
@@ -332,7 +331,6 @@ No linked contract yet.
 - [Immutable Evidence Chain](../packages/workflow-engine/spec.md)
 - [Serialized Completion Authority](../packages/workflow-engine/spec.md)
 - [Atomic Managed Commit](../packages/workflow-engine/spec.md)
-- [Disposable Database Preflight](../packages/workflow-engine/spec.md)
 - [Controlled Managed-Document Mutation](../packages/workflow-engine/spec.md)
 - [Whole-Change Documentation Closure](../packages/workflow-engine/spec.md)
 - [Semantic Handoff Traceability](../packages/workflow-engine/spec.md)
@@ -341,6 +339,9 @@ No linked contract yet.
 - [Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed](../packages/workflow-engine/spec.md)
 - [Live and CI Planning Assurance Share Content-Pure Validators](../packages/workflow-engine/spec.md)
 - [Assurance Claims Preserve Their Actual Hardness](../packages/workflow-engine/spec.md)
+- [Current archive requires canonical task evidence](../packages/workflow-engine/spec.md)
+- [Current Planning Replay Requires Complete Parent and Result Trees](../packages/workflow-engine/spec.md)
+- [Engine-Owned Disposable Database Preflight](../packages/workflow-engine/spec.md)
 - [Explicit Markdown Guidance Targets](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Stable Region Identity and User Ownership](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Rules Share Maintained Sources](../packages/workflow-engine/src/modules/adoption/spec.md)
@@ -361,13 +362,13 @@ No linked contract yet.
 - [Canonical single-purpose grant](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Git-common-directory grant state](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Protected audit envelope](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Isolated authority session](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Exact authority commit isolation](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Fail-closed commit recovery](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Revocation and replay resistance](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Bootstrap and sealed trust phases](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Real Bootstrap Pilot Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Authority commits carry check-definition transitions](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Current Authority Uses Exact Candidate Apply](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Exact Authority Candidates Carry Portable Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Policy Transitions Preserve Observations and Exact Grant Authority](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Local Verification Does Not Claim Real Pilot Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Governance Sources Preserve Selected Wording Exactly](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Corrections Preserve Earlier Sources](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Source Trace Exposes Provenance Without Copying Authority](../packages/workflow-engine/src/modules/governance-intake/spec.md)
@@ -390,16 +391,17 @@ No linked contract yet.
 - [Finding Conversion Has One Deterministic Target](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Finding Link Is a Receipt-Only Relation](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Governance Intake Counts Are Read-Only](../packages/workflow-engine/src/modules/governance-intake/spec.md)
+- [Selected Source Corrections Update Active Provenance Recoverably](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Agent Guide Uses Supported Planning Entry Points](../packages/workflow-engine/src/modules/guidance/spec.md)
 - [Agent Guide Explains Every Workflow Command](../packages/workflow-engine/src/modules/guidance/spec.md)
 - [Source Size Does Not Authorize Churn](../packages/workflow-engine/src/modules/guidance/spec.md)
 - [Current Investigation Applicability Gates Authoritative Planning](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Investigation Exemption Is Structured, Narrow, and Reviewed](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn](../packages/workflow-engine/src/modules/investigation/spec.md)
-- [Search Terms Have a Bounded Governed Lifecycle](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Every Sealed Term Is Scanned Across the Governed Tracked Tree](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Propose Is a Durable Resumable Planning Wrapper](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Manifest v3 and PlanReview Remain Separate Authorities](../packages/workflow-engine/src/modules/investigation/spec.md)
+- [Search Terms Form Bounded Provenance-Preserving Unions](../packages/workflow-engine/src/modules/investigation/spec.md)
 - [Routing Status Exposes Current Repository Inventory](../packages/workflow-engine/src/modules/lifecycle/spec.md)
 - [Controlled Lifecycle Source Owns Explicit Routing](../packages/workflow-engine/src/modules/lifecycle/spec.md)
 - [Routing Review Is Current and Recoverable](../packages/workflow-engine/src/modules/lifecycle/spec.md)
@@ -426,12 +428,59 @@ No linked contract yet.
 - [Standalone Registered Check Execution Is Fail-Closed](../spec.md)
 - [Registered format scope excludes archived bootstrap trees](../spec.md)
 - [Formatting and Generated Asset Validation Have Disjoint Scope](../spec.md)
-- [Valid Repository Code Ownership](../spec.md)
-- [Maintainer-Aware Pull Request Enforcement](../spec.md)
-- [Staged Governance Activation](../spec.md)
 - [Credential-Free Assurance Checkout Compatibility](../spec.md)
-- [Authority maintenance is a fourth managed commit kind](../spec.md)
 - [Authority verification is base-owned](../spec.md)
-- [Authority audit prerequisites remain maintainer-owned](../spec.md)
-- [Archive-Stable Semantic Handoff](../spec.md)
 - [Archive base resolves from the protected remote-tracking ref](../spec.md)
+- [Hosted Enforcement Observations Remain Exact and Separate From Local Preparation](../spec.md)
+- [Managed Commit Kinds Follow the Canonical Grammar](../spec.md)
+- [Authority Readiness Distinguishes Local and External Evidence](../spec.md)
+- [Semantic Handoff Follows Tracked Change State](../spec.md)
+
+## 算是觸及到核心理念 我不希望到處用id 或是給機器看的亂碼 我希望是可以給agent跟人類閱讀的文字 所以我希望善用投影技術 同時維持只有一個權威 但是很多地方都能看到 這是所有文件的中心思想
+
+> 算是觸及到核心理念 我不希望到處用id 或是給機器看的亂碼 我希望是可以給agent跟人類閱讀的文字 所以我希望善用投影技術 同時維持只有一個權威 但是很多地方都能看到 這是所有文件的中心思想
+
+- [Design Ledger Is an Engine-Managed Projection](../packages/workflow-engine/spec.md)
+- [Reusable Knowledge Remains Separate From Per-Change WHY](../packages/workflow-engine/spec.md)
+- [Open Task Presents Pinned System Meaning](../packages/workflow-engine/spec.md)
+- [Preserve Existing Projection Contracts](../packages/workflow-engine/src/modules/projection/spec.md)
+- [System Maps Project One Readable Contract Authority](../packages/workflow-engine/src/modules/projection/spec.md)
+- [Module References Combine Reviewed Explanations and Generated Facts](../packages/workflow-engine/src/modules/projection/spec.md)
+
+## 我發現dag 是不是不太直觀 寫在標頭是不是更好？ 當初的agent是突見我用dag 但是通常是正式change 的investigate 才會去讀吧？ 如果我寫在src files 標頭 那不是不管怎樣都會讀到？
+
+> 我發現dag 是不是不太直觀 寫在標頭是不是更好？ 當初的agent是突見我用dag 但是通常是正式change 的investigate 才會去讀吧？ 如果我寫在src files 標頭 那不是不管怎樣都會讀到？
+
+- [Open Task Presents Pinned System Meaning](../packages/workflow-engine/spec.md)
+
+## 這是個ai agent coding harness system 不用過度在意資安 導致過度治理 嚴重拖慢 開發速度 甚至導致 dead lock
+
+> 這是個ai agent coding harness system 不用過度在意資安 導致過度治理 嚴重拖慢 開發速度 甚至導致 dead lock
+> 不應default採用fail close 尤其是retry成本高的地方 應盡量採用fail grant
+> 這個engine旨在 管理 開發文件 讓agent 在optimal and fix 開發流池下 不要忘記 走該走的流程 還有更新文件 留下正確的開發文件 以利後續維護以及開發
+
+- [Finalize Records Exact Contract and Explanation Dispositions](../packages/workflow-engine/spec.md)
+
+## 當然是我的話為準 fail grant 我不希望任何開發使用者使用我們的engine走進死胡同
+
+> 當然是我的話為準 fail grant 我不希望任何開發使用者使用我們的engine走進死胡同
+
+- [Finalize Records Exact Contract and Explanation Dispositions](../packages/workflow-engine/spec.md)
+
+## 我想要開發新的feature 如聊天所示 但是要符合於各種專案 易維護 agent幾乎不回忘記要更新 然後架構合理 該有的都有
+
+> 我想要開發新的feature 如聊天所示 但是要符合於各種專案 易維護 agent幾乎不回忘記要更新 然後架構合理 該有的都有
+>
+> 目前engine 有issue log requirement intake
+> 也有current and next step roadmap
+> 但是描述系統的文件還停留在openspec capibility flat layer
+> 我不是很滿意
+
+- [Module References Combine Reviewed Explanations and Generated Facts](../packages/workflow-engine/src/modules/projection/spec.md)
+- [System Scenarios Bind Existing Meaning and Observed Test Proof](../packages/workflow-engine/src/modules/source/spec.md)
+
+## 我的構想是 spec live with code 這樣就比較容易發現 要修改的spec 並且src folder structure 可以視為天然的heirachy?
+
+> 我的構想是 spec live with code 這樣就比較容易發現 要修改的spec 並且src folder structure 可以視為天然的heirachy?
+
+- [Canonical Contracts Follow Directory Containment](../packages/workflow-engine/src/modules/source/spec.md)

@@ -4,9 +4,6 @@
  * Invariants:
  * - The audit root remains external to the repository and matches the canonical private layout.
  * - Persisted profile and protected configuration remain bound to the exact repository and policy.
- *
- * Depends on: private metadata files, anchor and tombstone records, and audit profile contracts.
- * Failure modes: mixed audit profiles, unsafe external paths, or mismatched protected backend configuration.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

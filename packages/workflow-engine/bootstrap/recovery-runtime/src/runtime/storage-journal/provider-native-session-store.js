@@ -4,9 +4,6 @@
  * Invariants:
  * - A repeated claim never returns a second launch binding.
  * - Scope checks and object publication remain inside the original lock boundaries.
- *
- * Depends on: Native session contracts, chain readers, and create-only publication.
- * Failure modes: Duplicate launches, stale assignment acceptance, or unauthorized continuation.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { createProviderNativeSessionContinuationAuthorityV1, assertProviderNativeSessionContinuationAuthorityV1, } from "../../modules/provider-orchestration/agent-runtime-durable-authority.js";

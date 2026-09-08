@@ -4,9 +4,6 @@
  * Invariants:
  * - Recovery binds the exact observed publication files, audit tag, and grant identity.
  * - Prepared receipts, quarantine moves, and final receipt publication preserve replay order.
- *
- * Depends on: grant publication contracts, grant-store locking, and resolution journals.
- * Failure modes: a recovery accepts changed publication state or leaves an ambiguous grant executable.
  */
 import fs from 'node:fs';
 import path from 'node:path';

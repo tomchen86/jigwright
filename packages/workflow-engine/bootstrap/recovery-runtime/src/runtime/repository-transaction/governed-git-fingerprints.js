@@ -4,9 +4,6 @@
  * Invariants:
  * - Control tree traversal and index framing preserve exact path and metadata semantics.
  * - Each category consumes the same shared projection bounds.
- *
- * Depends on: Git commands, repository path inventories, and bounded file framing.
- * Failure modes: Git control changes or worktree drift escape guarded provider evidence.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

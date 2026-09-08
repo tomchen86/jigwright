@@ -4,9 +4,6 @@
  * Invariants:
  * - Registrations preserve exact worktree, branch, lock, and object-identity validation.
  * - Resource and worktree digests retain their original canonical inputs.
- *
- * Depends on: Git worktree porcelain records, session isolation types, and canonical path rules.
- * Failure modes: unregistered worktrees admitted or conflicting sessions assigned different lease identities.
  */
 import fs from 'node:fs';
 import path from 'node:path';

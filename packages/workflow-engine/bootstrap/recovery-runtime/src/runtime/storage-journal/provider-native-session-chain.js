@@ -4,9 +4,6 @@
  * Invariants:
  * - Turns remain contiguous and every continuation matches its predecessor.
  * - Scope verification and the scope lock preserve their original boundaries.
- *
- * Depends on: Assignment records, runtime receipt authority, and native session publication recovery.
- * Failure modes: Broken chains, stale assignments, or unauthenticated continuations appear valid.
  */
 import fs from 'node:fs';
 import path from 'node:path';

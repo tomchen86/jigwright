@@ -5,9 +5,6 @@
  * - Grant locks retain exclusive-create ownership and their existing conflict semantics.
  * - Workflow locks retain owner records, dead-owner recovery, inode checks, and directory durability.
  * - Operation failures retain precedence over failures while releasing the lock.
- *
- * Depends on: private files, storage paths, canonical owner records, and workflow errors.
- * Failure modes: concurrent grant use, stale workflow locks, or releasing a lock owned by another process.
  */
 import fs from 'node:fs';
 import path from 'node:path';

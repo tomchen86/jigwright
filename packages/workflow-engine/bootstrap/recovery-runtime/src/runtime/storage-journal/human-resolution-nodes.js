@@ -4,9 +4,6 @@
  * Invariants:
  * - Head refs point only to validated nodes belonging to the exact investigation.
  * - Node creation and head replacement preserve canonical bytes and lock ordering.
- *
- * Depends on: resolution contracts, private files, and resolution object and ref paths.
- * Failure modes: a head advances to unrelated evidence or concurrent resolution state is overwritten.
  */
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

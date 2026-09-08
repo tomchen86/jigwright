@@ -4,9 +4,6 @@
  * Invariants:
  * - Current manifest content, current-epoch evidence, and explicitly pinned evidence survive pruning.
  * - Expiry limits and receipt or stub bounds retain deterministic ordering and canonical bytes.
- *
- * Depends on: context and epoch validation, retention policy, and canonical execution values.
- * Failure modes: required evidence selected for deletion, unbounded history, or stale retention state.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";

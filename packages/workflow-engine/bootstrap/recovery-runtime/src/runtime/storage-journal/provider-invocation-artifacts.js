@@ -4,9 +4,6 @@
  * Invariants:
  * - Private file checks, canonical bytes, snapshot digests, and atomic publication stay exact.
  * - Snapshot ownership and content bindings are revalidated on reads.
- *
- * Depends on: private investigation storage, provider validation, and invocation paths.
- * Failure modes: Changed or unsafe snapshot files can be accepted, or durable artifacts become unreadable.
  */
 import fs from 'node:fs';
 import path from 'node:path';

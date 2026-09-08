@@ -4,9 +4,6 @@
  * Invariants:
  * - Existing public types and functions keep their original signatures and durable semantics.
  * - Session records, repository serialization, and worktree isolation retain separate ownership.
- *
- * Depends on: session records, lifecycle locks, worktree registration, and isolation admission.
- * Failure modes: caller API drift or coordination paths using inconsistent session authority.
  */
 export { assertRepositoryLifecyclePreflightAdmission, withRepositoryLifecycleOperation, withRepositoryLifecycleOperationAsync, } from "./repository-lifecycle-lock.js";
 export { runtimePaths, readSessionFile, writeJsonAtomic, createSessionId, } from "./workflow-session-records.js";

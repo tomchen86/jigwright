@@ -4,9 +4,6 @@
  * Invariants:
  * - Expected revisions and result candidates are checked under the same job lock before publication.
  * - Acceptance and reconciliation preserve exact policy, lease, and receipt bindings.
- *
- * Depends on: execution projections, state contracts, and canonical execution state files.
- * Failure modes: stale provider results are accepted or recovery loses the original committed execution state.
  */
 import fs from 'node:fs';
 import path from 'node:path';

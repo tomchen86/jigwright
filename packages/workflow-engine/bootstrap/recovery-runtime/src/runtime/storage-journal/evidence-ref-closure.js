@@ -4,9 +4,6 @@
  * Invariants:
  * - Every ref and dependency retains validated ownership and canonical digest identity.
  * - Unsafe observations remain explicit and closure entries keep their original ordering.
- *
- * Depends on: ref snapshots, evidence readers, and planning and review ownership validators.
- * Failure modes: a closure silently omits unsafe evidence or assigns refs to the wrong investigation.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { canonicalEvidenceNodeEnvelope, } from "../../foundation/evidence-node/evidence-node.js";

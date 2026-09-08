@@ -5,9 +5,6 @@
  * - Prompt contents match the exact item identities and digests recorded in the manifest.
  * - Result eligibility retains workflow, job, epoch, snapshot, and attempt classification order.
  * - Rollover advances one epoch and records exact carry-forward decisions and new context identity.
- *
- * Depends on: context-manifest contracts and canonical execution value validation.
- * Failure modes: stale results admitted, mismatched prompt content, or lost rollover provenance.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";

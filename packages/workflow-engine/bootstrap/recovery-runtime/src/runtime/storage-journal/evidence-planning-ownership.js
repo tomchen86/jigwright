@@ -4,9 +4,6 @@
  * Invariants:
  * - Owner, mandate, manifest, and applicability bindings match the exact recorded evidence.
  * - Dependency closure entries preserve their canonical node and result digests.
- *
- * Depends on: evidence node readers, investigation applicability, and ownership contracts.
- * Failure modes: planning evidence is attributed to another session or detached from its manifest authority.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { canonicalEvidenceNodeEnvelope, } from "../../foundation/evidence-node/evidence-node.js";

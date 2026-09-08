@@ -4,9 +4,6 @@
  * Invariants:
  * - Live owners, strict prefixes, linked finals, and collisions keep distinct recovery outcomes.
  * - Alias removal and directory fsync retain their original order and ownership checks.
- *
- * Depends on: stable private reads, publication file names, and process liveness.
- * Failure modes: recovery deletes another writer’s bytes or leaves an ambiguous final object readable.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

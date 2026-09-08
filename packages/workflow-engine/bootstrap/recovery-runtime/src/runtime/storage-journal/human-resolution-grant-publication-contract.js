@@ -4,9 +4,6 @@
  * Invariants:
  * - File names, digests, audit identities, and phase shapes retain their current exact checks.
  * - Recovery receipts bind every observed artifact and its intended quarantine destination.
- *
- * Depends on: resolution value checks, canonical JSON, and grant publication naming rules.
- * Failure modes: tampered or stale recovery evidence is accepted as the same interrupted publication.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { GIT_OBJECT_ID, humanResolutionGrantPublicationRecoveryStale, isBoundedResolutionText, } from "./investigation-resolution-values.js";

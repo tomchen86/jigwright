@@ -5,9 +5,6 @@
  * - Updates validate the current record and publish the next record inside one operation lock.
  * - Artifact readiness, adoption, abandonment, and history preserve exact workflow identity.
  * - Archived sidecar records and new sessions retain their existing replay and publication order.
- *
- * Depends on: sidecar record codecs, private persistence, and operation locks.
- * Failure modes: lost lifecycle events, overwritten sidecar revisions, or reuse of a stale artifact binding.
  */
 import fs from 'node:fs';
 import path from 'node:path';

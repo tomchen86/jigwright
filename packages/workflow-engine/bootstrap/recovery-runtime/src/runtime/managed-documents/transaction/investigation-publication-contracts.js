@@ -4,9 +4,6 @@
  * Invariants:
  * - Snapshots, refs, and failure observations retain exact fields and lifecycle identity.
  * - Namespace and failure-emission digests retain their canonical input bytes.
- *
- * Depends on: investigation manifest validation and publication value primitives.
- * Failure modes: foreign lifecycle authority, invalid recovery records, or changed failure evidence.
  */
 import { digest, isCanonicalPublicationRelativePath, hasExactKeys, DIGEST, publicationFailureSourceInvalid, deepFreeze, isBoundedPublicationPath, publicationFailure, prefixedDigest, } from "./investigation-publication-values.js";
 import { parseInvestigationV3Blocker, } from "../../../modules/investigation/manifest/investigation-manifest.js";

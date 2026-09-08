@@ -4,9 +4,6 @@
  * Invariants:
  * - Degraded role authority retains participant, independence, attestation, and content bindings.
  * - Consumed-use validation does not turn referenced content into governing authority.
- *
- * Depends on: collaboration envelope validation, verifier ports, and durable record types.
- * Failure modes: unbound degraded review, fabricated consumed-use evidence, or changed replay admission.
  */
 import { parseCollaborationGrantEnvelope, validateCollaborationGrantEnvelope, validateDirectHumanReviewAttestation, collaborationGrantEnvelopeDigest, COLLABORATION_GRANT_AUTHORIZED_EFFECT, COLLABORATION_GRANT_RETAINED_OBLIGATIONS, COLLABORATION_GRANT_REPLAY_SCOPE, COLLABORATION_GRANT_RESIDUALS, canonicalCollaborationGrantEnvelope, parseDirectHumanReviewAttestation, canonicalDirectHumanReviewAttestation, directHumanReviewAttestationDigest, } from "../../modules/authority/collaboration-grant-codec.js";
 import { isRecord, invalidUse, exactDate, exactDigest, hasExactKeys, DIGEST, isExactTimestamp, ambiguousGrant, deepFreeze, } from "./collaboration-grant-store-values.js";

@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest normalization and attempt accounting preserve existing accepted values and bounds.
  * - Workflow errors and deterministic identifiers remain compatible with durable records.
- *
- * Depends on: canonical JSON, execution core values, and SHA-256.
- * Failure modes: equal execution state receives different identities or budgets are counted incorrectly.
  */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

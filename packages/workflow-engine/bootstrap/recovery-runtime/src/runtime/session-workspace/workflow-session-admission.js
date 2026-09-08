@@ -4,9 +4,6 @@
  * Invariants:
  * - Admission retains current worktree, write-scope, and exclusive-resource comparisons.
  * - Lease observations remain tied to the exact active session being admitted or rejected.
- *
- * Depends on: workflow session records, task isolation leases, and allowed-path matching.
- * Failure modes: conflicting tasks run concurrently or valid independent work is incorrectly blocked.
  */
 import { readSessionFile, } from "./workflow-session-records.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
@@ -14,6 +11,7 @@ import path from 'node:path';
 import { taskSessionIsolationLeasePaths, observeTaskSessionIsolationLease, taskSessionLeaseConflict, } from "./workflow-session-isolation.js";
 import { normalizePolicyPath, matchesAllowedPath } from "./paths.js";
 import fs from 'node:fs';
+import { isBaseSpecificationPath } from "../../modules/source/system-spec-catalog.js";
 export function listActiveWorkflowSessionIds(runtime) {
     return listActiveWorkflowSessions(runtime).map((session) => session.sessionId);
 }
@@ -90,9 +88,15 @@ function taskSerializedScopeKinds(allowedPaths) {
         },
         { kind: 'remote-effect', root: '.github' },
     ];
-    return definitions
+    const kinds = definitions
         .filter(({ root }) => allowedPaths.some((allowedPath) => taskWritePatternsOverlap(allowedPath, `${root}/**`)))
         .map(({ kind }) => kind);
+    // Containing an inherited spec does not make ordinary module scope a
+    // repository-wide contract operation; only an explicit spec path does.
+    if (allowedPaths.some(isBaseSpecificationPath) &&
+        !kinds.includes('base-spec'))
+        kinds.unshift('base-spec');
+    return kinds;
 }
 function taskSessionIdentityConflict(code, message, existing) {
     return workflowError(code, message, ExitCode.conflict, {

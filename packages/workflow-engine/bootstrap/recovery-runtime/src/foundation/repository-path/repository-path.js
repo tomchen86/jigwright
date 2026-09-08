@@ -4,9 +4,6 @@
  * Invariants:
  * - Core validation remains authoritative for accepted identifiers and path syntax.
  * - Error codes, messages, details, and recovery hints preserve their exact values.
- *
- * Depends on: the core repository-path and runtime-path kernels and workflow errors.
- * Failure modes: malformed paths or change IDs are accepted, or callers receive incompatible errors.
  */
 import { assertChangeId as assertCoreChangeId } from '@jigwright/core/runtime-path-kernel';
 import { RepositoryPathError, matchesAllowedPath as matchesCoreAllowedPath, normalizeChangedPath as normalizeCoreChangedPath, normalizeExactRepositoryPath as normalizeCoreExactRepositoryPath, normalizePolicyPath as normalizeCorePolicyPath, } from '@jigwright/core/repository-path';

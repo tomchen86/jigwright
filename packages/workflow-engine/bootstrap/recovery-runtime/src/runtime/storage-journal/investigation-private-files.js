@@ -4,9 +4,6 @@
  * Invariants:
  * - Reads reject aliases, links, permission drift, and files that change across descriptor checks.
  * - Creation, replacement, and lock release retain their distinct rename and fsync order.
- *
- * Depends on: filesystem safety primitives, private runtime paths, and caller-supplied workflow errors.
- * Failure modes: unsafe files are trusted, competing writers overlap, or durable records become partial.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

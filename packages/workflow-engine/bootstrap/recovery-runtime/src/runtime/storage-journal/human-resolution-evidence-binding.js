@@ -4,9 +4,6 @@
  * Invariants:
  * - Materializations retain exact owner-session, manifest, checkpoint, and mandate bindings.
  * - Start reservations preserve their current schema and digest validation.
- *
- * Depends on: investigation session records, evidence closures, and private runtime paths.
- * Failure modes: a resolution trusts evidence or a start reservation belonging to another investigation.
  */
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

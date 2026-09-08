@@ -5,9 +5,6 @@
  * - Prepared publication bytes and final records retain exact sequence and digest identity.
  * - Recovery validates the checkpoint boundary and predecessor chain before accepting an orphan.
  * - Publication hooks, descriptor fsync, linking, cleanup, and directory fsync keep their order.
- *
- * Depends on: record codecs, retention checkpoints, and private publication primitives.
- * Failure modes: unrecoverable orphan records, duplicate sequence publication, or a broken audit chain.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

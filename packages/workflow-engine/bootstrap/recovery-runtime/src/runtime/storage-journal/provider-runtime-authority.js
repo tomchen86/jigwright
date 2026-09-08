@@ -4,9 +4,6 @@
  * Invariants:
  * - Authority objects and refs bind the exact request, execution generation, and completion result.
  * - Terminal preflight and completed-result checks preserve their distinct required evidence.
- *
- * Depends on: provider evidence contracts, private files, admission records, and native-session authority.
- * Failure modes: stale generations or unrelated native completions are accepted as execution authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

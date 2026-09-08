@@ -4,9 +4,6 @@
  * Invariants:
  * - Observations preserve path bytes, stable file identities, and exact bounded content digests.
  * - Changes during observation retain the original ambiguity markers.
- *
- * Depends on: filesystem metadata, SHA-256, and canonical JSON.
- * Failure modes: quarantine observations miss changed content or identify a different unsafe artifact.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Temporary reclamation and prepared-recovery barriers precede the protected operation.
  * - Lock options preserve their existing scope and grant-specific recovery exceptions.
- *
- * Depends on: private runtime locks, publication receipt contracts, and grant directories.
- * Failure modes: concurrent operations race with recovery or stale temporary grants survive as authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

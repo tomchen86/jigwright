@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest, record, and lock-token acceptance rules remain unchanged.
  * - Directory synchronization closes its descriptor on success and failure.
- *
- * Depends on: Node filesystem primitives and workflow errors.
- * Failure modes: inconsistent session validation, leaked descriptors, or missing directory durability.
  */
 import fs from 'node:fs';
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";

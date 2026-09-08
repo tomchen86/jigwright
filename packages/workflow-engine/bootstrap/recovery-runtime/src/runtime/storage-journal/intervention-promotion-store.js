@@ -4,9 +4,6 @@
  * Invariants:
  * - Promotion pins retain exact transaction, artifact, source workflow, and parent authority bindings.
  * - Reservation and promotion projection preserve their parent lock and CAS checks.
- *
- * Depends on: sidecar records and storage, private persistence, and parent operation locks.
- * Failure modes: competing promotions, stale pin adoption, or promotion state detached from its sidecar.
  */
 import fs from 'node:fs';
 import path from 'node:path';

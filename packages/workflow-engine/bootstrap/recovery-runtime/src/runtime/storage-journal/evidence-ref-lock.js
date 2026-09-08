@@ -4,9 +4,6 @@
  * Invariants:
  * - Lock acquisition, stale-owner checks, and release preserve exact process and file ownership.
  * - Cleanup never removes a lock whose descriptor or pathname no longer matches.
- *
- * Depends on: prepared lock primitives, private directory checks, and ref workflow errors.
- * Failure modes: two ref writers overlap or a live owner loses its lock.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

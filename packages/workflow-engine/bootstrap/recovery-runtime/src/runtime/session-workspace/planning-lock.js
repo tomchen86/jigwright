@@ -4,9 +4,6 @@
  * Invariants:
  * - Repository, session, and change locks retain their existing acquisition and revalidation order.
  * - Human-resolution barriers and active-session checks run before protected transitions.
- *
- * Depends on: workflow session records, repository lifecycle locks, and human-resolution journals.
- * Failure modes: concurrent planning writes, stale lock ownership, or transitions during human resolution.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

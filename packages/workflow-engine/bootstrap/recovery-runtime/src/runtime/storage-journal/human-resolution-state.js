@@ -4,9 +4,6 @@
  * Invariants:
  * - Sessions, refs, journals, grants, and provider evidence retain their exact owner bindings.
  * - Quarantine observations preserve ambiguity and never silently discard unsafe state.
- *
- * Depends on: session records, resolution journals and nodes, and provider and evidence bindings.
- * Failure modes: human resolution targets stale state or quarantine omits an unsafe artifact.
  */
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

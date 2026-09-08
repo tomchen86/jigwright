@@ -4,9 +4,6 @@
  * Invariants:
  * - Path construction and identifier validation keep their existing accepted values.
  * - Unsafe observations, canonical envelope checks, and error codes remain byte-compatible.
- *
- * Depends on: runtime paths, private readers, canonical JSON, and workflow errors.
- * Failure modes: records resolve to different paths or identical failures produce incompatible evidence.
  */
 import path from 'node:path';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

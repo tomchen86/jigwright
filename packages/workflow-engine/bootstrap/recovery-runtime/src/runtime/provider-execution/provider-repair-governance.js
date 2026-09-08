@@ -4,9 +4,6 @@
  * Invariants:
  * - Repair budget replay, evidence publication, and replacement lineage ordering stay exact.
  * - Canonical evidence, error bounds, and request bindings remain unchanged.
- *
- * Depends on: durable repair governance, private investigation files, and invocation records.
- * Failure modes: A replacement can consume the wrong repair budget or lose recoverable failure evidence.
  */
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

@@ -4,9 +4,6 @@
  * Invariants:
  * - Lock nesting, lease generations, fence tokens, and expiry decisions stay exact.
  * - A live or unresolved worker cannot be silently treated as quiescent.
- *
- * Depends on: provider state, invocation requests, private runtime locks, and process liveness.
- * Failure modes: Overlapping workers can publish stale results or block recovery indefinitely.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

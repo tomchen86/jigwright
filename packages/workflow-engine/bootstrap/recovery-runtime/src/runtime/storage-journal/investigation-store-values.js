@@ -4,9 +4,6 @@
  * Invariants:
  * - Accepted scalar shapes and exact-key checks retain their existing contracts.
  * - Digest bytes, recursive freezing, and provider-state error identity stay stable.
- *
- * Depends on: canonical record values, SHA-256, and workflow errors.
- * Failure modes: malformed records pass validation or equivalent state receives a different identity.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

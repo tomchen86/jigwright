@@ -4,9 +4,6 @@
  * Invariants:
  * - Reads retain size, mode, link count, and no-follow checks.
  * - Stable snapshots compare both pathname and opened descriptor identities.
- *
- * Depends on: Private investigation directories, filesystem metadata, and canonical JSON.
- * Failure modes: Swapped files, hard links, or oversized records become accepted authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

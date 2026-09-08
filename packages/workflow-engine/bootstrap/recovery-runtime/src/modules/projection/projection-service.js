@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { projectionDefinition, } from "./engine-projection-registry.js";
+import { projectionDefinition, isSemanticProjectionPath, } from "./engine-projection-registry.js";
 /** Reuse the exact source slice boundary; callers retain their own locators. */
 export function spliceProjectionRegion(current, region, replacement) {
     if (!Number.isInteger(region.start) ||
@@ -70,7 +70,11 @@ export function createProjectionService(bindings, io) {
         }
         if (definition.target.kind === 'engine-path') {
             const approvedPaths = binding.targetPaths ?? [definition.target.path];
-            if ((binding.targetPaths !== undefined && !definition.target.configKey) ||
+            if ((binding.targetPaths !== undefined &&
+                !definition.target.configKey &&
+                definition.id !== 'semantic.binding-index') ||
+                (definition.id === 'semantic.binding-index' &&
+                    outputs.some(({ path }) => !isSemanticProjectionPath(path))) ||
                 new Set(approvedPaths).size !== approvedPaths.length ||
                 outputs.some(({ path }) => !approvedPaths.includes(path)) ||
                 (binding.targetPaths !== undefined &&

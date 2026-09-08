@@ -4,9 +4,6 @@
  * Invariants:
  * - Control-update authority retains the exact transaction, artifact, capability, and review bindings.
  * - Transaction uniqueness, observation validation, and publication remain within the operation lock.
- *
- * Depends on: control-plane domain policy, current grant contracts, and private persistence primitives.
- * Failure modes: duplicate update transactions, stale authority, or corrupted control-update observations.
  */
 import fs from 'node:fs';
 import path from 'node:path';

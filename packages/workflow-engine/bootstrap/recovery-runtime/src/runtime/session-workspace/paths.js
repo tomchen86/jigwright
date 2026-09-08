@@ -4,9 +4,6 @@
  * Invariants:
  * - Identifier errors and runtime directory layouts retain their exact contracts.
  * - Policy paths cannot escape the repository or cross symbolic-link aliases.
- *
- * Depends on: the core runtime-path kernel and foundation repository-path validation.
- * Failure modes: invalid workspace identities, changed recovery errors, or unsafe policy paths.
  */
 import { RepositoryBoundaryError, assertInvestigationId as assertCoreInvestigationId, assertInvocationId as assertCoreInvocationId, assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository, assertSessionId as assertCoreSessionId, assertTaskId as assertCoreTaskId, investigationRuntimePaths, } from '@jigwright/core/runtime-path-kernel';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

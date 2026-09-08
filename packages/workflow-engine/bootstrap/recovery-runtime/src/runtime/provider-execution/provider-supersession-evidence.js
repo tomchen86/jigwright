@@ -4,9 +4,6 @@
  * Invariants:
  * - Artifact digest bytes, retained evidence rules, no-follow reads, and stable file checks remain exact.
  * - Snapshot stability is revalidated against the same canonical evidence objects.
- *
- * Depends on: private invocation artifacts, retention receipts, and supersession schema digests.
- * Failure modes: A replaced or pruned artifact can masquerade as the admitted predecessor evidence.
  */
 import fs from 'node:fs';
 import path from 'node:path';

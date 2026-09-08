@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical envelopes and node identities match the core evidence codec.
  * - Invalid inputs retain WorkflowError codes and exit statuses.
- *
- * Depends on: the core evidence codec, canonical JSON, and workflow errors.
- * Failure modes: changed evidence identities or incompatible malformed-input errors.
  */
 import { CanonicalJsonError } from '@jigwright/core/canonical-json';
 import { assertStoredEvidenceNode as assertCoreStoredEvidenceNode, canonicalEvidenceNodeEnvelope as canonicalCoreEvidenceNodeEnvelope, createEvidenceNode as createCoreEvidenceNode, } from '@jigwright/core/evidence-node';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Content digests and canonical envelope bytes are checked before returning stored values.
  * - Context items publish before their owning envelope and never overwrite a different object.
- *
- * Depends on: store contracts, canonical values, and private file publication.
- * Failure modes: digest collisions, unsafe storage paths, or context envelopes naming unavailable objects.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

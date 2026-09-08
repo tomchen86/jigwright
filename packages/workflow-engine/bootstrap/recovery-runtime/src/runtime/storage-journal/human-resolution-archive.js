@@ -4,9 +4,6 @@
  * Invariants:
  * - Quarantine acts only on the previously observed unsafe path and expected state.
  * - Rename, directory fsync, conflict checks, and lifecycle locking retain their order.
- *
- * Depends on: resolution state inspection, session refs, and private file primitives.
- * Failure modes: recovery moves a different artifact or loses durable evidence of a quarantined ref.
  */
 import fs from 'node:fs';
 import path from 'node:path';

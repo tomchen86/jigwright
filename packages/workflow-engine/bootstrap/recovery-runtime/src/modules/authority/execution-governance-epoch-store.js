@@ -5,9 +5,6 @@
  * - Manifest objects publish before the atomic context and retention envelope.
  * - Rollover and guarded result acceptance retain exact epoch, context, and generation bindings.
  * - Receipt compaction preserves semantic context while advancing only operational generation.
- *
- * Depends on: context policy, store codecs, immutable objects, workflow locks, and prune recovery.
- * Failure modes: stale result admission, mixed context generations, or unreachable current prompt evidence.
  */
 import fs from 'node:fs';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

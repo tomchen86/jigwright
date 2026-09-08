@@ -4,9 +4,6 @@
  * Invariants:
  * - Manifest variants, bounded text, source references, and digest bytes stay unchanged.
  * - Subject and planning snapshot validation remains tied to the requested manifest kind.
- *
- * Depends on: planning and task review contracts, invocation types, and shared value predicates.
- * Failure modes: A manifest can bind the wrong subject or produce incompatible request identities.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { assertChangeId, assertTaskId, assertSessionId, } from "../session-workspace/paths.js";

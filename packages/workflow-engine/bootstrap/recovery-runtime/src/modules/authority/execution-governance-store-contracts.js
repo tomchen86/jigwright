@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical envelopes bind context and retention to the same workflow and exact manifest.
  * - Prepared prune records retain before and after catalog digests and their transition state.
- *
- * Depends on: context and retention policy codecs plus canonical execution values.
- * Failure modes: malformed durable state accepted, mismatched CAS generations, or unverifiable prune recovery.
  */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

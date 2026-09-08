@@ -4,9 +4,6 @@
  * Invariants:
  * - Idempotent appends retain exact event bytes and predecessor-chain identity.
  * - Recovery and retention execute under the same ledger lock before a new append.
- *
- * Depends on: ledger layout, record publication, maintenance, and lock protocols.
- * Failure modes: duplicate events, broken chain order, or an append that bypasses pending recovery.
  */
 import { AUDIT_EVENT_MAX_FUTURE_SKEW_MS, AUTHORITY_AUDIT_PROFILE_POLICIES, } from "./authority-audit-contracts.js";
 import { assertAppendInput, recordMatchesInput, freezeRecord, canonicalRecordContent, freezeEntry, } from "./authority-audit-record-codec.js";

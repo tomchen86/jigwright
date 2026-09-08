@@ -4,9 +4,6 @@
  * Invariants:
  * - Completion candidates, execution acceptance, state writes, and continuation publication keep their order.
  * - Both recovery paths repair only exact durable results while retaining lock and CAS checks.
- *
- * Depends on: invocation state, worker fences, execution store, runtime receipts, and native-session authority.
- * Failure modes: Partial success can become unrecoverable or a stale result can gain terminal authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

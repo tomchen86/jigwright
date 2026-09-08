@@ -4,9 +4,6 @@
  * Invariants:
  * - Repair contexts retain exact execution bindings and require complete replacement validation.
  * - Attempt totals agree with sorted fingerprint counts and the configured repair limits.
- *
- * Depends on: canonical execution values, structured validation errors, and workflow errors.
- * Failure modes: incomplete repair prompts, repeated failure loops, or incorrect budget exhaustion.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";

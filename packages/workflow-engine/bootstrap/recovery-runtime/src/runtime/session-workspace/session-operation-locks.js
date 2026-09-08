@@ -4,9 +4,6 @@
  * Invariants:
  * - Lock release and recovery verify owner tokens and stable descriptor identity.
  * - A competing process cannot release another session owner or reclaim a live lock.
- *
- * Depends on: prepared filesystem locks, session values, and Node descriptor operations.
- * Failure modes: overlapping session operations, stale locks, or deletion of a competing owner lock.
  */
 import { ensurePlainDirectory, publishPreparedExclusiveLock, reclaimDeadPreparedLock, withPreparedLockCleanupClaim, } from "../repository-transaction/filesystem-safety.js";
 import path from 'node:path';

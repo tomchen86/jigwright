@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest bytes and value acceptance stay unchanged.
  * - Helpers perform no durable reads or writes.
- *
- * Depends on: SHA-256 and plain JavaScript values.
- * Failure modes: Evidence identities drift or malformed transaction values are accepted.
  */
 import crypto from 'node:crypto';
 export function digestBuffer(value) {

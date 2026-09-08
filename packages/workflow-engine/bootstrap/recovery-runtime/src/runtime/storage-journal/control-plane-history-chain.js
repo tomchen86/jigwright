@@ -4,9 +4,6 @@
  * Invariants:
  * - Every successor binds its predecessor, generation, active artifact, and trust commit.
  * - Terminal records close only the exact active transition with no gaps or forks.
- *
- * Depends on: history record contracts and transition error identities.
- * Failure modes: supervisor replay crosses a missing generation or follows a conflicting history branch.
  */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

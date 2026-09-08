@@ -5,9 +5,6 @@
  * - Acquire retries and dead-owner reclamation retain the canonical operation-key owner record.
  * - CAS checks and their mutations remain inside the same locked callback.
  * - Release preserves exact owner checks and its existing cleanup error behavior.
- *
- * Depends on: prepared-lock filesystem safety, persistence paths, and private file durability.
- * Failure modes: concurrent parent mutation, stale operation locks, or release of another process lock.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

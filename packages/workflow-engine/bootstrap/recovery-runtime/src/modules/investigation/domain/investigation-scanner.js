@@ -400,7 +400,11 @@ function buildInventoryFacts(snapshot, generatedEntries = []) {
             byteSize: entry.byteSize,
             reason: 'generated-artifact',
         })),
-    ].sort((left, right) => left.objectId < right.objectId ? -1 : left.objectId > right.objectId ? 1 : 0);
+    ].sort((left, right) => left.objectId < right.objectId
+        ? -1
+        : left.objectId > right.objectId
+            ? 1
+            : 0);
     return {
         treeDigest: snapshot.treeDigest,
         skippedObjects,

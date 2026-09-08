@@ -4,9 +4,6 @@
  * Invariants:
  * - Only the recorded owner releases its exact private lock and associated prepared alias.
  * - Dead-owner reclamation retains the existing canonical record and namespace checks.
- *
- * Depends on: prepared-lock filesystem safety, audit owner contracts, and private directory checks.
- * Failure modes: concurrent audit mutation, abandoned locks, or releasing another process lock.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

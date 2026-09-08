@@ -4,9 +4,6 @@
  * Invariants:
  * - Grant identity and usage counters retain exact request and Task Mandate bindings.
  * - Canonical bytes, supported schemas, limits, and error codes remain unchanged.
- *
- * Depends on: canonical execution values, Task Mandate types, and workflow errors.
- * Failure modes: invalid grants admitted, changed signature bytes, or inconsistent usage receipts.
  */
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

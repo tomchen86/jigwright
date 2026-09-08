@@ -4,9 +4,6 @@
  * Invariants:
  * - Predecessor and successor binding checks, durable relation writes, and crash phases stay ordered.
  * - Recovery remains with the prepare and finalize transaction that it completes.
- *
- * Depends on: supersession schema storage, stable evidence snapshots, and exact invocation entries.
- * Failure modes: A replacement can point to stale evidence or leave ambiguous current endpoints.
  */
 import fs from 'node:fs';
 import path from 'node:path';

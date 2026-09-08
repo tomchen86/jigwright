@@ -4,9 +4,6 @@
  * Invariants:
  * - Record payloads retain exact canonical digest bytes and their validation error codes.
  * - Human verifier and timestamp inputs retain their current requirements and invocation semantics.
- *
- * Depends on: canonical JSON, intervention contracts, cryptographic digests, and workflow errors.
- * Failure modes: accepted malformed records, changed identities, or authority checks with different outcomes.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

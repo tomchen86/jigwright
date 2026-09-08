@@ -22,15 +22,15 @@
 
 | Directory | Contract | Requirements | Scenarios |
 | --- | --- | ---: | ---: |
-| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 69 | 191 |
+| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 70 | 199 |
 | packages/workflow-engine/src/modules/adoption | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | 4 | 9 |
 | packages/workflow-engine/src/modules/assurance | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | 7 | 22 |
-| packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 16 | 50 |
-| packages/workflow-engine/src/modules/governance-intake | [Governance Intake](../packages/workflow-engine/src/modules/governance-intake/spec.md) | 22 | 46 |
+| packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 16 | 48 |
+| packages/workflow-engine/src/modules/governance-intake | [Governance Intake](../packages/workflow-engine/src/modules/governance-intake/spec.md) | 23 | 56 |
 | packages/workflow-engine/src/modules/guidance | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | 3 | 5 |
-| packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 24 |
+| packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 25 |
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | 6 | 11 |
-| packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 4 | 5 |
+| packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 6 | 10 |
 | packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | 8 | 28 |
-| packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | 2 | 3 |
-| . | [Repository contracts](../spec.md) | 15 | 41 |
+| packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | 4 | 10 |
+| . | [Repository contracts](../spec.md) | 13 | 47 |
