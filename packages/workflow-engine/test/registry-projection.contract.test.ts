@@ -162,8 +162,8 @@ test('backlog projects exact Source wording, kind, and lane without opaque ident
     assert.ok(backlog.includes('- Kind: research\n'));
     const projected = backlog
       .split('\n')
-      .filter((line) => line.startsWith('> '))
-      .map((line) => line.slice(2))
+      .filter((line) => /^>(?: |$)/.test(line))
+      .map((line) => line.replace(/^> ?/, ''))
       .join('\n');
     assert.equal(projected, wording);
     assert.doesNotMatch(backlog, /(?:SRC|WORK|FND)-[A-Za-z0-9]+/);

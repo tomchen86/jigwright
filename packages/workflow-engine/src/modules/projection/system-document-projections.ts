@@ -86,7 +86,12 @@ export function systemDocumentProjectionBindings(
       ...refs.flatMap((ref) => {
         const source = report.sources.get(ref);
         return source
-          ? [...source.text.split('\n').map((line) => `> ${line}`), '']
+          ? [
+              ...source.text
+                .split('\n')
+                .map((line) => (line === '' ? '>' : `> ${line}`)),
+              '',
+            ]
           : ['Source wording is unavailable; run documents validate.', ''];
       }),
       ...(contracts.length > 0 ? contracts : ['No linked contract yet.']),

@@ -292,7 +292,7 @@ export function createWorkRegistryProjectionOperations(
                       : item.sourceRefs.flatMap((sourceRef) => [
                           ...readGovernanceSource(repositoryRoot, sourceRef)
                             .text.split('\n')
-                            .map((line) => `> ${line}`),
+                            .map((line) => (line === '' ? '>' : `> ${line}`)),
                           '',
                         ])),
                   ]),
