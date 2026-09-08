@@ -11,17 +11,25 @@ import type { RecoveryOperationalTrustRootRestoreAuditRecord } from '../../modul
 import type { RecoveryQuarantineAuditRecord } from '../../modules/authority/recovery-quarantine-contract.ts';
 import type { ControlPlaneUpdaterAuditRecord } from './intervention-control-updater.ts';
 import type { ControlPlaneRecoveryAuditRecord } from '../../modules/authority/control-plane-recovery-grant.ts';
-import type { MaintainerApplyAuditBindings } from './maintainer-approve.ts';
-type AuthorityAuditEventType = Parameters<
-  MaintainerApplyAuditBindings['recordAuthorityAuditEvent']
->[1]['eventType'];
-type AuthorityAuditResult = Parameters<
-  MaintainerApplyAuditBindings['recordAuthorityAuditEvent']
->[1]['result'];
-export type HarnessBootstrapAuditBindings = Pick<
-  MaintainerApplyAuditBindings,
-  'deriveAuthorityAuditRepositoryId' | 'recordAuthorityAuditEvent'
+type AuthorityAuditRecordedEvent = ReturnType<typeof recordAuthorityRefusal>;
+type AuthorityAuditEventInput = Omit<
+  AuthorityAuditRecordedEvent['event'],
+  'schemaVersion' | 'kind' | 'eventId' | 'repositoryId'
 >;
+type AuthorityAuditEventType = AuthorityAuditEventInput['eventType'];
+type AuthorityAuditResult = AuthorityAuditEventInput['result'];
+export type HarnessBootstrapAuditBindings = {
+  deriveAuthorityAuditRepositoryId: (
+    repositoryIdentity: string,
+  ) => Parameters<typeof recordAuthorityRefusal>[0]['scope']['repositoryId'];
+  recordAuthorityAuditEvent: (
+    scope: Parameters<typeof recordAuthorityRefusal>[0]['scope'],
+    rawInput: AuthorityAuditEventInput,
+    hooks?: NonNullable<
+      Parameters<typeof recordAuthorityRefusal>[2]
+    >['serviceHooks'],
+  ) => AuthorityAuditRecordedEvent;
+};
 
 export function createHarnessBootstrapAudit(
   bindings: HarnessBootstrapAuditBindings,
