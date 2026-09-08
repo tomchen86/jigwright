@@ -4,9 +4,6 @@
  * Invariants:
  * - Revocation retains historical repository-policy, task-mandate, and authorization bindings.
  * - Terminal publication precedes nonterminal cleanup and exact replay preserves its tombstone.
- *
- * Depends on: collaboration reservation records, private files, human revocation, and authority audit.
- * Failure modes: unbound revocation, divergent terminal state, or loss of the durable authorization trail.
  */
 import {
   type HumanRevocationOptions,

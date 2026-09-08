@@ -5,9 +5,6 @@
  * - Adoption authority and history bind the exact parent, artifact, sidecar workflow, and transaction.
  * - Grant verification, record reads, CAS, and publication retain their locked operation order.
  * - Renewal and recovery preserve prior observations and exact current journal state.
- *
- * Depends on: adoption policy, intervention plans, sidecar storage, and private operation locks.
- * Failure modes: replayed adoption authority, stale sidecar acceptance, or journal history lost during renewal.
  */
 import fs from 'node:fs';
 import path from 'node:path';

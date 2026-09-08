@@ -4,9 +4,6 @@
  * Invariants:
  * - Exemption records preserve current applicability, manifest, and session identities.
  * - Creation and replay retain their existing planning lock and private file semantics.
- *
- * Depends on: planning locks, investigation paths, and private canonical records.
- * Failure modes: a planning session receives an unrelated exemption or loses durable exemption evidence.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

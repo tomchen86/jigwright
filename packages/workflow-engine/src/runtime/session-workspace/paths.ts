@@ -4,9 +4,6 @@
  * Invariants:
  * - Identifier errors and runtime directory layouts retain their exact contracts.
  * - Policy paths cannot escape the repository or cross symbolic-link aliases.
- *
- * Depends on: the core runtime-path kernel and foundation repository-path validation.
- * Failure modes: invalid workspace identities, changed recovery errors, or unsafe policy paths.
  */
 import {
   RepositoryBoundaryError,

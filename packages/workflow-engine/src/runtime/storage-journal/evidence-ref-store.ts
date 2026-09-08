@@ -4,9 +4,6 @@
  * Invariants:
  * - Ref changes retain exact expected node or document digests under the ref lock.
  * - Publication validates every target node and keeps rename and fsync ordering.
- *
- * Depends on: evidence node readers, ref locking, canonical JSON, and private files.
- * Failure modes: concurrent writers overwrite refs or a ref points to missing or invalid evidence.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

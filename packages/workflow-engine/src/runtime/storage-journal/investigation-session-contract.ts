@@ -4,9 +4,6 @@
  * Invariants:
  * - Derived state and checkpoint ownership match the exact persisted session content.
  * - Transitions preserve completed milestones and reject forbidden semantic rewrites.
- *
- * Depends on: session types, checkpoint contracts, and advertised human-resolution decisions.
- * Failure modes: sessions regress, lose accepted evidence, or claim a state their milestones do not support.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { GLOBAL_PLAN_REVIEW_COVERAGE_POLICY_DIGEST } from '../../modules/assurance/plan-review-coverage-policy.ts';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Stored sessions retain exact identity, planning assurance, check evidence, and isolation fields.
  * - Reads preserve file metadata and canonical validation; writes keep rename and fsync order.
- *
- * Depends on: session runtime layout, planning assurance contracts, and session value checks.
- * Failure modes: malformed session authority admitted or partially durable session records.
  */
 import {
   type PlanningAssuranceBinding,

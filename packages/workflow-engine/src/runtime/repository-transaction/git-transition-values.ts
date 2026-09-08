@@ -4,9 +4,6 @@
  * Invariants:
  * - Control characters and unsafe identity forms remain rejected.
  * - Identity resolution retains current configuration precedence and error behavior.
- *
- * Depends on: Git configuration commands and workflow usage errors.
- * Failure modes: commit metadata changes meaning or malformed identity text reaches Git.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from './git.ts';

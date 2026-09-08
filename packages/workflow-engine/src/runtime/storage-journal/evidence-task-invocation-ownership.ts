@@ -4,9 +4,6 @@
  * Invariants:
  * - Task mandate, actor, assignment, and request subjects remain exactly bound.
  * - Task review and implementation retain their distinct author and role rules.
- *
- * Depends on: task review and strategy contracts, provider assignments, and evidence node readers.
- * Failure modes: provider results are attributed to a different task or implementation actor.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

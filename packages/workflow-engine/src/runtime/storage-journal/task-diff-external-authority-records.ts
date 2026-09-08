@@ -4,9 +4,6 @@
  * Invariants:
  * - Bindings retain their exact reservation, target, grant, and attestation identities.
  * - Continuation contribution records contain no independent verdict or closure authority.
- *
- * Depends on: External store contracts, grant references, and canonical record digests.
- * Failure modes: A grant authenticates the wrong contribution or external continuation closes a challenge.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest, timestamp, and round acceptance rules retain their original bounds.
  * - Canonical comparison omits only the caller-specified audit fields.
- *
- * Depends on: canonical JSON and workflow error contracts.
- * Failure modes: different replay decisions, malformed identities, or changed error codes.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { DEFAULT_TASK_STRATEGY_CORRECTION_POLICY } from './task-strategy-correction-store.ts';

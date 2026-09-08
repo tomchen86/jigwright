@@ -4,9 +4,6 @@
  * Invariants:
  * - Probe, invocation authorization, launch, and observation ordering remain exact.
  * - The pilot reports empirical outcomes without creating completion authority.
- *
- * Depends on: reviewed workflow config, runner dependencies, evidence nodes, and pilot records.
- * Failure modes: Provider availability can be misreported or a probe can use an unreviewed authorization.
  */
 
 import fs from 'node:fs';

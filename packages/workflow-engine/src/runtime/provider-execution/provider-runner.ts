@@ -4,9 +4,6 @@
  * Invariants:
  * - Provider selection, authority reads, projection checks, and launch ordering stay exact.
  * - Concurrency cleanup and wrapper error handling remain attached to each runner lifecycle.
- *
- * Depends on: provider adapters, workflow policy, runtime slots, managed prompts, and output validation.
- * Failure modes: Unreviewed launches, leaked slots, or stale output can be admitted.
  */
 
 import path from 'node:path';

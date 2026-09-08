@@ -4,9 +4,6 @@
  * Invariants:
  * - Lifecycle admission precedes ownership transfer and rechecks durable barriers under the lease.
  * - Operation errors keep precedence over release errors and lock cleanup preserves ownership.
- *
- * Depends on: prepared locks, grant barriers, human-resolution journals, and session value checks.
- * Failure modes: concurrent lifecycle mutations, bypassed pending resolution, or lost original failures.
  */
 import { assertChangeId } from './paths.ts';
 import { assertGrantLifecycleBarrier } from '../storage-journal/grant-store.ts';

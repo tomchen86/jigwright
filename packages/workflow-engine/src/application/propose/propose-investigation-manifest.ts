@@ -5,9 +5,6 @@
  * - Manifest authority binds the exact session snapshot and semantic provenance.
  * - Missing semantic decisions block construction instead of inventing evidence.
  * - Role and assurance projections preserve admitted identities and policy digests.
- *
- * Depends on: the v3 manifest builders, role admission, and assurance assessment.
- * Failure modes: incomplete or mismatched facts yield explicit construction blockers.
  */
 import type { EvidenceNode } from '@jigwright/core/evidence-node';
 

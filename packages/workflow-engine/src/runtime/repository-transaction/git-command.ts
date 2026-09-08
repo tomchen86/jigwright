@@ -4,9 +4,6 @@
  * Invariants:
  * - Executable identity, subprocess errors, and text or buffer output handling remain unchanged.
  * - Every protected Git subprocess observes the active admission deadline.
- *
- * Depends on: trusted execution environments, pinned executable resolution, and approval budgets.
- * Failure modes: Git runs with different authority or command timeouts escape the approval boundary.
  */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical transaction bytes, RED evidence checks, and reviewed-lineage comparisons remain exact.
  * - Immutable publication and subsequent reads retain session and record digest validation.
- *
- * Depends on: the evidence-node codec, frozen task files, and private investigation files.
- * Failure modes: forged RED evidence, overwritten predecessors, or divergent content-addressed replay.
  */
 import {
   type ProviderId,

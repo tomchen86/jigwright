@@ -4,9 +4,6 @@
  * Invariants:
  * - Admission retains current worktree, write-scope, and exclusive-resource comparisons.
  * - Lease observations remain tied to the exact active session being admitted or rejected.
- *
- * Depends on: workflow session records, task isolation leases, and allowed-path matching.
- * Failure modes: conflicting tasks run concurrently or valid independent work is incorrectly blocked.
  */
 import {
   type runtimePaths,

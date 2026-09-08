@@ -4,9 +4,6 @@
  * Invariants:
  * - Compare-and-swap validates the expected digest before target and transition checks.
  * - Authoring and sealed refs retain exact predecessor, revision, and task-contract bindings.
- *
- * Depends on: immutable task strategy transactions, revision value checks, and private files.
- * Failure modes: a stale writer changes currentness or a ref admits an unrelated transaction.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

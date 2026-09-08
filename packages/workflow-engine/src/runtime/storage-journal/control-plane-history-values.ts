@@ -4,9 +4,6 @@
  * Invariants:
  * - History digests, Git identifiers, timestamps, and exact-key checks retain their contracts.
  * - Errors continue to distinguish malformed records, forks, gaps, and unsafe storage.
- *
- * Depends on: workflow errors and scalar record values.
- * Failure modes: corrupt history is misclassified or valid current records are rejected.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

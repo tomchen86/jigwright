@@ -4,9 +4,6 @@
  * Invariants:
  * - Create-only writes retain conflict codes and the verifying read after publication.
  * - Inventory reads preserve session validation and deterministic record ordering.
- *
- * Depends on: Review record codecs, private canonical storage, and session workspace paths.
- * Failure modes: Conflicting review authority is accepted or persisted results cannot be replayed.
  */
 import fs from 'node:fs';
 import path from 'node:path';

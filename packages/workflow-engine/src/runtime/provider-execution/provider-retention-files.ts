@@ -4,9 +4,6 @@
  * Invariants:
  * - No-follow reads, inode rechecks, private permissions, and directory fsync stay unchanged.
  * - Artifact paths and per-kind byte limits preserve their original meaning.
- *
- * Depends on: filesystem metadata, retention directory layout, and exact unsafe-path errors.
- * Failure modes: Changed files or substituted paths can enter a pruning transaction.
  */
 
 import crypto from 'node:crypto';

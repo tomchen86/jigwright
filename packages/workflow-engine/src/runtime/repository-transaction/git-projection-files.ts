@@ -4,9 +4,6 @@
  * Invariants:
  * - Framing bytes, metadata selection, and file content hashing remain compatible.
  * - Byte, entry, depth, and per-file limits preserve their existing exhaustion behavior.
- *
- * Depends on: filesystem descriptors, SHA-256, and governed projection budgets.
- * Failure modes: repository evidence becomes ambiguous or unbounded observation consumes excessive resources.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

@@ -3,9 +3,6 @@
  *
  * Invariants:
  * - Digest validation and namespace names retain their exact representation.
- *
- * Depends on: Investigation runtime paths and external record identity contracts.
- * Failure modes: Records land in an incorrect namespace or escape their expected inventory key.
  */
 import path from 'node:path';
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Session writes retain revision checks and monotonic transition validation under the same lock.
  * - Current refs bind the exact session and preserve their existing compare-and-swap rules.
- *
- * Depends on: session contracts, runtime paths, and canonical private file primitives.
- * Failure modes: concurrent updates overwrite newer state or current refs select the wrong investigation.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

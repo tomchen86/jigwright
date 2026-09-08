@@ -4,9 +4,6 @@
  * Invariants:
  * - Receipts retain exact backend, repository, head, profile, and policy bindings.
  * - Anchor publication filenames and stored content agree on their cryptographic digest.
- *
- * Depends on: audit contracts, canonical values, and private file readers.
- * Failure modes: unbound remote anchors, malformed backend receipts, or changed anchor identity.
  */
 import fs from 'node:fs';
 import path from 'node:path';

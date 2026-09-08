@@ -4,9 +4,6 @@
  * Invariants:
  * - Attempt history, retry accounting, policy changes, and accepted results retain their existing order.
  * - Projection rejects non-monotonic entries and preserves exact failure and retry decisions.
- *
- * Depends on: execution core reducers, durable state contracts, and provider retry accounting.
- * Failure modes: retry budgets drift or a rebuilt job differs from its durable provider history.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

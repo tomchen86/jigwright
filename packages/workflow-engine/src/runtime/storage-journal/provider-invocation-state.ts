@@ -4,9 +4,6 @@
  * Invariants:
  * - State revision checks, authority checks, writes, and execution materialization keep their order.
  * - Normal reads remain strict; the explicit recovery read option stays bounded.
- *
- * Depends on: execution store, reservations, immutable artifacts, and runtime authority validation.
- * Failure modes: State and execution journals can diverge or stale authority can appear current.
  */
 
 import fs from 'node:fs';

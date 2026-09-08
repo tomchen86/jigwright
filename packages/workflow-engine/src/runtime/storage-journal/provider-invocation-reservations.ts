@@ -4,9 +4,6 @@
  * Invariants:
  * - Reservation locks, CAS checks, schemas, and canonical bytes retain their order.
  * - Retry policy and replacement bindings remain attached to the exact request.
- *
- * Depends on: provider policy snapshots, immutable artifacts, validation, and private storage.
- * Failure modes: A stale reservation can start duplicate work or attach retry authority to the wrong attempt.
  */
 
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Current schemas, residual lists, output digests, and executable evidence stay exact.
  * - Unsupported output generations and mismatched host evidence remain rejected.
- *
- * Depends on: provider runtime evidence, output contracts, invocation types, and shared errors.
- * Failure modes: Invalid provider output can appear accepted or lose its original repair failure.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -9,12 +9,6 @@
  * - One run at a time per tree identity; a stale lock is quarantined, not deleted.
  * - Results are read from the run record with --status, --failures and
  *   --timings, never from a transcript.
- *
- * Depends on: workflow-test-inventory.ts, the tracked shard manifest, and
- * full-gate-reporter.ts.
- * Failure modes: a drifted inventory exits within a second with FULL GATE
- * FAILED TO START; battery power or Low Power Mode can produce spurious
- * subprocess deadline failures, so run on mains power.
  */
 import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';

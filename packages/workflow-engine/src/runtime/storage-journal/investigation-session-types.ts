@@ -4,9 +4,6 @@
  * Invariants:
  * - Record fields and optionality remain compatible with the current persisted schemas.
  * - Milestones and blockers retain their exact checkpoint and human-resolution shapes.
- *
- * Depends on: investigation domain records, resolution contracts, and provider references.
- * Failure modes: valid durable sessions become unreadable or incompatible checkpoints enter storage.
  */
 import { type ClassDisposition } from '../../modules/investigation/domain/class-disposition.ts';
 import { type SampleAudit } from '../../modules/investigation/domain/class-sample-audit.ts';

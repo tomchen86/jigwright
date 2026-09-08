@@ -4,9 +4,6 @@
  * Invariants:
  * - Terminal records publish before matching active copies are removed.
  * - Consumed replay retains its verified object identity and exact content, assignment, and transition.
- *
- * Depends on: reservation bindings, use contracts, grant records, and repository lifecycle locks.
- * Failure modes: double consumption, invalid crash replay, or terminal state without its bound evidence.
  */
 import type {
   CollaborationGrantUseProjection,

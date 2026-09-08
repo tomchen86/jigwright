@@ -4,9 +4,6 @@
  * Invariants:
  * - Digests bind the exact record, manifest, subject, and provider request.
  * - Continuation validation retains review, response, and provider identity checks.
- *
- * Depends on: Review manifests, provider invocation contracts, and TaskDiff assurance schemas.
- * Failure modes: A valid-looking envelope admits mismatched providers, stale responses, or altered evidence.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

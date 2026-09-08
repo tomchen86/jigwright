@@ -4,9 +4,6 @@
  * Invariants:
  * - Schema fields, digest inputs, timestamp checks, and retry limits stay unchanged.
  * - Unknown states and malformed receipt bindings remain rejected.
- *
- * Depends on: execution retry contracts, canonical JSON, and workflow errors.
- * Failure modes: Corrupt records can be treated as due work or canonical identities can drift.
  */
 
 import crypto from 'node:crypto';

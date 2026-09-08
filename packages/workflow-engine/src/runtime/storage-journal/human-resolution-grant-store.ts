@@ -4,9 +4,6 @@
  * Invariants:
  * - Available, reserved, and terminal records remain mutually consistent under the grant-store lock.
  * - Canonical envelopes and terminal residual reconciliation retain exact replay checks.
- *
- * Depends on: grant publication recovery, private files, and resolution grant identities.
- * Failure modes: a grant executes twice, disappears between phases, or accepts conflicting residual bytes.
  */
 import fs from 'node:fs';
 import path from 'node:path';

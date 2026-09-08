@@ -4,9 +4,6 @@
  * Invariants:
  * - Artifact names, byte limits, staging identities, and stable file checks remain exact.
  * - Host-wrapper creation prefixes and completion candidates retain their separate rules.
- *
- * Depends on: private file primitives, invocation bindings, and retention receipt schemas.
- * Failure modes: Receipts can omit evidence or describe changed or unsafe files.
  */
 
 import fs from 'node:fs';

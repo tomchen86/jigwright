@@ -4,9 +4,6 @@
  * Invariants:
  * - Eligibility checks, catalog cursors, hooks, and transaction ordering stay exact.
  * - Public retention APIs and receipt exports remain compatible.
- *
- * Depends on: retention observations, staged prune transactions, catalog storage, and lifecycle context.
- * Failure modes: An active or pinned artifact can be pruned or interrupted cleanup can remain undiscovered.
  */
 
 import path from 'node:path';

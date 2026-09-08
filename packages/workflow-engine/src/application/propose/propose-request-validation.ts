@@ -5,9 +5,6 @@
  * - Envelope kinds and normalized intent retain their exact supported shapes and bindings.
  * - Authorization evidence binds actor, assignment, grant, baseline, and protected base.
  * - Generated scan acceptance identifies the current investigation and saturated terms.
- *
- * Depends on: input codecs, session and provider records, evidence validation, and canonical digests.
- * Failure modes: malformed submissions accepted, stale authorization reused, or unusable input templates.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

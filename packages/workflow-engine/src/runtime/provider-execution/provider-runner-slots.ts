@@ -4,9 +4,6 @@
  * Invariants:
  * - Owner identity, no-follow reads, lock scope, and directory fsync order stay unchanged.
  * - Only a proven dead owner can have its slot reclaimed.
- *
- * Depends on: private runtime locks, bounded concurrency policy, and runtime file primitives.
- * Failure modes: Overlapping launches exceed limits or a live worker loses its slot.
  */
 
 import crypto from 'node:crypto';

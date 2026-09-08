@@ -4,9 +4,6 @@
  * Invariants:
  * - Request, predecessor, and phase checks retain their original order before publication.
  * - Journal compare-and-swap and exact replay preserve immutable prior state and current-ref authority.
- *
- * Depends on: revision record contracts, immutable RED transactions, current refs, and private files.
- * Failure modes: recovery skips a phase, overwrites another revision, or loses its authenticated predecessor.
  */
 import {
   type InvestigationRuntimePaths,

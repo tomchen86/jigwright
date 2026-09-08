@@ -4,9 +4,6 @@
  * Invariants:
  * - Envelope bindings and exact keys remain unchanged across construction and validation.
  * - Authored Markdown, specification paths, and guard policies keep their existing checks.
- *
- * Depends on: propose output contracts, plan-review schemas, and repository path rules.
- * Failure modes: malformed input is accepted, valid contributions are rejected, or bindings drift.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

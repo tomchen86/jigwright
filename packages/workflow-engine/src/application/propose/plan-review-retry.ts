@@ -5,9 +5,6 @@
  * - Retry authority binds the failed request, execution decision, and current subject.
  * - A replacement preserves semantic Job identity and the immutable target snapshot.
  * - Exact replays resume the reserved replacement and its recorded policy snapshot.
- *
- * Depends on: review reservations, provider execution decisions, snapshots, and lifecycle locks.
- * Failure modes: stale retry evidence, duplicate attempts, or a replacement reviewing another plan.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

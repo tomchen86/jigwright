@@ -6,9 +6,6 @@
  * - Reconciliation accepts only authenticated old or next artifact bytes.
  * - Temporary reclamation verifies file identity and refuses live owners.
  * - Snapshot reads preserve the manifest's exact bytes, digests, and membership.
- *
- * Depends on: planning snapshots, plan-digest projection, repository paths, and the filesystem.
- * Failure modes: unsafe input, planning conflicts, or stale materialization errors.
  */
 import fs from 'node:fs';
 import path from 'node:path';

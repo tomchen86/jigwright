@@ -4,9 +4,6 @@
  * Invariants:
  * - Retries retain the root semantic subject and exact predecessor invocation chain.
  * - Attempt selection and retry schema checks preserve existing rejection and replay order.
- *
- * Depends on: provider invocation records, manifests, and retry reservations.
- * Failure modes: a retry changes implementation authority or chooses an unrelated winning attempt.
  */
 import {
   type InvestigationRuntimePaths,

@@ -4,9 +4,6 @@
  * Invariants:
  * - Aliases preserve the original runtime contract, including optional and nullable fields.
  * - All dependencies remain type-only and introduce no runtime initialization or execution.
- *
- * Depends on: session storage, provider invocation, repository context, and publication contracts.
- * Failure modes: type drift between application and runtime or accidental runtime dependency loading.
  */
 
 import type {

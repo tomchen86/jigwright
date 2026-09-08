@@ -4,9 +4,6 @@
  * Invariants:
  * - Content and authority retain their distinct record schemas.
  * - Digest operations and malformed-store errors remain exact.
- *
- * Depends on: TaskDiff subjects, recorded participants, canonical JSON, and workflow errors.
- * Failure modes: External content acquires unintended authority or accepted record digests drift.
  */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

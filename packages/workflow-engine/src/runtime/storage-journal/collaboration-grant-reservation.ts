@@ -4,9 +4,6 @@
  * Invariants:
  * - Reservation uses one clock value and verifies repository, envelope, and exact transition facts.
  * - Replay revalidates the signed reservation without imposing a second expiration boundary.
- *
- * Depends on: private grant records, historical policy, role binding, and repository lifecycle locks.
- * Failure modes: duplicate reservations, changed baseline authority, or loss of interrupted-reservation recovery.
  */
 import {
   type CollaborationGrantEnvelope,

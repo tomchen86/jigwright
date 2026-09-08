@@ -4,9 +4,6 @@
  * Invariants:
  * - Review requests and retries retain exact subjects, generations, and predecessor bindings.
  * - Recursive retry validation preserves the existing dependency and authorization checks.
- *
- * Depends on: planning ownership, PlanReview grants, and immutable evidence node readers.
- * Failure modes: a review or retry is accepted for a different planning target.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

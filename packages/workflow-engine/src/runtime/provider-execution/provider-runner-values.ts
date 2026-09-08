@@ -4,9 +4,6 @@
  * Invariants:
  * - Error codes, details, repair payloads, and digest bytes remain unchanged.
  * - Shared predicates retain their original acceptance behavior.
- *
- * Depends on: workflow errors, provider identifiers, and structured output error types.
- * Failure modes: Callers misclassify failures or derive incompatible output identities.
  */
 
 import crypto from 'node:crypto';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Node and ref identifiers keep their current accepted syntax and paths.
  * - Canonical hashes and workflow error identities remain stable.
- *
- * Depends on: runtime paths, canonical JSON, and workflow errors.
- * Failure modes: equivalent evidence changes identity or invalid identifiers reach storage.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

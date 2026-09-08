@@ -4,9 +4,6 @@
  * Invariants:
  * - Public names, signatures, and cancellation lock and grant checks stay stable.
  * - Cancellation requests remain bound to the exact invocation and worker fence.
- *
- * Depends on: invocation state, worker lifecycle, completion transactions, and prepared grants.
- * Failure modes: API drift breaks callers; stale cancellation bindings can target the wrong worker.
  */
 
 import path from 'node:path';

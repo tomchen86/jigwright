@@ -4,9 +4,6 @@
  * Invariants:
  * - No-follow reads and anchored writes retain inode, directory, and repository containment checks.
  * - Replacement compensation, temporary cleanup, and fsync keep their original order.
- *
- * Depends on: publication path contracts, Node filesystem operations, and repository discovery.
- * Failure modes: path aliases trusted, concurrent replacements overwritten, or incomplete durable publication.
  */
 import crypto from 'node:crypto';
 import {

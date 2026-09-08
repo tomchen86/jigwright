@@ -4,9 +4,6 @@
  * Invariants:
  * - Create and replace retain distinct publication and fsync semantics.
  * - Directory inventory and exact grant paths preserve the existing state checks.
- *
- * Depends on: private file modes, canonical paths, and grant error identities.
- * Failure modes: partial writes or stale copies make grant state ambiguous.
  */
 import fs from 'node:fs';
 import path from 'node:path';

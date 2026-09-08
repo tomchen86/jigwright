@@ -4,9 +4,6 @@
  * Invariants:
  * - Journal phase advancement and terminal archival retain their exact publication order.
  * - Lifecycle barriers and temporary cleanup reject ambiguous active journal state.
- *
- * Depends on: journal contracts, private file primitives, and investigation runtime paths.
- * Failure modes: resolution recovery replays twice, skips active work, or trusts partial history.
  */
 import fs from 'node:fs';
 import path from 'node:path';

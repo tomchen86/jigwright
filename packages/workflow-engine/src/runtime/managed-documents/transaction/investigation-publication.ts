@@ -4,9 +4,6 @@
  * Invariants:
  * - Candidates and journals become durable before the current ref publishes authority.
  * - Post-ref replay completes publication without reverting the committed manifest.
- *
- * Depends on: publication contracts, anchored files, journal records, and failure observations.
- * Failure modes: mixed manifest authority, unrecoverable interrupted publication, or rollback after commit.
  */
 import {
   type InvestigationManifestV3,

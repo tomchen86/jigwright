@@ -4,9 +4,6 @@
  * Invariants:
  * - Exact keys, canonical digests, subjects, manifests, and role bindings retain their existing checks.
  * - Provider and caller authority forms remain distinct and parsed records stay deeply frozen.
- *
- * Depends on: task strategy provider contracts, role assignments, and canonical value validators.
- * Failure modes: digest-consistent records bypass subject, author, assignment, or output-schema binding.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

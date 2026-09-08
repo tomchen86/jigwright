@@ -4,9 +4,6 @@
  * Invariants:
  * - Evidence reads and validation retain the original order before accepting authority.
  * - Reservations, results, assignments, and exact output digests remain bound to their original subject.
- *
- * Depends on: task implementation evidence nodes, invocation records, and role-result contracts.
- * Failure modes: copied or stale result bindings acquire authority for another implementation.
  */
 import type { InvestigationRuntimePaths } from '../session-workspace/paths.ts';
 import type { ProviderInvocationRecord } from './provider-invocation-store.ts';

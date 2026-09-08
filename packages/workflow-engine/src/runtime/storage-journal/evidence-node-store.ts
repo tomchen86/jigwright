@@ -4,9 +4,6 @@
  * Invariants:
  * - Exclusive publication accepts only exact existing bytes and preserves collision failures.
  * - Reads validate the stored envelope after private file and directory safety checks.
- *
- * Depends on: foundation evidence codecs, publication recovery, and private file primitives.
- * Failure modes: partial objects become visible or conflicting content is accepted under one node identity.
  */
 import fs from 'node:fs';
 import path from 'node:path';

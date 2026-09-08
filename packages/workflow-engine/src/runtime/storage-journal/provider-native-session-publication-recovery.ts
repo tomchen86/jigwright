@@ -4,9 +4,6 @@
  * Invariants:
  * - Only the single validated temporary entry can be discarded or reconciled.
  * - Recovery retains target identity, link count, digest, and scope checks.
- *
- * Depends on: Native session envelopes, bounded file snapshots, and recovery directory layout.
- * Failure modes: Foreign residue is deleted or an incomplete publication becomes resumable state.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

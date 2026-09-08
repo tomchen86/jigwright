@@ -5,9 +5,6 @@
  * - Terms bind the reviewed snapshot, provider result, checkpoints, and prior source.
  * - Only the current reviewer-term schema enters reconstruction.
  * - Replay validates exact consumed role authority without consuming another grant.
- *
- * Depends on: review evidence codecs, term projection, checkpoints, and consumed-role replay.
- * Failure modes: detached reviewer terms, broken reopening lineage, or accepted stale review evidence.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

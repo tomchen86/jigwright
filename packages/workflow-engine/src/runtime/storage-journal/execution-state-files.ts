@@ -4,9 +4,6 @@
  * Invariants:
  * - State revision and canonical content comparisons precede creation or replacement.
  * - Job paths, private directory checks, and lock boundaries remain unchanged.
- *
- * Depends on: private file primitives, execution state contracts, and job identifiers.
- * Failure modes: concurrent writers overwrite state or canonical execution records become unsafe.
  */
 import path from 'node:path';
 import { WorkflowError } from '../../foundation/errors/errors.ts';

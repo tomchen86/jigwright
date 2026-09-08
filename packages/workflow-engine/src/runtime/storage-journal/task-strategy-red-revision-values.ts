@@ -4,9 +4,6 @@
  * Invariants:
  * - The ordered revision phases and all identity bounds retain their original values.
  * - Canonical digests and corruption, request, and phase errors remain unchanged.
- *
- * Depends on: canonical revision values and workflow error contracts.
- * Failure modes: changed phase progression, accepted malformed identities, or incompatible durable digests.
  */
 import { assertSessionId } from '../session-workspace/paths.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

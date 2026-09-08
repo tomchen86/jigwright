@@ -4,9 +4,6 @@
  * Invariants:
  * - Public record fields retain their original optionality, nullable values, and discriminated states.
  * - Types add no runtime initialization or grant authority.
- *
- * Depends on: collaboration grant envelopes, verifier ports, and human-revocation authorization types.
- * Failure modes: schema drift between stored records, callers, and replay validators.
  */
 import type {
   CollaborationDegradedForm,

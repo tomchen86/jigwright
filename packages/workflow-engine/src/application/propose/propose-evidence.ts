@@ -4,9 +4,6 @@
  * Invariants:
  * - Schemas, canonical digests, and semantic and provenance parents retain identity.
  * - Manifest authority binds the current session; conflicting node bytes fail.
- *
- * Depends on: the workflow evidence codec, propose digests, and manifest snapshots.
- * Failure modes: stale authority, broken evidence lineage, or node ID collisions.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

@@ -5,9 +5,6 @@
  * - Any attached mandate agrees with the invocation and its durable session owner.
  * - Retry inputs bind the failed attempt, prior request, session revision, and baseline.
  * - Exact retries reuse the recorded replacement and preserve provider mandate observations.
- *
- * Depends on: provider invocations, survey retry reservations, Task Mandates, and session records.
- * Failure modes: duplicate attempts, stale retry acceptance, or execution attributed to another owner.
  */
 
 import crypto from 'node:crypto';

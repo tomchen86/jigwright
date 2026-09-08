@@ -5,9 +5,6 @@
  * - Tasks, guard, execution, specs, and investigation evidence describe one planning graph.
  * - Task history and prior managed bytes retain their baseline authority during replacement.
  * - Rollback restores only owned mutations; receipts bind the exact materialized bytes.
- *
- * Depends on: planning validators, scaffolds, atomic artifacts, receipts, and review preparation.
- * Failure modes: inconsistent planning graphs, overwritten unmanaged edits, or mismatched receipts.
  */
 
 import fs from 'node:fs';

@@ -5,9 +5,6 @@
  * - Child metadata retains exact parent checkpoint, base, path, and change-reference bindings.
  * - Workspace overlap and prior-plan replay checks precede publication under the operation lock.
  * - Content-addressed checkpoints retain the same bytes before the owning plan is recorded.
- *
- * Depends on: intervention policy, sidecar storage, workspace checks, and private persistence.
- * Failure modes: overlapping child workspaces, changed checkpoint bytes, or a plan bound to another parent.
  */
 import fs from 'node:fs';
 import path from 'node:path';

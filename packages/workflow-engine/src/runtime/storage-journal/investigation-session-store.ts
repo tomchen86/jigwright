@@ -4,9 +4,6 @@
  * Invariants:
  * - Public entry points retain the same types, errors, and durable record identities.
  * - Revocation binds the exact grant and session before its audited terminal transition.
- *
- * Depends on: investigation records, resolution grant storage, and human revocation authorization.
- * Failure modes: callers lose compatibility or a grant is revoked against unrelated session authority.
  */
 import fs from 'node:fs';
 import path from 'node:path';

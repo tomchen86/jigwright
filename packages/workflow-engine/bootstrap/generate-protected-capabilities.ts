@@ -11,12 +11,6 @@
  *   closure and the harness bootstrap runtime, in that order.
  * - The authorization.verify capability must list every collaboration grant
  *   composition source; an omission is an error, never a silent widening.
- *
- * Depends on: the grants package manifest, grant-verifier-composition, and the
- * collaboration grant sources.
- * Failure modes: PROTECTED_CAPABILITY_CLOSURE_DIGEST_MISMATCH and
- * COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE at runtime; the contract
- * test "manifest is generator-current" fails first.
  */
 import fs from 'node:fs';
 import path from 'node:path';

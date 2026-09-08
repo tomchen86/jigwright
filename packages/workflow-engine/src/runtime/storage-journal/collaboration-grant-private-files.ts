@@ -4,9 +4,6 @@
  * Invariants:
  * - No-overwrite creation and replacement keep their distinct link, rename, and fsync sequences.
  * - Read-only inspection never creates directories and rejects unsafe file or directory metadata.
- *
- * Depends on: runtime path layout, filesystem safety, and collaboration store errors.
- * Failure modes: overwritten grant records, unsafe reads, or partially durable state transitions.
  */
 import { runtimePaths } from '../session-workspace/workflow-session-records.ts';
 import path from 'node:path';

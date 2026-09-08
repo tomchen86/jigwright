@@ -4,9 +4,6 @@
  * Invariants:
  * - Result authority retains every reservation, attempt, provider result, and caller grant binding.
  * - Unknown keys and malformed participant assurances remain rejected.
- *
- * Depends on: correction round schemas, provider identities, and exact value validators.
- * Failure modes: a correction result is accepted under another reservation or implementer.
  */
 import type {
   TaskStrategyCorrectionProviderRequestIdentity,

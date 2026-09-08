@@ -4,9 +4,6 @@
  * Invariants:
  * - Record schemas, canonical digest bytes, observation limits, and atomic writes stay unchanged.
  * - Rejected records never become verified availability evidence.
- *
- * Depends on: provider resolution contracts, Git identity formats, and bounded filesystem reads.
- * Failure modes: Invalid observations or altered record identities can be accepted as current.
  */
 
 import crypto from 'node:crypto';

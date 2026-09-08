@@ -4,9 +4,6 @@
  * Invariants:
  * - Each record retains exact keys, artifact and authority shapes, and self-digest validation.
  * - Record construction and verification preserve the current canonical identities.
- *
- * Depends on: history value checks and canonical JSON.
- * Failure modes: malformed or tampered history records are treated as valid supervisor evidence.
  */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

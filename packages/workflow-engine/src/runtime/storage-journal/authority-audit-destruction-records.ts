@@ -4,9 +4,6 @@
  * Invariants:
  * - Grant lifetime, single-use intent, target prefix, and signed payload bytes remain exact.
  * - Tombstones retain the full grant and predecessor checkpoint needed for replay and recovery.
- *
- * Depends on: audit contracts, digest validation, and private tombstone files.
- * Failure modes: expired or replayed authority accepted, or unverifiable audit destruction history.
  */
 import fs from 'node:fs';
 import path from 'node:path';

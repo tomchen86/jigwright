@@ -5,9 +5,6 @@
  * - Output bindings and defaults preserve the current investigation and review state.
  * - Reusable checkpoints hide only work that still belongs to the current facts.
  * - Challenge and ordinary progress outputs clear semantic reuse and class audit projections.
- *
- * Depends on: propose contracts, review evidence, class sampling, and assurance projections.
- * Failure modes: misleading next actions, lost review bindings, or omitted outstanding work.
  */
 import type { EvidenceNode } from '@jigwright/core/evidence-node';
 

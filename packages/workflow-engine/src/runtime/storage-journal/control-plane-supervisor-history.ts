@@ -4,9 +4,6 @@
  * Invariants:
  * - Append relation and inventory are checked before prepared bytes become final history.
  * - Crash recovery preserves the exact link, unlink, and directory fsync sequence.
- *
- * Depends on: history contracts, chain verification, and private history file readers.
- * Failure modes: supervisor recovery accepts forked history or exposes a partial append as committed.
  */
 import fs from 'node:fs';
 import path from 'node:path';

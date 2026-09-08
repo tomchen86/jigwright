@@ -4,9 +4,6 @@
  * Invariants:
  * - Each host phase keeps its exact artifact membership and terminal-state bindings.
  * - Retained empty markers and live files are checked against the same authenticated receipts.
- *
- * Depends on: host execution evidence, retention receipts, and stable bounded private file readers.
- * Failure modes: fabricated wrapper results, invalid phase transitions, or ambiguous retained artifacts pass.
  */
 import fs from 'node:fs';
 import path from 'node:path';

@@ -5,9 +5,6 @@
  * - Prior review snapshots authenticate old bytes and the resealed session derives next bytes.
  * - Before receipt CAS, each managed artifact contains authenticated old or exact next bytes.
  * - Receipt CAS is the commit point; later failures never roll the live artifacts back.
- *
- * Depends on: prior review snapshots, manifest publication, atomic artifacts, and planning refs.
- * Failure modes: mixed unbound planning files, lost reviewer revisions, or rollback after publication.
  */
 
 import fs from 'node:fs';

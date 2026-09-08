@@ -5,9 +5,6 @@
  * - All candidate placements use one immutable policy and provider snapshot.
  * - Ordinary assignments meet the resolved independence floor before invocation.
  * - Lowered placements require explicit eligibility for their exact role pairs.
- *
- * Depends on: role scheduling, topology resolution, and role-context-sharing requirements.
- * Failure modes: a wrong reviewer is selected or an ineligible grant requirement is returned.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

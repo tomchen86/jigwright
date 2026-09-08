@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical bodies retain exact field order, digest binding, and nullable phase payloads.
  * - Successor, restoration, and session-evidence transitions remain bound to the original request.
- *
- * Depends on: RED revision phases, current-ref contracts, and immutable transaction codecs.
- * Failure modes: forged journal transitions, changed replay bytes, or recovery applied to another RED lineage.
  */
 import {
   type TaskStrategyTransaction,

@@ -4,9 +4,6 @@
  * Invariants:
  * - Immutable publication precedes exact stored session and subject revalidation.
  * - Provider and caller records retain distinct paths, collision errors, and replay checks.
- *
- * Depends on: task implementation record contracts and private investigation files.
- * Failure modes: cross-subject record reuse, overwritten reservations, or divergent immutable replay.
  */
 import {
   type InvestigationRuntimePaths,

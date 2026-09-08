@@ -4,9 +4,6 @@
  * Invariants:
  * - Anchor and destruction operations retain exact current-head, backend, and grant bindings.
  * - Destruction publishes its tombstone before pruning and preserves grant replay detection.
- *
- * Depends on: audit layout, anchor and destruction records, maintenance, and ledger locks.
- * Failure modes: unverifiable anchors, replayed destruction grants, or deletion without a durable tombstone.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

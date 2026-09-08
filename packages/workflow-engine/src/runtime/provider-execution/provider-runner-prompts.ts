@@ -4,9 +4,6 @@
  * Invariants:
  * - Purpose-specific instruction text and canonical prompt bytes stay unchanged.
  * - Planning snapshot validation precedes exposing its content to a provider.
- *
- * Depends on: provider request contracts and managed manifest fields.
- * Failure modes: Prompt identity changes or missing snapshot checks alter provider behavior.
  */
 
 import path from 'node:path';

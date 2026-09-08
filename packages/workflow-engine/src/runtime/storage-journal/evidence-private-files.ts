@@ -4,9 +4,6 @@
  * Invariants:
  * - Symlinks, hard links, permission drift, and directory escapes remain rejected.
  * - Creation, replacement, bounded reads, and fsync retain their existing filesystem semantics.
- *
- * Depends on: filesystem descriptors, path containment, and caller-provided errors.
- * Failure modes: unsafe or changing files are trusted as immutable evidence.
  */
 import fs from 'node:fs';
 import path from 'node:path';

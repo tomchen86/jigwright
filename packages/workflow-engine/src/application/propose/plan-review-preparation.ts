@@ -5,9 +5,6 @@
  * - The assignment, topology, grant, and mandate bind the same exact planning subject.
  * - Snapshot bytes match the current materialization before an invocation is created.
  * - Existing reservations and interrupted invocations retain request and policy identity.
- *
- * Depends on: role placement, review storage, materialization evidence, and provider invocations.
- * Failure modes: unlaunchable reservations, target-byte drift, or reviewer work on the wrong plan.
  */
 
 import crypto from 'node:crypto';

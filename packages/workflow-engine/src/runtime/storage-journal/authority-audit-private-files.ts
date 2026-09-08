@@ -5,9 +5,6 @@
  * - Reads retain no-follow, mode, link-count, size, and complete-descriptor validation.
  * - Immutable publication preserves prepared bytes, linking, fsync, and alias cleanup order.
  * - Recovered private publications retain the same filename and content-digest agreement.
- *
- * Depends on: Node filesystem primitives, audit contracts, and canonical digest validation.
- * Failure modes: unsafe records accepted, partially durable publications, or lost prepared-file recovery.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

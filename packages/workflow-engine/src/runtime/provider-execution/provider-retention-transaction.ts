@@ -4,9 +4,6 @@
  * Invariants:
  * - Prepare, rename, receipt completion, marker creation, and cleanup retain their order.
  * - Both interrupted-prune recovery paths remain with the write transaction.
- *
- * Depends on: retention receipts, physical artifact observations, private files, and durable bindings.
- * Failure modes: A crash can lose evidence without a receipt or restore artifacts to the wrong state.
  */
 
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Exact keys, payload bounds, and semantic text checks retain current rejection behavior.
  * - Checkpoint and contribution digests use the same canonical payload bytes.
- *
- * Depends on: investigation domain validators, session payload types, and canonical JSON.
- * Failure modes: malformed checkpoints are accepted or equivalent contributions receive different digests.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

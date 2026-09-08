@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical digests, evidence keys, and failure codes retain their exact bytes.
  * - Shape checks reject malformed input without repairing or coercing it.
- *
- * Depends on: canonical JSON and the workflow error contract.
- * Failure modes: accepted malformed envelopes, stale evidence, or changed recovery codes.
  */
 import crypto from 'node:crypto';
 

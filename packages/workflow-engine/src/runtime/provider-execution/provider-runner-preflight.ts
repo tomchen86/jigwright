@@ -4,9 +4,6 @@
  * Invariants:
  * - Candidate inspection, definition admission, probe order, and authentication classification stay exact.
  * - The caller supplies its reviewed adapter capability flags and existing runner host.
- *
- * Depends on: provider definitions, runner host probes, reviewed file identities, and runtime errors.
- * Failure modes: An unsafe executable or incompatible provider profile can be admitted for launch.
  */
 
 import { assertKnownBuiltInProviderDefinitionSnapshot } from './built-in-provider-definition.ts';

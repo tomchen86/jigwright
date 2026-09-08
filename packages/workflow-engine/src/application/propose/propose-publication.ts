@@ -6,9 +6,6 @@
  * - Only authenticated prior-generation bytes qualify for managed scaffold replacement.
  * - Interrupted publication resumes its recorded identity and preserves failure evidence.
  * - Failure observations clear only after the expected publication is confirmed.
- *
- * Depends on: manifest builders, publication recovery, managed artifacts, and lifecycle failure records.
- * Failure modes: wrong-generation manifests, lost publication failures, or overwritten planning edits.
  */
 
 import path from 'node:path';

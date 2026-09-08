@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest acceptance, key equality, and immutable cloning retain their original behavior.
  * - Error codes and canonical digest bytes remain stable across readers and writers.
- *
- * Depends on: canonical JSON values and workflow errors.
- * Failure modes: changed durable identities or inconsistent corruption and stale-authority errors.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import crypto from 'node:crypto';

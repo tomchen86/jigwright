@@ -5,9 +5,6 @@
  * - Progress and dispositions bind the current reserved request and admitted review.
  * - Challenge closure retains its exact author and authorization evidence.
  * - Planning completion retains held authority and required class-sample audit evidence.
- *
- * Depends on: review admission and storage, class-sample audits, and planning transitions.
- * Failure modes: stale dispositions, unresolved review challenges, or premature planning completion.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -5,9 +5,6 @@
  * - Workflow revisions and binding digests retain exact session, parent, checkpoint, and artifact facts.
  * - Current sidecar records preserve adoption, promotion, and parent-unblock relationships.
  * - Event projection preserves original ordering and canonical record digests.
- *
- * Depends on: sidecar persistence contracts and canonical identity validation.
- * Failure modes: stale workflow authority accepted, divergent history, or invalid artifact and parent bindings.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Both complete subjects and reviews remain bound to the successor scope.
  * - Lineage records carry no independent closure or freshness authority.
- *
- * Depends on: TaskDiff review scopes, private canonical storage, and digest inventory checks.
- * Failure modes: Replay loses a lineage edge or mistakes an unrelated review for its successor.
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

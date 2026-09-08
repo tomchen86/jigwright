@@ -4,9 +4,6 @@
  * Invariants:
  * - Workflow, job, attempts, and result records retain exact cross-record identity checks.
  * - Canonical state and receipt digests preserve the same fields and byte encoding.
- *
- * Depends on: execution core contracts, provider entry types, and shared digest checks.
- * Failure modes: corrupt projections are persisted or replay receipts identify different execution state.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

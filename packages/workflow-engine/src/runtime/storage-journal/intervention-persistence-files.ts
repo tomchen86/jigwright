@@ -5,9 +5,6 @@
  * - Creation preserves exclusive linking; replacement preserves rename publication.
  * - Descriptor fsync, directory fsync, temporary cleanup, and error propagation retain their order.
  * - Reads preserve canonical bytes, file permissions, link counts, and bounded sizes.
- *
- * Depends on: Node filesystem primitives, persistence limits, and canonical record validation.
- * Failure modes: partially published records, overwritten create-only state, or unsafe record reads.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

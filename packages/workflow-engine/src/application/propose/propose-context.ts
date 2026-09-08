@@ -5,9 +5,6 @@
  * - Repository identity, branch, and baseline agree with the current durable owner.
  * - Captured Source wording and change-origin references preserve exact identity.
  * - A revising task and its held planning authority remain attached to the change.
- *
- * Depends on: planning workspaces, governance intake, lifecycle locks, and baseline policy.
- * Failure modes: stale-context errors, ambiguous revision ownership, or divergent Source bindings.
  */
 
 import crypto from 'node:crypto';

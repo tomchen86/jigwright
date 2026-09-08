@@ -4,9 +4,6 @@
  * Invariants:
  * - Probe decisions, replacement publication, lock scope, and callback order stay exact.
  * - Context loading and application retry calls remain at this runtime entrypoint.
- *
- * Depends on: retry records, durable schedule store, execution inspection, and provider probe execution.
- * Failure modes: A stale failure can publish a replacement or run a probe outside its admitted schedule.
  */
 
 import crypto from 'node:crypto';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Pins, accepted results, current attempts, and receipt bindings retain their existing precedence.
  * - Eligibility remains a read-only decision over the same durable facts.
- *
- * Depends on: invocation state, execution journals, context retention bindings, and artifact observations.
- * Failure modes: Stale or incomplete evidence can be classified as safe to delete.
  */
 
 import fs from 'node:fs';

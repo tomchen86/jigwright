@@ -4,9 +4,6 @@
  * Invariants:
  * - Record schemas and digest inputs retain their exact representations.
  * - Accepted values remain recursively immutable.
- *
- * Depends on: TaskDiff assurance records, provider role identity, and workflow errors.
- * Failure modes: Record identities drift or callers mutate accepted review evidence.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

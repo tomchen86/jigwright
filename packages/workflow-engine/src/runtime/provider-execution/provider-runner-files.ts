@@ -4,9 +4,6 @@
  * Invariants:
  * - No-follow opens, exclusive creation, identity rechecks, and durability stay unchanged.
  * - Baseline file digests continue to describe the exact tracked or private bytes.
- *
- * Depends on: filesystem metadata, Git reads, and runner errors.
- * Failure modes: Path substitution or changed files can cross the governed execution boundary.
  */
 
 import crypto from 'node:crypto';

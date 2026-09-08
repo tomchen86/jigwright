@@ -5,9 +5,6 @@
  * - Status reads replay consumed grants without admitting reserved grants or provider work.
  * - Displayed planning and review progress agree with current receipts and reservations.
  * - Scaffold materialization retains held authority and a current investigation revision.
- *
- * Depends on: investigation rebuilds, planning receipts, review records, and output projections.
- * Failure modes: misleading next actions, stale plan digests, or status reads that advance execution.
  */
 
 import path from 'node:path';

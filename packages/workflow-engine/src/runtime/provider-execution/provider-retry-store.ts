@@ -4,9 +4,6 @@
  * Invariants:
  * - Receipt creation, completion, schedule reconciliation, and lock identities stay unchanged.
  * - Replays validate the same immutable request and attempt bindings before writes.
- *
- * Depends on: retry record validation and private investigation storage.
- * Failure modes: Interrupted probes can run twice or a receipt can advance the wrong schedule.
  */
 
 import path from 'node:path';

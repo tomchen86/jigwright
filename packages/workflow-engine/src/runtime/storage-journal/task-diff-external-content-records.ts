@@ -4,9 +4,6 @@
  * Invariants:
  * - Content remains bound to its exact subject, review, and response digests.
  * - Content records carry no admission, grant, or closure authority.
- *
- * Depends on: TaskDiff submission schemas and external continuation target identity.
- * Failure modes: Altered content is admitted under an earlier digest or confused with authority.
  */
 import {
   type TaskDiffReviewChallengeResponseRecord,

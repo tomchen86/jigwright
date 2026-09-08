@@ -4,9 +4,6 @@
  * Invariants:
  * - Observation remains read-only and records unavailable or unsafe artifacts truthfully.
  * - Failure emissions retain lifecycle, publication-state, and Git-state digests.
- *
- * Depends on: journal inspection, stable artifact reads, and repository projection fingerprints.
- * Failure modes: misclassified recovery state or a failure grant bound to stale observations.
  */
 import type {
   InvestigationManifestPublicationObservationSource,

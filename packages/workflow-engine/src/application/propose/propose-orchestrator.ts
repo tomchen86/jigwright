@@ -5,9 +5,6 @@
  * - Public signatures and result shapes remain compatible with existing callers.
  * - Dependency assembly performs no reads, writes, or authority acquisition.
  * - Each workflow receives the same runtime operations throughout its execution.
- *
- * Depends on: proposal use cases, their contracts, and the existing runtime composition.
- * Failure modes: incompatible entry points, missing operations, or incorrectly bound workflows.
  */
 import {
   loadChecksConfig,

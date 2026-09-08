@@ -5,9 +5,6 @@
  * - Engine-derived review fields and role admission bind the exact reserved subject.
  * - Granted admission preserves the exact consumed collaboration or context-sharing use.
  * - Reviewer terms preserve reopening evidence and invalidate unsupported exemptions.
- *
- * Depends on: provider results, role admission, reviewer-term decisions, and review storage.
- * Failure modes: unadmitted reviews, missing reviewer terms, or planning based on a stale exemption.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -4,9 +4,6 @@
  * Invariants:
  * - The same per-lineage lock protects publication, exact replay, and contiguous round checks.
  * - Failure validation precedes publication and imported rounds preserve their predecessor bindings.
- *
- * Depends on: correction record contracts, private runtime files, and persisted GREEN failure records.
- * Failure modes: duplicate rounds, changed replay authority, or correction state detached from the failed candidate.
  */
 import {
   type InvestigationRuntimePaths,

@@ -4,9 +4,6 @@
  * Invariants:
  * - Required subjects and trailers preserve their byte encoding and ordering.
  * - Authority and amendment provenance retain existing validation constraints.
- *
- * Depends on: managed trailer contracts, documentation closure encoding, and subject validation.
- * Failure modes: managed commits no longer match their lifecycle or authority evidence.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

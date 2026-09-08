@@ -4,9 +4,6 @@
  * Invariants:
  * - Async-local deadline state, monotonic clocks, and completion obligations retain their semantics.
  * - Test hooks cannot raise the production admission cap or alter terminal cleanup exceptions.
- *
- * Depends on: monotonic time, async-local storage, and workflow timeout errors.
- * Failure modes: approval expires mid-transaction or mandatory cleanup is incorrectly denied.
  */
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { performance } from 'node:perf_hooks';

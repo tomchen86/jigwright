@@ -4,9 +4,6 @@
  * Invariants:
  * - Existing import paths preserve the same functions, types, errors, and canonical identities.
  * - Object publication and ref updates retain their separate durability protocols.
- *
- * Depends on: evidence node storage, ref transactions, and owner-specific closure validation.
- * Failure modes: callers lose evidence compatibility or resolve an unbound ref as durable authority.
  */
 
 export { readEvidenceNode, writeEvidenceNode } from './evidence-node-store.ts';

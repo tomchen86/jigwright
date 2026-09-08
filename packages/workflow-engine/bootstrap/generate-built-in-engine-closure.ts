@@ -9,10 +9,6 @@
  * - Any change to a file inside the closure moves the pin, so regenerate this
  *   first, then the harness bootstrap runtime, then the protected capability
  *   manifest, in that order.
- *
- * Depends on: workspace-source-closure.ts for file discovery.
- * Failure modes: a stale pin makes every sealed bootstrap parent binding disagree
- * with the recovery runtime's copy of the same pin.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

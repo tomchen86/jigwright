@@ -3,9 +3,6 @@
  *
  * Invariants:
  * - Error codes, exit codes, and recursive freezing remain stable.
- *
- * Depends on: Workflow errors and canonical native session record values.
- * Failure modes: Callers misclassify corruption or mutate accepted records.
  */
 import crypto from 'node:crypto';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

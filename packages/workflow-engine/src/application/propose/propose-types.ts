@@ -5,9 +5,6 @@
  * - Envelope discriminants, evidence bindings, and nullable states preserve their exact meaning.
  * - Public result shapes and internal review data remain compatible across propose modules.
  * - These declarations carry no runtime initialization or transition behavior.
- *
- * Depends on: investigation and review domain contracts, authority types, and runtime port aliases.
- * Failure modes: incompatible callers, missing evidence fields, or confused lifecycle states.
  */
 
 import { type AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';

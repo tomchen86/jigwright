@@ -4,9 +4,6 @@
  * Invariants:
  * - Commit trees, parents, identities, and messages use the same exact command arguments.
  * - Ref updates keep compare-and-swap expectations and current failure behavior.
- *
- * Depends on: managed commit message contracts and trusted Git execution.
- * Failure modes: commits carry wrong provenance or ref updates replace another writer’s work.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

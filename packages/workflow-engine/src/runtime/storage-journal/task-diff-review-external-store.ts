@@ -4,9 +4,6 @@
  * Invariants:
  * - Each operation retains its preflight inventory check and create-only conflict behavior.
  * - Bindings are read against the exact reservation that authorized their contribution.
- *
- * Depends on: External record codecs, inventory linkage checks, and private canonical storage.
- * Failure modes: A contribution is replayed under the wrong grant or inconsistent authority remains hidden.
  */
 import fs from 'node:fs';
 import path from 'node:path';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Digest formatting, canonical timestamps, path checks, and error codes remain unchanged.
  * - Invalid data remains rejected before publication or destructive maintenance.
- *
- * Depends on: canonical JSON, cryptographic digests, and workflow errors.
- * Failure modes: accepted malformed metadata, divergent identities, or changed failure classification.
  */
 import crypto from 'node:crypto';
 import path from 'node:path';

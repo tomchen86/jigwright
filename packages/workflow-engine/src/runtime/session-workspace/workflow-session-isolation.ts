@@ -4,9 +4,6 @@
  * Invariants:
  * - Lease reclamation requires the same stable session and dead owner observations.
  * - Partial acquisition rolls back only owned publications and preserves descriptor cleanup order.
- *
- * Depends on: session records, managed lock helpers, private directory identity, and prepared publication.
- * Failure modes: overlapping resource ownership, unsafe stale-lease cleanup, or abandoned partial acquisitions.
  */
 import {
   ensurePlainDirectory,

@@ -4,9 +4,6 @@
  * Invariants:
  * - Immutable transaction publication precedes current-ref compare-and-swap.
  * - Current reads validate the predecessor, task contract, and reviewed lineage before returning a transaction.
- *
- * Depends on: content-addressed task strategy transactions and RED revision current refs.
- * Failure modes: an unsealed, unrelated, or stale transaction becomes current.
  */
 import {
   type InvestigationRuntimePaths,

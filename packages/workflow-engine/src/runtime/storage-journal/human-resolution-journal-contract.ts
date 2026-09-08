@@ -4,9 +4,6 @@
  * Invariants:
  * - Planned refs and reservations bind their exact before and after digests.
  * - Journal identity excludes only the same mutable phase data as before.
- *
- * Depends on: resolution contracts, canonical digests, and private record value checks.
- * Failure modes: recovery accepts a different plan or mistakes an intermediate phase for terminal state.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertInvestigationId } from '../session-workspace/paths.ts';

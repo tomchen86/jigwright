@@ -5,9 +5,6 @@
  * - Stored reviews replay their admitted role result and selected disposition.
  * - Reservations bind the subject, snapshots, request, grant, and retry lineage.
  * - Current requirement references advance only to the corresponding immutable evidence.
- *
- * Depends on: evidence objects and refs, review codecs, provider records, and role replay.
- * Failure modes: stale review artifacts, mismatched reservations, or requirements for another plan.
  */
 
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Schema discriminants, optional fields, record digests, and authority bindings retain their meaning.
  * - Shared size and permission constants preserve the existing storage limits.
- *
- * Depends on: intervention domain types and current sidecar workflow identities.
- * Failure modes: incompatible persisted records, omitted authority data, or changed storage limits.
  */
 import type {
   Sha256Digest,

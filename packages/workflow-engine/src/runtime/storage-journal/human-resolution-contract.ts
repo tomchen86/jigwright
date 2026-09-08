@@ -4,9 +4,6 @@
  * Invariants:
  * - Decisions retain their exact schemas, consequences, and advertised availability.
  * - Node and state identities bind the same target, expected state, grant, and timestamp.
- *
- * Depends on: investigation session types, resolution value checks, and canonical JSON.
- * Failure modes: a resolution changes unauthorized consequences or no longer replays against its target.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical digest prefixes, accepted shapes, and error identities stay unchanged.
  * - Helpers remain free of durable state mutation.
- *
- * Depends on: canonical JSON and workflow error definitions.
- * Failure modes: Context identities drift or invalid repair data passes validation.
  */
 
 import crypto from 'node:crypto';

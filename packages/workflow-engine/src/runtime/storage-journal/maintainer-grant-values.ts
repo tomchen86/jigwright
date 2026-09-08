@@ -4,9 +4,6 @@
  * Invariants:
  * - Accepted roots and timestamps retain their existing canonical forms.
  * - Unavailable, missing, ambiguous, and unsafe grants retain distinct errors.
- *
- * Depends on: filesystem paths and workflow errors.
- * Failure modes: invalid requests target the wrong store or grant failures change their meaning.
  */
 import fs from 'node:fs';
 import path from 'node:path';

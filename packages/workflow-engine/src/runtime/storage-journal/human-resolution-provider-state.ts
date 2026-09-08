@@ -4,9 +4,6 @@
  * Invariants:
  * - Retry reservations bind the exact session, generation, policy snapshot, and replacement.
  * - Pending and terminal invocation observations retain their original ambiguity checks.
- *
- * Depends on: provider lifecycle projections, session types, and private evidence readers.
- * Failure modes: unrelated provider work is resumed or a conflicting retry is accepted as current.
  */
 import fs from 'node:fs';
 import path from 'node:path';

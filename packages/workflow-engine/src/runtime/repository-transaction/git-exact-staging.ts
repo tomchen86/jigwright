@@ -4,9 +4,6 @@
  * Invariants:
  * - Prospective and real index trees retain their expected-path and pinned-tree checks.
  * - Partial staging and rollback preserve unstaged changes and exact previous index state.
- *
- * Depends on: Git commands, temporary indexes, and normalized path sets.
- * Failure modes: staging captures unintended files or overwrites existing unstaged work.
  */
 import fs from 'node:fs';
 import os from 'node:os';

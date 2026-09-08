@@ -4,9 +4,6 @@
  * Invariants:
  * - NUL-delimited Git output and ignored-path normalization preserve exact path identities.
  * - Hidden index flags keep their current rejection interpretation.
- *
- * Depends on: Git command execution and changed-path normalization.
- * Failure modes: path inventories omit files or confuse ignored and tracked content.
  */
 import { normalizeChangedPath } from '../session-workspace/paths.ts';
 import { runGit } from './git-command.ts';

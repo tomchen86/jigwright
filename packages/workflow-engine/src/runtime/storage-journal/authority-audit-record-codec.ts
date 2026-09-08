@@ -4,9 +4,6 @@
  * Invariants:
  * - Event fields, predecessor digests, sequence values, and idempotency inputs retain exact meaning.
  * - Stored record bytes remain canonical and bounded before entering the ledger chain.
- *
- * Depends on: audit event contracts, canonical JSON, and value validation.
- * Failure modes: broken hash chains, ambiguous idempotency matches, or malformed records admitted.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

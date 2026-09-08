@@ -4,9 +4,6 @@
  * Invariants:
  * - Lifecycle locking and terminal record publication precede cleanup of nonterminal copies.
  * - Reserve, release, consume, and revoke preserve their distinct replay and conflict rules.
- *
- * Depends on: maintainer record codecs, private grant files, and repository lifecycle locking.
- * Failure modes: a grant executes twice, loses its reservation, or accepts conflicting terminal state.
  */
 import fs from 'node:fs';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

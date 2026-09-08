@@ -4,9 +4,6 @@
  * Invariants:
  * - Selected roots, path framing, and volatile metadata choices stay unchanged.
  * - Recursive traversal preserves entry, depth, and byte checks before consuming content.
- *
- * Depends on: bounded projection files, runtime input descriptors, and filesystem metadata.
- * Failure modes: runtime drift is omitted or unrelated artifacts alter a provider projection.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

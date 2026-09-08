@@ -4,9 +4,6 @@
  * Invariants:
  * - Result precedence, retry classification, replacement digest bytes, and view defaults stay unchanged.
  * - Projection performs no replacement publication or lifecycle mutation.
- *
- * Depends on: execution core records, durable store reads, and public inspection types.
- * Failure modes: A losing result can appear accepted or a replacement preview can bind the wrong attempt.
  */
 
 import crypto from 'node:crypto';

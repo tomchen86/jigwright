@@ -4,9 +4,6 @@
  * Invariants:
  * - Field names, policy values, and public discriminants retain their persisted meaning.
  * - Frozen policy objects retain their existing recursive immutability.
- *
- * Depends on: audit record, profile, anchor, destruction, and maintenance contracts.
- * Failure modes: schema drift, changed policy digests, or incompatible evidence readers.
  */
 
 export const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;

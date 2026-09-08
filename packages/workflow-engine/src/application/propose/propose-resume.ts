@@ -5,9 +5,6 @@
  * - Submissions retain their exact change, revision, baseline, and input bindings.
  * - Published provider progress replays without applying the transition twice.
  * - Scan acceptance names the exact saturated terms of the current pinned scan.
- *
- * Depends on: request validation, investigation checkpoints, planning, and review handlers.
- * Failure modes: stale-input errors, repeated transitions, or checkpoints against different facts.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

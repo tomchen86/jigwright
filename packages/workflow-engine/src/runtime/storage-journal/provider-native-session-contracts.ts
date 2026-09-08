@@ -4,9 +4,6 @@
  * Invariants:
  * - Input keys, digest identity, and reference error codes remain exact.
  * - Chain state distinguishes usable completion from authorized continuation.
- *
- * Depends on: Provider native session envelopes and wrapper protocol bindings.
- * Failure modes: Malformed claims pass validation or a pending session appears resumable.
  */
 import type { ProviderWrapperSessionProtocolBinding } from '@jigwright/agent-runtime';
 import {

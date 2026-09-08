@@ -4,9 +4,6 @@
  * Invariants:
  * - Embedded envelope bytes, timestamps, and exact state shapes keep current validation rules.
  * - Interrupted reservations remain distinguishable from canonical reserved records.
- *
- * Depends on: maintainer grant envelopes, canonical JSON, and private file readers.
- * Failure modes: ambiguous grant copies become executable or terminal evidence cannot be replayed.
  */
 import fs from 'node:fs';
 import path from 'node:path';

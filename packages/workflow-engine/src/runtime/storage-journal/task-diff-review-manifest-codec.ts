@@ -4,9 +4,6 @@
  * Invariants:
  * - Manifest keys and repository baselines retain their exact validation.
  * - Actor and mandate context remain immutable and bound to the requested change.
- *
- * Depends on: TaskDiff subjects and scopes, recorded participants, and task mandates.
- * Failure modes: Review evidence is detached from its repository baseline or authorized actor.
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

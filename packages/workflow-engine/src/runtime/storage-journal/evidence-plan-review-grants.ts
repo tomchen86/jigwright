@@ -4,9 +4,6 @@
  * Invariants:
  * - Grant subjects, recorded participants, and assignment decisions bind exact canonical evidence.
  * - Optional grant requirements preserve their existing target and policy constraints.
- *
- * Depends on: PlanReview subjects, planning evidence ownership, and provider assignment contracts.
- * Failure modes: unrelated grants or participants authorize a PlanReview request.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { type EvidenceNode } from '../../foundation/evidence-node/evidence-node.ts';

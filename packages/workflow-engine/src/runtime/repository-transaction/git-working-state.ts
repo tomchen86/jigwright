@@ -4,9 +4,6 @@
  * Invariants:
  * - Projection framing and excluded-path handling retain the existing bytes and ordering.
  * - Discovery rejects hidden index state and uses the same controlled untracked paths.
- *
- * Depends on: Git commands, tracked path inventory, and framed filesystem fingerprints.
- * Failure modes: repository changes are missed or unchanged state appears different.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Public operations preserve their existing index, commit, and ref authority semantics.
  * - Message bytes and task-history matching stay compatible with existing commits.
- *
- * Depends on: exact staging transactions, managed commit messages, and history inspection.
- * Failure modes: worktree changes are staged incorrectly or managed commit provenance is lost.
  */
 
 export {

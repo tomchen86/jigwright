@@ -4,9 +4,6 @@
  * Invariants:
  * - Current record schemas, failure shapes, request bindings, and lease checks stay exact.
  * - Manifest and output validation remain available through this existing entrypoint.
- *
- * Depends on: invocation types, manifest and output validators, shared predicates, and runtime receipts.
- * Failure modes: An incompatible request or stale lease can be accepted as valid durable state.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -4,9 +4,6 @@
  * Invariants:
  * - Records retain exact grant, envelope, transition, and revocation-authorization bindings.
  * - Residual cleanup removes only copies matching the already durable terminal record.
- *
- * Depends on: private grant files, use contracts, and signed collaboration envelopes.
- * Failure modes: ambiguous grants admitted, stale residual copies, or cleanup of another transition.
  */
 import { withRepositoryLifecycleOperation } from '../session-workspace/repository-lifecycle-lock.ts';
 import type {

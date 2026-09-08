@@ -4,9 +4,6 @@
  * Invariants:
  * - Output byte limits, protocol receipts, semantic checks, and error payloads stay exact.
  * - Native outputs never substitute for wrapper authority evidence.
- *
- * Depends on: provider contracts, wrapper protocol, runtime file reads, and runner errors.
- * Failure modes: Invalid output can be accepted or valid failures lose their repair evidence.
  */
 
 import fs from 'node:fs';

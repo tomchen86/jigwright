@@ -4,9 +4,6 @@
  * Invariants:
  * - Journal and candidate bytes bind the same snapshot, manifest, and current-ref identity.
  * - Candidate installation retains existing authority and anchored replacement checks.
- *
- * Depends on: publication contracts and stable publication file operations.
- * Failure modes: divergent journal replay, installation over unrelated authority, or unbound candidate residue.
  */
 import fs from 'node:fs';
 import path from 'node:path';

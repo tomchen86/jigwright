@@ -12,12 +12,6 @@
  *   with --retired-test.
  * - The own-test counts pinned for the two roots in workflow-test-inventory.ts
  *   are updated deliberately when cases are added or moved, never inferred.
- *
- * Depends on: workflow-test-inventory.ts and the last full-gate telemetry.
- * Failure modes, one layer at a time: "wrapper inventory drifted", "absent from
- * the legacy families", "must retain N own tests", "telemetry names an unknown
- * physical test". Fix in that order, then update the counts asserted in
- * workflow-test-inventory.contract.test.ts.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';

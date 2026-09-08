@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical bodies retain their byte order and original digest fields.
  * - Snapshot links and contiguous lineage checks preserve the exact failed candidate and patch head.
- *
- * Depends on: correction authority contracts, correction policy, and GREEN failure records.
- * Failure modes: forged record links, changed record digests, or invalid correction lineage admitted.
  */
 import {
   type TaskStrategyPatchHead,

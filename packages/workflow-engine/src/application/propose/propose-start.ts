@@ -5,9 +5,6 @@
  * - Repeated starts reuse the exact durable request, actor, intent, and baseline.
  * - Ordinary and exemption branches cannot both own the current change.
  * - Survey dispatch follows durable authorization and session creation.
- *
- * Depends on: propose context, actor resolution, role scheduling, and investigation sessions.
- * Failure modes: conflicting current sessions, duplicate survey starts, or stale exemption plans.
  */
 
 import crypto from 'node:crypto';

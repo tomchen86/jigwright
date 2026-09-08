@@ -5,9 +5,6 @@
  * - Counterpart paths and declared symbols remain grounded in pinned repository facts.
  * - Class compression preserves the current assurance floor and path-role classification.
  * - Reopened checkpoints retain prior class audits and reuse only exact knowledge bindings.
- *
- * Depends on: engine-floor rules, path-role registries, assurance assessment, and the WHY ledger.
- * Failure modes: omitted paths, unjustified class compression, or stale answers carried into review.
  */
 
 import fs from 'node:fs';

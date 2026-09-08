@@ -5,9 +5,6 @@
  * - Terms, scans, groups, and WHY facts derive from the same pinned investigation inputs.
  * - Engine-floor terms and exact scan acceptance survive contribution and budget handling.
  * - Semantic reuse remains visible in review coverage with its current policy provenance.
- *
- * Depends on: session checkpoints, pinned trees, investigation facts, scans, and semantic reuse.
- * Failure modes: missing investigation coverage, stale scan acceptance, or unverifiable WHY evidence.
  */
 
 import { extractFileHeader } from '../../modules/source/file-header.ts';

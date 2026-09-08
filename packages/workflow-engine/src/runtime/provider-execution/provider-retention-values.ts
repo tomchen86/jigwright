@@ -4,9 +4,6 @@
  * Invariants:
  * - Limits, digest bytes, deny reasons, and error identities stay unchanged.
  * - Helpers never mutate retention state.
- *
- * Depends on: canonical values and workflow errors.
- * Failure modes: Invalid maintenance input or incompatible identities can be accepted.
  */
 
 import crypto from 'node:crypto';

@@ -5,9 +5,6 @@
  * - Admission binds author, reviewer, provider output, and content to the same assignment.
  * - Read-only replay verifies an already-consumed grant without mutating its state.
  * - Mutating admission consumes the exact grant before publishing an admitted role result.
- *
- * Depends on: role admission, propose authorization, provider results, and collaboration grant ports.
- * Failure modes: unbound survey evidence, duplicate grant consumption, or writable status replay.
  */
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

@@ -5,9 +5,6 @@
  * - Receipts bind artifact digests to the current manifest or structured applicability.
  * - Receipt advancement preserves expected current evidence and revision ownership.
  * - Live artifacts and their OpenSpec graph match the receipt before they are reported.
- *
- * Depends on: evidence refs, artifact readers, OpenSpec contracts, and plan-digest projection.
- * Failure modes: stale receipts, conflicting materializations, or summaries of unbound planning bytes.
  */
 
 import { extractFileHeader } from '../../modules/source/file-header.ts';

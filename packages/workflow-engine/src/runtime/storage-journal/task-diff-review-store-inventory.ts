@@ -4,9 +4,6 @@
  * Invariants:
  * - Global namespaces remain excluded from provider sessions.
  * - Directory validation and filename ordering remain unchanged.
- *
- * Depends on: Private investigation directories and session identifier validation.
- * Failure modes: Foreign paths enter review inventory or valid records disappear from replay.
  */
 import fs from 'node:fs';
 import path from 'node:path';

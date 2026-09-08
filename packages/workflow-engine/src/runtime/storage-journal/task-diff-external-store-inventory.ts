@@ -4,9 +4,6 @@
  * Invariants:
  * - Bindings, reservations, and content retain exact cross-record identity checks.
  * - Grant identifiers and envelopes remain unique across review and continuation attempts.
- *
- * Depends on: External authority and content codecs, private canonical reads, and store paths.
- * Failure modes: Orphaned bindings, missing submissions, or reused grants survive inventory validation.
  */
 import fs from 'node:fs';
 import path from 'node:path';

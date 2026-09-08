@@ -4,9 +4,6 @@
  * Invariants:
  * - Context loading, current journal reads, polling cancellation, and public signatures stay exact.
  * - Inspection never publishes a replacement or re-runs provider work.
- *
- * Depends on: execution journals, provider lifecycle projections, and replacement view construction.
- * Failure modes: Callers can observe stale job state or wait past a requested cancellation.
  */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

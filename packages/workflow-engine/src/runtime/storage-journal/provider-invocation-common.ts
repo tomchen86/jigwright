@@ -4,9 +4,6 @@
  * Invariants:
  * - Canonical bytes, private paths, error codes, and directory flush behavior stay stable.
  * - Provider timestamps and identifiers retain their existing validation semantics.
- *
- * Depends on: canonical JSON, investigation runtime paths, and provider record types.
- * Failure modes: Changed identities or errors break CAS, replay, and safe private-file handling.
  */
 
 import crypto from 'node:crypto';

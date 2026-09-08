@@ -4,9 +4,6 @@
  * Invariants:
  * - Stored requirements retain their exact subject, author, baseline, and role bindings.
  * - A retry keeps its deterministic identity and the failed request's semantic inputs.
- *
- * Depends on: role scheduling and topology, provider contracts, and canonical JSON.
- * Failure modes: stale review evidence is admitted or a valid exact Grant is rejected.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

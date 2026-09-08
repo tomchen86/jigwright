@@ -4,9 +4,6 @@
  * Invariants:
  * - Exact trailer matching and changed-path ordering preserve their current semantics.
  * - Task queries exclude commits from superseded execution boundaries.
- *
- * Depends on: managed trailers, immutable Git reads, and NUL-delimited path parsing.
- * Failure modes: old or unrelated commits satisfy current task evidence.
  */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { parseManagedTrailers } from '../../modules/lifecycle/managed-trailers.ts';

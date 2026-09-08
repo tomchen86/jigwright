@@ -4,9 +4,6 @@
  * Invariants:
  * - Live and retained artifacts retain exact membership, byte, digest, and snapshot bindings.
  * - Runtime authority is checked before retention evidence, and returned digests remain sorted.
- *
- * Depends on: provider authority, host-wrapper evidence, retention receipts, and bounded private file reads.
- * Failure modes: pruned evidence cannot replay or missing and tampered artifacts are accepted.
  */
 import fs from 'node:fs';
 import path from 'node:path';
