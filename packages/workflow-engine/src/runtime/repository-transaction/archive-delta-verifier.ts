@@ -25,7 +25,7 @@ import {
 import { readFileAtCommit } from './git.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
-import { readSystemSpecDeltaInputs } from './system-spec-deltas.ts';
+import { readSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
 
 export {
   SPEC_DELTA_VALIDATOR_VERSION,

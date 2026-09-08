@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 
-import { createOpenSpecAdapter } from '../adapters/planning/openspec/documents/openspec-adapter.ts';
+import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
 import { OPENSPEC_ASSET_DEFINITIONS } from '../adapters/planning/openspec/documents/openspec-planning-asset-contract.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import type {

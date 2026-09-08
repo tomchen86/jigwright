@@ -3,8 +3,8 @@ import {
   combineOpenSpecDeltas,
   type OpenSpecDeltaInput,
 } from '@jigwright/openspec-adapter/archive-projection';
-import { systemSpecCatalog } from '../../modules/source/system-spec-catalog.ts';
-import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
+import { systemSpecCatalog } from './system-spec-catalog.ts';
+import type { SystemDescriptionSnapshot } from './spec-ownership.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export function readSystemSpecDeltaInputs(

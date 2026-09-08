@@ -1,3 +1,5 @@
+import { createColocatedOpenSpecViewDependencies } from './openspec-adapter-production.ts';
+import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 import path from 'node:path';
 
 import { parseOpenSpecValidationPayloadV1 } from '@jigwright/openspec-adapter/validation-payload';
@@ -72,42 +74,61 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
       }) satisfies PlanningArchiveReadiness;
     },
     prepareArchive(context: PlanningArchiveProjectionContext) {
-      return withColocatedOpenSpecView(context.projectionRoot, (view) => {
-        const publish = prepareColocatedArchiveView(
-          context.projectionRoot,
-          view,
-          context.planningProvider.binding.planningRoot,
-        );
-        const nativeContext = { ...context, projectionRoot: view.root };
-        const { installation, openspec } = openSpecArchiveProcess(context);
-        const native =
-          view.root === context.projectionRoot
-            ? openspec
-            : createOpenSpecProcess(installation, { executionRoot: view.root });
-        const projection = parseArchiveProjection(
-          native.archive(context.changeId),
-          nativeContext,
-          installation.version,
-        );
-        publish(projection.archivePath);
-        return projection;
-      });
+      return withColocatedOpenSpecView(
+        context.projectionRoot,
+        (view) => {
+          const publish = prepareColocatedArchiveView(
+            context.projectionRoot,
+            view,
+            context.planningProvider.binding.planningRoot,
+          );
+          const nativeContext = { ...context, projectionRoot: view.root };
+          const { installation, openspec } = openSpecArchiveProcess(context);
+          const native =
+            view.root === context.projectionRoot
+              ? openspec
+              : createOpenSpecProcess(installation, {
+                  executionRoot: view.root,
+                });
+          const projection = parseArchiveProjection(
+            native.archive(context.changeId),
+            nativeContext,
+            installation.version,
+          );
+          publish(projection.archivePath);
+          return projection;
+        },
+        createColocatedOpenSpecViewDependencies(),
+      );
     },
     validateProjectedSpecs(context: PlanningArchiveProjectionContext) {
-      return withColocatedOpenSpecView(context.projectionRoot, (view) => {
-        const { installation, openspec } = openSpecArchiveProcess(context);
-        const native =
-          view.root === context.projectionRoot
-            ? openspec
-            : createOpenSpecProcess(installation, { executionRoot: view.root });
-        return parseProjectedSpecValidation(
-          native.validateAllSpecs(),
-          { ...context, projectionRoot: view.root },
-          installation.version,
-        );
-      });
+      return withColocatedOpenSpecView(
+        context.projectionRoot,
+        (view) => {
+          const { installation, openspec } = openSpecArchiveProcess(context);
+          const native =
+            view.root === context.projectionRoot
+              ? openspec
+              : createOpenSpecProcess(installation, {
+                  executionRoot: view.root,
+                });
+          return parseProjectedSpecValidation(
+            native.validateAllSpecs(),
+            { ...context, projectionRoot: view.root },
+            installation.version,
+          );
+        },
+        createColocatedOpenSpecViewDependencies(),
+      );
     },
   });
+}
+
+export function createArchiveProjectionDependencies() {
+  return {
+    archiveProjectionPort: createOpenSpecPlanningArchiveProjectionPort(),
+    readSystemDescriptionSnapshot,
+  };
 }
 
 function inspectArchiveReplayReadiness(

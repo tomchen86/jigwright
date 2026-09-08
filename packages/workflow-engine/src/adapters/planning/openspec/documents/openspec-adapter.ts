@@ -27,7 +27,10 @@ import {
   type OpenSpecStatus,
   type OpenSpecValidation,
 } from './openspec-payloads.ts';
-import { withColocatedOpenSpecView } from './colocated-openspec-view.ts';
+import {
+  withColocatedOpenSpecView,
+  type ColocatedOpenSpecViewDependencies,
+} from './colocated-openspec-view.ts';
 
 export { resolveOpenSpecInstallation };
 export type { OpenSpecInstallation };
@@ -64,7 +67,8 @@ export type OpenSpecAdapter = {
 
 export function createOpenSpecAdapter(
   repositoryRoot: string,
-  options: OpenSpecAdapterOptions = {},
+  options: OpenSpecAdapterOptions,
+  colocatedView: ColocatedOpenSpecViewDependencies,
 ): OpenSpecAdapter {
   const installation = resolveOpenSpecInstallation(repositoryRoot);
   const openspec = createOpenSpecProcess(installation, options);
@@ -176,28 +180,32 @@ export function createOpenSpecAdapter(
       });
     },
     validateAllSpecs: () => {
-      return withColocatedOpenSpecView(installation.repositoryRoot, (view) => {
-        const specsDirectory = path.join(view.root, 'openspec/specs');
-        return withCanonicalDirectory(view.root, specsDirectory, () => {
-          const native =
-            view.root === installation.repositoryRoot
-              ? openspec
-              : createOpenSpecProcess(installation, {
-                  ...options,
-                  executionRoot: view.root,
-                });
-          const executed = native.validateAllSpecs();
-          const validation = parseValidation(executed.value, {
-            repositoryRoot: view.root,
-            expectedType: 'spec',
+      return withColocatedOpenSpecView(
+        installation.repositoryRoot,
+        (view) => {
+          const specsDirectory = path.join(view.root, 'openspec/specs');
+          return withCanonicalDirectory(view.root, specsDirectory, () => {
+            const native =
+              view.root === installation.repositoryRoot
+                ? openspec
+                : createOpenSpecProcess(installation, {
+                    ...options,
+                    executionRoot: view.root,
+                  });
+            const executed = native.validateAllSpecs();
+            const validation = parseValidation(executed.value, {
+              repositoryRoot: view.root,
+              expectedType: 'spec',
+            });
+            assertValidationExit(executed.status, validation.valid);
+            return {
+              ...validation,
+              root: { ...validation.root, path: installation.repositoryRoot },
+            };
           });
-          assertValidationExit(executed.status, validation.valid);
-          return {
-            ...validation,
-            root: { ...validation.root, path: installation.repositoryRoot },
-          };
-        });
-      });
+        },
+        colocatedView,
+      );
     },
   };
 }

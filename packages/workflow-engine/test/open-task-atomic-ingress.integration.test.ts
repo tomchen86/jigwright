@@ -1,3 +1,4 @@
+import { openTask } from '../src/composition-root/open-task-production.ts';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -10,10 +11,7 @@ import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.t
 import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
 import { commitFacts } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
-import {
-  openTask,
-  readOpenTaskJournal,
-} from '../src/application/execute-task/open-task.ts';
+import { readOpenTaskJournal } from '../src/application/execute-task/open-task.ts';
 import { readPlanningTransitionReport } from '../src/runtime/storage-journal/planning-report.ts';
 import { preparePlanningDraftWorkspace } from '../src/runtime/session-workspace/planning-workspace.ts';
 import { abortSession } from '../src/application/execute-task/session.ts';

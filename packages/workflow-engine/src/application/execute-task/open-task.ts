@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { taskSystemDocumentContext } from '../../runtime/managed-documents/validation/task-system-document-context.ts';
+import type { systemDocumentContext } from '../../modules/source/system-document-context.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
@@ -153,7 +153,13 @@ export type OpenTaskResult = Readonly<{
   allowedPaths: readonly string[];
   requiredChecks: readonly string[];
   recovered: boolean;
-  systemDocuments: ReturnType<typeof taskSystemDocumentContext>;
+  systemDocuments: ReturnType<typeof systemDocumentContext>;
+}>;
+
+export type OpenTaskPorts = Readonly<{
+  readSystemDocuments(
+    session: WorkflowSession,
+  ): ReturnType<typeof systemDocumentContext>;
 }>;
 
 export type OpenTaskOptions = Readonly<{
@@ -170,7 +176,8 @@ export type OpenTaskOptions = Readonly<{
  * externally observable phase is therefore either absent or recoverable from
  * the exact durable journal below.
  */
-export function openTask(
+export function openTaskWithPorts(
+  ports: OpenTaskPorts,
   cwd: string,
   requestedChangeId: string,
   requestedTaskId: string | undefined,
@@ -241,6 +248,7 @@ export function openTask(
             options.environment,
           ),
       planningCommit,
+      ports,
     );
   }
   const authorization =
@@ -271,6 +279,7 @@ export function openTask(
         existing,
         assertRepositoryLock,
         options,
+        ports,
       );
     }
     if (authorization === null && mandateTaskId !== null) {
@@ -377,7 +386,7 @@ export function openTask(
       throw simulatedInterruption('session-active');
     }
     const completed = completeJournal(runtime, durable, options.now);
-    return resultFrom(completed, session, false);
+    return resultFrom(completed, session, false, ports);
   });
 }
 
@@ -496,6 +505,7 @@ function assertCommittedPlanningGeneration(
 function existingPlanResult(
   session: WorkflowSession,
   planningCommit: string,
+  ports: OpenTaskPorts,
 ): OpenTaskResult {
   return Object.freeze({
     changeId: session.changeId,
@@ -509,7 +519,7 @@ function existingPlanResult(
     allowedPaths: Object.freeze([...session.allowedPaths]),
     requiredChecks: Object.freeze([...session.requiredChecks]),
     recovered: false,
-    systemDocuments: taskSystemDocumentContext(session),
+    systemDocuments: ports.readSystemDocuments(session),
   });
 }
 
@@ -723,11 +733,12 @@ function recoverOpenTask(
   journal: OpenTaskJournal,
   assertRepositoryLock: () => void,
   options: OpenTaskOptions,
+  ports: OpenTaskPorts,
 ): OpenTaskResult {
   assertJournalAuthority(cwd, journal);
   if (journal.phase === 'completed') {
     const session = readAndAssertExactSession(cwd, runtime, journal);
-    return resultFrom(journal, session, true);
+    return resultFrom(journal, session, true, ports);
   }
 
   let durable = journal;
@@ -784,7 +795,7 @@ function recoverOpenTask(
     session = readSessionForDurablePhase(cwd, runtime, durable);
   }
   const completed = completeJournal(runtime, durable, options.now);
-  return resultFrom(completed, session, true);
+  return resultFrom(completed, session, true, ports);
 }
 
 function recoverPreparedPlanningCommit(
@@ -1630,6 +1641,7 @@ function resultFrom(
   journal: OpenTaskJournal,
   session: WorkflowSession,
   recovered: boolean,
+  ports: OpenTaskPorts,
 ): OpenTaskResult {
   return {
     changeId: journal.changeId,
@@ -1643,7 +1655,7 @@ function resultFrom(
     allowedPaths: [...session.allowedPaths],
     requiredChecks: [...session.requiredChecks],
     recovered,
-    systemDocuments: taskSystemDocumentContext(session),
+    systemDocuments: ports.readSystemDocuments(session),
   };
 }
 

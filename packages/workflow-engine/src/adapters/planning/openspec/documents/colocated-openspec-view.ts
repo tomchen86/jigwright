@@ -6,9 +6,7 @@ import {
   systemSpecCatalog,
   type CanonicalSystemSpec,
 } from '../../../../modules/source/system-spec-catalog.ts';
-import { readSystemDescriptionSnapshot } from '../../../../runtime/repository-transaction/system-description-snapshot.ts';
-import { readSystemSpecDeltaInputs } from '../../../../runtime/repository-transaction/system-spec-deltas.ts';
-import { createTrustedExecutionEnvironment } from '../../../../runtime/provider-execution/execution-environment.ts';
+import { readSystemSpecDeltaInputs } from '../../../../modules/source/system-spec-deltas.ts';
 import {
   ExitCode,
   workflowError,
@@ -20,13 +18,17 @@ export type ColocatedOpenSpecView = Readonly<{
   snapshot?: SystemDescriptionSnapshot;
 }>;
 
+export type ColocatedOpenSpecViewDependencies = Readonly<{
+  readSnapshot(repositoryRoot: string): SystemDescriptionSnapshot | undefined;
+  temporaryDirectory(): string;
+}>;
+
 export function withColocatedOpenSpecView<T>(
   repositoryRoot: string,
   operation: (view: ColocatedOpenSpecView) => T,
+  dependencies: ColocatedOpenSpecViewDependencies,
 ): T {
-  const snapshot = fs.existsSync(path.join(repositoryRoot, '.git'))
-    ? readSystemDescriptionSnapshot(repositoryRoot)
-    : undefined;
+  const snapshot = dependencies.readSnapshot(repositoryRoot);
   const specs = snapshot ? systemSpecCatalog(snapshot) : [];
   if (!specs.length) return operation({ root: repositoryRoot, specs });
   if (
@@ -44,7 +46,7 @@ export function withColocatedOpenSpecView<T>(
       ExitCode.verification,
     );
   }
-  const temporaryBase = createTrustedExecutionEnvironment().TMPDIR!;
+  const temporaryBase = dependencies.temporaryDirectory();
   const temporaryRoot = fs.mkdtempSync(
     path.join(fs.realpathSync(temporaryBase), 'colocated-openspec-'),
   );

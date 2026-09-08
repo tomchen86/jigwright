@@ -116,10 +116,10 @@ export {
 } from '../modules/lifecycle/change-routing.ts';
 export {
   resolveOpenTaskId,
-  openTask,
   contextualizeOpenTaskError,
   findOpenTaskLifecycleStatus,
 } from '../application/execute-task/open-task.ts';
+export { openTask } from './open-task-production.ts';
 export { inspectGovernanceIntakeCounts } from '../modules/governance-intake/intake-summary.ts';
 export {
   inspectFinalizeRecoveryStatus,

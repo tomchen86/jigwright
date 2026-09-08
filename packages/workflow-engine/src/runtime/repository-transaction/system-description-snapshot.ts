@@ -11,35 +11,9 @@ import path from 'node:path';
 import { normalizeExactRepositoryPath } from '../session-workspace/paths.ts';
 import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
 import { runGit } from './git.ts';
-import {
-  readPinnedTrackedTree,
-  type TrackedTreeSnapshot,
-} from './tracked-tree-reader.ts';
-
-export function snapshotFromTrackedTree(
-  snapshot: TrackedTreeSnapshot,
-): SystemDescriptionSnapshot {
-  const entries = new Map(
-    snapshot.entries.flatMap((entry) =>
-      entry.path.utf8 === null
-        ? []
-        : [[entry.path.utf8, entry.content?.toString('utf8')] as const],
-    ),
-  );
-  return {
-    listPaths: () => [...entries.keys()],
-    readText: (file) => entries.get(file),
-    readBytes: (file) =>
-      snapshot.entries.find((entry) => entry.path.utf8 === file)?.content ??
-      undefined,
-    readObjectId: (file) => {
-      const entry = snapshot.entries.find((entry) => entry.path.utf8 === file);
-      return entry && ['100644', '100755'].includes(entry.mode)
-        ? entry.objectId
-        : undefined;
-    },
-  };
-}
+import { readPinnedTrackedTree } from './tracked-tree-reader.ts';
+import { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
+export { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 
 export function readSystemDescriptionSnapshot(
   repositoryRoot: string,

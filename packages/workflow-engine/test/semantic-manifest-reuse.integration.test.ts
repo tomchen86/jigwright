@@ -1,3 +1,4 @@
+import { applyLedgerToFullBlobManifest } from '../src/composition-root/semantic-reuse-production.ts';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
@@ -15,7 +16,6 @@ import {
   writeLedgerEntry,
 } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
 import {
-  applyLedgerToFullBlobManifest,
   recordReuseCoverage,
   reviewTargetsFromManifestReuse,
   type FullBlobReuseEntry,

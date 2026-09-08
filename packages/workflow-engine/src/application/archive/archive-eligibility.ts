@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { baseSpecPathForCapability } from '../../modules/source/system-spec-catalog.ts';
-import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
+import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
 
 import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -402,6 +402,7 @@ function inspectEligibility(
     config.changeRoot,
     contract.changeId,
     archiveDestination,
+    stable.readSystemDescription(),
   );
   const current = discoverRepository(git.repositoryRoot);
   if (
@@ -514,6 +515,7 @@ function inspectArchiveTargets(
   changeRoot: string,
   changeId: string,
   archiveDestination: string,
+  snapshot: SystemDescriptionSnapshot,
 ): string[] {
   const activeRoot = `${changeRoot}/${changeId}`;
   assertPlainAncestors(repositoryRoot, activeRoot);
@@ -547,7 +549,6 @@ function inspectArchiveTargets(
       return entry.name;
     })
     .sort();
-  const snapshot = readSystemDescriptionSnapshot(repositoryRoot);
   const baseSpecs = [
     ...new Set(
       capabilities.map((capability) =>

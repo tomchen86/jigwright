@@ -1,3 +1,4 @@
+import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
 import {
   createOpenSpecPlanningProviderPortV1,
   OpenSpecAdapterError,
@@ -8,10 +9,7 @@ import type {
   PlanningProviderPort,
 } from '../modules/planning-provider/planning-provider-port.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
-import {
-  createOpenSpecAdapter,
-  resolveOpenSpecInstallation,
-} from '../adapters/planning/openspec/documents/openspec-adapter.ts';
+import { resolveOpenSpecInstallation } from '../adapters/planning/openspec/documents/openspec-adapter.ts';
 import {
   OPENSPEC_PACKAGE_NAME,
   OPENSPEC_PACKAGE_VERSION,

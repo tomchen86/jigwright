@@ -8,8 +8,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
-import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
-import { readSystemSpecDeltaInputs } from '../../runtime/repository-transaction/system-spec-deltas.ts';
+import type { SystemDescriptionSnapshot } from '../../modules/source/spec-ownership.ts';
+import { readSystemSpecDeltaInputs } from '../../modules/source/system-spec-deltas.ts';
 
 import type { ArchiveEligibility } from './archive-eligibility.ts';
 import {
@@ -38,7 +38,10 @@ import {
   type PlanningArchiveProjectionContext,
   type PlanningArchiveProjectionPort,
 } from '../../modules/planning-provider/planning-archive-projection-port.ts';
-import { createOpenSpecPlanningArchiveProjectionPort } from '../../composition-root/planning-archive-projection-production.ts';
+import {
+  createOpenSpecPlanningArchiveProjectionPort,
+  createArchiveProjectionDependencies,
+} from '../../composition-root/planning-archive-projection-production.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
 import {
   discoverRepository,
@@ -273,7 +276,10 @@ export function refreshArchiveManagedHandoff(
  */
 export function createArchiveApplicabilityProjection(
   input: ArchiveApplicabilityProjectionInput,
-  options: { archiveProjectionPort?: PlanningArchiveProjectionPort } = {},
+  options: {
+    archiveProjectionPort?: PlanningArchiveProjectionPort;
+    readSystemDescriptionSnapshot?: (root: string) => SystemDescriptionSnapshot;
+  } = {},
 ): SpecDeltaPreflightRecord {
   const repository = discoverRepository(input.repositoryRoot);
   const { baselineCommit, changeId, changeRoot, sourceCommit, validatedAt } =
@@ -283,9 +289,9 @@ export function createArchiveApplicabilityProjection(
     activeRoot,
     input.activeArtifactPaths,
   );
+  const dependencies = createArchiveProjectionDependencies();
   const archiveProjectionPort =
-    options.archiveProjectionPort ??
-    createOpenSpecPlanningArchiveProjectionPort();
+    options.archiveProjectionPort ?? dependencies.archiveProjectionPort;
   const temporaryBase = createTrustedExecutionEnvironment().TMPDIR;
   if (!temporaryBase) {
     throw archiveError(
@@ -332,6 +338,10 @@ export function createArchiveApplicabilityProjection(
       worktree,
       activeRoot,
       activeArtifactPaths,
+      (
+        options.readSystemDescriptionSnapshot ??
+        dependencies.readSystemDescriptionSnapshot
+      )(worktree),
     );
     const reviewedArtifacts = readProjectionArtifactBindings(
       worktree,
@@ -753,6 +763,7 @@ function readProjectionSpecInputs(
   worktree: string,
   activeRoot: string,
   activeArtifactPaths: readonly string[],
+  snapshot: SystemDescriptionSnapshot,
 ): Array<{
   capability: string;
   delta: string;
@@ -770,10 +781,7 @@ function readProjectionSpecInputs(
       'Archive applicability requires at least one current delta specification.',
     );
   }
-  const colocated = readSystemSpecDeltaInputs(
-    readSystemDescriptionSnapshot(worktree),
-    deltaPaths,
-  );
+  const colocated = readSystemSpecDeltaInputs(snapshot, deltaPaths);
   if (colocated) return colocated;
   return deltaPaths.map((deltaPath) => {
     const capability = deltaPath.slice(prefix.length, -'/spec.md'.length);

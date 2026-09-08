@@ -1,7 +1,6 @@
 import { observeLedgerSource } from './semantic-freshness.ts';
 import { extractFileHeader } from '../source/file-header.ts';
 import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';
-import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
 import {
   readLedgerEntry,
   readLedgerIndex,
@@ -58,8 +57,8 @@ export function applyLedgerToFullBlobManifest<
   manifest: readonly TEntry[],
   options: {
     currentPolicyDigest?: string;
-    snapshot?: SystemDescriptionSnapshot;
-  } = {},
+    snapshot: SystemDescriptionSnapshot;
+  },
 ): ManifestReuse<TEntry> {
   const index = readLedgerIndex(repositoryRoot);
   const subjectIds = Object.keys(index.subjects);
@@ -104,8 +103,7 @@ export function applyLedgerToFullBlobManifest<
     byPath.set(subjectPath, entry);
   }
 
-  const snapshot =
-    options.snapshot ?? readSystemDescriptionSnapshot(repositoryRoot);
+  const snapshot = options.snapshot;
   const observations = new Map(
     [...entries].map(([subjectId, entry]) => [
       subjectId,

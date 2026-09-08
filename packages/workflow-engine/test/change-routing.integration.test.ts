@@ -27,7 +27,7 @@ import { runRepositoryHook } from '../src/entrypoints/hooks/hooks.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
 import { validateCiRouteCommit } from '../src/entrypoints/ci/ci-routing.ts';
 import { listRangeCommits } from '../src/entrypoints/ci/ci-git.ts';
-import { openTask } from '../src/application/execute-task/open-task.ts';
+import { openTask } from '../src/composition-root/open-task-production.ts';
 import {
   projectHandoffForTaskProjection,
   renderHandoff,

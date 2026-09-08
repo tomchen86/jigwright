@@ -8,7 +8,7 @@
  */
 
 import { extractFileHeader } from '../../modules/source/file-header.ts';
-import { snapshotFromTrackedTree } from '../../runtime/repository-transaction/system-description-snapshot.ts';
+import { snapshotFromTrackedTree } from '../../modules/source/system-description-snapshot.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

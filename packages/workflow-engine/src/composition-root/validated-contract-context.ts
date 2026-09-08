@@ -17,6 +17,8 @@ import type {
   ChangeRoutingAuthorityPort,
 } from '../modules/lifecycle/change-routing.ts';
 import { repositoryPlanningConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import type { SystemDescriptionSnapshot } from '../modules/source/spec-ownership.ts';
+import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 
 export const productionChangeRoutingAuthorityPort: ChangeRoutingAuthorityPort =
   Object.freeze({
@@ -62,6 +64,7 @@ export function loadStableValidatedChangeContract(
   git: GitState;
   contract: ValidatedChangeContract;
   consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
+  readSystemDescription(): SystemDescriptionSnapshot;
 } {
   const beforeFingerprint = fingerprintRepositoryProjection(
     initialGit.repositoryRoot,
@@ -112,5 +115,7 @@ export function loadStableValidatedChangeContract(
     git,
     contract,
     consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+    readSystemDescription: () =>
+      readSystemDescriptionSnapshot(git.repositoryRoot),
   };
 }

@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { createOpenSpecAdapter } from '../packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-adapter.ts';
+import { createOpenSpecAdapter } from '../packages/workflow-engine/src/composition-root/openspec-adapter-production.ts';
 import { validateSystemDocumentStructure } from '../packages/workflow-engine/src/runtime/managed-documents/validation/system-documents.ts';
 import { readSystemDescriptionSnapshot } from '../packages/workflow-engine/src/runtime/repository-transaction/system-description-snapshot.ts';
 import { systemSpecPaths } from '../packages/workflow-engine/src/modules/source/system-documents.ts';

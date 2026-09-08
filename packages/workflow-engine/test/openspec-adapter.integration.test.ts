@@ -1,13 +1,11 @@
+import { createOpenSpecAdapter } from '../src/composition-root/openspec-adapter-production.ts';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import {
-  createOpenSpecAdapter,
-  resolveOpenSpecInstallation,
-} from '../src/adapters/planning/openspec/documents/openspec-adapter.ts';
+import { resolveOpenSpecInstallation } from '../src/adapters/planning/openspec/documents/openspec-adapter.ts';
 import { parseInstructions } from '../src/adapters/planning/openspec/documents/openspec-payloads.ts';
 import { isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 

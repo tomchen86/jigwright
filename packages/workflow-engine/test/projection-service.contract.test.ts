@@ -16,6 +16,8 @@ test('projection catalog keeps readable output separate from exact transition-ow
   assert.deepEqual(
     projectionDefinitions().map(({ id }) => id),
     [
+      'documents.governance-intake-readme',
+      'documents.authority-readme',
       'semantic.binding-index',
       'documents.spec-map',
       'documents.coverage',
