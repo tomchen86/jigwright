@@ -45,6 +45,7 @@ export type SystemDocumentInspection = {
   sources: Map<string, GovernanceSourceV1>;
   scenarios: SystemScenarioCoverage[];
   issues: SystemDocumentIssue[];
+  modules?: Array<{ path: string; specPath: string | null }>;
 };
 
 export function readSystemSource(
@@ -127,6 +128,7 @@ export function inspectSystemDocuments(
     sources: new Map(),
     scenarios: [],
     issues: [],
+    modules: [],
   };
   const issue = (code: string, file: string, message: string) =>
     report.issues.push({ code, path: file, message });
@@ -248,13 +250,25 @@ export function inspectSystemDocuments(
       }
     }
   }
-  const uncovered = new Set<string>();
+  const modules = new Set<string>();
   for (const file of paths) {
     if (!/\.[cm]?[jt]sx?$/.test(file)) continue;
+    if (
+      /(?:^|\/)(?:node_modules|test|tests|fixtures|dist|coverage|recovery-runtime)\//.test(
+        file,
+      )
+    )
+      continue;
     const module = /^(.*(?:^|\/)modules\/[^/]+)\//.exec(file)?.[1];
-    if (module && !findContainingSpec(file, specPaths)) uncovered.add(module);
+    if (module) modules.add(module);
   }
-  for (const module of [...uncovered].sort())
+  report.modules = [...modules].sort().map((module) => ({
+    path: module,
+    specPath: findContainingSpec(`${module}/module.ts`, specPaths),
+  }));
+  for (const { path: module } of report.modules.filter(
+    ({ specPath }) => specPath === null,
+  ))
     issue(
       'spec-missing',
       module,

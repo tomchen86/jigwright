@@ -109,8 +109,16 @@ test('documents CLI produces proof before validation and renders from the same c
     const documentStatuses = inspectProjectionStatus(root).filter((row) =>
       row.id.startsWith('documents.'),
     );
-    assert.equal(documentStatuses.length, 3);
-    assert.ok(documentStatuses.every((row) => row.state === 'current'));
+    assert.deepEqual(
+      Object.fromEntries(documentStatuses.map(({ id, state }) => [id, state])),
+      {
+        'documents.governance-intake-readme': 'not-configured',
+        'documents.authority-readme': 'not-configured',
+        'documents.spec-map': 'current',
+        'documents.coverage': 'current',
+        'documents.requirements': 'current',
+      },
+    );
     execFileSync('git', ['add', 'docs'], { cwd: root });
     const tree = execFileSync('git', ['write-tree'], {
       cwd: root,

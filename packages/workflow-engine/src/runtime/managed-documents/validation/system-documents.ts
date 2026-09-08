@@ -13,6 +13,8 @@ import {
 import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
 import { createProjectionService } from '../../../modules/projection/projection-service.ts';
 import { systemDocumentProjectionBindings } from '../../../modules/projection/system-document-projections.ts';
+import { moduleReadmeProjectionBindings } from '../../../modules/projection/module-readme-projection.ts';
+import { moduleChangesSinceConfirmation } from './module-readme-changes.ts';
 import { replaceTextAtomic } from '../../repository-transaction/atomic-text.ts';
 import { workingSystemDescriptionSnapshot } from './system-document-snapshot.ts';
 import {
@@ -49,7 +51,14 @@ export function inspectRepositorySystemDocuments(
     }
   }
   const service = createProjectionService(
-    systemDocumentProjectionBindings(report, aliases),
+    [
+      ...systemDocumentProjectionBindings(report, aliases),
+      ...moduleReadmeProjectionBindings(
+        snapshot,
+        report.specs,
+        moduleChangesSinceConfirmation(repositoryRoot, snapshot),
+      ),
+    ],
     {
       read: (file) => {
         if (providedSnapshot) return snapshot.readText(file) ?? null;
@@ -113,13 +122,9 @@ export function validateSystemDocumentStructure(
 
 export function renderSystemDocuments(repositoryRoot: string): string[] {
   const { service } = inspectRepositorySystemDocuments(repositoryRoot);
-  return (
-    [
-      'documents.spec-map',
-      'documents.coverage',
-      'documents.requirements',
-    ] as const
-  ).flatMap((id) => service.project(id).map((row) => row.path));
+  return [...new Set(service.status().map(({ id }) => id))].flatMap((id) =>
+    service.project(id, { install: true }).map((row) => row.path),
+  );
 }
 
 export async function testSystemDocuments(

@@ -24,6 +24,8 @@ export type ProjectionId =
   | 'documents.spec-map'
   | 'documents.coverage'
   | 'documents.requirements'
+  | 'documents.governance-intake-readme'
+  | 'documents.authority-readme'
   | 'semantic.binding-index'
   | 'guidance.agent-section';
 
@@ -45,6 +47,21 @@ export type ProjectionDefinition = Readonly<{
 /** Output declarations do not grant transition authority. Only the existing
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY: readonly ProjectionDefinition[] = Object.freeze([
+  ...(['governance-intake', 'authority'] as const).map((module) =>
+    Object.freeze({
+      id: `documents.${module}-readme` as const,
+      version: 1,
+      target: Object.freeze({
+        kind: 'engine-path' as const,
+        path: `packages/workflow-engine/src/modules/${module}/README.md`,
+      }),
+      placement: 'region' as const,
+      trigger: Object.freeze([
+        { kind: 'command', name: 'documents render' },
+      ] as const),
+      drift: 'regenerate' as const,
+    }),
+  ),
   Object.freeze({
     id: 'semantic.binding-index',
     version: 1,

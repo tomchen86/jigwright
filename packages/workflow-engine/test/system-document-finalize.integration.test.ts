@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
+import { dispatchAsync } from '../src/cli.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { createSystemDocumentFailGrantResult } from '../src/entrypoints/cli/system-document-fail-grant-cli.ts';
 import {
@@ -48,6 +49,11 @@ test('finalize requires exact document decisions before checks and recovers the 
   const { repository, sessionId, counter } = fixture;
   try {
     const review = inspectSystemDocumentDispositions(repository, sessionId);
+    assert.deepEqual(
+      (await dispatchAsync(['documents', 'review', sessionId], repository))
+        .result,
+      review,
+    );
     assert.deepEqual(
       review.documents.map(({ path }) => path),
       ['src/README.md', 'src/spec.md'],
@@ -101,10 +107,16 @@ test('finalize requires exact document decisions before checks and recovers the 
         },
       ],
     };
-    assert.equal(
-      recordSystemDocumentDispositions(repository, sessionId, input).status,
-      'reviewed',
+    const inputPath = path.join(
+      runtimeRoot(repository),
+      'document-review-input.json',
     );
+    fs.writeFileSync(inputPath, JSON.stringify(input));
+    const recorded = await dispatchAsync(
+      ['documents', 'review', sessionId, '--input', inputPath],
+      repository,
+    );
+    assert.equal((recorded.result as { status: string }).status, 'reviewed');
     fs.appendFileSync(
       path.join(repository, 'src/feature.ts'),
       '// Changed candidate\n',

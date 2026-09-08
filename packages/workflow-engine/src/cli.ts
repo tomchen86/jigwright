@@ -27,6 +27,11 @@ import {
 } from './adapters/planning/openspec/documents/openspec-planning-assets.ts';
 
 import { dispatchDocumentRefreshCommand } from './entrypoints/cli/document-refresh-cli.ts';
+import {
+  inspectSystemDocumentDispositions,
+  recordSystemDocumentDispositions,
+} from './application/finalize/system-document-dispositions.ts';
+import { createSystemDocumentFailGrantResult } from './entrypoints/cli/system-document-fail-grant-cli.ts';
 import { collectEngineMetrics } from './application/control-plane/engine-metrics.ts';
 import {
   WorkflowError,
@@ -283,6 +288,12 @@ export async function dispatchAsync(
         roleAssignmentGrantRequest,
       );
       if (roleAssignmentGrant !== null) return roleAssignmentGrant;
+      const systemDocumentGrant = await createSystemDocumentFailGrantResult(
+        args,
+        cwd,
+        error,
+      );
+      if (systemDocumentGrant !== null) return systemDocumentGrant;
       const protectedTaskApplyGrant =
         await createProtectedTaskApplyFailGrantResult(
           args,
@@ -762,6 +773,29 @@ function dispatch(args: string[], cwd: string): CommandResult {
     }
 
     case 'documents':
+      if (rest[0] === 'review') {
+        if (!(
+          rest.length === 2 ||
+          (rest.length === 4 && rest[2] === '--input')
+        ))
+          throw usage(
+            'Usage: pnpm workflow documents review <session-id> [--input <review.json>] [--json]',
+          );
+        return {
+          command,
+          ok: true,
+          result:
+            rest.length === 2
+              ? inspectSystemDocumentDispositions(cwd, rest[1]!)
+              : recordSystemDocumentDispositions(
+                  cwd,
+                  rest[1]!,
+                  JSON.parse(
+                    fs.readFileSync(path.resolve(cwd, rest[3]!), 'utf8'),
+                  ),
+                ),
+        };
+      }
       if (rest.length === 1 && rest[0] === 'render')
         return {
           command,
@@ -772,7 +806,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
         };
       if (rest.length !== 1 || rest[0] !== 'validate') {
         throw usage(
-          'Usage: pnpm workflow documents <validate|render|test [--spec <path>]> [--json]',
+          'Usage: pnpm workflow documents <validate|render|test [--spec <path>]|review <session-id> [--input <review.json>]> [--json]',
         );
       }
       return {

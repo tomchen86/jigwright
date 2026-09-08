@@ -22,6 +22,15 @@ export function systemDocumentProjectionBindings(
   ];
   const specMap = [
     ...opening('Specification map'),
+    '| Module | Governing contract | Ownership |',
+    '| --- | --- | --- |',
+    ...(report.modules ?? []).map((module) => {
+      const spec = report.specs.find((spec) => spec.path === module.specPath);
+      return `| ${cell(module.path)} | ${spec ? link(spec.title, spec.path) : 'Missing contract'} | ${module.specPath ? (path.posix.dirname(module.specPath) === module.path ? 'Local' : 'Inherited') : 'Uncovered'} |`;
+    }),
+    '',
+    '## Contract inventory',
+    '',
     '| Directory | Contract | Requirements | Scenarios |',
     '| --- | --- | ---: | ---: |',
     ...report.specs.map(
