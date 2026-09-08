@@ -1679,10 +1679,9 @@ test('generated artifacts are excluded from content scans but not from path term
   // A path term names its target, so a change that really is about a lock file
   // stays investigable.
   assert.deepEqual(
-    scan(termWithProvenance('literal-path', 'pnpm-lock.yaml')).terms[0]?.hits.map(
-      (hit) => hit.path.utf8,
-    ),
+    scan(
+      termWithProvenance('literal-path', 'pnpm-lock.yaml'),
+    ).terms[0]?.hits.map((hit) => hit.path.utf8),
     ['pnpm-lock.yaml'],
   );
 });
-

@@ -700,7 +700,11 @@ function buildInventoryFacts(
       reason: 'generated-artifact' as const,
     })),
   ].sort((left, right) =>
-    left.objectId < right.objectId ? -1 : left.objectId > right.objectId ? 1 : 0,
+    left.objectId < right.objectId
+      ? -1
+      : left.objectId > right.objectId
+        ? 1
+        : 0,
   );
   return {
     treeDigest: snapshot.treeDigest,

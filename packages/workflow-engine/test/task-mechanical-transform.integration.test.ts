@@ -408,10 +408,7 @@ function createMechanicalFixture(options: MechanicalFixtureOptions): {
   git(repository, ['commit', '-m', 'Add mechanical transform baseline']);
   git(repository, ['checkout', '-b', 'work/demo-change']);
   if (options.allowedPaths || options.additionalPendingTask) {
-    const changeRoot = path.join(
-      repository,
-      'openspec/changes/demo-change',
-    );
+    const changeRoot = path.join(repository, 'openspec/changes/demo-change');
     const guardPath = path.join(changeRoot, 'guard.json');
     const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
       tasks: Record<

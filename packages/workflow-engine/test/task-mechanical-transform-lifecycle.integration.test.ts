@@ -592,10 +592,7 @@ function createMechanicalLifecycleFixture(
   );
   const guardPath = path.join(changeRoot, 'guard.json');
   const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8')) as {
-    tasks: Record<
-      string,
-      { allowedPaths: string[]; requiredChecks: string[] }
-    >;
+    tasks: Record<string, { allowedPaths: string[]; requiredChecks: string[] }>;
   };
   guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']!);
   fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
