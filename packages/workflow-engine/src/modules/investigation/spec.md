@@ -14,6 +14,7 @@ Non-authoritative scratch material MUST NOT be adopted automatically as authorit
 
 #### Scenario: Design is requested before investigation seal
 covers: #Requirement: Current Investigation Applicability Gates Authoritative Planning
+test: packages/workflow-engine/test/investigation-propose-flow.integration.test.ts#collects breadth, dispositions and WHY evidence before sealing
 
 - **GIVEN** a change has neither a current sealed investigation nor an eligible current investigation exemption
 - **WHEN** authoritative design materialization is requested
@@ -22,6 +23,7 @@ covers: #Requirement: Current Investigation Applicability Gates Authoritative Pl
 
 #### Scenario: Investigation inputs drift after sealing
 covers: #Requirement: Current Investigation Applicability Gates Authoritative Planning
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#baseline drift and unsafe durable files fail closed
 
 - **GIVEN** an investigation was sealed for one intent and repository baseline
 - **WHEN** the material intent or pinned baseline changes
@@ -37,6 +39,7 @@ Security, migration, shared-contract, public-API, rename/removal, and behavioral
 
 #### Scenario: Eligible documentation-only change uses an exemption
 covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
+test: packages/workflow-engine/test/investigation-propose-admission.integration.test.ts#structured investigation exemption starts a durable planning branch without manufactured survey evidence
 
 - **GIVEN** a documentation-only change neither changes nor relies on non-trivial behavior
 - **WHEN** its exact structured exemption and PlanReview are validated
@@ -45,6 +48,7 @@ covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewe
 
 #### Scenario: Behavioral work requests an exemption
 covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#investigation applicability admits only exact reviewed low-risk exemptions
 
 - **GIVEN** a change modifies behavior, security, migration, a shared contract, public API, or a rename/removal
 - **WHEN** investigation exemption eligibility is evaluated
@@ -53,6 +57,7 @@ covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewe
 
 #### Scenario: Exemption contains empty investigation stand-ins
 covers: #Requirement: Investigation Exemption Is Structured, Narrow, and Reviewed
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#v3 exemption is a strict separate branch with no synthetic proof collections
 
 - **GIVEN** an exemption artifact contains empty term, scan, disposition, or WHY nodes as if they were completed evidence
 - **WHEN** the applicability branch is validated
@@ -74,6 +79,7 @@ Term identity and scan deduplication SHALL depend on normalized kind, value, and
 
 #### Scenario: Reviewer pre-anchor input is constructed
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#start seals a manifest-bound blind request before accepting main terms
 
 - **GIVEN** a normalized intent and pinned baseline
 - **WHEN** the Reviewer pre-anchor survey manifest is sealed
@@ -82,6 +88,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: Effective term union is sealed
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#main terms and provider result join deterministically in either order
 
 - **GIVEN** current engine, Author, and Reviewer pre-anchor contributions
 - **WHEN** the investigation term union is sealed
@@ -90,6 +97,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: Main term omits semantic metadata
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#main terms require bounded rationale and expected relationship without changing term identity
 
 - **GIVEN** a main-agent term has kind and value but lacks rationale or expected relationship
 - **WHEN** the contribution is validated
@@ -97,6 +105,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: Multiple sources contribute the same term
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#typed terms preserve exact bytes, deduplicate semantics, and retain every provenance
 
 - **GIVEN** main and survey contributions normalize to the same term identity
 - **WHEN** the effective union is built
@@ -105,6 +114,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: Qualifying floor facts exist
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#engine floor is complete, provenance-preserving, and validates by recomputation
 
 - **GIVEN** normalized intent or pinned diff contains an explicit path, symbol, configuration key, rename/removal identifier, or reviewed generated/mirror counterpart
 - **WHEN** the engine derives the search floor
@@ -113,6 +123,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: No floor fact is derivable
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#engine floor is complete, provenance-preserving, and validates by recomputation
 
 - **GIVEN** every reviewed machine-readable derivation category is empty
 - **WHEN** the engine derives the search floor
@@ -121,6 +132,7 @@ covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-
 
 #### Scenario: Strengthened provider floor is unavailable under an eligible Grant
 covers: #Requirement: Investigation Uses Three Term Sources With a Reviewer Pre-Anchor Turn
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#same-provider grants require the only callable provider and a fresh engine session
 
 - **GIVEN** reviewed risk policy has strengthened the Reviewer pre-anchor turn to provider independence and no alternate provider is callable
 - **WHEN** an exact Grant authorizes a below-policy Reviewer contribution
@@ -137,6 +149,7 @@ The scan MUST NOT use task `allowedPaths` as a breadth boundary and MUST NOT rea
 
 #### Scenario: Relevant hit is outside planned task paths
 covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#pinned scan ignores index, worktree, untracked, ignored, caller PATH, and allowedPaths
 
 - **GIVEN** a sealed term matches a tracked file outside planned task paths
 - **WHEN** the governed scan runs
@@ -145,6 +158,7 @@ covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked T
 
 #### Scenario: Untracked or ignored file contains a term
 covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#pinned scan ignores index, worktree, untracked, ignored, caller PATH, and allowedPaths
 
 - **GIVEN** a sealed term occurs only in an untracked or ignored file
 - **WHEN** the governed scan runs
@@ -152,6 +166,7 @@ covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked T
 
 #### Scenario: Sealed term has no current scan
 covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#production builder deterministically seals raw domain facts and rejects stale authority
 
 - **GIVEN** an effective sealed term lacks a scan bound to the current tree and scan policy
 - **WHEN** investigation sealing is requested
@@ -159,6 +174,7 @@ covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked T
 
 #### Scenario: Sealed term has zero hits
 covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#literal scans are deterministic, per-term independent, and include zero-hit nodes
 
 - **GIVEN** a sealed term was scanned against the complete governed tracked tree and has no hits
 - **WHEN** currentness is evaluated
@@ -166,6 +182,7 @@ covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked T
 
 #### Scenario: Blob cannot be scanned as governed text
 covers: #Requirement: Every Sealed Term Is Scanned Across the Governed Tracked Tree
+test: packages/workflow-engine/test/investigation-scanner.integration.test.ts#tree reader preserves raw paths and records every unsupported object
 
 - **GIVEN** a tracked object is binary, invalid UTF-8, oversized, or otherwise unsupported by the governed text policy
 - **WHEN** the scanner encounters it
@@ -181,6 +198,7 @@ The wrapper SHALL assemble existing planning and plan-commit prerequisites witho
 
 #### Scenario: Caller must provide main terms
 covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#start seals a manifest-bound blind request before accepting main terms
 
 - **GIVEN** an investigation has started and its blind request is sealed
 - **WHEN** the wrapper needs the caller's term contribution
@@ -189,6 +207,7 @@ covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 
 #### Scenario: Process exits while provider work is pending
 covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
+test: packages/workflow-engine/test/investigation-propose-admission.integration.test.ts#propose CLI persists a fake-backed wait for read-only status in a fresh process
 
 - **GIVEN** a durable investigation has pending provider work
 - **WHEN** the initiating CLI process exits or is interrupted
@@ -197,6 +216,7 @@ covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
 
 #### Scenario: Planning prerequisites become current
 covers: #Requirement: Propose Is a Durable Resumable Planning Wrapper
+test: packages/workflow-engine/test/investigation-plan-review-dispositions.integration.test.ts#requires current review evidence and authorized dispositions before commit
 
 - **GIVEN** investigation, planning materialization, PlanReview, and challenge dispositions are current
 - **WHEN** the propose wrapper reaches its terminal planning step
@@ -212,6 +232,7 @@ Any degraded-continuation reference SHALL appear only where the published centra
 
 #### Scenario: Manifest semantics change after PlanReview
 covers: #Requirement: Manifest v3 and PlanReview Remain Separate Authorities
+test: packages/workflow-engine/test/planning-generation-subject.contract.test.ts#planning generation and review subject bind exact v3 Manifest identities
 
 - **GIVEN** PlanReview binds one exact v3 Manifest target
 - **WHEN** any replay input, semantic delta, derived commitment, provenance, or attestation changes

@@ -1,6 +1,13 @@
 import test from 'node:test';
 import { createFixtureRepository, git } from './fixture.ts';
-import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
+import {
+  startPropose,
+  resumePropose,
+  getProposeStatus,
+} from '../src/application/propose/propose-orchestrator.ts';
+import { createInvestigationCheckpointEnvelope } from '../src/adapters/planning/investigation/investigation-session.ts';
+import { readEvidenceNode } from '../src/runtime/storage-journal/evidence-node-store.ts';
+import { PROPOSE_POLICY_DIGEST } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import { discoverRepository } from '../src/runtime/repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
@@ -75,8 +82,16 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
         'workflow-engine',
       );
       const request = readProviderInvocationRequest(runtime, invocationId);
+      assert.equal(started.actorResolution?.outcome, 'resolved');
       const loadedPolicy = loadAiAdapterPolicy(repository);
       assert.equal(request.policyDigest, loadedPolicy.digest);
+      const authorization = readEvidenceNode(
+        runtime,
+        request.authorizationNodeId,
+      );
+      assert.equal(authorization.nodeId, request.authorizationNodeId);
+      assert.equal(authorization.policyDigest, PROPOSE_POLICY_DIGEST);
+      assert.notEqual(authorization.policyDigest, request.policyDigest);
       assert.deepEqual(request.limits, {
         timeoutMs: 12_345,
         aggregateOutputBytes: 54_321,
@@ -295,6 +310,42 @@ for (const objectFormat of ['sha1', 'sha256'] as const) {
       assert.deepEqual(replayed.completionReceipt, durable.runtimeReceipt);
       assert.equal(replayed.completionReceipt?.launched, true);
       assert.equal(launches, 1);
+
+      const resumed = resumePropose(
+        repository,
+        changeId,
+        createInvestigationCheckpointEnvelope(started.investigation!, {
+          reference: 'native-worker-resume',
+          terms: [
+            {
+              kind: 'symbol',
+              value: 'ProviderWorker',
+              rationale: 'Find the provider worker across the pinned baseline.',
+              expectedRelationship:
+                'It owns the provider invocation being resumed.',
+            },
+          ],
+        }),
+      );
+      assert.equal(resumed.state, 'awaiting-group-dispositions');
+      assert.deepEqual(
+        resumed.investigation?.baseline,
+        started.investigation?.baseline,
+      );
+      assert.deepEqual(
+        getProposeStatus(repository, started.investigation!.investigationId)
+          .actorResolution,
+        started.actorResolution,
+      );
+      assert.equal(resumed.investigation?.providerInvocationId, invocationId);
+      assert.equal(
+        readProviderInvocationRequest(runtime, invocationId).baseCommit,
+        request.baseCommit,
+      );
+      assert.equal(
+        readProviderInvocationRequest(runtime, invocationId).baseTree,
+        request.baseTree,
+      );
 
       const statePath = path.join(
         runtime.invocations,

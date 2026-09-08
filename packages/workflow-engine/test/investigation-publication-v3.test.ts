@@ -84,6 +84,79 @@ test('minimal durable publication installs its same-directory candidate by renam
   }
 });
 
+test('publication compensates a parent relocation during the exact Manifest rename', () => {
+  const repository = createRepository();
+  const outside = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'publication-relocated-'),
+  );
+  const movedDirectory = path.join(outside, 'moved');
+  const originalRename = fs.renameSync;
+  try {
+    const manifest = sealedExemption(repository);
+    const paths = publicationPaths('relocated-parent');
+    const expected = publicationExpected(
+      repository,
+      paths.currentRefPath,
+      manifest,
+    );
+    const directory =
+      fs.realpathSync(repository) + '/' + path.dirname(paths.manifestPath);
+    let moved = false;
+    let journalBytes: Buffer | undefined;
+    fs.renameSync = (source, target) => {
+      originalRename(source, target);
+      if (
+        !moved &&
+        target === path.basename(paths.manifestPath) &&
+        fs.realpathSync('.') === directory
+      ) {
+        moved = true;
+        originalRename(directory, movedDirectory);
+      }
+    };
+    const result = publishInvestigationManifestV3({
+      repositoryRoot: repository,
+      paths,
+      manifest,
+      expected,
+      withTransitionLock: (operation) => operation(expected),
+      observePhase(phase) {
+        if (phase === 'candidate-written')
+          journalBytes = fs.readFileSync(
+            path.join(repository, paths.journalPath),
+          );
+      },
+    });
+    assert.equal(moved, true);
+    assert.equal(result.outcome, 'blocked');
+    if (result.outcome === 'blocked')
+      assert.equal(result.blocker.failureCode, 'PUBLICATION_RECOVERY_REQUIRED');
+    assert.equal(
+      fs.existsSync(
+        path.join(movedDirectory, path.basename(paths.manifestPath)),
+      ),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(
+        path.join(movedDirectory, path.basename(paths.currentRefPath)),
+      ),
+      false,
+    );
+    assert.deepEqual(
+      fs.readFileSync(
+        path.join(movedDirectory, path.basename(paths.journalPath)),
+      ),
+      journalBytes,
+    );
+    assert.deepEqual(JSON.parse(journalBytes!.toString()).manifest, manifest);
+  } finally {
+    fs.renameSync = originalRename;
+    fs.rmSync(repository, { recursive: true, force: true });
+    fs.rmSync(outside, { recursive: true, force: true });
+  }
+});
+
 test('minimal durable publication resumes from its self-contained journal alone', () => {
   const repository = createRepository();
   try {

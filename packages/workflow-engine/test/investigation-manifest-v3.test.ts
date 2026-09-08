@@ -83,6 +83,22 @@ test('ordinary v3 is built directly, sealed separately, and replayed from pinned
       assert.fail(canonicalJson(draftValidation.blocker));
     }
     assert.equal(draftValidation.outcome, 'verified');
+    const emptyOrdinary = structuredClone(draft);
+    if (emptyOrdinary.applicability.kind !== 'ordinary')
+      assert.fail('ordinary');
+    emptyOrdinary.applicability.replayContract.termContributions = [];
+    emptyOrdinary.applicability.replayContract.canonicalTerms = [];
+    emptyOrdinary.applicability.semanticDelta.investigationRoleResults = [];
+    emptyOrdinary.applicability.semanticDelta.dispositions = [];
+    emptyOrdinary.applicability.semanticDelta.whyOverlays = [];
+    assert.equal(
+      validateDraftForSeal({
+        repositoryRoot: repository,
+        draft: emptyOrdinary,
+      }).outcome,
+      'blocked',
+      'empty ordinary evidence cannot become an exemption',
+    );
     const sealed = sealInvestigationManifestDraft({
       draft,
       approval: {
@@ -156,6 +172,20 @@ test('ordinary v3 is built directly, sealed separately, and replayed from pinned
         staleGroupRefResult.blocker.failureCode,
         'RECONSTRUCTION_MISMATCH',
       );
+    }
+
+    const unavailable = structuredClone(state);
+    if (unavailable.applicabilityKind !== 'ordinary') assert.fail('ordinary');
+    unavailable.ordinary.baseline.commitOid = 'f'.repeat(
+      unavailable.ordinary.baseline.commitOid.length,
+    );
+    const missingBaseline = buildInvestigationManifestDraft({
+      repositoryRoot: repository,
+      state: unavailable,
+    });
+    assert.equal(missingBaseline.outcome, 'blocked');
+    if (missingBaseline.outcome === 'blocked') {
+      assert.equal(missingBaseline.blocker.failureCode, 'REPLAY_INPUT_MISSING');
     }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -283,6 +313,7 @@ test('v3 requirements preserve distinct structured contracts and reject payload 
       assert.fail(canonicalJson(built.blocker));
     }
     assert.equal(built.draft.applicability.kind, 'ordinary');
+
     if (built.draft.applicability.kind !== 'ordinary') {
       assert.fail('ordinary applicability expected');
     }
@@ -598,6 +629,20 @@ test('v3 exemption is a strict separate branch with no synthetic proof collectio
       'whyOverlays',
     ]) {
       assert.equal(serialized.includes(`"${absent}"`), false);
+      const fabricated = validateDraftForSeal({
+        repositoryRoot: repository,
+        draft: {
+          ...built.draft,
+          applicability: { ...built.draft.applicability, [absent]: [] },
+        },
+      });
+      assert.equal(fabricated.outcome, 'blocked', absent);
+      if (fabricated.outcome === 'blocked') {
+        assert.equal(
+          fabricated.blocker.failureCode,
+          'MANIFEST_UNREPRESENTABLE',
+        );
+      }
     }
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
@@ -742,6 +787,30 @@ test('every load-bearing path/blob has exactly one complete WHY overlay or fresh
       assert.fail(canonicalJson(built.blocker));
     }
     assert.equal(built.draft.applicability.kind, 'ordinary');
+
+    if (built.draft.applicability.kind !== 'ordinary') assert.fail('ordinary');
+    assert.deepEqual(
+      built.draft.applicability.semanticDelta.whyOverlays[0]!.semanticAuthor,
+      state.ordinary.whyOverlays[0]!.semanticAuthor,
+    );
+    assert.equal(
+      built.draft.applicability.semanticDelta.whyOverlays[0]!.semanticAssurance,
+      'actor-attested-not-engine-verified',
+    );
+
+    const oldBlob = structuredClone(state);
+    if (oldBlob.applicabilityKind !== 'ordinary') assert.fail('ordinary');
+    oldBlob.ordinary.whyOverlays[0]!.blobOid = 'f'.repeat(
+      firstHit.sourceObject.objectId.length,
+    );
+    const staleBlob = buildInvestigationManifestDraft({
+      repositoryRoot: repository,
+      state: oldBlob,
+    });
+    assert.equal(staleBlob.outcome, 'blocked');
+    if (staleBlob.outcome === 'blocked') {
+      assert.equal(staleBlob.blocker.failureCode, 'SOURCE_ANCHOR_UNRESOLVED');
+    }
 
     const stale = structuredClone(state);
     assert.equal(stale.applicabilityKind, 'ordinary');

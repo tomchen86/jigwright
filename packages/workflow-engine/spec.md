@@ -265,6 +265,7 @@ Each disposition MUST identify its covered hits, complete source blobs, classifi
 
 #### Scenario: One group covers related hits
 covers: #Requirement: Every Investigation Hit Has Exactly One Effective Disposition
+test: packages/workflow-engine/test/class-disposition-mounting.integration.test.ts#one rationale can cover a class of hits a machine can show are alike
 
 - **GIVEN** several current hits belong to one reviewed semantic evidence group
 - **WHEN** the group receives an effective disposition
@@ -273,6 +274,7 @@ covers: #Requirement: Every Investigation Hit Has Exactly One Effective Disposit
 
 #### Scenario: One hit has overlapping dispositions
 covers: #Requirement: Every Investigation Hit Has Exactly One Effective Disposition
+test: packages/workflow-engine/test/class-disposition.contract.test.ts#two classes may not claim the same group
 
 - **GIVEN** a current hit is covered by more than one effective disposition
 - **WHEN** coverage is validated
@@ -281,6 +283,7 @@ covers: #Requirement: Every Investigation Hit Has Exactly One Effective Disposit
 
 #### Scenario: One hit has no disposition
 covers: #Requirement: Every Investigation Hit Has Exactly One Effective Disposition
+test: packages/workflow-engine/test/class-disposition-mounting.integration.test.ts#one rationale can cover a class of hits a machine can show are alike
 
 - **GIVEN** a current hit has no effective disposition
 - **WHEN** coverage is validated
@@ -296,6 +299,7 @@ The row MUST identify path, blob digest and size, relevant element or location, 
 
 #### Scenario: Load-bearing row is complete and current
 covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
 
 - **GIVEN** a load-bearing file has every required field and is bound to the current complete source blob
 - **WHEN** WHY-ledger validation runs
@@ -303,6 +307,7 @@ covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
 
 #### Scenario: Load-bearing row uses a stale blob
 covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
 
 - **GIVEN** a load-bearing row is bound to an older source-blob digest
 - **WHEN** WHY-ledger validation runs
@@ -310,6 +315,7 @@ covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
 
 #### Scenario: Semantic field is absent or a placeholder
 covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
+test: packages/workflow-engine/test/investigation-propose-flow.integration.test.ts#collects breadth, dispositions and WHY evidence before sealing
 
 - **GIVEN** a load-bearing row lacks WHY, invariant, reviewer question, or answer
 - **OR** a required field contains an unfilled template placeholder
@@ -319,6 +325,7 @@ covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
 
 #### Scenario: Engine reports a completed semantic row
 covers: #Requirement: Load-Bearing Evidence Requires a Full-Blob WHY Ledger
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
 
 - **GIVEN** an actor supplied a structurally complete WHY row
 - **WHEN** the engine stores or renders it
@@ -332,6 +339,7 @@ A non-load-bearing group MUST have an explicit classification and concrete ratio
 
 #### Scenario: Incidental group has a concrete rationale
 covers: #Requirement: Non-Load-Bearing Evidence Remains Explicit
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v3 is built directly, sealed separately, and replayed from pinned Git
 
 - **GIVEN** a group is classified as incidental or irrelevant with a concrete reason
 - **WHEN** investigation evidence is validated
@@ -339,6 +347,7 @@ covers: #Requirement: Non-Load-Bearing Evidence Remains Explicit
 
 #### Scenario: Reviewer promotes an exception to load-bearing
 covers: #Requirement: Non-Load-Bearing Evidence Remains Explicit
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
 
 - **GIVEN** a reviewer identifies one exception inside a non-load-bearing group
 - **WHEN** that exception is accepted as load-bearing
@@ -352,6 +361,7 @@ When the current applicability ref selects an eligible `investigation-exemption`
 
 #### Scenario: Exemption is rendered as its own branch
 covers: #Requirement: Investigation Exemption Does Not Manufacture Evidence
+test: packages/workflow-engine/test/investigation-propose-admission.integration.test.ts#structured investigation exemption starts a durable planning branch without manufactured survey evidence
 
 - **GIVEN** a current eligible investigation exemption
 - **WHEN** the tracked investigation projection is rendered
@@ -360,6 +370,7 @@ covers: #Requirement: Investigation Exemption Does Not Manufacture Evidence
 
 #### Scenario: Exempt plan reports breadth or depth completion
 covers: #Requirement: Investigation Exemption Does Not Manufacture Evidence
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#v3 exemption is a strict separate branch with no synthetic proof collections
 
 - **GIVEN** a plan used an investigation exemption
 - **WHEN** its assurance summary claims sealed-term scan or WHY binding completed
@@ -408,6 +419,7 @@ An exact input or provenance-parent change MUST produce a new `nodeId`. Invalida
 
 #### Scenario: Input changes but semantic output converges
 covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
+test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence nodeId binds exact inputs and provenance while resultDigest binds semantic output
 
 - **GIVEN** a recomputed node has a changed exact input or provenance parent
 - **AND** compatible evaluation produces the same canonical semantic output
@@ -418,6 +430,7 @@ covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digest
 
 #### Scenario: Runtime metadata changes
 covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
+test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence identity excludes runtime metadata and property insertion order
 
 - **GIVEN** only timestamp, retry, latency, process, or display metadata changes
 - **WHEN** semantic node identity is evaluated
@@ -425,6 +438,7 @@ covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digest
 
 #### Scenario: Policy changes with equal output bytes
 covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#convergence rejects incompatible evaluator, policy, and schema identities
 
 - **GIVEN** a node is recomputed under an incompatible evaluator, policy, node schema, or output schema
 - **WHEN** output bytes happen to match
@@ -439,6 +453,7 @@ The materialized evidence view MUST match the Manifest's recorded roots, counts,
 
 #### Scenario: Current Manifest has an intact pinned Git baseline
 covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v3 is built directly, sealed separately, and replayed from pinned Git
 
 - **GIVEN** a tracked schema-v3 Manifest names an existing commit, its exact tree, and a valid replay contract
 - **WHEN** the Manifest is loaded for validation or execution
@@ -447,6 +462,7 @@ covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts
 
 #### Scenario: Pinned Git content is unavailable
 covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v3 is built directly, sealed separately, and replayed from pinned Git
 
 - **GIVEN** a current Manifest names a commit, tree, or blob that is not available in the repository
 - **WHEN** the Manifest is loaded
@@ -455,6 +471,7 @@ covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts
 
 #### Scenario: Replay no longer produces the recorded evidence
 covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#production builder deterministically seals raw domain facts and rejects stale authority
 
 - **GIVEN** replay code, policy, or the current Manifest contract produces a different scan, group, disposition, coverage, root, count, or derived commitment
 - **WHEN** reconstruction is validated
@@ -463,6 +480,7 @@ covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts
 
 #### Scenario: Semantic evidence is present beside the replay contract
 covers: #Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#production builder deterministically seals raw domain facts and rejects stale authority
 
 - **GIVEN** the investigation contains actor-authored WHY overlays or provider and review evidence
 - **WHEN** the tracked schema-v3 Manifest is written
@@ -478,6 +496,7 @@ A `MaterializedEvidenceView` MAY exist only in process-local memory for replay a
 
 #### Scenario: v3 ordinary Manifest is built
 covers: #Requirement: Investigation v3 Is Manifest-First
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v3 is built directly, sealed separately, and replayed from pinned Git
 
 - **GIVEN** common raw authoring inputs, a pinned commit/tree, and complete semantic decisions
 - **WHEN** the v3 writer builds the ordinary branch
@@ -486,6 +505,7 @@ covers: #Requirement: Investigation v3 Is Manifest-First
 
 #### Scenario: Process-local replay view reaches a serializer
 covers: #Requirement: Investigation v3 Is Manifest-First
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#MaterializedEvidenceView is process-local and the direct writer has no projection dependency
 
 - **GIVEN** a materialized v3 replay view exists in memory
 - **WHEN** code attempts to serialize or persist it
@@ -501,6 +521,7 @@ The engine SHALL expose distinct draft-seal validation, current authority valida
 
 #### Scenario: Ordinary semantic coverage is incomplete
 covers: #Requirement: v3 Applicability and Validation Boundaries Are Exact
+test: packages/workflow-engine/test/investigation-propose-flow.integration.test.ts#collects breadth, dispositions and WHY evidence before sealing
 
 - **GIVEN** a current Hit is missing a final Group or a final Group is missing exactly one Disposition
 - **WHEN** v3 authority validation runs
@@ -509,6 +530,7 @@ covers: #Requirement: v3 Applicability and Validation Boundaries Are Exact
 
 #### Scenario: Exemption is validated
 covers: #Requirement: v3 Applicability and Validation Boundaries Are Exact
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#v3 exemption is a strict separate branch with no synthetic proof collections
 
 - **GIVEN** an eligible structured exemption bound to exact intent and baseline
 - **WHEN** the v3 exemption branch is validated
@@ -524,6 +546,7 @@ Investigation v3 MUST NOT define a local grant schema, candidate label, callback
 
 #### Scenario: Engine-produced v3 failure enters central Grant Core
 covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
+test: packages/workflow-engine/test/investigation-v3-grant-publication.integration.test.ts#real publish authority-validation failures enter the central producer
 
 - **GIVEN** a current v3 operation returns an exact structured blocker
 - **WHEN** the central Grant producer is asked to create its human challenge from that blocker
@@ -534,6 +557,7 @@ covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant C
 
 #### Scenario: Publication failure enters central Grant Core from its real source
 covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
+test: packages/workflow-engine/test/investigation-v3-grant-publication.integration.test.ts#the production publication producer persists centrally and recovery rejects source drift
 
 - **GIVEN** a v3 publish, inspect, resume, or current-ref read returns one emitter-bound failure envelope containing its structured publication blocker
 - **WHEN** the central Grant producer creates a challenge from that envelope
@@ -545,6 +569,7 @@ covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant C
 
 #### Scenario: File publication crashes before current-ref installation
 covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
+test: packages/workflow-engine/test/investigation-publication-v3.test.ts#a crash between Manifest install and ref publication is classified and resumable
 
 - **GIVEN** v3 publication wrote a candidate, journal, or Manifest but did not install the intended current ref
 - **WHEN** restart inspection classifies the residue
@@ -553,6 +578,7 @@ covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant C
 
 #### Scenario: File publication crashes after current-ref installation
 covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
+test: packages/workflow-engine/test/investigation-v3-grant-publication.integration.test.ts#recognized post-ref crash recovery remains idempotent and Grant-free
 
 - **GIVEN** the exact v3 Manifest and current ref were installed but the file-publication journal remains prepared
 - **WHEN** recovery reacquires the lifecycle lock
@@ -562,6 +588,7 @@ covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant C
 
 #### Scenario: Publication parent moves while the lifecycle lock is held
 covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant Core
+test: packages/workflow-engine/test/investigation-publication-v3.test.ts#publication compensates a parent relocation during the exact Manifest rename
 
 - **GIVEN** every cooperating publication writer holds the lifecycle lock
 - **WHEN** a publication parent is relocated during one synchronous pathname replacement
@@ -623,6 +650,7 @@ An existing descendant MAY remain current across a converged parent only when it
 
 #### Scenario: Every changed parent has a valid reuse proof
 covers: #Requirement: Descendant Reuse Preserves Original Provenance
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
 
 - **GIVEN** an existing descendant semantically depends on converged parent outputs
 - **AND** each changed parent edge has a proof naming the descendant, old and new parents, convergence record, shared result digest, and validator version
@@ -631,6 +659,7 @@ covers: #Requirement: Descendant Reuse Preserves Original Provenance
 
 #### Scenario: One changed parent lacks proof
 covers: #Requirement: Descendant Reuse Preserves Original Provenance
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
 
 - **GIVEN** a descendant has multiple changed parent edges
 - **AND** at least one edge lacks a current compatible proof
@@ -639,6 +668,7 @@ covers: #Requirement: Descendant Reuse Preserves Original Provenance
 
 #### Scenario: Reuse attempts to rewrite descendant provenance
 covers: #Requirement: Descendant Reuse Preserves Original Provenance
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
 
 - **GIVEN** an old descendant names an old immutable parent
 - **WHEN** reuse is recorded

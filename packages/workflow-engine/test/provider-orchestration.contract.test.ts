@@ -134,6 +134,14 @@ test('built-in provider registry is exact, immutable, and capability-scoped', ()
 });
 
 test('actor resolution preserves all agreeing soft signals and their grade', () => {
+  const hinted = resolveActorIdentity({ environment: { CLAUDECODE: '1' } });
+  assert.equal(hinted.outcome, 'resolved');
+  if (hinted.outcome !== 'resolved') assert.fail('expected runtime hint');
+  assert.deepEqual(hinted.actor, {
+    providerId: 'claude',
+    assurance: 'runtime-hint',
+  });
+
   const result = resolveActorIdentity({
     explicitActor: 'claude',
     environment: {
@@ -373,6 +381,22 @@ test('ordinary role scheduling uses fresh sessions and preserves explicit provid
     providerId: 'codex',
     sessionId: 'author-session',
   });
+  for (const requestedIndependence of [
+    'principal-independent',
+    'none',
+  ] as const) {
+    assert.throws(
+      () =>
+        scheduleOrdinaryRole({
+          role: 'plan-reviewer',
+          author,
+          targetDigest: DIGESTS.target,
+          requestedIndependence,
+          candidates: [],
+        }),
+      (error) => isWorkflowError(error, 'ROLE_INDEPENDENCE_DOWNGRADE'),
+    );
+  }
   const scheduled = scheduleOrdinaryRole({
     role: 'plan-reviewer',
     author,

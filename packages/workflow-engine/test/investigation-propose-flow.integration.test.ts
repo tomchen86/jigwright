@@ -219,6 +219,34 @@ describe('fake-backed propose composes breadth and depth before materializing an
         (error) => isWorkflowError(error, 'INVESTIGATION_WHY_INVALID'),
       );
 
+      for (const field of [
+        'why',
+        'protectedInvariant',
+        'reviewerQuestion',
+        'answer',
+      ] as const) {
+        for (const invalid of ['', '<fill in>', 'TBD']) {
+          const answers = afterDispositions.work!.fullBlobManifest.map(
+            (entry) => whyAnswer(entry.manifestEntryId),
+          );
+          answers[0]![field] = invalid;
+          assert.throws(
+            () =>
+              resumePropose(
+                repository,
+                changeId,
+                createInvestigationCheckpointEnvelope(
+                  afterDispositions.investigation!,
+                  { answers },
+                ),
+              ),
+            (error) =>
+              isWorkflowError(error, 'INVESTIGATION_CHECKPOINT_INVALID'),
+            `${field} must reject ${JSON.stringify(invalid)} before sealing`,
+          );
+        }
+      }
+
       const sealed = resumePropose(
         repository,
         changeId,

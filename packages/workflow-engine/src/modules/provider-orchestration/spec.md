@@ -16,6 +16,7 @@ Repository configuration MAY enable or disable a built-in provider and lower bou
 
 #### Scenario: Enabled built-in provider is selected
 covers: #Requirement: Provider Execution Uses a Reviewed Built-In Registry
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#ordinary role scheduling uses fresh sessions and preserves explicit provider diversity
 
 - **GIVEN** a registered provider is enabled and supports the required capability
 - **WHEN** the scheduler assigns that capability
@@ -23,6 +24,7 @@ covers: #Requirement: Provider Execution Uses a Reviewed Built-In Registry
 
 #### Scenario: Repository config supplies a provider command
 covers: #Requirement: Provider Execution Uses a Reviewed Built-In Registry
+test: packages/workflow-engine/test/ai-adapter-evaluation.integration.test.ts#AI adapter policy changes fail closed instead of enabling a launcher
 
 - **GIVEN** repository configuration contains an executable, shell string, module path, or command template
 - **WHEN** provider configuration is validated
@@ -31,6 +33,7 @@ covers: #Requirement: Provider Execution Uses a Reviewed Built-In Registry
 
 #### Scenario: Unknown provider is requested
 covers: #Requirement: Provider Execution Uses a Reviewed Built-In Registry
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#built-in provider registry is exact, immutable, and capability-scoped
 
 - **GIVEN** a provider ID is absent from the reviewed registry
 - **WHEN** an invocation or role assignment requests it
@@ -43,6 +46,7 @@ Each built-in adapter SHALL resolve its provider from code-reviewed platform can
 
 #### Scenario: Compatible reviewed candidate exists
 covers: #Requirement: Built-In Adapters Resolve Only Reviewed Executable Candidates
+test: packages/workflow-engine/test/provider-adapters.integration.test.ts#provider preflight inspects only fixed candidates and records canonical identity
 
 - **GIVEN** one reviewed candidate resolves to a compatible canonical executable
 - **WHEN** provider preflight runs
@@ -51,6 +55,7 @@ covers: #Requirement: Built-In Adapters Resolve Only Reviewed Executable Candida
 
 #### Scenario: PATH contains a fake provider executable
 covers: #Requirement: Built-In Adapters Resolve Only Reviewed Executable Candidates
+test: packages/workflow-engine/test/provider-adapters.integration.test.ts#provider preflight inspects only fixed candidates and records canonical identity
 
 - **GIVEN** caller `PATH` contains a fake executable named `codex` or `claude`
 - **WHEN** provider preflight runs
@@ -58,6 +63,7 @@ covers: #Requirement: Built-In Adapters Resolve Only Reviewed Executable Candida
 
 #### Scenario: No compatible candidate exists
 covers: #Requirement: Built-In Adapters Resolve Only Reviewed Executable Candidates
+test: packages/workflow-engine/test/provider-adapters.integration.test.ts#provider preflight preserves shared executable observation states
 
 - **GIVEN** no reviewed candidate is present and compatible
 - **WHEN** provider preflight runs
@@ -73,6 +79,7 @@ Contradictory recognized signals MUST pause or fail actor resolution rather than
 
 #### Scenario: Runtime hint identifies the caller
 covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution preserves all agreeing soft signals and their grade
 
 - **GIVEN** no explicit actor was supplied and one recognized runtime hint identifies a provider
 - **WHEN** the session opens
@@ -81,6 +88,7 @@ covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
 
 #### Scenario: Explicit actor is supplied without stronger proof
 covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution distinguishes explicit-only, missing, and conflicts
 
 - **GIVEN** a valid explicit actor selection with no contradictory signal
 - **WHEN** the session opens
@@ -89,6 +97,7 @@ covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
 
 #### Scenario: Actor signals conflict
 covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution distinguishes explicit-only, missing, and conflicts
 
 - **GIVEN** explicit selection and recognized runtime evidence name different providers
 - **WHEN** actor resolution runs
@@ -97,6 +106,7 @@ covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
 
 #### Scenario: Routine transition follows session creation
 covers: #Requirement: Actor Identity Is Resolved Once and Reported Honestly
+test: packages/workflow-engine/test/provider-worker-native-evidence.integration.test.ts#async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on sha256
 
 - **GIVEN** actor identity is already pinned for a session
 - **WHEN** a routine sub-transition runs
@@ -112,6 +122,7 @@ Provider inequality and session inequality MUST NOT be treated as interchangeabl
 
 #### Scenario: Plan reviewer uses a fresh session
 covers: #Requirement: Independence Is Enforced Relative to Roles
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#ordinary role scheduling uses fresh sessions and preserves explicit provider diversity
 
 - **GIVEN** provider A authored the plan and ordinary review policy requires session independence
 - **WHEN** the scheduler assigns a reviewer
@@ -120,6 +131,7 @@ covers: #Requirement: Independence Is Enforced Relative to Roles
 
 #### Scenario: Reviewer begins with a sealed pre-anchor turn
 covers: #Requirement: Independence Is Enforced Relative to Roles
+test: packages/workflow-engine/test/investigation-session.integration.test.ts#start seals a manifest-bound blind request before accepting main terms
 
 - **GIVEN** provider A is the investigation author
 - **WHEN** the scheduler assigns the Reviewer's survey-purpose pre-anchor turn
@@ -128,6 +140,7 @@ covers: #Requirement: Independence Is Enforced Relative to Roles
 
 #### Scenario: Repository attempts to lower an ordinary role
 covers: #Requirement: Independence Is Enforced Relative to Roles
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#ordinary role scheduling uses fresh sessions and preserves explicit provider diversity
 
 - **GIVEN** repository or caller configuration requests principal-only or no independence for an ordinary role
 - **WHEN** role policy is validated
@@ -136,6 +149,7 @@ covers: #Requirement: Independence Is Enforced Relative to Roles
 
 #### Scenario: Same provider uses a fresh authorized session
 covers: #Requirement: Independence Is Enforced Relative to Roles
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#same-provider grants require the only callable provider and a fresh engine session
 
 - **GIVEN** the same provider is callable in a fresh engine-spawned session
 - **WHEN** the assignment is recorded
@@ -144,6 +158,7 @@ covers: #Requirement: Independence Is Enforced Relative to Roles
 
 #### Scenario: Caller supplies work without a provider session
 covers: #Requirement: Independence Is Enforced Relative to Roles
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** an exact human grant permits caller-supplied degraded work because no adapter is callable
 - **WHEN** the role result is recorded
@@ -159,6 +174,7 @@ A malformed result, mismatched binding, excessive output, timeout, signal, spawn
 
 #### Scenario: Provider returns a mismatched nonce
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/provider-execution-wire.contract.test.ts#provider results reject every mismatched request binding
 
 - **GIVEN** an invocation request contains one nonce
 - **WHEN** the provider result contains another nonce
@@ -167,6 +183,7 @@ covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 
 #### Scenario: Provider returns the wrong target
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/provider-execution-wire.contract.test.ts#provider results reject every mismatched request binding
 
 - **GIVEN** an invocation is bound to one target and manifest
 - **WHEN** the result names a different target or manifest
@@ -174,6 +191,7 @@ covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 
 #### Scenario: Provider process fails
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/investigation-provider-retry.integration.test.ts#failed provider work can retry without discarding completed main input
 
 - **GIVEN** a process times out, is signaled, exceeds output limits, or exits non-zero
 - **WHEN** invocation completion is evaluated
@@ -182,6 +200,7 @@ covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 
 #### Scenario: Provider and propose policies remain distinct
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/provider-worker-native-evidence.integration.test.ts#async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on sha256
 
 - **GIVEN** a propose authorization node and one prepared provider invocation
 - **WHEN** the lifecycle launches the invocation
@@ -191,6 +210,7 @@ covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 
 #### Scenario: Durable prepared work is dispatched
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/provider-worker.integration.test.ts#provider dispatch is detached and replay targets the stored prepared request
 
 - **GIVEN** a current prepared Reviewer pre-anchor or PlanReview invocation
 - **WHEN** the resumable wrapper dispatches provider work
@@ -200,6 +220,7 @@ covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 
 #### Scenario: Real runner output completes durable invocation state
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/provider-worker-native-evidence.integration.test.ts#async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on sha256
 
 - **GIVEN** the built-in runner returns a bound semantic result and unchanged governed projection
 - **WHEN** lifecycle completion validates the runner report
@@ -218,6 +239,7 @@ Any observed drift inside the governed current-worktree or runtime projection, o
 
 #### Scenario: Read-only invocation preserves governed state
 covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed Projection
+test: packages/workflow-engine/test/provider-runner.integration.test.ts#runner wraps provider-native output only after unchanged governed projection
 
 - **GIVEN** a read-only provider invocation
 - **WHEN** before and after governed fingerprints are identical and typed output is valid
@@ -225,6 +247,7 @@ covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed P
 
 #### Scenario: Read-only invocation changes a governed path or current HEAD ref
 covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed Projection
+test: packages/workflow-engine/test/provider-runner.integration.test.ts#runner derives drift itself and creates no successful provider result
 
 - **GIVEN** a read-only provider invocation
 - **WHEN** the current worktree, index, symbolic HEAD ref, resolved commit or tree, planning artifacts, or governed runtime inputs drift
@@ -233,6 +256,7 @@ covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed P
 
 #### Scenario: Unrelated shared ref changes concurrently
 covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed Projection
+test: packages/workflow-engine/test/provider-governed-projection.integration.test.ts#governed refs projection ignores unrelated shared refs during linked-worktree activity
 
 - **GIVEN** another linked worktree or background Git operation changes a ref not selected by the provider invocation's current worktree
 - **WHEN** every governed current-worktree and runtime projection category remains unchanged
@@ -241,6 +265,7 @@ covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed P
 
 #### Scenario: Assurance is displayed
 covers: #Requirement: Read-Only Provider Results Require an Unchanged Governed Projection
+test: packages/workflow-engine/test/provider-runner.integration.test.ts#runner wraps provider-native output only after unchanged governed projection
 
 - **GIVEN** a read-only invocation passed observed fingerprint checks
 - **WHEN** its assurance is rendered
@@ -254,6 +279,7 @@ Every provider request, propose authorization, durable checkpoint, and resume va
 
 #### Scenario: Propose runs in a SHA-256 repository
 covers: #Requirement: Provider Baselines Preserve the Repository Object Format
+test: packages/workflow-engine/test/provider-worker-native-evidence.integration.test.ts#async provider worker completes the exact durable invocation through ProviderWorkerRuntimePort on sha256
 
 - **GIVEN** the repository HEAD, tree, and protected base are 64-hex Git object IDs
 - **WHEN** propose starts, dispatches provider work, and resumes from a durable checkpoint
@@ -269,6 +295,7 @@ All forms SHALL preserve author, participants, actual orchestration, required an
 
 #### Scenario: Granted same-provider result uses the provider runner
 covers: #Requirement: Role Result Admission Distinguishes Provider and Non-Provider Work
+test: packages/workflow-engine/test/provider-execution-wire.contract.test.ts#provider requests admit only ordinary or granted same-provider assignments
 
 - **GIVEN** an exact grant permits the only callable provider in a fresh session
 - **WHEN** the role runs
@@ -277,6 +304,7 @@ covers: #Requirement: Role Result Admission Distinguishes Provider and Non-Provi
 
 #### Scenario: Direct-human result reaches provider scheduling
 covers: #Requirement: Role Result Admission Distinguishes Provider and Non-Provider Work
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** a direct-human signed result is selected for an eligible exact role
 - **WHEN** orchestration advances
