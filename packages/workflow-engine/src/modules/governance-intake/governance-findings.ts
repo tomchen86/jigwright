@@ -173,7 +173,8 @@ export function createGovernanceFindingOperations(
   function linkGovernanceFinding(
     runtimeRoot: string,
     requestedFindingId: string,
-    requestedChangeId: string,
+    requestedTarget:
+      string | Readonly<{ kind: 'work-item'; id: `WORK-${string}` }>,
     now: () => string = () => new Date().toISOString(),
   ): {
     finding: GovernanceFindingReadModelV1;
@@ -187,11 +188,13 @@ export function createGovernanceFindingOperations(
         schemaVersion: 1,
         disposition: 'linked',
         reason:
-          'Linked to one existing change without widening its task scope.',
-        target: {
-          kind: 'change',
-          id: requestedChangeId,
-        },
+          typeof requestedTarget === 'string'
+            ? 'Linked to one existing change without widening its task scope.'
+            : 'Linked to one existing Work Item without creating another inbox item.',
+        target:
+          typeof requestedTarget === 'string'
+            ? { kind: 'change', id: requestedTarget }
+            : requestedTarget,
       },
       now,
     );
@@ -474,7 +477,7 @@ export function createGovernanceFindingOperations(
     if (
       (input.disposition === 'dismissed' && target !== null) ||
       (input.disposition === 'converted' && target?.kind !== 'work-item') ||
-      (input.disposition === 'linked' && target?.kind !== 'change')
+      (input.disposition === 'linked' && target === null)
     ) {
       throw intakeInvalid('Governance Finding disposition target is invalid.');
     }

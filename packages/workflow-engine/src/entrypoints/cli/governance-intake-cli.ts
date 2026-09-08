@@ -1089,20 +1089,26 @@ function dispatchFindingIntakeCommand(
     command === 'finding' &&
     args.length === 4 &&
     args[0] === 'link' &&
-    args[2] === '--change'
+    (args[2] === '--change' || args[2] === '--work-item')
   ) {
-    const changeId = assertExistingGovernanceIntakeChange(cwd, args[3]!);
+    const item = args[2] === '--work-item' ? showWorkItem(cwd, args[3]!) : null;
+    const target =
+      item === null
+        ? assertExistingGovernanceIntakeChange(cwd, args[3]!)
+        : { kind: 'work-item' as const, id: item.id };
     const runtimeRoot = (
       dependencies.resolveRuntimeRoot ?? resolveGovernanceIntakeRuntimeRoot
     )(cwd);
     const linked = linkGovernanceFinding(
       runtimeRoot,
       args[1]!,
-      changeId,
+      target,
       dependencies.now,
     );
     return {
       action: 'link',
+      originalText: linked.finding.text,
+      ...(item === null ? {} : { title: item.title }),
       finding: linked.finding,
       created: linked.created,
     };
