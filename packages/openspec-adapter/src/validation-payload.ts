@@ -177,7 +177,8 @@ function isSafeDiagnosticMessage(value: unknown): value is string {
     value.length > 0 &&
     value.length <= 16_384 &&
     value === value.trim() &&
-    !hasControlCharacter(value)
+    // The pinned validator includes newline-delimited repair examples.
+    !hasControlCharacter(value.replaceAll('\n', ''))
   );
 }
 

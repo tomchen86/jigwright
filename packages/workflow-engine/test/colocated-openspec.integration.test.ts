@@ -11,7 +11,7 @@ import {
   verifyArchiveDeltaOutcomes,
   assertSpecDeltaScenarioPreservation,
 } from '../src/runtime/repository-transaction/archive-delta-verifier.ts';
-import { git, sourceRepositoryRoot } from './fixture.ts';
+import { git, isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
 
 test('native OpenSpec validates and archives aliased deltas into one colocated spec without copying planning authority', () => {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'colocated-openspec-'));
@@ -174,6 +174,134 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
       original.replace('SHALL', 'may'),
     );
     assert.equal(port.validateProjectedSpecs(context).valid, false);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('native strict validation blocks malformed colocated bases and a heading-only repair preserves contracts', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'colocated-spec-repair-'));
+  try {
+    git(root, ['init', '-b', 'main']);
+    git(root, ['config', 'user.name', 'Document test']);
+    git(root, ['config', 'user.email', 'documents@example.test']);
+    const invalidPath = 'src/other/spec.md';
+    const scopeProse =
+      'Keep the exact existing contract meaning and its scenarios while repairing the structural heading.';
+    const normative = requirement(
+      'Existing meaning',
+      'The engine SHALL preserve the Scope wording in this requirement.',
+    );
+    const malformed = `# Other contract\n\n## Scope\n${scopeProse}\n\n## Requirements\n${normative}`;
+    const activeRoot = 'openspec/changes/repair-check';
+    const artifacts = {
+      'openspec/config.yaml': 'schema: spec-driven\n',
+      [invalidPath]: malformed,
+      'src/intake/spec.md': `# Intake\n\n## Purpose\nPreserve exact request wording while selecting one route for each incoming request.\n\n## Requirements\n${requirement('Keep request', 'The engine SHALL preserve a request.')}`,
+      [`${activeRoot}/.openspec.yaml`]:
+        'schema: spec-driven\ncreated: 2026-09-08\n',
+      [`${activeRoot}/proposal.md`]:
+        '# Proposal\n\n## Why\nKeep requests.\n\n## What Changes\n- Route requests.\n\n## Impact\n- Intake.\n',
+      [`${activeRoot}/design.md`]:
+        '# Design\n\nKeep original request semantics.\n',
+      [`${activeRoot}/tasks.md`]: '## Tasks\n\n- [x] 1.1 Route requests\n',
+      [`${activeRoot}/specs/intake/spec.md`]: `## ADDED Requirements\n${requirement('Route request', 'The engine SHALL route a request once.')}`,
+    };
+    for (const [file, content] of Object.entries(artifacts)) {
+      fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+      fs.writeFileSync(path.join(root, file), content);
+    }
+    git(root, ['add', '-A']);
+    git(root, ['commit', '-m', 'Fixture with invalid unrelated base']);
+    const binding = {
+      schemaVersion: 1 as const,
+      changeId: 'repair-check',
+      providerId: 'openspec',
+      adapterContractVersion: 1,
+      providerRequirement: {
+        package: '@fission-ai/openspec',
+        version: '1.6.0',
+      },
+      planningRoot: activeRoot,
+    };
+    const native = createOpenSpecPlanningArchiveProjectionPort();
+    const context = (): PlanningArchiveProjectionContext => ({
+      repositoryRoot: sourceRepositoryRoot,
+      projectionRoot: fs.realpathSync(root),
+      sourceRevision: git(root, ['rev-parse', 'HEAD']).trim(),
+      changeId: binding.changeId,
+      mode: 'projection',
+      planningProvider: {
+        source: 'explicit',
+        artifactPath: 'workflow/change-providers/repair-check.json',
+        bindingDigest: planningProviderBindingDigest(binding),
+        binding,
+      },
+    });
+    const applicability = () => {
+      const current = context();
+      return createArchiveApplicabilityProjection(
+        {
+          repositoryRoot: root,
+          changeRoot: 'openspec/changes',
+          changeId: binding.changeId,
+          baselineCommit: current.sourceRevision,
+          sourceCommit: current.sourceRevision,
+          source: 'worktree',
+          activeArtifactPaths: Object.keys(artifacts).filter((file) =>
+            file.startsWith(`${activeRoot}/`),
+          ),
+          planningProvider: current.planningProvider,
+        },
+        {
+          archiveProjectionPort: {
+            ...native,
+            inspectArchiveReadiness: (input) =>
+              native.inspectArchiveReadiness({
+                ...input,
+                repositoryRoot: sourceRepositoryRoot,
+              }),
+            prepareArchive: (input) =>
+              native.prepareArchive({
+                ...input,
+                repositoryRoot: sourceRepositoryRoot,
+              }),
+            validateProjectedSpecs: (input) =>
+              native.validateProjectedSpecs({
+                ...input,
+                repositoryRoot: sourceRepositoryRoot,
+              }),
+          },
+        },
+      );
+    };
+    assert.equal(native.validateProjectedSpecs(context()).valid, false);
+    const state = git(root, ['status', '--porcelain']);
+    assert.throws(applicability, (error) =>
+      isWorkflowError(error, 'ARCHIVE_REBUILT_SPECS_INVALID'),
+    );
+    assert.equal(
+      fs.readFileSync(path.join(root, invalidPath), 'utf8'),
+      malformed,
+    );
+    assert.equal(git(root, ['status', '--porcelain']), state);
+    assert.equal(fs.existsSync(path.join(root, 'openspec/specs')), false);
+
+    // Simulate the exact user-authored structural repair; native validation and
+    // archive projection must accept it without transforming normative bytes.
+    const repaired = malformed.replace('\n## Scope\n', '\n## Purpose\n');
+    fs.writeFileSync(path.join(root, invalidPath), repaired);
+    git(root, ['add', '-A']);
+    git(root, ['commit', '-m', 'Repair only the legacy purpose heading']);
+    assert.equal(native.validateProjectedSpecs(context()).valid, true);
+    assert.ok(applicability().validatedBaseSpecDigests['src/intake/spec.md']);
+    assert.equal(
+      fs.readFileSync(path.join(root, invalidPath), 'utf8'),
+      repaired,
+    );
+    assert.equal(repaired.split('\n## Requirements\n')[1], normative);
+    assert.ok(repaired.includes(scopeProse));
+    assert.equal(git(root, ['status', '--porcelain']), '');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

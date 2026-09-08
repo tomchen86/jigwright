@@ -25,6 +25,7 @@ covers: #Requirement: Normative Base Specs Pass Pinned Strict Validation
 
 #### Scenario: A base spec loses required structure
 covers: #Requirement: Normative Base Specs Pass Pinned Strict Validation
+test: packages/workflow-engine/test/colocated-openspec.integration.test.ts#native strict validation blocks malformed colocated bases and a heading-only repair preserves contracts
 
 - **WHEN** any normative base specification lacks a schema-required section
 - **THEN** the registered repository contract fails
@@ -41,6 +42,7 @@ invalid structural elements.
 
 #### Scenario: Legacy scope heading is repaired
 covers: #Requirement: Structural Repairs Preserve Requirement Semantics
+test: packages/workflow-engine/test/colocated-openspec.integration.test.ts#native strict validation blocks malformed colocated bases and a heading-only repair preserves contracts
 
 - **WHEN** an existing scope paragraph already states a specification's
   purpose but uses a nonconforming section heading
