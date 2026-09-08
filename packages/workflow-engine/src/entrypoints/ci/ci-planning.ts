@@ -1,3 +1,4 @@
+import { planPlanningSemanticLedger } from '../../runtime/managed-documents/transaction/semantic-ledger-projection.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,7 +30,7 @@ import {
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { validateForAuthority } from '../../modules/investigation/manifest/investigation-manifest.ts';
 import { createTrustedExecutionEnvironment } from '../../runtime/provider-execution/execution-environment.ts';
-import { engineProjectionPathsForTransition } from '../../modules/projection/engine-projection-registry.ts';
+import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,
@@ -428,14 +429,12 @@ export function validateCiPlanningCommit(
       'Planning commits require a non-empty planning diff.',
     );
   }
-  const knownProjectionPaths = new Set(
-    engineProjectionPathsForTransition('plan'),
-  );
+
   const engineProjectionPaths = changedPaths.filter((changedPath) =>
-    knownProjectionPaths.has(changedPath),
+    isEngineProjectionPathForTransition(changedPath, 'plan'),
   );
   const planningPaths = changedPaths.filter(
-    (changedPath) => !knownProjectionPaths.has(changedPath),
+    (changedPath) => !isEngineProjectionPathForTransition(changedPath, 'plan'),
   );
   const prefix = `${normalizedChangeRoot}/${changeId}`;
   const beforeEntries = listTreeEntries(
@@ -689,6 +688,12 @@ function replayPlanningTree(
     );
     if (engineProjectionPaths.includes('docs/CURRENT_AND_NEXT_STEPS.md')) {
       validateHandoffForChange(worktree, changeId);
+    }
+    if (planPlanningSemanticLedger(worktree, changeId).length > 0) {
+      throw ciPlanningError(
+        'CI_PLANNING_SEMANTIC_LEDGER_DRIFT',
+        'Planning semantic bindings differ from the exact baseline source projection.',
+      );
     }
     const contract = loadCommittedChangeContract(
       worktree,

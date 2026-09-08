@@ -7,7 +7,7 @@ import {
   createPlanningAmendmentDecision,
   planningAmendmentDecisionDigest,
 } from '../../modules/lifecycle/planning-amendment-decision.ts';
-import { engineProjectionPathsForTransition } from '../../modules/projection/engine-projection-registry.ts';
+import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import type { InvestigationFirstPlanningAssuranceSummary } from '../../modules/assurance/planning-assurance-validator.ts';
 
 export type PlanningTaskState = {
@@ -540,18 +540,15 @@ function isPlanningPathPartition(value: Record<string, unknown>): boolean {
   ) {
     return false;
   }
-  const allowedEnginePaths = new Set(
-    engineProjectionPathsForTransition('plan'),
-  );
   const planningPaths = value.planningPaths as string[];
   const engineProjectionPaths = value.engineProjectionPaths as string[];
   if (
     planningPaths.some((planningPath) =>
-      allowedEnginePaths.has(planningPath),
+      isEngineProjectionPathForTransition(planningPath, 'plan'),
     ) ||
     engineProjectionPaths.some(
       (projectionPath) =>
-        !allowedEnginePaths.has(projectionPath) ||
+        !isEngineProjectionPathForTransition(projectionPath, 'plan') ||
         planningPaths.includes(projectionPath),
     )
   ) {

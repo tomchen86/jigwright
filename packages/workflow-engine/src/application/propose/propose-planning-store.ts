@@ -10,6 +10,7 @@
  * Failure modes: stale receipts, conflicting materializations, or summaries of unbound planning bytes.
  */
 
+import { extractFileHeader } from '../../modules/source/file-header.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -88,15 +89,19 @@ export function projectOrdinaryPlanDigest(
     const manifest = manifestById.get(carried.manifestEntryId);
     const pathValue = manifest?.path.utf8;
     if (pathValue === undefined || pathValue === null) continue;
-    const ledger = services.workspace.readLedgerEntry(
-      repositoryRoot,
-      carried.ledgerEntryId,
+    const header = extractFileHeader(
+      services.workspace.readFileAtCommit(
+        repositoryRoot,
+        rebuilt.session.baseline.head,
+        pathValue,
+      ) ?? '',
     );
+    if (header === null || header.invariants.length === 0) continue;
     carriedWhyByPath.set(pathValue, {
       path: pathValue,
-      why: ledger.why.responsibility,
+      why: header.responsibility,
       protectedInvariant:
-        ledger.why.protectedInvariants.join('; ') ||
+        header.invariants.join('; ') ||
         'Preserve the exact reviewed behavior of this planned mutation.',
     });
   }

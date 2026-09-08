@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -31,12 +32,19 @@ function hex(value: string): string {
 }
 
 function repository(): string {
-  return fs.realpathSync(
+  const root = fs.realpathSync(
     fs.mkdtempSync(path.join(fs.realpathSync(os.tmpdir()), 'manifest-reuse-')),
   );
+  execFileSync('git', ['init', '--quiet'], { cwd: root });
+  return root;
+}
+
+function code(content: string): string {
+  return `/** Owns this fixture contract.\n * Invariants:\n * - Its contract holds.\n */\n${content}`;
 }
 
 function manifestEntry(filePath: string, content: string): FullBlobReuseEntry {
+  content = code(content);
   return {
     manifestEntryId: hex(`${filePath}:${content}`),
     path: {
@@ -50,8 +58,11 @@ function manifestEntry(filePath: string, content: string): FullBlobReuseEntry {
 }
 
 function seed(root: string, filePath: string, content: string) {
+  content = code(content);
+  fs.mkdirSync(path.dirname(path.join(root, filePath)), { recursive: true });
+  fs.writeFileSync(path.join(root, filePath), content);
   const entry = createLedgerEntry({
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: {
       subjectId: `seeded.${filePath.replace(/[^a-z]/g, '')}`,
@@ -65,12 +76,7 @@ function seed(root: string, filePath: string, content: string) {
       semanticDigest: `sha256:${hex(content)}`,
       extractorVersion: 'file-fallback-v1',
     },
-    why: {
-      responsibility: `What ${filePath} is responsible for.`,
-      protectedInvariants: ['Its contract holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+
     semanticDependencies: [],
     policyDigest: POLICY,
     provenance: { changeId: 'seed', createdAtCommit: 'b'.repeat(40) },
@@ -104,7 +110,7 @@ test('an unchanged blob the ledger explains is carried, not re-explained', () =>
   assert.equal(reuse.owed[0]?.path.utf8, 'src/b.ts');
   assert.deepEqual(reuse.carried, [
     {
-      manifestEntryId: hex('src/a.ts:alpha'),
+      manifestEntryId: hex(`src/a.ts:${code('alpha')}`),
       subjectId: entry.subject.subjectId,
       ledgerEntryId: entry.entryId,
     },
@@ -127,7 +133,7 @@ test('a blob whose bytes moved is owed again however small the change', () => {
 test('a path with more than one subject is never carried on one of them', () => {
   const root = repository();
   const firstInput: LedgerEntryInput = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: { subjectId: 'seeded.one', kind: 'symbol', path: 'src/a.ts' },
     binding: {
@@ -137,12 +143,7 @@ test('a path with more than one subject is never carried on one of them', () => 
       semanticDigest: `sha256:${hex('alpha')}`,
       extractorVersion: 'ts-adapter-v1',
     },
-    why: {
-      responsibility: 'One of two things in this file.',
-      protectedInvariants: ['It holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+
     semanticDependencies: [],
     policyDigest: POLICY,
     provenance: { changeId: 'seed', createdAtCommit: 'b'.repeat(40) },
@@ -153,12 +154,6 @@ test('a path with more than one subject is never carried on one of them', () => 
   const second = createLedgerEntry({
     ...firstInput,
     subject: { subjectId: 'seeded.two', kind: 'symbol', path: 'src/a.ts' },
-    why: {
-      responsibility: 'The other thing in this file.',
-      protectedInvariants: ['It also holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
   });
   writeLedgerEntry(root, first);
   writeLedgerEntry(root, second);
@@ -216,8 +211,9 @@ function subjectEntry(
   content: string,
   extra: Record<string, unknown> = {},
 ) {
+  content = code(content);
   return createLedgerEntry({
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: { subjectId, kind: 'symbol', path: filePath },
     binding: {
@@ -227,12 +223,7 @@ function subjectEntry(
       semanticDigest: `sha256:${hex(content)}`,
       extractorVersion: 'ts-adapter-v1',
     },
-    why: {
-      responsibility: `What ${subjectId} is for.`,
-      protectedInvariants: ['It holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+
     semanticDependencies: [],
     policyDigest: POLICY,
     provenance: { changeId: 'seed', createdAtCommit: 'b'.repeat(40) },
@@ -265,13 +256,17 @@ test('a subject whose dependency moved is owed, whatever its own bytes say', () 
   // The freshness engine already answers this correctly; the carried decision
   // must not reach a different conclusion from the same evidence.
   const root = repository();
+  fs.mkdirSync(path.join(root, 'src'));
+  fs.writeFileSync(path.join(root, 'src/a.ts'), code('alpha'));
+  fs.writeFileSync(path.join(root, 'src/b.ts'), code('beta'));
   const dependency = subjectEntry('seeded.dep', 'src/b.ts', 'beta');
   const consumer = subjectEntry('seeded.consumer', 'src/a.ts', 'alpha', {
     semanticDependencies: [
       {
         relation: 'assumes-contract-of',
         subjectId: 'seeded.dep',
-        entryId: `sha256:${'9'.repeat(64)}`,
+        path: 'src/b.ts',
+        sourceDigest: `sha256:${'9'.repeat(64)}`,
       },
     ],
   });
@@ -320,7 +315,7 @@ test('the reuse decision is recorded, not merely acted on', () => {
   assert.equal(record.owedCount, 1);
   assert.equal(record.carriedCount, 1);
   assert.deepEqual(record.carried[0], {
-    manifestEntryId: hex('src/a.ts:alpha'),
+    manifestEntryId: hex(`src/a.ts:${code('alpha')}`),
     subjectId: entry.subject.subjectId,
     ledgerEntryId: entry.entryId,
   });

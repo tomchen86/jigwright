@@ -14,7 +14,7 @@ const POLICY = `sha256:${'1'.repeat(64)}`;
 
 function input(overrides: Partial<LedgerEntryInput> = {}): LedgerEntryInput {
   return {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: {
       subjectId: 'investigation.resume-propose',
@@ -29,22 +29,13 @@ function input(overrides: Partial<LedgerEntryInput> = {}): LedgerEntryInput {
       semanticDigest: `sha256:${'4'.repeat(64)}`,
       extractorVersion: 'ts-adapter-v1',
     },
-    why: {
-      responsibility:
-        'Advances the propose state machine under a pinned checkpoint.',
-      protectedInvariants: [
-        'A checkpoint cannot be replayed against another revision.',
-      ],
-      failureModes: ['stale checkpoint acceptance'],
-      reviewerQuestions: [
-        'Can a succeeded invocation be rewritten instead of superseded?',
-      ],
-    },
+
     semanticDependencies: [
       {
         relation: 'validates-against',
         subjectId: 'investigation.checkpoint-envelope',
-        entryId: `sha256:${'5'.repeat(64)}`,
+        path: 'src/investigation.checkpoint-envelope.ts',
+        sourceDigest: `sha256:${'5'.repeat(64)}`,
       },
     ],
     policyDigest: POLICY,
@@ -62,7 +53,7 @@ function observed(overrides: Record<string, unknown> = {}) {
     present: true,
     sourceDigest: ENTRY.binding.sourceDigest,
     semanticDigest: ENTRY.binding.semanticDigest,
-    currentDependencyEntryIds: {
+    currentDependencySourceDigests: {
       'investigation.checkpoint-envelope': `sha256:${'5'.repeat(64)}`,
     },
     currentPolicyDigest: POLICY,
@@ -74,7 +65,10 @@ test('the same understanding always has the same identity', () => {
   assert.equal(createLedgerEntry(input()).entryId, ENTRY.entryId);
   const different = createLedgerEntry(
     input({
-      why: { ...input().why, responsibility: 'Something else entirely.' },
+      binding: {
+        ...input().binding,
+        semanticDigest: `sha256:${'c'.repeat(64)}`,
+      },
     }),
   );
   assert.notEqual(different.entryId, ENTRY.entryId);
@@ -97,25 +91,43 @@ test('entry creation rejects a persisted entry as an input template', () => {
 
 test('dependency order does not change the dependency digest', () => {
   const forward = dependencySetDigest([
-    { relation: 'a', subjectId: 'x', entryId: `sha256:${'6'.repeat(64)}` },
-    { relation: 'b', subjectId: 'y', entryId: `sha256:${'7'.repeat(64)}` },
+    {
+      relation: 'a',
+      subjectId: 'x',
+      path: 'src/x.ts',
+      sourceDigest: `sha256:${'6'.repeat(64)}`,
+    },
+    {
+      relation: 'b',
+      subjectId: 'y',
+      path: 'src/y.ts',
+      sourceDigest: `sha256:${'7'.repeat(64)}`,
+    },
   ]);
   const reversed = dependencySetDigest([
-    { relation: 'b', subjectId: 'y', entryId: `sha256:${'7'.repeat(64)}` },
-    { relation: 'a', subjectId: 'x', entryId: `sha256:${'6'.repeat(64)}` },
+    {
+      relation: 'b',
+      subjectId: 'y',
+      path: 'src/y.ts',
+      sourceDigest: `sha256:${'7'.repeat(64)}`,
+    },
+    {
+      relation: 'a',
+      subjectId: 'x',
+      path: 'src/x.ts',
+      sourceDigest: `sha256:${'6'.repeat(64)}`,
+    },
   ]);
   assert.equal(reversed, forward);
 });
 
-test('an entry with no invariant is not evidence', () => {
-  // "I learned that state synchronisation matters" cannot be checked later.
+test('canonical entries reject a duplicated explanation authority', () => {
   assert.throws(
     () =>
-      createLedgerEntry(
-        input({
-          why: { ...input().why, protectedInvariants: [] },
-        }),
-      ),
+      createLedgerEntry({
+        ...input(),
+        why: { responsibility: 'A duplicate.' },
+      } as never),
     (error) => isWorkflowError(error, 'SEMANTIC_LEDGER_INVALID'),
   );
 });
@@ -149,7 +161,7 @@ test('an untouched consumer whose dependency moved must be revalidated', () => {
   const verdict = assessSemanticFreshness(
     ENTRY,
     observed({
-      currentDependencyEntryIds: {
+      currentDependencySourceDigests: {
         'investigation.checkpoint-envelope': `sha256:${'f'.repeat(64)}`,
       },
     }),
@@ -161,7 +173,7 @@ test('an untouched consumer whose dependency moved must be revalidated', () => {
 test('unknown dependency state is not treated as stability', () => {
   const verdict = assessSemanticFreshness(
     ENTRY,
-    observed({ currentDependencyEntryIds: undefined }),
+    observed({ currentDependencySourceDigests: undefined }),
   );
   assert.equal(verdict.state, 'dependency-changed');
 });

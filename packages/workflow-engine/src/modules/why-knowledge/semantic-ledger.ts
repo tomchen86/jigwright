@@ -1,25 +1,15 @@
+/**
+ * Indexes semantic subjects by exact source, import bindings, and freshness policy.
+ *
+ * Invariants:
+ * - Explanations remain in source headers; entries contain no second prose authority.
+ * - Content-addressed entries preserve history and explicit supersession.
+ */
+
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-
-/**
- * A store of understanding that outlives the change that produced it.
- *
- * Today every change re-reads whatever its search touched and writes a fresh
- * explanation of why each file matters, even when neither the file nor its
- * meaning has moved since the last time somebody explained it. The cost tracks
- * how much old code a term happens to brush against rather than how much this
- * change actually alters.
- *
- * The ledger keeps those explanations, keyed to a subject rather than a file,
- * and records exactly what each one depended on when it was written: the
- * subject's own content, the subjects it relies on, and the policy that judged
- * it sufficient. A later change can reuse an entry only while all three still
- * hold. Nothing is overwritten — a new understanding supersedes the old one
- * and the old one stays readable, because the question "what did we believe
- * when we approved that?" has to remain answerable.
- */
 
 const DIGEST = /^sha256:[0-9a-f]{64}$/;
 const SUBJECT_ID = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/;
@@ -64,26 +54,19 @@ export type SemanticBinding = Readonly<{
   extractorVersion: string;
 }>;
 
-export type SemanticWhy = Readonly<{
-  responsibility: string;
-  protectedInvariants: readonly string[];
-  failureModes: readonly string[];
-  reviewerQuestions: readonly string[];
-}>;
-
 export type SemanticDependency = Readonly<{
   relation: string;
   subjectId: string;
-  entryId: string;
+  path: string;
+  sourceDigest: string | null;
 }>;
 
 export type LedgerEntry = Readonly<{
-  schemaVersion: 1;
+  schemaVersion: 2;
   kind: 'semantic-ledger-entry';
   entryId: string;
   subject: SemanticSubject;
   binding: SemanticBinding;
-  why: SemanticWhy;
   semanticDependencies: readonly SemanticDependency[];
   dependencySetDigest: string;
   policyDigest: string;
@@ -114,7 +97,6 @@ export function semanticLedgerEntryId(input: LedgerEntryInput): string {
       kind: input.kind,
       subject: input.subject,
       binding: input.binding,
-      why: input.why,
       semanticDependencies,
       dependencySetDigest: dependencySetDigest(semanticDependencies),
       policyDigest: input.policyDigest,
@@ -150,9 +132,8 @@ export function createLedgerEntry(input: LedgerEntryInput): LedgerEntry {
       'status',
       'subject',
       'supersedes',
-      'why',
     ]) ||
-    input.schemaVersion !== 1 ||
+    input.schemaVersion !== 2 ||
     input.kind !== 'semantic-ledger-entry' ||
     !['current', 'superseded', 'tombstone'].includes(input.status)
   ) {
@@ -160,7 +141,6 @@ export function createLedgerEntry(input: LedgerEntryInput): LedgerEntry {
   }
   assertSubject(input.subject);
   assertBinding(input.binding);
-  assertWhy(input.why);
   assertProvenance(input.provenance);
   if (!Array.isArray(input.semanticDependencies)) {
     throw ledgerInvalid('Semantic dependencies are malformed.');
@@ -168,10 +148,18 @@ export function createLedgerEntry(input: LedgerEntryInput): LedgerEntry {
   for (const dependency of input.semanticDependencies) {
     if (
       !isPlainRecord(dependency) ||
-      !hasExactKeys(dependency, ['entryId', 'relation', 'subjectId']) ||
+      !hasExactKeys(dependency, [
+        'path',
+        'sourceDigest',
+        'relation',
+        'subjectId',
+      ]) ||
       !isSemanticSubjectId(dependency.subjectId) ||
-      typeof dependency.entryId !== 'string' ||
-      !DIGEST.test(dependency.entryId) ||
+      typeof dependency.path !== 'string' ||
+      dependency.path.trim() === '' ||
+      (dependency.sourceDigest !== null &&
+        (typeof dependency.sourceDigest !== 'string' ||
+          !DIGEST.test(dependency.sourceDigest))) ||
       typeof dependency.relation !== 'string' ||
       dependency.relation.trim() === ''
     ) {
@@ -194,11 +182,10 @@ export function createLedgerEntry(input: LedgerEntryInput): LedgerEntry {
     canonicalDependencies(input.semanticDependencies),
   );
   const normalized: LedgerEntryInput = Object.freeze({
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: input.subject,
     binding: input.binding,
-    why: input.why,
     semanticDependencies,
     policyDigest: input.policyDigest,
     provenance: input.provenance,
@@ -236,13 +223,12 @@ export function assertLedgerEntry(value: unknown): LedgerEntry {
       'status',
       'subject',
       'supersedes',
-      'why',
     ])
   ) {
     throw ledgerInvalid('A ledger entry is an object.');
   }
   const raw = value;
-  if (raw.schemaVersion !== 1 || raw.kind !== 'semantic-ledger-entry') {
+  if (raw.schemaVersion !== 2 || raw.kind !== 'semantic-ledger-entry') {
     throw ledgerInvalid('Ledger entry identity is wrong.');
   }
   const { entryId, dependencySetDigest: claimed, ...rest } = raw;
@@ -300,50 +286,6 @@ function assertBinding(subject: unknown): asserts subject is SemanticBinding {
     binding.extractorVersion.trim() === ''
   ) {
     throw ledgerInvalid('A semantic binding is malformed.');
-  }
-}
-
-function assertWhy(value: unknown): asserts value is SemanticWhy {
-  if (
-    !isPlainRecord(value) ||
-    !hasExactKeys(value, [
-      'failureModes',
-      'protectedInvariants',
-      'responsibility',
-      'reviewerQuestions',
-    ]) ||
-    typeof value.responsibility !== 'string' ||
-    !Array.isArray(value.protectedInvariants) ||
-    !Array.isArray(value.failureModes) ||
-    !Array.isArray(value.reviewerQuestions)
-  ) {
-    throw ledgerInvalid('A semantic WHY record is malformed.');
-  }
-  const why = value as Record<string, unknown> & {
-    responsibility: string;
-    protectedInvariants: unknown[];
-    failureModes: unknown[];
-    reviewerQuestions: unknown[];
-  };
-  // A free-text reflection is not evidence. An entry has to answer what the
-  // subject is responsible for and what would break, or a later reader cannot
-  // tell whether it still holds.
-  if (
-    why.responsibility.trim() === '' ||
-    why.protectedInvariants.length === 0 ||
-    why.protectedInvariants.some(
-      (entry) => typeof entry !== 'string' || entry.trim() === '',
-    ) ||
-    why.failureModes.some(
-      (entry) => typeof entry !== 'string' || entry.trim() === '',
-    ) ||
-    why.reviewerQuestions.some(
-      (entry) => typeof entry !== 'string' || entry.trim() === '',
-    )
-  ) {
-    throw ledgerInvalid(
-      'An entry states a responsibility and at least one protected invariant.',
-    );
   }
 }
 

@@ -8,7 +8,7 @@ import {
   loadWorkflowConfig,
 } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { validateCiPlanningCommit } from '../../entrypoints/ci/ci-planning.ts';
-import { engineProjectionPathsForTransition } from '../../modules/projection/engine-projection-registry.ts';
+import { isEngineProjectionPathForTransition } from '../../modules/projection/engine-projection-registry.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -1188,8 +1188,9 @@ function assertCommittedPlanningState(
 }
 
 function planningProjectionPaths(journal: OpenTaskJournal): string[] {
-  const known = new Set(engineProjectionPathsForTransition('plan'));
-  return journal.changedPaths.filter((changedPath) => known.has(changedPath));
+  return journal.changedPaths.filter((changedPath) =>
+    isEngineProjectionPathForTransition(changedPath, 'plan'),
+  );
 }
 
 function validatePreparedPlanningProjection(

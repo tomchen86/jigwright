@@ -24,7 +24,8 @@ import {
   planSemanticReuse,
   type ReusePlan,
 } from '../../modules/why-knowledge/semantic-reuse.ts';
-import type { FreshnessObservation } from '../../modules/why-knowledge/semantic-freshness.ts';
+import { observeLedgerSource } from '../../modules/why-knowledge/semantic-freshness.ts';
+import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
 import type { LedgerEntry } from '../../modules/why-knowledge/semantic-ledger.ts';
 import { materializeInvestigationEvidenceView } from '../../modules/investigation/manifest/investigation-materializer.ts';
 
@@ -143,28 +144,13 @@ function inspectSemanticReuse(
       // A named entry that cannot be read is a missing entry, not a fresh one.
     }
   }
-  const touched = new Set(hitPaths);
-  const observations = new Map<string, FreshnessObservation>();
-  for (const [subjectId, entry] of entries) {
-    // A subject the scan never reached is not evidence of anything changing,
-    // so its recorded understanding stands.
-    if (!touched.has(entry.subject.path)) {
-      observations.set(subjectId, {
-        present: true,
-        sourceDigest: entry.binding.sourceDigest,
-        semanticDigest: entry.binding.semanticDigest,
-        currentDependencyEntryIds: Object.fromEntries(
-          entry.semanticDependencies.map(({ subjectId: id, entryId }) => [
-            id,
-            entryId,
-          ]),
-        ),
-        currentPolicyDigest: entry.policyDigest,
-      });
-    }
-    // A touched subject is left unobserved on purpose: the engine cannot see
-    // its current meaning from here, and unobserved resolves to regenerate.
-  }
+  const snapshot = readSystemDescriptionSnapshot(repositoryRoot);
+  const observations = new Map(
+    [...entries].map(([subjectId, entry]) => [
+      subjectId,
+      observeLedgerSource(entry, snapshot),
+    ]),
+  );
   return planSemanticReuse([...entries.keys()].sort(), entries, observations);
 }
 

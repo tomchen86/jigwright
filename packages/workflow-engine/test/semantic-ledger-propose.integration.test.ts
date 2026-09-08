@@ -29,12 +29,14 @@ import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 
 const TARGET = 'src/ledger-target.ts';
 const TERM = 'SemanticLedgerProductionNeedle';
-const INITIAL = `${TERM} initial contract\n`;
-const CHANGED = `${TERM} changed contract\n`;
+const HEADER =
+  '/** Owns the ledger target.\n * Invariants:\n * - The contract remains available.\n */\n';
+const INITIAL = `${HEADER}${TERM} initial contract\n`;
+const CHANGED = `${HEADER}${TERM} changed contract\n`;
 
 test('entry identity covers the canonical object except entryId', () => {
   const input: LedgerEntryInput = {
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: {
       subjectId: 'file.identity-contract',
@@ -48,22 +50,19 @@ test('entry identity covers the canonical object except entryId', () => {
       semanticDigest: digest('semantic'),
       extractorVersion: 'test.v1',
     },
-    why: {
-      responsibility: 'Own the ledger identity contract.',
-      protectedInvariants: ['One identity names one canonical object.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+
     semanticDependencies: [
       {
         relation: 'calls',
         subjectId: 'file.second',
-        entryId: digest('second'),
+        path: 'src/file.second.ts',
+        sourceDigest: digest('second'),
       },
       {
         relation: 'calls',
         subjectId: 'file.first',
-        entryId: digest('first'),
+        path: 'src/file.first.ts',
+        sourceDigest: digest('first'),
       },
     ],
     policyDigest: digest('policy'),
@@ -180,10 +179,7 @@ test('propose remains read-only while an explicit unmounted projection is replay
     assert.equal(entry.binding.blobDigest, `sha256:${sha256(INITIAL)}`);
     assert.equal(entry.binding.sourceDigest, `sha256:${sha256(INITIAL)}`);
     assert.match(entry.binding.semanticDigest, /^sha256:[0-9a-f]{64}$/);
-    assert.equal(entry.why.responsibility, whyAnswer('unused').why);
-    assert.deepEqual(entry.why.protectedInvariants, [
-      whyAnswer('unused').protectedInvariant,
-    ]);
+    assert.equal(Object.hasOwn(entry, 'why'), false);
     assert.equal(entry.provenance.changeId, first.changeId);
     assert.equal(entry.supersedes, null);
     assert.match(entry.policyDigest, /^sha256:[0-9a-f]{64}$/);

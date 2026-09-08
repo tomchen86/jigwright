@@ -1,4 +1,7 @@
-import type { FreshnessObservation } from './semantic-freshness.ts';
+import { observeLedgerSource } from './semantic-freshness.ts';
+import { extractFileHeader } from '../source/file-header.ts';
+import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';
+import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
 import {
   readLedgerEntry,
   readLedgerIndex,
@@ -53,7 +56,10 @@ export function applyLedgerToFullBlobManifest<
 >(
   repositoryRoot: string,
   manifest: readonly TEntry[],
-  options: { currentPolicyDigest?: string } = {},
+  options: {
+    currentPolicyDigest?: string;
+    snapshot?: SystemDescriptionSnapshot;
+  } = {},
 ): ManifestReuse<TEntry> {
   const index = readLedgerIndex(repositoryRoot);
   const subjectIds = Object.keys(index.subjects);
@@ -98,7 +104,14 @@ export function applyLedgerToFullBlobManifest<
     byPath.set(subjectPath, entry);
   }
 
-  const observations = new Map<string, FreshnessObservation>();
+  const snapshot =
+    options.snapshot ?? readSystemDescriptionSnapshot(repositoryRoot);
+  const observations = new Map(
+    [...entries].map(([subjectId, entry]) => [
+      subjectId,
+      observeLedgerSource(entry, snapshot, options.currentPolicyDigest),
+    ]),
+  );
   const carried: Array<{
     manifestEntryId: string;
     subjectId: string;
@@ -121,24 +134,15 @@ export function applyLedgerToFullBlobManifest<
     const unchanged =
       ledgerEntry.binding.blobDigest ===
       `sha256:${manifestEntry.blob.contentSha256}`;
-    observations.set(ledgerEntry.subject.subjectId, {
-      present: true,
-      // Only an identical blob may claim identical meaning from here.
-      sourceDigest: unchanged
-        ? ledgerEntry.binding.sourceDigest
-        : `sha256:${manifestEntry.blob.contentSha256}`,
-      semanticDigest: unchanged
-        ? ledgerEntry.binding.semanticDigest
-        : `sha256:${manifestEntry.blob.contentSha256}`,
-      currentDependencyEntryIds: Object.fromEntries(
-        ledgerEntry.semanticDependencies.map(({ subjectId, entryId }) => [
-          subjectId,
-          entries.get(subjectId)?.entryId ?? entryId,
-        ]),
-      ),
-      currentPolicyDigest:
-        options.currentPolicyDigest ?? ledgerEntry.policyDigest,
-    });
+    const observed = observations.get(ledgerEntry.subject.subjectId)!;
+    if (
+      observed.sourceDigest !== `sha256:${manifestEntry.blob.contentSha256}`
+    ) {
+      observations.set(ledgerEntry.subject.subjectId, {
+        ...observed,
+        identityAmbiguous: true,
+      });
+    }
     candidates.push({ manifestEntry, ledgerEntry, unchanged });
   }
 
@@ -158,7 +162,15 @@ export function applyLedgerToFullBlobManifest<
       .map(({ subjectId }) => subjectId),
   );
   for (const { manifestEntry, ledgerEntry, unchanged } of candidates) {
-    if (unchanged && reusable.has(ledgerEntry.subject.subjectId)) {
+    const header = extractFileHeader(
+      snapshot.readText(ledgerEntry.subject.path) ?? '',
+    );
+    if (
+      unchanged &&
+      reusable.has(ledgerEntry.subject.subjectId) &&
+      header?.responsibility &&
+      header.invariants.length > 0
+    ) {
       carried.push({
         manifestEntryId: manifestEntry.manifestEntryId,
         subjectId: ledgerEntry.subject.subjectId,

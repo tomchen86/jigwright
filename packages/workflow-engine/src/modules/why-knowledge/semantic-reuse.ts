@@ -73,11 +73,40 @@ export function planSemanticReuse(
     );
   });
 
+  const bySubject = new Map(resolutions.map((item) => [item.subjectId, item]));
+  const reverse = new Map<string, string[]>();
+  for (const [subjectId, entry] of entries) {
+    for (const dependency of entry.semanticDependencies) {
+      const consumers = reverse.get(dependency.subjectId) ?? [];
+      consumers.push(subjectId);
+      reverse.set(dependency.subjectId, consumers);
+    }
+  }
+  const changed = resolutions.filter((item) => item.resolution !== 'reuse');
+  const visited = new Set(changed.map((item) => item.subjectId));
+  for (let index = 0; index < changed.length; index += 1) {
+    for (const consumer of reverse.get(changed[index]!.subjectId) ?? []) {
+      if (visited.has(consumer)) continue;
+      visited.add(consumer);
+      const existing = bySubject.get(consumer);
+      if (existing === undefined || existing.resolution !== 'reuse') continue;
+      const stale = resolution(
+        consumer,
+        'revalidate',
+        'dependency-changed',
+        'An imported subject requires re-examination; its consumers must be revalidated.',
+        existing.ledgerEntryId,
+      );
+      bySubject.set(consumer, stale);
+      changed.push(stale);
+    }
+  }
+  const resolved = resolutions.map((item) => bySubject.get(item.subjectId)!);
   const counted = (mode: ResolutionMode) =>
-    resolutions.filter((entry) => entry.resolution === mode).length;
+    resolved.filter((entry) => entry.resolution === mode).length;
   const reused = counted('reuse');
   return Object.freeze({
-    resolutions: Object.freeze(resolutions),
+    resolutions: Object.freeze(resolved),
     reused,
     revalidated: counted('revalidate'),
     regenerated: counted('regenerate'),

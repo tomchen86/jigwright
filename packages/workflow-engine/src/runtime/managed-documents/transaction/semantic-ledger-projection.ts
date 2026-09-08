@@ -1,4 +1,18 @@
+/**
+ * Projects validated planning and reconciled source bindings into the semantic index.
+ *
+ * Invariants:
+ * - Explanations remain in source headers; import edges bind actual snapshot bytes.
+ * - Replays preserve immutable objects and move the index through explicit supersession.
+ */
+
 import crypto from 'node:crypto';
+import { readFileAtCommit } from '../../repository-transaction/git.ts';
+import { loadChangeContract } from '../../../adapters/consumer/repository/work-registry/contracts.ts';
+import { PROPOSE_POLICY_DIGEST } from '../../../modules/provider-orchestration/provider-contracts.ts';
+import type { GeneratedDocumentMutation } from '../validation/managed-documents.ts';
+import { readImportDependencies } from '../../../modules/source/import-dependencies.ts';
+import { readSystemDescriptionSnapshot } from '../../repository-transaction/system-description-snapshot.ts';
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,6 +28,7 @@ import {
   type LedgerEntryInput,
 } from '../../../modules/why-knowledge/semantic-ledger.ts';
 import {
+  assertLedgerIndex,
   readLedgerEntry,
   readLedgerIndex,
   ledgerIndexPath,
@@ -38,6 +53,8 @@ export function projectInvestigationManifestWhyToLedger(input: {
   baselineCommit: string;
   whyOverlays: readonly InvestigationWhyOverlayV3[];
   policyDigest: string;
+  persist?: boolean;
+  priorIndex?: LedgerIndex;
 }): Readonly<{ entries: readonly LedgerEntry[]; index: LedgerIndex }> {
   return projectPlanningWhyClaims({
     ...input,
@@ -71,8 +88,14 @@ function projectPlanningWhyClaims(input: {
     reviewerQuestion: string;
   }[];
   policyDigest: string;
+  persist?: boolean;
+  priorIndex?: LedgerIndex;
 }): Readonly<{ entries: readonly LedgerEntry[]; index: LedgerIndex }> {
-  const priorIndex = readLedgerIndex(input.repositoryRoot);
+  const priorIndex = input.priorIndex ?? readLedgerIndex(input.repositoryRoot);
+  const snapshot = readSystemDescriptionSnapshot(
+    input.repositoryRoot,
+    input.baselineCommit,
+  );
   const seenPaths = new Set<string>();
   const entries = [...input.claims]
     .sort((left, right) => {
@@ -100,7 +123,7 @@ function projectPlanningWhyClaims(input: {
           ? null
           : readLedgerEntry(input.repositoryRoot, currentId);
       const entryInput: LedgerEntryInput = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         kind: 'semantic-ledger-entry',
         subject: { subjectId, kind: 'file', path: subjectPath },
         binding: {
@@ -110,16 +133,7 @@ function projectPlanningWhyClaims(input: {
           semanticDigest: claim.semanticDigest,
           extractorVersion: claim.extractorVersion,
         },
-        why: {
-          responsibility: claim.why,
-          protectedInvariants: [claim.protectedInvariant],
-          // The investigation schema has no typed failure-mode or semantic
-          // dependency field. Empty is honest; inferring either from prose
-          // would turn an actor claim into an engine result.
-          failureModes: [],
-          reviewerQuestions: [claim.reviewerQuestion],
-        },
-        semanticDependencies: [],
+        semanticDependencies: readImportDependencies(snapshot, subjectPath),
         policyDigest: prefixedDigest(input.policyDigest),
         provenance: {
           changeId: input.changeId,
@@ -134,13 +148,66 @@ function projectPlanningWhyClaims(input: {
       return createLedgerEntry(entryInput);
     });
 
-  for (const entry of entries) {
-    writeLedgerEntry(input.repositoryRoot, entry);
+  if (input.persist !== false) {
+    for (const entry of entries) writeLedgerEntry(input.repositoryRoot, entry);
+    return Object.freeze({
+      entries: Object.freeze(entries),
+      index: updateLedgerIndex(input.repositoryRoot, entries),
+    });
   }
+  const subjects = { ...priorIndex.subjects };
+  for (const entry of entries)
+    subjects[entry.subject.subjectId] = { currentEntryId: entry.entryId };
   return Object.freeze({
     entries: Object.freeze(entries),
-    index: updateLedgerIndex(input.repositoryRoot, entries),
+    index: { ...priorIndex, subjects },
   });
+}
+
+export function planPlanningSemanticLedger(
+  repositoryRoot: string,
+  changeId: string,
+): GeneratedDocumentMutation[] {
+  const contract = loadChangeContract(repositoryRoot, changeId);
+  const applicability = contract.investigation?.manifest.applicability;
+  if (
+    applicability?.kind !== 'ordinary' ||
+    applicability.semanticDelta.whyOverlays.length === 0
+  )
+    return [];
+  const baselineCommit = applicability.replayContract.baseline.commitOid;
+  const prior = readFileAtCommit(
+    repositoryRoot,
+    baselineCommit,
+    ledgerIndexPath(),
+  );
+  const priorIndex: LedgerIndex =
+    prior === undefined
+      ? { schemaVersion: 1, kind: 'semantic-ledger-index', subjects: {} }
+      : assertLedgerIndex(JSON.parse(prior));
+  const { entries, index } = projectInvestigationManifestWhyToLedger({
+    repositoryRoot,
+    changeId,
+    baselineCommit,
+    priorIndex,
+    whyOverlays: applicability.semanticDelta.whyOverlays,
+    policyDigest: PROPOSE_POLICY_DIGEST,
+    persist: false,
+  });
+  return [
+    ...entries.map(
+      (entry) => [ledgerObjectPath(entry.entryId), entry] as const,
+    ),
+    [ledgerIndexPath(), index] as const,
+  ]
+    .map(([relative, value]) => {
+      const absolute = path.join(repositoryRoot, relative);
+      const before = fs.existsSync(absolute)
+        ? fs.readFileSync(absolute, 'utf8')
+        : undefined;
+      return { path: relative, before, after: `${canonicalJson(value)}\n` };
+    })
+    .filter((mutation) => mutation.before !== mutation.after);
 }
 
 /** Production v3 projection from the current Manifest's validated WHY facts. */
@@ -179,6 +246,7 @@ function projectReconciledWhyClaims(input: {
   actualMutations: readonly ActualMutation[];
 }): ReconciledLedgerProjection | null {
   const priorIndex = readLedgerIndex(input.repositoryRoot);
+  const snapshot = readSystemDescriptionSnapshot(input.repositoryRoot);
   const actualBySubject = new Map(
     input.actualMutations.map((mutation) => [mutation.subjectId, mutation]),
   );
@@ -223,7 +291,7 @@ function projectReconciledWhyClaims(input: {
       sha256(source ?? Buffer.from('deleted', 'utf8')),
     );
     const entry = createLedgerEntry({
-      schemaVersion: 1,
+      schemaVersion: 2,
       kind: 'semantic-ledger-entry',
       subject: { subjectId, kind: 'file', path: subjectPath },
       binding: {
@@ -241,13 +309,7 @@ function projectReconciledWhyClaims(input: {
         ),
         extractorVersion: 'implementation-reconciliation-exact-source.v1',
       },
-      why: {
-        responsibility: claim.why,
-        protectedInvariants: [claim.protectedInvariant],
-        failureModes: [],
-        reviewerQuestions: [claim.reviewerQuestion],
-      },
-      semanticDependencies: [],
+      semanticDependencies: readImportDependencies(snapshot, subjectPath),
       policyDigest: prefixedDigest(input.policyDigest),
       provenance: {
         changeId: input.changeId,
@@ -342,14 +404,12 @@ function sameClaim(current: LedgerEntry, candidate: LedgerEntryInput): boolean {
     canonicalJson({
       subject: current.subject,
       binding: current.binding,
-      why: current.why,
       semanticDependencies: current.semanticDependencies,
       policyDigest: current.policyDigest,
     }) ===
     canonicalJson({
       subject: candidate.subject,
       binding: candidate.binding,
-      why: candidate.why,
       semanticDependencies: candidate.semanticDependencies,
       policyDigest: candidate.policyDigest,
     })

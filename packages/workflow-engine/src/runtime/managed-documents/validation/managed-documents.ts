@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { planPlanningSemanticLedger } from '../transaction/semantic-ledger-projection.ts';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
@@ -132,6 +133,7 @@ export function applyGeneratedDocumentMutations(
     const current = readGeneratedDocument(target);
     if (current === mutation.after) continue;
     if (current !== mutation.before) throw invalidDocumentProjection();
+    fs.mkdirSync(path.dirname(target), { recursive: true });
     replaceGeneratedDocument(
       target,
       mutation.after,
@@ -146,6 +148,24 @@ export function applyGeneratedDocumentMutations(
  * projection but does not narrow the registry's code-owned plan transition.
  */
 export function refreshPlanningDocuments(
+  repositoryRoot: string,
+  changeId: string,
+): GeneratedDocumentMutation[] {
+  const ledger = planPlanningSemanticLedger(repositoryRoot, changeId);
+  const mutations = [
+    ...ledger,
+    ...planPlanningHandoffDocuments(repositoryRoot, changeId),
+  ];
+  try {
+    applyGeneratedDocumentMutations(repositoryRoot, mutations);
+    return mutations;
+  } catch (error) {
+    rollbackGeneratedDocuments(repositoryRoot, mutations);
+    throw error;
+  }
+}
+
+function planPlanningHandoffDocuments(
   repositoryRoot: string,
   changeId: string,
 ): GeneratedDocumentMutation[] {

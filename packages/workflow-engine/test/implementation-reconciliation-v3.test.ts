@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -140,6 +141,7 @@ test('reconciled ledger projection consumes v3 WHY overlays without v2 evidence 
     path.join(os.tmpdir(), 'workflow-reconciliation-v3-ledger-'),
   );
   try {
+    execFileSync('git', ['init', '--quiet'], { cwd: repository });
     fs.mkdirSync(path.join(repository, 'src'), { recursive: true });
     fs.writeFileSync(
       path.join(repository, 'src/a.ts'),
@@ -189,8 +191,8 @@ test('reconciled ledger projection consumes v3 WHY overlays without v2 evidence 
 
     assert.ok(projection);
     const entry = readLedgerEntry(repository, projection.entryIds[0]!);
-    assert.equal(entry.why.responsibility, 'This file owns A.');
-    assert.deepEqual(entry.why.protectedInvariants, ['A remains available.']);
+    assert.equal(Object.hasOwn(entry, 'why'), false);
+    assert.equal(entry.subject.path, 'src/a.ts');
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

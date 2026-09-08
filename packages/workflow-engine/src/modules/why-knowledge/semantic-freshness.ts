@@ -1,5 +1,47 @@
 import type { LedgerEntry } from './semantic-ledger.ts';
-import { dependencySetDigest } from './semantic-ledger.ts';
+import {
+  readImportDependencies,
+  sourceDigest,
+} from '../source/import-dependencies.ts';
+import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';
+
+export function observeLedgerSource(
+  entry: LedgerEntry,
+  snapshot: SystemDescriptionSnapshot,
+  currentPolicyDigest = entry.policyDigest,
+): FreshnessObservation {
+  const source = snapshot.readText(entry.subject.path);
+  const digest = source === undefined ? undefined : sourceDigest(source);
+  const imports = new Map(
+    readImportDependencies(snapshot, entry.subject.path).map((dependency) => [
+      dependency.subjectId,
+      dependency.sourceDigest,
+    ]),
+  );
+  return {
+    present: source !== undefined,
+    sourceDigest: digest,
+    semanticDigest:
+      digest === entry.binding.sourceDigest
+        ? entry.binding.semanticDigest
+        : digest,
+    currentDependencySourceDigests: Object.fromEntries(
+      entry.semanticDependencies.map((dependency) => {
+        if (dependency.relation === 'imports')
+          return [
+            dependency.subjectId,
+            imports.get(dependency.subjectId) ?? null,
+          ];
+        const content = snapshot.readText(dependency.path);
+        return [
+          dependency.subjectId,
+          content === undefined ? null : sourceDigest(content),
+        ];
+      }),
+    ),
+    currentPolicyDigest,
+  };
+}
 
 /**
  * Whether an understanding recorded earlier can still be relied on.
@@ -34,8 +76,8 @@ export type FreshnessObservation = Readonly<{
   present: boolean;
   sourceDigest?: string;
   semanticDigest?: string;
-  /** Current entry IDs of the subjects this entry declared it depends on. */
-  currentDependencyEntryIds?: Readonly<Record<string, string>>;
+  /** Current source digests of the literal imports bound by this entry. */
+  currentDependencySourceDigests?: Readonly<Record<string, string | null>>;
   identityAmbiguous?: boolean;
   currentPolicyDigest: string;
 }>;
@@ -110,18 +152,15 @@ function dependenciesMoved(
   entry: LedgerEntry,
   observed: FreshnessObservation,
 ): boolean {
-  const current = observed.currentDependencyEntryIds;
+  const current = observed.currentDependencySourceDigests;
   if (current === undefined) {
     // Unknown dependency state is not evidence of stability.
     return entry.semanticDependencies.length > 0;
   }
-  return (
-    dependencySetDigest(
-      entry.semanticDependencies.map((dependency) => ({
-        ...dependency,
-        entryId: current[dependency.subjectId] ?? dependency.entryId,
-      })),
-    ) !== entry.dependencySetDigest
+  return entry.semanticDependencies.some(
+    (dependency) =>
+      dependency.sourceDigest === null ||
+      current[dependency.subjectId] !== dependency.sourceDigest,
   );
 }
 

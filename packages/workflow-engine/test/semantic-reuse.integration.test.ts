@@ -28,7 +28,7 @@ function entryFor(
   overrides: Record<string, unknown> = {},
 ): LedgerEntry {
   return createLedgerEntry({
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: { subjectId, kind: 'symbol', path: `src/${subjectId}.ts` },
     binding: {
@@ -38,12 +38,7 @@ function entryFor(
       semanticDigest: `sha256:${'4'.repeat(64)}`,
       extractorVersion: 'ts-adapter-v1',
     },
-    why: {
-      responsibility: `What ${subjectId} is for.`,
-      protectedInvariants: ['It holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+
     semanticDependencies: [],
     policyDigest: POLICY,
     provenance: { changeId: 'demo', createdAtCommit: 'b'.repeat(40) },
@@ -58,7 +53,7 @@ function fresh(entry: LedgerEntry): FreshnessObservation {
     present: true,
     sourceDigest: entry.binding.sourceDigest,
     semanticDigest: entry.binding.semanticDigest,
-    currentDependencyEntryIds: {},
+    currentDependencySourceDigests: {},
     currentPolicyDigest: POLICY,
   };
 }
@@ -93,12 +88,7 @@ test('replacing an understanding must name the one it replaces', () => {
   updateLedgerIndex(root, [first]);
 
   const orphan = entryFor('alpha', {
-    why: {
-      responsibility: 'A different account.',
-      protectedInvariants: ['It still holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+    provenance: { changeId: 'successor', createdAtCommit: 'c'.repeat(40) },
   });
   assert.throws(
     () => updateLedgerIndex(root, [orphan]),
@@ -106,12 +96,7 @@ test('replacing an understanding must name the one it replaces', () => {
   );
 
   const successor = entryFor('alpha', {
-    why: {
-      responsibility: 'A different account.',
-      protectedInvariants: ['It still holds.'],
-      failureModes: [],
-      reviewerQuestions: [],
-    },
+    provenance: { changeId: 'successor', createdAtCommit: 'c'.repeat(40) },
     supersedes: first.entryId,
   });
   writeLedgerEntry(root, successor);

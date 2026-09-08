@@ -33,6 +33,48 @@ import {
 } from '../src/runtime/provider-execution/provider-runner.ts';
 import { runProviderWorker } from '../src/entrypoints/worker/provider-worker.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { readLedgerIndex } from '../src/runtime/storage-journal/semantic-ledger-store.ts';
+import { validateCiPlanningCommit } from '../src/entrypoints/ci/ci-planning.ts';
+import { planPlanningSemanticLedger } from '../src/runtime/managed-documents/transaction/semantic-ledger-projection.ts';
+
+test('planning commits and replays the exact semantic binding projection', () => {
+  const prepared = prepareCoverageReview('r6-ledger-plan-projection', {
+    includeLedger: false,
+  });
+  try {
+    completeProviderReview(
+      prepared,
+      noChallengeSubmission('covered-target', coverageTargetPaths(prepared)),
+    );
+    assert.deepEqual(readLedgerIndex(prepared.repository).subjects, {});
+    resumePropose(
+      prepared.repository,
+      prepared.changeId,
+      createPlanReviewProgressEnvelope(
+        getProposeStatus(prepared.repository, prepared.investigationId),
+      ),
+    );
+    const commit = git(prepared.repository, ['rev-parse', 'HEAD']).trim();
+    const committed = validateCiPlanningCommit(
+      prepared.repository,
+      commit,
+      prepared.changeId,
+    );
+    assert.ok(
+      committed.changedPaths.includes('workflow/semantic-ledger/index.json'),
+    );
+    assert.ok(
+      Object.keys(readLedgerIndex(prepared.repository).subjects).length > 0,
+    );
+    assert.deepEqual(
+      planPlanningSemanticLedger(prepared.repository, prepared.changeId),
+      [],
+    );
+  } finally {
+    prepared.dispose();
+  }
+});
+
 import {
   createPlanningContributionEnvelope,
   createPlanReviewDispositionsEnvelope,
@@ -62,7 +104,8 @@ import { installPlanReviewAuthority } from './plan-review-authority-fixture.ts';
 import { driveProposeToDispositions } from './propose-drive-fixture.ts';
 
 const TARGET = 'src/r6-covered-target.ts';
-const TARGET_CONTENT = 'PlanningR6CoverageNeedle production contract\n';
+const TARGET_CONTENT =
+  '/** Owns the production coverage target.\n * Invariants:\n * - The contract stays covered.\n */\nPlanningR6CoverageNeedle production contract\n';
 const TERM = 'PlanningR6CoverageNeedle';
 
 test('ordinary planning with no semantic reuse still seals the global review population', () => {
@@ -887,7 +930,7 @@ function planningPayload(changeId: string) {
 function ledgerFiles(changeId: string): Record<string, string> {
   const sourceDigest = prefixedSha256(TARGET_CONTENT);
   const entry = createLedgerEntry({
-    schemaVersion: 1,
+    schemaVersion: 2,
     kind: 'semantic-ledger-entry',
     subject: {
       subjectId: 'file.r6-covered-target',
@@ -901,12 +944,7 @@ function ledgerFiles(changeId: string): Record<string, string> {
       semanticDigest: prefixedSha256('semantic-r6-covered-target'),
       extractorVersion: 'fixture.v1',
     },
-    why: {
-      responsibility: 'Own the R6 coverage production contract.',
-      protectedInvariants: ['Carried understanding remains review-visible.'],
-      failureModes: [],
-      reviewerQuestions: ['Can a provider omit this carried subject?'],
-    },
+
     semanticDependencies: [],
     policyDigest: `sha256:${PROPOSE_POLICY_DIGEST}`,
     provenance: { changeId, createdAtCommit: '1'.repeat(40) },

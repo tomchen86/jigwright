@@ -10,6 +10,8 @@
  * Failure modes: missing investigation coverage, stale scan acceptance, or unverifiable WHY evidence.
  */
 
+import { extractFileHeader } from '../../modules/source/file-header.ts';
+import { snapshotFromTrackedTree } from '../../runtime/repository-transaction/system-description-snapshot.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -145,7 +147,13 @@ function globalPlanReviewCoverageBindings(
     const plannedMutation = explicitPaths.has(targetPath);
     const invariants = [
       ...(why === undefined ? [] : [why.protectedInvariant]),
-      ...(ledger?.why.protectedInvariants ?? []),
+      ...(ledger === null
+        ? []
+        : (extractFileHeader(
+            input.snapshot.entries
+              .find((candidate) => candidate.path.utf8 === targetPath)
+              ?.content?.toString('utf8') ?? '',
+          )?.invariants ?? [])),
       ...(plannedMutation
         ? ['Planned mutations must preserve their declared contract.']
         : []),
@@ -594,6 +602,7 @@ export function rebuildInvestigation(
     // agree with itself forever.
     {
       currentPolicyDigest: `sha256:${PROPOSE_POLICY_DIGEST}`,
+      snapshot: snapshotFromTrackedTree(snapshot),
     },
   );
   const fullBlobManifest = [...manifestReuse.owed];
