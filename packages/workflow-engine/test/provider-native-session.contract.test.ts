@@ -1,3 +1,13 @@
+/**
+ * Verifies native session composition boundaries and exact assignment-bound continuation evidence.
+ *
+ * Invariants:
+ * - Production consumers remain explicitly inventoried and native identities stay private.
+ * - Completion and resume require the exact assignment, receipt, and predecessor bindings.
+ *
+ * Depends on: provider-native session contracts, wrapper protocol, and production consumers.
+ * Failure modes: untracked consumers or stale continuation evidence can escape the session boundary.
+ */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -85,8 +95,8 @@ test('provider-native session foundation has one explicit production composition
     'modules/provider-orchestration/agent-runtime-port.ts',
     'modules/provider-orchestration/agent-runtime-protocol.ts',
     'runtime/session-workspace/provider-runtime-authority-paths.ts',
-    'runtime/storage-journal/investigation-session-store.ts',
-    'runtime/storage-journal/provider-invocation-store.ts',
+    'runtime/storage-journal/provider-invocation-completion.ts',
+    'runtime/storage-journal/provider-runtime-authority.ts',
   ]);
   const workerSource = fs.readFileSync(
     path.join(sourceRoot, 'entrypoints/worker/provider-worker.ts'),
