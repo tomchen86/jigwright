@@ -4,9 +4,7 @@ capabilities: [agent-skill-governance, ci-check-authority, repository-governance
 ## Purpose
 
 Keep repository governance, reviewed agent entry points, and registered check execution consistent across source packages and repository configuration.
-
 ## Requirements
-
 ### Requirement: Repository Agent Skill Surface
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -186,77 +184,6 @@ covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Sc
 - **WHEN** an ordinary task edits a check definition required by its policy or guard
 - **THEN** task authorization and CI replay fail closed
 
-### Requirement: Valid Repository Code Ownership
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Every CODEOWNER assigned to a protected repository path SHALL resolve to an
-existing GitHub user or team with explicit write access to the repository. The
-repository MUST retain an ownership rule for the CODEOWNERS file itself.
-
-#### Scenario: Configured owner is eligible
-covers: #Requirement: Valid Repository Code Ownership
-
-- **GIVEN** the repository ownership file assigns a protected path to an owner
-- **WHEN** GitHub validates the CODEOWNERS file on the default branch
-- **THEN** the owner resolves without a CODEOWNERS diagnostic
-- **AND** the owner has explicit write access to the repository
-
-#### Scenario: Configured owner is unknown or ineligible
-covers: #Requirement: Valid Repository Code Ownership
-
-- **GIVEN** an ownership entry names a missing user, hidden team, or identity
-  without explicit write access
-- **WHEN** repository governance is reviewed for activation
-- **THEN** remote enforcement remains inactive
-- **AND** the invalid ownership entry is corrected through a managed change
-
-### Requirement: Maintainer-Aware Pull Request Enforcement
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The protected default branch SHALL require pull requests, the strict
-`workflow-assurance` status check against an up-to-date base, and no bypass.
-Code-owner approval with stale-review dismissal SHALL additionally be required
-only when at least two independent eligible human maintainers exist.
-
-#### Scenario: Repository has one eligible human maintainer
-covers: #Requirement: Maintainer-Aware Pull Request Enforcement
-
-- **GIVEN** the pull-request author is the repository's only eligible human
-  maintainer
-- **WHEN** protected-branch rules are configured
-- **THEN** zero approving reviews are required
-- **AND** code-owner review and stale-review dismissal are disabled
-- **AND** pull-request, strict status-check, current-base, and no-bypass rules
-  remain enforced
-
-#### Scenario: Repository has an independent eligible reviewer
-covers: #Requirement: Maintainer-Aware Pull Request Enforcement
-
-- **GIVEN** at least two independent eligible human maintainers exist
-- **WHEN** protected-branch rules are configured
-- **THEN** a code-owner approval from an eligible human other than the author
-  is required
-- **AND** new reviewable pushes dismiss stale approval
-
-### Requirement: Staged Governance Activation
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Remote merge enforcement SHALL be activated only after a valid
-CODEOWNERS file is present on the default branch and GitHub reports no
-CODEOWNERS diagnostics. Activation evidence MUST include the effective ruleset
-state and a pull request whose required `workflow-assurance` check is enforced.
-
-#### Scenario: Valid ownership reaches the base
-covers: #Requirement: Staged Governance Activation
-
-- **GIVEN** the valid ownership configuration has merged into the default branch
-- **AND** GitHub reports no CODEOWNERS errors for that branch
-- **WHEN** the maintainer activates the repository ruleset
-- **THEN** the configured solo- or multi-maintainer review policy becomes
-  effective
-- **AND** an archive pull request proves the required status check before
-  workflow support is declared
-
 ### Requirement: Credential-Free Assurance Checkout Compatibility
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -420,3 +347,39 @@ covers: #Requirement: Archive base resolves from the protected remote-tracking r
 - WHEN either resolves the protected branch ref
 - THEN both use the identical `refs/remotes/origin/<branch>` spelling from a
   single shared definition
+
+### Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
+sources: [SRC-5a56b9d773c073a429dfbc7d271fdd00d18d873752bb86ca0540662433bfb1ba, SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The shipped GitHub archive adapter SHALL bind a hosted ruleset observation to the exact repository and protected-base commit, authenticated evidence, observation lifetime and canonical digest. Its production observer SHALL read applicable active rulesets and require the existing `workflow-assurance` check and absence of bypass actors. A disabled, expired, unauthenticated or differently bound observation MUST NOT be accepted as current evidence. These checks do not establish CODEOWNERS eligibility or activate a hosted review policy. A local archive preparation SHALL retain an explicit unobserved remote state and pending operational gate until separate remote evidence exists.
+
+#### Scenario: The production observer derives authenticated ruleset facts
+covers: #Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
+test: packages/workflow-engine/test/archive-publication-adapters.integration.test.ts#production ruleset observer authenticates a current no-bypass workflow-assurance ruleset
+
+- **WHEN** the configured observer reads active applicable rulesets through its authenticated GitHub boundary
+- **THEN** its result binds the protected base, required check, zero bypass actors and bounded observation lifetime
+- **AND** unavailable credentials do not produce an observation
+
+#### Scenario: The adapter preserves the exact observer binding
+covers: #Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
+test: packages/github-adapter/test/archive-pull-request.test.ts#ruleset observation is injected, authenticated, exact, and current
+
+- **WHEN** archive publication requests an observation for a protected base
+- **THEN** the configured observer receives that exact repository, branch and commit
+- **AND** the adapter preserves the validated observation facts
+
+#### Scenario: Missing or invalid hosted observations remain unavailable
+covers: #Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
+test: packages/github-adapter/test/archive-pull-request.test.ts#ruleset observation fails closed when disabled, stale, replayed, or unauthenticated
+
+- **WHEN** the observer is disabled or its evidence is expired, unauthenticated or bound to another base
+- **THEN** the adapter rejects the observation instead of inferring hosted enforcement from repository files
+
+#### Scenario: Local archive preparation does not imply a remote result
+covers: #Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive-pr dry-run creates only a local canonical preparation and reports the remote gate pending
+
+- **WHEN** the archive dry-run creates a valid local preparation
+- **THEN** it reports `remoteState: not-observed` and a pending operational gate
+- **AND** it makes no remote calls or claims that a hosted pull request passed
