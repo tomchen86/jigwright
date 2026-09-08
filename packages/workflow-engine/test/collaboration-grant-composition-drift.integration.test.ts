@@ -192,7 +192,10 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     'utf8',
   );
   const cli = fs.readFileSync(
-    path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/entrypoints/cli/provider-operations-cli.ts',
+    ),
     'utf8',
   );
 
@@ -257,7 +260,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
     assert.equal(typeof store.consumeCollaborationGrant, 'function');
     assert.equal(typeof store.readCollaborationGrantInspection, 'function');
     assert.equal(typeof store.revokeCollaborationGrant, 'function');
-
     const namespace = 'workflow.collaboration-grant.v2';
     const payload = 'clone-bound verifier payload\n';
     const mutableVerifierPolicy = {
@@ -292,252 +294,43 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
         ),
       (error) => hasWorkflowErrorCode(error, 'MAINTAINER_SIGNATURE_INVALID'),
     );
-
-    const gitCommonDirectory = fs.realpathSync(
-      clone.git(['rev-parse', '--absolute-git-dir']),
-    );
-    const baselineCommit = clone.git(['rev-parse', 'HEAD']);
-    const baselineTree = clone.git(['rev-parse', `${baselineCommit}^{tree}`]);
-    const issue = (grantId: string) =>
-      collaborationGrant.issueCollaborationGrant(
-        clone.repositoryRoot,
-        {
-          changeId: 'composition-drift',
-          taskId: null,
-          baselineCommit,
-          baselineTree,
-          targetDigest: TARGET_DIGEST,
-          lifecyclePhase: 'blind-survey',
-          rolePair: {
-            authorRole: 'investigation-author',
-            conflictingRole: 'plan-reviewer',
-          },
-          availableActor: {
-            kind: 'provider',
-            providerId: 'codex',
-            assurance: 'runtime-hint',
-          },
-          degradedForm: 'same-provider-fresh-session',
-          reason: 'No alternate provider is callable in the clone fixture.',
-          ttlMinutes: 30,
-          maxUses: 1,
-        },
-        { now: NOW, grantId, signer: SSH_SIGNING.signer() },
-      );
-    const available = issue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
-    const reserved = issue('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
-    const consumed = issue('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
-    const expectedBinding = (envelope: GrantEnvelope) => {
-      const grant = envelope.payload;
-      return {
-        repositoryId: grant.repositoryId,
-        repositoryOrigin: grant.repositoryOrigin,
-        policyBlob: grant.policyBlob,
-        collaborationPolicyDigest: grant.collaborationPolicyDigest,
-        changeId: grant.changeId,
-        taskId: grant.taskId,
-        baselineCommit: grant.baselineCommit,
-        baselineTree: grant.baselineTree,
-        targetDigest: grant.targetDigest,
-        lifecyclePhase: grant.lifecyclePhase,
-        rolePair: grant.rolePair,
-        availableActor: grant.availableActor,
-        degradedForm: grant.degradedForm,
-        reason: grant.reason,
-      };
-    };
-    const reserve = (issued: IssuedGrant, transitionDigest: string) =>
-      store.reserveCollaborationGrant(clone.repositoryRoot, issued.grantId, {
-        transitionDigest,
-        expected: expectedBinding(issued.envelope),
-        now: new Date(NOW.getTime() + 60_000),
-        verifier,
-      });
-    const reservedTransition = '4'.repeat(64);
-    const consumedTransition = crypto
-      .createHash('sha256')
-      .update(
-        canonicalJsonForTest({
-          schemaVersion: 1,
-          kind: 'collaboration-role-transition',
-          expectedBinding: expectedBinding(consumed.envelope),
-        }),
-      )
-      .digest('hex');
-    const reservedRecord = reserve(reserved, reservedTransition);
-    const consumedRecord = reserve(consumed, consumedTransition);
-    const participant = (sessionId: string) => ({
-      providerId: 'codex',
-      sessionId,
-      principalId: 'fixture-agent',
-      identityAssurance: 'runtime-hint',
-      engineSpawned: true,
-    });
-    const assignmentFor = (reservation: GrantReservation) =>
-      roleScheduler.authorizeGrantedOrdinaryRole({
-        role: 'plan-reviewer',
-        author: participant(`author-${reservation.envelope.payload.grantId}`),
-        targetDigest: TARGET_DIGEST,
-        reservation,
-        actualParticipant: participant(
-          `worker-${reservation.envelope.payload.grantId}`,
-        ),
-        callableProviderIds: ['codex'],
-      });
-    const consumptionRequest = (
-      reservation: GrantReservation,
-      transitionDigest: string,
-    ) => ({
-      transitionDigest,
-      assignment: assignmentFor(reservation),
-      contentAdmission: {
-        kind: 'blind-survey',
-        nodeId: CONTENT_NODE_ID,
-        resultDigest: CONTENT_RESULT_DIGEST,
-        current: true,
-      },
-      now: new Date(NOW.getTime() + 120_000),
-      verifier,
-    });
-    const reservedConsumption = consumptionRequest(
-      reservedRecord,
-      reservedTransition,
-    );
-    const consumedConsumption = consumptionRequest(
-      consumedRecord,
-      consumedTransition,
-    );
-    const consumedInspection = store.consumeCollaborationGrant(
+    const {
       gitCommonDirectory,
-      consumed.grantId,
+      issue,
+      available,
+      reserved,
+      consumed,
+      expectedBinding,
+      reserve,
+      consumedTransition,
+      consumedRecord,
+      participant,
+      assignmentFor,
+      reservedConsumption,
       consumedConsumption,
+      consumedInspection,
+      planReviewGrant,
+      planReviewBinding,
+      planReviewAuthor,
+      planReviewParticipant,
+      planReviewAssignment,
+      reservedPlanReviewGrant,
+      reservedPlanReviewBinding,
+      reservedPlanReviewTransition,
+      reservedPlanReviewAssignment,
+      planReviewContent,
+      planReviewConsumed,
+    } = createCloneGrantStates(
+      clone,
+      collaborationGrant,
+      store,
+      roleScheduler,
+      verifier,
     );
     assert.equal(consumedInspection.state, 'consumed');
     assert.ok(consumedInspection.use);
-
-    const planReviewGrantRequest = {
-      changeId: 'composition-drift',
-      taskId: null,
-      baselineCommit,
-      baselineTree,
-      targetDigest: TARGET_DIGEST,
-      lifecyclePhase: 'plan-review',
-      rolePair: {
-        authorRole: 'plan-author',
-        conflictingRole: 'plan-reviewer',
-      },
-      availableActor: {
-        kind: 'provider',
-        providerId: 'codex',
-        assurance: 'runtime-hint',
-      },
-      degradedForm: 'same-provider-fresh-session',
-      reason: 'Replay one exact consumed PlanReview after composition drift.',
-      ttlMinutes: 30,
-      maxUses: 1,
-    };
-    const planReviewGrant = collaborationGrant.issueCollaborationGrant(
-      clone.repositoryRoot,
-      planReviewGrantRequest,
-      {
-        now: NOW,
-        grantId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
-        signer: SSH_SIGNING.signer(),
-      },
-    );
-    const planReviewBinding = expectedBinding(planReviewGrant.envelope);
-    const planReviewTransition = crypto
-      .createHash('sha256')
-      .update(
-        canonicalJsonForTest({
-          schemaVersion: 1,
-          kind: 'collaboration-role-transition',
-          expectedBinding: planReviewBinding,
-        }),
-      )
-      .digest('hex');
-    const planReviewReservation = reserve(
-      planReviewGrant,
-      planReviewTransition,
-    );
-    const planReviewAuthor = participant('plan-review-author');
-    const planReviewParticipant = participant('plan-review-worker');
-    const planReviewAssignment = roleScheduler.authorizeGrantedOrdinaryRole({
-      role: 'plan-reviewer',
-      author: planReviewAuthor,
-      targetDigest: TARGET_DIGEST,
-      reservation: planReviewReservation,
-      actualParticipant: planReviewParticipant,
-      callableProviderIds: ['codex'],
-    });
-    const reservedPlanReviewGrant = collaborationGrant.issueCollaborationGrant(
-      clone.repositoryRoot,
-      planReviewGrantRequest,
-      {
-        now: NOW,
-        grantId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
-        signer: SSH_SIGNING.signer(),
-      },
-    );
-    const reservedPlanReviewBinding = expectedBinding(
-      reservedPlanReviewGrant.envelope,
-    );
-    const reservedPlanReviewTransition = crypto
-      .createHash('sha256')
-      .update(
-        canonicalJsonForTest({
-          schemaVersion: 1,
-          kind: 'collaboration-role-transition',
-          expectedBinding: reservedPlanReviewBinding,
-        }),
-      )
-      .digest('hex');
-    const reservedPlanReviewReservation = reserve(
-      reservedPlanReviewGrant,
-      reservedPlanReviewTransition,
-    );
-    const reservedPlanReviewAssignment =
-      roleScheduler.authorizeGrantedOrdinaryRole({
-        role: 'plan-reviewer',
-        author: participant('reserved-plan-review-author'),
-        targetDigest: TARGET_DIGEST,
-        reservation: reservedPlanReviewReservation,
-        actualParticipant: participant('reserved-plan-review-worker'),
-        callableProviderIds: ['codex'],
-      });
-    const planReviewContent = {
-      kind: 'plan-review',
-      nodeId: CONTENT_NODE_ID,
-      resultDigest: CONTENT_RESULT_DIGEST,
-      outputSchema: {
-        id: 'fixture.plan-review-output.v1',
-        version: 1,
-        digest: '6'.repeat(64),
-      },
-      evaluator: 'fixture.plan-review.v1',
-      policyDigest: '7'.repeat(64),
-      contentDigest: CONTENT_RESULT_DIGEST,
-      current: true,
-    };
-    const planReviewConsumed = store.consumeCollaborationGrant(
-      gitCommonDirectory,
-      planReviewGrant.grantId,
-      {
-        transitionDigest: planReviewTransition,
-        assignment: planReviewAssignment,
-        contentAdmission: {
-          kind: planReviewContent.kind,
-          nodeId: planReviewContent.nodeId,
-          resultDigest: planReviewContent.resultDigest,
-          current: true,
-        },
-        now: new Date(NOW.getTime() + 120_000),
-        verifier,
-      },
-    );
     assert.equal(planReviewConsumed.state, 'consumed');
     assert.ok(planReviewConsumed.use);
-
     clone.appendCompositionDrift(
       'packages/grants/src/grant-envelope-verifier.ts',
     );
@@ -555,7 +348,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
           'COLLABORATION_GRANT_VERIFIER_COMPOSITION_UNAVAILABLE',
         ),
     );
-
     const grantStoreRoot =
       store.collaborationGrantStorePaths(gitCommonDirectory).root;
     let before = snapshotTree(grantStoreRoot);
@@ -662,7 +454,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       }),
     );
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
-
     const planReviewTerminalPath = path.join(
       store.collaborationGrantStorePaths(gitCommonDirectory).terminal,
       `${planReviewGrant.grantId}.json`,
@@ -683,7 +474,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
     );
     fs.writeFileSync(planReviewTerminalPath, authenticTerminal);
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
-
     assert.throws(
       () => reserve(available, '6'.repeat(64)),
       (error) =>
@@ -693,7 +483,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
         ),
     );
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
-
     before = snapshotTree(grantStoreRoot);
     assert.throws(
       () =>
@@ -709,7 +498,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
         ),
     );
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
-
     assert.equal(
       store.readCollaborationGrantInspection(
         gitCommonDirectory,
@@ -731,7 +519,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       )?.state,
       'consumed',
     );
-
     before = snapshotTree(grantStoreRoot);
     assert.equal(
       store.consumeCollaborationGrant(
@@ -747,7 +534,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       (error) => hasWorkflowErrorCode(error, 'COLLABORATION_GRANT_UNAVAILABLE'),
     );
     assert.deepEqual(snapshotTree(grantStoreRoot), before);
-
     const revoked = store.revokeCollaborationGrant(
       clone.repositoryRoot,
       available.grantId,
@@ -765,7 +551,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       )?.state,
       'revoked',
     );
-
     const invalidLate = issue('dddddddd-dddd-4ddd-8ddd-dddddddddddd');
     const invalidPaths = store.collaborationGrantStorePaths(gitCommonDirectory);
     for (const directory of [
@@ -791,7 +576,6 @@ test('a dynamically loaded engine clone fails closed on drift without blocking t
       ),
     );
     assert.deepEqual(snapshotTree(invalidPaths.root), beforeInvalidReserve);
-
     const grantStoreRootMissing =
       store.collaborationGrantStorePaths(gitCommonDirectory).root;
     const grantStoreParent = path.dirname(grantStoreRootMissing);
@@ -870,4 +654,276 @@ function snapshotTree(root: string): Readonly<Record<string, string>> {
   };
   visit(root, '');
   return Object.freeze(snapshot);
+}
+
+function createCloneGrantStates(
+  clone: Awaited<ReturnType<typeof createTempEngineClone>>,
+  collaborationGrant: CollaborationGrantModule,
+  store: CollaborationGrantStoreModule,
+  roleScheduler: RoleSchedulerModule,
+  verifier: AuthoritativeVerifier,
+) {
+  const gitCommonDirectory = fs.realpathSync(
+    clone.git(['rev-parse', '--absolute-git-dir']),
+  );
+  const baselineCommit = clone.git(['rev-parse', 'HEAD']);
+  const baselineTree = clone.git(['rev-parse', `${baselineCommit}^{tree}`]);
+  const issue = (grantId: string) =>
+    collaborationGrant.issueCollaborationGrant(
+      clone.repositoryRoot,
+      {
+        changeId: 'composition-drift',
+        taskId: null,
+        baselineCommit,
+        baselineTree,
+        targetDigest: TARGET_DIGEST,
+        lifecyclePhase: 'blind-survey',
+        rolePair: {
+          authorRole: 'investigation-author',
+          conflictingRole: 'plan-reviewer',
+        },
+        availableActor: {
+          kind: 'provider',
+          providerId: 'codex',
+          assurance: 'runtime-hint',
+        },
+        degradedForm: 'same-provider-fresh-session',
+        reason: 'No alternate provider is callable in the clone fixture.',
+        ttlMinutes: 30,
+        maxUses: 1,
+      },
+      { now: NOW, grantId, signer: SSH_SIGNING.signer() },
+    );
+  const available = issue('aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa');
+  const reserved = issue('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb');
+  const consumed = issue('cccccccc-cccc-4ccc-8ccc-cccccccccccc');
+  const expectedBinding = (envelope: GrantEnvelope) => {
+    const grant = envelope.payload;
+    return {
+      repositoryId: grant.repositoryId,
+      repositoryOrigin: grant.repositoryOrigin,
+      policyBlob: grant.policyBlob,
+      collaborationPolicyDigest: grant.collaborationPolicyDigest,
+      changeId: grant.changeId,
+      taskId: grant.taskId,
+      baselineCommit: grant.baselineCommit,
+      baselineTree: grant.baselineTree,
+      targetDigest: grant.targetDigest,
+      lifecyclePhase: grant.lifecyclePhase,
+      rolePair: grant.rolePair,
+      availableActor: grant.availableActor,
+      degradedForm: grant.degradedForm,
+      reason: grant.reason,
+    };
+  };
+  const reserve = (issued: IssuedGrant, transitionDigest: string) =>
+    store.reserveCollaborationGrant(clone.repositoryRoot, issued.grantId, {
+      transitionDigest,
+      expected: expectedBinding(issued.envelope),
+      now: new Date(NOW.getTime() + 60_000),
+      verifier,
+    });
+  const reservedTransition = '4'.repeat(64);
+  const consumedTransition = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJsonForTest({
+        schemaVersion: 1,
+        kind: 'collaboration-role-transition',
+        expectedBinding: expectedBinding(consumed.envelope),
+      }),
+    )
+    .digest('hex');
+  const reservedRecord = reserve(reserved, reservedTransition);
+  const consumedRecord = reserve(consumed, consumedTransition);
+  const participant = (sessionId: string) => ({
+    providerId: 'codex',
+    sessionId,
+    principalId: 'fixture-agent',
+    identityAssurance: 'runtime-hint',
+    engineSpawned: true,
+  });
+  const assignmentFor = (reservation: GrantReservation) =>
+    roleScheduler.authorizeGrantedOrdinaryRole({
+      role: 'plan-reviewer',
+      author: participant(`author-${reservation.envelope.payload.grantId}`),
+      targetDigest: TARGET_DIGEST,
+      reservation,
+      actualParticipant: participant(
+        `worker-${reservation.envelope.payload.grantId}`,
+      ),
+      callableProviderIds: ['codex'],
+    });
+  const consumptionRequest = (
+    reservation: GrantReservation,
+    transitionDigest: string,
+  ) => ({
+    transitionDigest,
+    assignment: assignmentFor(reservation),
+    contentAdmission: {
+      kind: 'blind-survey',
+      nodeId: CONTENT_NODE_ID,
+      resultDigest: CONTENT_RESULT_DIGEST,
+      current: true,
+    },
+    now: new Date(NOW.getTime() + 120_000),
+    verifier,
+  });
+  const reservedConsumption = consumptionRequest(
+    reservedRecord,
+    reservedTransition,
+  );
+  const consumedConsumption = consumptionRequest(
+    consumedRecord,
+    consumedTransition,
+  );
+  const consumedInspection = store.consumeCollaborationGrant(
+    gitCommonDirectory,
+    consumed.grantId,
+    consumedConsumption,
+  );
+  const planReviewGrantRequest = {
+    changeId: 'composition-drift',
+    taskId: null,
+    baselineCommit,
+    baselineTree,
+    targetDigest: TARGET_DIGEST,
+    lifecyclePhase: 'plan-review',
+    rolePair: {
+      authorRole: 'plan-author',
+      conflictingRole: 'plan-reviewer',
+    },
+    availableActor: {
+      kind: 'provider',
+      providerId: 'codex',
+      assurance: 'runtime-hint',
+    },
+    degradedForm: 'same-provider-fresh-session',
+    reason: 'Replay one exact consumed PlanReview after composition drift.',
+    ttlMinutes: 30,
+    maxUses: 1,
+  };
+  const planReviewGrant = collaborationGrant.issueCollaborationGrant(
+    clone.repositoryRoot,
+    planReviewGrantRequest,
+    {
+      now: NOW,
+      grantId: 'eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee',
+      signer: SSH_SIGNING.signer(),
+    },
+  );
+  const planReviewBinding = expectedBinding(planReviewGrant.envelope);
+  const planReviewTransition = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJsonForTest({
+        schemaVersion: 1,
+        kind: 'collaboration-role-transition',
+        expectedBinding: planReviewBinding,
+      }),
+    )
+    .digest('hex');
+  const planReviewReservation = reserve(planReviewGrant, planReviewTransition);
+  const planReviewAuthor = participant('plan-review-author');
+  const planReviewParticipant = participant('plan-review-worker');
+  const planReviewAssignment = roleScheduler.authorizeGrantedOrdinaryRole({
+    role: 'plan-reviewer',
+    author: planReviewAuthor,
+    targetDigest: TARGET_DIGEST,
+    reservation: planReviewReservation,
+    actualParticipant: planReviewParticipant,
+    callableProviderIds: ['codex'],
+  });
+  const reservedPlanReviewGrant = collaborationGrant.issueCollaborationGrant(
+    clone.repositoryRoot,
+    planReviewGrantRequest,
+    {
+      now: NOW,
+      grantId: 'ffffffff-ffff-4fff-8fff-ffffffffffff',
+      signer: SSH_SIGNING.signer(),
+    },
+  );
+  const reservedPlanReviewBinding = expectedBinding(
+    reservedPlanReviewGrant.envelope,
+  );
+  const reservedPlanReviewTransition = crypto
+    .createHash('sha256')
+    .update(
+      canonicalJsonForTest({
+        schemaVersion: 1,
+        kind: 'collaboration-role-transition',
+        expectedBinding: reservedPlanReviewBinding,
+      }),
+    )
+    .digest('hex');
+  const reservedPlanReviewReservation = reserve(
+    reservedPlanReviewGrant,
+    reservedPlanReviewTransition,
+  );
+  const reservedPlanReviewAssignment =
+    roleScheduler.authorizeGrantedOrdinaryRole({
+      role: 'plan-reviewer',
+      author: participant('reserved-plan-review-author'),
+      targetDigest: TARGET_DIGEST,
+      reservation: reservedPlanReviewReservation,
+      actualParticipant: participant('reserved-plan-review-worker'),
+      callableProviderIds: ['codex'],
+    });
+  const planReviewContent = {
+    kind: 'plan-review',
+    nodeId: CONTENT_NODE_ID,
+    resultDigest: CONTENT_RESULT_DIGEST,
+    outputSchema: {
+      id: 'fixture.plan-review-output.v1',
+      version: 1,
+      digest: '6'.repeat(64),
+    },
+    evaluator: 'fixture.plan-review.v1',
+    policyDigest: '7'.repeat(64),
+    contentDigest: CONTENT_RESULT_DIGEST,
+    current: true,
+  };
+  const planReviewConsumed = store.consumeCollaborationGrant(
+    gitCommonDirectory,
+    planReviewGrant.grantId,
+    {
+      transitionDigest: planReviewTransition,
+      assignment: planReviewAssignment,
+      contentAdmission: {
+        kind: planReviewContent.kind,
+        nodeId: planReviewContent.nodeId,
+        resultDigest: planReviewContent.resultDigest,
+        current: true,
+      },
+      now: new Date(NOW.getTime() + 120_000),
+      verifier,
+    },
+  );
+  return {
+    gitCommonDirectory,
+    issue,
+    available,
+    reserved,
+    consumed,
+    expectedBinding,
+    reserve,
+    consumedTransition,
+    consumedRecord,
+    participant,
+    assignmentFor,
+    reservedConsumption,
+    consumedConsumption,
+    consumedInspection,
+    planReviewGrant,
+    planReviewBinding,
+    planReviewAuthor,
+    planReviewParticipant,
+    planReviewAssignment,
+    reservedPlanReviewGrant,
+    reservedPlanReviewBinding,
+    reservedPlanReviewTransition,
+    reservedPlanReviewAssignment,
+    planReviewContent,
+    planReviewConsumed,
+  };
 }

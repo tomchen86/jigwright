@@ -1,118 +1,115 @@
-import assert from 'node:assert/strict';
-import crypto from 'node:crypto';
-import fs from 'node:fs';
-import os from 'node:os';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-
 import {
-  createProviderWrapperSessionProtocolParser,
-  parseAgentProviderConfigToml,
-  renderProviderWrapperSessionFrame,
-  type HostWrapperProviderProfileSnapshot,
-  type ProviderWrapperSessionProtocolBinding,
-} from '@jigwright/agent-runtime';
-import { inspectProviderExecutable } from '@jigwright/agent-runtime/provider-executable-identity';
-
-import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
-import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
-import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
-import type { InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
-import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
-import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
+  inspectProviderRetentionMetrics,
+  pruneProviderRuntime,
+  readProviderRetentionReceipt,
+  providerRetentionReceiptPath,
+  PROVIDER_RETENTION_MAX_RECEIPT_BYTES,
+  classifyProviderRetentionEligibility,
+  PROVIDER_RETENTION_MAX_LIMIT,
+} from '../src/runtime/provider-execution/provider-retention.ts';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
 import {
   inspectExecutionJob,
   listExecutionJobs,
 } from '../src/runtime/provider-execution/execution-runtime.ts';
 import {
-  executionJobStatePath,
-  readExecutionJobState,
-} from '../src/runtime/storage-journal/execution-store.ts';
+  isWorkflowError,
+  sourceRepositoryRoot,
+  createFixtureRepository,
+  writeReadyV3ExemptChange,
+  git,
+} from './fixture.ts';
+import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import {
+  providerRetentionStagingDirectory,
+  type ProviderRetentionArtifactName,
+  createProviderRetentionReceipt,
+  providerRetentionReceiptId,
+} from '../src/runtime/storage-journal/provider-retention-receipt.ts';
+import os from 'node:os';
 import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecycle-context.ts';
 import {
-  createPlanReviewTargetSnapshotNode,
-  PLAN_REVIEW_COVERAGE,
-  PLAN_REVIEW_OUTPUT_SCHEMA,
-  readPlanReviewTargetSnapshotNode,
-  type PlanReviewSubject,
-} from '../src/modules/assurance/plan-review.ts';
-import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
-import {
-  createProviderInvocationRequest,
-  PROPOSE_POLICY_DIGEST,
   type ProviderInvocationRequest,
+  PROPOSE_POLICY_DIGEST,
+  createProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
-  BLIND_SURVEY_OUTPUT_SCHEMA,
-  blindSurveyIntentDigest,
-  claimProviderInvocation,
-  completeProviderInvocationFromRunner,
-  createProviderInvocation,
-  failProviderInvocation,
-  prepareProviderInvocationAcceptanceBinding,
-  providerInvocationManifestDigest,
-  readProviderInvocation,
   storeProviderExecutionPolicySnapshot,
-  type BlindSurveyManifest,
+  createProviderInvocation,
+  prepareProviderInvocationAcceptanceBinding,
+  claimProviderInvocation,
+  failProviderInvocation,
+  readProviderInvocation,
   type PlanReviewManifest,
+  providerInvocationManifestDigest,
+  type BlindSurveyManifest,
+  blindSurveyIntentDigest,
+  BLIND_SURVEY_OUTPUT_SCHEMA,
+  completeProviderInvocationFromRunner,
 } from '../src/runtime/storage-journal/provider-invocation-store.ts';
+import { loadAiAdapterPolicy } from '../src/runtime/provider-execution/ai-adapter-policy.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { deriveInvestigationFirstPlanningSubject } from '../src/modules/assurance/planning-assurance-validator.ts';
 import {
-  agentRolePlanV2Digest,
-  createAgentRolePlanV2Snapshot,
-  renderAgentRolePlanV2,
-  type AgentRolePlanBodyV2,
-} from '../src/modules/provider-orchestration/agent-role-plan.ts';
-import { projectAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-durable-authority.ts';
-import {
-  createAgentRuntimeHostExecutionBindingV1,
-  createAgentRuntimeHostProbeEvidenceV1,
-} from '../src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
-import {
-  createCentralRoleProviderDefault,
-  createCentralRoleProviderDefaultSnapshotV1,
-  renderCentralRoleProviderDefault,
-} from '../src/modules/provider-orchestration/central-role-provider-default.ts';
-import { createChangeRoleAssignmentRecordV1 } from '../src/modules/provider-orchestration/change-role-assignment-record.ts';
-import {
-  createChangeRoleAssignmentProtectedContextV1,
-  resolveChangeRoleAssignmentV1,
-} from '../src/modules/provider-orchestration/change-role-assignment.ts';
+  createPlanReviewTargetSnapshotNode,
+  readPlanReviewTargetSnapshotNode,
+  PLAN_REVIEW_OUTPUT_SCHEMA,
+  type PlanReviewSubject,
+} from '../src/modules/assurance/plan-review.ts';
+import { writeEvidenceNode } from '../src/runtime/storage-journal/evidence-object-store.ts';
+import { createEvidenceNode } from '../src/adapters/planning/investigation/evidence-node.ts';
+import { type InvestigationManifestV3 } from '../src/modules/investigation/manifest/investigation-manifest.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
 import {
   PROVIDER_RUNNER_RESIDUALS,
   providerDefinitionExecutableBindingDigest,
 } from '../src/modules/provider-orchestration/provider-runtime-evidence.ts';
-import { resolveBuiltInProviderDefinitionSnapshot } from '../src/runtime/provider-execution/built-in-provider-definition.ts';
+import { inspectProviderExecutable } from '@jigwright/agent-runtime/provider-executable-identity';
 import {
-  PROVIDER_RETENTION_MAX_LIMIT,
-  PROVIDER_RETENTION_MAX_RECEIPT_BYTES,
-  classifyProviderRetentionEligibility,
-  inspectProviderRetentionMetrics,
-  providerRetentionReceiptPath,
-  pruneProviderRuntime,
-  readProviderRetentionReceipt,
-} from '../src/runtime/provider-execution/provider-retention.ts';
+  createAgentRuntimeHostProbeEvidenceV1,
+  createAgentRuntimeHostExecutionBindingV1,
+} from '../src/modules/provider-orchestration/agent-runtime-host-execution-binding.ts';
 import {
-  createProviderRetentionReceipt,
-  providerRetentionReceiptId,
-  providerRetentionStagingDirectory,
-  type ProviderRetentionArtifactName,
-} from '../src/runtime/storage-journal/provider-retention-receipt.ts';
+  type HostWrapperProviderProfileSnapshot,
+  type ProviderWrapperSessionProtocolBinding,
+  createProviderWrapperSessionProtocolParser,
+  renderProviderWrapperSessionFrame,
+  parseAgentProviderConfigToml,
+} from '@jigwright/agent-runtime';
+import {
+  createCentralRoleProviderDefault,
+  renderCentralRoleProviderDefault,
+  createCentralRoleProviderDefaultSnapshotV1,
+} from '../src/modules/provider-orchestration/central-role-provider-default.ts';
+import {
+  type AgentRolePlanBodyV2,
+  agentRolePlanV2Digest,
+  renderAgentRolePlanV2,
+  createAgentRolePlanV2Snapshot,
+} from '../src/modules/provider-orchestration/agent-role-plan.ts';
+import {
+  createChangeRoleAssignmentProtectedContextV1,
+  resolveChangeRoleAssignmentV1,
+} from '../src/modules/provider-orchestration/change-role-assignment.ts';
+import { createChangeRoleAssignmentRecordV1 } from '../src/modules/provider-orchestration/change-role-assignment-record.ts';
 import { createOrReadExactChangeRoleAssignmentRecordV1 } from '../src/runtime/storage-journal/change-role-assignment-store.ts';
+import { projectAgentRuntimeAssignmentBindingV1 } from '../src/modules/provider-orchestration/agent-runtime-durable-authority.ts';
 import {
   claimProviderNativeSessionTurnV1,
   completeProviderNativeSessionTurnV1,
   readProviderNativeSessionChainV1,
 } from '../src/runtime/storage-journal/provider-native-session-store.ts';
+import crypto from 'node:crypto';
 import {
-  createFixtureRepository,
-  git,
-  isWorkflowError,
-  sourceRepositoryRoot,
-  writeReadyV3ExemptChange,
-} from './fixture.ts';
+  readExecutionJobState,
+  executionJobStatePath,
+} from '../src/runtime/storage-journal/execution-store.ts';
+import { spawnSync } from 'node:child_process';
+import { createManifest, CHANGE_ID } from './blind-survey-manifest-fixture.ts';
 
-const CHANGE_ID = 'demo-change';
 const OLD_NOW = '2026-08-20T12:00:00.000Z';
 
 test('storage metrics derive exact raw bytes, expired work, pins, and receipts', () => {
@@ -1567,56 +1564,6 @@ function createPlanReviewRolloverHistory(name: string) {
     throw error;
   }
 }
-
-function createManifest(
-  repository: string,
-  investigationId: string,
-): BlindSurveyManifest {
-  return {
-    schemaVersion: 1,
-    kind: 'blind-survey-manifest',
-    changeId: CHANGE_ID,
-    repositoryId: 'fixture',
-    baseCommit: git(repository, ['rev-parse', 'HEAD']).trim(),
-    baseTree: git(repository, ['rev-parse', 'HEAD^{tree}']).trim(),
-    normalizedIntent: {
-      schemaVersion: 1,
-      summary: `Retain provider history for ${investigationId}.`,
-      sourceRefs: [],
-      explicitPaths: [
-        'packages/workflow-engine/src/runtime/provider-execution/provider-retention.ts',
-      ],
-      explicitSymbols: ['pruneProviderRuntime'],
-      explicitConfigKeys: [],
-      renamePairs: [],
-    },
-    architectureQuestion: 'Which private provider runtime may be pruned?',
-    capabilityProfile: 'repository-read-only',
-  };
-}
-
-test('blind survey intent requires the exact current sourceRefs key', () => {
-  const repository = createFixtureRepository();
-  try {
-    const manifest = createManifest(repository, 'investigation-source-refs');
-    const normalizedIntent = {
-      ...manifest.normalizedIntent,
-      sourceRefs: [],
-    } as Record<string, unknown>;
-    delete normalizedIntent.sourceRefs;
-    const missingSourceRefs = {
-      ...manifest,
-      normalizedIntent,
-    };
-
-    assert.throws(
-      () => blindSurveyIntentDigest(missingSourceRefs as never),
-      (error) => isWorkflowError(error, 'BLIND_MANIFEST_INVALID'),
-    );
-  } finally {
-    fs.rmSync(repository, { recursive: true, force: true });
-  }
-});
 
 function writeCurrentPlanningMaterialization(
   runtime: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],

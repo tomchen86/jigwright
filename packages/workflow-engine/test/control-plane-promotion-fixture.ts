@@ -47,11 +47,7 @@ export const CONTROL_PLANE_FIXTURE_CHANGE_ID = 'intervention-b';
 const PARENT_CHANGE_ID = 'parent-a';
 export const CONTROL_PLANE_FIXTURE_REVIEWER = 'fixture-reviewer';
 export const CONTROL_PLANE_FIXTURE_GRANT_SIGNER = 'fixture-grant-signer';
-const BOOTSTRAP_RUNTIME_NAMES = [
-  'built-in-engine-closure-pin.ts',
-  'canonical-json.ts',
-  'control-plane-trust.ts',
-] as const;
+import { BOOTSTRAP_RUNTIME_NAMES } from './support/bootstrap-runtime-fixture.ts';
 const FIXTURE_PROTECTED_CAPABILITY_LOADER_PATH =
   'src/adapters/consumer/repository/work-registry/protected-capabilities.ts';
 
@@ -635,8 +631,9 @@ function createSealedEnginePackage(builtInEntrypointBytes?: string): string {
   fs.mkdirSync(bootstrap, { recursive: true });
   fs.mkdirSync(source, { recursive: true });
   for (const name of [
-    'canonical-json.ts',
-    'control-plane-trust.ts',
+    ...BOOTSTRAP_RUNTIME_NAMES.filter(
+      (name) => name !== 'built-in-engine-closure-pin.ts',
+    ),
     'workflow-launcher.ts',
   ]) {
     fs.copyFileSync(

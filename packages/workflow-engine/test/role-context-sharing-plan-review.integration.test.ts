@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import test from 'node:test';
+import test, { type TestContext } from 'node:test';
 
 import {
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
@@ -73,185 +73,26 @@ const APPROVAL_GRANT_ID = '87654321-4321-4321-8321-cba987654321';
 const UNLISTED_GRANT_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const NOW = new Date('2026-08-21T00:01:00.000Z');
 
-test('R-007 reserve precedes launch, exact result consumes once, and crash replay is receipt-idempotent', (t) => {
-  const repositoryRoot = createFixtureRepository();
-  const ssh = createSshSignedFixture('fixture-maintainer');
-  const untrustedSsh = createSshSignedFixture('untrusted-maintainer');
-  t.after(() => {
-    untrustedSsh.dispose();
-    ssh.dispose();
-    fs.rmSync(repositoryRoot, { recursive: true, force: true });
-  });
-  fs.mkdirSync(`${repositoryRoot}/workflow`, { recursive: true });
-  fs.writeFileSync(
-    `${repositoryRoot}/workflow/maintainer-policy.json`,
-    `${JSON.stringify(
-      {
-        schemaVersion: 1,
-        repository: {
-          id: 'github:R_fixture',
-          origin: 'https://github.com/example/fixture.git',
-        },
-        phase: 'sealed',
-        auditTagPrefix: 'refs/tags/workflow-grant/',
-        signatureNamespace: 'workflow.maintainer-grant.v1',
-        maxTtlMinutes: 30,
-        maxUses: 1,
-        bootstrapEligiblePaths: ['workflow/protected-capabilities.json'],
-        sealedImmutablePaths: ['workflow/protected-capabilities.json'],
-        requiredChecks: ['fixture'],
-        trustedSigners: [ssh.trustedSigner],
-      },
-      null,
-      2,
-    )}\n`,
-  );
-  runGit(repositoryRoot, ['add', 'workflow/maintainer-policy.json']);
-  runGit(repositoryRoot, ['commit', '-m', 'Add fixture maintainer policy']);
-  const repository = discoverRepository(repositoryRoot);
-  fs.chmodSync(repository.gitCommonDirectory, 0o700);
-  const policy = parseMaintainerPolicy(
-    JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${repository.head}:workflow/maintainer-policy.json`,
-      ]),
-    ),
-  );
-  const baselineTree = runGit(repositoryRoot, [
-    'rev-parse',
-    `${repository.head}^{tree}`,
-  ]).trim();
-  const planningGeneration = '1'.repeat(64);
-  const providerDefinitionDigest = '2'.repeat(64);
-  const baseCentralConfigurationDigest = '0'.repeat(64);
-  const rolePlanBody: AgentRolePlanBodyV2 = {
-    schemaVersion: 2,
-    changeId: 'r007-plan-review',
-    baseCentralConfigurationDigest,
-    roleLanes: [],
-    pairwiseRequirements: [
-      { pair: 'author-reviewer', required: 'provider-independent' },
-    ],
-    customWrapperPolicy: 'forbidden',
-    grantReferences: [GRANT_ID, APPROVAL_GRANT_ID],
-  };
-  const roleTopology = resolveRoleTopologyV1({
-    changeId: rolePlanBody.changeId,
-    planningGeneration,
-    baseCentralConfigurationDigest,
-    centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
-    changeOverride: {
-      ...rolePlanBody,
-      planDigest: agentRolePlanV2Digest(rolePlanBody),
-    },
-    providerRegistry: {
-      schemaVersion: 1,
-      policyDigest: '3'.repeat(64),
-      providers: [
-        {
-          logicalProviderId: 'codex',
-          providerFamily: 'codex',
-          enabled: true,
-          definitionDigest: providerDefinitionDigest,
-        },
-      ],
-    },
-    actualPlacements: [
-      {
-        role: 'author',
-        logicalProviderId: 'codex',
-        providerDefinitionDigest,
-        sessionId: 'author-session',
-      },
-      {
-        role: 'reviewer',
-        logicalProviderId: 'codex',
-        providerDefinitionDigest,
-        sessionId: 'reviewer-session',
-      },
-    ],
-  });
+test('R-007 reserve precedes launch and consumed admission replays exactly after policy drift', (t) => {
+  const {
+    repositoryRoot,
+    ssh,
+    repository,
+    policy,
+    roleTopology,
+    requirement,
+    policyBlob,
+    expected,
+    envelope,
+    verifierCalls,
+    verifier,
+  } = createSignedRoleContextSharingFixture(t);
   assert.equal(roleTopology.disposition, 'exact-grant-required');
   assert.deepEqual(roleTopology.exactGrantRolePairs, ['author-reviewer']);
-  const subject = {
-    schemaVersion: 1 as const,
-    subjectDigest: '4'.repeat(64),
-    planningGenerationId: planningGeneration,
-    planTargetDigest: '5'.repeat(64),
-    manifestDigest: '7'.repeat(64),
-    investigationTargetDigest: '8'.repeat(64),
-    reviewPolicyDigest: '6'.repeat(64),
-    requiredIndependence: 'session-independent' as const,
-    investigationBaseline: { head: repository.head, tree: baselineTree },
-    investigationDependencies: [],
-    investigationRequirements: [],
-  };
-  const requirement = createRoleContextSharingPlanReviewRequirementV3({
-    investigationId: 'investigation-r007',
-    changeId: rolePlanBody.changeId,
-    baseline: { head: repository.head, tree: baselineTree },
-    subject,
-    author: {
-      providerId: 'codex',
-      sessionId: 'author-session',
-      principalId: null,
-      identityAssurance: 'adapter-assigned',
-      engineSpawned: false,
-    },
-    roleTopology,
-    contextGeneration: 1,
-  });
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${repository.head}:workflow/maintainer-policy.json`,
-  ]).trim();
-  const expected = deriveRoleContextSharingPlanReviewExpectedBinding({
-    requirement,
-    repositoryId: policy.repository.id,
-    repositoryOrigin: policy.repository.origin,
-    policyBlob,
-    reason: 'Approve this exact PlanReview context-sharing placement.',
-  });
-  const payload: RoleContextSharingGrantEnvelopeV1['payload'] = {
-    version: 1,
-    signatureNamespace: ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
-    grantId: GRANT_ID,
-    ...expected,
-    authorizedEffect: ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
-    issuedAt: '2026-08-21T00:00:00.000Z',
-    expiresAt: '2026-08-21T00:30:00.000Z',
-    maxUses: 1,
-    signer: policy.trustedSigners[0]!.identity,
-  };
-  const envelope: RoleContextSharingGrantEnvelopeV1 = {
-    payload,
-    signature: ssh.sign(
-      canonicalRoleContextSharingGrantPayloadV1(payload),
-      ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
-    ),
-  };
   assert.equal(
     envelope.payload.roleContextSharingPolicyDigest,
     ROLE_CONTEXT_SHARING_POLICY_DIGEST,
   );
-  storeAvailableRoleContextSharingGrant(
-    repository.gitCommonDirectory,
-    envelope,
-  );
-  const verifierCalls: string[] = [];
-  const verifier = sealAuthoritativeRoleContextSharingGrantVerifier(
-    {
-      assertCurrent() {
-        verifierCalls.push('current');
-      },
-      verify() {
-        verifierCalls.push('verify');
-      },
-    },
-    `sha256:${'7'.repeat(64)}`,
-  );
-
   assert.throws(
     () =>
       reserveRoleContextSharingPlanReview({
@@ -292,7 +133,6 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
   };
   launch();
   assert.deepEqual(events, ['reserved', 'launched']);
-
   const content = {
     kind: 'plan-review' as const,
     nodeId: 'b'.repeat(64),
@@ -436,7 +276,6 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     completed.roleResult.roleContextSharingUse.useProjectionDigest,
     consumed.useProjectionDigest,
   );
-
   const terminalBytes = fs.readFileSync(recordPath);
   assert.throws(
     () =>
@@ -468,6 +307,236 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
         'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_UNAVAILABLE',
       ),
   );
+  const publishedReceipt = publishRoleContextSharingTerminalReceipt(
+    repositoryRoot,
+    GRANT_ID,
+    {
+      now: new Date('2026-08-21T00:02:00.000Z'),
+      signer: ssh.signer(),
+      interactiveContext: {
+        stdinIsTty: true,
+        stdoutIsTty: true,
+        stderrIsTty: true,
+      },
+    },
+  );
+  const transitionedPolicy = JSON.parse(
+    fs.readFileSync(
+      `${repositoryRoot}/workflow/maintainer-policy.json`,
+      'utf8',
+    ),
+  ) as { auditTagPrefix: string };
+  transitionedPolicy.auditTagPrefix = 'refs/tags/workflow-authority/';
+  fs.writeFileSync(
+    `${repositoryRoot}/workflow/maintainer-policy.json`,
+    `${JSON.stringify(transitionedPolicy, null, 2)}\n`,
+  );
+  runGit(repositoryRoot, ['add', 'workflow/maintainer-policy.json']);
+  runGit(repositoryRoot, ['commit', '-m', 'Transition fixture audit prefix']);
+  const transitionedHead = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
+  fs.rmSync(recordPath);
+  const terminalProof =
+    productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
+      repositoryRoot,
+      evidence: terminalRoleResult.roleContextSharingUse,
+      assignment: terminalRoleResult.assignment,
+      author: terminalRoleResult.author,
+      participant: terminalRoleResult.participant,
+      content: terminalRoleResult.content,
+      providerInvocation: terminalRoleResult.providerInvocation,
+    });
+  const terminalReplayed = admitConsumedRoleContextSharingResultReplay({
+    assignment: terminalRoleResult.assignment,
+    author: terminalRoleResult.author,
+    participant: terminalRoleResult.participant,
+    content: terminalRoleResult.content,
+    providerInvocation: terminalRoleResult.providerInvocation,
+    replay: terminalProof,
+  });
+  assert.equal(
+    terminalReplayed.resultDigest,
+    completed.roleResult.resultDigest,
+  );
+  assert.equal(fs.existsSync(recordPath), false);
+  const exactReplayAdmission = {
+    assignment: terminalRoleResult.assignment,
+    author: terminalRoleResult.author,
+    participant: terminalRoleResult.participant,
+    content: terminalRoleResult.content,
+    providerInvocation: terminalRoleResult.providerInvocation,
+  };
+  const reboundAdmissions = [
+    {
+      label: 'content',
+      ...exactReplayAdmission,
+      content: {
+        ...terminalRoleResult.content,
+        resultDigest: '0'.repeat(64),
+        contentDigest: '0'.repeat(64),
+      },
+    },
+    {
+      label: 'provider output',
+      ...exactReplayAdmission,
+      providerInvocation: {
+        ...terminalRoleResult.providerInvocation,
+        outputDigest: '0'.repeat(64),
+      },
+    },
+    {
+      label: 'author',
+      ...exactReplayAdmission,
+      author: {
+        ...terminalRoleResult.author,
+        principalId: 'forged-author',
+      },
+    },
+    {
+      label: 'participant',
+      ...exactReplayAdmission,
+      participant: {
+        ...terminalRoleResult.participant,
+        principalId: 'forged-reviewer',
+      },
+    },
+  ] as const;
+  for (const { label: _label, ...rebound } of reboundAdmissions) {
+    assert.throws(
+      () => {
+        const reboundProof =
+          productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
+            repositoryRoot,
+            evidence: terminalRoleResult.roleContextSharingUse,
+            ...rebound,
+          });
+        admitConsumedRoleContextSharingResultReplay({
+          ...rebound,
+          replay: reboundProof,
+        });
+      },
+      (error) =>
+        isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_REPLAY_INVALID'),
+      `terminal replay must not re-mint for changed ${_label}`,
+    );
+  }
+  assert.throws(
+    () =>
+      admitConsumedRoleContextSharingResultReplay({
+        assignment: terminalRoleResult.assignment,
+        author: terminalRoleResult.author,
+        participant: terminalRoleResult.participant,
+        content: {
+          ...terminalRoleResult.content,
+          resultDigest: '0'.repeat(64),
+        },
+        providerInvocation: terminalRoleResult.providerInvocation,
+        replay: terminalProof,
+      }),
+    (error) =>
+      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_REPLAY_INVALID'),
+  );
+  const forgedEvidence = {
+    ...structuredClone(terminalRoleResult.roleContextSharingUse),
+    envelope: {
+      ...structuredClone(terminalRoleResult.roleContextSharingUse.envelope),
+      signature: 'forged-signature',
+    },
+  };
+  assert.throws(
+    () =>
+      productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
+        repositoryRoot,
+        evidence: forgedEvidence,
+        assignment: terminalRoleResult.assignment,
+        author: terminalRoleResult.author,
+        participant: terminalRoleResult.participant,
+        content: terminalRoleResult.content,
+        providerInvocation: terminalRoleResult.providerInvocation,
+      }),
+    (error) =>
+      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_INVALID'),
+  );
+  assert.equal(fs.existsSync(recordPath), false);
+  assert.throws(
+    () =>
+      admitRoleContextSharingResult({
+        assignment: reserved.assignment,
+        author: requirement.author,
+        participant: {
+          providerId: reserved.assignment.providerId,
+          sessionId: reserved.assignment.sessionId,
+          principalId: null,
+          identityAssurance: 'adapter-assigned',
+          engineSpawned: true,
+        },
+        content,
+        providerInvocation,
+        // A legacy Collaboration grantUse cannot stand in for R-007 evidence.
+        consumedUse: undefined as never,
+        grantUse: consumed.evidence,
+      } as Parameters<typeof admitRoleContextSharingResult>[0]),
+    (error) => isWorkflowError(error, 'ROLE_RESULT_INVALID'),
+  );
+  const driftedVerifier = sealAuthoritativeRoleContextSharingGrantVerifier(
+    {
+      assertCurrent() {
+        throw new Error('terminal replay must not touch verifier');
+      },
+      verify() {
+        throw new Error('terminal replay must not verify twice');
+      },
+    },
+    `sha256:${'a'.repeat(64)}`,
+  );
+  fs.writeFileSync(recordPath, terminalBytes, { mode: 0o600 });
+  const replayed = completeRoleContextSharingPlanReviewAdmission({
+    gitCommonDirectory: repository.gitCommonDirectory,
+    requirement,
+    authorization: reserved.authorization,
+    assignment: reserved.assignment,
+    author: requirement.author,
+    content,
+    providerInvocation,
+    policy,
+    verifier: driftedVerifier,
+    lifecycle: productionRoleContextSharingGrantLifecyclePort,
+    now: NOW,
+    assertOwned() {},
+  });
+  assert.equal(
+    replayed.consumed.record.recordDigest,
+    consumed.record.recordDigest,
+  );
+  assert.deepEqual(
+    replayed.consumed.record.receiptDigests,
+    consumed.record.receiptDigests,
+  );
+  assert.equal(
+    replayed.roleResult.resultDigest,
+    completed.roleResult.resultDigest,
+  );
+  assert.deepEqual(verifierCalls, [
+    'current',
+    'current',
+    'verify',
+    'current',
+    'current',
+    'verify',
+  ]);
+});
+
+test('R-007 signed terminal receipts preserve exact portable PlanReview and CI authority', (t) => {
+  const {
+    repositoryRoot,
+    ssh,
+    untrustedSsh,
+    repository,
+    baselineTree,
+    planningGeneration,
+    expected,
+    terminalRoleResult,
+    replayContext,
+  } = createConsumedRoleContextSharingFixture(t);
   const publishedReceipt = publishRoleContextSharingTerminalReceipt(
     repositoryRoot,
     GRANT_ID,
@@ -654,7 +723,6 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
         'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_BIJECTION_INVALID',
       ),
   );
-
   const transitionedPolicy = JSON.parse(
     fs.readFileSync(
       `${repositoryRoot}/workflow/maintainer-policy.json`,
@@ -696,7 +764,6 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
   assert.doesNotThrow(() =>
     verifyBaseAuthorityAttestations(repositoryRoot, transitionedHead, NOW),
   );
-
   const malformedReceiptRef = `${ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_TAG_PREFIX_V1}malformed`;
   createMaintainerAuditTag(
     repositoryRoot,
@@ -718,198 +785,11 @@ test('R-007 reserve precedes launch, exact result consumes once, and crash repla
     '-d',
     malformedReceiptRef.slice('refs/tags/'.length),
   ]);
-  fs.rmSync(recordPath);
-  const terminalProof =
-    productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
-      repositoryRoot,
-      evidence: terminalRoleResult.roleContextSharingUse,
-      assignment: terminalRoleResult.assignment,
-      author: terminalRoleResult.author,
-      participant: terminalRoleResult.participant,
-      content: terminalRoleResult.content,
-      providerInvocation: terminalRoleResult.providerInvocation,
-    });
-  const terminalReplayed = admitConsumedRoleContextSharingResultReplay({
-    assignment: terminalRoleResult.assignment,
-    author: terminalRoleResult.author,
-    participant: terminalRoleResult.participant,
-    content: terminalRoleResult.content,
-    providerInvocation: terminalRoleResult.providerInvocation,
-    replay: terminalProof,
-  });
-  assert.equal(
-    terminalReplayed.resultDigest,
-    completed.roleResult.resultDigest,
-  );
-  assert.equal(fs.existsSync(recordPath), false);
-  const exactReplayAdmission = {
-    assignment: terminalRoleResult.assignment,
-    author: terminalRoleResult.author,
-    participant: terminalRoleResult.participant,
-    content: terminalRoleResult.content,
-    providerInvocation: terminalRoleResult.providerInvocation,
-  };
-  const reboundAdmissions = [
-    {
-      label: 'content',
-      ...exactReplayAdmission,
-      content: {
-        ...terminalRoleResult.content,
-        resultDigest: '0'.repeat(64),
-        contentDigest: '0'.repeat(64),
-      },
-    },
-    {
-      label: 'provider output',
-      ...exactReplayAdmission,
-      providerInvocation: {
-        ...terminalRoleResult.providerInvocation,
-        outputDigest: '0'.repeat(64),
-      },
-    },
-    {
-      label: 'author',
-      ...exactReplayAdmission,
-      author: {
-        ...terminalRoleResult.author,
-        principalId: 'forged-author',
-      },
-    },
-    {
-      label: 'participant',
-      ...exactReplayAdmission,
-      participant: {
-        ...terminalRoleResult.participant,
-        principalId: 'forged-reviewer',
-      },
-    },
-  ] as const;
-  for (const { label: _label, ...rebound } of reboundAdmissions) {
-    assert.throws(
-      () => {
-        const reboundProof =
-          productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
-            repositoryRoot,
-            evidence: terminalRoleResult.roleContextSharingUse,
-            ...rebound,
-          });
-        admitConsumedRoleContextSharingResultReplay({
-          ...rebound,
-          replay: reboundProof,
-        });
-      },
-      (error) =>
-        isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_REPLAY_INVALID'),
-      `terminal replay must not re-mint for changed ${_label}`,
-    );
-  }
-  assert.throws(
-    () =>
-      admitConsumedRoleContextSharingResultReplay({
-        assignment: terminalRoleResult.assignment,
-        author: terminalRoleResult.author,
-        participant: terminalRoleResult.participant,
-        content: {
-          ...terminalRoleResult.content,
-          resultDigest: '0'.repeat(64),
-        },
-        providerInvocation: terminalRoleResult.providerInvocation,
-        replay: terminalProof,
-      }),
-    (error) =>
-      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_GRANT_REPLAY_INVALID'),
-  );
-  const forgedEvidence = {
-    ...structuredClone(terminalRoleResult.roleContextSharingUse),
-    envelope: {
-      ...structuredClone(terminalRoleResult.roleContextSharingUse.envelope),
-      signature: 'forged-signature',
-    },
-  };
-  assert.throws(
-    () =>
-      productionConsumedPlanReviewReplayPort.verifyRoleContextSharing({
-        repositoryRoot,
-        evidence: forgedEvidence,
-        assignment: terminalRoleResult.assignment,
-        author: terminalRoleResult.author,
-        participant: terminalRoleResult.participant,
-        content: terminalRoleResult.content,
-        providerInvocation: terminalRoleResult.providerInvocation,
-      }),
-    (error) =>
-      isWorkflowError(error, 'ROLE_CONTEXT_SHARING_TERMINAL_RECEIPT_INVALID'),
-  );
-  assert.equal(fs.existsSync(recordPath), false);
+});
 
-  assert.throws(
-    () =>
-      admitRoleContextSharingResult({
-        assignment: reserved.assignment,
-        author: requirement.author,
-        participant: {
-          providerId: reserved.assignment.providerId,
-          sessionId: reserved.assignment.sessionId,
-          principalId: null,
-          identityAssurance: 'adapter-assigned',
-          engineSpawned: true,
-        },
-        content,
-        providerInvocation,
-        // A legacy Collaboration grantUse cannot stand in for R-007 evidence.
-        consumedUse: undefined as never,
-        grantUse: consumed.evidence,
-      } as Parameters<typeof admitRoleContextSharingResult>[0]),
-    (error) => isWorkflowError(error, 'ROLE_RESULT_INVALID'),
-  );
-
-  const driftedVerifier = sealAuthoritativeRoleContextSharingGrantVerifier(
-    {
-      assertCurrent() {
-        throw new Error('terminal replay must not touch verifier');
-      },
-      verify() {
-        throw new Error('terminal replay must not verify twice');
-      },
-    },
-    `sha256:${'a'.repeat(64)}`,
-  );
-  fs.writeFileSync(recordPath, terminalBytes, { mode: 0o600 });
-  const replayed = completeRoleContextSharingPlanReviewAdmission({
-    gitCommonDirectory: repository.gitCommonDirectory,
-    requirement,
-    authorization: reserved.authorization,
-    assignment: reserved.assignment,
-    author: requirement.author,
-    content,
-    providerInvocation,
-    policy,
-    verifier: driftedVerifier,
-    lifecycle: productionRoleContextSharingGrantLifecyclePort,
-    now: NOW,
-    assertOwned() {},
-  });
-  assert.equal(
-    replayed.consumed.record.recordDigest,
-    consumed.record.recordDigest,
-  );
-  assert.deepEqual(
-    replayed.consumed.record.receiptDigests,
-    consumed.record.receiptDigests,
-  );
-  assert.equal(
-    replayed.roleResult.resultDigest,
-    completed.roleResult.resultDigest,
-  );
-  assert.deepEqual(verifierCalls, [
-    'current',
-    'current',
-    'verify',
-    'current',
-    'current',
-    'verify',
-  ]);
-
+test('R-007 human approval requires the exact current requirement and stores one signed grant', (t) => {
+  const { repositoryRoot, repository, policy, requirement, policyBlob } =
+    createSignedRoleContextSharingFixture(t);
   const candidate = {
     requirementNodeId: '8'.repeat(64),
     grantId: APPROVAL_GRANT_ID,
@@ -1056,3 +936,280 @@ test('CLI keeps old Collaboration --grant distinct from --role-context-grant', (
     process.stderr.write = originalWrite;
   }
 });
+
+function createSignedRoleContextSharingFixture(t: TestContext) {
+  const repositoryRoot = createFixtureRepository();
+  const ssh = createSshSignedFixture('fixture-maintainer');
+  const untrustedSsh = createSshSignedFixture('untrusted-maintainer');
+  t.after(() => {
+    untrustedSsh.dispose();
+    ssh.dispose();
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  });
+  fs.mkdirSync(`${repositoryRoot}/workflow`, { recursive: true });
+  fs.writeFileSync(
+    `${repositoryRoot}/workflow/maintainer-policy.json`,
+    `${JSON.stringify(
+      {
+        schemaVersion: 1,
+        repository: {
+          id: 'github:R_fixture',
+          origin: 'https://github.com/example/fixture.git',
+        },
+        phase: 'sealed',
+        auditTagPrefix: 'refs/tags/workflow-grant/',
+        signatureNamespace: 'workflow.maintainer-grant.v1',
+        maxTtlMinutes: 30,
+        maxUses: 1,
+        bootstrapEligiblePaths: ['workflow/protected-capabilities.json'],
+        sealedImmutablePaths: ['workflow/protected-capabilities.json'],
+        requiredChecks: ['fixture'],
+        trustedSigners: [ssh.trustedSigner],
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  runGit(repositoryRoot, ['add', 'workflow/maintainer-policy.json']);
+  runGit(repositoryRoot, ['commit', '-m', 'Add fixture maintainer policy']);
+  const repository = discoverRepository(repositoryRoot);
+  fs.chmodSync(repository.gitCommonDirectory, 0o700);
+  const policy = parseMaintainerPolicy(
+    JSON.parse(
+      runGit(repositoryRoot, [
+        'show',
+        `${repository.head}:workflow/maintainer-policy.json`,
+      ]),
+    ),
+  );
+  const baselineTree = runGit(repositoryRoot, [
+    'rev-parse',
+    `${repository.head}^{tree}`,
+  ]).trim();
+  const planningGeneration = '1'.repeat(64);
+  const providerDefinitionDigest = '2'.repeat(64);
+  const baseCentralConfigurationDigest = '0'.repeat(64);
+  const rolePlanBody: AgentRolePlanBodyV2 = {
+    schemaVersion: 2,
+    changeId: 'r007-plan-review',
+    baseCentralConfigurationDigest,
+    roleLanes: [],
+    pairwiseRequirements: [
+      { pair: 'author-reviewer', required: 'provider-independent' },
+    ],
+    customWrapperPolicy: 'forbidden',
+    grantReferences: [GRANT_ID, APPROVAL_GRANT_ID],
+  };
+  const roleTopology = resolveRoleTopologyV1({
+    changeId: rolePlanBody.changeId,
+    planningGeneration,
+    baseCentralConfigurationDigest,
+    centralConfiguration: CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
+    changeOverride: {
+      ...rolePlanBody,
+      planDigest: agentRolePlanV2Digest(rolePlanBody),
+    },
+    providerRegistry: {
+      schemaVersion: 1,
+      policyDigest: '3'.repeat(64),
+      providers: [
+        {
+          logicalProviderId: 'codex',
+          providerFamily: 'codex',
+          enabled: true,
+          definitionDigest: providerDefinitionDigest,
+        },
+      ],
+    },
+    actualPlacements: [
+      {
+        role: 'author',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest,
+        sessionId: 'author-session',
+      },
+      {
+        role: 'reviewer',
+        logicalProviderId: 'codex',
+        providerDefinitionDigest,
+        sessionId: 'reviewer-session',
+      },
+    ],
+  });
+  const subject = {
+    schemaVersion: 1 as const,
+    subjectDigest: '4'.repeat(64),
+    planningGenerationId: planningGeneration,
+    planTargetDigest: '5'.repeat(64),
+    manifestDigest: '7'.repeat(64),
+    investigationTargetDigest: '8'.repeat(64),
+    reviewPolicyDigest: '6'.repeat(64),
+    requiredIndependence: 'session-independent' as const,
+    investigationBaseline: { head: repository.head, tree: baselineTree },
+    investigationDependencies: [],
+    investigationRequirements: [],
+  };
+  const requirement = createRoleContextSharingPlanReviewRequirementV3({
+    investigationId: 'investigation-r007',
+    changeId: rolePlanBody.changeId,
+    baseline: { head: repository.head, tree: baselineTree },
+    subject,
+    author: {
+      providerId: 'codex',
+      sessionId: 'author-session',
+      principalId: null,
+      identityAssurance: 'adapter-assigned',
+      engineSpawned: false,
+    },
+    roleTopology,
+    contextGeneration: 1,
+  });
+  const policyBlob = runGit(repositoryRoot, [
+    'rev-parse',
+    `${repository.head}:workflow/maintainer-policy.json`,
+  ]).trim();
+  const expected = deriveRoleContextSharingPlanReviewExpectedBinding({
+    requirement,
+    repositoryId: policy.repository.id,
+    repositoryOrigin: policy.repository.origin,
+    policyBlob,
+    reason: 'Approve this exact PlanReview context-sharing placement.',
+  });
+  const payload: RoleContextSharingGrantEnvelopeV1['payload'] = {
+    version: 1,
+    signatureNamespace: ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
+    grantId: GRANT_ID,
+    ...expected,
+    authorizedEffect: ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,
+    issuedAt: '2026-08-21T00:00:00.000Z',
+    expiresAt: '2026-08-21T00:30:00.000Z',
+    maxUses: 1,
+    signer: policy.trustedSigners[0]!.identity,
+  };
+  const envelope: RoleContextSharingGrantEnvelopeV1 = {
+    payload,
+    signature: ssh.sign(
+      canonicalRoleContextSharingGrantPayloadV1(payload),
+      ROLE_CONTEXT_SHARING_GRANT_SIGNATURE_NAMESPACE_V1,
+    ),
+  };
+  storeAvailableRoleContextSharingGrant(
+    repository.gitCommonDirectory,
+    envelope,
+  );
+  const verifierCalls: string[] = [];
+  const verifier = sealAuthoritativeRoleContextSharingGrantVerifier(
+    {
+      assertCurrent() {
+        verifierCalls.push('current');
+      },
+      verify() {
+        verifierCalls.push('verify');
+      },
+    },
+    `sha256:${'7'.repeat(64)}`,
+  );
+  return {
+    repositoryRoot,
+    ssh,
+    untrustedSsh,
+    repository,
+    policy,
+    baselineTree,
+    planningGeneration,
+    roleTopology,
+    requirement,
+    policyBlob,
+    expected,
+    envelope,
+    verifierCalls,
+    verifier,
+  };
+}
+
+function createConsumedRoleContextSharingFixture(t: TestContext) {
+  const fixture = createSignedRoleContextSharingFixture(t);
+  const {
+    repositoryRoot,
+    repository,
+    policy,
+    requirement,
+    policyBlob,
+    expected,
+    verifier,
+  } = fixture;
+  const reserved = reserveRoleContextSharingPlanReview({
+    gitCommonDirectory: repository.gitCommonDirectory,
+    requirementNodeId: '8'.repeat(64),
+    requirement,
+    grantId: GRANT_ID,
+    policy,
+    policyBlob,
+    verifier,
+    lifecycle: productionRoleContextSharingGrantLifecyclePort,
+    now: NOW,
+    assertOwned() {},
+  });
+  const content = {
+    kind: 'plan-review' as const,
+    nodeId: 'b'.repeat(64),
+    resultDigest: 'c'.repeat(64),
+    outputSchema: {
+      id: 'workflow.plan-review-output',
+      version: 1,
+      digest: 'd'.repeat(64),
+    },
+    evaluator: 'workflow-propose.v1',
+    policyDigest: 'e'.repeat(64),
+    contentDigest: 'c'.repeat(64),
+    current: true as const,
+  };
+  const providerInvocation = {
+    invocationId: 'invocation-r007',
+    requestDigest: '9'.repeat(64),
+    outputDigest: 'f'.repeat(64),
+    providerId: reserved.assignment.providerId,
+    sessionId: reserved.assignment.sessionId,
+    targetDigest: reserved.assignment.targetDigest,
+    engineSpawned: true as const,
+  };
+  const recordPath = `${roleContextSharingStorePaths(repository.gitCommonDirectory).records}/${GRANT_ID}.json`;
+  const completed = completeRoleContextSharingPlanReviewAdmission({
+    gitCommonDirectory: repository.gitCommonDirectory,
+    requirement,
+    authorization: reserved.authorization,
+    assignment: reserved.assignment,
+    author: requirement.author,
+    content,
+    providerInvocation,
+    policy,
+    verifier,
+    lifecycle: productionRoleContextSharingGrantLifecyclePort,
+    now: NOW,
+    assertOwned() {},
+  });
+  const consumed = completed.consumed;
+  if (completed.roleResult.form !== 'granted-role-context-sharing') {
+    throw new Error('Expected one role-context-sharing result.');
+  }
+  const terminalRoleResult = completed.roleResult;
+  const replayContext = {
+    repositoryRoot,
+    changeId: expected.changeId,
+    baselineCommit: expected.baselineCommit,
+    baselineTree: expected.baselineTree,
+    subjectDigest: expected.subjectDigest,
+    planningGenerationId: expected.planningGeneration,
+  };
+  return {
+    ...fixture,
+    reserved,
+    content,
+    providerInvocation,
+    recordPath,
+    completed,
+    consumed,
+    terminalRoleResult,
+    replayContext,
+  };
+}
