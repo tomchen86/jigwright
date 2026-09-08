@@ -163,38 +163,71 @@ test('current protected composition mints only the exact role-context-sharing au
 });
 
 test('reserve and consume are composition-gated while inspect and human-only revoke remain independent', () => {
-  const source = fs.readFileSync(
-    path.join(
-      sourceRepositoryRoot,
-      'packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-store.ts',
-    ),
-    'utf8',
+  const readSource = (name: string) =>
+    fs.readFileSync(
+      path.join(
+        sourceRepositoryRoot,
+        `packages/workflow-engine/src/runtime/storage-journal/collaboration-grant-${name}.ts`,
+      ),
+      'utf8',
+    );
+  const source = readSource('store');
+  const reservationSource = readSource('reservation');
+  const consumptionSource = readSource('consumption');
+  const recordsSource = readSource('records');
+  const section = (text: string, startMarker: string, endMarker: string) => {
+    const start = text.indexOf(startMarker);
+    const end = text.indexOf(endMarker, start);
+    assert.ok(
+      start >= 0 && end > start,
+      `missing source section: ${startMarker}`,
+    );
+    return text.slice(start, end);
+  };
+  const reserve = section(
+    reservationSource,
+    'export function reserveCollaborationGrantUnderLifecycleLock',
+    'export function selectAndReserveCollaborationGrantUnderLifecycleLock',
   );
-  const reserve = source.slice(
-    source.indexOf(
-      'export function reserveCollaborationGrantUnderLifecycleLock',
-    ),
-    source.indexOf(
-      'export function selectAndReserveCollaborationGrantUnderLifecycleLock',
-    ),
+  const consume = section(
+    consumptionSource,
+    'export function consumeCollaborationGrantUnderLifecycleLock',
+    'export function readExactConsumedCollaborationGrantUse',
   );
-  const consume = source.slice(
-    source.indexOf(
-      'export function consumeCollaborationGrantUnderLifecycleLock',
-    ),
-    source.indexOf('export function readExactConsumedCollaborationGrantUse'),
+  const revoke = section(
+    source,
+    'export function revokeCollaborationGrant',
+    'function readCollaborationRevocationTarget',
   );
-  const revoke = source.slice(
-    source.indexOf('export function revokeCollaborationGrant'),
-    source.indexOf('function readCollaborationRevocationTarget'),
+  const inspect = section(
+    recordsSource,
+    'export function inspectCollaborationGrants',
+    'export function readAvailable',
   );
-  const inspect = source.slice(
-    source.indexOf('export function inspectCollaborationGrants'),
-    source.indexOf('function ensureStoreDirectories'),
+
+  assert.match(
+    source,
+    /export\s*\{[^}]*\breserveCollaborationGrantUnderLifecycleLock,[^}]*\}\s*from '\.\/collaboration-grant-reservation\.ts'/,
+  );
+  assert.match(
+    source,
+    /export\s*\{[^}]*\bconsumeCollaborationGrantUnderLifecycleLock,[^}]*\}\s*from '\.\/collaboration-grant-consumption\.ts'/,
+  );
+  assert.match(
+    source,
+    /export\s*\{[^}]*\binspectCollaborationGrants,[^}]*\}\s*from '\.\/collaboration-grant-records\.ts'/,
   );
 
   assert.doesNotMatch(
-    source,
+    [
+      source,
+      reservationSource,
+      consumptionSource,
+      recordsSource,
+      ...['store-types', 'store-values', 'private-files', 'use-contract'].map(
+        readSource,
+      ),
+    ].join('\n'),
     /composition-root\/grant-verifier-composition/,
     'runtime storage must receive an opaque authoritative verifier instead of importing the composition root',
   );
@@ -204,6 +237,9 @@ test('reserve and consume are composition-gated while inspect and human-only rev
   assert.match(reserve, /verifier\.assertCurrent\(\)/);
   assert.match(consume, /verifier\.assertCurrent\(\)/);
   assert.match(consume, /verifyCollaborationGrantCapability/);
+  for (const operation of [reserve, consume]) {
+    assert.match(operation, /if \(fs\.existsSync\(terminalPath\)\)/);
+  }
   assert.ok(
     reserve.indexOf('if (fs.existsSync(terminalPath))') <
       reserve.indexOf('assertAuthoritativeCollaborationGrantVerifier'),
@@ -229,6 +265,12 @@ test('reserve and consume are composition-gated while inspect and human-only rev
   assert.doesNotMatch(revoke, /verifyCollaborationGrantCapability/);
   assert.doesNotMatch(inspect, /authoritativeVerifier/);
   assert.doesNotMatch(inspect, /verifyCollaborationGrantCapability/);
+  for (const operation of [revoke, inspect]) {
+    assert.doesNotMatch(
+      operation,
+      /assertAuthoritativeCollaborationGrantVerifier|\.assertCurrent\(/,
+    );
+  }
 });
 
 test('authority-plan and sealed recovery retain an independent repair path', () => {
