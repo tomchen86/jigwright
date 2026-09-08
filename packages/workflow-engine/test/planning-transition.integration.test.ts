@@ -155,6 +155,13 @@ test('propose authoring crosses the production planning-provider composition roo
     new URL('../src/composition-root/lifecycle-context.ts', import.meta.url),
     'utf8',
   );
+  const adapterCompositionSource = fs.readFileSync(
+    new URL(
+      '../src/composition-root/openspec-adapter-production.ts',
+      import.meta.url,
+    ),
+    'utf8',
+  );
 
   assert.doesNotMatch(
     proposeSource,
@@ -163,7 +170,7 @@ test('propose authoring crosses the production planning-provider composition roo
   assert.match(proposeSource, /context\.planningProviderAuthoring\(\)/u);
   assert.doesNotMatch(
     proposeSource,
-    /composition-root\/planning-provider-authoring-production/u,
+    /composition-root\/(?:planning-provider-authoring|openspec-adapter)-production/u,
   );
   assert.match(
     lifecycleContextSource,
@@ -171,7 +178,27 @@ test('propose authoring crosses the production planning-provider composition roo
   );
   assert.match(
     compositionSource,
+    /from '\.\/openspec-adapter-production\.ts';/u,
+  );
+  assert.match(
+    compositionSource,
+    /const adapter = createOpenSpecAdapter\(repositoryRoot\);/u,
+  );
+  assert.match(
+    adapterCompositionSource,
     /from '\.\.\/adapters\/planning\/openspec\/documents\/openspec-adapter\.ts';/u,
+  );
+  assert.match(
+    adapterCompositionSource,
+    /return createNativeOpenSpecAdapter\(\s*repositoryRoot,\s*options,\s*createColocatedOpenSpecViewDependencies\(\),\s*\);/u,
+  );
+  assert.match(
+    adapterCompositionSource,
+    /readSnapshot: \(repositoryRoot\) =>\s*[^;{}]+readSystemDescriptionSnapshot\(repositoryRoot\)/u,
+  );
+  assert.match(
+    adapterCompositionSource,
+    /temporaryDirectory: \(\) => createTrustedExecutionEnvironment\(\)\.TMPDIR!/u,
   );
   assert.match(
     compositionSource,
