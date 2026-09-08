@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
+import { createRepositorySpecificationPolicy } from '../../composition-root/repository-specification-policy.ts';
 
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -100,16 +100,9 @@ function findStagedLifecyclePaths(repositoryRoot: string): string[] {
   const config = loadWorkflowConfig(repositoryRoot);
   const head = runGit(repositoryRoot, ['rev-parse', 'HEAD']).trim();
   const stagedPaths = listStagedPaths(repositoryRoot, head);
-  const openspecRoot = path.posix.dirname(config.changeRoot);
-  const baseSpecRoot = `${openspecRoot}/specs/`;
-  const changeRoot = `${config.changeRoot}/`;
-  return stagedPaths.filter(
-    (filePath) =>
-      filePath === changeLifecycleRelativePath ||
-      filePath.startsWith(changeRoot) ||
-      isBaseSpecificationPath(filePath) ||
-      filePath.startsWith(baseSpecRoot),
-  );
+  return createRepositorySpecificationPolicy(
+    config.changeRoot,
+  ).stagedLifecyclePaths(stagedPaths);
 }
 
 function assertHookArguments(hook: string, args: string[]): void {

@@ -7,8 +7,8 @@ import {
   captureGovernanceSource,
   listGovernanceSources,
   readGovernanceSource,
-  recordGovernanceFinding,
 } from '../src/modules/governance-intake/governance-intake.ts';
+import { recordGovernanceFinding } from '../src/composition-root/governance-findings-production.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
 import { runCli } from '../src/cli.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';

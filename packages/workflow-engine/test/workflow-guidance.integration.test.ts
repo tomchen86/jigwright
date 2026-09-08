@@ -37,7 +37,7 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
-import { recordGovernanceFinding } from '../src/modules/governance-intake/governance-intake.ts';
+import { recordGovernanceFinding } from '../src/composition-root/governance-findings-production.ts';
 
 const cliPath = path.join(
   sourceRepositoryRoot,

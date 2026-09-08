@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
+import { createRepositorySpecificationPolicy } from '../../composition-root/repository-specification-policy.ts';
 
 import { verifyArchiveDeltaOutcomes } from '../../runtime/repository-transaction/archive-delta-verifier.ts';
 import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
@@ -183,7 +183,9 @@ export function validateCiArchiveCommit(
       payload.archivePath,
       replayPaths,
     );
-    const baseSpecPaths = replayPaths.filter(isBaseSpecificationPath);
+    const baseSpecPaths = createRepositorySpecificationPolicy(
+      config.changeRoot,
+    ).baseSpecificationPaths(replayPaths);
     verifyArchiveDeltaOutcomes(
       repositoryRoot,
       { changeId, head: parent },

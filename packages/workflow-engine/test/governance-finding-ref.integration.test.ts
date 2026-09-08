@@ -8,7 +8,7 @@ import {
   dismissGovernanceFinding,
   listGovernanceFindings,
   recordGovernanceFinding,
-} from '../src/modules/governance-intake/governance-intake.ts';
+} from '../src/composition-root/governance-findings-production.ts';
 import {
   createGovernancePersistenceFixture,
   runGitForTest,
@@ -124,7 +124,7 @@ test('concurrent Finding writers converge through Git ref CAS', async () => {
   try {
     const fixture = createGovernancePersistenceFixture(root);
     const moduleUrl = new URL(
-      '../src/modules/governance-intake/governance-intake.ts',
+      '../src/composition-root/governance-findings-production.ts',
       import.meta.url,
     ).href;
     const run = (expression: string) =>

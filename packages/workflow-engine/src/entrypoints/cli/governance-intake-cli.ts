@@ -31,14 +31,16 @@ import {
   isRequirementKind,
 } from '../../composition-root/governance-intake-production.ts';
 import {
-  captureGovernanceSource,
   convertGovernanceFinding,
   dismissGovernanceFinding,
   linkGovernanceFinding,
   listGovernanceFindings,
+  recordGovernanceFinding,
+} from '../../composition-root/governance-findings-production.ts';
+import {
+  captureGovernanceSource,
   listGovernanceSources,
   readGovernanceSource,
-  recordGovernanceFinding,
   type GovernanceFindingAuthoringV1,
   type GovernanceFindingContextV1,
 } from '../../modules/governance-intake/governance-intake.ts';

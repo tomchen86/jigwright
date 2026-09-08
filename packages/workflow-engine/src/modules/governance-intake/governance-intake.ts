@@ -1,4 +1,5 @@
 import { createGovernanceFindingOperations } from './governance-findings.ts';
+import type { GovernanceFindingRefPort } from './governance-finding-ref.ts';
 import {
   createGovernanceSourceV1,
   parseGovernanceSourceV1,
@@ -231,6 +232,7 @@ function intakeInvalid(message: string) {
 }
 
 export type GovernanceFindingOperationBindings = Readonly<{
+  findingRef: GovernanceFindingRefPort;
   readGovernanceSource: typeof readGovernanceSource;
   intakeInvalid: typeof intakeInvalid;
   isRecord: typeof isRecord;
@@ -238,22 +240,16 @@ export type GovernanceFindingOperationBindings = Readonly<{
   sourceReference: typeof sourceReference;
 }>;
 
-const governanceFindingOperations = createGovernanceFindingOperations({
-  readGovernanceSource,
-  intakeInvalid,
-  isRecord,
-  hasExactKeys,
-  sourceReference,
-});
-export const recordGovernanceFinding =
-  governanceFindingOperations.recordGovernanceFinding;
-export const listGovernanceFindings =
-  governanceFindingOperations.listGovernanceFindings;
-export const dismissGovernanceFinding =
-  governanceFindingOperations.dismissGovernanceFinding;
-export const convertGovernanceFinding =
-  governanceFindingOperations.convertGovernanceFinding;
-export const linkGovernanceFinding =
-  governanceFindingOperations.linkGovernanceFinding;
-const GOVERNANCE_FINDING_DISPOSITION_KIND =
-  governanceFindingOperations.GOVERNANCE_FINDING_DISPOSITION_KIND;
+export function createGovernanceFindingServices(
+  findingRef: GovernanceFindingRefPort,
+) {
+  return createGovernanceFindingOperations({
+    findingRef,
+    readGovernanceSource,
+    intakeInvalid,
+    isRecord,
+    hasExactKeys,
+    sourceReference,
+  });
+}
+const GOVERNANCE_FINDING_DISPOSITION_KIND = 'governance-finding-disposition.v1';

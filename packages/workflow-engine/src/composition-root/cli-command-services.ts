@@ -120,7 +120,7 @@ export {
   findOpenTaskLifecycleStatus,
 } from '../application/execute-task/open-task.ts';
 export { openTask } from './open-task-production.ts';
-export { inspectGovernanceIntakeCounts } from '../modules/governance-intake/intake-summary.ts';
+export { inspectGovernanceIntakeCounts } from './governance-findings-production.ts';
 export {
   inspectFinalizeRecoveryStatus,
   findTaskCommits,

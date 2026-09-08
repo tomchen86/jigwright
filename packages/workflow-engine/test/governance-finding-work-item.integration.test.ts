@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
-import { listGovernanceFindings } from '../src/modules/governance-intake/governance-intake.ts';
+import { listGovernanceFindings } from '../src/composition-root/governance-findings-production.ts';
 import {
   createGovernancePersistenceFixture,
   snapshotGovernancePersistence,

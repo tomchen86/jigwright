@@ -5,11 +5,11 @@ import path from 'node:path';
 import test from 'node:test';
 import {
   dismissGovernanceFinding,
-  listGovernanceSources,
   listGovernanceFindings,
   recordGovernanceFinding,
-} from '../src/modules/governance-intake/governance-intake.ts';
-import { inspectGovernanceIntakeCounts } from '../src/modules/governance-intake/intake-summary.ts';
+  inspectGovernanceIntakeCounts,
+} from '../src/composition-root/governance-findings-production.ts';
+import { listGovernanceSources } from '../src/modules/governance-intake/governance-intake.ts';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {

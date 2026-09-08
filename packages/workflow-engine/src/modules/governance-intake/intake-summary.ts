@@ -1,4 +1,4 @@
-import { listGovernanceFindings } from './governance-intake.ts';
+import type { GovernanceFindingReadModelV1 } from './governance-intake.ts';
 import { inspectWorkRegistry } from './work-registry.ts';
 
 export type GovernanceIntakeCountsV1 = Readonly<{
@@ -13,7 +13,18 @@ export type GovernanceIntakeCountsV1 = Readonly<{
  * projection records. The Work Registry reader retains its existing
  * transaction-recovery boundary so counts never observe a half-promotion.
  */
-export function inspectGovernanceIntakeCounts(
+export function createGovernanceIntakeCountsReader(
+  listGovernanceFindings: (
+    runtimeRoot: string,
+  ) => readonly GovernanceFindingReadModelV1[],
+) {
+  return inspectGovernanceIntakeCounts.bind(null, listGovernanceFindings);
+}
+
+function inspectGovernanceIntakeCounts(
+  listGovernanceFindings: (
+    runtimeRoot: string,
+  ) => readonly GovernanceFindingReadModelV1[],
   repositoryRoot: string,
   runtimeRoot: string,
 ): GovernanceIntakeCountsV1 {

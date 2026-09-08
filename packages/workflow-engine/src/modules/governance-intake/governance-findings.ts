@@ -11,8 +11,6 @@ import { canonicalJson } from '@jigwright/core/canonical-json';
 import {
   findingRecordLocation,
   findingRecordPath,
-  publishFindingRefRecord,
-  readFindingRef,
 } from './governance-finding-ref.ts';
 import { TextDecoder } from 'node:util';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
@@ -38,7 +36,9 @@ export function createGovernanceFindingOperations(
     isRecord,
     hasExactKeys,
     sourceReference,
+    findingRef,
   } = bindings;
+  const { readFindingRef, publishFindingRefRecord } = findingRef;
 
   const FINDING_ID = /^FND-[0-9a-f]{64}$/;
 

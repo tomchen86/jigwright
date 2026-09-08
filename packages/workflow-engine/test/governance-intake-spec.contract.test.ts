@@ -4,6 +4,7 @@ import test from 'node:test';
 
 import * as governanceFindings from '../src/modules/governance-intake/governance-findings.ts';
 import * as governanceIntake from '../src/modules/governance-intake/governance-intake.ts';
+import * as governanceFindingServices from '../src/composition-root/governance-findings-production.ts';
 
 const specificationUrl = new URL(
   '../src/modules/governance-intake/spec.md',
@@ -180,9 +181,17 @@ test('production has no disableable Work Registry or configurable Source-root su
     'convertGovernanceFinding',
     'linkGovernanceFinding',
   ] as const) {
-    assert.equal(typeof governanceIntake[operation], 'function', operation);
+    assert.equal(
+      typeof governanceFindingServices[operation],
+      'function',
+      operation,
+    );
   }
-  for (const module of [governanceIntake, governanceFindings]) {
+  for (const module of [
+    governanceIntake,
+    governanceFindings,
+    governanceFindingServices,
+  ]) {
     assert.equal(
       Object.hasOwn(module, 'recordGovernanceFindingDisposition'),
       false,
