@@ -9,11 +9,11 @@ Keep original requirement wording separate from the working inbox so corrections
 Confirmed at commit: `fa1eab4fc25bd29bd01e7567d6785046592789a2`
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:6001e71ee6fe623335652b0b2ab024c299e035bdfb3964b13dc17375524bde2e -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:d88d4a68f7f84345f56ae79af7f81efa86878d9faab24f071b06a01f857d17d1 -->
 
 <!-- prettier-ignore-start -->
 
-0 files changed in this module since confirmation.
+4 files changed in this module since confirmation.
 
 ## Commands
 
@@ -70,7 +70,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [governance-finding-ref.ts](governance-finding-ref.ts) | Persist immutable Finding records in a Git branch received by ordinary clones. | 3 | No newer code observed |
+| [governance-finding-ref.ts](governance-finding-ref.ts) | Canonical Finding record paths and the persistence boundary used by intake. | 0 | Header changed since confirmation |
 | [governance-findings.ts](governance-findings.ts) | Capture exact Finding observations and resolve their append-only dispositions. | 3 | Possibly stale |
 | [governance-intake-storage.ts](governance-intake-storage.ts) | Create-only canonical publication and stable file reads shared by Source and Finding ledgers. | 0 | No newer code observed |
 | [governance-intake.ts](governance-intake.ts) | No leading responsibility comment. | 0 | History unavailable |
