@@ -657,8 +657,8 @@ export function recoverProviderInvocationNativeContinuationForReplay(
   requestedInvocationId: string,
 ): ProviderInvocationRecord | null {
   const invocationId = assertInvocationId(requestedInvocationId);
-  // Nonterminal records have no continuation authority to publish. Leave their
-  // admission to the caller's exact owner-aware lifecycle operation.
+  // Records without a successful result have no continuation authority to
+  // publish. Leave admission to the caller's exact owner-aware lifecycle.
   const observed = readProviderInvocationForNativeContinuationRecovery(
     paths,
     invocationId,

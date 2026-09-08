@@ -1,3 +1,13 @@
+/**
+ * Stores explicit investigation exemptions bound to their exact planning session.
+ *
+ * Invariants:
+ * - Exemption records preserve current applicability, manifest, and session identities.
+ * - Creation and replay retain their existing planning lock and private file semantics.
+ *
+ * Depends on: planning locks, investigation paths, and private canonical records.
+ * Failure modes: a planning session receives an unrelated exemption or loses durable exemption evidence.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 
@@ -11,11 +21,10 @@ import {
 import {
   compareAndSwapEvidenceRefsDocument,
   compareAndSwapEvidenceRef,
-  readInvestigationEvidenceRefsClosure,
-  readEvidenceNode,
   readEvidenceRefs,
-  writeEvidenceNode,
-} from './evidence-object-store.ts';
+} from './evidence-ref-store.ts';
+import { readInvestigationEvidenceRefsClosure } from './evidence-ref-closure.ts';
+import { readEvidenceNode, writeEvidenceNode } from './evidence-node-store.ts';
 import {
   assertStoredEvidenceNode,
   createEvidenceNode,

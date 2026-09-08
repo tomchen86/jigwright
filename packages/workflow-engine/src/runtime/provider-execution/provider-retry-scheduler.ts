@@ -1,127 +1,100 @@
+/**
+ * Route provider failures and pump bounded due retry schedules through the existing runtime composition.
+ *
+ * Invariants:
+ * - Probe decisions, replacement publication, lock scope, and callback order stay exact.
+ * - Context loading and application retry calls remain at this runtime entrypoint.
+ *
+ * Depends on: retry records, durable schedule store, execution inspection, and provider probe execution.
+ * Failure modes: A stale failure can publish a replacement or run a probe outside its admitted schedule.
+ */
+
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-
 import { loadAiAdapterPolicy } from './ai-adapter-policy.ts';
-import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  assertReadOnlyProbe,
+  type ReadOnlyProbeRequest,
   projectProviderInvocationExecution,
   type ExecutionFailureKind,
-  type ReadOnlyProbeRequest,
-  type RetryMode,
+  assertReadOnlyProbe,
 } from '../../modules/provider-orchestration/execution-core.ts';
 import type { GrantRequest } from '../../modules/authority/execution-governance.ts';
 import type { ConsumedPlanReviewReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 import { inspectExecutionJob } from './execution-runtime.ts';
 import { readExecutionJobState } from '../storage-journal/execution-store.ts';
 import {
+  workflowError,
   ExitCode,
   WorkflowError,
-  workflowError,
 } from '../../foundation/errors/errors.ts';
 import {
-  assertPrivateInvestigationDirectory,
-  createPrivateCanonicalJson,
-  ensurePrivateInvestigationDirectory,
   privatePathExists,
-  readInvestigationSession,
   readPrivateCanonicalJson,
+  assertPrivateInvestigationDirectory,
   withPrivateRuntimeLock,
-  writePrivateCanonicalJsonAtomic,
-} from '../storage-journal/investigation-session-store.ts';
+} from '../storage-journal/investigation-private-files.ts';
+import { readInvestigationSession } from '../storage-journal/investigation-session-records.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import { retryInvestigationProvider } from '../../adapters/planning/investigation/investigation-session.ts';
 import {
-  createPlanReviewRetryEnvelope,
   getProposeStatus,
   resumePropose,
+  createPlanReviewRetryEnvelope,
 } from '../../application/propose/propose-orchestrator.ts';
 import {
-  createProviderInvocationRequest,
   type ProviderInvocationRequest,
+  createProviderInvocationRequest,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import {
   readProviderInvocation,
   readProviderInvocationRequest,
+  type ProviderInvocationRecord,
   readProviderRetryReservation,
   type ProviderInvocationFailure,
-  type ProviderInvocationRecord,
 } from '../storage-journal/provider-invocation-store.ts';
 import {
-  executeProviderReadOnlyProbe,
   type ProviderReadOnlyProbeExecutionResult,
+  executeProviderReadOnlyProbe,
 } from './provider-probe-executor.ts';
+import {
+  type ProviderAutomaticRetrySchedule,
+  exactTimestamp,
+  deepFreeze,
+  providerRetryScheduleUnsafe,
+  assertProviderAutomaticRetrySchedule,
+  sha256Text,
+  type ProviderRetryScheduleReceipt,
+  isDigest,
+  assertProviderRetryScheduleReceipt,
+  digestCanonical,
+  isRecord,
+  hasExactKeys,
+} from './provider-retry-record.ts';
+import {
+  providerRetrySchedulePath,
+  providerRetryScheduleRoot,
+  providerRetryReceiptRoot,
+  providerRetryScheduleLockPath,
+  readProviderAutomaticRetryScheduleFromPaths,
+  startScheduleReceipt,
+  reconcileScheduleFromReceipt,
+  finishScheduleReceipt,
+  probeBackoffForAttempt,
+  persistSchedule,
+} from './provider-retry-store.ts';
+
+export {
+  type ProviderRetryScheduleState,
+  type ProviderRetryScheduleNextAction,
+  type ProviderAutomaticRetrySchedule,
+  type ProviderRetryScheduleReceiptState,
+  type ProviderRetryScheduleReceipt,
+} from './provider-retry-record.ts';
 
 const RETRY_SCHEDULE_FILE = /^[0-9a-f]{64}\.json$/;
+
 const RETRY_RECEIPT_FILE = /^[0-9a-f]{64}\.json$/;
-const PROBE_MAX_ATTEMPTS = 3;
-const PROBE_MIN_BACKOFF_MS = 1_000;
-const PROBE_MAX_BACKOFF_MS = 86_400_000;
-
-export type ProviderRetryScheduleState =
-  'scheduled' | 'dispatch-issued' | 'probe-succeeded' | 'probe-failed-terminal';
-
-export type ProviderRetryScheduleNextAction =
-  | 'wait-until-due'
-  | 'dispatch-replacement'
-  | 'none'
-  | 'inspect-environment-before-new-provider-attempt';
-
-export type ProviderAutomaticRetrySchedule = Readonly<{
-  schemaVersion: 2;
-  kind: 'provider-automatic-retry-schedule';
-  scheduleId: string;
-  state: ProviderRetryScheduleState;
-  route: 'provider-replacement' | 'environment-probe';
-  workflowId: string;
-  epoch: number;
-  contextDigest: string;
-  executionJobId: string;
-  failedAttemptId: string;
-  failedInvocationId: string;
-  failedInvocationRevision: number;
-  failureDigest: string;
-  failureCode: string;
-  replacementAttemptId: string | null;
-  replacementInvocationId: string | null;
-  retryMode: RetryMode | 'probe-only';
-  probe: Readonly<ReadOnlyProbeRequest> | null;
-  probeAttemptsCompleted: number;
-  probeMaxAttempts: number;
-  probeBackoffMs: number;
-  retryAfterMs: number;
-  notBefore: string;
-  createdAt: string;
-  dispatchedAt: string | null;
-  completedAt: string | null;
-  nextAction: ProviderRetryScheduleNextAction;
-  updatedAt: string;
-}>;
-
-export type ProviderRetryScheduleReceiptState =
-  | 'started'
-  | 'dispatch-issued'
-  | 'probe-succeeded'
-  | 'probe-retry-scheduled'
-  | 'probe-failed-terminal';
-
-export type ProviderRetryScheduleReceipt = Readonly<{
-  schemaVersion: 1;
-  kind: 'provider-retry-schedule-receipt';
-  receiptId: string;
-  scheduleId: string;
-  route: ProviderAutomaticRetrySchedule['route'];
-  attemptNumber: number;
-  state: ProviderRetryScheduleReceiptState;
-  requestDigest: string;
-  probe: Readonly<ReadOnlyProbeRequest> | null;
-  outcomeCode: string | null;
-  observationDigest: string | null;
-  startedAt: string;
-  completedAt: string | null;
-  nextNotBefore: string | null;
-}>;
 
 export type ProviderRetrySchedulePumpResult = Readonly<{
   schemaVersion: 1;
@@ -596,206 +569,6 @@ function processDueSchedule(
   );
 }
 
-function startScheduleReceipt(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  schedule: ProviderAutomaticRetrySchedule,
-  now: string,
-): ProviderRetryScheduleReceipt {
-  const attemptNumber =
-    schedule.route === 'provider-replacement'
-      ? 1
-      : schedule.probeAttemptsCompleted + 1;
-  if (
-    attemptNumber < 1 ||
-    (schedule.route === 'environment-probe' &&
-      attemptNumber > schedule.probeMaxAttempts)
-  ) {
-    throw providerRetryScheduleUnsafe();
-  }
-  const identity = {
-    kind: 'provider-retry-schedule-receipt',
-    scheduleId: schedule.scheduleId,
-    route: schedule.route,
-    attemptNumber,
-  };
-  const receiptId = digestCanonical(identity);
-  const requestDigest = scheduleReceiptRequestDigest(schedule);
-  const receiptPath = providerRetryReceiptPath(paths, receiptId);
-  if (privatePathExists(paths, receiptPath, providerRetryScheduleUnsafe)) {
-    const existing = assertProviderRetryScheduleReceipt(
-      readPrivateCanonicalJson(paths, receiptPath, providerRetryScheduleUnsafe),
-    );
-    if (
-      existing.receiptId !== receiptId ||
-      existing.scheduleId !== schedule.scheduleId ||
-      existing.route !== schedule.route ||
-      existing.attemptNumber !== attemptNumber ||
-      existing.requestDigest !== requestDigest ||
-      canonicalJson(existing.probe) !== canonicalJson(schedule.probe)
-    ) {
-      throw providerRetryScheduleUnsafe();
-    }
-    return existing;
-  }
-  const receipt = assertProviderRetryScheduleReceipt({
-    schemaVersion: 1,
-    kind: 'provider-retry-schedule-receipt',
-    receiptId,
-    scheduleId: schedule.scheduleId,
-    route: schedule.route,
-    attemptNumber,
-    state: 'started',
-    requestDigest,
-    probe: schedule.probe,
-    outcomeCode: null,
-    observationDigest: null,
-    startedAt: now,
-    completedAt: null,
-    nextNotBefore: null,
-  });
-  const root = providerRetryReceiptRoot(paths);
-  ensurePrivateInvestigationDirectory(paths, root, providerRetryScheduleUnsafe);
-  createPrivateCanonicalJson(
-    paths,
-    receiptPath,
-    receipt,
-    providerRetryScheduleUnsafe,
-    'PROVIDER_RETRY_SCHEDULE_RECEIPT_CONFLICT',
-  );
-  return assertProviderRetryScheduleReceipt(
-    readPrivateCanonicalJson(paths, receiptPath, providerRetryScheduleUnsafe),
-  );
-}
-
-function finishScheduleReceipt(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  started: ProviderRetryScheduleReceipt,
-  completion: Pick<
-    ProviderRetryScheduleReceipt,
-    | 'state'
-    | 'outcomeCode'
-    | 'observationDigest'
-    | 'completedAt'
-    | 'nextNotBefore'
-  >,
-): ProviderRetryScheduleReceipt {
-  if (started.state !== 'started') return started;
-  const updated = assertProviderRetryScheduleReceipt({
-    ...started,
-    ...completion,
-  });
-  writePrivateCanonicalJsonAtomic(
-    paths,
-    providerRetryReceiptPath(paths, started.receiptId),
-    updated,
-    providerRetryScheduleUnsafe,
-  );
-  return assertProviderRetryScheduleReceipt(
-    readPrivateCanonicalJson(
-      paths,
-      providerRetryReceiptPath(paths, started.receiptId),
-      providerRetryScheduleUnsafe,
-    ),
-  );
-}
-
-function reconcileScheduleFromReceipt(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  schedule: ProviderAutomaticRetrySchedule,
-  receipt: ProviderRetryScheduleReceipt,
-): ProviderAutomaticRetrySchedule {
-  if (
-    receipt.state === 'started' ||
-    receipt.scheduleId !== schedule.scheduleId ||
-    receipt.route !== schedule.route ||
-    receipt.completedAt === null
-  ) {
-    throw providerRetryScheduleUnsafe();
-  }
-  const expectedAttemptNumber =
-    schedule.route === 'provider-replacement'
-      ? 1
-      : schedule.probeAttemptsCompleted + 1;
-  if (
-    receipt.attemptNumber !== expectedAttemptNumber ||
-    receipt.requestDigest !== scheduleReceiptRequestDigest(schedule) ||
-    canonicalJson(receipt.probe) !== canonicalJson(schedule.probe)
-  ) {
-    throw providerRetryScheduleUnsafe();
-  }
-  let updated: ProviderAutomaticRetrySchedule;
-  if (receipt.state === 'dispatch-issued') {
-    updated = assertProviderAutomaticRetrySchedule({
-      ...schedule,
-      state: 'dispatch-issued',
-      dispatchedAt: receipt.completedAt,
-      completedAt: receipt.completedAt,
-      nextAction: 'none',
-      updatedAt: receipt.completedAt,
-    });
-  } else if (receipt.state === 'probe-retry-scheduled') {
-    if (receipt.nextNotBefore === null) throw providerRetryScheduleUnsafe();
-    updated = assertProviderAutomaticRetrySchedule({
-      ...schedule,
-      state: 'scheduled',
-      probeAttemptsCompleted: receipt.attemptNumber,
-      notBefore: receipt.nextNotBefore,
-      completedAt: null,
-      nextAction: 'wait-until-due',
-      updatedAt: receipt.completedAt,
-    });
-  } else if (receipt.state === 'probe-succeeded') {
-    updated = assertProviderAutomaticRetrySchedule({
-      ...schedule,
-      state: 'probe-succeeded',
-      probeAttemptsCompleted: receipt.attemptNumber,
-      completedAt: receipt.completedAt,
-      nextAction: 'none',
-      updatedAt: receipt.completedAt,
-    });
-  } else {
-    updated = assertProviderAutomaticRetrySchedule({
-      ...schedule,
-      state: 'probe-failed-terminal',
-      probeAttemptsCompleted: receipt.attemptNumber,
-      completedAt: receipt.completedAt,
-      nextAction: 'inspect-environment-before-new-provider-attempt',
-      updatedAt: receipt.completedAt,
-    });
-  }
-  writePrivateCanonicalJsonAtomic(
-    paths,
-    providerRetrySchedulePath(paths, schedule.failedInvocationId),
-    updated,
-    providerRetryScheduleUnsafe,
-  );
-  return readProviderAutomaticRetryScheduleFromPaths(
-    paths,
-    schedule.failedInvocationId,
-  );
-}
-
-function scheduleReceiptRequestDigest(
-  schedule: ProviderAutomaticRetrySchedule,
-): string {
-  return schedule.route === 'environment-probe'
-    ? digestCanonical(assertReadOnlyProbe(schedule.probe))
-    : digestCanonical({
-        replacementAttemptId: schedule.replacementAttemptId,
-        replacementInvocationId: schedule.replacementInvocationId,
-      });
-}
-
-function probeBackoffForAttempt(
-  schedule: ProviderAutomaticRetrySchedule,
-  attemptNumber: number,
-): number {
-  return Math.min(
-    PROBE_MAX_BACKOFF_MS,
-    schedule.probeBackoffMs * 2 ** Math.max(0, attemptNumber - 1),
-  );
-}
-
 function assertProviderReadOnlyProbeExecutionResult(
   value: unknown,
 ): ProviderReadOnlyProbeExecutionResult {
@@ -1036,97 +809,6 @@ function createReplacementSchedule(
   });
 }
 
-function persistSchedule(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  input: {
-    failed: ProviderInvocationRecord;
-    state: NonNullable<ReturnType<typeof readExecutionJobState>>;
-    failedAttemptId: string;
-    replacementAttemptId: string | null;
-    replacementInvocationId: string | null;
-    route: ProviderAutomaticRetrySchedule['route'];
-    retryMode: ProviderAutomaticRetrySchedule['retryMode'];
-    probe: Readonly<ReadOnlyProbeRequest> | null;
-    retryAfterMs: number;
-    createdAt: string;
-  },
-): ProviderAutomaticRetrySchedule {
-  const failureDigest = digestCanonical(input.failed.failure);
-  const notBefore = new Date(
-    Date.parse(input.failed.updatedAt) + input.retryAfterMs,
-  ).toISOString();
-  const identity = {
-    kind: 'provider-automatic-retry-schedule',
-    failedInvocationId: input.failed.invocationId,
-    failedInvocationRevision: input.failed.revision,
-    failureDigest,
-    route: input.route,
-    replacementInvocationId: input.replacementInvocationId,
-    probe: input.probe,
-    notBefore,
-  };
-  const probeBackoffMs =
-    input.route === 'environment-probe'
-      ? Math.min(
-          PROBE_MAX_BACKOFF_MS,
-          Math.max(PROBE_MIN_BACKOFF_MS, input.retryAfterMs),
-        )
-      : 0;
-  const schedule = assertProviderAutomaticRetrySchedule({
-    schemaVersion: 2,
-    kind: 'provider-automatic-retry-schedule',
-    scheduleId: digestCanonical(identity),
-    state: 'scheduled',
-    route: input.route,
-    workflowId: input.state.workflow.workflowId,
-    epoch: input.state.job.epoch,
-    contextDigest: input.state.job.contextDigest,
-    executionJobId: input.state.job.jobId,
-    failedAttemptId: input.failedAttemptId,
-    failedInvocationId: input.failed.invocationId,
-    failedInvocationRevision: input.failed.revision,
-    failureDigest,
-    failureCode: input.failed.failure!.code,
-    replacementAttemptId: input.replacementAttemptId,
-    replacementInvocationId: input.replacementInvocationId,
-    retryMode: input.retryMode,
-    probe: input.probe,
-    probeAttemptsCompleted: 0,
-    probeMaxAttempts:
-      input.route === 'environment-probe' ? PROBE_MAX_ATTEMPTS : 0,
-    probeBackoffMs,
-    retryAfterMs: input.retryAfterMs,
-    notBefore,
-    createdAt: input.createdAt,
-    dispatchedAt: null,
-    completedAt: null,
-    nextAction:
-      Date.parse(notBefore) > Date.parse(input.createdAt)
-        ? 'wait-until-due'
-        : input.route === 'provider-replacement'
-          ? 'dispatch-replacement'
-          : 'wait-until-due',
-    updatedAt: input.createdAt,
-  });
-  const root = providerRetryScheduleRoot(paths);
-  ensurePrivateInvestigationDirectory(paths, root, providerRetryScheduleUnsafe);
-  createPrivateCanonicalJson(
-    paths,
-    providerRetrySchedulePath(paths, input.failed.invocationId),
-    schedule,
-    providerRetryScheduleUnsafe,
-    'PROVIDER_RETRY_SCHEDULE_CONFLICT',
-  );
-  const durable = readProviderAutomaticRetryScheduleFromPaths(
-    paths,
-    input.failed.invocationId,
-  );
-  if (canonicalJson(durable) !== canonicalJson(schedule)) {
-    throw providerRetryScheduleUnsafe();
-  }
-  return durable;
-}
-
 function continueSchedule(
   cwd: string,
   schedule: ProviderAutomaticRetrySchedule,
@@ -1204,374 +886,4 @@ function isExpectedRetryDecisionError(error: unknown): error is WorkflowError {
       'PLAN_REVIEW_RETRY_STRATEGY_CHANGE_REQUIRED',
     ]).has(error.code)
   );
-}
-
-function providerRetryScheduleRoot(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-): string {
-  return path.join(paths.root, 'provider-retry-schedules');
-}
-
-function providerRetryReceiptRoot(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-): string {
-  return path.join(paths.root, 'provider-retry-schedule-receipts');
-}
-
-function providerRetryReceiptPath(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  receiptId: string,
-): string {
-  if (!isDigest(receiptId)) throw providerRetryScheduleUnsafe();
-  return path.join(
-    providerRetryReceiptRoot(paths),
-    `${receiptId.slice('sha256:'.length)}.json`,
-  );
-}
-
-function providerRetryScheduleLockPath(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  failedInvocationId: string,
-): string {
-  return path.join(paths.locks, `${sha256Text(failedInvocationId)}.retry.lock`);
-}
-
-function providerRetrySchedulePath(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  invocationId: string,
-): string {
-  return path.join(
-    providerRetryScheduleRoot(paths),
-    `${sha256Text(invocationId)}.json`,
-  );
-}
-
-function readProviderAutomaticRetryScheduleFromPaths(
-  paths: ReturnType<typeof loadInvestigationRuntimeContext>['runtime'],
-  invocationId: string,
-): ProviderAutomaticRetrySchedule {
-  const schedule = assertProviderAutomaticRetrySchedule(
-    readPrivateCanonicalJson(
-      paths,
-      providerRetrySchedulePath(paths, invocationId),
-      providerRetryScheduleUnsafe,
-    ),
-  );
-  if (schedule.failedInvocationId !== invocationId) {
-    throw providerRetryScheduleUnsafe();
-  }
-  return schedule;
-}
-
-function assertProviderRetryScheduleReceipt(
-  value: unknown,
-): ProviderRetryScheduleReceipt {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'receiptId',
-      'scheduleId',
-      'route',
-      'attemptNumber',
-      'state',
-      'requestDigest',
-      'probe',
-      'outcomeCode',
-      'observationDigest',
-      'startedAt',
-      'completedAt',
-      'nextNotBefore',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'provider-retry-schedule-receipt' ||
-    !isDigest(value.receiptId) ||
-    !isDigest(value.scheduleId) ||
-    (value.route !== 'provider-replacement' &&
-      value.route !== 'environment-probe') ||
-    !Number.isSafeInteger(value.attemptNumber) ||
-    (value.attemptNumber as number) < 1 ||
-    value.receiptId !==
-      digestCanonical({
-        kind: 'provider-retry-schedule-receipt',
-        scheduleId: value.scheduleId,
-        route: value.route,
-        attemptNumber: value.attemptNumber,
-      }) ||
-    ![
-      'started',
-      'dispatch-issued',
-      'probe-succeeded',
-      'probe-retry-scheduled',
-      'probe-failed-terminal',
-    ].includes(String(value.state)) ||
-    !isDigest(value.requestDigest) ||
-    (value.probe !== null && !isReadOnlyProbe(value.probe)) ||
-    !nullableErrorCode(value.outcomeCode) ||
-    !nullableDigest(value.observationDigest) ||
-    !isTimestamp(value.startedAt) ||
-    !nullableTimestamp(value.completedAt) ||
-    !nullableTimestamp(value.nextNotBefore) ||
-    (value.route === 'provider-replacement' &&
-      (value.probe !== null ||
-        (value.state !== 'started' && value.state !== 'dispatch-issued'))) ||
-    (value.route === 'environment-probe' &&
-      (value.probe === null || value.state === 'dispatch-issued')) ||
-    (value.state === 'started' &&
-      (value.outcomeCode !== null ||
-        value.observationDigest !== null ||
-        value.completedAt !== null ||
-        value.nextNotBefore !== null)) ||
-    (value.state !== 'started' &&
-      (value.outcomeCode === null ||
-        value.observationDigest === null ||
-        value.completedAt === null)) ||
-    (value.state === 'probe-retry-scheduled' && value.nextNotBefore === null) ||
-    (value.state !== 'probe-retry-scheduled' && value.nextNotBefore !== null) ||
-    (value.completedAt !== null &&
-      Date.parse(value.completedAt as string) <
-        Date.parse(value.startedAt as string)) ||
-    (value.nextNotBefore !== null &&
-      value.completedAt !== null &&
-      Date.parse(value.nextNotBefore as string) <=
-        Date.parse(value.completedAt as string))
-  ) {
-    throw providerRetryScheduleUnsafe();
-  }
-  return deepFreeze(
-    structuredClone(value) as unknown as ProviderRetryScheduleReceipt,
-  );
-}
-
-function assertProviderAutomaticRetrySchedule(
-  value: unknown,
-): ProviderAutomaticRetrySchedule {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'scheduleId',
-      'state',
-      'route',
-      'workflowId',
-      'epoch',
-      'contextDigest',
-      'executionJobId',
-      'failedAttemptId',
-      'failedInvocationId',
-      'failedInvocationRevision',
-      'failureDigest',
-      'failureCode',
-      'replacementAttemptId',
-      'replacementInvocationId',
-      'retryMode',
-      'probe',
-      'probeAttemptsCompleted',
-      'probeMaxAttempts',
-      'probeBackoffMs',
-      'retryAfterMs',
-      'notBefore',
-      'createdAt',
-      'dispatchedAt',
-      'completedAt',
-      'nextAction',
-      'updatedAt',
-    ]) ||
-    value.schemaVersion !== 2 ||
-    value.kind !== 'provider-automatic-retry-schedule' ||
-    !isDigest(value.scheduleId) ||
-    ![
-      'scheduled',
-      'dispatch-issued',
-      'probe-succeeded',
-      'probe-failed-terminal',
-    ].includes(String(value.state)) ||
-    (value.route !== 'provider-replacement' &&
-      value.route !== 'environment-probe') ||
-    typeof value.workflowId !== 'string' ||
-    !Number.isSafeInteger(value.epoch) ||
-    (value.epoch as number) < 1 ||
-    !isDigest(value.contextDigest) ||
-    typeof value.executionJobId !== 'string' ||
-    typeof value.failedAttemptId !== 'string' ||
-    typeof value.failedInvocationId !== 'string' ||
-    !Number.isSafeInteger(value.failedInvocationRevision) ||
-    (value.failedInvocationRevision as number) < 1 ||
-    !isDigest(value.failureDigest) ||
-    typeof value.failureCode !== 'string' ||
-    !nullableString(value.replacementAttemptId) ||
-    !nullableString(value.replacementInvocationId) ||
-    ![
-      'same-input',
-      'execution-policy-change',
-      'repair',
-      'strategy-change',
-      'new-context',
-      'none',
-      'probe-only',
-    ].includes(String(value.retryMode)) ||
-    (value.probe !== null && !isReadOnlyProbe(value.probe)) ||
-    !Number.isSafeInteger(value.probeAttemptsCompleted) ||
-    (value.probeAttemptsCompleted as number) < 0 ||
-    !Number.isSafeInteger(value.probeMaxAttempts) ||
-    (value.probeMaxAttempts as number) < 0 ||
-    (value.probeMaxAttempts as number) > 10 ||
-    !Number.isSafeInteger(value.probeBackoffMs) ||
-    (value.probeBackoffMs as number) < 0 ||
-    (value.probeBackoffMs as number) > PROBE_MAX_BACKOFF_MS ||
-    !Number.isSafeInteger(value.retryAfterMs) ||
-    (value.retryAfterMs as number) < 0 ||
-    (value.retryAfterMs as number) > 86_400_000 ||
-    !isTimestamp(value.notBefore) ||
-    !isTimestamp(value.createdAt) ||
-    !nullableTimestamp(value.dispatchedAt) ||
-    !nullableTimestamp(value.completedAt) ||
-    ![
-      'wait-until-due',
-      'dispatch-replacement',
-      'none',
-      'inspect-environment-before-new-provider-attempt',
-    ].includes(String(value.nextAction)) ||
-    !isTimestamp(value.updatedAt) ||
-    (value.route === 'provider-replacement' &&
-      (value.replacementAttemptId === null ||
-        value.replacementInvocationId === null ||
-        value.retryMode === 'probe-only' ||
-        value.probe !== null ||
-        value.probeAttemptsCompleted !== 0 ||
-        value.probeMaxAttempts !== 0 ||
-        value.probeBackoffMs !== 0 ||
-        (value.state !== 'scheduled' && value.state !== 'dispatch-issued'))) ||
-    (value.route === 'environment-probe' &&
-      (value.replacementAttemptId !== null ||
-        value.replacementInvocationId !== null ||
-        value.retryMode !== 'probe-only' ||
-        value.probe === null ||
-        value.probeMaxAttempts !== PROBE_MAX_ATTEMPTS ||
-        (value.probeBackoffMs as number) < PROBE_MIN_BACKOFF_MS ||
-        (value.probeAttemptsCompleted as number) >
-          (value.probeMaxAttempts as number) ||
-        value.state === 'dispatch-issued')) ||
-    (value.state === 'scheduled' &&
-      (value.dispatchedAt !== null ||
-        value.completedAt !== null ||
-        (value.nextAction !== 'wait-until-due' &&
-          value.nextAction !== 'dispatch-replacement') ||
-        (value.route === 'environment-probe' &&
-          value.nextAction !== 'wait-until-due') ||
-        (value.route === 'environment-probe' &&
-          value.probeAttemptsCompleted === value.probeMaxAttempts))) ||
-    (value.state === 'dispatch-issued' &&
-      (value.dispatchedAt === null ||
-        value.completedAt === null ||
-        value.nextAction !== 'none')) ||
-    (value.state === 'probe-succeeded' &&
-      (value.route !== 'environment-probe' ||
-        value.dispatchedAt !== null ||
-        value.completedAt === null ||
-        (value.probeAttemptsCompleted as number) < 1 ||
-        value.nextAction !== 'none')) ||
-    (value.state === 'probe-failed-terminal' &&
-      (value.route !== 'environment-probe' ||
-        value.dispatchedAt !== null ||
-        value.completedAt === null ||
-        value.probeAttemptsCompleted !== value.probeMaxAttempts ||
-        value.nextAction !==
-          'inspect-environment-before-new-provider-attempt')) ||
-    Date.parse(value.updatedAt as string) <
-      Date.parse(value.createdAt as string) ||
-    (value.completedAt !== null &&
-      Date.parse(value.completedAt as string) <
-        Date.parse(value.createdAt as string))
-  ) {
-    throw providerRetryScheduleUnsafe();
-  }
-  return deepFreeze(
-    structuredClone(value) as unknown as ProviderAutomaticRetrySchedule,
-  );
-}
-
-function exactTimestamp(value: string): string {
-  if (!isTimestamp(value)) throw providerRetryScheduleUnsafe();
-  return value;
-}
-
-function isTimestamp(value: unknown): value is string {
-  if (typeof value !== 'string') return false;
-  const time = Date.parse(value);
-  return Number.isFinite(time) && new Date(time).toISOString() === value;
-}
-
-function nullableTimestamp(value: unknown): value is string | null {
-  return value === null || isTimestamp(value);
-}
-
-function nullableString(value: unknown): value is string | null {
-  return value === null || (typeof value === 'string' && value.length > 0);
-}
-
-function nullableDigest(value: unknown): value is string | null {
-  return value === null || isDigest(value);
-}
-
-function nullableErrorCode(value: unknown): value is string | null {
-  return (
-    value === null ||
-    (typeof value === 'string' && /^[A-Z][A-Z0-9_]{1,127}$/.test(value))
-  );
-}
-
-function isDigest(value: unknown): value is string {
-  return typeof value === 'string' && /^sha256:[0-9a-f]{64}$/.test(value);
-}
-
-function isReadOnlyProbe(value: unknown): value is ReadOnlyProbeRequest {
-  try {
-    assertReadOnlyProbe(value);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-function digestCanonical(value: unknown): string {
-  return `sha256:${crypto
-    .createHash('sha256')
-    .update(canonicalJson(value))
-    .digest('hex')}`;
-}
-
-function sha256Text(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function hasExactKeys(value: Record<string, unknown>, keys: string[]): boolean {
-  return (
-    canonicalJson(Object.keys(value).sort()) === canonicalJson(keys.sort())
-  );
-}
-
-function providerRetryScheduleUnsafe(cause?: unknown): WorkflowError {
-  return workflowError(
-    'PROVIDER_RETRY_SCHEDULE_UNSAFE',
-    'The durable provider retry schedule is malformed, stale, or ambiguous.',
-    ExitCode.staleState,
-    cause === undefined ? {} : { details: { cause: String(cause) } },
-  );
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value as Record<string, unknown>)) {
-      deepFreeze(child);
-    }
-  }
-  return value;
 }
