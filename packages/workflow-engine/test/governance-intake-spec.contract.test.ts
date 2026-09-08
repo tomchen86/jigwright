@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import test from 'node:test';
 
+import * as governanceFindings from '../src/modules/governance-intake/governance-findings.ts';
+import * as governanceIntake from '../src/modules/governance-intake/governance-intake.ts';
+
 const specificationUrl = new URL(
   '../../../openspec/specs/governance-intake/spec.md',
   import.meta.url,
@@ -27,6 +30,17 @@ const currentWorkRegistrySources = [
   new URL(
     '../src/adapters/consumer/repository/handoff/handoff.ts',
     import.meta.url,
+  ),
+  ...[
+    'governance-findings.ts',
+    'governance-intake-storage.ts',
+    'work-registry-promotion-preparation.ts',
+    'work-registry-projections.ts',
+    'work-registry-queries.ts',
+    'work-registry-storage.ts',
+  ].map(
+    (file) =>
+      new URL(`../src/modules/governance-intake/${file}`, import.meta.url),
   ),
 ] as const;
 
@@ -160,22 +174,20 @@ test('production has no disableable Work Registry or configurable Source-root su
     currentWorkRegistrySources[3],
     'utf8',
   );
-  assert.match(
-    governanceIntakeSource,
-    /export function listGovernanceFindings/u,
-  );
-  assert.match(
-    governanceIntakeSource,
-    /export function dismissGovernanceFinding/u,
-  );
-  assert.match(
-    governanceIntakeSource,
-    /export function convertGovernanceFinding/u,
-  );
-  assert.match(
-    governanceIntakeSource,
-    /export function linkGovernanceFinding/u,
-  );
+  for (const operation of [
+    'listGovernanceFindings',
+    'dismissGovernanceFinding',
+    'convertGovernanceFinding',
+    'linkGovernanceFinding',
+  ] as const) {
+    assert.equal(typeof governanceIntake[operation], 'function', operation);
+  }
+  for (const module of [governanceIntake, governanceFindings]) {
+    assert.equal(
+      Object.hasOwn(module, 'recordGovernanceFindingDisposition'),
+      false,
+    );
+  }
   assert.doesNotMatch(
     governanceIntakeSource,
     /export function recordGovernanceFindingDisposition/u,
