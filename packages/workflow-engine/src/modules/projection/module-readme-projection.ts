@@ -37,6 +37,8 @@ export function moduleReadmeProjectionBindings(
   snapshot: SystemDescriptionSnapshot,
   specs: readonly SystemSpec[],
   changedPathsSince: (directory: string, commit: string) => readonly string[],
+  headerHistory: (file: string, commit: string) => string = () =>
+    'History unavailable',
 ): ProjectionBinding[] {
   const usageSource =
     snapshot.readText(
@@ -122,11 +124,13 @@ export function moduleReadmeProjectionBindings(
       '',
       '## Files',
       '',
-      '| File | Responsibility | Invariants |',
-      '| --- | --- | ---: |',
+      'Header history compares Git blame at the explanation confirmation with this source snapshot. It is a hint, not verification of the explanation.',
+      '',
+      '| File | Responsibility | Invariants | Header history |',
+      '| --- | --- | ---: | --- |',
       ...sourceFiles.map((file) => {
         const header = extractFileHeader(snapshot.readText(file) ?? '');
-        return `| ${link(path.posix.relative(directory, file), file)} | ${cell(header?.responsibility.split(/(?<=[.!?。！？])\s/)[0] ?? 'No leading responsibility comment.')} | ${header?.invariants.length ?? 0} |`;
+        return `| ${link(path.posix.relative(directory, file), file)} | ${cell(header?.responsibility.split(/(?<=[.!?。！？])\s/)[0] ?? 'No leading responsibility comment.')} | ${header?.invariants.length ?? 0} | ${cell(headerHistory(file, why.confirmedAtCommit))} |`;
       }),
       '',
       '<!-- prettier-ignore-end -->',

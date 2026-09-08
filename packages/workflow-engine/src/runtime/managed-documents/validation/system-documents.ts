@@ -15,6 +15,7 @@ import { createProjectionService } from '../../../modules/projection/projection-
 import { systemDocumentProjectionBindings } from '../../../modules/projection/system-document-projections.ts';
 import { moduleReadmeProjectionBindings } from '../../../modules/projection/module-readme-projection.ts';
 import { moduleChangesSinceConfirmation } from './module-readme-changes.ts';
+import { moduleHeaderHistory } from './module-header-history.ts';
 import { replaceTextAtomic } from '../../repository-transaction/atomic-text.ts';
 import { workingSystemDescriptionSnapshot } from './system-document-snapshot.ts';
 import {
@@ -57,6 +58,7 @@ export function inspectRepositorySystemDocuments(
         snapshot,
         report.specs,
         moduleChangesSinceConfirmation(repositoryRoot, snapshot),
+        moduleHeaderHistory(repositoryRoot, snapshot),
       ),
     ],
     {

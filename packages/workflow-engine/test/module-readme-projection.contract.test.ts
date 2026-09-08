@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { git } from './fixture.ts';
 import { moduleChangesSinceConfirmation } from '../src/runtime/managed-documents/validation/module-readme-changes.ts';
+import { moduleHeaderHistory } from '../src/runtime/managed-documents/validation/module-header-history.ts';
 import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
 import { moduleReadmeProjectionBindings } from '../src/modules/projection/module-readme-projection.ts';
 import { createProjectionService } from '../src/modules/projection/projection-service.ts';
@@ -33,6 +34,7 @@ test('module README derives commands, union data, contracts and header facts whi
       snapshot,
       [parseSystemSpec(specPath, files[specPath]!)],
       () => ['work.ts'],
+      () => 'Possibly stale',
     );
   const service = () =>
     createProjectionService(bindings(), {
@@ -58,6 +60,8 @@ test('module README derives commands, union data, contracts and header facts whi
   assert.match(files[readme]!, /next, null/);
   assert.match(files[readme]!, /Keep wording/);
   assert.match(files[readme]!, /Captures exact request wording\. \| 1/);
+  assert.match(files[readme]!, /Header history/);
+  assert.match(files[readme]!, /Possibly stale/);
   const before = files[readme];
   service().project('documents.governance-intake-readme');
   assert.equal(files[readme], before);
@@ -72,6 +76,78 @@ test('module README derives commands, union data, contracts and header facts whi
     readModuleReadmeWhy(files[readme]!),
     readModuleReadmeWhy(why),
   );
+});
+
+test('README header age uses Git history and fixed snapshot bytes without treating prose as verified', () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'module-header-history-'));
+  try {
+    git(root, ['init', '-b', 'main']);
+    git(root, ['config', 'user.name', 'Document test']);
+    git(root, ['config', 'user.email', 'documents@example.test']);
+    const file = 'source.ts';
+    const original = '/** Describes the source. */\nexport const value = 1;\n';
+    fs.writeFileSync(path.join(root, file), original);
+    git(root, ['add', '-A']);
+    git(root, ['commit', '-m', 'Document source']);
+    const first = git(root, ['rev-parse', 'HEAD']).trim();
+    const fixed = readSystemDescriptionSnapshot(root, first);
+    const initial = moduleHeaderHistory(root, fixed);
+    assert.equal(initial(file, first), 'No newer code observed');
+
+    fs.writeFileSync(path.join(root, file), original.replace('= 1', '= 2'));
+    const changed = readSystemDescriptionSnapshot(root);
+    assert.equal(
+      moduleHeaderHistory(root, changed)(file, first),
+      'Possibly stale',
+    );
+    git(root, ['add', '-A']);
+    git(root, ['commit', '-m', 'Change code without its header']);
+    const second = git(root, ['rev-parse', 'HEAD']).trim();
+    const newer = readSystemDescriptionSnapshot(root, second);
+    assert.equal(
+      moduleHeaderHistory(root, newer)(file, second),
+      'Possibly stale',
+    );
+    assert.equal(initial(file, first), 'No newer code observed');
+
+    const updated = original
+      .replace('Describes the source', 'Describes the changed source')
+      .replace('= 1', '= 2');
+    fs.writeFileSync(path.join(root, file), updated);
+    const working = readSystemDescriptionSnapshot(root);
+    assert.equal(
+      moduleHeaderHistory(root, working)(file, second),
+      'Header changed since confirmation',
+    );
+    git(root, ['add', '-A']);
+    git(root, ['commit', '-m', 'Update header']);
+    const third = git(root, ['rev-parse', 'HEAD']).trim();
+    assert.equal(
+      moduleHeaderHistory(root, readSystemDescriptionSnapshot(root))(
+        file,
+        third,
+      ),
+      'No newer code observed',
+    );
+    assert.equal(
+      moduleHeaderHistory(root, working)(file, second),
+      'Header changed since confirmation',
+    );
+    assert.equal(
+      moduleHeaderHistory(root, newer)(file, second),
+      'Possibly stale',
+    );
+    assert.equal(
+      moduleHeaderHistory(root, fixed)('missing.ts', first),
+      'History unavailable',
+    );
+    assert.equal(
+      moduleHeaderHistory(root, fixed)(file, 'f'.repeat(40)),
+      'History unavailable',
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('README change counts use the pinned source and ignore generated or confirmation-only edits', () => {
