@@ -18,6 +18,14 @@ import {
   type ProjectionStatus,
 } from '../modules/projection/projection-service.ts';
 import { repositoryDocumentConfiguration } from '../modules/repository-consumer/repository-consumer-config.ts';
+import { inspectRepositorySystemDocuments } from '../runtime/managed-documents/validation/system-documents.ts';
+import {
+  readLedgerIndex,
+  readLedgerEntry,
+  ledgerIndexPath,
+  ledgerObjectPath,
+} from '../runtime/storage-journal/semantic-ledger-store.ts';
+import { canonicalJson } from '@jigwright/core/canonical-json';
 
 /** Observational only: never project, repair or recover a repository here. */
 export function inspectProjectionStatus(repositoryRoot: string) {
@@ -39,6 +47,45 @@ export function inspectProjectionStatus(repositoryRoot: string) {
   };
   let registry: ProjectionStatus[] | undefined;
   function inspect(id: ProjectionId): ProjectionStatus[] {
+    if (id.startsWith('documents.'))
+      return inspectRepositorySystemDocuments(repositoryRoot)
+        .service.status()
+        .filter((row) => row.id === id);
+    if (id === 'semantic.binding-index') {
+      const index = readLedgerIndex(repositoryRoot);
+      if (
+        read(ledgerIndexPath()) === null &&
+        Object.keys(index.subjects).length === 0
+      )
+        return [];
+      const entries = Object.entries(index.subjects).map(
+        ([subjectId, subject]) => {
+          const entry = readLedgerEntry(repositoryRoot, subject.currentEntryId);
+          if (entry.subject.subjectId !== subjectId)
+            throw new Error(
+              'Semantic index subject differs from its canonical object.',
+            );
+          return entry;
+        },
+      );
+      const outputs = [
+        { path: ledgerIndexPath(), content: `${canonicalJson(index)}\n` },
+        ...entries.map((entry) => ({
+          path: ledgerObjectPath(entry.entryId),
+          content: `${canonicalJson(entry)}\n`,
+        })),
+      ];
+      return createProjectionService(
+        [
+          {
+            id,
+            targetPaths: outputs.map((output) => output.path),
+            source: () => outputs,
+          },
+        ],
+        io,
+      ).status();
+    }
     if (id.startsWith('registry.')) {
       registry ??= inspectWorkRegistryProjectionStatus(repositoryRoot);
       return registry.filter((row) => row.id === id);

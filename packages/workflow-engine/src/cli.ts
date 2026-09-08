@@ -65,6 +65,13 @@ import {
 } from './modules/why-knowledge/implementation-reconciliation.ts';
 import { listSessions } from './application/execute-task/session.ts';
 import { validateManagedDocuments } from './runtime/managed-documents/validation/managed-documents.ts';
+import {
+  renderSystemDocuments,
+  testSystemDocuments,
+  inspectRepositorySystemDocuments,
+} from './runtime/managed-documents/validation/system-documents.ts';
+import { readSystemDescriptionSnapshot } from './runtime/repository-transaction/system-description-snapshot.ts';
+import { systemSpecPaths } from './modules/source/system-documents.ts';
 import { diagnoseOpenSpec } from './adapters/planning/openspec/documents/openspec-doctor.ts';
 import { startPropose } from './application/propose/propose-orchestrator.ts';
 import { productionRoleTopologyResolutionPort } from './composition-root/role-topology-resolution-production.ts';
@@ -222,6 +229,20 @@ export async function dispatchAsync(
   protectedTaskApplyDescendantSettlementGrantRequest: typeof requestProtectedTaskApplyDescendantSettlementGrant = requestProtectedTaskApplyDescendantSettlementGrant,
 ): Promise<CommandResult> {
   const [command, ...rest] = args;
+  if (command === 'documents' && rest[0] === 'test') {
+    if (!(rest.length === 1 || (rest.length === 3 && rest[1] === '--spec')))
+      throw usage(
+        'Usage: pnpm workflow documents test [--spec <path>] [--json]',
+      );
+    return {
+      command,
+      ok: true,
+      ...(await testSystemDocuments(
+        discoverRepository(cwd).repositoryRoot,
+        rest[2],
+      )),
+    };
+  }
   if (command === 'role-config') {
     return {
       command,
@@ -339,6 +360,44 @@ function doctor(cwd: string): CommandResult {
   const config = loadWorkflowConfig(git.repositoryRoot);
   const openspec = diagnoseOpenSpec(git.repositoryRoot);
   const warnings: Array<{ code: string; message: string }> = [];
+  const snapshot = readSystemDescriptionSnapshot(git.repositoryRoot);
+  const colocatedSpecs = systemSpecPaths(snapshot.listPaths());
+  let systemDocuments: {
+    configured: boolean;
+    healthy: boolean;
+    specCount: number;
+    diagnostics: readonly { code: string; message: string }[];
+  } = {
+    configured: colocatedSpecs.length > 0,
+    healthy: true,
+    specCount: colocatedSpecs.length,
+    diagnostics: [],
+  };
+  if (colocatedSpecs.length > 0) {
+    try {
+      const { report } = inspectRepositorySystemDocuments(
+        git.repositoryRoot,
+        snapshot,
+        false,
+      );
+      const diagnostics = report.issues.filter(
+        (issue) => issue.code !== 'test-not-passed',
+      );
+      systemDocuments = {
+        ...systemDocuments,
+        healthy: diagnostics.length === 0,
+        diagnostics,
+      };
+    } catch (error) {
+      systemDocuments = {
+        ...systemDocuments,
+        healthy: false,
+        diagnostics: [
+          { code: 'SYSTEM_DOCUMENTS_INVALID', message: String(error) },
+        ],
+      };
+    }
+  }
 
   if (!git.branch) {
     warnings.push({ code: 'DETACHED_HEAD', message: 'HEAD is detached.' });
@@ -358,7 +417,10 @@ function doctor(cwd: string): CommandResult {
     path.posix.dirname(config.changeRoot),
     'specs',
   );
-  if (!fs.existsSync(path.join(git.repositoryRoot, baseSpecRoot))) {
+  if (
+    colocatedSpecs.length === 0 &&
+    !fs.existsSync(path.join(git.repositoryRoot, baseSpecRoot))
+  ) {
     warnings.push({
       code: 'NO_BASE_SPECS',
       message: `${baseSpecRoot} does not exist yet; create the current managed base specifications before planning changes.`,
@@ -375,7 +437,7 @@ function doctor(cwd: string): CommandResult {
 
   return {
     command: 'doctor',
-    ok: true,
+    ok: openspec.healthy && systemDocuments.healthy,
     mode: 'diagnostic',
     repository: {
       root: git.repositoryRealPath,
@@ -392,6 +454,7 @@ function doctor(cwd: string): CommandResult {
       branchTemplate: config.branchTemplate,
     },
     openspec,
+    systemDocuments,
     projections: inspectProjectionStatus(git.repositoryRoot),
     retainedSpectraUsed: false,
     activeSessionCount: listSessions(cwd).filter(
@@ -699,8 +762,18 @@ function dispatch(args: string[], cwd: string): CommandResult {
     }
 
     case 'documents':
+      if (rest.length === 1 && rest[0] === 'render')
+        return {
+          command,
+          ok: true,
+          projected: renderSystemDocuments(
+            discoverRepository(cwd).repositoryRoot,
+          ),
+        };
       if (rest.length !== 1 || rest[0] !== 'validate') {
-        throw usage('Usage: pnpm workflow documents validate [--json]');
+        throw usage(
+          'Usage: pnpm workflow documents <validate|render|test [--spec <path>]> [--json]',
+        );
       }
       return {
         command,

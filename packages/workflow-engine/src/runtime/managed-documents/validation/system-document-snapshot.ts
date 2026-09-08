@@ -1,50 +1,9 @@
 /** Reads a working or committed repository snapshot for system descriptions. */
 import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { normalizeExactRepositoryPath } from '@jigwright/core/repository-path';
 import { runGit } from '../../repository-transaction/git.ts';
 import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
 
-export function workingSystemDescriptionSnapshot(
-  repositoryRoot: string,
-): SystemDescriptionSnapshot {
-  const paths = [
-    ...new Set(
-      runGit(repositoryRoot, [
-        'ls-files',
-        '--cached',
-        '--others',
-        '--exclude-standard',
-        '-z',
-      ])
-        .split('\0')
-        .filter(Boolean),
-    ),
-  ].sort();
-  const bytes = new Map<string, Buffer | undefined>();
-  const readBytes = (candidate: string): Buffer | undefined => {
-    normalizeExactRepositoryPath(candidate);
-    if (!bytes.has(candidate)) {
-      const target = path.join(repositoryRoot, candidate);
-      const stat = fs.lstatSync(target, { throwIfNoEntry: false });
-      bytes.set(
-        candidate,
-        stat?.isFile() && !stat.isSymbolicLink()
-          ? fs.readFileSync(target)
-          : undefined,
-      );
-    }
-    return bytes.get(candidate);
-  };
-  return {
-    listPaths: () => paths,
-    readBytes,
-    readText(candidate) {
-      return readBytes(candidate)?.toString('utf8');
-    },
-  };
-}
+export { readSystemDescriptionSnapshot as workingSystemDescriptionSnapshot } from '../../repository-transaction/system-description-snapshot.ts';
 
 /** Contract metadata and its three outputs do not make their own proof stale. */
 export function isSystemTestSource(candidate: string): boolean {
@@ -67,6 +26,10 @@ export function systemTestSourceBindings(
       .filter(isSystemTestSource)
       .sort()
       .flatMap((file) => {
+        if (snapshot.readObjectId) {
+          const objectId = snapshot.readObjectId(file);
+          return objectId === undefined ? [] : [[file, objectId]];
+        }
         const content = snapshot.readBytes
           ? snapshot.readBytes(file)
           : snapshot.readText(file);

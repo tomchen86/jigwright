@@ -9,6 +9,10 @@ import {
 } from '../../repository-transaction/atomic-text.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import { engineProjectionPathsForTransition } from '../../../modules/projection/engine-projection-registry.ts';
+import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';
+import { systemSpecPaths } from '../../../modules/source/system-documents.ts';
+import { workingSystemDescriptionSnapshot } from './system-document-snapshot.ts';
+import { validateSystemDocuments } from './system-documents.ts';
 import {
   projectHandoff,
   projectHandoffForTaskProjection,
@@ -28,6 +32,7 @@ export type GeneratedDocumentMutation = {
 export type ManagedDocumentValidationContext = Readonly<{
   contracts: readonly HandoffChange[];
   readText: RepositoryTextReader;
+  systemDescriptionSnapshot?: SystemDescriptionSnapshot;
 }>;
 
 export function validateManagedDocuments(
@@ -55,6 +60,13 @@ export function validateManagedDocuments(
   }
 
   const validated: string[] = [];
+  const systemSnapshot =
+    context?.systemDescriptionSnapshot ??
+    (!context && fs.existsSync(path.join(repositoryRoot, '.git'))
+      ? workingSystemDescriptionSnapshot(repositoryRoot)
+      : undefined);
+  if (systemSnapshot && systemSpecPaths(systemSnapshot.listPaths()).length > 0)
+    validated.push(...validateSystemDocuments(repositoryRoot, systemSnapshot));
   for (const [documentPath, rawPolicy] of Object.entries(value.documents)) {
     if (!isRecord(rawPolicy) || typeof rawPolicy.mode !== 'string') {
       throw invalidPolicy();

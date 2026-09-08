@@ -168,6 +168,8 @@ export function usageText(): string {
     '  pnpm workflow human-resolution-state <investigation-id> [--json]',
     '  pnpm workflow grant human <request-investigation-v3 <investigation-id> --reason <agent-proposed-reason>|request-change-routing-continuation <change-id> --reason <agent-proposed-reason>|request-work-item-review <work-item-id> --input <review.json> --reason <reason>|request-work-item-promotion <work-item-id> --change <change-id> --expected <digest> --reason <reason>|inspect <challenge-id>|decide <challenge-id>|recover <challenge-id>> [--json]',
     '  pnpm workflow documents validate [--json]',
+    '  pnpm workflow documents render [--json]',
+    '  pnpm workflow documents test [--spec <path>] [--json]',
     '  pnpm workflow document-refresh <propose|show|review|apply> ... [--json]',
     '  pnpm workflow handoff validate [--json]',
     '  pnpm workflow guidance <install [path ...]|refresh|remove|status> [--json]',

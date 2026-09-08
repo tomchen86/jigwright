@@ -47,6 +47,21 @@ export type SystemDocumentInspection = {
   issues: SystemDocumentIssue[];
 };
 
+export function readSystemSource(
+  snapshot: SystemDescriptionSnapshot,
+  ref: string,
+): GovernanceSourceV1 {
+  if (!/^SRC-[0-9a-f]{64}$/.test(ref))
+    throw new Error('Invalid Source reference.');
+  const digest = ref.slice(4);
+  const raw = snapshot.readText(
+    `workflow/source-ledger/objects/sha256/${digest.slice(0, 2)}/${digest}.json`,
+  );
+  const source = parseGovernanceSourceV1(JSON.parse(raw ?? 'null'));
+  if (source.id !== ref) throw new Error('Source identity mismatch.');
+  return source;
+}
+
 export function systemSpecPaths(paths: readonly string[]): string[] {
   return paths
     .filter((candidate) => {
@@ -163,15 +178,7 @@ export function inspectSystemDocuments(
       ]) {
         if (report.sources.has(ref)) continue;
         try {
-          if (!/^SRC-[0-9a-f]{64}$/.test(ref))
-            throw new Error('invalid Source reference');
-          const digest = ref.slice(4);
-          const raw = snapshot.readText(
-            `workflow/source-ledger/objects/sha256/${digest.slice(0, 2)}/${digest}.json`,
-          );
-          const source = parseGovernanceSourceV1(JSON.parse(raw ?? 'null'));
-          if (source.id !== ref) throw new Error('Source identity mismatch');
-          report.sources.set(ref, source);
+          report.sources.set(ref, readSystemSource(snapshot, ref));
         } catch {
           issue(
             'source-missing',

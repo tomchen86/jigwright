@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -8,6 +8,7 @@ import test from 'node:test';
 import { diagnoseOpenSpec } from '../src/adapters/planning/openspec/documents/openspec-doctor.ts';
 import { parseDoctor } from '../src/adapters/planning/openspec/documents/openspec-doctor-payload.ts';
 import { isWorkflowError, sourceRepositoryRoot } from './fixture.ts';
+import { ExitCode } from '../src/foundation/errors/errors.ts';
 
 test('OpenSpec doctor validates payload health instead of trusting exit zero', () => {
   const unhealthy = parseDoctor(
@@ -513,6 +514,31 @@ test('workflow doctor derives base-spec diagnostics from the configured change r
   }
 });
 
+test('workflow doctor reports unhealthy OpenSpec and malformed colocated contracts honestly', () => {
+  const root = createDoctorFixture();
+  try {
+    writeDoctorWorkflowConfig(root, 'openspec/changes');
+    initializeDoctorFixtureRepository(root);
+    const unhealthy = runWorkflowDoctor(root);
+    assert.equal(unhealthy.ok, false);
+    fs.writeFileSync(
+      path.join(root, 'spec.md'),
+      '# Invalid contract\n\n## Purpose\nTBD\n\n## Requirements\n',
+    );
+    const malformed = runWorkflowDoctor(root);
+    assert.equal(malformed.ok, false);
+    assert.equal(malformed.systemDocuments.configured, true);
+    assert.equal(malformed.systemDocuments.healthy, false);
+    assert.ok(
+      malformed.systemDocuments.diagnostics.some(
+        (issue) => issue.code === 'purpose-missing',
+      ),
+    );
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
 type DoctorPlanningConfiguration = Readonly<{
   packageSchemaNames: string[];
   requiredSchemaNames: string[];
@@ -718,24 +744,33 @@ function writeDoctorWorkflowConfig(
 }
 
 function runWorkflowDoctor(repository: string): {
+  ok: boolean;
+  systemDocuments: {
+    configured: boolean;
+    healthy: boolean;
+    diagnostics: Array<{ code: string }>;
+  };
   warnings: Array<{ code: string; message: string }>;
 } {
-  return JSON.parse(
-    execFileSync(
-      process.execPath,
-      [
-        '--experimental-strip-types',
-        path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
-        'doctor',
-        '--json',
-      ],
-      {
-        cwd: repository,
-        encoding: 'utf8',
-        stdio: ['ignore', 'pipe', 'pipe'],
-      },
-    ),
-  ) as { warnings: Array<{ code: string; message: string }> };
+  const result = spawnSync(
+    process.execPath,
+    [
+      '--experimental-strip-types',
+      path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+      'doctor',
+      '--json',
+    ],
+    {
+      cwd: repository,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'pipe'],
+    },
+  );
+  assert.ok(
+    result.status === 0 || result.status === ExitCode.verification,
+    result.stderr,
+  );
+  return JSON.parse(result.stdout) as ReturnType<typeof runWorkflowDoctor>;
 }
 
 function doctorFixtureStatus(repository: string): string {

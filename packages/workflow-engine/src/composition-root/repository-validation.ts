@@ -21,6 +21,7 @@ import {
   type ManagedDocumentValidationContext,
 } from '../runtime/managed-documents/validation/managed-documents.ts';
 import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
+import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 
 const OBJECT_ID = '[0-9a-f]{40}|[0-9a-f]{64}';
 const MAX_COMMITTED_DOCUMENT_BYTES = 16 * 1024 * 1024;
@@ -87,10 +88,13 @@ export function validateRepositoryStateAtCommit(
     const contracts = changes.map((changeId) =>
       loadCommittedChangeContract(checkout.repositoryRoot, commit, changeId),
     );
-    const documents = validateManagedDocuments(
-      checkout.repositoryRoot,
-      committedManagedDocumentContext(source, contracts),
-    );
+    const documents = validateManagedDocuments(checkout.repositoryRoot, {
+      ...committedManagedDocumentContext(source, contracts),
+      systemDescriptionSnapshot: readSystemDescriptionSnapshot(
+        checkout.repositoryRoot,
+        commit,
+      ),
+    });
     assertCommittedCheckoutDirectoryProjection({
       repositoryRoot: checkout.repositoryRoot,
       commit,

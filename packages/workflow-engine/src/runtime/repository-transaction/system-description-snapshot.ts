@@ -29,6 +29,15 @@ export function snapshotFromTrackedTree(
   return {
     listPaths: () => [...entries.keys()],
     readText: (file) => entries.get(file),
+    readBytes: (file) =>
+      snapshot.entries.find((entry) => entry.path.utf8 === file)?.content ??
+      undefined,
+    readObjectId: (file) => {
+      const entry = snapshot.entries.find((entry) => entry.path.utf8 === file);
+      return entry && ['100644', '100755'].includes(entry.mode)
+        ? entry.objectId
+        : undefined;
+    },
   };
 }
 
@@ -54,6 +63,22 @@ export function readSystemDescriptionSnapshot(
     ),
   ].sort();
   const root = fs.realpathSync(repositoryRoot);
+  const raw = new Map<string, Buffer | undefined>();
+  const readBytes = (file: string): Buffer | undefined => {
+    normalizeExactRepositoryPath(file);
+    if (!raw.has(file)) {
+      const absolute = path.join(repositoryRoot, file);
+      const stat = fs.lstatSync(absolute, { throwIfNoEntry: false });
+      let bytes: Buffer | undefined;
+      if (stat?.isFile() && !stat.isSymbolicLink()) {
+        const relative = path.relative(root, fs.realpathSync(absolute));
+        if (!relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+          bytes = fs.readFileSync(absolute);
+      }
+      raw.set(file, bytes);
+    }
+    return raw.get(file);
+  };
   const entries = new Map<string, string | undefined>();
   for (const file of files) {
     normalizeExactRepositoryPath(file);
@@ -71,10 +96,14 @@ export function readSystemDescriptionSnapshot(
     const relative = path.relative(root, fs.realpathSync(absolute));
     if (relative.startsWith(`..${path.sep}`) || path.isAbsolute(relative))
       continue;
-    const bytes = fs.readFileSync(absolute);
+    const bytes = readBytes(file)!;
     const text = bytes.toString('utf8');
     if (!bytes.includes(0) && Buffer.from(text).equals(bytes))
       entries.set(file, text);
   }
-  return { listPaths: () => files, readText: (file) => entries.get(file) };
+  return {
+    listPaths: () => files,
+    readText: (file) => entries.get(file),
+    readBytes,
+  };
 }
