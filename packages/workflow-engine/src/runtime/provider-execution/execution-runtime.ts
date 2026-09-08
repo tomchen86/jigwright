@@ -1,40 +1,52 @@
-import crypto from 'node:crypto';
+/**
+ * Inspect, watch, and prepare replacement views for durable provider execution jobs.
+ *
+ * Invariants:
+ * - Context loading, current journal reads, polling cancellation, and public signatures stay exact.
+ * - Inspection never publishes a replacement or re-runs provider work.
+ *
+ * Depends on: execution journals, provider lifecycle projections, and replacement view construction.
+ * Failure modes: Callers can observe stale job state or wait past a requested cancellation.
+ */
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  createReplacementAttempt,
-  projectProviderInvocationExecution,
+  type FailureDescriptor,
+  type RetryDecision,
+  type WorkflowRecord,
+  type JobRecord,
   type AttemptRecord,
   type ChangedField,
   type ExecutionPolicySnapshot,
-  type FailureDescriptor,
-  type JobRecord,
-  type ProviderInvocationProjection,
-  type RetryDecision,
-  type WorkflowRecord,
+  projectProviderInvocationExecution,
 } from '../../modules/provider-orchestration/execution-core.ts';
-import {
-  decideProviderExecutionFailure,
-  readExecutionJobState,
-  type DurableExecutionJobState,
-} from '../storage-journal/execution-store.ts';
-import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import { listProviderInvocationLifecycleProjections } from '../storage-journal/investigation-session-store.ts';
+import { readExecutionJobState } from '../storage-journal/execution-store.ts';
+import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
+import { listProviderInvocationLifecycleProjections } from '../storage-journal/provider-invocation-lifecycle.ts';
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
 import {
-  providerOutputSchemaGeneration,
-  providerResidualsGeneration,
-  readProviderInvocation,
-  readProviderInvocationRequest,
-  type ProviderInvocationRecord,
   type ProviderOutputSchemaGeneration,
   type ProviderResidualsGeneration,
+  type ProviderInvocationRecord,
+  readProviderInvocationRequest,
+  readProviderInvocation,
+  providerOutputSchemaGeneration,
+  providerResidualsGeneration,
 } from '../storage-journal/provider-invocation-store.ts';
 import type { ProviderInvocationRequest } from '../../modules/provider-orchestration/provider-contracts.ts';
+import {
+  type ProviderProjectionEntry,
+  runtimeConflict,
+  aggregateDurableJob,
+  buildProviderReplacementPreview,
+  deepFreeze,
+  errorMessage,
+} from './provider-execution-projection.ts';
 
 const JOB_ID = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,191}$/;
-const MAX_PROVIDER_TIMEOUT_MS = 3_600_000;
+
 const DEFAULT_JOB_WATCH_POLL_INTERVAL_MS = 1_000;
+
 const MAX_JOB_WATCH_POLL_INTERVAL_MS = 60_000;
 
 export type ExecutionResultView = {
@@ -89,14 +101,6 @@ export type ProviderReplacementPreview = {
   policySnapshot: ExecutionPolicySnapshot;
   requestDigest: string;
   grantId: string | null;
-};
-
-type ProviderProjectionEntry = {
-  record: ProviderInvocationRecord;
-  request: ProviderInvocationRequest;
-  outputSchema: ProviderOutputSchemaGeneration;
-  residuals: ProviderResidualsGeneration | null;
-  projection: ProviderInvocationProjection;
 };
 
 export function listExecutionJobs(cwd: string): ExecutionJobInspection[] {
@@ -229,77 +233,6 @@ export function inspectProviderExecutionJobSource(
   return deepFreeze(structuredClone(latest));
 }
 
-function buildProviderReplacementPreview(
-  inspection: ExecutionJobInspection,
-  input: { timeoutMs: number; now?: string },
-  grantId: string | null,
-  pendingGrant = false,
-): ProviderReplacementPreview {
-  const previous = inspection.attempts.at(-1);
-  if (
-    previous === undefined ||
-    inspection.acceptedAttemptId !== null ||
-    !['failed-retryable', 'timed-out'].includes(previous.status) ||
-    previous.failure === null
-  ) {
-    throw workflowError(
-      'EXECUTION_RUNTIME_REPLACEMENT_NOT_ALLOWED',
-      'The latest provider Attempt is not eligible for replacement.',
-      ExitCode.guard,
-    );
-  }
-  if (
-    !Number.isSafeInteger(input.timeoutMs) ||
-    input.timeoutMs < 1 ||
-    input.timeoutMs > MAX_PROVIDER_TIMEOUT_MS ||
-    input.timeoutMs === previous.policySnapshot.timeoutMs
-  ) {
-    throw workflowError(
-      'EXECUTION_RUNTIME_POLICY_CHANGE_INVALID',
-      'Replacement timeout must be a different bounded positive value.',
-      ExitCode.usage,
-    );
-  }
-  const createdAt = assertExactTimestamp(input.now ?? previous.updatedAt);
-  const previewAttemptId = `attempt-preview-${digestCanonical({
-    jobId: inspection.job.jobId,
-    previousAttemptId: previous.attemptId,
-    timeoutMs: input.timeoutMs,
-    grantId,
-  }).slice('sha256:'.length, 'sha256:'.length + 32)}`;
-  const replacement = createReplacementAttempt({
-    workflow: inspection.workflow,
-    job: inspection.job,
-    previousAttempt: previous,
-    attemptId: previewAttemptId,
-    retryMode: 'execution-policy-change',
-    currentExecutionPolicy: previous.policySnapshot,
-    policyOverrides: { timeoutMs: input.timeoutMs },
-    ...(grantId === null && !pendingGrant
-      ? {}
-      : { grantId: grantId ?? 'pending-execution-budget-grant' }),
-    environmentDigest: previous.environmentDigest,
-    createdAt,
-  });
-  return deepFreeze({
-    schemaVersion: 1,
-    workflowId: inspection.workflow.workflowId,
-    epoch: inspection.job.epoch,
-    contextDigest: inspection.job.contextDigest,
-    jobId: inspection.job.jobId,
-    previousAttemptId: previous.attemptId,
-    previewAttemptId: replacement.attempt.attemptId,
-    attemptNumber: replacement.attempt.attemptNumber,
-    retryMode: 'execution-policy-change',
-    changedFields: replacement.attempt.changedFields.map((field) => ({
-      ...field,
-    })),
-    policySnapshot: replacement.attempt.policySnapshot,
-    requestDigest: replacement.attempt.requestDigest,
-    grantId,
-  });
-}
-
 function readProviderProjectionEntries(cwd: string): ProviderProjectionEntry[] {
   const context = loadInvestigationRuntimeContext(cwd);
   let records: Array<{
@@ -352,133 +285,6 @@ function readProviderProjectionEntries(cwd: string): ProviderProjectionEntry[] {
       );
     }
   });
-}
-
-function aggregateDurableJob(
-  state: DurableExecutionJobState,
-  input: ProviderProjectionEntry[],
-): ExecutionJobInspection {
-  const entries = [...input].sort(
-    (left, right) =>
-      left.record.attempt - right.record.attempt ||
-      left.record.invocationId.localeCompare(right.record.invocationId),
-  );
-  if (
-    entries.length !== state.invocationProjection.invocations.length ||
-    state.job.jobId !== entries[0]?.projection.job.jobId
-  ) {
-    throw runtimeConflict(
-      'Durable execution state does not cover the current provider Job history.',
-    );
-  }
-  const entriesByInvocation = new Map(
-    entries.map((entry) => [entry.record.invocationId, entry]),
-  );
-  for (const source of state.invocationProjection.invocations) {
-    const entry = entriesByInvocation.get(source.invocationId);
-    if (
-      entry === undefined ||
-      entry.record.revision !== source.invocationRevision ||
-      entry.projection.attempt.attemptId !== source.attemptId ||
-      entry.projection.job.jobId !== state.job.jobId ||
-      entry.projection.workflow.workflowId !== state.workflow.workflowId ||
-      canonicalJson(entry.projection.job.mandateBinding ?? null) !==
-        canonicalJson(state.job.mandateBinding ?? null) ||
-      canonicalJson(entry.projection.job.semanticSpec) !==
-        canonicalJson(state.job.semanticSpec)
-    ) {
-      throw runtimeConflict(
-        'Durable execution state is stale or conflicts with its provider projection.',
-      );
-    }
-  }
-  const attemptsById = new Map(
-    state.attempts.map((attempt) => [attempt.attemptId, attempt]),
-  );
-  const results = state.results.map((result): ExecutionResultView => {
-    const attempt = attemptsById.get(result.attemptId);
-    if (
-      attempt?.providerInvocation === null ||
-      attempt?.providerInvocation === undefined ||
-      result.acceptance === 'stale'
-    ) {
-      throw runtimeConflict(
-        'Durable provider result is not compatible with its invocation.',
-      );
-    }
-    const entry = entriesByInvocation.get(
-      attempt.providerInvocation.invocationId,
-    );
-    if (entry === undefined) {
-      throw runtimeConflict(
-        'Durable provider result has no invocation to classify.',
-      );
-    }
-    return {
-      attemptId: result.attemptId,
-      invocationId: attempt.providerInvocation.invocationId,
-      acceptance: result.acceptance,
-      outputDigest: result.outputDigest,
-      outputSchema: entry.outputSchema,
-      residuals: entry.residuals,
-    };
-  });
-  const latestFailedAttempt = [...state.attempts]
-    .reverse()
-    .find((attempt) => attempt.failure !== null);
-  const latestFailure =
-    latestFailedAttempt?.failure === null || latestFailedAttempt === undefined
-      ? null
-      : {
-          attemptId: latestFailedAttempt.attemptId,
-          failure: latestFailedAttempt.failure,
-          decision: retryDecisionForProviderFailure({
-            workflow: state.workflow,
-            job: state.job,
-            attempt: latestFailedAttempt,
-            attempts: state.attempts,
-          }),
-        };
-  return deepFreeze({
-    schemaVersion: 1,
-    runtimeStatus: projectAgentRuntimeStatus(state.job),
-    workflow: state.workflow,
-    job: state.job,
-    // Durable state carries the ordinals the writer assigned, so there is
-    // nothing for the reader to renumber.
-    attemptNumbering: 'recorded' as const,
-    attempts: state.attempts,
-    acceptedAttemptId: state.job.acceptedAttemptId,
-    results,
-    latestFailure,
-  });
-}
-
-function projectAgentRuntimeStatus(
-  job: JobRecord,
-): ExecutionJobInspection['runtimeStatus'] {
-  if (job.status === 'queued') return 'scheduled';
-  if (job.status === 'running') return 'running';
-  if (job.status === 'succeeded') return 'completed';
-  if (job.status === 'cancelled') return 'cancelled';
-  return 'failed';
-}
-
-function retryDecisionForProviderFailure(input: {
-  workflow: WorkflowRecord;
-  job: JobRecord;
-  attempt: AttemptRecord;
-  attempts: AttemptRecord[];
-}): RetryDecision {
-  return decideProviderExecutionFailure(input);
-}
-
-function digestCanonical(value: unknown): string {
-  return digestText(canonicalJson(value));
-}
-
-function digestText(value: string): string {
-  return `sha256:${crypto.createHash('sha256').update(value).digest('hex')}`;
 }
 
 function assertRuntimeJobId(value: string): string {
@@ -560,42 +366,4 @@ function waitForExecutionJobPoll(
     timer = setTimeout(finish, intervalMs);
     signal?.addEventListener('abort', finish, { once: true });
   });
-}
-
-function assertExactTimestamp(value: string): string {
-  const date = new Date(value);
-  if (
-    typeof value !== 'string' ||
-    !Number.isFinite(date.getTime()) ||
-    date.toISOString() !== value
-  ) {
-    throw workflowError(
-      'EXECUTION_RUNTIME_TIMESTAMP_INVALID',
-      'Execution runtime timestamp must be exact ISO time.',
-      ExitCode.usage,
-    );
-  }
-  return value;
-}
-
-function runtimeConflict(message: string) {
-  return workflowError(
-    'EXECUTION_RUNTIME_JOB_CONFLICT',
-    message,
-    ExitCode.staleState,
-  );
-}
-
-function errorMessage(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object' && !Object.isFrozen(value)) {
-    Object.freeze(value);
-    for (const child of Object.values(value as Record<string, unknown>)) {
-      deepFreeze(child);
-    }
-  }
-  return value;
 }

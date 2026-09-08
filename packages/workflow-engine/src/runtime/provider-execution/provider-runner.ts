@@ -1,103 +1,140 @@
-import crypto from 'node:crypto';
-import fs from 'node:fs';
-import path from 'node:path';
-import { spawnSync } from 'node:child_process';
+/**
+ * Run reviewed provider profiles through preflight and one governed synchronous or asynchronous lifecycle.
+ *
+ * Invariants:
+ * - Provider selection, authority reads, projection checks, and launch ordering stay exact.
+ * - Concurrency cleanup and wrapper error handling remain attached to each runner lifecycle.
+ *
+ * Depends on: provider adapters, workflow policy, runtime slots, managed prompts, and output validation.
+ * Failure modes: Unreviewed launches, leaked slots, or stale output can be admitted.
+ */
 
-import {
-  AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
-  MAX_AI_ADAPTER_LIMITS,
-} from './ai-adapter-policy.ts';
+import path from 'node:path';
+import { preflightProviderSnapshot } from './provider-runner-preflight.ts';
+
+import { spawnSync } from 'node:child_process';
+import { AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT } from './ai-adapter-policy.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
-  buildClaudeProviderInvocation,
   CLAUDE_REQUIRED_HELP_FLAGS,
+  buildClaudeProviderInvocation,
 } from '../../adapters/providers/claude/claude-provider-adapter.ts';
 import {
-  buildCodexProviderInvocation,
-  CODEX_REQUIRED_EXEC_HELP_FLAGS,
   CODEX_REQUIRED_ROOT_HELP_FLAGS,
+  CODEX_REQUIRED_EXEC_HELP_FLAGS,
+  buildCodexProviderInvocation,
 } from '../../adapters/providers/codex/codex-provider-adapter.ts';
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
-import {
-  ExitCode,
-  workflowError,
-  WorkflowError,
-} from '../../foundation/errors/errors.ts';
 import { createProviderExecutionEnvironment } from './execution-environment.ts';
 import { executionJobStatePath } from '../storage-journal/execution-store.ts';
 import {
+  discoverRepository,
   captureGovernedProviderProjection,
   compareGovernedProviderProjections,
-  discoverRepository,
-  runGit,
 } from '../repository-transaction/git.ts';
+import { readPrivateCanonicalJson } from '../storage-journal/investigation-private-files.ts';
 import {
-  ensurePrivateInvestigationDirectory,
-  readPrivateCanonicalJson,
-  withPrivateRuntimeLock,
-} from '../storage-journal/investigation-session-store.ts';
-import {
-  assertInvocationId,
   investigationRuntimePaths,
+  assertInvocationId,
   type InvestigationRuntimePaths,
 } from '../session-workspace/paths.ts';
 import {
-  providerExecutionPolicySnapshotPath,
-  readProviderExecutionPolicySnapshot,
   readProviderInvocationRequest,
+  readProviderExecutionPolicySnapshot,
+  providerExecutionPolicySnapshotPath,
 } from '../storage-journal/provider-invocation-store.ts';
 import {
-  isProviderId,
   type ProviderId,
+  isProviderId,
 } from '../../modules/provider-orchestration/provider-registry.ts';
 import {
-  assembleProviderPromptManifest,
-  assertProviderPromptContextCurrent,
   providerPromptContextStoreRoot,
+  assembleProviderPromptManifest,
   readProviderRepairPrompt,
+  assertProviderPromptContextCurrent,
 } from './provider-execution-governance.ts';
 import {
-  assertProviderProcessSucceeded,
   type ProviderExecutableIdentity,
-  type ProviderInvocationPlan,
-  type ProviderInvocationRequest,
   type ProviderProcessOutcome,
   type ProviderRunnerReport,
+  type ProviderInvocationPlan,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
 import type {
-  AgentRuntimeAsyncSingleShotOptions,
-  AgentRuntimeGovernedInput,
   AgentRuntimeProcessActivity,
   AgentRuntimeSingleShotInput,
-  AgentRuntimeSingleShotOptions,
   ProviderInvocationAcceptanceBinding,
+  AgentRuntimeSingleShotOptions,
+  AgentRuntimeAsyncSingleShotOptions,
+  AgentRuntimeGovernedInput,
 } from '../../modules/provider-orchestration/agent-runtime-port.ts';
-import {
-  ProviderWrapperProtocolError,
-  assertProviderWrapperProtocolReceipt,
-  type ProviderWrapperProtocolExecution,
-  type ProviderWrapperProtocolReceipt,
-} from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
+import { type ProviderWrapperProtocolExecution } from '../../modules/provider-orchestration/agent-runtime-protocol.ts';
 import { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 import {
-  assertAgentProviderProfileSnapshot,
   type BuiltInReviewedProviderProfileSnapshot,
+  assertAgentProviderProfileSnapshot,
   type ProviderDefinitionSnapshot,
 } from '@jigwright/agent-runtime';
 import {
-  inspectProviderExecutable,
   type ProviderExecutableObservation,
+  inspectProviderExecutable,
 } from '@jigwright/agent-runtime/provider-executable-identity';
 import { spawnBoundedProviderProcess } from './bounded-provider-process.ts';
+import { resolveBuiltInProviderDefinitionSnapshot } from './built-in-provider-definition.ts';
 import {
-  assertKnownBuiltInProviderDefinitionSnapshot,
-  resolveBuiltInProviderDefinitionSnapshot,
-} from './built-in-provider-definition.ts';
+  type ProviderPreflightSpec,
+  normalizeCandidateInspection,
+} from './provider-runner-preflight.ts';
+import {
+  requestUnbound,
+  providerProfileStale,
+  wrapperProtocolAsyncRequired,
+  isPromiseLike,
+  configBaselineMismatch,
+  runtimeDirectoryUnsafe,
+  durableRequestMismatch,
+  repositoryMismatch,
+  inputManifestMismatch,
+  sha256,
+  isRecord,
+  policyBaselineMismatch,
+  baselineMismatch,
+  policyMismatch,
+  providerDisabled,
+  outputSchemaUnbound,
+  providerUnavailable,
+  executableIdentityDrift,
+  governedProjectionDrift,
+  wrapperReportedError,
+  wrapperProtocolInvalid,
+  deepFreeze,
+} from './provider-runner-values.ts';
+import {
+  fileDigestAtBaseline,
+  readPlainFileDigest,
+  canonicalDirectoryOrThrow,
+  createExclusiveRuntimeDirectory,
+  createExclusiveRuntimeFile,
+  assertExclusiveRuntimeFile,
+  sameIdentity,
+} from './provider-runner-files.ts';
+import { renderManagedProviderPrompt } from './provider-runner-prompts.ts';
+import { acquireProviderSlot } from './provider-runner-slots.ts';
+import {
+  tryReadWrapperProtocolReceipt,
+  enforceProcessOutcome,
+  observeProtocolReceipt,
+  enforceRawOutputLimit,
+  readWrapperProtocolReceipt,
+  readNativeSemanticOutput,
+  readWrapperSemanticOutput,
+  validateSemanticOutput,
+} from './provider-runner-output.ts';
 
 export type {
   ProviderExecutableIdentity,
   ProviderRunnerReport,
 } from '../../modules/provider-orchestration/provider-contracts.ts';
+export { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
 
 export type ProviderProbeInput = {
   executable: string;
@@ -169,33 +206,8 @@ export type ProviderRunInput = Omit<
 };
 
 export type ProviderRunOptions = AgentRuntimeSingleShotOptions;
+
 export type ProviderAsyncRunOptions = AgentRuntimeAsyncSingleShotOptions;
-
-const PROBE_TIMEOUT_MS = 10_000;
-const PROBE_OUTPUT_BYTES = 64 * 1024;
-
-/**
- * The honest residual soft-containment caveats a successful observation still
- * carries: it runs in the same OS user, its subprocess tree is not confined, a
- * provider that transiently rewrites-and-restores a file or swaps its own
- * executable in place cannot be detected here, and unreachable-object writes and
- * global filesystem immutability are outside the observed governed projection.
- */
-export { PROVIDER_RUNNER_RESIDUALS } from '../../modules/provider-orchestration/provider-runtime-evidence.ts';
-
-/**
- * The bounded preflight surface of a reviewed provider. Every field is
- * code-owned: the fixed candidate paths, the ordered version/help probes with
- * their required advertised flags, and the provider's own authentication status
- * command. Reviewed real-path install roots are derived per candidate.
- */
-type ProviderPreflightSpec = {
-  helpProbes: ReadonlyArray<{
-    args: readonly string[];
-    requiredFlags: readonly string[];
-  }>;
-  authArgs: readonly string[];
-};
 
 const PROVIDER_PREFLIGHT: Record<ProviderId, ProviderPreflightSpec> = {
   claude: {
@@ -215,32 +227,6 @@ const PROVIDER_PREFLIGHT: Record<ProviderId, ProviderPreflightSpec> = {
     authArgs: ['login', 'status'],
   },
 };
-
-// The maximum number of concurrency slot files the engine ever inspects. Policy
-// may lower the effective limit, but every code-max slot is always counted so a
-// lowered limit still observes a slot held above it.
-const CODE_MAX_CONCURRENCY = MAX_AI_ADAPTER_LIMITS.maxConcurrent;
-
-const REVIEWED_CANDIDATE_REAL_ROOTS: Readonly<
-  Record<string, readonly string[]>
-> = Object.freeze({
-  '/opt/homebrew/bin/claude': Object.freeze([
-    '/opt/homebrew/Caskroom/claude-code',
-    '/opt/homebrew/Cellar/claude-code',
-  ]),
-  '/usr/local/bin/claude': Object.freeze([
-    '/usr/local/Caskroom/claude-code',
-    '/usr/local/Cellar/claude-code',
-  ]),
-  '/opt/homebrew/bin/codex': Object.freeze([
-    '/opt/homebrew/Caskroom/codex',
-    '/opt/homebrew/Cellar/codex',
-  ]),
-  '/usr/local/bin/codex': Object.freeze([
-    '/usr/local/Caskroom/codex',
-    '/usr/local/Cellar/codex',
-  ]),
-});
 
 type ProviderRunner = {
   preflight(
@@ -349,7 +335,12 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
     if (definitionSnapshot === null) {
       return { status: 'unsupported-platform' };
     }
-    return preflightSnapshot(definitionSnapshot, options);
+    return preflightProviderSnapshot(
+      host,
+      PROVIDER_PREFLIGHT,
+      definitionSnapshot,
+      options,
+    );
   }
 
   function preflightProfile(
@@ -378,126 +369,12 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
     ) {
       throw providerProfileStale();
     }
-    return preflightSnapshot(definitionSnapshot, options, profile.executable);
-  }
-
-  function preflightSnapshot(
-    definitionSnapshot: ProviderDefinitionSnapshot,
-    options: ProviderPreflightOptions,
-    selectedExecutableCandidate?: string,
-  ): ProviderResolution {
-    const admittedDefinition = assertKnownBuiltInProviderDefinitionSnapshot(
+    return preflightProviderSnapshot(
+      host,
+      PROVIDER_PREFLIGHT,
       definitionSnapshot,
-      {
-        platform: options.platform,
-      },
-    );
-    const providerId = admittedDefinition.providerFamily as ProviderId;
-    const spec = PROVIDER_PREFLIGHT[providerId];
-    if (
-      selectedExecutableCandidate !== undefined &&
-      !admittedDefinition.executableCandidates.includes(
-        selectedExecutableCandidate,
-      )
-    ) {
-      throw providerProfileStale();
-    }
-    const candidates =
-      selectedExecutableCandidate === undefined
-        ? admittedDefinition.executableCandidates
-        : [selectedExecutableCandidate];
-
-    // Inspect every fixed candidate; never a caller-PATH or dynamic location. A
-    // candidate must be a regular executable whose real path is the candidate
-    // itself or lives under its own reviewed install root; a symlink escaping to
-    // any other real path is unsafe and is never probed.
-    const resolved: ProviderExecutableIdentity[] = [];
-    let sawUnsafeCandidate = false;
-    for (const candidate of candidates) {
-      const inspection = normalizeCandidateInspection(
-        candidate,
-        host.inspectCandidate(candidate),
-      );
-      if (inspection.state === 'absent') {
-        continue;
-      }
-      if (inspection.state === 'unsafe') {
-        sawUnsafeCandidate = true;
-        continue;
-      }
-      const identity = inspection.identity;
-      if (
-        !isRegularExecutable(identity.mode) ||
-        !isReviewedRealPath(candidate, identity.realPath)
-      ) {
-        sawUnsafeCandidate = true;
-        continue;
-      }
-      resolved.push(identity);
-    }
-    if (resolved.length === 0) {
-      return { status: sawUnsafeCandidate ? 'unsafe-candidate' : 'absent' };
-    }
-
-    const environment = createProviderExecutionEnvironment(
-      providerId,
-      process.execPath,
-      options.temporaryDirectory,
-      options.sourceEnvironment,
-    );
-    const probe = (
-      executable: string,
-      args: string[],
-    ): ProviderProcessOutcome =>
-      host.runProbe({
-        executable,
-        args,
-        cwd: options.temporaryDirectory,
-        environment,
-        timeoutMs: PROBE_TIMEOUT_MS,
-        maxOutputBytes: PROBE_OUTPUT_BYTES,
-      });
-
-    let fallback: ProviderResolution | undefined;
-    for (const executable of resolved) {
-      const versionOutcome = probe(executable.realPath, ['--version']);
-      if (
-        !probeSucceeded(versionOutcome) ||
-        versionOutcome.stdout.trim() === ''
-      ) {
-        fallback ??= { status: 'incompatible', executable };
-        continue;
-      }
-      const version = versionOutcome.stdout.trim();
-
-      let compatible = true;
-      for (const helpProbe of spec.helpProbes) {
-        const helpOutcome = probe(executable.realPath, [...helpProbe.args]);
-        if (
-          !probeSucceeded(helpOutcome) ||
-          !advertisesFlags(helpProbe.requiredFlags, helpOutcome.stdout)
-        ) {
-          compatible = false;
-          break;
-        }
-      }
-      if (!compatible) {
-        fallback ??= { status: 'incompatible', executable, version };
-        continue;
-      }
-
-      const authOutcome = probe(executable.realPath, [...spec.authArgs]);
-      if (!indicatesAuthenticated(providerId, authOutcome)) {
-        fallback = { status: 'unauthenticated', executable, version };
-        continue;
-      }
-
-      return { status: 'available', executable, version };
-    }
-    return (
-      fallback ?? {
-        status: sawUnsafeCandidate ? 'unsafe-candidate' : 'absent',
-      }
+      options,
+      profile.executable,
     );
   }
 
@@ -771,7 +648,9 @@ function createProviderRunner(host: ProviderRunnerHost): ProviderRunner {
         providerDefinitionSnapshot,
         options.platform,
       );
-      const resolution = preflightSnapshot(
+      const resolution = preflightProviderSnapshot(
+        host,
+        PROVIDER_PREFLIGHT,
         providerDefinitionSnapshot,
         {
           platform: options.platform,
@@ -1070,1049 +949,6 @@ function buildInvocationPlan(
   });
 }
 
-const PROVIDER_PURPOSE_INSTRUCTIONS: Readonly<
-  Record<ProviderInvocationRequest['purpose'], readonly string[]>
-> = Object.freeze({
-  survey: Object.freeze([
-    'Independently survey the repository for load-bearing consumers, sibling mechanisms, configuration keys, literal paths, symbols, and architecture invariants relevant to the bound manifest.',
-    'Use only the reviewed read/search capability surface.',
-    'Return only output that conforms to the bound output schema.',
-    // Advisory only: the engine scans every proposed term across the whole
-    // pinned tree under a fixed per-term hit ceiling, and a term that exceeds
-    // it currently has no recovery exit. A provider cannot count hits, so this
-    // states the strategy it can actually act on rather than the limit it
-    // cannot measure.
-    'For every proposed search term, prefer a verified, repository-specific exact literal that preserves the relevant relationship. When a concept has a commonly used name, use a longer literal containing repository-specific context, a fully qualified symbol, or a literal path rather than the unqualified identifier. Confirm that each literal exists in the pinned repository; use multiple specific terms when necessary to preserve coverage rather than inventing a broader token.',
-    // The bound survey validator enforces three constraints the provider-visible
-    // JSON schema cannot express: the reference identity, the per-term byte and
-    // character bounds, and term uniqueness. They are stated here because a
-    // provider that satisfies only the published schema is otherwise rejected
-    // with no way to learn why.
-    'Set the output "reference" field to exactly the invocationId carried in this prompt request block; any other value is rejected.',
-    'Each term value must be at most 256 UTF-8 bytes with no control characters or lone surrogates, and the terms must be unique by their exact kind and value pair.',
-  ]),
-  'plan-review': Object.freeze([
-    'Independently review the complete bound planning target for missing scope, weak WHY rationale, unsupported invariants, contradictions, and testability gaps.',
-    'Use only the reviewed read/search capability surface.',
-    'Return only output that conforms to the bound output schema.',
-    // Coverage, the scope-assessment kind, and every constant discriminator are
-    // filled in by the engine from what was actually submitted, so there is no
-    // derived field here for a provider to contradict.
-    'Review all seven coverage areas; report what you find as "findings" entries whose category names the area.',
-    'The output "scopeEvidence" array cites what you read to assess scope. Report a scope problem as a "findings" entry with category "missing-scope" or "missing-consumers"; the engine derives the scope assessment from those categories.',
-    // Advisory only: the engine scans every proposed term across the whole
-    // pinned tree under a fixed per-term hit ceiling, and a term that exceeds
-    // it currently has no recovery exit. A provider cannot count hits, so this
-    // states the strategy it can actually act on rather than the limit it
-    // cannot measure.
-    'For every proposed search term, prefer a verified, repository-specific exact literal that preserves the relevant relationship. When a concept has a commonly used name, use a longer literal containing repository-specific context, a fully qualified symbol, or a literal path rather than the unqualified identifier. Confirm that each literal exists in the pinned repository; use multiple specific terms when necessary to preserve coverage rather than inventing a broader token.',
-    'Read every planning artifact only from the immutable planningSnapshot artifact readPath supplied in this prompt. Never substitute the worktree path or the baseline-tree copy for a planning artifact.',
-    'In the immutable investigation.json v3 Manifest, find the unique applicability.semanticDelta.investigationRequirements[] entry whose kind is "plan-review-coverage-requirement". Read structured PlanReview coverage only from that entry\'s coverage.requiredTargetIds and coverage.targetBindings. Treat every requiredTargetIds entry as mandatory. For each required target, cite the matching targetBindings row\'s exact evidenceKind and path at least once in scopeAssessment, a finding, or a suggestion. Extra evidence is allowed; omitting a required row is rejected at plan commit.',
-    'Cite a planningSnapshot member with kind "planning-location" and its logical path. Cite any other repository file with kind "repository-location"; repository-location lines are validated against the pinned baseline tree. The two namespaces are disjoint and a citation in the wrong namespace is rejected.',
-    'Treat planningSnapshot.migration as a binding remediation constraint: preserved-byte-identical artifacts cannot be proposed as editable in this generation, replaceable-on-replanning artifacts may change only through a new planning generation, and engine-managed artifacts are not author-editable.',
-  ]),
-  'task-diff-review': Object.freeze([
-    'Independently review the exact bound candidate tree and its base-to-candidate blob and mode transitions.',
-    'Use only the reviewed read/search capability surface and do not mutate the worktree, index, refs, runtime, or any repository file.',
-    'Return only output that conforms to the bound task-diff-review output schema.',
-    'Review every required area; report what you find as "findings" entries whose category names the area. The output "scopeEvidence" array cites what you read to assess scope, and the engine derives the scope assessment from the findings.',
-    'The output "riskPathDispositions" array must contain exactly one row for every subject.reviewRequirement.riskPaths entry covered by reviewScope, with the exact path and role; do not include ordinary paths.',
-    'Inspect correctness and invariants, plan alignment, test adequacy, path scope, trust boundaries, dangling consumers, and generated or mirror consistency.',
-    'When subject.documentationRequirement.required is true, review the complete changeBaseTree-to-candidateTree change and return exactly one documentationAssessment: updated with every changed documentation path, generated-verified with exact source/generated paths and check evidence, no-impact with a concrete rationale only when no documentation path changed, or needs-changes with exact documentation remediation paths. Omission is rejected. When it is false, omit documentationAssessment.',
-    'Every challenge must cite exact repository, check-report, or planning-node evidence. A no-challenge scope assessment must still cite affirmative evidence.',
-    'Classify current-change blockers as challenges and independent follow-up ideas as suggestions. The advisory verdict never authorizes completion.',
-    'Treat the manifest subject, candidate tree, check evidence, task contract, planning generation, and review policy as immutable bindings; do not substitute live runtime metadata.',
-  ]),
-  'task-implementation': Object.freeze([
-    'Implement only the exact engine-sealed RED subject and reviewed behavior contract carried by the bound manifest.',
-    'Treat every frozen test and fixture path as authoritative and immutable; do not include changes to those paths in the returned patch.',
-    'Return one unified binary-safe Git patch whose derived changes remain inside the reviewed implementation path scopes.',
-    'Use only the reviewed read/search capability surface and do not mutate the worktree, index, refs, runtime, or any repository file.',
-    'Return only output that conforms to the bound task-strategy implementation output schema.',
-    'Do not report GREEN as authority; the workflow engine independently imports the patch and runs every registered GREEN check.',
-  ]),
-});
-
-function renderManagedProviderPrompt(
-  request: ProviderInvocationRequest,
-  manifest: unknown,
-  reviewSnapshotRoot: string | null,
-  repairContext: unknown,
-): string {
-  return canonicalJson({
-    schemaVersion: 1,
-    kind: 'managed-provider-prompt',
-    request,
-    manifest,
-    repairContext,
-    planningSnapshot: renderPlanningSnapshotPrompt(
-      request,
-      manifest,
-      reviewSnapshotRoot,
-    ),
-    instructions: providerPurposeInstructions(request, manifest),
-  });
-}
-
-function providerPurposeInstructions(
-  request: ProviderInvocationRequest,
-  manifest: unknown,
-): readonly string[] {
-  if (
-    request.purpose === 'task-diff-review' &&
-    isRecord(manifest) &&
-    manifest.kind === 'task-diff-review-continuation-manifest'
-  ) {
-    return Object.freeze([
-      'Re-review the exact immutable candidate in light of every bound challenge and implementer response.',
-      'Use only the reviewed read/search capability surface and do not mutate the worktree, index, refs, runtime, or any repository file.',
-      'Return structured proposed dispositions under the code-owned continuation schema; these recommendations are evidence and do not themselves accept, close, waive, or otherwise disposition any challenge.',
-      'Bind every recommendation to the exact review, response, and complete challenge set, with a concise rationale for each decision.',
-      'The workflow engine alone applies the shared authenticated challenge-closure verifier and may mint a Final Assurance record from an eligible result.',
-    ]);
-  }
-  return PROVIDER_PURPOSE_INSTRUCTIONS[request.purpose];
-}
-
-function renderPlanningSnapshotPrompt(
-  request: ProviderInvocationRequest,
-  manifest: unknown,
-  reviewSnapshotRoot: string | null,
-): unknown {
-  if (request.purpose !== 'plan-review') return null;
-  if (!isRecord(manifest) || manifest.kind !== 'plan-review-manifest') {
-    throw inputManifestMismatch();
-  }
-  if (manifest.planningTarget === undefined) return null;
-  if (
-    reviewSnapshotRoot === null ||
-    !isRecord(manifest.planningTarget) ||
-    !Array.isArray(manifest.planningTarget.artifacts)
-  ) {
-    throw inputManifestMismatch();
-  }
-  return {
-    snapshotDigest: manifest.planningTarget.snapshotDigest,
-    migration: manifest.planningTarget.migration,
-    citationContract: {
-      planning: {
-        kind: 'planning-location',
-        lineSource: 'immutable-planning-snapshot',
-      },
-      repository: {
-        kind: 'repository-location',
-        lineSource: 'pinned-investigation-baseline-tree',
-      },
-    },
-    artifacts: manifest.planningTarget.artifacts.map((value) => {
-      if (
-        !isRecord(value) ||
-        typeof value.path !== 'string' ||
-        typeof value.snapshotFile !== 'string'
-      ) {
-        throw inputManifestMismatch();
-      }
-      return {
-        ...value,
-        readPath: path.join(reviewSnapshotRoot, value.snapshotFile),
-      };
-    }),
-  };
-}
-
-function fileDigestAtBaseline(
-  repositoryRoot: string,
-  baseCommit: string,
-  repositoryPath: string,
-): string {
-  const committed = runGit(repositoryRoot, [
-    'show',
-    `${baseCommit}:${repositoryPath}`,
-  ]);
-  return sha256(committed);
-}
-
-function readPlainFileDigest(
-  filePath: string,
-  makeError: () => WorkflowError,
-): string {
-  const before = fs.lstatSync(filePath, {
-    bigint: true,
-    throwIfNoEntry: false,
-  });
-  if (!before?.isFile() || before.isSymbolicLink() || before.nlink !== 1n) {
-    throw makeError();
-  }
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    throw makeError();
-  }
-  try {
-    const opened = fs.fstatSync(descriptor, { bigint: true });
-    if (
-      !opened.isFile() ||
-      opened.nlink !== 1n ||
-      opened.dev !== before.dev ||
-      opened.ino !== before.ino
-    ) {
-      throw makeError();
-    }
-    return crypto
-      .createHash('sha256')
-      .update(fs.readFileSync(descriptor))
-      .digest('hex');
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function canonicalDirectoryOrThrow(directory: string): string {
-  try {
-    const absolute = path.resolve(directory);
-    const real = fs.realpathSync(absolute);
-    const stats = fs.lstatSync(absolute, { throwIfNoEntry: false });
-    if (
-      !path.isAbsolute(directory) ||
-      directory !== absolute ||
-      real !== absolute ||
-      !stats?.isDirectory() ||
-      stats.isSymbolicLink()
-    ) {
-      throw new Error('not a directory');
-    }
-    return absolute;
-  } catch {
-    throw runtimeDirectoryUnsafe(directory);
-  }
-}
-
-function isWithinDirectory(root: string, target: string): boolean {
-  const relative = path.relative(root, target);
-  return (
-    relative !== '' && !relative.startsWith('..') && !path.isAbsolute(relative)
-  );
-}
-
-/**
- * A reviewed candidate's real path may only be the candidate executable itself
- * or a file under the exact reviewed package roots for that candidate. Any
- * sibling package or broader prefix path is unsafe.
- */
-function isReviewedRealPath(candidatePath: string, realPath: string): boolean {
-  if (realPath === candidatePath) {
-    return true;
-  }
-  return (REVIEWED_CANDIDATE_REAL_ROOTS[candidatePath] ?? []).some(
-    (installRoot) => isWithinDirectory(installRoot, realPath),
-  );
-}
-
-type CandidateInspection =
-  | Readonly<{ state: 'absent' }>
-  | Readonly<{ state: 'unsafe' }>
-  | Readonly<{
-      state: 'observed';
-      identity: ProviderExecutableIdentity;
-    }>;
-
-function normalizeCandidateInspection(
-  candidatePath: string,
-  value: ProviderExecutableIdentity | ProviderExecutableObservation | null,
-): CandidateInspection {
-  if (value === null) return { state: 'absent' };
-  if (!('state' in value)) {
-    return value.candidatePath === candidatePath
-      ? { state: 'observed', identity: value }
-      : { state: 'unsafe' };
-  }
-  if (value.candidatePath !== candidatePath) return { state: 'unsafe' };
-  if (value.state === 'absent') {
-    return value.identity === null && value.unsafeReason === null
-      ? { state: 'absent' }
-      : { state: 'unsafe' };
-  }
-  if (value.state === 'unsafe') return { state: 'unsafe' };
-  return value.identity !== null &&
-    value.identity.candidatePath === candidatePath &&
-    value.unsafeReason === null
-    ? { state: 'observed', identity: value.identity }
-    : { state: 'unsafe' };
-}
-
-function advertisesFlags(
-  requiredFlags: readonly string[],
-  helpText: string,
-): boolean {
-  return requiredFlags.every((flag) => helpText.includes(flag));
-}
-
-function indicatesAuthenticated(
-  providerId: ProviderId,
-  outcome: ProviderProcessOutcome,
-): boolean {
-  if (!probeSucceeded(outcome)) {
-    return false;
-  }
-  const text = outcome.stdout.trim();
-  if (providerId === 'claude') {
-    try {
-      const parsed = JSON.parse(text);
-      return isRecord(parsed) && parsed.loggedIn === true;
-    } catch {
-      return false;
-    }
-  }
-  // `codex login status` writes its human-readable confirmation to stderr
-  // whenever stdout is not a TTY, which it never is under the engine's
-  // sanitized non-interactive probe environment. Reading stdout alone
-  // therefore misclassified an authenticated Codex as `unauthenticated` and
-  // made the provider-independent role path unreachable. Accept the exact
-  // confirmation from either stream; a zero exit is still required, and no
-  // other output shape is admitted.
-  return [text, outcome.stderr.trim()].some((line) =>
-    /^logged in(?:\s+using\b.*)?$/i.test(line),
-  );
-}
-
-function probeSucceeded(outcome: ProviderProcessOutcome): boolean {
-  return (
-    outcome.exitCode === 0 &&
-    !outcome.timedOut &&
-    outcome.signal === null &&
-    outcome.spawnErrorCode === null
-  );
-}
-
-function enforceProcessOutcome(
-  outcome: ProviderProcessOutcome,
-  timeoutMs: number,
-): void {
-  assertProviderProcessSucceeded(outcome, timeoutMs);
-}
-
-function enforceRawOutputLimit(
-  outcome: ProviderProcessOutcome,
-  aggregateOutputBytes: number,
-): void {
-  const bytes =
-    Buffer.byteLength(outcome.stdout, 'utf8') +
-    Buffer.byteLength(outcome.stderr, 'utf8');
-  if (bytes > aggregateOutputBytes) {
-    throw outputLimitExceeded();
-  }
-}
-
-/**
- * Read and parse the provider-native output, enforcing the aggregate cap over
- * raw stdout, raw stderr, the provider-native semantic file/wrapper, and the
- * canonical normalized semantic output. Claude's native wrapper is the raw
- * stdout (already counted); Codex's is a bounded no-follow read of the
- * `--output-last-message` file, so a large semantic file fails even when the
- * event stdout is tiny.
- */
-function readNativeSemanticOutput(
-  providerId: ProviderId,
-  outcome: ProviderProcessOutcome,
-  semanticOutputPath: string,
-  aggregateOutputBytes: number,
-): unknown {
-  const stdoutBytes = Buffer.byteLength(outcome.stdout, 'utf8');
-  const stderrBytes = Buffer.byteLength(outcome.stderr, 'utf8');
-
-  let output: unknown;
-  let nativeBytes: number;
-  if (providerId === 'claude') {
-    output = parseClaudeNativeOutput(outcome.stdout);
-    nativeBytes = 0;
-  } else {
-    const file = readCodexSemanticFile(
-      semanticOutputPath,
-      stdoutBytes + stderrBytes,
-      aggregateOutputBytes,
-    );
-    output = parseJsonOrInvalid(file.content);
-    nativeBytes = file.bytes;
-  }
-
-  let normalized: string;
-  try {
-    normalized = canonicalJson(output);
-  } catch {
-    throw nativeOutputInvalid();
-  }
-  const aggregate =
-    stdoutBytes +
-    stderrBytes +
-    nativeBytes +
-    Buffer.byteLength(normalized, 'utf8');
-  if (aggregate > aggregateOutputBytes) {
-    throw outputLimitExceeded();
-  }
-  return output;
-}
-
-function readWrapperProtocolReceipt(
-  input: ProviderRunInput,
-  outcome: ProviderProcessOutcome,
-): ProviderWrapperProtocolReceipt | null {
-  if (input.wrapperProtocol === undefined) {
-    if (outcome.wrapperProtocolReceipt !== undefined) {
-      throw wrapperProtocolInvalid();
-    }
-    return null;
-  }
-  if (input.acceptanceBinding === undefined) throw requestUnbound();
-  let receipt: ProviderWrapperProtocolReceipt;
-  try {
-    receipt = assertProviderWrapperProtocolReceipt(
-      outcome.wrapperProtocolReceipt,
-      {
-        invocationId: input.request.invocationId,
-        requestDigest: input.request.requestDigest,
-        attemptId: input.acceptanceBinding.executionAttemptId,
-      },
-    );
-  } catch (error) {
-    if (error instanceof ProviderWrapperProtocolError) {
-      throw wrapperProtocolInvalid();
-    }
-    throw error;
-  }
-  return receipt;
-}
-
-/**
- * A process failure keeps its historical classification. If the wrapper also
- * produced a valid, exactly bound terminal receipt, retain that independent
- * evidence without letting malformed protocol output replace the process
- * failure that already occurred.
- */
-function tryReadWrapperProtocolReceipt(
-  input: ProviderRunInput,
-  outcome: ProviderProcessOutcome,
-): ProviderWrapperProtocolReceipt | null {
-  if (
-    input.wrapperProtocol === undefined ||
-    input.acceptanceBinding === undefined ||
-    outcome.wrapperProtocolReceipt === undefined
-  ) {
-    return null;
-  }
-  try {
-    return assertProviderWrapperProtocolReceipt(
-      outcome.wrapperProtocolReceipt,
-      {
-        invocationId: input.request.invocationId,
-        requestDigest: input.request.requestDigest,
-        attemptId: input.acceptanceBinding.executionAttemptId,
-      },
-    );
-  } catch {
-    return null;
-  }
-}
-
-function observeProtocolReceipt(
-  observer: AgentRuntimeAsyncSingleShotOptions['onProtocolReceipt'],
-  receipt: ProviderWrapperProtocolReceipt,
-): void {
-  try {
-    observer?.(receipt);
-  } catch {
-    // Receipt observation has no process-control or failure-classification
-    // authority. The original terminal failure remains the durable cause.
-  }
-}
-
-function readWrapperSemanticOutput(
-  outcome: ProviderProcessOutcome,
-  semanticOutputPath: string,
-  aggregateOutputBytes: number,
-): unknown {
-  const stdoutBytes = Buffer.byteLength(outcome.stdout, 'utf8');
-  const stderrBytes = Buffer.byteLength(outcome.stderr, 'utf8');
-  const file = readCodexSemanticFile(
-    semanticOutputPath,
-    stdoutBytes + stderrBytes,
-    aggregateOutputBytes,
-  );
-  const output = parseJsonOrInvalid(file.content);
-  let normalized: string;
-  try {
-    normalized = canonicalJson(output);
-  } catch {
-    throw nativeOutputInvalid();
-  }
-  if (
-    stdoutBytes +
-      stderrBytes +
-      file.bytes +
-      Buffer.byteLength(normalized, 'utf8') >
-    aggregateOutputBytes
-  ) {
-    throw outputLimitExceeded();
-  }
-  return output;
-}
-
-function parseClaudeNativeOutput(stdout: string): unknown {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(stdout);
-  } catch {
-    throw nativeOutputInvalid(
-      nativeOutputRepair(
-        'NATIVE_JSON_PARSE_FAILED',
-        'Provider native output was not valid JSON; return one complete object matching the target schema.',
-      ),
-    );
-  }
-  if (
-    !isRecord(parsed) ||
-    parsed.type !== 'result' ||
-    parsed.subtype !== 'success' ||
-    !('structured_output' in parsed)
-  ) {
-    throw nativeOutputInvalid(
-      nativeOutputRepair(
-        'NATIVE_WRAPPER_INVALID',
-        'Provider native output did not contain the required successful structured-output wrapper; return one complete object matching the target schema.',
-      ),
-    );
-  }
-  return parsed.structured_output;
-}
-
-function readCodexSemanticFile(
-  semanticOutputPath: string,
-  consumedBytes: number,
-  aggregateOutputBytes: number,
-): { content: string; bytes: number } {
-  const descriptor = openNoFollowRead(semanticOutputPath);
-  try {
-    const stats = fs.fstatSync(descriptor);
-    if (
-      !stats.isFile() ||
-      stats.nlink !== 1 ||
-      (stats.mode & 0o777) !== 0o600
-    ) {
-      throw nativeOutputInvalid();
-    }
-    const size = stats.size;
-    // Bound the read: a semantic file that alone pushes the aggregate over the
-    // cap fails before it is read into memory.
-    if (consumedBytes + size > aggregateOutputBytes) {
-      throw outputLimitExceeded();
-    }
-    const buffer = Buffer.alloc(size);
-    let read = 0;
-    while (read < size) {
-      const bytesRead = fs.readSync(
-        descriptor,
-        buffer,
-        read,
-        size - read,
-        read,
-      );
-      if (bytesRead <= 0) {
-        break;
-      }
-      read += bytesRead;
-    }
-    return { content: buffer.subarray(0, read).toString('utf8'), bytes: read };
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function parseJsonOrInvalid(content: string): unknown {
-  try {
-    return JSON.parse(content);
-  } catch {
-    throw nativeOutputInvalid(
-      nativeOutputRepair(
-        'NATIVE_JSON_PARSE_FAILED',
-        'Provider native output was not valid JSON; return one complete object matching the target schema.',
-      ),
-    );
-  }
-}
-
-function validateSemanticOutput(input: ProviderRunInput, value: unknown): void {
-  const validator = input.outputValidator;
-  if (
-    validator.id !== input.request.outputSchema.id ||
-    validator.version !== input.request.outputSchema.version ||
-    validator.digest !== input.request.outputSchema.digest
-  ) {
-    throw nativeOutputInvalid();
-  }
-  const frozen = deepFreeze(structuredClone(value));
-  let valid: boolean;
-  try {
-    valid = validator.validate(frozen);
-  } catch {
-    throw nativeOutputInvalid();
-  }
-  if (valid !== true) {
-    const validationErrors = collectSchemaValidationErrors(
-      input.semanticOutputSchema,
-      frozen,
-    );
-    // A repair that only says "it failed" makes the next attempt a re-roll: the
-    // provider sees its own output back and no reason to change it. Prefer the
-    // validator's own account of which field it rejected and why.
-    const semanticErrors = validator.explain?.(frozen) ?? [];
-    throw nativeOutputInvalid({
-      repairKind: validationErrors.length === 0 ? 'semantic' : 'schema',
-      previousOutput: frozen,
-      validationErrors:
-        validationErrors.length > 0
-          ? validationErrors
-          : semanticErrors.length > 0
-            ? semanticErrors
-            : [
-                {
-                  path: '/',
-                  code: 'SEMANTIC_VALIDATION_FAILED',
-                  message:
-                    'Output matched the structural schema but failed the bound semantic validator.',
-                },
-              ],
-    });
-  }
-}
-
-type ProviderValidationError = {
-  path: string;
-  code: string;
-  message: string;
-};
-
-function collectSchemaValidationErrors(
-  schema: unknown,
-  value: unknown,
-): ProviderValidationError[] {
-  const errors: ProviderValidationError[] = [];
-  const visit = (
-    candidate: unknown,
-    current: unknown,
-    pointer: string,
-  ): void => {
-    if (errors.length >= 64 || !isRecord(candidate)) return;
-    if (Array.isArray(candidate.enum)) {
-      const match = candidate.enum.some(
-        (allowed) => canonicalJson(allowed) === canonicalJson(current),
-      );
-      if (!match) {
-        errors.push({
-          path: pointer || '/',
-          code: 'ENUM_MISMATCH',
-          message: 'Value is not one of the schema enum alternatives.',
-        });
-        return;
-      }
-    }
-    if (candidate.type === 'object') {
-      if (!isRecord(current)) {
-        errors.push({
-          path: pointer || '/',
-          code: 'TYPE_OBJECT_REQUIRED',
-          message: 'Expected an object.',
-        });
-        return;
-      }
-      const properties = isRecord(candidate.properties)
-        ? candidate.properties
-        : {};
-      if (Array.isArray(candidate.required)) {
-        for (const name of candidate.required) {
-          if (typeof name === 'string' && !Object.hasOwn(current, name)) {
-            errors.push({
-              path: appendJsonPointer(pointer, name),
-              code: 'REQUIRED_FIELD_MISSING',
-              message: `Required field ${name} is missing.`,
-            });
-          }
-        }
-      }
-      for (const [name, child] of Object.entries(current)) {
-        if (Object.hasOwn(properties, name)) {
-          visit(properties[name], child, appendJsonPointer(pointer, name));
-        } else if (candidate.additionalProperties === false) {
-          errors.push({
-            path: appendJsonPointer(pointer, name),
-            code: 'ADDITIONAL_PROPERTY_FORBIDDEN',
-            message: `Property ${name} is not allowed.`,
-          });
-        }
-      }
-      return;
-    }
-    if (candidate.type === 'array') {
-      if (!Array.isArray(current)) {
-        errors.push({
-          path: pointer || '/',
-          code: 'TYPE_ARRAY_REQUIRED',
-          message: 'Expected an array.',
-        });
-        return;
-      }
-      if (
-        Number.isSafeInteger(candidate.minItems) &&
-        current.length < Number(candidate.minItems)
-      ) {
-        errors.push({
-          path: pointer || '/',
-          code: 'MIN_ITEMS',
-          message: `Expected at least ${String(candidate.minItems)} items.`,
-        });
-      }
-      if (
-        Number.isSafeInteger(candidate.maxItems) &&
-        current.length > Number(candidate.maxItems)
-      ) {
-        errors.push({
-          path: pointer || '/',
-          code: 'MAX_ITEMS',
-          message: `Expected at most ${String(candidate.maxItems)} items.`,
-        });
-      }
-      if (candidate.items !== undefined) {
-        current.forEach((child, index) =>
-          visit(
-            candidate.items,
-            child,
-            appendJsonPointer(pointer, String(index)),
-          ),
-        );
-      }
-      return;
-    }
-    if (candidate.type === 'string' && typeof current !== 'string') {
-      errors.push({
-        path: pointer || '/',
-        code: 'TYPE_STRING_REQUIRED',
-        message: 'Expected a string.',
-      });
-    } else if (candidate.type === 'number' && typeof current !== 'number') {
-      errors.push({
-        path: pointer || '/',
-        code: 'TYPE_NUMBER_REQUIRED',
-        message: 'Expected a number.',
-      });
-    } else if (candidate.type === 'integer' && !Number.isSafeInteger(current)) {
-      errors.push({
-        path: pointer || '/',
-        code: 'TYPE_INTEGER_REQUIRED',
-        message: 'Expected an integer.',
-      });
-    } else if (candidate.type === 'boolean' && typeof current !== 'boolean') {
-      errors.push({
-        path: pointer || '/',
-        code: 'TYPE_BOOLEAN_REQUIRED',
-        message: 'Expected a boolean.',
-      });
-    }
-  };
-  visit(schema, value, '');
-  return errors
-    .slice(0, 64)
-    .sort((left, right) =>
-      `${left.path}\0${left.code}`.localeCompare(
-        `${right.path}\0${right.code}`,
-      ),
-    );
-}
-
-function appendJsonPointer(pointer: string, segment: string): string {
-  const escaped = segment.replaceAll('~', '~0').replaceAll('/', '~1');
-  return `${pointer}/${escaped}`;
-}
-
-// --- Repository-wide concurrency slots ------------------------------------
-
-type ProviderSlot = { release(): void };
-
-type SlotOwner = {
-  pid: number;
-  device: bigint;
-  inode: bigint;
-  marker: string;
-};
-
-/**
- * Acquire one of the repository-wide concurrency slots under the configured
- * Git-common runtime root. All code-max slots are inspected — so a lowered
- * policy limit still counts a slot held above it — dead owners are safely
- * reclaimed, and the returned handle releases only the exact inode/token it owns.
- */
-function acquireProviderSlot(
-  paths: InvestigationRuntimePaths,
-  policyMaxConcurrent: number,
-  invocationId: string,
-): ProviderSlot {
-  return withPrivateRuntimeLock(
-    paths,
-    path.join(paths.locks, 'provider-slot-acquire.lock'),
-    () =>
-      acquireProviderSlotUnderGuard(paths, policyMaxConcurrent, invocationId),
-    'PROVIDER_CONCURRENCY_SLOT_GUARD_CONFLICT',
-    concurrencySlotFailed,
-  );
-}
-
-function acquireProviderSlotUnderGuard(
-  paths: InvestigationRuntimePaths,
-  policyMaxConcurrent: number,
-  invocationId: string,
-): ProviderSlot {
-  const slotsDirectory = path.join(paths.root, 'provider-slots');
-  ensurePrivateInvestigationDirectory(
-    paths,
-    slotsDirectory,
-    concurrencySlotFailed,
-  );
-  const limit =
-    Number.isInteger(policyMaxConcurrent) && policyMaxConcurrent > 0
-      ? Math.min(policyMaxConcurrent, CODE_MAX_CONCURRENCY)
-      : 1;
-  const freeSlotPaths: string[] = [];
-  let occupied = 0;
-  for (let index = 0; index < CODE_MAX_CONCURRENCY; index += 1) {
-    const slotPath = path.join(slotsDirectory, `slot-${index}.lock`);
-    const owner = readSlotOwner(slotPath);
-    if (owner === 'free') {
-      freeSlotPaths.push(slotPath);
-    } else if (owner === 'opaque') {
-      occupied += 1;
-    } else if (isProcessAlive(owner.pid)) {
-      occupied += 1;
-    } else if (reclaimDeadSlot(slotPath, owner)) {
-      freeSlotPaths.push(slotPath);
-    } else {
-      occupied += 1;
-    }
-  }
-  if (occupied >= limit) {
-    throw concurrencyLimitExceeded();
-  }
-  for (const slotPath of freeSlotPaths) {
-    const claimed = claimProviderSlot(slotPath, invocationId);
-    if (claimed) {
-      return claimed;
-    }
-  }
-  throw concurrencyLimitExceeded();
-}
-
-function readSlotOwner(slotPath: string): SlotOwner | 'free' | 'opaque' {
-  const linkStats = fs.lstatSync(slotPath, {
-    bigint: true,
-    throwIfNoEntry: false,
-  });
-  if (!linkStats) {
-    return 'free';
-  }
-  if (
-    !linkStats.isFile() ||
-    linkStats.isSymbolicLink() ||
-    linkStats.nlink !== 1n ||
-    (Number(linkStats.mode) & 0o777) !== 0o600
-  ) {
-    return 'opaque';
-  }
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(slotPath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    return 'opaque';
-  }
-  try {
-    const opened = fs.fstatSync(descriptor, { bigint: true });
-    if (opened.dev !== linkStats.dev || opened.ino !== linkStats.ino) {
-      return 'opaque';
-    }
-    const marker = fs.readFileSync(descriptor, 'utf8');
-    const value = JSON.parse(marker);
-    if (
-      isRecord(value) &&
-      typeof value.pid === 'number' &&
-      Number.isSafeInteger(value.pid) &&
-      value.pid > 0 &&
-      typeof value.ownerToken === 'string'
-    ) {
-      return {
-        pid: value.pid,
-        device: opened.dev,
-        inode: opened.ino,
-        marker,
-      };
-    }
-    return 'opaque';
-  } catch {
-    return 'opaque';
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function reclaimDeadSlot(slotPath: string, owner: SlotOwner): boolean {
-  const stats = fs.lstatSync(slotPath, { bigint: true, throwIfNoEntry: false });
-  if (!stats) {
-    return true;
-  }
-  if (stats.dev !== owner.device || stats.ino !== owner.inode) {
-    return false;
-  }
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(slotPath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    return false;
-  }
-  try {
-    const opened = fs.fstatSync(descriptor, { bigint: true });
-    if (
-      opened.dev !== owner.device ||
-      opened.ino !== owner.inode ||
-      fs.readFileSync(descriptor, 'utf8') !== owner.marker
-    ) {
-      return false;
-    }
-    const observed = fs.lstatSync(slotPath, {
-      bigint: true,
-      throwIfNoEntry: false,
-    });
-    if (
-      !observed ||
-      observed.dev !== owner.device ||
-      observed.ino !== owner.inode
-    ) {
-      return false;
-    }
-    fs.unlinkSync(slotPath);
-    fsyncDirectory(path.dirname(slotPath));
-    return true;
-  } catch {
-    return false;
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function claimProviderSlot(
-  slotPath: string,
-  invocationId: string,
-): ProviderSlot | null {
-  const marker = `${canonicalJson({
-    schemaVersion: 1,
-    ownerToken: crypto.randomUUID(),
-    invocationId,
-    pid: process.pid,
-    createdAt: new Date().toISOString(),
-  })}\n`;
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(
-      slotPath,
-      fs.constants.O_WRONLY |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        noFollowFlag(),
-      0o600,
-    );
-  } catch (error) {
-    if (isNodeError(error) && error.code === 'EEXIST') {
-      return null;
-    }
-    throw concurrencySlotFailed();
-  }
-  let owned: fs.BigIntStats;
-  try {
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, marker);
-    fs.fsyncSync(descriptor);
-    owned = fs.fstatSync(descriptor, { bigint: true });
-  } finally {
-    fs.closeSync(descriptor);
-  }
-  fsyncDirectory(path.dirname(slotPath));
-  let released = false;
-  return {
-    release() {
-      if (released) {
-        return;
-      }
-      released = true;
-      releaseOwnedSlot(slotPath, owned, marker);
-    },
-  };
-}
-
-function releaseOwnedSlot(
-  slotPath: string,
-  owned: fs.BigIntStats,
-  marker: string,
-): void {
-  const linkStats = fs.lstatSync(slotPath, {
-    bigint: true,
-    throwIfNoEntry: false,
-  });
-  if (
-    !linkStats ||
-    linkStats.dev !== owned.dev ||
-    linkStats.ino !== owned.ino
-  ) {
-    throw concurrencySlotFailed();
-  }
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(slotPath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    throw concurrencySlotFailed();
-  }
-  let owns = false;
-  try {
-    const opened = fs.fstatSync(descriptor, { bigint: true });
-    if (opened.dev === owned.dev && opened.ino === owned.ino) {
-      owns = fs.readFileSync(descriptor, 'utf8') === marker;
-    }
-  } finally {
-    fs.closeSync(descriptor);
-  }
-  if (owns) {
-    try {
-      fs.unlinkSync(slotPath);
-      fsyncDirectory(path.dirname(slotPath));
-    } catch {
-      throw concurrencySlotFailed();
-    }
-  } else {
-    throw concurrencySlotFailed();
-  }
-}
-
-function fsyncDirectory(directory: string): void {
-  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-  try {
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function isProcessAlive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return !(isNodeError(error) && error.code === 'ESRCH');
-  }
-}
-
 // --- Real host, filesystem, and process primitives ------------------------
 
 function realProviderRunnerHost(): ProviderRunnerHost {
@@ -2172,390 +1008,4 @@ function spawnBoundedProcess(
     stdout: result.stdout ?? '',
     stderr: result.stderr ?? '',
   };
-}
-
-function createExclusiveRuntimeDirectory(directory: string): void {
-  try {
-    fs.mkdirSync(directory, { mode: 0o700 });
-    fs.chmodSync(directory, 0o700);
-    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-    if (
-      !stats?.isDirectory() ||
-      stats.isSymbolicLink() ||
-      (stats.mode & 0o777) !== 0o700 ||
-      fs.realpathSync(directory) !== path.resolve(directory)
-    ) {
-      throw runtimePathUnsafe(directory);
-    }
-  } catch (error) {
-    if (error instanceof WorkflowError) {
-      throw error;
-    }
-    throw runtimePathUnsafe(directory);
-  }
-}
-
-type RuntimeFileIdentity = {
-  device: bigint;
-  inode: bigint;
-};
-
-function createExclusiveRuntimeFile(
-  filePath: string,
-  content: string,
-): RuntimeFileIdentity {
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(
-      filePath,
-      fs.constants.O_WRONLY |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        noFollowFlag(),
-      0o600,
-    );
-  } catch {
-    // A preplanted symlink, hardlink, or any other existing entry (EEXIST/ELOOP)
-    // is rejected without following or truncating its target.
-    throw runtimePathUnsafe(filePath);
-  }
-  try {
-    const stats = fs.fstatSync(descriptor, { bigint: true });
-    if (!stats.isFile() || stats.nlink !== 1n) {
-      throw runtimePathUnsafe(filePath);
-    }
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, content);
-    fs.fsyncSync(descriptor);
-    const written = fs.fstatSync(descriptor, { bigint: true });
-    return { device: written.dev, inode: written.ino };
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function assertExclusiveRuntimeFile(
-  filePath: string,
-  identity: RuntimeFileIdentity,
-  expectedContent: string,
-): void {
-  const linked = fs.lstatSync(filePath, {
-    bigint: true,
-    throwIfNoEntry: false,
-  });
-  if (
-    !linked?.isFile() ||
-    linked.isSymbolicLink() ||
-    linked.nlink !== 1n ||
-    linked.dev !== identity.device ||
-    linked.ino !== identity.inode ||
-    (linked.mode & 0o777n) !== 0o600n
-  ) {
-    throw runtimePathUnsafe(filePath);
-  }
-  let descriptor: number;
-  try {
-    descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    throw runtimePathUnsafe(filePath);
-  }
-  try {
-    const opened = fs.fstatSync(descriptor, { bigint: true });
-    if (
-      !opened.isFile() ||
-      opened.nlink !== 1n ||
-      opened.dev !== identity.device ||
-      opened.ino !== identity.inode ||
-      (opened.mode & 0o777n) !== 0o600n ||
-      !fs.readFileSync(descriptor).equals(Buffer.from(expectedContent, 'utf8'))
-    ) {
-      throw runtimePathUnsafe(filePath);
-    }
-  } finally {
-    fs.closeSync(descriptor);
-  }
-}
-
-function openNoFollowRead(filePath: string): number {
-  try {
-    return fs.openSync(filePath, fs.constants.O_RDONLY | noFollowFlag());
-  } catch {
-    throw nativeOutputInvalid(
-      nativeOutputRepair(
-        'NATIVE_OUTPUT_FILE_MISSING_OR_UNSAFE',
-        'Provider native output file was missing or unsafe; return one complete object matching the target schema.',
-      ),
-    );
-  }
-}
-
-function noFollowFlag(): number {
-  return process.platform !== 'win32' &&
-    typeof fs.constants.O_NOFOLLOW === 'number'
-    ? fs.constants.O_NOFOLLOW
-    : 0;
-}
-
-function isRegularExecutable(mode: number): boolean {
-  return (mode & 0o170000) === 0o100000 && (mode & 0o111) !== 0;
-}
-
-function sameIdentity(
-  before: ProviderExecutableIdentity,
-  after: ProviderExecutableIdentity,
-): boolean {
-  return canonicalJson(before) === canonicalJson(after);
-}
-
-function sha256(value: string): string {
-  return crypto.createHash('sha256').update(value).digest('hex');
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function isPromiseLike<T>(value: T | Promise<T>): value is Promise<T> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'then' in value &&
-    typeof value.then === 'function'
-  );
-}
-
-function isNodeError(error: unknown): error is NodeJS.ErrnoException {
-  return error instanceof Error && 'code' in error;
-}
-
-function deepFreeze<T>(value: T): T {
-  if (value !== null && typeof value === 'object') {
-    for (const key of Object.keys(value as Record<string, unknown>)) {
-      deepFreeze((value as Record<string, unknown>)[key]);
-    }
-    Object.freeze(value);
-  }
-  return value;
-}
-
-// --- Typed error constructors ---------------------------------------------
-
-function providerUnavailable(
-  providerId: ProviderId,
-  status: ProviderResolutionStatus,
-): WorkflowError {
-  return workflowError(
-    'PROVIDER_UNAVAILABLE',
-    `Provider "${providerId}" is not available: ${status}.`,
-    ExitCode.unsafeEnvironment,
-    { details: { status } },
-  );
-}
-
-function providerProfileStale(): WorkflowError {
-  return workflowError(
-    'PROVIDER_PROFILE_SNAPSHOT_STALE',
-    'The selected provider profile no longer matches its code-owned definition.',
-    ExitCode.staleState,
-  );
-}
-
-function requestUnbound(): WorkflowError {
-  return workflowError(
-    'PROVIDER_REQUEST_UNBOUND',
-    'Provider invocation input is not bound to the request provider.',
-    ExitCode.guard,
-  );
-}
-
-function wrapperProtocolAsyncRequired(): WorkflowError {
-  return workflowError(
-    'PROVIDER_WRAPPER_PROTOCOL_ASYNC_REQUIRED',
-    'Provider wrapper protocol execution requires the asynchronous Agent Runtime path.',
-    ExitCode.guard,
-  );
-}
-
-function wrapperProtocolInvalid(): WorkflowError {
-  return workflowError(
-    'PROVIDER_WRAPPER_PROTOCOL_INVALID',
-    'Provider wrapper protocol evidence is missing, malformed, or does not match the bound invocation.',
-    ExitCode.guard,
-  );
-}
-
-function wrapperReportedError(): WorkflowError {
-  return workflowError(
-    'PROVIDER_WRAPPER_REPORTED_ERROR',
-    'Provider wrapper reported a terminal execution error.',
-    ExitCode.verification,
-  );
-}
-
-function repositoryMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_REPOSITORY_MISMATCH',
-    'Provider request repository identity does not match this repository.',
-    ExitCode.guard,
-  );
-}
-
-function durableRequestMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_DURABLE_REQUEST_MISMATCH',
-    'Launch request does not match the durable canonical invocation request.',
-    ExitCode.staleState,
-  );
-}
-
-function inputManifestMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_INPUT_MANIFEST_MISMATCH',
-    'Durable input manifest does not match the request manifest digest.',
-    ExitCode.staleState,
-  );
-}
-
-function policyMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_POLICY_MISMATCH',
-    'Provider request is not bound to the current adapter policy or its limits.',
-    ExitCode.guard,
-  );
-}
-
-function policyBaselineMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_POLICY_BASELINE_MISMATCH',
-    'Live adapter policy bytes differ from the pinned baseline commit.',
-    ExitCode.staleState,
-  );
-}
-
-function configBaselineMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_CONFIG_BASELINE_MISMATCH',
-    'Live workflow configuration bytes differ from the pinned baseline commit.',
-    ExitCode.staleState,
-  );
-}
-
-function providerDisabled(providerId: ProviderId): WorkflowError {
-  return workflowError(
-    'PROVIDER_DISABLED',
-    `Provider "${providerId}" is disabled by the adapter policy.`,
-    ExitCode.guard,
-  );
-}
-
-function baselineMismatch(): WorkflowError {
-  return workflowError(
-    'PROVIDER_BASELINE_MISMATCH',
-    'Provider request baseline does not match the current repository HEAD/tree.',
-    ExitCode.staleState,
-  );
-}
-
-function outputSchemaUnbound(): WorkflowError {
-  return workflowError(
-    'PROVIDER_OUTPUT_SCHEMA_UNBOUND',
-    'Provider semantic output schema does not match the request output schema digest.',
-    ExitCode.guard,
-  );
-}
-
-function runtimeDirectoryUnsafe(directory: string): WorkflowError {
-  return workflowError(
-    'PROVIDER_RUNTIME_DIRECTORY_UNSAFE',
-    'Provider runtime directory is not the configured investigation invocation directory.',
-    ExitCode.unsafeEnvironment,
-    { details: { directory } },
-  );
-}
-
-function runtimePathUnsafe(filePath: string): WorkflowError {
-  return workflowError(
-    'PROVIDER_RUNTIME_PATH_UNSAFE',
-    'Provider runtime file is not an exclusively created no-follow single-link regular file.',
-    ExitCode.unsafeEnvironment,
-    { details: { path: filePath } },
-  );
-}
-
-function concurrencyLimitExceeded(): WorkflowError {
-  return workflowError(
-    'PROVIDER_CONCURRENCY_LIMIT',
-    'Provider concurrency limit reached for this repository.',
-    ExitCode.conflict,
-  );
-}
-
-function concurrencySlotFailed(): WorkflowError {
-  return workflowError(
-    'PROVIDER_CONCURRENCY_SLOT_FAILED',
-    'Unable to acquire a repository-wide provider concurrency slot.',
-    ExitCode.unsafeEnvironment,
-  );
-}
-
-function executableIdentityDrift(): WorkflowError {
-  return workflowError(
-    'PROVIDER_EXECUTABLE_IDENTITY_DRIFT',
-    'Provider executable identity changed around the invocation.',
-    ExitCode.unsafeEnvironment,
-  );
-}
-
-function governedProjectionDrift(changedCategories: string[]): WorkflowError {
-  return workflowError(
-    'PROVIDER_GOVERNED_PROJECTION_DRIFT',
-    'Governed projection changed during the provider invocation.',
-    ExitCode.verification,
-    { details: { changedCategories } },
-  );
-}
-
-function outputLimitExceeded(): WorkflowError {
-  return workflowError(
-    'PROVIDER_OUTPUT_LIMIT_EXCEEDED',
-    'Provider aggregate output exceeded the bounded byte limit.',
-    ExitCode.verification,
-  );
-}
-
-type NativeOutputRepair = {
-  repairKind: 'schema' | 'semantic';
-  previousOutput: unknown;
-  validationErrors: ProviderValidationError[];
-};
-
-function nativeOutputRepair(
-  reasonCode: string,
-  message: string,
-): NativeOutputRepair {
-  return {
-    repairKind: 'schema',
-    // Native bytes may contain prompts, credentials, or other provider output
-    // that is not safe to persist. Repair lineage therefore records only this
-    // fixed diagnostic sentinel and never copies raw stdout/file content.
-    previousOutput: {
-      kind: 'provider-native-output-unavailable',
-      reasonCode,
-    },
-    validationErrors: [{ path: '/', code: reasonCode, message }],
-  };
-}
-
-function nativeOutputInvalid(
-  repair: NativeOutputRepair = nativeOutputRepair(
-    'NATIVE_OUTPUT_INVALID',
-    'Provider native output was malformed; return one complete object matching the target schema.',
-  ),
-): WorkflowError {
-  return workflowError(
-    'PROVIDER_NATIVE_OUTPUT_INVALID',
-    'Provider native output was malformed or failed its bound output schema.',
-    ExitCode.verification,
-    { details: { repair } },
-  );
 }
