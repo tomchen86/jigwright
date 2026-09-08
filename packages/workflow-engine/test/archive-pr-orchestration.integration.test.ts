@@ -44,6 +44,7 @@ import {
 import {
   createArchivePublicationPreparation,
   persistArchivePublicationPreparation,
+  readArchivePublicationPreparation,
 } from '../src/runtime/storage-journal/archive-publication-store.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
@@ -969,6 +970,107 @@ test('prepares, publishes, and recovers one exact archive PR identity', async ()
       git(repository, ['worktree', 'remove', '--force', worktreePath]);
     }
     fs.rmSync(workspaceParent, { recursive: true, force: true });
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive preparation storage rejects altered bytes and links without repairing or replacing them', () => {
+  const repository = createFixtureRepository();
+  try {
+    const local = createLocalArchivePreparationFixture(repository);
+    const preparationPath = persistArchivePublicationPreparation(
+      local.runtimeRoot,
+      local.preparation,
+    );
+    const bytes = fs.readFileSync(preparationPath);
+    const aliasPath = path.join(local.runtimeRoot, 'preparation-alias.json');
+    assert.deepEqual(
+      readArchivePublicationPreparation(
+        local.runtimeRoot,
+        local.preparation.preparationIdentity,
+      ),
+      local.preparation,
+    );
+    const cases = [
+      {
+        name: 'extra field',
+        mutate: () =>
+          fs.writeFileSync(
+            preparationPath,
+            `${canonicalJson({ ...local.preparation, extra: true })}\n`,
+          ),
+        code: 'ARCHIVE_PR_PREPARATION_INVALID',
+      },
+      {
+        name: 'missing field',
+        mutate: () => {
+          const { assurance: _assurance, ...incomplete } = local.preparation;
+          fs.writeFileSync(preparationPath, `${canonicalJson(incomplete)}\n`);
+        },
+        code: 'ARCHIVE_PR_PREPARATION_INVALID',
+      },
+      {
+        name: 'noncanonical bytes',
+        mutate: () => fs.appendFileSync(preparationPath, '\n'),
+        code: 'ARCHIVE_PR_PREPARATION_STORE_UNSAFE',
+      },
+      {
+        name: 'digest inconsistent field',
+        mutate: () =>
+          fs.writeFileSync(
+            preparationPath,
+            `${canonicalJson({ ...local.preparation, candidateIdentity: '9'.repeat(64) })}\n`,
+          ),
+        code: 'ARCHIVE_PR_PREPARATION_INVALID',
+      },
+      {
+        name: 'hard link',
+        mutate: () => fs.linkSync(preparationPath, aliasPath),
+        code: 'ARCHIVE_PR_PREPARATION_STORE_UNSAFE',
+      },
+      {
+        name: 'symbolic link',
+        mutate: () => {
+          fs.renameSync(preparationPath, aliasPath);
+          fs.symlinkSync(aliasPath, preparationPath);
+        },
+        code: 'ARCHIVE_PR_PREPARATION_STORE_UNSAFE',
+      },
+    ];
+    for (const fixture of cases) {
+      fixture.mutate();
+      const before = snapshotDirectory(local.runtimeRoot);
+      const identity = fs.lstatSync(preparationPath).ino;
+      assert.throws(
+        () =>
+          readArchivePublicationPreparation(
+            local.runtimeRoot,
+            local.preparation.preparationIdentity,
+          ),
+        (error) => isWorkflowError(error, fixture.code),
+        fixture.name,
+      );
+      assert.throws(
+        () =>
+          persistArchivePublicationPreparation(
+            local.runtimeRoot,
+            local.preparation,
+          ),
+        (error) =>
+          isWorkflowError(error, 'ARCHIVE_PR_PREPARATION_STORE_UNSAFE'),
+        fixture.name,
+      );
+      assert.deepEqual(
+        snapshotDirectory(local.runtimeRoot),
+        before,
+        fixture.name,
+      );
+      assert.equal(fs.lstatSync(preparationPath).ino, identity, fixture.name);
+      fs.rmSync(preparationPath);
+      fs.rmSync(aliasPath, { force: true });
+      fs.writeFileSync(preparationPath, bytes, { mode: 0o600 });
+    }
+  } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });

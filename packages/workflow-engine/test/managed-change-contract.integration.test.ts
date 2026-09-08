@@ -512,6 +512,27 @@ test('managed contract rejects unsafe metadata and incomplete artifact trees bef
   }
 });
 
+test('managed readiness rejects a missing guard even when tasks and provider status are complete', () => {
+  const repository = createManagedRepository();
+  try {
+    loadValidatedChangeContract(repository, CHANGE_ID);
+    const tasks = fs.readFileSync(changePath(repository, 'tasks.md'));
+    fs.rmSync(changePath(repository, 'guard.json'));
+
+    assert.throws(
+      () => loadValidatedChangeContract(repository, CHANGE_ID),
+      (error) => isWorkflowError(error, 'MISSING_CHANGE_ARTIFACT'),
+    );
+    assert.deepEqual(
+      fs.readFileSync(changePath(repository, 'tasks.md')),
+      tasks,
+    );
+    assert.equal(fs.existsSync(changePath(repository, 'guard.json')), false);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('current managed tree rejects paths outside its schema grammar', () => {
   const repository = createFixtureRepository();
   try {

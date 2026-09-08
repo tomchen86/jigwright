@@ -17,6 +17,7 @@ import {
   hasExactTrailers,
   previewExactStaging,
   stageExactPaths,
+  updateManagedRef,
 } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { projectTasksCompleted } from '../src/runtime/managed-documents/transaction/task-projection.ts';
@@ -30,8 +31,13 @@ import {
   readFinalizeTransaction,
 } from '../src/runtime/repository-transaction/finalize-transaction.ts';
 import { resolveFinalizeCheckPolicy } from '../src/modules/assurance/finalize-check-policy.ts';
-import { writeJsonAtomic } from '../src/runtime/session-workspace/session-store.ts';
 import {
+  runtimePaths,
+  withSessionOperation,
+  writeJsonAtomic,
+} from '../src/runtime/session-workspace/session-store.ts';
+import {
+  abortSession,
   checkSession,
   getSession,
   startSession,
@@ -47,6 +53,7 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import { snapshotTaskPreflightState } from './support/session-lifecycle-fixture.ts';
 
 function createFixtureRepository(): string {
   return createBareFixtureRepository();
@@ -280,6 +287,149 @@ test('current report authorizes completion, exact staging, and commit', () => {
         (entry) => entry.hash,
       ),
       [committed.commitHash],
+    );
+    const next = startSession(repository, 'demo-change', '1.2');
+    assert.equal(next.baseline.head, committed.commitHash);
+    assert.notEqual(next.baseline.head, session.baseline.head);
+    assert.deepEqual(next.planningAssurance, session.planningAssurance);
+    const reviewPath = 'openspec/changes/demo-change/plan-review.json';
+    assert.equal(
+      git(repository, ['show', `${committed.commitHash}:${reviewPath}`]),
+      git(repository, ['show', `${session.baseline.head}:${reviewPath}`]),
+    );
+    abortSession(
+      repository,
+      next.sessionId,
+      'Verified unchanged planning generation.',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('a held session operation rejects competing completion transitions without changing state', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    checkSession(repository, session.sessionId);
+    const runtime = runtimePaths(
+      fs.realpathSync(path.join(repository, '.git')),
+      'workflow-engine',
+    );
+
+    withSessionOperation(runtime, session.sessionId, () => {
+      const before = snapshotTaskPreflightState(repository);
+      const transitions = [
+        () => checkSession(repository, session.sessionId),
+        () => completeTask(repository, session.sessionId),
+        () => finishSession(repository, session.sessionId),
+        () => commitSession(repository, session.sessionId, 'Competing commit'),
+        () => abortSession(repository, session.sessionId, 'Competing abort'),
+      ];
+      for (const transition of transitions) {
+        assert.throws(transition, (error) =>
+          isWorkflowError(error, 'SESSION_OPERATION_CONFLICT'),
+        );
+        assert.deepEqual(snapshotTaskPreflightState(repository), before);
+      }
+    });
+    assert.deepEqual(
+      completeTask(repository, session.sessionId).completedTaskIds,
+      ['1.1'],
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('finish preserves manual staging when current completion evidence exists', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    git(repository, ['add', '--', 'src/feature.ts']);
+    checkSession(repository, session.sessionId);
+    const completion = completeTask(repository, session.sessionId);
+    const indexBefore = git(repository, ['write-tree']).trim();
+    const projectionBefore = git(repository, ['diff', 'HEAD', '--binary']);
+    const sessionBefore = getSession(repository, session.sessionId);
+
+    assert.throws(
+      () => finishSession(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'STAGING_ALREADY_PRESENT'),
+    );
+    assert.equal(git(repository, ['write-tree']).trim(), indexBefore);
+    assert.equal(
+      git(repository, ['diff', '--cached', '--name-only']).trim(),
+      'src/feature.ts',
+    );
+    assert.equal(
+      git(repository, ['diff', 'HEAD', '--binary']),
+      projectionBefore,
+    );
+    assert.deepEqual(getSession(repository, session.sessionId), sessionBefore);
+    assert.equal(sessionBefore.completionReportId, completion.reportId);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('managed commit refuses a moved branch and its ref CAS preserves the competing commit', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    prepareCurrentV3Change(repository, { additionalPendingTask: true });
+    const session = startSession(repository, 'demo-change', '1.1');
+    fs.writeFileSync(path.join(repository, 'src/feature.ts'), 'export {};\n');
+    checkSession(repository, session.sessionId);
+    completeTask(repository, session.sessionId);
+    const finished = finishSession(repository, session.sessionId);
+    const competingCommit = git(repository, [
+      'commit-tree',
+      session.baseline.tree,
+      '-p',
+      session.baseline.head,
+      '-m',
+      'Concurrent branch update',
+    ]).trim();
+    git(repository, [
+      'update-ref',
+      'HEAD',
+      competingCommit,
+      session.baseline.head,
+    ]);
+    const before = snapshotTaskPreflightState(repository);
+
+    assert.throws(
+      () => commitSession(repository, session.sessionId, 'Complete demo task'),
+      (error) => isWorkflowError(error, 'SESSION_HEAD_CHANGED'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+
+    const candidateCommit = git(repository, [
+      'commit-tree',
+      finished.tree,
+      '-p',
+      session.baseline.head,
+      '-m',
+      'Complete demo task',
+      '-m',
+      'Change: demo-change\nTask: 1.1',
+    ]).trim();
+    assert.throws(
+      () =>
+        updateManagedRef(repository, session.baseline.head, candidateCommit),
+      (error) => isWorkflowError(error, 'GIT_COMMAND_FAILED'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.equal(
+      git(repository, ['rev-parse', 'HEAD']).trim(),
+      competingCommit,
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

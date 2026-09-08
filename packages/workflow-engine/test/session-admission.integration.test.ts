@@ -125,6 +125,99 @@ test('task-session preflight reuses exact admission without mutating Git, runtim
   }
 });
 
+test('task ingress pins the latest plan and rejects an older PlanReview after advisory preflight', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const first = prepareCurrentChange(repository);
+    const firstCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+    const reviewPath = path.join(
+      repository,
+      'openspec/changes/demo-change/plan-review.json',
+    );
+    const oldReview = fs.readFileSync(reviewPath);
+    fs.appendFileSync(
+      path.join(repository, 'openspec/changes/demo-change/proposal.md'),
+      '\nClarify the current planning contract.\n',
+    );
+    const current = prepareCurrentChange(repository);
+    const currentCommit = git(repository, ['rev-parse', 'HEAD']).trim();
+    assert.equal(git(repository, ['rev-parse', 'HEAD^']).trim(), firstCommit);
+    assert.notEqual(
+      current.planningAssurance.planningGenerationId,
+      first.planningAssurance.planningGenerationId,
+    );
+
+    const started = startSession(repository, 'demo-change', '1.1');
+    assert.equal(started.baseline.head, currentCommit);
+    assert.equal(
+      started.planningAssurance?.planningGenerationId,
+      current.planningAssurance.planningGenerationId,
+    );
+    assert.equal(
+      started.planningAssurance?.reviewNodeId,
+      current.planningAssurance.reviewNodeId,
+    );
+    abortSession(
+      repository,
+      started.sessionId,
+      'Verified latest generation admission.',
+    );
+
+    const advisory = preflightTaskSession(repository, 'demo-change', '1.1');
+    assert.equal(advisory.status, 'ready');
+    assert.equal(advisory.authority, 'advisory');
+    assert.equal(advisory.observed.head, currentCommit);
+    fs.writeFileSync(reviewPath, oldReview);
+    git(repository, [
+      'add',
+      '--',
+      'openspec/changes/demo-change/plan-review.json',
+    ]);
+    git(repository, ['commit', '--amend', '--no-edit']);
+    assert.equal(git(repository, ['status', '--porcelain']), '');
+
+    const runtime = runtimePaths(
+      fs.realpathSync(path.join(repository, '.git')),
+      'workflow-engine',
+    );
+    const identity = {
+      sessionId: createSessionId(),
+      createdAt: new Date().toISOString(),
+    };
+    withRepositoryLifecycleOperation(runtime, (assertRepositoryLock) => {
+      const before = snapshotTaskPreflightState(repository);
+      assert.throws(
+        () =>
+          startSessionUnderLifecycleLock(
+            repository,
+            'demo-change',
+            '1.1',
+            identity,
+            assertRepositoryLock,
+          ),
+        (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
+      );
+      assert.deepEqual(snapshotTaskPreflightState(repository), before);
+      assert.equal(
+        fs.existsSync(
+          path.join(runtime.sessions, `${identity.sessionId}.json`),
+        ),
+        false,
+      );
+    });
+    const before = snapshotTaskPreflightState(repository);
+    assert.throws(
+      () => startSession(repository, 'demo-change', '1.1'),
+      (error) => isWorkflowError(error, 'OPENSPEC_CHANGE_NOT_READY'),
+    );
+    assert.deepEqual(snapshotTaskPreflightState(repository), before);
+    assert.deepEqual(fs.readFileSync(reviewPath), oldReview);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('task-session worktree registration parser rejects malformed porcelain ordering and identities', () => {
   const head = 'a'.repeat(40);
   assert.deepEqual(

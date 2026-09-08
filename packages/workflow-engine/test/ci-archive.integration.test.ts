@@ -17,6 +17,7 @@ import {
   reconcileTaskDiffReview,
 } from '../src/application/finalize/task-diff-review-lifecycle.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
+import { investigationManifestPublicationNamespace } from '../src/runtime/managed-documents/transaction/investigation-publication.ts';
 import { validateCiArchiveCommit } from '../src/entrypoints/ci/ci-archive.ts';
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
 import {
@@ -135,6 +136,91 @@ test('CI replays an archive from Git without trusting local runtime evidence', (
     );
   } finally {
     fs.rmSync(fixture.repository, { recursive: true, force: true });
+  }
+});
+
+test('a raw archive with valid projected content is rejected without workflow task evidence', () => {
+  const fixture = archivedFixture();
+  const repository = fixture.repository;
+  try {
+    assert.equal(
+      validateCiArchiveCommit(repository, fixture.head, 'demo-change')
+        .archivePath,
+      fixture.archivePath,
+    );
+    // Preserve both validated trees while removing the managed task commit
+    // from the ancestry of this separately created archive claim.
+    const rawCompletion = git(repository, [
+      'commit-tree',
+      `${fixture.base}^{tree}`,
+      '-p',
+      `${fixture.base}^`,
+      '-m',
+      'Raw implementation and checkbox update',
+    ]).trim();
+    const rawArchive = git(repository, [
+      'commit-tree',
+      `${fixture.head}^{tree}`,
+      '-p',
+      rawCompletion,
+      '-m',
+      'Archive demo-change',
+      '-m',
+      'Change: demo-change\nTransition: archive',
+    ]).trim();
+    assert.equal(git(repository, ['diff', fixture.base, rawCompletion]), '');
+    assert.equal(git(repository, ['diff', fixture.head, rawArchive]), '');
+    assert.throws(
+      () => validateCiArchiveCommit(repository, rawArchive, 'demo-change'),
+      (error) => isWorkflowError(error, 'CI_ARCHIVE_TASK_EVIDENCE_INVALID'),
+    );
+
+    git(repository, ['reset', '--hard', rawCompletion]);
+    git(repository, ['update-ref', 'refs/remotes/origin/main', rawCompletion]);
+    const manifest = JSON.parse(
+      fs.readFileSync(
+        path.join(
+          repository,
+          'openspec/changes/demo-change/investigation.json',
+        ),
+        'utf8',
+      ),
+    ) as { repositoryId: string; changeId: string; investigationId: string };
+    const namespace = investigationManifestPublicationNamespace(manifest);
+    assert.ok(archivedFixtureTemplate);
+    fs.mkdirSync(runtimeRoot(repository), { recursive: true, mode: 0o700 });
+    fs.cpSync(
+      path.join(runtimeRoot(archivedFixtureTemplate.repository), namespace),
+      path.join(runtimeRoot(repository), namespace),
+      { recursive: true },
+    );
+    const before = {
+      refs: git(repository, ['show-ref']),
+      status: git(repository, ['status', '--porcelain=v2', '-z']),
+      tasks: fs.readFileSync(
+        path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+      ),
+    };
+    assert.throws(
+      () => commitArchiveTransition(repository, 'demo-change'),
+      (error) => isWorkflowError(error, 'ARCHIVE_TASK_EVIDENCE_MISSING'),
+    );
+    assert.deepEqual(
+      {
+        refs: git(repository, ['show-ref']),
+        status: git(repository, ['status', '--porcelain=v2', '-z']),
+        tasks: fs.readFileSync(
+          path.join(repository, 'openspec/changes/demo-change/tasks.md'),
+        ),
+      },
+      before,
+    );
+    assert.equal(
+      fs.existsSync(path.join(repository, fixture.archivePath)),
+      false,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
   }
 });
 

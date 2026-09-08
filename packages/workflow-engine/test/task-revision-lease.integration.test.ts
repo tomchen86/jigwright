@@ -20,6 +20,8 @@ import {
 import type { MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { commitChangedPaths } from '../src/runtime/repository-transaction/git-transitions.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
+import { completeTask } from '../src/application/finalize/lifecycle.ts';
+import { readImmutableReport } from '../src/runtime/storage-journal/report-store.ts';
 import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
 import {
   abortSession,
@@ -248,9 +250,34 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
     const implementationPath = path.join(repository, 'src/feature.ts');
     const implementation = 'export const value = 1;\n';
     fs.writeFileSync(implementationPath, implementation);
-    reviseTask(repository, session.sessionId, 'correct-plan', {
+    const checked = checkSession(repository, session.sessionId);
+    const reportDirectory = path.join(runtimeRoot(repository), 'reports');
+    const oldReport = readImmutableReport(
+      reportDirectory,
+      session.sessionId,
+      checked.reportId,
+    );
+    assert.equal(
+      getSession(repository, session.sessionId).latestCheckReportId,
+      checked.reportId,
+    );
+    assert.throws(
+      () => commitPlanningTransition(repository, 'demo-change'),
+      (error) => workflowCode(error) === 'ACTIVE_SESSION_CONFLICT',
+    );
+    const revising = reviseTask(repository, session.sessionId, 'correct-plan', {
       now: () => STARTED_AT,
     });
+    assert.equal(revising.session.state, 'revising');
+    assert.equal(revising.session.latestCheckReportId, undefined);
+    assert.deepEqual(
+      listSessions(repository).filter(({ state }) => state === 'active'),
+      [],
+    );
+    assert.throws(
+      () => checkSession(repository, session.sessionId),
+      (error) => workflowCode(error) === 'SESSION_NOT_ACTIVE',
+    );
     const parent = git(repository, ['rev-parse', 'HEAD']).trim();
 
     fs.appendFileSync(
@@ -271,6 +298,19 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       resumed.session.planningAssurance?.planningGenerationId,
       reviewed.planningAssurance.planningGenerationId,
     );
+    assert.notEqual(
+      resumed.session.planningAssurance?.planningGenerationId,
+      session.planningAssurance?.planningGenerationId,
+    );
+    assert.equal(resumed.session.latestCheckReportId, undefined);
+    assert.deepEqual(
+      readImmutableReport(reportDirectory, session.sessionId, checked.reportId),
+      oldReport,
+    );
+    assert.throws(
+      () => completeTask(repository, session.sessionId),
+      (error) => workflowCode(error) === 'CURRENT_CHECK_REPORT_REQUIRED',
+    );
     assert.equal(resumed.lease.phase, 'completed');
     assert.equal(fs.readFileSync(implementationPath, 'utf8'), implementation);
     assert.deepEqual(listChangedPaths(repository, planCommit), [
@@ -286,7 +326,17 @@ test('resume-task commits only a freshly reviewed plan and rebinds the same sess
       ),
       false,
     );
-    assert.equal(checkSession(repository, session.sessionId).passed, true);
+    const rechecked = checkSession(repository, session.sessionId);
+    assert.equal(rechecked.passed, true);
+    assert.notEqual(rechecked.reportId, checked.reportId);
+    assert.deepEqual(
+      readImmutableReport(
+        reportDirectory,
+        session.sessionId,
+        rechecked.reportId,
+      ).planningAssurance,
+      resumed.session.planningAssurance,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

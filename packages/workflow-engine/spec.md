@@ -766,6 +766,7 @@ test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v
 
 #### Scenario: Execution-policy artifact is absent
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/managed-change-contract.integration.test.ts#managed readiness rejects a missing guard even when tasks and provider status are complete
 
 - **GIVEN** a managed change has tasks but no `guard.json`
 - **WHEN** readiness is evaluated
@@ -798,6 +799,7 @@ test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI replays a
 
 #### Scenario: Replayed repository policy is absent
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI refuses a plan without committed repository policy despite valid checkout policy
 
 - **GIVEN** a planning commit lacks the repository policy required to resolve its current schema
 - **WHEN** immutable planning replay runs
@@ -900,6 +902,7 @@ test: packages/workflow-engine/test/planning-transition.integration.test.ts#plan
 
 #### Scenario: Planning revision occurs after execution begins
 covers: #Requirement: Authorized Planning Transition
+test: packages/workflow-engine/test/task-revision-lease.integration.test.ts#resume-task commits only a freshly reviewed plan and rebinds the same session
 
 - **GIVEN** implementation evidence exists for a change
 - **WHEN** an authorized planning revision changes the contract
@@ -936,6 +939,7 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 
 #### Scenario: Raw archive diff lacks workflow evidence
 covers: #Requirement: Workflow-Owned Archive Authorization
+test: packages/workflow-engine/test/ci-archive.integration.test.ts#a raw archive with valid projected content is rejected without workflow task evidence
 
 - **GIVEN** an archive-shaped diff was produced outside the workflow transition
 - **WHEN** commit or CI verification runs
@@ -1149,6 +1153,7 @@ They MUST NOT infer the governing generation from a branch name, current working
 
 #### Scenario: Task checkboxes change after plan commit
 covers: #Requirement: Governing Planning Generation Is Resolved From Managed Git History
+test: packages/workflow-engine/test/completion.integration.test.ts#current report authorizes completion, exact staging, and commit
 
 - **GIVEN** a managed task completion changes only authorized checkbox projections
 - **WHEN** a later task or CI resolves the governing plan
@@ -1157,6 +1162,7 @@ covers: #Requirement: Governing Planning Generation Is Resolved From Managed Git
 
 #### Scenario: A later plan revision exists
 covers: #Requirement: Governing Planning Generation Is Resolved From Managed Git History
+test: packages/workflow-engine/test/session-admission.integration.test.ts#task ingress pins the latest plan and rejects an older PlanReview after advisory preflight
 
 - **GIVEN** a reachable newer managed plan commit supersedes an older generation
 - **WHEN** task start resolves planning authority
@@ -1365,6 +1371,7 @@ test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts
 
 #### Scenario: A stored field or byte is altered
 covers: #Requirement: Prepared Publication Payload Is Exact and Durable
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive preparation storage rejects altered bytes and links without repairing or replacing them
 
 - **WHEN** a preparation has an extra, missing, noncanonical, linked, or digest-inconsistent value
 - **THEN** the store fails closed without repairing or replacing the record
@@ -1552,6 +1559,7 @@ current admission fact.
 
 #### Scenario: Current authority changes after preflight
 covers: #Requirement: Current Planning Authority Owns Admission
+test: packages/workflow-engine/test/session-admission.integration.test.ts#task ingress pins the latest plan and rejects an older PlanReview after advisory preflight
 
 - **WHEN** Manifest, PlanReview, routing, task, policy, or assignment facts drift before ingress
 - **THEN** ingress rejects the stale candidate under the lifecycle locks
@@ -1723,6 +1731,7 @@ test: packages/workflow-engine/test/session-schema.integration.test.ts#v3 sessio
 
 #### Scenario: Plan review belongs to an older generation
 covers: #Requirement: Blocking Session Preflight
+test: packages/workflow-engine/test/session-admission.integration.test.ts#task ingress pins the latest plan and rejects an older PlanReview after advisory preflight
 
 - **GIVEN** a newer managed plan generation supersedes the generation named by PlanReview
 - **WHEN** task start is requested
@@ -1911,6 +1920,7 @@ test: packages/workflow-engine/test/completion.integration.test.ts#current repor
 
 #### Scenario: Concurrent transition is requested
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#a held session operation rejects competing completion transitions without changing state
 
 - GIVEN one state-changing session operation holds the operation lock
 - WHEN another check, completion, finish, commit, or abort is requested
@@ -1919,6 +1929,7 @@ covers: #Requirement: Serialized Completion Authority
 
 #### Scenario: Existing manual staging is present
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#finish preserves manual staging when current completion evidence exists
 
 - GIVEN a completion projection has current evidence
 - AND the index already contains manually staged paths
@@ -1936,6 +1947,7 @@ compare-and-swap ref update. Repository hooks SHALL NOT be commit authority.
 
 #### Scenario: Branch moves before commit authorization
 covers: #Requirement: Atomic Managed Commit
+test: packages/workflow-engine/test/completion.integration.test.ts#managed commit refuses a moved branch and its ref CAS preserves the competing commit
 
 - GIVEN a verified finish report pins one baseline
 - AND the branch no longer points to that baseline

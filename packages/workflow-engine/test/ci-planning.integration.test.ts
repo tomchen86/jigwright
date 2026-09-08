@@ -95,6 +95,48 @@ test('CI replays a configured current schema from immutable consumer config', ()
   }
 });
 
+test('CI refuses a plan without committed repository policy despite valid checkout policy', () => {
+  const repository = prepareCurrentV3IntroductionRepository({
+    currentSchemaName: 'orbit-spec-v1',
+  });
+  try {
+    const plan = commitPlanningTransition(repository, 'demo-change');
+    assert.equal(
+      validateCiPlanningCommit(repository, plan.commitHash, 'demo-change')
+        .schemaName,
+      'orbit-spec-v1',
+    );
+    const consumerPath = 'workflow/repository-consumer.json';
+    const checkoutPolicy = fs.readFileSync(path.join(repository, consumerPath));
+    git(repository, ['update-index', '--force-remove', consumerPath]);
+    const tree = git(repository, ['write-tree']).trim();
+    const missingPolicyPlan = git(repository, [
+      'commit-tree',
+      tree,
+      '-p',
+      `${plan.commitHash}^`,
+      '-m',
+      git(repository, ['show', '-s', '--format=%B', plan.commitHash]).trim(),
+    ]).trim();
+
+    assert.throws(
+      () =>
+        validateCiPlanningCommit(repository, missingPolicyPlan, 'demo-change'),
+      (error) => isWorkflowError(error, 'REPOSITORY_CONSUMER_CONFIG_MISSING'),
+    );
+    assert.deepEqual(
+      fs.readFileSync(path.join(repository, consumerPath)),
+      checkoutPolicy,
+    );
+    assert.equal(
+      git(repository, ['rev-parse', 'HEAD']).trim(),
+      plan.commitHash,
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('CI rejects v3 planning assurance whose baseline is not the exact plan parent tree', () => {
   const repository = createFixtureRepository();
   try {
