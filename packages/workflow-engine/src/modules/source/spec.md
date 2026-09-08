@@ -16,6 +16,7 @@ ignored or bypassed.
 
 #### Scenario: Repository baseline is valid
 covers: #Requirement: Normative Base Specs Pass Pinned Strict Validation
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#repository base specs satisfy pinned strict validation
 
 - **WHEN** the registered repository contract validates all normative base
   specifications with the pinned OpenSpec adapter

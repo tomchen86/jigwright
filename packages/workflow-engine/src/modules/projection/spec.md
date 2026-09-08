@@ -16,6 +16,7 @@ Existing transition authority SHALL remain limited to its reviewed entries.
 
 #### Scenario: A source selects an undeclared engine path
 covers: #Requirement: Declarative Projection Catalog
+test: packages/workflow-engine/test/projection-service.contract.test.ts#engine source paths require the catalog target or explicit resolved adapter targets
 
 - **WHEN** its output differs from the fixed catalog path or explicit configured target binding
 - **THEN** projection fails before any write
@@ -31,6 +32,7 @@ Validation SHALL NOT trust a stored digest as proof of currentness.
 
 #### Scenario: Concurrent editing during diff review
 covers: #Requirement: Deterministic Shared Projection Services
+test: packages/workflow-engine/test/projection-service.contract.test.ts#a later target edited during an earlier write is not overwritten
 
 - **WHEN** a target changes after preparation or during an earlier target write
 - **THEN** the next target comparison reports a conflict instead of overwriting the new content
@@ -68,6 +70,7 @@ unchanged. This reuse SHALL NOT silently add markers to existing curated files.
 
 #### Scenario: Approved scoped replacement
 covers: #Requirement: Curated Refresh Shares Region Splicing
+test: packages/workflow-engine/test/document-refresh.integration.test.ts#approved refresh replaces exactly one reviewed document section
 
 - **WHEN** a current reviewed curated replacement is applied
 - **THEN** it has the same output bytes and scope as before the refactor

@@ -194,6 +194,7 @@ preconditions for executing repository-controlled assurance commands.
 
 #### Scenario: Exact event head is checked out safely
 covers: #Requirement: Credential-Free Assurance Checkout Compatibility
+test: packages/workflow-engine/test/ci.integration.test.ts#workflow assurance CI is read-only and policy paths have owners
 
 - **WHEN** pull-request assurance prepares the candidate repository
 - **THEN** the pinned checkout resolves the exact event head with full
@@ -316,6 +317,7 @@ the archive parent — MUST be unaffected.
 
 #### Scenario: Stale local branch no longer blocks archive
 covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility resolves the base from the protected remote-tracking ref
 
 - GIVEN the local protected branch is behind the remote-tracking ref
 - AND every canonical task commit is reachable from the remote-tracking ref
@@ -325,6 +327,7 @@ covers: #Requirement: Archive base resolves from the protected remote-tracking r
 
 #### Scenario: Unresolvable base fails closed
 covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility fails closed when the remote-tracking base is unresolvable
 
 - GIVEN the protected branch's remote-tracking ref does not resolve to a
   commit
@@ -333,6 +336,7 @@ covers: #Requirement: Archive base resolves from the protected remote-tracking r
 
 #### Scenario: Task commit off the base is still rejected
 covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility rejects task evidence not reachable from configured base
 
 - GIVEN a canonical task commit is not reachable from the protected
   remote-tracking ref

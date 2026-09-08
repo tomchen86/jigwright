@@ -685,6 +685,7 @@ postinstall script MUST remain denied by repository supply-chain policy.
 
 #### Scenario: Pinned planning command runs
 covers: #Requirement: Exact Project-Local OpenSpec Surface
+test: packages/workflow-engine/test/openspec-doctor.integration.test.ts#real workflow doctor reports the pinned local OpenSpec installation
 
 - **GIVEN** the manifest, lockfile, build policy, and installed package resolve
   to the same exact version
@@ -695,6 +696,7 @@ covers: #Requirement: Exact Project-Local OpenSpec Surface
 
 #### Scenario: OpenSpec resolution drifts
 covers: #Requirement: Exact Project-Local OpenSpec Surface
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#OpenSpec adapter requires the exact lock provenance and denied build script
 
 - **GIVEN** the installed version, resolved schema source, build policy, or
   returned planning root differs from repository policy
@@ -710,6 +712,7 @@ The adapter MUST NOT expose a generic command pass-through.
 
 #### Scenario: Machine response matches its operation contract
 covers: #Requirement: Typed and Isolated OpenSpec Adapter
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#OpenSpec adapter pins argv, cwd, environment, and temporary homes
 
 - **GIVEN** the pinned CLI returns one valid JSON document with the expected
   payload, root, paths, version, exit status, and allowlisted diagnostics
@@ -718,6 +721,7 @@ covers: #Requirement: Typed and Isolated OpenSpec Adapter
 
 #### Scenario: Machine response is ambiguous or unsafe
 covers: #Requirement: Typed and Isolated OpenSpec Adapter
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#OpenSpec adapter rejects ambiguous output, stderr drift, and external roots
 
 - **GIVEN** the process times out, exceeds its output limit, returns mixed
   prose/JSON, unexpected stderr, a malformed payload, or an external root/path
@@ -735,6 +739,7 @@ The built-in `spec-driven` graph SHALL remain a distinct named OpenSpec package 
 
 #### Scenario: Investigation-first managed change contains all required artifacts
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/managed-change-contract.integration.test.ts#validated managed contract binds OpenSpec readiness to a full mode-aware snapshot
 
 - **GIVEN** a change declares the repository-configured current schema
 - **AND** its current investigation, proposal, delta specs, design, tasks, guard, execution, and plan review exist
@@ -743,6 +748,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Eligible investigation exemption is selected
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/planning-transition.integration.test.ts#plan-commit authorizes an exact reviewed current investigation exemption and binds its generation
 
 - **GIVEN** a current managed change
 - **AND** `investigation.json` selects a current eligible structured exemption
@@ -752,6 +758,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Empty investigation masquerades as exemption
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#ordinary v3 is built directly, sealed separately, and replayed from pinned Git
 
 - **GIVEN** a current investigation artifact contains empty scan or WHY collections but no eligible typed exemption
 - **WHEN** readiness is evaluated
@@ -766,6 +773,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Investigation-first artifact is absent
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#real pinned OpenSpec adapter validates package, schema, status, and change
 
 - **GIVEN** a current change lacks investigation, execution, or plan-review artifact
 - **WHEN** readiness is evaluated
@@ -773,6 +781,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Managed change selects a non-current schema
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/managed-change-contract.integration.test.ts#validated managed contract rejects a non-managed schema at admission
 
 - **GIVEN** the repository configuration names one validated current schema
 - **WHEN** a planning introduction, revision, task, CI, or archive replay selects any other managed schema
@@ -780,6 +789,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Immutable current planning generation is replayed
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI replays a configured current schema from immutable consumer config
 
 - **GIVEN** a governing current-v3 plan commit contains its repository policy and current schema declaration
 - **WHEN** task, CI, or archive validation replays that generation
@@ -795,6 +805,7 @@ covers: #Requirement: Project-Local Managed Change Schema
 
 #### Scenario: Schema source is shadowed
 covers: #Requirement: Project-Local Managed Change Schema
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#OpenSpec adapter rejects schema payload extras and validity contradictions
 
 - **GIVEN** `spec-driven` does not resolve from the pinned package or either project schema does not resolve from its canonical reviewed path
 - **WHEN** schema diagnostics or change validation runs
@@ -807,6 +818,7 @@ The workflow engine SHALL report an investigation-first change ready only when s
 
 #### Scenario: Valid delta has unsafe guard policy
 covers: #Requirement: Combined Change Readiness
+test: packages/workflow-engine/test/guard-contract.integration.test.ts#required check IDs reject malformed, unknown, and duplicate values
 
 - **GIVEN** OpenSpec accepts a change's delta specifications
 - **AND** its guard contains an unknown check, missing task, or unsafe path
@@ -816,6 +828,7 @@ covers: #Requirement: Combined Change Readiness
 
 #### Scenario: OpenSpec reports an engine-owned artifact as done
 covers: #Requirement: Combined Change Readiness
+test: packages/workflow-engine/test/change-loading.contract.test.ts#current change loading rejects a v3 Manifest whose digest no longer replays
 
 - **GIVEN** OpenSpec readiness reports an investigation, execution, or plan-review artifact exists
 - **AND** repository validation finds it malformed, unbound, stale, incomplete, or manually divergent
@@ -824,6 +837,7 @@ covers: #Requirement: Combined Change Readiness
 
 #### Scenario: OpenSpec reports an authored artifact as done
 covers: #Requirement: Combined Change Readiness
+test: packages/workflow-engine/test/managed-change-contract.integration.test.ts#managed contract rejects unsafe metadata and incomplete artifact trees before readiness is trusted
 
 - **GIVEN** OpenSpec readiness reports an authored artifact exists
 - **AND** repository semantic validation finds it empty or malformed
@@ -832,6 +846,7 @@ covers: #Requirement: Combined Change Readiness
 
 #### Scenario: Planning artifacts drift after validation
 covers: #Requirement: Combined Change Readiness
+test: packages/workflow-engine/test/managed-change-lifecycle.integration.test.ts#check rejects every combined-contract drift class before executing checks
 
 - **GIVEN** a planning generation previously passed combined validation
 - **WHEN** any semantic tracked change, schema, workflow policy, investigation dependency, role requirement, or check-registry input changes
@@ -840,6 +855,7 @@ covers: #Requirement: Combined Change Readiness
 
 #### Scenario: OpenSpec reports an empty artifact as done
 covers: #Requirement: Combined Change Readiness
+test: packages/workflow-engine/test/managed-change-contract.integration.test.ts#managed contract rejects unsafe metadata and incomplete artifact trees before readiness is trusted
 
 - **GIVEN** OpenSpec readiness reports an artifact exists
 - **AND** repository semantic validation finds it empty or malformed
@@ -855,6 +871,7 @@ An investigation-first transition MUST also have a current sealed investigation 
 
 #### Scenario: New investigation-first planning baseline is authorized
 covers: #Requirement: Authorized Planning Transition
+test: packages/workflow-engine/test/planning-transition.integration.test.ts#plan-commit introduces an unchecked change through one exact managed commit
 
 - **GIVEN** a current change passes combined validation and exact-plan review
 - **AND** all newly introduced task checkboxes are unchecked
@@ -865,6 +882,7 @@ covers: #Requirement: Authorized Planning Transition
 
 #### Scenario: Advisory verdict rejects an otherwise dispositioned plan
 covers: #Requirement: Authorized Planning Transition
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a current exact-target PlanReview has an advisory rejection verdict
 - **AND** every structured challenge has a valid current disposition
@@ -874,6 +892,7 @@ covers: #Requirement: Authorized Planning Transition
 
 #### Scenario: Planning transition contains non-planning mutation
 covers: #Requirement: Authorized Planning Transition
+test: packages/workflow-engine/test/planning-transition.integration.test.ts#plan-commit rejects checkbox, code, staged-index, and OpenSpec-invalid drift without mutation
 
 - **GIVEN** a proposed planning transition changes implementation code, base specs, archives, task checkbox state outside an authorized projection, or another change
 - **WHEN** planning authorization runs
@@ -889,6 +908,7 @@ covers: #Requirement: Authorized Planning Transition
 
 #### Scenario: New planning baseline is authorized
 covers: #Requirement: Authorized Planning Transition
+test: packages/workflow-engine/test/planning-transition.integration.test.ts#plan-commit introduces an unchecked change through one exact managed commit
 
 - **GIVEN** a new OpenSpec change passes combined validation
 - **AND** all of its task checkboxes are unchecked
@@ -905,6 +925,7 @@ artifact, and lock preconditions pass.
 
 #### Scenario: Completed change is eligible for archive
 covers: #Requirement: Workflow-Owned Archive Authorization
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility binds completed task evidence to the configured base
 
 - **GIVEN** every task has current workflow completion evidence
 - **AND** its task commits are reachable from the configured base
@@ -929,6 +950,7 @@ application to the real worktree.
 
 #### Scenario: Archive transformation succeeds
 covers: #Requirement: Isolated Archive Transformation
+test: packages/workflow-engine/test/archive-transformation.integration.test.ts#archive transformation returns an exact full-index patch without mutating the real worktree
 
 - **GIVEN** archive preconditions pass
 - **WHEN** the pinned OpenSpec archive mechanism completes in the temporary
@@ -939,6 +961,7 @@ covers: #Requirement: Isolated Archive Transformation
 
 #### Scenario: Temporary archive fails after partial mutation
 covers: #Requirement: Isolated Archive Transformation
+test: packages/workflow-engine/test/archive-transformation.integration.test.ts#archive transformation confines partial_failure faults
 
 - **GIVEN** OpenSpec writes a partial result, times out, encounters a collision,
   or fails while moving files in the temporary worktree
@@ -948,6 +971,7 @@ covers: #Requirement: Isolated Archive Transformation
 
 #### Scenario: Archive patch escapes its permitted targets
 covers: #Requirement: Isolated Archive Transformation
+test: packages/workflow-engine/test/archive-transformation.integration.test.ts#archive transformation confines archive_escape faults
 
 - **GIVEN** the temporary result contains an unexpected, external, symlinked,
   silently ignored, or digest-mismatched path or delta
@@ -963,6 +987,7 @@ generated by OpenSpec.
 
 #### Scenario: CI replays archive on a later UTC date
 covers: #Requirement: Stable Archive Identity
+test: packages/workflow-engine/test/ci-archive.integration.test.ts#CI archive replay normalizes only the UTC date directory
 
 - **GIVEN** CI reproduces the same logical archive and content on a different
   UTC date
@@ -972,6 +997,7 @@ covers: #Requirement: Stable Archive Identity
 
 #### Scenario: Verified archive is requested again
 covers: #Requirement: Stable Archive Identity
+test: packages/workflow-engine/test/archive-transition.integration.test.ts#archive transition persists evidence, applies exact staging, commits, and is idempotent
 
 - **GIVEN** exactly one previously verified archive matches the logical change
   and content identity
@@ -987,6 +1013,7 @@ are recomputed from Git by CI.
 
 #### Scenario: Local hook is bypassed
 covers: #Requirement: Recomputed Transition Assurance
+test: packages/workflow-engine/test/ci-archive.integration.test.ts#CI rejects mixed task and archive trailer forms even when hooks are bypassed
 
 - **GIVEN** a commit reaches CI without local workflow verification
 - **WHEN** CI recomputes its transition kind, trailers, changed paths, and
@@ -995,6 +1022,7 @@ covers: #Requirement: Recomputed Transition Assurance
 
 #### Scenario: Commit mixes transition forms
 covers: #Requirement: Recomputed Transition Assurance
+test: packages/workflow-engine/test/ci-archive.integration.test.ts#CI rejects mixed task and archive trailer forms even when hooks are bypassed
 
 - **GIVEN** a commit contains both a `Task:` trailer and a `Transition:` trailer
 - **OR** its evidence kind does not match its diff
@@ -1009,6 +1037,7 @@ independently of the caller's current working directory.
 
 #### Scenario: Root workflow tests run
 covers: #Requirement: Workflow Test Entrypoint Portability
+test: packages/workflow-engine/test/public-contract-surface.test.ts#runner security suite is portable to the package working directory
 
 - **WHEN** the repository-owned workflow test command runs from the repository
   root
@@ -1016,6 +1045,7 @@ covers: #Requirement: Workflow Test Entrypoint Portability
 
 #### Scenario: Package-filtered workflow tests run
 covers: #Requirement: Workflow Test Entrypoint Portability
+test: packages/workflow-engine/test/public-contract-surface.test.ts#runner security suite is portable to the package working directory
 
 - **WHEN** the workflow package test command runs with the package directory as
   its current working directory
@@ -1030,6 +1060,7 @@ reserved archive container and MUST NOT parse the container itself as a change.
 
 #### Scenario: Empty archive container exists
 covers: #Requirement: OpenSpec Change Root Compatibility
+test: packages/workflow-engine/test/handoff.integration.test.ts#reserved OpenSpec archive directory is not an active change
 
 - **GIVEN** OpenSpec has created `openspec/changes/archive/` with no archived
   changes
@@ -1039,6 +1070,7 @@ covers: #Requirement: OpenSpec Change Root Compatibility
 
 #### Scenario: Archived changes exist
 covers: #Requirement: OpenSpec Change Root Compatibility
+test: packages/workflow-engine/test/handoff.integration.test.ts#committed managed-document validation replays a terminal handoff with zero active changes
 
 - **GIVEN** dated change directories exist under `openspec/changes/archive/`
 - **WHEN** the workflow enumerates active changes
@@ -1051,6 +1083,7 @@ Repository-delivered OpenSpec assets SHALL expose only exploration and proposal 
 
 #### Scenario: Tool-plural planning assets are regenerated
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#tool-plural generation is isolated, three-stage pinned, and byte deterministic
 
 - **GIVEN** a clean temporary project and isolated home, XDG, Codex, and temporary directories
 - **WHEN** the pinned generator selects Codex and Claude with the reviewed custom workflow allowlist
@@ -1060,6 +1093,7 @@ covers: #Requirement: Planning-Only OpenSpec Asset Interface
 
 #### Scenario: Claude commands or lifecycle skills are generated upstream
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#upstream and discarded-command closures fail before repository writes
 
 - **WHEN** the isolated upstream run emits its expected Claude command files or any source outside the reviewed closures
 - **THEN** expected Claude commands are discarded rather than delivered
@@ -1067,6 +1101,7 @@ covers: #Requirement: Planning-Only OpenSpec Asset Interface
 
 #### Scenario: Asset stages are validated
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#tool-plural generation is isolated, three-stage pinned, and byte deterministic
 
 - **WHEN** generated-asset verification runs
 - **THEN** it verifies exact generator policy plus raw-source, reviewed-overlay, and delivered-final digests for every target
@@ -1074,6 +1109,7 @@ covers: #Requirement: Planning-Only OpenSpec Asset Interface
 
 #### Scenario: Asset check runs without the formatter
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#checking never resolves the formatter and never rewrites success or failure
 
 - **WHEN** the registered OpenSpec asset check validates a generated repository tree
 - **THEN** it succeeds without resolving or invoking Prettier
@@ -1081,12 +1117,14 @@ covers: #Requirement: Planning-Only OpenSpec Asset Interface
 
 #### Scenario: Manifest or delivery state is missing or drifted
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/hooks.integration.test.ts#hooks fail closed when the OpenSpec asset manifest is missing or renamed
 
 - **WHEN** the manifest is missing, renamed, malformed, stale, or inconsistent with any required target, digest, path, mirror, or closure
 - **THEN** hook validation and pull-request regeneration fail closed
 
 #### Scenario: Generated asset exposes forbidden authority
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#every delivered target rejects forbidden authority after digest repinning
 
 - **GIVEN** any delivered asset invokes OpenSpec apply, update, sync, archive, bulk-archive, or store behavior, whether bare or executable-prefixed
 - **OR** it invokes an external store, Spectra, an unreviewed slash command, a tool-wide OpenSpec permission, or an incompatible tool primitive
@@ -1096,6 +1134,7 @@ covers: #Requirement: Planning-Only OpenSpec Asset Interface
 
 #### Scenario: Generated final is formatted after delivery
 covers: #Requirement: Planning-Only OpenSpec Asset Interface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#checking never resolves the formatter and never rewrites success or failure
 
 - **WHEN** any tool rewrites a delivered generated file after generation
 - **THEN** its final-byte digest no longer matches the reviewed manifest
@@ -1133,6 +1172,7 @@ Prompt-authored or manually edited engine fields MUST fail repository validation
 
 #### Scenario: User invokes artifact instructions for an engine-owned artifact
 covers: #Requirement: Engine-Owned Planning Artifacts Cannot Be Prompt-Authored Authority
+test: packages/workflow-engine/test/openspec-schema-contract.integration.test.ts#current schema has the exact investigation-first graph and route-back engine templates
 
 - **WHEN** an engine-owned current artifact becomes ready in the OpenSpec graph
 - **THEN** its reviewed instruction routes creation through `workflow propose`
@@ -1140,6 +1180,7 @@ covers: #Requirement: Engine-Owned Planning Artifacts Cannot Be Prompt-Authored 
 
 #### Scenario: Engine-owned JSON is edited after projection
 covers: #Requirement: Engine-Owned Planning Artifacts Cannot Be Prompt-Authored Authority
+test: packages/workflow-engine/test/change-loading.contract.test.ts#current change loading rejects a v3 Manifest whose digest no longer replays
 
 - **GIVEN** an investigation, execution, or plan-review projection was current
 - **WHEN** its objective binding or managed bytes are edited outside the engine transition
@@ -1156,6 +1197,7 @@ rule.
 
 #### Scenario: Noise file is deleted
 covers: #Requirement: Planning transitions may delete non-canonical tree noise
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI accepts a revision that deletes non-canonical planning noise
 
 - **WHEN** a planning diff deletes a non-canonical file inside the named
   change's tree and the remaining artifact graph validates
@@ -1163,12 +1205,14 @@ covers: #Requirement: Planning transitions may delete non-canonical tree noise
 
 #### Scenario: Noise file is added or modified
 covers: #Requirement: Planning transitions may delete non-canonical tree noise
+test: packages/workflow-engine/test/planning-transition.contract.test.ts#planning paths accept only in-tree deletions of non-canonical files
 
 - **WHEN** a planning diff adds or modifies a non-canonical file
 - **THEN** the transition fails closed with the invalid paths named
 
 #### Scenario: Deletion escapes the change tree
 covers: #Requirement: Planning transitions may delete non-canonical tree noise
+test: packages/workflow-engine/test/planning-transition.contract.test.ts#planning paths accept only in-tree deletions of non-canonical files
 
 - **WHEN** a planning diff deletes a file outside the named change's tree
 - **THEN** the transition fails closed
@@ -1180,6 +1224,7 @@ The workflow-format contract assertion SHALL accept only the registered command 
 
 #### Scenario: Asset-separated format scope is active
 covers: #Requirement: Generated OpenSpec Asset Format Scope Is Exact
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
 
 - **WHEN** the post-authority repository contract validates `workflow-format`
 - **THEN** the exact asset-separated command passes
@@ -1187,6 +1232,7 @@ covers: #Requirement: Generated OpenSpec Asset Format Scope Is Exact
 
 #### Scenario: Broad or otherwise drifted format scope returns
 covers: #Requirement: Generated OpenSpec Asset Format Scope Is Exact
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
 
 - **WHEN** `workflow-format` names the broad workflow directory, omits a required human-maintained path, includes the generated asset home, or otherwise changes
 - **THEN** the repository contract fails
@@ -1200,6 +1246,7 @@ unique paths unaffected.
 
 #### Scenario: Crafted duplicate entry
 covers: #Requirement: CI plan replay rejects duplicate planning-tree entries
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI rejects a planning tree with duplicate entries
 
 - **WHEN** a planning commit's tree carries two entries with the same path
   inside the named change's tree
@@ -1208,6 +1255,7 @@ covers: #Requirement: CI plan replay rejects duplicate planning-tree entries
 
 #### Scenario: Unique trees are unaffected
 covers: #Requirement: CI plan replay rejects duplicate planning-tree entries
+test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI accepts a revision that deletes non-canonical planning noise
 
 - **WHEN** a planning commit's trees contain only unique paths
 - **THEN** validation behaves exactly as before
@@ -1236,6 +1284,7 @@ evidence SHALL be blocked rather than inferred as archived.
 
 #### Scenario: A completed current change is discovered
 covers: #Requirement: Candidate Discovery Is Read-Only and Current
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive-pr doctor reuses exact local candidate discovery without writes or remote seams
 
 - **GIVEN** the clean protected branch and its configured remote-tracking identity have the same commit and tree
 - **AND** the completed change passes current Manifest and PlanReview authority
@@ -1245,6 +1294,7 @@ covers: #Requirement: Candidate Discovery Is Read-Only and Current
 
 #### Scenario: Historical or inferred archive state is observed
 covers: #Requirement: Candidate Discovery Is Read-Only and Current
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive-pr doctor rejects a tracked archive directory without verified transition evidence
 
 - **WHEN** only historical planning evidence or an unverified archive directory is available
 - **THEN** doctor reports the exact current blocker
@@ -1275,6 +1325,7 @@ remote state as unobserved and its operational gate as pending.
 
 #### Scenario: A current candidate is prepared locally
 covers: #Requirement: Local Preparation Reuses Core Archive Authority
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive-pr dry-run creates only a local canonical preparation and reports the remote gate pending
 
 - **WHEN** local preparation creates the canonical isolated archive worktree
 - **THEN** core archive authority produces one archive commit and report
@@ -1284,6 +1335,7 @@ covers: #Requirement: Local Preparation Reuses Core Archive Authority
 
 #### Scenario: A canonical branch belongs to another history
 covers: #Requirement: Local Preparation Reuses Core Archive Authority
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#local archive rejects a foreign canonical branch descendant before recovery writes
 
 - **WHEN** the branch, worktree, remote-tracking base, or report evidence is foreign or divergent
 - **THEN** preparation fails closed without rewriting, deleting, resetting, or adopting it
@@ -1305,6 +1357,7 @@ its digest as authority by itself.
 
 #### Scenario: The same local preparation is retried
 covers: #Requirement: Prepared Publication Payload Is Exact and Durable
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#prepares, publishes, and recovers one exact archive PR identity
 
 - **WHEN** retry derives the same canonical payload identity
 - **THEN** persistence converges on the same private record and bytes
@@ -1334,6 +1387,7 @@ it MUST NOT claim a pull request exists or that publication is authorized.
 
 #### Scenario: Exact local preparation remains current
 covers: #Requirement: Local Status Replays Git Truth Without Remote Authority
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive preparation status replays exact local Git truth without a worktree or runtime writes
 
 - **WHEN** the stored preparation, protected refs, archive ref, report, tree, and assurance still agree
 - **THEN** status returns the exact local archive identity and replay command
@@ -1341,6 +1395,7 @@ covers: #Requirement: Local Status Replays Git Truth Without Remote Authority
 
 #### Scenario: Any bound Git fact drifts
 covers: #Requirement: Local Status Replays Git Truth Without Remote Authority
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive preparation status replays exact local Git truth without a worktree or runtime writes
 
 - **WHEN** a protected ref, archive ref, report, tree, configuration, or assurance identity differs
 - **THEN** status reports the preparation stale
@@ -1372,6 +1427,7 @@ foreign ref, close a foreign request, or broaden the accepted Grant.
 
 #### Scenario: The exact absent archive ref is published
 covers: #Requirement: Publication Is Create-Only and Grant-Bound
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#prepares, publishes, and recovers one exact archive PR identity
 
 - **GIVEN** an accepted exact Grant and unchanged target, ruleset, base, and archive head
 - **WHEN** the explicit publisher observes the canonical archive ref absent
@@ -1380,6 +1436,7 @@ covers: #Requirement: Publication Is Create-Only and Grant-Bound
 
 #### Scenario: Remote facts or authority drift
 covers: #Requirement: Publication Is Create-Only and Grant-Bound
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#prepares, publishes, and recovers one exact archive PR identity
 
 - **WHEN** any publication, ruleset, credential, Grant, branch, or pull-request identity differs
 - **THEN** publication fails before broadening or replacing remote state
@@ -1402,6 +1459,7 @@ after the operational gate, and MUST NOT approve, bypass, or merge it.
 
 #### Scenario: Local acceptance passes without hosted access
 covers: #Requirement: Remote Activation Remains Operationally Gated
+test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts#archive-pr dry-run creates only a local canonical preparation and reports the remote gate pending
 
 - **WHEN** fake adapters and bare repositories prove preparation, collision, and recovery contracts
 - **THEN** local implementation may be reported implemented and targeted-green
@@ -1427,6 +1485,7 @@ writer from an unrelated branch.
 
 #### Scenario: A candidate writer is inspected
 covers: #Requirement: Preflight and Status Are Read-Only
+test: packages/workflow-engine/test/session-admission.integration.test.ts#task-session preflight reuses exact admission without mutating Git, runtime, or Grant state
 
 - **WHEN** an agent runs `task-preflight` for a current selected task
 - **THEN** the engine reports the exact observed admission and isolation facts
@@ -1435,6 +1494,7 @@ covers: #Requirement: Preflight and Status Are Read-Only
 
 #### Scenario: Concurrent session status is inspected
 covers: #Requirement: Preflight and Status Are Read-Only
+test: packages/workflow-engine/test/session-concurrency.integration.test.ts#status inspects each concurrent active session in its own durable worktree
 
 - **WHEN** two current sessions are active in distinct registered worktrees
 - **THEN** status resolves each session against its own durable worktree binding
@@ -1459,6 +1519,7 @@ switch the selected change, or serialize work after accepting it as concurrent.
 
 #### Scenario: Two isolated writers are admitted
 covers: #Requirement: Writer Admission Is Bounded and Isolated
+test: packages/workflow-engine/test/session-concurrency.integration.test.ts#two declared disjoint changes own durable isolated writers and an undeclared third writer is rejected
 
 - **GIVEN** routing selects one primary and one concurrent current change
 - **AND** their branches, worktrees, path scopes, serialized classes, and exclusive resources are disjoint
@@ -1468,6 +1529,7 @@ covers: #Requirement: Writer Admission Is Bounded and Isolated
 
 #### Scenario: A third or overlapping writer is requested
 covers: #Requirement: Writer Admission Is Bounded and Isolated
+test: packages/workflow-engine/test/session-concurrency.integration.test.ts#two declared disjoint changes own durable isolated writers and an undeclared third writer is rejected
 
 - **WHEN** capacity is full or any required isolation dimension conflicts
 - **THEN** admission returns the exact conflict before publication
@@ -1512,6 +1574,7 @@ a replacement worktree, absorb caller changes, or transfer a live lease.
 
 #### Scenario: Admission stops between durable phases
 covers: #Requirement: Session Leases and Recovery Are Durable
+test: packages/workflow-engine/test/open-task-atomic-ingress.integration.test.ts#ordinary open-task crash recovery preserves explicit no-mandate authority
 
 - **WHEN** the process stops after publishing only a current subset of session and lease state
 - **THEN** retry either completes the same exact admission or reports recovery-required
@@ -1533,6 +1596,7 @@ combine task branches.
 
 #### Scenario: A finished branch advances to a local base
 covers: #Requirement: Update Base Is Local and Sequential
+test: packages/workflow-engine/test/session-update-base.integration.test.ts#update-base replays a finished non-final task branch and recomputes local PR assurance
 
 - **GIVEN** the finished session, branch, worktree, and target commit remain exact and clean
 - **WHEN** update-base acquires the lifecycle lock and repeats its observations
@@ -1541,6 +1605,7 @@ covers: #Requirement: Update Base Is Local and Sequential
 
 #### Scenario: A writer appears before locked replay
 covers: #Requirement: Update Base Is Local and Sequential
+test: packages/workflow-engine/test/session-update-base.integration.test.ts#update-base revalidates active writers after acquiring the lifecycle lock
 
 - **WHEN** a task session becomes active before update-base repeats admission under the lock
 - **THEN** update-base refuses before changing branch history
@@ -1567,6 +1632,7 @@ contract neither performs nor authorizes those operations.
 
 #### Scenario: Rebase changes a managed projection
 covers: #Requirement: Rebased Work Is Reassessed or Rolled Back
+test: packages/workflow-engine/test/session-update-base.integration.test.ts#update-base rolls back when generated reconciliation needs a reviewed transition
 
 - **WHEN** replay would require a separate reviewed generated transition
 - **THEN** update-base rolls back the replay and reports the required transition
@@ -1601,6 +1667,7 @@ The workflow engine SHALL refuse to create an active task session unless reposit
 
 #### Scenario: Advisory task preflight is read-only
 covers: #Requirement: Blocking Session Preflight
+test: packages/workflow-engine/test/session-admission.integration.test.ts#task-session preflight reuses exact admission without mutating Git, runtime, or Grant state
 
 - **GIVEN** a current change and selected task
 - **WHEN** an agent runs `task-preflight`
@@ -1610,6 +1677,7 @@ covers: #Requirement: Blocking Session Preflight
 
 #### Scenario: Dirty worktree is rejected
 covers: #Requirement: Blocking Session Preflight
+test: packages/workflow-engine/test/session.integration.test.ts#start rejects protected and dirty repositories without leaving runtime state
 
 - **GIVEN** a valid change and task
 - **AND** the working tree has a staged, unstaged, or untracked path
@@ -1620,6 +1688,7 @@ covers: #Requirement: Blocking Session Preflight
 
 #### Scenario: Valid investigation-first baseline creates a pinned session
 covers: #Requirement: Blocking Session Preflight
+test: packages/workflow-engine/test/session-schema.integration.test.ts#v3 sessions and every task report pin the exact planning assurance
 
 - **GIVEN** a clean worktree on the exact change branch
 - **AND** the latest managed plan generation, selected investigation applicability branch, proposal, design, delta specs, tasks, guard, execution strategy, and PlanReview validate
@@ -1636,6 +1705,7 @@ covers: #Requirement: Blocking Session Preflight
 
 #### Scenario: Valid baseline creates a pinned session
 covers: #Requirement: Blocking Session Preflight
+test: packages/workflow-engine/test/session.integration.test.ts#active session pins a clean baseline, enforces scope, and releases its lock
 
 - GIVEN a clean worktree on the exact change branch
 - AND proposal, design, delta specs, tasks, guard policy, and check IDs validate
@@ -1652,6 +1722,7 @@ task's exact or segment-aware prefix allowlist.
 
 #### Scenario: Out-of-scope path is detected
 covers: #Requirement: Diff Scope Verification
+test: packages/workflow-engine/test/session.integration.test.ts#active session pins a clean baseline, enforces scope, and releases its lock
 
 - GIVEN an active session for one task
 - WHEN a path outside that task's allowlist changes
@@ -1666,6 +1737,7 @@ current engine evidence rather than an AI assertion or Markdown state alone.
 
 #### Scenario: Checkbox has no matching report
 covers: #Requirement: Evidence Owns Completion
+test: packages/workflow-engine/test/ci.integration.test.ts#CI rejects a completed checkbox without an exact task trailer
 
 - GIVEN a task checkbox is checked
 - AND no current passing report matches the exact baseline and diff
@@ -1685,6 +1757,7 @@ error, or runner mutation SHALL fail verification with structured evidence.
 
 #### Scenario: Shell syntax appears in an argument
 covers: #Requirement: Allowlisted Check Execution
+test: packages/workflow-engine/test/session-check.integration.test.ts#check executes required argv literally from the repository root
 
 - GIVEN a required check contains shell metacharacters in one argv element
 - WHEN verification executes the check
@@ -1693,6 +1766,7 @@ covers: #Requirement: Allowlisted Check Execution
 
 #### Scenario: A required check fails
 covers: #Requirement: Allowlisted Check Execution
+test: packages/workflow-engine/test/session-check.integration.test.ts#check fails on the first non-zero check and does not run later checks
 
 - GIVEN a required check exits non-zero
 - WHEN verification runs
@@ -1701,6 +1775,7 @@ covers: #Requirement: Allowlisted Check Execution
 
 #### Scenario: PATH contains a fake executable
 covers: #Requirement: Allowlisted Check Execution
+test: packages/workflow-engine/test/session-check.integration.test.ts#node runner ignores caller-controlled PATH substitutes
 
 - GIVEN a required check uses the `node` runner
 - AND caller-controlled `PATH` points to a different executable named `node`
@@ -1715,6 +1790,7 @@ Each passing check, planning evidence node, PlanReview, completion projection, f
 
 #### Scenario: Task report omits the pinned plan review
 covers: #Requirement: Immutable Evidence Chain
+test: packages/workflow-engine/test/session-schema.integration.test.ts#completion rejects a check report with mismatched planning assurance
 
 - **GIVEN** an investigation-first session pins one planning generation and exact PlanReview node
 - **WHEN** check, completion, finish, or commit evidence omits or changes either identity
@@ -1725,6 +1801,7 @@ Planning evidence MUST distinguish a provenance-sensitive `nodeId` from a canoni
 
 #### Scenario: Passing report payload is replaced
 covers: #Requirement: Immutable Evidence Chain
+test: packages/workflow-engine/test/completion.integration.test.ts#completion rejects stale and tampered check reports
 
 - **GIVEN** a report ID is stored on an active session
 - **AND** the file content no longer hashes to that ID
@@ -1734,6 +1811,7 @@ covers: #Requirement: Immutable Evidence Chain
 
 #### Scenario: Report omits required check evidence
 covers: #Requirement: Immutable Evidence Chain
+test: packages/workflow-engine/test/completion.integration.test.ts#completion rejects a content-addressed report without check evidence
 
 - **GIVEN** a content-addressed task report matches the current diff fingerprint
 - **BUT** its check evidence omits a required ID or order
@@ -1742,6 +1820,7 @@ covers: #Requirement: Immutable Evidence Chain
 
 #### Scenario: Planning node exact input changes
 covers: #Requirement: Immutable Evidence Chain
+test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence nodeId binds exact inputs and provenance while resultDigest binds semantic output
 
 - **GIVEN** a planning evidence node's exact input or provenance parent changes
 - **WHEN** the node is recomputed
@@ -1750,6 +1829,7 @@ covers: #Requirement: Immutable Evidence Chain
 
 #### Scenario: Only runtime metadata changes
 covers: #Requirement: Immutable Evidence Chain
+test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence identity excludes runtime metadata and property insertion order
 
 - **GIVEN** only timestamp, retry, latency, process, or display metadata differs
 - **WHEN** semantic planning identity is recomputed under unchanged policy
@@ -1766,6 +1846,7 @@ For a caught ordinary failure before successful final application, the single-pa
 
 #### Scenario: Single-pass completion succeeds
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#projected single-pass finalize checks and stages one exact final tree
 
 - **GIVEN** an active task session has an allowed implementation diff, an empty index, and current pinned inputs
 - **WHEN** projected single-pass finalization succeeds
@@ -1776,6 +1857,7 @@ covers: #Requirement: Serialized Completion Authority
 
 #### Scenario: Required check rejects the final projection
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#projected single-pass failure restores projections and leaves no evidence pointers
 
 - **GIVEN** a required check would pass on the implementation-only tree but fails when the projected checkbox or handoff is present
 - **WHEN** projected single-pass finalization runs
@@ -1785,6 +1867,7 @@ covers: #Requirement: Serialized Completion Authority
 
 #### Scenario: Real state drifts before exact staging
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#projected single-pass rejects post-check worktree drift and rolls back staging
 
 - **GIVEN** all checks passed against one prospective tree
 - **AND** HEAD, session, contract, worktree, index, projection, runner inputs, or operation ownership no longer matches the pinned inspection
@@ -1794,6 +1877,7 @@ covers: #Requirement: Serialized Completion Authority
 
 #### Scenario: Legacy completion remains available
 covers: #Requirement: Serialized Completion Authority
+test: packages/workflow-engine/test/completion.integration.test.ts#current report authorizes completion, exact staging, and commit
 
 - **GIVEN** a caller uses the existing serialized completion commands
 - **WHEN** `check`, `complete-task`, and `finish` run under their existing preconditions
@@ -1836,6 +1920,7 @@ covers: #Requirement: Atomic Managed Commit
 
 #### Scenario: Local commit hook is hostile
 covers: #Requirement: Atomic Managed Commit
+test: packages/workflow-engine/test/completion.integration.test.ts#managed commit bypasses hooks and accepts explicit workflow identity
 
 - GIVEN a repository hook exits non-zero or attempts to rewrite a message
 - WHEN the engine creates an already-authorized managed commit
@@ -1854,6 +1939,7 @@ database identity in results and errors.
 
 #### Scenario: One destructive check has an unsafe database
 covers: #Requirement: Disposable Database Preflight
+test: packages/workflow-engine/test/session-check.integration.test.ts#destructive database preflight runs before any required check
 
 - GIVEN at least one required check is marked `destructiveDatabase`
 - AND the database preflight is missing or unsafe
@@ -1863,6 +1949,7 @@ covers: #Requirement: Disposable Database Preflight
 
 #### Scenario: Disposable database is explicitly confirmed
 covers: #Requirement: Disposable Database Preflight
+test: packages/workflow-engine/test/session-check.integration.test.ts#destructive check evidence includes only the redacted database identity
 
 - GIVEN `WORKFLOW_DISPOSABLE_DATABASE=1`
 - AND `TEST_DATABASE_URL` names a disposable PostgreSQL database distinct from
@@ -1898,6 +1985,7 @@ covers: #Requirement: Controlled Managed-Document Mutation
 
 #### Scenario: Active document policy has no registered validator
 covers: #Requirement: Controlled Managed-Document Mutation
+test: packages/workflow-engine/test/issues.integration.test.ts#retired active IssueLog policy fails generically without reading poisoned legacy issue data
 
 - GIVEN an active managed-document policy names an unregistered document path
 - WHEN managed-document validation runs
@@ -1924,6 +2012,7 @@ authority paths and SHALL preserve their actual achieved independence.
 
 #### Scenario: Final product task has no documentation impact
 covers: #Requirement: Whole-Change Documentation Closure
+test: packages/workflow-engine/test/task-diff-review-provider-worker.integration.test.ts#activated final task review binds documentation closure into commit and CI replay
 
 - **GIVEN** the final candidate changes no documentation path
 - **WHEN** the authenticated reviewer returns `no-impact` with a concrete rationale
@@ -1932,6 +2021,7 @@ covers: #Requirement: Whole-Change Documentation Closure
 
 #### Scenario: Reviewer requires a documentation path outside task scope
 covers: #Requirement: Whole-Change Documentation Closure
+test: packages/workflow-engine/test/task-diff-review-provider-worker.integration.test.ts#documentation review opens exact remediation scope and requires a fresh final review
 
 - **GIVEN** the final review returns `needs-changes`
 - **WHEN** it names exact canonical paths under `docs/**` or an exact `README.md`
@@ -1942,6 +2032,7 @@ covers: #Requirement: Whole-Change Documentation Closure
 
 #### Scenario: Final closure is replayed from Git
 covers: #Requirement: Whole-Change Documentation Closure
+test: packages/workflow-engine/test/task-diff-review-provider-worker.integration.test.ts#activated final task review binds documentation closure into commit and CI replay
 
 - **GIVEN** the final task has a satisfied documentation assessment
 - **WHEN** the managed task commit is created
@@ -1962,6 +2053,7 @@ facts. Managed commit relationships SHALL be discoverable from Git using exact
 
 #### Scenario: Work is handed to another agent
 covers: #Requirement: Semantic Handoff Traceability
+test: packages/workflow-engine/test/handoff.integration.test.ts#repository handoff has exactly six semantic sections and no hashes
 
 - GIVEN managed work has a current change and task
 - WHEN a new agent reads `docs/CURRENT_AND_NEXT_STEPS.md`
@@ -1970,6 +2062,7 @@ covers: #Requirement: Semantic Handoff Traceability
 
 #### Scenario: A managed task is committed
 covers: #Requirement: Semantic Handoff Traceability
+test: packages/workflow-engine/test/completion.integration.test.ts#current report authorizes completion, exact staging, and commit
 
 - GIVEN current evidence authorizes a managed commit
 - WHEN the commit is created
@@ -1997,6 +2090,7 @@ The workflow engine SHALL remove at most one trailing directory marker from each
 
 #### Scenario: Ignored nested repository is fingerprinted
 covers: #Requirement: Canonical Git Ignored-Directory Records
+test: packages/workflow-engine/test/ignored-state.integration.test.ts#ignored nested repositories use canonical directory records in fingerprints
 
 - **WHEN** Git reports a repository-ignored nested repository as `memo/`
 - **THEN** the ignored-path adapter validates canonical path `memo`
@@ -2004,12 +2098,14 @@ covers: #Requirement: Canonical Git Ignored-Directory Records
 
 #### Scenario: Generic repository path remains strict
 covers: #Requirement: Canonical Git Ignored-Directory Records
+test: packages/workflow-engine/test/contracts.test.ts#generic changed paths reject Git directory markers
 
 - **WHEN** `memo/` is supplied directly as a generic changed repository path
 - **THEN** repository-path normalization rejects it
 
 #### Scenario: Ignored directory identity changes
 covers: #Requirement: Canonical Git Ignored-Directory Records
+test: packages/workflow-engine/test/ignored-state.integration.test.ts#ignored nested repositories use canonical directory records in fingerprints
 
 - **WHEN** an ignored nested directory is removed or renamed between working-state fingerprints
 - **THEN** the resulting fingerprint differs
@@ -2023,6 +2119,7 @@ Unknown dependencies, missing parents, ambiguous grouping coverage, incompatible
 
 #### Scenario: Unrelated term is added
 covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
+test: packages/workflow-engine/test/investigation-groups.contract.test.ts#zero-hit and unrelated terms preserve current grouping identities
 
 - **GIVEN** current evidence exists for sealed terms and their descendants
 - **WHEN** another independent term is sealed
@@ -2031,6 +2128,7 @@ covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and 
 
 #### Scenario: One source blob changes
 covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#currentness invalidates only the node whose exact input changed
 
 - **GIVEN** several WHY nodes depend on distinct complete source blobs
 - **WHEN** one blob changes
@@ -2038,6 +2136,7 @@ covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and 
 
 #### Scenario: Equal compatible output converges
 covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
 
 - **GIVEN** a changed parent recomputes under compatible evaluator, policy, and schema identities
 - **AND** its canonical semantic output has the prior `resultDigest`
@@ -2046,6 +2145,7 @@ covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and 
 
 #### Scenario: One changed parent proof is missing
 covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
 
 - **GIVEN** a descendant depends on multiple changed parents
 - **AND** at least one changed edge lacks a valid proof
@@ -2061,6 +2161,7 @@ Provider invocation itself MUST NOT be replayed in CI. CI MUST NOT upgrade soft 
 
 #### Scenario: Live and CI receive the same canonical subject
 covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validators
+test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#live and CI loaders share one canonical content-pure planning validator
 
 - **GIVEN** live transition and CI loaders construct the same canonical subject and immutable artifact set
 - **WHEN** planning validation runs
@@ -2068,6 +2169,7 @@ covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validato
 
 #### Scenario: CI lacks provider credentials
 covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validators
+test: packages/workflow-engine/test/session-schema.integration.test.ts#CI replays v3 planning assurance from Git with the live validator
 
 - **GIVEN** tracked PlanReview and investigation evidence are structurally current
 - **WHEN** CI validates them without Codex, Claude, credentials, or local invocation transcripts
@@ -2076,6 +2178,7 @@ covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validato
 
 #### Scenario: Candidate evidence requires runtime-only semantic data
 covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validators
+test: packages/workflow-engine/test/session-schema.integration.test.ts#CI fails closed when a v3 plan omits tracked semantic evidence
 
 - **GIVEN** a candidate planning claim cannot be reconstructed from Git and omits that semantic fact from tracked evidence
 - **WHEN** CI assurance runs
@@ -2092,6 +2195,7 @@ An investigation exemption MUST mark `C-TERM-SCAN`, `C-WHY-BINDING`, and related
 
 #### Scenario: Runtime hint selects an actor
 covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#actor resolution preserves all agreeing soft signals and their grade
 
 - **GIVEN** actor identity is supported only by a recognized runtime hint
 - **WHEN** assurance is rendered locally or in CI
@@ -2100,6 +2204,7 @@ covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
 
 #### Scenario: Every sealed term was scanned
 covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
+test: packages/workflow-engine/test/public-contract-surface.test.ts#public guidance preserves the assurance registry and keeps exemptions distinct
 
 - **GIVEN** deterministic scan validation proves every effective sealed term has a current node
 - **WHEN** breadth assurance is summarized
@@ -2108,6 +2213,7 @@ covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
 
 #### Scenario: WHY fields are present and blob-bound
 covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
+test: packages/workflow-engine/test/public-contract-surface.test.ts#public guidance preserves the assurance registry and keeps exemptions distinct
 
 - **GIVEN** structural WHY validation passes
 - **WHEN** depth assurance is summarized
@@ -2116,6 +2222,7 @@ covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
 
 #### Scenario: Exempt investigation renders assurance
 covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
+test: packages/workflow-engine/test/public-contract-surface.test.ts#public guidance preserves the assurance registry and keeps exemptions distinct
 
 - **GIVEN** the current plan used an eligible structured investigation exemption
 - **WHEN** local or CI assurance is rendered
@@ -2124,6 +2231,7 @@ covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
 
 #### Scenario: Future claim is rendered before its owner is implemented
 covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
+test: packages/workflow-engine/test/public-contract-surface.test.ts#public guidance preserves the assurance registry and keeps exemptions distinct
 
 - **GIVEN** the registry assigns a claim such as exact closure or coverage composition to a future T2 change
 - **WHEN** T1.5 assurance is rendered

@@ -17,6 +17,7 @@ systems, and it SHALL route implementation authority to the workflow engine.
 
 #### Scenario: Agent needs to clarify a change
 covers: #Requirement: Agent Guide Uses Supported Planning Entry Points
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** a request needs investigation or clarification before implementation
 - **THEN** the guide directs the agent to `openspec-explore`
@@ -24,6 +25,7 @@ covers: #Requirement: Agent Guide Uses Supported Planning Entry Points
 
 #### Scenario: Agent needs a complete managed plan
 covers: #Requirement: Agent Guide Uses Supported Planning Entry Points
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** requirements are clear enough for proposal, design, specs, tasks, and guard artifacts
 - **THEN** the guide directs the agent to `openspec-propose`
@@ -39,6 +41,7 @@ adapter, and CI responsibilities without treating prose as authority.
 
 #### Scenario: Agent selects a workflow transition
 covers: #Requirement: Agent Guide Explains Every Workflow Command
+test: packages/workflow-engine/test/public-contract-surface.test.ts#agent guide documents the complete public workflow surface and source-size rule
 
 - **WHEN** an agent needs to diagnose, plan, execute, recover, archive, or verify a managed change
 - **THEN** the guide provides the relevant command and its permitted use
@@ -46,6 +49,7 @@ covers: #Requirement: Agent Guide Explains Every Workflow Command
 
 #### Scenario: CLI surface changes
 covers: #Requirement: Agent Guide Explains Every Workflow Command
+test: packages/workflow-engine/test/public-contract-surface.test.ts#agent guide documents the complete public workflow surface and source-size rule
 
 - **WHEN** public CLI usage no longer matches the documented command table
 - **THEN** the governance contract fails until they are reconciled
@@ -60,6 +64,7 @@ objective and normal verification.
 
 #### Scenario: Large source file has no scoped defect
 covers: #Requirement: Source Size Does Not Authorize Churn
+test: packages/workflow-engine/test/public-contract-surface.test.ts#agent guide documents the complete public workflow surface and source-size rule
 
 - **WHEN** a source file exceeds 500 lines but no behavior or maintainability objective is in scope
 - **THEN** the source file remains unchanged
