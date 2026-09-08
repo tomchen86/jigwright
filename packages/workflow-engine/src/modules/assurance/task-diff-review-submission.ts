@@ -1,4 +1,5 @@
-/** TaskDiff initial and continuation provider submission schemas, canonical findings, and evidence validation. */
+/** TaskDiff provider submission schemas, canonical findings, and evidence validation. */
+import { createTaskDiffReviewContinuationSubmissionProtocol } from './task-diff-review-continuation-submission.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from './task-diff-review.ts';
 import type {
   TaskDiffReviewSubject,
@@ -10,10 +11,6 @@ import type {
   TaskDiffReviewSubmissionProtocolBindings,
   TaskDiffReviewSubmission,
   TaskDiffReviewAssignment,
-  TaskDiffReviewContinuationSubmission,
-  TaskDiffReviewContinuationDecision,
-  TaskDiffReviewRecord,
-  TaskDiffReviewChallengeResponseRecord,
   StoredTaskDiffReviewChallenge,
   StoredTaskDiffReviewSuggestion,
   TaskDiffReviewRiskPathDisposition,
@@ -38,12 +35,6 @@ export function createTaskDiffReviewSubmissionProtocol(
     recordInvalid,
     deepFreeze,
     boundedText,
-    continuationInvalid,
-    DIGEST,
-    continuationDigest,
-    boundedContinuationText,
-    parseTaskDiffReviewRecord,
-    assertTaskDiffReviewChallengeResponseCurrent,
     parseDigest,
     exactPath,
     OBJECT_ID,
@@ -83,19 +74,8 @@ export function createTaskDiffReviewSubmissionProtocol(
 
   const RISK_PATH_OUTCOME_SET = new Set<string>(RISK_PATH_OUTCOMES);
 
-  const CONTINUATION_DECISIONS = new Set([
-    'accepted',
-    'rebutted',
-    'superseded',
-    'withdrawn',
-    'waived',
-  ]);
-
   const TASK_DIFF_REVIEW_OUTPUT_SCHEMA_ID =
     'workflow.task-diff-review-output.v1';
-
-  const TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA_ID =
-    'workflow.task-diff-review-continuation-output.v1';
 
   const TASK_DIFF_REVIEW_LIMITS = Object.freeze({
     maxTextBytes: MAX_TEXT_BYTES,
@@ -367,69 +347,14 @@ export function createTaskDiffReviewSubmissionProtocol(
     },
   });
 
-  /**
-   * Provider-facing continuation evidence. These are recommendations only: the
-   * engine must authenticate the fixed-runner reviewer and pass the proposal
-   * through the shared challenge-closure verifier before it can mint authority.
-   */
-  const TASK_DIFF_REVIEW_CONTINUATION_PROVIDER_OUTPUT_SCHEMA = Object.freeze({
-    type: 'object',
-    additionalProperties: false,
-    required: [
-      'schemaVersion',
-      'reviewRecordDigest',
-      'responseDigest',
-      'proposedDispositions',
-    ],
-    properties: {
-      schemaVersion: { type: 'integer', const: 1 },
-      reviewRecordDigest: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-      responseDigest: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-      proposedDispositions: {
-        type: 'array',
-        minItems: 1,
-        maxItems: MAX_FINDINGS,
-        items: {
-          type: 'object',
-          additionalProperties: false,
-          required: ['challengeId', 'decision', 'rationale', 'supersededBy'],
-          properties: {
-            challengeId: { type: 'string', pattern: '^[0-9a-f]{64}$' },
-            decision: { enum: [...CONTINUATION_DECISIONS] },
-            rationale: { type: 'string', minLength: 1 },
-            supersededBy: {
-              anyOf: [
-                { type: 'null' },
-                { type: 'string', pattern: '^[0-9a-f]{64}$' },
-              ],
-            },
-          },
-        },
-      },
-    },
-  });
-
-  const TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA_DIGEST = sha256(
-    canonicalJson(TASK_DIFF_REVIEW_CONTINUATION_PROVIDER_OUTPUT_SCHEMA),
-  );
-
-  const TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA = Object.freeze({
-    id: TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA_ID,
-    version: 1,
-    digest: TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA_DIGEST,
-  });
-
-  const TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR = Object.freeze({
-    ...TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
-    validate(value: unknown): boolean {
-      try {
-        parseTaskDiffReviewContinuationSubmission(value);
-        return true;
-      } catch {
-        return false;
-      }
-    },
-  });
+  const {
+    TASK_DIFF_REVIEW_CONTINUATION_PROVIDER_OUTPUT_SCHEMA,
+    TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_SCHEMA,
+    TASK_DIFF_REVIEW_CONTINUATION_OUTPUT_VALIDATOR,
+    parseTaskDiffReviewContinuationSubmission,
+    assertTaskDiffReviewContinuationSubmissionCurrent,
+    CONTINUATION_DECISIONS,
+  } = createTaskDiffReviewContinuationSubmissionProtocol(bindings);
 
   function normalizeSubmission(
     value: TaskDiffReviewSubmission,
@@ -624,99 +549,6 @@ export function createTaskDiffReviewSubmissionProtocol(
           }
         : {}),
     });
-  }
-
-  function parseTaskDiffReviewContinuationSubmission(
-    value: unknown,
-  ): TaskDiffReviewContinuationSubmission {
-    if (
-      !isRecord(value) ||
-      !hasExactKeys(value, [
-        'schemaVersion',
-        'reviewRecordDigest',
-        'responseDigest',
-        'proposedDispositions',
-      ]) ||
-      value.schemaVersion !== 1 ||
-      !Array.isArray(value.proposedDispositions) ||
-      value.proposedDispositions.length === 0 ||
-      value.proposedDispositions.length > MAX_FINDINGS
-    ) {
-      throw continuationInvalid();
-    }
-    const proposedDispositions = value.proposedDispositions
-      .map((candidate) => {
-        if (
-          !isRecord(candidate) ||
-          !hasExactKeys(candidate, [
-            'challengeId',
-            'decision',
-            'rationale',
-            'supersededBy',
-          ]) ||
-          !CONTINUATION_DECISIONS.has(String(candidate.decision)) ||
-          (candidate.supersededBy !== null &&
-            (typeof candidate.supersededBy !== 'string' ||
-              !DIGEST.test(candidate.supersededBy))) ||
-          (candidate.decision === 'superseded') !==
-            (typeof candidate.supersededBy === 'string')
-        ) {
-          throw continuationInvalid();
-        }
-        return Object.freeze({
-          challengeId: continuationDigest(candidate.challengeId),
-          decision: candidate.decision as TaskDiffReviewContinuationDecision,
-          rationale: boundedContinuationText(candidate.rationale),
-          supersededBy: candidate.supersededBy as string | null,
-        });
-      })
-      .sort((left, right) => left.challengeId.localeCompare(right.challengeId));
-    if (
-      proposedDispositions.some(
-        (entry, index) =>
-          index > 0 &&
-          entry.challengeId === proposedDispositions[index - 1]!.challengeId,
-      )
-    ) {
-      throw continuationInvalid();
-    }
-    return deepFreeze({
-      schemaVersion: 1,
-      reviewRecordDigest: continuationDigest(value.reviewRecordDigest),
-      responseDigest: continuationDigest(value.responseDigest),
-      proposedDispositions,
-    });
-  }
-
-  function assertTaskDiffReviewContinuationSubmissionCurrent(
-    reviewCandidate: TaskDiffReviewRecord,
-    responseCandidate: TaskDiffReviewChallengeResponseRecord,
-    submissionCandidate: TaskDiffReviewContinuationSubmission,
-  ): TaskDiffReviewContinuationSubmission {
-    const review = parseTaskDiffReviewRecord(reviewCandidate);
-    const response = assertTaskDiffReviewChallengeResponseCurrent(
-      review,
-      responseCandidate,
-    );
-    const submission =
-      parseTaskDiffReviewContinuationSubmission(submissionCandidate);
-    const challenges = review.challenges
-      .map(({ challengeId }) => challengeId)
-      .sort();
-    if (
-      submission.reviewRecordDigest !== review.recordDigest ||
-      submission.responseDigest !== response.responseDigest ||
-      canonicalJson(
-        submission.proposedDispositions.map(({ challengeId }) => challengeId),
-      ) !== canonicalJson(challenges) ||
-      submission.proposedDispositions.some(
-        ({ supersededBy }) =>
-          supersededBy !== null && !challenges.includes(supersededBy),
-      )
-    ) {
-      throw continuationInvalid();
-    }
-    return submission;
   }
 
   function normalizeSubmittedFindings(
