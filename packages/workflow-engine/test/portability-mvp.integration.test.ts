@@ -264,6 +264,9 @@ test('installed tarball drives two complete current lifecycles over unrelated se
         status: 'initialized',
         path: 'workflow/jigwright-profile.json',
         digest: initialized.result.digest,
+        applied: [],
+        pending: ['providerConfig', 'guidanceTargets'],
+        guidanceSuggestions: [],
       });
       assert.match(initialized.result.digest, /^sha256:[a-f0-9]{64}$/u);
       configurePortableConsumer(repository, lifecycleStrategy);
