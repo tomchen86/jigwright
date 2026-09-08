@@ -126,6 +126,7 @@ export type CurrentJigwrightV3ComparisonFactsV1 = Readonly<{
   }>;
   commands: Readonly<{
     guide: CurrentJigwrightCommandObservationV1;
+    /** Expected missing-OpenSpec diagnostic in the Jigwright-only consumer. */
     doctor: CurrentJigwrightCommandObservationV1;
     status: CurrentJigwrightCommandObservationV1;
     jobList: CurrentJigwrightCommandObservationV1;
@@ -1003,7 +1004,7 @@ function observeHookProxy(
 ): CurrentJigwrightCommandObservationV1 {
   return observeJsonCommand(
     path.join(repositoryRoot, '.husky', hook),
-    args,
+    [...args, '--json'],
     repositoryRoot,
     `${hook} hook`,
   );
@@ -1052,21 +1053,27 @@ function observeJsonCommand(
 ): CurrentJigwrightCommandObservationV1 {
   const result = runCommand(executable, args, repositoryRoot);
   if (result.status === null) throw new Error(`${label} was interrupted.`);
-  const stream = result.status === 0 ? 'stdout' : 'stderr';
-  const output = stream === 'stdout' ? result.stdout : result.stderr;
-  if (typeof output !== 'string' || output.trim().length === 0) {
-    throw new Error(`${label} returned no JSON payload.`);
+  const streams =
+    result.status === 0
+      ? (['stdout', 'stderr'] as const)
+      : (['stderr', 'stdout'] as const);
+  for (const stream of streams) {
+    let parsed: JsonRecord;
+    try {
+      // Diagnostics can return nonzero with JSON on stdout and warnings on stderr.
+      parsed = parseJsonOutput(result[stream]);
+    } catch {
+      continue;
+    }
+    const payload = normalizeCommandPayload(parsed, repositoryRoot);
+    return Object.freeze({
+      exitCode: result.status,
+      stream,
+      payload,
+      payloadDigest: digestJson(payload),
+    });
   }
-  const payload = normalizeCommandPayload(
-    parseJsonOutput(output),
-    repositoryRoot,
-  );
-  return Object.freeze({
-    exitCode: result.status,
-    stream,
-    payload,
-    payloadDigest: digestJson(payload),
-  });
+  throw new Error(`${label} returned no JSON payload.`);
 }
 
 function requireSuccessfulHook(
@@ -1140,34 +1147,17 @@ function inspectInstalledLockfile(
   });
 }
 
-function observeJigwrightCommand(
+export function observeJigwrightCommand(
   executable: string,
   repositoryRoot: string,
   args: readonly string[],
 ): CurrentJigwrightCommandObservationV1 {
-  const result = runCommand(
+  return observeJsonCommand(
     process.execPath,
     [executable, '--repository-root', repositoryRoot, ...args, '--json'],
     repositoryRoot,
+    `Jigwright ${args.join(' ')}`,
   );
-  if (result.status === null) {
-    throw new Error(`Jigwright ${args.join(' ')} was interrupted.`);
-  }
-  const stream = result.status === 0 ? 'stdout' : 'stderr';
-  const output = stream === 'stdout' ? result.stdout : result.stderr;
-  if (typeof output !== 'string' || output.trim().length === 0) {
-    throw new Error(`Jigwright ${args.join(' ')} returned no JSON payload.`);
-  }
-  const payload = normalizeCommandPayload(
-    parseJsonOutput(output),
-    repositoryRoot,
-  );
-  return Object.freeze({
-    exitCode: result.status,
-    stream,
-    payload,
-    payloadDigest: digestJson(payload),
-  });
 }
 
 function requireFreshInit(
@@ -1419,7 +1409,11 @@ function collectCurrentV3ComparisonFacts(
     ['job', 'list'],
   );
   requireReadOnlyCommand(guide, 'guide');
-  requireReadOnlyCommand(doctor, 'doctor');
+  if (!isExpectedSyntheticDoctorDiagnostic(doctor)) {
+    throw new Error(
+      'Current synthetic Jigwright doctor probe did not return the expected missing-OpenSpec diagnostic.',
+    );
+  }
   requireReadOnlyCommand(status, 'status');
   requireReadOnlyCommand(jobList, 'job', 'list');
 
@@ -1468,6 +1462,61 @@ function collectCurrentV3ComparisonFacts(
       observedStateMutation: 0 as const,
     }),
   });
+}
+
+function isExpectedSyntheticDoctorDiagnostic(
+  observation: CurrentJigwrightCommandObservationV1,
+): boolean {
+  return (
+    observation.exitCode === 13 &&
+    observation.stream === 'stdout' &&
+    observation.payload.command === 'doctor' &&
+    observation.payload.ok === false &&
+    observation.payload.mode === 'diagnostic' &&
+    isRecord(observation.payload.openspec) &&
+    isRecord(observation.payload.systemDocuments) &&
+    sameJson(observation.payload.openspec, {
+      expectedVersion: '1.6.0',
+      healthy: false,
+      installation: {
+        ok: false,
+        packageName: '@fission-ai/openspec',
+        declaredVersion: '1.6.0',
+        lockfileVersion: null,
+        lockedVersion: null,
+        integrity: null,
+        buildScriptsAllowed: null,
+        installedVersion: null,
+        packageDirectory: null,
+        binPath: null,
+      },
+      runtime: { ok: false, version: null },
+      root: {
+        ok: false,
+        path: null,
+        source: null,
+        healthy: null,
+        storeActive: null,
+      },
+      schemas: [],
+      diagnostics: [
+        {
+          severity: 'error',
+          code: 'OPENSPEC_INSTALLATION_DIAGNOSTIC_FAILED',
+          message:
+            'The exact project-local OpenSpec 1.6.0 installation is unavailable or unsafe. OpenSpec dependency is not pinned exactly',
+          target: 'openspec.installation',
+          causeCode: 'OPENSPEC_INSTALLATION_INVALID',
+        },
+      ],
+    }) &&
+    sameJson(observation.payload.systemDocuments, {
+      configured: false,
+      healthy: true,
+      specCount: 0,
+      diagnostics: [],
+    })
+  );
 }
 
 function requireReadOnlyCommand(
@@ -2064,7 +2113,7 @@ function isCurrentV3ComparisonFacts(
     !isCommandObservation(value.commands.status) ||
     !isCommandObservation(value.commands.jobList) ||
     !isSuccessfulCommand(value.commands.guide, 'guide') ||
-    !isSuccessfulCommand(value.commands.doctor, 'doctor') ||
+    !isExpectedSyntheticDoctorDiagnostic(value.commands.doctor) ||
     !isSuccessfulCommand(value.commands.status, 'status') ||
     !isSuccessfulCommand(value.commands.jobList, 'job', 'list') ||
     !isRecord(value.manifestV3) ||

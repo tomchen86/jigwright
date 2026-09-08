@@ -5,11 +5,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import test from 'node:test';
+import { pathToFileURL } from 'node:url';
 
 import {
   assessCurrentJigwrightAdoptionFreshness,
   inspectCurrentJigwrightRepositoryStateFingerprintV1,
   inspectCurrentJigwrightAdoptionFreshness,
+  observeJigwrightCommand,
   runCurrentJigwrightAdoption,
   verifyCurrentJigwrightAdoptionComparisonV1,
   verifyCurrentJigwrightAdoptionReportV1,
@@ -122,6 +124,207 @@ test('the public adoption command is current-only and preserves the workspace re
     workspaceManifest.scripts['jigwright:adopt-local'],
     'node --experimental-strip-types scripts/run-current-jigwright-adoption.ts',
   );
+});
+
+test('adoption observes the expected missing-OpenSpec doctor diagnostic without calling it healthy', () => {
+  const repositoryRoot = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'jigwright-adoption-doctor-')),
+  );
+  const launcher = path.resolve(
+    'packages/workflow-engine/bootstrap/jigwright-cli.mjs',
+  );
+  const runGit = (args: string[]) => {
+    const result = spawnSync(
+      'git',
+      [
+        '-c',
+        'core.hooksPath=/dev/null',
+        '-c',
+        'commit.gpgsign=false',
+        '-c',
+        'user.name=Jigwright Adoption',
+        '-c',
+        'user.email=jigwright@example.test',
+        ...args,
+      ],
+      { cwd: repositoryRoot, encoding: 'utf8' },
+    );
+    assert.equal(result.status, 0, result.stderr);
+  };
+  try {
+    runGit(['init', '-b', 'main']);
+    fs.writeFileSync(
+      path.join(repositoryRoot, 'package.json'),
+      JSON.stringify({ name: 'adoption-doctor-fixture', private: true }),
+    );
+    const init = observeJigwrightCommand(launcher, repositoryRoot, ['init']);
+    assert.equal(init.exitCode, 0);
+    assert.equal(init.stream, 'stdout');
+    assert.equal(init.payload.ok, true);
+    runGit(['add', '.']);
+    runGit(['commit', '-m', 'Create adoption diagnostic fixture']);
+
+    const doctor = observeJigwrightCommand(launcher, repositoryRoot, [
+      'doctor',
+    ]);
+    assert.equal(doctor.exitCode, 13);
+    assert.equal(doctor.stream, 'stdout', JSON.stringify(doctor));
+    assert.equal(doctor.payload.ok, false);
+    assert.equal(doctor.payload.command, 'doctor');
+    assert.equal(doctor.payload.mode, 'diagnostic');
+    assert.equal(doctor.payloadDigest, digestJson(doctor.payload));
+    assert.equal(
+      JSON.stringify(doctor.payload).includes(repositoryRoot),
+      false,
+    );
+    const openspec = doctor.payload.openspec as {
+      healthy: boolean;
+      diagnostics: Array<{ code: string; causeCode: string }>;
+    };
+    assert.equal(openspec.healthy, false);
+    assert.equal(
+      openspec.diagnostics[0]?.code,
+      'OPENSPEC_INSTALLATION_DIAGNOSTIC_FAILED',
+    );
+    assert.equal(
+      openspec.diagnostics[0]?.causeCode,
+      'OPENSPEC_INSTALLATION_INVALID',
+    );
+
+    const noisyLauncher = path.join(
+      repositoryRoot,
+      '.git',
+      'noisy-launcher.mjs',
+    );
+    fs.writeFileSync(
+      noisyLauncher,
+      `process.stderr.write('process diagnostic warning\\n');\nawait import(${JSON.stringify(pathToFileURL(launcher).href)});\n`,
+    );
+    assert.deepEqual(
+      observeJigwrightCommand(noisyLauncher, repositoryRoot, ['doctor']),
+      doctor,
+    );
+    const invalid = observeJigwrightCommand(launcher, repositoryRoot, [
+      'not-a-jigwright-command',
+    ]);
+    assert.equal(invalid.exitCode, 2);
+    assert.equal(invalid.stream, 'stderr');
+    assert.equal(invalid.payload.ok, false);
+    assert.equal(typeof commandErrorCode(invalid.payload), 'string');
+    assert.equal(invalid.payloadDigest, digestJson(invalid.payload));
+
+    const comparison = currentComparisonFixture();
+    const withDoctor = (observation: typeof doctor) => {
+      const source = {
+        ...comparison.source,
+        commands: { ...comparison.source.commands, doctor: observation },
+      };
+      const installed = structuredClone(source);
+      return {
+        ...comparison,
+        source,
+        installed,
+        factsDigest: digestJson({
+          bindings: comparison.bindings,
+          source,
+          installed,
+        }),
+      };
+    };
+    assert.deepEqual(
+      verifyCurrentJigwrightAdoptionComparisonV1(withDoctor(doctor)),
+      withDoctor(doctor),
+    );
+    const diagnosticDrift: readonly Readonly<{
+      name: string;
+      mutate(value: any): void;
+    }>[] = [
+      {
+        name: 'successful exit',
+        mutate: (value) => {
+          value.exitCode = 0;
+        },
+      },
+      {
+        name: 'different failure',
+        mutate: (value) => {
+          value.exitCode = 12;
+        },
+      },
+      {
+        name: 'stderr diagnostic',
+        mutate: (value) => {
+          value.stream = 'stderr';
+        },
+      },
+      {
+        name: 'healthy command',
+        mutate: (value) => {
+          value.payload.ok = true;
+        },
+      },
+      {
+        name: 'missing OpenSpec result',
+        mutate: (value) => {
+          delete value.payload.openspec;
+        },
+      },
+      {
+        name: 'different diagnostic',
+        mutate: (value) => {
+          value.payload.openspec.diagnostics[0].code = 'OTHER_FAILURE';
+        },
+      },
+      {
+        name: 'different cause',
+        mutate: (value) => {
+          value.payload.openspec.diagnostics[0].causeCode = 'OTHER_CAUSE';
+        },
+      },
+      {
+        name: 'different installation failure',
+        mutate: (value) => {
+          value.payload.openspec.diagnostics[0].message =
+            'different installation failure';
+        },
+      },
+      {
+        name: 'installed OpenSpec',
+        mutate: (value) => {
+          value.payload.openspec.installation.installedVersion = '1.6.0';
+        },
+      },
+      {
+        name: 'extra diagnostic',
+        mutate: (value) => {
+          value.payload.openspec.diagnostics.push({ code: 'OTHER_FAILURE' });
+        },
+      },
+      {
+        name: 'unhealthy system documents',
+        mutate: (value) => {
+          value.payload.systemDocuments.healthy = false;
+        },
+      },
+    ];
+    for (const { name, mutate } of diagnosticDrift) {
+      const changed = structuredClone(doctor);
+      mutate(changed);
+      assert.throws(
+        () =>
+          verifyCurrentJigwrightAdoptionComparisonV1(
+            withDoctor({
+              ...changed,
+              payloadDigest: digestJson(changed.payload),
+            }),
+          ),
+        /comparison is invalid/u,
+        name,
+      );
+    }
+  } finally {
+    fs.rmSync(repositoryRoot, { recursive: true, force: true });
+  }
 });
 
 test('standalone adoption freshness reports only the exact current clean source', () => {
@@ -260,7 +463,10 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
       process.execPath,
       [
         '--experimental-strip-types',
-        path.resolve('scripts/run-current-jigwright-adoption.ts'),
+        path.resolve(
+          import.meta.dirname,
+          '../../../scripts/run-current-jigwright-adoption.ts',
+        ),
         '--status',
         adoptionRoot,
       ],
@@ -405,6 +611,13 @@ test('one exact Jigwright tarball binds a synthetic local CLI and hook cutover w
       tree: report.consumer.tree,
     });
     assert.deepEqual(report.comparison.source, report.comparison.installed);
+    assert.equal(report.comparison.source.commands.doctor.exitCode, 13);
+    assert.equal(report.comparison.source.commands.doctor.stream, 'stdout');
+    assert.equal(report.comparison.source.commands.doctor.payload.ok, false);
+    assert.deepEqual(
+      report.comparison.source.commands.doctor.payload.openspec,
+      currentComparisonFixture().source.commands.doctor.payload.openspec,
+    );
     assert.equal(report.comparison.source.state.unchanged, true);
     assert.deepEqual(report.comparison.source.routedEffects, {
       scope: 'selected-current-v3-read-only-probes',
@@ -704,7 +917,55 @@ function currentComparisonFixture(): CurrentJigwrightAdoptionComparisonV1 {
         ok: true,
         guide: { kind: 'workflow-command-guide.v1' },
       }),
-      doctor: command({ command: 'doctor', ok: true }),
+      doctor: command(
+        {
+          command: 'doctor',
+          ok: false,
+          mode: 'diagnostic',
+          openspec: {
+            expectedVersion: '1.6.0',
+            healthy: false,
+            installation: {
+              ok: false,
+              packageName: '@fission-ai/openspec',
+              declaredVersion: '1.6.0',
+              lockfileVersion: null,
+              lockedVersion: null,
+              integrity: null,
+              buildScriptsAllowed: null,
+              installedVersion: null,
+              packageDirectory: null,
+              binPath: null,
+            },
+            runtime: { ok: false, version: null },
+            root: {
+              ok: false,
+              path: null,
+              source: null,
+              healthy: null,
+              storeActive: null,
+            },
+            schemas: [],
+            diagnostics: [
+              {
+                severity: 'error',
+                code: 'OPENSPEC_INSTALLATION_DIAGNOSTIC_FAILED',
+                message:
+                  'The exact project-local OpenSpec 1.6.0 installation is unavailable or unsafe. OpenSpec dependency is not pinned exactly',
+                target: 'openspec.installation',
+                causeCode: 'OPENSPEC_INSTALLATION_INVALID',
+              },
+            ],
+          },
+          systemDocuments: {
+            configured: false,
+            healthy: true,
+            specCount: 0,
+            diagnostics: [],
+          },
+        },
+        13,
+      ),
       status: command({ command: 'status', ok: true, sessions: [] }),
       jobList: command({
         command: 'job',
