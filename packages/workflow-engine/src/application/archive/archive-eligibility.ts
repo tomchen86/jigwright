@@ -402,7 +402,7 @@ function inspectEligibility(
     config.changeRoot,
     contract.changeId,
     archiveDestination,
-    stable.readSystemDescription(),
+    stable.readSystemDescription,
   );
   const current = discoverRepository(git.repositoryRoot);
   if (
@@ -515,7 +515,7 @@ function inspectArchiveTargets(
   changeRoot: string,
   changeId: string,
   archiveDestination: string,
-  snapshot: SystemDescriptionSnapshot,
+  readSystemDescription: () => SystemDescriptionSnapshot,
 ): string[] {
   const activeRoot = `${changeRoot}/${changeId}`;
   assertPlainAncestors(repositoryRoot, activeRoot);
@@ -549,6 +549,7 @@ function inspectArchiveTargets(
       return entry.name;
     })
     .sort();
+  const snapshot = readSystemDescription();
   const baseSpecs = [
     ...new Set(
       capabilities.map((capability) =>

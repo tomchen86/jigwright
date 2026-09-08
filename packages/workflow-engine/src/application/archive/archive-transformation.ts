@@ -338,10 +338,8 @@ export function createArchiveApplicabilityProjection(
       worktree,
       activeRoot,
       activeArtifactPaths,
-      (
-        options.readSystemDescriptionSnapshot ??
-        dependencies.readSystemDescriptionSnapshot
-      )(worktree),
+      options.readSystemDescriptionSnapshot ??
+        dependencies.readSystemDescriptionSnapshot,
     );
     const reviewedArtifacts = readProjectionArtifactBindings(
       worktree,
@@ -763,7 +761,7 @@ function readProjectionSpecInputs(
   worktree: string,
   activeRoot: string,
   activeArtifactPaths: readonly string[],
-  snapshot: SystemDescriptionSnapshot,
+  readSystemDescription: (root: string) => SystemDescriptionSnapshot,
 ): Array<{
   capability: string;
   delta: string;
@@ -781,7 +779,10 @@ function readProjectionSpecInputs(
       'Archive applicability requires at least one current delta specification.',
     );
   }
-  const colocated = readSystemSpecDeltaInputs(snapshot, deltaPaths);
+  const colocated = readSystemSpecDeltaInputs(
+    readSystemDescription(worktree),
+    deltaPaths,
+  );
   if (colocated) return colocated;
   return deltaPaths.map((deltaPath) => {
     const capability = deltaPath.slice(prefix.length, -'/spec.md'.length);
