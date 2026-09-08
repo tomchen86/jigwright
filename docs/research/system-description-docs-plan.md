@@ -13,7 +13,7 @@
 
 1. **Docs live with code**：樹就是地圖，root → package → module → file。
 2. **能生成的一律生成**：人只寫「這是什麼、為什麼」。
-3. **原話不可改，只被 supersede**：下游只引用 id，永不複製原文進 canonical record。生成的投影可以印原話。
+3. **原話不可改，只被 supersede**：下游只引用 id，永不複製原文進 canonical record。生成的投影可以印原話。不可改只適用 maintainer Source；agent 寫的 Source 是重量錯誤，轉成 Finding 後刪除（owner 09-08）。
 4. **人與 agent 共用同一份可讀文件**：投影裡印原話、印標題，不印 SRC/FND/WORK 的 id；id 與雜湊只在驗證指令內流動。BACKLOG、README、AGENTS.md 的 R-000 段都是投影，ledger 是唯一權威。
 5. **閘門 fail-grant**：缺處置產生精確 challenge，不是 dead end（R-000）。
 6. **解釋帶確認 commit，不帶作者**：解釋的權威靠追溯（§5b），不靠署名。
@@ -159,7 +159,7 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 6. **import 邊填進 ledger 投影 + 檔頭淺抽取器**：把 `semanticDependencies: []` 換成 import 抓取；planning 時期投影接上；`Invariants:` 區塊抽取器（讀，不閘）。freshness 從此有東西可走，README 檔案表與 `covers` 有東西可查。
 7. **Module README**：governance-intake 先，authority 次。一段手寫「為什麼」帶確認 commit，其餘四段生成（§3）；CLI usage 字串補「做什麼」欄。
 8. **檔頭 baseline（縮小）**：只做 authority 與 provider-orchestration，兩段格式（§3a）；便宜 agent 寫職責句初稿，不變量由強模型或人確認。拿到真實成本再決定鋪不鋪滿。
-9. **Intake 修正**：Finding → dedicated ref；更正動詞（建 supersede 鏈）；`attach` 收既有 SRC id。（`--kind`、觀察不鑄 Source、產物排除已落地。）
+9. **Intake 修正**：Finding → dedicated ref；更正動詞（建 supersede 鏈）；`attach` 收既有 SRC id；**之後**把 15 筆 agent Source 轉成 Finding 並刪除（#17）。（`--kind`、觀察不鑄 Source、產物排除已落地。）
 10. **consumer 補課**：R-000 投影、document-policy、path-roles、schema 漂移清理。
 11. **baseline reconciliation**：清 stale requirement。在第 5 步之後。
 12. **可選、之後**：檔頭閘門（檔頭 digest 進 pin，finalize 要 confirm / 改 / later）；symbol 粒度；spec 搬家。
@@ -205,6 +205,10 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 | 13 | 檔頭執行力 | **已決**：v1 不閘、但要淺抽取；不變量以檔頭為主 |
 | 14 | 三套分類的 Purpose TBD 何時補 | **已決**：第 3 步，與搬家一起 |
 | 15 | CLI usage 字串加「做什麼」欄（供 README 生成） | **已決**：做，併入第 7 步 |
+| 16 | 舊 issue 的假 timestamp 與來源 | **已決（09-08）**：不加 `legacy-unknown` 新標記（引擎不為 legacy 長胖）。`createdAt` 不能為 null（決定年份目錄），改成 migration commit 的真實時間；`interpretation.status` 改回 `agent-derived`（沒人確認過）；alias 保留 ISS-nnn |
+| 17 | 15 筆 agent Source | **已決（09-08）**：每筆補建 Finding，然後刪除 Source（含 3 筆 supersede 鏈）；先移除 Work Item 的 sourceRefs 再刪物件。依賴第 9 步 Finding 進 repo，否則 Finding 只落在 `.git` |
+| 18 | 人類 plan review 一頁設計 | **已決**：第 5 步之後 |
+| 19 | `init` 逐步問答流程 research | **已決**：擱置 |
 
 ## 10. 執行紀錄
 
@@ -213,8 +217,9 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 - **2026-09-04～05 fix branch（30 commits，摘要）**：intent 動詞拒 flag 文字；ignored 目錄記一筆；OpenSpec 從主 worktree 解析；checkpoint 錯誤說出 key、schema 附 template、manifest 去 base64；`now` 走 Fail-Grant；WHY 列以內容為身分；plan-review 欄位由引擎推導；validator 說出拒絕理由；retry 上限轉人類決策；Finding 不需 open session；產物排除出掃描；只有 origin.json 的 change 視為 reservation（finding #1）；**統一 intake：`--kind`、觀察不鑄 Source、task 內 later 轉 Finding、convert 不鑄 agent Source**（f5b1f36）。
 - **2026-09-05**：intake 模型裁決（§5b）、四個決定（§9 #3/#8/#12/#13）、use case 文件 S1–S12。
 - **2026-09-05 v2.1**：機械優先原則（§0.9）；spec 搬進 module 目錄、ownership 用包含關係；檔頭縮成兩段、不變量以檔頭為主、淺抽取器；README 只剩一段手寫；依賴不住任何文件。
+- **2026-09-08**：另一個 session 的 09-05 計畫（§8 四項）併入 §9 #16–#19 並裁決；PLAN-projection-module-refactor 五步驗證落地（登記表六筆投影，doctor 讀 status）；PLAN-agent-guidance-projection 落地但尚未套到本 repo 的 AGENTS.md。
 - **2026-09-05 晚**：§9 全部 15 項裁決完畢（owner 照 agent 建議）；中心思想升到 §0 頂端（一個權威、多處可見、只印文字）；#1/#7 併入；#2 裁定 Fail-Grant；發現 R-000 不在 ledger、DECISION-REGISTER 未引用 R-000。
 
 ## 11. 已知 drift
 
-**舊 issue 遷移**（T3 §3.5b 要求「未知來源標 `legacy-unknown`，不補造 Source 或 timestamp」）：引擎沒有 `legacy-unknown` 標記；consumer 18 筆 legacy item 標成 `maintainer-confirmed` 但 `sourceRefs: []`；建立時間全是 `2026-08-24T00:00:00.000Z`（整點午夜，clean-slate 日）。不影響功能，但追溯時會誤以為 owner 確認過。列入第 10 步。
+**舊 issue 遷移**（T3 §3.5b 要求「未知來源標 `legacy-unknown`，不補造 Source 或 timestamp」）：引擎沒有 `legacy-unknown` 標記；consumer 18 筆 legacy item 標成 `maintainer-confirmed` 但 `sourceRefs: []`；建立時間全是 `2026-08-24T00:00:00.000Z`（整點午夜，clean-slate 日）。不影響功能，但追溯時會誤以為 owner 確認過。處置見 §9 #16：真實 migration 時間 + `agent-derived`，不加新標記。列入第 10 步。
