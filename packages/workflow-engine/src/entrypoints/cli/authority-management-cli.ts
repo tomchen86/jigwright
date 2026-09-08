@@ -1,20 +1,72 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import {
-  type AuthorityPlanIntent,
   createAuthorityPlan,
   inspectAuthorityPlan,
   resumeAuthorityPlan,
   approveAndApplyAuthorityPlan,
   attestAuthorityPlan,
-} from '../../application/control-plane/authority-plan.ts';
+  loadWorkflowConfig,
+  parseExecutionBudgetGrantRequest,
+  externalEffectStorePaths,
+  revokeExternalEffectGrant,
+  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
+  issueExternalEffectGrant,
+  inspectExternalEffectGrant,
+  reconcileExternalEffectGrant,
+  executePublishGrant,
+  discoverRepository,
+  runGit,
+  assertMaintainerGrantId,
+  parseMaintainerEvidenceWaivers,
+  preflightMaintainerGrantV2,
+  issueAuthorityAttestation,
+  projectAuthorityAttestationRelay,
+  maintainerGrantStorePaths,
+  inspectMaintainerGrants,
+  assertInteractiveSignerContext,
+  parseMaintainerPolicy,
+  revokeMaintainerGrantV2,
+  approveAndApplyMaintainerGrantV2,
+  reissueAndApplyMaintainerGrantV2,
+  produceControlPlaneApprovalCandidateV3,
+  inspectHumanResolutionGrantPublicationRecoveries,
+  inspectHumanResolutionGrants,
+  discardHumanResolutionGrantPublication,
+  revokeHumanResolutionGrant,
+  inspectInvestigationQuarantineState,
+  runtimePaths,
+  prepareTaskRevisionApprovalBinding,
+  resumeDirectHumanTaskDiffReview,
+  issueTaskRevisionApproval,
+  parseTaskMandateRequest,
+  inspectActiveTaskMandateBinding,
+  authorizeTaskMandate,
+  inspectTaskMandate,
+  revokeTaskMandate,
+} from '../../composition-root/cli-command-services.ts';
+import type {
+  AuthorityPlanIntent,
+  ExternalEffectTarget,
+  ExternalEffectRollbackPlan,
+  ExternalEffectGrantRequest,
+  ExternalEffectKind,
+  ExternalEffectReconciliationRequest,
+  MaintainerGrantV2PreflightRequest,
+  MaintainerEvidenceWaiver,
+  AuthorityAttestationRequest,
+  ApproveAndApplyMaintainerGrantV2Request,
+  ReissueAndApplyMaintainerGrantV2Request,
+  CandidateExternalEffect,
+} from '../../composition-root/cli-command-services.ts';
+
 import { dispatchAuthorityAuditCommand } from './authority-audit-cli.ts';
 import {
   isCollaborationGrantCommand,
   dispatchCollaborationGrantCommand,
 } from './collaboration-grant-cli.ts';
 import { dispatchRoleContextSharingGrantCommand } from './role-context-sharing-grant-cli.ts';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
+
 import {
   WorkflowError,
   workflowError,
@@ -25,79 +77,21 @@ import {
   inspectIssuedExecutionBudgetGrant,
   revokeIssuedExecutionBudgetGrant,
 } from './execution-grant-cli.ts';
-import { parseExecutionBudgetGrantRequest } from '../../modules/authority/execution-governance.ts';
-import {
-  externalEffectStorePaths,
-  revokeExternalEffectGrant,
-  EXTERNAL_EFFECT_MAX_TTL_SECONDS,
-  type ExternalEffectTarget,
-  type ExternalEffectRollbackPlan,
-  type ExternalEffectGrantRequest,
-  type ExternalEffectKind,
-  issueExternalEffectGrant,
-  inspectExternalEffectGrant,
-  reconcileExternalEffectGrant,
-  type ExternalEffectReconciliationRequest,
-} from '../../modules/authority/external-effect-grant.ts';
-import { executePublishGrant } from '../../adapters/remote/github/publish-executor.ts';
-import {
-  discoverRepository,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
-import { assertMaintainerGrantId } from '../../modules/authority/maintainer-grant.ts';
-import {
-  type MaintainerGrantV2PreflightRequest,
-  type MaintainerEvidenceWaiver,
-  parseMaintainerEvidenceWaivers,
-  preflightMaintainerGrantV2,
-} from '../../modules/authority/maintainer-grant-v2.ts';
-import {
-  type AuthorityAttestationRequest,
-  issueAuthorityAttestation,
-  projectAuthorityAttestationRelay,
-} from '../../application/control-plane/maintainer-attestation.ts';
-import {
-  maintainerGrantStorePaths,
-  inspectMaintainerGrants,
-} from '../../runtime/storage-journal/maintainer-store.ts';
-import { assertInteractiveSignerContext } from '../../adapters/signing/ssh/maintainer-signer.ts';
+
 import { productionConsumedRoleResultReplayPort } from '../../composition-root/grant-verifier-composition.ts';
-import { parseMaintainerPolicy } from '../../modules/authority/maintainer-policy.ts';
-import {
-  type ApproveAndApplyMaintainerGrantV2Request,
-  type ReissueAndApplyMaintainerGrantV2Request,
-  revokeMaintainerGrantV2,
-  approveAndApplyMaintainerGrantV2,
-  reissueAndApplyMaintainerGrantV2,
-} from '../../application/control-plane/maintainer-approve.ts';
-import type { CandidateExternalEffect } from '../../modules/authority/maintainer-candidate.ts';
+
 import {
   bootstrapInterventionStateRoot,
   dispatchBootstrapInterventionCommand,
 } from './intervention-control-bootstrap-cli.ts';
-import { createHarnessBootstrapDependencies } from '../../harness-bootstrap.ts';
 import { dispatchInterventionControlCommand } from './intervention-control-cli.ts';
-import { dispatchProductionControlPlaneUpdaterCommand } from './intervention-control-updater-cli.ts';
-import { produceControlPlaneApprovalCandidateV3 } from '../../application/control-plane/control-plane-promotion-producer.ts';
 import {
-  inspectHumanResolutionGrantPublicationRecoveries,
-  inspectHumanResolutionGrants,
-  discardHumanResolutionGrantPublication,
-  revokeHumanResolutionGrant,
-} from '../../adapters/planning/investigation/investigation-session.ts';
-import { inspectInvestigationQuarantineState } from '../../runtime/storage-journal/investigation-session-store.ts';
+  dispatchProductionControlPlaneUpdaterCommand,
+  controlPlaneTaskMandateBindingFromTaskMandate,
+} from './intervention-control-updater-cli.ts';
+
 import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
-import { prepareTaskRevisionApprovalBinding } from '../../application/revise/task-revision.ts';
-import { resumeDirectHumanTaskDiffReview } from '../../application/finalize/task-diff-review-lifecycle.ts';
-import { issueTaskRevisionApproval } from '../../modules/authority/task-revision-approval.ts';
-import {
-  parseTaskMandateRequest,
-  inspectActiveTaskMandateBinding,
-  authorizeTaskMandate,
-  inspectTaskMandate,
-  revokeTaskMandate,
-} from '../../modules/authority/task-mandate.ts';
+
 import {
   usage,
   requireArgumentCount,
@@ -572,7 +566,10 @@ function dispatchProductionControlPlaneCommand(rest: string[], cwd: string) {
   const stateRoot = bootstrapInterventionStateRoot(
     repository.gitCommonDirectory,
   );
-  const dependencies = controlPlaneUpdaterDependencies(cwd);
+  const dependencies = controlPlaneUpdaterDependencies(
+    cwd,
+    controlPlaneTaskMandateBindingFromTaskMandate,
+  );
   if (rest[0] === 'produce' && rest.length === 2) {
     return produceControlPlaneApprovalCandidateV3(
       repository.repositoryRealPath,
@@ -597,6 +594,9 @@ function dispatchProductionControlPlaneCommand(rest: string[], cwd: string) {
 export function dispatchAuthorityCommand(
   args: string[],
   cwd: string,
+  createHarnessBootstrapDependencies: (
+    cwd: string,
+  ) => Parameters<typeof dispatchBootstrapInterventionCommand>[2],
 ): CommandResult {
   const [command, ...rest] = args;
   switch (command) {

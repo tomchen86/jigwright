@@ -6,7 +6,20 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
+import {
+  discoverRepository,
+  assertProtectedTaskApplyRecoveryGrantRequiredDetails,
+  assertProtectedTaskApplyDescendantSettlementGrantRequiredDetails,
+  parseChangeRoutingIntent,
+  observeChangeRoutingContinuationState,
+} from '../../composition-root/cli-command-services.ts';
+import type {
+  ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
+  ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
+  WorkItemReviewV1,
+  WorkRegistryGrantRequiredDetailsV1,
+} from '../../composition-root/cli-command-services.ts';
+
 import {
   requestProtectedTaskApplyDescendantSettlementGrant,
   requestProtectedTaskApplyGrant,
@@ -17,22 +30,7 @@ import {
   requestWorkRegistryReviewGrant,
   requestWorkRegistryPromotionGrant,
 } from '../../composition-root/grant-production.ts';
-import {
-  type ProtectedTaskApplyRecoveryGrantRequiredDetailsV1,
-  assertProtectedTaskApplyRecoveryGrantRequiredDetails,
-} from '../../modules/authority/protected-task-apply-recovery-grant.ts';
-import {
-  type ProtectedTaskApplyDescendantSettlementGrantRequiredDetailsV1,
-  assertProtectedTaskApplyDescendantSettlementGrantRequiredDetails,
-} from '../../modules/authority/protected-task-apply-descendant-settlement-grant.ts';
-import type {
-  WorkItemReviewV1,
-  WorkRegistryGrantRequiredDetailsV1,
-} from '../../modules/governance-intake/work-registry.ts';
-import {
-  parseChangeRoutingIntent,
-  observeChangeRoutingContinuationState,
-} from '../../modules/lifecycle/change-routing.ts';
+
 import {
   type CommandResult,
   plainRecord,

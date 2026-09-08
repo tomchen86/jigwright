@@ -11,11 +11,6 @@ import { TextDecoder } from 'node:util';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
-import {
-  publishPreparedExclusiveLock,
-  reclaimDeadPreparedLock,
-  runGit,
-} from '../../runtime/repository-transaction/git.ts';
 import { repositoryWorkRegistryConfiguration } from '../repository-consumer/repository-consumer-config.ts';
 import type {
   ChangeOriginV1,
@@ -23,6 +18,7 @@ import type {
   WorkItemPromotionSurveyBindingV1,
   WorkItemPromotionTestHooks,
   WorkItemV1,
+  WorkRegistryPromotionLockBindings,
 } from './work-registry.ts';
 import {
   WORK_ITEM_FILE_MODE,
@@ -230,168 +226,181 @@ export function recoverWorkItemPromotionTransactionsUnlocked(
   }
 }
 
-export function withWorkRegistryPromotionLock<T>(
-  repositoryRoot: string,
-  operation: (runtime: WorkRegistryPromotionRuntimePaths) => T,
-): T {
-  const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, true)!;
-  if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
-    return operation(runtime);
-  }
-  ensureWorkRegistryPromotionDirectories(runtime);
-  const ownerToken = crypto.randomUUID();
-  const marker = `${canonicalJson({
-    schemaVersion: 1,
-    ownerToken,
-    pid: process.pid,
-  })}\n`;
-  let descriptor: number | undefined;
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      descriptor = publishPreparedExclusiveLock(
-        runtime.lock,
-        marker,
-        ownerToken,
-        () =>
-          workRegistryTransactionInvalid(
-            'Work Item promotion lock publication is unsafe.',
-          ),
-      );
-      break;
-    } catch (error) {
-      if (isNodeError(error) && error.code === 'EEXIST' && attempt === 0) {
-        const reclaim = reclaimDeadPreparedLock(runtime.lock, (content) =>
-          parseWorkRegistryPromotionLockOwner(content),
+/** Bind the existing registry runtime edge once; lock and recovery remain synchronous. */
+export function createWorkRegistryPromotionLocks({
+  publishPreparedExclusiveLock,
+  reclaimDeadPreparedLock,
+  runGit,
+}: WorkRegistryPromotionLockBindings) {
+  function withWorkRegistryPromotionLock<T>(
+    repositoryRoot: string,
+    operation: (runtime: WorkRegistryPromotionRuntimePaths) => T,
+  ): T {
+    const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, true)!;
+    if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
+      return operation(runtime);
+    }
+    ensureWorkRegistryPromotionDirectories(runtime);
+    const ownerToken = crypto.randomUUID();
+    const marker = `${canonicalJson({
+      schemaVersion: 1,
+      ownerToken,
+      pid: process.pid,
+    })}\n`;
+    let descriptor: number | undefined;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        descriptor = publishPreparedExclusiveLock(
+          runtime.lock,
+          marker,
+          ownerToken,
+          () =>
+            workRegistryTransactionInvalid(
+              'Work Item promotion lock publication is unsafe.',
+            ),
         );
-        if (reclaim === 'reclaimed' || reclaim === 'absent') continue;
-        if (reclaim === 'unsafe') {
-          throw workRegistryTransactionInvalid(
-            'Work Item promotion lock is invalid.',
+        break;
+      } catch (error) {
+        if (isNodeError(error) && error.code === 'EEXIST' && attempt === 0) {
+          const reclaim = reclaimDeadPreparedLock(runtime.lock, (content) =>
+            parseWorkRegistryPromotionLockOwner(content),
+          );
+          if (reclaim === 'reclaimed' || reclaim === 'absent') continue;
+          if (reclaim === 'unsafe') {
+            throw workRegistryTransactionInvalid(
+              'Work Item promotion lock is invalid.',
+            );
+          }
+        }
+        if (isNodeError(error) && error.code === 'EEXIST') {
+          throw workRegistryTransactionConflict(
+            'Another Work Item promotion transaction is in progress.',
           );
         }
+        throw error;
       }
-      if (isNodeError(error) && error.code === 'EEXIST') {
-        throw workRegistryTransactionConflict(
-          'Another Work Item promotion transaction is in progress.',
-        );
-      }
-      throw error;
     }
+    if (descriptor === undefined) {
+      throw workRegistryTransactionInvalid(
+        'Work Item promotion lock could not be acquired.',
+      );
+    }
+    activeWorkRegistryPromotionRoots.add(runtime.repositoryRoot);
+    let result: T;
+    let operationError: unknown;
+    try {
+      result = operation(runtime);
+    } catch (error) {
+      operationError = error;
+    }
+    activeWorkRegistryPromotionRoots.delete(runtime.repositoryRoot);
+    try {
+      releaseWorkRegistryPromotionLock(runtime.lock, descriptor, marker);
+    } catch (releaseError) {
+      if (operationError === undefined) throw releaseError;
+      throw workRegistryTransactionInvalid(
+        'Work Item promotion failed and its lock could not be released safely.',
+      );
+    }
+    if (operationError !== undefined) throw operationError;
+    return result!;
   }
-  if (descriptor === undefined) {
-    throw workRegistryTransactionInvalid(
-      'Work Item promotion lock could not be acquired.',
-    );
-  }
-  activeWorkRegistryPromotionRoots.add(runtime.repositoryRoot);
-  let result: T;
-  let operationError: unknown;
-  try {
-    result = operation(runtime);
-  } catch (error) {
-    operationError = error;
-  }
-  activeWorkRegistryPromotionRoots.delete(runtime.repositoryRoot);
-  try {
-    releaseWorkRegistryPromotionLock(runtime.lock, descriptor, marker);
-  } catch (releaseError) {
-    if (operationError === undefined) throw releaseError;
-    throw workRegistryTransactionInvalid(
-      'Work Item promotion failed and its lock could not be released safely.',
-    );
-  }
-  if (operationError !== undefined) throw operationError;
-  return result!;
-}
 
-export function withWorkRegistryPromotionLockWhenAvailable<T>(
-  repositoryRoot: string,
-  operation: () => T,
-): T {
-  const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
-  if (runtime === null) {
-    return operation();
+  function withWorkRegistryPromotionLockWhenAvailable<T>(
+    repositoryRoot: string,
+    operation: () => T,
+  ): T {
+    const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
+    if (runtime === null) {
+      return operation();
+    }
+    if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
+      return operation();
+    }
+    return withWorkRegistryPromotionLock(repositoryRoot, (runtime) => {
+      recoverWorkItemPromotionTransactionsUnlocked(runtime);
+      return operation();
+    });
   }
-  if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
-    return operation();
-  }
-  return withWorkRegistryPromotionLock(repositoryRoot, (runtime) => {
-    recoverWorkItemPromotionTransactionsUnlocked(runtime);
-    return operation();
-  });
-}
 
-export function withWorkRegistryPromotionReadLockWhenAvailable<T>(
-  repositoryRoot: string,
-  operation: () => T,
-): T {
-  const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
-  if (runtime === null) return operation();
-  if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
-    return operation();
-  }
-  if (fs.lstatSync(runtime.root, { throwIfNoEntry: false }) === undefined) {
-    const result = operation();
+  function withWorkRegistryPromotionReadLockWhenAvailable<T>(
+    repositoryRoot: string,
+    operation: () => T,
+  ): T {
+    const runtime = workRegistryPromotionRuntimePaths(repositoryRoot, false);
+    if (runtime === null) return operation();
+    if (activeWorkRegistryPromotionRoots.has(runtime.repositoryRoot)) {
+      return operation();
+    }
     if (fs.lstatSync(runtime.root, { throwIfNoEntry: false }) === undefined) {
-      return result;
+      const result = operation();
+      if (fs.lstatSync(runtime.root, { throwIfNoEntry: false }) === undefined) {
+        return result;
+      }
     }
+    return withWorkRegistryPromotionLock(repositoryRoot, (lockedRuntime) => {
+      recoverWorkItemPromotionTransactionsUnlocked(lockedRuntime);
+      return operation();
+    });
   }
-  return withWorkRegistryPromotionLock(repositoryRoot, (lockedRuntime) => {
-    recoverWorkItemPromotionTransactionsUnlocked(lockedRuntime);
-    return operation();
-  });
-}
 
-function workRegistryPromotionRuntimePaths(
-  repositoryRoot: string,
-  required: boolean,
-): WorkRegistryPromotionRuntimePaths | null {
-  const repositoryRealPath = fs.realpathSync(repositoryRoot);
-  const topLevel = runGit(
-    repositoryRealPath,
-    ['rev-parse', '--show-toplevel'],
-    true,
-  ).trim();
-  const gitDirectoryValue = runGit(
-    repositoryRealPath,
-    ['rev-parse', '--git-dir'],
-    true,
-  ).trim();
-  let topLevelRealPath: string | null = null;
-  let gitDirectory: string | null = null;
-  try {
-    topLevelRealPath = topLevel ? fs.realpathSync(topLevel) : null;
-    gitDirectory = gitDirectoryValue
-      ? fs.realpathSync(
-          path.isAbsolute(gitDirectoryValue)
-            ? gitDirectoryValue
-            : path.resolve(repositoryRealPath, gitDirectoryValue),
-        )
-      : null;
-  } catch {
-    topLevelRealPath = null;
-    gitDirectory = null;
+  function workRegistryPromotionRuntimePaths(
+    repositoryRoot: string,
+    required: boolean,
+  ): WorkRegistryPromotionRuntimePaths | null {
+    const repositoryRealPath = fs.realpathSync(repositoryRoot);
+    const topLevel = runGit(
+      repositoryRealPath,
+      ['rev-parse', '--show-toplevel'],
+      true,
+    ).trim();
+    const gitDirectoryValue = runGit(
+      repositoryRealPath,
+      ['rev-parse', '--git-dir'],
+      true,
+    ).trim();
+    let topLevelRealPath: string | null = null;
+    let gitDirectory: string | null = null;
+    try {
+      topLevelRealPath = topLevel ? fs.realpathSync(topLevel) : null;
+      gitDirectory = gitDirectoryValue
+        ? fs.realpathSync(
+            path.isAbsolute(gitDirectoryValue)
+              ? gitDirectoryValue
+              : path.resolve(repositoryRealPath, gitDirectoryValue),
+          )
+        : null;
+    } catch {
+      topLevelRealPath = null;
+      gitDirectory = null;
+    }
+    if (topLevelRealPath !== repositoryRealPath || gitDirectory === null) {
+      if (!required) return null;
+      throw workRegistryTransactionInvalid(
+        'Work Item promotion requires one canonical Git worktree.',
+      );
+    }
+    const engineRoot = path.join(gitDirectory, 'workflow-engine');
+    const root = path.join(engineRoot, 'work-registry');
+    const journals = path.join(root, 'promotion-journals');
+    const recovered = path.join(root, 'recovered-promotions');
+    const locks = path.join(root, 'locks');
+    return {
+      repositoryRoot: repositoryRealPath,
+      gitDirectory,
+      engineRoot,
+      root,
+      journals,
+      recovered,
+      locks,
+      lock: path.join(locks, 'promotion.lock'),
+    };
   }
-  if (topLevelRealPath !== repositoryRealPath || gitDirectory === null) {
-    if (!required) return null;
-    throw workRegistryTransactionInvalid(
-      'Work Item promotion requires one canonical Git worktree.',
-    );
-  }
-  const engineRoot = path.join(gitDirectory, 'workflow-engine');
-  const root = path.join(engineRoot, 'work-registry');
-  const journals = path.join(root, 'promotion-journals');
-  const recovered = path.join(root, 'recovered-promotions');
-  const locks = path.join(root, 'locks');
+
   return {
-    repositoryRoot: repositoryRealPath,
-    gitDirectory,
-    engineRoot,
-    root,
-    journals,
-    recovered,
-    locks,
-    lock: path.join(locks, 'promotion.lock'),
+    withWorkRegistryPromotionLock,
+    withWorkRegistryPromotionLockWhenAvailable,
+    withWorkRegistryPromotionReadLockWhenAvailable,
   };
 }
 
