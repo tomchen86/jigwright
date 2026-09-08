@@ -20,7 +20,7 @@ test('init fills missing answers, installs only explicit targets, and preserves 
     '# Local rules\n\nKeep this exact.\n',
   );
   const invoke = (...args: string[]) =>
-    spawnSync(process.execPath, [launcher, 'init', '--json', ...args], {
+    spawnSync(process.execPath, [launcher, 'init', ...args, '--json'], {
       cwd: root,
       encoding: 'utf8',
       env: {
@@ -358,7 +358,7 @@ test('fresh provider setup creates host TOML once without launching provider pro
   });
   const providers = [{ id: 'codex-local', family: 'codex', executable }];
   const invoke = (...args: string[]) =>
-    spawnSync(process.execPath, [launcher, 'init', '--json', ...args], {
+    spawnSync(process.execPath, [launcher, 'init', ...args, '--json'], {
       cwd: root,
       encoding: 'utf8',
       env: {
@@ -461,7 +461,7 @@ test('bootstrap help skips host setup lookup and other lookup failures use JSON 
   fs.copyFileSync(launcher, path.join(temporary, 'jigwright-cli.mjs'));
   fs.writeFileSync(
     path.join(temporary, 'jigwright-init.mjs'),
-    'export function initializeJigwrightConsumer() { return {}; }\nexport function configuredJigwrightEnvironment() { throw Object.assign(new Error("Invalid host setup"), {code:"JIGWRIGHT_INIT_PATH_UNSAFE"}); }\n',
+    `export function initializeJigwrightConsumer() { return {}; }\nexport function configuredJigwrightEnvironment() { throw Object.assign(new Error("Invalid host setup"), {code:"JIGWRIGHT_INIT_PATH_UNSAFE"}); }\nexport { renderHumanCommandResult } from ${JSON.stringify(path.resolve('packages/workflow-engine/bootstrap/jigwright-init.mjs'))};\n`,
   );
   fs.writeFileSync(
     path.join(temporary, 'workflow-launcher.ts'),
@@ -630,7 +630,7 @@ test('bootstrap finds saved provider config from an unborn repository subdirecto
     fs.copyFileSync(launcher, path.join(temporary, 'jigwright-cli.mjs'));
     fs.writeFileSync(
       path.join(temporary, 'jigwright-init.mjs'),
-      `export { initializeJigwrightConsumer, configuredJigwrightEnvironment } from ${JSON.stringify(path.resolve('packages/workflow-engine/bootstrap/jigwright-init.mjs'))};\n`,
+      `export { initializeJigwrightConsumer, configuredJigwrightEnvironment, renderHumanCommandResult } from ${JSON.stringify(path.resolve('packages/workflow-engine/bootstrap/jigwright-init.mjs'))};\n`,
     );
     fs.writeFileSync(
       path.join(temporary, 'workflow-launcher.ts'),

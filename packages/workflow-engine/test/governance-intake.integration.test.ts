@@ -941,9 +941,12 @@ test('registry render is deterministic and validates blocking cycles', () => {
     const firstBacklog = fs.readFileSync(rendered.backlogPath, 'utf8');
     assert.match(firstBacklog, /First item/);
     assert.match(firstBacklog, /Second item/);
-    assert.ok(
-      firstBacklog.includes(`> ${source.text.replaceAll('\n', '\n> ')}`),
-    );
+    const projectedSource = firstBacklog
+      .split('\n')
+      .filter((line) => /^>(?: |$)/u.test(line))
+      .map((line) => line.replace(/^> ?/u, ''))
+      .join('\n');
+    assert.equal(projectedSource, source.text);
     assert.match(firstBacklog, /Blocked by: First item/);
     assert.doesNotMatch(firstBacklog, /(?:SRC|WORK|FND)-[A-Za-z0-9]+/);
     assert.deepEqual(
