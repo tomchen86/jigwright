@@ -1,19 +1,22 @@
 #!/usr/bin/env node
 
+import { dispatchBoundaryCommand } from './entrypoints/cli/boundary-cli.ts';
+import {
+  dispatchExecutionJobCommand,
+  dispatchRetentionCommand,
+} from './entrypoints/cli/provider-operations-cli.ts';
+import { dispatchCiCommand } from './entrypoints/cli/ci-cli.ts';
 import fs from 'node:fs';
-import { createRequire } from 'node:module';
+
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { loadWorkflowConformanceVectorsV2 } from '@jigwright/core/conformance-vectors';
+
 import { dispatchAiAdapterCommand } from './entrypoints/cli/ai-adapter-cli.ts';
 import { dispatchAgentProviderCommand } from './entrypoints/cli/agent-provider-cli.ts';
 import { dispatchAgentGuidanceCommand } from './entrypoints/cli/agent-guidance-cli.ts';
 import { inspectProjectionStatus } from './composition-root/projection-status-production.ts';
 import { dispatchCentralRoleProviderDefaultCommand } from './entrypoints/cli/central-role-provider-default-cli.ts';
-import {
-  type AuthorityRemapPair,
-  projectAuthorityRemap,
-} from './composition-root/authority-remap.ts';
+
 import { inspectChangeAssurance } from './runtime/repository-transaction/assurance-inspection.ts';
 import { loadWorkflowConfig } from './adapters/consumer/repository/work-registry/contracts.ts';
 import {
@@ -21,13 +24,7 @@ import {
   checkOpenSpecPlanningAssets,
   installOpenSpecPlanningPrompts,
 } from './adapters/planning/openspec/documents/openspec-planning-assets.ts';
-import {
-  preparePullRequestPreMergeAssurance,
-  completePreparedPullRequestPreMergeAssurance,
-} from './entrypoints/ci/pre-merge-assurance-git.ts';
-import type { IntegrationDeltaReviewSubmission } from './modules/assurance/pre-merge-assurance.ts';
-import { inspectT3BoundaryInventory } from './modules/assurance/t3-boundary-inventory.ts';
-import type { T3BoundaryTypeScriptApi } from './modules/assurance/t3-boundary-scanner.ts';
+
 import { dispatchDocumentRefreshCommand } from './entrypoints/cli/document-refresh-cli.ts';
 import { collectEngineMetrics } from './application/control-plane/engine-metrics.ts';
 import {
@@ -35,23 +32,12 @@ import {
   workflowError,
   ExitCode,
 } from './foundation/errors/errors.ts';
-import {
-  requestExecutionReplacement,
-  executeGrantedReplacement,
-} from './application/control-plane/execution-replacement.ts';
+
 import {
   type ExecutionJobInspection,
   watchExecutionJob,
-  listExecutionJobs,
-  inspectExecutionJob,
-  prepareProviderReplacement,
 } from './runtime/provider-execution/execution-runtime.ts';
-import { pruneProviderRuntime } from './runtime/provider-execution/provider-retention.ts';
-import {
-  inspectEvidenceRetention,
-  runEvidenceRetentionMaintenance,
-  pinWorkflowEvidence,
-} from './runtime/provider-execution/retention-control.ts';
+
 import {
   discoverRepository,
   runGit,
@@ -71,7 +57,7 @@ import {
 } from './composition-root/grant-production.ts';
 import { dispatchGovernanceIntakeCommand } from './entrypoints/cli/governance-intake-cli.ts';
 import { dispatchChangeRoutingCommand } from './entrypoints/cli/change-routing-cli.ts';
-import { productionConsumedPlanReviewReplayPort } from './composition-root/grant-verifier-composition.ts';
+
 import {
   inspectImplementationReconciliation,
   recordImplementationReconciliation,
@@ -85,11 +71,7 @@ import {
   runProviderWorkerAsync,
   dispatchProviderWorker,
 } from './entrypoints/worker/provider-worker.ts';
-import {
-  pumpProviderRetrySchedules,
-  listProviderAutomaticRetrySchedules,
-  listProviderRetryScheduleReceipts,
-} from './runtime/provider-execution/provider-retry-scheduler.ts';
+
 import { runRegisteredCheck } from './adapters/consumer/repository/work-registry/registered-check.ts';
 import { loadStableValidatedChangeContract } from './composition-root/validated-contract-context.ts';
 import {
@@ -102,7 +84,6 @@ import {
   type CommandResult,
   requireArgumentCount,
   usage,
-  optionValue,
   usageText,
 } from './entrypoints/cli/cli-input.ts';
 import {
@@ -145,8 +126,6 @@ type RunCliAsyncDependencies = Readonly<{
   ) => AsyncIterable<ExecutionJobInspection>;
   writeStdout?: (chunk: string) => void;
 }>;
-
-const toolingRequire = createRequire(import.meta.url);
 
 export function runCli(argv: string[], cwd = process.cwd()): number {
   const json = hasTerminalJsonOutputFlag(argv);
@@ -354,81 +333,6 @@ export function createAsyncCliDispatcherForTesting(
     dispatchAsync(args, cwd, providerWorker, roleAssignmentGrantRequest);
 }
 
-type AuthorityRemapCliInput = Readonly<{
-  schemaVersion: 1;
-  kind: 'workflow.authority-remap-request.v1';
-  baseCommit: string;
-  moveCommit: string;
-  materializationCommit: string | null;
-  renamePairs: readonly AuthorityRemapPair[];
-  authorityPlan: Readonly<{
-    changeId: string;
-    taskId: string;
-    profileId: string;
-    reason: string;
-    message: string;
-  }>;
-}>;
-
-function readAuthorityRemapInput(
-  cwd: string,
-  inputPath: string,
-): AuthorityRemapCliInput {
-  const resolved = path.resolve(cwd, inputPath);
-  const stat = fs.lstatSync(resolved, { throwIfNoEntry: false });
-  if (
-    stat === undefined ||
-    !stat.isFile() ||
-    stat.isSymbolicLink() ||
-    stat.size === 0 ||
-    stat.size > 1024 * 1024
-  ) {
-    throw usage('Authority remap input must be a bounded plain JSON file.');
-  }
-  let value: unknown;
-  try {
-    value = JSON.parse(fs.readFileSync(resolved, 'utf8')) as unknown;
-  } catch {
-    throw usage('Authority remap input must be valid JSON.');
-  }
-  const isObject = (candidate: unknown): candidate is Record<string, unknown> =>
-    typeof candidate === 'object' &&
-    candidate !== null &&
-    !Array.isArray(candidate);
-  const hasStringFields = (
-    candidate: unknown,
-    fields: readonly string[],
-  ): candidate is Record<string, string> =>
-    isObject(candidate) &&
-    fields.every((field) => typeof candidate[field] === 'string');
-  if (
-    !isObject(value) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'workflow.authority-remap-request.v1' ||
-    typeof value.baseCommit !== 'string' ||
-    typeof value.moveCommit !== 'string' ||
-    (value.materializationCommit !== null &&
-      typeof value.materializationCommit !== 'string') ||
-    !Array.isArray(value.renamePairs) ||
-    value.renamePairs.some(
-      (pair) =>
-        !isObject(pair) ||
-        typeof pair.from !== 'string' ||
-        typeof pair.to !== 'string',
-    ) ||
-    !hasStringFields(value.authorityPlan, [
-      'changeId',
-      'taskId',
-      'profileId',
-      'reason',
-      'message',
-    ])
-  ) {
-    throw usage('Authority remap input has an unsupported shape.');
-  }
-  return value as AuthorityRemapCliInput;
-}
-
 function doctor(cwd: string): CommandResult {
   const git = discoverRepository(cwd);
   const config = loadWorkflowConfig(git.repositoryRoot);
@@ -496,47 +400,6 @@ function doctor(cwd: string): CommandResult {
   };
 }
 
-function readPreMergeSubmission(
-  cwd: string,
-  inputPath: string,
-): IntegrationDeltaReviewSubmission {
-  try {
-    return JSON.parse(
-      fs.readFileSync(path.resolve(cwd, inputPath), 'utf8'),
-    ) as IntegrationDeltaReviewSubmission;
-  } catch {
-    throw workflowError(
-      'PRE_MERGE_INTEGRATION_REVIEW_INVALID',
-      'Pre-merge review input must be a readable exact JSON document.',
-      ExitCode.usage,
-    );
-  }
-}
-
-function executionJobUsage(): WorkflowError {
-  return usage(
-    'Usage: pnpm workflow job <list|status <job-id>|watch <job-id>|prune --limit <count>|retry-pump --limit <count>|retry-schedules|retry-receipts [schedule-id]|retry-request <job-id> --timeout <milliseconds>|retry <job-id> --grant <grant-id>|retry-preview <job-id> --timeout <milliseconds>> [--json]',
-  );
-}
-
-function retentionUsage(): WorkflowError {
-  return usage(
-    'Usage: pnpm workflow retention <inspect|sweep --limit <count>|pin <workflow-id> <evidence-id> --reason <text>> [--json]',
-  );
-}
-
-function loadT3BoundaryTypeScript(): T3BoundaryTypeScriptApi {
-  try {
-    return toolingRequire('typescript') as T3BoundaryTypeScriptApi;
-  } catch {
-    throw workflowError(
-      'T3_BOUNDARY_SCANNER_UNAVAILABLE',
-      'The T3 boundary inventory is a Jigwright source-repository command and requires its development TypeScript parser.',
-      ExitCode.verification,
-    );
-  }
-}
-
 function printSuccess(
   result: CommandResult,
   json: boolean,
@@ -580,67 +443,8 @@ function printFailure(
 function dispatch(args: string[], cwd: string): CommandResult {
   const [command, ...rest] = args;
   switch (command) {
-    case 'boundary': {
-      const [subcommand, ...options] = rest;
-      if (subcommand === 'remap') {
-        if (
-          options.length !== 2 ||
-          options[0] !== '--input' ||
-          options[1] === undefined
-        ) {
-          throw usage(
-            'Usage: pnpm workflow boundary remap --input <request.json> [--json]',
-          );
-        }
-        const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-        const input = readAuthorityRemapInput(cwd, options[1]);
-        return {
-          command,
-          ok: true,
-          result: projectAuthorityRemap({
-            repositoryRoot,
-            baseCommit: input.baseCommit,
-            moveCommit: input.moveCommit,
-            ...(input.materializationCommit === null
-              ? {}
-              : { materializationCommit: input.materializationCommit }),
-            renamePairs: input.renamePairs,
-            authorityPlan: input.authorityPlan,
-          }),
-        };
-      }
-      if (
-        (subcommand !== 'inventory' && subcommand !== 'vectors') ||
-        (options.length !== 0 &&
-          !(options.length === 1 && options[0] === '--check'))
-      ) {
-        throw usage(
-          'Usage: pnpm workflow boundary <inventory|vectors> [--check] [--json]\n       pnpm workflow boundary remap --input <request.json> [--json]',
-        );
-      }
-      if (subcommand === 'vectors') {
-        const vectors = loadWorkflowConformanceVectorsV2();
-        return {
-          command,
-          ok: true,
-          result: {
-            kind: 'jigwright.conformance-vectors-check.v1',
-            status: 'current',
-            domainCount: Object.keys(vectors.domains).length,
-            vectorSetDigest: vectors.vectorSetDigest,
-          },
-        };
-      }
-      return {
-        command,
-        ok: true,
-        result: inspectT3BoundaryInventory({
-          repositoryRoot: discoverRepository(cwd).repositoryRoot,
-          check: options[0] === '--check',
-          typescript: loadT3BoundaryTypeScript(),
-        }),
-      };
-    }
+    case 'boundary':
+      return dispatchBoundaryCommand(rest, cwd);
     case 'guide':
       requireArgumentCount(command, rest, 0, 0);
       return {
@@ -680,6 +484,24 @@ function dispatch(args: string[], cwd: string): CommandResult {
       };
     }
     case 'plan-commit':
+    case 'task-preflight':
+    case 'open-task':
+    case 'update-base':
+    case 'amend-plan':
+    case 'propose':
+    case 'revise-task':
+    case 'resume-task':
+    case 'resume':
+    case 'status':
+    case 'check':
+    case 'complete-task':
+    case 'finish':
+    case 'finalize':
+    case 'finalize-recover':
+    case 'review-diff':
+    case 'rollback-completion':
+    case 'commit':
+    case 'abort':
       return dispatchTaskLifecycleCommand(args, cwd);
     case 'route':
       return {
@@ -690,22 +512,12 @@ function dispatch(args: string[], cwd: string): CommandResult {
           discoverRepository(cwd).repositoryRoot,
         ),
       };
-    case 'task-preflight':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'open-task':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'update-base':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'amend-plan':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'propose':
-      return dispatchTaskLifecycleCommand(args, cwd);
+
     case 'archive':
-      return dispatchArchiveCommand(args, cwd);
     case 'archive-candidates':
-      return dispatchArchiveCommand(args, cwd);
     case 'after-merge':
       return dispatchArchiveCommand(args, cwd);
+
     case 'openspec-assets': {
       const repositoryRoot = discoverRepository(cwd).repositoryRoot;
       if (rest.length === 1 && rest[0] === 'generate') {
@@ -738,141 +550,25 @@ function dispatch(args: string[], cwd: string): CommandResult {
       );
     }
     case 'grant':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
     case 'external-effect':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
     case 'publish':
+    case 'intervention':
+    case 'control-plane':
+    case 'audit':
+    case 'change':
+    case 'engine':
+    case 'task':
+    case 'authority-plan':
+    case 'maintainer':
+    case 'human-resolution-state':
       return dispatchAuthorityCommand(
         args,
         cwd,
         createHarnessBootstrapDependencies,
       );
-    case 'job': {
-      if (rest[0] === 'list' && rest.length === 1) {
-        return {
-          command,
-          action: 'list',
-          ok: true,
-          jobs: listExecutionJobs(cwd),
-        };
-      }
-      if (rest[0] === 'status' && rest.length === 2) {
-        return {
-          command,
-          action: 'status',
-          ok: true,
-          result: inspectExecutionJob(cwd, rest[1]!),
-        };
-      }
-      if (
-        rest[0] === 'prune' &&
-        rest.length === 3 &&
-        rest[1] === '--limit' &&
-        /^[1-9][0-9]*$/.test(rest[2]!)
-      ) {
-        return {
-          command,
-          action: 'prune',
-          ok: true,
-          result: pruneProviderRuntime(cwd, {
-            limit: Number.parseInt(rest[2]!, 10),
-          }),
-        };
-      }
-      if (
-        rest[0] === 'retry-pump' &&
-        rest.length === 3 &&
-        rest[1] === '--limit' &&
-        /^[1-9][0-9]*$/.test(rest[2]!)
-      ) {
-        return {
-          command,
-          action: 'retry-pump',
-          ok: true,
-          result: pumpProviderRetrySchedules(cwd, {
-            limit: Number.parseInt(rest[2]!, 10),
-            dispatcher:
-              process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
-                ? undefined
-                : dispatchProviderWorker,
-          }),
-        };
-      }
-      if (rest[0] === 'retry-schedules' && rest.length === 1) {
-        return {
-          command,
-          action: 'retry-schedules',
-          ok: true,
-          result: listProviderAutomaticRetrySchedules(cwd),
-        };
-      }
-      if (
-        rest[0] === 'retry-receipts' &&
-        (rest.length === 1 || rest.length === 2)
-      ) {
-        return {
-          command,
-          action: 'retry-receipts',
-          ok: true,
-          result: listProviderRetryScheduleReceipts(cwd, rest[1]),
-        };
-      }
-      if (
-        rest[0] === 'retry-request' &&
-        rest.length === 4 &&
-        rest[2] === '--timeout'
-      ) {
-        const timeoutMs = Number.parseInt(rest[3]!, 10);
-        if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
-          throw executionJobUsage();
-        }
-        return {
-          command,
-          action: 'retry-request',
-          ok: true,
-          result: requestExecutionReplacement(cwd, rest[1]!, { timeoutMs }),
-        };
-      }
-      if (rest[0] === 'retry' && rest.length === 4 && rest[2] === '--grant') {
-        return {
-          command,
-          action: 'retry',
-          ok: true,
-          result: executeGrantedReplacement(cwd, rest[1]!, rest[3]!, {
-            providerDispatcher:
-              process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
-                ? undefined
-                : dispatchProviderWorker,
-            consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
-          }),
-        };
-      }
-      if (
-        rest[0] === 'retry-preview' &&
-        rest.length === 4 &&
-        rest[2] === '--timeout'
-      ) {
-        const timeoutMs = Number.parseInt(rest[3]!, 10);
-        if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
-          throw executionJobUsage();
-        }
-        return {
-          command,
-          action: 'retry-preview',
-          ok: true,
-          result: prepareProviderReplacement(cwd, rest[1]!, { timeoutMs }),
-        };
-      }
-      throw executionJobUsage();
-    }
+
+    case 'job':
+      return dispatchExecutionJobCommand(rest, cwd);
     case 'metrics':
       if (rest.length !== 1 || rest[0] !== 'show') {
         throw usage('Usage: pnpm workflow metrics show [--json]');
@@ -934,90 +630,9 @@ function dispatch(args: string[], cwd: string): CommandResult {
         'workflow semantic-ledger reconcile --change <change-id> [--input <json>]',
       );
     }
-    case 'retention': {
-      if (rest.length === 1 && rest[0] === 'inspect') {
-        return {
-          command,
-          action: 'inspect',
-          ok: true,
-          result: inspectEvidenceRetention(cwd),
-        };
-      }
-      if (
-        rest.length === 3 &&
-        rest[0] === 'sweep' &&
-        rest[1] === '--limit' &&
-        /^[1-9][0-9]*$/.test(rest[2]!)
-      ) {
-        return {
-          command,
-          action: 'sweep',
-          ok: true,
-          result: runEvidenceRetentionMaintenance(cwd, {
-            limit: Number.parseInt(rest[2]!, 10),
-          }),
-        };
-      }
-      if (rest.length === 5 && rest[0] === 'pin' && rest[3] === '--reason') {
-        return {
-          command,
-          action: 'pin',
-          ok: true,
-          result: pinWorkflowEvidence(cwd, {
-            workflowId: rest[1]!,
-            evidenceId: rest[2]!,
-            reason: rest[4]!,
-          }),
-        };
-      }
-      throw retentionUsage();
-    }
-    case 'intervention':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'control-plane':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'audit':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'change':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'engine':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'task':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'revise-task':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'resume-task':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'resume':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'status':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'check':
-      return dispatchTaskLifecycleCommand(args, cwd);
+    case 'retention':
+      return dispatchRetentionCommand(rest, cwd);
+
     case 'run-check':
       requireArgumentCount(command, rest, 1, 1);
       return {
@@ -1025,48 +640,9 @@ function dispatch(args: string[], cwd: string): CommandResult {
         ok: true,
         result: runRegisteredCheck(cwd, rest[0], process.env),
       };
-    case 'ci': {
-      const inputPath = optionValue(rest, '--input');
-      const expected =
-        inputPath === undefined
-          ? ['--base', rest[1], '--head', rest[3]]
-          : ['--base', rest[1], '--head', rest[3], '--input', inputPath];
-      if (
-        !rest[1] ||
-        !rest[3] ||
-        (rest.length !== 4 && rest.length !== 6) ||
-        JSON.stringify(rest) !== JSON.stringify(expected)
-      ) {
-        throw usage(
-          'Usage: pnpm workflow ci --base <commit> --head <commit> [--input <integration-review.json>] [--json]',
-        );
-      }
-      const prepared = preparePullRequestPreMergeAssurance(
-        cwd,
-        rest[1],
-        rest[3],
-      );
-      if (prepared.prepared === null && inputPath === undefined) {
-        return { command, ok: true, result: prepared.verification };
-      }
-      const submission =
-        inputPath === undefined ? null : readPreMergeSubmission(cwd, inputPath);
-      return {
-        command,
-        ok: true,
-        result: completePreparedPullRequestPreMergeAssurance(
-          prepared,
-          submission,
-          cwd,
-        ),
-      };
-    }
-    case 'authority-plan':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
+    case 'ci':
+      return dispatchCiCommand(rest, cwd);
+
     case 'adapter':
       return {
         command,
@@ -1120,18 +696,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
         ),
       };
     }
-    case 'maintainer':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
-    case 'human-resolution-state':
-      return dispatchAuthorityCommand(
-        args,
-        cwd,
-        createHarnessBootstrapDependencies,
-      );
+
     case 'documents':
       if (rest.length !== 1 || rest[0] !== 'validate') {
         throw usage('Usage: pnpm workflow documents validate [--json]');
@@ -1170,22 +735,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
         result: runRepositoryHook(cwd, hook ?? '', hookArgs),
       };
     }
-    case 'complete-task':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'finish':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'finalize':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'finalize-recover':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'review-diff':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'rollback-completion':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'commit':
-      return dispatchTaskLifecycleCommand(args, cwd);
-    case 'abort':
-      return dispatchTaskLifecycleCommand(args, cwd);
+
     case 'help':
     case '--help':
     case '-h':

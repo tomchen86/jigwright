@@ -659,111 +659,9 @@ export function dispatchAuthorityCommand(
       }
       throw executionGrantUsage();
     }
-    case 'external-effect': {
-      if (
-        rest[0] === 'issue' &&
-        (rest.length === 17 || rest.length === 19) &&
-        rest[1] === '--grant' &&
-        rest[3] === '--task' &&
-        rest[5] === '--kind' &&
-        rest[7] === '--target-file' &&
-        rest[9] === '--artifact-digest' &&
-        rest[11] === '--prestate-digest' &&
-        rest[13] === '--rollback-plan-file' &&
-        rest[15] === '--idempotency-key' &&
-        (rest.length === 17 || rest[17] === '--ttl-seconds')
-      ) {
-        const ttlToken = rest.length === 19 ? rest[18]! : undefined;
-        if (ttlToken !== undefined && !/^[1-9][0-9]*$/.test(ttlToken)) {
-          throw externalEffectUsage();
-        }
-        const ttlSeconds =
-          ttlToken === undefined ? undefined : Number(ttlToken);
-        if (
-          ttlSeconds !== undefined &&
-          (!Number.isSafeInteger(ttlSeconds) ||
-            ttlSeconds < 1 ||
-            ttlSeconds > EXTERNAL_EFFECT_MAX_TTL_SECONDS)
-        ) {
-          throw externalEffectUsage();
-        }
-        const mandateBinding = inspectActiveTaskMandateBinding(cwd, rest[4]!);
-        const target = readExternalEffectJson<ExternalEffectTarget>(
-          rest[8]!,
-          cwd,
-        );
-        const rollbackPlan =
-          rest[14] === 'none'
-            ? null
-            : readExternalEffectJson<ExternalEffectRollbackPlan>(
-                rest[14]!,
-                cwd,
-              );
-        const request: ExternalEffectGrantRequest = {
-          mandateBinding,
-          effectKind: rest[6]! as ExternalEffectKind,
-          target,
-          artifactDigest: rest[10]! as `sha256:${string}`,
-          prestateDigest: rest[12]! as `sha256:${string}`,
-          rollbackPlan,
-          ...(ttlSeconds === undefined ? {} : { ttlSeconds }),
-          idempotencyKey: rest[16]!,
-        };
-        const issued = issueExternalEffectGrant(cwd, request, {
-          grantId: rest[2]!,
-        });
-        return {
-          command,
-          action: 'issue',
-          ok: true,
-          grantId: issued.grantId,
-          grantDigest: issued.grantDigest,
-          taskId: issued.envelope.payload.taskId,
-          effectKind: issued.envelope.payload.effectKind,
-          expiresAt: issued.envelope.payload.expiresAt,
-          recordPath: issued.recordPath,
-        };
-      }
-      if (rest[0] === 'inspect' && rest.length === 2) {
-        return {
-          command,
-          action: 'inspect',
-          ok: true,
-          result: inspectExternalEffectGrant(cwd, rest[1]!),
-        };
-      }
-      if (rest[0] === 'revoke' && rest.length === 4 && rest[2] === '--reason') {
-        return {
-          command,
-          action: 'revoke',
-          ok: true,
-          result: revokeExternalEffectGrant(cwd, rest[1]!, {
-            reason: rest[3]!,
-          }),
-        };
-      }
-      if (
-        rest[0] === 'reconcile' &&
-        rest.length === 4 &&
-        rest[2] === '--evidence-file'
-      ) {
-        return {
-          command,
-          action: 'reconcile',
-          ok: true,
-          result: reconcileExternalEffectGrant(
-            cwd,
-            rest[1]!,
-            readExternalEffectJson<ExternalEffectReconciliationRequest>(
-              rest[3]!,
-              cwd,
-            ),
-            {},
-          ),
-        };
-      }
-      throw externalEffectUsage();
-    }
+    case 'external-effect':
+      return dispatchExternalEffectCommand(command, rest, cwd);
+
     case 'publish': {
       if (rest[0] !== 'execute' || rest.length !== 3 || rest[1] !== '--grant') {
         throw publishUsage();
@@ -937,215 +835,9 @@ export function dispatchAuthorityCommand(
       }
       throw authorityPlanUsage();
     }
-    case 'maintainer': {
-      if (rest[0] === 'review-diff-attest') {
-        const sessionId = rest[1];
-        const inputPath = rest[3];
-        const grantId = rest[5];
-        if (
-          rest.length !== 6 ||
-          !sessionId ||
-          rest[2] !== '--input' ||
-          !inputPath ||
-          rest[4] !== '--grant' ||
-          !grantId
-        ) {
-          throw maintainerTaskDiffReviewUsage();
-        }
-        const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
-        if (parsedInput.route === 'provider-response') {
-          throw maintainerTaskDiffReviewUsage();
-        }
-        const collaborationGrant = taskDiffCollaborationGrantSelection(
-          cwd,
-          grantId,
-        );
-        return {
-          command,
-          action: 'review-diff-attest',
-          ok: true,
-          result: resumeDirectHumanTaskDiffReview(
-            cwd,
-            sessionId,
-            parsedInput.input,
-            grantId,
-            {
-              consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
-              ...('verifier' in collaborationGrant
-                ? { verifier: collaborationGrant.verifier }
-                : {}),
-              consumedReplayVerifier: collaborationGrant.consumedReplayVerifier,
-            },
-          ),
-        };
-      }
-      if (
-        rest.length === 6 &&
-        rest[0] === 'revision-approval' &&
-        rest[2] === '--target' &&
-        rest[4] === '--reason'
-      ) {
-        const binding = prepareTaskRevisionApprovalBinding(cwd, rest[1]!);
-        const approval = issueTaskRevisionApproval(cwd, {
-          binding,
-          expectedTargetDigest: rest[3]!,
-          rationale: rest[5]!,
-        });
-        return {
-          command,
-          action: 'revision-approval',
-          ok: true,
-          approvalId: approval.approvalId,
-          recordPath: approval.recordPath,
-          expiresAt: approval.envelope.payload.expiresAt,
-          targetDigest: approval.envelope.payload.targetDigest,
-          binding: approval.envelope.payload.binding,
-        };
-      }
-      if (isCollaborationGrantCommand(rest)) {
-        return {
-          command,
-          ...dispatchCollaborationGrantCommand(rest, cwd),
-        };
-      }
-      if (rest[0] === 'role-context-sharing-grant') {
-        return {
-          command,
-          ...dispatchRoleContextSharingGrantCommand(rest, cwd),
-        };
-      }
-      if (rest[0] === 'grant' && rest[1] === 'preflight') {
-        const request = parseMaintainerGrantV2PreflightArguments(rest);
-        return {
-          command,
-          action: 'grant-preflight',
-          ok: true,
-          result: preflightMaintainerGrantV2(cwd, request),
-        };
-      }
-      if (rest[0] === 'grant' && rest[1] === 'issue') {
-        throw workflowError(
-          'MAINTAINER_V2_MANUAL_ISSUE_DISABLED',
-          'Apply Grant v2 is issued only inside the atomic approve-and-apply command.',
-          ExitCode.guard,
-        );
-      }
-      if (rest[0] === 'grant' && rest[1] === 'approve-and-apply') {
-        const request = parseMaintainerApproveAndApplyArguments(rest, cwd);
-        return {
-          command,
-          action: 'grant-approve-and-apply',
-          ok: true,
-          result: approveAndApplyMaintainerGrantV2(cwd, request),
-        };
-      }
-      if (rest[0] === 'grant' && rest[1] === 'reissue-and-apply') {
-        const request = parseMaintainerReissueAndApplyArguments(rest, cwd);
-        return {
-          command,
-          action: 'grant-reissue-and-apply',
-          ok: true,
-          result: reissueAndApplyMaintainerGrantV2(cwd, request),
-        };
-      }
-      if (rest[0] === 'resolution-inspect' && rest.length <= 2) {
-        const publicationRecoveries =
-          inspectHumanResolutionGrantPublicationRecoveries(cwd, rest[1]);
-        let grants: ReturnType<typeof inspectHumanResolutionGrants>;
-        try {
-          grants = inspectHumanResolutionGrants(cwd, rest[1]);
-        } catch (error) {
-          if (
-            publicationRecoveries.length === 0 ||
-            !(error instanceof WorkflowError) ||
-            error.code !== 'HUMAN_RESOLUTION_GRANT_NOT_FOUND'
-          ) {
-            throw error;
-          }
-          grants = [];
-        }
-        return {
-          command,
-          action: 'resolution-inspect',
-          ok: true,
-          grants,
-          publicationRecoveries,
-        };
-      }
-      if (rest[0] === 'resolution-publication-discard') {
-        const request = parseHumanResolutionPublicationDiscardArguments(rest);
-        assertInteractiveSignerContext({
-          stdinIsTty: process.stdin.isTTY === true,
-          stdoutIsTty: process.stdout.isTTY === true,
-          stderrIsTty: process.stderr.isTTY === true,
-        });
-        return {
-          command,
-          action: 'resolution-publication-discard',
-          ok: true,
-          recovery: discardHumanResolutionGrantPublication(
-            cwd,
-            request.grantId,
-            request.expectedPublicationStateDigest,
-            request.reason,
-          ),
-        };
-      }
-      if (
-        rest[0] === 'resolution-revoke' &&
-        rest.length === 4 &&
-        rest[2] === '--reason'
-      ) {
-        return {
-          command,
-          action: 'resolution-revoke',
-          ok: true,
-          grant: revokeHumanResolutionGrant(cwd, rest[1], {
-            reason: rest[3],
-          }),
-        };
-      }
-      if (rest[0] === 'attest') {
-        const request = parseMaintainerAttestArguments(rest);
-        const attestation = issueAuthorityAttestation(cwd, request);
-        return {
-          command,
-          action: 'attest',
-          ok: true,
-          grantId: attestation.grantId,
-          tagRef: attestation.tagRef,
-          originalCommit: attestation.envelope.payload.originalCommit,
-          mainCommit: attestation.envelope.payload.mainCommit,
-          grantBases: attestation.envelope.payload.grantBases,
-          publishCommand: attestation.publishCommand,
-        };
-      }
-      if (
-        rest[0] === 'attestation-relay' &&
-        rest.length === 3 &&
-        rest[1] === '--original'
-      ) {
-        return {
-          command,
-          action: 'attestation-relay',
-          ok: true,
-          result: projectAuthorityAttestationRelay(cwd, rest[2]),
-        };
-      }
-      if (rest[0] !== 'inspect') {
-        throw maintainerUsage();
-      }
-      const git = discoverRepository(cwd);
-      if (rest[0] === 'inspect' && rest.length <= 2) {
-        return {
-          command,
-          action: 'inspect',
-          ok: true,
-          grants: inspectMaintainerGrants(git.gitCommonDirectory, rest[1]),
-        };
-      }
-      throw maintainerUsage();
-    }
+    case 'maintainer':
+      return dispatchMaintainerCommand(command, rest, cwd);
+
     case 'human-resolution-state': {
       requireArgumentCount(command, rest, 1, 1);
       const context = loadInvestigationRuntimeContext(cwd);
@@ -1171,5 +863,329 @@ export function dispatchAuthorityCommand(
       throw usage(
         command ? `Unknown workflow command: ${command}` : usageText(),
       );
+  }
+}
+
+function dispatchExternalEffectCommand(
+  command: 'external-effect',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    if (
+      rest[0] === 'issue' &&
+      (rest.length === 17 || rest.length === 19) &&
+      rest[1] === '--grant' &&
+      rest[3] === '--task' &&
+      rest[5] === '--kind' &&
+      rest[7] === '--target-file' &&
+      rest[9] === '--artifact-digest' &&
+      rest[11] === '--prestate-digest' &&
+      rest[13] === '--rollback-plan-file' &&
+      rest[15] === '--idempotency-key' &&
+      (rest.length === 17 || rest[17] === '--ttl-seconds')
+    ) {
+      const ttlToken = rest.length === 19 ? rest[18]! : undefined;
+      if (ttlToken !== undefined && !/^[1-9][0-9]*$/.test(ttlToken)) {
+        throw externalEffectUsage();
+      }
+      const ttlSeconds = ttlToken === undefined ? undefined : Number(ttlToken);
+      if (
+        ttlSeconds !== undefined &&
+        (!Number.isSafeInteger(ttlSeconds) ||
+          ttlSeconds < 1 ||
+          ttlSeconds > EXTERNAL_EFFECT_MAX_TTL_SECONDS)
+      ) {
+        throw externalEffectUsage();
+      }
+      const mandateBinding = inspectActiveTaskMandateBinding(cwd, rest[4]!);
+      const target = readExternalEffectJson<ExternalEffectTarget>(
+        rest[8]!,
+        cwd,
+      );
+      const rollbackPlan =
+        rest[14] === 'none'
+          ? null
+          : readExternalEffectJson<ExternalEffectRollbackPlan>(rest[14]!, cwd);
+      const request: ExternalEffectGrantRequest = {
+        mandateBinding,
+        effectKind: rest[6]! as ExternalEffectKind,
+        target,
+        artifactDigest: rest[10]! as `sha256:${string}`,
+        prestateDigest: rest[12]! as `sha256:${string}`,
+        rollbackPlan,
+        ...(ttlSeconds === undefined ? {} : { ttlSeconds }),
+        idempotencyKey: rest[16]!,
+      };
+      const issued = issueExternalEffectGrant(cwd, request, {
+        grantId: rest[2]!,
+      });
+      return {
+        command,
+        action: 'issue',
+        ok: true,
+        grantId: issued.grantId,
+        grantDigest: issued.grantDigest,
+        taskId: issued.envelope.payload.taskId,
+        effectKind: issued.envelope.payload.effectKind,
+        expiresAt: issued.envelope.payload.expiresAt,
+        recordPath: issued.recordPath,
+      };
+    }
+    if (rest[0] === 'inspect' && rest.length === 2) {
+      return {
+        command,
+        action: 'inspect',
+        ok: true,
+        result: inspectExternalEffectGrant(cwd, rest[1]!),
+      };
+    }
+    if (rest[0] === 'revoke' && rest.length === 4 && rest[2] === '--reason') {
+      return {
+        command,
+        action: 'revoke',
+        ok: true,
+        result: revokeExternalEffectGrant(cwd, rest[1]!, {
+          reason: rest[3]!,
+        }),
+      };
+    }
+    if (
+      rest[0] === 'reconcile' &&
+      rest.length === 4 &&
+      rest[2] === '--evidence-file'
+    ) {
+      return {
+        command,
+        action: 'reconcile',
+        ok: true,
+        result: reconcileExternalEffectGrant(
+          cwd,
+          rest[1]!,
+          readExternalEffectJson<ExternalEffectReconciliationRequest>(
+            rest[3]!,
+            cwd,
+          ),
+          {},
+        ),
+      };
+    }
+    throw externalEffectUsage();
+  }
+}
+
+function dispatchMaintainerCommand(
+  command: 'maintainer',
+  rest: string[],
+  cwd: string,
+): CommandResult {
+  {
+    if (rest[0] === 'review-diff-attest') {
+      const sessionId = rest[1];
+      const inputPath = rest[3];
+      const grantId = rest[5];
+      if (
+        rest.length !== 6 ||
+        !sessionId ||
+        rest[2] !== '--input' ||
+        !inputPath ||
+        rest[4] !== '--grant' ||
+        !grantId
+      ) {
+        throw maintainerTaskDiffReviewUsage();
+      }
+      const parsedInput = parseTaskDiffReviewCliInput(cwd, inputPath);
+      if (parsedInput.route === 'provider-response') {
+        throw maintainerTaskDiffReviewUsage();
+      }
+      const collaborationGrant = taskDiffCollaborationGrantSelection(
+        cwd,
+        grantId,
+      );
+      return {
+        command,
+        action: 'review-diff-attest',
+        ok: true,
+        result: resumeDirectHumanTaskDiffReview(
+          cwd,
+          sessionId,
+          parsedInput.input,
+          grantId,
+          {
+            consumedRoleResultReplay: productionConsumedRoleResultReplayPort,
+            ...('verifier' in collaborationGrant
+              ? { verifier: collaborationGrant.verifier }
+              : {}),
+            consumedReplayVerifier: collaborationGrant.consumedReplayVerifier,
+          },
+        ),
+      };
+    }
+    if (
+      rest.length === 6 &&
+      rest[0] === 'revision-approval' &&
+      rest[2] === '--target' &&
+      rest[4] === '--reason'
+    ) {
+      const binding = prepareTaskRevisionApprovalBinding(cwd, rest[1]!);
+      const approval = issueTaskRevisionApproval(cwd, {
+        binding,
+        expectedTargetDigest: rest[3]!,
+        rationale: rest[5]!,
+      });
+      return {
+        command,
+        action: 'revision-approval',
+        ok: true,
+        approvalId: approval.approvalId,
+        recordPath: approval.recordPath,
+        expiresAt: approval.envelope.payload.expiresAt,
+        targetDigest: approval.envelope.payload.targetDigest,
+        binding: approval.envelope.payload.binding,
+      };
+    }
+    if (isCollaborationGrantCommand(rest)) {
+      return {
+        command,
+        ...dispatchCollaborationGrantCommand(rest, cwd),
+      };
+    }
+    if (rest[0] === 'role-context-sharing-grant') {
+      return {
+        command,
+        ...dispatchRoleContextSharingGrantCommand(rest, cwd),
+      };
+    }
+    if (rest[0] === 'grant' && rest[1] === 'preflight') {
+      const request = parseMaintainerGrantV2PreflightArguments(rest);
+      return {
+        command,
+        action: 'grant-preflight',
+        ok: true,
+        result: preflightMaintainerGrantV2(cwd, request),
+      };
+    }
+    if (rest[0] === 'grant' && rest[1] === 'issue') {
+      throw workflowError(
+        'MAINTAINER_V2_MANUAL_ISSUE_DISABLED',
+        'Apply Grant v2 is issued only inside the atomic approve-and-apply command.',
+        ExitCode.guard,
+      );
+    }
+    if (rest[0] === 'grant' && rest[1] === 'approve-and-apply') {
+      const request = parseMaintainerApproveAndApplyArguments(rest, cwd);
+      return {
+        command,
+        action: 'grant-approve-and-apply',
+        ok: true,
+        result: approveAndApplyMaintainerGrantV2(cwd, request),
+      };
+    }
+    if (rest[0] === 'grant' && rest[1] === 'reissue-and-apply') {
+      const request = parseMaintainerReissueAndApplyArguments(rest, cwd);
+      return {
+        command,
+        action: 'grant-reissue-and-apply',
+        ok: true,
+        result: reissueAndApplyMaintainerGrantV2(cwd, request),
+      };
+    }
+    if (rest[0] === 'resolution-inspect' && rest.length <= 2) {
+      const publicationRecoveries =
+        inspectHumanResolutionGrantPublicationRecoveries(cwd, rest[1]);
+      let grants: ReturnType<typeof inspectHumanResolutionGrants>;
+      try {
+        grants = inspectHumanResolutionGrants(cwd, rest[1]);
+      } catch (error) {
+        if (
+          publicationRecoveries.length === 0 ||
+          !(error instanceof WorkflowError) ||
+          error.code !== 'HUMAN_RESOLUTION_GRANT_NOT_FOUND'
+        ) {
+          throw error;
+        }
+        grants = [];
+      }
+      return {
+        command,
+        action: 'resolution-inspect',
+        ok: true,
+        grants,
+        publicationRecoveries,
+      };
+    }
+    if (rest[0] === 'resolution-publication-discard') {
+      const request = parseHumanResolutionPublicationDiscardArguments(rest);
+      assertInteractiveSignerContext({
+        stdinIsTty: process.stdin.isTTY === true,
+        stdoutIsTty: process.stdout.isTTY === true,
+        stderrIsTty: process.stderr.isTTY === true,
+      });
+      return {
+        command,
+        action: 'resolution-publication-discard',
+        ok: true,
+        recovery: discardHumanResolutionGrantPublication(
+          cwd,
+          request.grantId,
+          request.expectedPublicationStateDigest,
+          request.reason,
+        ),
+      };
+    }
+    if (
+      rest[0] === 'resolution-revoke' &&
+      rest.length === 4 &&
+      rest[2] === '--reason'
+    ) {
+      return {
+        command,
+        action: 'resolution-revoke',
+        ok: true,
+        grant: revokeHumanResolutionGrant(cwd, rest[1], {
+          reason: rest[3],
+        }),
+      };
+    }
+    if (rest[0] === 'attest') {
+      const request = parseMaintainerAttestArguments(rest);
+      const attestation = issueAuthorityAttestation(cwd, request);
+      return {
+        command,
+        action: 'attest',
+        ok: true,
+        grantId: attestation.grantId,
+        tagRef: attestation.tagRef,
+        originalCommit: attestation.envelope.payload.originalCommit,
+        mainCommit: attestation.envelope.payload.mainCommit,
+        grantBases: attestation.envelope.payload.grantBases,
+        publishCommand: attestation.publishCommand,
+      };
+    }
+    if (
+      rest[0] === 'attestation-relay' &&
+      rest.length === 3 &&
+      rest[1] === '--original'
+    ) {
+      return {
+        command,
+        action: 'attestation-relay',
+        ok: true,
+        result: projectAuthorityAttestationRelay(cwd, rest[2]),
+      };
+    }
+    if (rest[0] !== 'inspect') {
+      throw maintainerUsage();
+    }
+    const git = discoverRepository(cwd);
+    if (rest[0] === 'inspect' && rest.length <= 2) {
+      return {
+        command,
+        action: 'inspect',
+        ok: true,
+        grants: inspectMaintainerGrants(git.gitCommonDirectory, rest[1]),
+      };
+    }
+    throw maintainerUsage();
   }
 }
