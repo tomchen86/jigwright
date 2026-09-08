@@ -687,6 +687,26 @@ test('workflow assurance CI is read-only and policy paths have owners', () => {
   assert.ok(actionRefs.length > 0);
   assert.ok(actionRefs.every((reference) => /^[0-9a-f]{40}$/.test(reference)));
 
+  // Checkout failure must retain GitHub's ordinary success prerequisite for
+  // every later step; repository commands cannot opt into a failure fallback.
+  const steps = workflow.split(/\n {6}- name: /u).slice(1);
+  assert.equal(steps[0]?.split('\n')[0], 'Checkout exact PR base');
+  assert.equal(steps[1]?.split('\n')[0], 'Checkout exact PR head');
+  for (const [index, role] of ['base', 'head'].entries()) {
+    const checkout = steps[index]!;
+    assert.match(
+      checkout,
+      new RegExp(
+        `ref: \\$\\{\\{ github\\.event\\.pull_request\\.${role}\\.sha \\}\\}`,
+      ),
+    );
+    assert.match(checkout, /fetch-depth: 0\n/u);
+    assert.match(checkout, /persist-credentials: false\n/u);
+    assert.doesNotMatch(checkout, /^\s+run:/mu);
+  }
+  assert.doesNotMatch(workflow, /^\s+(?:if|continue-on-error):/mu);
+  assert.ok(steps.slice(2).some((step) => /^\s+run:/mu.test(step)));
+
   const owners = fs.readFileSync(
     path.join(sourceRepositoryRoot, '.github/CODEOWNERS'),
     'utf8',

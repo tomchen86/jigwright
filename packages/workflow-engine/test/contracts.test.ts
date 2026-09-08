@@ -240,6 +240,16 @@ test('disposable database policy fails closed without leaking connection secrets
       code: 'TEST_DATABASE_URL_REQUIRED',
     },
     {
+      name: 'alternate database URLs cannot replace the explicit test target',
+      environment: {
+        WORKFLOW_DISPOSABLE_DATABASE: '1',
+        DATABASE_URL: 'postgres://app:other-secret@localhost/expense_dev',
+        COMPOSE_TEST_DATABASE_URL:
+          'postgres://runner:marker-secret@localhost/compose_test',
+      },
+      code: 'TEST_DATABASE_URL_REQUIRED',
+    },
+    {
       name: 'unsupported protocol',
       environment: {
         WORKFLOW_DISPOSABLE_DATABASE: '1',

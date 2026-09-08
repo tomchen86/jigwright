@@ -9,6 +9,8 @@ import {
   validateHandoff,
 } from '../src/adapters/consumer/repository/handoff/handoff.ts';
 import { validateRepositoryStateAtCommit } from '../src/composition-root/repository-validation.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
+import { readSystemDescriptionSnapshot } from '../src/runtime/repository-transaction/system-description-snapshot.ts';
 import { validateManagedDocuments } from '../src/runtime/managed-documents/validation/managed-documents.ts';
 import { finalizeTask } from '../src/application/finalize/lifecycle.ts';
 import { commitPlanningTransition } from '../src/application/propose/planning-transition.ts';
@@ -28,6 +30,10 @@ import {
   writeReadyV3ExemptChange,
 } from './fixture.ts';
 import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture.ts';
+import {
+  applyChangeRoutingReview,
+  prepareChangeRoutingReview,
+} from '../src/composition-root/change-routing-production.ts';
 
 const cliPath = path.join(
   sourceRepositoryRoot,
@@ -39,6 +45,70 @@ function createFixtureRepository(): string {
   writeReadyV3ExemptChange(repository);
   return repository;
 }
+
+test('generated handoff rejects direct edits and resolves colocated references from tracked facts', () => {
+  for (const routed of [false, true]) {
+    const repository = createFixtureRepository();
+    try {
+      fs.writeFileSync(
+        path.join(repository, 'workflow/document-policy.json'),
+        `${JSON.stringify({ schemaVersion: 1, enforcementMode: 'enforced', documents: { 'docs/CURRENT_AND_NEXT_STEPS.md': { mode: 'generated', enforcement: 'active', transition: 'completion' } } }, null, 2)}\n`,
+      );
+      const mapPath = path.join(repository, 'docs/SPEC_MAP.md');
+      fs.mkdirSync(path.dirname(mapPath), { recursive: true });
+      fs.writeFileSync(
+        mapPath,
+        '# Specification map\n\nFixture tracked contract index.\n',
+      );
+      if (routed)
+        applyChangeRoutingReview(
+          repository,
+          prepareChangeRoutingReview(repository, {
+            schemaVersion: 1,
+            action: { kind: 'focus', changeId: 'demo-change' },
+          }),
+        );
+      const projected = renderHandoff(repository);
+      assert.match(projected, /\[Base specifications\]\(SPEC_MAP\.md\)/u);
+      assert.doesNotMatch(projected, /\.\.\/openspec\/specs\//u);
+      assert.deepEqual(validateManagedDocuments(repository), [
+        'docs/CURRENT_AND_NEXT_STEPS.md',
+      ]);
+      const handoffPath = path.join(
+        repository,
+        'docs/CURRENT_AND_NEXT_STEPS.md',
+      );
+      const edited = `${projected}\nDirect edit outside the projection.\n`;
+      fs.writeFileSync(handoffPath, edited);
+      assert.throws(() => validateManagedDocuments(repository), {
+        code: 'HANDOFF_DRIFT',
+      });
+      assert.equal(fs.readFileSync(handoffPath, 'utf8'), edited);
+      assert.equal(renderHandoff(repository), projected);
+      validateHandoff(repository);
+      git(repository, ['add', '-A']);
+      git(repository, [
+        'commit',
+        '-m',
+        'Record generated handoff with specification map',
+      ]);
+      const commit = git(repository, ['rev-parse', 'HEAD']).trim();
+      assert.deepEqual(
+        validateRepositoryStateAtCommit(repository, commit).documents,
+        ['docs/CURRENT_AND_NEXT_STEPS.md'],
+      );
+      const snapshot = readSystemDescriptionSnapshot(repository, commit);
+      const contract = loadChangeContract(repository, 'demo-change');
+      fs.rmSync(mapPath);
+      validateHandoff(repository, {
+        contracts: [{ changeId: contract.changeId, tasks: contract.tasks }],
+        readText: (file) => snapshot.readText(file),
+      });
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  }
+});
 
 test('current Work Registry handoff ignores poisoned legacy Issue data', () => {
   const repository = createFixtureRepository();

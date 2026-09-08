@@ -1639,26 +1639,51 @@ test: packages/workflow-engine/test/session-update-base.integration.test.ts#upda
 - **AND** current planning authority, branch, worktree, index, refs, and receipt state remain truthful
 
 ### Requirement: Canonical Planning Artifacts
+
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
-The repository SHALL use OpenSpec specs for normative requirements and one OpenSpec change directory for each active planning generation. Investigation-first generations SHALL keep normalized investigation, proposal, design, delta specs, task list, execution strategy, guard, and exact-plan review in that canonical change tree. The repository SHALL NOT maintain a parallel workflow planning/task tree.
+The repository SHALL use colocated `spec.md` contracts for normative requirements and one OpenSpec change directory under the configured change root for each active planning generation. Investigation-first current-v3 generations SHALL keep normalized investigation, proposal, design, delta specs, task list, execution strategy, guard, and exact-plan review in that canonical change tree. The repository SHALL NOT maintain a parallel workflow planning/task tree.
 
 Detailed runtime transcripts, leases, and mutable refs MAY remain under the Git common directory, but every semantic fact required for remote planning assurance MUST be reconstructable from Git or retained in the compact tracked artifacts.
 
 #### Scenario: Agent locates active work
-covers: #Requirement: Canonical Planning Artifacts
 
-- **GIVEN** an active managed change
-- **WHEN** an agent determines requirements, design, investigation evidence, review state, or remaining tasks
-- **THEN** it reads the applicable `openspec/specs/` and `openspec/changes/<change-id>/` artifacts
-- **AND** it does not infer task or planning truth from chat history, runtime transcript, or a second planning tree
+covers: #Requirement: Canonical Planning Artifacts
+test: packages/workflow-engine/test/system-spec.contract.test.ts#spec ownership follows nearest containment, common ancestors, and both sides of moves
+
+- **WHEN** an agent locates the normative contract for a path or a cross-module change
+- **THEN** ownership resolves to the nearest containing `spec.md` or the common containing contract
+- **AND** a sibling directory prefix does not create a second owner
+
+#### Scenario: Native planning retains one canonical authority tree
+
+covers: #Requirement: Canonical Planning Artifacts
+test: packages/workflow-engine/test/colocated-openspec.integration.test.ts#native OpenSpec validates and archives aliased deltas into one colocated spec without copying planning authority
+
+- **GIVEN** reviewed OpenSpec change artifacts contain deltas for aliases of one colocated contract
+- **WHEN** native validation and archive projection apply those deltas
+- **THEN** the result updates that canonical contract without creating an `openspec/specs/` copy
+- **AND** the archived planning artifacts preserve their reviewed bytes
+
+#### Scenario: Current committed planning loads without private runtime
+
+covers: #Requirement: Canonical Planning Artifacts
+test: packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts#committed change loading binds canonical v3 bytes to an immutable Git tree without private runtime
+
+- **GIVEN** the current-v3 planning artifacts are committed and private investigation runtime has been removed
+- **WHEN** committed change loading reconstructs planning authority
+- **THEN** the Manifest observation binds the exact commit, tree, path, blob, and content digest from Git
+- **AND** a live loader cannot substitute an absent private current ref for its own required live evidence
 
 #### Scenario: CI validates investigation-first planning
-covers: #Requirement: Canonical Planning Artifacts
 
-- **GIVEN** CI has Git objects and the tracked v2 planning tree but no local investigation runtime directory
-- **WHEN** planning assurance runs
-- **THEN** it can reconstruct every mechanical planning gate without provider credentials or raw transcripts
+covers: #Requirement: Canonical Planning Artifacts
+test: packages/workflow-engine/test/session-schema.integration.test.ts#CI replays v3 planning assurance from Git with the live validator
+
+- **GIVEN** a reviewed current-v3 planning generation was committed by the live transition
+- **WHEN** CI replays that generation from Git objects
+- **THEN** its planning assurance equals the exact assurance recorded by the live validator
+- **AND** an exempt generation records an empty collaboration-grant use set rather than inventing a use
 
 ### Requirement: Blocking Session Preflight
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -1927,47 +1952,6 @@ test: packages/workflow-engine/test/completion.integration.test.ts#managed commi
 - THEN the engine uses Git plumbing without invoking that hook
 - AND it verifies the exact commit object before updating the ref
 
-### Requirement: Disposable Database Preflight
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Before executing any destructive database check, the workflow engine SHALL
-require `WORKFLOW_DISPOSABLE_DATABASE=1`, parse an explicit PostgreSQL
-`TEST_DATABASE_URL`, require a disposable database-name token, reject
-development/shared/staging/production identities, and reject the same
-server/database identity as `DATABASE_URL`. It SHALL expose only a redacted
-database identity in results and errors.
-
-#### Scenario: One destructive check has an unsafe database
-covers: #Requirement: Disposable Database Preflight
-test: packages/workflow-engine/test/session-check.integration.test.ts#destructive database preflight runs before any required check
-
-- GIVEN at least one required check is marked `destructiveDatabase`
-- AND the database preflight is missing or unsafe
-- WHEN verification is requested
-- THEN no required check starts
-- AND the failure does not reveal credentials or the raw URL
-
-#### Scenario: Disposable database is explicitly confirmed
-covers: #Requirement: Disposable Database Preflight
-test: packages/workflow-engine/test/session-check.integration.test.ts#destructive check evidence includes only the redacted database identity
-
-- GIVEN `WORKFLOW_DISPOSABLE_DATABASE=1`
-- AND `TEST_DATABASE_URL` names a disposable PostgreSQL database distinct from
-  `DATABASE_URL`
-- WHEN verification executes destructive checks
-- THEN each destructive check receives the explicit test URL
-- AND evidence contains only its redacted identity
-
-#### Scenario: Explicit test database is unavailable
-covers: #Requirement: Disposable Database Preflight
-
-- GIVEN a destructive API check receives an explicit validated
-  `TEST_DATABASE_URL`
-- AND that database is unavailable
-- WHEN the API test harness selects its target
-- THEN it fails without trying a compose, development, or auto-provisioned
-  database
-
 ### Requirement: Controlled Managed-Document Mutation
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -1977,6 +1961,7 @@ after the corresponding executable validator and CI check exist.
 
 #### Scenario: Generated handoff is edited directly
 covers: #Requirement: Controlled Managed-Document Mutation
+test: packages/workflow-engine/test/handoff.integration.test.ts#generated handoff rejects direct edits and resolves colocated references from tracked facts
 
 - GIVEN managed handoff validation is active
 - WHEN `docs/CURRENT_AND_NEXT_STEPS.md` differs from its deterministic projection
@@ -2078,6 +2063,7 @@ lifecycle state, or adapters, while retained installation files MAY remain.
 
 #### Scenario: Workflow engine runs without Spectra
 covers: #Requirement: Spectra Non-Participation
+test: packages/workflow-engine/test/session-check.integration.test.ts#workflow validation and session authority ignore retained Spectra metadata
 
 - GIVEN Spectra is unavailable or unused
 - WHEN workflow validation and session commands run
@@ -2349,3 +2335,44 @@ test: packages/workflow-engine/test/ci-planning.integration.test.ts#CI accepts a
 - **WHEN** a valid current revision removes a noncanonical file inside its own planning tree
 - **THEN** the existing deletion-only allowance accepts that removal
 - **AND** required planning artifacts still satisfy their current contracts
+
+### Requirement: Engine-Owned Disposable Database Preflight
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Before executing any destructive database check, the workflow engine SHALL
+require `WORKFLOW_DISPOSABLE_DATABASE=1`, parse an explicit PostgreSQL
+`TEST_DATABASE_URL`, require a disposable database-name token, reject
+development/shared/staging/production identities, and reject the same
+server/database identity as `DATABASE_URL`. It SHALL expose only a redacted
+database identity in results and errors.
+
+#### Scenario: One destructive check has an unsafe database
+covers: #Requirement: Engine-Owned Disposable Database Preflight
+test: packages/workflow-engine/test/session-check.integration.test.ts#destructive database preflight runs before any required check
+
+- GIVEN at least one required check is marked `destructiveDatabase`
+- AND the database preflight is missing or unsafe
+- WHEN verification is requested
+- THEN no required check starts
+- AND the failure does not reveal credentials or the raw URL
+
+#### Scenario: Disposable database is explicitly confirmed
+covers: #Requirement: Engine-Owned Disposable Database Preflight
+test: packages/workflow-engine/test/session-check.integration.test.ts#destructive check evidence includes only the redacted database identity
+
+- GIVEN `WORKFLOW_DISPOSABLE_DATABASE=1`
+- AND `TEST_DATABASE_URL` names a disposable PostgreSQL database distinct from
+  `DATABASE_URL`
+- WHEN verification executes destructive checks
+- THEN each destructive check receives the explicit test URL
+- AND evidence contains only its redacted identity
+
+#### Scenario: Alternate URLs cannot replace an explicit test target
+covers: #Requirement: Engine-Owned Disposable Database Preflight
+test: packages/workflow-engine/test/contracts.test.ts#disposable database policy fails closed without leaking connection secrets
+
+- **GIVEN** destructive database execution is explicitly confirmed
+- **AND** only development or compose URLs are supplied, without `TEST_DATABASE_URL`
+- **WHEN** the engine validates the check environment
+- **THEN** it reports `TEST_DATABASE_URL_REQUIRED` without selecting either alternate URL
+- **AND** the failure contains neither connection credentials nor the raw URL

@@ -6,6 +6,9 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { withArchiveEligibility } from '../src/application/archive/archive-eligibility.ts';
+import { issueAuthorityAttestation } from '../src/application/control-plane/maintainer-attestation.ts';
+import { protectedBranchRef } from '../src/runtime/repository-transaction/git.ts';
+import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import { startSession } from '../src/application/execute-task/session.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
@@ -371,6 +374,66 @@ test('archive eligibility fails closed when the remote-tracking base is unresolv
     assert.throws(
       () => withArchiveEligibility(repository, 'demo-change', () => undefined),
       (error) => isWorkflowError(error, 'ARCHIVE_BASE_UNRESOLVED'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('archive and attestation resolve the same configured protected ref without local fallback', () => {
+  const repository = completedFixture();
+  try {
+    const protectedBranch = 'release/stable';
+    const expectedRef = 'refs/remotes/origin/release/stable';
+    assert.equal(protectedBranchRef(protectedBranch), expectedRef);
+    const configPath = path.join(repository, 'workflow/config.json');
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+    config.protectedBranches = [protectedBranch];
+    fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`);
+    git(repository, ['add', 'workflow/config.json']);
+    git(repository, ['commit', '-m', 'Configure another protected branch']);
+    const head = git(repository, ['rev-parse', 'HEAD']).trim();
+    git(repository, ['branch', protectedBranch, head]);
+    git(repository, ['update-ref', 'refs/remotes/origin/main', head]);
+    const policy = JSON.parse(
+      fs.readFileSync(
+        path.join(repository, 'workflow/maintainer-policy.json'),
+        'utf8',
+      ),
+    );
+    const remotes = git(repository, ['remote']).trim().split('\n');
+    git(repository, [
+      'remote',
+      remotes.includes('origin') ? 'set-url' : 'add',
+      'origin',
+      policy.repository.origin,
+    ]);
+
+    assert.throws(
+      () => withArchiveEligibility(repository, 'demo-change', () => undefined),
+      (error) => {
+        assert.ok(error instanceof WorkflowError);
+        assert.equal(error.code, 'ARCHIVE_BASE_UNRESOLVED');
+        assert.deepEqual(error.details, { baseRef: expectedRef });
+        return true;
+      },
+    );
+    assert.throws(
+      () =>
+        issueAuthorityAttestation(repository, {
+          originalCommit: head,
+          mainCommit: head,
+          grantBasePairs: [],
+        }),
+      (error) => {
+        assert.ok(error instanceof WorkflowError);
+        assert.equal(error.code, 'AUTHORITY_ATTESTATION_MAIN_UNREACHABLE');
+        assert.equal(
+          error.message,
+          `${expectedRef} is not contained in the fetched protected branch.`,
+        );
+        return true;
+      },
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

@@ -211,7 +211,7 @@ function buildHandoff(
     '',
     '- [Roadmap](ROADMAP.md)',
     '- [Change records](../openspec/changes/)',
-    '- [Base specifications](../openspec/specs/)',
+    `- [Base specifications](${handoffSpecificationsLink(repositoryRoot, readContext)})`,
     `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
     '- [System architecture](architecture/ARCHITECTURE.md)',
     '',
@@ -305,7 +305,7 @@ function buildRoutingHandoff(
     '- [Roadmap](ROADMAP.md)',
     '- [Change lifecycle](../openspec/change-lifecycle.json)',
     '- [Change records](../openspec/changes/)',
-    '- [Base specifications](../openspec/specs/)',
+    `- [Base specifications](${handoffSpecificationsLink(repositoryRoot, readContext)})`,
     `- [Work backlog](${handoffLink(repositoryRoot, repositoryWorkRegistryConfiguration(repositoryRoot).backlogPath)})`,
     '',
   ].join('\n');
@@ -743,6 +743,19 @@ function handoffPath(repositoryRoot: string): string {
 function handoffLink(repositoryRoot: string, targetPath: string): string {
   const handoff = repositoryDocumentConfiguration(repositoryRoot).handoffPath;
   return path.posix.relative(path.posix.dirname(handoff), targetPath);
+}
+
+function handoffSpecificationsLink(
+  repositoryRoot: string,
+  readContext?: HandoffReadContext,
+): string {
+  const mapPath = 'docs/SPEC_MAP.md';
+  const map = readContext
+    ? readContext.readText(mapPath)
+    : readTrackedHandoffSource(repositoryRoot, mapPath);
+  return map === undefined
+    ? `${handoffLink(repositoryRoot, 'openspec/specs')}/`
+    : handoffLink(repositoryRoot, mapPath);
 }
 
 function invalidHandoff(code: string, message: string) {

@@ -203,108 +203,56 @@ test: packages/workflow-engine/test/ci.integration.test.ts#workflow assurance CI
 
 #### Scenario: Safe checkout cannot be established
 covers: #Requirement: Credential-Free Assurance Checkout Compatibility
+test: packages/workflow-engine/test/ci.integration.test.ts#workflow assurance CI is read-only and policy paths have owners
 
 - **WHEN** the assurance environment cannot establish the exact event head,
   full reachable history, or credential-free checkout
 - **THEN** assurance fails before repository-controlled commands execute
 - **AND** no compatibility fallback weakens any of those properties
 
-### Requirement: Authority maintenance is a fourth managed commit kind
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-Repository governance SHALL recognize task, plan, archive, and
-authority-maintenance as the complete mutually exclusive managed commit kinds.
-
-#### Scenario: Authority trailers are canonical
-covers: #Requirement: Authority maintenance is a fourth managed commit kind
-- **WHEN** the workflow engine creates an authority-maintenance commit
-- **THEN** its final trailer block contains exactly `Change`, `Transition: authority-maintenance`, and `Grant` in canonical order
-
-#### Scenario: Ordinary managed semantics remain unchanged
-covers: #Requirement: Authority maintenance is a fourth managed commit kind
-- **WHEN** CI validates task, plan, or archive commits after authority-maintenance support is installed
-- **THEN** their existing trailer, scope, ordering, completion, and replay semantics remain unchanged
-
 ### Requirement: Authority verification is base-owned
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-The required workflow-assurance job MUST execute authority and attestation
-verification code and load signer, policy, phase, immutable-path trust, and
-historical replay rules from the exact pull-request base or authority commit
-parent rather than the candidate branch. The base-owned verifier MUST reject a
-protected-main authority commit that lacks a unique valid retained signed
-original and explicit grant-base mappings.
+
+The required workflow-assurance job SHALL execute verification code from the exact pull-request base. Current authority-candidate verification SHALL load signer and policy authority from the candidate's exact parent and verify its portable application receipt, Grant and committed candidate bindings. Candidate-controlled verifier code, runtime reports or newly introduced signers MUST NOT supply the authority needed to approve that candidate. Protected-base history SHALL retain verifiable signed originals and exact attestation mappings for rebased authority candidates. Required checks SHALL remain bound to the governing committed evidence; recognizing an authority candidate SHALL NOT itself waive those checks.
 
 #### Scenario: Candidate modifies its verifier
 covers: #Requirement: Authority verification is base-owned
-- **WHEN** a candidate authority commit changes verifier or trust-loading code
-- **THEN** the base-owned verifier applies the previous trusted rules to that commit before the candidate code can become authoritative
+test: packages/workflow-engine/test/ci.integration.test.ts#workflow assurance CI is read-only and policy paths have owners
+
+- **WHEN** workflow-assurance checks a pull request whose candidate may alter verification code
+- **THEN** its job invokes the CLI from the exact base checkout and imports protected authority tags from that checkout
+- **AND** the candidate's verifier and tag namespace do not replace that selection
+
+#### Scenario: Candidate-only signing authority is rejected
+covers: #Requirement: Authority verification is base-owned
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#production SSH proof rejects a signer added only by the candidate result
+
+- **WHEN** an authority proof uses a signer introduced only by the candidate result
+- **THEN** verification uses the exact base policy and rejects that candidate-only authority
 
 #### Scenario: All normal checks remain required
 covers: #Requirement: Authority verification is base-owned
-- **WHEN** an authority-maintenance commit is otherwise valid
-- **THEN** workflow-assurance still runs the complete check set required by trusted policy and the active change
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#approve-and-apply checks before signing and atomically consumes the exact grant
+
+- **WHEN** the current V2 candidate path prepares and applies a checked authority candidate
+- **THEN** required checks finish before signing and application
+- **AND** retained check evidence binds the exact source tree, base commit and runner definitions
 
 #### Scenario: Historical main authority is replayed
 covers: #Requirement: Authority verification is base-owned
-- **WHEN** workflow-assurance evaluates a pull request whose base first-parent history contains a rebase-produced authority commit
-- **THEN** base-owned code verifies the protected attestation, retained signed original, exact transition identity, grant lineage, and protected-main reachability before evaluating candidate commits
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
+
+- **WHEN** a current signed V2 candidate has a protected-main derivative and a retained signed attestation
+- **THEN** base-history verification resolves the exact signed original, main commit and original-to-main base mapping
+- **AND** successful local replay identifies those commits without claiming a real remote ceremony occurred
 
 #### Scenario: Candidate supplies missing history evidence
 covers: #Requirement: Authority verification is base-owned
-- **WHEN** an attestation, signer, original object, or mapping is available only from candidate-controlled history or trust material
-- **THEN** workflow-assurance rejects it as candidate-self-authorized evidence
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
-### Requirement: Authority audit prerequisites remain maintainer-owned
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-Repository documentation SHALL distinguish checked-in enforcement from GitHub
-grant-tag and attestation-tag protection, protected-environment approval,
-required-check configuration, human-present signing, and
-repository-administrator recovery that only a maintainer can prove. Sealed
-support MUST remain undeclared until those remote controls and complete
-historical attestation replay are independently evidenced.
-
-#### Scenario: Repository files are merged before remote controls
-covers: #Requirement: Authority audit prerequisites remain maintainer-owned
-- **WHEN** the implementation is present but grant-tag protection, attestation-tag protection, historical migration, or the sealed approval environment has not been independently verified
-- **THEN** project status describes maintainer mode as bootstrap-only and does not claim sealed enforcement
-
-#### Scenario: Attestation migration is remotely proven
-covers: #Requirement: Authority audit prerequisites remain maintainer-owned
-- **WHEN** the maintainer protects and publishes the migration tag and a later pull request passes the base-owned historical replay without bypass
-- **THEN** retained evidence may mark authority tree attestation proven while environment, signer, and sealed-transition gates remain separate
-
-### Requirement: Archive-Stable Semantic Handoff
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The generated semantic handoff SHALL preserve an explicitly selected completed
-change when its tracked OpenSpec contract moves from the active change root to
-the immutable archive, and normal hooks SHALL validate the same semantic
-projection without local runtime evidence.
-
-#### Scenario: Selected completed change is archived among multiple active changes
-covers: #Requirement: Archive-Stable Semantic Handoff
-
-- **WHEN** the selected completed change has exactly one valid tracked archive
-  contract and two or more unrelated active changes remain
-- **THEN** handoff rendering and validation preserve the selected semantic
-  change without choosing an unrelated active change
-- **AND** the completed focus and references remain valid before and after the
-  archive move
-
-#### Scenario: New managed change takes ownership
-covers: #Requirement: Archive-Stable Semantic Handoff
-
-- **WHEN** the selected change is archived and the current named branch exactly
-  matches a valid active `work/<change-id>` change
-- **THEN** the handoff selects that branch-bound active change through the
-  normal generated-document transition
-
-#### Scenario: Archived selection is unsafe or ambiguous
-covers: #Requirement: Archive-Stable Semantic Handoff
-
-- **WHEN** the selected archived change is missing, duplicated, symlinked,
-  malformed, or contains an incomplete task
-- **THEN** handoff rendering and validation fail closed without selecting an
-  arbitrary active change
+- **WHEN** a clone evaluates an authority candidate whose application receipt is missing, altered, replayed or signed by a signer absent from the parent authority
+- **THEN** current CI authority verification rejects that evidence
+- **AND** private runtime state is not a substitute for the exact portable Git receipt
 
 ### Requirement: Archive base resolves from the protected remote-tracking ref
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -345,6 +293,7 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 
 #### Scenario: One shared spelling across authority paths
 covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive and attestation resolve the same configured protected ref without local fallback
 
 - GIVEN maintainer attestation and archive eligibility both resolve the
   protected base
@@ -387,3 +336,129 @@ test: packages/workflow-engine/test/archive-pr-orchestration.integration.test.ts
 - **WHEN** the archive dry-run creates a valid local preparation
 - **THEN** it reports `remoteState: not-observed` and a pending operational gate
 - **AND** it makes no remote calls or claims that a hosted pull request passed
+
+### Requirement: Managed Commit Kinds Follow the Canonical Grammar
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Repository governance SHALL use the public canonical managed-trailer grammar to distinguish task, plan, amend-plan, archive, route, authority-candidate and Central Apply forms, while retaining historical authority-maintenance parsing. Current CI authority admission SHALL accept only the current authority-candidate path with valid portable application evidence. Parsing a managed form MUST NOT by itself authorize replay. Existing task, planning and archive evidence obligations SHALL remain effective.
+
+#### Scenario: Canonical grammar distinguishes the landed forms
+covers: #Requirement: Managed Commit Kinds Follow the Canonical Grammar
+test: packages/core/test/managed-transition-trailers.contract.test.ts#managed transition trailer grammar preserves every landed transition form
+
+- **WHEN** the public parser receives a canonical managed transition block
+- **THEN** it returns that exact transition kind and its corresponding provenance fields
+- **AND** an authority-candidate uses its own canonical Change and Transition fields rather than a fabricated legacy Grant trailer
+
+#### Scenario: Retired authority parsing does not authorize current CI
+covers: #Requirement: Managed Commit Kinds Follow the Canonical Grammar
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#CI rejects the retired V1 authority commit branch before reading Git state
+
+- **WHEN** current CI authority validation receives the historical authority-maintenance form
+- **THEN** it rejects the retired branch before consulting repository state
+
+#### Scenario: Central Apply parsing does not imply CI cutover
+covers: #Requirement: Managed Commit Kinds Follow the Canonical Grammar
+test: packages/workflow-engine/test/managed-trailers.contract.test.ts#CI parses the exact Central Apply block and rejects pre-cutover replay
+
+- **WHEN** a canonical git.authority-candidate.apply.v1 commit reaches the current CI sequence replay
+- **THEN** the grammar preserves its exact candidate, challenge, operation, approval-subject and prepared-Grant bindings
+- **AND** sequence replay reports CI_AUTHORITY_COMMIT_INVALID because this CI path does not yet admit Central Apply receipts
+
+#### Scenario: A current signed candidate replays from portable evidence
+covers: #Requirement: Managed Commit Kinds Follow the Canonical Grammar
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
+
+- **WHEN** a clone contains an applied authority-candidate and its valid signed application receipt
+- **THEN** current CI recognizes the exact candidate and Grant from committed evidence
+
+#### Scenario: Ordinary task replay continues to recompute its evidence
+covers: #Requirement: Managed Commit Kinds Follow the Canonical Grammar
+test: packages/workflow-engine/test/ci.integration.test.ts#CI recomputes task, scope, trailers, and checks without runtime reports
+
+- **WHEN** current CI validates an ordinary managed task commit
+- **THEN** it recomputes the exact task transition, scope, trailers and registered checks
+- **AND** caller-created runtime reports do not authorize that transition
+
+### Requirement: Authority Readiness Distinguishes Local and External Evidence
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Repository documentation and release evidence SHALL distinguish checked-in verification from maintainer-provided evidence of remote tag protection, protected-environment approvals, required-check configuration, real human-present signing and administrator recovery. A local fixture, successful attestation replay or reproducible package MUST NOT claim those external controls or ceremonies were performed. Operational readiness SHALL retain separate implementation, independent-review, signed-provenance, real-pilot, full-gate and publication statuses. Missing evidence SHALL remain explicitly pending rather than being inferred from another successful check.
+
+#### Scenario: Local implementation readiness preserves pending operational gates
+covers: #Requirement: Authority Readiness Distinguishes Local and External Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#single-package v1 candidate binds reproducibility and stays fail closed for publish
+
+- **WHEN** a local package candidate is reproducible and its adoption comparison succeeds
+- **THEN** its operational report keeps independent review, signed provenance, real pilot and full gate separately pending where unproven
+- **AND** local implementation readiness does not establish publication readiness
+
+#### Scenario: A missing real pilot has no invented record
+covers: #Requirement: Authority Readiness Distinguishes Local and External Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#release bindings do not claim consumer pilot evidence while the real pilot is pending
+
+- **WHEN** release bindings have no completed real consumer pilot
+- **THEN** they do not cite a fabricated availability-pilot record
+
+#### Scenario: Edited completion claims do not become evidence
+covers: #Requirement: Authority Readiness Distinguishes Local and External Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#release verifier rejects independently tampered source, adoption, and supply-chain facts
+
+- **WHEN** a local release or adoption report is edited to mark an unproven real pilot complete
+- **THEN** verification rejects the modified claim
+- **AND** the report cannot substitute for the missing external evidence
+
+### Requirement: Semantic Handoff Follows Tracked Change State
+
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The generated semantic handoff SHALL derive change, task, focus, blocker, and reference state from current tracked change contracts and managed routing, including an explicit change selected by an engine-owned lifecycle transition. Existing handoff text and a checked-out branch name MUST NOT create selection authority.
+
+Without managed routing or an explicit lifecycle selection, rendering SHALL select the sole unfinished active change, represent no unfinished active changes explicitly, and reject multiple unfinished changes rather than choosing one arbitrarily. Moving a completed contract into the archive SHALL NOT preserve an obsolete selection from generated output. Managed routing SHALL retain its tracked primary selection and distinguish work awaiting archive from archived work. Committed validation SHALL reproduce the semantic projection without private runtime evidence.
+
+#### Scenario: Archiving a completed change does not preserve stale output selection
+
+covers: #Requirement: Semantic Handoff Follows Tracked Change State
+test: packages/workflow-engine/test/handoff.integration.test.ts#handoff ignores its previous output and selects the sole active change
+
+- **GIVEN** the handoff names a completed change and one other change has unfinished tasks
+- **WHEN** the completed contract moves into the archive
+- **THEN** rendering before and after the move selects the same unfinished change
+- **AND** validation accepts that projection independently of the old handoff selection
+
+#### Scenario: A branch name cannot resolve ambiguous active work
+
+covers: #Requirement: Semantic Handoff Follows Tracked Change State
+test: packages/workflow-engine/test/handoff.integration.test.ts#a work branch cannot resolve an otherwise ambiguous handoff
+
+- **GIVEN** multiple unfinished changes have no managed routing selection
+- **WHEN** the checked-out branch names one of those changes
+- **THEN** rendering reports the ambiguous handoff instead of choosing that change
+
+#### Scenario: Managed routing preserves focus across an archive move
+
+covers: #Requirement: Semantic Handoff Follows Tracked Change State
+test: packages/workflow-engine/test/change-routing.integration.test.ts#managed routing projects mixed repository state and recovers idempotently
+
+- **GIVEN** tracked routing selects a primary change among blocked, resumable, and completed changes
+- **WHEN** a completed contract moves from pending archival into the archive
+- **THEN** routing recognizes the archived state and retains the same primary change
+- **AND** the generated handoff derives its work categories from the managed routing facts
+
+#### Scenario: Committed routing replays without private runtime
+
+covers: #Requirement: Semantic Handoff Follows Tracked Change State
+test: packages/workflow-engine/test/change-routing.integration.test.ts#committed routing and handoff replay without private runtime
+
+- **GIVEN** the tracked routing and semantic handoff were committed
+- **WHEN** committed repository validation runs after private runtime is removed
+- **THEN** it reconstructs the same tracked change selection and accepts the projection
+
+#### Scenario: An archived last change leaves an explicit terminal handoff
+
+covers: #Requirement: Semantic Handoff Follows Tracked Change State
+test: packages/workflow-engine/test/handoff.integration.test.ts#committed managed-document validation replays a terminal handoff with zero active changes
+
+- **GIVEN** the last active change has moved into the dated archive
+- **WHEN** the terminal semantic handoff is committed and private runtime is removed
+- **THEN** committed validation reports zero active changes and accepts the managed handoff

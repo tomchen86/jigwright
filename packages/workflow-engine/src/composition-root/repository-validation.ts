@@ -29,6 +29,7 @@ const UTF8 = new TextDecoder('utf-8', { fatal: true });
 const COMMITTED_DOCUMENT_PATHS = new Set([
   'workflow/document-policy.json',
   'docs/CURRENT_AND_NEXT_STEPS.md',
+  'docs/SPEC_MAP.md',
   'docs/work-registry/inventory.json',
   changeLifecycleRelativePath,
 ]);

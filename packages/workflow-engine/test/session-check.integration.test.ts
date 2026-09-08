@@ -14,13 +14,62 @@ import path from 'node:path';
 import {
   startSession,
   checkSession,
+  abortSession,
 } from '../src/application/execute-task/session.ts';
+import { loadChangeContract } from '../src/adapters/consumer/repository/work-registry/contracts.ts';
 import os from 'node:os';
 import { WorkflowError } from '../src/foundation/errors/errors.ts';
 import {
   prepareCurrentChange,
   enableDisposableDatabasePolicy,
 } from './support/session-lifecycle-fixture.ts';
+
+test('workflow validation and session authority ignore retained Spectra metadata', () => {
+  const observations: unknown[] = [];
+  for (const retained of [false, true]) {
+    const repository = createFixtureRepository();
+    try {
+      if (retained) {
+        fs.writeFileSync(
+          path.join(repository, '.spectra.yaml'),
+          'not: [valid yaml\ncommand: spectra deny-everything\n',
+        );
+        git(repository, ['add', '.spectra.yaml']);
+        git(repository, [
+          'commit',
+          '-m',
+          'Retain unused historical installation metadata',
+        ]);
+      }
+      git(repository, ['checkout', '-b', 'work/demo-change']);
+      prepareCurrentChange(repository);
+      const contract = loadChangeContract(repository, 'demo-change');
+      const session = startSession(repository, 'demo-change', '1.1');
+      const checked = checkSession(repository, session.sessionId);
+      fs.writeFileSync(path.join(repository, 'outside.txt'), 'out of scope\n');
+      assert.throws(
+        () => checkSession(repository, session.sessionId),
+        (error) => isWorkflowError(error, 'OUT_OF_SCOPE_PATHS'),
+      );
+      observations.push({
+        change: contract.changeId,
+        tasks: contract.tasks,
+        state: session.state,
+        passed: checked.passed,
+        changedPaths: checked.changedPaths,
+      });
+      abortSession(repository, session.sessionId, 'Fixture complete');
+      if (retained)
+        assert.match(
+          fs.readFileSync(path.join(repository, '.spectra.yaml'), 'utf8'),
+          /deny-everything/u,
+        );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  }
+  assert.deepEqual(observations[0], observations[1]);
+});
 
 test('registered check execution returns pinned non-destructive evidence', () => {
   const repository = createFixtureRepository();
