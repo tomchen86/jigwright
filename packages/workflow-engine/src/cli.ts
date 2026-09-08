@@ -731,6 +731,7 @@ function dispatch(args: string[], cwd: string): CommandResult {
     case 'work-item':
     case 'later':
     case 'attach':
+    case 'correct':
       return {
         command,
         ok: true,

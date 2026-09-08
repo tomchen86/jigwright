@@ -15,6 +15,7 @@ const MODULE_COMMANDS = {
     'now',
     'later',
     'attach',
+    'correct',
     'finding',
     'work-item',
   ],

@@ -5,6 +5,7 @@ import path from 'node:path';
 import test from 'node:test';
 import { spawnSync } from 'node:child_process';
 import { dispatchGovernanceIntakeCommand } from '../src/entrypoints/cli/governance-intake-cli.ts';
+import { dispatchAsync } from '../src/cli.ts';
 import {
   listGovernanceSources,
   readGovernanceSource,
@@ -27,7 +28,7 @@ import {
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import { renderHumanCommandResult } from '../src/entrypoints/cli/human-command-output.ts';
 
-test('correct preserves exact Source history, replaces active provenance and can be re-confirmed', () => {
+test('correct preserves exact Source history, replaces active provenance and can be re-confirmed', async () => {
   const root = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-source-correction-'),
   );
@@ -99,6 +100,16 @@ test('correct preserves exact Source history, replaces active provenance and can
     assert.equal(correct().updated, false);
     assert.equal(listGovernanceSources(repositoryRoot).length, sourceCount);
     assert.deepEqual(showWorkItem(repositoryRoot, id), item);
+    const routed = await dispatchAsync(
+      ['correct', id, oldId, exactText],
+      repositoryRoot,
+    );
+    assert.equal(routed.command, 'correct');
+    assert.equal(routed.ok, true);
+    assert.equal(
+      (routed.result as { originalText: string }).originalText,
+      exactText,
+    );
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }
