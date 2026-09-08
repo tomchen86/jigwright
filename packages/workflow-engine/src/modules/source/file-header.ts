@@ -19,18 +19,27 @@ export function extractFileHeader(source: string): FileHeader | null {
   const lines = match[1]!
     .split(/\r?\n/)
     .map((line) => line.replace(/^\s*\* ?/, '').trim());
-  const responsibility = lines.find((line) => line !== '') ?? '';
+  const responsibilityLines: string[] = [];
+  for (const line of lines.slice(lines.findIndex((line) => line !== ''))) {
+    if (line === '' || /^(?:Invariants|Depends on|Failure modes):/.test(line))
+      break;
+    responsibilityLines.push(line);
+  }
   const section = lines.indexOf('Invariants:');
   const invariants: string[] = [];
   if (section !== -1) {
     for (const line of lines.slice(section + 1)) {
       if (line === '') continue;
-      if (!line.startsWith('- ') || line.slice(2).trim() === '') break;
-      invariants.push(line.slice(2));
+      if (/^[A-Z][A-Za-z ]*:/.test(line)) break;
+      if (line.startsWith('- ')) {
+        invariants.push(line.slice(2));
+      } else if (invariants.length > 0) {
+        invariants[invariants.length - 1] += ` ${line}`;
+      }
     }
   }
   return Object.freeze({
-    responsibility: responsibility === 'Invariants:' ? '' : responsibility,
+    responsibility: responsibilityLines.join(' '),
     invariants: Object.freeze(invariants),
     startLine: 1,
     endLine: match[0].split('\n').length,

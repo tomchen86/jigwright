@@ -3,6 +3,35 @@ import test from 'node:test';
 
 import { extractFileHeader } from '../src/modules/source/file-header.ts';
 
+test('wrapped responsibility and invariant text preserve logical bullet numbering', () => {
+  assert.deepEqual(
+    extractFileHeader(
+      [
+        '/**',
+        ' * Reads the current contract',
+        ' * from a pinned source.',
+        ' *',
+        ' * Invariants:',
+        ' * - The first promise',
+        ' *   continues here.',
+        ' * - The second promise stays second.',
+        ' * Depends on: old prose.',
+        ' * This is not an invariant.',
+        ' */',
+      ].join('\n'),
+    ),
+    {
+      responsibility: 'Reads the current contract from a pinned source.',
+      invariants: [
+        'The first promise continues here.',
+        'The second promise stays second.',
+      ],
+      startLine: 1,
+      endLine: 11,
+    },
+  );
+});
+
 test('file headers expose responsibility, ordered invariants, and source lines', () => {
   const source = [
     '/**',
