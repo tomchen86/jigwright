@@ -4,6 +4,7 @@ import { markdownLines } from '@jigwright/core/markdown-sections';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   projectionDefinition,
+  isSemanticProjectionPath,
   type ProjectionDefinition,
   type ProjectionId,
 } from './engine-projection-registry.ts';
@@ -149,7 +150,11 @@ export function createProjectionService(
     if (definition.target.kind === 'engine-path') {
       const approvedPaths = binding.targetPaths ?? [definition.target.path];
       if (
-        (binding.targetPaths !== undefined && !definition.target.configKey) ||
+        (binding.targetPaths !== undefined &&
+          !definition.target.configKey &&
+          definition.id !== 'semantic.binding-index') ||
+        (definition.id === 'semantic.binding-index' &&
+          outputs.some(({ path }) => !isSemanticProjectionPath(path))) ||
         new Set(approvedPaths).size !== approvedPaths.length ||
         outputs.some(({ path }) => !approvedPaths.includes(path)) ||
         (binding.targetPaths !== undefined &&

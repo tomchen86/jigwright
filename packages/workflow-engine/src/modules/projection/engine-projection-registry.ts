@@ -21,6 +21,10 @@ export type ProjectionId =
   | 'registry.backlog'
   | 'registry.inventory'
   | 'registry.work-history'
+  | 'documents.spec-map'
+  | 'documents.coverage'
+  | 'documents.requirements'
+  | 'semantic.binding-index'
   | 'guidance.agent-section';
 
 export type ProjectionDefinition = Readonly<{
@@ -41,6 +45,42 @@ export type ProjectionDefinition = Readonly<{
 /** Output declarations do not grant transition authority. Only the existing
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY: readonly ProjectionDefinition[] = Object.freeze([
+  Object.freeze({
+    id: 'semantic.binding-index',
+    version: 1,
+    target: Object.freeze({
+      kind: 'engine-path',
+      path: 'workflow/semantic-ledger/index.json',
+    }),
+    placement: 'whole-file',
+    trigger: Object.freeze([
+      { kind: 'transition', name: 'plan' },
+      { kind: 'transition', name: 'completion' },
+    ] as const),
+    drift: 'regenerate',
+    authorityTransitions: Object.freeze([
+      'plan',
+      'completion',
+    ] satisfies EngineProjectionTransition[]),
+  }),
+  ...(
+    [
+      ['documents.spec-map', 'docs/SPEC_MAP.md'],
+      ['documents.coverage', 'docs/COVERAGE.md'],
+      ['documents.requirements', 'docs/REQUIREMENTS.md'],
+    ] as const
+  ).map(([id, path]) =>
+    Object.freeze({
+      id,
+      version: 1,
+      target: Object.freeze({ kind: 'engine-path' as const, path }),
+      placement: 'whole-file' as const,
+      trigger: Object.freeze([
+        { kind: 'command', name: 'documents render' },
+      ] as const),
+      drift: 'regenerate' as const,
+    }),
+  ),
   Object.freeze({
     id: 'handoff.current-and-next-steps',
     version: 1,
@@ -155,6 +195,28 @@ export function engineProjectionPathsForTransition(
   return engineProjectionDefinitions()
     .filter(({ transitions }) => transitions.includes(transition))
     .map(({ path }) => path);
+}
+
+export function isSemanticProjectionPath(candidate: string): boolean {
+  return (
+    candidate === 'workflow/semantic-ledger/index.json' ||
+    /^workflow\/semantic-ledger\/objects\/sha256\/[0-9a-f]{2}\/[0-9a-f]{62}\.json$/.test(
+      candidate,
+    )
+  );
+}
+
+export function isEngineProjectionPathForTransition(
+  candidate: string,
+  transition: EngineProjectionTransition,
+): boolean {
+  return (
+    engineProjectionPathsForTransition(transition).includes(candidate) ||
+    (projectionDefinition(
+      'semantic.binding-index',
+    ).authorityTransitions?.includes(transition) === true &&
+      isSemanticProjectionPath(candidate))
+  );
 }
 
 export function classifyProjectionPaths(

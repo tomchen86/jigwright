@@ -9,12 +9,17 @@ import {
 import {
   engineProjectionDefinitions,
   projectionDefinitions,
+  isEngineProjectionPathForTransition,
 } from '../src/modules/projection/engine-projection-registry.ts';
 
-test('projection catalog includes derived outputs without expanding transition authority', () => {
+test('projection catalog keeps readable output separate from exact transition-owned ledger paths', () => {
   assert.deepEqual(
     projectionDefinitions().map(({ id }) => id),
     [
+      'semantic.binding-index',
+      'documents.spec-map',
+      'documents.coverage',
+      'documents.requirements',
       'handoff.current-and-next-steps',
       'investigation.why-ledger',
       'registry.backlog',
@@ -25,8 +30,18 @@ test('projection catalog includes derived outputs without expanding transition a
   );
   assert.deepEqual(
     engineProjectionDefinitions().map(({ path }) => path),
-    ['docs/CURRENT_AND_NEXT_STEPS.md'],
+    ['workflow/semantic-ledger/index.json', 'docs/CURRENT_AND_NEXT_STEPS.md'],
   );
+  const object = `workflow/semantic-ledger/objects/sha256/ab/${'c'.repeat(62)}.json`;
+  assert.equal(isEngineProjectionPathForTransition(object, 'plan'), true);
+  assert.equal(isEngineProjectionPathForTransition(object, 'archive'), false);
+  for (const candidate of [
+    object.replace('/ab/', '/zz/'),
+    object.replace('.json', '.md'),
+    'docs/COVERAGE.md',
+  ]) {
+    assert.equal(isEngineProjectionPathForTransition(candidate, 'plan'), false);
+  }
 });
 
 test('guidance projection preserves outside bytes and independently detects drift', () => {
