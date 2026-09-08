@@ -145,12 +145,12 @@ No linked contract yet.
 
 > 我覺得要開放可以人可以授權都使用同session 加速開發進程 由時候趕時間會需要
 
-- [Provider Shortage Pauses Without Partial Transition](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Are Human-Issued and Exactly Bound](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Authorize Only Visible Independence Degradation](../packages/workflow-engine/spec.md)
 - [Granted Role Results Have Exact Distinct Content Forms](../packages/workflow-engine/spec.md)
 - [Grant Use Is Atomic, Bounded, and Replay-Resistant](../packages/workflow-engine/spec.md)
 - [Degraded Independence Remains Verifiable Downstream](../packages/workflow-engine/spec.md)
+- [Provider Assignment and Waiting Preserve Current Evidence](../packages/workflow-engine/spec.md)
 
 ## Keep waiver and later-review tracking simple
 
@@ -276,7 +276,6 @@ No linked contract yet.
 
 > 任何項目都不能因為沒有被注意到就消失；`retired` 必須能證明它只服務 v1/v2／歷史相容，或經你明確批准。
 
-- [Provider Shortage Pauses Without Partial Transition](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Are Human-Issued and Exactly Bound](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Authorize Only Visible Independence Degradation](../packages/workflow-engine/spec.md)
 - [Granted Role Results Have Exact Distinct Content Forms](../packages/workflow-engine/spec.md)
@@ -342,6 +341,7 @@ No linked contract yet.
 - [Current archive requires canonical task evidence](../packages/workflow-engine/spec.md)
 - [Current Planning Replay Requires Complete Parent and Result Trees](../packages/workflow-engine/spec.md)
 - [Engine-Owned Disposable Database Preflight](../packages/workflow-engine/spec.md)
+- [Provider Assignment and Waiting Preserve Current Evidence](../packages/workflow-engine/spec.md)
 - [Explicit Markdown Guidance Targets](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Stable Region Identity and User Ownership](../packages/workflow-engine/src/modules/adoption/spec.md)
 - [Rules Share Maintained Sources](../packages/workflow-engine/src/modules/adoption/spec.md)
@@ -357,18 +357,18 @@ No linked contract yet.
 - [Exact authority transition identity](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Protected retention and unique mapping](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Explicit grant-base identity mapping](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Base-owned historical replay gates sealing](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Human-present grant issuance](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Canonical single-purpose grant](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Git-common-directory grant state](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Protected audit envelope](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Fail-closed commit recovery](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Revocation and replay resistance](../packages/workflow-engine/src/modules/authority/spec.md)
-- [Authority commits carry check-definition transitions](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Current Authority Uses Exact Candidate Apply](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Exact Authority Candidates Carry Portable Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Policy Transitions Preserve Observations and Exact Grant Authority](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Local Verification Does Not Claim Real Pilot Evidence](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Historical Authority Replay Retains Required Trust](../packages/workflow-engine/src/modules/authority/spec.md)
+- [V2 Grants Bind One Exact Profile Candidate](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Check Registry Changes Preserve Current Authority Boundaries](../packages/workflow-engine/src/modules/authority/spec.md)
 - [Governance Sources Preserve Selected Wording Exactly](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Corrections Preserve Earlier Sources](../packages/workflow-engine/src/modules/governance-intake/spec.md)
 - [Source Trace Exposes Provenance Without Copying Authority](../packages/workflow-engine/src/modules/governance-intake/spec.md)

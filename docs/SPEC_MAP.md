@@ -22,10 +22,10 @@
 
 | Directory | Contract | Requirements | Scenarios |
 | --- | --- | ---: | ---: |
-| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 70 | 199 |
+| packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 70 | 201 |
 | packages/workflow-engine/src/modules/adoption | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | 4 | 9 |
 | packages/workflow-engine/src/modules/assurance | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | 7 | 22 |
-| packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 16 | 48 |
+| packages/workflow-engine/src/modules/authority | [Authority](../packages/workflow-engine/src/modules/authority/spec.md) | 16 | 51 |
 | packages/workflow-engine/src/modules/governance-intake | [Governance Intake](../packages/workflow-engine/src/modules/governance-intake/spec.md) | 23 | 56 |
 | packages/workflow-engine/src/modules/guidance | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | 3 | 5 |
 | packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 25 |

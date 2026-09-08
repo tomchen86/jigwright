@@ -183,10 +183,11 @@ test('active OpenSpec specifications are current-v3 only', () => {
   ] as const;
 
   for (const specification of specifications) {
-    const contents = fs.readFileSync(
-      path.join(repositoryRoot, specification.path),
-      'utf8',
-    );
+    // Native test names can retain historical labels; metadata references do
+    // not reinstate the retired normative behavior those tests now reject.
+    const contents = fs
+      .readFileSync(path.join(repositoryRoot, specification.path), 'utf8')
+      .replace(/^(?:sources|covers|test):.*$/gmu, '');
     for (const currentRequirement of specification.currentRequirements) {
       assert.ok(
         contents.includes(currentRequirement),

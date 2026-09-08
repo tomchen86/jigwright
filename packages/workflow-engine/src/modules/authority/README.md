@@ -9,11 +9,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 Confirmed at commit: `1985948f2539c04769d83404f0473f5a85a12f22`
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:3005713f2bfab5284a3915053fb11f75611068ee1a929069012c240f7f743f9a -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:2ea1065856d25fd716d7f4146d355ed5fbd3ae86272bcb2ee69bc05930aea827 -->
 
 <!-- prettier-ignore-start -->
 
-0 files changed in this module since confirmation.
+1 file changed in this module since confirmation.
 
 ## Commands
 
@@ -88,18 +88,18 @@ Confirmed at commit: `1985948f2539c04769d83404f0473f5a85a12f22`
 - [Exact authority transition identity](spec.md#requirement-exact-authority-transition-identity)
 - [Protected retention and unique mapping](spec.md#requirement-protected-retention-and-unique-mapping)
 - [Explicit grant-base identity mapping](spec.md#requirement-explicit-grant-base-identity-mapping)
-- [Base-owned historical replay gates sealing](spec.md#requirement-base-owned-historical-replay-gates-sealing)
 - [Human-present grant issuance](spec.md#requirement-human-present-grant-issuance)
-- [Canonical single-purpose grant](spec.md#requirement-canonical-single-purpose-grant)
 - [Git-common-directory grant state](spec.md#requirement-git-common-directory-grant-state)
 - [Protected audit envelope](spec.md#requirement-protected-audit-envelope)
 - [Fail-closed commit recovery](spec.md#requirement-fail-closed-commit-recovery)
 - [Revocation and replay resistance](spec.md#requirement-revocation-and-replay-resistance)
-- [Authority commits carry check-definition transitions](spec.md#requirement-authority-commits-carry-check-definition-transitions)
 - [Current Authority Uses Exact Candidate Apply](spec.md#requirement-current-authority-uses-exact-candidate-apply)
 - [Exact Authority Candidates Carry Portable Evidence](spec.md#requirement-exact-authority-candidates-carry-portable-evidence)
 - [Policy Transitions Preserve Observations and Exact Grant Authority](spec.md#requirement-policy-transitions-preserve-observations-and-exact-grant-authority)
 - [Local Verification Does Not Claim Real Pilot Evidence](spec.md#requirement-local-verification-does-not-claim-real-pilot-evidence)
+- [Historical Authority Replay Retains Required Trust](spec.md#requirement-historical-authority-replay-retains-required-trust)
+- [V2 Grants Bind One Exact Profile Candidate](spec.md#requirement-v2-grants-bind-one-exact-profile-candidate)
+- [Check Registry Changes Preserve Current Authority Boundaries](spec.md#requirement-check-registry-changes-preserve-current-authority-boundaries)
 
 ## Files
 

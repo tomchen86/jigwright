@@ -109,44 +109,6 @@ test: packages/workflow-engine/test/authority-attestation.contract.test.ts#trans
 - **WHEN** replay finds only a same-tree main commit, omits a grant bound to the original base, names a grant bound to another base, or observes unequal parent trees or messages
 - **THEN** replay rejects the grant-base mapping
 
-### Requirement: Base-owned historical replay gates sealing
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The base-owned workflow verifier MUST scan protected-main first-parent history
-for authority transitions and fail closed unless every transition either
-retains a directly valid signed authority commit or has one valid attestation,
-and every historical grant base referenced by a rewritten transition has a
-valid explicit mapping. Sealed enforcement SHALL NOT be declared while
-migration, protected tag control, environment binding, or trusted signer
-lineage remains unproven.
-
-#### Scenario: Protected history retains the signed authority commit
-covers: #Requirement: Base-owned historical replay gates sealing
-test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
-
-- **WHEN** a protected-main authority transition is the exact human-signed commit and its parent policy, protected grant tag, signature, paths, unique claim, and commit-time grant lifetime all validate
-- **THEN** historical replay accepts the transition directly without requiring an authority attestation
-
-#### Scenario: Complete historical lineage is replayable
-covers: #Requirement: Base-owned historical replay gates sealing
-test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
-
-- **WHEN** every protected-main authority commit either validates directly as the retained signed original or resolves through a unique valid protected attestation, and every referenced original grant base has the required explicit mapping under the trusted signer lineage
-- **THEN** base-owned replay succeeds and reports the covered authority grants and mappings
-
-#### Scenario: Historical lineage is incomplete
-covers: #Requirement: Base-owned historical replay gates sealing
-test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
-
-- **WHEN** any authority commit, original object, grant base, tag, signature, trust binding, mapping, or main reachability check is absent or invalid
-- **THEN** workflow assurance fails closed and the repository remains undeclared or bootstrap-only
-
-#### Scenario: Signer is rotated before sealing
-covers: #Requirement: Base-owned historical replay gates sealing
-
-- **WHEN** the sealed trust root would remove a signer required to validate an original authority commit or its attestation without an old-key-authorized cross-signing rule
-- **THEN** the sealing transition is rejected because historical provenance would become unverifiable
-
 ### Requirement: Human-present grant issuance
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -174,34 +136,6 @@ test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issu
 
 - **WHEN** a trusted encrypted SSH key or human-presence hardware key signs a valid canonical grant from an interactive terminal
 - **THEN** the engine stores one local available token and creates one signed non-secret audit envelope
-
-### Requirement: Canonical single-purpose grant
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Every grant SHALL use a versioned canonical signed payload bound to the trusted
-policy, stable repository identity, canonical origin, full base commit, OpenSpec
-change, sorted unique exact paths, issue and expiry times, one use, reason, and
-trusted signer identity.
-
-#### Scenario: Default grant bounds are narrow
-covers: #Requirement: Canonical single-purpose grant
-test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
-
-- **WHEN** a maintainer omits TTL and use-count options
-- **THEN** the engine issues a grant valid for no more than 30 minutes and exactly one use
-
-#### Scenario: Altered authorization is rejected
-covers: #Requirement: Canonical single-purpose grant
-test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
-
-- **WHEN** any signed authorization field, schema version, policy blob, signature, repository, base, change, path, time, reason, use count, or signer differs from the trusted canonical payload
-- **THEN** the engine rejects the grant
-
-#### Scenario: Unsafe grant path is rejected
-covers: #Requirement: Canonical single-purpose grant
-
-- **WHEN** a path is absolute, traversing, globbed, a directory, missing, untracked, symlinked, case-ambiguous, non-exact-case, or outside bootstrap eligibility
-- **THEN** the engine refuses to issue or reserve the grant
 
 ### Requirement: Git-common-directory grant state
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -311,39 +245,6 @@ test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#a
 
 - **WHEN** local state or a pull-request range claims one grant for more than one session or commit
 - **THEN** the engine rejects every duplicate use
-
-### Requirement: Authority commits carry check-definition transitions
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-CI replay SHALL treat a validated authority commit whose grant covers `workflow/checks.json` as the authoritative source of required-check definitions from its own tree, superseding earlier recorded definitions in the range. A definition added by that commit but absent from the parent policy and guards MUST remain unexecuted until a later validated guard requires it. All other definition drift MUST still fail closed.
-
-#### Scenario: Authority commit changes a required definition
-covers: #Requirement: Authority commits carry check-definition transitions
-
-- **WHEN** a fully validated authority commit edits a required check's definition and the head registry matches that edit
-- **THEN** replay succeeds and reports the new definition
-
-#### Scenario: Authority commit also adds an unused definition
-covers: #Requirement: Authority commits carry check-definition transitions
-
-- **WHEN** the same fully validated authority commit adds a structurally valid check ID that no parent policy or guard requires
-- **THEN** the signed tree and complete registry remain validated
-- **AND** replay does not report or execute the added definition as required-check evidence
-
-#### Scenario: Later task activates the added definition
-covers: #Requirement: Authority commits carry check-definition transitions
-
-- **WHEN** a later planning transition validates an incomplete task guard that references the added check ID
-- **AND** that task is executed against the post-authority registry
-- **THEN** the engine pins and runs the registered definition
-- **AND** CI records it as required evidence from that task onward
-
-#### Scenario: Definition drifts without an authority transition
-covers: #Requirement: Authority commits carry check-definition transitions
-test: packages/workflow-engine/test/ci.integration.test.ts#ordinary required-check edits fail at check time and CI replay
-
-- **WHEN** required-check definitions differ across a range with no validated authority commit carrying the change
-- **THEN** replay fails closed with the existing definition-drift error
 
 ### Requirement: Current Authority Uses Exact Candidate Apply
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -460,3 +361,124 @@ test: packages/workflow-engine/test/release-v1.contract.test.ts#release verifier
 
 - **WHEN** a release candidate or adoption report is edited to claim that the real pilot completed
 - **THEN** verification rejects the altered claim instead of manufacturing pilot evidence
+
+### Requirement: Historical Authority Replay Retains Required Trust
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The base-history verifier SHALL scan first-parent authority transitions and accept either a directly valid current signed candidate or an exact protected attestation mapping to its retained original. It SHALL verify the required Grant tags, signatures, candidate bindings and original-to-main base mappings. Missing or untrusted historical evidence MUST fail replay. Successful local replay MUST NOT claim remote protection, a real human ceremony or operational sealing readiness.
+
+#### Scenario: A retained signed candidate replays directly
+covers: #Requirement: Historical Authority Replay Retains Required Trust
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
+
+- **WHEN** a clone contains the retained signed candidate and its valid portable application evidence
+- **THEN** base-history verification reports that direct authority without requiring a rebase attestation
+
+#### Scenario: A rebased candidate retains its exact lineage
+covers: #Requirement: Historical Authority Replay Retains Required Trust
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
+
+- **WHEN** the signed original has a protected-main derivative and a valid exact attestation
+- **THEN** replay reports the original and main commits and verifies the explicit original-base to main-base mapping
+
+#### Scenario: Missing portable evidence prevents replay
+covers: #Requirement: Historical Authority Replay Retains Required Trust
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
+
+- **WHEN** the required application receipt is missing, altered or signed outside the governing trust
+- **THEN** current authority replay rejects that evidence instead of trusting private runtime reports
+
+#### Scenario: Removing historical signer trust invalidates replay
+covers: #Requirement: Historical Authority Replay Retains Required Trust
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
+
+- **WHEN** the selected replay base no longer trusts the signer of a required historical Grant
+- **THEN** base-history verification rejects the historical Grant evidence
+- **AND** a valid earlier attestation does not restore the missing signer trust
+
+### Requirement: V2 Grants Bind One Exact Profile Candidate
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+A current V2 Apply Grant SHALL bind the canonical exact candidate, manifest, profile, checks, repository, trusted base, signer, reason and signed lifetime. Its default lifetime SHALL be seven days and its use count SHALL be one. Profile-authorized evidence additions SHALL retain exact before-and-after file identity; an untracked file MUST NOT be accepted merely because it is called evidence. Manifest validation SHALL reject ambiguous path identities and paths outside the governing profile or within its forbidden roots.
+
+#### Scenario: Default V2 issuance has one use and a seven-day lifetime
+covers: #Requirement: V2 Grants Bind One Exact Profile Candidate
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
+
+- **WHEN** the current V2 issuer receives a complete exact candidate without a TTL override
+- **THEN** the signed payload has version 2, maxUses 1 and an expiry exactly seven days after issuance
+- **AND** the canonical envelope binds its manifest, patch, evidence overlay and required checks
+
+#### Scenario: Altered canonical candidate bindings are rejected
+covers: #Requirement: V2 Grants Bind One Exact Profile Candidate
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
+
+- **WHEN** a stored V2 envelope loses its signature namespace or its patch digest is changed independently of the bound candidate
+- **THEN** parsing rejects the altered authorization
+
+#### Scenario: Evidence additions require explicit profile permission
+covers: #Requirement: V2 Grants Bind One Exact Profile Candidate
+test: packages/workflow-engine/test/maintainer-manifest.contract.test.ts#manifest rejects untracked evidence additions unless the profile allows them
+
+- **WHEN** a candidate includes a new evidence file
+- **THEN** a profile that forbids evidence additions rejects it
+- **AND** a profile that permits the addition records its add operation with no fabricated before blob
+
+#### Scenario: Ambiguous file identities cannot enter the manifest
+covers: #Requirement: V2 Grants Bind One Exact Profile Candidate
+test: packages/workflow-engine/test/maintainer-manifest.contract.test.ts#manifest rejects Unicode-normalization and case-folding path aliases
+
+- **WHEN** manifest paths contain noncanonical Unicode or case-folding aliases
+- **THEN** manifest validation rejects the ambiguous file identities
+
+#### Scenario: Profile boundaries constrain the exact file set
+covers: #Requirement: V2 Grants Bind One Exact Profile Candidate
+test: packages/workflow-engine/test/maintainer-manifest.contract.test.ts#manifest rejects paths outside profile roots and forbidden paths
+
+- **WHEN** a candidate path falls outside the profile roots or matches a forbidden path
+- **THEN** manifest construction rejects that candidate
+
+### Requirement: Check Registry Changes Preserve Current Authority Boundaries
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Current ordinary V2 Apply SHALL classify edits to `workflow/checks.json` as control-plane and refuse them before executing checks, signing a Grant or publishing a commit. This V2 route classification MUST NOT be represented as a second veto on an exact accepted Central Grant. CI SHALL retain its current Central Apply receipt admission boundary explicitly. A validated planning transition MAY activate an already registered check, and task evidence SHALL use the committed registered definition. Ordinary required-check definition drift MUST fail at check time and in CI replay.
+
+#### Scenario: Required-definition edits do not enter ordinary V2 Apply
+covers: #Requirement: Check Registry Changes Preserve Current Authority Boundaries
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#V2 ordinary Apply refuses required and unused check-registry edits before checks or signing
+
+- **WHEN** a V2 candidate changes the command of a required registered check
+- **THEN** preflight classifies it as control-plane and ordinary Apply reports MAINTAINER_CONTROL_PLANE_GRANT_REQUIRED
+- **AND** no check, Grant signature or ref update is performed
+
+#### Scenario: An unused definition does not bypass the route boundary
+covers: #Requirement: Check Registry Changes Preserve Current Authority Boundaries
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#V2 ordinary Apply refuses required and unused check-registry edits before checks or signing
+
+- **WHEN** a V2 candidate only adds an unused registered definition alongside its ordinary patch
+- **THEN** ordinary Apply preserves the same control-plane refusal
+- **AND** the added check is not executed or reported as successful evidence
+
+#### Scenario: Later planning activates an existing registered definition
+covers: #Requirement: Check Registry Changes Preserve Current Authority Boundaries
+test: packages/workflow-engine/test/ci.integration.test.ts#registered format and asset definitions activate in planning and replay from committed evidence
+
+- **WHEN** a validated later plan adds existing workflow-format and openspec-assets IDs to an incomplete task's required checks
+- **THEN** historical authority resolves their committed definitions
+- **AND** CI executes and reports those required IDs without executing other unused registry entries
+
+#### Scenario: Ordinary definition drift fails independent replay
+covers: #Requirement: Check Registry Changes Preserve Current Authority Boundaries
+test: packages/workflow-engine/test/ci.integration.test.ts#ordinary required-check edits fail at check time and CI replay
+
+- **WHEN** an ordinary task changes its required check definition even though the registry file is in its allowed path scope
+- **THEN** check time rejects changed pinned artifacts
+- **AND** independent CI reports CI_CHECK_DEFINITION_CHANGED for the committed drift
+
+#### Scenario: Central Apply grammar does not claim the CI cutover is complete
+covers: #Requirement: Check Registry Changes Preserve Current Authority Boundaries
+test: packages/workflow-engine/test/managed-trailers.contract.test.ts#CI parses the exact Central Apply block and rejects pre-cutover replay
+
+- **WHEN** the current CI sequence receives a canonical Central Apply commit
+- **THEN** parsing retains the exact authority bindings but replay reports CI_AUTHORITY_COMMIT_INVALID
+- **AND** successful parsing is not reported as successful CI admission
