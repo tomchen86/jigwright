@@ -1,3 +1,10 @@
+/**
+ * Project executable next steps from current command results and lifecycle facts.
+ *
+ * Invariants:
+ * - Guidance stays advisory and never authorizes a state transition.
+ * - Source commands retain exact identity and path bindings in their suggestions.
+ */
 import type { WorkflowError } from '../../../foundation/errors/errors.ts';
 import type {
   ManagedAuthorityPlanState,
@@ -213,7 +220,7 @@ function governanceSourceCaptureNextSteps(
   const sourceObjectDigest = sourceId?.slice('SRC-'.length);
   if (
     Object.keys(captured).sort().join('\0') !==
-      ['action', 'created', 'path', 'sourceDigest', 'sourceId']
+      ['action', 'created', 'originalText', 'path', 'sourceDigest', 'sourceId']
         .sort()
         .join('\0') ||
     sourceId === undefined ||
@@ -221,6 +228,7 @@ function governanceSourceCaptureNextSteps(
     sourceDigest === undefined ||
     !/^sha256:[0-9a-f]{64}$/u.test(sourceDigest) ||
     typeof captured.created !== 'boolean' ||
+    typeof captured.originalText !== 'string' ||
     objectPath !==
       `workflow/source-ledger/objects/sha256/${sourceObjectDigest?.slice(0, 2)}/${sourceObjectDigest}.json`
   ) {

@@ -95,10 +95,10 @@ function hasCoherentWorkItemLifecycle(item: WorkItemV1): boolean {
   for (const entry of item.timeline.slice(1)) {
     if (
       entry.event === 'accepted' &&
-      observedStage === 'inbox' &&
+      observedStage !== 'closed' &&
       entry.changeId === null
     ) {
-      observedStage = 'backlog';
+      if (observedStage === 'inbox') observedStage = 'backlog';
     } else if (
       entry.event === 'prioritized' &&
       observedStage === 'backlog' &&
@@ -123,10 +123,8 @@ function hasCoherentWorkItemLifecycle(item: WorkItemV1): boolean {
     if (observedStage !== 'active') return item.changeRefs.length === 0;
     return (
       promoted.length === 1 &&
-      last.event === 'promoted' &&
-      last.changeId !== null &&
       item.changeRefs.length === 1 &&
-      item.changeRefs[0] === last.changeId
+      item.changeRefs[0] === promoted[0]!.changeId
     );
   }
   if (

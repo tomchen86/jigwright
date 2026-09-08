@@ -1,3 +1,11 @@
+/**
+ * Route exact wording, observations and Work Item decisions through intake APIs.
+ *
+ * Invariants:
+ * - Original text is returned verbatim from canonical records, including whitespace.
+ * - Corrections supersede Sources; they never overwrite captured wording.
+ * - Existing Work Item and change links resolve before a Finding receipt is written.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -39,6 +47,7 @@ import {
   attachSourceToWorkItem,
   assertOrdinaryWorkRegistryTransition,
   createWorkItem,
+  correctWorkItemSource,
   createWorkItemAfterExactSourceTextRecheck,
   ensureWorkItemPromotionChangeDirectory,
   ensureWorkItemPromotionSurveyBinding,
@@ -69,6 +78,7 @@ export type GovernanceIntakeCliDependencies = Readonly<{
   afterNowSourceCaptured?: () => void;
   afterFindingConversionWorkItemPersisted?: () => void;
   afterLaterSourceCaptured?: () => void;
+  afterCorrectSourceCaptured?: () => void;
   resolveSession?: (
     cwd: string,
     sessionId: string,
@@ -97,7 +107,8 @@ export type GovernanceIntakeCliDependencies = Readonly<{
 }>;
 
 export function dispatchGovernanceIntakeCommand(
-  command: 'source' | 'finding' | 'work-item' | 'now' | 'later' | 'attach',
+  command:
+    'source' | 'finding' | 'work-item' | 'now' | 'later' | 'attach' | 'correct',
   args: string[],
   cwd: string,
   dependencies: GovernanceIntakeCliDependencies = {},
@@ -108,6 +119,8 @@ export function dispatchGovernanceIntakeCommand(
         return dispatchNowIntakeCommand(command, args, cwd, dependencies);
       case 'later':
         return dispatchLaterIntakeCommand(command, args, cwd, dependencies);
+      case 'correct':
+        return dispatchCorrectIntakeCommand(args, cwd, dependencies);
       case 'attach':
         return dispatchAttachIntakeCommand(command, args, cwd, dependencies);
       case 'source':
@@ -129,7 +142,7 @@ export function dispatchGovernanceIntakeCommand(
 const SOURCE_ID = /^SRC-[0-9a-f]{64}$/u;
 type IntakeKind = (typeof INTAKE_KINDS)[number];
 const INTAKE_USAGE =
-  'Usage: jigwright now "<original text>" [--kind <kind>] | jigwright later "<original text>" [--kind <kind>] | jigwright attach <work-item-id> "<original text>"|<SRC-id> [--supersedes <SRC-id>] | jigwright finding convert <finding-id> [--kind <kind>] [--now]; kind = feature|bug|improvement|chore|research (default improvement; convert defaults to bug)';
+  'Usage: jigwright now "<original text>" [--kind <kind>] | jigwright later "<original text>" [--kind <kind>] | jigwright attach <work-item-id> "<original text>"|<SRC-id> [--supersedes <SRC-id>] | jigwright correct <work-item-id> <old-SRC-id> <original-text> | jigwright finding convert <finding-id> [--kind <kind>] [--now]; kind = feature|bug|improvement|chore|research (default improvement; convert defaults to bug)';
 function takeFlag(
   args: readonly string[],
   flag: string,
@@ -342,6 +355,7 @@ function dispatchNowIntakeCommand(
       return {
         action: 'now',
         workItemId: workItem.id,
+        title: workItem.title,
         sourceRefs: workItem.sourceRefs,
         originalTexts,
         promoted: true,
@@ -353,6 +367,7 @@ function dispatchNowIntakeCommand(
       return {
         action: 'now',
         workItemId: workItem.id,
+        title: workItem.title,
         sourceRefs: workItem.sourceRefs,
         originalTexts,
         promoted: false,
@@ -377,6 +392,7 @@ function dispatchNowIntakeCommand(
       return {
         action: 'now',
         workItemId: workItem.id,
+        title: workItem.title,
         sourceRefs: workItem.sourceRefs,
         originalTexts,
         promoted: false,
@@ -394,6 +410,7 @@ function dispatchNowIntakeCommand(
         return {
           action: 'now',
           workItemId: workItem.id,
+          title: workItem.title,
           sourceRefs: workItem.sourceRefs,
           originalTexts,
           promoted: false,
@@ -443,6 +460,7 @@ function dispatchNowIntakeCommand(
     return {
       action: 'now',
       workItemId: promoted.item.id,
+      title: promoted.item.title,
       sourceRefs: promoted.item.sourceRefs,
       originalTexts,
       promoted: true,
@@ -617,6 +635,7 @@ function dispatchLaterIntakeCommand(
         sourceId: null,
         sourceLinked: false,
         workItemId: created.item.id,
+        title: created.item.title,
         deduplicated: false,
         nextSteps: [`pnpm workflow work-item show ${created.item.id} --json`],
       };
@@ -681,6 +700,7 @@ function dispatchLaterIntakeCommand(
       sourceId: source.source.id,
       sourceLinked: true,
       workItemId: workItem.item.id,
+      title: workItem.item.title,
       deduplicated: false,
       nextSteps: [`pnpm workflow work-item show ${workItem.item.id} --json`],
     };
@@ -717,8 +737,9 @@ function dispatchAttachIntakeCommand(
         action: 'attach',
         originalText: source.text,
         sourceId: source.id,
-        supersedes: null,
+        supersedes: source.supersedes,
         workItemId: attached.item.id,
+        title: attached.item.title,
         updated: attached.updated,
         nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
       };
@@ -761,11 +782,72 @@ function dispatchAttachIntakeCommand(
       sourceId: source.id,
       supersedes,
       workItemId: attached.item.id,
+      title: attached.item.title,
       updated: attached.updated,
       nextSteps: [`pnpm workflow work-item show ${attached.item.id} --json`],
     };
   }
   throw intakeUsage(INTAKE_USAGE);
+}
+
+function dispatchCorrectIntakeCommand(
+  args: string[],
+  cwd: string,
+  dependencies: GovernanceIntakeCliDependencies,
+): Record<string, unknown> {
+  if (args.length !== 3 || !SOURCE_ID.test(args[1]!))
+    throw intakeUsage(INTAKE_USAGE);
+  const [id, oldRef, originalText] = args as [string, `SRC-${string}`, string];
+  assertIntentText(
+    originalText,
+    'pnpm workflow correct <work-item-id> <old-SRC-id> "<original text>" --json',
+  );
+  const current = showWorkItem(cwd, id);
+  if (current.stage === 'closed' || current.closure !== null)
+    throw intakeUsage('A closed Work Item cannot receive a Source.');
+  readGovernanceSource(cwd, oldRef);
+  const matches = listGovernanceSources(cwd).filter(
+    (source) =>
+      source.semanticAuthor === 'maintainer' &&
+      source.supersedes === oldRef &&
+      source.text === originalText,
+  );
+  const attached = matches.find((source) =>
+    current.sourceRefs.includes(source.id),
+  );
+  if (!current.sourceRefs.includes(oldRef) && attached === undefined)
+    throw intakeUsage(
+      'The Source being corrected is not linked to this Work Item.',
+    );
+  const source =
+    attached ??
+    matches[0] ??
+    captureGovernanceSource(cwd, {
+      semanticAuthor: 'maintainer',
+      capturedBy: 'jigwright-intake',
+      capturedAt: (dependencies.now ?? (() => new Date().toISOString()))(),
+      contextRef: 'direct-human:workflow-cli',
+      text: originalText,
+      supersedes: oldRef,
+    }).source;
+  dependencies.afterCorrectSourceCaptured?.();
+  const corrected = correctWorkItemSource(
+    cwd,
+    current.id,
+    oldRef,
+    source.id,
+    workItemDigest(current),
+  );
+  return {
+    action: 'correct',
+    originalText: source.text,
+    title: corrected.item.title,
+    sourceId: source.id,
+    supersedes: source.supersedes,
+    workItemId: corrected.item.id,
+    updated: corrected.updated,
+    nextSteps: [`pnpm workflow work-item show ${corrected.item.id} --json`],
+  };
 }
 
 function dispatchSourceIntakeCommand(
@@ -784,6 +866,7 @@ function dispatchSourceIntakeCommand(
     const result = captureGovernanceSource(cwd, input);
     return {
       action: 'capture',
+      originalText: result.source.text,
       sourceId: result.source.id,
       sourceDigest: result.source.textDigest,
       path: result.relativePath,
@@ -817,6 +900,7 @@ function dispatchSourceIntakeCommand(
     const linked = linkSourceToChange(cwd, args[1]!, args[3]!);
     return {
       action: 'link-change',
+      originalText: readGovernanceSource(cwd, args[1]!).text,
       sourceId: args[1],
       changeId: args[3],
       path: path
@@ -853,6 +937,7 @@ function dispatchWorkItemIntakeCommand(
     return {
       action: 'promote-prepare',
       workItemId: args[1],
+      title: showWorkItem(cwd, args[1]!).title,
       changeId: args[3],
       path: prepared.relativePath,
       surveyedCommit: prepared.survey.surveyedCommit,
@@ -869,6 +954,7 @@ function dispatchWorkItemIntakeCommand(
     return {
       action: 'create',
       workItemId: created.item.id,
+      title: created.item.title,
       path: created.relativePath,
     };
   }
@@ -904,6 +990,7 @@ function dispatchWorkItemIntakeCommand(
     return {
       action: 'promote',
       workItemId: promoted.item.id,
+      title: promoted.item.title,
       changeId: args[3],
     };
   }
@@ -1051,6 +1138,8 @@ function dispatchFindingIntakeCommand(
     );
     const result = {
       action: 'convert',
+      originalText: converted.finding.text,
+      title: ensured.item.title,
       kind,
       sourceId: null,
       workItemId: ensured.item.id,
@@ -1146,6 +1235,7 @@ function dispatchFindingIntakeCommand(
     );
     return {
       action: 'dismiss',
+      originalText: result.finding.text,
       finding: result.finding,
       created: result.created,
     };
@@ -1163,6 +1253,7 @@ function dispatchFindingIntakeCommand(
     const result = recordGovernanceFinding(context, input, dependencies.now);
     return {
       action: 'add',
+      originalText: result.finding.text,
       findingId: result.finding.id,
       sessionId: result.finding.sessionId,
       path: result.path,
@@ -1188,6 +1279,7 @@ function dispatchFindingIntakeCommand(
     const result = recordGovernanceFinding(context, input, dependencies.now);
     return {
       action: 'add',
+      originalText: result.finding.text,
       findingId: result.finding.id,
       sessionId: result.finding.sessionId,
       changeId: result.finding.changeId,

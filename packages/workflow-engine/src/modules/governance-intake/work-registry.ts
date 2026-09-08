@@ -1,30 +1,16 @@
+/**
+ * Maintain canonical Work Items, reviewed transitions and change provenance.
+ *
+ * Invariants:
+ * - Source corrections retain history and update active origins in one transaction.
+ * - Reviewed mutations bind current item digests; projections never grant authority.
+ * - Registry stages, lanes and interpretation status remain independent facts.
+ */
 import { createWorkRegistryQueries } from './work-registry-queries.ts';
 import { createWorkRegistryStorage } from './work-registry-storage.ts';
 import { createWorkRegistryPromotionPreparation } from './work-registry-promotion-preparation.ts';
 import { createWorkRegistryProjectionOperations } from './work-registry-projections.ts';
-/**
- * The built-in Work Registry: one canonical YAML record per Work Item, the
- * lifecycle inbox, backlog, active, closed, the lanes now, next, later and
- * icebox, reviewed intake and priority, promotion into a change origin, archive
- * reconciliation, and the deterministic backlog, inventory, history and handoff
- * projections.
- *
- * Invariants:
- * - Stage, lane and blockers are independent facts; the interpretation records
- *   whether it is agent-derived or maintainer-confirmed.
- * - Every mutation binds the exact current item digest and uses
- *   compare-and-swap; a retry converges on the same bytes and never overwrites
- *   a concurrent update.
- * - Projections are derived from canonical records and are never authority;
- *   validation rejects a drifted projection.
- * - Always available: a repository may hold zero items, and the registry cannot
- *   be configured off.
- *
- * Depends on: governance-intake.ts for Sources, the repository consumer
- * configuration, and the change origin under the change root.
- * Failure modes: an incoherent relation is rejected without moving or rewriting
- * the record; a stale expected digest fails the reviewed transition.
- */
+
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -45,6 +31,11 @@ import {
 } from '../repository-consumer/repository-consumer-config.ts';
 import { readGovernanceSource } from './governance-intake.ts';
 import {
+  projectWorkItemSourceUpdate,
+  projectSourceUpdateOrigin,
+  type WorkItemSourceUpdateV1,
+} from './work-registry-source-update.ts';
+import {
   ORIGIN_KEYS,
   boundedText,
   canonicalTimestamp,
@@ -62,21 +53,14 @@ import {
   workItemReferences,
 } from './work-registry-record.ts';
 import {
-  WorkRegistryPromotionCasMismatch,
-  abortWorkItemPromotionTransaction,
-  applyWorkItemPromotionTransaction,
   createWorkRegistryPromotionLocks,
-  createWorkItemPromotionTransaction,
+  createWorkItemRecordTransaction,
+  commitWorkItemRecordTransaction,
   findExactRecoveredWorkItemPromotion,
-  markWorkItemPromotionRollback,
   parsePromotionItemContent,
-  publishRecoveredWorkItemPromotion,
-  publishWorkItemPromotionTransaction,
   readStablePromotionTarget,
   recoverWorkItemPromotionTransactionsUnlocked,
-  removeWorkItemPromotionJournal,
   replayRecoveredWorkItemPromotion,
-  workRegistryTransactionConflict,
 } from './work-registry-promotion-transaction.ts';
 
 export type WorkRegistryPromotionLockBindings = Readonly<{
@@ -438,33 +422,132 @@ export function attachSourceToWorkItem(
   requestedId: string,
   requestedSourceRef: string,
 ): { item: WorkItemV1; updated: boolean } {
+  return updateWorkItemSource(
+    repositoryRoot,
+    requestedId,
+    requestedSourceRef,
+    null,
+  );
+}
+
+export function correctWorkItemSource(
+  repositoryRoot: string,
+  requestedId: string,
+  replacedSourceRef: string,
+  requestedSourceRef: string,
+  expectedDigest?: string,
+  testHooks: WorkItemPromotionTestHooks = {},
+): { item: WorkItemV1; updated: boolean } {
+  return updateWorkItemSource(
+    repositoryRoot,
+    requestedId,
+    requestedSourceRef,
+    replacedSourceRef,
+    expectedDigest,
+    testHooks,
+  );
+}
+
+function updateWorkItemSource(
+  repositoryRoot: string,
+  requestedId: string,
+  requestedSourceRef: string,
+  replacedSourceRef: string | null,
+  expectedDigest?: string,
+  testHooks: WorkItemPromotionTestHooks = {},
+): { item: WorkItemV1; updated: boolean } {
   return withWorkRegistryPromotionLockWhenAvailable(repositoryRoot, () => {
-    const id = workItemId(requestedId);
-    const itemPath = findWorkItemPath(repositoryRoot, id);
-    const item = readWorkItem(itemPath);
-    if (item.closure !== null || item.stage === 'closed') {
-      throw registryInvalid('A closed Work Item cannot receive a Source.');
-    }
-    const sourceRef = sourceReferences([requestedSourceRef])[0]!;
-    readSource(repositoryRoot, sourceRef);
-    const sourceRefs = sourceReferences([
-      ...new Set([...item.sourceRefs, sourceRef]),
-    ]);
-    const next: WorkItemV1 = {
-      ...item,
-      sourceRefs,
-      interpretation: {
-        summary: ['bug', 'chore', 'research'].includes(item.kind)
-          ? item.interpretation.summary
-          : linkedSourceInterpretationSummary(sourceRefs),
-        status: 'agent-derived',
-      },
+    const itemPath = findWorkItemPath(repositoryRoot, workItemId(requestedId));
+    const { item, serialized: itemBefore } = readWorkItemRecord(itemPath);
+    const source = readSourceValue(
+      repositoryRoot,
+      sourceReferences([requestedSourceRef])[0]!,
+    );
+    const replaces =
+      replacedSourceRef === null
+        ? null
+        : sourceReferences([replacedSourceRef])[0]!;
+    if (
+      replaces !== null &&
+      (source.supersedes !== replaces || source.id === replaces)
+    )
+      throw registryInvalid(
+        'A correction requires a new Source superseding the specified original.',
+      );
+    const update: WorkItemSourceUpdateV1 = {
+      sourceRef: source.id,
+      replaces,
+      retainReplacedOrigin: false,
     };
-    if (canonicalJson(next) === canonicalJson(item)) {
+    const next = projectWorkItemSourceUpdate(item, update);
+    if (next === item && item.stage !== 'active')
       return { item, updated: false };
+    if (
+      next !== item &&
+      expectedDigest !== undefined &&
+      workItemDigest(item) !== exactDigest(expectedDigest)
+    ) {
+      throw workflowError(
+        'WORK_REGISTRY_STALE',
+        'Work Item changed before its Source update.',
+        ExitCode.conflict,
+      );
     }
-    replaceCanonicalFile(itemPath, next);
-    return { item: next, updated: true };
+    if (item.stage !== 'active') {
+      replaceCanonicalFile(itemPath, next);
+      return { item: next, updated: true };
+    }
+    return withWorkRegistryPromotionLock(repositoryRoot, (runtime) => {
+      const originPath = path.join(
+        assertChangeDirectory(repositoryRoot, item.changeRefs[0]!),
+        'origin.json',
+      );
+      const originBefore = readStablePromotionTarget(originPath, false).content;
+      const beforeOrigin = parseOrigin(originBefore);
+      const retainedUpdate: WorkItemSourceUpdateV1 = {
+        ...update,
+        retainReplacedOrigin:
+          replaces !== null &&
+          beforeOrigin.workItemRefs.some(
+            (id) =>
+              id !== item.id &&
+              showWorkItem(repositoryRoot, id).sourceRefs.includes(replaces),
+          ),
+      };
+      const origin = projectSourceUpdateOrigin(
+        beforeOrigin,
+        next,
+        retainedUpdate,
+      );
+      if (
+        next === item &&
+        canonicalJson(origin) === canonicalJson(beforeOrigin)
+      )
+        return { item, updated: false };
+      if (
+        expectedDigest !== undefined &&
+        workItemDigest(item) !== exactDigest(expectedDigest)
+      ) {
+        throw workflowError(
+          'WORK_REGISTRY_STALE',
+          'Work Item changed before its Source update.',
+          ExitCode.conflict,
+        );
+      }
+      const transaction = createWorkItemRecordTransaction(
+        repositoryRoot,
+        itemPath,
+        originPath,
+        itemBefore,
+        originBefore,
+        next,
+        origin,
+        null,
+        retainedUpdate,
+      );
+      commitWorkItemRecordTransaction(runtime, transaction, testHooks);
+      return { item: next, updated: true };
+    });
   });
 }
 
@@ -542,12 +625,18 @@ function applyWorkItemReviewUnlocked(
   const at = canonicalTimestamp(now());
   let next: WorkItemV1;
   if (review.action === 'accept') {
-    if (item.stage !== 'inbox' || item.closure !== null) {
-      throw registryInvalid('Only an open inbox item can be accepted.');
+    if (
+      item.closure !== null ||
+      item.stage === 'closed' ||
+      (item.stage !== 'inbox' && item.interpretation.status !== 'agent-derived')
+    ) {
+      throw registryInvalid(
+        'Accept requires an inbox item or an open item with a changed interpretation.',
+      );
     }
     next = {
       ...item,
-      stage: 'backlog',
+      stage: item.stage === 'inbox' ? 'backlog' : item.stage,
       interpretation: {
         summary: boundedText(review.summary, 2_000, 'summary'),
         status: 'maintainer-confirmed',
@@ -653,7 +742,7 @@ export function promoteWorkItem(
       promoted.sourceRefs,
       [promoted.id],
     );
-    const requestedTransaction = createWorkItemPromotionTransaction(
+    const requestedTransaction = createWorkItemRecordTransaction(
       repositoryRoot,
       itemPath,
       originPath,
@@ -663,45 +752,17 @@ export function promoteWorkItem(
       origin,
       grantBinding,
     );
-    const persisted = publishWorkItemPromotionTransaction(
+    const transaction = commitWorkItemRecordTransaction(
       runtime,
       requestedTransaction,
+      testHooks,
     );
-    if (persisted.created) testHooks.afterJournalPersisted?.();
-    try {
-      applyWorkItemPromotionTransaction(
-        runtime,
-        persisted.transaction,
-        testHooks,
-      );
-    } catch (error) {
-      markWorkItemPromotionRollback(runtime, persisted.transaction);
-      abortWorkItemPromotionTransaction(
-        runtime,
-        persisted.transaction,
-        testHooks,
-      );
-      if (error instanceof WorkRegistryPromotionCasMismatch) {
-        throw workRegistryTransactionConflict(
-          'Work Item promotion inputs changed before compare-and-swap.',
-        );
-      }
-      throw error;
-    }
-    if (persisted.transaction.grantBinding === null) {
-      removeWorkItemPromotionJournal(runtime, persisted.transaction);
-    } else {
-      publishRecoveredWorkItemPromotion(runtime, persisted.transaction);
-    }
-    testHooks.afterTransactionCommitted?.();
-    const committed = parsePromotionItemContent(
-      persisted.transaction.after.itemContent,
-    );
+    const committed = parsePromotionItemContent(transaction.after.itemContent);
     return {
       item: committed,
       originPath: path.join(
         repositoryRoot,
-        ...persisted.transaction.originRelativePath.split('/'),
+        ...transaction.originRelativePath.split('/'),
       ),
     };
   });
@@ -1089,16 +1150,6 @@ function readSourceValue(
   sourceRef: `SRC-${string}`,
 ): GovernanceSourceV1 {
   return readGovernanceSource(repositoryRoot, sourceRef);
-}
-
-function linkedSourceInterpretationSummary(
-  sourceRefs: readonly `SRC-${string}`[],
-): string {
-  return boundedText(
-    `Interpret and disposition linked Sources: ${sourceRefs.join(', ')}.`,
-    2_000,
-    'summary',
-  );
 }
 
 function promotionIneligible(message: string) {

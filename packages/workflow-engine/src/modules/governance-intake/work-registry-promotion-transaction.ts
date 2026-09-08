@@ -1,7 +1,10 @@
 /**
- * Work Registry promotion transaction protocol. Journal publication, the shared
- * registry lock, exact receipts, tracked-file CAS, and rollback/recovery remain
- * together so their durable ordering has one owner.
+ * Commit and recover paired Work Item/origin updates under the registry lock.
+ *
+ * Invariants:
+ * - Promotion and Source-update records bind their exact respective effects.
+ * - Journal publication precedes tracked-file CAS; rollback preserves other writes.
+ * - Only promotion receipts may satisfy promotion or Grant replay.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -33,6 +36,13 @@ import {
   workRegistryTextDigest,
 } from './work-registry-record.ts';
 
+import {
+  parseWorkItemSourceUpdate,
+  projectWorkItemSourceUpdate,
+  projectSourceUpdateOrigin,
+  type WorkItemSourceUpdateV1,
+} from './work-registry-source-update.ts';
+
 const WORK_REGISTRY_PRIVATE_FILE_MODE = 0o600;
 
 const WORK_REGISTRY_PRIVATE_DIRECTORY_MODE = 0o700;
@@ -40,11 +50,17 @@ const WORK_REGISTRY_PRIVATE_DIRECTORY_MODE = 0o700;
 const WORK_REGISTRY_PROMOTION_TRANSACTION_KIND =
   'work-registry-promotion-transaction.v1';
 
+const WORK_REGISTRY_SOURCE_UPDATE_KIND =
+  'work-registry-source-update-transaction.v1';
+
 const MAX_WORK_REGISTRY_PROMOTION_TRANSACTION_BYTES = 512 * 1024;
 
 type WorkItemPromotionTransactionV1 = Readonly<{
   schemaVersion: 1;
-  kind: typeof WORK_REGISTRY_PROMOTION_TRANSACTION_KIND;
+  kind:
+    | typeof WORK_REGISTRY_PROMOTION_TRANSACTION_KIND
+    | typeof WORK_REGISTRY_SOURCE_UPDATE_KIND;
+  sourceUpdate?: WorkItemSourceUpdateV1;
   operationId: `sha256:${string}`;
   captureToken: string;
   transactionDigest: `sha256:${string}`;
@@ -102,7 +118,7 @@ const activeWorkRegistryPromotionRoots = new Set<string>();
 
 export class WorkRegistryPromotionCasMismatch extends Error {}
 
-export function createWorkItemPromotionTransaction(
+export function createWorkItemRecordTransaction(
   repositoryRoot: string,
   itemPath: string,
   originPath: string,
@@ -111,6 +127,7 @@ export function createWorkItemPromotionTransaction(
   promoted: WorkItemV1,
   origin: ChangeOriginV1,
   grantBinding: WorkItemPromotionGrantBindingV1 | null,
+  sourceUpdate?: WorkItemSourceUpdateV1,
 ): WorkItemPromotionTransactionV1 {
   const itemRelativePath = exactRepositoryRelativePath(
     repositoryRoot,
@@ -139,9 +156,15 @@ export function createWorkItemPromotionTransaction(
     originContent: originAfter,
     originDigest: workRegistryTextDigest(originAfter),
   } as const;
+  const kind =
+    sourceUpdate === undefined
+      ? WORK_REGISTRY_PROMOTION_TRANSACTION_KIND
+      : WORK_REGISTRY_SOURCE_UPDATE_KIND;
+  const sourceFields = sourceUpdate === undefined ? {} : { sourceUpdate };
   const identity = {
     schemaVersion: 1,
-    kind: WORK_REGISTRY_PROMOTION_TRANSACTION_KIND,
+    kind,
+    ...sourceFields,
     workItemId: promoted.id,
     changeId: promoted.changeRefs[0]!,
     itemRelativePath,
@@ -154,7 +177,8 @@ export function createWorkItemPromotionTransaction(
   const captureToken = crypto.randomUUID();
   const withoutDigest = {
     schemaVersion: 1,
-    kind: WORK_REGISTRY_PROMOTION_TRANSACTION_KIND,
+    kind,
+    ...sourceFields,
     operationId,
     captureToken,
     workItemId: promoted.id,
@@ -208,7 +232,9 @@ export function recoverWorkItemPromotionTransactionsUnlocked(
         }
         throw error;
       }
-      publishRecoveredWorkItemPromotion(runtime, transaction);
+      if (transaction.kind === WORK_REGISTRY_SOURCE_UPDATE_KIND)
+        removeWorkItemPromotionJournal(runtime, transaction);
+      else publishRecoveredWorkItemPromotion(runtime, transaction);
       continue;
     }
     if (
@@ -590,11 +616,15 @@ function readWorkItemPromotionTransaction(
       'originRelativePath',
       'parentBindings',
       'schemaVersion',
+      ...(value.kind === WORK_REGISTRY_SOURCE_UPDATE_KIND
+        ? ['sourceUpdate']
+        : []),
       'transactionDigest',
       'workItemId',
     ]) ||
     value.schemaVersion !== 1 ||
-    value.kind !== WORK_REGISTRY_PROMOTION_TRANSACTION_KIND ||
+    (value.kind !== WORK_REGISTRY_PROMOTION_TRANSACTION_KIND &&
+      value.kind !== WORK_REGISTRY_SOURCE_UPDATE_KIND) ||
     typeof value.operationId !== 'string' ||
     !/^sha256:[0-9a-f]{64}$/.test(value.operationId) ||
     typeof value.captureToken !== 'string' ||
@@ -639,27 +669,47 @@ function readWorkItemPromotionTransaction(
     transaction.changeId,
     'origin.json',
   );
-  const expectedAfterItem: WorkItemV1 = {
-    ...beforeItem,
-    stage: 'active',
-    changeRefs: [transaction.changeId],
-    timeline: [...beforeItem.timeline, afterItem.timeline.at(-1)!],
-  };
-  const expectedAfterOrigin: ChangeOriginV1 = {
-    schemaVersion: 1,
-    sourceRefs: [
-      ...new Set([
-        ...(beforeOrigin?.sourceRefs ?? []),
-        ...beforeItem.sourceRefs,
-      ]),
-    ].sort(),
-    workItemRefs: [
-      ...new Set([...(beforeOrigin?.workItemRefs ?? []), beforeItem.id]),
-    ].sort(),
-  };
+  const sourceUpdate =
+    transaction.kind === WORK_REGISTRY_SOURCE_UPDATE_KIND
+      ? parseWorkItemSourceUpdate(transaction.sourceUpdate)
+      : null;
+  const expectedAfterItem: WorkItemV1 =
+    sourceUpdate === null
+      ? {
+          ...beforeItem,
+          stage: 'active',
+          changeRefs: [transaction.changeId],
+          timeline: [...beforeItem.timeline, afterItem.timeline.at(-1)!],
+        }
+      : projectWorkItemSourceUpdate(beforeItem, sourceUpdate);
+  const expectedAfterOrigin: ChangeOriginV1 =
+    sourceUpdate === null
+      ? {
+          schemaVersion: 1,
+          sourceRefs: [
+            ...new Set([
+              ...(beforeOrigin?.sourceRefs ?? []),
+              ...beforeItem.sourceRefs,
+            ]),
+          ].sort(),
+          workItemRefs: [
+            ...new Set([...(beforeOrigin?.workItemRefs ?? []), beforeItem.id]),
+          ].sort(),
+        }
+      : projectSourceUpdateOrigin(
+          beforeOrigin ?? {
+            schemaVersion: 1,
+            sourceRefs: [],
+            workItemRefs: [],
+          },
+          expectedAfterItem,
+          sourceUpdate,
+        );
+  const sourceFields = sourceUpdate === null ? {} : { sourceUpdate };
   const identity = {
     schemaVersion: 1,
-    kind: WORK_REGISTRY_PROMOTION_TRANSACTION_KIND,
+    kind: transaction.kind,
+    ...sourceFields,
     workItemId: transaction.workItemId,
     changeId: transaction.changeId,
     itemRelativePath: transaction.itemRelativePath,
@@ -671,6 +721,7 @@ function readWorkItemPromotionTransaction(
   const withoutDigest = {
     schemaVersion: transaction.schemaVersion,
     kind: transaction.kind,
+    ...sourceFields,
     operationId: transaction.operationId,
     captureToken: transaction.captureToken,
     workItemId: transaction.workItemId,
@@ -690,20 +741,28 @@ function readWorkItemPromotionTransaction(
     ].includes(path.basename(journalPath)) ||
     transaction.workItemId !== beforeItem.id ||
     afterItem.id !== beforeItem.id ||
-    beforeItem.stage !== 'backlog' ||
-    beforeItem.changeRefs.length !== 0 ||
-    afterItem.stage !== 'active' ||
-    afterItem.changeRefs.length !== 1 ||
-    afterItem.changeRefs[0] !== transaction.changeId ||
-    afterItem.timeline.length !== beforeItem.timeline.length + 1 ||
-    afterItem.timeline.at(-1)?.event !== 'promoted' ||
-    afterItem.timeline.at(-1)?.changeId !== transaction.changeId ||
+    (sourceUpdate === null
+      ? beforeItem.stage !== 'backlog' ||
+        beforeItem.changeRefs.length !== 0 ||
+        afterItem.stage !== 'active' ||
+        afterItem.changeRefs.length !== 1 ||
+        afterItem.changeRefs[0] !== transaction.changeId ||
+        afterItem.timeline.length !== beforeItem.timeline.length + 1 ||
+        afterItem.timeline.at(-1)?.event !== 'promoted' ||
+        afterItem.timeline.at(-1)?.changeId !== transaction.changeId
+      : beforeItem.stage !== 'active' ||
+        beforeItem.changeRefs[0] !== transaction.changeId ||
+        beforeOrigin === null ||
+        transaction.grantBinding !== null ||
+        (canonicalJson(beforeItem) === canonicalJson(afterItem) &&
+          canonicalJson(beforeOrigin) === canonicalJson(afterOrigin))) ||
     canonicalJson(afterItem) !== canonicalJson(expectedAfterItem) ||
     canonicalJson(afterOrigin) !== canonicalJson(expectedAfterOrigin) ||
     !afterOrigin.workItemRefs.includes(beforeItem.id) ||
-    beforeItem.sourceRefs.some(
-      (sourceRef) => !afterOrigin.sourceRefs.includes(sourceRef),
-    ) ||
+    (sourceUpdate === null &&
+      beforeItem.sourceRefs.some(
+        (sourceRef) => !afterOrigin.sourceRefs.includes(sourceRef),
+      )) ||
     !isSafeWorkItemPromotionRelativePath(transaction.itemRelativePath) ||
     !isSafeWorkItemPromotionRelativePath(transaction.originRelativePath) ||
     !transaction.itemRelativePath.endsWith(
@@ -981,6 +1040,7 @@ export function findExactRecoveredWorkItemPromotion(
       false,
     );
     if (
+      transaction.kind !== WORK_REGISTRY_PROMOTION_TRANSACTION_KIND ||
       transaction.workItemId !== workItemId ||
       transaction.changeId !== changeId ||
       canonicalJson(transaction.grantBinding) !== canonicalJson(grantBinding) ||
@@ -1061,6 +1121,40 @@ function isWorkItemPromotionTransactionCommitted(
       observedOrigin.workItemRefs.includes(workItemRef),
     )
   );
+}
+
+export function commitWorkItemRecordTransaction(
+  runtime: WorkRegistryPromotionRuntimePaths,
+  requested: WorkItemPromotionTransactionV1,
+  testHooks: WorkItemPromotionTestHooks,
+): WorkItemPromotionTransactionV1 {
+  const persisted = publishWorkItemPromotionTransaction(runtime, requested);
+  if (persisted.created) testHooks.afterJournalPersisted?.();
+  try {
+    applyWorkItemPromotionTransaction(
+      runtime,
+      persisted.transaction,
+      testHooks,
+    );
+  } catch (error) {
+    markWorkItemPromotionRollback(runtime, persisted.transaction);
+    abortWorkItemPromotionTransaction(
+      runtime,
+      persisted.transaction,
+      testHooks,
+    );
+    if (error instanceof WorkRegistryPromotionCasMismatch) {
+      throw workRegistryTransactionConflict(
+        'Work Item promotion inputs changed before compare-and-swap.',
+      );
+    }
+    throw error;
+  }
+  if (persisted.transaction.grantBinding === null)
+    removeWorkItemPromotionJournal(runtime, persisted.transaction);
+  else publishRecoveredWorkItemPromotion(runtime, persisted.transaction);
+  testHooks.afterTransactionCommitted?.();
+  return persisted.transaction;
 }
 
 export function applyWorkItemPromotionTransaction(

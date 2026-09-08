@@ -721,6 +721,7 @@ test('a Source can link directly to a change without a parking Work Item', () =>
       ),
       {
         action: 'link-change',
+        originalText: source.text,
         sourceId: source.id,
         changeId: 'direct-change',
         path: 'openspec/changes/direct-change/origin.json',
