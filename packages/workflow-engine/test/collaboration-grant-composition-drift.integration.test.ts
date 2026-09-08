@@ -184,6 +184,13 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     ),
     'utf8',
   );
+  const executionReplacementPublication = fs.readFileSync(
+    path.join(
+      sourceRepositoryRoot,
+      'packages/workflow-engine/src/application/control-plane/execution-replacement-publication.ts',
+    ),
+    'utf8',
+  );
   const providerWorker = fs.readFileSync(
     path.join(
       sourceRepositoryRoot,
@@ -192,6 +199,10 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     'utf8',
   );
   const cli = fs.readFileSync(
+    path.join(sourceRepositoryRoot, 'packages/workflow-engine/src/cli.ts'),
+    'utf8',
+  );
+  const providerOperationsCli = fs.readFileSync(
     path.join(
       sourceRepositoryRoot,
       'packages/workflow-engine/src/entrypoints/cli/provider-operations-cli.ts',
@@ -211,8 +222,18 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     executionReplacement,
     /ExecuteGrantedReplacementOptions[\s\S]*?consumedRoleResultReplay\?: ConsumedPlanReviewReplayPort/,
   );
+  assert.match(
+    executionReplacement,
+    /import\s*\{\s*createExecutionReplacementPublication\s*\}\s*from '\.\/execution-replacement-publication\.ts'/,
+  );
+  assert.match(
+    executionReplacement,
+    /createExecutionReplacementPublication\(\(\)\s*=>\s*\(\{[\s\S]*?\bgetProposeStatus,/,
+  );
   const replacementStatusCalls = [
-    ...executionReplacement.matchAll(/getProposeStatus\(([\s\S]*?)\);/g),
+    ...executionReplacementPublication.matchAll(
+      /getProposeStatus\(([\s\S]*?)\);/g,
+    ),
   ];
   assert.equal(replacementStatusCalls.length, 3);
   for (const [, args] of replacementStatusCalls) {
@@ -225,7 +246,17 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     providerWorker,
     /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
-  const replacementCall = cli.match(/executeGrantedReplacement\([^)]*\)/)?.[0];
+  assert.match(
+    cli,
+    /import\s*\{[^}]*\bdispatchExecutionJobCommand,?[^}]*\}\s*from '\.\/entrypoints\/cli\/provider-operations-cli\.ts'/,
+  );
+  assert.match(
+    cli,
+    /case 'job':\s*return dispatchExecutionJobCommand\(rest,\s*cwd\);/,
+  );
+  const replacementCall = providerOperationsCli.match(
+    /executeGrantedReplacement\([^)]*\)/,
+  )?.[0];
   assert.ok(replacementCall);
   assert.match(
     replacementCall,
