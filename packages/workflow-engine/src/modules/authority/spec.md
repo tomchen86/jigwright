@@ -4,9 +4,7 @@ capabilities: [authority-tree-attestation, break-glass-maintainer-mode]
 ## Purpose
 
 Bind maintainer authorization and retained transition evidence to the exact operation, trusted inputs, and durable recovery state.
-
 ## Requirements
-
 ### Requirement: Canonical human-present authority attestation
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -254,65 +252,6 @@ test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#m
 - **WHEN** a historical grant tag references an original base commit that is not on protected-main history
 - **THEN** replay requires an explicit attested protected-main base with equal result and parent trees, an identical canonical managed message, and the exact grant ID binding
 
-### Requirement: Isolated authority session
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The engine SHALL expose `authority-start`, `authority-check`, and
-`authority-commit` as a state machine separate from ordinary task, plan, and
-archive transitions.
-
-#### Scenario: Start reserves a valid grant
-covers: #Requirement: Isolated authority session
-
-- **WHEN** a clean eligible branch at the exact grant base starts the matching change with the matching audit envelope and no lifecycle conflict
-- **THEN** the engine atomically reserves the grant and pins the repository, policy, contract, paths, signer, and checks in an authority session
-
-#### Scenario: Authority check preserves normal checks
-covers: #Requirement: Isolated authority session
-
-- **WHEN** an active authority session has changes only to exact granted paths
-- **THEN** the engine runs every normally required schema, lint, test, document, secret, safety, and non-destructive database-policy check and records content-addressed evidence
-
-#### Scenario: Failed operation closes authority
-covers: #Requirement: Isolated authority session
-
-- **WHEN** start after reservation, check, commit, cancellation, expiry, signature validation, base validation, path validation, or lock validation fails
-- **THEN** the session closes, the reservation becomes terminally revoked or consumed, and the grant cannot become available again
-
-### Requirement: Exact authority commit isolation
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-`authority-commit` MUST create one signed commit with exactly the granted
-authority diff and canonical mutually exclusive `Change`,
-`Transition: authority-maintenance`, and `Grant` trailers. If required rebase
-merge changes that commit identity, the protected-main commit SHALL derive
-authority only from a valid unique tree attestation to the retained signed
-original.
-
-#### Scenario: Exact authority commit succeeds
-covers: #Requirement: Exact authority commit isolation
-
-- **WHEN** at least one granted file changed, no ungranted path changed, current evidence passes, HEAD remains the grant base, and the trusted signer signs the commit
-- **THEN** the engine atomically advances the branch to one authority-maintenance commit and consumes the grant
-
-#### Scenario: Mixed work is rejected
-covers: #Requirement: Exact authority commit isolation
-
-- **WHEN** the diff contains product code, ordinary documentation, task completion, generated files, or any path absent from the exact grant
-- **THEN** the engine rejects the commit and terminally closes that grant use
-
-#### Scenario: Managed trailer forms are mixed
-covers: #Requirement: Exact authority commit isolation
-
-- **WHEN** an authority commit also contains `Task`, `plan`, `archive`, another transition, or a non-canonical reserved trailer
-- **THEN** local hooks and CI reject the commit
-
-#### Scenario: Signed original is rebased onto protected main
-covers: #Requirement: Exact authority commit isolation
-
-- **WHEN** GitHub creates a different main commit from a signed authority original
-- **THEN** later replay accepts the main commit only when the original signature, exact grant, result tree, parent tree, complete canonical message, protected-main reachability, and unique protected attestation all verify
-
 ### Requirement: Fail-closed commit recovery
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -370,74 +309,6 @@ test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#a
 - **WHEN** local state or a pull-request range claims one grant for more than one session or commit
 - **THEN** the engine rejects every duplicate use
 
-### Requirement: Bootstrap and sealed trust phases
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-The trusted maintainer policy SHALL begin in bootstrap and SHALL permit only a
-one-way, old-key-authorized transition to sealed mode with immutable verifier
-and trust-root paths. The sealed transition MUST preserve a signer lineage that
-validates every retained authority original and attestation and MUST NOT proceed
-until base-owned historical replay is complete.
-
-#### Scenario: Bootstrap grant targets eligible authority
-covers: #Requirement: Bootstrap and sealed trust phases
-
-- **WHEN** a valid bootstrap grant lists exact files under reviewed eligible authority paths and none under immutable paths
-- **THEN** the authority session may modify only those exact files while preserving all checks
-
-#### Scenario: Sealed grant targets immutable trust root
-covers: #Requirement: Bootstrap and sealed trust phases
-
-- **WHEN** a grant in sealed phase includes the verifier, trusted-key loader, policy loader, or immutable-path enforcement
-- **THEN** issuance, local execution, and CI all reject it using parent/base policy
-
-#### Scenario: Phase rollback is attempted
-covers: #Requirement: Bootstrap and sealed trust phases
-
-- **WHEN** a candidate changes policy phase from sealed to bootstrap
-- **THEN** CI rejects the change regardless of grant or signer
-
-#### Scenario: Trusted key rotates
-covers: #Requirement: Bootstrap and sealed trust phases
-
-- **WHEN** an existing trusted key authorizes an otherwise valid policy change that introduces a replacement key without weakening immutable paths or historical attestation verification
-- **THEN** the replacement becomes trusted only after the authority commit merges
-
-#### Scenario: Historical authority is not replayable
-covers: #Requirement: Bootstrap and sealed trust phases
-
-- **WHEN** a candidate changes policy phase to sealed while any protected-main authority commit or grant-base identity lacks valid base-owned direct-or-attested historical replay
-- **THEN** CI rejects the sealing transition
-
-### Requirement: Real Bootstrap Pilot Evidence
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Before break-glass maintainer mode can be described as remotely proven, the
-repository SHALL retain evidence from a real maintainer-owned, non-database
-bootstrap pilot under the configured protected branch, audit-tag, signer, and
-base-owned CI boundaries.
-
-#### Scenario: Negative grant lifecycle is terminal
-covers: #Requirement: Real Bootstrap Pilot Evidence
-
-- **WHEN** separate real grants are explicitly revoked twice, expire after one minute, or fail a harmless pre-commit check
-- **THEN** every use reaches a terminal non-reusable state and its protected signed audit tag remains available for investigation
-
-#### Scenario: Successful authority transition is independently verified
-covers: #Requirement: Real Bootstrap Pilot Evidence
-
-- **WHEN** the active pilot's semantic handoff is first refreshed through its scoped ordinary task and a fresh human-signed grant then authorizes one exact harmless authority file
-- **AND** all pinned checks pass, the signed authority commit is created, and recovery is called again
-- **THEN** the grant is consumed exactly once, recovery returns the same commit identity, and no ordinary or product path is included
-- **AND** the pull request passes the strict base-owned `workflow-assurance` check without a ruleset exception
-
-#### Scenario: Evidence closes only after merge
-covers: #Requirement: Real Bootstrap Pilot Evidence
-
-- **WHEN** local pilot evidence exists but the protected pull request has not yet passed and merged
-- **THEN** the post-merge evidence task and archive remain incomplete
-- **AND** the repository remains explicitly in bootstrap phase
-
 ### Requirement: Authority commits carry check-definition transitions
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -469,3 +340,119 @@ covers: #Requirement: Authority commits carry check-definition transitions
 
 - **WHEN** required-check definitions differ across a range with no validated authority commit carrying the change
 - **THEN** replay fails closed with the existing definition-drift error
+
+### Requirement: Current Authority Uses Exact Candidate Apply
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The engine SHALL prepare and apply current authority through exact candidate bindings, required check evidence and recoverable Grant consumption. Public legacy authority-session commands MUST NOT authorize new work. Preparation SHALL derive its scope and checks from the selected trust base without modifying the working tree.
+
+#### Scenario: Retired authority commands are absent
+covers: #Requirement: Current Authority Uses Exact Candidate Apply
+test: packages/workflow-engine/test/human-grant-cli.contract.test.ts#current CLI exposes no legacy authority or human-resolution entrypoints
+
+- **WHEN** the current CLI is asked to run `authority-start`, `authority-check` or `authority-commit`
+- **THEN** it reports invalid usage instead of opening a legacy authority session
+
+#### Scenario: Preflight derives exact scope without writing
+covers: #Requirement: Current Authority Uses Exact Candidate Apply
+test: packages/workflow-engine/test/maintainer-grant-v2-preapproval.contract.test.ts#v2 preflight is read-only and derives exact overlay and checks from the trust base
+
+- **WHEN** current V2 preflight inspects a candidate and capability profile
+- **THEN** it reports the exact manifest, evidence overlay, checks and trust-base identity
+- **AND** the repository's working state remains unchanged
+
+#### Scenario: Apply checks precede signing and consumption
+covers: #Requirement: Current Authority Uses Exact Candidate Apply
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#approve-and-apply checks before signing and atomically consumes the exact grant
+
+- **WHEN** a current candidate is approved and applied
+- **THEN** required checks finish before candidate and Grant signing
+- **AND** the branch reaches the exact candidate commit with a consumed Grant and bound application receipt
+
+#### Scenario: Interrupted consumption resumes the same application
+covers: #Requirement: Current Authority Uses Exact Candidate Apply
+test: packages/workflow-engine/test/maintainer-grant-v2-recovery.contract.test.ts#transient consume failure resumes completion without applying twice
+
+- **WHEN** consumption temporarily fails after the exact candidate was applied
+- **THEN** recovery completes the same application without a second commit or another use
+
+### Requirement: Exact Authority Candidates Carry Portable Evidence
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Current signed V2 authority candidates SHALL use the canonical `authority-candidate` transition and retain an exact portable application receipt. CI replay SHALL verify the receipt, Grant, candidate and trusted signer bindings from Git evidence. An approved candidate MUST NOT silently adopt later path, tree or check drift. A protected-main derivative SHALL satisfy the existing exact attestation identity rules.
+
+#### Scenario: A fresh clone verifies the signed candidate
+covers: #Requirement: Exact Authority Candidates Carry Portable Evidence
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
+
+- **WHEN** a fresh clone contains a signed candidate and its portable Git receipts
+- **THEN** replay recognizes the `authority-candidate` transition and exact Grant
+- **AND** missing, altered or untrusted application receipts are rejected
+
+#### Scenario: Forged observations and later drift do not become the approved candidate
+covers: #Requirement: Exact Authority Candidates Carry Portable Evidence
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#forged check observations and post-challenge Git drift fail closed without an Apply journal or Git publication
+
+- **WHEN** supplied check observations are forged or Git state changes after the candidate challenge
+- **THEN** Apply does not publish an altered candidate under the original authorization
+
+#### Scenario: Attestation preserves a rebased candidate's exact identity
+covers: #Requirement: Exact Authority Candidates Carry Portable Evidence
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
+
+- **WHEN** a current signed V2 candidate is mapped to its protected-main derivative
+- **THEN** the original Grant and exact tree, parent, message and retained attestation bindings remain verifiable
+
+### Requirement: Policy Transitions Preserve Observations and Exact Grant Authority
+sources: [SRC-5a56b9d773c073a429dfbc7d271fdd00d18d873752bb86ca0540662433bfb1ba, SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+The engine SHALL preserve observed policy changes as candidate facts. Current V2 profile validation SHALL retain its configured identity, sealed-phase, immutable-path and required-check limits. Central Grant MAY authorize the exact observed rollback or removal through its existing Apply operation; the engine MUST NOT impose those profile limits as a second veto after accepting that Grant. Candidate changes SHALL NOT supply their own base authority.
+
+#### Scenario: V2 profile validation retains its transition limits
+covers: #Requirement: Policy Transitions Preserve Observations and Exact Grant Authority
+test: packages/workflow-engine/test/maintainer-grant-v2-preapproval.contract.test.ts#current V2 CI refuses stable identity and sealed trust rollback
+
+- **WHEN** current V2 profile validation evaluates a repository identity mutation, sealed rollback, immutable-path removal or required-check removal
+- **THEN** the profile transition is rejected under its existing policy
+
+#### Scenario: Central Grant authorizes exact policy observations
+covers: #Requirement: Policy Transitions Preserve Observations and Exact Grant Authority
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#Central Grant applies sealed rollback, immutable-path removal, and required-check removal as exact facts
+
+- **WHEN** Central Grant accepts an exact candidate containing a recorded sealed rollback, immutable-path removal or required-check removal
+- **THEN** Apply completes the authorized candidate and retains the observations
+- **AND** the observed exception is not represented as an unchanged policy
+
+#### Scenario: Candidate signer additions do not authorize themselves
+covers: #Requirement: Policy Transitions Preserve Observations and Exact Grant Authority
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#production SSH proof rejects a signer added only by the candidate result
+
+- **WHEN** an Apply proof uses a signer introduced only by the candidate result
+- **THEN** verification uses the exact base policy and rejects the candidate-only authority
+
+### Requirement: Local Verification Does Not Claim Real Pilot Evidence
+sources: [SRC-5a56b9d773c073a429dfbc7d271fdd00d18d873752bb86ca0540662433bfb1ba, SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Release and adoption evidence SHALL distinguish local implementation verification from real maintainer and remote pilot completion. A locally reproducible package or passing fixture suite MUST NOT turn pending real-pilot evidence into a completed fact. The current release verifier SHALL reject tampered pilot-completion claims. Skipping a pilot SHALL leave its evidence explicitly pending.
+
+#### Scenario: Release bindings do not invent a consumer pilot record
+covers: #Requirement: Local Verification Does Not Claim Real Pilot Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#release bindings do not claim consumer pilot evidence while the real pilot is pending
+
+- **WHEN** current release bindings have no real consumer pilot evidence
+- **THEN** they do not cite a fabricated provider availability pilot record
+
+#### Scenario: Reproducibility retains pending pilot readiness
+covers: #Requirement: Local Verification Does Not Claim Real Pilot Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#single-package v1 candidate binds reproducibility and stays fail closed for publish
+
+- **WHEN** local package preparation and source-versus-installed comparison succeed
+- **THEN** the candidate still records `real-pilot-pending`
+- **AND** local implementation readiness alone does not become publication readiness
+
+#### Scenario: Altered pilot completion claims are rejected
+covers: #Requirement: Local Verification Does Not Claim Real Pilot Evidence
+test: packages/workflow-engine/test/release-v1.contract.test.ts#release verifier rejects independently tampered source, adoption, and supply-chain facts
+
+- **WHEN** a release candidate or adoption report is edited to claim that the real pilot completed
+- **THEN** verification rejects the altered claim instead of manufacturing pilot evidence

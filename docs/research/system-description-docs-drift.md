@@ -8,6 +8,8 @@ Date: 2026-09-08. Phase C §11 reconciliation input. The initial move preserves 
 
 Authority and attestation scenario bindings remain under review. Further discrepancies will be added only after comparing the actual requirement with a concrete current test or implementation path.
 
+The four concrete authority discrepancies were reconciled by [the current-authority delta](system-description-docs-deltas/current-authority.md): removed public authority-session commands, the retired authority-maintenance commit form, unconditional policy rollback prohibitions, and an old real-pilot procedure. Current candidate/receipt and Central Grant tests establish the replacement implementation contracts. Release tests establish only that missing pilot evidence stays pending and fabricated completion is rejected; no real pilot was run or claimed. The original authority requirements remain in `9c63c49`, and existing attestation/history requirements retain their separate scope.
+
 ## Reconciliation applied after Phase C step 5
 
 The raw migration is retained at `9c63c49`. The following separate deltas were applied with the pinned native OpenSpec spec builder and checked by the engine's archive-delta verifier. Unaffected requirement blocks retain their text (apart from trailing section separation). Test results remain a separate obligation; these edits do not mark coverage passed.
