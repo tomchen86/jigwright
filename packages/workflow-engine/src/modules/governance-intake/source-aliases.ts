@@ -21,10 +21,19 @@ export function readGovernanceSourceAliases(
   repositoryRoot: string,
 ): Readonly<Record<string, GovernanceSourceAlias>> {
   const target = path.join(repositoryRoot, GOVERNANCE_SOURCE_ALIASES_PATH);
-  if (!fs.existsSync(target)) return {};
+  return parseGovernanceSourceAliases(
+    fs.existsSync(target) ? fs.readFileSync(target, 'utf8') : undefined,
+  );
+}
+
+/** Read aliases from the same immutable snapshot as their consuming documents. */
+export function parseGovernanceSourceAliases(
+  text: string | undefined,
+): Readonly<Record<string, GovernanceSourceAlias>> {
+  if (text === undefined) return {};
   let value: unknown;
   try {
-    value = JSON.parse(fs.readFileSync(target, 'utf8'));
+    value = JSON.parse(text);
   } catch {
     throw invalid();
   }
