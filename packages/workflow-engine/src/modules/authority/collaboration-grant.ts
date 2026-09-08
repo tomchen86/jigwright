@@ -23,21 +23,28 @@ import {
   storeAvailableCollaborationGrant,
 } from '../../runtime/storage-journal/collaboration-grant-store.ts';
 import {
-  assertChangeId,
-  assertTaskId,
-} from '../../runtime/session-workspace/paths.ts';
-import {
-  createCollaborationGrantCodec,
+  canonicalCollaborationGrantPayload,
+  canonicalCollaborationGrantEnvelope,
+  collaborationGrantEnvelopeDigest,
+  canonicalDirectHumanReviewPayload,
+  assertCollaborationGrantId,
+  parseCollaborationGrantEnvelope,
+  validateCollaborationGrantPayload,
+  bindingFromPayload,
+  collaborationPolicyDigestForPhase,
+  validateCollaborationGrantEnvelope,
+  collaborationInvalid,
+  collaborationBindingMismatch,
+  exactDate,
+  assertArmoredSignature,
+  FULL_OID,
+  DIGEST,
   deepFreeze,
   collaborationSignatureInvalid,
   COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
   DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
   COLLABORATION_GRANT_AUTHORIZED_EFFECT,
   COLLABORATION_GRANT_MAX_TTL_MINUTES,
-  COLLABORATION_GRANT_POLICY,
-  COLLABORATION_GRANT_POLICY_DIGEST,
-  TASK_DIFF_REVIEW_COLLABORATION_POLICY,
-  TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST,
   type CollaborationGrantPayload,
   type CollaborationGrantRequest,
   type CollaborationGrantIssueResult,
@@ -92,20 +99,7 @@ export {
   type RoleContextSharingGrantValidationOptions,
 } from './role-context-sharing-grant.ts';
 
-const collaborationGrantCodec = createCollaborationGrantCodec({
-  COLLABORATION_GRANT_AUTHORIZED_EFFECT,
-  COLLABORATION_GRANT_MAX_TTL_MINUTES,
-  COLLABORATION_GRANT_POLICY,
-  COLLABORATION_GRANT_POLICY_DIGEST,
-  COLLABORATION_GRANT_V2_SIGNATURE_NAMESPACE,
-  DIRECT_HUMAN_REVIEW_SIGNATURE_NAMESPACE,
-  TASK_DIFF_REVIEW_COLLABORATION_POLICY,
-  TASK_DIFF_REVIEW_COLLABORATION_POLICY_DIGEST,
-  assertChangeId,
-  assertTaskId,
-});
-
-export const {
+export {
   canonicalCollaborationGrantPayload,
   collaborationGrantSignatureNamespace,
   canonicalCollaborationGrantEnvelope,
@@ -124,16 +118,7 @@ export const {
   validateDirectHumanReviewAttestation,
   validateCollaborationGrantEnvelope,
   verifyCollaborationGrantCapability,
-} = collaborationGrantCodec;
-
-const {
-  collaborationInvalid,
-  collaborationBindingMismatch,
-  exactDate,
-  assertArmoredSignature,
-  FULL_OID,
-  DIGEST,
-} = collaborationGrantCodec;
+} from './collaboration-grant-codec.ts';
 
 export type CollaborationGrantIssueOptions = {
   now?: Date;
