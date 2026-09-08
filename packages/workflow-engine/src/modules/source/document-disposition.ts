@@ -25,6 +25,7 @@ export type SystemDocumentObligation = Readonly<{
   beforeDigest: string | null;
   afterDigest: string | null;
   contentChanged: boolean;
+  explanationPresent?: boolean;
   deltaChangesContract?: boolean;
   deltas?: readonly Readonly<{
     path: string;
@@ -78,6 +79,9 @@ export function collectSystemDocumentObligations(
       affectedPaths: [...paths].sort(),
       beforeDigest: digest(before.readText(document)),
       afterDigest: digest(after.readText(document)),
+      ...(path.posix.basename(document) === 'README.md'
+        ? { explanationPresent: readableExplanation(after.readText(document)) }
+        : {}),
       contentChanged:
         path.posix.basename(document) === 'README.md'
           ? explanationChanged(
@@ -121,6 +125,13 @@ export function assessSystemDocumentDispositions(
       document.afterDigest === null
     )
       reason = 'A deleted document cannot be confirmed as still present.';
+    else if (
+      entry.disposition === 'still-valid' &&
+      document.kind === 'readme' &&
+      !document.explanationPresent
+    )
+      reason =
+        'The handwritten explanation is missing or unreadable; restore it or explicitly defer it.';
     else if (entry.disposition === 'later' && !entry.reason?.trim())
       reason = 'Deferred work needs an explicit reason.';
     else if (!['still-valid', 'updated', 'later'].includes(entry.disposition))
@@ -177,4 +188,13 @@ function hasExplanation(content: string | undefined): boolean {
   } catch {
     return true;
   } // Broken markers still leave an explicit document obligation.
+}
+
+function readableExplanation(content: string | undefined): boolean {
+  if (content === undefined) return false;
+  try {
+    return readModuleReadmeWhy(content) !== null;
+  } catch {
+    return false;
+  }
 }

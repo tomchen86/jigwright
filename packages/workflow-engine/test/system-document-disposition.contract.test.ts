@@ -208,3 +208,42 @@ test('a planned delta must change a real contract and is distinct from an empty 
     ),
   );
 });
+
+test('a removed or unreadable handwritten explanation cannot be confirmed as still valid', () => {
+  const before = snapshot({
+    'src/spec.md': 'Contract',
+    'src/README.md': managedReadme('Keep the design reason.'),
+    'src/a.ts': 'before',
+  });
+  for (const current of [
+    '# Module\nGenerated file table only.\n',
+    '<!-- jigwright:module-why -->\nMissing closing marker',
+  ]) {
+    const after = snapshot({
+      'src/spec.md': 'Contract',
+      'src/README.md': current,
+      'src/a.ts': 'after',
+    });
+    const documents = collectSystemDocumentObligations(before, after, [
+      'src/a.ts',
+      'src/README.md',
+    ]).filter(({ kind }) => kind === 'readme');
+    assert.equal(documents.length, 1);
+    assert.equal(
+      assessSystemDocumentDispositions(documents, [
+        { path: 'src/README.md', disposition: 'still-valid' },
+      ]).invalid.length,
+      1,
+    );
+    assert.deepEqual(
+      assessSystemDocumentDispositions(documents, [
+        {
+          path: 'src/README.md',
+          disposition: 'later',
+          reason: 'Restore the explanation in the follow-up.',
+        },
+      ]),
+      { missing: [], invalid: [] },
+    );
+  }
+});
