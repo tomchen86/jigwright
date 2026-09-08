@@ -4,7 +4,10 @@ import os from 'node:os';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import test from 'node:test';
-import { systemDocumentTestOutcomes } from '../src/runtime/managed-documents/validation/system-test-evidence.ts';
+import {
+  observeSystemDocumentTests,
+  systemDocumentTestOutcomes,
+} from '../src/runtime/managed-documents/validation/system-test-evidence.ts';
 import { workingSystemDescriptionSnapshot } from '../src/runtime/managed-documents/validation/system-document-snapshot.ts';
 import {
   createFullGateIdentity,
@@ -89,6 +92,129 @@ test('bounded documents tests retain exact native outcomes and reject stale sour
       workingSystemDescriptionSnapshot(root),
     );
     assert.equal(outcomes('example.test.mjs', 'pass exactly'), 'stale');
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('nested native proof falls back once while preserving exact selection and all non-passing facts', async () => {
+  const root = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'nested-doc-evidence-')),
+  );
+  const file = 'nested.test.mjs';
+  try {
+    execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: root });
+    fs.writeFileSync(path.join(root, 'source-input.json'), '{"version":0}\n');
+    fs.writeFileSync(
+      path.join(root, file),
+      [
+        "import test from 'node:test';",
+        "import assert from 'node:assert/strict';",
+        "import fs from 'node:fs';",
+        "const privateFile = name => new URL('.git/' + name, import.meta.url);",
+        "const counter = privateFile('runs');",
+        "const run = fs.existsSync(counter) ? Number(fs.readFileSync(counter, 'utf8')) + 1 : 1;",
+        'fs.writeFileSync(counter, String(run));',
+        "if (fs.existsSync(privateFile('stop')) || (run === 2 && fs.existsSync(privateFile('stop-fallback')))) throw new Error('module failed before registering tests');",
+        "if (fs.existsSync(privateFile('mutate-source'))) fs.writeFileSync(new URL('source-input.json', import.meta.url), '{\"version\":' + (run === 1 ? '1' : '0') + '}\\n');",
+        "test('top exact', () => {});",
+        "test('top initially fails', () => assert.ok(run > 1));",
+        "test('top initially skips', { skip: run === 1 }, () => {});",
+        "test('outer', async t => {",
+        "  await t.test('nested pass', () => {});",
+        "  await t.test('nested fail', () => assert.fail('real child failure'));",
+        "  await t.test('nested skip', { skip: true }, () => {});",
+        "  await t.test('nested duplicate', () => {});",
+        "  await t.test('nested duplicate', () => assert.fail('second child failed'));",
+        '});',
+        "test('unrelated', () => fs.writeFileSync(privateFile('unrelated-ran'), 'ran'));",
+        '',
+      ].join('\n'),
+    );
+    const observe = (names: string[]) =>
+      observeSystemDocumentTests(
+        root,
+        names.map((name) => ({ file, name })),
+      );
+    const outcomes = () =>
+      systemDocumentTestOutcomes(root, workingSystemDescriptionSnapshot(root));
+    const runCount = () =>
+      Number(fs.readFileSync(path.join(root, '.git/runs'), 'utf8'));
+
+    const exact = await observe(['top exact', 'top initially skips']);
+    assert.equal(exact.sourceStable, true);
+    assert.equal(runCount(), 1);
+    assert.deepEqual(
+      exact.tests.map((record) => [record.name, record.outcome]),
+      [
+        ['top exact', 'passed'],
+        ['top initially skips', 'skipped'],
+      ],
+    );
+    assert.equal(fs.existsSync(path.join(root, '.git/unrelated-ran')), false);
+
+    fs.writeFileSync(path.join(root, '.git/runs'), '0');
+    const nested = await observe([
+      'top initially fails',
+      'top initially skips',
+      'nested pass',
+      'nested fail',
+      'nested skip',
+      'nested duplicate',
+      'missing forever',
+    ]);
+    assert.equal(nested.sourceStable, true);
+    assert.equal(outcomes()(file, 'nested pass'), 'passed');
+    assert.equal(runCount(), 2, 'Only one complete-file fallback may run');
+    assert.equal(outcomes()(file, 'nested fail'), 'not-passed');
+    assert.equal(outcomes()(file, 'nested skip'), 'skipped');
+    assert.equal(outcomes()(file, 'nested duplicate'), 'not-passed');
+    assert.equal(outcomes()(file, 'missing forever'), 'missing');
+    assert.deepEqual(
+      nested.tests
+        .filter((record) => record.name === 'top initially fails')
+        .map((record) => record.outcome),
+      ['not-passed', 'passed'],
+    );
+    assert.deepEqual(
+      nested.tests
+        .filter((record) => record.name === 'top initially skips')
+        .map((record) => record.outcome),
+      ['skipped', 'passed'],
+    );
+    assert.equal(outcomes()(file, 'top initially fails'), 'not-passed');
+    assert.equal(outcomes()(file, 'top initially skips'), 'skipped');
+    assert.equal(fs.existsSync(path.join(root, '.git/unrelated-ran')), true);
+
+    fs.writeFileSync(path.join(root, '.git/runs'), '0');
+    fs.writeFileSync(path.join(root, '.git/stop-fallback'), 'stop');
+    await observe(['top exact', 'nested pass']);
+    assert.equal(runCount(), 2);
+    assert.equal(outcomes()(file, 'top exact'), 'not-passed');
+    assert.equal(outcomes()(file, 'nested pass'), 'not-passed');
+    fs.unlinkSync(path.join(root, '.git/stop-fallback'));
+
+    fs.writeFileSync(path.join(root, '.git/runs'), '0');
+    fs.writeFileSync(path.join(root, '.git/stop'), 'stop');
+    await observe(['nested pass', 'missing forever']);
+    assert.equal(
+      runCount(),
+      1,
+      'A whole-file failure must not trigger a second attempt',
+    );
+    assert.equal(outcomes()(file, 'nested pass'), 'not-passed');
+    fs.unlinkSync(path.join(root, '.git/stop'));
+
+    fs.writeFileSync(path.join(root, '.git/runs'), '0');
+    fs.writeFileSync(path.join(root, '.git/mutate-source'), 'mutate');
+    const drifted = await observe(['nested pass']);
+    assert.equal(drifted.sourceStable, false);
+    assert.equal(
+      runCount(),
+      1,
+      'Changed source must not be retried against another snapshot',
+    );
+    assert.equal(outcomes()(file, 'nested pass'), 'stale');
   } finally {
     fs.rmSync(root, { recursive: true, force: true });
   }

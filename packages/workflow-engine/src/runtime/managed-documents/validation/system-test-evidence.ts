@@ -73,22 +73,48 @@ export async function observeSystemDocumentTests(
   const selection = new Set(
     selected.map(({ file, name }) => `${file}#${name}`),
   );
+  let sourceStable = true;
   for (const file of [...new Set(selected.map(({ file }) => file))]) {
-    const stream = run({
+    const options = {
       execArgv: ['--experimental-strip-types'],
       files: [path.join(repositoryRoot, normalizeExactRepositoryPath(file))],
-      testNamePatterns: [
-        ...new Set(
-          selected
-            .filter((entry) => entry.file === file)
-            .map(({ name }) => name),
-        ),
-      ].map(
+    };
+    const names = [
+      ...new Set(
+        selected.filter((entry) => entry.file === file).map(({ name }) => name),
+      ),
+    ];
+    const firstRecord = projector.recordCount;
+    const stream = run({
+      ...options,
+      testNamePatterns: names.map(
         (name) =>
           new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
       ),
     });
     for await (const event of stream) projector.observe(event);
+    const observed = projector.records.slice(firstRecord);
+    if (
+      names.some(
+        (name) =>
+          !observed.some((test) => test.file === file && test.name === name),
+      ) &&
+      !observed.some((test) => fileFailed(repositoryRoot, test))
+    ) {
+      sourceStable &&=
+        canonicalJson(before) ===
+        canonicalJson(
+          systemTestSourceBindings(
+            workingSystemDescriptionSnapshot(repositoryRoot),
+            objectFormat(repositoryRoot),
+          ),
+        );
+      // A t.test child is registered only when its parent body runs. Retry
+      // this file once, retaining both attempts so fail/skip cannot become pass.
+      if (sourceStable) {
+        for await (const event of run(options)) projector.observe(event);
+      }
+    }
   }
   const body = {
     kind: 'document-test-observation.v1' as const,
@@ -96,13 +122,14 @@ export async function observeSystemDocumentTests(
     completedAt: new Date().toISOString(),
     sourceBindings: before,
     sourceStable:
+      sourceStable &&
       canonicalJson(before) ===
-      canonicalJson(
-        systemTestSourceBindings(
-          workingSystemDescriptionSnapshot(repositoryRoot),
-          objectFormat(repositoryRoot),
+        canonicalJson(
+          systemTestSourceBindings(
+            workingSystemDescriptionSnapshot(repositoryRoot),
+            objectFormat(repositoryRoot),
+          ),
         ),
-      ),
     requestedTests: selected,
     tests: projector.records.filter(
       (test) =>
