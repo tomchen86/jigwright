@@ -19,6 +19,7 @@ import { verifyBaseAuthorityAttestations } from '../src/entrypoints/ci/ci-attest
 import {
   type MaintainerGrantV2Payload,
   issueMaintainerGrantV2,
+  preflightMaintainerGrantV2,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
 import {
   readAuthoritySession,
@@ -221,6 +222,80 @@ test('approve-and-apply checks before signing and atomically consumes the exact 
   }
 });
 
+test('V2 ordinary Apply refuses required and unused check-registry edits before checks or signing', () => {
+  for (const mutation of [
+    'required-definition',
+    'unused-definition',
+  ] as const) {
+    const repository = prepareCandidate();
+    try {
+      const base = git(repository, ['rev-parse', 'HEAD']).trim();
+      const registryPath = path.join(repository, 'workflow/checks.json');
+      const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+      if (mutation === 'required-definition') {
+        registry.checks.fixture.command.push('updated-definition');
+      } else {
+        registry.checks.unused = {
+          command: ['node', 'scripts/fail.mjs'],
+          destructiveDatabase: false,
+        };
+      }
+      fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+      const before = git(repository, ['status', '--porcelain=v1']);
+      const preflight = preflightMaintainerGrantV2(repository, {
+        profileId: PROFILE_ID,
+      });
+      assert.equal(preflight.classification, 'control-plane', mutation);
+      assert.equal(preflight.grantable, false, mutation);
+      const signed: string[] = [];
+      assert.throws(
+        () =>
+          approveAndApplyMaintainerGrantV2(
+            repository,
+            {
+              changeId: 'demo-change',
+              taskId: TASK_ID,
+              externalEffects: [],
+              profileId: PROFILE_ID,
+              reason: 'Observe the exact registry control-plane classification',
+              message: 'Refuse ordinary registry Apply',
+            },
+            {
+              now: new Date('2026-08-03T09:00:00.000Z'),
+              signer: fakeSigner(signed),
+            },
+          ),
+        (error) =>
+          isWorkflowError(error, 'MAINTAINER_CONTROL_PLANE_GRANT_REQUIRED'),
+        mutation,
+      );
+      assert.deepEqual(signed, [], mutation);
+      assert.equal(
+        fs.existsSync(path.join(repository, '.git/v2-check-passed')),
+        false,
+        mutation,
+      );
+      assert.deepEqual(
+        inspectMaintainerGrants(fs.realpathSync(path.join(repository, '.git'))),
+        [],
+        mutation,
+      );
+      assert.equal(
+        git(repository, ['rev-parse', 'HEAD']).trim(),
+        base,
+        mutation,
+      );
+      assert.equal(
+        git(repository, ['status', '--porcelain=v1']),
+        before,
+        mutation,
+      );
+    } finally {
+      fs.rmSync(repository, { recursive: true, force: true });
+    }
+  }
+});
+
 test('maintainer attestation accepts the current signed v2 authority grant', () => {
   const repository = prepareCandidate();
   try {
@@ -362,6 +437,27 @@ test('maintainer attestation accepts the current signed v2 authority grant', () 
         directAuthorities: [],
         roleContextSharingTerminalReceipts: [],
       },
+    );
+    git(repository, ['checkout', '-b', 'work/rotated-history', mainCommit]);
+    const policyPath = path.join(repository, 'workflow/maintainer-policy.json');
+    const rotated = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
+    rotated.trustedSigners[0].identity = 'rotated-maintainer';
+    fs.writeFileSync(policyPath, `${JSON.stringify(rotated, null, 2)}\n`);
+    git(repository, ['add', 'workflow/maintainer-policy.json']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Fixture removes a historical signer from current replay trust',
+    ]);
+    const rotatedHead = git(repository, ['rev-parse', 'HEAD']).trim();
+    assert.throws(
+      () =>
+        verifyBaseAuthorityAttestations(
+          repository,
+          rotatedHead,
+          new Date('2026-08-03T09:08:00.000Z'),
+        ),
+      (error) => isWorkflowError(error, 'CI_ATTESTATION_GRANT_INVALID'),
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

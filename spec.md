@@ -83,6 +83,7 @@ test: packages/workflow-engine/test/public-contract-surface.test.ts#format verif
 
 #### Scenario: Task runs generated-asset validation
 covers: #Requirement: Registered Checks Are the Sole CI Command Authority
+test: packages/workflow-engine/test/check-registry-package-boundaries.contract.test.ts#registered OpenSpec asset validation runs the read-only authority without an alternate formatter
 
 - **WHEN** a managed task or CI evidence set requires `openspec-assets`
 - **THEN** the workflow engine resolves it from `workflow/checks.json`
@@ -90,6 +91,7 @@ covers: #Requirement: Registered Checks Are the Sole CI Command Authority
 
 #### Scenario: Historical definition is replayed
 covers: #Requirement: Registered Checks Are the Sole CI Command Authority
+test: packages/workflow-engine/test/ci.integration.test.ts#registered format and asset definitions activate in planning and replay from committed evidence
 
 - **WHEN** historical task evidence references `workflow-format` or `openspec-assets`
 - **THEN** replay continues to use the definition committed with that evidence
@@ -154,6 +156,7 @@ test: packages/workflow-engine/test/public-contract-surface.test.ts#format verif
 
 #### Scenario: Ordinary task attempts the same edit
 covers: #Requirement: Registered format scope excludes archived bootstrap trees
+test: packages/workflow-engine/test/ci.integration.test.ts#ordinary required-check edits fail at check time and CI replay
 
 - **WHEN** an ordinary task changes a required check definition
 - **THEN** the engine fails closed at check time and in CI replay
@@ -173,6 +176,7 @@ test: packages/workflow-engine/test/public-contract-surface.test.ts#format verif
 
 #### Scenario: Generated assets are validated
 covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Scope
+test: packages/workflow-engine/test/check-registry-package-boundaries.contract.test.ts#registered OpenSpec asset validation runs the read-only authority without an alternate formatter
 
 - **WHEN** a task guard requires `openspec-assets`
 - **THEN** the workflow runner executes the registered read-only asset check
@@ -180,6 +184,7 @@ covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Sc
 
 #### Scenario: Ordinary task changes required check ownership
 covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Scope
+test: packages/workflow-engine/test/ci.integration.test.ts#ordinary required-check edits fail at check time and CI replay
 
 - **WHEN** an ordinary task edits a check definition required by its policy or guard
 - **THEN** task authorization and CI replay fail closed

@@ -5,7 +5,15 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { verifyPullRequest } from '../src/entrypoints/ci/ci.ts';
-import { loadHistoricalTaskAuthority } from '../src/entrypoints/ci/ci-historical-contract.ts';
+import {
+  loadHistoricalTaskAuthority,
+  canonicalCheckDefinition,
+} from '../src/entrypoints/ci/ci-historical-contract.ts';
+import {
+  startSession,
+  checkSession,
+  abortSession,
+} from '../src/application/execute-task/session.ts';
 import { canonicalJson } from '../src/foundation/canonical-json/canonical-json.ts';
 import {
   createDocumentationClosureRecord,
@@ -121,6 +129,119 @@ test('immutable task authority replays its current-v3 governing plan', () => {
 
     assert.equal(authority.taskId, '1.1');
     assert.deepEqual(authority.requiredChecks, ['fixture']);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('ordinary required-check edits fail at check time and CI replay', () => {
+  const repository = createFixtureRepository();
+  try {
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    const changeRoot = path.join(repository, 'openspec/changes/demo-change');
+    fs.appendFileSync(
+      path.join(changeRoot, 'tasks.md'),
+      '\n- [ ] 1.2 Keep the change open\n',
+    );
+    const guardPath = path.join(changeRoot, 'guard.json');
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
+    guard.tasks['1.1'].allowedPaths.push('workflow/checks.json');
+    guard.tasks['1.2'] = structuredClone(guard.tasks['1.1']);
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
+    commitPlanningTransition(repository, 'demo-change');
+    const base = git(repository, ['rev-parse', 'HEAD']).trim();
+    const session = startSession(repository, 'demo-change', '1.1');
+    const registryPath = path.join(repository, 'workflow/checks.json');
+    const registry = JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+    registry.checks.fixture.command.push('ordinary-definition-drift');
+    fs.writeFileSync(registryPath, `${JSON.stringify(registry, null, 2)}\n`);
+    assert.throws(
+      () => checkSession(repository, session.sessionId),
+      (error) => isWorkflowError(error, 'ARTIFACTS_CHANGED'),
+    );
+    abortSession(
+      repository,
+      session.sessionId,
+      'Retain the attempted edit for independent CI replay',
+    );
+    const head = commitCompletedTask(repository);
+    assert.throws(
+      () => verifyPullRequest(repository, base, head),
+      (error) => isWorkflowError(error, 'CI_CHECK_DEFINITION_CHANGED'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('registered format and asset definitions activate in planning and replay from committed evidence', () => {
+  const repository = createFixtureRepository();
+  try {
+    const checks = {
+      fixture: {
+        command: ['node', 'scripts/pass.mjs'],
+        destructiveDatabase: false,
+      },
+      'workflow-format': {
+        command: ['node', 'scripts/pass.mjs', 'format-scope'],
+        destructiveDatabase: false,
+      },
+      'openspec-assets': {
+        command: ['node', 'scripts/pass.mjs', 'asset-scope'],
+        destructiveDatabase: false,
+      },
+    };
+    configureChecks(repository, checks, ['fixture']);
+    git(repository, ['checkout', '-b', 'work/demo-change']);
+    writeReadyV3ExemptChange(repository);
+    commitPlanningTransition(repository, 'demo-change');
+    const registered = git(repository, ['rev-parse', 'HEAD']).trim();
+    assert.deepEqual(
+      loadHistoricalTaskAuthority(repository, registered, 'demo-change', '1.1')
+        .requiredChecks,
+      ['fixture'],
+    );
+    const guardPath = path.join(
+      repository,
+      'openspec/changes/demo-change/guard.json',
+    );
+    const guard = JSON.parse(fs.readFileSync(guardPath, 'utf8'));
+    guard.tasks['1.1'].requiredChecks = ['workflow-format', 'openspec-assets'];
+    fs.writeFileSync(guardPath, `${JSON.stringify(guard, null, 2)}\n`);
+    writeReadyV3ExemptChange(repository);
+    commitPlanningTransition(repository, 'demo-change');
+    const activated = git(repository, ['rev-parse', 'HEAD']).trim();
+    const historical = loadHistoricalTaskAuthority(
+      repository,
+      activated,
+      'demo-change',
+      '1.1',
+    );
+    const expected = {
+      'workflow-format': canonicalCheckDefinition(checks['workflow-format']),
+      'openspec-assets': canonicalCheckDefinition(checks['openspec-assets']),
+    };
+    assert.deepEqual(historical.checkDefinitions, expected);
+    const head = commitCompletedTask(repository, {
+      documentationClosure: true,
+    });
+    const verified = verifyPullRequest(repository, activated, head);
+    assert.deepEqual(
+      verified.checks.map(({ checkId }) => checkId),
+      ['openspec-assets', 'workflow-format'],
+    );
+    const registryPath = path.join(repository, 'workflow/checks.json');
+    checks['openspec-assets'].command = ['node', 'scripts/fail.mjs'];
+    fs.writeFileSync(
+      registryPath,
+      `${JSON.stringify({ schemaVersion: 1, checks }, null, 2)}\n`,
+    );
+    assert.deepEqual(
+      loadHistoricalTaskAuthority(repository, activated, 'demo-change', '1.1')
+        .checkDefinitions,
+      expected,
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }

@@ -23,7 +23,93 @@ import {
   TASK_ID,
   PROFILE_ID,
   recoverAuthorityCommit,
+  fixtureV2SshSigner,
 } from './support/maintainer-grant-v2-fixture.ts';
+
+test('recovery applies the exact signed commit created before ref update once', () => {
+  const repository = prepareCandidate();
+  const signer = fixtureV2SshSigner(repository);
+  const base = git(repository, ['rev-parse', 'HEAD']).trim();
+  try {
+    assert.throws(
+      () =>
+        approveAndApplyMaintainerGrantV2(
+          repository,
+          {
+            changeId: 'demo-change',
+            taskId: TASK_ID,
+            externalEffects: [],
+            profileId: PROFILE_ID,
+            reason:
+              'Resume the exact signed candidate after commit-object creation',
+            message: 'Recover exact signed candidate',
+          },
+          {
+            now: new Date('2026-08-03T09:00:00.000Z'),
+            signer,
+            commitCrashAfter: 'commit-created',
+          },
+        ),
+      SimulatedAuthorityCrash,
+    );
+    const common = fs.realpathSync(path.join(repository, '.git'));
+    const reservation = inspectMaintainerGrants(common)[0];
+    assert.equal(reservation?.state, 'reserved');
+    assert.ok(reservation?.reservationSessionId);
+    const journal = readAuthorityCommitJournal(
+      common,
+      reservation.reservationSessionId,
+    );
+    assert.equal(journal.state, 'commit-created');
+    assert.ok(journal.commitHash);
+    assert.equal(git(repository, ['rev-parse', 'HEAD']).trim(), base);
+    assert.match(
+      git(repository, ['cat-file', 'commit', journal.commitHash]),
+      /gpgsig -----BEGIN SSH SIGNATURE-----/,
+    );
+    assert.equal(
+      git(repository, ['rev-parse', `${journal.commitHash}^`]).trim(),
+      base,
+    );
+    const recovered = recoverAuthorityCommit(
+      repository,
+      reservation.reservationSessionId,
+      new Date('2026-08-03T09:01:00.000Z'),
+      { receiptSigner: signer },
+    );
+    assert.equal(recovered.commitHash, journal.commitHash);
+    assert.equal(
+      git(repository, ['rev-parse', 'HEAD']).trim(),
+      journal.commitHash,
+    );
+    assert.equal(
+      inspectMaintainerGrants(common, reservation.grantId)[0]?.state,
+      'consumed',
+    );
+    assert.equal(
+      git(repository, ['rev-list', '--count', `${base}..HEAD`]).trim(),
+      '1',
+    );
+    const replayed = recoverAuthorityCommit(
+      repository,
+      reservation.reservationSessionId,
+      new Date('2026-08-03T09:02:00.000Z'),
+      { receiptSigner: signer },
+    );
+    assert.equal(replayed.commitHash, recovered.commitHash);
+    assert.equal(
+      readDurableRefGenerationLedger(
+        common,
+        'refs/heads/work/demo-change',
+        true,
+      ).generation,
+      1,
+    );
+    assert.equal(git(repository, ['status', '--porcelain=v1']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('poststate verification failure rolls back and advances ref generation', () => {
   const repository = prepareCandidate();

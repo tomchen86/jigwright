@@ -212,12 +212,14 @@ atomic persistence shared by all linked worktrees.
 
 #### Scenario: Concurrent worktrees compete for one grant
 covers: #Requirement: Git-common-directory grant state
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
 
 - **WHEN** two worktrees attempt to reserve the same available grant
 - **THEN** exactly one reservation succeeds and the other fails without obtaining authority
 
 #### Scenario: Worktree contains no bearer token
 covers: #Requirement: Git-common-directory grant state
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
 
 - **WHEN** a grant is issued, reserved, consumed, revoked, or recovered
 - **THEN** no reusable grant or reservation token is written to or committed from the worktree
@@ -260,6 +262,7 @@ operation with durable journal states and exact compare-and-swap ref updates.
 
 #### Scenario: Crash occurs after commit object creation
 covers: #Requirement: Fail-closed commit recovery
+test: packages/workflow-engine/test/maintainer-grant-v2-recovery.contract.test.ts#recovery applies the exact signed commit created before ref update once
 
 - **WHEN** recovery finds a valid signed commit object journaled for the still-exact base but the branch ref was not updated
 - **THEN** recovery may perform the one pending exact-old-OID ref update and then consume the grant
@@ -337,6 +340,7 @@ covers: #Requirement: Authority commits carry check-definition transitions
 
 #### Scenario: Definition drifts without an authority transition
 covers: #Requirement: Authority commits carry check-definition transitions
+test: packages/workflow-engine/test/ci.integration.test.ts#ordinary required-check edits fail at check time and CI replay
 
 - **WHEN** required-check definitions differ across a range with no validated authority commit carrying the change
 - **THEN** replay fails closed with the existing definition-drift error

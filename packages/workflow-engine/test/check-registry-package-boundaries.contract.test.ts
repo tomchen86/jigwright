@@ -8,6 +8,12 @@ import { fileURLToPath } from 'node:url';
 
 import { renderBuiltInEngineClosure } from '../bootstrap/generate-built-in-engine-closure.ts';
 import { resolveCheckRunner } from '../src/adapters/consumer/repository/work-registry/runner-resolution.ts';
+import { renderHandoff } from '../src/adapters/consumer/repository/handoff/handoff.ts';
+import {
+  createFixtureRepository,
+  git,
+  writeReadyV3ExemptChange,
+} from './fixture.ts';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -215,6 +221,46 @@ test('workflow-engine value-imports core only through the sealed runtime closure
   }
 });
 
+test('registered OpenSpec asset validation runs the read-only authority without an alternate formatter', () => {
+  const registry = JSON.parse(
+    fs.readFileSync(path.join(repositoryRoot, 'workflow/checks.json'), 'utf8'),
+  );
+  const definition = registry.checks['openspec-assets'];
+  assert.deepEqual(definition.command, [
+    'node',
+    'packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-planning-assets.ts',
+  ]);
+  assert.equal(definition.destructiveDatabase, false);
+  const before = spawnSync('git', ['status', '--porcelain=v1'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  assert.equal(before.status, 0, before.stderr);
+  const resolved = resolveCheckRunner(
+    repositoryRoot,
+    'openspec-assets',
+    definition,
+  );
+  const executed = spawnSync(resolved.executable, resolved.args, {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  assert.equal(executed.status, 0, executed.stderr);
+  const result = JSON.parse(executed.stdout);
+  assert.equal(result.command, 'openspec-assets');
+  assert.equal(result.ok, true);
+  assert.equal(result.result.valid, true);
+  assert.ok(
+    result.result.assetPaths.includes('.codex/skills/workflow-engine/SKILL.md'),
+  );
+  const after = spawnSync('git', ['status', '--porcelain=v1'], {
+    cwd: repositoryRoot,
+    encoding: 'utf8',
+  });
+  assert.equal(after.status, 0, after.stderr);
+  assert.equal(after.stdout, before.stdout);
+});
+
 test('required-check runners remain pinned across workflow CLI edits', () => {
   const definitions = (
     JSON.parse(
@@ -244,7 +290,35 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
   const scratch = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-check-runner-'),
   );
+  const managedRepository = createFixtureRepository();
   try {
+    fs.writeFileSync(
+      path.join(managedRepository, 'workflow/document-policy.json'),
+      `${JSON.stringify(
+        {
+          schemaVersion: 1,
+          enforcementMode: 'enforced',
+          documents: {
+            'docs/CURRENT_AND_NEXT_STEPS.md': {
+              mode: 'generated',
+              enforcement: 'active',
+              transition: 'completion',
+            },
+          },
+        },
+        null,
+        2,
+      )}\n`,
+    );
+    writeReadyV3ExemptChange(managedRepository);
+    renderHandoff(managedRepository);
+    git(managedRepository, ['add', '-A']);
+    git(managedRepository, [
+      'commit',
+      '-m',
+      'Prepare the active managed-document runner fixture',
+    ]);
+    assert.equal(git(managedRepository, ['status', '--porcelain=v1']), '');
     for (const [checkId, expected] of Object.entries(expectedChecks)) {
       const definition = definitions[checkId];
       assert.ok(definition);
@@ -252,7 +326,8 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
 
       const resolved = resolveCheckRunner(repositoryRoot, checkId, definition);
       const executed = spawnSync(resolved.executable, resolved.args, {
-        cwd: repositoryRoot,
+        cwd:
+          checkId === 'managed-documents' ? managedRepository : repositoryRoot,
         encoding: 'utf8',
       });
       assert.equal(executed.status, 0, executed.stderr);
@@ -328,6 +403,7 @@ test('required-check runners remain pinned across workflow CLI edits', () => {
       );
     }
   } finally {
+    fs.rmSync(managedRepository, { recursive: true, force: true });
     fs.rmSync(scratch, { recursive: true, force: true });
   }
 });

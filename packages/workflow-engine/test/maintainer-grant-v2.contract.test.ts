@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import * as maintainerGrant from '../src/modules/authority/maintainer-grant.ts';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { sourceRepositoryRoot, isWorkflowError, git } from './fixture.ts';
 import * as maintainerGrantV2 from '../src/modules/authority/maintainer-grant-v2.ts';
 import {
@@ -15,7 +16,12 @@ import {
   MAINTAINER_GRANT_V2_SIGNATURE_NAMESPACE,
   validateMaintainerGrantV2AuthorityBinding,
 } from '../src/modules/authority/maintainer-grant-v2.ts';
-import { inspectMaintainerGrants } from '../src/runtime/storage-journal/maintainer-store.ts';
+import {
+  inspectMaintainerGrants,
+  reserveMaintainerGrant,
+  terminallyRevokeMaintainerReservation,
+  maintainerGrantStorePaths,
+} from '../src/runtime/storage-journal/maintainer-store.ts';
 import { validateCiAuthorityCommit } from '../src/entrypoints/ci/ci-authority.ts';
 import { type MaintainerSignerProvider } from '../src/adapters/signing/ssh/maintainer-signer.ts';
 import { startAuthoritySession } from '../src/application/control-plane/maintainer-session.ts';
@@ -106,6 +112,10 @@ test('current V2 authority has no post-cutoff discriminator or persisted-field f
 
 test('v2 issue signs every binding and stores a canonical one-shot grant', () => {
   const repository = prepareCandidate();
+  const linkedParent = fs.realpathSync(
+    fs.mkdtempSync(path.join(os.tmpdir(), 'v2-common-grant-')),
+  );
+  const linked = path.join(linkedParent, 'linked');
   const preparedSigned: string[] = [];
   const signed: string[] = [];
   try {
@@ -151,6 +161,11 @@ test('v2 issue signs every binding and stores a canonical one-shot grant', () =>
     assert.deepEqual(result.envelope.payload.requiredChecks, ['fixture']);
     assert.equal(result.envelope.payload.maxUses, 1);
     assert.equal(
+      Date.parse(result.envelope.payload.expiresAt) -
+        Date.parse(result.envelope.payload.issuedAt),
+      7 * 24 * 60 * 60_000,
+    );
+    assert.equal(
       signed[0],
       canonicalMaintainerGrantV2Payload(result.envelope.payload),
     );
@@ -179,7 +194,77 @@ test('v2 issue signs every binding and stores a canonical one-shot grant', () =>
       () => parseMaintainerGrantV2Envelope(`${JSON.stringify(tampered)}\n`),
       (error) => isWorkflowError(error, 'MAINTAINER_GRANT_INVALID'),
     );
+
+    git(repository, ['worktree', 'add', '--detach', linked, 'HEAD']);
+    const common = fs.realpathSync(path.join(repository, '.git'));
+    const linkedCommon = fs.realpathSync(
+      git(linked, ['rev-parse', '--git-common-dir']).trim(),
+    );
+    assert.equal(linkedCommon, common);
+    const store = maintainerGrantStorePaths(common);
+    assert.equal(
+      result.availableTokenPath,
+      path.join(store.available, `${GRANT_ID}.json`),
+    );
+    const before = git(repository, [
+      'status',
+      '--porcelain=v1',
+      '--ignored=matching',
+    ]);
+    const reservation = reserveMaintainerGrant(linkedCommon, GRANT_ID, {
+      repositoryRoot: linked,
+      sessionId: 'first-authority-reservation',
+      now: new Date('2026-08-03T09:01:00.000Z'),
+    });
+    assert.equal(reservation.state, 'reserved');
+    assert.throws(
+      () =>
+        reserveMaintainerGrant(common, GRANT_ID, {
+          repositoryRoot: repository,
+          sessionId: 'second-authority-reservation',
+          now: new Date('2026-08-03T09:01:00.000Z'),
+        }),
+      (error) => isWorkflowError(error, 'ACTIVE_AUTHORITY_CONFLICT'),
+    );
+    assert.equal(fs.existsSync(result.availableTokenPath), false);
+    const reservedPath = path.join(store.reserved, `${GRANT_ID}.json`);
+    assert.equal(fs.statSync(reservedPath).mode & 0o777, 0o600);
+    assert.equal(fs.statSync(store.reserved).mode & 0o777, 0o700);
+    assert.equal(
+      inspectMaintainerGrants(common, GRANT_ID)[0]?.reservationSessionId,
+      reservation.sessionId,
+    );
+    assert.equal(
+      terminallyRevokeMaintainerReservation(
+        linkedCommon,
+        GRANT_ID,
+        reservation.sessionId,
+        'Close the shared-store reservation fixture',
+        new Date('2026-08-03T09:02:00.000Z'),
+      ).state,
+      'revoked',
+    );
+    assert.equal(fs.existsSync(reservedPath), false);
+    assert.equal(
+      fs.statSync(path.join(store.terminal, `${GRANT_ID}.json`)).mode & 0o777,
+      0o600,
+    );
+    assert.equal(fs.statSync(store.terminal).mode & 0o777, 0o700);
+    assert.equal(
+      inspectMaintainerGrants(common, GRANT_ID)[0]?.state,
+      'revoked',
+    );
+    assert.equal(
+      git(repository, ['status', '--porcelain=v1', '--ignored=matching']),
+      before,
+    );
+    assert.equal(
+      git(linked, ['status', '--porcelain=v1', '--ignored=matching']).trim(),
+      '',
+    );
   } finally {
+    if (fs.existsSync(linked)) git(repository, ['worktree', 'remove', linked]);
+    fs.rmSync(linkedParent, { recursive: true, force: true });
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });

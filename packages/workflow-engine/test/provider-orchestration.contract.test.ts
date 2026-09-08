@@ -459,6 +459,35 @@ test('ordinary role scheduling uses fresh sessions and preserves explicit provid
     providerDiverse.assignment.achievedIndependence,
     'provider-independent',
   );
+  const unavailableCandidates = [
+    {
+      providerId: 'codex' as const,
+      sessionId: 'codex-survey',
+      enabled: true,
+      available: true,
+    },
+    {
+      providerId: 'claude' as const,
+      sessionId: 'claude-survey',
+      enabled: true,
+      available: false,
+    },
+  ];
+  const waitingRequest = {
+    role: 'plan-reviewer' as const,
+    author,
+    targetDigest: DIGESTS.target,
+    requestedIndependence: 'provider-independent' as const,
+    candidates: unavailableCandidates,
+  };
+  assert.deepEqual(scheduleOrdinaryRole(waitingRequest), {
+    outcome: 'collaboration-grant-required',
+    role: 'plan-reviewer',
+    requiredIndependence: 'provider-independent',
+    reason: 'NO_REQUIRED_INDEPENDENCE_CANDIDATE',
+  });
+  unavailableCandidates[1]!.available = true;
+  assert.deepEqual(scheduleOrdinaryRole(waitingRequest), providerDiverse);
 
   const sameProviderReviewer = scheduleOrdinaryRole({
     role: 'plan-reviewer',
