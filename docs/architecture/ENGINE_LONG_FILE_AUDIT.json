@@ -4535,7 +4535,7 @@
       "scope": "test",
       "baselineLines": null,
       "currentLines": 589,
-      "sha256": "7d19fd03250174f98dc2373979d1746ebc294a534000688c79845c1befebb973",
+      "sha256": "b152058a9d33733892b9a551999cbcd48e28d1642e5f607fcd66996df48a6734",
       "decision": "retain-codec-fixture",
       "reason": "No case registrations. The 368-line parseT3BoundaryInventory is the exact closed-key inventory decoder: nested coupling states, path/digest identities, negative evidence and baseline shapes belong to one schema. Its smaller evidence validators are explicit. Splitting by arbitrary nested JSON sections would obscure the one exact decoder contract.",
       "origins": [
@@ -5944,7 +5944,7 @@
         "completeLifecycles": 2,
         "durationMs": 2883589.631333
       },
-      "modifiedTestFilesFormatted": 8,
+      "modifiedTestFilesFormatted": 9,
       "scannedHandwrittenFiles": 1256,
       "currentCandidates": 222,
       "unreviewedCandidates": 0,
@@ -5952,7 +5952,11 @@
         "passed": 3,
         "failed": 0
       },
-      "formattingScope": "Eight handwritten test files; shard wrappers retain exact generator output."
+      "formattingScope": "Nine handwritten test/fixture files; shard wrappers retain exact generator output.",
+      "integratedT3AndInventoryCases": {
+        "passed": 20,
+        "failed": 0
+      }
     },
     "finalGateEvidence": "Use the run-bound private full-gate receipt for the exact isolated validation identity; this tracked audit does not assert a passing receipt.",
     "initialDiagnosticResult": {
@@ -6015,6 +6019,44 @@
         }
       },
       "sourceTelemetryUnmodified": true
+    },
+    "isolatedDiagnosticResult": {
+      "runId": "run-20260908054939006-2faa5846-7103-43d4-af8f-75499ab1d061",
+      "headCommit": "bcffb915c75b239e1eb4135213fbe2a823a7ab3f",
+      "outcome": "failed",
+      "progress": {
+        "completed": 2840,
+        "pass": 2837,
+        "fail": 3,
+        "total": 2840,
+        "cancelled": 0,
+        "skipped": 0,
+        "todo": 0,
+        "durationMs": 6754826.4705
+      },
+      "identityStable": true,
+      "observedFiles": 434,
+      "fileSetMatches": true,
+      "receiptDigest": "sha256:edf9376c3954adf1ea492eed85f19c6ff32e6c2275ea30f0fd0dd93391b3d161",
+      "initialSevenFailureCases": "All seven passed in this complete run",
+      "remainingFailureCause": "Three checks reported the same stale workflow artifact path identity after shard rebalance"
+    },
+    "shardPositionIdentityRefresh": {
+      "owner": "B",
+      "commit": "4f75ee7fae1bd61f19026a53a82e849a7bf485ae",
+      "filesChanged": 3,
+      "linesChanged": 3,
+      "productionSourceChanged": false,
+      "assertionsAndScannersUnchanged": true,
+      "findings": 2404,
+      "files": 6,
+      "pathValueMultisetUnchanged": true,
+      "repositionedIdentities": 863,
+      "changedFindingFile": "workflow/test-shards.json",
+      "pathIdentityDigest": "sha256:14475188317871851eb5aee262c4c6e450e7f640c19f9c12b835c94bc1cc865a",
+      "inventoryDigest": "sha256:99bd73069077605316c2eeaabc84b45b96763a8f1c57f1c87025f4a303a208dc",
+      "coordinatorVerification": "Before/after Git blob hashes and evidence digests verified; all path/value references equal; integrated T3 scanner, production CLI, documentation and inventory contracts pass",
+      "additionalPinReview": "A found no other drift in 726a0af..bcffb91 after checking all 282 content hashes, exact wrapper projections, telemetry pins and unchanged ownership"
     }
   }
 }

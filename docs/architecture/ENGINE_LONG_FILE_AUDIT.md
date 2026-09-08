@@ -139,3 +139,20 @@ unmodified complete telemetry now assigns 52–57 execution units to each shard.
 The generator check and all nine inventory contract cases pass; the inventory
 test pins the exact new telemetry digest. No physical test or execution unit is
 removed by the rebalance.
+
+The first isolated run preserved its exact `bcffb91` identity and observed all
+434 files: 2,837 test nodes passed, three failed, and none were cancelled or
+skipped. All seven original failure cases passed. The three remaining failures
+reported the same stale T3 workflow-artifact identity: shard redistribution moved
+863 JSON Pointer identities while preserving all 2,404 package-path references
+across six files. The coordinator had omitted this identity refresh when
+rebalancing the shards.
+
+B's `4f75ee7` changes only the path-identity digest and its two inventory pins.
+All other inventory fields, assertions and scanners remain unchanged. The
+coordinator verified the before/after reference multiset and Git blob hashes;
+the integrated T3, production CLI, documentation and test-inventory contracts
+pass all 20 cases. A's independent review found no additional stale pins in the
+follow-up changes. The one affected audit-file hash is refreshed, and all 282
+reviewed content hashes match. The shard manifest stays fixed for the next
+complete gate, whose private receipt remains the authority for its exact result.
