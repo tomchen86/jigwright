@@ -14,16 +14,37 @@ function snapshot(files: Record<string, string>): SystemDescriptionSnapshot {
   };
 }
 
+function managedReadme(text: string): string {
+  return `<!-- jigwright:module-why -->\n${text}\nConfirmed at commit: \`${'a'.repeat(40)}\`\n<!-- /jigwright:module-why -->\n`;
+}
+
+test('a module without a README does not acquire an unrelated ancestor README obligation', () => {
+  const tree = snapshot({
+    'README.md': 'Repository overview',
+    'src/modules/a/spec.md': 'Module contract',
+    'src/modules/a/README.md':
+      'Ordinary README without a handwritten why section.',
+    'src/modules/a/code.ts': 'code',
+  });
+  assert.deepEqual(
+    collectSystemDocumentObligations(tree, tree, [
+      'src/modules/a/code.ts',
+      'src/modules/a/README.md',
+    ]).map(({ path }) => path),
+    ['src/modules/a/spec.md'],
+  );
+});
+
 test('containment asks both inherited contracts across a module move and document deletion', () => {
   const before = snapshot({
     'src/spec.md': 'Parent',
     'src/modules/a/spec.md': 'A',
-    'src/modules/a/README.md': 'Why A',
+    'src/modules/a/README.md': managedReadme('Why A'),
     'src/modules/a/code.ts': 'code',
   });
   const after = snapshot({
     'src/spec.md': 'Parent',
-    'src/modules/b/README.md': 'Why B',
+    'src/modules/b/README.md': managedReadme('Why B'),
     'src/modules/b/code.ts': 'code',
   });
   const obligations = collectSystemDocumentObligations(before, after, [
@@ -49,12 +70,12 @@ test('containment asks both inherited contracts across a module move and documen
 test('document dispositions distinguish confirmation, actual updates, and explicit later work', () => {
   const before = snapshot({
     'src/spec.md': 'Contract',
-    'src/README.md': 'Why',
+    'src/README.md': managedReadme('Why'),
     'src/a.ts': 'before',
   });
   const after = snapshot({
     'src/spec.md': 'Contract',
-    'src/README.md': 'Updated why',
+    'src/README.md': managedReadme('Updated why'),
     'src/a.ts': 'after',
   });
   const obligations = collectSystemDocumentObligations(before, after, [

@@ -4,6 +4,7 @@ import path from 'node:path';
 import {
   OpenSpecArchiveProjectionError,
   SPEC_DELTA_VALIDATOR_VERSION,
+  combineOpenSpecDeltas,
   assertSpecDeltaPreconditions as assertPackageSpecDeltaPreconditions,
   assertSpecDeltaScenarioPreservation as assertPackageSpecDeltaScenarioPreservation,
   assessSpecDeltaAgainstBase as assessPackageSpecDeltaAgainstBase,
@@ -26,7 +27,11 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
 import { readSystemSpecDeltaInputs } from './system-spec-deltas.ts';
 
-export { SPEC_DELTA_VALIDATOR_VERSION, findMissingScenarioIdentities };
+export {
+  SPEC_DELTA_VALIDATOR_VERSION,
+  findMissingScenarioIdentities,
+  combineOpenSpecDeltas,
+};
 export type {
   ArchiveDeltaVerification,
   DeltaApplicabilityFault,

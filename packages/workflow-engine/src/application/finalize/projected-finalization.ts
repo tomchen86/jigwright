@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import { assertSystemDocumentDispositions } from './system-document-dispositions.ts';
 import path from 'node:path';
 
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
@@ -142,6 +143,7 @@ export function finalizeTaskUnlocked(
     }
   }
 
+  assertSystemDocumentDispositions(cwd, requestedSessionId);
   const initial = inspectSession(cwd, requestedSessionId, {
     ...(options.protectedApply === undefined
       ? {}

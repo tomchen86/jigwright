@@ -25,10 +25,10 @@ export type SystemDocumentObligation = Readonly<{
   beforeDigest: string | null;
   afterDigest: string | null;
   contentChanged: boolean;
+  deltaChangesContract?: boolean;
   deltas?: readonly Readonly<{
     path: string;
     digest: string;
-    effective: boolean;
   }>[];
 }>;
 
@@ -51,9 +51,16 @@ export function collectSystemDocumentObligations(
     const present = new Set(paths);
     for (const changed of changedPaths) {
       const spec = findContainingSpec(changed, specs);
-      const readme = nearestReadme(changed, present);
-      const documents = [spec, spec === null ? null : readme];
-      if (path.posix.basename(changed) === 'README.md' && present.has(changed))
+      const readme =
+        spec === null
+          ? null
+          : nearestReadme(changed, snapshot, path.posix.dirname(spec));
+      const documents = [spec, readme];
+      if (
+        path.posix.basename(changed) === 'README.md' &&
+        present.has(changed) &&
+        hasExplanation(snapshot.readText(changed))
+      )
         documents.push(changed);
       for (const document of documents) {
         if (document === null) continue;
@@ -105,7 +112,7 @@ export function assessSystemDocumentDispositions(
     if (
       entry.disposition === 'updated' &&
       !document.contentChanged &&
-      !document.deltas?.some(({ effective }) => effective)
+      !document.deltaChangesContract
     )
       reason =
         'The contract or handwritten explanation has no observed update.';
@@ -132,13 +139,14 @@ export function assessSystemDocumentDispositions(
 
 function nearestReadme(
   file: string,
-  paths: ReadonlySet<string>,
+  snapshot: SystemDescriptionSnapshot,
+  ownerDirectory: string,
 ): string | null {
   let directory = path.posix.dirname(file);
   while (true) {
     const candidate = path.posix.join(directory, 'README.md');
-    if (paths.has(candidate)) return candidate;
-    if (directory === '.') return null;
+    if (hasExplanation(snapshot.readText(candidate))) return candidate;
+    if (directory === ownerDirectory || directory === '.') return null;
     directory = path.posix.dirname(directory);
   }
 }
@@ -153,11 +161,20 @@ function explanationChanged(
 ): boolean {
   if (before === undefined || after === undefined) return before !== after;
   try {
+    const current = readModuleReadmeWhy(after);
     return (
-      (readModuleReadmeWhy(before)?.text ?? before) !==
-      (readModuleReadmeWhy(after)?.text ?? after)
+      current !== null && readModuleReadmeWhy(before)?.text !== current.text
     );
   } catch {
     return false;
   }
+}
+
+function hasExplanation(content: string | undefined): boolean {
+  if (content === undefined) return false;
+  try {
+    return readModuleReadmeWhy(content) !== null;
+  } catch {
+    return true;
+  } // Broken markers still leave an explicit document obligation.
 }

@@ -53,6 +53,7 @@ import {
 } from '../modules/authority/grant-parent-binding.ts';
 import type { TransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
 import { createTransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
+import { systemDocumentGrantTransitionDefinitions } from '../application/finalize/system-document-grant.ts';
 import {
   inspectMacOsHumanGateRuntime,
   openMacOsHumanGateApprovalSession,
@@ -503,6 +504,7 @@ export function createProductionWorkflowGrantCoordinator(
     createTransitionRegistry([
       ...investigationV3GrantTransitionDefinitions(cwd),
       ...workRegistryGrantTransitionDefinitions(cwd),
+      ...systemDocumentGrantTransitionDefinitions(cwd),
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
       ...changeRoutingGrantTransitionDefinitions(cwd),
       ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),

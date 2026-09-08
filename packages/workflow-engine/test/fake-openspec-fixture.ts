@@ -326,10 +326,11 @@ if (process.argv[2] === 'archive') {
   const root = process.cwd();
   const changeRoot = path.join(root, 'openspec/changes', changeId);
   const deltaRoot = path.join(changeRoot, 'specs');
-  const marker = fs.readFileSync(
-    path.join(deltaRoot, 'demo/spec.md'),
-    'utf8'
-  );
+  const marker = fs.readdirSync(deltaRoot, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.isSymbolicLink())
+    .sort((left, right) => left.name.localeCompare(right.name))
+    .map((entry) => fs.readFileSync(path.join(deltaRoot, entry.name, 'spec.md'), 'utf8'))
+    .join('\\n');
   if (marker.includes('PARTIAL_FAILURE')) {
     process.stdout.write(JSON.stringify({
       archive: null,
