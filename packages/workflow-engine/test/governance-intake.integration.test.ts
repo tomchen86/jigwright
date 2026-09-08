@@ -941,12 +941,11 @@ test('registry render is deterministic and validates blocking cycles', () => {
     const firstBacklog = fs.readFileSync(rendered.backlogPath, 'utf8');
     assert.match(firstBacklog, /First item/);
     assert.match(firstBacklog, /Second item/);
-    assert.match(
-      firstBacklog,
-      new RegExp(
-        `\\[${source.id}\\]\\(\\.\\.\\/workflow\\/source-ledger\\/objects\\/sha256\\/${source.id.slice(4, 6)}\\/${source.id.slice(4)}\\.json\\)`,
-      ),
+    assert.ok(
+      firstBacklog.includes(`> ${source.text.replaceAll('\n', '\n> ')}`),
     );
+    assert.match(firstBacklog, /Blocked by: First item/);
+    assert.doesNotMatch(firstBacklog, /(?:SRC|WORK|FND)-[A-Za-z0-9]+/);
     assert.deepEqual(
       JSON.parse(fs.readFileSync(rendered.inventoryPath, 'utf8')),
       inspectWorkRegistry(repositoryRoot),
