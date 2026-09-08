@@ -14,24 +14,28 @@ The repository SHALL expose `openspec-explore` and `openspec-propose` as its man
 
 #### Scenario: Approved OpenSpec skill mirrors are present
 covers: #Requirement: Repository Agent Skill Surface
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** the repository agent-skill surface is validated
 - **THEN** both approved OpenSpec skills exist, are listed as `.agents` delivery targets in the OpenSpec asset manifest, and match their canonical Codex skill files byte for byte
 
 #### Scenario: Spectra skill is reintroduced
 covers: #Requirement: Repository Agent Skill Surface
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** a Spectra-prefixed agent skill exists under `.agents/skills/`
 - **THEN** the repository contract fails and identifies the conflicting agent surface
 
 #### Scenario: OpenSpec mirror diverges
 covers: #Requirement: Repository Agent Skill Surface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#source, overlay, final, target, and mirror drift all fail closed
 
 - **WHEN** an approved `.agents` OpenSpec skill differs from its canonical `.codex` source or its manifest final-byte digest
 - **THEN** the repository contract fails before the change can pass managed checks
 
 #### Scenario: Agent mirror is omitted from the manifest
 covers: #Requirement: Repository Agent Skill Surface
+test: packages/workflow-engine/test/openspec-planning-assets.integration.test.ts#schema-v2 manifest structure and final pins fail closed
 
 - **WHEN** either approved `.agents` skill is absent from the manifest delivery closure
 - **THEN** generated-asset validation fails even if a separate byte copy exists in the worktree
@@ -47,18 +51,21 @@ NOT exist under `openspec/`.
 
 #### Scenario: Agent reads repository governance
 covers: #Requirement: Historical Spectra Data Has No Execution Authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** an agent determines the planning and execution workflow from repository instructions
 - **THEN** it is directed to OpenSpec for planning and `pnpm workflow` for execution without a Spectra execution path
 
 #### Scenario: Nested Spectra metadata is introduced
 covers: #Requirement: Historical Spectra Data Has No Execution Authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** `.spectra.yaml` exists at `openspec/` or below it
 - **THEN** the repository contract fails and the nested metadata grants no lifecycle authority
 
 #### Scenario: Historical root configuration remains
 covers: #Requirement: Historical Spectra Data Has No Execution Authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#repository exposes only reviewed planning and workflow routing skills
 
 - **WHEN** the tracked root `.spectra.yaml` is encountered
 - **THEN** repository guidance classifies it as historical-only and does not invoke or regenerate Spectra assets
@@ -70,6 +77,7 @@ External CI and local verification SHALL resolve a named check through the versi
 
 #### Scenario: GitHub runs the formatting check
 covers: #Requirement: Registered Checks Are the Sole CI Command Authority
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
 
 - **WHEN** the GitHub formatting job invokes its local verification entry point
 - **THEN** the workflow engine resolves `workflow-format` from `workflow/checks.json`
@@ -100,6 +108,7 @@ completion, staging, commit, or archive authority.
 
 #### Scenario: Registered non-destructive check passes
 covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
+test: packages/workflow-engine/test/session-check.integration.test.ts#registered check execution returns pinned non-destructive evidence
 
 - **WHEN** an operator executes a known non-destructive check in a clean checkout
 - **THEN** the engine executes the registered command through its pinned runner
@@ -108,12 +117,14 @@ covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
 
 #### Scenario: Check ID is unknown
 covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
+test: packages/workflow-engine/test/session-check.integration.test.ts#registered check execution rejects unknown and destructive checks
 
 - **WHEN** standalone execution names a check absent from the registry
 - **THEN** the command fails before spawning a process
 
 #### Scenario: Check is destructive
 covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
+test: packages/workflow-engine/test/session-check.integration.test.ts#registered check execution rejects unknown and destructive checks
 
 - **WHEN** standalone execution names a check marked `destructiveDatabase`
 - **THEN** the command fails without accepting database credentials or executing
@@ -121,6 +132,7 @@ covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
 
 #### Scenario: Checkout is dirty or mutated
 covers: #Requirement: Standalone Registered Check Execution Is Fail-Closed
+test: packages/workflow-engine/test/session-check.integration.test.ts#registered check execution rejects dirty and mutated checkouts
 
 - **WHEN** the checkout is dirty before execution or the check changes it
 - **THEN** the command fails and produces no authoritative passing result
@@ -135,6 +147,7 @@ authority commit MUST be attested before the next pull request is evaluated.
 
 #### Scenario: Bootstrap path is retired
 covers: #Requirement: Registered format scope excludes archived bootstrap trees
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
 
 - **WHEN** the maintainer authority commit removes the archived bootstrap
   planning tree from the registered command
@@ -154,6 +167,7 @@ The registered `workflow-format` check SHALL own workflow-engine sources and exp
 
 #### Scenario: Human-maintained workflow files are formatted
 covers: #Requirement: Formatting and Generated Asset Validation Have Disjoint Scope
+test: packages/workflow-engine/test/public-contract-surface.test.ts#format verification delegates to the registered canonical authority
 
 - **WHEN** `workflow-format` executes after the authority transition
 - **THEN** it checks each declared human-maintained workflow policy and schema path

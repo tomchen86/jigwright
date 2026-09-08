@@ -17,6 +17,7 @@ document or infer a provider from its filename.
 
 #### Scenario: Install is invoked without paths
 covers: #Requirement: Explicit Markdown Guidance Targets
+test: packages/workflow-engine/test/agent-guidance.contract.test.ts#install without explicit targets only suggests existing conventional files
 
 - **WHEN** `guidance install` receives no paths
 - **THEN** it suggests existing root `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`
@@ -24,6 +25,7 @@ covers: #Requirement: Explicit Markdown Guidance Targets
 
 #### Scenario: Explicit target installation
 covers: #Requirement: Explicit Markdown Guidance Targets
+test: packages/workflow-engine/test/agent-guidance.contract.test.ts#explicit install projects identical rules, keeps path-keyed labels, and previews before any write
 
 - **WHEN** `guidance install <path>…` receives safe Markdown targets
 - **THEN** it registers those paths and installs one generated region in each
@@ -42,6 +44,7 @@ Removal SHALL retain the target declaration so status can report its absence.
 
 #### Scenario: Content drift
 covers: #Requirement: Stable Region Identity and User Ownership
+test: packages/workflow-engine/test/agent-guidance.contract.test.ts#status recomputes drift without writes, refresh respects renamed headings, and remove preserves outside bytes
 
 - **WHEN** a user changes generated content or marker version/digest
 - **THEN** status independently recomputes the expected content and reports drift
@@ -50,6 +53,7 @@ covers: #Requirement: Stable Region Identity and User Ownership
 
 #### Scenario: The user removes a region marker
 covers: #Requirement: Stable Region Identity and User Ownership
+test: packages/workflow-engine/test/agent-guidance.contract.test.ts#deleted markers mean removed and refresh never reinstalls them
 
 - **WHEN** a configured target has no recognizable opening or closing marker
 - **THEN** status reports removed and refresh leaves the file unchanged
@@ -57,6 +61,7 @@ covers: #Requirement: Stable Region Identity and User Ownership
 
 #### Scenario: Markdown examples or unclosed fences
 covers: #Requirement: Stable Region Identity and User Ownership
+test: packages/workflow-engine/test/projection-service.contract.test.ts#install rejects fenced candidate markers before diff or write
 
 - **WHEN** markers occur inside fenced examples
 - **THEN** they do not identify a managed region
@@ -74,6 +79,7 @@ non-Source Work Item behavior. Projection SHALL NOT create Sources or Findings.
 
 #### Scenario: A maintained rule changes
 covers: #Requirement: Rules Share Maintained Sources
+test: packages/workflow-engine/test/agent-rule-registry.contract.test.ts#agent rules are generated from current purpose, exact-text and command sources
 
 - **WHEN** R-000 or the code-owned text/routing/command source changes
 - **THEN** the generator or source-currentness check exposes the changed guidance
@@ -91,6 +97,7 @@ provider definitions. Explicit flags and JSON answers SHALL use the same schema.
 
 #### Scenario: Create host provider configuration
 covers: #Requirement: Centralized Incremental Adoption Setup
+test: packages/workflow-engine/test/init-setup.contract.test.ts#fresh provider setup creates host TOML once without launching provider processes
 
 - **WHEN** the user selects a new absolute host TOML path and supplies provider IDs, families and executable paths
 - **THEN** init validates and creates that configuration using maintained provider definitions
@@ -99,6 +106,7 @@ covers: #Requirement: Centralized Incremental Adoption Setup
 
 #### Scenario: Repeated initialization
 covers: #Requirement: Centralized Incremental Adoption Setup
+test: packages/workflow-engine/test/init-setup.contract.test.ts#init fills missing answers, installs only explicit targets, and preserves answered policy
 
 - **WHEN** init is rerun against a configured repository
 - **THEN** it only fills missing answers and preserves existing policy bytes
@@ -106,6 +114,7 @@ covers: #Requirement: Centralized Incremental Adoption Setup
 
 #### Scenario: Noninteractive initialization
 covers: #Requirement: Centralized Incremental Adoption Setup
+test: packages/workflow-engine/test/init-setup.contract.test.ts#JSON setup uses the same validation and remembers explicit provider/guidance declines on the host
 
 - **WHEN** init has no interactive terminal
 - **THEN** it consumes explicit flags or an answers file and applies repository defaults

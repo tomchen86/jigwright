@@ -18,6 +18,7 @@ Engine-owned structured components SHALL use versioned semantic canonicalization
 
 #### Scenario: Authored planning prose changes
 covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Generation
+test: packages/workflow-engine/test/plan-review.integration.test.ts#PlanReview stales on governing inputs but not checkbox projection or JSON key order
 
 - **GIVEN** review is current for one authored Markdown region
 - **WHEN** punctuation, spacing, negation, or another non-enumerated authored byte changes
@@ -26,6 +27,7 @@ covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Genera
 
 #### Scenario: Structured key order changes without semantic change
 covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Generation
+test: packages/workflow-engine/test/plan-review.integration.test.ts#PlanReview stales on governing inputs but not checkbox projection or JSON key order
 
 - **GIVEN** an engine-owned component uses unchanged schema, canonicalizer, renderer, and policy versions
 - **WHEN** only non-semantic key representation order changes
@@ -33,6 +35,7 @@ covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Genera
 
 #### Scenario: Task completion changes only checkbox projection
 covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Generation
+test: packages/workflow-engine/test/plan-review.integration.test.ts#PlanReview stales on governing inputs but not checkbox projection or JSON key order
 
 - **GIVEN** a planning generation contains unchanged task IDs, text, order, and headings
 - **WHEN** managed completion changes only engine-owned checkbox bytes
@@ -40,6 +43,7 @@ covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Genera
 
 #### Scenario: Canonicalization policy changes
 covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Generation
+test: packages/workflow-engine/test/planning-generation-subject.contract.test.ts#planning generation is immutable and changes only with governing inputs
 
 - **GIVEN** review is current
 - **WHEN** applicable schema, canonicalizer, renderer, or review-policy identity changes
@@ -47,6 +51,7 @@ covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Genera
 
 #### Scenario: Investigation applicability changes
 covers: #Requirement: Plan Review Binds an Exact Component-Typed Planning Generation
+test: packages/workflow-engine/test/planning-generation-subject.contract.test.ts#planning generation and review subject bind exact v3 Manifest identities
 
 - **GIVEN** review is current for a sealed investigation or one exact exemption
 - **WHEN** the applicability branch, exemption scope, category, rationale, behavior-reliance declaration, or policy changes
@@ -62,6 +67,7 @@ Task start and CI MUST resolve the governing plan from immutable managed Git his
 
 #### Scenario: Implementation begins under an unchanged plan
 covers: #Requirement: PlanReview Currentness Follows the Governing Planning Generation
+test: packages/workflow-engine/test/planning-generation-subject.contract.test.ts#planning generation is immutable and changes only with governing inputs
 
 - **GIVEN** PlanReview is current for the effective planning generation
 - **WHEN** an authorized task changes implementation or test paths
@@ -70,6 +76,7 @@ covers: #Requirement: PlanReview Currentness Follows the Governing Planning Gene
 
 #### Scenario: New planning generation supersedes the reviewed plan
 covers: #Requirement: PlanReview Currentness Follows the Governing Planning Generation
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** PlanReview is current for one generation
 - **WHEN** a newer managed planning generation becomes effective
@@ -77,6 +84,7 @@ covers: #Requirement: PlanReview Currentness Follows the Governing Planning Gene
 
 #### Scenario: Reviewer invocation tree mutated during review
 covers: #Requirement: PlanReview Currentness Follows the Governing Planning Generation
+test: packages/workflow-engine/test/provider-execution-wire.contract.test.ts#read-only provider result rejects any observed repository mutation
 
 - **GIVEN** a reviewer was invoked against one observed repository projection
 - **WHEN** governed fingerprints differ before and after invocation
@@ -94,6 +102,7 @@ Every scope challenge, including a structured no-challenge conclusion, MUST cite
 
 #### Scenario: Reviewer identifies missing scope
 covers: #Requirement: Plan Review Performs the Evidence-Bound Scope and Depth Challenge
+test: packages/workflow-engine/test/plan-review.contract.test.ts#PlanReview requires complete coverage and evidence-bound challenge or no-challenge
 
 - **GIVEN** the reviewer observes an additional relevant consumer
 - **WHEN** it returns a scope challenge
@@ -102,6 +111,7 @@ covers: #Requirement: Plan Review Performs the Evidence-Bound Scope and Depth Ch
 
 #### Scenario: Reviewer finds no additional scope
 covers: #Requirement: Plan Review Performs the Evidence-Bound Scope and Depth Challenge
+test: packages/workflow-engine/test/plan-review.contract.test.ts#PlanReview requires complete coverage and evidence-bound challenge or no-challenge
 
 - **GIVEN** the reviewer concludes no additional scope was found
 - **WHEN** it returns the no-challenge result
@@ -110,6 +120,7 @@ covers: #Requirement: Plan Review Performs the Evidence-Bound Scope and Depth Ch
 
 #### Scenario: Plan review already includes scope and depth challenge
 covers: #Requirement: Plan Review Performs the Evidence-Bound Scope and Depth Challenge
+test: packages/workflow-engine/test/plan-review.contract.test.ts#PlanReview requires complete coverage and evidence-bound challenge or no-challenge
 
 - **GIVEN** exact-plan review is required for one canonical subject
 - **WHEN** review is scheduled
@@ -125,6 +136,7 @@ The workflow engine MUST NOT require the AI verdict to be `approve`. An advisory
 
 #### Scenario: Review artifact is absent
 covers: #Requirement: Review Presence Is Hard and Verdict Is Advisory
+test: packages/workflow-engine/test/committed-investigation-manifest.contract.test.ts#committed contract loading rejects an ignored PlanReview that is absent from the commit tree
 
 - **GIVEN** a planning generation has no current eligible PlanReview
 - **WHEN** plan commit is requested
@@ -132,6 +144,7 @@ covers: #Requirement: Review Presence Is Hard and Verdict Is Advisory
 
 #### Scenario: Reviewer rejects but challenges are dispositioned
 covers: #Requirement: Review Presence Is Hard and Verdict Is Advisory
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a current PlanReview has an advisory rejection verdict
 - **AND** every challenge has an allowed disposition and rationale
@@ -140,6 +153,7 @@ covers: #Requirement: Review Presence Is Hard and Verdict Is Advisory
 
 #### Scenario: Challenge is undispositioned
 covers: #Requirement: Review Presence Is Hard and Verdict Is Advisory
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a current PlanReview contains one challenge with no current disposition
 - **WHEN** plan commit is requested
@@ -154,6 +168,7 @@ Severity remains advisory classification. Every challenge requires disposition r
 
 #### Scenario: Finding omits severity
 covers: #Requirement: PlanReview Findings and Residuals Are Structurally Explicit
+test: packages/workflow-engine/test/plan-review.contract.test.ts#plan review v2 requires finding severity, residual risk, and explicit uncertainty
 
 - **GIVEN** a PlanReview finding lacks severity or uses an unknown value
 - **WHEN** review result validation runs
@@ -161,6 +176,7 @@ covers: #Requirement: PlanReview Findings and Residuals Are Structurally Explici
 
 #### Scenario: Review omits residual risk or uncertainty
 covers: #Requirement: PlanReview Findings and Residuals Are Structurally Explicit
+test: packages/workflow-engine/test/plan-review.contract.test.ts#plan review v2 requires finding severity, residual risk, and explicit uncertainty
 
 - **GIVEN** a PlanReview result has findings and verdict but lacks bounded non-empty residual risk or uncertainty
 - **WHEN** review result validation runs
@@ -168,6 +184,7 @@ covers: #Requirement: PlanReview Findings and Residuals Are Structurally Explici
 
 #### Scenario: Critical suggestion is not a hidden gate
 covers: #Requirement: PlanReview Findings and Residuals Are Structurally Explicit
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a structurally valid finding is classified as a critical suggestion rather than a challenge
 - **WHEN** plan eligibility is evaluated
@@ -183,6 +200,7 @@ The workflow engine SHALL validate, normalize, deduplicate, preview, and either 
 
 #### Scenario: Reviewer proposes a bounded term
 covers: #Requirement: Reviewer Terms Enter Only the Fixed Term Projector
+test: packages/workflow-engine/test/plan-review.contract.test.ts#reviewer terms enter only the fixed bounded projector with node provenance
 
 - **GIVEN** a current PlanReview proposes a valid bounded term
 - **WHEN** the review result is processed
@@ -191,6 +209,7 @@ covers: #Requirement: Reviewer Terms Enter Only the Fixed Term Projector
 
 #### Scenario: Reviewer proposes an over-broad term
 covers: #Requirement: Reviewer Terms Enter Only the Fixed Term Projector
+test: packages/workflow-engine/test/plan-review.contract.test.ts#reviewer terms enter only the fixed bounded projector with node provenance
 
 - **GIVEN** a reviewer term exceeds an aggregate or per-term resource bound
 - **WHEN** the projector evaluates it
@@ -199,6 +218,7 @@ covers: #Requirement: Reviewer Terms Enter Only the Fixed Term Projector
 
 #### Scenario: Review proposes an unsupported semantic action
 covers: #Requirement: Reviewer Terms Enter Only the Fixed Term Projector
+test: packages/workflow-engine/test/plan-review.contract.test.ts#PlanReview output schema is code-owned and rejects generic semantic actions
 
 - **GIVEN** a review asks an unsupported proposal kind to mutate scope, dependencies, issues, or policy
 - **WHEN** mechanical projection is requested
@@ -214,6 +234,7 @@ An AI review MUST NOT directly create, prioritize, update, or close a repository
 
 #### Scenario: Finding is required for current correctness
 covers: #Requirement: Review Findings Preserve Current-Change and Follow-Up Boundaries
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a finding identifies missing work required for the current change to be correct
 - **WHEN** it is classified
@@ -222,6 +243,7 @@ covers: #Requirement: Review Findings Preserve Current-Change and Follow-Up Boun
 
 #### Scenario: Finding is an independent follow-up
 covers: #Requirement: Review Findings Preserve Current-Change and Follow-Up Boundaries
+test: packages/workflow-engine/test/plan-review-dispositions.contract.test.ts#advisory verdict never replaces hard currentness and disposition gates
 
 - **GIVEN** a valid finding is independent of current-change correctness
 - **WHEN** it is classified

@@ -18,6 +18,7 @@ material, issuance time, and signer identity.
 
 #### Scenario: Human creates a valid attestation
 covers: #Requirement: Canonical human-present authority attestation
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
 
 - **WHEN** a clean fetched repository contains one valid signed original authority commit, its rebase-produced protected-main equivalent, every explicitly mapped grant base, and the required protected grant tags
 - **THEN** `pnpm workflow maintainer attest` validates the complete mapping before requesting a human signature
@@ -25,12 +26,14 @@ covers: #Requirement: Canonical human-present authority attestation
 
 #### Scenario: Non-interactive or unattended creation is attempted
 covers: #Requirement: Canonical human-present authority attestation
+test: packages/workflow-engine/test/maintainer-signer-port-boundaries.contract.test.ts#current signer admission requires every controlling terminal
 
 - **WHEN** attestation creation lacks a controlling input or output TTY, uses an unattended signer path, or cannot verify human presence
 - **THEN** the engine creates no envelope or tag
 
 #### Scenario: Encoding is ambiguous
 covers: #Requirement: Canonical human-present authority attestation
+test: packages/workflow-engine/test/authority-attestation.contract.test.ts#attestation parser rejects every ambiguous or noncanonical encoding
 
 - **WHEN** an envelope has extra or missing fields, partial object IDs, unsorted or duplicate mappings, an invalid timestamp, a wrong signature namespace, a noncanonical serialization, or an oversized value
 - **THEN** parsing and verification fail closed
@@ -45,18 +48,21 @@ commit signature under trusted policy.
 
 #### Scenario: Rebase preserves the authority transition
 covers: #Requirement: Exact authority transition identity
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
 
 - **WHEN** `tree(O) == tree(M)`, `tree(parent(O)) == tree(parent(M))`, both messages are byte-identical canonical authority messages, `O` verifies against its exact grant and trusted signer, and `M` is on protected-main first-parent history
 - **THEN** replay recognizes `M` as the unique protected-main derivative of `O`
 
 #### Scenario: Only the result tree matches
 covers: #Requirement: Exact authority transition identity
+test: packages/workflow-engine/test/authority-attestation.contract.test.ts#transition pairs fail closed on every identity mismatch
 
 - **WHEN** result trees are equal but parent trees, commit messages, change IDs, grant IDs, signatures, or single-parent shape differ
 - **THEN** replay rejects the mapping as a different or ambiguous authority transition
 
 #### Scenario: Candidate adds its own trust
 covers: #Requirement: Exact authority transition identity
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#production SSH proof rejects a signer added only by the candidate result
 
 - **WHEN** a candidate commit changes verifier code, policy, or signer material while presenting an attestation
 - **THEN** verification uses only base-owned code and previously trusted signer lineage and rejects candidate-self-authorization
@@ -71,12 +77,14 @@ participate in at most one accepted mapping.
 
 #### Scenario: Protected tag retains the original
 covers: #Requirement: Protected retention and unique mapping
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
 
 - **WHEN** the exact tag name, headers, target, canonical envelope, signature, and primary grant agree
 - **THEN** the original signed commit remains reachable and replay may evaluate the mapping
 
 #### Scenario: Evidence is missing or conflicting
 covers: #Requirement: Protected retention and unique mapping
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** the tag is absent, lightweight, malformed, differently targeted, replaced, duplicated, or conflicts with another original-to-main mapping
 - **THEN** replay fails closed without selecting a same-tree alternative
@@ -91,12 +99,14 @@ IDs all resolve to exact protected audit tags bound to that original base.
 
 #### Scenario: Expired historical grant is replayed
 covers: #Requirement: Explicit grant-base identity mapping
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** a protected grant envelope is now expired but its signature and issuance bounds are valid, its `baseCommit` equals the attested original base, and any successful authority commit occurred within the signed lifetime
 - **THEN** historical replay may use the explicitly attested protected-main equivalent without treating the grant as currently usable
 
 #### Scenario: Grant mapping is inferred or incomplete
 covers: #Requirement: Explicit grant-base identity mapping
+test: packages/workflow-engine/test/authority-attestation.contract.test.ts#transition pairs fail closed on every identity mismatch
 
 - **WHEN** replay finds only a same-tree main commit, omits a grant bound to the original base, names a grant bound to another base, or observes unequal parent trees or messages
 - **THEN** replay rejects the grant-base mapping
@@ -114,18 +124,21 @@ lineage remains unproven.
 
 #### Scenario: Protected history retains the signed authority commit
 covers: #Requirement: Base-owned historical replay gates sealing
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** a protected-main authority transition is the exact human-signed commit and its parent policy, protected grant tag, signature, paths, unique claim, and commit-time grant lifetime all validate
 - **THEN** historical replay accepts the transition directly without requiring an authority attestation
 
 #### Scenario: Complete historical lineage is replayable
 covers: #Requirement: Base-owned historical replay gates sealing
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
 
 - **WHEN** every protected-main authority commit either validates directly as the retained signed original or resolves through a unique valid protected attestation, and every referenced original grant base has the required explicit mapping under the trusted signer lineage
 - **THEN** base-owned replay succeeds and reports the covered authority grants and mappings
 
 #### Scenario: Historical lineage is incomplete
 covers: #Requirement: Base-owned historical replay gates sealing
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** any authority commit, original object, grant base, tag, signature, trust binding, mapping, or main reachability check is absent or invalid
 - **THEN** workflow assurance fails closed and the repository remains undeclared or bootstrap-only
@@ -145,18 +158,21 @@ SSH signer that requires human presence.
 
 #### Scenario: Non-interactive issuance is rejected
 covers: #Requirement: Human-present grant issuance
+test: packages/workflow-engine/test/maintainer-signer-port-boundaries.contract.test.ts#current signer admission requires every controlling terminal
 
 - **WHEN** grant issuance lacks a controlling input or output TTY
 - **THEN** the engine rejects the request before signing or writing grant state
 
 #### Scenario: Unattended signer is rejected
 covers: #Requirement: Human-present grant issuance
+test: packages/workflow-engine/test/grant-proof-ssh.contract.test.ts#production SSH approval rejects an unencrypted software key and strips non-interactive credential channels
 
 - **WHEN** the configured software key can sign without an interactive secret or the request attempts to use an SSH agent, askpass program, environment bypass, or force option
 - **THEN** the engine rejects the request and creates no grant
 
 #### Scenario: Human-present issuance succeeds
 covers: #Requirement: Human-present grant issuance
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
 
 - **WHEN** a trusted encrypted SSH key or human-presence hardware key signs a valid canonical grant from an interactive terminal
 - **THEN** the engine stores one local available token and creates one signed non-secret audit envelope
@@ -171,12 +187,14 @@ trusted signer identity.
 
 #### Scenario: Default grant bounds are narrow
 covers: #Requirement: Canonical single-purpose grant
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
 
 - **WHEN** a maintainer omits TTL and use-count options
 - **THEN** the engine issues a grant valid for no more than 30 minutes and exactly one use
 
 #### Scenario: Altered authorization is rejected
 covers: #Requirement: Canonical single-purpose grant
+test: packages/workflow-engine/test/maintainer-grant-v2.contract.test.ts#v2 issue signs every binding and stores a canonical one-shot grant
 
 - **WHEN** any signed authorization field, schema version, policy blob, signature, repository, base, change, path, time, reason, use count, or signer differs from the trusted canonical payload
 - **THEN** the engine rejects the grant
@@ -217,18 +235,21 @@ equivalent only through an explicit valid authority tree attestation.
 
 #### Scenario: Missing or different audit tag is rejected
 covers: #Requirement: Protected audit envelope
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** CI cannot resolve the exact grant tag or its envelope differs from the locally claimed grant
 - **THEN** the authority commit fails verification
 
 #### Scenario: Candidate key cannot validate its own envelope
 covers: #Requirement: Protected audit envelope
+test: packages/workflow-engine/test/git-authority-candidate-apply.integration.test.ts#production SSH proof rejects a signer added only by the candidate result
 
 - **WHEN** a candidate branch adds or changes a signer while claiming an authority grant
 - **THEN** CI verifies the envelope only with signers trusted by the authority commit parent
 
 #### Scenario: Rebased grant base is replayed
 covers: #Requirement: Protected audit envelope
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#maintainer attestation accepts the current signed v2 authority grant
 
 - **WHEN** a historical grant tag references an original base commit that is not on protected-main history
 - **THEN** replay requires an explicit attested protected-main base with equal result and parent trees, an identical canonical managed message, and the exact grant ID binding
@@ -306,12 +327,14 @@ covers: #Requirement: Fail-closed commit recovery
 
 #### Scenario: Crash occurs after ref update
 covers: #Requirement: Fail-closed commit recovery
+test: packages/workflow-engine/test/maintainer-grant-v2-recovery.contract.test.ts#transient consume failure resumes completion without applying twice
 
 - **WHEN** recovery proves the branch points to the exact journaled valid commit
 - **THEN** recovery idempotently records consumption and never reactivates the grant
 
 #### Scenario: Recovery state is ambiguous
 covers: #Requirement: Fail-closed commit recovery
+test: packages/workflow-engine/test/maintainer-grant-v2-recovery.contract.test.ts#external ref ABA during an uncertain CAS cannot replay the candidate
 
 - **WHEN** the journal, branch, commit, signature, tree, base, or reservation does not match exactly
 - **THEN** recovery revokes the use and refuses to create or accept another commit
@@ -328,18 +351,21 @@ operation.
 
 #### Scenario: CI evaluates a timely commit after grant expiry
 covers: #Requirement: Revocation and replay resistance
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#remote CI verifies an applied v2 candidate from portable Git authority receipts
 
 - **WHEN** an exact signed authority commit was created within the grant's signed lifetime but CI evaluates it after expiry
 - **THEN** historical replay may validate the commit without making the grant operationally reusable
 
 #### Scenario: Revoke is repeated
 covers: #Requirement: Revocation and replay resistance
+test: packages/workflow-engine/test/maintainer-grant-v2-audit.contract.test.ts#v2 revoke is human-trusted, audit-first, task-bound, and replay-safe
 
 - **WHEN** the maintainer revokes the same available, reserved, revoked, or consumed grant more than once
 - **THEN** cleanup remains safe and the grant never returns to available state
 
 #### Scenario: Grant is claimed twice
 covers: #Requirement: Revocation and replay resistance
+test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#approve-and-apply checks before signing and atomically consumes the exact grant
 
 - **WHEN** local state or a pull-request range claims one grant for more than one session or commit
 - **THEN** the engine rejects every duplicate use

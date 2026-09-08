@@ -14,6 +14,7 @@ Retry, provider selection, and later resume SHALL preserve otherwise-current evi
 
 #### Scenario: Required alternate provider is unavailable
 covers: #Requirement: Provider Shortage Pauses Without Partial Transition
+test: packages/workflow-engine/test/provider-orchestration.contract.test.ts#ordinary role scheduling uses fresh sessions and preserves explicit provider diversity
 
 - **GIVEN** a transition requires provider-independent assignment and no alternate is available
 - **WHEN** assignment is requested
@@ -38,6 +39,7 @@ An agent MUST NOT issue, sign, approve, or satisfy controlling-TTY requirements 
 
 #### Scenario: Eligible maintainer issues an exact grant
 covers: #Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#collaboration issuance is canonical, domain-separated, and has no authority side effects
 
 - **GIVEN** a transition is waiting for provider-independent assignment
 - **WHEN** an eligible human at the controlling TTY issues a grant for the exact facts
@@ -46,6 +48,7 @@ covers: #Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
 
 #### Scenario: Agent attempts to issue its own grant
 covers: #Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#collaboration grant CLI requires a controlling TTY and has no unattended escape hatch
 
 - **GIVEN** an agent would benefit from degraded independence
 - **WHEN** it attempts issuance without the eligible controlling-TTY human
@@ -54,6 +57,7 @@ covers: #Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
 
 #### Scenario: Grant binding differs from transition
 covers: #Requirement: Collaboration Grants Are Human-Issued and Exactly Bound
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#signed collaboration binding rejects every substituted transition fact
 
 - **GIVEN** a grant binds one repository, change, target, phase, or role pair
 - **WHEN** it is presented for different facts
@@ -68,6 +72,7 @@ The actual achieved independence and orchestration MUST be recorded. A grant MUS
 
 #### Scenario: Same provider continues in a fresh session
 covers: #Requirement: Collaboration Grants Authorize Only Visible Independence Degradation
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#same-provider grants require the only callable provider and a fresh engine session
 
 - **GIVEN** a valid grant authorizes one provider-independence conflict
 - **WHEN** the only callable provider runs in a fresh session
@@ -76,6 +81,7 @@ covers: #Requirement: Collaboration Grants Authorize Only Visible Independence D
 
 #### Scenario: No provider adapter is callable
 covers: #Requirement: Collaboration Grants Authorize Only Visible Independence Degradation
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** a valid grant authorizes caller-supplied or direct-human contribution for an exact transition
 - **WHEN** the structured contribution is admitted
@@ -84,6 +90,7 @@ covers: #Requirement: Collaboration Grants Authorize Only Visible Independence D
 
 #### Scenario: Grant is used to omit required review content
 covers: #Requirement: Collaboration Grants Authorize Only Visible Independence Degradation
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#grant consumption requires structured survey or review content and retains every assurance obligation
 
 - **GIVEN** plan commit requires a current structured PlanReview
 - **AND** a grant authorizes reduced independence
@@ -93,6 +100,7 @@ covers: #Requirement: Collaboration Grants Authorize Only Visible Independence D
 
 #### Scenario: Grant is used to suppress investigation evidence
 covers: #Requirement: Collaboration Grants Authorize Only Visible Independence Degradation
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#grant consumption requires structured survey or review content and retains every assurance obligation
 
 - **GIVEN** a grant is valid for one role conflict
 - **WHEN** a transition lacks a current scan, disposition, WHY row, or challenge disposition
@@ -108,6 +116,7 @@ Every form MUST bind semantic author, participants, actual orchestration, requir
 
 #### Scenario: Caller-supplied survey is admitted under a grant
 covers: #Requirement: Granted Role Results Have Exact Distinct Content Forms
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** an exact grant permits caller-supplied survey content because no provider is callable
 - **WHEN** the typed result is validated
@@ -117,6 +126,7 @@ covers: #Requirement: Granted Role Results Have Exact Distinct Content Forms
 
 #### Scenario: Direct human reviews an exact plan
 covers: #Requirement: Granted Role Results Have Exact Distinct Content Forms
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#direct-human review requires the current explicit signature namespace
 
 - **GIVEN** policy and an exact grant permit direct-human review content
 - **WHEN** an eligible human signs the complete bound attestation
@@ -125,6 +135,7 @@ covers: #Requirement: Granted Role Results Have Exact Distinct Content Forms
 
 #### Scenario: Result form and orchestration conflict
 covers: #Requirement: Granted Role Results Have Exact Distinct Content Forms
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** a caller-supplied or direct-human result claims an engine-spawned provider invocation
 - **WHEN** result admission runs
@@ -139,6 +150,7 @@ Repeated cleanup or inspection MAY be idempotent, but authorization MUST remain 
 
 #### Scenario: Valid grant use is reserved
 covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#collaboration store reserves once across worktrees and rejects replay
 
 - **GIVEN** an unexpired grant has one use for the exact transition
 - **WHEN** the conflicting assignment begins
@@ -147,6 +159,7 @@ covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
 
 #### Scenario: Grant is replayed after consumption
 covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#collaboration store reserves once across worktrees and rejects replay
 
 - **GIVEN** a grant use was consumed
 - **WHEN** another transition presents the grant
@@ -154,6 +167,7 @@ covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
 
 #### Scenario: Reserved result fails content admission
 covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#invalid content admission terminally fails a reserved grant
 
 - **GIVEN** a use is reserved for one exact degraded transition
 - **WHEN** the submitted result has invalid structure, content binding, signature, target, orchestration, or achieved independence
@@ -162,6 +176,7 @@ covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
 
 #### Scenario: One grant use appears twice in replayed evidence
 covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#aggregate grant uses reject a duplicate claim across one subject
 
 - **GIVEN** two tracked evidence records claim the same signed grant and use identity
 - **WHEN** aggregate use-set validation runs
@@ -169,6 +184,7 @@ covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
 
 #### Scenario: Grant expires or is revoked while unused
 covers: #Requirement: Grant Use Is Atomic, Bounded, and Replay-Resistant
+test: packages/workflow-engine/test/collaboration-grant.integration.test.ts#expired and revoked collaboration grants never authorize a transition
 
 - **GIVEN** a grant expired or was revoked
 - **WHEN** a transition attempts reservation
@@ -184,6 +200,7 @@ Policy MAY require direct human review for a trust-critical transition even when
 
 #### Scenario: Degraded plan reaches CI
 covers: #Requirement: Degraded Independence Remains Verifiable Downstream
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#no-callable degraded forms record no provider invocation or independence
 
 - **GIVEN** planning continued under a valid collaboration grant
 - **WHEN** local or CI assurance is rendered
@@ -192,6 +209,7 @@ covers: #Requirement: Degraded Independence Remains Verifiable Downstream
 
 #### Scenario: Trust-critical policy requires human review
 covers: #Requirement: Degraded Independence Remains Verifiable Downstream
+test: packages/workflow-engine/test/collaboration-grant-role-use.integration.test.ts#grant consumption requires structured survey or review content and retains every assurance obligation
 
 - **GIVEN** a grant authorizes degraded continuation and policy independently requires direct human review
 - **WHEN** eligibility is evaluated without that human review
@@ -207,6 +225,7 @@ inputs MUST construct synthetic fixtures in temporary repositories.
 
 #### Scenario: Fixture change is archived
 covers: #Requirement: Engine tests are independent of mutable planning state
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#real pinned OpenSpec adapter validates package, schema, status, and change
 
 - **WHEN** any repository change completes its lifecycle and its directory
   moves to the archive container
@@ -215,6 +234,7 @@ covers: #Requirement: Engine tests are independent of mutable planning state
 
 #### Scenario: No active change exists
 covers: #Requirement: Engine tests are independent of mutable planning state
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#real pinned OpenSpec adapter validates package, schema, status, and change
 
 - **WHEN** the repository has zero active changes
 - **THEN** the adapter and managed-contract suites still construct and
@@ -229,6 +249,7 @@ change validation remain covered end to end.
 
 #### Scenario: Synthetic change violates the schema
 covers: #Requirement: Pinned adapter validation stays end-to-end
+test: packages/workflow-engine/test/openspec-adapter.integration.test.ts#real pinned OpenSpec adapter validates package, schema, status, and change
 
 - **WHEN** the synthetic fixture omits a required artifact or breaks the
   repository schema

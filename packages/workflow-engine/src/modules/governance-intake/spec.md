@@ -24,6 +24,7 @@ authority.
 
 #### Scenario: Maintainer wording is captured and shown
 covers: #Requirement: Governance Sources Preserve Selected Wording Exactly
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source CLI show and trace preserve exact wording and refuse dangling citations
 
 - **WHEN** a caller captures selected maintainer wording with explicit direct-human provenance
 - **THEN** the engine stores the exact selected bytes without paraphrase
@@ -31,6 +32,7 @@ covers: #Requirement: Governance Sources Preserve Selected Wording Exactly
 
 #### Scenario: Stored Source bytes or identity drift
 covers: #Requirement: Governance Sources Preserve Selected Wording Exactly
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source ledger list and configured registry validation reject every noncanonical entry without mutation
 
 - **WHEN** a Source path, canonical bytes, text digest, or object identity no longer agrees
 - **THEN** Source reading fails without rewriting the record
@@ -45,6 +47,7 @@ remain replayable.
 
 #### Scenario: A maintainer corrects earlier wording
 covers: #Requirement: Corrections Preserve Earlier Sources
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source CLI show and trace preserve exact wording and refuse dangling citations
 
 - **WHEN** the corrected wording cites an existing predecessor Source
 - **THEN** both immutable Sources remain readable
@@ -52,6 +55,7 @@ covers: #Requirement: Corrections Preserve Earlier Sources
 
 #### Scenario: A correction cites an absent Source
 covers: #Requirement: Corrections Preserve Earlier Sources
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source CLI show and trace preserve exact wording and refuse dangling citations
 
 - **WHEN** `supersedes` names no identity-valid Source object
 - **THEN** capture fails before publishing the correction
@@ -68,6 +72,7 @@ Source records.
 
 #### Scenario: Sources are listed when there are no Work Items
 covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source list preserves exact wording before repository consumer configuration exists
 
 - **WHEN** a repository has Source records but no Work Item records
 - **THEN** `source list` returns their exact selected wording in stable Source-ID order
@@ -75,6 +80,7 @@ covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
 
 #### Scenario: Immediate work cites a Source directly
 covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#a Source can link directly to a change without a parking Work Item
 
 - **WHEN** an existing change `origin.json` cites a Source without a parking Work Item
 - **THEN** `source trace` reports that change origin
@@ -82,6 +88,7 @@ covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
 
 #### Scenario: Built-in Work Registry has zero items
 covers: #Requirement: Source Trace Exposes Provenance Without Copying Authority
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** a configured repository has Source records and zero Work Items
 - **THEN** `source list`, `source show`, and correction-chain `source trace` remain available
@@ -97,12 +104,14 @@ Source, deleting the citation, or rewriting historical bytes.
 
 #### Scenario: A Finding cites a missing Source
 covers: #Requirement: Every Governance Citation Resolves
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source CLI show and trace preserve exact wording and refuse dangling citations
 
 - **WHEN** Finding capture names a syntactically valid but absent Source identity
 - **THEN** capture fails before publishing the Finding
 
 #### Scenario: A change origin cites a missing Source
 covers: #Requirement: Every Governance Citation Resolves
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source CLI show and trace preserve exact wording and refuse dangling citations
 
 - **WHEN** registry validation reads an `origin.json` with a dangling `sourceRefs` entry
 - **THEN** validation fails without changing the origin or Source ledger
@@ -119,6 +128,7 @@ item-only match.
 
 #### Scenario: Exact maintainer wording finds a linked Work Item
 covers: #Requirement: Work Registry Search Resolves Linked Source Wording
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#Work Registry search resolves exact linked Source wording without copying it
 
 - **WHEN** a Work Item cites a canonical Source whose exact selected wording matches the query
 - **THEN** `work-item search` returns that unchanged Work Item
@@ -139,6 +149,7 @@ be canonical, internally coherent, and validated without inventing history.
 
 #### Scenario: A new current Work Item is parked
 covers: #Requirement: Work Items Use Stable Per-Item Records
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#built-in Work Registry creates one stable item and promotes exact provenance
 
 - **WHEN** a caller creates one valid Work Item from explicit current input
 - **THEN** the registry writes one `inbox` item at its creation-year path
@@ -147,6 +158,7 @@ covers: #Requirement: Work Items Use Stable Per-Item Records
 
 #### Scenario: A persisted relation is incoherent
 covers: #Requirement: Work Items Use Stable Per-Item Records
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#persisted Work Item reads reject incoherent state, path identity drift, and noncanonical relation sets without mutation
 
 - **WHEN** a Work Item path, canonical bytes, blocker, Source reference, change link, timeline, or closure disagrees
 - **THEN** the registry rejects the record without moving or rewriting it
@@ -164,6 +176,7 @@ act as a second authority or bypass an accepted Grant Core result.
 
 #### Scenario: Priority is inspected without application
 covers: #Requirement: Reviewed Work Item Decisions Use Grant Core
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#priority recommendations are explainable and inventory exposes current intake facts
 
 - **WHEN** a caller requests the current priority recommendation
 - **THEN** the registry returns explicit recommendation reasons
@@ -171,6 +184,7 @@ covers: #Requirement: Reviewed Work Item Decisions Use Grant Core
 
 #### Scenario: Protected review needs exact authorization
 covers: #Requirement: Reviewed Work Item Decisions Use Grant Core
+test: packages/workflow-engine/test/governance-grant-transitions.integration.test.ts#registered Central Grant review transition applies the exact reviewed item once
 
 - **WHEN** current policy requires a Grant for the requested reviewed transition
 - **THEN** the ordinary command emits one exact Fail-Grant challenge before mutation
@@ -194,6 +208,7 @@ transaction after a crash.
 
 #### Scenario: Current promotion succeeds
 covers: #Requirement: Promotion Atomically Links Work and Source Provenance
+test: packages/workflow-engine/test/governance-promotion-recovery.integration.test.ts#Work Item promotion recovers one exact item-origin transaction after every hard-crash cut
 
 - **WHEN** an eligible reviewed Work Item, conditional survey binding, expected digest, and change identity still agree
 - **THEN** the item and origin publish one bidirectional relationship
@@ -201,6 +216,7 @@ covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 #### Scenario: Agent premise has no survey yet
 covers: #Requirement: Promotion Atomically Links Work and Source Provenance
+test: packages/workflow-engine/test/governance-promotion-survey.integration.test.ts#one promote command skips surveys for maintainer premises and prepares a current empty survey for agent premises
 
 - **WHEN** an eligible Work Item cites an agent-authored Source and no survey file exists
 - **THEN** one promotion command prepares an explicit empty-declaration current survey and promotes
@@ -208,6 +224,7 @@ covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 #### Scenario: Maintainer premise needs no survey artifact
 covers: #Requirement: Promotion Atomically Links Work and Source Provenance
+test: packages/workflow-engine/test/governance-promotion-survey.integration.test.ts#one promote command skips surveys for maintainer premises and prepares a current empty survey for agent premises
 
 - **WHEN** an eligible Work Item has empty Source references or cites only maintainer-authored Sources
 - **THEN** promotion binds the exact `not-required` decision and Source-reference digest
@@ -215,6 +232,7 @@ covers: #Requirement: Promotion Atomically Links Work and Source Provenance
 
 #### Scenario: Either tracked input changes
 covers: #Requirement: Promotion Atomically Links Work and Source Provenance
+test: packages/workflow-engine/test/governance-promotion-recovery.integration.test.ts#Work Item promotion resumes durable rollback after hard crashes in either tracked file
 
 - **WHEN** the Work Item or origin no longer matches the prepared promotion
 - **THEN** promotion fails or rolls back without a partial relationship
@@ -232,6 +250,7 @@ search cache SHALL NOT become authority.
 
 #### Scenario: A caller traces one Work Item
 covers: #Requirement: Work Registry Read Surfaces Are Deterministic
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#built-in Work Registry creates one stable item and promotes exact provenance
 
 - **WHEN** the Work Item and all cited records are canonical
 - **THEN** trace returns the unchanged item, its canonical Sources, and linked current or archived origins
@@ -239,6 +258,7 @@ covers: #Requirement: Work Registry Read Surfaces Are Deterministic
 
 #### Scenario: A projection drifts
 covers: #Requirement: Work Registry Read Surfaces Are Deterministic
+test: packages/workflow-engine/test/governance-intake.integration.test.ts#registry render is deterministic and validates blocking cycles
 
 - **WHEN** a generated backlog, inventory, history, or handoff byte no longer matches canonical records
 - **THEN** validation rejects the projection rather than treating it as registry authority
@@ -256,6 +276,7 @@ authority and SHALL NOT require a Work Item for an uncited change.
 
 #### Scenario: A proposed change cites maintainer wording
 covers: #Requirement: Planning Prose Distinguishes Source-Backed Claims
+test: packages/workflow-engine/test/agent-rule-registry.contract.test.ts#agent rules are generated from current purpose, exact-text and command sources
 
 - **WHEN** the request names a canonical Source identity
 - **THEN** the planning guidance directs the caller to the current Source read surface
@@ -273,6 +294,7 @@ change with zero linked Work Items SHALL produce no Work Item effects.
 
 #### Scenario: One linked change is archived
 covers: #Requirement: Archive Reconciles Linked Work Items Deterministically
+test: packages/workflow-engine/test/archive-transition.integration.test.ts#archive closes linked Work Items and renders registry history in the verified commit
 
 - **WHEN** current item, origin, archive identity, and compare-and-swap facts agree
 - **THEN** each exactly linked active Work Item closes once with the archived change identity
@@ -280,6 +302,7 @@ covers: #Requirement: Archive Reconciles Linked Work Items Deterministically
 
 #### Scenario: An archived change has no linked Work Items
 covers: #Requirement: Archive Reconciles Linked Work Items Deterministically
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** the canonical archived origin has no `workItemRefs`
 - **THEN** archive reconciliation returns no Work Item output paths
@@ -298,6 +321,7 @@ capability or preserving a dormant null branch.
 
 #### Scenario: Configured consumer has zero Work Items
 covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** a valid configured repository has no Work Item records or inventory projection
 - **THEN** Work Item list and Source-to-work trace return empty Work Item facts
@@ -305,6 +329,7 @@ covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Ma
 
 #### Scenario: Work Registry configuration selects defaults
 covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** a repository consumer configuration omits the `workRegistry` key
 - **THEN** the engine supplies its exact current Work Registry default paths
@@ -312,6 +337,7 @@ covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Ma
 
 #### Scenario: Configured consumer attempts to disable the Work Registry
 covers: #Requirement: Work Registry Is Always Available; Work Item Use Is Not Mandatory
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** a repository consumer configuration supplies `workRegistry: null`
 - **THEN** configuration validation fails with `REPOSITORY_CONSUMER_CONFIG_INVALID`
@@ -329,6 +355,7 @@ the fixed ledger or the requested path.
 
 #### Scenario: A configuration attempts to redirect Sources
 covers: #Requirement: Governance Source Ledger Path Is Engine-Owned
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#configured consumers keep Work Registry available and the Source ledger engine-owned
 
 - **WHEN** an otherwise valid Work Registry configuration supplies `sourceRoot`
 - **THEN** configuration validation rejects the extra key
@@ -336,6 +363,7 @@ covers: #Requirement: Governance Source Ledger Path Is Engine-Owned
 
 #### Scenario: Core Source capture precedes repository consumer configuration
 covers: #Requirement: Governance Source Ledger Path Is Engine-Owned
+test: packages/workflow-engine/test/governance-source-ledger.integration.test.ts#Source trace stays core-only before repository consumer configuration exists
 
 - **WHEN** a caller captures or reads an identity-valid Source before a repository consumer configuration exists
 - **THEN** the engine uses the fixed core-owned ledger path
@@ -352,6 +380,7 @@ promotion into normative planning or transition facts.
 
 #### Scenario: Mid-task observation is outside allowed paths
 covers: #Requirement: Findings Remain Independent of Task Write Scope
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#finding capture binds active session and Git facts outside task paths
 
 - **WHEN** an active session records a bounded Finding about work outside its task paths
 - **THEN** the engine stores the Finding with current session and Git facts
@@ -372,6 +401,7 @@ pending Findings across the repository's private runtime.
 
 #### Scenario: A caller dismisses one pending Finding
 covers: #Requirement: Finding Disposition Is Append-Only
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#Finding disposition is append-only and runtime-wide counts stay read-only
 
 - **WHEN** `finding dismiss <finding-id> --reason <reason>` resolves one identity-valid pending Finding
 - **THEN** one immutable terminal receipt records `dismissed`, the exact reason, a null target, and the current time
@@ -380,6 +410,7 @@ covers: #Requirement: Finding Disposition Is Append-Only
 
 #### Scenario: Finding storage is ambiguous or unsafe
 covers: #Requirement: Finding Disposition Is Append-Only
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#Finding readers fail closed on unsafe records and sidecars without repair
 
 - **WHEN** runtime-wide listing observes an unsafe directory, noncanonical name, path mismatch, hard link, mode drift, invalid bytes, orphan receipt, or duplicate identity
 - **THEN** listing and disposition fail closed without choosing one record
@@ -410,6 +441,7 @@ truncation.
 
 #### Scenario: One immediate sentence starts planning
 covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
+test: packages/workflow-engine/test/propose-planning-workspace.integration.test.ts#top-level now starts the stable Source-bound planning workspace without an intent envelope
 
 - **WHEN** a caller invokes `now <original-text>` with one resolved current actor
 - **THEN** one stable change and planning workspace cite the captured Source through `origin.json`
@@ -418,6 +450,7 @@ covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
 
 #### Scenario: An immediate observation retains its complete wording
 covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#later --kind bug parks an observation in the inbox without minting a Source
 
 - **WHEN** a caller invokes `now <original-text> --kind bug`
 - **THEN** the normalized intent contains the complete original text and cites no newly minted Source
@@ -425,6 +458,7 @@ covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
 
 #### Scenario: Capture or workspace bootstrap stops early
 covers: #Requirement: Intent-Level Now Starts One Source-Bound Change
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 now converges exact wording on one Source and stable immediate change after capture crash
 
 - **WHEN** immediate intake stops after Source capture or after copying the Source before origin publication
 - **THEN** retry rechecks the exact Source text and stable change identity
@@ -450,6 +484,7 @@ trace` next steps.
 
 #### Scenario: Inbox authority is preserved
 covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 now work-item preserves inbox authority, promotes ordinary agent work, and keeps protected refusal mutation-free
 
 - **WHEN** `now <work-item-id>` names an unreviewed inbox item
 - **THEN** it returns exact accept-review and prioritize-now next steps
@@ -457,6 +492,7 @@ covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
 
 #### Scenario: Eligible current item is promoted once
 covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 now work-item preserves inbox authority, promotes ordinary agent work, and keeps protected refusal mutation-free
 
 - **WHEN** the reviewed item and every blocker, Source, survey fact, and target prestate remain exact
 - **THEN** the facade creates or reuses the deterministic change and performs one current promotion
@@ -464,6 +500,7 @@ covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
 
 #### Scenario: Protected absent target requires Grant before preparation
 covers: #Requirement: Intent-Level Now Promotes One Eligible Work Item
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 now work-item preserves inbox authority, promotes ordinary agent work, and keeps protected refusal mutation-free
 
 - **WHEN** repository policy protects promotion and the deterministic change does not exist
 - **THEN** the facade emits one exact Central Grant challenge while the target remains absent
@@ -493,6 +530,7 @@ require no Grant.
 
 #### Scenario: Original wording is parked for later
 covers: #Requirement: Intent-Level Later Surface Is One Command
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 later and attach preserve original wording only in Sources and converge exactly
 
 - **WHEN** one caller invokes `later <original-text>` in a current repository
 - **THEN** the original text exists only in one immutable Source and the returned inbox Work Item cites that Source ID
@@ -501,6 +539,7 @@ covers: #Requirement: Intent-Level Later Surface Is One Command
 
 #### Scenario: An observation is parked without a Source
 covers: #Requirement: Intent-Level Later Surface Is One Command
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#later --kind bug parks an observation in the inbox without minting a Source
 
 - **WHEN** one caller invokes `later <original-text> --kind bug` outside any task session
 - **THEN** one inbox Work Item of kind `bug` carries the wording as its interpretation summary and cites no Source
@@ -508,6 +547,7 @@ covers: #Requirement: Intent-Level Later Surface Is One Command
 
 #### Scenario: Wording noted inside a task is staged as a Finding
 covers: #Requirement: Intent-Level Later Surface Is One Command
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#later inside an active task stages a Finding and convert flushes it to the inbox without a Source
 
 - **WHEN** one caller invokes `later <original-text>` while a task session covers the working tree
 - **THEN** one pending Finding bound to that session records the wording and no Work Registry or Source bytes change
@@ -515,6 +555,7 @@ covers: #Requirement: Intent-Level Later Surface Is One Command
 
 #### Scenario: Concurrent exact wording converges
 covers: #Requirement: Intent-Level Later Surface Is One Command
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 concurrent later calls converge on at most one Work Item
 
 - **WHEN** two `later` calls both pass their initial exact-wording search before either publishes a Work Item
 - **THEN** a Work Registry locked recheck allows at most one inbox Work Item to cite that wording
@@ -542,6 +583,7 @@ kind SHALL preserve the observation's interpretation summary.
 
 #### Scenario: New wording supplements one inbox item
 covers: #Requirement: Attach Adds a Source Without Reclassifying Work
+test: packages/workflow-engine/test/governance-intake-commands.integration.test.ts#D-019 later and attach preserve original wording only in Sources and converge exactly
 
 - **WHEN** `attach <work-item-id> <original-text>` names one current open Work Item
 - **THEN** exactly one Source identity is added and the current interpretation binds all sorted Source IDs
@@ -570,6 +612,7 @@ may be created.
 
 #### Scenario: Conversion resumes after its item is durable
 covers: #Requirement: Finding Conversion Has One Deterministic Target
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#D-019 finding convert resumes one deterministic item before publishing its receipt
 
 - **WHEN** conversion stops after the deterministic inbox item is durable but before its receipt exists
 - **THEN** default Finding listing still reports the Finding as pending
@@ -578,6 +621,7 @@ covers: #Requirement: Finding Conversion Has One Deterministic Target
 
 #### Scenario: Converted Finding is escalated immediately
 covers: #Requirement: Finding Conversion Has One Deterministic Target
+test: packages/workflow-engine/test/propose-planning-workspace.integration.test.ts#finding-converted immediate Source bootstrap resumes a source-only crash into one exact cited planning origin
 
 - **WHEN** `finding convert <finding-id> --now` names one pending or exactly converted Finding
 - **THEN** conversion first publishes or reuses its deterministic inbox item and receipt
@@ -598,6 +642,7 @@ terminal dispositions SHALL fail before receipt publication.
 
 #### Scenario: A Finding links to a non-current existing change
 covers: #Requirement: Finding Link Is a Receipt-Only Relation
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#D-019 finding link records only one exact existing change target
 
 - **WHEN** `finding link <finding-id> --change <change-id>` names a contained plain managed change directory
 - **THEN** one immutable linked receipt records that change target and the original Finding remains byte-identical
@@ -619,6 +664,7 @@ previously prepared crash-recovery transaction before returning current counts.
 
 #### Scenario: One Finding is dismissed
 covers: #Requirement: Governance Intake Counts Are Read-Only
+test: packages/workflow-engine/test/governance-findings.integration.test.ts#Finding disposition is append-only and runtime-wide counts stay read-only
 
 - **WHEN** the runtime contains two identity-valid pending Findings and one is dismissed
 - **THEN** `pendingFindings` decreases by one while inbox and backlog counts remain exact

@@ -29,6 +29,7 @@ than inventing a change.
 
 #### Scenario: Mixed repository state is inspected
 covers: #Requirement: Routing Status Exposes Current Repository Inventory
+test: packages/workflow-engine/test/change-routing.integration.test.ts#managed routing projects mixed repository state and recovers idempotently
 
 - **WHEN** a repository contains ready, blocked, parked, resumable, completed, archived, or recovering changes
 - **THEN** `route status` reports every change under its exact derived state
@@ -37,6 +38,7 @@ covers: #Requirement: Routing Status Exposes Current Repository Inventory
 
 #### Scenario: Current planning authority is unavailable
 covers: #Requirement: Routing Status Exposes Current Repository Inventory
+test: packages/workflow-engine/test/change-routing.integration.test.ts#routing never auto-focuses and focus consumes current Manifest v3 plus separate PlanReview
 
 - **WHEN** an unfinished change cannot pass current Manifest v3 and independent PlanReview validation
 - **THEN** status reports that change as `recovery-required`
@@ -60,6 +62,7 @@ controlled source.
 
 #### Scenario: A change is blocked explicitly
 covers: #Requirement: Controlled Lifecycle Source Owns Explicit Routing
+test: packages/workflow-engine/test/change-routing.integration.test.ts#managed routing projects mixed repository state and recovers idempotently
 
 - **WHEN** a valid routing intent blocks one unfinished task on a canonical blocker
 - **THEN** the next source preserves the reason, task, blocker identity, and resume condition
@@ -67,6 +70,7 @@ covers: #Requirement: Controlled Lifecycle Source Owns Explicit Routing
 
 #### Scenario: Controlled bytes are staged by hand
 covers: #Requirement: Controlled Lifecycle Source Owns Explicit Routing
+test: packages/workflow-engine/test/change-routing.integration.test.ts#pre-commit rejects even an exact hand-staged routing projection
 
 - **WHEN** a caller stages even an otherwise valid lifecycle source outside the managed routing transition
 - **THEN** hooks and CI reject the unauthorized projection
@@ -90,6 +94,7 @@ MUST NOT duplicate or guess it.
 
 #### Scenario: Reviewed facts remain current
 covers: #Requirement: Routing Review Is Current and Recoverable
+test: packages/workflow-engine/test/change-routing.integration.test.ts#managed route apply recovers the exact commit object without duplicating the transition
 
 - **WHEN** the source, repository facts, current planning authority, and reviewed next source still agree
 - **THEN** apply publishes one exact routing transition and its derived handoff
@@ -97,6 +102,7 @@ covers: #Requirement: Routing Review Is Current and Recoverable
 
 #### Scenario: Reviewed facts drift
 covers: #Requirement: Routing Review Is Current and Recoverable
+test: packages/workflow-engine/test/change-routing.integration.test.ts#routing review is stale when exact planning authority facts change
 
 - **WHEN** the lifecycle source, task tree, Manifest, PlanReview, or intended workset changes after prepare
 - **THEN** apply fails before source, handoff, index, or ref mutation
@@ -118,6 +124,7 @@ planning-authority result.
 
 #### Scenario: Manual continuation has no Grant
 covers: #Requirement: Grant Core Owns Protected Continuation
+test: packages/workflow-engine/test/change-routing.integration.test.ts#route prepare converts the exact protected continuation refusal into a Central Fail-Grant
 
 - **WHEN** a caller prepares resume for a protected current routing record without accepted authority
 - **THEN** the engine returns one exact Fail-Grant challenge and retry command
@@ -125,6 +132,7 @@ covers: #Requirement: Grant Core Owns Protected Continuation
 
 #### Scenario: Exact registered continuation is accepted
 covers: #Requirement: Grant Core Owns Protected Continuation
+test: packages/workflow-engine/test/change-routing.integration.test.ts#manual or parked continuation requires one exact completed Central Grant transition
 
 - **WHEN** retry supplies the one completed Grant record bound to the unchanged routing state
 - **THEN** preparation may clear the blocked or parked disposition
@@ -142,6 +150,7 @@ recovery direction; task ingress MUST NOT silently switch focus or edit routing.
 
 #### Scenario: Multiple changes have no selected writer
 covers: #Requirement: Writer Admission Requires Managed Routing
+test: packages/workflow-engine/test/change-routing.integration.test.ts#stale routing review fails before mutation and resume never auto-focuses
 
 - **WHEN** a caller opens a task for a ready change outside the managed workset
 - **THEN** ingress fails with `CHANGE_ROUTING_REQUIRED`
@@ -159,6 +168,7 @@ groups, and zero active changes SHALL remain explicit rather than guessed.
 
 #### Scenario: Previous handoff names another change
 covers: #Requirement: Handoff Is a Derived Repository Projection
+test: packages/workflow-engine/test/change-routing.integration.test.ts#committed routing and handoff replay without private runtime
 
 - **WHEN** controlled source and repository facts select a different inventory
 - **THEN** rendering ignores the old selection and emits the current derived groups
@@ -166,6 +176,7 @@ covers: #Requirement: Handoff Is a Derived Repository Projection
 
 #### Scenario: Built-in Work Registry has zero items
 covers: #Requirement: Handoff Is a Derived Repository Projection
+test: packages/workflow-engine/test/handoff.integration.test.ts#no active changes render an explicit state independent of prior handoff bytes
 
 - **WHEN** the repository has no Work Item records or inventory projection
 - **THEN** handoff renders the current routing and task facts without Work backlog rows
