@@ -45,7 +45,6 @@ import {
   preflightControlPlaneRecoveryRollback,
   executeControlPlaneRecoveryRollback,
 } from './intervention-control-updater.ts';
-import type { MaintainerApplyAuditBindings } from './maintainer-approve.ts';
 import type { createHarnessBootstrapRecoveryProduction } from './harness-bootstrap-production.ts';
 import type {
   importRecoveryAuthorityDescriptor,
@@ -61,7 +60,15 @@ import type { RecoveryOperationalTrustRootRestoreDependencies } from '../../modu
 export interface HarnessBootstrapRecoveryCommandBindings extends ReturnType<
   typeof createHarnessBootstrapRecoveryProduction
 > {
-  discoverRepository: MaintainerApplyAuditBindings['discoverRepository'];
+  discoverRepository: (cwd: string) => {
+    repositoryRoot: string;
+    repositoryRealPath: string;
+    gitCommonDirectory: string;
+    branch: string | null;
+    head: string;
+    tree: string;
+    statusEntries: string[];
+  };
   bootstrapInterventionStateRoot(gitCommonDirectory: string): string;
   bootstrapInterventionUsage(): string;
   importRecoveryAuthorityDescriptor: typeof importRecoveryAuthorityDescriptor;
