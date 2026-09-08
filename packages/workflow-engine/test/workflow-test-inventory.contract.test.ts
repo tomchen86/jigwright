@@ -94,7 +94,7 @@ test('the tracked shard manifest owns every physical workflow test exactly once'
   assert.equal(manifest.algorithm.version, 1);
   assert.equal(
     manifest.sourceTelemetryDigest,
-    'sha256:b93b964d30e586a971d814a95697174864b0855d54697214e626c59dcae9ea4f',
+    'sha256:9fac685cdd703b208f1ebd05622975a2fb1df15d4848f46355965273cf48721a',
   );
   assert.equal(manifest.shards.length, 8);
   assert.equal(physicalFiles.length, 434);

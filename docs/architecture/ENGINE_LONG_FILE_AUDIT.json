@@ -5944,15 +5944,77 @@
         "completeLifecycles": 2,
         "durationMs": 2883589.631333
       },
-      "modifiedTestFilesFormatted": 7,
+      "modifiedTestFilesFormatted": 8,
       "scannedHandwrittenFiles": 1256,
       "currentCandidates": 222,
       "unreviewedCandidates": 0,
       "governanceSpecificationCases": {
         "passed": 3,
         "failed": 0
-      }
+      },
+      "formattingScope": "Eight handwritten test files; shard wrappers retain exact generator output."
     },
-    "finalGateEvidence": "Use the run-bound private full-gate receipt for the exact isolated validation identity; this tracked audit does not assert a passing receipt."
+    "finalGateEvidence": "Use the run-bound private full-gate receipt for the exact isolated validation identity; this tracked audit does not assert a passing receipt.",
+    "initialDiagnosticResult": {
+      "outcome": "failed",
+      "passed": 2833,
+      "failed": 7,
+      "cancelled": 0,
+      "skipped": 0,
+      "durationMs": 8392981.833625,
+      "identityStable": false,
+      "observedFiles": 434,
+      "fileSetMatches": true,
+      "receiptDigest": "sha256:d339cf9c451a426174e90288e36eb0a5cb2fe6bb57f1f85deaebbe0e32738b5a"
+    },
+    "shardRebalance": {
+      "sourceTelemetryRunId": "run-20260908031236123-701d93e7-3e16-4af8-a78d-f5ca9bb41c5f",
+      "sourceTelemetryDigest": "sha256:9fac685cdd703b208f1ebd05622975a2fb1df15d4848f46355965273cf48721a",
+      "inventoryDigest": "sha256:1171750cb379126047d5b7c6802300fa227907412dfd8bd6be9a6d0245f2f974",
+      "physicalFileCount": 434,
+      "executionUnitCount": 431,
+      "shards": [
+        {
+          "id": "shard-01",
+          "executionUnits": 52
+        },
+        {
+          "id": "shard-02",
+          "executionUnits": 57
+        },
+        {
+          "id": "shard-03",
+          "executionUnits": 53
+        },
+        {
+          "id": "shard-04",
+          "executionUnits": 55
+        },
+        {
+          "id": "shard-05",
+          "executionUnits": 52
+        },
+        {
+          "id": "shard-06",
+          "executionUnits": 54
+        },
+        {
+          "id": "shard-07",
+          "executionUnits": 54
+        },
+        {
+          "id": "shard-08",
+          "executionUnits": 54
+        }
+      ],
+      "validation": {
+        "generatorCheck": "passed",
+        "inventoryContractCases": {
+          "passed": 9,
+          "failed": 0
+        }
+      },
+      "sourceTelemetryUnmodified": true
+    }
   }
 }

@@ -132,3 +132,10 @@ Concurrent documentation commits changed the main checkout's HEAD during the
 initial run. Final gate validation therefore uses a fixed isolated worktree.
 The exact result is recorded by its run-bound private full-gate receipt; this
 tracked document does not claim a passing receipt.
+
+The completed initial run reports 2,833 passed, seven failed, zero cancelled and
+zero skipped test nodes, with all 434 expected physical files observed. Its
+unmodified complete telemetry now assigns 52–57 execution units to each shard.
+The generator check and all nine inventory contract cases pass; the inventory
+test pins the exact new telemetry digest. No physical test or execution unit is
+removed by the rebalance.
