@@ -29,6 +29,18 @@ import {
   isRecord,
   isStringArray,
 } from '../../../../foundation/canonical-json/contract-values.ts';
+import {
+  assertStoredEvidenceNode,
+  type EvidenceNode,
+} from '../../../planning/investigation/evidence-node.ts';
+import { validateClosedEvidenceDag } from '../../../planning/investigation/evidence-currentness.ts';
+import {
+  createConvergenceRecord,
+  createDescendantReuseProof,
+  readConvergenceBinding,
+  readReuseProofBinding,
+} from '../../../planning/investigation/evidence-convergence.ts';
+import { validateTrackedEvidenceReusePaths } from '../../../planning/investigation/evidence-reuse-path.ts';
 import { engineProjectionDefinitions } from '../../../../modules/projection/engine-projection-registry.ts';
 import { validateCurrentChangeOrigin } from '../../../../modules/governance-intake/work-registry.ts';
 import {
@@ -65,9 +77,7 @@ import {
   hasExactKeys,
   isDeltaSpecReferencePath,
   isReferenceTitle,
-  parseExecutionArtifact,
-  parsePlanReviewArtifact,
-  parseTasks,
+  createContractParsers,
   type BehaviorContractRef,
   type ExecutionArtifact,
   type GuardContract,
@@ -76,12 +86,7 @@ import {
   type TaskPolicy,
 } from './contract-parsers.ts';
 
-export {
-  isPlanningAssuranceBinding,
-  parsePlanReviewArtifact,
-  parseExecutionArtifact,
-  parseTasks,
-} from './contract-parsers.ts';
+export { isPlanningAssuranceBinding } from './contract-parsers.ts';
 export type {
   TaskPolicy,
   GuardContract,
@@ -104,6 +109,67 @@ export type {
 export { parseCheckCommand, workflowNamespaceConfig };
 export type { WorkflowConfig, TerminalCheckPolicy, TaskAuthorizationPolicy };
 export type { CheckDefinition, ChecksConfig, ParsedCheckCommand };
+
+export type ContractParserEvidenceNode = EvidenceNode;
+export type ContractParserRuntime = {
+  assertTaskId: typeof assertTaskId;
+  matchesAllowedPath: typeof matchesAllowedPath;
+  normalizePolicyPath: typeof normalizePolicyPath;
+  assertStoredEvidenceNode: typeof assertStoredEvidenceNode;
+  validateClosedEvidenceDag: typeof validateClosedEvidenceDag;
+  createConvergenceRecord: typeof createConvergenceRecord;
+  createDescendantReuseProof: typeof createDescendantReuseProof;
+  readConvergenceBinding: typeof readConvergenceBinding;
+  readReuseProofBinding: typeof readReuseProofBinding;
+  validateTrackedEvidenceReusePaths: typeof validateTrackedEvidenceReusePaths;
+};
+
+function boundContractParsers() {
+  return createContractParsers({
+    assertTaskId,
+    matchesAllowedPath,
+    normalizePolicyPath,
+    assertStoredEvidenceNode,
+    validateClosedEvidenceDag,
+    createConvergenceRecord,
+    createDescendantReuseProof,
+    readConvergenceBinding,
+    readReuseProofBinding,
+    validateTrackedEvidenceReusePaths,
+  });
+}
+
+export function parsePlanReviewArtifact(
+  value: unknown,
+  expectedChangeId: string,
+): PlanReviewArtifact {
+  return boundContractParsers().parsePlanReviewArtifact(
+    value,
+    expectedChangeId,
+  );
+}
+
+export function parseExecutionArtifact(
+  value: unknown,
+  expectedChangeId: string,
+  tasks: ParsedTask[],
+  guard: GuardContract,
+  checks: ChecksConfig,
+  behaviorContracts: BehaviorContractRef[],
+): ExecutionArtifact {
+  return boundContractParsers().parseExecutionArtifact(
+    value,
+    expectedChangeId,
+    tasks,
+    guard,
+    checks,
+    behaviorContracts,
+  );
+}
+
+export function parseTasks(markdown: string): ParsedTask[] {
+  return boundContractParsers().parseTasks(markdown);
+}
 
 export function repositoryCurrentSchemaName(
   repositoryRoot: string,

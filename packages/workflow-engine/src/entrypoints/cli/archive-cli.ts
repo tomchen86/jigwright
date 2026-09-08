@@ -1,11 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { commitArchiveTransition } from '../../application/archive/archive-transition.ts';
 import {
-  type GitHubArchiveAdapterModuleV1,
+  commitArchiveTransition,
   discoverArchivePullRequestCandidates,
   preparePostMergeArchivePullRequest,
-} from '../../application/archive/archive-pr-orchestration.ts';
+} from '../../composition-root/cli-command-services.ts';
+import type { GitHubArchiveAdapterModuleV1 } from '../../composition-root/cli-command-services.ts';
+
 import type { GitHubArchiveAdapterConfigV1 } from '@jigwright/github-adapter';
 import {
   workflowError,

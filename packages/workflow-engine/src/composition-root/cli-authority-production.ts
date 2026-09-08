@@ -8,8 +8,11 @@ import {
   type MaintainerSignerProvider,
 } from '../adapters/signing/ssh/maintainer-signer.ts';
 import { parseMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
-import { controlPlaneTaskMandateBindingFromTaskMandate } from '../entrypoints/cli/intervention-control-updater-cli.ts';
-import { inspectActiveTaskMandateBinding } from '../modules/authority/task-mandate.ts';
+import {
+  inspectActiveTaskMandateBinding,
+  type TaskMandateBinding,
+} from '../modules/authority/task-mandate.ts';
+import type { ControlPlaneTaskMandateBinding } from '../modules/authority/intervention-control.ts';
 import {
   assertSameControlPlaneTaskMandateBinding,
   type ControlPlaneTaskMandateValidationPhase,
@@ -64,7 +67,12 @@ export function interventionControlDependencies(cwd: string) {
   };
 }
 
-export function controlPlaneUpdaterDependencies(cwd: string) {
+export function controlPlaneUpdaterDependencies(
+  cwd: string,
+  controlPlaneTaskMandateBindingFromTaskMandate: (
+    binding: TaskMandateBinding,
+  ) => ControlPlaneTaskMandateBinding,
+) {
   const human = interventionControlDependencies(cwd);
   const repository = discoverRepository(cwd);
   let resolvedApprovalSigner: MaintainerSignerProvider | null = null;

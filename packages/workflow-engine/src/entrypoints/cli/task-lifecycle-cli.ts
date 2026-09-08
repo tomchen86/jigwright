@@ -1,25 +1,13 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import {
+  loadWorkflowConfig,
   resolveOpenTaskId,
   openTask,
   contextualizeOpenTaskError,
   findOpenTaskLifecycleStatus,
-} from '../../application/execute-task/open-task.ts';
-import {
-  WorkflowError,
-  workflowError,
-  ExitCode,
-} from '../../foundation/errors/errors.ts';
-import { discoverRepository } from '../../runtime/repository-transaction/git.ts';
-import { inspectGovernanceIntakeCounts } from '../../modules/governance-intake/intake-summary.ts';
-import {
-  productionConsumedRoleResultReplayPort,
-  productionConsumedPlanReviewReplayPort,
-} from '../../composition-root/grant-verifier-composition.ts';
-import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
-import {
+  discoverRepository,
+  inspectGovernanceIntakeCounts,
   inspectFinalizeRecoveryStatus,
   findTaskCommits,
   completeTask,
@@ -29,28 +17,19 @@ import {
   cancelFinalizeRecovery,
   rollbackCompletion,
   commitSession,
-} from '../../application/finalize/lifecycle.ts';
-import {
   getSession,
   preflightTaskSession,
   listSessions,
   checkSession,
   abortSession,
-} from '../../application/execute-task/session.ts';
-import { updateTaskSessionBase } from '../../application/execute-task/update-base.ts';
-import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
-import {
+  updateTaskSessionBase,
+  runtimePaths,
   reviseTask,
   resumeTask,
   inspectTaskRevisionStatus,
-} from '../../application/revise/task-revision.ts';
-import {
-  type TaskStrategyLifecycleStatus,
   resumeTaskStrategy,
   inspectTaskStrategyLifecycle,
-} from '../../application/execute-task/task-strategy-lifecycle.ts';
-import { parseTaskStrategyRedRevisionRequest } from '../../runtime/storage-journal/task-strategy-red-revision-store.ts';
-import {
+  parseTaskStrategyRedRevisionRequest,
   inspectTaskDiffReviewSubject,
   inspectTaskDiffReviewStatus,
   reconcileTaskDiffReview,
@@ -61,20 +40,31 @@ import {
   loadCurrentAuthenticatedTaskDiffReview,
   submitExternalTaskDiffReviewContinuation,
   beginTaskDiffReview,
-} from '../../application/finalize/task-diff-review-lifecycle.ts';
-import { createTaskDiffReviewChallengeResponse } from '../../modules/assurance/task-diff-review-artifact.ts';
-import {
+  createTaskDiffReviewChallengeResponse,
   commitPlanningTransition,
   commitPlanAmendment,
-} from '../../application/propose/planning-transition.ts';
-import {
   resumeProposeFromFile,
   startProposeFromFile,
   getProposeStatus,
-} from '../../application/propose/propose-orchestrator.ts';
+  readProviderInvocation,
+} from '../../composition-root/cli-command-services.ts';
+import type { TaskStrategyLifecycleStatus } from '../../composition-root/cli-command-services.ts';
+
+import {
+  WorkflowError,
+  workflowError,
+  ExitCode,
+} from '../../foundation/errors/errors.ts';
+
+import {
+  productionConsumedRoleResultReplayPort,
+  productionConsumedPlanReviewReplayPort,
+} from '../../composition-root/grant-verifier-composition.ts';
+import { loadInvestigationRuntimeContext } from '../../composition-root/lifecycle-context.ts';
+
 import { productionRoleTopologyResolutionPort } from '../../composition-root/role-topology-resolution-production.ts';
 import { dispatchProviderWorker } from '../worker/provider-worker.ts';
-import { readProviderInvocation } from '../../runtime/storage-journal/provider-invocation-store.ts';
+
 import {
   usage,
   requireArgumentCount,

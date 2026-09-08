@@ -36,7 +36,11 @@ import {
   type ProjectionBinding,
   type ProjectionStatus,
 } from '../projection/projection-service.ts';
-import { runGit } from '../../runtime/repository-transaction/git.ts';
+import {
+  publishPreparedExclusiveLock,
+  reclaimDeadPreparedLock,
+  runGit,
+} from '../../runtime/repository-transaction/git.ts';
 import {
   repositoryConsumerConfigurationExists,
   repositoryConsumerPath,
@@ -71,6 +75,7 @@ import {
   WorkRegistryPromotionCasMismatch,
   abortWorkItemPromotionTransaction,
   applyWorkItemPromotionTransaction,
+  createWorkRegistryPromotionLocks,
   createWorkItemPromotionTransaction,
   findExactRecoveredWorkItemPromotion,
   markWorkItemPromotionRollback,
@@ -81,11 +86,24 @@ import {
   recoverWorkItemPromotionTransactionsUnlocked,
   removeWorkItemPromotionJournal,
   replayRecoveredWorkItemPromotion,
+  workRegistryTransactionConflict,
+} from './work-registry-promotion-transaction.ts';
+
+export type WorkRegistryPromotionLockBindings = Readonly<{
+  publishPreparedExclusiveLock: typeof publishPreparedExclusiveLock;
+  reclaimDeadPreparedLock: typeof reclaimDeadPreparedLock;
+  runGit: typeof runGit;
+}>;
+
+const {
   withWorkRegistryPromotionLock,
   withWorkRegistryPromotionLockWhenAvailable,
   withWorkRegistryPromotionReadLockWhenAvailable,
-  workRegistryTransactionConflict,
-} from './work-registry-promotion-transaction.ts';
+} = createWorkRegistryPromotionLocks({
+  publishPreparedExclusiveLock,
+  reclaimDeadPreparedLock,
+  runGit,
+});
 
 export { workItemDigest } from './work-registry-record.ts';
 

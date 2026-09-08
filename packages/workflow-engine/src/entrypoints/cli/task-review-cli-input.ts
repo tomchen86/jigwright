@@ -2,13 +2,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import {
-  type TaskDiffReviewChallengeResponseInput,
-  type TaskDiffReviewExternalSubmissionInput,
-  type TaskDiffReviewExternalClosureRequestInput,
   parseTaskDiffReviewChallengeResponseInput,
   parseTaskDiffReviewExternalSubmissionInput,
   parseTaskDiffReviewExternalClosureRequestInput,
-} from '../../modules/assurance/task-diff-review-input.ts';
+} from '../../composition-root/cli-command-services.ts';
+import type {
+  TaskDiffReviewChallengeResponseInput,
+  TaskDiffReviewExternalSubmissionInput,
+  TaskDiffReviewExternalClosureRequestInput,
+} from '../../composition-root/cli-command-services.ts';
 
 type TaskDiffReviewCliInput =
   | Readonly<{

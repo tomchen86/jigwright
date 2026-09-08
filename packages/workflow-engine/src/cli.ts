@@ -124,6 +124,7 @@ import {
   dispatchTaskLifecycleCommand,
 } from './entrypoints/cli/task-lifecycle-cli.ts';
 import { dispatchAuthorityCommand } from './entrypoints/cli/authority-management-cli.ts';
+import { createHarnessBootstrapDependencies } from './harness-bootstrap.ts';
 
 export {
   createProtectedTaskApplyDescendantSettlementFailGrantResult,
@@ -737,11 +738,23 @@ function dispatch(args: string[], cwd: string): CommandResult {
       );
     }
     case 'grant':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'external-effect':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'publish':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'job': {
       if (rest[0] === 'list' && rest.length === 1) {
         return {
@@ -960,17 +973,41 @@ function dispatch(args: string[], cwd: string): CommandResult {
       throw retentionUsage();
     }
     case 'intervention':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'control-plane':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'audit':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'change':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'engine':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'task':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'revise-task':
       return dispatchTaskLifecycleCommand(args, cwd);
     case 'resume-task':
@@ -1025,7 +1062,11 @@ function dispatch(args: string[], cwd: string): CommandResult {
       };
     }
     case 'authority-plan':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'adapter':
       return {
         command,
@@ -1080,9 +1121,17 @@ function dispatch(args: string[], cwd: string): CommandResult {
       };
     }
     case 'maintainer':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'human-resolution-state':
-      return dispatchAuthorityCommand(args, cwd);
+      return dispatchAuthorityCommand(
+        args,
+        cwd,
+        createHarnessBootstrapDependencies,
+      );
     case 'documents':
       if (rest.length !== 1 || rest[0] !== 'validate') {
         throw usage('Usage: pnpm workflow documents validate [--json]');

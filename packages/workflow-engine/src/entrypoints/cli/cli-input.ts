@@ -3,7 +3,7 @@ import {
   workflowError,
   ExitCode,
 } from '../../foundation/errors/errors.ts';
-import { workflowGuidanceUsageLines } from '../../modules/guidance/next-steps/workflow-guidance.ts';
+import { workflowGuidanceUsageLines } from '../../composition-root/cli-command-services.ts';
 
 export type CommandResult = Record<string, unknown>;
 
