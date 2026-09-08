@@ -4,49 +4,7 @@ capabilities: [bootstrap-task-evidence, collaboration-continuation-grant, engine
 ## Purpose
 
 Define the contracts shared by planning, investigation evidence, managed execution, concurrent workspaces, archive, and their independent replay paths.
-
 ## Requirements
-
-### Requirement: Archive evidence honors the canonical-evidence epoch
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-Archive eligibility and CI archive replay SHALL exempt a completed task from
-the exactly-one-canonical-commit requirement only when that task was already
-completed in the before tree of the change's earliest canonical plan commit.
-Tasks completed under the canonical regime MUST keep the unmodified
-requirement, and exempt tasks with exactly one canonical commit MUST keep
-full recording and reachability verification.
-
-#### Scenario: Bootstrap-era completions are exempt
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
-
-- **WHEN** a change's earliest canonical plan commit has a before tree whose
-  tasks are already completed and some of those tasks have zero or several
-  canonical commits
-- **THEN** the archive proceeds, recording task commits only where exactly
-  one exists
-
-#### Scenario: Canonical-era completions stay enforced
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
-
-- **WHEN** a task was completed after the change's earliest canonical plan
-  commit and lacks exactly one canonical commit
-- **THEN** the archive fails closed
-
-#### Scenario: Ordinary changes gain no exemption
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
-
-- **WHEN** a change was introduced through a canonical plan introduction
-- **THEN** its exempt set is empty because introductions must contain only
-  unchecked tasks
-
-#### Scenario: Live and replay agree
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
-
-- **WHEN** an archive commit reaches CI archive replay
-- **THEN** replay derives the identical exempt set from the archive parent
-  and accepts exactly the archives live eligibility accepts
-
 ### Requirement: Provider Shortage Pauses Without Partial Transition
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-5cdc4849e2c39d2af2dce4a96fd95b92fac190f87813f6ac59779ece7ab8aafb]
 
@@ -388,21 +346,24 @@ covers: #Requirement: Investigation Exemption Does Not Manufacture Evidence
 - **AND** the summary must label those claims inapplicable rather than satisfied
 
 ### Requirement: Design Ledger Is an Engine-Managed Projection
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+sources: [SRC-9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e]
 
-The workflow engine SHALL render one marked investigation-ledger region of the authoritative design from structured investigation evidence. The engine SHALL own the markers, objective fields, and all projection bytes inside that region.
+The workflow engine SHALL render one marked investigation-ledger region of the authoritative design as readable prose from the authoritative Manifest v3 WHY overlays. The engine SHALL own the markers and all projection bytes inside that region.
 
-Semantic WHY, invariant, question, and answer fields MUST retain actor provenance and MUST be represented as reviewed claims rather than engine-authored or engine-verified understanding.
+The prose MUST present the inspected path, source byte locations, WHY, protected invariant, reviewer question, and answer as reviewed, actor-attested claims. Technical identities, content digests, groups, terms, and actor provenance MUST remain in the structured Manifest rather than being printed as JSON, hashes, or author identities in the prose. The projection MUST NOT become investigation evidence or claim engine-verified understanding.
 
 #### Scenario: Managed ledger matches structured evidence
 covers: #Requirement: Design Ledger Is an Engine-Managed Projection
+test: packages/workflow-engine/test/investigation-why.integration.test.ts#Manifest v3 WHY overlays render and validate the exact managed design region
 
-- **GIVEN** current structured evidence and WHY rows
+- **GIVEN** current structured evidence and WHY overlays
 - **WHEN** the design ledger is rendered
-- **THEN** its paths, locations, digests, groups, terms, and semantic fields match the structured source exactly
+- **THEN** its readable paths, source byte locations, and semantic fields match the structured source exactly
+- **AND** technical identities and actor provenance remain in the authoritative Manifest
 
 #### Scenario: Managed ledger is edited manually
 covers: #Requirement: Design Ledger Is an Engine-Managed Projection
+test: packages/workflow-engine/test/investigation-why.integration.test.ts#Manifest v3 WHY overlays render and validate the exact managed design region
 
 - **GIVEN** the rendered design ledger differs from its current structured source
 - **WHEN** planning validation runs
@@ -411,6 +372,7 @@ covers: #Requirement: Design Ledger Is an Engine-Managed Projection
 
 #### Scenario: Managed markers are ambiguous
 covers: #Requirement: Design Ledger Is an Engine-Managed Projection
+test: packages/workflow-engine/test/investigation-why.integration.test.ts#Manifest v3 projection rejects malformed managed ledger markers
 
 - **GIVEN** design contains missing, duplicate, nested, or malformed ledger markers
 - **WHEN** planning validation runs
@@ -588,17 +550,50 @@ covers: #Requirement: Every v3 Failure Delegates Continuation to Central Grant C
 - **AND** this is a fail-detecting compensating transaction, not a claim that POSIX can atomically prevent a hostile same-UID relocation or process crash
 
 ### Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+sources: [SRC-9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e]
 
-The v3 Manifest SHALL persist only per-change WHY overlays or immutable `knowledgeRef` versions plus an explicit current freshness decision. The separate Semantic Knowledge Graph owns reusable subject meaning, responsibilities, invariants, failure modes, dependencies, freshness, and supersession. Reusable knowledge MUST NOT prove current Git facts without exact current replay and source binding.
+The v3 Manifest SHALL retain per-change WHY overlays or immutable `knowledgeRef` versions with an explicit current freshness decision. Reusable file responsibility and invariants SHALL live in the source header. The Semantic Ledger SHALL contain a binding and freshness index, including exact subject and source identities, import-derived dependencies, policy binding, provenance and supersession; it MUST NOT persist a second copy of explanatory prose.
+
+Dependencies SHALL be derived from the supplied repository snapshot's literal imports and exports, including resolvable workspace package exports. Changes, removal or replacement of a dependency SHALL require freshness reassessment along reverse import edges. A stored entry MUST NOT prove current Git facts without current replay and exact source binding.
 
 #### Scenario: Current replay cites an immutable knowledge version
 covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
 
-- **GIVEN** a load-bearing Git path/blob has one explicitly fresh reusable-knowledge decision
-- **WHEN** v3 authority validation replays the current Manifest
-- **THEN** the exact `knowledgeRef` version and freshness provenance bind that current source tuple
-- **AND** reusable subject content remains in the separate Semantic Knowledge Graph rather than being copied into the Manifest
+- **GIVEN** a load-bearing Git path/blob has an explicitly fresh reusable-knowledge decision
+- **WHEN** the engine records the current Manifest's reuse decision
+- **THEN** its `knowledgeRef` names the exact immutable ledger entry
+- **AND** the Manifest records the current source binding and explicit freshness decision
+
+#### Scenario: The ledger does not duplicate header explanations
+covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#semantic ledger is a binding index without a second copy of header prose
+
+- **WHEN** the engine creates a reusable file entry
+- **THEN** the entry binds its subject and source without copying the file's explanatory prose
+
+#### Scenario: Dependency edges come from the supplied snapshot
+covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#literal imports resolve against the supplied snapshot including workspace exports
+
+- **WHEN** the engine derives dependencies for literal imports and exports
+- **THEN** it resolves their repository files and workspace exports from the same snapshot
+- **AND** comments and strings resembling import statements do not create edges
+
+#### Scenario: Changed or missing dependencies stale their consumers
+covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#missing dependencies stay stale and changes propagate through reverse import edges
+
+- **WHEN** a dependency changes or can no longer be observed
+- **THEN** its consumers require reassessment
+- **AND** the change propagates through reverse import edges even when consumer source bytes are unchanged
+
+#### Scenario: Export replacement changes the bound dependency
+covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#import options, division, and export condition order retain the actual dependency
+
+- **WHEN** a workspace package export resolves to a different repository file
+- **THEN** the importing entry is dependency-changed rather than reused solely because its own source bytes match
 
 ### Requirement: Descendant Reuse Preserves Original Provenance
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -2146,3 +2141,81 @@ covers: #Requirement: Assurance Claims Preserve Their Actual Hardness
 - **WHEN** T1.5 assurance is rendered
 - **THEN** the claim is labeled undelivered
 - **AND** no synonym promotes it to a current hard guarantee
+
+### Requirement: Current archive requires canonical task evidence
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+
+Archive eligibility and CI archive replay SHALL require exactly one canonical workflow commit for every completed task in the current task execution generation. A completion that predates the earliest canonical plan commit MUST NOT substitute for current task evidence. The engine SHALL preserve canonical recording and configured-base reachability verification for every accepted task commit.
+
+#### Scenario: Bootstrap-era completions still need current evidence
+covers: #Requirement: Current archive requires canonical task evidence
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility rejects pre-epoch task completions without current evidence
+
+- **WHEN** a task was marked complete before a canonical plan revision but has no canonical workflow commit in the current task execution generation
+- **THEN** live archive eligibility reports missing task evidence
+- **AND** the historical completion does not create an exemption
+
+#### Scenario: Canonical-era completions stay enforced
+covers: #Requirement: Current archive requires canonical task evidence
+test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility keeps canonical-era completions enforced
+
+- **WHEN** a task was marked complete after a canonical plan revision without a canonical workflow commit
+- **THEN** archive eligibility reports missing task evidence
+
+#### Scenario: Replay also requires current evidence for historical completions
+covers: #Requirement: Current archive requires canonical task evidence
+test: packages/workflow-engine/test/ci-archive.integration.test.ts#current archive rejects pre-epoch task completions without current evidence
+
+- **WHEN** CI replays an archive containing pre-epoch task completion without current canonical task evidence
+- **THEN** replay rejects the archive instead of deriving a historical exempt set
+
+### Requirement: Open Task Presents Pinned System Meaning
+sources: [SRC-9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e, SRC-4e187741d599681280dac6aebd8f47c4f47baf81ba6f137d8eec2c67a12e1b84]
+
+Open-task results SHALL include readable system meaning from the task's pinned baseline: applicable containing contracts, exact cited Source wording, managed README explanations and shallow file-header responsibilities and invariants. The context SHALL include declared future paths through their containing scopes, omit sibling-only contracts, and keep technical metadata out of the readable contract prose. Reading this context MUST NOT fabricate explanation or test evidence.
+
+#### Scenario: Scoped context includes exact wording and containing contracts
+covers: #Requirement: Open Task Presents Pinned System Meaning
+test: packages/workflow-engine/test/system-document-context.contract.test.ts#task context resolves ancestor contracts and exact Source wording without opaque metadata
+
+- **WHEN** a task reads the system meaning for its allowed paths
+- **THEN** it receives the applicable ancestor contracts and exact Source wording
+- **AND** unrelated sibling contracts and machine-only metadata are omitted
+
+#### Scenario: Working edits do not change the pinned context
+covers: #Requirement: Open Task Presents Pinned System Meaning
+test: packages/workflow-engine/test/system-document-context.contract.test.ts#task context uses committed baseline bytes after working documents change
+
+- **WHEN** checkout documents change after the task baseline was committed
+- **THEN** open-task context still reads the pinned baseline bytes
+
+### Requirement: Finalize Records Exact Contract and Explanation Dispositions
+sources: [SRC-1b0a1a298bf1d96185dacacad60dab92d4213d7713a167911e8ae60181dc322d, SRC-be69144599ec1bdbbe9a4ee5e6636d0a044e7404b465f5fc5c209ffa4381ca77]
+
+For any diff within a containing system contract, including documents, moves and deletions, finalize SHALL collect the affected contract and managed README explanation obligations from both the before and after snapshots. Each obligation SHALL receive one disposition: `still-valid`, an observed `updated`, or `later` with an explicit reason. A planned spec delta counts as an update only when it changes the actual contract; generated README content or a changed confirmation commit alone MUST NOT count as an explanation update.
+
+Document dispositions SHALL bind the exact task, baseline, implementation fingerprint, document bytes and applicable delta bytes. A changed candidate SHALL require a new decision. Missing obligations SHALL expose an exact Central Grant transition. An accepted Grant SHALL retain a recoverable `skipped-by-grant` exception and MUST NOT be described as a successful review or passing test.
+
+#### Scenario: Finalize uses exact decisions before required checks
+covers: #Requirement: Finalize Records Exact Contract and Explanation Dispositions
+test: packages/workflow-engine/test/system-document-finalize.integration.test.ts#finalize requires exact document decisions before checks and recovers the admitted projection
+
+- **WHEN** finalize observes missing decisions or a candidate changed after review
+- **THEN** it requests current document dispositions before running the task checks
+- **AND** after valid disposition, single-pass finalization keeps the admitted projection and check evidence
+
+#### Scenario: Grant recovery preserves the actual exception
+covers: #Requirement: Finalize Records Exact Contract and Explanation Dispositions
+test: packages/workflow-engine/test/system-document-finalize.integration.test.ts#Central Grant document exception recovers its exact receipt and never marks review passed
+
+- **WHEN** Grant execution is interrupted after the durable document exception
+- **THEN** recovery reuses the exact receipt
+- **AND** the exception remains skipped-by-grant and cannot authorize a changed candidate
+
+#### Scenario: A missing explanation is not still valid
+covers: #Requirement: Finalize Records Exact Contract and Explanation Dispositions
+test: packages/workflow-engine/test/system-document-disposition.contract.test.ts#a removed or unreadable handwritten explanation cannot be confirmed as still valid
+
+- **WHEN** a README remains but its managed explanation is removed or unreadable
+- **THEN** the document still needs disposition and cannot be confirmed as still-valid
+- **AND** an explicit reason can defer that obligation

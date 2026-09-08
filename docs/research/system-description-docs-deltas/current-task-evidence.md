@@ -1,16 +1,23 @@
 # Current task evidence — baseline reconciliation delta
 
-Date: 2026-09-08. Phase C step 11 reconciles the preserved bootstrap-era contract with the already-delivered current-v3 archive path. This dated delta does not introduce a runtime exemption or change archive behavior. The original block remains in the independently recorded canonical migration commit.
+Date: 2026-09-08. Phase C step 11 reconciles the preserved bootstrap-era contract with the already-delivered current-v3 archive path. This dated delta replaces the obsolete exemption requirement rather than retaining a scenario title that falsely promises an exemption. It does not change archive behavior. The original block remains in canonical migration commit `9c63c49`.
 
-## MODIFIED Requirements
+## REMOVED Requirements
 
 ### Requirement: Archive evidence honors the canonical-evidence epoch
+
+**Reason**: The current-v3 live path and CI replay both require current canonical task evidence, including pre-epoch completion. The exemption scenario contradicts that behavior.
+**Migration**: Keep original history in the migration commit; use the replacement requirement below as current truth.
+
+## ADDED Requirements
+
+### Requirement: Current archive requires canonical task evidence
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 Archive eligibility and CI archive replay SHALL require exactly one canonical workflow commit for every completed task in the current task execution generation. A completion that predates the earliest canonical plan commit MUST NOT substitute for current task evidence. The engine SHALL preserve canonical recording and configured-base reachability verification for every accepted task commit.
 
 #### Scenario: Bootstrap-era completions still need current evidence
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
+covers: #Requirement: Current archive requires canonical task evidence
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility rejects pre-epoch task completions without current evidence
 
 - **WHEN** a task was marked complete before a canonical plan revision but has no canonical workflow commit in the current task execution generation
@@ -18,14 +25,14 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 - **AND** the historical completion does not create an exemption
 
 #### Scenario: Canonical-era completions stay enforced
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
+covers: #Requirement: Current archive requires canonical task evidence
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility keeps canonical-era completions enforced
 
 - **WHEN** a task was marked complete after a canonical plan revision without a canonical workflow commit
 - **THEN** archive eligibility reports missing task evidence
 
 #### Scenario: Replay also requires current evidence for historical completions
-covers: #Requirement: Archive evidence honors the canonical-evidence epoch
+covers: #Requirement: Current archive requires canonical task evidence
 test: packages/workflow-engine/test/ci-archive.integration.test.ts#current archive rejects pre-epoch task completions without current evidence
 
 - **WHEN** CI replays an archive containing pre-epoch task completion without current canonical task evidence

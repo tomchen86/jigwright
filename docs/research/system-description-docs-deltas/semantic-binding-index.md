@@ -11,6 +11,15 @@ The v3 Manifest SHALL retain per-change WHY overlays or immutable `knowledgeRef`
 
 Dependencies SHALL be derived from the supplied repository snapshot's literal imports and exports, including resolvable workspace package exports. Changes, removal or replacement of a dependency SHALL require freshness reassessment along reverse import edges. A stored entry MUST NOT prove current Git facts without current replay and exact source binding.
 
+#### Scenario: Current replay cites an immutable knowledge version
+covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
+test: packages/workflow-engine/test/investigation-manifest-v3.test.ts#every load-bearing path/blob has exactly one complete WHY overlay or fresh knowledge reuse
+
+- **GIVEN** a load-bearing Git path/blob has an explicitly fresh reusable-knowledge decision
+- **WHEN** the engine records the current Manifest's reuse decision
+- **THEN** its `knowledgeRef` names the exact immutable ledger entry
+- **AND** the Manifest records the current source binding and explicit freshness decision
+
 #### Scenario: The ledger does not duplicate header explanations
 covers: #Requirement: Reusable Knowledge Remains Separate From Per-Change WHY
 test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#semantic ledger is a binding index without a second copy of header prose
