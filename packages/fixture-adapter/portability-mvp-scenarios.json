@@ -18,7 +18,7 @@
     "strict-clean-source-release-candidate",
     "offline-exact-local-tarball-install",
     "fresh-consumer-init",
-    "repeated-init-refusal",
+    "repeated-init-preserves-policy",
     "installed-guide",
     "installed-public-exports"
   ],

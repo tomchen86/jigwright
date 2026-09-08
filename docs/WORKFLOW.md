@@ -14,6 +14,15 @@ The engine records provider wait count/rate, collaboration-grant count/rate,
 provider latency, and direct human review/action count so operational friction
 is visible without turning empirical observations into structural proof.
 
+## Native instruction files
+
+Use `jigwright init` for incremental setup, or `jigwright guidance install
+<path>…` to select instruction Markdown files directly. Installation previews
+its changes; `guidance refresh`, `guidance remove` and `guidance status` manage
+only the generated region. `doctor` also reports each registered projection.
+See [Native agent guidance](features/AGENT_GUIDANCE.md) for noninteractive
+answers, marker ownership and removal behavior.
+
 ### Stable assurance claim registry
 
 | Claim                     | Meaning                                                                                                                             | Hardness                                                                        | Owner                                                                |

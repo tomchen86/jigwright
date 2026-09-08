@@ -13,6 +13,8 @@ data.
   and its explicit live dispositions.
 - `docs/CURRENT_AND_NEXT_STEPS.md` is the generated current handoff.
 - `docs/architecture/` describes the package and engine boundaries.
+- [Native agent guidance](features/AGENT_GUIDANCE.md) covers instruction-file
+  regions, drift inspection, and incremental init setup.
 - `openspec/specs/` contains normative product requirements.
 - `openspec/changes/` contains governed current and archived change artifacts.
 

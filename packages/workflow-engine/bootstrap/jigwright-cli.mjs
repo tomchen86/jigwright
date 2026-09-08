@@ -5,7 +5,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { initializeJigwrightConsumer } from './jigwright-init.mjs';
+import {
+  configuredJigwrightEnvironment,
+  initializeJigwrightConsumer,
+} from './jigwright-init.mjs';
 
 let invocation;
 try {
@@ -17,11 +20,39 @@ try {
 const { argv, repositoryRoot } = invocation;
 if (argv[0] === 'init') {
   try {
-    const result = initializeJigwrightConsumer(repositoryRoot);
+    const result = await initializeJigwrightConsumer(repositoryRoot, {
+      argv: argv.slice(1),
+    });
     process.stdout.write(`${JSON.stringify({ ok: true, result })}\n`);
     process.exit(0);
   } catch (error) {
     printJigwrightFailure(error, 'JIGWRIGHT_INIT_FAILED');
+    process.exit(12);
+  }
+}
+const helpInvocation =
+  argv.length === 1 && ['--help', '-h', 'help'].includes(argv[0]);
+if (!helpInvocation) {
+  try {
+    const topLevel = childProcess.spawnSync(
+      'git',
+      ['-C', repositoryRoot, 'rev-parse', '--show-toplevel'],
+      {
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'ignore'],
+        windowsHide: true,
+      },
+    );
+    const setupRepositoryRoot =
+      topLevel.status === 0 ? topLevel.stdout.trim() : repositoryRoot;
+    const configuredEnvironment =
+      configuredJigwrightEnvironment(setupRepositoryRoot);
+    if (configuredEnvironment.JIGWRIGHT_AGENT_PROVIDER_CONFIG !== undefined) {
+      process.env.JIGWRIGHT_AGENT_PROVIDER_CONFIG =
+        configuredEnvironment.JIGWRIGHT_AGENT_PROVIDER_CONFIG;
+    }
+  } catch (error) {
+    printJigwrightFailure(error, 'JIGWRIGHT_SETUP_CONFIG_INVALID');
     process.exit(12);
   }
 }

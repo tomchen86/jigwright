@@ -10,6 +10,8 @@ import { canonicalJson } from './foundation/canonical-json/canonical-json.ts';
 
 import { dispatchAiAdapterCommand } from './entrypoints/cli/ai-adapter-cli.ts';
 import { dispatchAgentProviderCommand } from './entrypoints/cli/agent-provider-cli.ts';
+import { dispatchAgentGuidanceCommand } from './entrypoints/cli/agent-guidance-cli.ts';
+import { inspectProjectionStatus } from './composition-root/projection-status-production.ts';
 import { dispatchCentralRoleProviderDefaultCommand } from './entrypoints/cli/central-role-provider-default-cli.ts';
 import { commitArchiveTransition } from './application/archive/archive-transition.ts';
 import {
@@ -1722,6 +1724,15 @@ function dispatch(args: string[], cwd: string): CommandResult {
     case 'doctor':
       requireArgumentCount(command, rest, 0, 0);
       return doctor(cwd);
+    case 'guidance':
+      return {
+        command,
+        ok: true,
+        result: dispatchAgentGuidanceCommand(
+          rest,
+          runGit(cwd, ['rev-parse', '--show-toplevel'], true).trim() || cwd,
+        ),
+      };
     case 'validate-change': {
       requireArgumentCount(command, rest, 1, 1);
       const contract = loadStableValidatedChangeContract(
@@ -3669,6 +3680,7 @@ function doctor(cwd: string): CommandResult {
       branchTemplate: config.branchTemplate,
     },
     openspec,
+    projections: inspectProjectionStatus(git.repositoryRoot),
     retainedSpectraUsed: false,
     activeSessionCount: listSessions(cwd).filter(
       (session) => session.state === 'active' || session.state === 'revising',
@@ -4598,6 +4610,7 @@ function usageText(): string {
     '  pnpm workflow documents validate [--json]',
     '  pnpm workflow document-refresh <propose|show|review|apply> ... [--json]',
     '  pnpm workflow handoff validate [--json]',
+    '  pnpm workflow guidance <install [path ...]|refresh|remove|status> [--json]',
     '  pnpm workflow hook <pre-commit|commit-msg|pre-push|post-merge> ... [--json]',
     ...workflowGuidanceUsageLines().map((line) => `  ${line}`),
   ].join('\n');

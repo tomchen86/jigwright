@@ -503,8 +503,8 @@ test('installed tarball drives two complete current lifecycles over unrelated se
   );
   assert.equal(installed.adoption.bootstrap.init.status, 'initialized');
   assert.deepEqual(installed.adoption.bootstrap.repeatedInit, {
-    exitCode: 12,
-    errorClass: 'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
+    exitCode: 0,
+    status: 'unchanged',
   });
   assert.equal(installed.adoption.bootstrap.guide, 'workflow-command-guide.v1');
   assert.deepEqual(installed.adoption.publicSurfaces, {
@@ -519,7 +519,7 @@ test('installed tarball drives two complete current lifecycles over unrelated se
     'strict-clean-source-release-candidate',
     'offline-exact-local-tarball-install',
     'fresh-consumer-init',
-    'repeated-init-refusal',
+    'repeated-init-preserves-policy',
     'installed-guide',
     'installed-public-exports',
   ]);

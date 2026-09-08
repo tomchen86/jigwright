@@ -47,6 +47,13 @@ const MAINTAINER_CONTEXT = /^(?:direct-human|maintainer-confirmation):.+/;
 const SECRET_LIKE =
   /-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----|\b(?:sk|ghp|github_pat)_[A-Za-z0-9_-]{16,}\b|\bAKIA[0-9A-Z]{16}\b/i;
 
+/** The writer and native agent guidance use the same exact-text contract. */
+export const GOVERNANCE_SOURCE_TEXT_POLICY = Object.freeze({
+  preservation: 'verbatim',
+  echoField: 'originalText',
+  maxBytes: 16_384,
+} as const);
+
 export function createGovernanceSourceV1(
   input: GovernanceSourceAuthoringV1,
 ): GovernanceSourceV1 {
@@ -162,7 +169,7 @@ function exactSourceText(value: unknown): string {
   if (
     typeof value !== 'string' ||
     value.length === 0 ||
-    Buffer.byteLength(value, 'utf8') > 16_384 ||
+    Buffer.byteLength(value, 'utf8') > GOVERNANCE_SOURCE_TEXT_POLICY.maxBytes ||
     value.includes('\0')
   ) {
     throw invalidSource();

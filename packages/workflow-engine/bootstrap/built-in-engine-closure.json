@@ -153,7 +153,7 @@
     {
       "path": "node_modules/@jigwright/core/src/governance-source.ts",
       "mode": "100644",
-      "digest": "sha256:202a48d2a1f74fc454011b1819bfb69a1b0c13a1af36445522884c7e5582b64e"
+      "digest": "sha256:03340acd44150f74523afded7ba147ca8b0609bf463637daf18a01f568d77087"
     },
     {
       "path": "node_modules/@jigwright/core/src/grant-verifier-port.ts",
@@ -343,7 +343,7 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:711ec01023eb645526c46ead3c22eae43180181b9cd5962a885087f6075b4a6f"
+      "digest": "sha256:80df8fe33abf8710379793881b6741c02ec7513462c7a3483e1bb19430709a1d"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -858,7 +858,12 @@
     {
       "path": "src/cli.ts",
       "mode": "100644",
-      "digest": "sha256:d28f57b20ec97a56c83e9040b18f33ae47bf51bca8d2dbb8795253259359a33a"
+      "digest": "sha256:ec9c88d9af14a33755988fd5c6a7520c74b72f578db3d31d3332a2af22ae76f7"
+    },
+    {
+      "path": "src/composition-root/agent-guidance-production.ts",
+      "mode": "100644",
+      "digest": "sha256:cdd282f228b3a7e8b1860dedf9065ce89651326f104689f1bb2d875ab3f60376"
     },
     {
       "path": "src/composition-root/agent-provider-config-dry-run-production.ts",
@@ -953,7 +958,7 @@
     {
       "path": "src/composition-root/governance-intake-production.ts",
       "mode": "100644",
-      "digest": "sha256:d2962d6bf6cf4029b365aabfbc3d22bc635b8eb391d939cad160c67311e63b64"
+      "digest": "sha256:ad7da4113cac115b01c2217af0c30c3ac189b2106a31d754961e6f77da709973"
     },
     {
       "path": "src/composition-root/grant-production.ts",
@@ -1004,6 +1009,11 @@
       "path": "src/composition-root/planning-provider-production.ts",
       "mode": "100644",
       "digest": "sha256:b7e83b82acb34e985a29ce2d9a0b00e0275d0a1614295340f20340a4dbf0d369"
+    },
+    {
+      "path": "src/composition-root/projection-status-production.ts",
+      "mode": "100644",
+      "digest": "sha256:39f7832926d5f46c4a89b61aaabf9307859c4ded94d3a08f158018e6b7db000c"
     },
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",
@@ -1151,6 +1161,11 @@
       "digest": "sha256:57e0a4ccaa91f8792ddc2b611db9b8e734cd9775089729ccd87ee5239d917e44"
     },
     {
+      "path": "src/entrypoints/cli/agent-guidance-cli.ts",
+      "mode": "100644",
+      "digest": "sha256:0d3a6d4c27ca36378208c9c39cf2dca8d8efbd3b5b480904e075ba415b14cc63"
+    },
+    {
       "path": "src/entrypoints/cli/agent-provider-cli.ts",
       "mode": "100644",
       "digest": "sha256:563f1e1eafe39e899aa285c10ab28977d26c6bb7e55d1e56955c92e5e041e472"
@@ -1193,7 +1208,7 @@
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
       "mode": "100644",
-      "digest": "sha256:7a71959c65dfc016125bc46ae8d16ffa69e2deb3bdb47e8bd74d2a3c4c6dbf70"
+      "digest": "sha256:46da2fbd3c98e948351fdb1bcd19021b4b049fdb0b2a086f88b11d9773ef43ea"
     },
     {
       "path": "src/entrypoints/cli/human-grant-cli.ts",
@@ -1251,6 +1266,11 @@
       "digest": "sha256:a1578c0070d8b5b0ad7a4505c82a72d5cb81b0191214fa57ebea7a10b1198107"
     },
     {
+      "path": "src/foundation/filesystem/atomic-text.ts",
+      "mode": "100644",
+      "digest": "sha256:18bf57b040863b7494ff27e7f9649c76e0abf1576677466e380a5703a25c95c8"
+    },
+    {
       "path": "src/foundation/repository-path/repository-path.ts",
       "mode": "100644",
       "digest": "sha256:e437d0051ada29124945a5b9716648501f25340800432858a85e83a991499b41"
@@ -1259,6 +1279,16 @@
       "path": "src/harness-bootstrap.ts",
       "mode": "100644",
       "digest": "sha256:4027f34e9af0ab2f8aa3b2d5882d07c98a509b66f531e053df87716b4e446f9b"
+    },
+    {
+      "path": "src/modules/adoption/agent-guidance.ts",
+      "mode": "100644",
+      "digest": "sha256:63f2f260914cab94ed55f10b518e928ea38fc7edb49c6c6e34ea363e4c155d23"
+    },
+    {
+      "path": "src/modules/adoption/setup-questions.ts",
+      "mode": "100644",
+      "digest": "sha256:81bcbc6f0855a80297286f3e667886a578f4ce040c6086ec35e1f40585f5d717"
     },
     {
       "path": "src/modules/assurance/assurance-assessment-chain.ts",
@@ -1561,6 +1591,11 @@
       "digest": "sha256:2c6edc3a9731edf043562c6c0e1d9d68fa51167ccd64489b9aed07c353dfd54b"
     },
     {
+      "path": "src/modules/governance-intake/intake-policy.ts",
+      "mode": "100644",
+      "digest": "sha256:192735e01e60d97be09d4deff69acdde2c79b252716a59a7f29c56685a73fcf9"
+    },
+    {
       "path": "src/modules/governance-intake/intake-summary.ts",
       "mode": "100644",
       "digest": "sha256:6a1c5f6974f7639c2a760b25e4448880273394d748de61b72e63e89c0cbeb7d9"
@@ -1573,12 +1608,22 @@
     {
       "path": "src/modules/governance-intake/work-registry.ts",
       "mode": "100644",
-      "digest": "sha256:1bed1448acdd242fe84002dca0ebe81f1c6e28b8e790638e63c44780c2bb7b1c"
+      "digest": "sha256:24d31030f704133a22e7d8306a5b716ba9c2945884c1648a7bb3e62bb01f7cd3"
+    },
+    {
+      "path": "src/modules/guidance/catalog/agent-rule-registry.ts",
+      "mode": "100644",
+      "digest": "sha256:dad484256770c2be9c445cff7902d49d24a99fee45dd6f702baad794c51f09b1"
+    },
+    {
+      "path": "src/modules/guidance/catalog/agent-rule-sources.ts",
+      "mode": "100644",
+      "digest": "sha256:f69602018597519b83dfdb6da87d5fc5b4033468832981b07b521bacf775abee"
     },
     {
       "path": "src/modules/guidance/catalog/managed-workflow-command-registry.ts",
       "mode": "100644",
-      "digest": "sha256:89285762cc8578860d1bf9aeb3be837d8cae31a010164b8b32c1b18d5150431e"
+      "digest": "sha256:19ae64a95c279c7d9d81b6f50cb1bf891216fc33d30f532cecc3de650448cf35"
     },
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
@@ -1768,17 +1813,22 @@
     {
       "path": "src/modules/projection/engine-projection-registry.ts",
       "mode": "100644",
-      "digest": "sha256:9da56e99b5b152bae73fd658ba3cdf2d722724a5920d2a6af4f18b30048b5cee"
+      "digest": "sha256:f769d3e743fe5336c6102d0ac4c72b0dd5d4faf47073a53deba0352952c107f4"
     },
     {
       "path": "src/modules/projection/investigation-design-projection.ts",
       "mode": "100644",
-      "digest": "sha256:331465e73eff6204770b6c427a5c4953fe130635988d90b70e1cfe972a10cb5d"
+      "digest": "sha256:ffd4b95323a6582c798c35002db3f3380f16ff4cf6852a1c238850b5f741cdc8"
     },
     {
       "path": "src/modules/projection/investigation-term-projection.ts",
       "mode": "100644",
       "digest": "sha256:6979b9e7e3cc6316236c6ed2f0485e44a40c295930bb61a20bf66db541b8f35d"
+    },
+    {
+      "path": "src/modules/projection/projection-service.ts",
+      "mode": "100644",
+      "digest": "sha256:fa469784faacc75b36fbece27a452b8838a29cf74981f1cf3e7630c50757135a"
     },
     {
       "path": "src/modules/provider-orchestration/actor-identity.ts",
@@ -1901,6 +1951,11 @@
       "digest": "sha256:db7119c8e66cf9801b77c29e257f51d4ba2092be6ef3a1ed47bbb9e55004bbb4"
     },
     {
+      "path": "src/modules/repository-consumer/workflow-config.ts",
+      "mode": "100644",
+      "digest": "sha256:1de4d804d304a32f588a7a893a695428e0ae5cc1509db2e79470367879d14f7d"
+    },
+    {
       "path": "src/modules/source/check-command.ts",
       "mode": "100644",
       "digest": "sha256:dfda7f0a6460aafa444799265fa04ad6cf5a732dc847c23cb79bb6c68adc1482"
@@ -2003,7 +2058,7 @@
     {
       "path": "src/runtime/managed-documents/transaction/document-refresh.ts",
       "mode": "100644",
-      "digest": "sha256:24ce54a488ce886b9d7bc0b14e7ef0a1c56eecdb80d0f2a2d5d184af86e8336a"
+      "digest": "sha256:c05e5a807294f38e0b3eda9f68df8e580eedb00184b16b04ea0188acd83383f4"
     },
     {
       "path": "src/runtime/managed-documents/transaction/investigation-publication.ts",
@@ -2148,7 +2203,7 @@
     {
       "path": "src/runtime/repository-transaction/atomic-text.ts",
       "mode": "100644",
-      "digest": "sha256:18bf57b040863b7494ff27e7f9649c76e0abf1576677466e380a5703a25c95c8"
+      "digest": "sha256:3c1bba8a565fdf5f50e65e816039aed21e98127e3bfb104436637e1e2e81b6df"
     },
     {
       "path": "src/runtime/repository-transaction/central-role-provider-default-store.ts",

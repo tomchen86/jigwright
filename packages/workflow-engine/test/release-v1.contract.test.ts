@@ -299,10 +299,10 @@ test('release verifier rejects independently tampered source, adoption, and supp
         },
       },
       {
-        name: 'source command error drift',
+        name: 'source repeated-init status drift',
         relativePath: 'release-candidate.json',
         mutate(value) {
-          value.adoption.comparison.source.init.repeated.payload.error.code =
+          value.adoption.comparison.source.init.repeated.payload.result.status =
             'TAMPERED';
         },
       },
@@ -395,7 +395,7 @@ test('release verifier rejects independently tampered source, adoption, and supp
   }
 });
 
-test('jigwright init writes the default MVP profile once and never rewrites policy', () => {
+test('jigwright init fills missing setup and preserves the existing MVP profile', () => {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'jigwright-v1-init-'),
   );
@@ -427,11 +427,8 @@ test('jigwright init writes the default MVP profile once and never rewrites poli
       cwd: repository,
       encoding: 'utf8',
     });
-    assert.equal(second.status, 12);
-    assert.equal(
-      JSON.parse(second.stderr).error.code,
-      'JIGWRIGHT_INIT_ALREADY_CONFIGURED',
-    );
+    assert.equal(second.status, 0, second.stderr);
+    assert.equal(JSON.parse(second.stdout).result.status, 'unchanged');
     assert.equal(fs.readFileSync(profilePath, 'utf8'), before);
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
