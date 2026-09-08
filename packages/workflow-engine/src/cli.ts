@@ -27,10 +27,7 @@ import {
 } from './adapters/planning/openspec/documents/openspec-planning-assets.ts';
 
 import { dispatchDocumentRefreshCommand } from './entrypoints/cli/document-refresh-cli.ts';
-import {
-  inspectSystemDocumentDispositions,
-  recordSystemDocumentDispositions,
-} from './application/finalize/system-document-dispositions.ts';
+import { systemDocumentDispositions } from './composition-root/lifecycle-context.ts';
 import { createSystemDocumentFailGrantResult } from './entrypoints/cli/system-document-fail-grant-cli.ts';
 import { collectEngineMetrics } from './application/control-plane/engine-metrics.ts';
 import {
@@ -787,8 +784,11 @@ function dispatch(args: string[], cwd: string): CommandResult {
           ok: true,
           result:
             rest.length === 2
-              ? inspectSystemDocumentDispositions(cwd, rest[1]!)
-              : recordSystemDocumentDispositions(
+              ? systemDocumentDispositions.inspectSystemDocumentDispositions(
+                  cwd,
+                  rest[1]!,
+                )
+              : systemDocumentDispositions.recordSystemDocumentDispositions(
                   cwd,
                   rest[1]!,
                   JSON.parse(

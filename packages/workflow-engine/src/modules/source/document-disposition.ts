@@ -15,6 +15,9 @@ import {
 } from './spec-ownership.ts';
 import { systemSpecPaths } from './system-documents.ts';
 
+export const SYSTEM_DOCUMENT_DISPOSITION_REQUIRED =
+  'SYSTEM_DOCUMENT_DISPOSITION_REQUIRED';
+
 export const SYSTEM_DOCUMENT_DISPOSITION_TRANSITION =
   'system-documents.skip-obligations.v1';
 

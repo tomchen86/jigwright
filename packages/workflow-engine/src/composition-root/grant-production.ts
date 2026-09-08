@@ -53,12 +53,15 @@ import {
 } from '../modules/authority/grant-parent-binding.ts';
 import type { TransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
 import { createTransitionRegistry } from '../modules/authority/grant-transition-registry.ts';
-import { systemDocumentGrantTransitionDefinitions } from '../application/finalize/system-document-grant.ts';
+import { createSystemDocumentGrantService } from '../application/finalize/system-document-grant.ts';
 import {
   inspectMacOsHumanGateRuntime,
   openMacOsHumanGateApprovalSession,
 } from '../adapters/human/macos/human-gate-macos.ts';
-import { loadInvestigationRuntimeContext } from './lifecycle-context.ts';
+import {
+  loadInvestigationRuntimeContext,
+  systemDocumentDispositions,
+} from './lifecycle-context.ts';
 import { assertChangeId } from '../runtime/session-workspace/paths.ts';
 import {
   runtimePaths,
@@ -478,6 +481,10 @@ function productionApprovalSession(
   });
 }
 
+export function createProductionSystemDocumentGrantService() {
+  return createSystemDocumentGrantService(systemDocumentDispositions);
+}
+
 export function createProductionWorkflowGrantCoordinator(
   cwd: string,
 ): GrantCoordinator {
@@ -504,7 +511,9 @@ export function createProductionWorkflowGrantCoordinator(
     createTransitionRegistry([
       ...investigationV3GrantTransitionDefinitions(cwd),
       ...workRegistryGrantTransitionDefinitions(cwd),
-      ...systemDocumentGrantTransitionDefinitions(cwd),
+      ...createProductionSystemDocumentGrantService().systemDocumentGrantTransitionDefinitions(
+        cwd,
+      ),
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
       ...changeRoutingGrantTransitionDefinitions(cwd),
       ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),

@@ -1,8 +1,18 @@
-/** Presents document remediation and the existing Human Gate for an exact skip exception. */
+/**
+ * Presents document remediation and the Human Gate for an exact skip exception.
+ *
+ * Invariants:
+ * - Only the failed lifecycle command and its unchanged candidate may request this Grant.
+ * - A requested exception remains human-action-required until the Grant decision executes.
+ *
+ * Depends on: Production document Grant services and CLI command result formatting.
+ * Failure modes: A changed candidate refuses the request; unrelated failures keep their own routing.
+ */
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
-import { createProductionCentralGrantRequestPort } from '../../composition-root/grant-production.ts';
-import { createSystemDocumentGrantRequest } from '../../application/finalize/system-document-grant.ts';
-import { SYSTEM_DOCUMENT_DISPOSITION_REQUIRED } from '../../application/finalize/system-document-dispositions.ts';
+import {
+  createProductionCentralGrantRequestPort,
+  createProductionSystemDocumentGrantService,
+} from '../../composition-root/grant-production.ts';
 import {
   WorkflowError,
   workflowError,
@@ -20,9 +30,10 @@ export async function createSystemDocumentFailGrantResult(
   error: unknown,
   requestPort?: CentralGrantRequestPortV1,
 ): Promise<CommandResult | null> {
+  const documents = createProductionSystemDocumentGrantService();
   if (
     !(error instanceof WorkflowError) ||
-    error.code !== SYSTEM_DOCUMENT_DISPOSITION_REQUIRED ||
+    error.code !== documents.dispositionRequiredCode ||
     !['finalize', 'complete-task', 'finish'].includes(args[0] ?? '') ||
     !plainRecord(error.details) ||
     typeof error.details.sessionId !== 'string' ||
@@ -30,7 +41,7 @@ export async function createSystemDocumentFailGrantResult(
   )
     return null;
   const sessionId = error.details.sessionId;
-  const request = createSystemDocumentGrantRequest(cwd, sessionId);
+  const request = documents.createSystemDocumentGrantRequest(cwd, sessionId);
   if (request.stateBinding.digest !== error.details.candidateDigest)
     throw workflowError(
       'SYSTEM_DOCUMENT_REVIEW_STALE',

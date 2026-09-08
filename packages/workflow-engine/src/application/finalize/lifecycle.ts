@@ -1,7 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { assertSystemDocumentDispositions } from './system-document-dispositions.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertCommitObject } from '../../runtime/repository-transaction/commit-object-validation.ts';
@@ -62,6 +61,7 @@ import {
 } from '../../runtime/session-workspace/paths.ts';
 import {
   assertFinishProjection,
+  systemDocumentDispositions,
   loadActiveSessionContext,
   runSessionOperation,
 } from '../../composition-root/lifecycle-context.ts';
@@ -717,7 +717,10 @@ function assertCurrentTaskMayUseOrdinaryFinalize(
     );
     return;
   }
-  assertSystemDocumentDispositions(cwd, requestedSessionId);
+  systemDocumentDispositions.assertSystemDocumentDispositions(
+    cwd,
+    requestedSessionId,
+  );
   assertProtectedTaskApplyNotRequired(
     git.repositoryRoot,
     config,

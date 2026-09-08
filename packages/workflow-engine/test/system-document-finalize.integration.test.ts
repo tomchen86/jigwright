@@ -23,16 +23,9 @@ import {
   finalizeTask,
   finalizeSession,
 } from '../src/application/finalize/lifecycle.ts';
-import {
-  inspectSystemDocumentDispositions,
-  recordSystemDocumentDispositions,
-  assertSystemDocumentDispositions,
-} from '../src/application/finalize/system-document-dispositions.ts';
-import {
-  createSystemDocumentGrantRequest,
-  systemDocumentGrantTransitionDefinitions,
-  SYSTEM_DOCUMENT_GRANT_REASON,
-} from '../src/application/finalize/system-document-grant.ts';
+import { systemDocumentDispositions } from '../src/composition-root/lifecycle-context.ts';
+import { SYSTEM_DOCUMENT_GRANT_REASON } from '../src/application/finalize/system-document-grant.ts';
+import { createProductionSystemDocumentGrantService } from '../src/composition-root/grant-production.ts';
 import { createGrantCoordinatorKernel } from '../src/modules/authority/grant-coordinator.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
@@ -43,6 +36,16 @@ import {
   readSystemDocumentReviewRecord,
   writeSystemDocumentReviewRecord,
 } from '../src/runtime/storage-journal/system-document-review-store.ts';
+
+const {
+  inspectSystemDocumentDispositions,
+  recordSystemDocumentDispositions,
+  assertSystemDocumentDispositions,
+} = systemDocumentDispositions;
+const {
+  createSystemDocumentGrantRequest,
+  systemDocumentGrantTransitionDefinitions,
+} = createProductionSystemDocumentGrantService();
 
 test('finalize requires exact document decisions before checks and recovers the admitted projection', async () => {
   const fixture = prepare();

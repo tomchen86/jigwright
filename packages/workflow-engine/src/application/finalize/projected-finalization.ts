@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import { assertSystemDocumentDispositions } from './system-document-dispositions.ts';
 import path from 'node:path';
 
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
@@ -36,7 +35,10 @@ import {
   fingerprintUnstagedRepositoryProjection,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
-import { loadActiveSessionContext } from '../../composition-root/lifecycle-context.ts';
+import {
+  loadActiveSessionContext,
+  systemDocumentDispositions,
+} from '../../composition-root/lifecycle-context.ts';
 import {
   applyGeneratedDocumentMutations,
   planCompletionDocuments,
@@ -143,7 +145,10 @@ export function finalizeTaskUnlocked(
     }
   }
 
-  assertSystemDocumentDispositions(cwd, requestedSessionId);
+  systemDocumentDispositions.assertSystemDocumentDispositions(
+    cwd,
+    requestedSessionId,
+  );
   const initial = inspectSession(cwd, requestedSessionId, {
     ...(options.protectedApply === undefined
       ? {}
