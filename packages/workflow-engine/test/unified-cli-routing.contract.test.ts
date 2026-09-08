@@ -11,7 +11,7 @@ import type { ExecutionJobInspection } from '../src/runtime/provider-execution/e
 import { createFixtureRepository, sourceRepositoryRoot } from './fixture.ts';
 
 test('package CLI dispatches against an explicit external repository root', () => {
-  const repository = createExternalRepositoryFixture();
+  const repository = createFixtureRepository();
   try {
     const result = spawnSync(
       process.execPath,
@@ -43,51 +43,6 @@ test('package CLI dispatches against an explicit external repository root', () =
     fs.rmSync(repository, { recursive: true, force: true });
   }
 });
-
-function createExternalRepositoryFixture(): string {
-  const repository = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'jigwright-external-repository-'),
-  );
-  runFixtureGit(repository, ['init', '-b', 'feature']);
-  runFixtureGit(repository, ['config', 'user.email', 'jigwright@example.test']);
-  runFixtureGit(repository, ['config', 'user.name', 'Jigwright Test']);
-  fs.mkdirSync(path.join(repository, 'workflow'), { recursive: true });
-  fs.mkdirSync(path.join(repository, 'openspec/specs'), { recursive: true });
-  fs.writeFileSync(
-    path.join(repository, 'workflow/config.json'),
-    `${JSON.stringify(
-      {
-        schemaVersion: 1,
-        repositoryName: 'external-fixture',
-        changeRoot: 'openspec/changes',
-        runtimeDirectory: 'workflow-engine',
-        protectedBranches: ['main', 'master'],
-        branchTemplate: 'work/{changeId}',
-      },
-      null,
-      2,
-    )}\n`,
-  );
-  fs.writeFileSync(
-    path.join(repository, 'openspec/specs/README.md'),
-    '# External consumer fixture\n',
-  );
-  runFixtureGit(repository, ['add', '.']);
-  runFixtureGit(repository, [
-    'commit',
-    '-m',
-    'Initialize external consumer fixture',
-  ]);
-  return repository;
-}
-
-function runFixtureGit(repository: string, argv: string[]): void {
-  const result = spawnSync('git', argv, {
-    cwd: repository,
-    encoding: 'utf8',
-  });
-  assert.equal(result.status, 0, result.stderr);
-}
 
 test('package CLI fails closed on an invalid external repository root', () => {
   const launcher = path.join(

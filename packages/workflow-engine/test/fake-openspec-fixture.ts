@@ -100,6 +100,17 @@ if (process.argv[2] === '--version') {
   process.stdout.write('1.6.0\\n');
   process.exit(0);
 }
+if (process.argv[2] === 'doctor') {
+  process.stdout.write(JSON.stringify({
+    root: {
+      path: process.cwd(), source: 'nearest', healthy: true, status: []
+    },
+    store: null,
+    references: [],
+    status: []
+  }));
+  process.exit(0);
+}
 if (process.argv[2] === 'schema') {
   const operation = process.argv[3];
   const schemaName = process.argv[4];
