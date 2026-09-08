@@ -11,6 +11,7 @@ import {
   findMissingScenarioIdentities,
   verifyArchiveDeltaOutcomes as verifyPackageArchiveDeltaOutcomes,
   verifyProjectedSpecDeltaOutcome as verifyPackageProjectedSpecDeltaOutcome,
+  specDeltaChangesContract as packageSpecDeltaChangesContract,
   type ArchiveDeltaProjection,
   type ArchiveDeltaSource,
   type ArchiveDeltaVerification,
@@ -58,6 +59,16 @@ export function verifyProjectedSpecDeltaOutcome(
 } {
   return withWorkflowArchiveProjectionErrors(() =>
     verifyPackageProjectedSpecDeltaOutcome(capability, before, delta, after),
+  );
+}
+
+export function specDeltaChangesContract(
+  capability: string,
+  before: string,
+  delta: string,
+): boolean {
+  return withWorkflowArchiveProjectionErrors(() =>
+    packageSpecDeltaChangesContract(capability, before, delta),
   );
 }
 

@@ -175,6 +175,24 @@ export function verifyProjectedSpecDeltaOutcome(
   };
 }
 
+/** Uses the archive parser to distinguish an effective planned delta from a no-op. */
+export function specDeltaChangesContract(
+  capability: string,
+  before: string,
+  delta: string,
+): boolean {
+  const plan = parseDelta(delta);
+  assertSpecDeltaPreconditions(capability, before, delta);
+  const requirements = parseRequirements(before);
+  return (
+    plan.added.length + plan.removed.length + plan.renamed.length > 0 ||
+    plan.modified.some(
+      ({ name, raw }) =>
+        normalizedBlock(requirements.get(name) ?? '') !== normalizedBlock(raw),
+    )
+  );
+}
+
 export function assertSpecDeltaPreconditions(
   capability: string,
   before: string,
