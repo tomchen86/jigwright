@@ -1,19 +1,16 @@
+/**
+ * Draws deterministic class samples and resolves first- and second-sample review failures.
+ *
+ * Invariants:
+ * - A sealed seed and member set produce the same samples regardless of input order.
+ * - Missing answers, unsolicited answers, and repeated failures retain their exact outcomes.
+ * - Failed classes require individual dispositions before a plan can commit.
+ *
+ * Depends on: class membership, recorded sample outcomes, and workflow errors.
+ * Failure modes: incomplete review is accepted or valid class compression is rejected.
+ */
 import crypto from 'node:crypto';
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
-/**
- * Spot-checking the classes an author drew.
- *
- * Every mechanical guard on a class disposition checks the predicate: that it
- * holds for the members, that it rejects non-members, that no member sits
- * somewhere expensive. None of them check the part only a person can supply —
- * whether the written rationale is actually true of what those hits do. So a
- * portion of each class is expanded back out and reviewed individually, and
- * the plan cannot commit until every one of those has been answered.
- *
- * The sample is drawn from a seed sealed before the classes existed, so an
- * author cannot see which members will be examined while deciding how
- * carefully to draw them.
- */
 const SEED_PATTERN = /^[0-9a-f]{64}$/;
 /** At least three members, or a tenth of the class, whichever is larger. */
 export function classSampleSize(memberCount) {
@@ -106,4 +103,78 @@ function rank(seed, classId, groupId) {
 }
 function auditInvalid(message) {
     return workflowError('CLASS_SAMPLE_AUDIT_INVALID', message, ExitCode.usage);
+}
+/**
+ * The seed the class sample is drawn from.
+ *
+ * It has to be fixed before the classes exist and not be chosen by the author,
+ * or an author could see which members would be examined while deciding how
+ * carefully to draw them. The investigation identity satisfies both: the engine
+ * mints it at the start, nobody selects it, and deriving from it keeps the
+ * draw replayable from durable state alone rather than from a stored secret.
+ */
+export function classSampleSeed(investigationId) {
+    return crypto.createHash('sha256').update(investigationId).digest('hex');
+}
+function planAdditionalClassSampleAudits(sealedSeed, classes) {
+    // Reuse the contract's validation before deriving the next slice locally.
+    planClassSampleAudits(sealedSeed, classes);
+    return classes.map(({ classId, members }) => {
+        const sampleSize = classSampleSize(members.length);
+        const ranked = [...members].sort((left, right) => {
+            const rank = (groupId) => crypto
+                .createHash('sha256')
+                .update(`${sealedSeed}\0${classId}\0${groupId}`)
+                .digest('hex');
+            const order = rank(left).localeCompare(rank(right));
+            return order !== 0 ? order : left.localeCompare(right);
+        });
+        return {
+            classId,
+            memberCount: members.length,
+            sampled: ranked
+                .slice(sampleSize, Math.min(members.length, sampleSize * 2))
+                .sort(),
+        };
+    });
+}
+function sampleAuditKey(classId, groupId) {
+    return `${classId}\0${groupId}`;
+}
+function rejectedClassSamples(classIds, reason) {
+    return workflowError('CLASS_SAMPLE_AUDIT_REJECTED', `${reason}: ${classIds.join(', ')}.`, ExitCode.verification, { details: { classIds: [...classIds] } });
+}
+export function assertClassSampleAuditsComplete(sealedSeed, classes, audits) {
+    const plan = planClassSampleAudits(sealedSeed, classes.map(({ classId, members }) => ({ classId, members })));
+    const initiallySampled = new Set(plan.flatMap(({ classId, sampled }) => sampled.map((groupId) => sampleAuditKey(classId, groupId))));
+    const initialResolution = resolveSampleAudits(plan, audits.filter(({ classId, groupId }) => initiallySampled.has(sampleAuditKey(classId, groupId))));
+    if (initialResolution.expandIndividually.length === 0) {
+        // Re-run against the complete submission so an unsolicited answer outside
+        // the sealed first sample still fails closed rather than being ignored.
+        resolveSampleAudits(plan, audits);
+        return;
+    }
+    const initialFailureCount = initialResolution.classes.reduce((count, result) => count + result.failures.length, 0);
+    if (initialFailureCount >= 2) {
+        resolveSampleAudits(plan, audits);
+        throw rejectedClassSamples(plan.map(({ classId }) => classId).sort(), 'A second failure in the initial sample ended class compression for this change');
+    }
+    const survivingClasses = classes.filter(({ classId }) => !initialResolution.expandIndividually.includes(classId));
+    const additionalPlan = planAdditionalClassSampleAudits(sealedSeed, survivingClasses.map(({ classId, members }) => ({ classId, members })));
+    const additionalByClass = new Map(additionalPlan.map(({ classId, sampled }) => [classId, sampled]));
+    const doubledPlan = plan.map(({ classId, memberCount, sampled }) => ({
+        classId,
+        memberCount,
+        sampled: [...sampled, ...(additionalByClass.get(classId) ?? [])].sort(),
+    }));
+    const resolution = resolveSampleAudits(doubledPlan, audits);
+    const additionalSampleKeys = new Set(additionalPlan.flatMap(({ classId, sampled }) => sampled.map((groupId) => sampleAuditKey(classId, groupId))));
+    const secondSampleFailed = audits.some(({ classId, groupId, outcome }) => additionalSampleKeys.has(sampleAuditKey(classId, groupId)) &&
+        outcome !== 'passed');
+    if (secondSampleFailed) {
+        throw rejectedClassSamples(plan.map(({ classId }) => classId).sort(), 'A failure in the deterministic second sample ended class compression for this change');
+    }
+    if (resolution.expandIndividually.length > 0) {
+        throw rejectedClassSamples(resolution.expandIndividually, `The hand review rejected ${resolution.expandIndividually.length} class(es); those groups owe individual dispositions`);
+    }
 }

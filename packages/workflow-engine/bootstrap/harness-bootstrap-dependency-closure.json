@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:31eac1bcca1b9cd638d84358902ab03771d2191e6cf6067942a4b51b2d5ed468"
+      "digest": "sha256:728663b6cbf0835f86f182afa36c5bdddf935eae7c2fdd7d72966e840cc0ce97"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -243,7 +243,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-node.js",
       "mode": "100644",
-      "digest": "sha256:63733b12a2796938c87d3a51deaf1b4f764a25eda547b6f813d10612cb87bfe9"
+      "digest": "sha256:baa000ec4eab081827d9a876d7b1fc36b217cbd65021a39ddb4b15a4cc67c6e0"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-reuse-path.js",
@@ -301,9 +301,14 @@
       "digest": "sha256:ab21b9d3cdec61ea568fc942e6b54d92d46d6b7aa8cc5408ade18316e65cc394"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/foundation/evidence-node/evidence-node.js",
+      "mode": "100644",
+      "digest": "sha256:ba2d0a6179d7489148648281cd318e5fe9d811429b1d231bd4eea094733270c4"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/foundation/repository-path/repository-path.js",
       "mode": "100644",
-      "digest": "sha256:70efa2e02275666298087c68184de940e1bfa3a57ef8da92600b0327ceb39bc8"
+      "digest": "sha256:91859b986a8b22a8b32a7ee313794a1a0119c2627433e3d3d31e6215e74467f1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/harness-bootstrap.js",
@@ -463,7 +468,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-sample-audit.js",
       "mode": "100644",
-      "digest": "sha256:58e23b9e52799e6b23cbf963664597c88786516e349635a245685451f438312a"
+      "digest": "sha256:56ac4bcb3093cac6d1aaf3c4f265a5e6e27b0d1607a05163e541e83b4f7456a0"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/floor-overflow-pruning.js",
@@ -748,7 +753,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/paths.js",
       "mode": "100644",
-      "digest": "sha256:78b5e56d34882e60273dced42ff0577b21d1c25af3d12d8653862e511a2ae0fc"
+      "digest": "sha256:bb892ce959c75d5e2b5e48129af8866ea811b96207f691bdd2b569d8be7e0b62"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/session-workspace/planning-lock.js",

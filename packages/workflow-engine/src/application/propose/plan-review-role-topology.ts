@@ -1,4 +1,21 @@
+/**
+ * Selects an exact-plan reviewer and derives its assignment or grant requirement.
+ *
+ * Invariants:
+ * - All candidate placements use one immutable policy and provider snapshot.
+ * - Ordinary assignments meet the resolved independence floor before invocation.
+ * - Lowered placements require explicit eligibility for their exact role pairs.
+ *
+ * Depends on: role scheduling, topology resolution, and role-context-sharing requirements.
+ * Failure modes: a wrong reviewer is selected or an ineligible grant requirement is returned.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import {
+  scheduleOrdinaryRole,
+  type RoleAssignment,
+  type RoleCandidate,
+  type RoleParticipant,
+} from '../../modules/provider-orchestration/role-scheduler.ts';
 import {
   CURRENT_CENTRAL_ROLE_TOPOLOGY_CONFIGURATION_V1,
   resolveRoleTopologyV1,
@@ -6,6 +23,10 @@ import {
   type RoleTopologyResolutionSnapshotV1,
   type RoleTopologyResolutionV1,
 } from '../../modules/provider-orchestration/role-topology-resolution.ts';
+import {
+  createRoleContextSharingPlanReviewRequirementV3,
+  type RoleContextSharingPlanReviewRequirementV3,
+} from './role-context-sharing-plan-review.ts';
 
 export type ResolvePlanReviewRoleTopologyInput = Readonly<{
   repositoryRoot: string;
@@ -33,6 +54,123 @@ export type SelectedPlanReviewRoleTopology = Readonly<{
   reviewer: ResolvePlanReviewRoleTopologyInput['reviewer'];
   resolution: RoleTopologyResolutionV1;
 }>;
+
+export type PreparePlanReviewRoleTopologyInput = Readonly<{
+  topology: Omit<ResolvePlanReviewRoleTopologyInput, 'reviewer'>;
+  author: RoleParticipant;
+  candidates: RoleCandidate[];
+  requirement: Omit<
+    Parameters<typeof createRoleContextSharingPlanReviewRequirementV3>[0],
+    'roleTopology'
+  >;
+}>;
+
+export type PreparedPlanReviewRoleTopology =
+  | {
+      kind: 'grant-required';
+      roleTopology: RoleTopologyResolutionV1;
+      requirement: RoleContextSharingPlanReviewRequirementV3;
+    }
+  | {
+      kind: 'assigned';
+      roleTopology: RoleTopologyResolutionV1;
+      assignment: RoleAssignment;
+    };
+
+export function preparePlanReviewRoleTopology(
+  input: PreparePlanReviewRoleTopologyInput,
+  dependencies: RoleTopologyResolutionDependencyPortV1,
+): PreparedPlanReviewRoleTopology {
+  const ordinaryPlacements = input.candidates.flatMap((candidate) => {
+    const outcome = scheduleOrdinaryRole({
+      role: 'plan-reviewer',
+      requestedIndependence: 'session-independent',
+      author: input.author,
+      targetDigest: input.requirement.subject.subjectDigest,
+      candidates: [candidate],
+    });
+    return outcome.outcome === 'assigned' ? [outcome.assignment] : [];
+  });
+  const selectedTopology = selectPlanReviewRoleTopology(
+    {
+      ...input.topology,
+      reviewers: ordinaryPlacements.map(({ providerId, sessionId }) => ({
+        providerId,
+        sessionId,
+      })),
+    },
+    dependencies,
+  );
+  const roleTopology = selectedTopology.resolution;
+  if (roleTopology.disposition === 'topology-unsatisfied') {
+    throw workflowError(
+      'ROLE_TOPOLOGY_UNSATISFIED',
+      'The exact PlanReview placement does not satisfy the configured topology.',
+      ExitCode.guard,
+      {
+        details: {
+          exactRolePairs: roleTopology.exactGrantRolePairs,
+        },
+      },
+    );
+  }
+  if (roleTopology.disposition === 'exact-grant-required') {
+    if (roleTopology.explicitEligibility.status !== 'listed') {
+      throw workflowError(
+        'ROLE_CONTEXT_SHARING_GRANT_INELIGIBLE',
+        'The exact lowered PlanReview role pairs are not explicitly listed for a role-context-sharing grant.',
+        ExitCode.guard,
+        {
+          details: {
+            exactRolePairs: roleTopology.exactGrantRolePairs,
+          },
+        },
+      );
+    }
+    return {
+      kind: 'grant-required',
+      roleTopology,
+      requirement: createRoleContextSharingPlanReviewRequirementV3({
+        ...input.requirement,
+        roleTopology,
+      }),
+    };
+  }
+  const requiredIndependence = roleTopology.actualRolePairs.find(
+    ({ pair }) => pair === 'author-reviewer',
+  )?.required;
+  const selectedCandidate = input.candidates.find(
+    ({ providerId, sessionId }) =>
+      providerId === selectedTopology.reviewer.providerId &&
+      sessionId === selectedTopology.reviewer.sessionId,
+  );
+  if (requiredIndependence === undefined || selectedCandidate === undefined) {
+    throw workflowError(
+      'ROLE_TOPOLOGY_UNSATISFIED',
+      'A satisfied PlanReview topology has no exact provider assignment.',
+      ExitCode.guard,
+    );
+  }
+  const strengthenedSchedule = scheduleOrdinaryRole({
+    role: 'plan-reviewer',
+    requestedIndependence: requiredIndependence,
+    author: input.author,
+    targetDigest: input.requirement.subject.subjectDigest,
+    candidates: [selectedCandidate],
+  });
+  if (strengthenedSchedule.outcome !== 'assigned') {
+    throw workflowError(
+      'ROLE_TOPOLOGY_UNSATISFIED',
+      'A satisfied PlanReview topology has no exact provider assignment.',
+      ExitCode.guard,
+    );
+  }
+  return {
+    kind: 'assigned',
+    roleTopology,
+    assignment: strengthenedSchedule.assignment,
+  };
+}
 
 /**
  * Application bridge for exact-plan review. Composition must inject the

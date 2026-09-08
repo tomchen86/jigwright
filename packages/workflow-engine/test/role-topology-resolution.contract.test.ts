@@ -1,3 +1,13 @@
+/**
+ * Checks topology resolution and exact-plan reviewer preparation against policy snapshots.
+ *
+ * Invariants:
+ * - Candidate selection observes one snapshot and preserves the configured independence floor.
+ * - Only explicitly eligible lowered placements produce exact grant requirements.
+ *
+ * Depends on: topology resolution, plan-review preparation, and the production snapshot port.
+ * Failure modes: policy drift, incorrect reviewer assignments, or mismatched grant bindings.
+ */
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -23,7 +33,8 @@ import {
 } from '../src/modules/provider-orchestration/role-topology-resolution.ts';
 import {
   resolvePlanReviewRoleTopology,
-  selectPlanReviewRoleTopology,
+  preparePlanReviewRoleTopology,
+  type PreparePlanReviewRoleTopologyInput,
 } from '../src/application/propose/plan-review-role-topology.ts';
 import { createProductionRoleTopologyResolutionPort } from '../src/composition-root/role-topology-resolution-production.ts';
 import { isWorkflowError } from './fixture.ts';
@@ -634,53 +645,140 @@ test('plan-review resolver uses its required snapshot port and accepts a fresh s
   );
 });
 
-test('plan-review selection satisfies strengthened topology before considering R-007', () => {
+test('plan-review preparation satisfies strengthened topology before returning an exact R-007 requirement', () => {
   const providerRegistry = registry(['claude', 'codex']);
   const changeOverride = rolePlan(
     [{ pair: 'author-reviewer', required: 'provider-independent' }],
     [GRANT_REFERENCE],
   );
-  let reads = 0;
-  const selected = selectPlanReviewRoleTopology(
-    {
+  const input: PreparePlanReviewRoleTopologyInput = {
+    topology: {
       repositoryRoot: '/fixture/repository',
       changeId: CHANGE_ID,
       planningGeneration: PLANNING_GENERATION,
       author: { providerId: 'codex', sessionId: 'author-session' },
-      reviewers: [
-        { providerId: 'codex', sessionId: 'reviewer-codex-session' },
-        { providerId: 'claude', sessionId: 'reviewer-claude-session' },
-      ],
       providerPolicyDigest: PROVIDER_POLICY_DIGEST,
       providerEnabled: { claude: true, codex: true },
     },
-    {
-      readResolutionSnapshot() {
-        reads += 1;
-        return {
-          baseCentralConfigurationDigest:
-            changeOverride.baseCentralConfigurationDigest,
-          changeOverride,
-          providerRegistry,
-        };
-      },
+    author: {
+      providerId: 'codex',
+      sessionId: 'author-session',
+      principalId: undefined,
+      identityAssurance: 'adapter-assigned',
+      engineSpawned: false,
     },
-  );
+    candidates: [
+      {
+        providerId: 'codex',
+        sessionId: 'reviewer-codex-session',
+        enabled: true,
+        available: true,
+      },
+      {
+        providerId: 'claude',
+        sessionId: 'reviewer-claude-session',
+        enabled: true,
+        available: true,
+      },
+    ],
+    requirement: {
+      investigationId: 'investigation-topology',
+      changeId: CHANGE_ID,
+      baseline: { head: '1'.repeat(40), tree: '2'.repeat(40) },
+      subject: {
+        schemaVersion: 1,
+        subjectDigest: '3'.repeat(64),
+        planningGenerationId: PLANNING_GENERATION,
+        planTargetDigest: '4'.repeat(64),
+        manifestDigest: '5'.repeat(64),
+        investigationTargetDigest: '6'.repeat(64),
+        reviewPolicyDigest: '7'.repeat(64),
+        requiredIndependence: 'session-independent',
+        investigationBaseline: { head: '1'.repeat(40), tree: '2'.repeat(40) },
+        investigationDependencies: [],
+        investigationRequirements: [],
+      },
+      author: {
+        providerId: 'codex',
+        sessionId: 'author-session',
+        principalId: null,
+        identityAssurance: 'adapter-assigned',
+        engineSpawned: false,
+      },
+      contextGeneration: 3,
+    },
+  };
+  let reads = 0;
+  const dependencies: RoleTopologyResolutionDependencyPortV1 = {
+    readResolutionSnapshot(request) {
+      reads += 1;
+      return {
+        baseCentralConfigurationDigest:
+          changeOverride.baseCentralConfigurationDigest,
+        changeOverride,
+        providerRegistry: {
+          ...providerRegistry,
+          providers: providerRegistry.providers.map((provider) => ({
+            ...provider,
+            enabled: request.providerEnabled[provider.logicalProviderId]!,
+          })),
+        },
+      };
+    },
+  };
+  const selected = preparePlanReviewRoleTopology(input, dependencies);
   assert.equal(reads, 1);
-  assert.deepEqual(selected.reviewer, {
-    providerId: 'claude',
-    sessionId: 'reviewer-claude-session',
-  });
-  assert.equal(selected.resolution.disposition, 'satisfied');
+  assert.equal(selected.kind, 'assigned');
+  assert.equal(selected.roleTopology.disposition, 'satisfied');
+  if (selected.kind !== 'assigned')
+    assert.fail('Expected an ordinary reviewer.');
+  assert.equal(selected.assignment.providerId, 'claude');
+  assert.equal(selected.assignment.sessionId, 'reviewer-claude-session');
   assert.equal(
-    selected.resolution.actualRolePairs[0]?.required,
+    selected.assignment.requiredIndependence,
     'provider-independent',
   );
   assert.equal(
-    selected.resolution.actualRolePairs[0]?.achieved,
+    selected.assignment.achievedIndependence,
     'provider-independent',
   );
-  assert.deepEqual(selected.resolution.exactGrantRolePairs, []);
+  assert.deepEqual(selected.roleTopology.exactGrantRolePairs, []);
+
+  const lowered = preparePlanReviewRoleTopology(
+    {
+      ...input,
+      topology: {
+        ...input.topology,
+        providerEnabled: { claude: false, codex: true },
+      },
+      candidates: input.candidates.map((candidate) => ({
+        ...candidate,
+        enabled: candidate.providerId === 'codex',
+        available: candidate.providerId === 'codex',
+      })),
+    },
+    dependencies,
+  );
+  assert.equal(reads, 2);
+  assert.equal(lowered.kind, 'grant-required');
+  if (lowered.kind !== 'grant-required')
+    assert.fail('Expected an exact R-007 requirement.');
+  assert.equal(lowered.roleTopology.disposition, 'exact-grant-required');
+  assert.deepEqual(lowered.roleTopology.exactGrantRolePairs, [
+    'author-reviewer',
+  ]);
+  assert.equal(
+    lowered.requirement.reviewerPlacement.logicalProviderId,
+    'codex',
+  );
+  assert.equal(
+    lowered.requirement.reviewerPlacement.sessionId,
+    'reviewer-codex-session',
+  );
+  assert.equal(lowered.requirement.contextGeneration, 3);
+  assert.deepEqual(lowered.requirement.grantReferences, [GRANT_REFERENCE]);
+  assert.deepEqual(lowered.requirement.subject, input.requirement.subject);
+  assert.deepEqual(lowered.requirement.author, input.requirement.author);
 });
 
 test('production snapshot port owns current plan and reviewed provider-definition capture', () => {

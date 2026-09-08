@@ -1,6 +1,15 @@
+/**
+ * Exposes workflow identifiers and repository-boundary checks for runtime workspaces.
+ *
+ * Invariants:
+ * - Identifier errors and runtime directory layouts retain their exact contracts.
+ * - Policy paths cannot escape the repository or cross symbolic-link aliases.
+ *
+ * Depends on: the core runtime-path kernel and foundation repository-path validation.
+ * Failure modes: invalid workspace identities, changed recovery errors, or unsafe policy paths.
+ */
 import {
   RepositoryBoundaryError,
-  assertChangeId as assertCoreChangeId,
   assertInvestigationId as assertCoreInvestigationId,
   assertInvocationId as assertCoreInvocationId,
   assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository,
@@ -12,6 +21,7 @@ import {
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
+  assertChangeId,
   matchesAllowedPath,
   normalizeChangedPath,
   normalizeExactRepositoryPath,
@@ -19,6 +29,7 @@ import {
 } from '../../foundation/repository-path/repository-path.ts';
 
 export {
+  assertChangeId,
   investigationRuntimePaths,
   matchesAllowedPath,
   normalizeChangedPath,
@@ -26,19 +37,6 @@ export {
   normalizePolicyPath,
 };
 export type { InvestigationRuntimePaths };
-
-export function assertChangeId(value: string): string {
-  return assertCoreChangeId(value, () =>
-    workflowError(
-      'INVALID_CHANGE_ID',
-      `Invalid change ID: ${value}`,
-      ExitCode.usage,
-      {
-        recovery: 'Use lower-case kebab-case, for example add-expense-export.',
-      },
-    ),
-  );
-}
 
 export function assertTaskId(value: string): string {
   return assertCoreTaskId(value, () =>

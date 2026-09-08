@@ -1,12 +1,17 @@
-import { RepositoryBoundaryError, assertChangeId as assertCoreChangeId, assertInvestigationId as assertCoreInvestigationId, assertInvocationId as assertCoreInvocationId, assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository, assertSessionId as assertCoreSessionId, assertTaskId as assertCoreTaskId, investigationRuntimePaths, } from '@jigwright/core/runtime-path-kernel';
+/**
+ * Exposes workflow identifiers and repository-boundary checks for runtime workspaces.
+ *
+ * Invariants:
+ * - Identifier errors and runtime directory layouts retain their exact contracts.
+ * - Policy paths cannot escape the repository or cross symbolic-link aliases.
+ *
+ * Depends on: the core runtime-path kernel and foundation repository-path validation.
+ * Failure modes: invalid workspace identities, changed recovery errors, or unsafe policy paths.
+ */
+import { RepositoryBoundaryError, assertInvestigationId as assertCoreInvestigationId, assertInvocationId as assertCoreInvocationId, assertPolicyPathInsideRepository as assertCorePolicyPathInsideRepository, assertSessionId as assertCoreSessionId, assertTaskId as assertCoreTaskId, investigationRuntimePaths, } from '@jigwright/core/runtime-path-kernel';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
-import { matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";
-export { investigationRuntimePaths, matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, };
-export function assertChangeId(value) {
-    return assertCoreChangeId(value, () => workflowError('INVALID_CHANGE_ID', `Invalid change ID: ${value}`, ExitCode.usage, {
-        recovery: 'Use lower-case kebab-case, for example add-expense-export.',
-    }));
-}
+import { assertChangeId, matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";
+export { assertChangeId, investigationRuntimePaths, matchesAllowedPath, normalizeChangedPath, normalizeExactRepositoryPath, normalizePolicyPath, };
 export function assertTaskId(value) {
     return assertCoreTaskId(value, () => workflowError('INVALID_TASK_ID', `Invalid task ID: ${value}`, ExitCode.usage, { recovery: 'Use a dotted numeric task ID, for example 1.1.' }));
 }

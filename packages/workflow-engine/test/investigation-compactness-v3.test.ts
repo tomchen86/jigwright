@@ -1,3 +1,13 @@
+/**
+ * Checks that propose production modules use current investigation facts and bounded evidence.
+ *
+ * Invariants:
+ * - Shared session and evidence adapters remain the only investigation adapter imports.
+ * - Retired replay wrappers stay absent across the decomposed production workflow.
+ *
+ * Depends on: propose application sources, current investigation kernels, and compactness fixtures.
+ * Failure modes: old evidence paths return or production facts expand into redundant per-hit nodes.
+ */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -26,13 +36,16 @@ import { git } from './fixture.ts';
 const PRODUCTION_SCALE_HIT_COUNT = 400;
 
 test('ordinary propose production is v3-only outside shared session and evidence primitives', () => {
-  const source = fs.readFileSync(
-    path.join(
-      import.meta.dirname,
-      '../src/application/propose/propose-orchestrator.ts',
-    ),
-    'utf8',
+  const proposeDirectory = path.join(
+    import.meta.dirname,
+    '../src/application/propose',
   );
+  const source = fs
+    .readdirSync(proposeDirectory)
+    .filter((name) => /^(?:propose-|plan-review-).*\.ts$/u.test(name))
+    .sort()
+    .map((name) => fs.readFileSync(path.join(proposeDirectory, name), 'utf8'))
+    .join('\n');
   const planningInvestigationImports = [
     ...source.matchAll(
       /from '..\/..\/adapters\/planning\/investigation\/([^']+)'/gu,

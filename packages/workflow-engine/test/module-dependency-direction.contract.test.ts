@@ -1,3 +1,14 @@
+/**
+ * Verifies dependency directions and the recorded locations of workflow boundary couplings.
+ *
+ * Invariants:
+ * - Frozen dependency identities cannot grow, change targets, or silently disappear.
+ * - Source inventory snapshots identify every observed coupling and its current owner.
+ * - Scanner fixtures distinguish real references from aliases, comments, and shadowed names.
+ *
+ * Depends on: the module map, dependency baseline, T3 scanner, and boundary inventory.
+ * Failure modes: unlisted reverse dependencies or a stale and misleading architecture inventory.
+ */
 import assert from 'node:assert/strict';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -32,7 +43,7 @@ const EXPECTED_ACTIVE_EDGE_COUNT = 715;
 const EXPECTED_FROZEN_IDENTITY_DIGEST =
   'sha256:237ae527c8c4c0abeca75802b3292641c13ac2dd3d150ee319e4e58b8311288c';
 const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:bb56f629313f3476e03571b5794d99c3ceb03c09cc48d042da4359e8b77024c8';
+  'sha256:53f277a930bd5789216aa9da3f93bc81ae6bba6fe758015434b478196485339e';
 const SRC_PREFIX = 'packages/workflow-engine/src/';
 const BOOTSTRAP_PREFIX = 'packages/workflow-engine/bootstrap/';
 const MAP_FILE = 'workflow-engine-module-map.tsv';

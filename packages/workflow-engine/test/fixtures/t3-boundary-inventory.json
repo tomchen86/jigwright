@@ -24,8 +24,8 @@
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 191,
-    "sourceFileCount": 63,
-    "sourceIdentityDigest": "sha256:988b6d7277623026021b57242c5c9da280da5f1cefbb3f6f23810efd66924f69",
+    "sourceFileCount": 65,
+    "sourceIdentityDigest": "sha256:ce893fc7cdb18570dceea53b082730bd7dbbaee6f3764c5da5bac80536a4ca22",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",

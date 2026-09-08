@@ -393,7 +393,7 @@
     {
       "path": "src/adapters/planning/investigation/evidence-node.ts",
       "mode": "100644",
-      "digest": "sha256:a451e76c967cd0bcaa540b27b908ecdc23677865a905d9aee45cbe32a949db41"
+      "digest": "sha256:f2dc6752cef5caad3dc96ced0f56172a588f77df241d0cf0e1a086a98363bd31"
     },
     {
       "path": "src/adapters/planning/investigation/evidence-reuse-path.ts",
@@ -696,9 +696,39 @@
       "digest": "sha256:c4b8ecf272e531f72d3397d9c6806e2e9de45d61d0fc98061964bb6b3284c472"
     },
     {
+      "path": "src/application/propose/plan-review-completion.ts",
+      "mode": "100644",
+      "digest": "sha256:dbeb81a2567e0bcc2e147cfa5af65fb7f782da66d6855719fbefd15bcf008321"
+    },
+    {
+      "path": "src/application/propose/plan-review-contracts.ts",
+      "mode": "100644",
+      "digest": "sha256:0dc1558a73ef990d69aca0640697d0a691b8aaa28011a70b2a1fe150a86853a7"
+    },
+    {
+      "path": "src/application/propose/plan-review-preparation.ts",
+      "mode": "100644",
+      "digest": "sha256:f181a0a68f7388660287052c40e1431eefe9ffdd58dc20746a7074e9489fb303"
+    },
+    {
+      "path": "src/application/propose/plan-review-result.ts",
+      "mode": "100644",
+      "digest": "sha256:79431978090f7ce1d180752ff9b9ecbf8a9f3c4bbdecc910b89ad56ccacd156a"
+    },
+    {
+      "path": "src/application/propose/plan-review-retry.ts",
+      "mode": "100644",
+      "digest": "sha256:d8ddb7882a69c335a87aa55b13a5e5677ac993ca5e5a870ea3dbc3fc3985e4ad"
+    },
+    {
       "path": "src/application/propose/plan-review-role-topology.ts",
       "mode": "100644",
-      "digest": "sha256:7727eacde3c123e004ef7afc4eb6d55df4ec6ae59dc413ff988247b1ebb7404f"
+      "digest": "sha256:a9e149e351292e37262114f7e55368575cfaa4330e38e51718efab6e84d39004"
+    },
+    {
+      "path": "src/application/propose/plan-review-store.ts",
+      "mode": "100644",
+      "digest": "sha256:0143cfa1856c46de4351913593a60e49b42f56751d983ea9dd7937010c5e95f2"
     },
     {
       "path": "src/application/propose/planning-transition.ts",
@@ -706,9 +736,114 @@
       "digest": "sha256:5f4b81ee79c3064696c726fe9e9a81cc2b67e90a5435d567f59a392e070c5824"
     },
     {
+      "path": "src/application/propose/propose-artifacts.ts",
+      "mode": "100644",
+      "digest": "sha256:c960a2252b4524ab3cebad9b11eaf23829ea7954452c3f71a0728ec1c8433652"
+    },
+    {
+      "path": "src/application/propose/propose-common.ts",
+      "mode": "100644",
+      "digest": "sha256:bab86a971ecde20f4fd17b0adff3ea522071e01a78fbb1a35bdb04f349843f36"
+    },
+    {
+      "path": "src/application/propose/propose-context.ts",
+      "mode": "100644",
+      "digest": "sha256:4be8c534fa27f95c8bd47192163e9048e9b07ac6e4c848a0803f635737009102"
+    },
+    {
+      "path": "src/application/propose/propose-evidence.ts",
+      "mode": "100644",
+      "digest": "sha256:d638d6b4dbb7ecf4dea8eae3a1bc98e0f4c2c7991b15fa53188839268a5ce220"
+    },
+    {
+      "path": "src/application/propose/propose-input.ts",
+      "mode": "100644",
+      "digest": "sha256:2a2f508f6582c0edb6785b14feee9c1d631188fdeead6c35186e3f8613413642"
+    },
+    {
+      "path": "src/application/propose/propose-investigation-facts.ts",
+      "mode": "100644",
+      "digest": "sha256:09770f255c7a9b56687b486fd3d226b20c6fd4404978f7864c6d456f2b88eb1f"
+    },
+    {
+      "path": "src/application/propose/propose-investigation-manifest.ts",
+      "mode": "100644",
+      "digest": "sha256:f0dfc735277d064df42690d097791e03f2506073c8895e93315627691b7f8df6"
+    },
+    {
+      "path": "src/application/propose/propose-investigation-rebuild.ts",
+      "mode": "100644",
+      "digest": "sha256:f50030b0b5caa1aa927cdff8a04be72b6818c25acdc12d43711a1d95d7b122f7"
+    },
+    {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:d847bd75bb16f9af87f83cb846712c8a1c714cd1c7e414388f1a3b5257d7ad38"
+      "digest": "sha256:4be42df80ed59818ed33fe20f896360a1e5914e0eee49cc11adf62d2aac11096"
+    },
+    {
+      "path": "src/application/propose/propose-output.ts",
+      "mode": "100644",
+      "digest": "sha256:612b6a97f689c0e3b44b229ec50b075529faef405d3abfbce53cecca7ac531b7"
+    },
+    {
+      "path": "src/application/propose/propose-planning-materialization.ts",
+      "mode": "100644",
+      "digest": "sha256:ad2e5fb13bc07a054caee0b129e4407e608f74a81ee98620c875395723439761"
+    },
+    {
+      "path": "src/application/propose/propose-planning-store.ts",
+      "mode": "100644",
+      "digest": "sha256:096e711538b2e0e1664a6321449efcf0c1e634b4411734a18b7829a6472a1491"
+    },
+    {
+      "path": "src/application/propose/propose-provider-lifecycle.ts",
+      "mode": "100644",
+      "digest": "sha256:df6e2593ffda749d5d9b5da79c70bed93ae77219a1d2246554ce76ce155cbf96"
+    },
+    {
+      "path": "src/application/propose/propose-publication.ts",
+      "mode": "100644",
+      "digest": "sha256:82f704d133ce67dcff1011478dfa5cf6ac9aa0ca9f0c4dab35d19d0140729c65"
+    },
+    {
+      "path": "src/application/propose/propose-request-validation.ts",
+      "mode": "100644",
+      "digest": "sha256:3a56f87445f598e60cf853e136a111df348917fc01e2c4d87518992cd84f2eba"
+    },
+    {
+      "path": "src/application/propose/propose-resume.ts",
+      "mode": "100644",
+      "digest": "sha256:0940d23f4c9570b1f7264ea857aec2b882159ee8fd020e4a9fd5a70dbf71132c"
+    },
+    {
+      "path": "src/application/propose/propose-reviewer-reconciliation.ts",
+      "mode": "100644",
+      "digest": "sha256:221084866eea092767ac9cca90dcc8958ca2a3dbb7d837e9a96f2d459fe2d3b7"
+    },
+    {
+      "path": "src/application/propose/propose-reviewer-terms.ts",
+      "mode": "100644",
+      "digest": "sha256:4ba652f88c2421a23973f5ea4000fdc08af3eee28e1569a754e5f451f11de558"
+    },
+    {
+      "path": "src/application/propose/propose-runtime.ts",
+      "mode": "100644",
+      "digest": "sha256:b95bb5246f0633c5eaf613ae2feeffd1aacf5505de279d0a8873ab39bf16d19d"
+    },
+    {
+      "path": "src/application/propose/propose-start.ts",
+      "mode": "100644",
+      "digest": "sha256:3c2bc70e6b172c98a09ea55019c64cca18456b21a5cd2cf6a768486bdaf9347d"
+    },
+    {
+      "path": "src/application/propose/propose-status.ts",
+      "mode": "100644",
+      "digest": "sha256:6e8c4446bb85b655225f78210b782678e418e157abf369dd172dd936f3d35858"
+    },
+    {
+      "path": "src/application/propose/propose-types.ts",
+      "mode": "100644",
+      "digest": "sha256:60be3ea10e8af69159186e02fc112db50be47126f81eb1f06d8ebee8cf85e50a"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1111,9 +1246,14 @@
       "digest": "sha256:e6248fb57e0a98b2d4000c1d7e920f9d67e1f3ad794bb22995a76eb85c6ba4db"
     },
     {
+      "path": "src/foundation/evidence-node/evidence-node.ts",
+      "mode": "100644",
+      "digest": "sha256:a1578c0070d8b5b0ad7a4505c82a72d5cb81b0191214fa57ebea7a10b1198107"
+    },
+    {
       "path": "src/foundation/repository-path/repository-path.ts",
       "mode": "100644",
-      "digest": "sha256:052fdc0a46c26efe6ddf0a0e08b46b54d7c458b0db13d891a2b95fba35cc06cf"
+      "digest": "sha256:e437d0051ada29124945a5b9716648501f25340800432858a85e83a991499b41"
     },
     {
       "path": "src/harness-bootstrap.ts",
@@ -1458,7 +1598,7 @@
     {
       "path": "src/modules/investigation/domain/class-sample-audit.ts",
       "mode": "100644",
-      "digest": "sha256:31ab24994dde50bfa99919ca6c95d78858670e4fe6a57843dc6c43933ef8528b"
+      "digest": "sha256:00f8c087ebe2611fce43a2eef1dcffdbf7af4cc01262ec52e36043a0308310ae"
     },
     {
       "path": "src/modules/investigation/domain/floor-overflow-pruning.ts",
@@ -2073,7 +2213,7 @@
     {
       "path": "src/runtime/session-workspace/paths.ts",
       "mode": "100644",
-      "digest": "sha256:e3c1abf775d4dadcca3aaf24dca494cf6bfb2913311f8f8a55a4a4761c179563"
+      "digest": "sha256:a71176e1264775c9179260b108d402bf5ad026fef9b4154b8ad0089db62fb3d2"
     },
     {
       "path": "src/runtime/session-workspace/planning-lock.ts",
