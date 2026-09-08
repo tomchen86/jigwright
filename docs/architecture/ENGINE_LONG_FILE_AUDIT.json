@@ -128,8 +128,8 @@
   "testInventory": {
     "physicalFiles": 434,
     "executionUnits": 431,
-    "fullGateRun": false,
-    "telemetry": "Existing completed historical run reused for shard distribution; no new full gate was run."
+    "fullGateRunAtRefactorDelivery": false,
+    "telemetryAtRefactorDelivery": "Existing completed historical run reused for shard distribution; no new full gate was run."
   },
   "files": [
     {
@@ -2769,7 +2769,8 @@
         "currentAssertionCount": 96,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 11,
-        "exactRegistrationASTsRetained": 11
+        "exactRegistrationASTsRetained": 11,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2794,7 +2795,8 @@
         "currentAssertionCount": 163,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 20,
-        "exactRegistrationASTsRetained": 20
+        "exactRegistrationASTsRetained": 20,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2819,7 +2821,8 @@
         "currentAssertionCount": 114,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 37,
-        "exactRegistrationASTsRetained": 37
+        "exactRegistrationASTsRetained": 37,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2842,7 +2845,8 @@
         "currentAssertionCount": 95,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 21,
-        "exactRegistrationASTsRetained": 21
+        "exactRegistrationASTsRetained": 21,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2865,7 +2869,8 @@
         "currentAssertionCount": 64,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 19,
-        "exactRegistrationASTsRetained": 19
+        "exactRegistrationASTsRetained": 19,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2888,7 +2893,8 @@
         "currentAssertionCount": 115,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 20,
-        "exactRegistrationASTsRetained": 20
+        "exactRegistrationASTsRetained": 20,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2915,15 +2921,16 @@
         "currentAssertionCount": 83,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 42,
-        "exactRegistrationASTsRetained": 42
+        "exactRegistrationASTsRetained": 42,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
       "file": "packages/workflow-engine/test/collaboration-grant-composition-drift.integration.test.ts",
       "scope": "test",
       "baselineLines": 873,
-      "currentLines": 929,
-      "sha256": "4a41c531cf34dc8854699085cd90ab8626df79ecfdcc7c95af933294bee80919",
+      "currentLines": 960,
+      "sha256": "aa348d93c1f472e4ac2c5930d05afa119c7aa1c39675890b33348e802764e301",
       "decision": "refactored-fixture",
       "reason": "Extracted authentic available/reserved/consumed Survey and PlanReview state preparation into createCloneGrantStates. The 375-line main case retains one dynamically loaded engine clone and frozen verifier across drift, consumed terminal replay and human cleanup; those observations establish the same composition identity. Assertions remain in the original test, not in the fixture.",
       "largestActualOperation": {
@@ -2938,7 +2945,8 @@
         "currentAssertionCount": 51,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 0
+        "exactRegistrationASTsRetained": 0,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2964,7 +2972,8 @@
         "currentAssertionCount": 151,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 21,
-        "exactRegistrationASTsRetained": 21
+        "exactRegistrationASTsRetained": 21,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -2987,7 +2996,8 @@
         "currentAssertionCount": 108,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 22,
-        "exactRegistrationASTsRetained": 22
+        "exactRegistrationASTsRetained": 22,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3014,7 +3024,8 @@
         "currentAssertionCount": 195,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 37,
-        "exactRegistrationASTsRetained": 37
+        "exactRegistrationASTsRetained": 37,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3039,7 +3050,8 @@
         "currentAssertionCount": 134,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 24,
-        "exactRegistrationASTsRetained": 24
+        "exactRegistrationASTsRetained": 24,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3058,7 +3070,8 @@
         "currentAssertionCount": 13,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 0,
-        "exactRegistrationASTsRetained": 0
+        "exactRegistrationASTsRetained": 0,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3081,7 +3094,8 @@
         "currentAssertionCount": 166,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 14,
-        "exactRegistrationASTsRetained": 14
+        "exactRegistrationASTsRetained": 14,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3104,7 +3118,8 @@
         "currentAssertionCount": 68,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 11,
-        "exactRegistrationASTsRetained": 11
+        "exactRegistrationASTsRetained": 11,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3141,7 +3156,8 @@
         "currentAssertionCount": 81,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 1
+        "exactRegistrationASTsRetained": 1,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3164,7 +3180,8 @@
         "currentAssertionCount": 113,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 10,
-        "exactRegistrationASTsRetained": 10
+        "exactRegistrationASTsRetained": 10,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3194,7 +3211,8 @@
         "currentAssertionCount": 0,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 0,
-        "exactRegistrationASTsRetained": 0
+        "exactRegistrationASTsRetained": 0,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3217,7 +3235,8 @@
         "currentAssertionCount": 137,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 21,
-        "exactRegistrationASTsRetained": 21
+        "exactRegistrationASTsRetained": 21,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3240,7 +3259,8 @@
         "currentAssertionCount": 202,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 30,
-        "exactRegistrationASTsRetained": 30
+        "exactRegistrationASTsRetained": 30,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3318,7 +3338,8 @@
         "currentAssertionCount": 512,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 46,
-        "exactRegistrationASTsRetained": 45
+        "exactRegistrationASTsRetained": 45,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3359,7 +3380,8 @@
         "currentAssertionCount": 112,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 14,
-        "exactRegistrationASTsRetained": 14
+        "exactRegistrationASTsRetained": 14,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3382,7 +3404,8 @@
         "currentAssertionCount": 168,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 16,
-        "exactRegistrationASTsRetained": 16
+        "exactRegistrationASTsRetained": 16,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3405,7 +3428,8 @@
         "currentAssertionCount": 35,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 3,
-        "exactRegistrationASTsRetained": 3
+        "exactRegistrationASTsRetained": 3,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3428,7 +3452,8 @@
         "currentAssertionCount": 77,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 14,
-        "exactRegistrationASTsRetained": 14
+        "exactRegistrationASTsRetained": 14,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3485,7 +3510,8 @@
         "currentAssertionCount": 159,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 19,
-        "exactRegistrationASTsRetained": 19
+        "exactRegistrationASTsRetained": 19,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3588,7 +3614,8 @@
         "currentAssertionCount": 165,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 26,
-        "exactRegistrationASTsRetained": 26
+        "exactRegistrationASTsRetained": 26,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3643,7 +3670,8 @@
         "currentAssertionCount": 191,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 16,
-        "exactRegistrationASTsRetained": 16
+        "exactRegistrationASTsRetained": 16,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3690,7 +3718,8 @@
         "currentAssertionCount": 807,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 62,
-        "exactRegistrationASTsRetained": 61
+        "exactRegistrationASTsRetained": 61,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3713,7 +3742,8 @@
         "currentAssertionCount": 62,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 13,
-        "exactRegistrationASTsRetained": 13
+        "exactRegistrationASTsRetained": 13,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3736,7 +3766,8 @@
         "currentAssertionCount": 100,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 16,
-        "exactRegistrationASTsRetained": 16
+        "exactRegistrationASTsRetained": 16,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3759,7 +3790,8 @@
         "currentAssertionCount": 98,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 8,
-        "exactRegistrationASTsRetained": 8
+        "exactRegistrationASTsRetained": 8,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3782,7 +3814,8 @@
         "currentAssertionCount": 40,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 2
+        "exactRegistrationASTsRetained": 2,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3827,7 +3860,8 @@
         "currentAssertionCount": 410,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 55,
-        "exactRegistrationASTsRetained": 55
+        "exactRegistrationASTsRetained": 55,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3850,7 +3884,8 @@
         "currentAssertionCount": 207,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 33,
-        "exactRegistrationASTsRetained": 33
+        "exactRegistrationASTsRetained": 33,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3873,7 +3908,8 @@
         "currentAssertionCount": 49,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 12,
-        "exactRegistrationASTsRetained": 12
+        "exactRegistrationASTsRetained": 12,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3901,7 +3937,8 @@
         "currentAssertionCount": 91,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 19,
-        "exactRegistrationASTsRetained": 19
+        "exactRegistrationASTsRetained": 19,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3924,7 +3961,8 @@
         "currentAssertionCount": 142,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 18,
-        "exactRegistrationASTsRetained": 18
+        "exactRegistrationASTsRetained": 18,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3947,7 +3985,8 @@
         "currentAssertionCount": 142,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 38,
-        "exactRegistrationASTsRetained": 38
+        "exactRegistrationASTsRetained": 38,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3970,7 +4009,8 @@
         "currentAssertionCount": 35,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 2
+        "exactRegistrationASTsRetained": 2,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -3999,7 +4039,8 @@
         "currentAssertionCount": 149,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 32,
-        "exactRegistrationASTsRetained": 32
+        "exactRegistrationASTsRetained": 32,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4022,7 +4063,8 @@
         "currentAssertionCount": 10,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 2
+        "exactRegistrationASTsRetained": 2,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4045,15 +4087,16 @@
         "currentAssertionCount": 70,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 9,
-        "exactRegistrationASTsRetained": 9
+        "exactRegistrationASTsRetained": 9,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
       "file": "packages/workflow-engine/test/planning-transition.integration.test.ts",
       "scope": "test",
       "baselineLines": 1376,
-      "currentLines": 1376,
-      "sha256": "53497d4462b99d739a67da6af9ae3ab15db42538f448a66febbe0aba466ea7ea",
+      "currentLines": 1379,
+      "sha256": "5c7edb21c48d40dddccfa7ffd3b5b2d17f4b13b86573acece3f2f0d83873290c",
       "decision": "retain-cohesive-contract",
       "reason": "Planning commit admission, exact ref/index CAS and rollback all belong to one transition contract. Largest85-line case;269-line installFakeOpenSpec helper is fixture script bulk. Existing source-boundary tests are short and explicitly scoped to that entry.",
       "largestActualOperation": {
@@ -4068,20 +4111,21 @@
         "currentAssertionCount": 99,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 24,
-        "exactRegistrationASTsRetained": 24
+        "exactRegistrationASTsRetained": 24,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
       "file": "packages/workflow-engine/test/portability-mvp.integration.test.ts",
       "scope": "test",
       "baselineLines": 2303,
-      "currentLines": 1910,
-      "sha256": "9eb9b487cc499b3b38050475bcfdc4042f531976d5a5715b233cffd458801e4b",
+      "currentLines": 1913,
+      "sha256": "165fea4e4829d557690cc7b6cd1e05780f839c68bbee539e8e7710b9700f3564",
       "decision": "refactored-responsibility-families",
       "reason": "Moved six consumer configuration/key/path validation cases into consumer-configuration.contract.test.ts. The remaining 383-line installed-tarball proof deliberately shares the same actual package, consumer repositories and lifecycle receipts through initial install, continued work and update-base; fixture helpers dominate remaining file size.",
       "largestActualOperation": {
         "name": "'installed tarball drives two complete current lifecycles over unrelated seeded v3 consumers'",
-        "lines": 383
+        "lines": 386
       },
       "testDescendants": [
         "packages/workflow-engine/test/portability-mvp.integration.test.ts",
@@ -4093,7 +4137,8 @@
         "currentAssertionCount": 129,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 8,
-        "exactRegistrationASTsRetained": 8
+        "exactRegistrationASTsRetained": 8,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4123,7 +4168,8 @@
         "currentAssertionCount": 369,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 61,
-        "exactRegistrationASTsRetained": 60
+        "exactRegistrationASTsRetained": 60,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4146,7 +4192,8 @@
         "currentAssertionCount": 139,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 16,
-        "exactRegistrationASTsRetained": 16
+        "exactRegistrationASTsRetained": 16,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4185,7 +4232,8 @@
         "currentAssertionCount": 125,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 29,
-        "exactRegistrationASTsRetained": 29
+        "exactRegistrationASTsRetained": 29,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4210,7 +4258,8 @@
         "currentAssertionCount": 106,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 13,
-        "exactRegistrationASTsRetained": 13
+        "exactRegistrationASTsRetained": 13,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4235,7 +4284,8 @@
         "currentAssertionCount": 143,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 21,
-        "exactRegistrationASTsRetained": 21
+        "exactRegistrationASTsRetained": 21,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4326,7 +4376,8 @@
         "currentAssertionCount": 236,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 21,
-        "exactRegistrationASTsRetained": 21
+        "exactRegistrationASTsRetained": 21,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4349,7 +4400,8 @@
         "currentAssertionCount": 68,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 11,
-        "exactRegistrationASTsRetained": 11
+        "exactRegistrationASTsRetained": 11,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4372,7 +4424,8 @@
         "currentAssertionCount": 53,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 6,
-        "exactRegistrationASTsRetained": 6
+        "exactRegistrationASTsRetained": 6,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4395,7 +4448,8 @@
         "currentAssertionCount": 57,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 13,
-        "exactRegistrationASTsRetained": 13
+        "exactRegistrationASTsRetained": 13,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4418,7 +4472,8 @@
         "currentAssertionCount": 61,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 2,
-        "exactRegistrationASTsRetained": 1
+        "exactRegistrationASTsRetained": 1,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4447,7 +4502,8 @@
         "currentAssertionCount": 246,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 56,
-        "exactRegistrationASTsRetained": 56
+        "exactRegistrationASTsRetained": 56,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4470,7 +4526,8 @@
         "currentAssertionCount": 46,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 4,
-        "exactRegistrationASTsRetained": 4
+        "exactRegistrationASTsRetained": 4,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4537,7 +4594,8 @@
         "currentAssertionCount": 69,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 17,
-        "exactRegistrationASTsRetained": 17
+        "exactRegistrationASTsRetained": 17,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4576,7 +4634,8 @@
         "currentAssertionCount": 35,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 1,
-        "exactRegistrationASTsRetained": 1
+        "exactRegistrationASTsRetained": 1,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4599,7 +4658,8 @@
         "currentAssertionCount": 76,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 3,
-        "exactRegistrationASTsRetained": 3
+        "exactRegistrationASTsRetained": 3,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4622,7 +4682,8 @@
         "currentAssertionCount": 87,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 8,
-        "exactRegistrationASTsRetained": 8
+        "exactRegistrationASTsRetained": 8,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4666,7 +4727,8 @@
         "currentAssertionCount": 258,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 20,
-        "exactRegistrationASTsRetained": 20
+        "exactRegistrationASTsRetained": 20,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4723,7 +4785,8 @@
         "currentAssertionCount": 230,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 17,
-        "exactRegistrationASTsRetained": 16
+        "exactRegistrationASTsRetained": 16,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4746,7 +4809,8 @@
         "currentAssertionCount": 158,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 30,
-        "exactRegistrationASTsRetained": 30
+        "exactRegistrationASTsRetained": 30,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4769,7 +4833,8 @@
         "currentAssertionCount": 30,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 1,
-        "exactRegistrationASTsRetained": 1
+        "exactRegistrationASTsRetained": 1,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4792,7 +4857,8 @@
         "currentAssertionCount": 47,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 1,
-        "exactRegistrationASTsRetained": 1
+        "exactRegistrationASTsRetained": 1,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4815,7 +4881,8 @@
         "currentAssertionCount": 46,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 4,
-        "exactRegistrationASTsRetained": 4
+        "exactRegistrationASTsRetained": 4,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4845,7 +4912,8 @@
         "currentAssertionCount": 289,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 41,
-        "exactRegistrationASTsRetained": 41
+        "exactRegistrationASTsRetained": 41,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     },
     {
@@ -4868,7 +4936,8 @@
         "currentAssertionCount": 35,
         "exactAssertionMultiset": true,
         "baselineRegistrationCount": 5,
-        "exactRegistrationASTsRetained": 5
+        "exactRegistrationASTsRetained": 5,
+        "asOfCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44"
       }
     }
   ],
@@ -5829,5 +5898,61 @@
     ],
     "integrationFailureResolved": "The initial contract pass was 42/43. The missing T3 zero-enumeration boundary was restored by ff5872b; the complete 43-case integration group then passed.",
     "localEvidenceDirectory": "/Users/tomchen/Codespace/.worktree-backups/jigwright-engine-refactor-complete-9acbd6e-evidence"
+  },
+  "refactorDeliveryCommit": "c7a0c2100a716637ddd332ccf271fb20b909fa44",
+  "fullGateFollowUp": {
+    "initialDiagnosticRunId": "run-20260908031236123-701d93e7-3e16-4af8-a78d-f5ca9bb41c5f",
+    "initialDiagnosticCommit": "726a0aff5092f575814c0397b9b48f56b2752ce6",
+    "concurrentDocumentationCommits": ["1f689b6", "84cf9e1"],
+    "productionSourceChanged": false,
+    "fixes": [
+      {
+        "owner": "A",
+        "commits": [
+          "341c97d54bb634c11dbc2475000369fc535fc1f3",
+          "3fa4ff6d88c263f8f51c43ce56f7c1b125697e40"
+        ],
+        "change": "Follow the extracted maintenance publication and grant storage owners; retain exact call counts, replay parameters, opaque verifier gates and terminal/journal ordering; check facade wiring and repair-path independence.",
+        "negativeControlsRejected": 15
+      },
+      {
+        "owner": "B",
+        "commit": "e82fe8210ac4372debe011cc73dd76e0438b98ca",
+        "change": "Point source assertions at extracted Git/core DTO owners and include the exact native-session and execution storage families. Original matcher arguments, numeric restrictions and external consumer identities are retained."
+      },
+      {
+        "owner": "coordinator",
+        "commit": "8c2758263e14079853edeafcfd30c29f0a9362a7",
+        "change": "Extend the installed init result expectation with applied: [], pending: [providerConfig, guidanceTargets], and guidanceSuggestions: []; retain the complete exact object assertion and both installed lifecycles."
+      },
+      {
+        "owner": "coordinator",
+        "commit": "9c7eb985d86de23f6d6326bdce076be7d6c811fc",
+        "change": "Check actual callable governance finding exports after factory extraction, reject private disposition exports in both facade and factory modules, and extend forbidden Source-root checks to all six extracted implementation owners.",
+        "negativeControlsRejected": 12
+      }
+    ],
+    "assertionEvidence": "The per-file assertion preservation records remain the static evidence at refactorDeliveryCommit. These follow-ups preserve the original checks, update source locations, add wiring and negative guards, and strengthen one init result expectation with the new setup fields. Governance finding declaration-shape checks now validate the actual public callable API and private export exclusion.",
+    "validation": {
+      "integratedSourceBoundaryCases": {
+        "passed": 7,
+        "failed": 0
+      },
+      "installedPortability": {
+        "passed": 1,
+        "failed": 0,
+        "completeLifecycles": 2,
+        "durationMs": 2883589.631333
+      },
+      "modifiedTestFilesFormatted": 7,
+      "scannedHandwrittenFiles": 1256,
+      "currentCandidates": 222,
+      "unreviewedCandidates": 0,
+      "governanceSpecificationCases": {
+        "passed": 3,
+        "failed": 0
+      }
+    },
+    "finalGateEvidence": "Use the run-bound private full-gate receipt for the exact isolated validation identity; this tracked audit does not assert a passing receipt."
   }
 }

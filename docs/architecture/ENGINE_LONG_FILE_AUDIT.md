@@ -56,14 +56,16 @@ preserves one saved-session/materialization/replay proof.
 
 The refactor preserves public APIs, errors, signed/canonical values, locking,
 CAS, journal ordering and replay boundaries. Declaration-level AST and binding
-checks accompany A, B and coordinator extractions. The final static test review
+checks accompany A, B and coordinator extractions. The static test review at
+refactor delivery (`c7a0c21`)
 preserves all 9,217 original assertion calls across the 69 original test files
 and their descendants. This is static preservation evidence; it is not a claim
 that all assertions were executed in this run.
 
 The test inventory now has 434 physical test files and 431 execution units.
-All original physical test paths remain. Shards use the existing completed
-historical timing run; no new full gate was run.
+All original physical test paths remain. At refactor delivery, shards used the
+existing completed historical timing run and no new full gate had been run.
+The owner subsequently authorized a full gate; its follow-up is recorded below.
 
 Every one of the 273 new source files has a baseline origin. New files inherit
 273 path-role rules, 540 protected-capability dependency entries and 11 verifier
@@ -92,7 +94,41 @@ admission. Per-command results and explicit test limits are recorded in the
 inventory; overlapping workstream runs are not summed into a unique test count.
 
 Work was performed directly in isolated local worktrees under the owner's
-explicit override. No Claude, workflow-engine managed lifecycle, full gate,
-push, or remote merge was used. Source commits, baseline snapshots and local
+explicit override. No Claude, workflow-engine managed lifecycle, push, or remote
+merge was used. Source commits, baseline snapshots and local
 verification artifacts remain available. The reviewed result is integrated
 locally into `work/pilot-findings-fixes`.
+
+## Full-gate follow-up
+
+The initial full gate and focused follow-ups identified stale test source
+locations and an outdated installed `init` result expectation. The corrections
+change seven test files and leave production source unchanged:
+
+- A follows the extracted maintenance publication and grant storage owners,
+  retaining exact replay call counts and authorization/currentness/terminal
+  ordering. Added guards verify facade wiring and independent repair paths.
+- B follows the extracted Git and core DTO definitions, includes the exact
+  native-session owners, and checks negative surfaces across the original
+  modules and their extracted implementation families. Matcher arguments,
+  numeric restrictions and external consumer identities remain intact.
+- The coordinator extends the exact installed `init` result expectation with
+  `applied`, `pending` and `guidanceSuggestions`, keeping both complete installed
+  lifecycles in the test. Governance finding checks verify actual callable
+  exports and private-operation exclusion, with forbidden Source-root checks
+  covering all six extracted implementation owners.
+
+The integrated seven source-boundary cases and all three governance specification
+cases pass. The installed tarball case
+passes both complete lifecycles in approximately 48 minutes. A's fifteen negative
+controls and the coordinator's twelve governance controls are rejected, and the
+seven modified tests pass formatting checks. The
+rescan still covers 1,256 handwritten files and 222 candidates, with no unreviewed
+candidate. Per-file assertion preservation records are explicitly bound to the
+refactor-delivery commit; the follow-up records explain the added guards and
+strengthened expectation.
+
+Concurrent documentation commits changed the main checkout's HEAD during the
+initial run. Final gate validation therefore uses a fixed isolated worktree.
+The exact result is recorded by its run-bound private full-gate receipt; this
+tracked document does not claim a passing receipt.
