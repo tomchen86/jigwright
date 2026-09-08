@@ -1,3 +1,5 @@
+import { createAuthorityPlanRecords } from './authority-plan-records.ts';
+import { createAuthorityPlanWorktree } from './authority-plan-worktree.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -523,707 +525,9 @@ function approvalRequest(
   };
 }
 
-function parseIntent(value: unknown): AuthorityPlanIntent {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'changeId',
-      'taskId',
-      'profileId',
-      'reason',
-      'message',
-      'mutations',
-      'externalEffects',
-      'evidenceWaivers',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'authority-plan-intent.v1' ||
-    typeof value.changeId !== 'string' ||
-    typeof value.taskId !== 'string' ||
-    typeof value.profileId !== 'string' ||
-    !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value.profileId) ||
-    typeof value.reason !== 'string' ||
-    value.reason.trim() !== value.reason ||
-    value.reason.length < 12 ||
-    value.reason.length > 500 ||
-    typeof value.message !== 'string' ||
-    value.message.trim() !== value.message ||
-    value.message.length < 1 ||
-    value.message.includes('\n') ||
-    !Array.isArray(value.mutations) ||
-    value.mutations.length < 1 ||
-    value.mutations.length > MAX_MUTATIONS ||
-    !Array.isArray(value.externalEffects) ||
-    !Array.isArray(value.evidenceWaivers)
-  ) {
-    throw planInvalid('Authority plan intent is malformed.');
-  }
-  assertChangeId(value.changeId);
-  assertTaskId(value.taskId);
-  const mutations = value.mutations.map(parseMutation);
-  const paths = mutations.map((mutation) => mutation.path);
-  if (
-    new Set(paths).size !== paths.length ||
-    canonicalJson(paths) !== canonicalJson([...paths].sort())
-  ) {
-    throw planInvalid(
-      'Authority plan mutation paths must be sorted and unique.',
-    );
-  }
-  const externalEffects = value.externalEffects.map(parseExternalEffect);
-  const evidenceWaivers = value.evidenceWaivers.map(parseEvidenceWaiver);
-  return structuredClone({
-    schemaVersion: 1,
-    kind: 'authority-plan-intent.v1',
-    changeId: value.changeId,
-    taskId: value.taskId,
-    profileId: value.profileId,
-    reason: value.reason,
-    message: value.message,
-    mutations,
-    externalEffects,
-    evidenceWaivers,
-  });
-}
-
 /** Validate and normalize an authority-plan intent without preparing a plan. */
 export function parseAuthorityPlanIntent(value: unknown): AuthorityPlanIntent {
   return parseIntent(value);
-}
-
-function parseMutation(value: unknown): AuthorityPlanMutation {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, ['path', 'expectedBeforeSha256', 'content']) ||
-    typeof value.path !== 'string' ||
-    (value.expectedBeforeSha256 !== null &&
-      (typeof value.expectedBeforeSha256 !== 'string' ||
-        !SHA256.test(value.expectedBeforeSha256))) ||
-    (value.content !== null && typeof value.content !== 'string') ||
-    (typeof value.content === 'string' &&
-      Buffer.byteLength(value.content, 'utf8') > MAX_CONTENT_BYTES)
-  ) {
-    throw planInvalid('Authority plan mutation is malformed.');
-  }
-  return {
-    path: normalizeExactRepositoryPath(value.path),
-    expectedBeforeSha256: value.expectedBeforeSha256,
-    content: value.content,
-  };
-}
-
-function parseExternalEffect(value: unknown): CandidateExternalEffect {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'effectType',
-      'targetDigest',
-      'authorizationDigest',
-      'resultDigest',
-    ]) ||
-    typeof value.effectType !== 'string' ||
-    typeof value.targetDigest !== 'string' ||
-    (value.authorizationDigest !== null &&
-      typeof value.authorizationDigest !== 'string') ||
-    (value.resultDigest !== null && typeof value.resultDigest !== 'string')
-  ) {
-    throw planInvalid('Authority plan external effect is malformed.');
-  }
-  return {
-    effectType: value.effectType,
-    targetDigest: value.targetDigest,
-    authorizationDigest: value.authorizationDigest,
-    resultDigest: value.resultDigest,
-  };
-}
-
-function parseEvidenceWaiver(value: unknown): MaintainerEvidenceWaiver {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, ['checkId', 'reason']) ||
-    typeof value.checkId !== 'string' ||
-    typeof value.reason !== 'string'
-  ) {
-    throw planInvalid('Authority plan evidence waiver is malformed.');
-  }
-  return { checkId: value.checkId, reason: value.reason };
-}
-
-function previewMutation(
-  repositoryRoot: string,
-  mutation: AuthorityPlanMutation,
-): AuthorityPlanPreviewEntry {
-  assertPolicyPathInsideRepository(repositoryRoot, mutation.path);
-  const target = path.join(repositoryRoot, mutation.path);
-  const stats = fs.lstatSync(target, { throwIfNoEntry: false });
-  if (stats !== undefined && !stats.isFile()) {
-    throw planInvalid(
-      `Authority plan target is not a regular file: ${mutation.path}`,
-    );
-  }
-  const before = stats === undefined ? null : fs.readFileSync(target, 'utf8');
-  const beforeSha256 = before === null ? null : digestBytes(before);
-  if (beforeSha256 !== mutation.expectedBeforeSha256) {
-    throw planError(
-      'AUTHORITY_PLAN_WORKTREE_CHANGED',
-      `Authority plan precondition changed for ${mutation.path}.`,
-      ExitCode.staleState,
-    );
-  }
-  const afterSha256 =
-    mutation.content === null ? null : digestBytes(mutation.content);
-  if (beforeSha256 === afterSha256) {
-    throw planInvalid(`Authority plan mutation is a no-op: ${mutation.path}`);
-  }
-  return {
-    path: mutation.path,
-    beforeSha256,
-    afterSha256,
-    unifiedDiff: unifiedDiff(mutation.path, before, mutation.content),
-  };
-}
-
-function unifiedDiff(
-  filePath: string,
-  before: string | null,
-  after: string | null,
-): string {
-  const beforeLines =
-    before === null ? [] : before.replace(/\n$/, '').split('\n');
-  const afterLines = after === null ? [] : after.replace(/\n$/, '').split('\n');
-  return [
-    `--- ${before === null ? '/dev/null' : `a/${filePath}`}`,
-    `+++ ${after === null ? '/dev/null' : `b/${filePath}`}`,
-    `@@ -1,${beforeLines.length} +1,${afterLines.length} @@`,
-    ...beforeLines.map((line) => `-${line}`),
-    ...afterLines.map((line) => `+${line}`),
-    '',
-  ].join('\n');
-}
-
-function assertPreparedWorktree(
-  repositoryRoot: string,
-  record: AuthorityPlanRecord,
-): void {
-  const current = discoverRepository(repositoryRoot);
-  if (
-    current.branch !== record.branch ||
-    current.head !== record.baseCommit ||
-    current.tree !== record.baseTree ||
-    current.statusEntries.length !== 0
-  ) {
-    throw planError(
-      'AUTHORITY_PLAN_WORKTREE_CHANGED',
-      'The authority-plan worktree changed after dry-run preparation.',
-      ExitCode.staleState,
-    );
-  }
-  for (const mutation of record.intent.mutations) {
-    const preview = previewMutation(repositoryRoot, mutation);
-    const expected = record.preview.find(
-      (entry) => entry.path === mutation.path,
-    );
-    if (
-      expected === undefined ||
-      canonicalJson(preview) !== canonicalJson(expected)
-    ) {
-      throw planUnsafe(
-        'Authority plan preview no longer matches its exact input.',
-      );
-    }
-  }
-}
-
-function assertApplyingWorktree(
-  repositoryRoot: string,
-  record: AuthorityPlanRecord,
-): void {
-  const current = discoverRepository(repositoryRoot);
-  if (current.branch !== record.branch || current.head !== record.baseCommit) {
-    throw planError(
-      'AUTHORITY_PLAN_WORKTREE_CHANGED',
-      'Authority plan local application moved to a different branch or base.',
-      ExitCode.staleState,
-    );
-  }
-  if (current.statusEntries.length === 0) return;
-  const changed = listWorkingTreePaths(repositoryRoot);
-  const expected = record.intent.mutations.map((mutation) => mutation.path);
-  if (canonicalJson(changed) !== canonicalJson(expected)) {
-    throw planError(
-      'AUTHORITY_PLAN_WORKTREE_CHANGED',
-      'Authority plan local application contains unrelated worktree changes.',
-      ExitCode.staleState,
-    );
-  }
-  for (const mutation of record.intent.mutations) {
-    assertResultBytes(repositoryRoot, mutation);
-  }
-}
-
-function applyMutations(
-  repositoryRoot: string,
-  mutations: readonly AuthorityPlanMutation[],
-): void {
-  for (const mutation of mutations) {
-    const target = path.join(repositoryRoot, mutation.path);
-    assertPolicyPathInsideRepository(repositoryRoot, mutation.path);
-    if (mutation.content === null) {
-      fs.rmSync(target);
-    } else {
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, mutation.content, 'utf8');
-    }
-  }
-}
-
-function restoreMutations(
-  repositoryRoot: string,
-  record: AuthorityPlanRecord,
-): void {
-  for (const mutation of record.intent.mutations) {
-    const target = path.join(repositoryRoot, mutation.path);
-    if (mutation.expectedBeforeSha256 === null) {
-      fs.rmSync(target, { force: true });
-    } else {
-      const before = runGit(repositoryRoot, [
-        'show',
-        `${record.baseCommit}:${mutation.path}`,
-      ]);
-      fs.mkdirSync(path.dirname(target), { recursive: true });
-      fs.writeFileSync(target, before, 'utf8');
-    }
-  }
-  runGit(repositoryRoot, [
-    'reset',
-    '--quiet',
-    record.baseCommit,
-    '--',
-    ...record.intent.mutations.map((mutation) => mutation.path),
-  ]);
-}
-
-function normalizeApplication(
-  repositoryRoot: string,
-  record: AuthorityPlanRecord,
-  result: ApprovalResult,
-): AuthorityPlanLocalApplication {
-  const current = discoverRepository(repositoryRoot);
-  if (
-    result.commitHash !== current.head ||
-    result.resultTree !== current.tree ||
-    !COMMIT_OID.test(result.commitHash) ||
-    !COMMIT_OID.test(result.resultTree)
-  ) {
-    throw planUnsafe(
-      'Local authority result does not match the current commit.',
-    );
-  }
-  const recovered = recoverLocalApplication(repositoryRoot, record);
-  if (recovered.grantId !== result.grantId) {
-    throw planUnsafe('Local authority result grant does not match its commit.');
-  }
-  return {
-    grantId: result.grantId,
-    sessionId: result.sessionId ?? null,
-    commitHash: result.commitHash,
-    resultTree: result.resultTree,
-    tagRef: result.tagRef,
-    publishCommand: result.publishCommand,
-    attestationRelayCommand: result.attestationRelayCommand,
-    applicationReceiptTagRef: result.applicationReceiptTagRef,
-  };
-}
-
-function recoverLocalApplication(
-  repositoryRoot: string,
-  record: AuthorityPlanRecord,
-): AuthorityPlanLocalApplication {
-  const current = discoverRepository(repositoryRoot);
-  const parent = runGit(
-    repositoryRoot,
-    ['rev-parse', `${current.head}^`],
-    true,
-  ).trim();
-  const changed = runGit(repositoryRoot, [
-    'diff-tree',
-    '--no-commit-id',
-    '--name-only',
-    '-r',
-    current.head,
-  ])
-    .split('\n')
-    .filter(Boolean)
-    .sort();
-  const expected = record.intent.mutations.map((mutation) => mutation.path);
-  const message = runGit(repositoryRoot, [
-    'show',
-    '-s',
-    '--format=%B',
-    current.head,
-  ]).trimEnd();
-  let trailers;
-  try {
-    trailers = parseManagedTrailers(message);
-  } catch {
-    trailers = undefined;
-  }
-  if (
-    current.branch !== record.branch ||
-    parent !== record.baseCommit ||
-    canonicalJson(changed) !== canonicalJson(expected) ||
-    trailers?.kind !== 'authority' ||
-    trailers.changeId !== record.intent.changeId
-  ) {
-    throw planError(
-      'AUTHORITY_PLAN_RECOVERY_INVALID',
-      'Current HEAD is not the exact authority commit planned by this round.',
-      ExitCode.guard,
-    );
-  }
-  for (const mutation of record.intent.mutations) {
-    assertResultBytes(repositoryRoot, mutation);
-  }
-  const grantId = trailers.grantId;
-  const tagCandidates = runGit(repositoryRoot, [
-    'for-each-ref',
-    '--format=%(refname)',
-    'refs/tags',
-  ])
-    .split('\n')
-    .filter((ref) => ref.endsWith(grantId))
-    .filter(
-      (ref) => !ref.includes('application') && !ref.includes('attestation'),
-    )
-    .sort();
-  const tagRef = tagCandidates[0] ?? `refs/tags/workflow-authority/${grantId}`;
-  const basePolicy = parseMaintainerPolicy(
-    JSON.parse(
-      runGit(repositoryRoot, [
-        'show',
-        `${record.baseCommit}:workflow/maintainer-policy.json`,
-      ]),
-    ),
-  );
-  return {
-    grantId,
-    sessionId: null,
-    commitHash: current.head,
-    resultTree: current.tree,
-    tagRef,
-    publishCommand: authorityTagPublishCommand(
-      basePolicy.repository.origin,
-      tagRef,
-    ),
-    attestationRelayCommand: `pnpm workflow maintainer attestation-relay --original ${current.head} --json`,
-    applicationReceiptTagRef: `refs/tags/workflow-authority-application/${grantId}`,
-  };
-}
-
-function assertResultBytes(
-  repositoryRoot: string,
-  mutation: AuthorityPlanMutation,
-): void {
-  const target = path.join(repositoryRoot, mutation.path);
-  const stats = fs.lstatSync(target, { throwIfNoEntry: false });
-  if (mutation.content === null) {
-    if (stats !== undefined)
-      throw planUnsafe('Deleted authority-plan path reappeared.');
-    return;
-  }
-  if (
-    !stats?.isFile() ||
-    fs.readFileSync(target, 'utf8') !== mutation.content
-  ) {
-    throw planUnsafe(`Authority-plan result differs at ${mutation.path}.`);
-  }
-}
-
-function listWorkingTreePaths(repositoryRoot: string): string[] {
-  const tracked = runGit(repositoryRoot, [
-    'diff',
-    '--name-only',
-    '--no-renames',
-    'HEAD',
-    '--',
-  ])
-    .split('\n')
-    .filter(Boolean);
-  const untracked = runGit(repositoryRoot, [
-    'ls-files',
-    '--others',
-    '--exclude-standard',
-  ])
-    .split('\n')
-    .filter(Boolean);
-  return [...new Set([...tracked, ...untracked])].sort();
-}
-
-function assertRelay(
-  record: AuthorityPlanRecord,
-  relay: AuthorityAttestationRelayProjection,
-): void {
-  if (
-    relay.grantId !== record.localApplication?.grantId ||
-    relay.originalCommit !== record.localApplication.commitHash ||
-    relay.originalCommit === relay.mainCommit ||
-    !COMMIT_OID.test(relay.originalCommit) ||
-    !COMMIT_OID.test(relay.mainCommit)
-  ) {
-    throw planUnsafe(
-      'Attestation relay does not match the local authority result.',
-    );
-  }
-}
-
-function observeRemoteRef(repositoryRoot: string, ref: string): string | null {
-  const line = runGit(
-    repositoryRoot,
-    ['ls-remote', '--refs', 'origin', ref],
-    true,
-  )
-    .trim()
-    .split('\n')
-    .filter(Boolean);
-  if (line.length === 0) return null;
-  if (line.length !== 1) throw planUnsafe('Remote authority ref is ambiguous.');
-  const [oid, observedRef] = line[0]!.split('\t');
-  if (!oid || !COMMIT_OID.test(oid) || observedRef !== ref) {
-    throw planUnsafe('Remote authority ref is malformed.');
-  }
-  return oid;
-}
-
-function authorityPlanRuntime(
-  repository: ReturnType<typeof discoverRepository>,
-) {
-  const config = loadWorkflowConfig(repository.repositoryRoot);
-  return investigationRuntimePaths(
-    repository.gitCommonDirectory,
-    config.runtimeDirectory,
-  );
-}
-
-function withPlanLock<T>(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  planId: string,
-  operation: () => T,
-): T {
-  return withPrivateRuntimeLock(
-    runtime,
-    path.join(runtime.root, 'authority-plans', 'locks', `${planId}.lock`),
-    operation,
-    'AUTHORITY_PLAN_OPERATION_CONFLICT',
-    planUnsafe,
-  );
-}
-
-function appendRecord(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  value: Omit<AuthorityPlanRecord, 'recordDigest'>,
-): AuthorityPlanRecord {
-  const record: AuthorityPlanRecord = {
-    ...structuredClone(value),
-    recordDigest: digest({ schema: 'authority-plan-record.v1', record: value }),
-  };
-  createPrivateCanonicalJson(
-    runtime,
-    recordPath(runtime, record.planId, record.revision),
-    record,
-    planUnsafe,
-    'AUTHORITY_PLAN_REVISION_CONFLICT',
-  );
-  return parseRecord(
-    readPrivateCanonicalJson(
-      runtime,
-      recordPath(runtime, record.planId, record.revision),
-      planUnsafe,
-    ),
-  );
-}
-
-function transition(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  current: AuthorityPlanRecord,
-  patch: Partial<
-    Pick<
-      AuthorityPlanRecord,
-      | 'state'
-      | 'updatedAt'
-      | 'localApplication'
-      | 'relay'
-      | 'attestation'
-      | 'friction'
-    >
-  >,
-): AuthorityPlanRecord {
-  const { recordDigest: _currentRecordDigest, ...base } = current;
-  return appendRecord(runtime, {
-    ...base,
-    ...structuredClone(patch),
-    revision: current.revision + 1,
-    previousRecordDigest: current.recordDigest,
-  });
-}
-
-function readLatest(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  planId: string,
-  allowMissing: boolean,
-): AuthorityPlanRecord | null {
-  const directory = path.join(
-    runtime.root,
-    'authority-plans',
-    'records',
-    planId,
-  );
-  const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-  if (stats === undefined) return null;
-  assertPrivateInvestigationDirectory(runtime, directory, planUnsafe);
-  const names = fs.readdirSync(directory).sort();
-  if (
-    names.length < 1 ||
-    names.length > MAX_REVISIONS ||
-    names.some((name) => !REVISION_FILE.test(name))
-  ) {
-    throw planUnsafe('Authority plan revision inventory is malformed.');
-  }
-  let previous: AuthorityPlanRecord | null = null;
-  for (const [index, name] of names.entries()) {
-    const match = REVISION_FILE.exec(name)!;
-    if (Number(match[1]) !== index + 1) {
-      throw planUnsafe('Authority plan revision sequence is incomplete.');
-    }
-    const record = parseRecord(
-      readPrivateCanonicalJson(runtime, path.join(directory, name), planUnsafe),
-    );
-    if (
-      record.planId !== planId ||
-      record.revision !== index + 1 ||
-      record.previousRecordDigest !== (previous?.recordDigest ?? null) ||
-      (previous !== null &&
-        (record.createdAt !== previous.createdAt ||
-          record.baseCommit !== previous.baseCommit ||
-          record.baseTree !== previous.baseTree ||
-          record.branch !== previous.branch ||
-          record.intentDigest !== previous.intentDigest ||
-          canonicalJson(record.intent) !== canonicalJson(previous.intent) ||
-          canonicalJson(record.preview) !== canonicalJson(previous.preview)))
-    ) {
-      throw planUnsafe('Authority plan revision lineage is inconsistent.');
-    }
-    previous = record;
-  }
-  if (previous === null && !allowMissing) throw planUnsafe();
-  return previous;
-}
-
-function requireLatest(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  planId: string,
-): AuthorityPlanRecord {
-  const record = readLatest(runtime, planId, false);
-  if (record === null) {
-    throw planError(
-      'AUTHORITY_PLAN_NOT_FOUND',
-      `Authority plan ${planId} does not exist.`,
-      ExitCode.usage,
-    );
-  }
-  return record;
-}
-
-function parseRecord(value: unknown): AuthorityPlanRecord {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'planId',
-      'revision',
-      'previousRecordDigest',
-      'recordDigest',
-      'createdAt',
-      'updatedAt',
-      'state',
-      'branch',
-      'baseCommit',
-      'baseTree',
-      'intentDigest',
-      'intent',
-      'preview',
-      'localApplication',
-      'relay',
-      'attestation',
-      'friction',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'authority-plan-record.v1' ||
-    typeof value.planId !== 'string' ||
-    !PLAN_ID.test(value.planId) ||
-    typeof value.revision !== 'number' ||
-    !Number.isInteger(value.revision) ||
-    value.revision < 1 ||
-    (value.previousRecordDigest !== null &&
-      (typeof value.previousRecordDigest !== 'string' ||
-        !SHA256.test(value.previousRecordDigest))) ||
-    typeof value.recordDigest !== 'string' ||
-    !SHA256.test(value.recordDigest) ||
-    typeof value.createdAt !== 'string' ||
-    typeof value.updatedAt !== 'string' ||
-    !isExactTime(value.createdAt) ||
-    !isExactTime(value.updatedAt) ||
-    !isManagedAuthorityPlanState(value.state) ||
-    typeof value.branch !== 'string' ||
-    typeof value.baseCommit !== 'string' ||
-    !COMMIT_OID.test(value.baseCommit) ||
-    typeof value.baseTree !== 'string' ||
-    !COMMIT_OID.test(value.baseTree) ||
-    typeof value.intentDigest !== 'string' ||
-    !SHA256.test(value.intentDigest) ||
-    !Array.isArray(value.preview) ||
-    !isRecord(value.friction)
-  ) {
-    throw planUnsafe('Authority plan record is malformed.');
-  }
-  const intent = parseIntent(value.intent);
-  const candidate = value as unknown as AuthorityPlanRecord;
-  const { recordDigest, ...semantic } = candidate;
-  if (
-    digest(intent) !== value.intentDigest ||
-    digest({ schema: 'authority-plan-record.v1', record: semantic }) !==
-      recordDigest
-  ) {
-    throw planUnsafe('Authority plan record digest is invalid.');
-  }
-  return structuredClone(candidate);
-}
-
-function recordPath(
-  runtime: ReturnType<typeof investigationRuntimePaths>,
-  planId: string,
-  revision: number,
-): string {
-  return path.join(
-    runtime.root,
-    'authority-plans',
-    'records',
-    planId,
-    `${revision.toString().padStart(6, '0')}.json`,
-  );
-}
-
-function assertPlanId(value: string): string {
-  if (!PLAN_ID.test(value)) {
-    throw planError(
-      'AUTHORITY_PLAN_ID_INVALID',
-      'Authority plan ID is invalid.',
-      ExitCode.usage,
-    );
-  }
-  return value;
 }
 
 function hasExactKeys(
@@ -1281,3 +585,142 @@ function planError(
 ): WorkflowError {
   return workflowError(code, message, exitCode);
 }
+
+export type AuthorityPlanRecordsBindings = {
+  loadWorkflowConfig: typeof loadWorkflowConfig;
+  investigationRuntimePaths: typeof investigationRuntimePaths;
+  withPrivateRuntimeLock: typeof withPrivateRuntimeLock;
+  path: typeof path;
+  planUnsafe: typeof planUnsafe;
+  digest: typeof digest;
+  createPrivateCanonicalJson: typeof createPrivateCanonicalJson;
+  readPrivateCanonicalJson: typeof readPrivateCanonicalJson;
+  fs: typeof fs;
+  assertPrivateInvestigationDirectory: typeof assertPrivateInvestigationDirectory;
+  MAX_REVISIONS: typeof MAX_REVISIONS;
+  REVISION_FILE: typeof REVISION_FILE;
+  canonicalJson: typeof canonicalJson;
+  planError: typeof planError;
+  ExitCode: typeof ExitCode;
+  isRecord: typeof isRecord;
+  hasExactKeys: typeof hasExactKeys;
+  PLAN_ID: typeof PLAN_ID;
+  SHA256: typeof SHA256;
+  isExactTime: typeof isExactTime;
+  isManagedAuthorityPlanState: typeof isManagedAuthorityPlanState;
+  COMMIT_OID: typeof COMMIT_OID;
+  parseIntent: typeof parseIntent;
+};
+export type AuthorityPlanRecordsBindingsTypes = {
+  AuthorityPlanRecord: AuthorityPlanRecord;
+  discoverRepository: typeof discoverRepository;
+  investigationRuntimePaths: typeof investigationRuntimePaths;
+};
+
+const {
+  authorityPlanRuntime,
+  withPlanLock,
+  appendRecord,
+  transition,
+  readLatest,
+  requireLatest,
+  assertPlanId,
+} = createAuthorityPlanRecords(() => ({
+  loadWorkflowConfig,
+  investigationRuntimePaths,
+  withPrivateRuntimeLock,
+  path,
+  planUnsafe,
+  digest,
+  createPrivateCanonicalJson,
+  readPrivateCanonicalJson,
+  fs,
+  assertPrivateInvestigationDirectory,
+  MAX_REVISIONS,
+  REVISION_FILE,
+  canonicalJson,
+  planError,
+  ExitCode,
+  isRecord,
+  hasExactKeys,
+  PLAN_ID,
+  SHA256,
+  isExactTime,
+  isManagedAuthorityPlanState,
+  COMMIT_OID,
+  parseIntent,
+}));
+
+export type AuthorityPlanWorktreeBindings = {
+  isRecord: typeof isRecord;
+  hasExactKeys: typeof hasExactKeys;
+  MAX_MUTATIONS: typeof MAX_MUTATIONS;
+  planInvalid: typeof planInvalid;
+  assertChangeId: typeof assertChangeId;
+  assertTaskId: typeof assertTaskId;
+  canonicalJson: typeof canonicalJson;
+  SHA256: typeof SHA256;
+  MAX_CONTENT_BYTES: typeof MAX_CONTENT_BYTES;
+  normalizeExactRepositoryPath: typeof normalizeExactRepositoryPath;
+  assertPolicyPathInsideRepository: typeof assertPolicyPathInsideRepository;
+  path: typeof path;
+  fs: typeof fs;
+  digestBytes: typeof digestBytes;
+  planError: typeof planError;
+  ExitCode: typeof ExitCode;
+  discoverRepository: typeof discoverRepository;
+  planUnsafe: typeof planUnsafe;
+  runGit: typeof runGit;
+  COMMIT_OID: typeof COMMIT_OID;
+  parseManagedTrailers: typeof parseManagedTrailers;
+  parseMaintainerPolicy: typeof parseMaintainerPolicy;
+  authorityTagPublishCommand: typeof authorityTagPublishCommand;
+};
+export type AuthorityPlanWorktreeBindingsTypes = {
+  AuthorityPlanIntent: AuthorityPlanIntent;
+  AuthorityPlanMutation: AuthorityPlanMutation;
+  CandidateExternalEffect: CandidateExternalEffect;
+  MaintainerEvidenceWaiver: MaintainerEvidenceWaiver;
+  AuthorityPlanPreviewEntry: AuthorityPlanPreviewEntry;
+  AuthorityPlanRecord: AuthorityPlanRecord;
+  ApprovalResult: ApprovalResult;
+  AuthorityPlanLocalApplication: AuthorityPlanLocalApplication;
+  AuthorityAttestationRelayProjection: AuthorityAttestationRelayProjection;
+};
+
+const {
+  parseIntent,
+  previewMutation,
+  assertPreparedWorktree,
+  assertApplyingWorktree,
+  applyMutations,
+  restoreMutations,
+  normalizeApplication,
+  recoverLocalApplication,
+  assertRelay,
+  observeRemoteRef,
+} = createAuthorityPlanWorktree(() => ({
+  isRecord,
+  hasExactKeys,
+  MAX_MUTATIONS,
+  planInvalid,
+  assertChangeId,
+  assertTaskId,
+  canonicalJson,
+  SHA256,
+  MAX_CONTENT_BYTES,
+  normalizeExactRepositoryPath,
+  assertPolicyPathInsideRepository,
+  path,
+  fs,
+  digestBytes,
+  planError,
+  ExitCode,
+  discoverRepository,
+  planUnsafe,
+  runGit,
+  COMMIT_OID,
+  parseManagedTrailers,
+  parseMaintainerPolicy,
+  authorityTagPublishCommand,
+}));

@@ -35,6 +35,293 @@ import {
   type TaskMandateBinding,
 } from './task-mandate.ts';
 
+import { createExternalEffectGrantTransaction } from './external-effect-grant-transaction.ts';
+export type ExternalEffectGrantTransactionBindings = {
+  assertUuid: typeof assertUuid;
+  discoverRepository: typeof discoverRepository;
+  externalEffectStorePaths: typeof externalEffectStorePaths;
+  exactDate: typeof exactDate;
+  withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
+  readStoreState: typeof readStoreState;
+  validateEnvelopeForRepository: typeof validateEnvelopeForRepository;
+  inspectionFromState: typeof inspectionFromState;
+  expired: typeof expired;
+  createTransactionRecord: typeof createTransactionRecord;
+  emitAudit: typeof emitAudit;
+  auditInput: typeof auditInput;
+  createPrivateFileAtomic: typeof createPrivateFileAtomic;
+  grantPath: typeof grantPath;
+  canonicalTransaction: typeof canonicalTransaction;
+  unlinkIfExact: typeof unlinkIfExact;
+  canonicalAvailable: typeof canonicalAvailable;
+  storedExternalEffectRefusalBinding: typeof storedExternalEffectRefusalBinding;
+  refusalAuditOptions: typeof refusalAuditOptions;
+  stateConflict: typeof stateConflict;
+  assertTransactionId: typeof assertTransactionId;
+  createObservation: typeof createObservation;
+  assertObservationClock: typeof assertObservationClock;
+  replaceTransactionDigest: typeof replaceTransactionDigest;
+  replacePrivateFileAtomic: typeof replacePrivateFileAtomic;
+  assertReason: typeof assertReason;
+  PUBLISH_TRANSACTION_ENV: typeof PUBLISH_TRANSACTION_ENV;
+  publishTransactionRequired: typeof publishTransactionRequired;
+  publishTransactionInvalid: typeof publishTransactionInvalid;
+  assertUuidForPublish: typeof assertUuidForPublish;
+  runGit: typeof runGit;
+  sha256: typeof sha256;
+  canonicalTerminal: typeof canonicalTerminal;
+};
+export type ExternalEffectGrantTransactionTypes = {
+  ExternalEffectTransitionOptions: ExternalEffectTransitionOptions;
+  ExternalEffectGrantInspection: ExternalEffectGrantInspection;
+  ExternalEffectObservation: ExternalEffectObservation;
+  MaintainerSignerProvider: MaintainerSignerProvider;
+  StoreState: StoreState;
+  TerminalState: TerminalState;
+  TerminalRecord: TerminalRecord;
+  ExternalEffectAuditEventType: ExternalEffectAuditEventType;
+};
+
+function boundExternalEffectGrantTransaction() {
+  return createExternalEffectGrantTransaction({
+    assertUuid,
+    discoverRepository,
+    externalEffectStorePaths,
+    exactDate,
+    withRepositoryLifecycleOperation,
+    readStoreState,
+    validateEnvelopeForRepository,
+    inspectionFromState,
+    expired,
+    createTransactionRecord,
+    emitAudit,
+    auditInput,
+    createPrivateFileAtomic,
+    grantPath,
+    canonicalTransaction,
+    unlinkIfExact,
+    canonicalAvailable,
+    storedExternalEffectRefusalBinding,
+    refusalAuditOptions,
+    stateConflict,
+    assertTransactionId,
+    createObservation,
+    assertObservationClock,
+    replaceTransactionDigest,
+    replacePrivateFileAtomic,
+    assertReason,
+    PUBLISH_TRANSACTION_ENV,
+    publishTransactionRequired,
+    publishTransactionInvalid,
+    assertUuidForPublish,
+    runGit,
+    sha256,
+    canonicalTerminal,
+  });
+}
+
+import { createExternalEffectGrantReconciliation } from './external-effect-grant-reconciliation.ts';
+export type ExternalEffectGrantReconciliationBindings = {
+  assertUuid: typeof assertUuid;
+  discoverRepository: typeof discoverRepository;
+  externalEffectStorePaths: typeof externalEffectStorePaths;
+  exactDate: typeof exactDate;
+  readStoreState: typeof readStoreState;
+  validateEnvelopeForRepository: typeof validateEnvelopeForRepository;
+  storedExternalEffectRefusalBinding: typeof storedExternalEffectRefusalBinding;
+  refusalAuditOptions: typeof refusalAuditOptions;
+  parseReconciliationRequest: typeof parseReconciliationRequest;
+  loadTrustForPayload: typeof loadTrustForPayload;
+  createInteractiveSshSigner: typeof createInteractiveSshSigner;
+  assertTrustedSigner: typeof assertTrustedSigner;
+  redactTransactionToken: typeof redactTransactionToken;
+  withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
+  inspectionFromState: typeof inspectionFromState;
+  createReconciliationRecord: typeof createReconciliationRecord;
+  emitAudit: typeof emitAudit;
+  auditInput: typeof auditInput;
+  createPrivateFileAtomic: typeof createPrivateFileAtomic;
+  reconciliationPath: typeof reconciliationPath;
+  canonicalReconciliation: typeof canonicalReconciliation;
+  assertReason: typeof assertReason;
+  terminalize: typeof terminalize;
+};
+export type ExternalEffectGrantReconciliationTypes = {
+  ExternalEffectReconciliationRequest: ExternalEffectReconciliationRequest;
+  ExternalEffectTransitionOptions: ExternalEffectTransitionOptions;
+  ExternalEffectGrantPublicInspection: ExternalEffectGrantPublicInspection;
+  ExternalEffectRevokeOptions: ExternalEffectRevokeOptions;
+  ExternalEffectGrantInspection: ExternalEffectGrantInspection;
+  StoreState: StoreState;
+  TerminalRecord: TerminalRecord;
+  ExternalEffectReconciliation: ExternalEffectReconciliation;
+};
+
+function boundExternalEffectGrantReconciliation() {
+  return createExternalEffectGrantReconciliation({
+    assertUuid,
+    discoverRepository,
+    externalEffectStorePaths,
+    exactDate,
+    readStoreState,
+    validateEnvelopeForRepository,
+    storedExternalEffectRefusalBinding,
+    refusalAuditOptions,
+    parseReconciliationRequest,
+    loadTrustForPayload,
+    createInteractiveSshSigner,
+    assertTrustedSigner,
+    redactTransactionToken,
+    withRepositoryLifecycleOperation,
+    inspectionFromState,
+    createReconciliationRecord,
+    emitAudit,
+    auditInput,
+    createPrivateFileAtomic,
+    reconciliationPath,
+    canonicalReconciliation,
+    assertReason,
+    terminalize,
+  });
+}
+
+import { createExternalEffectGrantEnvelope } from './external-effect-grant-envelope.ts';
+export type ExternalEffectGrantEnvelopeBindings = {
+  hasExactKeys: typeof hasExactKeys;
+  TASK_ID: typeof TASK_ID;
+  UUID_V4: typeof UUID_V4;
+  RAW_DIGEST: typeof RAW_DIGEST;
+  EFFECT_KINDS: typeof EFFECT_KINDS;
+  DIGEST: typeof DIGEST;
+  IDEMPOTENCY_KEY: typeof IDEMPOTENCY_KEY;
+  invalidGrant: typeof invalidGrant;
+  PAYLOAD_KEYS: typeof PAYLOAD_KEYS;
+  COMMIT_OID: typeof COMMIT_OID;
+  isTimestamp: typeof isTimestamp;
+  EXTERNAL_EFFECT_MAX_TTL_SECONDS: typeof EXTERNAL_EFFECT_MAX_TTL_SECONDS;
+  assertSignature: typeof assertSignature;
+  SIMPLE_NAME: typeof SIMPLE_NAME;
+  REF_NAME: typeof REF_NAME;
+};
+export type ExternalEffectGrantEnvelopeTypes = {
+  ExternalEffectGrantRequest: ExternalEffectGrantRequest;
+  ExternalEffectKind: ExternalEffectKind;
+  Sha256Digest: Sha256Digest;
+  ExternalEffectGrantPayload: ExternalEffectGrantPayload;
+  ExternalEffectGrantEnvelope: ExternalEffectGrantEnvelope;
+  ExternalEffectTarget: ExternalEffectTarget;
+  ExternalEffectRollbackPlan: ExternalEffectRollbackPlan;
+};
+
+function boundExternalEffectGrantEnvelope() {
+  return createExternalEffectGrantEnvelope({
+    hasExactKeys,
+    TASK_ID,
+    UUID_V4,
+    RAW_DIGEST,
+    EFFECT_KINDS,
+    DIGEST,
+    IDEMPOTENCY_KEY,
+    invalidGrant,
+    PAYLOAD_KEYS,
+    COMMIT_OID,
+    isTimestamp,
+    EXTERNAL_EFFECT_MAX_TTL_SECONDS,
+    assertSignature,
+    SIMPLE_NAME,
+    REF_NAME,
+  });
+}
+
+import { createExternalEffectGrantRecords } from './external-effect-grant-records.ts';
+export type ExternalEffectGrantRecordsBindings = {
+  sha256: typeof sha256;
+  hasExactKeys: typeof hasExactKeys;
+  DIGEST: typeof DIGEST;
+  unsafeStore: typeof unsafeStore;
+  parseEnvelope: typeof parseEnvelope;
+  canonicalExternalEffectGrantEnvelope: typeof canonicalExternalEffectGrantEnvelope;
+  parseRequest: typeof parseRequest;
+  isTimestamp: typeof isTimestamp;
+  UUID_V4: typeof UUID_V4;
+  reconciliationInvalid: typeof reconciliationInvalid;
+  IDEMPOTENCY_KEY: typeof IDEMPOTENCY_KEY;
+};
+export type ExternalEffectGrantRecordsTypes = {
+  ExternalEffectGrantEnvelope: ExternalEffectGrantEnvelope;
+  Sha256Digest: Sha256Digest;
+  AvailableRecord: AvailableRecord;
+  PendingRecord: PendingRecord;
+  TransactionRecord: TransactionRecord;
+  ExternalEffectObservation: ExternalEffectObservation;
+  TerminalRecord: TerminalRecord;
+  TerminalState: TerminalState;
+  ExternalEffectReconciliationRequest: ExternalEffectReconciliationRequest;
+  ExternalEffectReconciliation: ExternalEffectReconciliation;
+  IdempotencyRecord: IdempotencyRecord;
+};
+
+function boundExternalEffectGrantRecords() {
+  return createExternalEffectGrantRecords({
+    sha256,
+    hasExactKeys,
+    DIGEST,
+    unsafeStore,
+    parseEnvelope,
+    canonicalExternalEffectGrantEnvelope,
+    parseRequest,
+    isTimestamp,
+    UUID_V4,
+    reconciliationInvalid,
+    IDEMPOTENCY_KEY,
+  });
+}
+
+import { createExternalEffectGrantStore } from './external-effect-grant-store.ts';
+export type ExternalEffectGrantStoreBindings = {
+  externalEffectStorePaths: typeof externalEffectStorePaths;
+  ensurePlainDirectory: typeof ensurePlainDirectory;
+  unsafeStore: typeof unsafeStore;
+  parseIdempotencyRecord: typeof parseIdempotencyRecord;
+  sha256: typeof sha256;
+  assertUuid: typeof assertUuid;
+};
+export type ExternalEffectGrantStoreTypes = {
+  Sha256Digest: Sha256Digest;
+  IdempotencyRecord: IdempotencyRecord;
+};
+
+function boundExternalEffectGrantStore() {
+  return createExternalEffectGrantStore({
+    externalEffectStorePaths,
+    ensurePlainDirectory,
+    unsafeStore,
+    parseIdempotencyRecord,
+    sha256,
+    assertUuid,
+  });
+}
+
+import { createExternalEffectGrantAudit } from './external-effect-grant-audit.ts';
+export type ExternalEffectGrantAuditBindings = {
+  sha256: typeof sha256;
+  appendExternalEffectAuthorityAudit: typeof appendExternalEffectAuthorityAudit;
+};
+export type ExternalEffectGrantAuditTypes = {
+  ExternalEffectGrantEnvelope: ExternalEffectGrantEnvelope;
+  Sha256Digest: Sha256Digest;
+  ExternalEffectAuditEventType: ExternalEffectAuditEventType;
+  ExternalEffectAuditEvent: ExternalEffectAuditEvent;
+  ExternalEffectTransitionOptions: ExternalEffectTransitionOptions;
+};
+
+function boundExternalEffectGrantAudit() {
+  return createExternalEffectGrantAudit({
+    sha256,
+    appendExternalEffectAuthorityAudit,
+  });
+}
+
 export const EXTERNAL_EFFECT_SIGNATURE_NAMESPACE =
   'HARNESS_EXTERNAL_EFFECT_GRANT_V1' as const;
 export const EXTERNAL_EFFECT_MAX_TTL_SECONDS = 5 * 60;
@@ -784,60 +1071,11 @@ export function reserveExternalEffectGrant(
   requestedGrantId: string,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    const state = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      state.record.envelope,
-      options.signer,
-    );
-    if (state.kind === 'terminal' || state.kind === 'transaction') {
-      return inspectionFromState(state, now);
-    }
-    if (expired(state.record.envelope.payload, now)) {
-      return terminalize(
-        repository.repositoryRoot,
-        paths,
-        state,
-        'expired',
-        now,
-        'Grant expired before reservation.',
-        options,
-        assertOwned,
-      );
-    }
-    const transaction = createTransactionRecord(state.record, grantId, now);
-    assertOwned();
-    emitAudit(
-      repository.repositoryRoot,
-      options,
-      auditInput(
-        transaction.envelope,
-        transaction.grantDigest,
-        'grant-reserved',
-        now,
-        { transactionId: transaction.transactionId, result: 'reserved' },
-      ),
-    );
-    assertOwned();
-    createPrivateFileAtomic(
-      grantPath(paths.transactions, grantId),
-      canonicalTransaction(transaction),
-    );
-    unlinkIfExact(
-      grantPath(paths.available, grantId),
-      canonicalAvailable(state.record),
-    );
-    assertOwned();
-    return inspectionFromState(
-      { kind: 'transaction', record: transaction },
-      now,
-    );
-  });
+  return boundExternalEffectGrantTransaction().reserveExternalEffectGrant(
+    cwd,
+    requestedGrantId,
+    options,
+  );
 }
 
 export function markExternalEffectDispatchIssued(
@@ -846,12 +1084,11 @@ export function markExternalEffectDispatchIssued(
   requestedTransactionId: string,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantInspection {
-  return transitionTransaction(
+  return boundExternalEffectGrantTransaction().markExternalEffectDispatchIssued(
     cwd,
     requestedGrantId,
     requestedTransactionId,
     options,
-    'dispatch-issued',
   );
 }
 
@@ -870,75 +1107,13 @@ export function recordExternalEffectObservation(
   >,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const transactionId = assertUuid(requestedTransactionId);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    const state = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      state.record.envelope,
-      options.signer,
-    );
-    return withAuthorityRefusalAudit(
-      storedExternalEffectRefusalBinding(
-        repository.repositoryRoot,
-        state.record.envelope,
-        state.record.grantDigest,
-        'external-effect.observation',
-        { transactionId, requestedObservation },
-      ),
-      refusalAuditOptions(now, options),
-      () => {
-        if (state.kind === 'terminal') return inspectionFromState(state, now);
-        if (state.kind !== 'transaction') throw stateConflict();
-        assertTransactionId(state.record, transactionId);
-        if (state.record.phase === 'effect-observed') {
-          const expected = createObservation(
-            state.record,
-            requestedObservation,
-          );
-          if (
-            canonicalJson(expected) !== canonicalJson(state.record.observation)
-          ) {
-            throw stateConflict();
-          }
-          return inspectionFromState(state, now);
-        }
-        if (state.record.phase !== 'dispatch-issued') throw stateConflict();
-        const observation = createObservation(
-          state.record,
-          requestedObservation,
-        );
-        assertObservationClock(observation, state.record, now);
-        const next = replaceTransactionDigest({
-          ...state.record,
-          phase: 'effect-observed',
-          effectObservedAt: observation.observedAt,
-          observation,
-        });
-        assertOwned();
-        emitAudit(
-          repository.repositoryRoot,
-          options,
-          auditInput(next.envelope, next.grantDigest, 'effect-observed', now, {
-            transactionId,
-            poststateDigest: observation.poststateDigest,
-            result: 'observed',
-          }),
-        );
-        assertOwned();
-        replacePrivateFileAtomic(
-          grantPath(paths.transactions, grantId),
-          canonicalTransaction(next),
-        );
-        assertOwned();
-        return inspectionFromState({ kind: 'transaction', record: next }, now);
-      },
-    );
-  });
+  return boundExternalEffectGrantTransaction().recordExternalEffectObservation(
+    cwd,
+    requestedGrantId,
+    requestedTransactionId,
+    requestedObservation,
+    options,
+  );
 }
 
 export function consumeExternalEffectGrant(
@@ -947,50 +1122,12 @@ export function consumeExternalEffectGrant(
   requestedTransactionId: string,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const transactionId = assertUuid(requestedTransactionId);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    const state = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      state.record.envelope,
-      options.signer,
-    );
-    return withAuthorityRefusalAudit(
-      storedExternalEffectRefusalBinding(
-        repository.repositoryRoot,
-        state.record.envelope,
-        state.record.grantDigest,
-        'external-effect.consume',
-        { transactionId },
-      ),
-      refusalAuditOptions(now, options),
-      () => {
-        if (state.kind === 'terminal') return inspectionFromState(state, now);
-        if (
-          state.kind !== 'transaction' ||
-          state.record.phase !== 'effect-observed' ||
-          !state.record.observation
-        ) {
-          throw stateConflict();
-        }
-        assertTransactionId(state.record, transactionId);
-        return terminalize(
-          repository.repositoryRoot,
-          paths,
-          state,
-          'consumed',
-          now,
-          null,
-          options,
-          assertOwned,
-        );
-      },
-    );
-  });
+  return boundExternalEffectGrantTransaction().consumeExternalEffectGrant(
+    cwd,
+    requestedGrantId,
+    requestedTransactionId,
+    options,
+  );
 }
 
 export function terminalizeExternalEffectGrant(
@@ -1001,158 +1138,27 @@ export function terminalizeExternalEffectGrant(
   reason: string,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const transactionId = assertUuid(requestedTransactionId);
-  const terminalReason = assertReason(reason);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    const current = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      current.record.envelope,
-      options.signer,
-    );
-    return withAuthorityRefusalAudit(
-      storedExternalEffectRefusalBinding(
-        repository.repositoryRoot,
-        current.record.envelope,
-        current.record.grantDigest,
-        'external-effect.terminalize',
-        { transactionId, state, terminalReason },
-      ),
-      refusalAuditOptions(now, options),
-      () => {
-        if (current.kind === 'terminal')
-          return inspectionFromState(current, now);
-        if (current.kind !== 'transaction') throw stateConflict();
-        assertTransactionId(current.record, transactionId);
-        if (current.record.phase === 'effect-observed') throw stateConflict();
-        return terminalize(
-          repository.repositoryRoot,
-          paths,
-          current,
-          state,
-          now,
-          terminalReason,
-          options,
-          assertOwned,
-        );
-      },
-    );
-  });
+  return boundExternalEffectGrantTransaction().terminalizeExternalEffectGrant(
+    cwd,
+    requestedGrantId,
+    requestedTransactionId,
+    state,
+    reason,
+    options,
+  );
 }
 
-/**
- * Resolve an already-terminal unknown dispatch from independently observed
- * evidence. This API deliberately has no runner or dispatch dependency: it
- * can record what the human observed, but it can never replay the effect.
- * Audit scope and task correlation come only from the signed grant envelope.
- */
 export function reconcileExternalEffectGrant(
   cwd: string,
   requestedGrantId: string,
   requestedReconciliation: ExternalEffectReconciliationRequest,
   options: ExternalEffectTransitionOptions,
 ): ExternalEffectGrantPublicInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  const initial = readStoreState(paths, grantId);
-  validateEnvelopeForRepository(
-    repository.repositoryRoot,
-    initial.record.envelope,
-    options.signer,
-  );
-  return withAuthorityRefusalAudit(
-    storedExternalEffectRefusalBinding(
-      repository.repositoryRoot,
-      initial.record.envelope,
-      initial.record.grantDigest,
-      'external-effect.reconcile',
-      { requestedReconciliation },
-    ),
-    refusalAuditOptions(now, options),
-    () => {
-      assertManualReconciliationState(initial);
-      const request = parseReconciliationRequest(
-        requestedReconciliation,
-        initial.record,
-        now,
-      );
-      const trust = loadTrustForPayload(
-        repository.repositoryRoot,
-        initial.record.envelope.payload,
-      );
-      const signer =
-        options.signer ??
-        createInteractiveSshSigner(repository.repositoryRoot, trust.policy);
-      signer.assertHumanPresent();
-      const resolver = signer.identity();
-      assertTrustedSigner(trust.policy, resolver);
-
-      return redactTransactionToken(
-        withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-          const current = readStoreState(paths, grantId);
-          validateEnvelopeForRepository(
-            repository.repositoryRoot,
-            current.record.envelope,
-            options.signer,
-          );
-          assertManualReconciliationState(current);
-          const exactRequest = parseReconciliationRequest(
-            request,
-            current.record,
-            now,
-          );
-          if (current.reconciliation) {
-            assertReconciliationReplay(
-              current.reconciliation,
-              exactRequest,
-              resolver,
-            );
-            return inspectionFromState(current, now);
-          }
-          const reconciliation = createReconciliationRecord(
-            current.record,
-            exactRequest,
-            resolver,
-            now,
-          );
-          assertOwned();
-          emitAudit(
-            repository.repositoryRoot,
-            options,
-            auditInput(
-              current.record.envelope,
-              current.record.grantDigest,
-              'reconciliation-resolved',
-              now,
-              {
-                transactionId: current.record.transactionId,
-                poststateDigest: reconciliation.poststateDigest,
-                evidenceDigest: reconciliation.evidenceDigest,
-                resolver,
-                result: `reconciled-${reconciliation.outcome}`,
-                reason: reconciliation.reason,
-              },
-            ),
-          );
-          assertOwned();
-          createPrivateFileAtomic(
-            reconciliationPath(paths, grantId),
-            canonicalReconciliation(reconciliation),
-          );
-          assertOwned();
-          return inspectionFromState(
-            { kind: 'terminal', record: current.record, reconciliation },
-            now,
-          );
-        }),
-      );
-    },
+  return boundExternalEffectGrantReconciliation().reconcileExternalEffectGrant(
+    cwd,
+    requestedGrantId,
+    requestedReconciliation,
+    options,
   );
 }
 
@@ -1161,67 +1167,10 @@ export function revokeExternalEffectGrant(
   requestedGrantId: string,
   options: ExternalEffectRevokeOptions,
 ): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const reason = assertReason(options.reason);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  const initial = readStoreState(paths, grantId);
-  validateEnvelopeForRepository(
-    repository.repositoryRoot,
-    initial.record.envelope,
-    options.signer,
-  );
-  return withAuthorityRefusalAudit(
-    storedExternalEffectRefusalBinding(
-      repository.repositoryRoot,
-      initial.record.envelope,
-      initial.record.grantDigest,
-      'external-effect.revoke',
-      { reason },
-    ),
-    refusalAuditOptions(now, options),
-    () => {
-      const trust = loadTrustForPayload(
-        repository.repositoryRoot,
-        initial.record.envelope.payload,
-      );
-      const signer =
-        options.signer ??
-        createInteractiveSshSigner(repository.repositoryRoot, trust.policy);
-      signer.assertHumanPresent();
-      assertTrustedSigner(trust.policy, signer.identity());
-      return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-        const current = readStoreState(paths, grantId);
-        validateEnvelopeForRepository(
-          repository.repositoryRoot,
-          current.record.envelope,
-          options.signer,
-        );
-        if (current.kind === 'terminal')
-          return inspectionFromState(current, now);
-        if (
-          current.kind === 'transaction' &&
-          current.record.phase !== 'reserved'
-        ) {
-          throw workflowError(
-            'EXTERNAL_EFFECT_RECONCILIATION_REQUIRED',
-            'A dispatched external effect cannot be revoked without reconciliation.',
-            ExitCode.guard,
-          );
-        }
-        return terminalize(
-          repository.repositoryRoot,
-          paths,
-          current,
-          'revoked',
-          now,
-          reason,
-          options,
-          assertOwned,
-        );
-      });
-    },
+  return boundExternalEffectGrantReconciliation().revokeExternalEffectGrant(
+    cwd,
+    requestedGrantId,
+    options,
   );
 }
 
@@ -1231,111 +1180,12 @@ export function assertActivePublishTransaction(
   environment: NodeJS.ProcessEnv = process.env,
   signer?: MaintainerSignerProvider,
 ): ExternalEffectGrantInspection {
-  const token = environment[PUBLISH_TRANSACTION_ENV];
-  if (!token) throw publishTransactionRequired();
-  const separator = token.indexOf('.');
-  if (separator < 1) throw publishTransactionInvalid();
-  const grantId = assertUuidForPublish(token.slice(0, separator));
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  let state: StoreState;
-  try {
-    state = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      state.record.envelope,
-      signer,
-    );
-  } catch {
-    throw publishTransactionInvalid();
-  }
-  if (
-    state.kind !== 'transaction' ||
-    state.record.phase !== 'dispatch-issued' ||
-    state.record.transactionToken !== token ||
-    state.record.envelope.payload.effectKind !== 'publish-git-ref' ||
-    state.record.envelope.payload.target.kind !== 'git-ref' ||
-    hookArgs.length !== 2 ||
-    hookArgs[0] !== state.record.envelope.payload.target.remoteName ||
-    hookArgs[1] !== state.record.envelope.payload.target.remoteUrl
-  ) {
-    throw publishTransactionInvalid();
-  }
-  const target = state.record.envelope.payload.target;
-  const resolved = runGit(repository.repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    target.sourceOid,
-  ]).trim();
-  if (resolved !== target.sourceOid || repository.head !== target.sourceOid) {
-    throw publishTransactionInvalid();
-  }
-  return inspectionFromState(state, new Date());
-}
-
-function transitionTransaction(
-  cwd: string,
-  requestedGrantId: string,
-  requestedTransactionId: string,
-  options: ExternalEffectTransitionOptions,
-  phase: 'dispatch-issued',
-): ExternalEffectGrantInspection {
-  const grantId = assertUuid(requestedGrantId);
-  const transactionId = assertUuid(requestedTransactionId);
-  const repository = discoverRepository(cwd);
-  const paths = externalEffectStorePaths(repository.gitCommonDirectory);
-  const now = exactDate(options.now ?? new Date());
-  return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => {
-    const state = readStoreState(paths, grantId);
-    validateEnvelopeForRepository(
-      repository.repositoryRoot,
-      state.record.envelope,
-      options.signer,
-    );
-    if (state.kind === 'terminal') return inspectionFromState(state, now);
-    if (state.kind !== 'transaction') throw stateConflict();
-    assertTransactionId(state.record, transactionId);
-    if (
-      state.record.phase === phase ||
-      state.record.phase === 'effect-observed'
-    ) {
-      return inspectionFromState(state, now);
-    }
-    if (state.record.phase !== 'reserved') throw stateConflict();
-    if (expired(state.record.envelope.payload, now)) {
-      return terminalize(
-        repository.repositoryRoot,
-        paths,
-        state,
-        'expired',
-        now,
-        'Grant expired before dispatch.',
-        options,
-        assertOwned,
-      );
-    }
-    const next = replaceTransactionDigest({
-      ...state.record,
-      phase,
-      dispatchIssuedAt: now.toISOString(),
-    });
-    assertOwned();
-    emitAudit(
-      repository.repositoryRoot,
-      options,
-      auditInput(next.envelope, next.grantDigest, 'dispatch-issued', now, {
-        transactionId,
-        result: 'issued',
-      }),
-    );
-    assertOwned();
-    replacePrivateFileAtomic(
-      grantPath(paths.transactions, grantId),
-      canonicalTransaction(next),
-    );
-    assertOwned();
-    return inspectionFromState({ kind: 'transaction', record: next }, now);
-  });
+  return boundExternalEffectGrantTransaction().assertActivePublishTransaction(
+    cwd,
+    hookArgs,
+    environment,
+    signer,
+  );
 }
 
 function terminalize(
@@ -1348,64 +1198,15 @@ function terminalize(
   auditOptions: ExternalEffectTransitionOptions,
   assertOwned: () => void,
 ): ExternalEffectGrantInspection {
-  if (state.kind === 'terminal') return inspectionFromState(state, now);
-  const previousRecordDigest = state.record.recordDigest;
-  const observation =
-    state.kind === 'transaction' ? state.record.observation : null;
-  const transactionId =
-    state.kind === 'transaction' ? state.record.transactionId : null;
-  const withoutDigest = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-terminal' as const,
-    grantDigest: state.record.grantDigest,
-    envelope: state.record.envelope,
-    transactionId,
-    state: terminalState,
-    observation,
-    terminalAt: now.toISOString(),
-    reason,
-    previousRecordDigest,
-  };
-  const terminal: TerminalRecord = {
-    ...withoutDigest,
-    receiptDigest: sha256(canonicalJson(withoutDigest)),
-  };
-  const eventType: ExternalEffectAuditEventType =
-    terminalState === 'consumed'
-      ? 'grant-consumed'
-      : terminalState === 'revoked'
-        ? 'grant-revoked'
-        : terminalState === 'expired'
-          ? 'grant-expired'
-          : terminalState === 'failed'
-            ? 'grant-failed'
-            : 'manual-reconciliation';
-  assertOwned();
-  emitAudit(
+  return boundExternalEffectGrantTransaction().terminalize(
     repositoryRoot,
-    auditOptions,
-    auditInput(terminal.envelope, terminal.grantDigest, eventType, now, {
-      transactionId,
-      poststateDigest: observation?.poststateDigest ?? null,
-      result: terminalState,
-      reason,
-    }),
-  );
-  assertOwned();
-  createPrivateFileAtomic(
-    grantPath(paths.terminal, terminal.envelope.payload.grantId),
-    canonicalTerminal(terminal),
-  );
-  if (state.kind === 'available') {
-    unlinkIfExact(
-      grantPath(paths.available, terminal.envelope.payload.grantId),
-      canonicalAvailable(state.record),
-    );
-  }
-  assertOwned();
-  return inspectionFromState(
-    { kind: 'terminal', record: terminal, reconciliation: null },
+    paths,
+    state,
+    terminalState,
     now,
+    reason,
+    auditOptions,
+    assertOwned,
   );
 }
 
@@ -1529,62 +1330,24 @@ function createAvailableRecord(
   envelope: ExternalEffectGrantEnvelope,
   grantDigest: Sha256Digest,
 ): AvailableRecord {
-  const value = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-available' as const,
-    grantDigest,
+  return boundExternalEffectGrantRecords().createAvailableRecord(
     envelope,
-  };
-  return { ...value, recordDigest: sha256(canonicalJson(value)) };
+    grantDigest,
+  );
 }
 
 function createPendingRecord(
   envelope: ExternalEffectGrantEnvelope,
   grantDigest: Sha256Digest,
 ): PendingRecord {
-  const value = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-pending' as const,
-    grantDigest,
+  return boundExternalEffectGrantRecords().createPendingRecord(
     envelope,
-  };
-  return { ...value, recordDigest: sha256(canonicalJson(value)) };
+    grantDigest,
+  );
 }
 
 function parsePending(raw: string): PendingRecord {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantDigest',
-      'envelope',
-      'recordDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-pending' ||
-    typeof value.grantDigest !== 'string' ||
-    !DIGEST.test(value.grantDigest) ||
-    typeof value.recordDigest !== 'string' ||
-    !DIGEST.test(value.recordDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const envelope = parseEnvelope(value.envelope);
-  const record = createPendingRecord(
-    envelope,
-    value.grantDigest as Sha256Digest,
-  );
-  if (
-    record.recordDigest !== value.recordDigest ||
-    record.grantDigest !==
-      sha256(canonicalExternalEffectGrantEnvelope(envelope)) ||
-    canonicalPending(record) !== raw
-  ) {
-    throw unsafeStore();
-  }
-  return record;
+  return boundExternalEffectGrantRecords().parsePending(raw);
 }
 
 function assertPendingMatchesRequest(
@@ -1594,35 +1357,13 @@ function assertPendingMatchesRequest(
   ttlSeconds: number,
   baseCommit: string,
 ): void {
-  const payload = pending.envelope.payload;
-  const expectedBinding = {
-    schemaVersion: 1 as const,
-    mandateTaskId: payload.taskId,
-    mandateId: payload.mandateId,
-    mandateDigest: payload.mandateDigest,
-    changeId: payload.changeId,
-    externalAuditRoot: payload.externalAuditRoot,
-  };
-  if (
-    payload.grantId !== grantId ||
-    payload.baseCommit !== baseCommit ||
-    canonicalJson(expectedBinding) !== canonicalJson(request.mandateBinding) ||
-    payload.effectKind !== request.effectKind ||
-    canonicalJson(payload.target) !== canonicalJson(request.target) ||
-    payload.artifactDigest !== request.artifactDigest ||
-    payload.prestateDigest !== request.prestateDigest ||
-    canonicalJson(payload.rollbackPlan) !==
-      canonicalJson(request.rollbackPlan) ||
-    payload.idempotencyKey !== request.idempotencyKey ||
-    Date.parse(payload.expiresAt) - Date.parse(payload.issuedAt) !==
-      ttlSeconds * 1000
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_GRANT_EXISTS',
-      'Pending external effect grant differs from the exact recovery request.',
-      ExitCode.conflict,
-    );
-  }
+  return boundExternalEffectGrantRecords().assertPendingMatchesRequest(
+    pending,
+    request,
+    grantId,
+    ttlSeconds,
+    baseCommit,
+  );
 }
 
 function createTransactionRecord(
@@ -1630,27 +1371,19 @@ function createTransactionRecord(
   grantId: string,
   now: Date,
 ): TransactionRecord {
-  return replaceTransactionDigest({
-    schemaVersion: 1,
-    kind: 'external-effect-transaction',
-    grantDigest: available.grantDigest,
-    envelope: available.envelope,
-    transactionId: grantId,
-    transactionToken: `${grantId}.${crypto.randomBytes(32).toString('hex')}`,
-    phase: 'reserved',
-    reservedAt: now.toISOString(),
-    dispatchIssuedAt: null,
-    effectObservedAt: null,
-    observation: null,
-    recordDigest: 'sha256:'.padEnd(71, '0') as Sha256Digest,
-  });
+  return boundExternalEffectGrantRecords().createTransactionRecord(
+    available,
+    grantId,
+    now,
+  );
 }
 
 function replaceTransactionDigest(
   transaction: TransactionRecord,
 ): TransactionRecord {
-  const { recordDigest: _recordDigest, ...value } = transaction;
-  return { ...value, recordDigest: sha256(canonicalJson(value)) };
+  return boundExternalEffectGrantRecords().replaceTransactionDigest(
+    transaction,
+  );
 }
 
 function createObservation(
@@ -1665,558 +1398,34 @@ function createObservation(
     | 'receiptDigest'
   >,
 ): ExternalEffectObservation {
-  if (
-    !isRecord(requested) ||
-    !hasExactKeys(requested, [
-      'externalReceiptId',
-      'artifactDigest',
-      'prestateDigest',
-      'poststateDigest',
-      'observedAt',
-    ]) ||
-    typeof requested.externalReceiptId !== 'string' ||
-    requested.externalReceiptId.length < 1 ||
-    requested.externalReceiptId.length > 512 ||
-    !DIGEST.test(String(requested.artifactDigest)) ||
-    !DIGEST.test(String(requested.prestateDigest)) ||
-    !DIGEST.test(String(requested.poststateDigest)) ||
-    typeof requested.observedAt !== 'string' ||
-    !isTimestamp(requested.observedAt) ||
-    requested.artifactDigest !== transaction.envelope.payload.artifactDigest ||
-    requested.prestateDigest !== transaction.envelope.payload.prestateDigest
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_RECEIPT_INVALID',
-      'External effect receipt does not match the signed grant.',
-      ExitCode.verification,
-    );
-  }
-  const value = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-observation' as const,
-    grantId: transaction.envelope.payload.grantId,
-    transactionId: transaction.transactionId,
-    idempotencyKey: transaction.envelope.payload.idempotencyKey,
-    externalReceiptId: requested.externalReceiptId,
-    artifactDigest: requested.artifactDigest as Sha256Digest,
-    prestateDigest: requested.prestateDigest as Sha256Digest,
-    poststateDigest: requested.poststateDigest as Sha256Digest,
-    observedAt: requested.observedAt,
-  };
-  return { ...value, receiptDigest: sha256(canonicalJson(value)) };
+  return boundExternalEffectGrantRecords().createObservation(
+    transaction,
+    requested,
+  );
 }
 
 function parseRequest(request: ExternalEffectGrantRequest) {
-  const hasOwnTtlSeconds = Object.hasOwn(request, 'ttlSeconds');
-  if (
-    !isPlainOwnDataRecord(request) ||
-    !hasExactKeys(request, [
-      'mandateBinding',
-      'effectKind',
-      'target',
-      'artifactDigest',
-      'prestateDigest',
-      'rollbackPlan',
-      ...(hasOwnTtlSeconds ? ['ttlSeconds'] : []),
-      'idempotencyKey',
-    ]) ||
-    !isRecord(request.mandateBinding) ||
-    !hasExactKeys(request.mandateBinding, [
-      'schemaVersion',
-      'mandateTaskId',
-      'mandateId',
-      'mandateDigest',
-      'changeId',
-      'externalAuditRoot',
-    ]) ||
-    request.mandateBinding.schemaVersion !== 1 ||
-    typeof request.mandateBinding.mandateTaskId !== 'string' ||
-    !TASK_ID.test(request.mandateBinding.mandateTaskId) ||
-    typeof request.mandateBinding.mandateId !== 'string' ||
-    !UUID_V4.test(request.mandateBinding.mandateId) ||
-    typeof request.mandateBinding.mandateDigest !== 'string' ||
-    !RAW_DIGEST.test(request.mandateBinding.mandateDigest) ||
-    typeof request.mandateBinding.changeId !== 'string' ||
-    request.mandateBinding.changeId.length < 1 ||
-    request.mandateBinding.changeId.length > 128 ||
-    typeof request.mandateBinding.externalAuditRoot !== 'string' ||
-    !path.isAbsolute(request.mandateBinding.externalAuditRoot) ||
-    !EFFECT_KINDS.includes(request.effectKind as ExternalEffectKind) ||
-    !DIGEST.test(String(request.artifactDigest)) ||
-    !DIGEST.test(String(request.prestateDigest)) ||
-    typeof request.idempotencyKey !== 'string' ||
-    !IDEMPOTENCY_KEY.test(request.idempotencyKey) ||
-    (hasOwnTtlSeconds && typeof request.ttlSeconds !== 'number')
-  ) {
-    throw invalidGrant();
-  }
-  const target = parseTarget(request.target);
-  const effectKind = request.effectKind as ExternalEffectKind;
-  if (
-    ((effectKind === 'publish-git-ref' ||
-      effectKind === 'force-push-git-ref') &&
-      target.kind !== 'git-ref') ||
-    (effectKind !== 'publish-git-ref' &&
-      effectKind !== 'force-push-git-ref' &&
-      target.kind !== 'external-resource')
-  ) {
-    throw invalidGrant();
-  }
-  return {
-    mandateBinding: {
-      schemaVersion: 1 as const,
-      mandateTaskId: request.mandateBinding.mandateTaskId,
-      mandateId: request.mandateBinding.mandateId,
-      mandateDigest: request.mandateBinding.mandateDigest,
-      changeId: request.mandateBinding.changeId,
-      externalAuditRoot: request.mandateBinding.externalAuditRoot,
-    },
-    effectKind,
-    target,
-    artifactDigest: request.artifactDigest as Sha256Digest,
-    prestateDigest: request.prestateDigest as Sha256Digest,
-    rollbackPlan: parseRollback(request.rollbackPlan),
-    ttlSeconds: hasOwnTtlSeconds ? request.ttlSeconds : undefined,
-    idempotencyKey: request.idempotencyKey,
-  };
-}
-
-function isPlainOwnDataRecord(
-  value: unknown,
-): value is Record<string, unknown> {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return false;
-  }
-  try {
-    const prototype = Object.getPrototypeOf(value);
-    if (prototype !== Object.prototype && prototype !== null) return false;
-    return Reflect.ownKeys(value).every((key) => {
-      if (typeof key !== 'string') return false;
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      return (
-        descriptor !== undefined &&
-        'value' in descriptor &&
-        descriptor.enumerable === true
-      );
-    });
-  } catch {
-    return false;
-  }
+  return boundExternalEffectGrantEnvelope().parseRequest(request);
 }
 
 function parsePayload(value: unknown): ExternalEffectGrantPayload {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, PAYLOAD_KEYS) ||
-    value.kind !== 'external-effect-grant.v1' ||
-    typeof value.grantId !== 'string' ||
-    !UUID_V4.test(value.grantId) ||
-    typeof value.repositoryId !== 'string' ||
-    !/^github:[A-Za-z0-9_-]+$/.test(value.repositoryId) ||
-    typeof value.repositoryOrigin !== 'string' ||
-    !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/.test(
-      value.repositoryOrigin,
-    ) ||
-    typeof value.baseCommit !== 'string' ||
-    !COMMIT_OID.test(value.baseCommit) ||
-    typeof value.policyBlob !== 'string' ||
-    !COMMIT_OID.test(value.policyBlob) ||
-    typeof value.externalAuditRoot !== 'string' ||
-    !path.isAbsolute(value.externalAuditRoot) ||
-    value.externalAuditRoot.length > 4096 ||
-    typeof value.changeId !== 'string' ||
-    value.changeId.length < 1 ||
-    value.changeId.length > 128 ||
-    typeof value.mandateId !== 'string' ||
-    !UUID_V4.test(value.mandateId) ||
-    typeof value.taskId !== 'string' ||
-    !TASK_ID.test(value.taskId) ||
-    typeof value.mandateDigest !== 'string' ||
-    !RAW_DIGEST.test(value.mandateDigest) ||
-    !EFFECT_KINDS.includes(value.effectKind as ExternalEffectKind) ||
-    !DIGEST.test(String(value.artifactDigest)) ||
-    !DIGEST.test(String(value.prestateDigest)) ||
-    typeof value.issuedAt !== 'string' ||
-    typeof value.expiresAt !== 'string' ||
-    !isTimestamp(value.issuedAt) ||
-    !isTimestamp(value.expiresAt) ||
-    Date.parse(value.expiresAt) <= Date.parse(value.issuedAt) ||
-    Date.parse(value.expiresAt) - Date.parse(value.issuedAt) >
-      EXTERNAL_EFFECT_MAX_TTL_SECONDS * 1000 ||
-    value.uses !== 1 ||
-    typeof value.idempotencyKey !== 'string' ||
-    !IDEMPOTENCY_KEY.test(value.idempotencyKey) ||
-    typeof value.signer !== 'string' ||
-    value.signer.length < 1 ||
-    value.signer.length > 128
-  ) {
-    throw invalidGrant();
-  }
-  const target = parseTarget(value.target);
-  const effectKind = value.effectKind as ExternalEffectKind;
-  if (
-    ((effectKind === 'publish-git-ref' ||
-      effectKind === 'force-push-git-ref') &&
-      target.kind !== 'git-ref') ||
-    (effectKind !== 'publish-git-ref' &&
-      effectKind !== 'force-push-git-ref' &&
-      target.kind !== 'external-resource')
-  ) {
-    throw invalidGrant();
-  }
-  return {
-    kind: 'external-effect-grant.v1',
-    grantId: value.grantId,
-    repositoryId: value.repositoryId,
-    repositoryOrigin: value.repositoryOrigin,
-    baseCommit: value.baseCommit,
-    policyBlob: value.policyBlob,
-    externalAuditRoot: value.externalAuditRoot,
-    changeId: value.changeId,
-    mandateId: value.mandateId,
-    taskId: value.taskId,
-    mandateDigest: value.mandateDigest,
-    effectKind,
-    target,
-    artifactDigest: value.artifactDigest as Sha256Digest,
-    prestateDigest: value.prestateDigest as Sha256Digest,
-    rollbackPlan: parseRollback(value.rollbackPlan),
-    issuedAt: value.issuedAt,
-    expiresAt: value.expiresAt,
-    uses: 1,
-    idempotencyKey: value.idempotencyKey,
-    signer: value.signer,
-  };
+  return boundExternalEffectGrantEnvelope().parsePayload(value);
 }
 
 function parseEnvelope(value: unknown): ExternalEffectGrantEnvelope {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, ['payload', 'signature']) ||
-    typeof value.signature !== 'string'
-  ) {
-    throw invalidGrant();
-  }
-  assertSignature(value.signature);
-  return { payload: parsePayload(value.payload), signature: value.signature };
-}
-
-function parseTarget(value: unknown): ExternalEffectTarget {
-  if (!isRecord(value) || typeof value.kind !== 'string') {
-    throw invalidGrant();
-  }
-  if (value.kind === 'git-ref') {
-    if (
-      !hasExactKeys(value, [
-        'kind',
-        'remoteName',
-        'remoteUrl',
-        'refName',
-        'sourceOid',
-        'expectedRemoteOid',
-      ]) ||
-      typeof value.remoteName !== 'string' ||
-      !SIMPLE_NAME.test(value.remoteName) ||
-      typeof value.remoteUrl !== 'string' ||
-      value.remoteUrl.length < 1 ||
-      value.remoteUrl.length > 1024 ||
-      /[\0\r\n]/.test(value.remoteUrl) ||
-      typeof value.refName !== 'string' ||
-      !REF_NAME.test(value.refName) ||
-      typeof value.sourceOid !== 'string' ||
-      !COMMIT_OID.test(value.sourceOid) ||
-      (value.expectedRemoteOid !== null &&
-        (typeof value.expectedRemoteOid !== 'string' ||
-          !COMMIT_OID.test(value.expectedRemoteOid)))
-    ) {
-      throw invalidGrant();
-    }
-    return {
-      kind: 'git-ref',
-      remoteName: value.remoteName,
-      remoteUrl: value.remoteUrl,
-      refName: value.refName,
-      sourceOid: value.sourceOid,
-      expectedRemoteOid: value.expectedRemoteOid,
-    };
-  }
-  if (
-    value.kind === 'external-resource' &&
-    hasExactKeys(value, ['kind', 'service', 'resource']) &&
-    typeof value.service === 'string' &&
-    SIMPLE_NAME.test(value.service) &&
-    typeof value.resource === 'string' &&
-    value.resource.length >= 1 &&
-    value.resource.length <= 1024 &&
-    !/[\0\r\n]/.test(value.resource)
-  ) {
-    return {
-      kind: 'external-resource',
-      service: value.service,
-      resource: value.resource,
-    };
-  }
-  throw invalidGrant();
-}
-
-function parseRollback(value: unknown): ExternalEffectRollbackPlan | null {
-  if (value === null) return null;
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, ['kind', 'planDigest']) ||
-    (value.kind !== 'restore-git-ref' && value.kind !== 'operator-procedure') ||
-    typeof value.planDigest !== 'string' ||
-    !DIGEST.test(value.planDigest)
-  ) {
-    throw invalidGrant();
-  }
-  return { kind: value.kind, planDigest: value.planDigest as Sha256Digest };
+  return boundExternalEffectGrantEnvelope().parseEnvelope(value);
 }
 
 function parseAvailable(raw: string): AvailableRecord {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantDigest',
-      'envelope',
-      'recordDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-available' ||
-    typeof value.grantDigest !== 'string' ||
-    !DIGEST.test(value.grantDigest) ||
-    typeof value.recordDigest !== 'string' ||
-    !DIGEST.test(value.recordDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const envelope = parseEnvelope(value.envelope);
-  const record = createAvailableRecord(
-    envelope,
-    value.grantDigest as Sha256Digest,
-  );
-  if (
-    record.recordDigest !== value.recordDigest ||
-    value.grantDigest !==
-      sha256(canonicalExternalEffectGrantEnvelope(envelope)) ||
-    canonicalAvailable(record) !== raw
-  ) {
-    throw unsafeStore();
-  }
-  return record;
+  return boundExternalEffectGrantRecords().parseAvailable(raw);
 }
 
 function parseTransaction(raw: string): TransactionRecord {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantDigest',
-      'envelope',
-      'transactionId',
-      'transactionToken',
-      'phase',
-      'reservedAt',
-      'dispatchIssuedAt',
-      'effectObservedAt',
-      'observation',
-      'recordDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-transaction' ||
-    typeof value.grantDigest !== 'string' ||
-    !DIGEST.test(value.grantDigest) ||
-    typeof value.transactionId !== 'string' ||
-    !UUID_V4.test(value.transactionId) ||
-    typeof value.transactionToken !== 'string' ||
-    !new RegExp(
-      `^${value.transactionId.replaceAll('-', '\\-')}\\.[0-9a-f]{64}$`,
-    ).test(value.transactionToken) ||
-    (value.phase !== 'reserved' &&
-      value.phase !== 'dispatch-issued' &&
-      value.phase !== 'effect-observed') ||
-    typeof value.reservedAt !== 'string' ||
-    !isTimestamp(value.reservedAt) ||
-    (value.dispatchIssuedAt !== null &&
-      (typeof value.dispatchIssuedAt !== 'string' ||
-        !isTimestamp(value.dispatchIssuedAt))) ||
-    (value.effectObservedAt !== null &&
-      (typeof value.effectObservedAt !== 'string' ||
-        !isTimestamp(value.effectObservedAt))) ||
-    typeof value.recordDigest !== 'string' ||
-    !DIGEST.test(value.recordDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const envelope = parseEnvelope(value.envelope);
-  const observation =
-    value.observation === null
-      ? null
-      : parseObservation(value.observation, envelope, value.transactionId);
-  const transaction: TransactionRecord = {
-    schemaVersion: 1,
-    kind: 'external-effect-transaction',
-    grantDigest: value.grantDigest as Sha256Digest,
-    envelope,
-    transactionId: value.transactionId,
-    transactionToken: value.transactionToken,
-    phase: value.phase,
-    reservedAt: value.reservedAt,
-    dispatchIssuedAt: value.dispatchIssuedAt,
-    effectObservedAt: value.effectObservedAt,
-    observation,
-    recordDigest: value.recordDigest as Sha256Digest,
-  };
-  if (
-    replaceTransactionDigest(transaction).recordDigest !==
-      transaction.recordDigest ||
-    transaction.grantDigest !==
-      sha256(canonicalExternalEffectGrantEnvelope(envelope)) ||
-    (transaction.phase === 'reserved' &&
-      (transaction.dispatchIssuedAt !== null ||
-        transaction.effectObservedAt !== null ||
-        transaction.observation !== null)) ||
-    (transaction.phase === 'dispatch-issued' &&
-      (transaction.dispatchIssuedAt === null ||
-        transaction.effectObservedAt !== null ||
-        transaction.observation !== null)) ||
-    (transaction.phase === 'effect-observed' &&
-      (transaction.dispatchIssuedAt === null ||
-        transaction.effectObservedAt === null ||
-        transaction.observation === null)) ||
-    canonicalTransaction(transaction) !== raw
-  ) {
-    throw unsafeStore();
-  }
-  return transaction;
-}
-
-function parseObservation(
-  value: unknown,
-  envelope: ExternalEffectGrantEnvelope,
-  transactionId: string,
-): ExternalEffectObservation {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantId',
-      'transactionId',
-      'idempotencyKey',
-      'externalReceiptId',
-      'artifactDigest',
-      'prestateDigest',
-      'poststateDigest',
-      'observedAt',
-      'receiptDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-observation' ||
-    value.grantId !== envelope.payload.grantId ||
-    value.transactionId !== transactionId ||
-    value.idempotencyKey !== envelope.payload.idempotencyKey ||
-    typeof value.externalReceiptId !== 'string' ||
-    value.externalReceiptId.length < 1 ||
-    value.externalReceiptId.length > 512 ||
-    value.artifactDigest !== envelope.payload.artifactDigest ||
-    value.prestateDigest !== envelope.payload.prestateDigest ||
-    typeof value.poststateDigest !== 'string' ||
-    !DIGEST.test(value.poststateDigest) ||
-    typeof value.observedAt !== 'string' ||
-    !isTimestamp(value.observedAt) ||
-    typeof value.receiptDigest !== 'string' ||
-    !DIGEST.test(value.receiptDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const { receiptDigest: _receiptDigest, ...withoutDigest } = value;
-  if (sha256(canonicalJson(withoutDigest)) !== value.receiptDigest) {
-    throw unsafeStore();
-  }
-  return value as ExternalEffectObservation;
+  return boundExternalEffectGrantRecords().parseTransaction(raw);
 }
 
 function parseTerminal(raw: string): TerminalRecord {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantDigest',
-      'envelope',
-      'transactionId',
-      'state',
-      'observation',
-      'terminalAt',
-      'reason',
-      'previousRecordDigest',
-      'receiptDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-terminal' ||
-    typeof value.grantDigest !== 'string' ||
-    !DIGEST.test(value.grantDigest) ||
-    (value.transactionId !== null &&
-      (typeof value.transactionId !== 'string' ||
-        !UUID_V4.test(value.transactionId))) ||
-    ![
-      'consumed',
-      'revoked',
-      'expired',
-      'failed',
-      'manual-reconciliation',
-    ].includes(String(value.state)) ||
-    typeof value.terminalAt !== 'string' ||
-    !isTimestamp(value.terminalAt) ||
-    (value.reason !== null && typeof value.reason !== 'string') ||
-    typeof value.previousRecordDigest !== 'string' ||
-    !DIGEST.test(value.previousRecordDigest) ||
-    typeof value.receiptDigest !== 'string' ||
-    !DIGEST.test(value.receiptDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const envelope = parseEnvelope(value.envelope);
-  const observation =
-    value.observation === null
-      ? null
-      : parseObservation(
-          value.observation,
-          envelope,
-          String(value.transactionId),
-        );
-  const terminal = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-terminal' as const,
-    grantDigest: value.grantDigest as Sha256Digest,
-    envelope,
-    transactionId: value.transactionId as string | null,
-    state: value.state as TerminalState,
-    observation,
-    terminalAt: value.terminalAt,
-    reason: value.reason as string | null,
-    previousRecordDigest: value.previousRecordDigest as Sha256Digest,
-  };
-  if (
-    sha256(canonicalJson(terminal)) !== value.receiptDigest ||
-    terminal.grantDigest !==
-      sha256(canonicalExternalEffectGrantEnvelope(envelope))
-  ) {
-    throw unsafeStore();
-  }
-  const record = {
-    ...terminal,
-    receiptDigest: value.receiptDigest as Sha256Digest,
-  };
-  if (canonicalTerminal(record) !== raw) throw unsafeStore();
-  return record;
+  return boundExternalEffectGrantRecords().parseTerminal(raw);
 }
 
 function parseReconciliationRequest(
@@ -2224,60 +1433,11 @@ function parseReconciliationRequest(
   terminal: TerminalRecord,
   now: Date,
 ): ExternalEffectReconciliationRequest {
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'outcome',
-      'evidenceDigest',
-      'externalReceiptId',
-      'poststateDigest',
-      'observedAt',
-      'reason',
-    ]) ||
-    (value.outcome !== 'succeeded' &&
-      value.outcome !== 'rolled-back' &&
-      value.outcome !== 'failed') ||
-    typeof value.evidenceDigest !== 'string' ||
-    !DIGEST.test(value.evidenceDigest) ||
-    (value.externalReceiptId !== null &&
-      (typeof value.externalReceiptId !== 'string' ||
-        value.externalReceiptId.length < 1 ||
-        value.externalReceiptId.length > 512 ||
-        value.externalReceiptId.trim() !== value.externalReceiptId ||
-        /[\0\r\n]/.test(value.externalReceiptId))) ||
-    (value.poststateDigest !== null &&
-      (typeof value.poststateDigest !== 'string' ||
-        !DIGEST.test(value.poststateDigest))) ||
-    typeof value.observedAt !== 'string' ||
-    !isTimestamp(value.observedAt) ||
-    typeof value.reason !== 'string' ||
-    value.reason.trim() !== value.reason ||
-    value.reason.length < 1 ||
-    value.reason.length > 1024 ||
-    /[\0\r]/.test(value.reason)
-  ) {
-    throw reconciliationInvalid();
-  }
-  const observedAt = Date.parse(value.observedAt);
-  if (
-    observedAt < Date.parse(terminal.terminalAt) ||
-    observedAt > now.getTime() + 30_000 ||
-    (value.outcome === 'succeeded' &&
-      (value.poststateDigest === null || value.externalReceiptId === null)) ||
-    (value.outcome === 'rolled-back' &&
-      (value.poststateDigest !== terminal.envelope.payload.prestateDigest ||
-        value.externalReceiptId === null))
-  ) {
-    throw reconciliationInvalid();
-  }
-  return {
-    outcome: value.outcome,
-    evidenceDigest: value.evidenceDigest as Sha256Digest,
-    externalReceiptId: value.externalReceiptId,
-    poststateDigest: value.poststateDigest as Sha256Digest | null,
-    observedAt: value.observedAt,
-    reason: value.reason,
-  };
+  return boundExternalEffectGrantRecords().parseReconciliationRequest(
+    value,
+    terminal,
+    now,
+  );
 }
 
 function createReconciliationRecord(
@@ -2286,146 +1446,19 @@ function createReconciliationRecord(
   resolver: string,
   resolvedAt: Date,
 ): ExternalEffectReconciliation {
-  if (
-    terminal.state !== 'manual-reconciliation' ||
-    terminal.transactionId === null ||
-    resolver.length < 1 ||
-    resolver.length > 128 ||
-    resolver.trim() !== resolver
-  ) {
-    throw reconciliationInvalid();
-  }
-  const value = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-reconciliation.v1' as const,
-    grantId: terminal.envelope.payload.grantId,
-    grantDigest: terminal.grantDigest,
-    transactionId: terminal.transactionId,
-    manualReconciliationReceiptDigest: terminal.receiptDigest,
-    ...request,
+  return boundExternalEffectGrantRecords().createReconciliationRecord(
+    terminal,
+    request,
     resolver,
-    resolvedAt: resolvedAt.toISOString(),
-  };
-  return Object.freeze({
-    ...value,
-    receiptDigest: sha256(canonicalJson(value)),
-  });
+    resolvedAt,
+  );
 }
 
 function parseReconciliation(
   raw: string,
   terminal: TerminalRecord,
 ): ExternalEffectReconciliation {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'grantId',
-      'grantDigest',
-      'transactionId',
-      'manualReconciliationReceiptDigest',
-      'outcome',
-      'evidenceDigest',
-      'externalReceiptId',
-      'poststateDigest',
-      'observedAt',
-      'reason',
-      'resolver',
-      'resolvedAt',
-      'receiptDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-reconciliation.v1' ||
-    value.grantId !== terminal.envelope.payload.grantId ||
-    value.grantDigest !== terminal.grantDigest ||
-    value.transactionId !== terminal.transactionId ||
-    value.manualReconciliationReceiptDigest !== terminal.receiptDigest ||
-    typeof value.resolver !== 'string' ||
-    typeof value.resolvedAt !== 'string' ||
-    !isTimestamp(value.resolvedAt) ||
-    Date.parse(value.resolvedAt) < Date.parse(terminal.terminalAt) ||
-    typeof value.receiptDigest !== 'string' ||
-    !DIGEST.test(value.receiptDigest)
-  ) {
-    throw unsafeStore();
-  }
-  try {
-    const request = parseReconciliationRequest(
-      {
-        outcome: value.outcome,
-        evidenceDigest: value.evidenceDigest,
-        externalReceiptId: value.externalReceiptId,
-        poststateDigest: value.poststateDigest,
-        observedAt: value.observedAt,
-        reason: value.reason,
-      },
-      terminal,
-      new Date(value.resolvedAt),
-    );
-    const record = createReconciliationRecord(
-      terminal,
-      request,
-      value.resolver,
-      new Date(value.resolvedAt),
-    );
-    if (
-      record.receiptDigest !== value.receiptDigest ||
-      canonicalReconciliation(record) !== raw
-    ) {
-      throw unsafeStore();
-    }
-    return record;
-  } catch {
-    throw unsafeStore();
-  }
-}
-
-function assertManualReconciliationState(
-  state: StoreState,
-): asserts state is Extract<StoreState, { kind: 'terminal' }> & {
-  record: TerminalRecord & {
-    state: 'manual-reconciliation';
-    transactionId: string;
-  };
-} {
-  if (
-    state.kind !== 'terminal' ||
-    state.record.state !== 'manual-reconciliation' ||
-    state.record.transactionId === null
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_RECONCILIATION_NOT_REQUIRED',
-      'Only a durable manual-reconciliation terminal may be resolved.',
-      ExitCode.guard,
-    );
-  }
-}
-
-function assertReconciliationReplay(
-  existing: ExternalEffectReconciliation,
-  request: ExternalEffectReconciliationRequest,
-  resolver: string,
-): void {
-  const observed = {
-    outcome: existing.outcome,
-    evidenceDigest: existing.evidenceDigest,
-    externalReceiptId: existing.externalReceiptId,
-    poststateDigest: existing.poststateDigest,
-    observedAt: existing.observedAt,
-    reason: existing.reason,
-  };
-  if (
-    canonicalJson(observed) !== canonicalJson(request) ||
-    existing.resolver !== resolver
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_RECONCILIATION_CONFLICT',
-      'External effect reconciliation is already bound to different human evidence.',
-      ExitCode.conflict,
-    );
-  }
+  return boundExternalEffectGrantRecords().parseReconciliation(raw, terminal);
 }
 
 function validateEnvelopeForRepository(
@@ -2534,30 +1567,13 @@ function auditInput(
     >
   >,
 ): Omit<ExternalEffectAuditEvent, 'eventId'> {
-  return {
-    schemaVersion: 1,
-    eventType,
-    occurredAt: now.toISOString(),
-    repositoryId: envelope.payload.repositoryId,
-    externalAuditRoot: envelope.payload.externalAuditRoot,
-    changeId: envelope.payload.changeId,
-    taskId: envelope.payload.taskId,
-    mandateId: envelope.payload.mandateId,
-    mandateDigest: envelope.payload.mandateDigest,
-    effectKind: envelope.payload.effectKind,
-    targetDigest: sha256(canonicalJson(envelope.payload.target)),
-    effectIdempotencyDigest: sha256(envelope.payload.idempotencyKey),
-    grantId: envelope.payload.grantId,
+  return boundExternalEffectGrantAudit().auditInput(
+    envelope,
     grantDigest,
-    transactionId: overrides.transactionId ?? null,
-    artifactDigest: envelope.payload.artifactDigest,
-    prestateDigest: envelope.payload.prestateDigest,
-    poststateDigest: overrides.poststateDigest ?? null,
-    evidenceDigest: overrides.evidenceDigest ?? null,
-    resolver: overrides.resolver ?? null,
-    result: overrides.result ?? 'failed',
-    reason: overrides.reason ?? null,
-  };
+    eventType,
+    now,
+    overrides,
+  );
 }
 
 function emitAudit(
@@ -2568,59 +1584,19 @@ function emitAudit(
   >,
   input: Omit<ExternalEffectAuditEvent, 'eventId'>,
 ): void {
-  const event = Object.freeze({
-    ...input,
-    eventId: sha256(
-      canonicalJson({
-        grantDigest: input.grantDigest,
-        transactionId: input.transactionId,
-        eventType: input.eventType,
-        result: input.result,
-        poststateDigest: input.poststateDigest,
-        evidenceDigest: input.evidenceDigest,
-        resolver: input.resolver,
-      }),
-    ),
-  });
-  appendExternalEffectAuthorityAudit(repositoryRoot, event, {
-    serviceHooks: options.testAuditServiceHooks,
-    onRecord: options.onAuditRecord,
-  });
+  return boundExternalEffectGrantAudit().emitAudit(
+    repositoryRoot,
+    options,
+    input,
+  );
 }
 
 function ensureStore(paths: ReturnType<typeof externalEffectStorePaths>): void {
-  for (const directory of storeDirectories(paths)) {
-    ensurePlainDirectory(directory);
-    fs.chmodSync(directory, 0o700);
-  }
-  assertStore(paths);
+  return boundExternalEffectGrantStore().ensureStore(paths);
 }
 
 function assertStore(paths: ReturnType<typeof externalEffectStorePaths>): void {
-  for (const directory of storeDirectories(paths)) {
-    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-    if (
-      !stats?.isDirectory() ||
-      stats.isSymbolicLink() ||
-      (stats.mode & 0o777) !== 0o700 ||
-      fs.realpathSync(directory) !== path.resolve(directory)
-    ) {
-      throw unsafeStore();
-    }
-  }
-}
-
-function storeDirectories(
-  paths: ReturnType<typeof externalEffectStorePaths>,
-): string[] {
-  return [
-    paths.root,
-    paths.pending,
-    paths.available,
-    paths.transactions,
-    paths.terminal,
-    paths.idempotency,
-  ];
+  return boundExternalEffectGrantStore().assertStore(paths);
 }
 
 function assertIdempotencyAvailable(
@@ -2629,20 +1605,12 @@ function assertIdempotencyAvailable(
   grantId: string,
   grantDigest: Sha256Digest,
 ): void {
-  const raw = readOptionalPrivateFile(idempotencyPath(paths, idempotencyKey));
-  if (raw === null) return;
-  const existing = parseIdempotencyRecord(raw);
-  if (
-    existing.idempotencyKey !== idempotencyKey ||
-    existing.grantId !== grantId ||
-    existing.grantDigest !== grantDigest
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_IDEMPOTENCY_CONFLICT',
-      'External effect idempotency key is already bound to another exact grant.',
-      ExitCode.conflict,
-    );
-  }
+  return boundExternalEffectGrantStore().assertIdempotencyAvailable(
+    paths,
+    idempotencyKey,
+    grantId,
+    grantDigest,
+  );
 }
 
 function createIdempotencyIndex(
@@ -2651,69 +1619,16 @@ function createIdempotencyIndex(
   grantId: string,
   grantDigest: Sha256Digest,
 ): void {
-  const filePath = idempotencyPath(paths, idempotencyKey);
-  const raw = readOptionalPrivateFile(filePath);
-  if (raw !== null) {
-    assertIdempotencyAvailable(paths, idempotencyKey, grantId, grantDigest);
-    return;
-  }
-  const value = {
-    schemaVersion: 1 as const,
-    kind: 'external-effect-idempotency' as const,
+  return boundExternalEffectGrantStore().createIdempotencyIndex(
+    paths,
     idempotencyKey,
     grantId,
     grantDigest,
-  };
-  const record: IdempotencyRecord = {
-    ...value,
-    recordDigest: sha256(canonicalJson(value)),
-  };
-  createPrivateFileAtomic(filePath, `${canonicalJson(record)}\n`);
+  );
 }
 
 function parseIdempotencyRecord(raw: string): IdempotencyRecord {
-  const value = parseJson(raw);
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, [
-      'schemaVersion',
-      'kind',
-      'idempotencyKey',
-      'grantId',
-      'grantDigest',
-      'recordDigest',
-    ]) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'external-effect-idempotency' ||
-    typeof value.idempotencyKey !== 'string' ||
-    !IDEMPOTENCY_KEY.test(value.idempotencyKey) ||
-    typeof value.grantId !== 'string' ||
-    !UUID_V4.test(value.grantId) ||
-    typeof value.grantDigest !== 'string' ||
-    !DIGEST.test(value.grantDigest) ||
-    typeof value.recordDigest !== 'string' ||
-    !DIGEST.test(value.recordDigest)
-  ) {
-    throw unsafeStore();
-  }
-  const { recordDigest: _recordDigest, ...withoutDigest } = value;
-  if (
-    sha256(canonicalJson(withoutDigest)) !== value.recordDigest ||
-    `${canonicalJson(value)}\n` !== raw
-  ) {
-    throw unsafeStore();
-  }
-  return value as IdempotencyRecord;
-}
-
-function idempotencyPath(
-  paths: ReturnType<typeof externalEffectStorePaths>,
-  idempotencyKey: string,
-): string {
-  return path.join(
-    paths.idempotency,
-    `${sha256(idempotencyKey).slice('sha256:'.length)}.json`,
-  );
+  return boundExternalEffectGrantRecords().parseIdempotencyRecord(raw);
 }
 
 function assertExternalAuditRoot(
@@ -2763,164 +1678,60 @@ function assertGrantAbsent(
   paths: ReturnType<typeof externalEffectStorePaths>,
   grantId: string,
 ): void {
-  if (
-    [paths.pending, paths.available, paths.transactions, paths.terminal].some(
-      (directory) => fs.existsSync(grantPath(directory, grantId)),
-    ) ||
-    fs.existsSync(reconciliationPath(paths, grantId))
-  ) {
-    throw workflowError(
-      'EXTERNAL_EFFECT_GRANT_EXISTS',
-      `External effect grant ${grantId} already exists.`,
-      ExitCode.conflict,
-    );
-  }
+  return boundExternalEffectGrantStore().assertGrantAbsent(paths, grantId);
 }
 
 function grantPath(directory: string, grantId: string): string {
-  return path.join(directory, `${assertUuid(grantId)}.json`);
+  return boundExternalEffectGrantStore().grantPath(directory, grantId);
 }
 
 function reconciliationPath(
   paths: ReturnType<typeof externalEffectStorePaths>,
   grantId: string,
 ): string {
-  return path.join(
-    paths.terminal,
-    `${assertUuid(grantId)}.reconciliation.json`,
-  );
+  return boundExternalEffectGrantStore().reconciliationPath(paths, grantId);
 }
 
 function createPrivateFileAtomic(filePath: string, content: string): void {
-  const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(
-      temporary,
-      fs.constants.O_WRONLY |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
-      0o600,
-    );
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, content, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
-    descriptor = undefined;
-    fs.linkSync(temporary, filePath);
-    fs.unlinkSync(temporary);
-    fsyncDirectory(path.dirname(filePath));
-  } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.rmSync(temporary, { force: true });
-  }
+  return boundExternalEffectGrantStore().createPrivateFileAtomic(
+    filePath,
+    content,
+  );
 }
 
 function replacePrivateFileAtomic(filePath: string, content: string): void {
-  const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(
-      temporary,
-      fs.constants.O_WRONLY |
-        fs.constants.O_CREAT |
-        fs.constants.O_EXCL |
-        (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
-      0o600,
-    );
-    fs.fchmodSync(descriptor, 0o600);
-    fs.writeFileSync(descriptor, content, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
-    descriptor = undefined;
-    fs.renameSync(temporary, filePath);
-    fsyncDirectory(path.dirname(filePath));
-  } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.rmSync(temporary, { force: true });
-  }
+  return boundExternalEffectGrantStore().replacePrivateFileAtomic(
+    filePath,
+    content,
+  );
 }
 
 function readOptionalPrivateFile(filePath: string): string | null {
-  const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-  if (!stats) return null;
-  if (
-    !stats.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.nlink !== 1 ||
-    (stats.mode & 0o777) !== 0o600 ||
-    stats.size > 64 * 1024
-  ) {
-    throw unsafeStore();
-  }
-  const descriptor = fs.openSync(
-    filePath,
-    fs.constants.O_RDONLY |
-      (process.platform === 'win32' ? 0 : fs.constants.O_NOFOLLOW),
-  );
-  try {
-    const opened = fs.fstatSync(descriptor);
-    if (
-      !opened.isFile() ||
-      opened.nlink !== 1 ||
-      (opened.mode & 0o777) !== 0o600 ||
-      opened.dev !== stats.dev ||
-      opened.ino !== stats.ino ||
-      opened.size > 64 * 1024
-    ) {
-      throw unsafeStore();
-    }
-    return fs.readFileSync(descriptor, 'utf8');
-  } finally {
-    fs.closeSync(descriptor);
-  }
+  return boundExternalEffectGrantStore().readOptionalPrivateFile(filePath);
 }
 
 function unlinkIfExact(filePath: string, expected: string): void {
-  const raw = readOptionalPrivateFile(filePath);
-  if (raw === null) return;
-  if (raw !== expected) throw unsafeStore();
-  fs.unlinkSync(filePath);
-  fsyncDirectory(path.dirname(filePath));
+  return boundExternalEffectGrantStore().unlinkIfExact(filePath, expected);
 }
 
 function canonicalAvailable(record: AvailableRecord): string {
-  return `${canonicalJson(record)}\n`;
+  return boundExternalEffectGrantRecords().canonicalAvailable(record);
 }
 
 function canonicalPending(record: PendingRecord): string {
-  return `${canonicalJson(record)}\n`;
+  return boundExternalEffectGrantRecords().canonicalPending(record);
 }
 
 function canonicalTransaction(record: TransactionRecord): string {
-  return `${canonicalJson(record)}\n`;
+  return boundExternalEffectGrantRecords().canonicalTransaction(record);
 }
 
 function canonicalTerminal(record: TerminalRecord): string {
-  return `${canonicalJson(record)}\n`;
+  return boundExternalEffectGrantRecords().canonicalTerminal(record);
 }
 
 function canonicalReconciliation(record: ExternalEffectReconciliation): string {
-  return `${canonicalJson(record)}\n`;
-}
-
-function parseJson(raw: string): unknown {
-  if (Buffer.byteLength(raw) > 64 * 1024) throw unsafeStore();
-  try {
-    return JSON.parse(raw);
-  } catch {
-    throw unsafeStore();
-  }
-}
-
-function fsyncDirectory(directory: string): void {
-  const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-  try {
-    fs.fsyncSync(descriptor);
-  } finally {
-    fs.closeSync(descriptor);
-  }
+  return boundExternalEffectGrantRecords().canonicalReconciliation(record);
 }
 
 function assertTrustedSigner(

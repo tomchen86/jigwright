@@ -1,3 +1,5 @@
+import { createExecutionReplacementRecords } from './execution-replacement-records.ts';
+import { createExecutionReplacementPublication } from './execution-replacement-publication.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -635,447 +637,6 @@ export function executeGrantedReplacement(
   return transaction;
 }
 
-function recoverReceipt(
-  repositoryRoot: string,
-  paths: InvestigationRuntimePaths,
-  storeRoot: string,
-  transaction: ExecutionReplacementTransaction,
-  options: ExecuteGrantedReplacementOptions,
-  assertOwned: () => void,
-): ExecutionReplacementTransaction {
-  if (transaction.receipt !== null) return transaction;
-  const inspected = inspectExecutionBudgetGrantAuthorization(
-    storeRoot,
-    transaction.grantId,
-  );
-  let receipt = inspected.receipts.find(
-    ({ attemptId }) => attemptId === transaction.replacementAttemptId,
-  );
-  if (receipt === undefined) {
-    const mandateBinding = transaction.request.mandateBinding;
-    assertActiveTaskMandateBindingUnderLifecycleLock(
-      repositoryRoot,
-      mandateBinding,
-      assertOwned,
-      { now: options.now },
-    );
-    const maintainerPolicy = parseMaintainerPolicy(
-      JSON.parse(
-        runGit(repositoryRoot, [
-          'show',
-          'HEAD:workflow/maintainer-policy.json',
-        ]),
-      ),
-    );
-    assertOwned();
-    receipt = consumeExecutionBudgetGrant(storeRoot, {
-      grantId: transaction.grantId,
-      workflowId: transaction.workflowId,
-      epoch: transaction.epoch,
-      jobId: transaction.jobId,
-      attemptId: transaction.replacementAttemptId,
-      mandateBinding,
-      requestDigest: transaction.requestDigest,
-      requestedChanges: transaction.request.requestedChanges,
-      now: options.now ?? new Date(),
-      audit: {
-        repositoryRoot,
-        repositoryIdentity: maintainerPolicy.repository.id,
-      },
-    });
-    if (options.simulateCrashAfter === 'grant-consume-before-journal') {
-      throw new SimulatedExecutionReplacementCrash(
-        'grant-consume-before-journal',
-      );
-    }
-  }
-  assertReceipt(transaction, receipt);
-  const { recordDigest: _recordDigest, ...transactionCore } = transaction;
-  const next = createTransaction({
-    ...transactionCore,
-    phase: 'grant-consumed' as const,
-    receipt,
-    updatedAt: receipt.consumedAt,
-  });
-  writeTransaction(
-    paths,
-    replacementTransactionPath(storeRoot, transaction.transactionId),
-    next,
-    true,
-  );
-  if (options.simulateCrashAfter === 'grant-consumed') {
-    throw new SimulatedExecutionReplacementCrash('grant-consumed');
-  }
-  return next;
-}
-
-function publishReplacement(
-  cwd: string,
-  transaction: ExecutionReplacementTransaction,
-  options: ExecuteGrantedReplacementOptions = {},
-): void {
-  assertReceipt(transaction, transaction.receipt);
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (isPublishedReplacement(cwd, transaction, options)) {
-    return;
-  }
-  const failed = readProviderInvocation(
-    context.runtime,
-    transaction.failedInvocationId,
-  );
-  if (
-    failed.purpose === 'task-diff-review' ||
-    failed.purpose === 'task-implementation'
-  ) {
-    throw replacementNotGrantable();
-  }
-  // A previous republication may have died after the replacement reservation
-  // was published but before its invocation record existed. That half-state
-  // cannot render a status projection, so the WAL finishes the interrupted
-  // tail directly from the transaction's own facts before consulting one.
-  if (
-    failed.purpose !== 'survey' &&
-    completeInterruptedPlanReviewReplacement(cwd, {
-      investigationId: failed.investigationId,
-      changeId: failed.changeId,
-      replacementRequest: transaction.replacementRequest,
-      failedInvocationId: transaction.failedInvocationId,
-      executionGrantId: transaction.grantId,
-    }).published
-  ) {
-    assertPublishedReplacement(cwd, transaction, options);
-    return;
-  }
-  const collaborationGrantValidation =
-    consumedRoleResultReplayValidation(options);
-  const output = getProposeStatus(
-    cwd,
-    failed.investigationId,
-    collaborationGrantValidation,
-  );
-  const authorization = {
-    grantId: transaction.grantId,
-    grantRequest: transaction.request,
-    receipt: transaction.receipt!,
-    replacementRequest: transaction.replacementRequest,
-  };
-  const envelope =
-    failed.purpose === 'survey'
-      ? createProviderRetryEnvelope(cwd, output, {
-          acknowledgeProviderCost: true,
-        })
-      : createPlanReviewRetryEnvelope(cwd, output, {
-          acknowledgeProviderCost: true,
-        });
-  resumePropose(cwd, failed.changeId, envelope, {
-    executionGrantAuthorization: authorization,
-    ...(collaborationGrantValidation === undefined
-      ? {}
-      : { collaborationGrantValidation }),
-    ...(options.simulateCrashAfter === 'plan-review-reservation-replaced'
-      ? {
-          simulateCrashAfterPlanReviewReplacementReservation: () => {
-            throw new SimulatedExecutionReplacementCrash(
-              'plan-review-reservation-replaced',
-            );
-          },
-        }
-      : {}),
-  });
-  assertPublishedReplacement(cwd, transaction, options);
-}
-
-function assertPublishedReplacement(
-  cwd: string,
-  transaction: ExecutionReplacementTransaction,
-  options: ExecuteGrantedReplacementOptions,
-): void {
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (
-    !providerInvocationExists(
-      context.runtime,
-      transaction.replacementInvocationId,
-    )
-  ) {
-    throw replacementStale();
-  }
-  const record = readProviderInvocation(
-    context.runtime,
-    transaction.replacementInvocationId,
-  );
-  const request = readProviderInvocationRequest(
-    context.runtime,
-    transaction.replacementInvocationId,
-  );
-  if (
-    record.attempt !==
-      readProviderInvocation(context.runtime, transaction.failedInvocationId)
-        .attempt +
-        1 ||
-    record.requestDigest !== transaction.replacementRequest.requestDigest ||
-    canonicalJson(request) !== canonicalJson(transaction.replacementRequest)
-  ) {
-    throw replacementStale();
-  }
-  const output = getProposeStatus(
-    cwd,
-    record.investigationId,
-    consumedRoleResultReplayValidation(options),
-  );
-  const referenced =
-    record.purpose === 'survey'
-      ? output.investigation?.kind === 'investigation' &&
-        output.investigation.providerInvocationId === record.invocationId
-      : output.planReview?.invocationId === record.invocationId;
-  if (!referenced) throw replacementStale();
-}
-
-function isPublishedReplacement(
-  cwd: string,
-  transaction: ExecutionReplacementTransaction,
-  options: ExecuteGrantedReplacementOptions,
-): boolean {
-  const context = loadInvestigationRuntimeContext(cwd);
-  if (
-    !providerInvocationExists(
-      context.runtime,
-      transaction.replacementInvocationId,
-    )
-  ) {
-    return false;
-  }
-  const record = readProviderInvocation(
-    context.runtime,
-    transaction.replacementInvocationId,
-  );
-  const output = getProposeStatus(
-    cwd,
-    record.investigationId,
-    consumedRoleResultReplayValidation(options),
-  );
-  return record.purpose === 'survey'
-    ? output.investigation?.kind === 'investigation' &&
-        output.investigation.providerInvocationId === record.invocationId
-    : output.planReview?.invocationId === record.invocationId;
-}
-
-function consumedRoleResultReplayValidation(
-  options: Pick<ExecuteGrantedReplacementOptions, 'consumedRoleResultReplay'>,
-):
-  | {
-      consumedRoleResultReplay: ConsumedPlanReviewReplayPort;
-      consumedPlanReviewReplay: ConsumedPlanReviewReplayPort;
-    }
-  | undefined {
-  return options.consumedRoleResultReplay === undefined
-    ? undefined
-    : {
-        consumedRoleResultReplay: options.consumedRoleResultReplay,
-        consumedPlanReviewReplay: options.consumedRoleResultReplay,
-      };
-}
-
-function requestExecutionReplacementBytes(
-  inspection: ReturnType<typeof inspectExecutionJob>,
-  timeoutMs: number,
-  previousProviderPolicyDigest: string,
-  providerPolicyDigest: string,
-  providerPolicyTimeoutCeilingMs: number,
-): string {
-  const previous = inspection.attempts.at(-1);
-  const base = inspection.latestFailure?.decision.requiredGrant;
-  if (
-    previous === undefined ||
-    previous.failure === null ||
-    base === undefined
-  ) {
-    throw replacementNotGrantable();
-  }
-  const previewChanges = [
-    {
-      path: '/timeoutMs',
-      from: previous.policySnapshot.timeoutMs,
-      to: timeoutMs,
-    },
-  ];
-  const changes = mergeExactChanges([
-    ...base.requestedChanges,
-    ...previewChanges,
-    ...(timeoutMs > providerPolicyTimeoutCeilingMs
-      ? [
-          {
-            path: '/providerPolicy/limits/timeoutMs',
-            from: providerPolicyTimeoutCeilingMs,
-            to: timeoutMs,
-          },
-        ]
-      : []),
-    ...(previousProviderPolicyDigest === providerPolicyDigest
-      ? []
-      : [
-          {
-            path: '/providerPolicyDigest',
-            from: previousProviderPolicyDigest,
-            to: providerPolicyDigest,
-          },
-        ]),
-  ]);
-  const request = createExecutionBudgetGrantRequest({
-    requestId: deterministicUuid({
-      kind: 'execution-replacement-request',
-      jobId: inspection.job.jobId,
-      failedAttemptId: previous.attemptId,
-      changes,
-    }),
-    workflowId: inspection.workflow.workflowId,
-    epoch: inspection.job.epoch,
-    jobId: inspection.job.jobId,
-    mandateBinding: requireExecutionJobMandateBinding(inspection.job),
-    requestedChanges: changes,
-    rationale: replacementRationale(previous, timeoutMs, providerPolicyDigest),
-    expiresAfterAttempts: 1,
-    createdAt: new Date(previous.updatedAt),
-  });
-  assertCompleteReplacementDelta(
-    request,
-    inspection.job.retryPolicy.maxAttempts,
-    previous.policySnapshot.timeoutMs,
-    timeoutMs,
-    providerPolicyTimeoutCeilingMs,
-  );
-  return canonicalExecutionBudgetGrantRequest(request);
-}
-
-function assertCurrentTransactionLineage(
-  cwd: string,
-  transaction: ExecutionReplacementTransaction,
-): void {
-  const inspection = inspectExecutionJob(cwd, transaction.jobId);
-  const failed = inspection.attempts.find(
-    ({ attemptId }) => attemptId === transaction.failedAttemptId,
-  );
-  const context = loadInvestigationRuntimeContext(cwd);
-  const record = readProviderInvocation(
-    context.runtime,
-    transaction.failedInvocationId,
-  );
-  const failedRequest = readProviderInvocationRequest(
-    context.runtime,
-    transaction.failedInvocationId,
-  );
-  const persistedRequest = readPersistedRequest(
-    context.runtime,
-    context.lifecycleRuntime.root,
-    transaction.requestDigest,
-  );
-  const binding = readRequestBinding(
-    context.runtime,
-    context.lifecycleRuntime.root,
-    transaction.requestDigest,
-  );
-  const policy = loadAiAdapterPolicy(context.git.repositoryRoot);
-  const timeoutMs = replacementTimeout(transaction.request);
-  const expectedReplacementRequest = createProviderInvocationRequest({
-    invocationId: transaction.replacementInvocationId,
-    nonce: `execution-grant-retry-${digestCanonical({ grantId: transaction.grantId, requestDigest: transaction.requestDigest }).slice(7)}`,
-    purpose: failedRequest.purpose,
-    providerId: failedRequest.providerId,
-    roleAssignment: failedRequest.roleAssignment,
-    capabilityProfile: failedRequest.capabilityProfile,
-    repositoryId: failedRequest.repositoryId,
-    baseCommit: failedRequest.baseCommit,
-    baseTree: failedRequest.baseTree,
-    targetDigest: failedRequest.targetDigest,
-    inputManifestDigest: failedRequest.inputManifestDigest,
-    authorizationNodeId: failedRequest.authorizationNodeId,
-    writeAllowedPaths: [...failedRequest.writeAllowedPaths],
-    outputSchema: failedRequest.outputSchema,
-    evaluatorVersion: failedRequest.evaluatorVersion,
-    policyDigest: binding.providerPolicyDigest,
-    limits: {
-      timeoutMs,
-      aggregateOutputBytes: failedRequest.limits.aggregateOutputBytes,
-    },
-  });
-  const grant = inspectExecutionBudgetGrantAuthorization(
-    context.lifecycleRuntime.root,
-    transaction.grantId,
-  );
-  const durableReceipt = grant.receipts.find(
-    ({ attemptId }) => attemptId === transaction.replacementAttemptId,
-  );
-  if (
-    inspection.workflow.workflowId !== transaction.workflowId ||
-    inspection.job.epoch !== transaction.epoch ||
-    inspection.job.contextDigest !== transaction.contextDigest ||
-    inspection.acceptedAttemptId !== null ||
-    failed?.failure?.fingerprint !== transaction.failureFingerprint ||
-    record.revision !== transaction.failedInvocationRevision ||
-    record.state !== 'failed' ||
-    binding.failedAttemptId !== transaction.failedAttemptId ||
-    binding.failedInvocationId !== transaction.failedInvocationId ||
-    binding.failedInvocationRevision !== transaction.failedInvocationRevision ||
-    binding.failureFingerprint !== transaction.failureFingerprint ||
-    binding.providerPolicyDigest !== policy.digest ||
-    binding.providerPolicyDocumentDigest !== digestText(policy.document) ||
-    canonicalJson(persistedRequest) !== canonicalJson(transaction.request) ||
-    canonicalJson(expectedReplacementRequest) !==
-      canonicalJson(transaction.replacementRequest) ||
-    grant.payload.requestDigest !== transaction.requestDigest ||
-    (transaction.receipt !== null &&
-      (durableReceipt === undefined ||
-        canonicalJson(durableReceipt) !== canonicalJson(transaction.receipt)))
-  ) {
-    throw replacementStale();
-  }
-}
-
-function assertCompleteReplacementDelta(
-  request: ExecutionBudgetGrantRequest,
-  maxAttempts: number,
-  oldTimeoutMs: number,
-  timeoutMs: number,
-  providerPolicyTimeoutCeilingMs: number,
-): void {
-  const maxAttemptsChange = request.requestedChanges.find(
-    ({ path }) => path === '/retryPolicy/maxAttempts',
-  );
-  const timeoutChange = request.requestedChanges.find(
-    ({ path }) => path === '/timeoutMs',
-  );
-  const ceilingChange = request.requestedChanges.find(
-    ({ path }) => path === '/providerPolicy/limits/timeoutMs',
-  );
-  if (
-    maxAttemptsChange === undefined ||
-    timeoutChange === undefined ||
-    canonicalJson(maxAttemptsChange) !==
-      canonicalJson({
-        path: '/retryPolicy/maxAttempts',
-        from: maxAttempts,
-        to: maxAttempts + 1,
-      }) ||
-    canonicalJson(timeoutChange) !==
-      canonicalJson({
-        path: '/timeoutMs',
-        from: oldTimeoutMs,
-        to: timeoutMs,
-      }) ||
-    (timeoutMs > providerPolicyTimeoutCeilingMs
-      ? canonicalJson(ceilingChange) !==
-        canonicalJson({
-          path: '/providerPolicy/limits/timeoutMs',
-          from: providerPolicyTimeoutCeilingMs,
-          to: timeoutMs,
-        })
-      : ceilingChange !== undefined)
-  ) {
-    throw grantMismatch(
-      'GrantRequest must contain exactly one maxAttempts increment and the timeout delta.',
-    );
-  }
-}
-
 function replacementRationale(
   previous: ReturnType<typeof inspectExecutionJob>['attempts'][number],
   timeoutMs: number,
@@ -1117,417 +678,6 @@ function replacementTimeout(request: ExecutionBudgetGrantRequest): number {
   }
   assertTimeout(change.to as number);
   return change.to as number;
-}
-
-function createRequestBinding(
-  input: Omit<
-    ExecutionReplacementRequestBinding,
-    'schemaVersion' | 'kind' | 'recordDigest'
-  >,
-): ExecutionReplacementRequestBinding {
-  const core = {
-    schemaVersion: 1 as const,
-    kind: 'execution-replacement-request-binding' as const,
-    ...input,
-  };
-  return assertRequestBinding({
-    ...core,
-    recordDigest: digestCanonical(core),
-  });
-}
-
-function assertRequestBinding(
-  value: unknown,
-): ExecutionReplacementRequestBinding {
-  const keys = [
-    'contextDigest',
-    'epoch',
-    'failedAttemptId',
-    'failedInvocationId',
-    'failedInvocationRevision',
-    'failureFingerprint',
-    'jobId',
-    'kind',
-    'providerPolicyDigest',
-    'providerPolicyDocumentDigest',
-    'recordDigest',
-    'requestDigest',
-    'schemaVersion',
-    'workflowId',
-  ];
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, keys) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'execution-replacement-request-binding' ||
-    !isDigest(value.requestDigest) ||
-    !isDigest(value.contextDigest) ||
-    !isDigest(value.failureFingerprint) ||
-    !isProviderDigest(value.providerPolicyDigest) ||
-    !isDigest(value.providerPolicyDocumentDigest) ||
-    !isDigest(value.recordDigest) ||
-    !isIdentity(value.workflowId) ||
-    !isIdentity(value.jobId) ||
-    !isIdentity(value.failedAttemptId) ||
-    !isIdentity(value.failedInvocationId) ||
-    !Number.isSafeInteger(value.epoch) ||
-    (value.epoch as number) < 1 ||
-    !Number.isSafeInteger(value.failedInvocationRevision) ||
-    (value.failedInvocationRevision as number) < 0
-  ) {
-    throw replacementUnsafe();
-  }
-  const { recordDigest, ...core } = value;
-  if (recordDigest !== digestCanonical(core)) throw replacementUnsafe();
-  return Object.freeze(
-    structuredClone(value),
-  ) as ExecutionReplacementRequestBinding;
-}
-
-function createTransaction(
-  input: Omit<ExecutionReplacementTransaction, 'recordDigest'>,
-): ExecutionReplacementTransaction {
-  return assertTransactionRecord({
-    ...input,
-    recordDigest: digestCanonical(input),
-  });
-}
-
-function assertTransactionRecord(
-  value: unknown,
-): ExecutionReplacementTransaction {
-  const keys = [
-    'contextDigest',
-    'createdAt',
-    'epoch',
-    'failedAttemptId',
-    'failedInvocationId',
-    'failedInvocationRevision',
-    'failureFingerprint',
-    'grantId',
-    'jobId',
-    'kind',
-    'phase',
-    'receipt',
-    'recordDigest',
-    'replacementAttemptId',
-    'replacementInvocationId',
-    'replacementRequest',
-    'request',
-    'requestDigest',
-    'schemaVersion',
-    'transactionId',
-    'updatedAt',
-    'workflowId',
-  ];
-  if (
-    !isRecord(value) ||
-    !hasExactKeys(value, keys) ||
-    value.schemaVersion !== 1 ||
-    value.kind !== 'execution-replacement-transaction' ||
-    ![
-      'prepared',
-      'grant-consumed',
-      'invocation-published',
-      'dispatch-issued',
-      'complete',
-    ].includes(value.phase as string) ||
-    !isDigest(value.transactionId) ||
-    !isDigest(value.requestDigest) ||
-    !isDigest(value.contextDigest) ||
-    !isDigest(value.failureFingerprint) ||
-    !isDigest(value.recordDigest) ||
-    !isUuid(value.grantId) ||
-    !isIdentity(value.workflowId) ||
-    !isIdentity(value.jobId) ||
-    !isIdentity(value.failedAttemptId) ||
-    !isIdentity(value.failedInvocationId) ||
-    !isIdentity(value.replacementAttemptId) ||
-    !isIdentity(value.replacementInvocationId) ||
-    !Number.isSafeInteger(value.epoch) ||
-    (value.epoch as number) < 1 ||
-    !Number.isSafeInteger(value.failedInvocationRevision) ||
-    (value.failedInvocationRevision as number) < 0 ||
-    !isTimestamp(value.createdAt) ||
-    !isTimestamp(value.updatedAt)
-  ) {
-    throw replacementUnsafe();
-  }
-  let request: ExecutionBudgetGrantRequest;
-  let replacementRequest: ReturnType<typeof recreateProviderInvocationRequest>;
-  try {
-    request = parseExecutionBudgetGrantRequest(
-      `${canonicalJson(value.request)}\n`,
-    );
-    replacementRequest = recreateProviderInvocationRequest(
-      value.replacementRequest,
-    );
-  } catch {
-    throw replacementUnsafe();
-  }
-  const receipt = value.receipt;
-  if (
-    (value.phase === 'prepared') !== (receipt === null) ||
-    (receipt !== null && !isReceipt(receipt)) ||
-    request.workflowId !== value.workflowId ||
-    request.epoch !== value.epoch ||
-    request.jobId !== value.jobId ||
-    digestText(canonicalExecutionBudgetGrantRequest(request)) !==
-      value.requestDigest ||
-    replacementRequest.invocationId !== value.replacementInvocationId ||
-    value.replacementAttemptId !==
-      `attempt-provider-${value.replacementInvocationId}` ||
-    value.transactionId !==
-      digestCanonical({
-        kind: 'execution-replacement-transaction',
-        grantId: value.grantId,
-        requestDigest: value.requestDigest,
-        replacementAttemptId: value.replacementAttemptId,
-      }) ||
-    Date.parse(value.updatedAt as string) <
-      Date.parse(value.createdAt as string)
-  ) {
-    throw replacementUnsafe();
-  }
-  if (receipt !== null) {
-    if (
-      receipt.grantId !== value.grantId ||
-      receipt.requestDigest !== value.requestDigest ||
-      receipt.workflowId !== value.workflowId ||
-      receipt.epoch !== value.epoch ||
-      receipt.jobId !== value.jobId ||
-      receipt.attemptId !== value.replacementAttemptId ||
-      canonicalJson(receipt.mandateBinding) !==
-        canonicalJson(request.mandateBinding)
-    ) {
-      throw replacementUnsafe();
-    }
-  }
-  const { recordDigest, ...core } = value;
-  if (recordDigest !== digestCanonical(core)) throw replacementUnsafe();
-  return Object.freeze(
-    structuredClone(value),
-  ) as ExecutionReplacementTransaction;
-}
-
-function isReceipt(value: unknown): value is ExecutionBudgetConsumeReceipt {
-  if (!(
-    isRecord(value) &&
-    hasExactKeys(value, [
-      'attemptId',
-      'consumedAt',
-      'epoch',
-      'grantId',
-      'jobId',
-      'kind',
-      'mandateBinding',
-      'receiptId',
-      'remainingUses',
-      'requestDigest',
-      'schemaVersion',
-      'useNumber',
-      'workflowId',
-    ]) &&
-    value.schemaVersion === 1 &&
-    value.kind === 'execution-budget-consume-receipt' &&
-    isDigest(value.receiptId) &&
-    isDigest(value.requestDigest) &&
-    isUuid(value.grantId) &&
-    isIdentity(value.workflowId) &&
-    isIdentity(value.jobId) &&
-    isIdentity(value.attemptId) &&
-    Number.isSafeInteger(value.epoch) &&
-    (value.epoch as number) > 0 &&
-    Number.isSafeInteger(value.useNumber) &&
-    (value.useNumber as number) > 0 &&
-    Number.isSafeInteger(value.remainingUses) &&
-    (value.remainingUses as number) >= 0 &&
-    isTimestamp(value.consumedAt)
-  ))
-    return false;
-  const { receiptId, ...core } = value;
-  return receiptId === digestText(canonicalJson(core));
-}
-
-function readPersistedRequest(
-  paths: InvestigationRuntimePaths,
-  storeRoot: string,
-  requestDigest: string,
-): ExecutionBudgetGrantRequest {
-  const filePath = replacementRequestPath(storeRoot, requestDigest);
-  try {
-    const value = readPrivateCanonicalJson(paths, filePath, replacementUnsafe);
-    const request = parseExecutionBudgetGrantRequest(
-      `${canonicalJson(value)}\n`,
-    );
-    if (
-      digestText(canonicalExecutionBudgetGrantRequest(request)) !==
-      requestDigest
-    ) {
-      throw replacementUnsafe();
-    }
-    return request;
-  } catch {
-    throw grantMismatch(
-      'Canonical execution replacement request is missing or unsafe.',
-    );
-  }
-}
-
-function readRequestBinding(
-  paths: InvestigationRuntimePaths,
-  storeRoot: string,
-  requestDigest: string,
-): ExecutionReplacementRequestBinding {
-  return assertRequestBinding(
-    readPrivateCanonicalJson(
-      paths,
-      replacementRequestBindingPath(storeRoot, requestDigest),
-      replacementUnsafe,
-    ),
-  );
-}
-
-function replacementRoot(storeRoot: string): string {
-  return path.join(storeRoot, 'execution-replacements');
-}
-
-function replacementRequestPath(storeRoot: string, digest: string): string {
-  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) throw replacementUnsafe();
-  return path.join(
-    replacementRoot(storeRoot),
-    'requests',
-    `${digest.slice(7)}.json`,
-  );
-}
-
-function replacementRequestBindingPath(
-  storeRoot: string,
-  digest: string,
-): string {
-  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) throw replacementUnsafe();
-  return path.join(
-    replacementRoot(storeRoot),
-    'request-bindings',
-    `${digest.slice(7)}.json`,
-  );
-}
-
-function replacementTransactionPath(storeRoot: string, digest: string): string {
-  if (!/^sha256:[0-9a-f]{64}$/.test(digest)) throw replacementUnsafe();
-  return path.join(
-    replacementRoot(storeRoot),
-    'transactions',
-    `${digest.slice(7)}.json`,
-  );
-}
-
-function readTransactionIfPresent(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-): ExecutionReplacementTransaction | null {
-  if (!privatePathExists(paths, filePath, replacementUnsafe)) return null;
-  return assertTransactionRecord(
-    readPrivateCanonicalJson(paths, filePath, replacementUnsafe),
-  );
-}
-
-function writeTransaction(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  transaction: ExecutionReplacementTransaction,
-  replace: boolean,
-): void {
-  assertTransactionRecord(transaction);
-  if (!replace) {
-    createPrivateCanonicalJson(
-      paths,
-      filePath,
-      transaction,
-      replacementUnsafe,
-      'EXECUTION_REPLACEMENT_TRANSACTION_CONFLICT',
-    );
-    return;
-  }
-  writePrivateCanonicalJsonAtomic(
-    paths,
-    filePath,
-    transaction,
-    replacementUnsafe,
-  );
-}
-
-function advanceTransaction(
-  paths: InvestigationRuntimePaths,
-  filePath: string,
-  transaction: ExecutionReplacementTransaction,
-  phase: ExecutionReplacementPhase,
-  updatedAt: string,
-): ExecutionReplacementTransaction {
-  const durable = readTransactionIfPresent(paths, filePath);
-  if (durable === null) throw replacementUnsafe();
-  assertTransactionIdentity(durable, {
-    transactionId: transaction.transactionId,
-    grantId: transaction.grantId,
-    requestDigest: transaction.requestDigest,
-    jobId: transaction.jobId,
-    replacementAttemptId: transaction.replacementAttemptId,
-    replacementInvocationId: transaction.replacementInvocationId,
-  });
-  if (phaseRank(durable.phase) >= phaseRank(phase)) return durable;
-  if (phaseRank(durable.phase) + 1 !== phaseRank(phase)) {
-    throw replacementUnsafe();
-  }
-  const { recordDigest: _recordDigest, ...durableCore } = durable;
-  const next = createTransaction({ ...durableCore, phase, updatedAt });
-  writeTransaction(paths, filePath, next, true);
-  return next;
-}
-
-function phaseRank(phase: ExecutionReplacementPhase): number {
-  return [
-    'prepared',
-    'grant-consumed',
-    'invocation-published',
-    'dispatch-issued',
-    'complete',
-  ].indexOf(phase);
-}
-
-function assertReceipt(
-  transaction: ExecutionReplacementTransaction,
-  receipt: ExecutionBudgetConsumeReceipt | null,
-): asserts receipt is ExecutionBudgetConsumeReceipt {
-  if (
-    receipt === null ||
-    receipt.grantId !== transaction.grantId ||
-    receipt.requestDigest !== transaction.requestDigest ||
-    receipt.workflowId !== transaction.workflowId ||
-    receipt.epoch !== transaction.epoch ||
-    receipt.jobId !== transaction.jobId ||
-    receipt.attemptId !== transaction.replacementAttemptId
-  ) {
-    throw grantMismatch(
-      'Grant receipt does not bind the exact replacement Attempt.',
-    );
-  }
-}
-
-function assertTransactionIdentity(
-  transaction: ExecutionReplacementTransaction,
-  expected: Pick<
-    ExecutionReplacementTransaction,
-    | 'transactionId'
-    | 'grantId'
-    | 'requestDigest'
-    | 'jobId'
-    | 'replacementAttemptId'
-    | 'replacementInvocationId'
-  >,
-): void {
-  for (const key of Object.keys(expected) as Array<keyof typeof expected>) {
-    if (transaction[key] !== expected[key]) throw replacementUnsafe();
-  }
 }
 
 function assertTimeout(value: number): void {
@@ -1634,3 +784,166 @@ function replacementUnsafe() {
     ExitCode.staleState,
   );
 }
+
+export type ExecutionReplacementRecordsBindings = {
+  digestCanonical: typeof digestCanonical;
+  isRecord: typeof isRecord;
+  hasExactKeys: typeof hasExactKeys;
+  isDigest: typeof isDigest;
+  isProviderDigest: typeof isProviderDigest;
+  isIdentity: typeof isIdentity;
+  replacementUnsafe: typeof replacementUnsafe;
+  isUuid: typeof isUuid;
+  isTimestamp: typeof isTimestamp;
+  parseExecutionBudgetGrantRequest: typeof parseExecutionBudgetGrantRequest;
+  canonicalJson: typeof canonicalJson;
+  recreateProviderInvocationRequest: typeof recreateProviderInvocationRequest;
+  digestText: typeof digestText;
+  canonicalExecutionBudgetGrantRequest: typeof canonicalExecutionBudgetGrantRequest;
+  readPrivateCanonicalJson: typeof readPrivateCanonicalJson;
+  grantMismatch: typeof grantMismatch;
+  path: typeof path;
+  privatePathExists: typeof privatePathExists;
+  createPrivateCanonicalJson: typeof createPrivateCanonicalJson;
+  writePrivateCanonicalJsonAtomic: typeof writePrivateCanonicalJsonAtomic;
+};
+export type ExecutionReplacementRecordsBindingsTypes = {
+  ExecutionReplacementRequestBinding: ExecutionReplacementRequestBinding;
+  ExecutionReplacementTransaction: ExecutionReplacementTransaction;
+  ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
+  ExecutionBudgetConsumeReceipt: ExecutionBudgetConsumeReceipt;
+  InvestigationRuntimePaths: InvestigationRuntimePaths;
+  ExecutionReplacementPhase: ExecutionReplacementPhase;
+  recreateProviderInvocationRequest: typeof recreateProviderInvocationRequest;
+};
+
+const {
+  createRequestBinding,
+  createTransaction,
+  readPersistedRequest,
+  readRequestBinding,
+  replacementRequestPath,
+  replacementRequestBindingPath,
+  replacementTransactionPath,
+  readTransactionIfPresent,
+  writeTransaction,
+  advanceTransaction,
+  assertReceipt,
+  assertTransactionIdentity,
+} = createExecutionReplacementRecords(() => ({
+  digestCanonical,
+  isRecord,
+  hasExactKeys,
+  isDigest,
+  isProviderDigest,
+  isIdentity,
+  replacementUnsafe,
+  isUuid,
+  isTimestamp,
+  parseExecutionBudgetGrantRequest,
+  canonicalJson,
+  recreateProviderInvocationRequest,
+  digestText,
+  canonicalExecutionBudgetGrantRequest,
+  readPrivateCanonicalJson,
+  grantMismatch,
+  path,
+  privatePathExists,
+  createPrivateCanonicalJson,
+  writePrivateCanonicalJsonAtomic,
+}));
+
+export type ExecutionReplacementPublicationBindings = {
+  inspectExecutionBudgetGrantAuthorization: typeof inspectExecutionBudgetGrantAuthorization;
+  assertActiveTaskMandateBindingUnderLifecycleLock: typeof assertActiveTaskMandateBindingUnderLifecycleLock;
+  parseMaintainerPolicy: typeof parseMaintainerPolicy;
+  runGit: typeof runGit;
+  consumeExecutionBudgetGrant: typeof consumeExecutionBudgetGrant;
+  SimulatedExecutionReplacementCrash: typeof SimulatedExecutionReplacementCrash;
+  assertReceipt: typeof assertReceipt;
+  createTransaction: typeof createTransaction;
+  writeTransaction: typeof writeTransaction;
+  replacementTransactionPath: typeof replacementTransactionPath;
+  loadInvestigationRuntimeContext: typeof loadInvestigationRuntimeContext;
+  readProviderInvocation: typeof readProviderInvocation;
+  replacementNotGrantable: typeof replacementNotGrantable;
+  completeInterruptedPlanReviewReplacement: typeof completeInterruptedPlanReviewReplacement;
+  getProposeStatus: typeof getProposeStatus;
+  createProviderRetryEnvelope: typeof createProviderRetryEnvelope;
+  createPlanReviewRetryEnvelope: typeof createPlanReviewRetryEnvelope;
+  resumePropose: typeof resumePropose;
+  providerInvocationExists: typeof providerInvocationExists;
+  replacementStale: typeof replacementStale;
+  readProviderInvocationRequest: typeof readProviderInvocationRequest;
+  canonicalJson: typeof canonicalJson;
+  mergeExactChanges: typeof mergeExactChanges;
+  createExecutionBudgetGrantRequest: typeof createExecutionBudgetGrantRequest;
+  deterministicUuid: typeof deterministicUuid;
+  requireExecutionJobMandateBinding: typeof requireExecutionJobMandateBinding;
+  replacementRationale: typeof replacementRationale;
+  canonicalExecutionBudgetGrantRequest: typeof canonicalExecutionBudgetGrantRequest;
+  inspectExecutionJob: typeof inspectExecutionJob;
+  readPersistedRequest: typeof readPersistedRequest;
+  readRequestBinding: typeof readRequestBinding;
+  loadAiAdapterPolicy: typeof loadAiAdapterPolicy;
+  replacementTimeout: typeof replacementTimeout;
+  createProviderInvocationRequest: typeof createProviderInvocationRequest;
+  digestCanonical: typeof digestCanonical;
+  digestText: typeof digestText;
+  grantMismatch: typeof grantMismatch;
+};
+export type ExecutionReplacementPublicationBindingsTypes = {
+  InvestigationRuntimePaths: InvestigationRuntimePaths;
+  ExecutionReplacementTransaction: ExecutionReplacementTransaction;
+  ExecuteGrantedReplacementOptions: ExecuteGrantedReplacementOptions;
+  ConsumedPlanReviewReplayPort: ConsumedPlanReviewReplayPort;
+  ExecutionBudgetGrantRequest: ExecutionBudgetGrantRequest;
+  inspectExecutionJob: typeof inspectExecutionJob;
+};
+
+const {
+  recoverReceipt,
+  publishReplacement,
+  assertPublishedReplacement,
+  requestExecutionReplacementBytes,
+  assertCurrentTransactionLineage,
+  assertCompleteReplacementDelta,
+} = createExecutionReplacementPublication(() => ({
+  inspectExecutionBudgetGrantAuthorization,
+  assertActiveTaskMandateBindingUnderLifecycleLock,
+  parseMaintainerPolicy,
+  runGit,
+  consumeExecutionBudgetGrant,
+  SimulatedExecutionReplacementCrash,
+  assertReceipt,
+  createTransaction,
+  writeTransaction,
+  replacementTransactionPath,
+  loadInvestigationRuntimeContext,
+  readProviderInvocation,
+  replacementNotGrantable,
+  completeInterruptedPlanReviewReplacement,
+  getProposeStatus,
+  createProviderRetryEnvelope,
+  createPlanReviewRetryEnvelope,
+  resumePropose,
+  providerInvocationExists,
+  replacementStale,
+  readProviderInvocationRequest,
+  canonicalJson,
+  mergeExactChanges,
+  createExecutionBudgetGrantRequest,
+  deterministicUuid,
+  requireExecutionJobMandateBinding,
+  replacementRationale,
+  canonicalExecutionBudgetGrantRequest,
+  inspectExecutionJob,
+  readPersistedRequest,
+  readRequestBinding,
+  loadAiAdapterPolicy,
+  replacementTimeout,
+  createProviderInvocationRequest,
+  digestCanonical,
+  digestText,
+  grantMismatch,
+}));

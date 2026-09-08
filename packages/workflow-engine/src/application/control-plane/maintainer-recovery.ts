@@ -1,3 +1,7 @@
+import { createMaintainerRecoveryJournal } from './maintainer-recovery-journal.ts';
+import { createMaintainerRecoveryAudit } from './maintainer-recovery-audit.ts';
+import { createMaintainerRecoveryVerification } from './maintainer-recovery-verification.ts';
+import { createMaintainerRecoveryTerminalization } from './maintainer-recovery-terminalization.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -703,497 +707,6 @@ function recoverAuthorityCommitWithDeadline(
   }
 }
 
-function rejectAmbiguousAuthorityCas(
-  repositoryRoot: string,
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  indexTree: string,
-  now: Date,
-  assertOwned: () => void,
-): never {
-  const timestamp = exactDate(now);
-  const error = recoveryError(
-    'AUTHORITY_CAS_OUTCOME_AMBIGUOUS',
-    'The ref returned to its base after CAS preparation; replay is forbidden.',
-  );
-  if (session.expectedRefGeneration !== null) {
-    recordDurableRefGenerationTransitionUnderLifecycleLock(
-      session.gitCommonDirectory,
-      {
-        ref: `refs/heads/${session.branch}`,
-        expectedOid: journal.baseCommit,
-        expectedGeneration: session.expectedRefGeneration,
-        nextOid: journal.baseCommit,
-        reason: 'uncertain-cas',
-        at: timestamp.toISOString(),
-      },
-      assertOwned,
-    );
-  }
-  terminallyInvalidateMaintainerReservationUnderLifecycleLock(
-    session.gitCommonDirectory,
-    session.grantId,
-    session.sessionId,
-    error.message,
-    timestamp,
-  );
-  if (indexTree === journal.expectedTree) {
-    rollbackExactStaging(
-      repositoryRoot,
-      journal.previousIndexTree,
-      journal.expectedTree,
-      error,
-    );
-  }
-  transitionJournal(session.gitCommonDirectory, journal, 'cas-prepared', {
-    state: 'revoked',
-    reason: error.message,
-    updatedAt: timestamp.toISOString(),
-  });
-  throw error;
-}
-
-export function expireAuthorityCommitBeforeCas(
-  cwd: string,
-  requestedSessionId: string,
-  now = new Date(),
-): void {
-  enterActivePostApprovalTerminalCleanup();
-  const session = readAuthoritySession(cwd, requestedSessionId);
-  const timestamp = exactDate(now);
-  const expiryError = recoveryError(
-    'AUTHORITY_GRANT_EXPIRED_BEFORE_CAS',
-    'The authority grant expired before the protected ref was updated.',
-  );
-  withRepositoryLifecycleOperation(
-    maintainerGrantStorePaths(session.gitCommonDirectory).runtime,
-    (assertOwned) => {
-      assertOwned();
-      const journal = readAuthorityCommitJournal(
-        session.gitCommonDirectory,
-        session.sessionId,
-      );
-      assertJournalMatchesSession(journal, session);
-      if (
-        journal.state !== 'preparing' &&
-        journal.state !== 'commit-created' &&
-        journal.state !== 'revoked'
-      ) {
-        throw recoveryError(
-          'AUTHORITY_EXPIRY_STATE_INVALID',
-          'Only a pre-CAS commit-created transaction may expire.',
-        );
-      }
-      const git = discoverRepository(cwd);
-      const indexTree = runGit(git.repositoryRoot, ['write-tree']).trim();
-      if (
-        git.head !== journal.baseCommit ||
-        (indexTree !== journal.expectedTree &&
-          indexTree !== journal.previousIndexTree)
-      ) {
-        throw recoveryError(
-          'AUTHORITY_EXPIRY_PRESTATE_DIVERGED',
-          'The pre-CAS transaction diverged before expiry cleanup.',
-        );
-      }
-      if (journal.state === 'preparing' || journal.state === 'commit-created') {
-        transitionJournal(session.gitCommonDirectory, journal, journal.state, {
-          state: 'revoked',
-          reason: expiryError.message,
-          updatedAt: timestamp.toISOString(),
-        });
-      }
-      terminallyExpireMaintainerReservationUnderLifecycleLock(
-        session.gitCommonDirectory,
-        session.grantId,
-        session.sessionId,
-        expiryError.message,
-        timestamp,
-      );
-      if (indexTree === journal.expectedTree) {
-        rollbackExactStaging(
-          git.repositoryRoot,
-          journal.previousIndexTree,
-          journal.expectedTree,
-          expiryError,
-        );
-      }
-    },
-    { allowMaintainerGrantId: session.grantId },
-  );
-  if (session.state === 'active') {
-    failAuthoritySession(session, expiryError, timestamp);
-  }
-}
-
-export function failAuthorityCommitBeforeCas(
-  cwd: string,
-  requestedSessionId: string,
-  cause: unknown,
-  now = new Date(),
-): void {
-  const session = readAuthoritySession(cwd, requestedSessionId);
-  const timestamp = exactDate(now);
-  const failure =
-    cause instanceof Error
-      ? cause
-      : recoveryError(
-          'AUTHORITY_POST_APPROVAL_TIMEOUT',
-          'Post-approval admission timed out before CAS.',
-        );
-  let cleanupAdmissionFailure: unknown;
-  withRepositoryLifecycleOperation(
-    maintainerGrantStorePaths(session.gitCommonDirectory).runtime,
-    (assertOwned) => {
-      assertOwned();
-      const journal = readAuthorityCommitJournal(
-        session.gitCommonDirectory,
-        session.sessionId,
-      );
-      assertJournalMatchesSession(journal, session);
-      if (
-        journal.state !== 'preparing' &&
-        journal.state !== 'commit-created' &&
-        journal.state !== 'revoked'
-      ) {
-        throw recoveryError(
-          'AUTHORITY_POST_APPROVAL_TIMEOUT_STATE_INVALID',
-          'Only a pre-CAS authority transaction may fail admission.',
-        );
-      }
-      if (journal.state === 'preparing' || journal.state === 'commit-created') {
-        transitionJournal(session.gitCommonDirectory, journal, journal.state, {
-          state: 'revoked',
-          reason: failure.message,
-          updatedAt: timestamp.toISOString(),
-        });
-      }
-      terminallyFailMaintainerReservationUnderLifecycleLock(
-        session.gitCommonDirectory,
-        session.grantId,
-        session.sessionId,
-        failure.message,
-        timestamp,
-      );
-      const restoreExactIndex = () => {
-        const git = discoverRepository(cwd);
-        const indexTree = runGit(git.repositoryRoot, ['write-tree']).trim();
-        if (
-          git.head === journal.baseCommit &&
-          indexTree === journal.expectedTree
-        ) {
-          rollbackExactStaging(
-            git.repositoryRoot,
-            journal.previousIndexTree,
-            journal.expectedTree,
-            failure,
-          );
-        }
-      };
-      try {
-        restoreExactIndex();
-      } catch (error) {
-        if (isPostApprovalAdmissionFailure(error)) {
-          cleanupAdmissionFailure = error;
-          enterActivePostApprovalTerminalCleanup();
-          try {
-            restoreExactIndex();
-          } catch {
-            // Durable denial remains authoritative when exact residue cleanup
-            // encounters a second independent failure.
-          }
-        }
-        // Denial is durable before best-effort exact residue cleanup. Unknown
-        // or foreign Git state is preserved and cannot restore authority.
-      }
-    },
-    { allowMaintainerGrantId: session.grantId },
-  );
-  if (session.state === 'active') {
-    failAuthoritySession(session, failure, timestamp);
-  }
-  if (cleanupAdmissionFailure !== undefined) {
-    throw cleanupAdmissionFailure;
-  }
-}
-
-export function rollbackAuthorityCommitAfterCas(
-  cwd: string,
-  requestedSessionId: string,
-  reason: string,
-  now = new Date(),
-): void {
-  const session = readAuthoritySession(cwd, requestedSessionId);
-  const timestamp = exactDate(now);
-  const rollbackReason =
-    reason.trim().length > 0
-      ? reason.trim().slice(0, 1_000)
-      : 'Authority poststate verification failed';
-  withRepositoryLifecycleOperation(
-    maintainerGrantStorePaths(session.gitCommonDirectory).runtime,
-    (assertOwned) => {
-      assertOwned();
-      let journal = readAuthorityCommitJournal(
-        session.gitCommonDirectory,
-        session.sessionId,
-      );
-      assertJournalMatchesSession(journal, session);
-      const auditScope = authorityAuditScopeForJournal(session, journal);
-      if (journal.state === 'ref-updated') {
-        journal = transitionJournal(
-          session.gitCommonDirectory,
-          journal,
-          'ref-updated',
-          {
-            state: 'rollback-prepared',
-            reason: rollbackReason,
-            rollbackStartedAt: timestamp.toISOString(),
-            updatedAt: timestamp.toISOString(),
-          },
-        );
-      }
-      if (
-        journal.state === 'rollback-prepared' &&
-        journal.rollbackStartedAt === null
-      ) {
-        journal = transitionJournal(
-          session.gitCommonDirectory,
-          journal,
-          'rollback-prepared',
-          {
-            state: 'rollback-prepared',
-            rollbackStartedAt: journal.updatedAt,
-            updatedAt: journal.updatedAt,
-          },
-        );
-      }
-      if (journal.state === 'rolled-back') {
-        if (
-          journal.rollbackStartedAt === null ||
-          journal.rolledBackAt === null
-        ) {
-          journal = transitionJournal(
-            session.gitCommonDirectory,
-            journal,
-            'rolled-back',
-            {
-              state: 'rolled-back',
-              rollbackStartedAt: journal.rollbackStartedAt ?? journal.updatedAt,
-              rolledBackAt: journal.rolledBackAt ?? journal.updatedAt,
-              updatedAt: journal.updatedAt,
-            },
-          );
-        }
-        if (auditScope !== null) {
-          journal = ensureTransactionAuditReceipt(
-            session,
-            journal,
-            auditScope,
-            'cas',
-            timestamp,
-          );
-          journal = ensureTransactionAuditReceipt(
-            session,
-            journal,
-            auditScope,
-            'error',
-            timestamp,
-          );
-          ensureTransactionAuditReceipt(
-            session,
-            journal,
-            auditScope,
-            'rollback',
-            timestamp,
-          );
-        }
-        return;
-      }
-      if (journal.state !== 'rollback-prepared') {
-        throw recoveryError(
-          'AUTHORITY_ROLLBACK_STATE_INVALID',
-          'Only a ref-updated authority transaction may roll back.',
-        );
-      }
-      const commitHash = requireCommitHash(journal);
-      verifyJournaledCommit(cwd, session, journal, commitHash);
-      const git = discoverRepository(cwd);
-      const indexTree = runGit(git.repositoryRoot, ['write-tree']).trim();
-      if (
-        (git.head !== commitHash && git.head !== journal.baseCommit) ||
-        (indexTree !== journal.expectedTree &&
-          indexTree !== journal.previousIndexTree)
-      ) {
-        throw recoveryError(
-          'AUTHORITY_ROLLBACK_PRESTATE_DIVERGED',
-          'Authority rollback prestate differs from its journal.',
-        );
-      }
-      if (auditScope !== null) {
-        journal = ensureTransactionAuditReceipt(
-          session,
-          journal,
-          auditScope,
-          'cas',
-          timestamp,
-        );
-        journal = ensureTransactionAuditReceipt(
-          session,
-          journal,
-          auditScope,
-          'error',
-          timestamp,
-        );
-      }
-      terminallyFailMaintainerReservationUnderLifecycleLock(
-        session.gitCommonDirectory,
-        session.grantId,
-        session.sessionId,
-        rollbackReason,
-        timestamp,
-      );
-      const targetRef = `refs/heads/${session.branch}`;
-      if (git.head === commitHash) {
-        updateManagedRef(
-          git.repositoryRoot,
-          commitHash,
-          journal.baseCommit,
-          targetRef,
-        );
-      }
-      if (session.expectedRefGeneration !== null) {
-        const ledger = readDurableRefGenerationLedger(
-          session.gitCommonDirectory,
-          targetRef,
-          true,
-        );
-        const appliedGeneration = session.expectedRefGeneration + 1;
-        if (
-          ledger.currentOid === commitHash &&
-          ledger.generation === appliedGeneration
-        ) {
-          recordDurableRefGenerationTransitionUnderLifecycleLock(
-            session.gitCommonDirectory,
-            {
-              ref: targetRef,
-              expectedOid: commitHash,
-              expectedGeneration: appliedGeneration,
-              nextOid: journal.baseCommit,
-              reason: 'rollback',
-              at: timestamp.toISOString(),
-            },
-            assertOwned,
-          );
-        } else if (
-          ledger.currentOid !== journal.baseCommit ||
-          ledger.generation !== appliedGeneration + 1
-        ) {
-          throw recoveryError(
-            'AUTHORITY_ROLLBACK_GENERATION_DIVERGED',
-            'Authority rollback ref generation differs from its journal.',
-          );
-        }
-      }
-      if (indexTree === journal.expectedTree) {
-        rollbackExactStaging(
-          git.repositoryRoot,
-          journal.previousIndexTree,
-          journal.expectedTree,
-          new Error(rollbackReason),
-        );
-      }
-      assertRolledBackTransactionPoststate(
-        git.repositoryRoot,
-        targetRef,
-        journal.baseCommit,
-        session.baselineTree,
-      );
-      journal = transitionJournal(
-        session.gitCommonDirectory,
-        journal,
-        'rollback-prepared',
-        {
-          state: 'rolled-back',
-          reason: rollbackReason,
-          rolledBackAt: timestamp.toISOString(),
-          updatedAt: timestamp.toISOString(),
-        },
-      );
-      if (auditScope !== null) {
-        ensureTransactionAuditReceipt(
-          session,
-          journal,
-          auditScope,
-          'rollback',
-          timestamp,
-        );
-      }
-    },
-    { allowMaintainerGrantId: session.grantId },
-  );
-  if (session.state === 'active') {
-    failAuthoritySession(
-      session,
-      recoveryError('AUTHORITY_POSTSTATE_VERIFICATION_FAILED', rollbackReason),
-      timestamp,
-    );
-  }
-}
-
-export function readAuthorityCommitJournal(
-  gitCommonDirectory: string,
-  requestedSessionId: string,
-): AuthorityCommitJournal {
-  const sessionId = assertSessionId(requestedSessionId);
-  const journalPath = path.join(
-    maintainerGrantStorePaths(gitCommonDirectory).journals,
-    `${sessionId}.json`,
-  );
-  const stats = fs.lstatSync(journalPath, { throwIfNoEntry: false });
-  if (
-    !stats?.isFile() ||
-    stats.isSymbolicLink() ||
-    stats.nlink !== 1 ||
-    (stats.mode & 0o777) !== 0o600
-  ) {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_INVALID',
-      'Authority recovery journal is missing or unsafe.',
-    );
-  }
-  try {
-    const raw = fs.readFileSync(journalPath, 'utf8');
-    const value = JSON.parse(raw) as unknown;
-    if (raw !== `${JSON.stringify(value)}\n`) {
-      throw new Error('invalid journal');
-    }
-    if (!isJournal(value) || value.sessionId !== sessionId) {
-      throw new Error('invalid journal');
-    }
-    return value;
-  } catch {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_INVALID',
-      'Authority recovery journal is malformed.',
-    );
-  }
-}
-
-export function verifyCreatedAuthorityCommit(
-  cwd: string,
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-): void {
-  assertJournalMatchesSession(journal, session);
-  if (journal.state !== 'commit-created') {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_COMMIT_MISSING',
-      'Authority commit verification requires a created commit object.',
-    );
-  }
-  verifyJournaledCommit(cwd, session, journal, requireCommitHash(journal));
-}
-
 function finalizeConsumed(
   cwd: string,
   session: AuthoritySession,
@@ -1352,140 +865,6 @@ function finalizeAudited(
   return result(committed, journal, commitHash);
 }
 
-function ensurePortableApplicationReceipt(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  auditScope: AuthorityAuditLedgerScope,
-  providedSigner: MaintainerSignerProvider | undefined,
-): void {
-  const terminal = readTerminalMaintainerGrant(
-    session.gitCommonDirectory,
-    session.grantId,
-  );
-  if (
-    terminal.state !== 'consumed' ||
-    terminal.sessionId !== session.sessionId ||
-    terminal.commitHash !== journal.commitHash ||
-    terminal.recordedAt !== journal.consumedAt
-  ) {
-    throw recoveryError(
-      'AUTHORITY_APPLICATION_RECEIPT_TERMINAL_MISMATCH',
-      'Portable authority receipt requires the exact consumed v2 terminal grant state.',
-    );
-  }
-  const envelope = terminal.envelope;
-  const candidate = envelope.payload.candidateBundle;
-  if (
-    candidate === null ||
-    journal.commitHash === null ||
-    journal.refUpdatedAt === null ||
-    journal.poststateVerifiedAt === null ||
-    journal.consumedAt === null ||
-    journal.casAuditRecordDigest === null ||
-    journal.poststateAuditRecordDigest === null ||
-    journal.consumeAuditRecordDigest === null ||
-    session.expectedRefGeneration === null ||
-    session.candidateBundleDigest !== candidate.candidateBundleDigest ||
-    envelope.payload.effectsManifestDigest !==
-      candidate.effectsManifestDigest ||
-    session.candidateCommit !== candidate.candidateCommit ||
-    session.resultTree !== candidate.resultTree ||
-    candidate.targetRef !== `refs/heads/${session.branch}` ||
-    candidate.expectedOldCommit !== journal.baseCommit ||
-    candidate.expectedRefGeneration !== session.expectedRefGeneration ||
-    candidate.candidateCommit !== journal.commitHash ||
-    candidate.resultTree !== journal.expectedTree
-  ) {
-    throw recoveryError(
-      'AUTHORITY_APPLICATION_RECEIPT_BINDING_INVALID',
-      'Portable authority receipt inputs differ from the exact candidate transaction.',
-    );
-  }
-  const policyContent = runGit(session.repositoryRoot, [
-    'show',
-    `${session.baseCommit}:workflow/maintainer-policy.json`,
-  ]);
-  const policy = parseMaintainerPolicy(JSON.parse(policyContent));
-  const grantTagRef = `${policy.auditTagPrefix}${session.grantId}`;
-  const receipt = createAuthorityApplicationReceiptPayload({
-    grantId: session.grantId,
-    repositoryId: envelope.payload.repositoryId,
-    repositoryOrigin: envelope.payload.repositoryOrigin,
-    changeId: session.changeId,
-    signer: session.signer,
-    grantTagRef,
-    grantEnvelopeDigest: signedGrantEnvelopeDigest(
-      canonicalMaintainerGrantV2Envelope(envelope),
-    ),
-    candidateBundleDigest: candidate.candidateBundleDigest,
-    effectsManifestDigest: candidate.effectsManifestDigest,
-    evidenceWaivers: envelope.payload.evidenceWaivers,
-    candidatePatchDigest: envelope.payload.patchDigest,
-    candidateCommit: candidate.candidateCommit,
-    candidateTree: candidate.resultTree,
-    targetRef: candidate.targetRef,
-    oldRefOid: candidate.expectedOldCommit,
-    oldRefGeneration: candidate.expectedRefGeneration,
-    newRefOid: candidate.candidateCommit,
-    newRefGeneration: candidate.expectedRefGeneration + 1,
-    casAt: journal.refUpdatedAt,
-    casAuditReceiptDigest: journal.casAuditRecordDigest,
-    auditRepositoryId: auditScope.repositoryId,
-    poststateVerifiedAt: journal.poststateVerifiedAt,
-    poststateAuditReceiptDigest: journal.poststateAuditRecordDigest,
-    terminalGrantState: 'consumed',
-    terminalReservationId: session.sessionId,
-    terminalCommit: candidate.candidateCommit,
-    terminalConsumedAt: terminal.recordedAt,
-    grantConsumeAuditReceiptDigest: journal.consumeAuditRecordDigest,
-    issuedAt: journal.updatedAt,
-  });
-  const receiptRef = authorityApplicationReceiptTagRef(policy, session.grantId);
-  const alreadyPublished = runGit(
-    session.repositoryRoot,
-    ['rev-parse', '--verify', receiptRef],
-    true,
-  ).trim();
-  let signer = providedSigner;
-  if (!alreadyPublished) {
-    signer ??= createInteractiveSshSigner(session.repositoryRoot, policy);
-    signer.assertHumanPresent();
-  }
-  publishAuthorityApplicationReceipt(
-    session.repositoryRoot,
-    policy,
-    receipt,
-    signer,
-  );
-}
-
-function authorityAuditScopeForJournal(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-): AuthorityAuditLedgerScope {
-  if (
-    journal.externalAuditRoot === null ||
-    journal.auditRepositoryId === null ||
-    journal.mandateBinding === null ||
-    session.mandateBinding === null ||
-    canonicalJson(journal.mandateBinding) !==
-      canonicalJson(session.mandateBinding) ||
-    journal.externalAuditRoot !== session.mandateBinding.externalAuditRoot
-  ) {
-    throw recoveryError(
-      'AUTHORITY_AUDIT_ROOT_MISMATCH',
-      'Recovery requires the exact external audit root bound before the authority CAS.',
-    );
-  }
-  const scope: AuthorityAuditLedgerScope = {
-    externalAuditRoot: journal.externalAuditRoot,
-    repositoryRoot: session.repositoryRoot,
-    repositoryId: journal.auditRepositoryId,
-  };
-  authorityAuditLedgerPaths(scope);
-  return scope;
-}
-
 type TransactionAuditEvent = Extract<
   AuthorityAuditEventType,
   'cas' | 'poststate' | 'grant-consume' | 'error' | 'rollback'
@@ -1497,576 +876,6 @@ type AuditReceiptField =
   | 'consumeAuditRecordDigest'
   | 'errorAuditRecordDigest'
   | 'rollbackAuditRecordDigest';
-
-function ensureTransactionAuditReceipt(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  scope: AuthorityAuditLedgerScope,
-  eventType: TransactionAuditEvent,
-  now: Date,
-  options: AuthorityRecoveryOptions = {},
-): AuthorityCommitJournal {
-  const field = auditReceiptField(eventType);
-  const eventInput = transactionAuditEventInput(session, journal, eventType);
-  const input = authorityAuditAppendInputForEvent(
-    buildAuthorityAuditEvent(scope.repositoryId, eventInput),
-  );
-  const expectedDigest = journal[field];
-  if (expectedDigest !== null) {
-    const existing = scanAuthorityAuditLedger(scope).records.find(
-      ({ recordDigest }) => recordDigest === expectedDigest,
-    );
-    const projected = verifyAuthorityAuditEvents(scope).events.some(
-      ({ ledger }) => ledger.recordDigest === expectedDigest,
-    );
-    if (
-      existing === undefined ||
-      !auditRecordMatches(existing, input) ||
-      !projected
-    ) {
-      throw recoveryError(
-        'AUTHORITY_AUDIT_RECEIPT_DIVERGED',
-        'A journaled authority audit receipt differs from the external ledger.',
-      );
-    }
-    return journal;
-  }
-  if (eventType === 'cas' || eventType === 'grant-consume') {
-    options.testBeforeAudit?.(eventType);
-  }
-  const entry = recordAuthorityAuditEvent(scope, eventInput).ledger;
-  const update = {
-    state: journal.state,
-    updatedAt: exactDate(now).toISOString(),
-    [field]: entry.recordDigest,
-  } as Partial<AuthorityCommitJournal> & {
-    state: AuthorityCommitJournalState;
-    updatedAt: string;
-  };
-  return transitionJournal(
-    session.gitCommonDirectory,
-    journal,
-    journal.state,
-    update,
-  );
-}
-
-function transactionAuditEventInput(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  eventType: TransactionAuditEvent,
-): AuthorityAuditEventInput {
-  const commitHash = requireCommitHash(journal);
-  const occurredAt = auditEventTimestamp(journal, eventType);
-  if (occurredAt === null) {
-    throw recoveryError(
-      'AUTHORITY_AUDIT_STATE_INVALID',
-      'Authority audit event is missing its durable transaction timestamp.',
-    );
-  }
-  const targetRef = `refs/heads/${session.branch}`;
-  const grantDigest = prefixedDigest(session.grantDigest);
-  if (session.candidateBundleDigest === null) {
-    throw recoveryError(
-      'AUTHORITY_AUDIT_STATE_INVALID',
-      'A v2 authority audit event requires its exact immutable candidate digest.',
-    );
-  }
-  const candidateBundleDigest = prefixedDigest(session.candidateBundleDigest);
-  const basePrestateDigest = auditValueDigest({
-    schemaVersion: 1,
-    kind: 'authority-apply-prestate.v1',
-    targetRef,
-    baseCommit: journal.baseCommit,
-    expectedRefGeneration: session.expectedRefGeneration,
-  });
-  const appliedPoststateDigest = auditValueDigest({
-    schemaVersion: 1,
-    kind: 'authority-apply-poststate.v1',
-    targetRef,
-    commitHash,
-    resultTree: journal.expectedTree,
-    refGeneration:
-      session.expectedRefGeneration === null
-        ? null
-        : session.expectedRefGeneration + 1,
-  });
-  const rolledBackPoststateDigest = auditValueDigest({
-    schemaVersion: 1,
-    kind: 'authority-rollback-poststate.v1',
-    targetRef,
-    commitHash: journal.baseCommit,
-    resultTree: session.baselineTree,
-    refGeneration:
-      session.expectedRefGeneration === null
-        ? null
-        : session.expectedRefGeneration + 2,
-  });
-  const prestateDigest =
-    eventType === 'cas' || eventType === 'grant-consume'
-      ? basePrestateDigest
-      : appliedPoststateDigest;
-  const poststateDigest =
-    eventType === 'rollback'
-      ? rolledBackPoststateDigest
-      : appliedPoststateDigest;
-  const outcome = auditResult(session, journal, eventType, commitHash);
-  return {
-    eventType,
-    occurredAt,
-    idempotencyKey: auditValueDigest({
-      schemaVersion: 1,
-      kind: 'authority-audit-idempotency.v1',
-      eventType,
-      sessionId: session.sessionId,
-      grantDigest,
-      commitHash,
-    }),
-    grantDigest,
-    candidateBundleDigest,
-    prestateDigest,
-    poststateDigest,
-    actor: { kind: 'human', identity: session.signer },
-    taskId: session.mandateBinding?.mandateTaskId ?? null,
-    changeId: session.changeId,
-    workflowId: null,
-    command: {
-      name: `authority.${eventType}`,
-      argvDigest: outcome.outcomeDigest,
-    },
-    providerInvocation: null,
-    externalEffect: null,
-    result: outcome.result,
-    outcomeDigest: outcome.outcomeDigest,
-    errorCode: eventType === 'error' ? 'AUTHORITY_TRANSACTION_FAILED' : null,
-  };
-}
-
-function auditResult(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  eventType: TransactionAuditEvent,
-  commitHash: string,
-): Pick<AuthorityAuditEventInput, 'result' | 'outcomeDigest'> {
-  const common = {
-    schemaVersion: 1,
-    eventType,
-    grantId: session.grantId,
-    commitHash,
-    changedPaths: journal.allowedPaths,
-  };
-  if (eventType === 'error' || eventType === 'rollback') {
-    if (journal.reason === null) {
-      throw recoveryError(
-        'AUTHORITY_AUDIT_STATE_INVALID',
-        'Rollback audit events require their durable failure reason digest.',
-      );
-    }
-    const reasonDigest = auditValueDigest({
-      schemaVersion: 1,
-      kind: 'authority-failure-reason.v1',
-      reason: journal.reason,
-    });
-    return {
-      result: eventType === 'error' ? 'failed' : 'rolled-back',
-      outcomeDigest: auditValueDigest({
-        ...common,
-        kind:
-          eventType === 'error'
-            ? 'authority-poststate-error-result.v1'
-            : 'authority-rollback-result.v1',
-        reasonDigest,
-        ...(eventType === 'rollback' ? { rollbackTo: journal.baseCommit } : {}),
-      }),
-    };
-  }
-  return {
-    result: 'succeeded',
-    outcomeDigest: auditValueDigest({
-      ...common,
-      kind:
-        eventType === 'cas'
-          ? 'authority-cas-result.v1'
-          : eventType === 'poststate'
-            ? 'authority-poststate-result.v1'
-            : 'authority-grant-consume-result.v1',
-    }),
-  };
-}
-
-function auditEventTimestamp(
-  journal: AuthorityCommitJournal,
-  eventType: TransactionAuditEvent,
-): string | null {
-  switch (eventType) {
-    case 'cas':
-      return journal.refUpdatedAt;
-    case 'poststate':
-      return journal.poststateVerifiedAt;
-    case 'grant-consume':
-      return journal.consumedAt;
-    case 'error':
-      return journal.rollbackStartedAt;
-    case 'rollback':
-      return journal.rolledBackAt;
-  }
-}
-
-function auditReceiptField(
-  eventType: TransactionAuditEvent,
-): AuditReceiptField {
-  switch (eventType) {
-    case 'cas':
-      return 'casAuditRecordDigest';
-    case 'poststate':
-      return 'poststateAuditRecordDigest';
-    case 'grant-consume':
-      return 'consumeAuditRecordDigest';
-    case 'error':
-      return 'errorAuditRecordDigest';
-    case 'rollback':
-      return 'rollbackAuditRecordDigest';
-  }
-}
-
-function auditRecordMatches(
-  entry: AuthorityAuditLedgerEntry,
-  input: AuthorityAuditAppendInput,
-): boolean {
-  const { record } = entry;
-  return (
-    record.eventType === input.eventType &&
-    record.occurredAt === input.occurredAt &&
-    record.idempotencyKey === input.idempotencyKey &&
-    record.grantDigest === input.grantDigest &&
-    record.candidateBundleDigest === input.candidateBundleDigest &&
-    record.prestateDigest === input.prestateDigest &&
-    record.poststateDigest === input.poststateDigest &&
-    record.result === input.result &&
-    record.resultDigest === input.resultDigest
-  );
-}
-
-function assertAppliedTransactionPoststate(
-  repositoryRoot: string,
-  targetRef: string,
-  commitHash: string,
-  expectedTree: string,
-): void {
-  const observedRef = runGit(repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    targetRef,
-  ]).trim();
-  const observedTree = runGit(repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    `${commitHash}^{tree}`,
-  ]).trim();
-  if (observedRef !== commitHash || observedTree !== expectedTree) {
-    throw recoveryError(
-      'AUTHORITY_POSTSTATE_VERIFICATION_FAILED',
-      'The applied authority ref or result tree differs from its exact journaled poststate.',
-    );
-  }
-}
-
-function assertRolledBackTransactionPoststate(
-  repositoryRoot: string,
-  targetRef: string,
-  baseCommit: string,
-  baselineTree: string,
-): void {
-  const observedRef = runGit(repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    targetRef,
-  ]).trim();
-  const observedTree = runGit(repositoryRoot, [
-    'rev-parse',
-    '--verify',
-    `${baseCommit}^{tree}`,
-  ]).trim();
-  if (observedRef !== baseCommit || observedTree !== baselineTree) {
-    throw recoveryError(
-      'AUTHORITY_ROLLBACK_POSTSTATE_DIVERGED',
-      'The rolled-back authority ref or tree differs from its exact journaled poststate.',
-    );
-  }
-}
-
-function auditValueDigest(value: unknown): Sha256Digest {
-  return `sha256:${digest(canonicalJson(value))}`;
-}
-
-function prefixedDigest(value: string): Sha256Digest {
-  if (!/^[0-9a-f]{64}$/.test(value)) {
-    throw recoveryError(
-      'AUTHORITY_AUDIT_STATE_INVALID',
-      'Authority audit binding requires an exact SHA-256 digest.',
-    );
-  }
-  return `sha256:${value}`;
-}
-
-function verifyJournaledCommit(
-  cwd: string,
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  commitHash: string,
-): void {
-  const git = discoverRepository(cwd);
-  if (
-    git.repositoryRealPath !== journal.repositoryRoot ||
-    git.gitCommonDirectory !== session.gitCommonDirectory ||
-    git.branch !== journal.branch
-  ) {
-    throw recoveryError(
-      'AUTHORITY_RECOVERY_REPOSITORY_DIVERGED',
-      'Authority recovery repository or branch differs from the journal.',
-    );
-  }
-  const facts = commitFacts(git.repositoryRoot, commitHash);
-  const expectedMessage = expectedAuthorityMessage(session, journal.subject);
-  const trailers = parseManagedTrailers(facts.message);
-  const exactTrailers =
-    trailers?.kind === 'authority-candidate' &&
-    trailers.changeId === journal.changeId;
-  if (
-    JSON.stringify(facts.parents) !== JSON.stringify([journal.baseCommit]) ||
-    facts.tree !== journal.expectedTree ||
-    facts.message !== `${expectedMessage}\n` ||
-    digest(facts.message) !== journal.messageDigest ||
-    JSON.stringify(commitChangedPaths(git.repositoryRoot, commitHash)) !==
-      JSON.stringify(journal.allowedPaths) ||
-    !exactTrailers
-  ) {
-    throw recoveryError(
-      'AUTHORITY_COMMIT_INVALID',
-      'The journaled commit does not match the exact authority transaction.',
-    );
-  }
-  verifyCommitSignature(git.repositoryRoot, session, commitHash);
-}
-
-function expectedAuthorityMessage(
-  session: AuthoritySession,
-  subject: string,
-): string {
-  return authorityCandidateCommitMessage(subject, session.changeId);
-}
-
-function verifyCommitSignature(
-  repositoryRoot: string,
-  session: AuthoritySession,
-  commitHash: string,
-): void {
-  const policyContent = runGit(repositoryRoot, [
-    'show',
-    `${session.baseCommit}:workflow/maintainer-policy.json`,
-  ]);
-  const policy = parseMaintainerPolicy(JSON.parse(policyContent));
-  const policyBlob = runGit(repositoryRoot, [
-    'rev-parse',
-    `${session.baseCommit}:workflow/maintainer-policy.json`,
-  ]).trim();
-  const signer = policy.trustedSigners.find(
-    ({ identity }) => identity === session.signer,
-  );
-  if (!signer || policyBlob !== session.policyBlob) {
-    throw recoveryError(
-      'AUTHORITY_COMMIT_SIGNER_INVALID',
-      'The journaled signer is not trusted by the exact parent policy.',
-    );
-  }
-  const temporaryDirectory = fs.mkdtempSync(
-    path.join(os.tmpdir(), 'workflow-authority-verify-'),
-  );
-  fs.chmodSync(temporaryDirectory, 0o700);
-  const allowedSigners = path.join(temporaryDirectory, 'allowed-signers');
-  try {
-    fs.writeFileSync(
-      allowedSigners,
-      `${signer.identity} ${signer.publicKey}\n`,
-      { mode: 0o600 },
-    );
-    const verification = runGit(repositoryRoot, [
-      '-c',
-      'gpg.format=ssh',
-      '-c',
-      `gpg.ssh.allowedSignersFile=${allowedSigners}`,
-      'show',
-      '-s',
-      '--format=%G?%x00%GS%x00%GF',
-      commitHash,
-    ]).trimEnd();
-    const [status, identity, fingerprint] = verification.split('\0');
-    if (
-      status !== 'G' ||
-      identity !== signer.identity ||
-      fingerprint !== signer.fingerprint
-    ) {
-      throw new Error('signature mismatch');
-    }
-  } catch (error) {
-    if (isPostApprovalAdmissionFailure(error)) throw error;
-    throw recoveryError(
-      'AUTHORITY_COMMIT_SIGNATURE_INVALID',
-      'The authority commit signature is missing, invalid, or untrusted.',
-    );
-  } finally {
-    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
-  }
-}
-
-function revokePreparingTransaction(
-  cwd: string,
-  session: AuthoritySession,
-  now: Date,
-): never {
-  const error = recoveryError(
-    'AUTHORITY_RECOVERY_REVOKED',
-    'Preparing authority transaction was rolled back and revoked.',
-  );
-  failAuthorityCommitBeforeCas(cwd, session.sessionId, error, now);
-  throw error;
-}
-
-function revokeAmbiguousTransaction(
-  session: AuthoritySession,
-  journal: AuthorityCommitJournal,
-  cause: unknown,
-  now: Date,
-): void {
-  try {
-    const observed = readAuthorityCommitJournal(
-      session.gitCommonDirectory,
-      session.sessionId,
-    );
-    if (
-      observed.state !== 'consumed' &&
-      observed.state !== 'audited' &&
-      observed.state !== 'revoked'
-    ) {
-      transitionJournal(session.gitCommonDirectory, observed, observed.state, {
-        state: 'revoked',
-        reason:
-          cause instanceof Error ? cause.message : 'Ambiguous recovery state',
-        updatedAt: exactDate(now).toISOString(),
-      });
-    }
-  } catch {
-    // The terminal grant record remains the fail-closed authority if the
-    // private journal itself is too damaged to update safely.
-  }
-  if (session.state === 'active') {
-    failAuthoritySession(session, cause, now);
-  }
-}
-
-function transitionJournal(
-  gitCommonDirectory: string,
-  expected: AuthorityCommitJournal,
-  expectedState: AuthorityCommitJournalState,
-  update: Partial<AuthorityCommitJournal> & {
-    state: AuthorityCommitJournalState;
-    updatedAt: string;
-  },
-): AuthorityCommitJournal {
-  const current = readAuthorityCommitJournal(
-    gitCommonDirectory,
-    expected.sessionId,
-  );
-  if (
-    current.state !== expectedState ||
-    JSON.stringify(current) !== JSON.stringify(expected)
-  ) {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_DIVERGED',
-      'Authority journal changed during its transaction.',
-    );
-  }
-  const next = { ...current, ...update };
-  writeJournal(gitCommonDirectory, next, false);
-  return next;
-}
-
-function writeJournal(
-  gitCommonDirectory: string,
-  journal: AuthorityCommitJournal,
-  create: boolean,
-): void {
-  const directory = maintainerGrantStorePaths(gitCommonDirectory).journals;
-  fs.mkdirSync(directory, { recursive: true, mode: 0o700 });
-  const directoryStats = fs.lstatSync(directory);
-  if (
-    !directoryStats.isDirectory() ||
-    directoryStats.isSymbolicLink() ||
-    fs.realpathSync(directory) !== path.resolve(directory)
-  ) {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_DIRECTORY_UNSAFE',
-      'Authority journal directory is unsafe.',
-    );
-  }
-  fs.chmodSync(directory, 0o700);
-  const target = path.join(directory, `${journal.sessionId}.json`);
-  const temporary = `${target}.${process.pid}.${crypto.randomUUID()}.tmp`;
-  let descriptor: number | undefined;
-  try {
-    descriptor = fs.openSync(temporary, 'wx', 0o600);
-    fs.writeFileSync(descriptor, `${JSON.stringify(journal)}\n`, 'utf8');
-    fs.fsyncSync(descriptor);
-    fs.closeSync(descriptor);
-    descriptor = undefined;
-    if (create) {
-      fs.linkSync(temporary, target);
-      fs.unlinkSync(temporary);
-    } else {
-      fs.renameSync(temporary, target);
-    }
-    const directoryDescriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-    fs.fsyncSync(directoryDescriptor);
-    fs.closeSync(directoryDescriptor);
-  } catch (error) {
-    if (create && (error as NodeJS.ErrnoException).code === 'EEXIST') {
-      throw recoveryError(
-        'AUTHORITY_JOURNAL_EXISTS',
-        'Authority session already has a commit transaction.',
-      );
-    }
-    throw error;
-  } finally {
-    if (descriptor !== undefined) fs.closeSync(descriptor);
-    fs.rmSync(temporary, { force: true });
-  }
-}
-
-function assertJournalMatchesSession(
-  journal: AuthorityCommitJournal,
-  session: AuthoritySession,
-): void {
-  if (
-    journal.sessionId !== session.sessionId ||
-    journal.grantId !== session.grantId ||
-    journal.changeId !== session.changeId ||
-    journal.repositoryRoot !== session.repositoryRoot ||
-    journal.branch !== session.branch ||
-    journal.baseCommit !== session.baseCommit ||
-    journal.policyBlob !== session.policyBlob ||
-    journal.signer !== session.signer ||
-    canonicalJson(journal.mandateBinding) !==
-      canonicalJson(session.mandateBinding) ||
-    JSON.stringify(journal.allowedPaths) !==
-      JSON.stringify([...journal.allowedPaths].sort()) ||
-    journal.allowedPaths.some((entry) => !session.allowedPaths.includes(entry))
-  ) {
-    throw recoveryError(
-      'AUTHORITY_JOURNAL_SESSION_MISMATCH',
-      'Authority journal does not match the pinned authority session.',
-    );
-  }
-}
 
 const CURRENT_JOURNAL_KEYS = [
   'schemaVersion',
@@ -2102,110 +911,6 @@ const CURRENT_JOURNAL_KEYS = [
   'createdAt',
   'updatedAt',
 ].sort();
-
-function isJournal(value: unknown): value is AuthorityCommitJournal {
-  if (!isRecord(value)) return false;
-  return (
-    hasExactKeys(value, CURRENT_JOURNAL_KEYS) &&
-    value.schemaVersion === 4 &&
-    hasValidJournalCore(value) &&
-    (value.mandateBinding === null ||
-      isJournalTaskMandateBinding(value.mandateBinding)) &&
-    (value.externalAuditRoot === null ||
-      typeof value.externalAuditRoot === 'string') &&
-    (value.auditRepositoryId === null ||
-      isPrefixedDigest(value.auditRepositoryId)) &&
-    (value.casAuditRecordDigest === null ||
-      isPrefixedDigest(value.casAuditRecordDigest)) &&
-    (value.poststateAuditRecordDigest === null ||
-      isPrefixedDigest(value.poststateAuditRecordDigest)) &&
-    (value.consumeAuditRecordDigest === null ||
-      isPrefixedDigest(value.consumeAuditRecordDigest)) &&
-    (value.errorAuditRecordDigest === null ||
-      isPrefixedDigest(value.errorAuditRecordDigest)) &&
-    (value.rollbackAuditRecordDigest === null ||
-      isPrefixedDigest(value.rollbackAuditRecordDigest)) &&
-    (value.refUpdatedAt === null || isTimestamp(value.refUpdatedAt)) &&
-    (value.poststateVerifiedAt === null ||
-      isTimestamp(value.poststateVerifiedAt)) &&
-    (value.consumedAt === null || isTimestamp(value.consumedAt)) &&
-    (value.rollbackStartedAt === null ||
-      isTimestamp(value.rollbackStartedAt)) &&
-    (value.rolledBackAt === null || isTimestamp(value.rolledBackAt))
-  );
-}
-
-function isJournalTaskMandateBinding(value: unknown): boolean {
-  if (!isRecord(value)) return false;
-  return (
-    hasExactKeys(
-      value,
-      [
-        'schemaVersion',
-        'mandateTaskId',
-        'mandateId',
-        'mandateDigest',
-        'changeId',
-        'externalAuditRoot',
-      ].sort(),
-    ) &&
-    value.schemaVersion === 1 &&
-    typeof value.mandateTaskId === 'string' &&
-    typeof value.mandateId === 'string' &&
-    typeof value.mandateDigest === 'string' &&
-    /^[0-9a-f]{64}$/.test(value.mandateDigest) &&
-    typeof value.changeId === 'string' &&
-    typeof value.externalAuditRoot === 'string' &&
-    path.isAbsolute(value.externalAuditRoot) &&
-    path.normalize(value.externalAuditRoot) === value.externalAuditRoot
-  );
-}
-
-function hasValidJournalCore(value: Record<string, unknown>): boolean {
-  return (
-    [
-      'preparing',
-      'commit-created',
-      'cas-prepared',
-      'ref-updated',
-      'rollback-prepared',
-      'rolled-back',
-      'consumed',
-      'audited',
-      'revoked',
-    ].includes(String(value.state)) &&
-    typeof value.sessionId === 'string' &&
-    typeof value.grantId === 'string' &&
-    typeof value.changeId === 'string' &&
-    typeof value.repositoryRoot === 'string' &&
-    typeof value.branch === 'string' &&
-    typeof value.subject === 'string' &&
-    typeof value.signer === 'string' &&
-    Array.isArray(value.allowedPaths) &&
-    value.allowedPaths.every((entry) => typeof entry === 'string') &&
-    isObjectId(value.baseCommit) &&
-    isObjectId(value.expectedTree) &&
-    isObjectId(value.previousIndexTree) &&
-    isObjectId(value.policyBlob) &&
-    typeof value.messageDigest === 'string' &&
-    /^[0-9a-f]{64}$/.test(value.messageDigest) &&
-    (value.commitHash === null || isObjectId(value.commitHash)) &&
-    (value.reason === null || typeof value.reason === 'string') &&
-    isTimestamp(value.createdAt) &&
-    isTimestamp(value.updatedAt)
-  );
-}
-
-function hasExactKeys(
-  value: Record<string, unknown>,
-  expected: string[],
-): boolean {
-  const actual = Object.keys(value).sort();
-  return (
-    actual.length === expected.length &&
-    actual.every((entry, index) => entry === expected[index])
-  );
-}
 
 function result(
   session: AuthoritySession,
@@ -2281,3 +986,229 @@ function recoveryError(code: string, message: string) {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
+
+export type MaintainerRecoveryJournalBindings = {
+  assertSessionId: typeof assertSessionId;
+  path: typeof path;
+  maintainerGrantStorePaths: typeof maintainerGrantStorePaths;
+  fs: typeof fs;
+  recoveryError: typeof recoveryError;
+  crypto: typeof crypto;
+  canonicalJson: typeof canonicalJson;
+  isRecord: typeof isRecord;
+  CURRENT_JOURNAL_KEYS: typeof CURRENT_JOURNAL_KEYS;
+  isPrefixedDigest: typeof isPrefixedDigest;
+  isTimestamp: typeof isTimestamp;
+  isObjectId: typeof isObjectId;
+};
+export type MaintainerRecoveryJournalBindingsTypes = {
+  AuthorityCommitJournal: AuthorityCommitJournal;
+  AuthorityCommitJournalState: AuthorityCommitJournalState;
+  AuthoritySession: AuthoritySession;
+};
+
+const {
+  readAuthorityCommitJournal,
+  transitionJournal,
+  writeJournal,
+  assertJournalMatchesSession,
+} = createMaintainerRecoveryJournal(() => ({
+  assertSessionId,
+  path,
+  maintainerGrantStorePaths,
+  fs,
+  recoveryError,
+  crypto,
+  canonicalJson,
+  isRecord,
+  CURRENT_JOURNAL_KEYS,
+  isPrefixedDigest,
+  isTimestamp,
+  isObjectId,
+}));
+export { readAuthorityCommitJournal };
+
+export type MaintainerRecoveryAuditBindings = {
+  readTerminalMaintainerGrant: typeof readTerminalMaintainerGrant;
+  recoveryError: typeof recoveryError;
+  runGit: typeof runGit;
+  parseMaintainerPolicy: typeof parseMaintainerPolicy;
+  createAuthorityApplicationReceiptPayload: typeof createAuthorityApplicationReceiptPayload;
+  signedGrantEnvelopeDigest: typeof signedGrantEnvelopeDigest;
+  canonicalMaintainerGrantV2Envelope: typeof canonicalMaintainerGrantV2Envelope;
+  authorityApplicationReceiptTagRef: typeof authorityApplicationReceiptTagRef;
+  createInteractiveSshSigner: typeof createInteractiveSshSigner;
+  publishAuthorityApplicationReceipt: typeof publishAuthorityApplicationReceipt;
+  canonicalJson: typeof canonicalJson;
+  authorityAuditLedgerPaths: typeof authorityAuditLedgerPaths;
+  authorityAuditAppendInputForEvent: typeof authorityAuditAppendInputForEvent;
+  buildAuthorityAuditEvent: typeof buildAuthorityAuditEvent;
+  scanAuthorityAuditLedger: typeof scanAuthorityAuditLedger;
+  verifyAuthorityAuditEvents: typeof verifyAuthorityAuditEvents;
+  recordAuthorityAuditEvent: typeof recordAuthorityAuditEvent;
+  exactDate: typeof exactDate;
+  transitionJournal: typeof transitionJournal;
+  requireCommitHash: typeof requireCommitHash;
+  digest: typeof digest;
+};
+export type MaintainerRecoveryAuditBindingsTypes = {
+  AuthoritySession: AuthoritySession;
+  AuthorityCommitJournal: AuthorityCommitJournal;
+  AuthorityAuditLedgerScope: AuthorityAuditLedgerScope;
+  MaintainerSignerProvider: MaintainerSignerProvider;
+  TransactionAuditEvent: TransactionAuditEvent;
+  AuthorityRecoveryOptions: AuthorityRecoveryOptions;
+  AuthorityCommitJournalState: AuthorityCommitJournalState;
+  AuthorityAuditEventInput: AuthorityAuditEventInput;
+  AuditReceiptField: AuditReceiptField;
+  AuthorityAuditLedgerEntry: AuthorityAuditLedgerEntry;
+  AuthorityAuditAppendInput: AuthorityAuditAppendInput;
+  Sha256Digest: Sha256Digest;
+};
+
+const {
+  ensurePortableApplicationReceipt,
+  authorityAuditScopeForJournal,
+  ensureTransactionAuditReceipt,
+  assertAppliedTransactionPoststate,
+  assertRolledBackTransactionPoststate,
+} = createMaintainerRecoveryAudit(() => ({
+  readTerminalMaintainerGrant,
+  recoveryError,
+  runGit,
+  parseMaintainerPolicy,
+  createAuthorityApplicationReceiptPayload,
+  signedGrantEnvelopeDigest,
+  canonicalMaintainerGrantV2Envelope,
+  authorityApplicationReceiptTagRef,
+  createInteractiveSshSigner,
+  publishAuthorityApplicationReceipt,
+  canonicalJson,
+  authorityAuditLedgerPaths,
+  authorityAuditAppendInputForEvent,
+  buildAuthorityAuditEvent,
+  scanAuthorityAuditLedger,
+  verifyAuthorityAuditEvents,
+  recordAuthorityAuditEvent,
+  exactDate,
+  transitionJournal,
+  requireCommitHash,
+  digest,
+}));
+
+export type MaintainerRecoveryVerificationBindings = {
+  assertJournalMatchesSession: typeof assertJournalMatchesSession;
+  recoveryError: typeof recoveryError;
+  requireCommitHash: typeof requireCommitHash;
+  discoverRepository: typeof discoverRepository;
+  commitFacts: typeof commitFacts;
+  parseManagedTrailers: typeof parseManagedTrailers;
+  digest: typeof digest;
+  commitChangedPaths: typeof commitChangedPaths;
+  authorityCandidateCommitMessage: typeof authorityCandidateCommitMessage;
+  runGit: typeof runGit;
+  parseMaintainerPolicy: typeof parseMaintainerPolicy;
+  fs: typeof fs;
+  path: typeof path;
+  os: typeof os;
+  isPostApprovalAdmissionFailure: typeof isPostApprovalAdmissionFailure;
+};
+export type MaintainerRecoveryVerificationBindingsTypes = {
+  AuthoritySession: AuthoritySession;
+  AuthorityCommitJournal: AuthorityCommitJournal;
+};
+
+const {
+  verifyCreatedAuthorityCommit,
+  verifyJournaledCommit,
+  expectedAuthorityMessage,
+} = createMaintainerRecoveryVerification(() => ({
+  assertJournalMatchesSession,
+  recoveryError,
+  requireCommitHash,
+  discoverRepository,
+  commitFacts,
+  parseManagedTrailers,
+  digest,
+  commitChangedPaths,
+  authorityCandidateCommitMessage,
+  runGit,
+  parseMaintainerPolicy,
+  fs,
+  path,
+  os,
+  isPostApprovalAdmissionFailure,
+}));
+export { verifyCreatedAuthorityCommit };
+
+export type MaintainerRecoveryTerminalizationBindings = {
+  exactDate: typeof exactDate;
+  recoveryError: typeof recoveryError;
+  recordDurableRefGenerationTransitionUnderLifecycleLock: typeof recordDurableRefGenerationTransitionUnderLifecycleLock;
+  terminallyInvalidateMaintainerReservationUnderLifecycleLock: typeof terminallyInvalidateMaintainerReservationUnderLifecycleLock;
+  rollbackExactStaging: typeof rollbackExactStaging;
+  transitionJournal: typeof transitionJournal;
+  enterActivePostApprovalTerminalCleanup: typeof enterActivePostApprovalTerminalCleanup;
+  readAuthoritySession: typeof readAuthoritySession;
+  withRepositoryLifecycleOperation: typeof withRepositoryLifecycleOperation;
+  maintainerGrantStorePaths: typeof maintainerGrantStorePaths;
+  readAuthorityCommitJournal: typeof readAuthorityCommitJournal;
+  assertJournalMatchesSession: typeof assertJournalMatchesSession;
+  discoverRepository: typeof discoverRepository;
+  runGit: typeof runGit;
+  terminallyExpireMaintainerReservationUnderLifecycleLock: typeof terminallyExpireMaintainerReservationUnderLifecycleLock;
+  failAuthoritySession: typeof failAuthoritySession;
+  terminallyFailMaintainerReservationUnderLifecycleLock: typeof terminallyFailMaintainerReservationUnderLifecycleLock;
+  isPostApprovalAdmissionFailure: typeof isPostApprovalAdmissionFailure;
+  authorityAuditScopeForJournal: typeof authorityAuditScopeForJournal;
+  ensureTransactionAuditReceipt: typeof ensureTransactionAuditReceipt;
+  requireCommitHash: typeof requireCommitHash;
+  verifyJournaledCommit: typeof verifyJournaledCommit;
+  updateManagedRef: typeof updateManagedRef;
+  readDurableRefGenerationLedger: typeof readDurableRefGenerationLedger;
+  assertRolledBackTransactionPoststate: typeof assertRolledBackTransactionPoststate;
+};
+export type MaintainerRecoveryTerminalizationBindingsTypes = {
+  AuthoritySession: AuthoritySession;
+  AuthorityCommitJournal: AuthorityCommitJournal;
+};
+
+const {
+  rejectAmbiguousAuthorityCas,
+  expireAuthorityCommitBeforeCas,
+  failAuthorityCommitBeforeCas,
+  rollbackAuthorityCommitAfterCas,
+  revokePreparingTransaction,
+  revokeAmbiguousTransaction,
+} = createMaintainerRecoveryTerminalization(() => ({
+  exactDate,
+  recoveryError,
+  recordDurableRefGenerationTransitionUnderLifecycleLock,
+  terminallyInvalidateMaintainerReservationUnderLifecycleLock,
+  rollbackExactStaging,
+  transitionJournal,
+  enterActivePostApprovalTerminalCleanup,
+  readAuthoritySession,
+  withRepositoryLifecycleOperation,
+  maintainerGrantStorePaths,
+  readAuthorityCommitJournal,
+  assertJournalMatchesSession,
+  discoverRepository,
+  runGit,
+  terminallyExpireMaintainerReservationUnderLifecycleLock,
+  failAuthoritySession,
+  terminallyFailMaintainerReservationUnderLifecycleLock,
+  isPostApprovalAdmissionFailure,
+  authorityAuditScopeForJournal,
+  ensureTransactionAuditReceipt,
+  requireCommitHash,
+  verifyJournaledCommit,
+  updateManagedRef,
+  readDurableRefGenerationLedger,
+  assertRolledBackTransactionPoststate,
+}));
+export {
+  expireAuthorityCommitBeforeCas,
+  failAuthorityCommitBeforeCas,
+  rollbackAuthorityCommitAfterCas,
+};
