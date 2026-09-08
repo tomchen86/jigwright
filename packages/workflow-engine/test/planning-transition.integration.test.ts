@@ -110,7 +110,10 @@ test('propose immutable Git reads cross the repository transaction boundary', ()
     'utf8',
   );
   const gitSource = fs.readFileSync(
-    new URL('../src/runtime/repository-transaction/git.ts', import.meta.url),
+    new URL(
+      '../src/runtime/repository-transaction/git-command.ts',
+      import.meta.url,
+    ),
     'utf8',
   );
 

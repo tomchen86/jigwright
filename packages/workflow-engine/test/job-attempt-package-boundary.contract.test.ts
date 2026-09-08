@@ -68,7 +68,7 @@ test('partial extraction leaves execution-store as the sole aggregate transition
   const workflowConsumer = fs.readFileSync(
     path.join(
       repositoryRoot,
-      'packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts',
+      'packages/workflow-engine/src/modules/provider-orchestration/execution-attempts.ts',
     ),
     'utf8',
   );
@@ -76,13 +76,24 @@ test('partial extraction leaves execution-store as the sole aggregate transition
     workflowConsumer,
     /from '@jigwright\/core\/job-attempt-runtime'/,
   );
-  const executionStore = fs.readFileSync(
-    path.join(
-      repositoryRoot,
-      'packages/workflow-engine/src/runtime/storage-journal/execution-store.ts',
-    ),
-    'utf8',
-  );
+  const executionStore = [
+    'execution-store.ts',
+    'execution-provider-projection.ts',
+    'execution-state-contract.ts',
+    'execution-state-files.ts',
+    'execution-state-values.ts',
+  ]
+    .map((file) =>
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          'packages/workflow-engine/src/runtime/storage-journal',
+          file,
+        ),
+        'utf8',
+      ),
+    )
+    .join('\n');
   assert.doesNotMatch(executionStore, /@jigwright\/core\/job-attempt-runtime/);
   assert.doesNotMatch(
     core,
@@ -100,6 +111,35 @@ test('partial extraction leaves execution-store as the sole aggregate transition
 });
 
 test('current provider Job and Attempt runtime has no legacy projection surface', () => {
+  const sourceFamilies: Readonly<Record<string, readonly string[]>> = {
+    'execution-core.ts': [
+      'execution-attempts.ts',
+      'execution-record-types.ts',
+      'execution-records.ts',
+      'execution-retry.ts',
+      'execution-values.ts',
+    ],
+    'execution-store.ts': [
+      'execution-provider-projection.ts',
+      'execution-state-contract.ts',
+      'execution-state-files.ts',
+      'execution-state-values.ts',
+    ],
+    'execution-runtime.ts': ['provider-execution-projection.ts'],
+    'provider-invocation-store.ts': [
+      'provider-invocation-artifacts.ts',
+      'provider-invocation-common.ts',
+      'provider-invocation-completion.ts',
+      'provider-invocation-policy.ts',
+      'provider-invocation-reservations.ts',
+      'provider-invocation-state.ts',
+      'provider-invocation-types.ts',
+      'provider-invocation-validation.ts',
+      'provider-invocation-manifest-validation.ts',
+      'provider-invocation-output-validation.ts',
+      'provider-invocation-workers.ts',
+    ],
+  };
   const sources = [
     [
       'execution-core.ts',
@@ -139,10 +179,14 @@ test('current provider Job and Attempt runtime has no legacy projection surface'
               'packages/workflow-engine/src/runtime/storage-journal',
               file,
             );
-    assert.doesNotMatch(
-      fs.readFileSync(sourcePath, 'utf8'),
-      retiredSurface,
-      file,
-    );
+    const source = [
+      sourcePath,
+      ...(sourceFamilies[file] ?? []).map((name) =>
+        path.join(path.dirname(sourcePath), name),
+      ),
+    ]
+      .map((filePath) => fs.readFileSync(filePath, 'utf8'))
+      .join('\n');
+    assert.doesNotMatch(source, retiredSurface, file);
   }
 });

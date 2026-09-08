@@ -80,6 +80,30 @@ test('provider-native session foundation has one explicit production composition
       sourceRoot,
       'runtime/storage-journal/provider-native-session-store.ts',
     ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-chain.ts',
+    ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-contracts.ts',
+    ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-files.ts',
+    ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-publication-recovery.ts',
+    ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-publication.ts',
+    ),
+    path.join(
+      sourceRoot,
+      'runtime/storage-journal/provider-native-session-values.ts',
+    ),
   ]);
   const consumers = sourceFiles(sourceRoot)
     .filter((filePath) => !owningModules.has(filePath))
