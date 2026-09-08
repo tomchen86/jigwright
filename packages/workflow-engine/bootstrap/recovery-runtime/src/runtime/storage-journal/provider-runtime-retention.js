@@ -189,117 +189,9 @@ export function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const runtimeRequired = runtimeEvidence.result !== null &&
         runtimeEvidence.result.runtimeObservation !== null &&
         !succeededWithHostWrapper;
-    const retainedRuntimeArtifacts = BLIND_PROVIDER_RUNTIME_FILES.map((name) => retentionReceipt === null
-        ? null
-        : providerRetentionArtifact(retentionReceipt, `runtime/${name}`));
-    const receiptCarriesRuntime = retainedRuntimeArtifacts.every((artifact) => artifact !== null);
-    if (retainedRuntimeArtifacts.some((artifact) => artifact !== null) &&
-        !receiptCarriesRuntime) {
-        throw makeError();
-    }
-    if (!runtimeStats) {
-        if (runtimeRequired && !receiptCarriesRuntime) {
-            throw makeError();
-        }
-        if (receiptCarriesRuntime) {
-            for (let index = 0; index < BLIND_PROVIDER_RUNTIME_FILES.length; index += 1) {
-                files.push({
-                    name: `runtime/${BLIND_PROVIDER_RUNTIME_FILES[index]}`,
-                    digest: retainedRuntimeArtifacts[index].digest,
-                });
-            }
-        }
-    }
-    else {
-        if (runtimeStats.isSymbolicLink() ||
-            !runtimeStats.isDirectory() ||
-            !walkPrivateDirectory(paths, runtimePath, makeError, false)) {
-            throw makeError();
-        }
-        const runtimeNames = fs.readdirSync(runtimePath).sort();
-        const expectedRuntimeNames = [...BLIND_PROVIDER_RUNTIME_FILES].sort();
-        if (receiptCarriesRuntime
-            ? runtimeNames.some((name) => !expectedRuntimeNames.includes(name))
-            : canonicalJson(runtimeNames) !== canonicalJson(expectedRuntimeNames)) {
-            throw makeError();
-        }
-        for (let index = 0; index < BLIND_PROVIDER_RUNTIME_FILES.length; index += 1) {
-            const name = BLIND_PROVIDER_RUNTIME_FILES[index];
-            const retained = retainedRuntimeArtifacts[index];
-            if (!runtimeNames.includes(name)) {
-                if (retained === null)
-                    throw makeError();
-                files.push({ name: `runtime/${name}`, digest: retained.digest });
-                continue;
-            }
-            const content = readPrivateBuffer(path.join(runtimePath, name), makeError);
-            if (content.byteLength > MAX_HUMAN_RESOLUTION_BYTES) {
-                throw makeError();
-            }
-            const contentDigest = sha256(content);
-            if (retained !== null &&
-                (retained.digest !== contentDigest ||
-                    retained.bytes !== content.byteLength)) {
-                throw makeError();
-            }
-            files.push({
-                name: `runtime/${name}`,
-                digest: retained?.digest ?? contentDigest,
-            });
-        }
-    }
+    appendProviderRuntimeArtifactDigests(paths, runtimePath, runtimeStats, runtimeRequired, retentionReceipt, files, makeError);
     if (snapshotArtifacts !== null) {
-        const retainedReviewRoot = retentionReceipt === null
-            ? null
-            : providerRetentionArtifact(retentionReceipt, 'review-root');
-        const expectedRetainedReviewRoot = providerRetentionReviewRootArtifact(snapshotArtifacts.map((artifact) => ({
-            name: `review-root/${artifact.snapshotFile}`,
-            digest: artifact.sha256,
-            bytes: artifact.byteLength,
-        })));
-        if (retainedReviewRoot !== null &&
-            canonicalJson(retainedReviewRoot) !==
-                canonicalJson(expectedRetainedReviewRoot)) {
-            throw makeError();
-        }
-        const reviewRootStats = fs.lstatSync(reviewRootPath, {
-            throwIfNoEntry: false,
-        });
-        if (!reviewRootStats?.isDirectory() ||
-            reviewRootStats.isSymbolicLink() ||
-            !walkPrivateDirectory(paths, reviewRootPath, makeError, false)) {
-            throw makeError();
-        }
-        const expectedFiles = snapshotArtifacts
-            .map(({ snapshotFile }) => snapshotFile)
-            .sort();
-        const observedFiles = fs.readdirSync(reviewRootPath).sort();
-        if (retainedReviewRoot === null
-            ? canonicalJson(observedFiles) !== canonicalJson(expectedFiles)
-            : observedFiles.some((name) => !expectedFiles.includes(name))) {
-            throw makeError();
-        }
-        for (const artifact of snapshotArtifacts) {
-            if (!observedFiles.includes(artifact.snapshotFile)) {
-                if (retainedReviewRoot === null)
-                    throw makeError();
-                files.push({
-                    name: `review-root/${artifact.snapshotFile}`,
-                    digest: artifact.sha256,
-                });
-                continue;
-            }
-            const content = readPrivateBuffer(path.join(reviewRootPath, artifact.snapshotFile), makeError, artifact.byteLength);
-            if (content.byteLength !== artifact.byteLength ||
-                sha256(content) !== artifact.sha256 ||
-                snapshotLineCount(content) !== artifact.lineCount) {
-                throw makeError();
-            }
-            files.push({
-                name: `review-root/${artifact.snapshotFile}`,
-                digest: artifact.sha256,
-            });
-        }
+        appendPlanReviewSnapshotArtifactDigests(paths, reviewRootPath, snapshotArtifacts, retentionReceipt, files, makeError);
     }
     return files.sort((left, right) => left.name.localeCompare(right.name));
 }
@@ -426,5 +318,119 @@ function assertOptionalProviderRootArtifact(name, value, request, makeError) {
     delete payload.lineageDigest;
     if (`sha256:${sha256(canonicalJson(payload))}` !== value.lineageDigest) {
         throw makeError();
+    }
+}
+function appendProviderRuntimeArtifactDigests(paths, runtimePath, runtimeStats, runtimeRequired, retentionReceipt, files, makeError) {
+    const retainedRuntimeArtifacts = BLIND_PROVIDER_RUNTIME_FILES.map((name) => retentionReceipt === null
+        ? null
+        : providerRetentionArtifact(retentionReceipt, `runtime/${name}`));
+    const receiptCarriesRuntime = retainedRuntimeArtifacts.every((artifact) => artifact !== null);
+    if (retainedRuntimeArtifacts.some((artifact) => artifact !== null) &&
+        !receiptCarriesRuntime) {
+        throw makeError();
+    }
+    if (!runtimeStats) {
+        if (runtimeRequired && !receiptCarriesRuntime) {
+            throw makeError();
+        }
+        if (receiptCarriesRuntime) {
+            for (let index = 0; index < BLIND_PROVIDER_RUNTIME_FILES.length; index += 1) {
+                files.push({
+                    name: `runtime/${BLIND_PROVIDER_RUNTIME_FILES[index]}`,
+                    digest: retainedRuntimeArtifacts[index].digest,
+                });
+            }
+        }
+    }
+    else {
+        if (runtimeStats.isSymbolicLink() ||
+            !runtimeStats.isDirectory() ||
+            !walkPrivateDirectory(paths, runtimePath, makeError, false)) {
+            throw makeError();
+        }
+        const runtimeNames = fs.readdirSync(runtimePath).sort();
+        const expectedRuntimeNames = [...BLIND_PROVIDER_RUNTIME_FILES].sort();
+        if (receiptCarriesRuntime
+            ? runtimeNames.some((name) => !expectedRuntimeNames.includes(name))
+            : canonicalJson(runtimeNames) !== canonicalJson(expectedRuntimeNames)) {
+            throw makeError();
+        }
+        for (let index = 0; index < BLIND_PROVIDER_RUNTIME_FILES.length; index += 1) {
+            const name = BLIND_PROVIDER_RUNTIME_FILES[index];
+            const retained = retainedRuntimeArtifacts[index];
+            if (!runtimeNames.includes(name)) {
+                if (retained === null)
+                    throw makeError();
+                files.push({ name: `runtime/${name}`, digest: retained.digest });
+                continue;
+            }
+            const content = readPrivateBuffer(path.join(runtimePath, name), makeError);
+            if (content.byteLength > MAX_HUMAN_RESOLUTION_BYTES) {
+                throw makeError();
+            }
+            const contentDigest = sha256(content);
+            if (retained !== null &&
+                (retained.digest !== contentDigest ||
+                    retained.bytes !== content.byteLength)) {
+                throw makeError();
+            }
+            files.push({
+                name: `runtime/${name}`,
+                digest: retained?.digest ?? contentDigest,
+            });
+        }
+    }
+}
+function appendPlanReviewSnapshotArtifactDigests(paths, reviewRootPath, snapshotArtifacts, retentionReceipt, files, makeError) {
+    const retainedReviewRoot = retentionReceipt === null
+        ? null
+        : providerRetentionArtifact(retentionReceipt, 'review-root');
+    const expectedRetainedReviewRoot = providerRetentionReviewRootArtifact(snapshotArtifacts.map((artifact) => ({
+        name: `review-root/${artifact.snapshotFile}`,
+        digest: artifact.sha256,
+        bytes: artifact.byteLength,
+    })));
+    if (retainedReviewRoot !== null &&
+        canonicalJson(retainedReviewRoot) !==
+            canonicalJson(expectedRetainedReviewRoot)) {
+        throw makeError();
+    }
+    const reviewRootStats = fs.lstatSync(reviewRootPath, {
+        throwIfNoEntry: false,
+    });
+    if (!reviewRootStats?.isDirectory() ||
+        reviewRootStats.isSymbolicLink() ||
+        !walkPrivateDirectory(paths, reviewRootPath, makeError, false)) {
+        throw makeError();
+    }
+    const expectedFiles = snapshotArtifacts
+        .map(({ snapshotFile }) => snapshotFile)
+        .sort();
+    const observedFiles = fs.readdirSync(reviewRootPath).sort();
+    if (retainedReviewRoot === null
+        ? canonicalJson(observedFiles) !== canonicalJson(expectedFiles)
+        : observedFiles.some((name) => !expectedFiles.includes(name))) {
+        throw makeError();
+    }
+    for (const artifact of snapshotArtifacts) {
+        if (!observedFiles.includes(artifact.snapshotFile)) {
+            if (retainedReviewRoot === null)
+                throw makeError();
+            files.push({
+                name: `review-root/${artifact.snapshotFile}`,
+                digest: artifact.sha256,
+            });
+            continue;
+        }
+        const content = readPrivateBuffer(path.join(reviewRootPath, artifact.snapshotFile), makeError, artifact.byteLength);
+        if (content.byteLength !== artifact.byteLength ||
+            sha256(content) !== artifact.sha256 ||
+            snapshotLineCount(content) !== artifact.lineCount) {
+            throw makeError();
+        }
+        files.push({
+            name: `review-root/${artifact.snapshotFile}`,
+            digest: artifact.sha256,
+        });
     }
 }

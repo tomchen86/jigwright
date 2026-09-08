@@ -1,3 +1,8 @@
+import { createControlPlaneUpdaterStorage } from "./control-plane-updater-storage.js";
+import { createControlPlaneUpdaterSupervisor } from "./control-plane-updater-supervisor.js";
+import { createControlPlaneUpdaterApproval } from "./control-plane-updater-approval.js";
+import { createControlPlaneUpdaterRecovery } from "./control-plane-updater-recovery.js";
+import { createControlPlaneUpdaterAudit } from "./control-plane-updater-audit.js";
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -24,476 +29,6 @@ export function assertSameControlPlaneTaskMandateBinding(expected, observed) {
         throw workflowError('CONTROL_PLANE_TASK_MANDATE_BINDING_MISMATCH', 'Control-plane authority does not match the exact parent Task Mandate binding.', ExitCode.staleState);
     }
     return exactExpected;
-}
-/**
- * Publish immutable, unsigned control-plane approval material. The human CLI
- * later addresses this record only by its content-bound candidate id; signed
- * grant envelopes are never accepted as command input.
- */
-export function persistControlPlaneApprovalCandidateV3(storageRoot, input, now = new Date()) {
-    controlPlanePromotionBundleDigestV3(input.bundle);
-    const mandateBinding = normalizeControlPlaneTaskMandateBinding(input.mandateBinding);
-    assertSameControlPlaneTaskMandateBinding(mandateBinding, input.bundle.material.mandateBinding);
-    const impact = assertApprovalCandidateBindingsV3(input.beforeManifest, input.afterManifest, input.bundle);
-    if (impact.class !== 'C') {
-        throw approvalCandidateCorrupt('Approval candidate v3 does not modify the protected control plane.');
-    }
-    assertNonEmpty(input.txId, 'CONTROL_PLANE_APPROVAL_CANDIDATE_CORRUPT');
-    const createdAt = exactDate(now, 'CONTROL_PLANE_APPROVAL_CANDIDATE_CORRUPT').toISOString();
-    const candidate = withRecordDigest({
-        kind: 'persisted-control-plane-approval-candidate.v3',
-        mandateBinding,
-        candidateId: input.bundle.bundleDigest,
-        txId: input.txId,
-        beforeManifest: structuredClone(input.beforeManifest),
-        afterManifest: structuredClone(input.afterManifest),
-        bundle: structuredClone(input.bundle),
-        createdAt,
-    });
-    return withUpdaterLock(storageRoot, 'persist-approval-candidate', () => {
-        const paths = ensureUpdaterDirectories(storageRoot);
-        const target = controlPlaneApprovalCandidatePath(storageRoot, candidate.candidateId);
-        const content = serializeCanonical(candidate);
-        if (fs.existsSync(target)) {
-            const existing = readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidate.candidateId);
-            if (canonicalJson(existing) !== canonicalJson(candidate)) {
-                throw workflowError('CONTROL_PLANE_APPROVAL_CANDIDATE_CONFLICT', 'Candidate id is already bound to different approval bytes.', ExitCode.conflict);
-            }
-            return existing;
-        }
-        ensurePrivateDirectory(paths.approvalCandidates);
-        createPrivateFileExclusive(target, content);
-        return deepFreeze(structuredClone(candidate));
-    });
-}
-export function controlPlaneApprovalCandidatePath(storageRoot, candidateId) {
-    assertDigest(candidateId, 'CONTROL_PLANE_APPROVAL_CANDIDATE_INVALID');
-    return path.join(updaterPaths(storageRoot).approvalCandidates, `${candidateId.slice('sha256:'.length)}.json`);
-}
-export function readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidateId) {
-    const value = readCanonicalPrivateRecord(controlPlaneApprovalCandidatePath(storageRoot, candidateId), 'CONTROL_PLANE_APPROVAL_CANDIDATE_NOT_FOUND');
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'afterManifest',
-            'beforeManifest',
-            'bundle',
-            'candidateId',
-            'createdAt',
-            'kind',
-            'mandateBinding',
-            'recordDigest',
-            'txId',
-        ]) ||
-        value.kind !== 'persisted-control-plane-approval-candidate.v3' ||
-        value.candidateId !== candidateId ||
-        !verifyRecordDigest(value)) {
-        throw approvalCandidateCorrupt();
-    }
-    try {
-        const candidate = value;
-        const mandateBinding = normalizeControlPlaneTaskMandateBinding(candidate.mandateBinding);
-        assertNonEmpty(candidate.txId, 'CONTROL_PLANE_APPROVAL_CANDIDATE_CORRUPT');
-        if (!isCanonicalIso(candidate.createdAt)) {
-            throw approvalCandidateCorrupt();
-        }
-        controlPlanePromotionBundleDigestV3(candidate.bundle);
-        assertSameControlPlaneTaskMandateBinding(mandateBinding, candidate.bundle.material.mandateBinding);
-        if (candidate.bundle.bundleDigest !== candidate.candidateId) {
-            throw approvalCandidateCorrupt('Candidate id does not match the exact reviewed successor bundle.');
-        }
-        const impact = assertApprovalCandidateBindingsV3(candidate.beforeManifest, candidate.afterManifest, candidate.bundle);
-        if (impact.class !== 'C') {
-            throw approvalCandidateCorrupt('Persisted candidate v3 no longer classifies as control-plane.');
-        }
-        return deepFreeze(structuredClone({ ...candidate, mandateBinding }));
-    }
-    catch (error) {
-        if (error instanceof Error &&
-            'code' in error &&
-            error.code === 'CONTROL_PLANE_APPROVAL_CANDIDATE_CORRUPT') {
-            throw error;
-        }
-        throw approvalCandidateCorrupt();
-    }
-}
-export function readPersistedControlPlaneApprovalCandidateCurrent(storageRoot, candidateId) {
-    const value = readCanonicalPrivateRecord(controlPlaneApprovalCandidatePath(storageRoot, candidateId), 'CONTROL_PLANE_APPROVAL_CANDIDATE_NOT_FOUND');
-    if (!isRecord(value) ||
-        value.kind !== 'persisted-control-plane-approval-candidate.v3') {
-        throw workflowError('CONTROL_PLANE_APPROVAL_CANDIDATE_UNSUPPORTED_SCHEMA', 'Current control-plane approval accepts only persisted candidate schema v3.', ExitCode.guard);
-    }
-    return readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidateId);
-}
-export function findPersistedControlPlaneApprovalCandidateV3ByMaterialLineageAndReviewer(storageRoot, promotionMaterialDigest, promotionLineageDigest, reviewer) {
-    assertDigest(promotionMaterialDigest, 'CONTROL_PLANE_APPROVAL_CANDIDATE_INVALID');
-    assertDigest(promotionLineageDigest, 'CONTROL_PLANE_APPROVAL_CANDIDATE_INVALID');
-    assertNonEmpty(reviewer, 'CONTROL_PLANE_APPROVAL_CANDIDATE_INVALID');
-    const directory = updaterPaths(storageRoot).approvalCandidates;
-    const stats = fs.lstatSync(directory, { throwIfNoEntry: false });
-    if (stats === undefined)
-        return null;
-    if (!stats.isDirectory() || stats.isSymbolicLink()) {
-        throw approvalCandidateCorrupt('Approval candidate storage is not a private directory.');
-    }
-    const matches = [];
-    for (const name of fs.readdirSync(directory).sort()) {
-        if (!/^[0-9a-f]{64}\.json$/.test(name)) {
-            throw approvalCandidateCorrupt('Approval candidate storage contains an unknown entry.');
-        }
-        const candidateId = `sha256:${name.slice(0, -'.json'.length)}`;
-        const raw = readCanonicalPrivateRecord(path.join(directory, name), 'CONTROL_PLANE_APPROVAL_CANDIDATE_NOT_FOUND');
-        if (isRecord(raw) &&
-            raw.kind === 'persisted-control-plane-approval-candidate.v3') {
-            const candidate = readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidateId);
-            if (candidate.bundle.promotionMaterialDigest === promotionMaterialDigest &&
-                candidate.bundle.promotionLineageDigest === promotionLineageDigest &&
-                candidate.bundle.independentReviewAttestation.payload.reviewer ===
-                    reviewer) {
-                matches.push(candidate);
-            }
-        }
-    }
-    if (matches.length > 1) {
-        throw workflowError('CONTROL_PLANE_APPROVAL_CANDIDATE_CONFLICT', 'Multiple signed approval candidates bind the same successor material, lineage, and reviewer.', ExitCode.conflict);
-    }
-    return matches[0] ?? null;
-}
-export function preflightControlPlaneApprovalCandidateV3(storageRoot, candidateId, context) {
-    assertNonEmpty(context.grantId, 'CONTROL_PLANE_GRANT_INVALID');
-    assertNonEmpty(context.humanSigner, 'CONTROL_PLANE_GRANT_INVALID');
-    if (fs.existsSync(controlPlaneUpdateRecordPath(storageRoot, context.grantId))) {
-        readPersistedControlPlaneUpdate(storageRoot, context.grantId);
-        throw workflowError('INTERVENTION_CONTROL_GRANT_ALREADY_RESERVED_OR_CONSUMED', 'Control-Plane Grant already has a durable transaction.', ExitCode.conflict);
-    }
-    const candidate = readPersistedControlPlaneApprovalCandidateV3(storageRoot, candidateId);
-    const impact = assertApprovalCandidateBindingsV3(candidate.beforeManifest, candidate.afterManifest, candidate.bundle);
-    const attestationDigest = controlPlaneIndependentReviewAttestationDigestV3(candidate.bundle.independentReviewAttestation);
-    verifyControlPlaneIndependentReviewAttestationV3(candidate.bundle.independentReviewAttestation, {
-        material: candidate.bundle.material,
-        lineage: candidate.bundle.lineage,
-        expectedDigest: attestationDigest,
-        grantHumanSigner: context.humanSigner,
-        grantIssuedAt: context.issuedAt,
-        verifyHumanSignature: context.verifyHumanSignature,
-    });
-    const supervisor = readControlPlaneSupervisorState(storageRoot);
-    assertSupervisorMatchesOldClosureV2(supervisor, candidate.bundle.material);
-    if (supervisor.generation !== candidate.bundle.lineage.previousGeneration ||
-        supervisor.recordDigest !==
-            candidate.bundle.lineage.previousSupervisorRecordDigest) {
-        throw workflowError('CONTROL_PLANE_PROMOTION_LINEAGE_STALE', 'The successor lineage does not extend the current supervisor generation.', ExitCode.staleState);
-    }
-    const summary = controlPlaneApprovalSummaryV3(candidate, impact, attestationDigest);
-    return deepFreeze({ candidate, summary, supervisor });
-}
-export function initializeControlPlaneSupervisorState(storageRoot, input) {
-    return withUpdaterLock(storageRoot, 'initialize-supervisor', () => {
-        const paths = ensureUpdaterDirectories(storageRoot);
-        assertNonEmpty(input.repositoryId, 'CONTROL_PLANE_SUPERVISOR_INVALID');
-        assertDigest(input.closureDigest, 'CONTROL_PLANE_SUPERVISOR_INVALID');
-        const artifact = verifyEngineArtifact(input.artifact);
-        const bytes = decodeCanonicalBase64(input.executableBase64, 'CONTROL_PLANE_SUPERVISOR_INVALID');
-        if (rawDigest(bytes) !== artifact.executableDigest) {
-            throw workflowError('CONTROL_PLANE_SUPERVISOR_INVALID', 'Initial executable does not match the engine artifact.', ExitCode.verification);
-        }
-        const executablePath = materializeExecutable(paths, artifact, bytes);
-        const at = exactDate(input.now, 'CONTROL_PLANE_SUPERVISOR_INVALID');
-        const state = withRecordDigest({
-            kind: 'control-plane-supervisor-state.v1',
-            repositoryId: input.repositoryId,
-            activeArtifact: {
-                artifactId: artifact.artifactId,
-                executableDigest: artifact.executableDigest,
-                closureDigest: input.closureDigest,
-                executablePath,
-            },
-            generation: 1,
-            transition: null,
-            updatedAt: at.toISOString(),
-        });
-        if (fs.existsSync(paths.supervisor)) {
-            const existing = readControlPlaneSupervisorState(storageRoot);
-            if (canonicalJson(existing) !== canonicalJson(state)) {
-                throw workflowError('CONTROL_PLANE_SUPERVISOR_ALREADY_INITIALIZED', 'A different control-plane supervisor state already exists.', ExitCode.conflict);
-            }
-            return existing;
-        }
-        createPrivateFileExclusive(paths.supervisor, serializeCanonical(state));
-        return state;
-    });
-}
-export function readControlPlaneSupervisorState(storageRoot) {
-    const paths = updaterPaths(storageRoot);
-    const value = readCanonicalPrivateRecord(paths.supervisor, 'CONTROL_PLANE_SUPERVISOR_NOT_FOUND');
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'activeArtifact',
-            'generation',
-            'kind',
-            'recordDigest',
-            'repositoryId',
-            'transition',
-            'updatedAt',
-        ]) ||
-        value.kind !== 'control-plane-supervisor-state.v1' ||
-        !verifyRecordDigest(value)) {
-        throw supervisorCorrupt();
-    }
-    const state = value;
-    if (typeof state.repositoryId !== 'string' ||
-        state.repositoryId.length === 0 ||
-        !Number.isSafeInteger(state.generation) ||
-        state.generation < 1 ||
-        !isRecord(state.activeArtifact) ||
-        !hasExactKeys(state.activeArtifact, [
-            'artifactId',
-            'closureDigest',
-            'executableDigest',
-            'executablePath',
-        ]) ||
-        !isDigest(state.activeArtifact.artifactId) ||
-        !isDigest(state.activeArtifact.executableDigest) ||
-        !isDigest(state.activeArtifact.closureDigest) ||
-        !validTransition(state.transition) ||
-        !isCanonicalIso(state.updatedAt)) {
-        throw supervisorCorrupt();
-    }
-    assertConfinedExecutable(paths, state.activeArtifact.executablePath, state.activeArtifact.executableDigest, state.activeArtifact.artifactId);
-    return deepFreeze(structuredClone(state));
-}
-/**
- * Build the only V1 Recovery Grant operation from durable updater state. The
- * caller supplies identity and clock only; repository state, closure digests,
- * bundle digests, and the recovery operation are derived under the updater
- * lock and cannot be supplied as CLI data.
- */
-export function preflightControlPlaneRecoveryRollback(storageRoot, sourceControlPlaneGrantId, input, dependencies) {
-    return withUpdaterLock(storageRoot, `recovery-preflight:${sourceControlPlaneGrantId}`, () => {
-        requireRecoveryDependencies(dependencies);
-        const now = updaterNow(dependencies);
-        const issuedAt = exactDate(new Date(input.issuedAt), 'HARNESS_RECOVERY_GRANT_CLOCK_INVALID').toISOString();
-        if (issuedAt !== now.toISOString()) {
-            throw workflowError('HARNESS_RECOVERY_GRANT_CLOCK_INVALID', 'Recovery Grant issuance time must come from the sealed executor clock.', ExitCode.guard);
-        }
-        const existing = findPersistedControlPlaneRecoveryGrantForSource(storageRoot, sourceControlPlaneGrantId);
-        if (existing?.state === 'consumed') {
-            throwControlPlaneRecoveryAlreadyConsumed();
-        }
-        if (existing?.state === 'failed') {
-            throw recoveryRepairRequired();
-        }
-        if (existing?.state === 'reserved' ||
-            existing?.state === 'completion-pending') {
-            throw workflowError('HARNESS_RECOVERY_GRANT_ALREADY_RESERVED', 'An exact signed Recovery Grant is already active for this control-plane transaction.', ExitCode.conflict);
-        }
-        const context = readControlPlaneRecoveryContext(storageRoot, sourceControlPlaneGrantId, dependencies);
-        assertInitialRecoveryContext(context);
-        const payload = createControlPlaneRecoveryGrantPayload({
-            ...recoveryStateBinding(context),
-            issuedAt,
-            humanSigner: input.humanSigner,
-        });
-        return deepFreeze({
-            payload,
-            summary: recoveryApprovalSummary(payload),
-        });
-    });
-}
-/**
- * Consume a domain-separated Recovery Grant. This is deliberately absent from
- * src/cli.ts: the only production caller is the sealed harness-bootstrap
- * source entry, which passes an envelope derived from the preflight above.
- */
-export function executeControlPlaneRecoveryRollback(storageRoot, envelope, dependencies) {
-    const requestedSourceGrantId = isRecord(envelope) && isRecord(envelope.payload)
-        ? envelope.payload.sourceControlPlaneGrantId
-        : null;
-    return withUpdaterLock(storageRoot, `recovery-execute:${typeof requestedSourceGrantId === 'string'
-        ? requestedSourceGrantId
-        : 'invalid'}`, () => {
-        requireRecoveryDependencies(dependencies);
-        const now = updaterNow(dependencies);
-        const existing = typeof requestedSourceGrantId === 'string'
-            ? findPersistedControlPlaneRecoveryGrantForSource(storageRoot, requestedSourceGrantId)
-            : null;
-        if (existing?.state === 'consumed') {
-            throwControlPlaneRecoveryAlreadyConsumed();
-        }
-        const requestedRecoveryGrantId = isRecord(envelope) && isRecord(envelope.payload)
-            ? envelope.payload.grantId
-            : null;
-        if (existing?.state === 'expired' &&
-            existing.envelope.payload.grantId === requestedRecoveryGrantId) {
-            throw workflowError('HARNESS_RECOVERY_GRANT_EXPIRED', 'Recovery Grant is an expired one-shot tombstone.', ExitCode.staleState);
-        }
-        if (existing?.state === 'failed' &&
-            existing.envelope.payload.grantId === requestedRecoveryGrantId) {
-            throwControlPlaneRecoveryFailed();
-        }
-        const pending = existing?.state === 'reserved' ||
-            existing?.state === 'completion-pending'
-            ? existing
-            : null;
-        if (pending !== null &&
-            canonicalJson(pending.envelope) !== canonicalJson(envelope)) {
-            throw workflowError('HARNESS_RECOVERY_GRANT_RESERVATION_MISMATCH', 'Reserved Recovery Grant bytes differ from the requested envelope.', ExitCode.verification);
-        }
-        // Signature and schema are always revalidated. Expiry is completion-
-        // obligatory only after this exact reservation has begun a rollback.
-        const payload = verifyControlPlaneRecoveryGrant(envelope, {
-            now: new Date(isRecord(envelope) && isRecord(envelope.payload)
-                ? String(envelope.payload.issuedAt)
-                : Number.NaN),
-            verifyHumanSignature: dependencies.verifyHumanSignature,
-            enforceLive: false,
-        });
-        const context = readControlPlaneRecoveryContext(storageRoot, payload.sourceControlPlaneGrantId, dependencies);
-        const exactPrestate = recoveryContextMatchesPayload(context, payload);
-        const envelopeDigest = canonicalDigest(envelope);
-        if (pending?.state === 'reserved' &&
-            exactPrestate &&
-            now.getTime() >= Date.parse(payload.expiresAt)) {
-            const terminalExpiredAt = payload.expiresAt;
-            dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-                payload,
-                envelopeDigest,
-                event: 'authorized',
-                poststateDigest: null,
-                receiptDigest: null,
-                recordedAt: pending.createdAt,
-            }));
-            dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-                payload,
-                envelopeDigest,
-                event: 'expired',
-                poststateDigest: null,
-                receiptDigest: null,
-                recordedAt: terminalExpiredAt,
-            }));
-            expirePersistedControlPlaneRecoveryGrant(storageRoot, {
-                recoveryGrantId: payload.grantId,
-                expectedRecordDigest: pending.recordDigest,
-                expiredAt: terminalExpiredAt,
-            });
-            throw workflowError('HARNESS_RECOVERY_GRANT_EXPIRED', 'Recovery Grant expired before any rollback effect and was terminalized.', ExitCode.staleState);
-        }
-        if (pending === null || exactPrestate) {
-            verifyControlPlaneRecoveryGrant(envelope, {
-                now,
-                verifyHumanSignature: dependencies.verifyHumanSignature,
-            });
-        }
-        else if (!isRecoveryCompletionContext(context, payload)) {
-            throw recoveryStateBindingMismatch();
-        }
-        if (pending === null && !exactPrestate) {
-            throw recoveryStateBindingMismatch();
-        }
-        const reservation = pending ??
-            reservePersistedControlPlaneRecoveryGrant(storageRoot, envelope, now.toISOString());
-        dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-            payload,
-            envelopeDigest,
-            event: 'authorized',
-            poststateDigest: null,
-            receiptDigest: null,
-            recordedAt: reservation.createdAt,
-        }));
-        const rollbackEffectPerformed = context.record.transaction.state !== 'ROLLED_BACK';
-        let result;
-        try {
-            result = driveControlPlanePromotion(storageRoot, payload.sourceControlPlaneGrantId, dependencies);
-        }
-        catch (error) {
-            const failedContext = readControlPlaneRecoveryContext(storageRoot, payload.sourceControlPlaneGrantId, dependencies);
-            if (isRollbackSelectedForRecoveryFailure(failedContext, payload)) {
-                const failure = createControlPlaneRecoveryFailure({
-                    payload,
-                    errorCode: workflowFailureCode(error),
-                    selectedClosureDigest: failedContext.supervisor.activeArtifact.closureDigest,
-                    selectedArtifactId: failedContext.supervisor.activeArtifact.artifactId,
-                    supervisorStateDigest: failedContext.supervisor.recordDigest,
-                    supervisorGeneration: failedContext.supervisor.generation,
-                    controlPlaneJournalDigest: failedContext.record.transaction.journalDigest,
-                    failedAt: laterIso(failedContext.record.updatedAt, failedContext.supervisor.updatedAt),
-                });
-                failPersistedControlPlaneRecoveryGrant(storageRoot, {
-                    recoveryGrantId: payload.grantId,
-                    expectedRecordDigest: reservation.recordDigest,
-                    failure,
-                });
-                dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-                    payload,
-                    envelopeDigest,
-                    event: 'failed',
-                    poststateDigest: failure.failureDigest,
-                    receiptDigest: null,
-                    recordedAt: failure.failedAt,
-                }));
-            }
-            throw error;
-        }
-        if (result.record.transaction.state !== 'ROLLED_BACK' ||
-            result.supervisor.activeArtifact.closureDigest !==
-                payload.previousClosureDigest) {
-            throw workflowError('HARNESS_RECOVERY_ROLLBACK_INCOMPLETE', 'Recovery executor did not restore the exact previous trusted closure.', ExitCode.verification);
-        }
-        const poststateDigest = canonicalDigest({
-            kind: 'control-plane-recovery-poststate.v1',
-            controlPlaneUpdateRecordDigest: result.record.recordDigest,
-            controlPlaneJournalDigest: result.record.transaction.journalDigest,
-            supervisorStateDigest: result.supervisor.recordDigest,
-            supervisorGeneration: result.supervisor.generation,
-            selectedClosureDigest: result.supervisor.activeArtifact.closureDigest,
-            selectedArtifactId: result.supervisor.activeArtifact.artifactId,
-        });
-        const completedAt = laterIso(result.record.updatedAt, result.supervisor.updatedAt);
-        const receipt = createControlPlaneRecoveryReceipt({
-            payload,
-            poststateDigest,
-            controlPlaneJournalDigestAfter: result.record.transaction.journalDigest,
-            supervisorStateDigestAfter: result.supervisor.recordDigest,
-            completedAt,
-        });
-        dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-            payload,
-            envelopeDigest,
-            event: 'rolled-back',
-            poststateDigest,
-            receiptDigest: receipt.receiptDigest,
-            recordedAt: completedAt,
-        }));
-        const preparedConsumption = preparePersistedControlPlaneRecoveryGrantConsumption(storageRoot, {
-            recoveryGrantId: payload.grantId,
-            expectedRecordDigest: reservation.recordDigest,
-            receipt,
-        });
-        // The terminal external audit is emitted only after a durable local
-        // completion receipt has made the authority one-shot and resumable.
-        dependencies.recoveryAuditSink.append(createControlPlaneRecoveryAuditRecord({
-            payload,
-            envelopeDigest,
-            event: 'consumed',
-            poststateDigest,
-            receiptDigest: receipt.receiptDigest,
-            recordedAt: completedAt,
-        }));
-        const consumed = consumePersistedControlPlaneRecoveryGrant(storageRoot, {
-            recoveryGrantId: payload.grantId,
-            expectedRecordDigest: preparedConsumption.recordDigest,
-        });
-        return deepFreeze({
-            kind: 'control-plane-recovery-rollback-result.v1',
-            action: 'rollback-control-plane',
-            sourceControlPlaneGrantId: payload.sourceControlPlaneGrantId,
-            recoveryGrantId: payload.grantId,
-            record: consumed,
-            receipt,
-            controlPlaneUpdate: result.record,
-            supervisor: result.supervisor,
-            effectsPerformed: rollbackEffectPerformed,
-        });
-    });
 }
 export function prepareControlPlanePromotionV3(storageRoot, input, dependencies) {
     return withUpdaterLock(storageRoot, 'prepare-promotion-v3', () => {
@@ -824,259 +359,8 @@ function verifyPersistedPromotion(record, bundle, dependencies) {
         verifyHumanSignature: dependencies.verifyHumanSignature,
     });
 }
-function readControlPlaneRecoveryContext(storageRoot, sourceControlPlaneGrantId, dependencies) {
-    const paths = ensureUpdaterDirectories(storageRoot);
-    const record = readPersistedControlPlaneUpdate(storageRoot, sourceControlPlaneGrantId);
-    const bundle = readPromotionBundle(paths, sourceControlPlaneGrantId);
-    verifyPersistedPromotion(record, bundle, dependencies);
-    const supervisor = readControlPlaneSupervisorState(storageRoot);
-    if (record.envelope.payload.grantId !== sourceControlPlaneGrantId ||
-        record.transaction.grantId !== sourceControlPlaneGrantId ||
-        record.transaction.txId !== supervisor.transition?.txId ||
-        supervisor.transition.grantId !== sourceControlPlaneGrantId ||
-        supervisor.repositoryId !== bundle.repositoryId ||
-        record.transaction.beforeClosureDigest !== bundle.beforeClosureDigest ||
-        record.transaction.afterClosureDigest !== bundle.afterClosureDigest ||
-        record.transaction.recoveryBundleDigest !==
-            bundle.recoveryBundle.bundleDigest) {
-        throw recoveryStateBindingMismatch();
-    }
-    return { record, bundle, supervisor };
-}
-function assertInitialRecoveryContext(context) {
-    const { record, bundle, supervisor } = context;
-    if (record.grantState !== 'reserved' ||
-        !['RECOVERY_VERIFIED', 'SWITCHED', 'ROLLBACK_REQUIRED'].includes(record.transaction.state) ||
-        supervisor.transition?.phase !== 'candidate-selected' ||
-        supervisor.activeArtifact.artifactId !==
-            bundle.candidateArtifact.artifactId ||
-        supervisor.activeArtifact.executableDigest !==
-            bundle.candidateArtifact.executableDigest ||
-        supervisor.activeArtifact.closureDigest !== bundle.afterClosureDigest) {
-        throw workflowError('HARNESS_RECOVERY_ROLLBACK_NOT_REQUIRED', 'Recovery Grant requires the exact broken candidate closure to be selected by an incomplete control-plane transaction.', ExitCode.conflict);
-    }
-}
-function recoveryStateBinding(context) {
-    const { record, bundle, supervisor } = context;
-    assertInitialRecoveryContext(context);
-    return {
-        repositoryId: bundle.repositoryId,
-        sourceControlPlaneGrantId: record.envelope.payload.grantId,
-        previousClosureDigest: bundle.beforeClosureDigest,
-        currentClosureDigest: bundle.afterClosureDigest,
-        promotionBundleDigest: bundle.bundleDigest,
-        recoveryBundleDigest: bundle.recoveryBundle.bundleDigest,
-        controlPlaneUpdateRecordDigest: record.recordDigest,
-        controlPlaneJournalDigest: record.transaction.journalDigest,
-        sourceTransactionState: record.transaction
-            .state,
-        supervisorStateDigest: supervisor.recordDigest,
-        supervisorGeneration: supervisor.generation,
-        externalAuditRoot: record.envelope.payload.mandateBinding.externalAuditRoot,
-    };
-}
-function recoveryContextMatchesPayload(context, payload) {
-    try {
-        return (canonicalJson(recoveryStateBinding(context)) ===
-            canonicalJson(recoveryBindingFromPayload(payload)));
-    }
-    catch {
-        return false;
-    }
-}
-function isRecoveryCompletionContext(context, payload) {
-    const { record, bundle, supervisor } = context;
-    const stableIdentity = bundle.repositoryId === payload.repositoryId &&
-        record.envelope.payload.grantId === payload.sourceControlPlaneGrantId &&
-        bundle.beforeClosureDigest === payload.previousClosureDigest &&
-        bundle.afterClosureDigest === payload.currentClosureDigest &&
-        bundle.bundleDigest === payload.promotionBundleDigest &&
-        bundle.recoveryBundle.bundleDigest === payload.recoveryBundleDigest &&
-        record.envelope.payload.mandateBinding.externalAuditRoot ===
-            payload.externalAuditRoot;
-    if (!stableIdentity)
-        return false;
-    const state = record.transaction.state;
-    const candidateSelected = ['SWITCHED', 'ROLLBACK_REQUIRED'].includes(state) &&
-        record.grantState === 'reserved' &&
-        supervisor.transition?.phase === 'candidate-selected' &&
-        supervisor.activeArtifact.artifactId ===
-            bundle.candidateArtifact.artifactId &&
-        supervisor.activeArtifact.closureDigest === payload.currentClosureDigest &&
-        supervisor.generation === payload.supervisorGeneration;
-    const rollbackSelected = ['ROLLBACK_REQUIRED', 'ROLLED_BACK'].includes(state) &&
-        supervisor.transition?.phase === 'rollback-restored' &&
-        supervisor.activeArtifact.artifactId ===
-            bundle.recoveryBundle.restartArtifact.artifactId &&
-        supervisor.activeArtifact.closureDigest === payload.previousClosureDigest &&
-        supervisor.generation === payload.supervisorGeneration + 1 &&
-        (state === 'ROLLED_BACK') === (record.grantState === 'consumed');
-    return candidateSelected || rollbackSelected;
-}
-function isRollbackSelectedForRecoveryFailure(context, payload) {
-    return (isRecoveryCompletionContext(context, payload) &&
-        context.record.transaction.state === 'ROLLBACK_REQUIRED' &&
-        context.record.grantState === 'reserved' &&
-        context.supervisor.transition?.phase === 'rollback-restored' &&
-        context.supervisor.activeArtifact.artifactId ===
-            context.bundle.recoveryBundle.restartArtifact.artifactId &&
-        context.supervisor.activeArtifact.closureDigest ===
-            payload.previousClosureDigest);
-}
-function recoveryBindingFromPayload(payload) {
-    return {
-        repositoryId: payload.repositoryId,
-        sourceControlPlaneGrantId: payload.sourceControlPlaneGrantId,
-        previousClosureDigest: payload.previousClosureDigest,
-        currentClosureDigest: payload.currentClosureDigest,
-        promotionBundleDigest: payload.promotionBundleDigest,
-        recoveryBundleDigest: payload.recoveryBundleDigest,
-        controlPlaneUpdateRecordDigest: payload.controlPlaneUpdateRecordDigest,
-        controlPlaneJournalDigest: payload.controlPlaneJournalDigest,
-        sourceTransactionState: payload.sourceTransactionState,
-        supervisorStateDigest: payload.supervisorStateDigest,
-        supervisorGeneration: payload.supervisorGeneration,
-        externalAuditRoot: payload.externalAuditRoot,
-    };
-}
-function recoveryApprovalSummary(payload) {
-    return deepFreeze({
-        kind: 'control-plane-recovery-approval-summary.v1',
-        recoveryGrantId: payload.grantId,
-        sourceControlPlaneGrantId: payload.sourceControlPlaneGrantId,
-        repositoryId: payload.repositoryId,
-        operation: payload.operation,
-        previousClosureDigest: payload.previousClosureDigest,
-        currentClosureDigest: payload.currentClosureDigest,
-        promotionBundleDigest: payload.promotionBundleDigest,
-        recoveryBundleDigest: payload.recoveryBundleDigest,
-        controlPlaneUpdateRecordDigest: payload.controlPlaneUpdateRecordDigest,
-        controlPlaneJournalDigest: payload.controlPlaneJournalDigest,
-        supervisorStateDigest: payload.supervisorStateDigest,
-        supervisorGeneration: payload.supervisorGeneration,
-        sourceTransactionState: payload.sourceTransactionState,
-        externalAuditRoot: payload.externalAuditRoot,
-        humanSigner: payload.humanSigner,
-        issuedAt: payload.issuedAt,
-        expiresAt: payload.expiresAt,
-        approvalDigest: canonicalDigest(payload),
-        humanReadable: [
-            'Recovery operation: rollback-control-plane',
-            `Recovery Grant: ${payload.grantId}`,
-            `Repository: ${payload.repositoryId}`,
-            `Source Control-Plane Grant: ${payload.sourceControlPlaneGrantId}`,
-            `Source transaction state: ${payload.sourceTransactionState}`,
-            `Current closure: ${payload.currentClosureDigest}`,
-            `Restore closure: ${payload.previousClosureDigest}`,
-            `Promotion bundle: ${payload.promotionBundleDigest}`,
-            `Update record: ${payload.controlPlaneUpdateRecordDigest}`,
-            `Update journal: ${payload.controlPlaneJournalDigest}`,
-            `Supervisor state: ${payload.supervisorStateDigest} (generation ${payload.supervisorGeneration})`,
-            `Recovery bundle: ${payload.recoveryBundleDigest}`,
-            `External audit root: ${payload.externalAuditRoot}`,
-            `Human signer: ${payload.humanSigner}`,
-            `Approval digest: ${canonicalDigest(payload)}`,
-            `Expires: ${payload.expiresAt}`,
-        ].join('\n'),
-    });
-}
-function recoveryStateBindingMismatch() {
-    return workflowError('HARNESS_RECOVERY_STATE_BINDING_MISMATCH', 'Recovery Grant no longer matches the exact control-plane journal, supervisor generation, and closure selection.', ExitCode.staleState);
-}
-function recoveryRepairRequired() {
-    return workflowError('HARNESS_RECOVERY_REPAIR_REQUIRED', 'The immutable restart bundle failed verification; issue a distinct exact recovery operation instead of replaying this Grant.', ExitCode.conflict);
-}
 function revalidateControlPlaneTaskMandate(binding, dependencies, phase) {
     dependencies.revalidateTaskMandateBinding?.(normalizeControlPlaneTaskMandateBinding(binding), phase);
-}
-function assertApprovalCandidateBindingsV3(beforeManifest, afterManifest, bundle) {
-    controlPlanePromotionBundleDigestV3(bundle);
-    const material = bundle.material;
-    const impact = classifyProtectedCandidateImpactV2({
-        beforeManifest,
-        afterManifest,
-        changes: material.exactChanges,
-    });
-    if (material.beforeClosureDigest !== beforeManifest.manifestDigest ||
-        material.afterClosureDigest !== afterManifest.manifestDigest ||
-        material.candidateDigest !==
-            controlPlaneCandidateDigestV2(material.exactChanges)) {
-        throw approvalCandidateCorrupt('Persisted manifests do not match the exact successor promotion material.');
-    }
-    return impact;
-}
-function controlPlaneApprovalSummaryV3(candidate, impact, attestationDigest) {
-    const { material } = candidate.bundle;
-    const review = candidate.bundle.independentReviewAttestation.payload;
-    const affected = impact.affectedCapabilities.join(', ');
-    const changedPaths = material.exactChanges
-        .map(({ path: changedPath, beforeDigest, afterDigest, beforeMode, afterMode, }) => `- ${changedPath}: ${beforeDigest ?? '<absent>'} (${beforeMode ?? '<absent>'}) -> ${afterDigest ?? '<absent>'} (${afterMode ?? '<absent>'})`)
-        .join('\n');
-    const lineage = candidate.bundle.lineage;
-    const humanReadable = [
-        'Control-plane successor approval candidate v3',
-        `Candidate id: ${candidate.candidateId}`,
-        `Promotion lineage: ${lineage.lineageDigest}`,
-        `History anchor: ${lineage.historyAnchorDigest}`,
-        `Previous terminal: ${lineage.previousTerminalRecordDigest}`,
-        `Previous supervisor: ${lineage.previousSupervisorRecordDigest}`,
-        `Supervisor generation: ${lineage.previousGeneration} -> ${lineage.candidateGeneration}`,
-        `Rollback generation: ${lineage.rollbackGeneration}`,
-        `Trust commit: ${lineage.previousActiveTrustCommit} -> ${lineage.candidateTrustCommit}`,
-        `Frozen Class-C candidate: ${material.frozenCandidateBundleDigest}`,
-        `Promotion material: ${candidate.bundle.promotionMaterialDigest}`,
-        `Reviewed promotion bundle: ${candidate.bundle.bundleDigest}`,
-        `Parent task: ${candidate.mandateBinding.parentTaskId}`,
-        `Task mandate: ${candidate.mandateBinding.mandateId} (${candidate.mandateBinding.mandateDigest})`,
-        `Change: ${candidate.mandateBinding.changeId}`,
-        `External authority audit root: ${candidate.mandateBinding.externalAuditRoot}`,
-        `Repository: ${material.repositoryId}`,
-        `Affected capabilities: ${affected}`,
-        `Before control-plane closure: ${material.beforeClosureDigest}`,
-        `After control-plane closure: ${material.afterClosureDigest}`,
-        `Candidate executable provenance: ${material.candidateExecutableProvenanceDigest}`,
-        `Recovery bundle: ${material.recoveryBundle.bundleDigest}`,
-        `Recovery executable provenance: ${material.recoveryBundle.restartExecutableProvenanceDigest}`,
-        `Rollback test report: ${material.recoveryBundle.rollbackTestReportDigest}`,
-        `Independent review: PASS — ${attestationDigest}`,
-        `Reviewer: ${review.reviewer} at ${review.reviewedAt}`,
-        `Review summary: ${review.reviewSummary}`,
-        `Behavior change: ${material.behaviorChangeSummary}`,
-        `Exact mode-aware changes (${material.exactChanges.length}):`,
-        changedPaths,
-    ].join('\n');
-    return deepFreeze({
-        kind: 'control-plane-approval-summary.v3',
-        mandateBinding: structuredClone(candidate.mandateBinding),
-        candidateId: candidate.candidateId,
-        candidateRecordDigest: candidate.recordDigest,
-        repositoryId: material.repositoryId,
-        frozenCandidateBundleDigest: material.frozenCandidateBundleDigest,
-        candidateDigest: material.candidateDigest,
-        promotionMaterialDigest: candidate.bundle.promotionMaterialDigest,
-        promotionLineageDigest: lineage.lineageDigest,
-        promotionBundleDigest: candidate.bundle.bundleDigest,
-        exactChanges: material.exactChanges.map((change) => ({ ...change })),
-        affectedCapabilities: [...impact.affectedCapabilities],
-        beforeClosureDigest: material.beforeClosureDigest,
-        afterClosureDigest: material.afterClosureDigest,
-        recoveryBundleDigest: material.recoveryBundle.bundleDigest,
-        rollbackTestReportDigest: material.recoveryBundle.rollbackTestReportDigest,
-        independentReview: {
-            attestationDigest,
-            reviewer: review.reviewer,
-            reviewedAt: review.reviewedAt,
-            verdict: review.verdict,
-            reviewSummary: review.reviewSummary,
-        },
-        behaviorChangeSummary: material.behaviorChangeSummary,
-        previousGeneration: lineage.previousGeneration,
-        candidateGeneration: lineage.candidateGeneration,
-        rollbackGeneration: lineage.rollbackGeneration,
-        previousSupervisorRecordDigest: lineage.previousSupervisorRecordDigest,
-        previousTerminalRecordDigest: lineage.previousTerminalRecordDigest,
-        humanReadable,
-    });
 }
 function runtimePromotionBundle(value) {
     controlPlanePromotionBundleDigestV3(value);
@@ -1102,336 +386,6 @@ function runtimePromotionBundle(value) {
         bundleDigest: value.bundleDigest,
         promotionLineageDigest: value.promotionLineageDigest,
     });
-}
-function materializeBundleExecutables(paths, bundle) {
-    materializeExecutable(paths, bundle.candidateArtifact, decodeCanonicalBase64(bundle.candidateExecutableBase64, 'CONTROL_PLANE_PROMOTION_BUNDLE_CORRUPT'));
-    materializeExecutable(paths, bundle.recoveryBundle.restartArtifact, decodeCanonicalBase64(bundle.recoveryBundle.restartExecutableBase64, 'CONTROL_PLANE_PROMOTION_BUNDLE_CORRUPT'));
-}
-function materializeExecutable(paths, artifact, bytes) {
-    if (bytes.length === 0 ||
-        bytes.length > MAX_EXECUTABLE_BYTES ||
-        rawDigest(bytes) !== artifact.executableDigest) {
-        throw workflowError('CONTROL_PLANE_EXECUTABLE_INVALID', 'Executable bytes do not match the engine artifact.', ExitCode.verification);
-    }
-    const artifactDirectory = path.join(paths.artifacts, artifact.artifactId.slice('sha256:'.length));
-    ensurePrivateDirectory(artifactDirectory);
-    const executablePath = path.join(artifactDirectory, 'engine');
-    const existing = fs.lstatSync(executablePath, { throwIfNoEntry: false });
-    if (existing) {
-        assertPrivateExecutable(executablePath, artifact.executableDigest);
-        return executablePath;
-    }
-    createPrivateExecutableExclusive(executablePath, bytes);
-    assertPrivateExecutable(executablePath, artifact.executableDigest);
-    return executablePath;
-}
-function buildSupervisorSelection(storageRoot, current, artifact, closureDigest, record, phase, now) {
-    const paths = updaterPaths(storageRoot);
-    const executablePath = materializedExecutablePath(paths, artifact);
-    assertConfinedExecutable(paths, executablePath, artifact.executableDigest);
-    return withRecordDigest({
-        kind: 'control-plane-supervisor-state.v1',
-        repositoryId: current.repositoryId,
-        activeArtifact: {
-            artifactId: artifact.artifactId,
-            executableDigest: artifact.executableDigest,
-            closureDigest,
-            executablePath,
-        },
-        generation: current.generation + 1,
-        transition: {
-            grantId: record.envelope.payload.grantId,
-            txId: record.transaction.txId,
-            phase,
-        },
-        updatedAt: exactDate(now, 'CONTROL_PLANE_SUPERVISOR_INVALID').toISOString(),
-    });
-}
-function publishSupervisorSelection(storageRoot, current, next) {
-    replacePrivateFileAtomicCas(updaterPaths(storageRoot).supervisor, current.recordDigest, serializeCanonical(next));
-}
-function selectV3SupervisorArtifactWithHistory(storageRoot, current, artifact, closureDigest, record, bundle, phase, now, testHooks) {
-    const lineage = bundle.storedBundle.lineage;
-    let progress = readControlPlaneSupervisorHistoryProgress(storageRoot);
-    let transition;
-    if (progress.leaf.kind === 'control-plane-supervisor-history-transition.v1' &&
-        progress.leaf.phase === phase) {
-        transition = progress.leaf;
-        if (transition.grantId !== record.envelope.payload.grantId ||
-            transition.txId !== record.transaction.txId ||
-            transition.sourceJournalDigest !== record.transaction.journalDigest) {
-            throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_FORK', 'The durable supervisor transition belongs to different authority bytes.', ExitCode.conflict);
-        }
-    }
-    else {
-        if ((phase === 'candidate-selected' &&
-            progress.leaf.recordDigest !== lineage.previousTerminalRecordDigest) ||
-            (phase === 'rollback-restored' &&
-                (progress.leaf.kind !==
-                    'control-plane-supervisor-history-transition.v1' ||
-                    progress.leaf.phase !== 'candidate-selected' ||
-                    progress.leaf.grantId !== record.envelope.payload.grantId ||
-                    progress.leaf.txId !== record.transaction.txId ||
-                    progress.leaf.promotionBundleDigest !== bundle.bundleDigest ||
-                    progress.leaf.promotionLineageDigest !== lineage.lineageDigest))) {
-            throw workflowError('CONTROL_PLANE_PROMOTION_LINEAGE_STALE', 'The supervisor history leaf cannot accept this transition.', ExitCode.staleState);
-        }
-        const selectedAt = exactDate(now, 'CONTROL_PLANE_SUPERVISOR_INVALID');
-        const next = buildSupervisorSelection(storageRoot, current, artifact, closureDigest, record, phase, selectedAt);
-        transition = createControlPlaneSupervisorHistoryTransition({
-            previous: progress.leaf,
-            phase,
-            toSupervisorRecordDigest: next.recordDigest,
-            activeArtifact: {
-                artifactId: next.activeArtifact.artifactId,
-                executableDigest: next.activeArtifact.executableDigest,
-                closureDigest: next.activeArtifact.closureDigest,
-            },
-            activeTrustCommit: phase === 'candidate-selected'
-                ? lineage.candidateTrustCommit
-                : lineage.previousActiveTrustCommit,
-            grantId: record.envelope.payload.grantId,
-            txId: record.transaction.txId,
-            grantEnvelopeDigest: canonicalDigest(record.envelope),
-            promotionBundleDigest: bundle.bundleDigest,
-            promotionLineageDigest: lineage.lineageDigest,
-            sourceTransactionState: phase === 'candidate-selected'
-                ? 'RECOVERY_VERIFIED'
-                : 'ROLLBACK_REQUIRED',
-            sourceJournalDigest: record.transaction.journalDigest,
-            recordedAt: selectedAt.toISOString(),
-        });
-        appendControlPlaneSupervisorHistoryRecord(storageRoot, transition);
-        testHooks?.afterSupervisorHistoryTransition?.();
-        progress = readControlPlaneSupervisorHistoryProgress(storageRoot);
-        if (progress.leaf.recordDigest !== transition.recordDigest) {
-            throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_FORK', 'The published supervisor transition is not the unique history leaf.', ExitCode.conflict);
-        }
-    }
-    const expected = buildSupervisorSelection(storageRoot, current, artifact, closureDigest, record, phase, new Date(transition.recordedAt));
-    if (expected.recordDigest !== transition.toSupervisorRecordDigest ||
-        expected.generation !== transition.toGeneration ||
-        expected.generation !==
-            (phase === 'candidate-selected'
-                ? lineage.candidateGeneration
-                : lineage.rollbackGeneration)) {
-        throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_TRANSITION_INVALID', 'The supervisor bytes do not match the durable history transition.', ExitCode.verification);
-    }
-    publishSupervisorSelection(storageRoot, current, expected);
-    return expected;
-}
-function assertV3SupervisorTransition(storageRoot, record, bundle, supervisor, phase) {
-    const progress = readControlPlaneSupervisorHistoryProgress(storageRoot);
-    const leaf = progress.leaf;
-    if (leaf.kind !== 'control-plane-supervisor-history-transition.v1' ||
-        leaf.phase !== phase ||
-        leaf.grantId !== record.envelope.payload.grantId ||
-        leaf.txId !== record.transaction.txId ||
-        leaf.promotionBundleDigest !== bundle.bundleDigest ||
-        leaf.promotionLineageDigest !== bundle.promotionLineageDigest ||
-        leaf.toSupervisorRecordDigest !== supervisor.recordDigest ||
-        leaf.toGeneration !== supervisor.generation) {
-        throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_TRANSITION_INVALID', 'The selected supervisor lacks its exact durable V3 history transition.', ExitCode.verification);
-    }
-}
-function sealV3SupervisorHistory(storageRoot, record, supervisor) {
-    const progress = readControlPlaneSupervisorHistoryProgress(storageRoot);
-    if (progress.leaf.kind === 'control-plane-supervisor-history-terminal.v1') {
-        if (progress.leaf.updateRecordDigest !== record.recordDigest ||
-            progress.leaf.transactionJournalDigest !==
-                record.transaction.journalDigest ||
-            progress.leaf.supervisorRecordDigest !== supervisor.recordDigest ||
-            progress.leaf.terminalState !== record.transaction.state) {
-            throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_FORK', 'The terminal history seal differs from the persisted V3 transaction.', ExitCode.conflict);
-        }
-        return;
-    }
-    if (progress.leaf.kind !== 'control-plane-supervisor-history-transition.v1' ||
-        (record.transaction.state !== 'FINALIZED' &&
-            record.transaction.state !== 'ROLLED_BACK')) {
-        throw workflowError('CONTROL_PLANE_SUPERVISOR_HISTORY_NOT_TERMINAL', 'A terminal V3 transaction must seal its exact supervisor transition.', ExitCode.conflict);
-    }
-    const terminal = createControlPlaneSupervisorHistoryTerminal({
-        previous: progress.leaf,
-        terminalState: record.transaction.state,
-        updateRecordDigest: record.recordDigest,
-        transactionJournalDigest: record.transaction.journalDigest,
-        recordedAt: record.updatedAt,
-    });
-    appendControlPlaneSupervisorHistoryRecord(storageRoot, terminal);
-}
-function assertSupervisorIsOldClosure(supervisor, envelope, bundle) {
-    if (supervisor.repositoryId !== envelope.payload.repositoryId ||
-        supervisor.activeArtifact.artifactId !==
-            bundle.recoveryBundle.restartArtifact.artifactId ||
-        supervisor.activeArtifact.executableDigest !==
-            bundle.recoveryBundle.restartArtifact.executableDigest ||
-        supervisor.activeArtifact.closureDigest !== bundle.beforeClosureDigest) {
-        throw workflowError('CONTROL_PLANE_OLD_CLOSURE_MISMATCH', 'Supervisor is not selecting the exact grant-bound old closure.', ExitCode.staleState);
-    }
-}
-function assertSupervisorMatchesOldClosureV2(supervisor, material) {
-    if (supervisor.repositoryId !== material.repositoryId ||
-        supervisor.activeArtifact.artifactId !==
-            material.recoveryBundle.restartArtifact.artifactId ||
-        supervisor.activeArtifact.executableDigest !==
-            material.recoveryBundle.restartArtifact.executableDigest ||
-        supervisor.activeArtifact.closureDigest !== material.beforeClosureDigest) {
-        throw workflowError('CONTROL_PLANE_OLD_CLOSURE_MISMATCH', 'Supervisor is not selecting the exact v2 grant-bound old closure.', ExitCode.staleState);
-    }
-}
-function assertSupervisorIsCandidate(supervisor, bundle) {
-    if (supervisor.repositoryId !== bundle.repositoryId ||
-        supervisor.activeArtifact.artifactId !==
-            bundle.candidateArtifact.artifactId ||
-        supervisor.activeArtifact.executableDigest !==
-            bundle.candidateArtifact.executableDigest ||
-        supervisor.activeArtifact.closureDigest !== bundle.afterClosureDigest) {
-        throw workflowError('CONTROL_PLANE_CANDIDATE_SUPERVISOR_MISMATCH', 'Supervisor is not selecting the exact candidate closure.', ExitCode.staleState);
-    }
-}
-function runSelfTest(paths, executablePath, executableDigest, expectedClosureDigest) {
-    const value = runControlPlaneProcess(paths, executablePath, executableDigest, '--control-plane-self-test');
-    if (!hasExactKeys(value, ['closureDigest', 'healthy', 'kind']) ||
-        value.kind !== 'control-plane-self-test.v1' ||
-        typeof value.healthy !== 'boolean' ||
-        value.closureDigest !== expectedClosureDigest) {
-        throw processVerificationFailed('Candidate self-test response is invalid.');
-    }
-    return {
-        healthy: value.healthy,
-        closureDigest: expectedClosureDigest,
-        evidenceDigest: canonicalDigest(value),
-    };
-}
-function runRestartProbe(paths, executablePath, executableDigest, expectedClosureDigest) {
-    const value = runControlPlaneProcess(paths, executablePath, executableDigest, '--control-plane-restart-probe');
-    if (!hasExactKeys(value, ['closureDigest', 'kind', 'ready']) ||
-        value.kind !== 'control-plane-restart.v1' ||
-        value.ready !== true ||
-        value.closureDigest !== expectedClosureDigest) {
-        throw processVerificationFailed('Recovery restart response is invalid.');
-    }
-    return {
-        closureDigest: expectedClosureDigest,
-        evidenceDigest: canonicalDigest(value),
-    };
-}
-function runControlPlaneProcess(paths, executablePath, executableDigest, mode) {
-    assertConfinedExecutable(paths, executablePath, executableDigest);
-    const cwd = path.dirname(executablePath);
-    const result = childProcess.spawnSync(executablePath, [mode], {
-        cwd,
-        env: {
-            PATH: `${path.dirname(process.execPath)}:/usr/bin:/bin`,
-            LANG: 'C',
-            LC_ALL: 'C',
-            TMPDIR: cwd,
-        },
-        encoding: 'utf8',
-        timeout: PROCESS_TIMEOUT_MS,
-        maxBuffer: PROCESS_MAX_BUFFER_BYTES,
-        windowsHide: true,
-    });
-    if (result.error || result.signal || result.status !== 0) {
-        throw processVerificationFailed('Control-plane process did not exit cleanly.');
-    }
-    if (typeof result.stdout !== 'string' ||
-        Buffer.byteLength(result.stdout) > PROCESS_MAX_BUFFER_BYTES) {
-        throw processVerificationFailed('Control-plane process output is invalid.');
-    }
-    let value;
-    try {
-        value = JSON.parse(result.stdout.trim());
-    }
-    catch {
-        throw processVerificationFailed('Control-plane process returned invalid JSON.');
-    }
-    if (!isRecord(value)) {
-        throw processVerificationFailed('Control-plane process response is not an object.');
-    }
-    return value;
-}
-function emitAuditHistory(record, bundle, dependencies) {
-    const prepared = createAuditRecord({
-        repositoryId: bundle.repositoryId,
-        ...controlPlaneAuditMandateFields(record.envelope.payload.mandateBinding),
-        grantId: record.envelope.payload.grantId,
-        txId: record.transaction.txId,
-        grantEnvelopeDigest: canonicalDigest(record.envelope),
-        promotionBundleDigest: bundle.bundleDigest,
-        sequence: 0,
-        event: 'prepared',
-        fromState: 'PREPARED',
-        toState: 'PREPARED',
-        evidenceDigest: bundle.bundleDigest,
-        recordedAt: record.createdAt,
-    });
-    dependencies.auditSink.append(prepared);
-    for (const observation of record.observations) {
-        dependencies.auditSink.append(createAuditRecord({
-            repositoryId: bundle.repositoryId,
-            ...controlPlaneAuditMandateFields(record.envelope.payload.mandateBinding),
-            grantId: record.envelope.payload.grantId,
-            txId: record.transaction.txId,
-            grantEnvelopeDigest: canonicalDigest(record.envelope),
-            promotionBundleDigest: bundle.bundleDigest,
-            sequence: observation.sequence,
-            event: auditEventForObservation(observation.eventKind),
-            fromState: observation.fromState,
-            toState: observation.toState,
-            evidenceDigest: observation.evidenceDigest,
-            recordedAt: observation.recordedAt,
-        }));
-    }
-}
-function createAuditRecord(input) {
-    const identity = {
-        kind: 'control-plane-updater-audit-id.v1',
-        repositoryId: input.repositoryId,
-        mandateBinding: input.mandateBinding,
-        grantId: input.grantId,
-        txId: input.txId,
-        sequence: input.sequence,
-        event: input.event,
-    };
-    const payload = {
-        kind: 'control-plane-updater-audit.v1',
-        recordId: canonicalDigest(identity),
-        ...input,
-    };
-    return deepFreeze({ ...payload, recordDigest: canonicalDigest(payload) });
-}
-function controlPlaneAuditMandateFields(binding) {
-    const exact = normalizeControlPlaneTaskMandateBinding(binding);
-    return {
-        mandateBinding: exact,
-        parentTaskId: exact.parentTaskId,
-        changeId: exact.changeId,
-        externalAuditRoot: exact.externalAuditRoot,
-    };
-}
-function auditEventForObservation(event) {
-    switch (event) {
-        case 'old-closure-verified':
-            return 'old-closure-verified';
-        case 'candidate-verified':
-            return 'candidate-verified';
-        case 'recovery-bundle-verified':
-            return 'recovery-verified';
-        case 'atomic-switch-completed':
-            return 'switched';
-        case 'self-tests-passed':
-            return 'self-tested';
-        case 'self-tests-failed':
-            return 'rollback-required';
-        case 'finalize':
-            return 'finalized';
-        case 'rollback-completed':
-            return 'rolled-back';
-        default:
-            throw workflowError('CONTROL_PLANE_AUDIT_EVENT_INVALID', 'Persisted updater observation has no audit event mapping.', ExitCode.verification);
-    }
 }
 function advanceRecord(current, storageRoot, input) {
     return advancePersistedControlPlaneUpdate(storageRoot, {
@@ -1480,343 +434,6 @@ function promotionBundlePath(paths, grantId) {
         .update(`control-plane-promotion\0${grantId}`)
         .digest('hex');
     return path.join(paths.bundles, `${name}.json`);
-}
-function updaterPaths(storageRoot) {
-    const root = interventionControlPersistencePaths(storageRoot).root;
-    const operations = path.join(root, 'operations');
-    return {
-        root,
-        supervisor: path.join(root, 'control-plane-supervisor.json'),
-        approvalCandidates: path.join(root, 'control-plane-approval-candidates'),
-        bundles: path.join(root, 'control-plane-promotion-bundles'),
-        artifacts: path.join(root, 'control-plane-artifacts'),
-        operations,
-        lock: path.join(operations, 'control-plane-updater.lock'),
-    };
-}
-function ensureUpdaterDirectories(storageRoot) {
-    const paths = updaterPaths(storageRoot);
-    for (const directory of [
-        paths.root,
-        paths.approvalCandidates,
-        paths.bundles,
-        paths.artifacts,
-        paths.operations,
-    ]) {
-        ensurePrivateDirectory(directory);
-    }
-    return paths;
-}
-function ensurePrivateDirectory(directory) {
-    ensurePlainDirectory(directory);
-    const stats = fs.lstatSync(directory);
-    if ((stats.mode & 0o777) !== PRIVATE_DIRECTORY_MODE) {
-        throw workflowError('CONTROL_PLANE_STORAGE_UNSAFE', 'Control-plane state directories must be private.', ExitCode.unsafeEnvironment);
-    }
-}
-function withUpdaterLock(storageRoot, operation, callback) {
-    const paths = updaterPaths(storageRoot);
-    ensurePrivateDirectory(paths.root);
-    ensurePrivateDirectory(paths.operations);
-    const ownerToken = crypto.randomUUID();
-    const content = `${canonicalJson({
-        kind: 'control-plane-updater-lock.v1',
-        operation,
-        pid: process.pid,
-        ownerToken,
-    })}\n`;
-    let descriptor;
-    for (let attempt = 0; attempt < 3 && descriptor === undefined; attempt += 1) {
-        try {
-            descriptor = publishPreparedExclusiveLock(paths.lock, content, ownerToken, () => workflowError('CONTROL_PLANE_UPDATER_LOCK_UNSAFE', 'Control-plane updater lock is unsafe.', ExitCode.unsafeEnvironment));
-        }
-        catch (error) {
-            if (!isNodeError(error) || error.code !== 'EEXIST')
-                throw error;
-            const reclaimed = reclaimDeadPreparedLock(paths.lock, (raw) => {
-                try {
-                    const value = JSON.parse(raw);
-                    if (`${canonicalJson(value)}\n` !== raw ||
-                        !Number.isSafeInteger(value.pid) ||
-                        typeof value.ownerToken !== 'string') {
-                        return null;
-                    }
-                    return { pid: value.pid, ownerToken: value.ownerToken };
-                }
-                catch {
-                    return null;
-                }
-            });
-            if (reclaimed === 'unsafe') {
-                throw workflowError('CONTROL_PLANE_UPDATER_LOCK_UNSAFE', 'Control-plane updater lock is unsafe.', ExitCode.unsafeEnvironment);
-            }
-            if (reclaimed === 'occupied') {
-                throw workflowError('CONTROL_PLANE_UPDATER_BUSY', 'Another minimal updater process is active.', ExitCode.conflict);
-            }
-        }
-    }
-    if (descriptor === undefined) {
-        throw workflowError('CONTROL_PLANE_UPDATER_BUSY', 'Could not acquire the minimal updater lock.', ExitCode.conflict);
-    }
-    let result;
-    let failure;
-    try {
-        result = callback();
-    }
-    catch (error) {
-        failure = error;
-    }
-    try {
-        releaseUpdaterLock(paths.lock, descriptor);
-    }
-    catch (error) {
-        failure ??= error;
-    }
-    if (failure !== undefined)
-        throw failure;
-    return result;
-}
-function releaseUpdaterLock(lockPath, descriptor) {
-    try {
-        const owned = fs.fstatSync(descriptor);
-        const observed = fs.lstatSync(lockPath, { throwIfNoEntry: false });
-        if (!observed?.isFile() ||
-            observed.isSymbolicLink() ||
-            observed.dev !== owned.dev ||
-            observed.ino !== owned.ino) {
-            throw workflowError('CONTROL_PLANE_UPDATER_LOCK_UNSAFE', 'Minimal updater lost ownership of its lock.', ExitCode.unsafeEnvironment);
-        }
-        fs.unlinkSync(lockPath);
-        fsyncDirectory(path.dirname(lockPath));
-    }
-    finally {
-        fs.closeSync(descriptor);
-    }
-}
-function materializedExecutablePath(paths, artifact) {
-    return path.join(paths.artifacts, artifact.artifactId.slice('sha256:'.length), 'engine');
-}
-function assertConfinedExecutable(paths, executablePath, expectedDigest, expectedArtifactId) {
-    if (typeof executablePath !== 'string' ||
-        !path.isAbsolute(executablePath) ||
-        path.resolve(executablePath) !== executablePath) {
-        throw supervisorCorrupt();
-    }
-    const relative = path.relative(paths.artifacts, executablePath);
-    if (relative.length === 0 ||
-        relative.startsWith('..') ||
-        path.isAbsolute(relative) ||
-        path.basename(executablePath) !== 'engine') {
-        throw supervisorCorrupt();
-    }
-    if (expectedArtifactId !== undefined &&
-        executablePath !==
-            path.join(paths.artifacts, expectedArtifactId.slice('sha256:'.length), 'engine')) {
-        throw supervisorCorrupt();
-    }
-    assertPrivateExecutable(executablePath, expectedDigest);
-    if (fs.realpathSync(path.dirname(executablePath)) !==
-        path.dirname(executablePath) ||
-        fs.realpathSync(executablePath) !== executablePath) {
-        throw supervisorCorrupt();
-    }
-}
-function assertPrivateExecutable(executablePath, expectedDigest) {
-    const stats = fs.lstatSync(executablePath, { throwIfNoEntry: false });
-    if (!stats?.isFile() ||
-        stats.isSymbolicLink() ||
-        stats.nlink !== 1 ||
-        (stats.mode & 0o777) !== PRIVATE_EXECUTABLE_MODE ||
-        stats.size < 1 ||
-        stats.size > MAX_EXECUTABLE_BYTES) {
-        throw workflowError('CONTROL_PLANE_EXECUTABLE_UNSAFE', 'Materialized control-plane executable is unsafe.', ExitCode.unsafeEnvironment);
-    }
-    const descriptor = fs.openSync(executablePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    try {
-        const opened = fs.fstatSync(descriptor);
-        if (opened.dev !== stats.dev ||
-            opened.ino !== stats.ino ||
-            rawDigest(fs.readFileSync(descriptor)) !== expectedDigest) {
-            throw workflowError('CONTROL_PLANE_EXECUTABLE_DIGEST_MISMATCH', 'Materialized executable digest changed.', ExitCode.verification);
-        }
-    }
-    finally {
-        fs.closeSync(descriptor);
-    }
-}
-function createPrivateExecutableExclusive(filePath, content) {
-    ensurePrivateDirectory(path.dirname(filePath));
-    const temporaryPath = `${filePath}.${crypto.randomUUID()}.tmp`;
-    let descriptor;
-    let failure;
-    try {
-        descriptor = fs.openSync(temporaryPath, fs.constants.O_WRONLY |
-            fs.constants.O_CREAT |
-            fs.constants.O_EXCL |
-            fs.constants.O_NOFOLLOW, PRIVATE_EXECUTABLE_MODE);
-        fs.fchmodSync(descriptor, PRIVATE_EXECUTABLE_MODE);
-        fs.writeFileSync(descriptor, content);
-        fs.fsyncSync(descriptor);
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-        fs.linkSync(temporaryPath, filePath);
-        fs.unlinkSync(temporaryPath);
-        fsyncDirectory(path.dirname(filePath));
-    }
-    catch (error) {
-        failure = error;
-    }
-    if (descriptor !== undefined) {
-        try {
-            fs.closeSync(descriptor);
-        }
-        catch (error) {
-            failure ??= error;
-        }
-    }
-    try {
-        fs.unlinkSync(temporaryPath);
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'ENOENT')
-            failure ??= error;
-    }
-    if (failure !== undefined)
-        throw failure;
-}
-function createPrivateFileExclusive(filePath, content) {
-    ensurePrivateDirectory(path.dirname(filePath));
-    const temporaryPath = `${filePath}.${crypto.randomUUID()}.tmp`;
-    let descriptor;
-    let failure;
-    try {
-        descriptor = fs.openSync(temporaryPath, fs.constants.O_WRONLY |
-            fs.constants.O_CREAT |
-            fs.constants.O_EXCL |
-            fs.constants.O_NOFOLLOW, PRIVATE_FILE_MODE);
-        fs.fchmodSync(descriptor, PRIVATE_FILE_MODE);
-        fs.writeFileSync(descriptor, content, 'utf8');
-        fs.fsyncSync(descriptor);
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-        fs.linkSync(temporaryPath, filePath);
-        fs.unlinkSync(temporaryPath);
-        fsyncDirectory(path.dirname(filePath));
-    }
-    catch (error) {
-        failure = error;
-    }
-    if (descriptor !== undefined) {
-        try {
-            fs.closeSync(descriptor);
-        }
-        catch (error) {
-            failure ??= error;
-        }
-    }
-    try {
-        fs.unlinkSync(temporaryPath);
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'ENOENT')
-            failure ??= error;
-    }
-    if (failure !== undefined)
-        throw failure;
-}
-function replacePrivateFileAtomicCas(filePath, expectedDigest, content) {
-    const current = readCanonicalPrivateRecord(filePath, 'CONTROL_PLANE_SUPERVISOR_NOT_FOUND');
-    if (!isRecord(current) || current.recordDigest !== expectedDigest) {
-        throw workflowError('CONTROL_PLANE_SUPERVISOR_CAS_MISMATCH', 'Supervisor state changed before the atomic switch.', ExitCode.staleState);
-    }
-    assertPrivateRegularFile(filePath);
-    const temporaryPath = `${filePath}.${crypto.randomUUID()}.tmp`;
-    let descriptor;
-    let failure;
-    try {
-        descriptor = fs.openSync(temporaryPath, fs.constants.O_WRONLY |
-            fs.constants.O_CREAT |
-            fs.constants.O_EXCL |
-            fs.constants.O_NOFOLLOW, PRIVATE_FILE_MODE);
-        fs.fchmodSync(descriptor, PRIVATE_FILE_MODE);
-        fs.writeFileSync(descriptor, content, 'utf8');
-        fs.fsyncSync(descriptor);
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-        fs.renameSync(temporaryPath, filePath);
-        fsyncDirectory(path.dirname(filePath));
-    }
-    catch (error) {
-        failure = error;
-    }
-    if (descriptor !== undefined) {
-        try {
-            fs.closeSync(descriptor);
-        }
-        catch (error) {
-            failure ??= error;
-        }
-    }
-    try {
-        fs.unlinkSync(temporaryPath);
-    }
-    catch (error) {
-        if (!isNodeError(error) || error.code !== 'ENOENT')
-            failure ??= error;
-    }
-    if (failure !== undefined)
-        throw failure;
-}
-function readCanonicalPrivateRecord(filePath, notFoundCode) {
-    const raw = readPrivateText(filePath, notFoundCode);
-    let value;
-    try {
-        value = JSON.parse(raw);
-    }
-    catch {
-        throw workflowError('CONTROL_PLANE_STATE_CORRUPT', 'Control-plane state is not valid JSON.', ExitCode.verification);
-    }
-    if (`${canonicalJson(value)}\n` !== raw) {
-        throw workflowError('CONTROL_PLANE_STATE_CORRUPT', 'Control-plane state is not canonical JSON.', ExitCode.verification);
-    }
-    return value;
-}
-function readPrivateText(filePath, notFoundCode) {
-    const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (!stats) {
-        throw workflowError(notFoundCode, 'Control-plane state was not found.', ExitCode.conflict);
-    }
-    assertPrivateRegularFile(filePath);
-    if (stats.size > MAX_BUNDLE_BYTES) {
-        throw workflowError('CONTROL_PLANE_STATE_TOO_LARGE', 'Control-plane state exceeds the maximum size.', ExitCode.guard);
-    }
-    const descriptor = fs.openSync(filePath, fs.constants.O_RDONLY | fs.constants.O_NOFOLLOW);
-    try {
-        const opened = fs.fstatSync(descriptor);
-        if (opened.dev !== stats.dev || opened.ino !== stats.ino) {
-            throw workflowError('CONTROL_PLANE_STATE_UNSAFE', 'Control-plane state changed while being opened.', ExitCode.unsafeEnvironment);
-        }
-        return fs.readFileSync(descriptor, 'utf8');
-    }
-    finally {
-        fs.closeSync(descriptor);
-    }
-}
-function assertPrivateRegularFile(filePath) {
-    const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (!stats?.isFile() ||
-        stats.isSymbolicLink() ||
-        stats.nlink !== 1 ||
-        (stats.mode & 0o777) !== PRIVATE_FILE_MODE) {
-        throw workflowError('CONTROL_PLANE_STATE_UNSAFE', 'Control-plane state must be a private regular file.', ExitCode.unsafeEnvironment);
-    }
-}
-function serializeCanonical(value) {
-    const serialized = `${canonicalJson(value)}\n`;
-    if (Buffer.byteLength(serialized) > MAX_BUNDLE_BYTES) {
-        throw workflowError('CONTROL_PLANE_STATE_TOO_LARGE', 'Control-plane state exceeds the maximum size.', ExitCode.guard);
-    }
-    return serialized;
 }
 function verifyEngineArtifact(artifact) {
     const artifactKeys = [
@@ -1964,15 +581,6 @@ function deepFreeze(value) {
     }
     return value;
 }
-function fsyncDirectory(directory) {
-    const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-    try {
-        fs.fsyncSync(descriptor);
-    }
-    finally {
-        fs.closeSync(descriptor);
-    }
-}
 function promotionBundleCorrupt(message) {
     return workflowError('CONTROL_PLANE_PROMOTION_BUNDLE_CORRUPT', message, ExitCode.verification);
 }
@@ -1995,3 +603,146 @@ function workflowFailureCode(error) {
 function isNodeError(error) {
     return error instanceof Error && 'code' in error;
 }
+const { updaterPaths, ensureUpdaterDirectories, ensurePrivateDirectory, withUpdaterLock, materializedExecutablePath, assertConfinedExecutable, assertPrivateExecutable, createPrivateExecutableExclusive, createPrivateFileExclusive, replacePrivateFileAtomicCas, readCanonicalPrivateRecord, readPrivateText, serializeCanonical, } = createControlPlaneUpdaterStorage(() => ({
+    interventionControlPersistencePaths,
+    path,
+    ensurePlainDirectory,
+    fs,
+    PRIVATE_DIRECTORY_MODE,
+    workflowError,
+    ExitCode,
+    crypto,
+    canonicalJson,
+    publishPreparedExclusiveLock,
+    isNodeError,
+    reclaimDeadPreparedLock,
+    supervisorCorrupt,
+    PRIVATE_EXECUTABLE_MODE,
+    MAX_EXECUTABLE_BYTES,
+    rawDigest,
+    PRIVATE_FILE_MODE,
+    isRecord,
+    MAX_BUNDLE_BYTES,
+}));
+const { initializeControlPlaneSupervisorState, readControlPlaneSupervisorState, materializeBundleExecutables, selectV3SupervisorArtifactWithHistory, assertV3SupervisorTransition, sealV3SupervisorHistory, assertSupervisorIsOldClosure, assertSupervisorMatchesOldClosureV2, assertSupervisorIsCandidate, runSelfTest, runRestartProbe, } = createControlPlaneUpdaterSupervisor(() => ({
+    withUpdaterLock,
+    ensureUpdaterDirectories,
+    assertNonEmpty,
+    assertDigest,
+    verifyEngineArtifact,
+    decodeCanonicalBase64,
+    rawDigest,
+    workflowError,
+    ExitCode,
+    exactDate,
+    withRecordDigest,
+    fs,
+    canonicalJson,
+    createPrivateFileExclusive,
+    serializeCanonical,
+    updaterPaths,
+    readCanonicalPrivateRecord,
+    isRecord,
+    hasExactKeys,
+    verifyRecordDigest,
+    supervisorCorrupt,
+    isDigest,
+    validTransition,
+    isCanonicalIso,
+    assertConfinedExecutable,
+    deepFreeze,
+    MAX_EXECUTABLE_BYTES,
+    path,
+    ensurePrivateDirectory,
+    assertPrivateExecutable,
+    createPrivateExecutableExclusive,
+    materializedExecutablePath,
+    replacePrivateFileAtomicCas,
+    readControlPlaneSupervisorHistoryProgress,
+    createControlPlaneSupervisorHistoryTransition,
+    canonicalDigest,
+    appendControlPlaneSupervisorHistoryRecord,
+    createControlPlaneSupervisorHistoryTerminal,
+    processVerificationFailed,
+    childProcess,
+    PROCESS_TIMEOUT_MS,
+    PROCESS_MAX_BUFFER_BYTES,
+}));
+export { initializeControlPlaneSupervisorState, readControlPlaneSupervisorState, };
+const { persistControlPlaneApprovalCandidateV3, controlPlaneApprovalCandidatePath, readPersistedControlPlaneApprovalCandidateV3, readPersistedControlPlaneApprovalCandidateCurrent, findPersistedControlPlaneApprovalCandidateV3ByMaterialLineageAndReviewer, preflightControlPlaneApprovalCandidateV3, assertApprovalCandidateBindingsV3, } = createControlPlaneUpdaterApproval(() => ({
+    controlPlanePromotionBundleDigestV3,
+    normalizeControlPlaneTaskMandateBinding,
+    assertSameControlPlaneTaskMandateBinding,
+    approvalCandidateCorrupt,
+    assertNonEmpty,
+    exactDate,
+    withRecordDigest,
+    withUpdaterLock,
+    ensureUpdaterDirectories,
+    serializeCanonical,
+    fs,
+    canonicalJson,
+    workflowError,
+    ExitCode,
+    ensurePrivateDirectory,
+    createPrivateFileExclusive,
+    deepFreeze,
+    assertDigest,
+    path,
+    updaterPaths,
+    readCanonicalPrivateRecord,
+    isRecord,
+    hasExactKeys,
+    verifyRecordDigest,
+    isCanonicalIso,
+    controlPlaneUpdateRecordPath,
+    readPersistedControlPlaneUpdate,
+    controlPlaneIndependentReviewAttestationDigestV3,
+    verifyControlPlaneIndependentReviewAttestationV3,
+    readControlPlaneSupervisorState,
+    assertSupervisorMatchesOldClosureV2,
+    classifyProtectedCandidateImpactV2,
+    controlPlaneCandidateDigestV2,
+}));
+export { persistControlPlaneApprovalCandidateV3, controlPlaneApprovalCandidatePath, readPersistedControlPlaneApprovalCandidateV3, readPersistedControlPlaneApprovalCandidateCurrent, findPersistedControlPlaneApprovalCandidateV3ByMaterialLineageAndReviewer, preflightControlPlaneApprovalCandidateV3, };
+const { preflightControlPlaneRecoveryRollback, executeControlPlaneRecoveryRollback, } = createControlPlaneUpdaterRecovery(() => ({
+    withUpdaterLock,
+    requireRecoveryDependencies,
+    updaterNow,
+    exactDate,
+    workflowError,
+    ExitCode,
+    findPersistedControlPlaneRecoveryGrantForSource,
+    throwControlPlaneRecoveryAlreadyConsumed,
+    createControlPlaneRecoveryGrantPayload,
+    deepFreeze,
+    isRecord,
+    throwControlPlaneRecoveryFailed,
+    canonicalJson,
+    verifyControlPlaneRecoveryGrant,
+    canonicalDigest,
+    createControlPlaneRecoveryAuditRecord,
+    expirePersistedControlPlaneRecoveryGrant,
+    reservePersistedControlPlaneRecoveryGrant,
+    driveControlPlanePromotion,
+    createControlPlaneRecoveryFailure,
+    workflowFailureCode,
+    laterIso,
+    failPersistedControlPlaneRecoveryGrant,
+    createControlPlaneRecoveryReceipt,
+    preparePersistedControlPlaneRecoveryGrantConsumption,
+    consumePersistedControlPlaneRecoveryGrant,
+    ensureUpdaterDirectories,
+    readPersistedControlPlaneUpdate,
+    readPromotionBundle,
+    verifyPersistedPromotion,
+    readControlPlaneSupervisorState,
+}));
+export { preflightControlPlaneRecoveryRollback, executeControlPlaneRecoveryRollback, };
+const { emitAuditHistory } = createControlPlaneUpdaterAudit(() => ({
+    canonicalDigest,
+    deepFreeze,
+    normalizeControlPlaneTaskMandateBinding,
+    workflowError,
+    ExitCode,
+}));

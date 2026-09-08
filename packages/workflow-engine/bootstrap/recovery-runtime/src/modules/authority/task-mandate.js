@@ -4,16 +4,98 @@ import path from 'node:path';
 import { deriveAuthorityAuditRepositoryId, scanAuthorityAuditLedger, } from "../../runtime/storage-journal/authority-audit-ledger.js";
 import { recordAuthorityAuditEvent, } from "../../runtime/storage-journal/authority-audit-service.js";
 import { authorityRefusalDigest, withAuthorityRefusalAudit, } from "./authority-refusal-audit.js";
-import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
-import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { ensurePlainDirectory } from "../../runtime/repository-transaction/filesystem-safety.js";
 import { discoverRepository, isPostApprovalAdmissionFailure, runGit, } from "../../runtime/repository-transaction/git.js";
 import { parseMaintainerPolicy } from "./maintainer-policy.js";
 import { createInteractiveSshSigner, } from "../../adapters/signing/ssh/maintainer-signer.js";
-import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 import { assertChangeId } from "../../runtime/session-workspace/paths.js";
 import { runtimePaths, withRepositoryLifecycleOperation, } from "../../runtime/session-workspace/session-store.js";
+import { createTaskMandateProviderLifecycle } from "./task-mandate-provider-lifecycle.js";
+function boundTaskMandateProviderLifecycle() {
+    return createTaskMandateProviderLifecycle({
+        assertTaskMandateBinding,
+        assertProviderReservationId,
+        discoverRepository,
+        taskMandateStorePaths,
+        withRepositoryLifecycleOperation,
+        readTaskRecord,
+        validateTaskMandateEnvelopeForRepository,
+        exactDate,
+        assertRecordActive,
+        assertExactTaskMandateBinding,
+        appendTaskMandateAuthorizationAudit,
+        assertProviderInvocationAuditInput,
+        findTaskMandateProviderReservation,
+        appendTaskMandateProviderInvocationAudit,
+        assertProviderReservationOperation,
+        taskMandateProviderOperationDigest,
+        appendTaskMandateProviderReservationAudit,
+        authorizeProviderCall,
+        replacePrivateFileAtomic,
+        taskRecordPath,
+        canonicalTaskMandateRecord,
+        unsafeStore,
+    });
+}
+import { createTaskMandateRecords } from "./task-mandate-records.js";
+function boundTaskMandateRecords() {
+    return createTaskMandateRecords({
+        hasExactKeys,
+        mandateInvalid,
+        assertChangeId,
+        assertTaskMandateTaskId,
+        assertIntent,
+        parseProviderDeclarations,
+        assertSignature,
+        PAYLOAD_KEYS,
+        isWorkflowFailure,
+        TASK_MANDATE_INACTIVITY_DAYS,
+        MANDATE_ID,
+        TASK_ID,
+        assertExternalAuditRootPath,
+        COMMIT_OID,
+        exactTimestamp,
+        isSortedUniqueProviderReservations,
+        unsafeStore,
+    });
+}
+import { createTaskMandatePolicy } from "./task-mandate-policy.js";
+function boundTaskMandatePolicy() {
+    return createTaskMandatePolicy({
+        mandateInvalid,
+        hasExactKeys,
+        DATA_TYPES,
+        TASK_ID,
+        canonicalTaskMandateEnvelope,
+        assertMandateId,
+        assertChangeId,
+        assertExternalAuditRootPath,
+        PROVIDER_RESERVATION_ID,
+        unsafeStore,
+        exactTimestamp,
+    });
+}
+import { createTaskMandateAudit } from "./task-mandate-audit.js";
+function boundTaskMandateAudit() {
+    return createTaskMandateAudit({
+        deriveAuthorityAuditRepositoryId,
+        taskMandateBinding,
+        recordAuthorityAuditEvent,
+        unsafeStore,
+    });
+}
+import { createTaskMandateStore } from "./task-mandate-store.js";
+function boundTaskMandateStore() {
+    return createTaskMandateStore({
+        runtimePaths,
+        ensurePlainDirectory,
+        parseCurrentTaskMandateRecord,
+        assertTaskMandateTaskId,
+        assertMandateId,
+        unsafeStore,
+    });
+}
 export const TASK_MANDATE_SIGNATURE_NAMESPACE_V2 = 'HARNESS_TASK_MANDATE_V2';
 export const TASK_MANDATE_INACTIVITY_DAYS = 14;
 const TASK_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -49,21 +131,7 @@ const PAYLOAD_KEYS = [
     'signer',
 ];
 export function parseTaskMandateRequest(value) {
-    if (!isRecord(value) ||
-        !hasExactKeys(value, ['changeId', 'taskId', 'intent', 'providerCalls']) ||
-        typeof value.changeId !== 'string' ||
-        typeof value.taskId !== 'string' ||
-        typeof value.intent !== 'string' ||
-        !isRecord(value.providerCalls)) {
-        throw mandateInvalid('Task mandate request is malformed.');
-    }
-    const request = {
-        changeId: assertChangeId(value.changeId),
-        taskId: assertTaskMandateTaskId(value.taskId),
-        intent: assertIntent(value.intent),
-        providerCalls: parseProviderDeclarations(value.providerCalls),
-    };
-    return request;
+    return boundTaskMandateRecords().parseTaskMandateRequest(value);
 }
 export function authorizeTaskMandate(cwd, requested, options = {}) {
     const request = parseTaskMandateRequest(requested);
@@ -240,113 +308,19 @@ export function authorizeTaskMandateOperation(cwd, requestedTaskId, operation, o
     });
 }
 export function authorizeTaskMandateProviderReservation(cwd, binding, requestedReservationId, operation, options = {}) {
-    const exactBinding = assertTaskMandateBinding(binding);
-    const reservationId = assertProviderReservationId(requestedReservationId);
-    const repository = discoverRepository(cwd);
-    const paths = taskMandateStorePaths(repository.gitCommonDirectory);
-    return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => authorizeTaskMandateProviderReservationLocked(repository.repositoryRoot, paths, exactBinding, reservationId, operation, options, assertOwned));
+    return boundTaskMandateProviderLifecycle().authorizeTaskMandateProviderReservation(cwd, binding, requestedReservationId, operation, options);
 }
 export function authorizeTaskMandateProviderReservationUnderLifecycleLock(cwd, binding, requestedReservationId, operation, assertOwned, options = {}) {
-    const exactBinding = assertTaskMandateBinding(binding);
-    const reservationId = assertProviderReservationId(requestedReservationId);
-    const repository = discoverRepository(cwd);
-    const paths = taskMandateStorePaths(repository.gitCommonDirectory);
-    assertOwned();
-    return authorizeTaskMandateProviderReservationLocked(repository.repositoryRoot, paths, exactBinding, reservationId, operation, options, assertOwned);
+    return boundTaskMandateProviderLifecycle().authorizeTaskMandateProviderReservationUnderLifecycleLock(cwd, binding, requestedReservationId, operation, assertOwned, options);
 }
 export function assertActiveTaskMandateBindingUnderLifecycleLock(cwd, binding, assertOwned, options = {}) {
-    const exactBinding = assertTaskMandateBinding(binding);
-    const repository = discoverRepository(cwd);
-    const paths = taskMandateStorePaths(repository.gitCommonDirectory);
-    assertOwned();
-    const record = readTaskRecord(paths, exactBinding.mandateTaskId);
-    validateTaskMandateEnvelopeForRepository(repository.repositoryRoot, record.envelope, options.signer);
-    const bindingNow = exactDate(options.now ?? new Date());
-    assertRecordActive(record, bindingNow);
-    assertExactTaskMandateBinding(record, exactBinding);
-    appendTaskMandateAuthorizationAudit(repository.repositoryRoot, record, bindingNow);
-    assertOwned();
-    return exactBinding;
+    return boundTaskMandateProviderLifecycle().assertActiveTaskMandateBindingUnderLifecycleLock(cwd, binding, assertOwned, options);
 }
 export function recordTaskMandateProviderInvocation(cwd, binding, input, options = {}) {
-    const exactBinding = assertTaskMandateBinding(binding);
-    const repository = discoverRepository(cwd);
-    const paths = taskMandateStorePaths(repository.gitCommonDirectory);
-    return withRepositoryLifecycleOperation(paths.runtime, (assertOwned) => recordTaskMandateProviderInvocationLocked(repository.repositoryRoot, paths, exactBinding, input, options, assertOwned));
+    return boundTaskMandateProviderLifecycle().recordTaskMandateProviderInvocation(cwd, binding, input, options);
 }
 export function recordTaskMandateProviderInvocationUnderLifecycleLock(cwd, binding, input, assertOwned, options = {}) {
-    const exactBinding = assertTaskMandateBinding(binding);
-    const repository = discoverRepository(cwd);
-    const paths = taskMandateStorePaths(repository.gitCommonDirectory);
-    assertOwned();
-    return recordTaskMandateProviderInvocationLocked(repository.repositoryRoot, paths, exactBinding, input, options, assertOwned);
-}
-function recordTaskMandateProviderInvocationLocked(repositoryRoot, paths, exactBinding, rawInput, options, assertOwned) {
-    const input = assertProviderInvocationAuditInput(rawInput);
-    const record = readTaskRecord(paths, exactBinding.mandateTaskId);
-    validateTaskMandateEnvelopeForRepository(repositoryRoot, record.envelope, options.signer);
-    const invocationNow = exactDate(options.now ?? new Date());
-    assertRecordActive(record, invocationNow);
-    assertExactTaskMandateBinding(record, exactBinding);
-    appendTaskMandateAuthorizationAudit(repositoryRoot, record, invocationNow);
-    const reservation = findTaskMandateProviderReservation(record, input.invocationId);
-    if (reservation === null ||
-        reservation.providerId !== input.providerId ||
-        reservation.reservation.requestDigest !== input.requestDigest) {
-        throw workflowError('TASK_MANDATE_PROVIDER_INVOCATION_UNRESERVED', 'Provider invocation has no exact durable Task Mandate reservation.', ExitCode.guard);
-    }
-    assertOwned();
-    const audit = appendTaskMandateProviderInvocationAudit(repositoryRoot, record, input);
-    assertOwned();
-    return audit;
-}
-function authorizeTaskMandateProviderReservationLocked(repositoryRoot, paths, exactBinding, reservationId, operation, options, assertOwned) {
-    const record = readTaskRecord(paths, exactBinding.mandateTaskId);
-    validateTaskMandateEnvelopeForRepository(repositoryRoot, record.envelope, options.signer);
-    const now = exactDate(options.now ?? new Date());
-    assertRecordActive(record, now);
-    assertExactTaskMandateBinding(record, exactBinding);
-    appendTaskMandateAuthorizationAudit(repositoryRoot, record, now);
-    const checkedOperation = assertProviderReservationOperation(operation);
-    const operationDigest = taskMandateProviderOperationDigest(checkedOperation);
-    const existing = findTaskMandateProviderReservation(record, reservationId);
-    if (existing !== null) {
-        if (existing.providerId !== checkedOperation.providerId ||
-            existing.reservation.requestDigest !== checkedOperation.requestDigest ||
-            existing.reservation.operationDigest !== operationDigest) {
-            throw workflowError('TASK_MANDATE_PROVIDER_RESERVATION_CONFLICT', 'Provider reservation replay does not match its exact authorized call.', ExitCode.conflict);
-        }
-        const audit = appendTaskMandateProviderReservationAudit(repositoryRoot, record, existing.providerId, existing.reservation);
-        return {
-            authorized: true,
-            binding: exactBinding,
-            reservationId,
-            providerUsage: {
-                invocations: existing.usage.invocations,
-                budget: existing.usage.budget,
-            },
-            replay: true,
-            audit,
-        };
-    }
-    assertOwned();
-    const providerUsage = authorizeProviderCall(record, checkedOperation, reservationId, now.toISOString(), operationDigest);
-    record.lastActivityAt = now.toISOString();
-    replacePrivateFileAtomic(taskRecordPath(paths.active, exactBinding.mandateTaskId), canonicalTaskMandateRecord(record));
-    assertOwned();
-    const stored = findTaskMandateProviderReservation(record, reservationId);
-    if (stored === null)
-        throw unsafeStore();
-    const audit = appendTaskMandateProviderReservationAudit(repositoryRoot, record, stored.providerId, stored.reservation);
-    assertOwned();
-    return {
-        authorized: true,
-        binding: exactBinding,
-        reservationId,
-        providerUsage,
-        replay: false,
-        audit,
-    };
+    return boundTaskMandateProviderLifecycle().recordTaskMandateProviderInvocationUnderLifecycleLock(cwd, binding, input, assertOwned, options);
 }
 export function revokeTaskMandate(cwd, requestedTaskId, options) {
     const taskId = assertTaskMandateTaskId(requestedTaskId);
@@ -392,159 +366,16 @@ export function revokeTaskMandate(cwd, requestedTaskId, options) {
     });
 }
 export function canonicalTaskMandatePayload(payload) {
-    validateTaskMandatePayload(payload);
-    return `${canonicalJson(payload)}\n`;
+    return boundTaskMandateRecords().canonicalTaskMandatePayload(payload);
 }
 export function canonicalTaskMandateEnvelope(envelope) {
-    validateTaskMandatePayload(envelope.payload);
-    assertSignature(envelope.signature);
-    return `${canonicalJson(envelope)}\n`;
+    return boundTaskMandateRecords().canonicalTaskMandateEnvelope(envelope);
 }
 export function parseTaskMandateEnvelope(raw) {
-    try {
-        if (typeof raw !== 'string' || raw.length > 1_048_576) {
-            throw new Error('invalid envelope size');
-        }
-        const value = JSON.parse(raw);
-        if (!isRecord(value) ||
-            !hasExactKeys(value, ['payload', 'signature']) ||
-            !isRecord(value.payload) ||
-            !hasExactKeys(value.payload, PAYLOAD_KEYS) ||
-            typeof value.signature !== 'string') {
-            throw new Error('invalid envelope shape');
-        }
-        const envelope = {
-            payload: parseTaskMandatePayload(value.payload),
-            signature: value.signature,
-        };
-        assertSignature(envelope.signature);
-        if (canonicalTaskMandateEnvelope(envelope) !== raw) {
-            throw new Error('noncanonical envelope');
-        }
-        return envelope;
-    }
-    catch (error) {
-        if (isWorkflowFailure(error))
-            throw error;
-        throw mandateInvalid('Task mandate envelope is malformed or noncanonical.');
-    }
-}
-function parseTaskMandatePayload(value) {
-    if (value.kind !== 'task-mandate.v2' ||
-        typeof value.mandateId !== 'string' ||
-        typeof value.changeId !== 'string' ||
-        typeof value.taskId !== 'string' ||
-        typeof value.repositoryId !== 'string' ||
-        typeof value.repositoryOrigin !== 'string' ||
-        typeof value.externalAuditRoot !== 'string' ||
-        typeof value.policyBlob !== 'string' ||
-        typeof value.baseCommit !== 'string' ||
-        typeof value.intent !== 'string' ||
-        !isRecord(value.preparation) ||
-        value.authoritativeEffects !== false ||
-        value.controlPlaneMutation !== false ||
-        !Array.isArray(value.secretScopes) ||
-        !isRecord(value.validUntil) ||
-        value.auditRequired !== true ||
-        typeof value.issuedAt !== 'string' ||
-        typeof value.signer !== 'string') {
-        throw new Error('invalid task mandate payload');
-    }
-    const preparation = value.preparation;
-    const validUntil = value.validUntil;
-    if (!hasExactKeys(preparation, [
-        'repositoryRead',
-        'isolatedRepositoryWrites',
-        'addDeleteRenameFiles',
-        'localCommands',
-        'draftCommits',
-        'candidateAndDesignArtifacts',
-        'providerCalls',
-        'readOnlyConnectors',
-    ]) ||
-        preparation.repositoryRead !== true ||
-        preparation.isolatedRepositoryWrites !== true ||
-        preparation.addDeleteRenameFiles !== true ||
-        preparation.localCommands !== true ||
-        preparation.draftCommits !== true ||
-        preparation.candidateAndDesignArtifacts !== true ||
-        !isRecord(preparation.providerCalls) ||
-        preparation.readOnlyConnectors !== true ||
-        !hasExactKeys(validUntil, [
-            'taskClosed',
-            'humanRevokes',
-            'repositoryIdentityChanges',
-            'intentReplaced',
-            'inactivityDays',
-        ]) ||
-        validUntil.taskClosed !== true ||
-        validUntil.humanRevokes !== true ||
-        validUntil.repositoryIdentityChanges !== true ||
-        validUntil.intentReplaced !== true ||
-        validUntil.inactivityDays !== TASK_MANDATE_INACTIVITY_DAYS) {
-        throw new Error('unsafe task mandate bounds');
-    }
-    const payload = {
-        kind: 'task-mandate.v2',
-        mandateId: value.mandateId,
-        changeId: value.changeId,
-        taskId: value.taskId,
-        repositoryId: value.repositoryId,
-        repositoryOrigin: value.repositoryOrigin,
-        externalAuditRoot: value.externalAuditRoot,
-        policyBlob: value.policyBlob,
-        baseCommit: value.baseCommit,
-        intent: value.intent,
-        preparation: {
-            repositoryRead: true,
-            isolatedRepositoryWrites: true,
-            addDeleteRenameFiles: true,
-            localCommands: true,
-            draftCommits: true,
-            candidateAndDesignArtifacts: true,
-            providerCalls: parseProviderDeclarations(preparation.providerCalls),
-            readOnlyConnectors: true,
-        },
-        authoritativeEffects: false,
-        controlPlaneMutation: false,
-        secretScopes: [],
-        validUntil: {
-            taskClosed: true,
-            humanRevokes: true,
-            repositoryIdentityChanges: true,
-            intentReplaced: true,
-            inactivityDays: TASK_MANDATE_INACTIVITY_DAYS,
-        },
-        auditRequired: true,
-        issuedAt: value.issuedAt,
-        signer: value.signer,
-    };
-    validateTaskMandatePayload(payload);
-    return payload;
+    return boundTaskMandateRecords().parseTaskMandateEnvelope(raw);
 }
 function validateTaskMandatePayload(payload) {
-    if (payload.kind !== 'task-mandate.v2' ||
-        !MANDATE_ID.test(payload.mandateId) ||
-        assertChangeId(payload.changeId) !== payload.changeId ||
-        !TASK_ID.test(payload.taskId) ||
-        payload.taskId.length > 128 ||
-        !/^github:[A-Za-z0-9_-]+$/.test(payload.repositoryId) ||
-        !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/.test(payload.repositoryOrigin) ||
-        assertExternalAuditRootPath(payload.externalAuditRoot) !==
-            payload.externalAuditRoot ||
-        !COMMIT_OID.test(payload.policyBlob) ||
-        !COMMIT_OID.test(payload.baseCommit) ||
-        assertIntent(payload.intent) !== payload.intent ||
-        payload.authoritativeEffects !== false ||
-        payload.controlPlaneMutation !== false ||
-        payload.secretScopes.length !== 0 ||
-        payload.auditRequired !== true ||
-        exactTimestamp(payload.issuedAt) === undefined ||
-        payload.signer.length === 0 ||
-        payload.signer.length > 128) {
-        throw mandateInvalid('Task mandate does not preserve the preparation-only boundary.');
-    }
-    parseProviderDeclarations(payload.preparation.providerCalls);
+    return boundTaskMandateRecords().validateTaskMandatePayload(payload);
 }
 function validateTaskMandateEnvelopeForRepository(repositoryRoot, envelope, providedSigner) {
     const payload = envelope.payload;
@@ -573,145 +404,16 @@ function validateTaskMandateEnvelopeForRepository(repositoryRoot, envelope, prov
     }
 }
 function authorizeProviderCall(record, operation, reservationId, authorizedAt, operationDigest) {
-    const declaration = record.envelope.payload.preparation.providerCalls[operation.providerId];
-    const requestedDataTypes = normalizeDataTypes(operation.dataTypes);
-    if (!declaration) {
-        throw workflowError('TASK_MANDATE_PROVIDER_NOT_DECLARED', `Provider ${operation.providerId} is not declared by the task mandate.`, ExitCode.guard);
-    }
-    if (requestedDataTypes.some((dataType) => !declaration.dataTypes.includes(dataType)) ||
-        requestedDataTypes.includes('source-code') !== operation.sourceCode ||
-        (operation.sourceCode && !declaration.sourceCode) ||
-        operation.secrets ||
-        (operation.retry && !declaration.retryOnFailure)) {
-        throw workflowError('TASK_MANDATE_PROVIDER_SCOPE_EXCEEDED', 'Provider call exceeds the data, source, secret, or retry scope in the task mandate.', ExitCode.guard);
-    }
-    if (operation.retry && declaration.retryRequiresHuman) {
-        throw workflowError('TASK_MANDATE_HUMAN_CONFIRMATION_REQUIRED', 'This provider retry requires a new human confirmation.', ExitCode.guard);
-    }
-    const usage = record.providerUsage[operation.providerId] ?? {
-        invocations: 0,
-        budget: 0,
-        reservations: [],
-    };
-    const budget = operation.budget === null ? 0 : operation.budget;
-    if (!Number.isFinite(budget) || budget < 0) {
-        throw mandateInvalid('Provider call budget is invalid.');
-    }
-    if (declaration.maxBudget !== null && operation.budget === null) {
-        throw workflowError('TASK_MANDATE_PROVIDER_SCOPE_EXCEEDED', 'A metered provider declaration requires an exact call budget.', ExitCode.guard);
-    }
-    // The declared budget bounds unsupervised spend. A caller holding a
-    // validated, consumed execution-budget grant carries a fresh human
-    // signature for exactly one bounded replacement, and that consent lifts the
-    // invocation ceiling by the one reservation it names. The monetary ceiling
-    // stays strict either way: granted entries record no per-call amount, so a
-    // metered excess could never be attributed.
-    if ((usage.invocations >= declaration.maxInvocations &&
-        operation.executionGrant === undefined) ||
-        (declaration.maxBudget !== null &&
-            usage.budget + budget > declaration.maxBudget)) {
-        throw workflowError('TASK_MANDATE_PROVIDER_BUDGET_EXHAUSTED', 'Task mandate provider invocation or monetary budget is exhausted.', ExitCode.guard);
-    }
-    const next = {
-        invocations: usage.invocations + 1,
-        budget: usage.budget + budget,
-        reservations: [
-            ...usage.reservations,
-            {
-                reservationId,
-                authorizedAt,
-                requestDigest: operation.requestDigest,
-                operationDigest,
-                ...(operation.executionGrant === undefined
-                    ? {}
-                    : { executionGrantId: operation.executionGrant.grantId }),
-            },
-        ].sort((left, right) => left.reservationId.localeCompare(right.reservationId)),
-    };
-    record.providerUsage[operation.providerId] = next;
-    return { invocations: next.invocations, budget: next.budget };
+    return boundTaskMandatePolicy().authorizeProviderCall(record, operation, reservationId, authorizedAt, operationDigest);
 }
 function isPreparationOperation(kind) {
-    return [
-        'repository-read',
-        'isolated-repository-write',
-        'add-delete-rename',
-        'local-command',
-        'draft-commit',
-        'candidate-or-design-artifact',
-        'read-only-connector',
-    ].includes(kind);
+    return boundTaskMandatePolicy().isPreparationOperation(kind);
 }
 function parseProviderDeclarations(value) {
-    const result = {};
-    for (const providerId of Object.keys(value).sort()) {
-        const declaration = value[providerId];
-        if (!isProviderId(providerId) || !isRecord(declaration)) {
-            throw mandateInvalid('Task mandate names an unknown provider.');
-        }
-        if (!hasExactKeys(declaration, [
-            'maxInvocations',
-            'maxBudget',
-            'dataTypes',
-            'sourceCode',
-            'secrets',
-            'retryOnFailure',
-            'retryRequiresHuman',
-        ]) ||
-            typeof declaration.maxInvocations !== 'number' ||
-            !Number.isInteger(declaration.maxInvocations) ||
-            declaration.maxInvocations < 1 ||
-            declaration.maxInvocations > 1000 ||
-            (declaration.maxBudget !== null &&
-                (typeof declaration.maxBudget !== 'number' ||
-                    !Number.isFinite(declaration.maxBudget) ||
-                    declaration.maxBudget < 0 ||
-                    declaration.maxBudget > 1_000_000)) ||
-            !Array.isArray(declaration.dataTypes) ||
-            typeof declaration.sourceCode !== 'boolean' ||
-            declaration.secrets !== false ||
-            typeof declaration.retryOnFailure !== 'boolean' ||
-            typeof declaration.retryRequiresHuman !== 'boolean') {
-            throw mandateInvalid('Task mandate provider declaration is invalid.');
-        }
-        const dataTypes = normalizeDataTypes(declaration.dataTypes);
-        if (dataTypes.length === 0 ||
-            dataTypes.includes('source-code') !== declaration.sourceCode ||
-            (declaration.retryRequiresHuman && !declaration.retryOnFailure)) {
-            throw mandateInvalid('Task mandate provider declaration has inconsistent data or retry bounds.');
-        }
-        result[providerId] = {
-            maxInvocations: declaration.maxInvocations,
-            maxBudget: declaration.maxBudget,
-            dataTypes,
-            sourceCode: declaration.sourceCode,
-            secrets: false,
-            retryOnFailure: declaration.retryOnFailure,
-            retryRequiresHuman: declaration.retryRequiresHuman,
-        };
-    }
-    return result;
-}
-function normalizeDataTypes(value) {
-    if (!value.every((entry) => typeof entry === 'string' &&
-        DATA_TYPES.includes(entry))) {
-        throw mandateInvalid('Task mandate provider data type is unknown.');
-    }
-    const normalized = [...new Set(value)].sort();
-    if (normalized.length !== value.length ||
-        normalized.some((entry, index) => entry !== value[index])) {
-        throw mandateInvalid('Task mandate provider data types must be sorted and unique.');
-    }
-    return normalized;
+    return boundTaskMandatePolicy().parseProviderDeclarations(value);
 }
 function cloneProviderDeclarations(declarations) {
-    return Object.fromEntries(Object.entries(declarations).map(([providerId, declaration]) => [
-        providerId,
-        {
-            ...declaration,
-            dataTypes: [...declaration.dataTypes],
-        },
-    ]));
+    return boundTaskMandatePolicy().cloneProviderDeclarations(declarations);
 }
 function inspectRecord(record, now) {
     assertRecordClock(record, now);
@@ -765,388 +467,37 @@ function isInactive(record, now) {
         TASK_MANDATE_INACTIVITY_DAYS * 24 * 60 * 60_000);
 }
 function taskMandateStorePaths(gitCommonDirectory) {
-    const runtime = runtimePaths(gitCommonDirectory, 'workflow-engine');
-    const root = path.join(runtime.root, 'task-mandates');
-    return {
-        runtime,
-        root,
-        active: path.join(root, 'active'),
-        terminal: path.join(root, 'terminal'),
-        history: path.join(root, 'history'),
-    };
+    return boundTaskMandateStore().taskMandateStorePaths(gitCommonDirectory);
 }
 function ensureStore(paths) {
-    for (const directory of [
-        paths.root,
-        paths.active,
-        paths.terminal,
-        paths.history,
-    ]) {
-        ensurePlainDirectory(directory);
-        fs.chmodSync(directory, 0o700);
-    }
+    return boundTaskMandateStore().ensureStore(paths);
 }
 function readTaskRecord(paths, taskId) {
-    const active = taskRecordPath(paths.active, taskId);
-    const terminal = taskRecordPath(paths.terminal, taskId);
-    if (fs.existsSync(active))
-        return parseCurrentTaskMandateRecord(readPrivateFile(active));
-    if (fs.existsSync(terminal)) {
-        return parseCurrentTaskMandateRecord(readPrivateFile(terminal));
-    }
-    throw workflowError('TASK_MANDATE_NOT_FOUND', `No task mandate exists for ${taskId}.`, ExitCode.guard);
+    return boundTaskMandateStore().readTaskRecord(paths, taskId);
 }
 function canonicalTaskMandateRecord(record) {
-    return `${canonicalJson(record)}\n`;
+    return boundTaskMandateRecords().canonicalTaskMandateRecord(record);
 }
 function parseCurrentTaskMandateRecord(raw) {
-    try {
-        const value = JSON.parse(raw);
-        if (!isRecord(value) ||
-            !hasExactKeys(value, [
-                'schemaVersion',
-                'state',
-                'mandateId',
-                'changeId',
-                'externalAuditRoot',
-                'taskId',
-                'lastActivityAt',
-                'providerUsage',
-                'revokedAt',
-                'revocationReason',
-                'envelope',
-            ]) ||
-            value.schemaVersion !== 2 ||
-            (value.state !== 'active' && value.state !== 'revoked') ||
-            typeof value.mandateId !== 'string' ||
-            typeof value.changeId !== 'string' ||
-            typeof value.externalAuditRoot !== 'string' ||
-            typeof value.taskId !== 'string' ||
-            typeof value.lastActivityAt !== 'string' ||
-            !isRecord(value.providerUsage) ||
-            (value.revokedAt !== null && typeof value.revokedAt !== 'string') ||
-            (value.revocationReason !== null &&
-                typeof value.revocationReason !== 'string') ||
-            !isRecord(value.envelope)) {
-            throw new Error('invalid record shape');
-        }
-        const productionEnvelope = parseTaskMandateEnvelope(`${canonicalJson(value.envelope)}\n`);
-        const providerUsage = {};
-        for (const [providerId, usage] of Object.entries(value.providerUsage)) {
-            if (!isProviderId(providerId) ||
-                !isRecord(usage) ||
-                !hasExactKeys(usage, ['invocations', 'budget', 'reservations']) ||
-                typeof usage.invocations !== 'number' ||
-                !Number.isInteger(usage.invocations) ||
-                usage.invocations < 0 ||
-                typeof usage.budget !== 'number' ||
-                !Number.isFinite(usage.budget) ||
-                usage.budget < 0 ||
-                !isSortedUniqueProviderReservations(usage.reservations)) {
-                throw new Error('invalid provider usage');
-            }
-            providerUsage[providerId] = {
-                invocations: usage.invocations,
-                budget: usage.budget,
-                reservations: structuredClone(usage.reservations),
-            };
-        }
-        const record = {
-            schemaVersion: 2,
-            state: value.state,
-            mandateId: value.mandateId,
-            changeId: value.changeId,
-            externalAuditRoot: value.externalAuditRoot,
-            taskId: value.taskId,
-            lastActivityAt: value.lastActivityAt,
-            providerUsage,
-            revokedAt: value.revokedAt,
-            revocationReason: value.revocationReason,
-            envelope: productionEnvelope,
-        };
-        const issuedAt = exactTimestamp(productionEnvelope.payload.issuedAt);
-        const lastActivityAt = exactTimestamp(record.lastActivityAt);
-        const declaredProviders = Object.keys(productionEnvelope.payload.preparation.providerCalls).sort();
-        const usageProviders = Object.keys(record.providerUsage).sort();
-        const reservations = Object.values(record.providerUsage).flatMap((usage) => usage?.reservations ?? []);
-        if (record.mandateId !== productionEnvelope.payload.mandateId ||
-            record.changeId !== productionEnvelope.payload.changeId ||
-            record.externalAuditRoot !==
-                productionEnvelope.payload.externalAuditRoot ||
-            record.taskId !== productionEnvelope.payload.taskId ||
-            issuedAt === undefined ||
-            lastActivityAt === undefined ||
-            lastActivityAt < issuedAt ||
-            JSON.stringify(declaredProviders) !== JSON.stringify(usageProviders) ||
-            new Set(reservations.map(({ reservationId }) => reservationId)).size !==
-                reservations.length ||
-            reservations.some(({ authorizedAt }) => exactTimestamp(authorizedAt) > lastActivityAt) ||
-            declaredProviders.some((providerId) => {
-                const declaration = productionEnvelope.payload.preparation.providerCalls[providerId];
-                const usage = record.providerUsage[providerId];
-                // Reservations attributed to a signed execution grant legitimately
-                // exceed the declared invocation ceiling by exactly their count.
-                const grantedReservations = usage?.reservations.filter(({ executionGrantId }) => executionGrantId !== undefined).length ?? 0;
-                return (!declaration ||
-                    !usage ||
-                    usage.invocations !== usage.reservations.length ||
-                    usage.invocations >
-                        declaration.maxInvocations + grantedReservations ||
-                    (declaration.maxBudget !== null &&
-                        usage.budget > declaration.maxBudget));
-            }) ||
-            (record.state === 'active' &&
-                (record.revokedAt !== null || record.revocationReason !== null)) ||
-            (record.state === 'revoked' &&
-                (exactTimestamp(record.revokedAt ?? '') === undefined ||
-                    exactTimestamp(record.revokedAt ?? '') < lastActivityAt ||
-                    !record.revocationReason)) ||
-            canonicalTaskMandateRecord(record) !== raw) {
-            throw new Error('invalid record binding');
-        }
-        return record;
-    }
-    catch (error) {
-        if (isWorkflowFailure(error))
-            throw error;
-        throw unsafeStore();
-    }
+    return boundTaskMandateRecords().parseCurrentTaskMandateRecord(raw);
 }
 function taskMandateAuditScope(repositoryRoot, payload) {
-    return {
-        externalAuditRoot: payload.externalAuditRoot,
-        repositoryRoot,
-        repositoryId: deriveAuthorityAuditRepositoryId(payload.repositoryId),
-    };
+    return boundTaskMandateAudit().taskMandateAuditScope(repositoryRoot, payload);
 }
 function taskMandateRefusalBinding(repositoryRoot, record, operation, refusalIdentity) {
-    const binding = taskMandateBinding(record);
-    const grantDigest = prefixedDigest(binding.mandateDigest);
-    return {
-        scope: taskMandateAuditScope(repositoryRoot, record.envelope.payload),
-        family: 'task-mandate',
-        operation,
-        subjectId: record.mandateId,
-        actor: { kind: 'engine', identity: 'workflow-engine' },
-        taskId: record.taskId,
-        changeId: record.changeId,
-        workflowId: record.mandateId,
-        grantDigest,
-        bindingDigest: grantDigest,
-        refusalIdentity: {
-            mandateId: record.mandateId,
-            ...refusalIdentity,
-        },
-    };
+    return boundTaskMandateAudit().taskMandateRefusalBinding(repositoryRoot, record, operation, refusalIdentity);
 }
 function appendTaskMandateAuthorizationAudit(repositoryRoot, record, now) {
-    const binding = taskMandateBinding(record);
-    const grantDigest = prefixedDigest(binding.mandateDigest);
-    return recordAuthorityAuditEvent(taskMandateAuditScope(repositoryRoot, record.envelope.payload), {
-        eventType: 'task-mandate',
-        occurredAt: record.envelope.payload.issuedAt,
-        idempotencyKey: auditValueDigest({
-            kind: 'task-mandate-authorization-audit.v1',
-            mandateId: record.mandateId,
-            grantDigest,
-        }),
-        actor: { kind: 'human', identity: record.envelope.payload.signer },
-        taskId: record.taskId,
-        changeId: record.changeId,
-        workflowId: record.mandateId,
-        grantDigest,
-        candidateBundleDigest: null,
-        prestateDigest: null,
-        poststateDigest: auditValueDigest({
-            kind: 'task-mandate-authorized-poststate.v1',
-            mandateId: record.mandateId,
-            issuedAt: record.envelope.payload.issuedAt,
-            state: 'active',
-        }),
-        command: {
-            name: 'task.authorize',
-            argvDigest: auditValueDigest({
-                changeId: record.changeId,
-                taskId: record.taskId,
-                grantDigest,
-            }),
-        },
-        providerInvocation: null,
-        externalEffect: null,
-        result: 'recorded',
-        outcomeDigest: auditValueDigest({
-            kind: 'task-mandate-authorization-outcome.v1',
-            binding,
-        }),
-        errorCode: null,
-    }, now === undefined ? {} : { now: () => now });
+    return boundTaskMandateAudit().appendTaskMandateAuthorizationAudit(repositoryRoot, record, now);
 }
-/**
- * The ledger rejects an event stamped far ahead of its own clock. The event
- * time here comes from the caller's clock, so the append has to read the same
- * one — otherwise any operation running on an injected clock records a time
- * the ledger then refuses.
- */
 function appendTaskMandateRevocationAudit(repositoryRoot, record, now) {
-    if (record.state !== 'revoked' ||
-        record.revokedAt === null ||
-        record.revocationReason === null) {
-        throw unsafeStore();
-    }
-    const binding = taskMandateBinding(record);
-    const grantDigest = prefixedDigest(binding.mandateDigest);
-    return recordAuthorityAuditEvent(taskMandateAuditScope(repositoryRoot, record.envelope.payload), {
-        eventType: 'revoke',
-        occurredAt: record.revokedAt,
-        idempotencyKey: auditValueDigest({
-            kind: 'task-mandate-revocation-audit.v1',
-            mandateId: record.mandateId,
-            revokedAt: record.revokedAt,
-        }),
-        actor: { kind: 'human', identity: record.envelope.payload.signer },
-        taskId: record.taskId,
-        changeId: record.changeId,
-        workflowId: record.mandateId,
-        grantDigest,
-        candidateBundleDigest: null,
-        prestateDigest: auditValueDigest({
-            kind: 'task-mandate-revocation-prestate.v1',
-            mandateId: record.mandateId,
-            state: 'active',
-        }),
-        poststateDigest: auditValueDigest({
-            kind: 'task-mandate-revocation-poststate.v1',
-            mandateId: record.mandateId,
-            revokedAt: record.revokedAt,
-            reasonDigest: auditValueDigest(record.revocationReason),
-            state: 'revoked',
-        }),
-        command: {
-            name: 'task.revoke',
-            argvDigest: auditValueDigest({
-                taskId: record.taskId,
-                reasonDigest: auditValueDigest(record.revocationReason),
-            }),
-        },
-        providerInvocation: null,
-        externalEffect: null,
-        result: 'revoked',
-        outcomeDigest: auditValueDigest({
-            kind: 'task-mandate-revocation-outcome.v1',
-            mandateId: record.mandateId,
-            revokedAt: record.revokedAt,
-        }),
-        errorCode: null,
-    }, now === undefined ? {} : { now: () => now });
+    return boundTaskMandateAudit().appendTaskMandateRevocationAudit(repositoryRoot, record, now);
 }
 function appendTaskMandateProviderReservationAudit(repositoryRoot, record, providerId, reservation) {
-    const grantDigest = prefixedDigest(taskMandateBinding(record).mandateDigest);
-    const requestDigest = prefixedDigest(reservation.requestDigest);
-    return recordAuthorityAuditEvent(taskMandateAuditScope(repositoryRoot, record.envelope.payload), {
-        eventType: 'grant-consume',
-        occurredAt: reservation.authorizedAt,
-        idempotencyKey: auditValueDigest({
-            kind: 'task-mandate-provider-reservation-audit.v1',
-            mandateId: record.mandateId,
-            reservationId: reservation.reservationId,
-            operationDigest: reservation.operationDigest,
-        }),
-        actor: { kind: 'engine', identity: 'workflow-engine' },
-        taskId: record.taskId,
-        changeId: record.changeId,
-        workflowId: reservation.reservationId,
-        grantDigest,
-        candidateBundleDigest: null,
-        prestateDigest: auditValueDigest({
-            kind: 'task-mandate-provider-reservation-prestate.v1',
-            mandateId: record.mandateId,
-            providerId,
-        }),
-        poststateDigest: auditValueDigest({
-            kind: 'task-mandate-provider-reservation-poststate.v1',
-            mandateId: record.mandateId,
-            providerId,
-            reservationId: reservation.reservationId,
-            operationDigest: reservation.operationDigest,
-        }),
-        command: {
-            name: 'provider.reserve',
-            argvDigest: auditValueDigest({
-                providerId,
-                reservationId: reservation.reservationId,
-                requestDigest,
-            }),
-        },
-        providerInvocation: {
-            providerId,
-            invocationId: reservation.reservationId,
-            requestDigest,
-        },
-        externalEffect: null,
-        result: 'recorded',
-        outcomeDigest: auditValueDigest({
-            kind: 'task-mandate-provider-reservation-outcome.v1',
-            providerId,
-            reservation,
-        }),
-        errorCode: null,
-    });
+    return boundTaskMandateAudit().appendTaskMandateProviderReservationAudit(repositoryRoot, record, providerId, reservation);
 }
 function appendTaskMandateProviderInvocationAudit(repositoryRoot, record, input) {
-    const grantDigest = prefixedDigest(taskMandateBinding(record).mandateDigest);
-    const requestDigest = prefixedDigest(input.requestDigest);
-    return recordAuthorityAuditEvent(taskMandateAuditScope(repositoryRoot, record.envelope.payload), {
-        eventType: 'provider-invocation',
-        occurredAt: input.occurredAt,
-        idempotencyKey: auditValueDigest({
-            kind: 'task-mandate-provider-invocation-audit.v1',
-            mandateId: record.mandateId,
-            invocationId: input.invocationId,
-            requestDigest,
-        }),
-        actor: { kind: 'engine', identity: 'provider-worker' },
-        taskId: record.taskId,
-        changeId: record.changeId,
-        workflowId: input.invocationId,
-        grantDigest,
-        candidateBundleDigest: null,
-        prestateDigest: auditValueDigest({
-            kind: 'task-mandate-provider-invocation-prestate.v1',
-            invocationId: input.invocationId,
-            state: 'prepared',
-        }),
-        poststateDigest: auditValueDigest({
-            kind: 'task-mandate-provider-invocation-poststate.v1',
-            invocationId: input.invocationId,
-            state: 'dispatch-authorized',
-        }),
-        command: null,
-        providerInvocation: {
-            providerId: input.providerId,
-            invocationId: input.invocationId,
-            requestDigest,
-        },
-        externalEffect: null,
-        result: 'recorded',
-        outcomeDigest: auditValueDigest({
-            kind: 'task-mandate-provider-invocation-outcome.v1',
-            providerId: input.providerId,
-            invocationId: input.invocationId,
-            requestDigest,
-        }),
-        errorCode: null,
-    });
-}
-function auditValueDigest(value) {
-    return `sha256:${crypto
-        .createHash('sha256')
-        .update(canonicalJson(value))
-        .digest('hex')}`;
-}
-function prefixedDigest(value) {
-    if (!/^[0-9a-f]{64}$/.test(value))
-        throw unsafeStore();
-    return `sha256:${value}`;
+    return boundTaskMandateAudit().appendTaskMandateProviderInvocationAudit(repositoryRoot, record, input);
 }
 function loadTrustContext(cwd) {
     const repository = discoverRepository(cwd);
@@ -1186,266 +537,55 @@ function currentSigner(repositoryRoot) {
     return createInteractiveSshSigner(repositoryRoot, loadPolicyAt(repositoryRoot, head).policy);
 }
 function taskRecordPath(directory, taskId) {
-    return path.join(directory, `${assertTaskMandateTaskId(taskId)}.json`);
+    return boundTaskMandateStore().taskRecordPath(directory, taskId);
 }
 function taskHistoryPath(directory, taskId, mandateId) {
-    return path.join(directory, `${assertTaskMandateTaskId(taskId)}.${assertMandateId(mandateId)}.json`);
+    return boundTaskMandateStore().taskHistoryPath(directory, taskId, mandateId);
 }
 function createPrivateFileAtomic(filePath, content) {
-    const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-    let descriptor;
-    try {
-        descriptor = fs.openSync(temporary, 'wx', 0o600);
-        fs.writeFileSync(descriptor, content, 'utf8');
-        fs.fsyncSync(descriptor);
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-        fs.linkSync(temporary, filePath);
-        fs.unlinkSync(temporary);
-        fsyncDirectory(path.dirname(filePath));
-    }
-    finally {
-        if (descriptor !== undefined)
-            fs.closeSync(descriptor);
-        fs.rmSync(temporary, { force: true });
-    }
+    return boundTaskMandateStore().createPrivateFileAtomic(filePath, content);
 }
 function replacePrivateFileAtomic(filePath, content) {
-    const temporary = `${filePath}.${process.pid}.${crypto.randomUUID()}.tmp`;
-    let descriptor;
-    try {
-        descriptor = fs.openSync(temporary, 'wx', 0o600);
-        fs.writeFileSync(descriptor, content, 'utf8');
-        fs.fsyncSync(descriptor);
-        fs.closeSync(descriptor);
-        descriptor = undefined;
-        fs.renameSync(temporary, filePath);
-        fsyncDirectory(path.dirname(filePath));
-    }
-    finally {
-        if (descriptor !== undefined)
-            fs.closeSync(descriptor);
-        fs.rmSync(temporary, { force: true });
-    }
+    return boundTaskMandateStore().replacePrivateFileAtomic(filePath, content);
 }
 function readPrivateFile(filePath) {
-    const stats = fs.lstatSync(filePath, { throwIfNoEntry: false });
-    if (!stats?.isFile() ||
-        stats.isSymbolicLink() ||
-        stats.nlink !== 1 ||
-        (stats.mode & 0o777) !== 0o600) {
-        throw unsafeStore();
-    }
-    return fs.readFileSync(filePath, 'utf8');
+    return boundTaskMandateStore().readPrivateFile(filePath);
 }
 function fsyncDirectory(directory) {
-    const descriptor = fs.openSync(directory, fs.constants.O_RDONLY);
-    try {
-        fs.fsyncSync(descriptor);
-    }
-    finally {
-        fs.closeSync(descriptor);
-    }
+    return boundTaskMandateStore().fsyncDirectory(directory);
 }
 function assertTaskMandateTaskId(value) {
-    if (!TASK_ID.test(value) || value.length > 128) {
-        throw mandateInvalid('Task mandate task ID must be lower-case kebab-case.');
-    }
-    return value;
+    return boundTaskMandatePolicy().assertTaskMandateTaskId(value);
 }
 function taskMandateBinding(record) {
-    return {
-        schemaVersion: 1,
-        mandateTaskId: record.taskId,
-        mandateId: record.mandateId,
-        mandateDigest: crypto
-            .createHash('sha256')
-            .update(canonicalTaskMandateEnvelope(record.envelope))
-            .digest('hex'),
-        changeId: record.changeId,
-        externalAuditRoot: record.externalAuditRoot,
-    };
+    return boundTaskMandatePolicy().taskMandateBinding(record);
 }
 function assertTaskMandateBinding(value) {
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'schemaVersion',
-            'mandateTaskId',
-            'mandateId',
-            'mandateDigest',
-            'changeId',
-            'externalAuditRoot',
-        ]) ||
-        value.schemaVersion !== 1 ||
-        typeof value.mandateTaskId !== 'string' ||
-        typeof value.mandateId !== 'string' ||
-        typeof value.mandateDigest !== 'string' ||
-        !/^[0-9a-f]{64}$/.test(value.mandateDigest) ||
-        typeof value.changeId !== 'string' ||
-        typeof value.externalAuditRoot !== 'string') {
-        throw mandateInvalid('Task mandate binding is malformed.');
-    }
-    return {
-        schemaVersion: 1,
-        mandateTaskId: assertTaskMandateTaskId(value.mandateTaskId),
-        mandateId: assertMandateId(value.mandateId),
-        mandateDigest: value.mandateDigest,
-        changeId: assertChangeId(value.changeId),
-        externalAuditRoot: assertExternalAuditRootPath(value.externalAuditRoot),
-    };
+    return boundTaskMandatePolicy().assertTaskMandateBinding(value);
 }
 function assertTaskMandateChange(record, changeId) {
-    if (record.changeId !== changeId) {
-        throw workflowError('TASK_MANDATE_CHANGE_MISMATCH', `Task mandate ${record.taskId} is bound to another change.`, ExitCode.guard);
-    }
+    return boundTaskMandatePolicy().assertTaskMandateChange(record, changeId);
 }
 function assertExactTaskMandateBinding(record, binding) {
-    const current = taskMandateBinding(record);
-    if (canonicalJson(current) !== canonicalJson(binding)) {
-        throw workflowError('TASK_MANDATE_BINDING_STALE', 'The durable task mandate binding no longer matches the active mandate.', ExitCode.staleState);
-    }
+    return boundTaskMandatePolicy().assertExactTaskMandateBinding(record, binding);
 }
 function assertProviderReservationId(value) {
-    if (!PROVIDER_RESERVATION_ID.test(value)) {
-        throw mandateInvalid('Provider reservation ID is invalid.');
-    }
-    return value;
+    return boundTaskMandatePolicy().assertProviderReservationId(value);
 }
 function assertProviderReservationOperation(value) {
-    if (!isRecord(value) ||
-        !(hasExactKeys(value, [
-            'providerId',
-            'dataTypes',
-            'sourceCode',
-            'secrets',
-            'retry',
-            'budget',
-            'requestDigest',
-        ]) ||
-            hasExactKeys(value, [
-                'providerId',
-                'dataTypes',
-                'sourceCode',
-                'secrets',
-                'retry',
-                'budget',
-                'requestDigest',
-                'executionGrant',
-            ])) ||
-        !isProviderId(value.providerId) ||
-        !Array.isArray(value.dataTypes) ||
-        typeof value.sourceCode !== 'boolean' ||
-        typeof value.secrets !== 'boolean' ||
-        typeof value.retry !== 'boolean' ||
-        (value.budget !== null && typeof value.budget !== 'number') ||
-        typeof value.requestDigest !== 'string' ||
-        !/^[0-9a-f]{64}$/.test(value.requestDigest) ||
-        (value.executionGrant !== undefined &&
-            !(isRecord(value.executionGrant) &&
-                hasExactKeys(value.executionGrant, ['grantId']) &&
-                typeof value.executionGrant.grantId === 'string' &&
-                /^[0-9a-f-]{36}$/.test(value.executionGrant.grantId)))) {
-        throw mandateInvalid('Provider reservation operation is malformed.');
-    }
-    return {
-        providerId: value.providerId,
-        dataTypes: normalizeDataTypes(value.dataTypes),
-        sourceCode: value.sourceCode,
-        secrets: value.secrets,
-        retry: value.retry,
-        budget: value.budget,
-        requestDigest: value.requestDigest,
-        ...(value.executionGrant === undefined
-            ? {}
-            : {
-                executionGrant: {
-                    grantId: value.executionGrant.grantId,
-                },
-            }),
-    };
+    return boundTaskMandatePolicy().assertProviderReservationOperation(value);
 }
 function taskMandateProviderOperationDigest(operation) {
-    // The grant is the authorization vehicle, not part of the operation's
-    // semantic identity: the same reservation replays identically whether or
-    // not its caller still holds the grant object.
-    const { executionGrant: _executionGrant, ...semantic } = operation;
-    return crypto
-        .createHash('sha256')
-        .update(canonicalJson({
-        kind: 'task-mandate-provider-reservation-operation.v1',
-        operation: semantic,
-    }))
-        .digest('hex');
+    return boundTaskMandatePolicy().taskMandateProviderOperationDigest(operation);
 }
 function findTaskMandateProviderReservation(record, reservationId) {
-    let found = null;
-    for (const [rawProviderId, usage] of Object.entries(record.providerUsage)) {
-        if (!isProviderId(rawProviderId) || usage === undefined)
-            throw unsafeStore();
-        const reservation = usage.reservations.find((candidate) => candidate.reservationId === reservationId);
-        if (reservation === undefined)
-            continue;
-        if (found !== null)
-            throw unsafeStore();
-        found = { providerId: rawProviderId, usage, reservation };
-    }
-    return found;
+    return boundTaskMandatePolicy().findTaskMandateProviderReservation(record, reservationId);
 }
 function assertProviderInvocationAuditInput(value) {
-    if (!isRecord(value) ||
-        !hasExactKeys(value, [
-            'providerId',
-            'invocationId',
-            'requestDigest',
-            'occurredAt',
-        ]) ||
-        !isProviderId(value.providerId) ||
-        typeof value.invocationId !== 'string' ||
-        typeof value.requestDigest !== 'string' ||
-        typeof value.occurredAt !== 'string' ||
-        !/^[0-9a-f]{64}$/.test(value.requestDigest) ||
-        exactTimestamp(value.occurredAt) === undefined) {
-        throw mandateInvalid('Provider invocation audit input is malformed.');
-    }
-    return {
-        providerId: value.providerId,
-        invocationId: assertProviderReservationId(value.invocationId),
-        requestDigest: value.requestDigest,
-        occurredAt: value.occurredAt,
-    };
+    return boundTaskMandatePolicy().assertProviderInvocationAuditInput(value);
 }
 function isSortedUniqueProviderReservations(value) {
-    return (Array.isArray(value) &&
-        value.every((reservation) => isRecord(reservation) &&
-            (hasExactKeys(reservation, [
-                'reservationId',
-                'authorizedAt',
-                'requestDigest',
-                'operationDigest',
-            ]) ||
-                hasExactKeys(reservation, [
-                    'reservationId',
-                    'authorizedAt',
-                    'requestDigest',
-                    'operationDigest',
-                    'executionGrantId',
-                ])) &&
-            typeof reservation.reservationId === 'string' &&
-            PROVIDER_RESERVATION_ID.test(reservation.reservationId) &&
-            typeof reservation.authorizedAt === 'string' &&
-            exactTimestamp(reservation.authorizedAt) !== undefined &&
-            typeof reservation.requestDigest === 'string' &&
-            /^[0-9a-f]{64}$/.test(reservation.requestDigest) &&
-            typeof reservation.operationDigest === 'string' &&
-            /^[0-9a-f]{64}$/.test(reservation.operationDigest) &&
-            (reservation.executionGrantId === undefined ||
-                (typeof reservation.executionGrantId === 'string' &&
-                    /^[0-9a-f-]{36}$/.test(reservation.executionGrantId)))) &&
-        new Set(value.map(({ reservationId }) => reservationId)).size ===
-            value.length &&
-        [...value]
-            .sort((left, right) => left.reservationId.localeCompare(right.reservationId))
-            .every((reservation, index) => canonicalJson(reservation) === canonicalJson(value[index])));
+    return boundTaskMandatePolicy().isSortedUniqueProviderReservations(value);
 }
 function assertExternalAuditRoot(value) {
     if (value === undefined) {
