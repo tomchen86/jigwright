@@ -2,6 +2,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
+import os from 'node:os';
 import { spawnSync } from 'node:child_process';
 import {
   captureGovernanceSource,
@@ -51,6 +52,13 @@ export function createGovernancePersistenceFixture(root: string) {
   const repositoryRoot = path.join(root, 'repository');
   const runtimeRoot = path.join(root, 'git-common', 'workflow-engine');
   fs.mkdirSync(repositoryRoot, { recursive: true });
+  runGitForTest(repositoryRoot, [
+    'init',
+    '-b',
+    'main',
+    '--separate-git-dir',
+    path.join(root, 'git-common'),
+  ]);
   fs.mkdirSync(runtimeRoot, { recursive: true, mode: 0o700 });
   configureRepositoryConsumer(repositoryRoot);
   const sourceInput = {
@@ -99,7 +107,6 @@ export function createGovernancePersistenceFixture(root: string) {
     },
   );
   const rendered = renderWorkRegistry(repositoryRoot);
-  runGitForTest(repositoryRoot, ['init', '-b', 'main']);
   runGitForTest(repositoryRoot, ['config', 'user.name', 'Jigwright Test']);
   runGitForTest(repositoryRoot, [
     'config',
@@ -141,7 +148,7 @@ export function snapshotGovernancePersistence(
       '-z',
     ]),
     sources: snapshotPlainTree(fixture.sourceLedgerRoot),
-    findings: snapshotPlainTree(path.join(fixture.runtimeRoot, 'findings')),
+    findings: snapshotFindingRefForTest(fixture.repositoryRoot),
     items: snapshotPlainTree(
       path.join(fixture.repositoryRoot, 'docs/work-registry/items'),
     ),
@@ -235,4 +242,63 @@ export function hasCode(expectedCode: string): (error: unknown) => boolean {
     error !== null &&
     'code' in error &&
     error.code === expectedCode;
+}
+
+export function readFindingRecordForTest(
+  repositoryRoot: string,
+  location: string,
+): Buffer {
+  const result = spawnSync('git', ['show', location], { cwd: repositoryRoot });
+  assert.equal(result.status, 0, result.stderr?.toString());
+  return result.stdout;
+}
+
+export function snapshotFindingRefForTest(repositoryRoot: string): string {
+  return runGitForTest(repositoryRoot, [
+    'rev-parse',
+    'refs/heads/jigwright/findings',
+  ]);
+}
+
+/** Build fixture corruption with an isolated Git index, leaving task files alone. */
+export function changeFindingRecordForTest(
+  repositoryRoot: string,
+  location: string,
+  content: string | null,
+  mode = '100644',
+): void {
+  const temporary = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'jigwright-finding-object-'),
+  );
+  const recordPath = location.slice(location.indexOf(':') + 1);
+  const ref = 'refs/heads/jigwright/findings';
+  const git = (args: string[], input?: string): string => {
+    const result = spawnSync('git', args, {
+      cwd: repositoryRoot,
+      encoding: 'utf8',
+      input,
+      env: { ...process.env, GIT_INDEX_FILE: path.join(temporary, 'index') },
+    });
+    assert.equal(result.status, 0, result.stderr);
+    return result.stdout.trim();
+  };
+  try {
+    git(['read-tree', ref]);
+    if (content === null) git(['update-index', '--force-remove', recordPath]);
+    else {
+      const blob = git(['hash-object', '-w', '--stdin'], content);
+      git(['update-index', '--add', '--cacheinfo', mode, blob, recordPath]);
+    }
+    const head = git([
+      'commit-tree',
+      git(['write-tree']),
+      '-p',
+      ref,
+      '-m',
+      'Fixture Finding record',
+    ]);
+    git(['update-ref', ref, head]);
+  } finally {
+    fs.rmSync(temporary, { recursive: true, force: true });
+  }
 }

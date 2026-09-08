@@ -24,6 +24,8 @@ import {
 } from '../src/modules/governance-intake/work-registry.ts';
 import {
   createGovernancePersistenceFixture,
+  changeFindingRecordForTest,
+  readFindingRecordForTest,
   snapshotGovernancePersistence,
   runGitForTest,
   configureRepositoryConsumer,
@@ -179,9 +181,17 @@ test('current Source and Finding create-only admission rejects unsafe identities
       },
     },
     {
-      name: 'Finding mode differs from the current writer',
+      name: 'Finding is an executable Git blob',
       poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
-        fs.chmodSync(fixture.finding.path, 0o644);
+        changeFindingRecordForTest(
+          fixture.repositoryRoot,
+          fixture.finding.path,
+          readFindingRecordForTest(
+            fixture.repositoryRoot,
+            fixture.finding.path,
+          ).toString('utf8'),
+          '100755',
+        );
         return [] as string[];
       },
       assertRejected(
@@ -194,16 +204,19 @@ test('current Source and Finding create-only admission rejects unsafe identities
               fixture.findingInput,
               fixture.findingNow,
             ),
-          hasCode('GOVERNANCE_FINDING_COLLISION'),
+          hasCode('GOVERNANCE_FINDING_STORE_UNSAFE'),
         );
       },
     },
     {
-      name: 'Finding has a second hard link',
+      name: 'Finding canonical identity drift',
       poison(fixture: ReturnType<typeof createGovernancePersistenceFixture>) {
-        const target = path.join(fixture.root, 'finding-hardlink.json');
-        fs.linkSync(fixture.finding.path, target);
-        return [target];
+        changeFindingRecordForTest(
+          fixture.repositoryRoot,
+          fixture.finding.path,
+          '{}\n',
+        );
+        return [] as string[];
       },
       assertRejected(
         fixture: ReturnType<typeof createGovernancePersistenceFixture>,
@@ -215,7 +228,7 @@ test('current Source and Finding create-only admission rejects unsafe identities
               fixture.findingInput,
               fixture.findingNow,
             ),
-          hasCode('GOVERNANCE_FINDING_COLLISION'),
+          hasCode('GOVERNANCE_INTAKE_INVALID'),
         );
       },
     },
@@ -228,10 +241,8 @@ test('current Source and Finding create-only admission rejects unsafe identities
     try {
       const fixture = createGovernancePersistenceFixture(root);
       assert.equal(fs.lstatSync(fixture.sourcePath).mode & 0o777, 0o644);
-      assert.equal(fs.lstatSync(fixture.finding.path).mode & 0o777, 0o600);
       if (typeof process.getuid === 'function') {
         assert.equal(fs.lstatSync(fixture.sourcePath).uid, process.getuid());
-        assert.equal(fs.lstatSync(fixture.finding.path).uid, process.getuid());
       }
       assert.equal(
         captureGovernanceSource(fixture.repositoryRoot, fixture.sourceInput)
