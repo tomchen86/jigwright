@@ -110,12 +110,12 @@ if (mode === 'host-start' || mode === 'host-resume') {
     process.stderr.write('v2-timeout-diagnostic\n');
     setInterval(() => {}, 1_000);
   } else if (mode === 'v2-cancel-ack') {
-    emitSession('start', 'native-bounded-cancel');
-    process.stderr.write('v2-cancel-diagnostic\n');
     process.once('SIGTERM', () => {
       emit({ schemaVersion: 2, type: 'cancel-ack', sequence: sequence++ });
       setTimeout(() => process.exit(0), 10);
     });
+    emitSession('start', 'native-bounded-cancel');
+    process.stderr.write('v2-cancel-diagnostic\n');
     setInterval(() => {}, 1_000);
   } else if (mode === 'v2-result-before-abort') {
     emitSession('start', 'native-bounded-result-before-abort');
@@ -165,6 +165,35 @@ if (mode === 'host-start' || mode === 'host-resume') {
     process.exitCode = 2;
   }
 } else {
+  // A hello allows immediate cancellation, so arm its handler first.
+  if (mode === 'cancel-ack') {
+    process.once('SIGTERM', () => {
+      emit({ schemaVersion: 1, type: 'cancel-ack', sequence: sequence++ });
+      setTimeout(() => process.exit(0), 10);
+    });
+  } else if (mode === 'cancel-ignore') {
+    process.on('SIGTERM', () => {});
+  } else if (mode === 'cancel-result') {
+    process.once('SIGTERM', () => {
+      emit({
+        schemaVersion: 1,
+        type: 'result',
+        sequence: sequence++,
+        outputSlot: 'primary',
+      });
+      setTimeout(() => process.exit(0), 10);
+    });
+  } else if (mode === 'cancel-error') {
+    process.once('SIGTERM', () => {
+      emit({
+        schemaVersion: 1,
+        type: 'error',
+        sequence: sequence++,
+        code: 'PROVIDER_FAILED',
+      });
+      setTimeout(() => process.exit(2), 10);
+    });
+  }
   emit({
     schemaVersion: 1,
     type: 'hello',
@@ -185,14 +214,11 @@ if (mode === 'host-start' || mode === 'host-resume') {
       sequence: sequence++,
       outputSlot: 'primary',
     });
-  } else if (mode === 'cancel-ack') {
-    process.once('SIGTERM', () => {
-      emit({ schemaVersion: 1, type: 'cancel-ack', sequence: sequence++ });
-      setTimeout(() => process.exit(0), 10);
-    });
-    setInterval(() => {}, 1_000);
-  } else if (mode === 'cancel-ignore') {
-    process.on('SIGTERM', () => {});
+  } else if (
+    ['cancel-ack', 'cancel-ignore', 'cancel-result', 'cancel-error'].includes(
+      mode,
+    )
+  ) {
     setInterval(() => {}, 1_000);
   } else if (mode === 'result-before-abort') {
     emit({
@@ -202,28 +228,6 @@ if (mode === 'host-start' || mode === 'host-resume') {
       outputSlot: 'primary',
     });
     setTimeout(() => process.exit(0), 25);
-  } else if (mode === 'cancel-result') {
-    process.once('SIGTERM', () => {
-      emit({
-        schemaVersion: 1,
-        type: 'result',
-        sequence: sequence++,
-        outputSlot: 'primary',
-      });
-      setTimeout(() => process.exit(0), 10);
-    });
-    setInterval(() => {}, 1_000);
-  } else if (mode === 'cancel-error') {
-    process.once('SIGTERM', () => {
-      emit({
-        schemaVersion: 1,
-        type: 'error',
-        sequence: sequence++,
-        code: 'PROVIDER_FAILED',
-      });
-      setTimeout(() => process.exit(2), 10);
-    });
-    setInterval(() => {}, 1_000);
   } else {
     process.exitCode = 2;
   }
