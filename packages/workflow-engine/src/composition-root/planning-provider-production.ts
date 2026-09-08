@@ -4,9 +4,6 @@
  * Invariants:
  * - Historical replay loads the contract from its exact commit before projecting document bytes.
  * - Provider and role policy readers preserve the selected repository authority.
- *
- * Depends on: Planning adapters, committed contracts, provider binding readers and semantic ledger.
- * Failure modes: Wrong assembly selects stale authority or reports spurious planning drift.
  */
 import {
   inspectPlanningTransition as inspectPlanningTransitionWithReader,

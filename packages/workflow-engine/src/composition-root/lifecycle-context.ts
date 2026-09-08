@@ -4,9 +4,6 @@
  * Invariants:
  * - Session operations retain their runtime identity checks and session lock.
  * - Document services use validated snapshots, canonical delta checks and completed Grant records.
- *
- * Depends on: Lifecycle runtime, repository adapters, document stores and application factories.
- * Failure modes: Wrong assembly changes candidate identity, lock coverage or finalization admission.
  */
 import path from 'node:path';
 

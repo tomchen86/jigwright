@@ -38,11 +38,16 @@ import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture
 test('the reviewed engine projection registry is fixed and transition-scoped', () => {
   assert.deepEqual(engineProjectionDefinitions(), [
     {
+      path: 'workflow/semantic-ledger/index.json',
+      transitions: ['plan', 'completion'],
+    },
+    {
       path: 'docs/CURRENT_AND_NEXT_STEPS.md',
       transitions: ['archive', 'completion', 'plan', 'rollback-completion'],
     },
   ]);
   assert.deepEqual(engineProjectionPathsForTransition('completion'), [
+    'workflow/semantic-ledger/index.json',
     'docs/CURRENT_AND_NEXT_STEPS.md',
   ]);
   assert.throws(

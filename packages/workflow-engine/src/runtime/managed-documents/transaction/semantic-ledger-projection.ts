@@ -5,9 +5,6 @@
  * - Explanations remain in source headers; import edges bind actual snapshot bytes.
  * - Replays preserve immutable objects and move the index through explicit supersession.
  * - The caller supplies its validated Manifest; projection never reselects live authority.
- *
- * Depends on: Validated Manifest facts, repository snapshots and immutable semantic ledger records.
- * Failure modes: Wrong authority makes replay stale; wrong bindings drift the semantic index.
  */
 
 import crypto from 'node:crypto';

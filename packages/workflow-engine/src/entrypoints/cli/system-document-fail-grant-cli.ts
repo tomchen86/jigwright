@@ -4,9 +4,6 @@
  * Invariants:
  * - Only the failed lifecycle command and its unchanged candidate may request this Grant.
  * - A requested exception remains human-action-required until the Grant decision executes.
- *
- * Depends on: Production document Grant services and CLI command result formatting.
- * Failure modes: A changed candidate refuses the request; unrelated failures keep their own routing.
  */
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import {

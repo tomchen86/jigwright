@@ -4,9 +4,6 @@
  * Invariants:
  * - Approval binds the current task, implementation and document bytes.
  * - Recovery reuses the same durable exception and never claims the documents passed.
- *
- * Depends on: Required document disposition service, Grant transitions and core ID validation.
- * Failure modes: A stale candidate refuses execution; an interrupted write awaits receipt recovery.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

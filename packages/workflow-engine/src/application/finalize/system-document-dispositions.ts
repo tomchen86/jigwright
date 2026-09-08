@@ -5,9 +5,6 @@
  * - Document bytes, applicable deltas, session and implementation identify one candidate.
  * - An accepted Grant is recorded as skipped-by-grant and never as a successful review.
  * - Reading or recording decisions does not require a protected Apply Grant or lifecycle lock.
- *
- * Depends on: Required candidate, session operation, review store and completed Grant ports.
- * Failure modes: Stale decisions block finalization; incomplete Grant receipts cannot skip review.
  */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

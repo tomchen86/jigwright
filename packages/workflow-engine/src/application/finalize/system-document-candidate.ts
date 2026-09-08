@@ -4,9 +4,6 @@
  * Invariants:
  * - Session worktree, branch and baseline agree before any document snapshot is read.
  * - Both sides of affected documents and all applicable deltas bind the candidate digest.
- *
- * Depends on: Session and repository read ports, document obligations and spec catalog.
- * Failure modes: Stale identity or missing delta bindings invalidate document decisions.
  */
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
