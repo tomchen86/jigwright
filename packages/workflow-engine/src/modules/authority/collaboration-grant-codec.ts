@@ -1358,6 +1358,12 @@ const collaborationGrantCodec = createCollaborationGrantCodec({
 });
 
 export const {
+  collaborationInvalid,
+  collaborationBindingMismatch,
+  exactDate,
+  assertArmoredSignature,
+  FULL_OID,
+  DIGEST,
   canonicalCollaborationGrantPayload,
   collaborationGrantSignatureNamespace,
   canonicalCollaborationGrantEnvelope,
