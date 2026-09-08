@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { markdownLines } from '@jigwright/core/markdown-sections';
 
 export type OpenSpecArchiveOperation =
   'added' | 'modified' | 'removed' | 'renamed';
@@ -29,7 +30,44 @@ export class OpenSpecArchiveProjectionError extends Error {
 export type OpenSpecArchiveProjectionReader = Readonly<{
   readPinnedText(revision: string, relativePath: string): string | undefined;
   readCurrentText(relativePath: string): string | undefined;
+  readSpecDeltaInputs?(
+    revision: string,
+    changeRoot: string,
+    changeId: string,
+    deltaSpecPaths?: readonly string[],
+  ): readonly OpenSpecDeltaInput[] | null;
 }>;
+
+export type OpenSpecDeltaInput = Readonly<{
+  capability: string;
+  baseSpecPath: string;
+  before: string;
+  delta: string;
+}>;
+
+/** Several historical capability names may now refer to one colocated contract. */
+export function combineOpenSpecDeltas(deltas: readonly string[]): string {
+  if (deltas.length === 1) return deltas[0]!;
+  const sections = new Map<string, string[]>();
+  for (const delta of deltas) {
+    let current: string | undefined;
+    for (const line of markdownLines(delta)) {
+      const heading = line.fenced ? null : /^##\s+(.+?)\s*$/.exec(line.text);
+      if (heading) {
+        current = /^(ADDED|MODIFIED|REMOVED|RENAMED) Requirements$/i.test(
+          heading[1]!,
+        )
+          ? heading[1]!.toUpperCase()
+          : undefined;
+        if (current && !sections.has(current)) sections.set(current, []);
+        if (current) sections.get(current)!.push('\n');
+      } else if (current) sections.get(current)!.push(line.raw);
+    }
+  }
+  return [...sections]
+    .map(([title, bodies]) => `## ${title}\n${bodies.join('')}`)
+    .join('\n');
+}
 
 export type ArchiveDeltaSource = { changeId: string; head: string };
 export type ArchiveDeltaProjection = {
@@ -58,17 +96,39 @@ export function verifyArchiveDeltaOutcomes(
 ): ArchiveDeltaVerification {
   const totals = { added: 0, modified: 0, removed: 0, renamed: 0 };
   const promotedSpecDigests: Record<string, string> = {};
-  for (const baseSpecPath of transformation.baseSpecPaths) {
-    const capability = baseSpecPath.split('/').at(-2);
-    if (!capability) throw invalidOutcome();
-    const deltaPath = `openspec/changes/${eligibility.changeId}/specs/${capability}/spec.md`;
-    const delta = reader.readPinnedText(eligibility.head, deltaPath);
+  const routedInputs = reader.readSpecDeltaInputs?.(
+    eligibility.head,
+    'openspec/changes',
+    eligibility.changeId,
+  );
+  const inputs =
+    routedInputs ??
+    transformation.baseSpecPaths.map((baseSpecPath) => {
+      const capability = baseSpecPath.split('/').at(-2);
+      if (!capability) throw invalidOutcome();
+      const deltaPath = `openspec/changes/${eligibility.changeId}/specs/${capability}/spec.md`;
+      const delta = reader.readPinnedText(eligibility.head, deltaPath);
+      if (delta === undefined) throw invalidOutcome();
+      return {
+        capability,
+        baseSpecPath,
+        delta,
+        before: undefined,
+      };
+    });
+  if (
+    routedInputs &&
+    JSON.stringify(
+      [...new Set(inputs.map(({ baseSpecPath }) => baseSpecPath))].sort(),
+    ) !== JSON.stringify([...transformation.baseSpecPaths].sort())
+  )
+    throw invalidOutcome();
+  for (const { capability, baseSpecPath, before, delta } of inputs) {
     const after = reader.readPinnedText(transformation.tree, baseSpecPath);
-    if (delta === undefined || after === undefined) throw invalidOutcome();
-    const before = reader.readPinnedText(eligibility.head, baseSpecPath);
+    if (after === undefined) throw invalidOutcome();
     const verified = verifyProjectedSpecDeltaOutcome(
       capability,
-      before ?? '',
+      before ?? reader.readPinnedText(eligibility.head, baseSpecPath) ?? '',
       delta,
       after,
     );
@@ -233,22 +293,35 @@ export function assertSpecDeltaScenarioPreservation(
   now: Date = new Date(),
 ): SpecDeltaPreflightRecord {
   const validatedBaseSpecDigests: Record<string, string> = {};
-  for (const deltaPath of deltaSpecPaths) {
-    const capability = deltaPath.split('/').at(-2);
-    if (capability === undefined) continue;
-    const baseSpecPath = `openspec/specs/${capability}/spec.md`;
-    const before = reader.readPinnedText(head, baseSpecPath);
-    const currentDeltaPath = `${changeRoot}/${changeId}/specs/${capability}/spec.md`;
-    const delta = reader.readCurrentText(currentDeltaPath);
-    if (delta === undefined) {
-      throw new OpenSpecArchiveProjectionError(
-        'SPEC_DELTA_PREFLIGHT_TREE_INVALID',
-        `Current delta specification is unavailable during archive-applicability replay: ${deltaPath}.`,
-      );
+  const routedInputs = reader.readSpecDeltaInputs?.(
+    head,
+    changeRoot,
+    changeId,
+    deltaSpecPaths,
+  );
+  if (routedInputs) {
+    for (const { capability, baseSpecPath, before, delta } of routedInputs) {
+      validatedBaseSpecDigests[baseSpecPath] = digest(before);
+      assertSpecDeltaPreconditions(capability, before, delta);
     }
-    const currentBase = before ?? '';
-    validatedBaseSpecDigests[baseSpecPath] = digest(currentBase);
-    assertSpecDeltaPreconditions(capability, currentBase, delta);
+  } else {
+    for (const deltaPath of deltaSpecPaths) {
+      const capability = deltaPath.split('/').at(-2);
+      if (capability === undefined) continue;
+      const baseSpecPath = `openspec/specs/${capability}/spec.md`;
+      const before = reader.readPinnedText(head, baseSpecPath);
+      const currentDeltaPath = `${changeRoot}/${changeId}/specs/${capability}/spec.md`;
+      const delta = reader.readCurrentText(currentDeltaPath);
+      if (delta === undefined) {
+        throw new OpenSpecArchiveProjectionError(
+          'SPEC_DELTA_PREFLIGHT_TREE_INVALID',
+          `Current delta specification is unavailable during archive-applicability replay: ${deltaPath}.`,
+        );
+      }
+      const currentBase = before ?? '';
+      validatedBaseSpecDigests[baseSpecPath] = digest(currentBase);
+      assertSpecDeltaPreconditions(capability, currentBase, delta);
+    }
   }
   return {
     status: 'passed',

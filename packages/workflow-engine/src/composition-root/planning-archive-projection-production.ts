@@ -25,6 +25,10 @@ import {
   parseValidation,
 } from '../adapters/planning/openspec/documents/openspec-payloads.ts';
 import { inspectOpenSpecSchemaContract } from '../adapters/planning/openspec/documents/openspec-schema-contract.ts';
+import {
+  prepareColocatedArchiveView,
+  withColocatedOpenSpecView,
+} from '../adapters/planning/openspec/documents/colocated-openspec-view.ts';
 
 const OPENSPEC_PROVIDER_ID = 'openspec' as const;
 const OPENSPEC_ARCHIVE_PROJECTION_CONTRACT_VERSION = 1 as const;
@@ -68,20 +72,40 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
       }) satisfies PlanningArchiveReadiness;
     },
     prepareArchive(context: PlanningArchiveProjectionContext) {
-      const { installation, openspec } = openSpecArchiveProcess(context);
-      return parseArchiveProjection(
-        openspec.archive(context.changeId),
-        context,
-        installation.version,
-      );
+      return withColocatedOpenSpecView(context.projectionRoot, (view) => {
+        const publish = prepareColocatedArchiveView(
+          context.projectionRoot,
+          view,
+          context.planningProvider.binding.planningRoot,
+        );
+        const nativeContext = { ...context, projectionRoot: view.root };
+        const { installation, openspec } = openSpecArchiveProcess(context);
+        const native =
+          view.root === context.projectionRoot
+            ? openspec
+            : createOpenSpecProcess(installation, { executionRoot: view.root });
+        const projection = parseArchiveProjection(
+          native.archive(context.changeId),
+          nativeContext,
+          installation.version,
+        );
+        publish(projection.archivePath);
+        return projection;
+      });
     },
     validateProjectedSpecs(context: PlanningArchiveProjectionContext) {
-      const { installation, openspec } = openSpecArchiveProcess(context);
-      return parseProjectedSpecValidation(
-        openspec.validateAllSpecs(),
-        context,
-        installation.version,
-      );
+      return withColocatedOpenSpecView(context.projectionRoot, (view) => {
+        const { installation, openspec } = openSpecArchiveProcess(context);
+        const native =
+          view.root === context.projectionRoot
+            ? openspec
+            : createOpenSpecProcess(installation, { executionRoot: view.root });
+        return parseProjectedSpecValidation(
+          native.validateAllSpecs(),
+          { ...context, projectionRoot: view.root },
+          installation.version,
+        );
+      });
     },
   });
 }

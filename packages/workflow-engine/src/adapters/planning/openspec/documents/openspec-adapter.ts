@@ -27,6 +27,7 @@ import {
   type OpenSpecStatus,
   type OpenSpecValidation,
 } from './openspec-payloads.ts';
+import { withColocatedOpenSpecView } from './colocated-openspec-view.ts';
 
 export { resolveOpenSpecInstallation };
 export type { OpenSpecInstallation };
@@ -175,23 +176,28 @@ export function createOpenSpecAdapter(
       });
     },
     validateAllSpecs: () => {
-      const specsDirectory = path.join(
-        installation.repositoryRoot,
-        'openspec/specs',
-      );
-      return withCanonicalDirectory(
-        installation.repositoryRoot,
-        specsDirectory,
-        () => {
-          const executed = openspec.validateAllSpecs();
+      return withColocatedOpenSpecView(installation.repositoryRoot, (view) => {
+        const specsDirectory = path.join(view.root, 'openspec/specs');
+        return withCanonicalDirectory(view.root, specsDirectory, () => {
+          const native =
+            view.root === installation.repositoryRoot
+              ? openspec
+              : createOpenSpecProcess(installation, {
+                  ...options,
+                  executionRoot: view.root,
+                });
+          const executed = native.validateAllSpecs();
           const validation = parseValidation(executed.value, {
-            repositoryRoot: installation.repositoryRoot,
+            repositoryRoot: view.root,
             expectedType: 'spec',
           });
           assertValidationExit(executed.status, validation.valid);
-          return validation;
-        },
-      );
+          return {
+            ...validation,
+            root: { ...validation.root, path: installation.repositoryRoot },
+          };
+        });
+      });
     },
   };
 }

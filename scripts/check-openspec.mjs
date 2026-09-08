@@ -2,6 +2,10 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { createOpenSpecAdapter } from '../packages/workflow-engine/src/adapters/planning/openspec/documents/openspec-adapter.ts';
+import { validateSystemDocumentStructure } from '../packages/workflow-engine/src/runtime/managed-documents/validation/system-documents.ts';
+import { readSystemDescriptionSnapshot } from '../packages/workflow-engine/src/runtime/repository-transaction/system-description-snapshot.ts';
+import { systemSpecPaths } from '../packages/workflow-engine/src/modules/source/system-documents.ts';
 
 const repositoryRoot = path.resolve(
   path.dirname(fileURLToPath(import.meta.url)),
@@ -23,9 +27,29 @@ if (!existsSync(openspecCli)) {
   process.exit(1);
 }
 
+try {
+  const validation = createOpenSpecAdapter(repositoryRoot).validateAllSpecs();
+  if (!validation.valid) {
+    for (const item of validation.items.filter((item) => !item.valid)) {
+      for (const issue of item.issues)
+        console.error(`${item.id}: ${issue.message}`);
+    }
+    process.exit(1);
+  }
+  const snapshot = readSystemDescriptionSnapshot(repositoryRoot);
+  if (systemSpecPaths(snapshot.listPaths()).length > 0)
+    validateSystemDocumentStructure(repositoryRoot, snapshot);
+  console.log(
+    `Strict base validation passed for ${validation.items.length} canonical specifications.`,
+  );
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
+
 const result = spawnSync(
   process.execPath,
-  [openspecCli, 'validate', '--all', '--strict', '--no-interactive'],
+  [openspecCli, 'validate', '--changes', '--strict', '--no-interactive'],
   {
     cwd: repositoryRoot,
     env: {

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
 
 import { verifyArchiveDeltaOutcomes } from '../../runtime/repository-transaction/archive-delta-verifier.ts';
 import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
@@ -182,9 +183,7 @@ export function validateCiArchiveCommit(
       payload.archivePath,
       replayPaths,
     );
-    const baseSpecPaths = replayPaths.filter((filePath) =>
-      filePath.startsWith('openspec/specs/'),
-    );
+    const baseSpecPaths = replayPaths.filter(isBaseSpecificationPath);
     verifyArchiveDeltaOutcomes(
       repositoryRoot,
       { changeId, head: parent },

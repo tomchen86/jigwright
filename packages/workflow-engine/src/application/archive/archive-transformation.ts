@@ -7,6 +7,9 @@ export { boundedArchiveCauseDiagnostic } from './archive-diagnostics.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
+import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
+import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
+import { readSystemSpecDeltaInputs } from '../../runtime/repository-transaction/system-spec-deltas.ts';
 
 import type { ArchiveEligibility } from './archive-eligibility.ts';
 import {
@@ -767,6 +770,11 @@ function readProjectionSpecInputs(
       'Archive applicability requires at least one current delta specification.',
     );
   }
+  const colocated = readSystemSpecDeltaInputs(
+    readSystemDescriptionSnapshot(worktree),
+    deltaPaths,
+  );
+  if (colocated) return colocated;
   return deltaPaths.map((deltaPath) => {
     const capability = deltaPath.slice(prefix.length, -'/spec.md'.length);
     if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(capability)) {
@@ -1062,9 +1070,7 @@ function verifyTransformation(
   const allowed = new Set([
     ...activeFiles,
     ...expectedArchivedFiles,
-    ...eligibility.targetPaths.filter((target) =>
-      target.startsWith('openspec/specs/'),
-    ),
+    ...eligibility.targetPaths.filter(isBaseSpecificationPath),
     ...managedOutputPaths,
   ]);
   if (
@@ -1081,9 +1087,7 @@ function verifyTransformation(
       { changedPaths },
     );
   }
-  const baseSpecPaths = changedPaths.filter((changedPath) =>
-    changedPath.startsWith('openspec/specs/'),
-  );
+  const baseSpecPaths = changedPaths.filter(isBaseSpecificationPath);
   for (const baseSpecPath of baseSpecPaths) {
     assertPlainArchiveOutputFile(worktree, baseSpecPath);
   }

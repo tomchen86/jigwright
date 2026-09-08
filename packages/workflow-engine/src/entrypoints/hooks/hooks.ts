@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { isBaseSpecificationPath } from '../../modules/source/system-spec-catalog.ts';
 
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
@@ -106,6 +107,7 @@ function findStagedLifecyclePaths(repositoryRoot: string): string[] {
     (filePath) =>
       filePath === changeLifecycleRelativePath ||
       filePath.startsWith(changeRoot) ||
+      isBaseSpecificationPath(filePath) ||
       filePath.startsWith(baseSpecRoot),
   );
 }

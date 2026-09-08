@@ -78,6 +78,25 @@ export function resolveCanonicalSystemSpec(
   );
 }
 
+export function baseSpecPathForCapability(
+  snapshot: SystemDescriptionSnapshot,
+  capability: string,
+): string {
+  const catalog = systemSpecCatalog(snapshot);
+  if (!catalog.length) return `openspec/specs/${capability}/spec.md`;
+  const spec = catalog.find((entry) => entry.aliases.includes(capability));
+  if (!spec)
+    throw invalid(`Capability ${capability} has no colocated canonical spec.`);
+  return spec.path;
+}
+
+export function isBaseSpecificationPath(file: string): boolean {
+  return (
+    /^openspec\/specs\/[^/]+\/spec.md$/.test(file) ||
+    systemSpecPaths([file]).length === 1
+  );
+}
+
 function invalid(message: string) {
   return workflowError(
     'SYSTEM_SPEC_CATALOG_INVALID',

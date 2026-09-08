@@ -22,6 +22,8 @@ import {
 
 import { readFileAtCommit } from './git.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { readSystemDescriptionSnapshot } from './system-description-snapshot.ts';
+import { readSystemSpecDeltaInputs } from './system-spec-deltas.ts';
 
 export { SPEC_DELTA_VALIDATOR_VERSION, findMissingScenarioIdentities };
 export type {
@@ -111,6 +113,22 @@ function archiveProjectionReader(
   repositoryRoot: string,
 ): OpenSpecArchiveProjectionReader {
   return {
+    readSpecDeltaInputs(revision, changeRoot, changeId, deltaSpecPaths) {
+      const snapshot = readSystemDescriptionSnapshot(repositoryRoot, revision);
+      const prefix = `${changeRoot}/${changeId}/specs/`;
+      return readSystemSpecDeltaInputs(
+        snapshot,
+        deltaSpecPaths ??
+          snapshot
+            .listPaths()
+            .filter(
+              (file) => file.startsWith(prefix) && file.endsWith('/spec.md'),
+            ),
+        deltaSpecPaths
+          ? (file) => fs.readFileSync(path.join(repositoryRoot, file), 'utf8')
+          : snapshot.readText,
+      );
+    },
     readPinnedText(revision, relativePath) {
       return readFileAtCommit(repositoryRoot, revision, relativePath);
     },

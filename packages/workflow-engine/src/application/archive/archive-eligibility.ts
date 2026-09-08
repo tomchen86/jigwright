@@ -1,5 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { baseSpecPathForCapability } from '../../modules/source/system-spec-catalog.ts';
+import { readSystemDescriptionSnapshot } from '../../runtime/repository-transaction/system-description-snapshot.ts';
 
 import { assertUniqueCollaborationGrantUses } from '../../modules/authority/collaboration-grant.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
@@ -545,9 +547,14 @@ function inspectArchiveTargets(
       return entry.name;
     })
     .sort();
-  const baseSpecs = capabilities.map(
-    (capability) => `openspec/specs/${capability}/spec.md`,
-  );
+  const snapshot = readSystemDescriptionSnapshot(repositoryRoot);
+  const baseSpecs = [
+    ...new Set(
+      capabilities.map((capability) =>
+        baseSpecPathForCapability(snapshot, capability),
+      ),
+    ),
+  ];
   for (const baseSpec of baseSpecs) {
     assertPlainAncestors(repositoryRoot, baseSpec);
     assertPlainFile(repositoryRoot, baseSpec, false);
