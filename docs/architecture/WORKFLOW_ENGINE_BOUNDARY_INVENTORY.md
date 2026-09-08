@@ -14,18 +14,18 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:1b7d061478c4d005ceeacf4932ab2d7895ab7509aedead017e2657ebd2ada3e3`.
+Current production inventory digest: `sha256:952e9870688ce837cc64d9f86ed1ce42dec0b6a608cd78600f171fe4c633f540`.
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
-| Primary workflow JSON literals             |         198 |    68 |
+| Primary workflow JSON literals             |         198 |    77 |
 | Primary split path joins/resolves          |           3 |     3 |
 | Primary dynamic workflow-root enumerations |           1 |     1 |
 | Bootstrap workflow JSON literals           |           9 |     3 |
 | Root tooling workflow JSON literals        |           9 |     2 |
 | Recovery workflow JSON literals            |          34 |    13 |
 | Recovery split path joins                  |           2 |     2 |
-| Workflow artifact package-path leaves      |        1303 |     6 |
+| Workflow artifact package-path leaves      |        1442 |     6 |
 
 The primary literals cover 14 unique paths. Split joins and dynamic directory
 enumeration are authenticated separately from direct literals. Bootstrap,

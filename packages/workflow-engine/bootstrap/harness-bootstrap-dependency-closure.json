@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:098f2ea1e64761abee961531c21d6b7cf8246e1d488bbec82bd57692f69c4047"
+      "digest": "sha256:33c7f85a82b4a82d1830f2232a7e02d998bdec55a849757f9ee425810388db4a"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -226,9 +226,14 @@
       "digest": "sha256:ef105ba121ef9796c31ff92dc9aa3f2dcb77b446071321a15486838eb7d29e84"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contract-parsers.js",
+      "mode": "100644",
+      "digest": "sha256:6b983f56dee7cd172e83c8dbfd531ce057cca242c314372ab7fd2ea7171e4065"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:2be03acf7c3f40826a13e98dbab538cf2934014835e164c5007a479ab0ce0404"
+      "digest": "sha256:3335b1d3e23844519395bfff98612283cf3b9d6f435ffb62981297f57e88731e"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
@@ -326,9 +331,19 @@
       "digest": "sha256:15f0c7f3a3daf141a408189ba35178dfeb7b6bb4aa40f5ff81b8330ffe0cc06c"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review-target-snapshot.js",
+      "mode": "100644",
+      "digest": "sha256:37735231cc7f873e35cb5ebe9099b1d942c2ba5e9e2551ece061fee28eb4e989"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review-values.js",
+      "mode": "100644",
+      "digest": "sha256:27d29e36208f10959c274248674b1136e97eab4189f2880d68efe264d536c6fb"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-review.js",
       "mode": "100644",
-      "digest": "sha256:515df6cbd2d808d44a0437ea00c331ade3938be018c170f88941be90959332fc"
+      "digest": "sha256:425ef8a2d3e75d459399c9dd1b1dc13ef058d2513b37d7fc0207a92c00fed957"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/assurance/plan-target.js",
@@ -366,9 +381,29 @@
       "digest": "sha256:876abeeb1676b49a07ba3ebeee1d1fe6113487b46275c78b1937c1ec47125db4"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance-context.js",
+      "mode": "100644",
+      "digest": "sha256:e1b042a0a9e6ed7c9460b56be918393668942fa763131d42c6868161d288c0a0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance-repair.js",
+      "mode": "100644",
+      "digest": "sha256:bf55eeabf95ead3c59a48a221b3806f28affa019b2cd78940a8244803ed53328"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance-retention.js",
+      "mode": "100644",
+      "digest": "sha256:6c5f0c38f3e10942676da60ba1a02939cbd9bccf4701090e9ad5e6c8381b2fd0"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance-values.js",
+      "mode": "100644",
+      "digest": "sha256:45ce1a1d17adb797ebae59caf35d8c43abe52f23b5c08d990307db93ca3e7270"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/authority/execution-governance.js",
       "mode": "100644",
-      "digest": "sha256:f78d4bd29be61063112bfcd02b90126e24b4c212c87f85301f867962b3833f5c"
+      "digest": "sha256:b164c9ef793d51a884356a1d7c82291ac63fe89c532abb836a8b76d3002d3557"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/authority/grant-approval.js",
@@ -461,9 +496,19 @@
       "digest": "sha256:ecbcc82676b35f2c3ffc7d3328f4f4b5e9fb511aeeeb4caec12a91ff067850d1"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry-promotion-transaction.js",
+      "mode": "100644",
+      "digest": "sha256:dfe7a9c1db505877437eda3f5279e88369bace36813632e8dca7592b2a6447f3"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry-record.js",
+      "mode": "100644",
+      "digest": "sha256:ed8d988f574671b54bd58986ad6019ece1e0f2885a8a98744b27a2df1415c90f"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/modules/governance-intake/work-registry.js",
       "mode": "100644",
-      "digest": "sha256:d0b930d69ea83800ab518a82707ebeffa8a496a4d198f3e3774f121b845b95d9"
+      "digest": "sha256:e2c4ead9b157eecd3cecf95eb9ad63ebd982e78ff32e86e047d35d5c8bbb34d1"
     },
     {
       "path": "bootstrap/recovery-runtime/src/modules/investigation/domain/class-disposition.js",
@@ -841,9 +886,19 @@
       "digest": "sha256:8e69ab7b9d8dacef954b5cffe3d4b074d399f104a45d86dcc91e8f94b2406d53"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-private-files.js",
+      "mode": "100644",
+      "digest": "sha256:393842e34becbd64a39a26e09b3ce10cf57cf055e25cbd5d5f7124184ccf6dc6"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-session-store.js",
       "mode": "100644",
-      "digest": "sha256:ca1485f2ad2e9253dfd6799cfa84b32a5f5a4dad2fb93707d56d2736227d02e9"
+      "digest": "sha256:98bcbc5a35d7c3787f891cc97685a08aed173b6eafaa46fa206133ef7b7f1cfe"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/investigation-store-values.js",
+      "mode": "100644",
+      "digest": "sha256:601893c58c389235cf81df795f86216886a152f2edf6d7293f6921cc08780f10"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/propose-exemption-store.js",
@@ -856,9 +911,59 @@
       "digest": "sha256:1b9e97d6b8883443a36dd11596d7b0b4060eeebb4955faf2f70ade3ead69fe99"
     },
     {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-host-wrapper-evidence.js",
+      "mode": "100644",
+      "digest": "sha256:539fdd48a729a2ccab0808efb5afe342264e893f31145ca3aa508591a336ce24"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-artifacts.js",
+      "mode": "100644",
+      "digest": "sha256:b6bd57e942b3c57e0bf9cf89c3750ebf02fdce6ce3cfa18ce866893db16b555b"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-common.js",
+      "mode": "100644",
+      "digest": "sha256:90d7bacb9f20cc94d992343b94ecf88cd0da0b6e502aa8e6e663ed3f5b6058b4"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-completion.js",
+      "mode": "100644",
+      "digest": "sha256:6dcabe3abdb1284e580896d0ff4f56199b252a3c21813cd163846ce38e8fea2a"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-policy.js",
+      "mode": "100644",
+      "digest": "sha256:cf974a01771f5dea5110539611bbf28bcf9da0fec18276a0394a47cc837b3e42"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-reservations.js",
+      "mode": "100644",
+      "digest": "sha256:3c3060775d1c781b6ba29512b6cb6bbefb25e7d8c9069cddc5a873fdfee4312d"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-state.js",
+      "mode": "100644",
+      "digest": "sha256:b3894a928ab2eff9d3c8723a2bbf8af4648414021de6093269cb18b73f0ca4e4"
+    },
+    {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-store.js",
       "mode": "100644",
-      "digest": "sha256:6f16a9906857cd2b56fcebe36f3ed2b6c8a1a98539ce913a5f2ff7f0cbaf82d3"
+      "digest": "sha256:7c72b46d445b2f14e04bca6377ffac54a6aa47f01f2beae4c9e3328bd104ab09"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-types.js",
+      "mode": "100644",
+      "digest": "sha256:3a43a0a14f99492de45ec813e29ec4a714247c15e2403ec3994b8193a7224af2"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-validation.js",
+      "mode": "100644",
+      "digest": "sha256:bc1af39f183910d15c281f4bb727feba207bb9b3653fc8fe81e52081d8197b73"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-workers.js",
+      "mode": "100644",
+      "digest": "sha256:86e0811cbea44af81f140262d95057175581a1875ca614b052addc27bf9014f2"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-native-session-store.js",
@@ -874,6 +979,21 @@
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-retention-receipt.js",
       "mode": "100644",
       "digest": "sha256:f055ec40b338fbe5cd83a82a77cb96ce5561b206016ca1e931a37cc794a58a85"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-runtime-authority.js",
+      "mode": "100644",
+      "digest": "sha256:943f7e022833a1980ce102d693679f1a9360d1372c6e49b8d205fed1a8e7d796"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-runtime-evidence-contract.js",
+      "mode": "100644",
+      "digest": "sha256:2fd4a90d1ba377d0318028c4a2a7ae810cde4284bd47381c8dbe58472cb78241"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-runtime-retention.js",
+      "mode": "100644",
+      "digest": "sha256:9f5265a8aa246030bd8ac801ddb75043e11033d9a50e831a49c3d78b925e20de"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/task-strategy-correction-store.js",

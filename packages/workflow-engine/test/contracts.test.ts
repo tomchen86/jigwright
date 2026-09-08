@@ -62,13 +62,22 @@ test('retired investigation readers are absent', () => {
 
 test('retired Issue CLI and compatibility mutation surfaces are absent', () => {
   const repositoryRoot = path.resolve(import.meta.dirname, '../../..');
-  const workRegistrySource = fs.readFileSync(
-    path.join(
-      repositoryRoot,
-      'packages/workflow-engine/src/modules/governance-intake/work-registry.ts',
-    ),
-    'utf8',
-  );
+  const workRegistrySource = [
+    'work-registry.ts',
+    'work-registry-record.ts',
+    'work-registry-promotion-transaction.ts',
+  ]
+    .map((file) =>
+      fs.readFileSync(
+        path.join(
+          repositoryRoot,
+          'packages/workflow-engine/src/modules/governance-intake',
+          file,
+        ),
+        'utf8',
+      ),
+    )
+    .join('\n');
   assert.equal(
     fs.existsSync(
       path.join(

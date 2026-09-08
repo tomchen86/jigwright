@@ -222,9 +222,11 @@ test('maintenance retry composition supplies the terminal consumed-role replay p
     providerWorker,
     /processProviderFailureRetry\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
+  const replacementCall = cli.match(/executeGrantedReplacement\([^)]*\)/)?.[0];
+  assert.ok(replacementCall);
   assert.match(
-    cli,
-    /executeGrantedReplacement\([\s\S]*?consumedRoleResultReplay:\s*productionConsumedRoleResultReplayPort/,
+    replacementCall,
+    /consumedRoleResultReplay:\s*productionConsumedPlanReviewReplayPort/,
   );
 });
 

@@ -936,9 +936,19 @@ test('production CLI injects the topology snapshot port into start, resume, and 
     /import \{ productionRoleTopologyResolutionPort \} from '\.\/composition-root\/role-topology-resolution-production\.ts';/u,
   );
   assert.equal(
-    source.match(
-      /roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu,
-    )?.length,
+    [
+      source,
+      fs.readFileSync(
+        new URL(
+          '../src/entrypoints/cli/task-lifecycle-cli.ts',
+          import.meta.url,
+        ),
+        'utf8',
+      ),
+    ]
+      .join('\n')
+      .match(/roleTopologyResolution:\s*productionRoleTopologyResolutionPort/gu)
+      ?.length,
     3,
   );
 });

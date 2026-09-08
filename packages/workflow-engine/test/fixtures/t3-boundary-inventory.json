@@ -17,15 +17,13 @@
     "workflowJsonOccurrences": 0,
     "workflowJsonFileCount": 0,
     "workflowJsonIdentityDigest": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "jsonSchemaIdHosts": {
-      "jigwright.local": 14
-    },
+    "jsonSchemaIdHosts": { "jigwright.local": 14 },
     "jsonSchemaIdIdentityDigest": "sha256:039d2e047631c04623b5c0e10a3ec896ea5995d2037c8e46322a5f24f727a025"
   },
   "workflowJsonReferenceBaseline": {
     "sourceOccurrences": 198,
-    "sourceFileCount": 68,
-    "sourceIdentityDigest": "sha256:51b42b81530a4d16f5c44a876570a11f1404f88b90b2ea65a119bdf0c761f242",
+    "sourceFileCount": 77,
+    "sourceIdentityDigest": "sha256:24eeb55bf87b95b1c5327d51b68fa3f2e3b2c3ce0919a7a00f63dec34b59f875",
     "bootstrapOccurrences": 9,
     "bootstrapFileCount": 3,
     "bootstrapIdentityDigest": "sha256:2a9c1ce34fa5d37fa5217d04ec4e6f34d3e9abd1a79864b767d95d927432c3b5",
@@ -63,9 +61,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 1303,
+    "occurrences": 1442,
     "fileCount": 6,
-    "identityDigest": "sha256:9fb849bb1bcb93f15577acc36206698a9f42a46403ad47fb84b60c0f34fd1e6b"
+    "identityDigest": "sha256:7ccfb3b830750293a54248366517a90a4e570daa33fa487fd3af447c459dd6c1"
   },
   "couplings": [
     {
