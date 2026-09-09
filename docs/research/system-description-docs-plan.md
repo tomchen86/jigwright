@@ -67,7 +67,7 @@ README 只有**一段手寫**，其餘生成：
 | 契約 | requirement 標題各一行連到 spec | 生成 |
 | 檔案 | 每檔一行：檔頭第一句 + 不變量條數 | 生成：檔頭抽取器（§3a） |
 
-裁決：第一頁 `modules/governance-intake/README.md`，第二頁 authority。
+裁決：第一頁 `modules/governance-intake/README.md`，第二頁 authority。2026-09-09 owner 驗收補課：增加 provider-orchestration README，補齊 §7 的 provider 註冊問題。
 
 三份文件的分工，用「少了會怎樣」檢驗：spec 少了沒東西可強制、測試不知道保護哪條需求；README 少了「為什麼」只存在聊天裡、讀者要開四個檔才找到方法；檔頭少了 agent 改檔時看不到不變量。三者不可互相替代。不准放的東西：spec 不放為什麼與檔案清單；README 不放 SHALL 與單檔細節；檔頭不放規則、為什麼、依賴。
 
@@ -157,7 +157,7 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 4. **生成器 v1**：SPEC_MAP、COVERAGE、REQUIREMENTS；BACKLOG 印原話、kind、分組；`work-history` 首次有 closed item 時生成。
 5. **finalize 反向閘門 + open-task 注入**（§5）。不需要檔頭。
 6. **import 邊填進 ledger 投影 + 檔頭淺抽取器**：把 `semanticDependencies: []` 換成 import 抓取；planning 時期投影接上；`Invariants:` 區塊抽取器（讀，不閘）。freshness 從此有東西可走，README 檔案表與 `covers` 有東西可查。
-7. **Module README**：governance-intake 先，authority 次。一段手寫「為什麼」帶確認 commit，其餘四段生成（§3）；CLI usage 字串補「做什麼」欄。
+7. **Module README**：governance-intake 先，authority 次；2026-09-09 owner 驗收補課增加 provider-orchestration。一段手寫「為什麼」帶確認 commit，其餘四段生成（§3）；CLI usage 字串補「做什麼」欄。
 8. **檔頭 baseline（縮小）**：只做 authority 與 provider-orchestration，兩段格式（§3a）；便宜 agent 寫職責句初稿，不變量由強模型或人確認。拿到真實成本再決定鋪不鋪滿。
 9. **Intake 修正**：Finding → dedicated ref；更正動詞（建 supersede 鏈）；`attach` 收既有 SRC id；**之後**把 15 筆 agent Source 轉成 Finding 並刪除（#17）。（`--kind`、觀察不鑄 Source、產物排除已落地。）
 10. **consumer 補課**：R-000 投影、document-policy、path-roles、schema 漂移清理。
@@ -173,6 +173,24 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 ## 7. 驗收
 
 同 v1，加：
+
+2026-09-09 驗收方法修正：
+
+**使用者原話（最高原則）**
+> 驗收規則該改成「**可見正文**不含雜湊」，排除 HTML 註解、archive、spec。
+
+**背景：** 原驗收把歷史證據、引擎隱藏 marker、契約及 CLI 名稱誤算為人讀正文的雜湊。
+**計畫影響：** 第 2 項檢查 Markdown 呈現後的正文，只判定實際雜湊值；隱藏 HTML 註解、archive、spec 與未顯示的連結目標不計入。CLI 旗標、演算法名稱與格式佔位文字不是雜湊值。歷史證據不刪除。
+
+**使用者原話（最高原則）**
+> Q1 要盲測得換一個沒讀過 repo 的 agent。
+
+**計畫影響：** Q1 使用沒有 repo 對話上下文的新 agent，只讀 authority README；首次讀取到形成答案須在 30 秒內，保存報告時間另計。記錄這是 agent 初讀，不能宣稱為真人盲測。Q2 由 provider-orchestration README 回答註冊方式；Q3 由 root README 說明整體流程。
+
+**使用者原話（最高原則）**
+> 在驗收 clone 裡重建 scaffold：`git update-ref refs/remotes/origin/main HEAD`，你上次已批准這個做法，驗收完就丟。
+
+**計畫影響：** 第 3、4 項可在可丟棄的 consumer clone 建立這個本地 scaffold，使用實際 managed path 驗證；不得把 scaffold 宣稱為真實遠端發布。仍不 push，不偽造 session、Grant 或 provider 結果。
 
 - scenario 沒有通過的測試 → `documents validate` 紅；`covers` 指向不存在的不變量 → 紅。
 - 每份 README 的「為什麼」段有確認 commit，且生成器印出此後的改動檔數。

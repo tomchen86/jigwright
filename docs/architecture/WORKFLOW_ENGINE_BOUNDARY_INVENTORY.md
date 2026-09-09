@@ -14,7 +14,7 @@ and JavaScript syntax rather than counting comments. The current audited
 checkpoint is the exact production observation identified below; the contract
 test requires every quantitative row to match that same command output.
 
-Current production inventory digest: `sha256:a0204a739641f39edd65515c565c8867c343477184bc14b1ef9764c1f695a79b`.
+<!-- Current production inventory digest: `sha256:a0204a739641f39edd65515c565c8867c343477184bc14b1ef9764c1f695a79b`. -->
 
 | Scope                                      | Occurrences | Files |
 | ------------------------------------------ | ----------: | ----: |
