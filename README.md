@@ -133,14 +133,18 @@ Domain modules:
 
 ## Adopting Jigwright in a repository
 
-There is no `init` command yet. A consumer repository installs the released
-tarballs (pinned under `workflow/vendor/jigwright/<version>/`), maps
-`pnpm workflow` to the `jigwright` bin, and carries its own configuration under
-`workflow/`: `config.json`, `repository-consumer.json`, `document-policy.json`,
-`path-roles.json`, `checks.json`, `ci-policy.json`, the grant and maintainer
-policies, and `role-provider-default.json`. Planning skills and prompts are
-generated with `pnpm workflow openspec-assets generate` and installed with
-`install-prompts`. `doctor` reports what is missing or unsafe.
+After installing the released package and mapping `pnpm workflow` to the
+`jigwright` bin, run `jigwright init` from the consumer repository. The wizard
+fills missing repository identity and configuration, selects a host provider
+TOML file, and offers to install guidance in instruction files you choose.
+Existing values are preserved. Use `jigwright init --help` or the
+[setup flags and answers](docs/features/AGENT_GUIDANCE.md) for scripted setup;
+[provider registration](packages/workflow-engine/src/modules/provider-orchestration/README.md)
+explains the host-profile and role-selection steps.
+
+Run `jigwright doctor --json` to inspect the remaining installation requirements.
+Planning skills and prompts are generated with
+`pnpm workflow openspec-assets generate` and installed with `install-prompts`.
 
 ## Inspecting a repository
 

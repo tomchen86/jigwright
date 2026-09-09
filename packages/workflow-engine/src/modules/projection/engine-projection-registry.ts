@@ -26,6 +26,7 @@ export type ProjectionId =
   | 'documents.requirements'
   | 'documents.governance-intake-readme'
   | 'documents.authority-readme'
+  | 'documents.provider-orchestration-readme'
   | 'semantic.binding-index'
   | 'guidance.agent-section';
 
@@ -47,7 +48,9 @@ export type ProjectionDefinition = Readonly<{
 /** Output declarations do not grant transition authority. Only the existing
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY: readonly ProjectionDefinition[] = Object.freeze([
-  ...(['governance-intake', 'authority'] as const).map((module) =>
+  ...(
+    ['governance-intake', 'authority', 'provider-orchestration'] as const
+  ).map((module) =>
     Object.freeze({
       id: `documents.${module}-readme` as const,
       version: 1,

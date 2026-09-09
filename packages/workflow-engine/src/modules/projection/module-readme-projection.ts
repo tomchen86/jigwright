@@ -32,6 +32,7 @@ const MODULE_COMMANDS = {
     'maintainer',
     'human-resolution-state',
   ],
+  'provider-orchestration': ['init', 'agent', 'adapter', 'role-config'],
 } as const;
 
 export function moduleReadmeProjectionBindings(
