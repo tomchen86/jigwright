@@ -2,7 +2,7 @@ import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 /** Output declarations do not grant transition authority. Only the existing
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY = Object.freeze([
-    ...['governance-intake', 'authority'].map((module) => Object.freeze({
+    ...['governance-intake', 'authority', 'provider-orchestration'].map((module) => Object.freeze({
         id: `documents.${module}-readme`,
         version: 1,
         target: Object.freeze({

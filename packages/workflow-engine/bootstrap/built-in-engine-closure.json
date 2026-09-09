@@ -1553,7 +1553,7 @@
     {
       "path": "src/entrypoints/cli/cli-input.ts",
       "mode": "100644",
-      "digest": "sha256:3df1600093200771d8c3f576a0b8a24a2d58c96cada141c258c88ad34d7c9d80"
+      "digest": "sha256:6bebe4154b8633d6da79cfd84436c2c072f854f7b4ef00da4ef83da0e170f0e3"
     },
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
@@ -2573,7 +2573,7 @@
     {
       "path": "src/modules/projection/engine-projection-registry.ts",
       "mode": "100644",
-      "digest": "sha256:52866ff3d0a57ad48dda60566332576ea43ad69664419d0a23fe3fa9abfec4a7"
+      "digest": "sha256:ee431eace1fe1ff8ab1a07e1a150781a515a89835a293d6bb68c20878ddfb8e9"
     },
     {
       "path": "src/modules/projection/investigation-design-projection.ts",
@@ -2588,7 +2588,7 @@
     {
       "path": "src/modules/projection/module-readme-projection.ts",
       "mode": "100644",
-      "digest": "sha256:5b20b2ab9136d7cb5d6f7a557fa90d2bd887e0593cf9aa25c862b254efee177e"
+      "digest": "sha256:efcf4f5613e8029e0bcd7f47d630809a659d476c05c92a5ca3b7ead65cd0a9a9"
     },
     {
       "path": "src/modules/projection/projection-service.ts",
