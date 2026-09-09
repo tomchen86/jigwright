@@ -32,7 +32,9 @@ test('module README derives commands, union data, contracts and header facts whi
   const bindings = () =>
     moduleReadmeProjectionBindings(
       snapshot,
-      [parseSystemSpec(specPath, files[specPath]!)],
+      Object.keys(files)
+        .filter((file) => file.endsWith('/spec.md'))
+        .map((file) => parseSystemSpec(file, files[file]!)),
       () => ['work.ts'],
       () => 'Possibly stale',
     );
@@ -74,6 +76,28 @@ test('module README derives commands, union data, contracts and header facts whi
   assert.match(files[readme]!, /feature, bug, chore/);
   assert.deepEqual(
     readModuleReadmeWhy(files[readme]!),
+    readModuleReadmeWhy(why),
+  );
+
+  const providerDirectory =
+    'packages/workflow-engine/src/modules/provider-orchestration';
+  const providerReadme = `${providerDirectory}/README.md`;
+  files[providerReadme] = why.replace('Governance intake', 'Providers');
+  files[`${providerDirectory}/spec.md`] =
+    '# Providers\n\n## Purpose\nSelect host profiles.\n\n## Requirements\n### Requirement: Use host profiles\n\nThe engine SHALL select host profiles.\n';
+  files['packages/workflow-engine/src/entrypoints/cli/cli-input.ts'] +=
+    "    '  jigwright agent provider probe <profile-id> --config <absolute-host-path> [--json] — Inspect the selected host profile.',\n";
+  service().project('documents.provider-orchestration-readme', {
+    install: true,
+  });
+  assert.match(files[providerReadme]!, /Inspect the selected host profile\./);
+  assert.match(files[providerReadme]!, /Use host profiles/);
+  assert.doesNotMatch(
+    files[providerReadme]!,
+    /Start the supplied work\.|Inspect exact authority\./,
+  );
+  assert.deepEqual(
+    readModuleReadmeWhy(files[providerReadme]!),
     readModuleReadmeWhy(why),
   );
 });

@@ -18,6 +18,7 @@ test('projection catalog keeps readable output separate from exact transition-ow
     [
       'documents.governance-intake-readme',
       'documents.authority-readme',
+      'documents.provider-orchestration-readme',
       'semantic.binding-index',
       'documents.spec-map',
       'documents.coverage',

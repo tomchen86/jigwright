@@ -114,6 +114,7 @@ test('documents CLI produces proof before validation and renders from the same c
       {
         'documents.governance-intake-readme': 'not-configured',
         'documents.authority-readme': 'not-configured',
+        'documents.provider-orchestration-readme': 'not-configured',
         'documents.spec-map': 'current',
         'documents.coverage': 'current',
         'documents.requirements': 'current',
