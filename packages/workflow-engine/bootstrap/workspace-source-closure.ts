@@ -1,3 +1,11 @@
+/**
+ * Resolves the exact workspace packages the engine runs from, and the exports they may be entered through.
+ *
+ * Invariants:
+ * - A missing runtime dependency or a dependency cycle fails the resolution instead of being skipped.
+ * - Only declared source roots inside the workspace are indexed; an unsafe path segment is refused.
+ * - An export lookup resolves against the admitted closure, so an unlisted package can never be entered.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

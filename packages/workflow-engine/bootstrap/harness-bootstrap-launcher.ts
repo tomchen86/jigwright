@@ -1,3 +1,11 @@
+/**
+ * Runs the recovery runtime from its own pinned closure when the ordinary engine cannot be trusted.
+ *
+ * Invariants:
+ * - Every runtime file is hashed and compared with the pinned manifest digest before execution.
+ * - The runtime is resolved inside the package root only; a path escaping it is refused rather than repaired.
+ * - The child process exit code is passed through unchanged.
+ */
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
