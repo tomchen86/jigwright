@@ -2,11 +2,10 @@
 
 ## Why this design
 
-<!-- jigwright:module-why -->
+<!-- jigwright:module-why confirmed=7fa6a85ee1e5d43a6efa4c2ab8c3e0f31d5fcf69 -->
 
 Keep installed provider profiles on the host so repositories select roles without owning executable commands. To register a built-in Codex or Claude profile, run `jigwright init` from the consumer repository, choose an absolute TOML path outside the repository, and enter the providers as a JSON array; for a macOS Codex installation at `/opt/homebrew/bin/codex`, use `[{"id":"codex-local","family":"codex","executable":"/opt/homebrew/bin/codex"}]`. Init validates and creates a new TOML file, including its explicit rankings; it preserves existing configuration. See [setup flags and answers](../../../../../docs/features/AGENT_GUIDANCE.md) for `--provider-config`, `--providers`, and noninteractive setup. Inspect the named profile with `jigwright agent provider probe codex-local --config /absolute/host/agent-providers.toml --json`. Then run `jigwright role-config configure --config /absolute/host/agent-providers.toml` in a terminal to choose and save declarative author, builder, and reviewer rules; inspect them with `jigwright role-config show --json`. A probe records observations without launching a model or accepting availability evidence. These steps register local profiles for existing provider families; repository policy still decides their permitted use.
 
-Confirmed at commit: `7fa6a85ee1e5d43a6efa4c2ab8c3e0f31d5fcf69`
 <!-- /jigwright:module-why -->
 
 <!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:7d5cf3e824c7b8b2e765fd30250609d0446184f2a6a7000d40a77c2a5cf2a915 -->

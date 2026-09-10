@@ -2,11 +2,10 @@
 
 ## Why this design
 
-<!-- jigwright:module-why -->
+<!-- jigwright:module-why confirmed=fa1eab4fc25bd29bd01e7567d6785046592789a2 -->
 
 Keep original requirement wording separate from the working inbox so corrections, scheduling and conversion never rewrite what the owner asked for. Source holds a core requirement, Finding records an observation, and a Work Item tracks work; this preserves the [recorded requirements](../../../../../docs/REQUIREMENTS.md) while keeping bugs and chores easy to capture. Use `now` or `later` to capture the owner's words and choose a lane, `attach` to add an existing Source, and `correct` to replace a selected citation with newly captured wording. Corrections retain the earlier Source, update active planning provenance recoverably, and require renewed interpretation confirmation; observations never manufacture owner wording. Findings and their append-only dispositions live on a dedicated Git ref so another clone can recover the same facts without expanding a task's write scope.
 
-Confirmed at commit: `fa1eab4fc25bd29bd01e7567d6785046592789a2`
 <!-- /jigwright:module-why -->
 
 <!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:d88d4a68f7f84345f56ae79af7f81efa86878d9faab24f071b06a01f857d17d1 -->

@@ -1,3 +1,12 @@
+/**
+ * Turns a blocked operation into one bounded, human-decidable Grant challenge and binds the chosen resolution to it.
+ *
+ * Invariants:
+ * - Every challenge offers at least one non-retry resolution, so a decision is always available and never only "try again".
+ * - Choice identities are unique within a challenge, and an approval selects one of that challenge's own choices.
+ * - A challenge expires within the fixed bound, and an expired challenge cannot be approved.
+ * - An approval subject binds the exact challenge digest and an approval method the selected resolution allows.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";

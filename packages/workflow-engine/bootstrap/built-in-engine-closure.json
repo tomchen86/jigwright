@@ -2003,7 +2003,7 @@
     {
       "path": "src/modules/authority/grant-core.ts",
       "mode": "100644",
-      "digest": "sha256:6596419ff972cff2eea24fe8f5a8a20700ef531b7ac33ea72dd3912848523806"
+      "digest": "sha256:41fb13c84df3af419ebdaf29d07e634b5b95110fdf3ca4803f9451d4a8a188b1"
     },
     {
       "path": "src/modules/authority/grant-parent-binding.ts",
@@ -2783,7 +2783,7 @@
     {
       "path": "src/modules/source/module-readme.ts",
       "mode": "100644",
-      "digest": "sha256:f029fe7ad912ec884da27360a292f2a0568110edb8f626d5f17e4d61ae2d192d"
+      "digest": "sha256:48e0b0212af5e54c2fa1c39cec755b72b22922af4a201bd33688c165661ce71d"
     },
     {
       "path": "src/modules/source/mutation-class-policy.ts",

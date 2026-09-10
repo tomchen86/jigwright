@@ -2,18 +2,17 @@
 
 ## Why this design
 
-<!-- jigwright:module-why -->
+<!-- jigwright:module-why confirmed=fa1eab4fc25bd29bd01e7567d6785046592789a2 -->
 
 Keep Grant Core as the single place that decides whether an exact operation may proceed, while the other modules report facts and recovery choices. This follows the [recorded requirements](../../../../../docs/REQUIREMENTS.md): an authorized continuation can reuse completed work without adding another veto or pretending a skipped check passed. Use inspection to understand current authority, approval to authorize the bound operation, and recovery to continue its recorded transaction.
 
-Confirmed at commit: `fa1eab4fc25bd29bd01e7567d6785046592789a2`
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:f13897f88ab07a9980ec296aa0b361dec6458d84fa619a87eb89f6c646b92052 -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:842f2da6afc0f573da1d0e083f601f876b836ff7cba0be0704cc8ffe776a259f -->
 
 <!-- prettier-ignore-start -->
 
-0 files changed in this module since confirmation.
+1 file changed in this module since confirmation.
 
 ## Commands
 
@@ -141,7 +140,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [git-authority-candidate-apply-receipt.ts](git-authority-candidate-apply-receipt.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [grant-approval.ts](grant-approval.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [grant-coordinator.ts](grant-coordinator.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [grant-core.ts](grant-core.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [grant-core.ts](grant-core.ts) | Turns a blocked operation into one bounded, human-decidable Grant challenge and binds the chosen resolution to it. | 4 | History unavailable |
 | [grant-parent-binding.ts](grant-parent-binding.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [grant-policy.ts](grant-policy.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [grant-primitives.ts](grant-primitives.ts) | No leading responsibility comment. | 0 | History unavailable |
