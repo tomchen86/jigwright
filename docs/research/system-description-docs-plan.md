@@ -204,7 +204,7 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 
 同 v1，加：不對檔頭設閘門（v1，只讀不閘）；檔頭不寫 `Depends on` 與 `Failure modes`；任何文件不手寫依賴；解釋不記作者；不做 symbol 粒度（v1）；不做跨 repo Finding；不把 SHALL 改寫成散文；不宣告 `owns` 除非跨目錄；不再寫任何宣稱「現在為真」而沒有閘門的手寫文件。
 
-## 9. 決定紀錄（2026-09-05 全部裁決，無待決）
+## 9. 決定紀錄（2026-09-05 起裁決，無待決；#20 於 09-10 補入）
 
 | # | 項目 | 狀態 |
 |---|---|---|
@@ -227,6 +227,7 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 | 17 | 15 筆 agent Source | **已決（09-08）**：每筆補建 Finding，然後刪除 Source（含 3 筆 supersede 鏈）；先移除 Work Item 的 sourceRefs 再刪物件。依賴第 9 步 Finding 進 repo，否則 Finding 只落在 `.git` |
 | 18 | 人類 plan review 一頁設計 | **已決**：第 5 步之後 |
 | 19 | `init` 逐步問答流程 research | **已決**：擱置 |
+| 20 | protected base 一定要是遠端嗎 | **已決（09-10）**：不必。保留「必須有 protected base」，拿掉「必須是遠端」；Fail-Grant 多一個選項建本地 ref（如 `refs/jigwright/protected-base`），archive 對它 update-ref 而不是 push。見 `WORK-01M1M0EM710HNHB2ZC6KHYH37E`（取代先前「非缺陷」的結論） |
 
 ## 10. 執行紀錄
 
@@ -235,6 +236,7 @@ validator 併入 openspec-base-spec-validity：懸空 SRC、無 spec 的 module 
 - **2026-09-04～05 fix branch（30 commits，摘要）**：intent 動詞拒 flag 文字；ignored 目錄記一筆；OpenSpec 從主 worktree 解析；checkpoint 錯誤說出 key、schema 附 template、manifest 去 base64；`now` 走 Fail-Grant；WHY 列以內容為身分；plan-review 欄位由引擎推導；validator 說出拒絕理由；retry 上限轉人類決策；Finding 不需 open session；產物排除出掃描；只有 origin.json 的 change 視為 reservation（finding #1）；**統一 intake：`--kind`、觀察不鑄 Source、task 內 later 轉 Finding、convert 不鑄 agent Source**（f5b1f36）。
 - **2026-09-05**：intake 模型裁決（§5b）、四個決定（§9 #3/#8/#12/#13）、use case 文件 S1–S12。
 - **2026-09-05 v2.1**：機械優先原則（§0.9）；spec 搬進 module 目錄、ownership 用包含關係；檔頭縮成兩段、不變量以檔頭為主、淺抽取器；README 只剩一段手寫；依賴不住任何文件。
+- **2026-09-10**：Phase C 驗收五項（2/3/4/5 通過，1 半通過，盲測實測）；grant-core 補檔頭、確認 commit 移出可見正文（9a4ffc4）；盲測四個缺口記成 inbox（32aadd3）；**#20 裁決：protected base 可以是 Grant 授權的本地 ref**，取代 09-04「非缺陷」的結論。下一步為 Phase D（本地 ref → 引擎自己跑第一個 change 到 archive → 分診 inbox）。
 - **2026-09-08**：另一個 session 的 09-05 計畫（§8 四項）併入 §9 #16–#19 並裁決；PLAN-projection-module-refactor 五步驗證落地（登記表六筆投影，doctor 讀 status）；PLAN-agent-guidance-projection 落地但尚未套到本 repo 的 AGENTS.md。
 - **2026-09-05 晚**：§9 全部 15 項裁決完畢（owner 照 agent 建議）；中心思想升到 §0 頂端（一個權威、多處可見、只印文字）；#1/#7 併入；#2 裁定 Fail-Grant；發現 R-000 不在 ledger、DECISION-REGISTER 未引用 R-000。
 

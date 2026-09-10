@@ -50,12 +50,12 @@ Agent-observed during the shared-expense-tracker pilot on the e5dbe1f build. now
 
 Agent-observed in the shared-expense-tracker pilot. The intent-level now facade returns PROPOSE_PROTECTED_BASE_UNAVAILABLE raw; only the propose command routes it through createProposeProtectedBaseFailGrantResult. Route the facade through the same handler.
 
-### Protected-base Fail-Grant is the exit; a local-only base needs its own design (verdict: not a defect)
+### A protected base may be a local ref authorized by Grant, not only a pushed remote
 
-- Kind: improvement
+- Kind: feature
 - Stage: inbox
 
-Agent-observed in the shared-expense-tracker pilot; revised after reading the eight call sites. A local protected base would leave archive publication and maintainer attestation undefined, so it is a design change rather than an added grant choice. The engine refusing to plan against a base that does not exist, and converting that into a Fail-Grant asking a person to create it, is correct under R-000. The real gap was the now facade surfacing the raw error, which is fixed. Recommend closing.
+> 簡單講就是grant 本地ref
 
 ### Planning worktree has no node_modules, so OpenSpec materialization fails after the investigation seals
 
