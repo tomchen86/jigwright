@@ -30,6 +30,7 @@ import { inspectOpenSpecSchemaContract } from '../adapters/planning/openspec/doc
 import {
   prepareColocatedArchiveView,
   withColocatedOpenSpecView,
+  type ColocatedOpenSpecView,
 } from '../adapters/planning/openspec/documents/colocated-openspec-view.ts';
 
 const OPENSPEC_PROVIDER_ID = 'openspec' as const;
@@ -114,7 +115,7 @@ export function createOpenSpecPlanningArchiveProjectionPort(): PlanningArchivePr
                 });
           return parseProjectedSpecValidation(
             native.validateAllSpecs(),
-            { ...context, projectionRoot: view.root },
+            view,
             installation.version,
           );
         },
@@ -242,13 +243,13 @@ function parseArchiveProjection(
 
 function parseProjectedSpecValidation(
   executed: { value: unknown; status: number },
-  context: PlanningArchiveProjectionContext,
+  view: ColocatedOpenSpecView,
   providerVersion: string,
 ): PlanningArchiveProjectedSpecValidation {
   const validation = parseOpenSpecValidationPayloadV1(
     executed.value,
     {
-      repositoryRoot: context.projectionRoot,
+      repositoryRoot: view.root,
       expectedType: 'spec',
     },
     invalidOpenSpecPayload,
@@ -258,14 +259,19 @@ function parseProjectedSpecValidation(
   }
   const diagnostics = Object.freeze(
     validation.items
-      .flatMap(({ issues }) => issues)
-      .map((issue) => ({
-        level: issue.level as PlanningArchiveProjectionDiagnostic['level'],
-        path: issue.path as string,
-        message: issue.message as string,
-        ...(typeof issue.line === 'number' ? { line: issue.line } : {}),
-        ...(typeof issue.column === 'number' ? { column: issue.column } : {}),
-      }))
+      .flatMap(({ id, issues }) => {
+        const specPath = view.specs.length
+          ? view.specs.find(({ capability }) => capability === id)?.path
+          : `openspec/specs/${id}/spec.md`;
+        if (specPath === undefined) throw invalidOpenSpecPayload();
+        return issues.map((issue) => ({
+          level: issue.level as PlanningArchiveProjectionDiagnostic['level'],
+          path: specPath,
+          message: `${issue.path}: ${issue.message}`,
+          ...(typeof issue.line === 'number' ? { line: issue.line } : {}),
+          ...(typeof issue.column === 'number' ? { column: issue.column } : {}),
+        }));
+      })
       .sort(compareDiagnostics),
   );
   return Object.freeze({

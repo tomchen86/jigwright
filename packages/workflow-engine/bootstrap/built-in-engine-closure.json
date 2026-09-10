@@ -1328,7 +1328,7 @@
     {
       "path": "src/composition-root/planning-archive-projection-production.ts",
       "mode": "100644",
-      "digest": "sha256:21ca41b559e28aa45308b3b1892b3b6b2b17e39833aa99b790b3756988978348"
+      "digest": "sha256:c561d39190b0f7b5c10aed1291beef8c4e81b4755d76c7dd0644ed5aff55ad6c"
     },
     {
       "path": "src/composition-root/planning-provider-authoring-production.ts",

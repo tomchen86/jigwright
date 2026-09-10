@@ -6,7 +6,10 @@ import test from 'node:test';
 import { planningProviderBindingDigest } from '@jigwright/core/planning-provider-binding';
 import { createArchiveApplicabilityProjection } from '../src/application/archive/archive-transformation.ts';
 import { createOpenSpecPlanningArchiveProjectionPort } from '../src/composition-root/planning-archive-projection-production.ts';
-import type { PlanningArchiveProjectionContext } from '../src/modules/planning-provider/planning-archive-projection-port.ts';
+import {
+  validatePlanningArchiveProjectedSpecs,
+  type PlanningArchiveProjectionContext,
+} from '../src/modules/planning-provider/planning-archive-projection-port.ts';
 import {
   verifyArchiveDeltaOutcomes,
   assertSpecDeltaScenarioPreservation,
@@ -20,13 +23,21 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
     git(root, ['config', 'user.name', 'Document test']);
     git(root, ['config', 'user.email', 'documents@example.test']);
     const canonicalPath = 'src/modules/intake/spec.md';
+    const otherPath = 'src/modules/other/spec.md';
+    const longWording =
+      'The engine SHALL preserve the original wording. ' +
+      'The explanation stays unchanged. '.repeat(18);
     const changeRoot = 'openspec/changes/colocated-change';
-    const original = `# Intake Specification\ncapabilities: [old-intake, old-routing]\n\n## Purpose\nKeep the original owner request wording intact while selecting exactly one route for each request.\n\n## Requirements\n${requirement('Original wording', 'The engine SHALL keep the wording.')}`;
+    const original = `# Intake Specification\ncapabilities: [old-intake, old-routing]\n\n## Purpose\nKeep the original owner request wording intact while selecting exactly one route for each request.\n\n## Requirements\n${requirement('Original wording', longWording)}${requirement('Existing detail', longWording)}`;
     const deltaOne = `# Wording delta\n\n## MODIFIED Requirements\n${requirement('Original wording', 'The engine SHALL keep the wording byte for byte.')}`;
     const deltaTwo = `# Routing delta\n\n## ADDED Requirements\n${requirement('Route once', 'The engine SHALL route a request once.')}`;
     const artifacts: Record<string, string> = {
       'openspec/config.yaml': 'schema: spec-driven\n',
       [canonicalPath]: original,
+      [otherPath]: original.replace(
+        'capabilities: [old-intake, old-routing]',
+        'capabilities: [other-intake]',
+      ),
       [`${changeRoot}/.openspec.yaml`]:
         'schema: spec-driven\ncreated: 2026-09-08\n',
       [`${changeRoot}/proposal.md`]:
@@ -45,6 +56,17 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
     git(root, ['add', '-A']);
     git(root, ['commit', '-m', 'Native colocated fixture']);
     const head = git(root, ['rev-parse', 'HEAD']).trim();
+    const binding = {
+      schemaVersion: 1 as const,
+      changeId: 'colocated-change',
+      providerId: 'openspec',
+      adapterContractVersion: 1,
+      providerRequirement: {
+        package: '@fission-ai/openspec',
+        version: '1.6.0',
+      },
+      planningRoot: changeRoot,
+    };
     const context: PlanningArchiveProjectionContext = {
       repositoryRoot: sourceRepositoryRoot,
       projectionRoot: fs.realpathSync(root),
@@ -54,18 +76,8 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
       planningProvider: {
         source: 'explicit',
         artifactPath: 'workflow/change-providers/colocated-change.json',
-        bindingDigest: 'a'.repeat(64),
-        binding: {
-          schemaVersion: 1,
-          changeId: 'colocated-change',
-          providerId: 'openspec',
-          adapterContractVersion: 1,
-          providerRequirement: {
-            package: '@fission-ai/openspec',
-            version: '1.6.0',
-          },
-          planningRoot: changeRoot,
-        },
+        bindingDigest: planningProviderBindingDigest(binding),
+        binding,
       },
     };
     const port = createOpenSpecPlanningArchiveProjectionPort();
@@ -80,12 +92,7 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
         activeArtifactPaths: Object.keys(artifacts).filter((p) =>
           p.startsWith(`${changeRoot}/`),
         ),
-        planningProvider: {
-          ...context.planningProvider,
-          bindingDigest: planningProviderBindingDigest(
-            context.planningProvider.binding,
-          ),
-        },
+        planningProvider: context.planningProvider,
       },
       {
         archiveProjectionPort: {
@@ -116,7 +123,18 @@ test('native OpenSpec validates and archives aliased deltas into one colocated s
       original,
     );
     assert.equal(git(root, ['status', '--porcelain']), '');
-    assert.equal(port.validateProjectedSpecs(context).valid, true);
+    const validation = validatePlanningArchiveProjectedSpecs(port, context);
+    assert.equal(validation.valid, true);
+    assert.deepEqual(
+      validation.diagnostics,
+      [canonicalPath, otherPath].flatMap((specPath) =>
+        [0, 1].map((index) => ({
+          level: 'INFO',
+          path: specPath,
+          message: `requirements[${index}]: Requirement text is very long (>500 characters). Consider breaking it down.`,
+        })),
+      ),
+    );
     assert.equal(fs.existsSync(path.join(root, 'openspec/specs')), false);
     const deltaPaths = Object.keys(artifacts).filter((p) =>
       p.includes('/specs/'),
