@@ -124,3 +124,31 @@ Agent-observed in the shared-expense-tracker pilot. After two same-fingerprint P
 > finding = agent的發現
 > source = 我說的requirement?
 > 有沒有active session好像不太重要？
+
+### Every grant file except grant-core has no leading responsibility comment
+
+- Kind: bug
+- Stage: inbox
+
+Blind reader test 2026-09-10: a reader who had never seen the repository reached the authority module's method list from its README in four documents, then read thirteen documents without finding any description of how Grant Core works and fell back to source. The generated file table reports grant-approval.ts, grant-coordinator.ts, grant-policy.ts, grant-primitives.ts, grant-transition-registry.ts, grant-parent-binding.ts and grant-verifier-port.ts as having no leading responsibility comment, and that is accurate. grant-core.ts was given a header in 9a4ffc4; the rest of the module still reports the gap.
+
+### A recorded requirement contradicts the provider contract with no disposition
+
+- Kind: bug
+- Stage: inbox
+
+Blind reader test 2026-09-10: docs/REQUIREMENTS.md preserves the owner's wording asking that users supply each provider's command so providers can be added and removed easily. The provider-orchestration contract requires the opposite: repository configuration must not supply an executable path, shell fragment or command template, and validation fails if it does. The requirements view presents the original wording as live and links it to contracts that refute it. The decision may be right, but the reader is given no note that it was superseded.
+
+### The grants-and-providers requirement links only to provider contracts
+
+- Kind: bug
+- Stage: inbox
+
+Blind reader test 2026-09-10: every link under the recorded requirement that grants and provider services are separate modules points at provider-orchestration/spec.md; none points at authority/spec.md. Half the requirement has no contract behind it in the generated view.
+
+### Two modules are missing from the reader-facing tables
+
+- Kind: bug
+- Stage: inbox
+
+Blind reader test 2026-09-10: the compatibility module appears in the modules directory but in neither the root README module table nor docs/SPEC_MAP.md; the adoption module appears in SPEC_MAP.md but not in the README module table. A reader navigating by the tables cannot discover either.
