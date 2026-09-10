@@ -74,10 +74,10 @@ import {
   createChangeRoutingContinuationGrantRequest,
 } from '../modules/lifecycle/change-routing-grant.ts';
 import {
-  createProtectedBaseInitializationGrantRequest,
-  protectedBaseInitializationGrantTransitionDefinitions,
-} from '../modules/authority/protected-base-initialization-grant.ts';
-import { createProductionProtectedBaseInitializationPort } from './protected-base-initialization-production.ts';
+  createProtectedBaseSelectionGrantRequest,
+  protectedBaseSelectionGrantTransitionDefinitions,
+} from '../modules/authority/protected-base-selection-grant.ts';
+import { createProductionProtectedBaseSelectionPort } from './local-protected-base-initialization-production.ts';
 import {
   createProductionChangeRoleAssignmentGrantPort,
   observeCurrentChangeRoleAssignmentGrantForInvocation,
@@ -497,7 +497,7 @@ export function createProductionWorkflowGrantCoordinator(
     git.gitCommonDirectory,
     authority.runtimeDirectory,
   ).root;
-  const protectedBase = createProductionProtectedBaseInitializationPort(cwd);
+  const protectedBase = createProductionProtectedBaseSelectionPort(cwd);
   const roleAssignment = createProductionChangeRoleAssignmentGrantPort(cwd);
   const protectedTaskApply = createProductionProtectedTaskApplyGrantPort(cwd);
   const protectedTaskApplyRecovery =
@@ -516,7 +516,7 @@ export function createProductionWorkflowGrantCoordinator(
       ),
       ...archivePullRequestGrantTransitionDefinitions(runtimeRoot),
       ...changeRoutingGrantTransitionDefinitions(cwd),
-      ...protectedBaseInitializationGrantTransitionDefinitions(protectedBase),
+      ...protectedBaseSelectionGrantTransitionDefinitions(protectedBase),
       ...changeRoleAssignmentGrantTransitionDefinitions(roleAssignment),
       ...protectedTaskApplyGrantTransitionDefinitions(protectedTaskApply),
       ...protectedTaskApplyRecoveryGrantTransitionDefinitions(
@@ -794,9 +794,9 @@ export async function requestProtectedBaseInitializationGrant(
   proposedReason: string,
 ) {
   const repositoryRoot = discoverRepository(cwd).repositoryRoot;
-  const port = createProductionProtectedBaseInitializationPort(repositoryRoot);
+  const port = createProductionProtectedBaseSelectionPort(repositoryRoot);
   return createProductionWorkflowGrantCoordinator(repositoryRoot).requestGrant(
-    createProtectedBaseInitializationGrantRequest(port, proposedReason),
+    createProtectedBaseSelectionGrantRequest(port, proposedReason),
   );
 }
 

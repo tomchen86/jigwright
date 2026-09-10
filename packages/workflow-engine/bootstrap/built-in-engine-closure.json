@@ -543,7 +543,7 @@
     {
       "path": "src/application/archive/archive-eligibility.ts",
       "mode": "100644",
-      "digest": "sha256:d51b17a1982138374c162a8bc8a8db44a50fa8c7273186c3d71fb882f3670266"
+      "digest": "sha256:fe26efd96212d254eba33bab3a65ec67d00ef4cb357fa8130257cf0ba2b38ca6"
     },
     {
       "path": "src/application/archive/archive-pr-orchestration.ts",
@@ -558,7 +558,7 @@
     {
       "path": "src/application/archive/archive-transition.ts",
       "mode": "100644",
-      "digest": "sha256:cf4e7f5012af52ed5a8d205a4be360c8288b9fb4ee9157e5ee565a92e7b5388a"
+      "digest": "sha256:bf62cfb645aa2879ca68fde13ee18d22098ab52884f145ef8c753e17d3fdce7d"
     },
     {
       "path": "src/application/configure/central-role-provider-default-wizard.ts",
@@ -743,7 +743,7 @@
     {
       "path": "src/application/control-plane/maintainer-attestation.ts",
       "mode": "100644",
-      "digest": "sha256:572b5dd79cf6c947a4dd40c168b25b3f2f185feac74acb3bd1da8857006b9c40"
+      "digest": "sha256:a269939c150eec99177804789d671c7e39829af70d4fc5f12cefdfe5b1531e7e"
     },
     {
       "path": "src/application/control-plane/maintainer-candidate-dependencies.ts",
@@ -1063,7 +1063,7 @@
     {
       "path": "src/application/propose/propose-orchestrator.ts",
       "mode": "100644",
-      "digest": "sha256:426d66bc77335e7ff725eef72b3843d456396db8170d0d94455ca131bbff9159"
+      "digest": "sha256:9f97f1e556113207a58413b23cb03415bf3fa4e1d9ae4102812f9c809f010c96"
     },
     {
       "path": "src/application/propose/propose-output.ts",
@@ -1118,7 +1118,7 @@
     {
       "path": "src/application/propose/propose-start.ts",
       "mode": "100644",
-      "digest": "sha256:0728bfb9c626ec8bffb869ff92e9ca2abe1e402ee8a5db30253aecdc92cf8dcb"
+      "digest": "sha256:d1c0054eac61401df72b19391befd064e5d1119effe7674f42b0e4b01e16cc46"
     },
     {
       "path": "src/application/propose/propose-status.ts",
@@ -1283,7 +1283,7 @@
     {
       "path": "src/composition-root/grant-production.ts",
       "mode": "100644",
-      "digest": "sha256:c8bcf0ffc332da70e803f34103018c705ff4b868216ff1b1c0187f6f7f845ae6"
+      "digest": "sha256:91a01372f12b901ef6fec395af3a5f46f83baee3db04d02b9d012d09a89e6869"
     },
     {
       "path": "src/composition-root/grant-verifier-composition.ts",
@@ -1299,6 +1299,11 @@
       "path": "src/composition-root/lifecycle-context.ts",
       "mode": "100644",
       "digest": "sha256:72f98be51b54453367f50de03a51bb47c06e39e58e2a619a5c3b3c545180973f"
+    },
+    {
+      "path": "src/composition-root/local-protected-base-initialization-production.ts",
+      "mode": "100644",
+      "digest": "sha256:b648c0a2ad523d7502c437e47674c70cd7c704624da536dbeed36e7755541220"
     },
     {
       "path": "src/composition-root/maintainer-signer.ts",
@@ -1348,7 +1353,7 @@
     {
       "path": "src/composition-root/protected-base-initialization-production.ts",
       "mode": "100644",
-      "digest": "sha256:5fbc58a625b20683242498699d1f7c8808a41b5370699b4da309ecacba629089"
+      "digest": "sha256:acd599366527ba0c3542d0b356a2f069cdd391c3beebee7371bd57c6b102ed2d"
     },
     {
       "path": "src/composition-root/protected-task-apply-descendant-settlement-grant-production.ts",
@@ -1573,7 +1578,7 @@
     {
       "path": "src/entrypoints/cli/fail-grant-cli.ts",
       "mode": "100644",
-      "digest": "sha256:ac0c53c88237654bb3b8ba85dea062b68c6178664e3968269b60d0b58a8fe839"
+      "digest": "sha256:49b5448d924bd7894cf3deb6c495e12d46970fa0093932ceeeee47e02fba2216"
     },
     {
       "path": "src/entrypoints/cli/governance-intake-cli.ts",
@@ -2143,7 +2148,12 @@
     {
       "path": "src/modules/authority/protected-base-initialization-grant.ts",
       "mode": "100644",
-      "digest": "sha256:c69f302bb364f29b7831396d64edd9aa2258709b8d2d8d27aad8f64c0b41673f"
+      "digest": "sha256:982b5c2c2e0e5a691614ede3d27736a3268ce2d2445e15da85cd59a748a19c57"
+    },
+    {
+      "path": "src/modules/authority/protected-base-selection-grant.ts",
+      "mode": "100644",
+      "digest": "sha256:ffcee6bae9539bc6d8cadb18d5426259c2e49e292e059821fb68147133219d47"
     },
     {
       "path": "src/modules/authority/protected-task-apply-descendant-settlement-grant.ts",
@@ -3258,7 +3268,7 @@
     {
       "path": "src/runtime/repository-transaction/git-commit-objects.ts",
       "mode": "100644",
-      "digest": "sha256:aca30761dfb4f6d67850a43a67c75a15fa4345a693e2bb22dc9d8daa909d6f00"
+      "digest": "sha256:07ab1951645e0f13e32d6fbb9aa312557cea6f31b955b1eea5990b183af88a55"
     },
     {
       "path": "src/runtime/repository-transaction/git-exact-staging.ts",
@@ -3283,7 +3293,7 @@
     {
       "path": "src/runtime/repository-transaction/git-transitions.ts",
       "mode": "100644",
-      "digest": "sha256:5a6775d713fa450e096c23221f273fedd992122e1722537853d5b24e80628b37"
+      "digest": "sha256:fa8cf41a657268d4b52b1822bdfc04520420020d4ab234aa1027c4b7a5b87dab"
     },
     {
       "path": "src/runtime/repository-transaction/git-working-state.ts",
@@ -3293,7 +3303,7 @@
     {
       "path": "src/runtime/repository-transaction/git.ts",
       "mode": "100644",
-      "digest": "sha256:615789f6e8617c11959e8bbed94647af52d9d856b4e28ae43c4e24c1b67133b7"
+      "digest": "sha256:6b80c72e4552d43fa1abbf88397c9fd741ae05ffa34d175ddaa64d9aa1eaca4f"
     },
     {
       "path": "src/runtime/repository-transaction/governed-artifact-fingerprints.ts",
@@ -3329,6 +3339,11 @@
       "path": "src/runtime/repository-transaction/post-approval-budget.ts",
       "mode": "100644",
       "digest": "sha256:6311f1ea013c13be14ffed0d7c3172aa39411089b308813541262c3b6c6f7b66"
+    },
+    {
+      "path": "src/runtime/repository-transaction/protected-base.ts",
+      "mode": "100644",
+      "digest": "sha256:459e1c8997e481cf04db5aaf94db22ea9a5522e64b77f61a2b737bb82708cef2"
     },
     {
       "path": "src/runtime/repository-transaction/system-description-snapshot.ts",
@@ -3408,7 +3423,7 @@
     {
       "path": "src/runtime/storage-journal/archive-report.ts",
       "mode": "100644",
-      "digest": "sha256:23f76da3a1a7275389c1256a556e52b0b43b445aabb53e0f4e33c999937ec468"
+      "digest": "sha256:d8cd4334776874d023953d3740a6ff7eb08342bb18dd4ed4e3338963f9b7fc78"
     },
     {
       "path": "src/runtime/storage-journal/authority-audit-anchor-records.ts",

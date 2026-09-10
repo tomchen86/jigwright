@@ -61,7 +61,10 @@ changes, completion, signing, publication, or any external effect.
    pnpm workflow finalize <session-id> --message "Imperative subject" --json
    ```
 
-7. Archive only after every task commit is present on the configured base:
+7. Archive after every task has a verified managed commit. In local protected
+   base mode, those commits must be reachable from the work branch. Archive
+   advances the work branch and local base together. In remote mode, every
+   task commit must already be present on the protected remote-tracking base:
 
    ```bash
    pnpm workflow archive <change-id> --json

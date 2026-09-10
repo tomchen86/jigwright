@@ -72,7 +72,7 @@ import {
 import { replaceTextAtomic } from '../../runtime/repository-transaction/atomic-text.ts';
 import {
   discoverRepository,
-  protectedBranchRef,
+  resolveProtectedBaseRef,
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
@@ -242,7 +242,7 @@ const proposeRuntime = {
     deriveReviewedMutationClassPolicy,
     replaceTextAtomic,
     discoverRepository,
-    protectedBranchRef,
+    resolveProtectedBaseRef,
     readFileAtCommit,
     runGit,
     readPinnedTrackedTree,

@@ -277,8 +277,10 @@ export function startPropose(
       ExitCode.guard,
     );
   }
-  const protectedBaseRef =
-    services.workspace.protectedBranchRef(protectedBranch);
+  const protectedBaseRef = services.workspace.resolveProtectedBaseRef(
+    context.git.repositoryRoot,
+    protectedBranch,
+  );
   const protectedBaseCommit = services.workspace
     .runGit(
       context.git.repositoryRoot,
@@ -289,7 +291,7 @@ export function startPropose(
   if (!/^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(protectedBaseCommit)) {
     throw workflowError(
       'PROPOSE_PROTECTED_BASE_UNAVAILABLE',
-      'The configured protected remote-tracking base is unavailable; an exact Fail-Grant challenge is required before initialization.',
+      'The configured protected base is unavailable; an exact Fail-Grant challenge is required before initialization.',
       ExitCode.staleState,
       { details: { protectedBaseRef, changeId } },
     );

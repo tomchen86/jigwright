@@ -72,14 +72,37 @@ export function createProtectedBaseInitializationGrantRequest(
     facts: observation,
     stateBinding: protectedBaseInitializationStateBinding(observation),
     candidates: Object.freeze([
-      Object.freeze({
-        transitionId: PROTECTED_BASE_INITIALIZATION_TRANSITION_ID,
-        parameters: parametersFromObservation(observation),
-        allowedReasonCodes: Object.freeze(['initialize-empty-protected-base']),
-        reasonRequired: true,
-        proposedReason: assertBoundedText(proposedReason, 'proposed reason'),
-      }),
+      protectedBaseInitializationGrantCandidate(
+        parametersFromObservation(observation),
+        proposedReason,
+      ),
     ]),
+  });
+}
+
+export function protectedBaseInitializationGrantCandidate(
+  parameters: ProtectedBaseInitializationParametersV1,
+  proposedReason: string,
+) {
+  return Object.freeze({
+    transitionId: PROTECTED_BASE_INITIALIZATION_TRANSITION_ID,
+    parameters: assertProtectedBaseInitializationParameters(parameters),
+    allowedReasonCodes: Object.freeze(['initialize-empty-protected-base']),
+    reasonRequired: true,
+    proposedReason: assertBoundedText(proposedReason, 'proposed reason'),
+  });
+}
+
+export function expectedEmptyProtectedBaseObservation(
+  parameters: ProtectedBaseInitializationParametersV1,
+): ProtectedBaseInitializationObservationV1 {
+  return Object.freeze({
+    ...parameters,
+    kind: 'protected-base-initialization-observation.v1',
+    remoteRefCount: 0,
+    remoteRefsDigest: digest(canonicalJson([])),
+    remoteCommit: null,
+    trackingCommit: null,
   });
 }
 

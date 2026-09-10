@@ -39,6 +39,7 @@ export {
   createSignedAuthorityCandidateCommitObject,
   createSignedAuthorityCommitObject,
   updateManagedRef,
+  updateManagedRefs,
 } from './git-commit-objects.ts';
 export {
   listStagedPaths,

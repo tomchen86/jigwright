@@ -17,7 +17,8 @@ import { validateInvestigationFirstPlanningReadiness } from '../../modules/assur
 import {
   discoverRepository,
   fingerprintRepositoryWorktree,
-  protectedBranchRef,
+  LOCAL_PROTECTED_BASE_REF,
+  resolveProtectedBaseRef,
   readFileAtCommit,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
@@ -234,7 +235,10 @@ function inspectEligibility(
       'workflow/config.json must configure a protected archive base.',
     );
   }
-  const baseRef = protectedBranchRef(protectedBranch);
+  const baseRef = resolveProtectedBaseRef(
+    initial.repositoryRoot,
+    protectedBranch,
+  );
   const base = resolveBase(initial.repositoryRoot, baseRef);
   assertAncestor(
     initial.repositoryRoot,
@@ -351,9 +355,11 @@ function inspectEligibility(
     assertAncestor(
       git.repositoryRoot,
       commit.hash,
-      base,
+      baseRef === LOCAL_PROTECTED_BASE_REF ? git.head : base,
       'ARCHIVE_TASK_COMMIT_UNREACHABLE',
-      'Every task commit must be reachable from the configured archive base.',
+      baseRef === LOCAL_PROTECTED_BASE_REF
+        ? 'Every task commit must be reachable from the local archive candidate.'
+        : 'Every task commit must be reachable from the configured archive base.',
       { taskId, commitHash: commit.hash },
     );
     return [{ ...commit, taskId }];

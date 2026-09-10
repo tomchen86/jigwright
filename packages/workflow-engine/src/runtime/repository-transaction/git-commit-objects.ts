@@ -18,7 +18,7 @@ import {
   resolveCommitIdentity,
   validateCommitSubject,
 } from './git-transition-values.ts';
-import { runGit, runGitWithEnvironment } from './git.ts';
+import { runGit, runGitBuffer, runGitWithEnvironment } from './git.ts';
 
 export function createManagedCommitObject(
   repositoryRoot: string,
@@ -218,6 +218,42 @@ export function updateManagedRef(
       ExitCode.staleState,
     );
   }
+}
+
+export function updateManagedRefs(
+  repositoryRoot: string,
+  updates: readonly {
+    ref: string;
+    expectedHead: string;
+    commitHash: string;
+  }[],
+): void {
+  runGitBuffer(
+    repositoryRoot,
+    [
+      'update-ref',
+      '--no-deref',
+      '--stdin',
+      '-z',
+      '-m',
+      'workflow managed commit',
+    ],
+    {
+      input: Buffer.from(
+        [
+          'start',
+          ...updates.flatMap(({ ref, expectedHead, commitHash }) => [
+            `update ${ref}`,
+            commitHash,
+            expectedHead,
+          ]),
+          'prepare',
+          'commit',
+          '',
+        ].join('\0'),
+      ),
+    },
+  );
 }
 
 export function createAmendPlanCommitObject(

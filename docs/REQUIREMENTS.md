@@ -430,7 +430,7 @@ No linked contract yet.
 - [Formatting and Generated Asset Validation Have Disjoint Scope](../spec.md)
 - [Credential-Free Assurance Checkout Compatibility](../spec.md)
 - [Authority verification is base-owned](../spec.md)
-- [Archive base resolves from the protected remote-tracking ref](../spec.md)
+- [Archive base resolves from the selected protected ref](../spec.md)
 - [Hosted Enforcement Observations Remain Exact and Separate From Local Preparation](../spec.md)
 - [Managed Commit Kinds Follow the Canonical Grammar](../spec.md)
 - [Authority Readiness Distinguishes Local and External Evidence](../spec.md)
@@ -466,6 +466,13 @@ No linked contract yet.
 > 當然是我的話為準 fail grant 我不希望任何開發使用者使用我們的engine走進死胡同
 
 - [Finalize Records Exact Contract and Explanation Dispositions](../packages/workflow-engine/spec.md)
+
+## 簡單講就是grant 本地ref
+
+> 簡單講就是grant 本地ref
+
+- [Protected Base Initialization Offers a Local Grant Choice](../packages/workflow-engine/src/modules/authority/spec.md)
+- [Archive base resolves from the selected protected ref](../spec.md)
 
 ## 我想要開發新的feature 如聊天所示 但是要符合於各種專案 易維護 agent幾乎不回忘記要更新 然後架構合理 該有的都有
 

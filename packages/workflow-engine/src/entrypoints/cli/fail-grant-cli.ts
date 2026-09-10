@@ -534,7 +534,7 @@ export async function createProposeProtectedBaseFailGrantResult(
   if (!startsPropose || changeId === undefined) return null;
   const grant = await requestGrant(
     cwd,
-    'Authorize create-only initialization of the empty canonical remote protected base from the exact current commit so governed planning can continue.',
+    'Choose create-only initialization of a local protected base or the empty canonical remote from the exact current commit so governed planning can continue.',
   );
   return {
     command: args[0]!,
@@ -551,13 +551,13 @@ export async function createProposeProtectedBaseFailGrantResult(
         ...(error.details ? { details: error.details } : {}),
       },
       grant,
-      externalPublicationPending: true,
+      initializationPending: true,
       inputSchema: {
         schemaVersion: 1,
         kind: 'central-grant-resolution.v1',
         inspectCommand: `pnpm workflow grant human inspect ${grant.challengeId} --json`,
         decisionCommand: `pnpm workflow grant human decide ${grant.challengeId} --json`,
-        retryAfterPublication: 'rerun the same propose command',
+        retryAfterDecision: 'rerun the same propose command',
       },
     },
   };

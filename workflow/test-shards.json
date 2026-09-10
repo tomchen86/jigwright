@@ -12,9 +12,9 @@
   },
   "sourceTelemetryRunId": "run-20260908074621343-ca3c833b-e482-4f09-8131-def2a41578e8",
   "sourceTelemetryDigest": "sha256:4deab100531da5ca55c59055a1f531708e4e7cf15c918e9a6b1cd4a80e542167",
-  "physicalFileCount": 453,
-  "executionUnitCount": 450,
-  "inventoryDigest": "sha256:a2292c6590b74a8ec58a681142f03e8955194609fab6d804f9557c741b71f14f",
+  "physicalFileCount": 454,
+  "executionUnitCount": 451,
+  "inventoryDigest": "sha256:737fcfb961d3683ac1d079edce8c0823b8aed4ab7ad286da467529baf5dbf4f6",
   "shards": [
     {
       "shardNumber": 1,
@@ -3146,11 +3146,19 @@
           "estimatedDurationMs": 0
         },
         {
+          "entrypoint": "packages/workflow-engine/test/protected-base-selection-grant.integration.test.ts",
+          "ownedPhysicalFiles": [
+            "packages/workflow-engine/test/protected-base-selection-grant.integration.test.ts"
+          ],
+          "legacyOrdinal": 439,
+          "estimatedDurationMs": 0
+        },
+        {
           "entrypoint": "packages/workflow-engine/test/provider-native-session-closure.integration.test.ts",
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/provider-native-session-closure.integration.test.ts"
           ],
-          "legacyOrdinal": 439,
+          "legacyOrdinal": 440,
           "estimatedDurationMs": 0
         },
         {
@@ -3158,7 +3166,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/source-aliases.contract.test.ts"
           ],
-          "legacyOrdinal": 440,
+          "legacyOrdinal": 441,
           "estimatedDurationMs": 0
         },
         {
@@ -3166,7 +3174,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-boundaries.contract.test.ts"
           ],
-          "legacyOrdinal": 441,
+          "legacyOrdinal": 442,
           "estimatedDurationMs": 0
         },
         {
@@ -3174,7 +3182,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-context.contract.test.ts"
           ],
-          "legacyOrdinal": 442,
+          "legacyOrdinal": 443,
           "estimatedDurationMs": 0
         },
         {
@@ -3182,7 +3190,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-disposition.contract.test.ts"
           ],
-          "legacyOrdinal": 443,
+          "legacyOrdinal": 444,
           "estimatedDurationMs": 0
         },
         {
@@ -3190,7 +3198,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-evidence.contract.test.ts"
           ],
-          "legacyOrdinal": 444,
+          "legacyOrdinal": 445,
           "estimatedDurationMs": 0
         },
         {
@@ -3198,7 +3206,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-document-finalize.integration.test.ts"
           ],
-          "legacyOrdinal": 445,
+          "legacyOrdinal": 446,
           "estimatedDurationMs": 0
         },
         {
@@ -3206,7 +3214,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-documents-cli.contract.test.ts"
           ],
-          "legacyOrdinal": 446,
+          "legacyOrdinal": 447,
           "estimatedDurationMs": 0
         },
         {
@@ -3214,7 +3222,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-documents.contract.test.ts"
           ],
-          "legacyOrdinal": 447,
+          "legacyOrdinal": 448,
           "estimatedDurationMs": 0
         },
         {
@@ -3222,7 +3230,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-semantic-ledger.contract.test.ts"
           ],
-          "legacyOrdinal": 448,
+          "legacyOrdinal": 449,
           "estimatedDurationMs": 0
         },
         {
@@ -3230,7 +3238,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/system-spec.contract.test.ts"
           ],
-          "legacyOrdinal": 449,
+          "legacyOrdinal": 450,
           "estimatedDurationMs": 0
         },
         {
@@ -3238,7 +3246,7 @@
           "ownedPhysicalFiles": [
             "packages/workflow-engine/test/task-mandate-protected-finalize.contract.test.ts"
           ],
-          "legacyOrdinal": 450,
+          "legacyOrdinal": 451,
           "estimatedDurationMs": 0
         }
       ]

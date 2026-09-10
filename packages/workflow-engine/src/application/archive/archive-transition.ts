@@ -32,11 +32,13 @@ import {
   createArchiveCommitObject,
   listStagedPaths,
   updateManagedRef,
+  updateManagedRefs,
 } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
   fingerprintRepositoryWorktree,
   listChangedPaths,
+  LOCAL_PROTECTED_BASE_REF,
   runGit,
 } from '../../runtime/repository-transaction/git.ts';
 import { runtimePaths } from '../../runtime/session-workspace/session-store.ts';
@@ -154,6 +156,12 @@ export function readVerifiedArchiveTransitionEvidence(
         JSON.stringify([expectation.parentCommit]) ||
       facts.tree !== report.tree ||
       facts.message !== `${archiveCommitMessage(expectation.changeId)}\n` ||
+      (report.localProtectedBase !== undefined &&
+        !isAncestor(
+          repositoryRoot,
+          report.localProtectedBase.commit,
+          report.parent,
+        )) ||
       JSON.stringify(commitChangedPaths(repositoryRoot, facts.hash)) !==
         JSON.stringify(report.changedPaths)
     ) {
@@ -243,6 +251,14 @@ function commitEligibleArchive(
     contractDigest: eligibility.contractDigest,
     promotedSpecDigests: delta.promotedSpecDigests,
     archivedArtifactDigests: transformation.archivedArtifactDigests,
+    ...(eligibility.baseRef === LOCAL_PROTECTED_BASE_REF
+      ? {
+          localProtectedBase: {
+            ref: LOCAL_PROTECTED_BASE_REF,
+            commit: eligibility.base,
+          },
+        }
+      : {}),
   };
   const reportId = writeArchiveReport(reportsDirectory, report);
   const patchDirectory = path.join(
@@ -298,13 +314,25 @@ function commitEligibleArchive(
         'Archive branch changed before compare-and-swap.',
       );
     }
-    updateManagedRef(
-      eligibility.repositoryRoot,
-      eligibility.head,
-      commitHash,
-      headRef,
-    );
+    if (report.localProtectedBase === undefined) {
+      updateManagedRef(
+        eligibility.repositoryRoot,
+        eligibility.head,
+        commitHash,
+        headRef,
+      );
+    } else {
+      updateManagedRefs(eligibility.repositoryRoot, [
+        { ref: headRef, expectedHead: eligibility.head, commitHash },
+        {
+          ref: report.localProtectedBase.ref,
+          expectedHead: report.localProtectedBase.commit,
+          commitHash,
+        },
+      ]);
+    }
     refUpdated = true;
+    assertLocalArchivePublished(eligibility.repositoryRoot, report);
     if (
       discoverRepository(eligibility.repositoryRoot).statusEntries.length > 0
     ) {
@@ -553,7 +581,26 @@ function findExistingArchive(
       'Archived path does not match its verified evidence.',
     );
   }
+  assertLocalArchivePublished(git.repositoryRoot, report);
   return resultFromReport('already-archived', reportId, report);
+}
+
+function assertLocalArchivePublished(
+  repositoryRoot: string,
+  report: ArchiveTransitionReport,
+): void {
+  if (report.localProtectedBase === undefined) return;
+  const protectedCommit = runGit(
+    repositoryRoot,
+    ['rev-parse', '--verify', `${report.localProtectedBase.ref}^{commit}`],
+    true,
+  ).trim();
+  if (!isAncestor(repositoryRoot, report.commitHash, protectedCommit)) {
+    throw archiveError(
+      'ARCHIVE_LOCAL_PROTECTED_BASE_CHANGED',
+      'The local protected base no longer contains the archived commit.',
+    );
+  }
 }
 
 function assertReportCurrent(

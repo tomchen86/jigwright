@@ -30,7 +30,8 @@ import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { commitFacts } from '../../runtime/repository-transaction/git-transitions.ts';
 import {
   discoverRepository,
-  protectedBranchRef,
+  LOCAL_PROTECTED_BASE_REF,
+  resolveProtectedBaseRef,
   runGit,
   runGitWithEnvironment,
 } from '../../runtime/repository-transaction/git.ts';
@@ -125,7 +126,7 @@ export function projectAuthorityAttestationRelay(
   if (!protectedBranch) {
     throw invalidRequest('No protected branch is configured.');
   }
-  const protectedRef = protectedBranchRef(protectedBranch);
+  const protectedRef = resolveProtectedBaseRef(repositoryRoot, protectedBranch);
   if (
     !runGit(
       repositoryRoot,
@@ -133,7 +134,7 @@ export function projectAuthorityAttestationRelay(
       true,
     ).trim()
   ) {
-    throw mainUnreachable(protectedRef);
+    throw mainUnreachable(protectedRef, protectedRef);
   }
   const candidateOids = runGit(repositoryRoot, [
     'log',
@@ -236,7 +237,7 @@ export function issueAuthorityAttestation(
   if (!protectedBranch) {
     throw invalidRequest('No protected branch is configured.');
   }
-  const protectedRef = protectedBranchRef(protectedBranch);
+  const protectedRef = resolveProtectedBaseRef(repositoryRoot, protectedBranch);
   if (
     !runGit(
       repositoryRoot,
@@ -244,7 +245,7 @@ export function issueAuthorityAttestation(
       true,
     ).trim()
   ) {
-    throw mainUnreachable(protectedRef);
+    throw mainUnreachable(protectedRef, protectedRef);
   }
 
   const original = attestedFacts(repositoryRoot, request.originalCommit);
@@ -589,7 +590,7 @@ function assertMainContained(
       protectedRef,
     ]);
   } catch {
-    throw mainUnreachable(commitOid);
+    throw mainUnreachable(commitOid, protectedRef);
   }
 }
 
@@ -738,10 +739,12 @@ function grantInvalid(grantId: string) {
   );
 }
 
-function mainUnreachable(identity: string) {
+function mainUnreachable(identity: string, protectedRef: string) {
   return workflowError(
     'AUTHORITY_ATTESTATION_MAIN_UNREACHABLE',
-    `${identity} is not contained in the fetched protected branch.`,
+    protectedRef === LOCAL_PROTECTED_BASE_REF
+      ? `${identity} is not contained in the selected protected base.`
+      : `${identity} is not contained in the fetched protected branch.`,
     ExitCode.verification,
   );
 }

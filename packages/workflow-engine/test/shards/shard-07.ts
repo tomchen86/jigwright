@@ -67,6 +67,7 @@ import '../human-command-output.contract.test.ts';
 import '../investigation-propose-flow.integration.test.ts';
 import '../module-readme-projection.contract.test.ts';
 import '../openspec-package-manager.contract.test.ts';
+import '../protected-base-selection-grant.integration.test.ts';
 import '../provider-native-session-closure.integration.test.ts';
 import '../source-aliases.contract.test.ts';
 import '../system-document-boundaries.contract.test.ts';

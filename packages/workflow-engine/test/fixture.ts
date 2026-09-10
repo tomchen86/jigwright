@@ -280,7 +280,10 @@ export function createCurrentPlanReviewProviderEvidenceForTest(input: {
 }
 
 export function createFixtureRepository(
-  options: { objectFormat?: 'sha1' | 'sha256' } = {},
+  options: {
+    objectFormat?: 'sha1' | 'sha256';
+    initializeRemoteTrackingBase?: boolean;
+  } = {},
 ): string {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'workflow-session-repo-'),
@@ -457,7 +460,8 @@ export function createFixtureRepository(
 
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Create fixture']);
-  syncOriginMain(repository);
+  if (options.initializeRemoteTrackingBase !== false)
+    syncOriginMain(repository);
   return repository;
 }
 

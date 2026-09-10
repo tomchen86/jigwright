@@ -259,17 +259,29 @@ test: packages/workflow-engine/test/maintainer-grant-v2-apply.contract.test.ts#r
 - **THEN** current CI authority verification rejects that evidence
 - **AND** private runtime state is not a substitute for the exact portable Git receipt
 
-### Requirement: Archive base resolves from the protected remote-tracking ref
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
+### Requirement: Archive base resolves from the selected protected ref
+sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad, SRC-7f4a02c3f1a74cd4fc7265248dbeffda01979e4193c30e8ff32372000f3f11f2]
 
-Archive eligibility SHALL resolve its verification base from the first
-protected branch's remote-tracking ref (`refs/remotes/origin/<branch>`),
-using the same protected-base ref spelling as maintainer attestation.
-Resolution MUST remain fail-closed, and CI archive replay — which binds to
-the archive parent — MUST be unaffected.
+Planning, archive eligibility, and the maintainer protected-base reader SHALL
+select the Grant-initialized `refs/jigwright/protected-base` when it exists.
+Otherwise they SHALL use the first protected branch's remote-tracking ref
+(`refs/remotes/origin/<branch>`), without falling back to a local branch or
+inventing remote publication. Resolution MUST require an actual commit, and
+CI archive replay — which binds to the archive parent — MUST be unaffected.
+
+Both modes SHALL require the selected base to be an ancestor of the archive
+candidate. Remote mode SHALL retain its requirement that every canonical task
+commit already be reachable from the remote base. Local mode SHALL verify
+those task commits against the candidate HEAD with the same completion,
+planning, review, and document evidence. Successful local archive SHALL
+atomically advance the work branch and the local protected ref to the archive
+commit using both observed old commits as compare-and-swap expectations.
+Its report SHALL retain the local base binding. Retry SHALL verify that the
+local ref still contains the exact archived commit without overwriting a
+competing ref or claiming a remote effect.
 
 #### Scenario: Stale local branch no longer blocks archive
-covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+covers: #Requirement: Archive base resolves from the selected protected ref
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility resolves the base from the protected remote-tracking ref
 
 - GIVEN the local protected branch is behind the remote-tracking ref
@@ -279,7 +291,7 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 - AND the archive is not blocked by the stale local branch
 
 #### Scenario: Unresolvable base fails closed
-covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+covers: #Requirement: Archive base resolves from the selected protected ref
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility fails closed when the remote-tracking base is unresolvable
 
 - GIVEN the protected branch's remote-tracking ref does not resolve to a
@@ -288,7 +300,7 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 - THEN it fails with the archive base resolution error
 
 #### Scenario: Task commit off the base is still rejected
-covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+covers: #Requirement: Archive base resolves from the selected protected ref
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive eligibility rejects task evidence not reachable from configured base
 
 - GIVEN a canonical task commit is not reachable from the protected
@@ -297,14 +309,31 @@ test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#arch
 - THEN it fails closed on unreachable task evidence
 
 #### Scenario: One shared spelling across authority paths
-covers: #Requirement: Archive base resolves from the protected remote-tracking ref
+covers: #Requirement: Archive base resolves from the selected protected ref
 test: packages/workflow-engine/test/archive-eligibility.integration.test.ts#archive and attestation resolve the same configured protected ref without local fallback
 
-- GIVEN maintainer attestation and archive eligibility both resolve the
-  protected base
+- GIVEN no local protected base has been selected and maintainer attestation
+  and archive eligibility both resolve the protected base
 - WHEN either resolves the protected branch ref
 - THEN both use the identical `refs/remotes/origin/<branch>` spelling from a
   single shared definition
+
+#### Scenario: Local archive publishes verified work-branch history
+covers: #Requirement: Archive base resolves from the selected protected ref
+test: packages/workflow-engine/test/archive-transition.integration.test.ts#local protected base archives unmerged managed tasks and advances both refs idempotently
+
+- **GIVEN** the local protected base remains at the initial floor and the completed managed task commits exist only on the work branch
+- **WHEN** native archive verifies and commits that change
+- **THEN** one Git transaction advances the work branch and local protected base to the same archive commit
+- **AND** exact retry returns the same archive evidence without a remote or tracking scaffold
+
+#### Scenario: A competing local base cannot be overwritten
+covers: #Requirement: Archive base resolves from the selected protected ref
+test: packages/workflow-engine/test/archive-transition.integration.test.ts#local protected-base drift rolls back archive without overwriting either ref
+
+- **WHEN** the local protected ref changes before archive compare-and-swap
+- **THEN** neither ref is updated by the failed transaction
+- **AND** archive restores its uncommitted projection and preserves the competing ref
 
 ### Requirement: Hosted Enforcement Observations Remain Exact and Separate From Local Preparation
 sources: [SRC-5a56b9d773c073a429dfbc7d271fdd00d18d873752bb86ca0540662433bfb1ba, SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]

@@ -5,6 +5,50 @@ capabilities: [authority-tree-attestation, break-glass-maintainer-mode]
 
 Bind maintainer authorization and retained transition evidence to the exact operation, trusted inputs, and durable recovery state.
 ## Requirements
+### Requirement: Protected Base Initialization Offers a Local Grant Choice
+sources: [SRC-7f4a02c3f1a74cd4fc7265248dbeffda01979e4193c30e8ff32372000f3f11f2]
+
+An unavailable protected base SHALL offer a precise Grant choice to initialize
+`refs/jigwright/protected-base` at the exact current commit. The choice SHALL
+bind repository identity, source commit and tree, and the absent local ref.
+Local initialization SHALL execute inside the approved Grant transaction,
+verify the source HEAD and create the ref atomically, and perform no network
+request or remote publication. Its completed Grant outcome SHALL retain the
+actual local effect. Prepared recovery MAY confirm the exact created ref;
+if a competing state prevents recovery, it SHALL preserve that state and
+report any prior effect as unknown rather than claiming it never happened.
+
+A configured canonical remote SHALL remain a separate explicit choice.
+Selecting it SHALL retain exact empty-remote validation, completed-Grant
+publication authority, the absent-ref lease, and publication receipts.
+Requesting or choosing the local option SHALL NOT require an origin remote
+or a successful remote observation.
+
+#### Scenario: Planning can request local authority without an origin
+covers: #Requirement: Protected Base Initialization Offers a Local Grant Choice
+test: packages/workflow-engine/test/protected-base-initialization-grant.integration.test.ts#an unavailable protected base offers a local choice without an origin
+
+- **GIVEN** valid repository authority and no origin or protected tracking ref
+- **WHEN** planning requests protected-base initialization
+- **THEN** its durable Grant exposes the local choice without changing Git refs
+
+#### Scenario: Exact local approval creates one replayable ref
+covers: #Requirement: Protected Base Initialization Offers a Local Grant Choice
+test: packages/workflow-engine/test/protected-base-selection-grant.integration.test.ts#a pending local protected-base Grant has no effect and exact approval creates one replayable ref
+
+- **GIVEN** a pending local initialization Grant
+- **WHEN** Grant Core validates the selected approval and executes it
+- **THEN** the exact local ref is created and the durable outcome records completion
+- **AND** a pending Grant has no ref effect and completed recovery does not duplicate it
+
+#### Scenario: Remote selection retains create-only publication
+covers: #Requirement: Protected Base Initialization Offers a Local Grant Choice
+test: packages/workflow-engine/test/protected-base-selection-grant.integration.test.ts#the selected remote transition retains exact create-only publication
+
+- **WHEN** the remote choice is approved for the exact empty canonical remote
+- **THEN** the existing publisher creates only the authorized remote ref and records its exact receipt
+- **AND** the local protected ref remains absent and publication retry reuses its receipt
+
 ### Requirement: Canonical human-present authority attestation
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 

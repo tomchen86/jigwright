@@ -12,9 +12,15 @@ import type { GrantExecutionResult } from '../modules/authority/grant-coordinato
 import {
   PROTECTED_BASE_INITIALIZATION_TRANSITION_ID,
   assertProtectedBaseInitializationParameters,
+  expectedEmptyProtectedBaseObservation,
   protectedBaseInitializationStateBinding,
   type ProtectedBaseInitializationParametersV1,
 } from '../modules/authority/protected-base-initialization-grant.ts';
+import {
+  assertProtectedBaseSelectionObservation,
+  initialLocalProtectedBaseObservation,
+  protectedBaseSelectionStateBinding,
+} from '../modules/authority/protected-base-selection-grant.ts';
 import { loadMaintainerPolicy } from '../modules/authority/maintainer-policy.ts';
 import type {
   ProtectedBaseInitializationObservationV1,
@@ -24,6 +30,7 @@ import { ensurePlainDirectory } from '../runtime/repository-transaction/filesyst
 import {
   discoverRepository,
   protectedBranchRef,
+  resolveProtectedBaseRef,
   runGit,
 } from '../runtime/repository-transaction/git.ts';
 import {
@@ -177,6 +184,15 @@ export function publishCompletedProtectedBaseInitialization(
   const parameters = authorized.parameters;
   const remoteRef = `refs/heads/${parameters.protectedBranch}`;
   const trackingRef = protectedBranchRef(parameters.protectedBranch);
+  if (
+    authorized.localSelection &&
+    resolveProtectedBaseRef(
+      repository.repositoryRoot,
+      parameters.protectedBranch,
+    ) !== trackingRef
+  ) {
+    throw publicationStateChanged();
+  }
   let observation = input.port.observe();
   assertCurrentIdentity(observation, parameters);
 
@@ -297,6 +313,7 @@ function authenticateCompletedProtectedBaseInitializationGrant(
   authority: CompletedProtectedBaseInitializationGrantReferenceV1;
   parameters: ProtectedBaseInitializationParametersV1;
   completedAt: Date;
+  localSelection: boolean;
 }> {
   try {
     const record = readGrantRecord(grantStorePaths(runtimeRoot), challengeId);
@@ -308,9 +325,27 @@ function authenticateCompletedProtectedBaseInitializationGrant(
     const parameters = assertProtectedBaseInitializationParameters(
       choice.parameters,
     );
-    const expectedObservation = emptyObservation(parameters);
+    const selection =
+      isRecord(record.challenge.facts) &&
+      record.challenge.facts.kind === 'protected-base-selection-observation.v1'
+        ? assertProtectedBaseSelectionObservation(record.challenge.facts)
+        : null;
+    const expectedLocal = initialLocalProtectedBaseObservation(parameters);
+    const expectedObservation =
+      selection === null
+        ? expectedEmptyProtectedBaseObservation(parameters)
+        : {
+            schemaVersion: 1,
+            kind: 'protected-base-selection-observation.v1',
+            local: expectedLocal,
+            remote: parameters,
+          };
     const expectedState =
-      protectedBaseInitializationStateBinding(expectedObservation);
+      selection === null
+        ? protectedBaseInitializationStateBinding(
+            expectedEmptyProtectedBaseObservation(parameters),
+          )
+        : protectedBaseSelectionStateBinding(expectedLocal);
     const expectedOutcome = {
       outcome: 'completed' as const,
       details: {
@@ -349,6 +384,7 @@ function authenticateCompletedProtectedBaseInitializationGrant(
       }),
       parameters,
       completedAt,
+      localSelection: selection !== null,
     });
   } catch (error) {
     if (
@@ -359,27 +395,6 @@ function authenticateCompletedProtectedBaseInitializationGrant(
     }
     throw completedGrantInvalid();
   }
-}
-
-function emptyObservation(
-  parameters: ProtectedBaseInitializationParametersV1,
-): ProtectedBaseInitializationObservationV1 {
-  return Object.freeze({
-    schemaVersion: 1,
-    kind: 'protected-base-initialization-observation.v1',
-    repositoryId: parameters.repositoryId,
-    canonicalOrigin: parameters.canonicalOrigin,
-    remoteName: parameters.remoteName,
-    fetchUrl: parameters.fetchUrl,
-    pushUrl: parameters.pushUrl,
-    protectedBranch: parameters.protectedBranch,
-    sourceCommit: parameters.sourceCommit,
-    sourceTree: parameters.sourceTree,
-    remoteRefCount: 0,
-    remoteRefsDigest: digest(canonicalJson([])),
-    remoteCommit: null,
-    trackingCommit: null,
-  });
 }
 
 function assertCurrentIdentity(
@@ -725,7 +740,7 @@ function readOptionalCommit(
   return value;
 }
 
-function canonicalRemoteIdentity(value: string): string {
+export function canonicalRemoteIdentity(value: string): string {
   const ssh =
     /^git@github\.com:([A-Za-z0-9_.-]+)\/([A-Za-z0-9_.-]+\.git)$/.exec(value);
   return ssh === null ? value : `https://github.com/${ssh[1]}/${ssh[2]}`;

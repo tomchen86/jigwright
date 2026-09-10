@@ -29,6 +29,10 @@ export {
 } from './git-working-state.ts';
 export type { GitState } from './git-working-state.ts';
 export {
+  LOCAL_PROTECTED_BASE_REF,
+  resolveProtectedBaseRef,
+} from './protected-base.ts';
+export {
   captureGovernedProviderProjection,
   compareGovernedProviderProjections,
 } from './governed-provider-projection.ts';

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:35ee2757ff66dbefad5842973c38d7868dbee85c721468ec875618910ee333d5"
+      "digest": "sha256:5b7fe085c95966fa654141eb0972c1977ea5588132aa829e1817e8984abb97b9"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -1243,7 +1243,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/git.js",
       "mode": "100644",
-      "digest": "sha256:3d6d9119d8806798dee8b77a24baf27d55c4ccea4e9912e9793be80474973d4e"
+      "digest": "sha256:064e30b15f6ebc481738dd78ea3230d2817a9284e2c164e37d097eb1af9f6396"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/governed-artifact-fingerprints.js",
@@ -1269,6 +1269,11 @@
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/post-approval-budget.js",
       "mode": "100644",
       "digest": "sha256:2b2b6868d680d5c68f5383e3cba667d358fb9e02fc61bbf7d14ebeaf93091231"
+    },
+    {
+      "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/protected-base.js",
+      "mode": "100644",
+      "digest": "sha256:8810dcdd98c134157a78a558d679219aed4c7a9a31b86d8f9b50966dd680e082"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/repository-transaction/tracked-tree-reader.js",

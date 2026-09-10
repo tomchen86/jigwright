@@ -23,6 +23,10 @@ import {
   createGitProtectedBaseInitializationPort,
   publishCompletedProtectedBaseInitialization,
 } from '../src/composition-root/protected-base-initialization-production.ts';
+import {
+  createProductionWorkflowGrantCoordinator,
+  requestProtectedBaseInitializationGrant,
+} from '../src/composition-root/grant-production.ts';
 import { createTransitionRegistry } from '../src/modules/authority/grant-transition-registry.ts';
 import {
   grantStorePaths,
@@ -31,11 +35,61 @@ import {
 import { createProposeProtectedBaseFailGrantResult } from '../src/cli.ts';
 import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
-import { git, isWorkflowError } from './fixture.ts';
+import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const NOW = new Date('2026-08-29T01:00:00.000Z');
 const CHALLENGE_ID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const OPERATION_ID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+
+test('an unavailable protected base offers a local choice without an origin', async () => {
+  const repository = createFixtureRepository({
+    initializeRemoteTrackingBase: false,
+  });
+  try {
+    fs.writeFileSync(
+      path.join(repository, 'workflow/grant-policy.json'),
+      `${JSON.stringify(policyInput(), null, 2)}\n`,
+    );
+    git(repository, ['add', 'workflow/grant-policy.json']);
+    git(repository, [
+      'commit',
+      '-m',
+      'Configure local protected-base Grant policy',
+    ]);
+    const refsBefore = git(repository, ['show-ref']);
+    assert.equal(git(repository, ['remote']), '');
+    assert.equal(git(repository, ['for-each-ref', 'refs/remotes/']), '');
+    assert.equal(
+      git(repository, ['for-each-ref', 'refs/jigwright/protected-base']),
+      '',
+    );
+
+    const challenge = await requestProtectedBaseInitializationGrant(
+      repository,
+      'Initialize the protected base locally without publishing to a remote.',
+    );
+    const presentation = createProductionWorkflowGrantCoordinator(
+      repository,
+    ).inspectChallenge(challenge.challengeId);
+    const localChoice = presentation.challenge.choices.find(
+      ({ transitionId }) =>
+        transitionId === 'git.protected-base.local-initialize.v1',
+    );
+
+    assert.ok(
+      localChoice,
+      'the production Grant request must offer local initialization',
+    );
+    assert.match(
+      JSON.stringify(localChoice.parameters),
+      /refs\/jigwright\/protected-base/,
+    );
+    assert.equal(git(repository, ['show-ref']), refsBefore);
+    assert.equal(git(repository, ['remote']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('propose maps an unavailable protected base to a durable Fail-Grant result', async () => {
   const result = await createProposeProtectedBaseFailGrantResult(
@@ -49,7 +103,8 @@ test('propose maps an unavailable protected base to a durable Fail-Grant result'
     ),
     async (cwd, reason) => {
       assert.equal(cwd, '/fixture');
-      assert.match(reason, /create-only initialization/);
+      assert.match(reason, /local/);
+      assert.match(reason, /remote/);
       return {
         challengeId: CHALLENGE_ID,
         challengeDigest: digest('challenge'),
@@ -76,13 +131,13 @@ test('propose maps an unavailable protected base to a durable Fail-Grant result'
         challengeId: CHALLENGE_ID,
         challengeDigest: digest('challenge'),
       },
-      externalPublicationPending: true,
+      initializationPending: true,
       inputSchema: {
         schemaVersion: 1,
         kind: 'central-grant-resolution.v1',
         inspectCommand: `pnpm workflow grant human inspect ${CHALLENGE_ID} --json`,
         decisionCommand: `pnpm workflow grant human decide ${CHALLENGE_ID} --json`,
-        retryAfterPublication: 'rerun the same propose command',
+        retryAfterDecision: 'rerun the same propose command',
       },
     },
   });

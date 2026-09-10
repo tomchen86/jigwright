@@ -39,6 +39,134 @@ import { satisfyCurrentTaskDiffReview } from './support/task-diff-review-fixture
 import { readArchiveReport } from '../src/runtime/storage-journal/archive-report.ts';
 import { writeContentRecord } from '../src/runtime/storage-journal/content-record-store.ts';
 
+const LOCAL_PROTECTED_BASE_REF = 'refs/jigwright/protected-base';
+
+test('local protected base archives unmerged managed tasks and advances both refs idempotently', () => {
+  const repository = completedFixture(addedDelta(), undefined, {
+    localProtectedBase: true,
+  });
+  try {
+    const before = repositoryState(repository);
+    const baseBefore = git(repository, [
+      'rev-parse',
+      LOCAL_PROTECTED_BASE_REF,
+    ]).trim();
+    assert.equal(git(repository, ['remote']), '');
+    assert.equal(git(repository, ['for-each-ref', 'refs/remotes/']), '');
+    assert.equal(baseBefore, git(repository, ['rev-parse', 'main']).trim());
+    assert.notEqual(baseBefore, before.head);
+    assert.equal(
+      git(repository, ['merge-base', baseBefore, before.head]).trim(),
+      baseBefore,
+    );
+    assert.match(
+      git(repository, ['log', '--format=%B', `${baseBefore}..HEAD`]),
+      /Complete demo task/,
+    );
+
+    const committed = commitArchiveTransition(repository, 'demo-change');
+
+    assert.equal(committed.status, 'committed');
+    assert.notEqual(committed.commitHash, before.head);
+    assert.equal(
+      git(repository, ['rev-parse', 'HEAD']).trim(),
+      committed.commitHash,
+    );
+    assert.equal(
+      git(repository, ['rev-parse', LOCAL_PROTECTED_BASE_REF]).trim(),
+      committed.commitHash,
+    );
+    assert.equal(git(repository, ['rev-parse', 'main']).trim(), baseBefore);
+    assert.equal(git(repository, ['status', '--porcelain']), '');
+    assert.equal(
+      fs.existsSync(path.join(repository, 'openspec/changes/demo-change')),
+      false,
+    );
+    assert.equal(
+      fs.existsSync(path.join(repository, committed.archivePath)),
+      true,
+    );
+    assert.equal(
+      readArchiveReport(
+        path.join(runtimeRoot(repository), 'archive-reports'),
+        committed.reportId,
+      ).commitHash,
+      committed.commitHash,
+    );
+    const after = repositoryState(repository);
+
+    const replayed = commitArchiveTransition(repository, 'demo-change');
+
+    assert.equal(replayed.status, 'already-archived');
+    assert.equal(replayed.commitHash, committed.commitHash);
+    assert.equal(replayed.reportId, committed.reportId);
+    assert.deepEqual(repositoryState(repository), after);
+    assert.equal(
+      git(repository, ['rev-parse', LOCAL_PROTECTED_BASE_REF]).trim(),
+      committed.commitHash,
+    );
+    assert.equal(git(repository, ['remote']), '');
+    assert.equal(git(repository, ['for-each-ref', 'refs/remotes/']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('local protected-base drift rolls back archive without overwriting either ref', () => {
+  const repository = completedFixture(addedDelta(), undefined, {
+    localProtectedBase: true,
+  });
+  try {
+    const before = repositoryState(repository);
+    const baseBefore = git(repository, [
+      'rev-parse',
+      LOCAL_PROTECTED_BASE_REF,
+    ]).trim();
+    let competingCommit = '';
+    assert.throws(() =>
+      commitArchiveTransition(repository, 'demo-change', process.env, {
+        beforeRefUpdate: () => {
+          competingCommit = git(repository, [
+            'commit-tree',
+            `${baseBefore}^{tree}`,
+            '-p',
+            baseBefore,
+            '-m',
+            'Competing local protected base',
+          ]).trim();
+          git(repository, [
+            'update-ref',
+            LOCAL_PROTECTED_BASE_REF,
+            competingCommit,
+            baseBefore,
+          ]);
+        },
+      }),
+    );
+    assert.notEqual(
+      competingCommit,
+      '',
+      'archive must reach the ref update boundary',
+    );
+    assert.equal(
+      git(repository, ['rev-parse', LOCAL_PROTECTED_BASE_REF]).trim(),
+      competingCommit,
+    );
+    assert.deepEqual(repositoryState(repository), before);
+    assert.equal(
+      fs.existsSync(path.join(repository, 'openspec/changes/demo-change')),
+      true,
+    );
+    assert.equal(
+      fs.existsSync(path.join(repository, 'openspec/changes/archive')),
+      false,
+    );
+    assert.equal(git(repository, ['for-each-ref', 'refs/remotes/']), '');
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('archive report reader rejects digest-valid extra own keys without mutation', () => {
   const repository = createFixtureRepository();
   try {
@@ -449,9 +577,14 @@ test('archive transition rolls back its patch when persisted evidence is tampere
 function completedFixture(
   delta: string,
   beforePlanning?: (repository: string) => void,
-  options: Readonly<{ routedManagedHandoff?: boolean }> = {},
+  options: Readonly<{
+    routedManagedHandoff?: boolean;
+    localProtectedBase?: boolean;
+  }> = {},
 ): string {
-  const repository = createFixtureRepository();
+  const repository = createFixtureRepository({
+    initializeRemoteTrackingBase: options.localProtectedBase !== true,
+  });
   if (options.routedManagedHandoff === true) {
     const policyPath = path.join(repository, 'workflow/document-policy.json');
     const policy = JSON.parse(fs.readFileSync(policyPath, 'utf8')) as {
@@ -473,6 +606,15 @@ function completedFixture(
   git(repository, ['add', '.']);
   git(repository, ['commit', '-m', 'Configure archive delta']);
   prepareCurrentV3IntroductionFixture(repository, 'demo-change');
+  if (options.localProtectedBase === true) {
+    // Fixture setup only; real local initialization requires an exact Grant.
+    git(repository, [
+      'update-ref',
+      LOCAL_PROTECTED_BASE_REF,
+      'HEAD',
+      '0'.repeat(40),
+    ]);
+  }
   beforePlanning?.(repository);
   writeReadyV3ExemptChange(repository);
   fs.chmodSync(runtimeRoot(repository), 0o700);
@@ -546,9 +688,11 @@ function completedFixture(
     session.sessionId,
     'Complete demo task',
   );
-  git(repository, ['checkout', 'main']);
-  git(repository, ['merge', '--ff-only', completed.commitHash]);
-  syncOriginMain(repository);
+  if (options.localProtectedBase !== true) {
+    git(repository, ['checkout', 'main']);
+    git(repository, ['merge', '--ff-only', completed.commitHash]);
+    syncOriginMain(repository);
+  }
   git(repository, ['checkout', '-b', 'work/archive-demo']);
   return repository;
 }

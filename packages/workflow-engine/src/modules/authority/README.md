@@ -8,11 +8,11 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:842f2da6afc0f573da1d0e083f601f876b836ff7cba0be0704cc8ffe776a259f -->
+<!-- jigwright:region id=documents.authority-readme v=1 digest=sha256:c9c967bda60117a6f9849b7c3f1e4ebd93c710c2b9992b0feadeda3cb2e08603 -->
 
 <!-- prettier-ignore-start -->
 
-1 file changed in this module since confirmation.
+4 files changed in this module since confirmation.
 
 ## Commands
 
@@ -83,6 +83,7 @@ Keep Grant Core as the single place that decides whether an exact operation may 
 
 ## Contracts
 
+- [Protected Base Initialization Offers a Local Grant Choice](spec.md#requirement-protected-base-initialization-offers-a-local-grant-choice)
 - [Canonical human-present authority attestation](spec.md#requirement-canonical-human-present-authority-attestation)
 - [Exact authority transition identity](spec.md#requirement-exact-authority-transition-identity)
 - [Protected retention and unique mapping](spec.md#requirement-protected-retention-and-unique-mapping)
@@ -169,6 +170,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [maintainer-signer-port.ts](maintainer-signer-port.ts) | Authority-owned signing contract. | 0 | No newer code observed |
 | [optional-grants-package.ts](optional-grants-package.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [protected-base-initialization-grant.ts](protected-base-initialization-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [protected-base-selection-grant.ts](protected-base-selection-grant.ts) | Offers exact local or remote protected-base initialization through Grant Core. | 3 | History unavailable |
 | [protected-task-apply-descendant-settlement-grant.ts](protected-task-apply-descendant-settlement-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [protected-task-apply-grant.ts](protected-task-apply-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
 | [protected-task-apply-recovery-grant.ts](protected-task-apply-recovery-grant.ts) | No leading responsibility comment. | 0 | History unavailable |

@@ -7,6 +7,7 @@ import {
   type ContentRecord,
 } from './content-record-store.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
+import { LOCAL_PROTECTED_BASE_REF } from '../repository-transaction/protected-base.ts';
 
 const ARCHIVE_REPORT_KEYS = [
   'archivePath',
@@ -40,6 +41,10 @@ export type ArchiveTransitionReport = ContentRecord & {
   contractDigest: string;
   promotedSpecDigests: Record<string, string>;
   archivedArtifactDigests: Record<string, string>;
+  localProtectedBase?: {
+    ref: typeof LOCAL_PROTECTED_BASE_REF;
+    commit: string;
+  };
 };
 
 export function writeArchiveReport(
@@ -81,7 +86,12 @@ function isArchiveReport(
   value: ContentRecord,
 ): value is ArchiveTransitionReport {
   return (
-    hasExactKeys(value, ARCHIVE_REPORT_KEYS) &&
+    hasExactKeys(
+      value,
+      'localProtectedBase' in value
+        ? [...ARCHIVE_REPORT_KEYS, 'localProtectedBase']
+        : ARCHIVE_REPORT_KEYS,
+    ) &&
     value.kind === 'archive-transition' &&
     typeof value.changeId === 'string' &&
     typeof value.archivePath === 'string' &&
@@ -95,7 +105,22 @@ function isArchiveReport(
     typeof value.logicalIdentity === 'string' &&
     typeof value.contractDigest === 'string' &&
     isStringRecord(value.promotedSpecDigests) &&
-    isStringRecord(value.archivedArtifactDigests)
+    isStringRecord(value.archivedArtifactDigests) &&
+    (!('localProtectedBase' in value) ||
+      isLocalProtectedBase(value.localProtectedBase))
+  );
+}
+
+function isLocalProtectedBase(value: unknown): boolean {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const binding = value as Record<string, unknown>;
+  return (
+    hasExactKeys(binding, ['ref', 'commit']) &&
+    binding.ref === LOCAL_PROTECTED_BASE_REF &&
+    typeof binding.commit === 'string' &&
+    /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/.test(binding.commit)
   );
 }
 
