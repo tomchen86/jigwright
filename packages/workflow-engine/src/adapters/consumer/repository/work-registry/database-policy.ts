@@ -1,3 +1,11 @@
+/**
+ * Builds check environments and validates explicitly disposable PostgreSQL
+ * database identities.
+ *
+ * Invariants:
+ * - Destructive checks require explicit disposable confirmation and a test
+ *   database distinct from any supplied development database.
+ */
 import {
   ExitCode,
   workflowError,

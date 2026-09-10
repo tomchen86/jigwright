@@ -1,3 +1,11 @@
+/**
+ * Verifies the current managed schema graph, templates and provenance
+ * against reviewed OpenSpec assets.
+ *
+ * Invariants:
+ * - The project exposes exactly one managed schema, matching its configured
+ *   current schema.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

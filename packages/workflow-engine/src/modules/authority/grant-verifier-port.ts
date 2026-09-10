@@ -1,3 +1,15 @@
+/**
+ * Seals authoritative collaboration verifiers and resolves opaque consumed-
+ * replay verifier handles.
+ *
+ * Invariants:
+ * - A value is accepted as an authoritative verifier only if it is present
+ *   in the module-private WeakSet, so a structurally identical object is
+ *   rejected.
+ * - The consumed-replay handle carries only `kind` and
+ *   `trustedSignersDigest`; the real verifier is stored out-of-band in a
+ *   module WeakMap.
+ */
 import type {
   CurrentGrantVerifierPort,
   GrantVerifierPort,

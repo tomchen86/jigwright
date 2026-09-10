@@ -1,3 +1,11 @@
+/**
+ * Coordinates investigation sessions, authoring checkpoints, provider
+ * results and reviewer-driven reopening.
+ *
+ * Invariants:
+ * - Starting a session binds the blind survey request to the current
+ *   repository baseline, intent and input manifest.
+ */
 import crypto from 'node:crypto';
 
 import {

@@ -1,4 +1,11 @@
-/** TaskDiff Final Assurance records and challenge-closure authority bindings, built from current review and response records. */
+/**
+ * Builds and validates final task diff assurance from current reviews and
+ * responses.
+ *
+ * Invariants:
+ * - Final assurance must match the review subject, policy, and expected
+ *   exceptions.
+ */
 import { parseTaskDiffReviewSubject } from "./task-diff-review.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { assertAuthorizedReviewChallengeClosure } from "./review-challenge.js";

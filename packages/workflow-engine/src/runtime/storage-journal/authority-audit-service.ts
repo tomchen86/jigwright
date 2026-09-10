@@ -1,3 +1,10 @@
+/**
+ * Persists authority audit events and verifies their correspondence with
+ * ledger records.
+ *
+ * Invariants:
+ * - Stored event bytes must match the digest recorded in the audit ledger.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

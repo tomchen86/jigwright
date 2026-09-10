@@ -1,3 +1,11 @@
+/**
+ * Captures exact implementation file, symlink and missing-path observations
+ * during task revision.
+ *
+ * Invariants:
+ * - File observations compare descriptor and path metadata after reading
+ *   before admitting bytes.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

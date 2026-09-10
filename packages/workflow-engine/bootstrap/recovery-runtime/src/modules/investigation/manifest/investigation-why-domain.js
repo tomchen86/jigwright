@@ -1,3 +1,10 @@
+/**
+ * Derives Why requirements and maps investigation authoring to exact source
+ * anchors.
+ *
+ * Invariants:
+ * - One source key must resolve to consistent Git object facts.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";

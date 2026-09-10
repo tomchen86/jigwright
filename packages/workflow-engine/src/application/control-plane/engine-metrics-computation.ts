@@ -1,3 +1,11 @@
+/**
+ * Computes retry, recovery, governance and retention metrics from recorded
+ * observations.
+ *
+ * Invariants:
+ * - Execution and retention metrics must use the same exact observation
+ *   time.
+ */
 // engine metrics computation; repository effects remain bound by the public module.
 import type {
   EngineMetricsComputationBindings,

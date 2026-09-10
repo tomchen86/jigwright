@@ -1,3 +1,10 @@
+/**
+ * Plans which subjects can reuse prior understanding and propagates
+ * dependency revalidation to their consumers.
+ *
+ * Invariants:
+ * - A subject without an observation cannot reuse an existing ledger entry.
+ */
 import {
   assessSemanticFreshness,
   type FreshnessObservation,

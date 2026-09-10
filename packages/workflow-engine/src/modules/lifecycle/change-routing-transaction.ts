@@ -1,3 +1,10 @@
+/**
+ * Builds and validates reports binding a routing review to its lifecycle
+ * Source update.
+ *
+ * Invariants:
+ * - A stored report must match the digest of its embedded routing review.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';

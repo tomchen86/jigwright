@@ -1,3 +1,10 @@
+/**
+ * Builds and runs exact invocations of local package entrypoints.
+ *
+ * Invariants:
+ * - Entrypoints must be plain files at canonical package paths; invocations
+ *   use the current Node executable with shell disabled.
+ */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

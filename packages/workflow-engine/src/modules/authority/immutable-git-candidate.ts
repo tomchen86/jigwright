@@ -1,3 +1,13 @@
+/**
+ * Builds immutable Git candidates and verifies their observed repository
+ * state and pinned objects.
+ *
+ * Invariants:
+ * - The build re-discovers the repository and rebuilds the manifest after
+ *   observation, raising drift unless the repeat is canonically identical
+ *   to the first.
+ * - A candidate must contain at least one exact changed path.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';

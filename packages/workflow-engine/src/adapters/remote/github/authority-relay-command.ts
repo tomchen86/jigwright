@@ -1,3 +1,10 @@
+/**
+ * Renders validated authority publication and commit-remapping commands.
+ *
+ * Invariants:
+ * - Publication accepts only canonical GitHub origins and authority tag
+ *   refs; remapping pairs must be one-to-one.
+ */
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 
 const CANONICAL_GITHUB_ORIGIN =

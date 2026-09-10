@@ -1,4 +1,11 @@
-/** Presents colocated contracts to the pinned native CLI in a disposable directory. */
+/**
+ * Presents colocated specifications to native OpenSpec through a disposable
+ * view.
+ *
+ * Invariants:
+ * - A colocated view rejects a second canonical openspec/specs tree and
+ *   removes its temporary directory after the operation.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import type { SystemDescriptionSnapshot } from '../../../../modules/source/spec-ownership.ts';

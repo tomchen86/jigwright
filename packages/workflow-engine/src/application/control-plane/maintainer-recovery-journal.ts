@@ -1,3 +1,11 @@
+/**
+ * Reads, writes and advances authority commit journals bound to maintainer
+ * sessions.
+ *
+ * Invariants:
+ * - A journal transition requires both the expected state and the exact
+ *   expected journal contents.
+ */
 // maintainer recovery journal; repository effects remain bound by the public module.
 import type {
   MaintainerRecoveryJournalBindings,

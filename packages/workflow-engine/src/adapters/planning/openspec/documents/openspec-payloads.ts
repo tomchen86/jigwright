@@ -1,3 +1,11 @@
+/**
+ * Parses OpenSpec change, schema, artifact and validation payloads into
+ * engine-facing results.
+ *
+ * Invariants:
+ * - Listed changes must have unique sorted names and status consistent with
+ *   their task counts.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

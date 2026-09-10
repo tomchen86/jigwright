@@ -1,3 +1,14 @@
+/**
+ * Loads Grant policy and resolves its registered approval modules, profiles
+ * and methods.
+ *
+ * Invariants:
+ * - Every declared approval module must resolve in the code-owned registry
+ *   with a configuration digest equal to the registered one.
+ * - Optional SSH support is all-or-nothing: when `optionalSsh` is absent no
+ *   ssh module or ssh profile may exist, and when present the ssh module
+ *   and the exact ssh-signature profile are required.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

@@ -1,3 +1,11 @@
+/**
+ * Materializes full pinned source bytes and disposition relationships for
+ * current WHY authoring requirements.
+ *
+ * Invariants:
+ * - Each full-blob fact must match the required path, blob identity and
+ *   actual content digest.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

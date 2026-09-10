@@ -1,4 +1,10 @@
-/** Read-only Work Registry discovery, provenance tracing, inventory, and canonical relationship validation. Stable reads and locks are bound by the facade. */
+/**
+ * Discovers Work Items, traces provenance, and validates registry
+ * relationships.
+ *
+ * Invariants:
+ * - Canonical validation rejects duplicate Governance Source identities.
+ */
 import { registryInvalid, boundedText, parseOrigin, changeIdentity, } from "./work-registry-record.js";
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,10 @@
+/**
+ * Probes configured providers and admits evidence for their selected
+ * definitions.
+ *
+ * Invariants:
+ * - Built-in probe preflight must observe the exact selected executable.
+ */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

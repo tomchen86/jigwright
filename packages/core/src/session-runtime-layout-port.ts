@@ -1,3 +1,10 @@
+/**
+ * Declares session storage locations and provides the default path layout.
+ *
+ * Invariants:
+ * - The default resolver derives every location from the supplied
+ *   Git-common directory and runtime directory.
+ */
 import path from 'node:path';
 
 export const SESSION_RUNTIME_LAYOUT_PORT_CONTRACT_VERSION_V1 =

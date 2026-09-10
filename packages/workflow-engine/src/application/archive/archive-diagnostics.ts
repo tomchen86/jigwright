@@ -1,3 +1,11 @@
+/**
+ * Preserves actionable archive failure details within the diagnostic byte
+ * budget.
+ *
+ * Invariants:
+ * - Each retained diagnostic component must fit within the budget after
+ *   canonical serialization.
+ */
 import {
   canonicalJson,
   compareCanonicalStrings,

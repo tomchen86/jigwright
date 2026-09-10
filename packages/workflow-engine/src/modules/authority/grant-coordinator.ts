@@ -1,3 +1,14 @@
+/**
+ * Requests, inspects, resolves and recovers durable Grant challenges under
+ * the supplied lifecycle lock.
+ *
+ * Invariants:
+ * - The kernel refuses to construct unless `challengeTtlMs` is an integer
+ *   of at least 1 ms and at most 30 minutes.
+ * - `resolveChallenge` re-reads the record under the lifecycle lock after
+ *   collecting the human decision and aborts unless it is still pending
+ *   with the same challenge digest.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type {
   CentralGrantChallengePortV1,

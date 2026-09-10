@@ -1,3 +1,10 @@
+/**
+ * Proposes, reviews, and applies curated document refreshes under target
+ * locks.
+ *
+ * Invariants:
+ * - A refresh review must bind the exact proposal being applied.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

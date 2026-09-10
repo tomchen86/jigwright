@@ -1,3 +1,11 @@
+/**
+ * Authenticates initial external task diff reviews and their recorded grant
+ * use.
+ *
+ * Invariants:
+ * - External review grant use must match its target, transition, and signed
+ *   envelope.
+ */
 // Authenticate stored initial external reviews and replay their exact grant use.
 import {
   type RecordedRoleParticipant,

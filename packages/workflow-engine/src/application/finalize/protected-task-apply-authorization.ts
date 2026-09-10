@@ -1,3 +1,11 @@
+/**
+ * Checks that protected task application has the exact prepared Central
+ * Grant authorization.
+ *
+ * Invariants:
+ * - The stored operation, approval subject, state binding and selected
+ *   transition parameters must match the supplied binding.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { approvalSubjectDigest } from '../../modules/authority/grant-core.ts';

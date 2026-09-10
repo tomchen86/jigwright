@@ -1,3 +1,11 @@
+/**
+ * Resolves review ancestry, candidate reuse, and durable supersession
+ * recovery.
+ *
+ * Invariants:
+ * - An exact external review cannot coexist with provider authority for the
+ *   same subject.
+ */
 // Resolve review ancestry, candidate reuse, and durable supersession recovery.
 import {
   type TaskDiffReviewSubject,

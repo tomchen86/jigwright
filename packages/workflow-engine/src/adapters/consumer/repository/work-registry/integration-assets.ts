@@ -1,3 +1,11 @@
+/**
+ * Verifies repository OpenSpec assets, schema contracts and their
+ * dependency closure.
+ *
+ * Invariants:
+ * - Asset and closure checks always run; generation verification runs only
+ *   when explicitly requested.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

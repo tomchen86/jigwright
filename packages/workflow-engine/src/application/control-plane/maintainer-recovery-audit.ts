@@ -1,3 +1,11 @@
+/**
+ * Reconstructs portable application and transaction audit receipts during
+ * recovery.
+ *
+ * Invariants:
+ * - Portable receipts require the exact consumed grant, session, commit,
+ *   and time.
+ */
 // maintainer recovery audit; repository effects remain bound by the public module.
 import type {
   MaintainerRecoveryAuditBindings,

@@ -1,3 +1,11 @@
+/**
+ * Defines workflow failure categories and constructs structured workflow
+ * errors.
+ *
+ * Invariants:
+ * - A workflow error retains its code, exit category and optional details
+ *   and recovery text.
+ */
 export const ExitCode = {
     internal: 1,
     usage: 2,

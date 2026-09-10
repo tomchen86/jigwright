@@ -1,3 +1,11 @@
+/**
+ * Projects provider command previews and authorization decisions without
+ * launching providers.
+ *
+ * Invariants:
+ * - Dry-run repository and runtime paths must be absolute for the selected
+ *   platform.
+ */
 import path from 'node:path';
 
 import {

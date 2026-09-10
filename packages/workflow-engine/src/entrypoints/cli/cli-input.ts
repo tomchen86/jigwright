@@ -1,3 +1,11 @@
+/**
+ * Provides shared CLI input checks, shell argument quoting and command
+ * usage text.
+ *
+ * Invariants:
+ * - A trailing JSON flag used as a recognized text option value does not
+ *   select JSON output.
+ */
 import {
   WorkflowError,
   workflowError,
@@ -84,14 +92,14 @@ export function usage(message: string): WorkflowError {
 export function usageText(): string {
   return [
     'Usage:',
-    '  pnpm workflow doctor [--json]',
+    '  pnpm workflow doctor [--json] — Inspect setup, provider availability and repository configuration.',
     '  jigwright init [--answers <json-file>] [--provider-config <absolute-host-path>] [--providers <json-array>] [--non-interactive] [question flags] [--json] — Fill missing setup answers and create a new host provider configuration when requested.',
-    '  pnpm workflow validate-change <change-id> [--json]',
-    '  pnpm workflow propose <change-id> --intent <intent.json> --mandate <mandate-task-id> [--actor <id>] [--grant <grant-id>] [--json]',
-    '  pnpm workflow propose <change-id> --resume --input <envelope.json> [--grant <grant-id>|--role-context-grant <grant-id>] [--json]',
-    '  pnpm workflow plan-commit <change-id> [--json]',
-    '  pnpm workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required> [--json]',
-    '  pnpm workflow archive <change-id> [--json]',
+    '  pnpm workflow validate-change <change-id> [--json] — Validate the selected planning change and its readiness.',
+    '  pnpm workflow propose <change-id> --intent <intent.json> --mandate <mandate-task-id> [--actor <id>] [--grant <grant-id>] [--json] — Create or resume the durable investigation and planning workflow.',
+    '  pnpm workflow propose <change-id> --resume --input <envelope.json> [--grant <grant-id>|--role-context-grant <grant-id>] [--json] — Create or resume the durable investigation and planning workflow.',
+    '  pnpm workflow plan-commit <change-id> [--json] — Verify and commit the selected planning generation.',
+    '  pnpm workflow amend-plan --change <change-id> --reason <code> --execution-impact <none|required> [--json] — Record an explicit amendment and its execution impact.',
+    '  pnpm workflow archive <change-id> [--json] — Archive a completed change through its current workflow authority.',
     '  pnpm workflow archive-candidates --base <origin/protected-branch> [--json]',
     '  pnpm workflow after-merge <change-id> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr doctor --base <origin/protected-branch> [--json]',
@@ -99,7 +107,7 @@ export function usageText(): string {
     '  pnpm workflow archive-pr status <sha256:preparation-identity> [--json]',
     '  pnpm workflow archive-pr prepare <change-id> --config <github-adapter.json> [--workspace-parent <absolute-path>] [--json]',
     '  pnpm workflow archive-pr open <change-id> --config <github-adapter.json> --grant <challenge-id> [--workspace-parent <absolute-path>] [--json]',
-    '  pnpm workflow openspec-assets <generate|check|install-prompts --codex-home <path>> [--json]',
+    '  pnpm workflow openspec-assets <generate|check|install-prompts --codex-home <path>> [--json] — Generate, check or install the reviewed planning assets.',
     '  pnpm workflow job list [--json]',
     '  pnpm workflow job status <job-id> [--json]',
     '  pnpm workflow job watch <job-id> [--json]',
@@ -111,7 +119,7 @@ export function usageText(): string {
     '  pnpm workflow job retry <job-id> --grant <grant-id> [--json]',
     '  pnpm workflow job retry-preview <job-id> --timeout <milliseconds> [--json]',
     '  pnpm workflow metrics show [--json]',
-    '  pnpm workflow semantic-ledger reconcile --change <change-id> [--input <json>] [--json]',
+    '  pnpm workflow semantic-ledger reconcile --change <change-id> [--input <json>] [--json] — Reconcile reusable source bindings with the selected change.',
     '  pnpm workflow retention inspect [--json]',
     '  pnpm workflow retention sweep --limit <count> [--json]',
     '  pnpm workflow retention pin <workflow-id> <evidence-id> --reason <text> [--json]',
@@ -138,8 +146,8 @@ export function usageText(): string {
     '  pnpm workflow control-plane status <grant-id> [--json] — Inspect the recorded control-plane operation.',
     '  pnpm workflow audit show <task-id> --audit-root <absolute-external-path> [--json] — Show audit evidence for the named task.',
     '  pnpm workflow audit verify <repository-id> --audit-root <absolute-external-path> [--json] — Verify the repository audit evidence.',
-    '  pnpm workflow run-check <check-id> [--json]',
-    '  pnpm workflow ci --base <commit> --head <commit> [--input <integration-review.json>] [--json]',
+    '  pnpm workflow run-check <check-id> [--json] — Run the selected registered check and report its actual result.',
+    '  pnpm workflow ci --base <commit> --head <commit> [--input <integration-review.json>] [--json] — Verify committed planning and implementation evidence for the selected range.',
     '  pnpm workflow adapter evaluate [--config <absolute-host-path>] [--json] — Inspect provider availability and configured policy.',
     '  jigwright agent provider probe <profile-id> --config <absolute-host-path> [--json] — Observe the selected host profile without launching a model.',
     '  jigwright agent provider test <profile-id> --config <absolute-host-path> --live [--json] — Record an explicitly requested live profile observation.',
@@ -173,9 +181,9 @@ export function usageText(): string {
     '  pnpm workflow documents render [--json] — Regenerate readable document projections from canonical records.',
     '  pnpm workflow documents test [--spec <path>] [--json] — Run the exact tests named by the selected contracts and record their outcomes.',
     '  pnpm workflow documents review <session-id> [--input <review.json>] [--json] — Inspect or record document decisions for the current finalization candidate.',
-    '  pnpm workflow document-refresh <propose|show|review|apply> ... [--json]',
-    '  pnpm workflow handoff validate [--json]',
-    '  pnpm workflow guidance <install [path ...]|refresh|remove|status> [--json]',
+    '  pnpm workflow document-refresh <propose|show|review|apply> ... [--json] — Propose, inspect, review or apply a scoped curated document refresh.',
+    '  pnpm workflow handoff validate [--json] — Validate the generated repository handoff.',
+    '  pnpm workflow guidance <install [path ...]|refresh|remove|status> [--json] — Install, refresh, remove or inspect explicitly configured agent guidance regions.',
     '  pnpm workflow hook <pre-commit|commit-msg|pre-push|post-merge> ... [--json]',
     ...workflowGuidanceUsageLines().map((line) => `  ${line}`),
   ].join('\n');

@@ -1,3 +1,11 @@
+/**
+ * Recovers budget consumption receipts and publishes replacement provider
+ * invocations with exact transaction lineage.
+ *
+ * Invariants:
+ * - Recovery reuses the receipt for the replacement attempt before
+ *   attempting another Grant consumption.
+ */
 // execution replacement publication; repository effects remain bound by the public module.
 import type {
   ExecutionReplacementPublicationBindings,

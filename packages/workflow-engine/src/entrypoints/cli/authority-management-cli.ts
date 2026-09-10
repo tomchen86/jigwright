@@ -1,3 +1,11 @@
+/**
+ * Parses and dispatches authority, maintainer, mandate, and external-effect
+ * commands.
+ *
+ * Invariants:
+ * - Task Mandate requests must be readable JSON manifests accepted by the
+ *   contract parser.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import {

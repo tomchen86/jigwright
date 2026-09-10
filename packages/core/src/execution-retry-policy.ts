@@ -1,3 +1,10 @@
+/**
+ * Validates retry limits, provider budgets and deadlines for execution.
+ *
+ * Invariants:
+ * - Provider-limit keys must be sorted, and deadlines must use canonical
+ *   ISO timestamps.
+ */
 import { canonicalJson } from './canonical-json.ts';
 
 export const EXECUTION_RETRY_POLICY_CONTRACT_VERSION_V1 =

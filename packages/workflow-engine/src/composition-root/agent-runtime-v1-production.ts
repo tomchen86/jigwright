@@ -1,3 +1,10 @@
+/**
+ * Bridges reviewed built-in provider execution to the public AgentRuntime
+ * interface.
+ *
+ * Invariants:
+ * - Public execution requires a current built-in provider definition.
+ */
 import crypto from 'node:crypto';
 
 import {

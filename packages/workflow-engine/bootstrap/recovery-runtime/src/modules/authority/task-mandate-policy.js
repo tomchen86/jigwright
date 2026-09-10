@@ -1,3 +1,14 @@
+/**
+ * Checks Task Mandate provider scope, retries and budgets, and binds
+ * provider reservation identities.
+ *
+ * Invariants:
+ * - An execution Grant bypasses the invocation ceiling for its reservation;
+ *   the declared monetary ceiling still applies.
+ * - taskMandateProviderOperationDigest hashes the operation with
+ *   executionGrant stripped, so a reservation's identity is independent of
+ *   the grant object.
+ */
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";

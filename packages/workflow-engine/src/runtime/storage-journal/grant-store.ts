@@ -1,3 +1,10 @@
+/**
+ * Persists Central Grant challenges, preparations, outcomes, and lifecycle
+ * barriers.
+ *
+ * Invariants:
+ * - Challenge publication replays only an identical pending record.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

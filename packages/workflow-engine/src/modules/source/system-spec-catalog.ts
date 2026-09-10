@@ -1,4 +1,10 @@
-/** Resolves planning capability names to their colocated canonical contracts. */
+/**
+ * Resolves planning capability names and aliases to their colocated
+ * canonical contracts.
+ *
+ * Invariants:
+ * - A capability alias cannot name more than one canonical spec.
+ */
 import path from 'node:path';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

@@ -1,3 +1,10 @@
+/**
+ * Coordinates human approval, application, and revocation of v2 Apply
+ * Grants.
+ *
+ * Invariants:
+ * - The published candidate summary must match its frozen digest.
+ */
 import { createMaintainerApplyChecks } from './maintainer-apply-checks.ts';
 import { createMaintainerApplyAudit } from './maintainer-apply-audit.ts';
 import { createMaintainerApplyReissue } from './maintainer-apply-reissue.ts';

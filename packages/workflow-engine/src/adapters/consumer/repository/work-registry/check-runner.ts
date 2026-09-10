@@ -1,3 +1,11 @@
+/**
+ * Executes pinned check runners and records successful, observed-failure
+ * and expected-RED evidence.
+ *
+ * Invariants:
+ * - Signals and process transport errors throw; ordinary nonzero exit codes
+ *   produce bounded observed-failure evidence.
+ */
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 

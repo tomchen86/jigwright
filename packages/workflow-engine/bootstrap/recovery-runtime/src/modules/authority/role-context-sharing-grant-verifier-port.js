@@ -1,3 +1,15 @@
+/**
+ * Seals and checks live and consumed-replay role-context-sharing verifier
+ * capabilities.
+ *
+ * Invariants:
+ * - A value is treated as the authoritative verifier only if it is present
+ *   in the module-private WeakSet populated by
+ *   sealAuthoritativeRoleContextSharingGrantVerifier.
+ * - The sealed consumed-replay verifier is a frozen {kind,
+ *   trustedSignersDigest} record whose backing GrantVerifierPort is held in
+ *   a module-private WeakMap.
+ */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 const DIGEST = /^[0-9a-f]{64}$/;
 const authoritativeRoleContextSharingGrantVerifiers = new WeakSet();

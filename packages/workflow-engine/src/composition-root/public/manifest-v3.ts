@@ -1,6 +1,9 @@
 /**
- * Versioned public Manifest v3 surface. PlanReview and execution records remain
- * separate authority artifacts and are intentionally not re-exported here.
+ * Exports investigation manifest drafting, sealing and validation APIs.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
  */
 export {
   INVESTIGATION_MANIFEST_V3_KIND,

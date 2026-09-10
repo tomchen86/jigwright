@@ -1,3 +1,10 @@
+/**
+ * Creates and authenticates PlanReview subjects, provider results, and
+ * review nodes.
+ *
+ * Invariants:
+ * - Review policy must match the policy pinned by the planning generation.
+ */
 import { createPlanReviewDispositionProtocol } from "./plan-review-disposition.js";
 import { createPlanReviewSubmissionProtocol } from "./plan-review-submission.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

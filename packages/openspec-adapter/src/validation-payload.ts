@@ -1,3 +1,11 @@
+/**
+ * Normalizes OpenSpec validation output and checks its item and summary
+ * consistency.
+ *
+ * Invariants:
+ * - Item validity must agree with error diagnostics, and summary counts
+ *   must equal the parsed item results.
+ */
 import path from 'node:path';
 
 export type InvalidOpenSpecPayloadFactoryV1 = () => Error;

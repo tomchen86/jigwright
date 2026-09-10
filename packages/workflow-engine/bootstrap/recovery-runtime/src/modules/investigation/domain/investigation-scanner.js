@@ -1,3 +1,9 @@
+/**
+ * Scans tracked tree content into bounded term hits and inventory facts.
+ *
+ * Invariants:
+ * - Effective scan terms cannot exceed the admitted term limit.
+ */
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";

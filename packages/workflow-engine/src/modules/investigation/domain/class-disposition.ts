@@ -1,3 +1,11 @@
+/**
+ * Proves shared scan-hit classifications and expands them into ordinary
+ * per-group dispositions.
+ *
+ * Invariants:
+ * - Groups from saturated terms cannot be admitted to a compressed class
+ *   disposition.
+ */
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   evaluateHitPredicate,

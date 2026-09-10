@@ -1,3 +1,11 @@
+/**
+ * Coordinates one-use Grant transitions through supplied clock and storage
+ * ports.
+ *
+ * Invariants:
+ * - Reservation requires available state; consumption requires reserved
+ *   state, and terminal states cannot transition again.
+ */
 import crypto from 'node:crypto';
 
 export const GRANT_LIFECYCLE_CONTRACT_VERSION_V1 =

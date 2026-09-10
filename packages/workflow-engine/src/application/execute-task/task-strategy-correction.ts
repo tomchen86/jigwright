@@ -1,3 +1,11 @@
+/**
+ * Records GREEN failures and resolves the current implementation correction
+ * authority.
+ *
+ * Invariants:
+ * - A recorded failure must belong to the current strategy and a declared
+ *   GREEN check.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -1,3 +1,10 @@
+/**
+ * Adapts the workflow check loader to the public check registry port.
+ *
+ * Invariants:
+ * - Compile-time checks require bidirectional compatibility with the public
+ *   check and registry types.
+ */
 import type {
   CheckDefinitionV1,
   CheckRegistryV1,

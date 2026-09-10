@@ -1,3 +1,12 @@
+/**
+ * Reads and atomically publishes private Task Mandate files.
+ *
+ * Invariants:
+ * - readPrivateFile throws unsafeStore unless the target is a non-symlink
+ *   regular file with nlink 1 and mode 0600.
+ * - A new file is written exclusively, flushed, linked into place, and
+ *   followed by a directory flush.
+ */
 import path from 'node:path';
 
 import fs from 'node:fs';

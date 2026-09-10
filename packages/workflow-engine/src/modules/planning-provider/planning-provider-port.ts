@@ -1,3 +1,11 @@
+/**
+ * Exposes shared planning provider evaluation through the workflow error
+ * boundary.
+ *
+ * Invariants:
+ * - Only PlanningProviderContractError is converted into a workflow
+ *   verification error.
+ */
 import {
   evaluatePlanningProvider as evaluateCorePlanningProvider,
   PlanningProviderContractError,

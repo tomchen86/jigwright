@@ -1,3 +1,11 @@
+/**
+ * Inspects provider executables and binds observations to the exact file
+ * identity that was read.
+ *
+ * Invariants:
+ * - Currentness checks accept only observations created by this module and
+ *   reject a changed file fingerprint.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

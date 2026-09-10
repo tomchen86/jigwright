@@ -1,3 +1,14 @@
+/**
+ * Loads optional Grant implementations on demand and exposes their public
+ * contract operations.
+ *
+ * Invariants:
+ * - Successfully loaded optional submodules are cached by specifier; failed
+ *   loads do not populate the cache.
+ * - A missing @jigwright/grants package is surfaced as
+ *   workflowError('JIGWRIGHT_OPTIONAL_GRANTS_UNAVAILABLE') rather than the
+ *   raw module-resolution error.
+ */
 import { createRequire } from 'node:module';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

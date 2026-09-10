@@ -1,3 +1,13 @@
+/**
+ * Defines cancellation and cancellation-with-abort recovery for an in-
+ * progress protected-task application.
+ *
+ * Invariants:
+ * - The expected terminal phase is action-determined: 'cancel' expects
+ *   'cancelled', 'cancel-and-abort' expects 'aborted'.
+ * - An observation carries a cancellationRecordDigest exactly when its
+ *   phase is not 'in-progress' (null in 'in-progress', non-null otherwise).
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

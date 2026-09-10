@@ -1,3 +1,11 @@
+/**
+ * Adapts native OpenSpec installation and change inspection to the public
+ * planning provider port.
+ *
+ * Invariants:
+ * - Evaluation requires an exact repository, change root and supported
+ *   contract with readOnly true.
+ */
 import {
   planningProviderResultDigest,
   type PlanningProviderChangeResult,

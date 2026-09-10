@@ -1,3 +1,11 @@
+/**
+ * Projects built-in provider preflight results into public runtime evidence
+ * and re-admits it at the consumer boundary.
+ *
+ * Invariants:
+ * - Admitted evidence must identify the provider family expected by the
+ *   caller.
+ */
 import {
   AgentRuntimePortContractError,
   assertAgentRuntimeDefinitionIdentityV1,

@@ -1,3 +1,10 @@
+/**
+ * Composes planning instructions, artifact status and reviewed asset
+ * mirrors for the selected provider.
+ *
+ * Invariants:
+ * - Authoring and mirror lookup require the configured OpenSpec provider.
+ */
 import crypto from 'node:crypto';
 
 import { createOpenSpecAdapter } from './openspec-adapter-production.ts';

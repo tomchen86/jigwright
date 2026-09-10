@@ -1,3 +1,11 @@
+/**
+ * Publishes private maintenance records and reconciles interrupted
+ * publication.
+ *
+ * Invariants:
+ * - An existing prepared publication must match the requested artifact
+ *   replay.
+ */
 import type fs from 'node:fs';
 // intervention maintenance publication; repository effects remain bound by the public module.
 import type {

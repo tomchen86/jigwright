@@ -1,3 +1,10 @@
+/**
+ * Routes execution job inspection, retries and evidence retention commands.
+ *
+ * Invariants:
+ * - Executing a requested retry requires the Grant argument and uses the
+ *   granted replacement service.
+ */
 import { type CommandResult, usage } from './cli-input.ts';
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
 import { dispatchProviderWorker } from '../worker/provider-worker.ts';

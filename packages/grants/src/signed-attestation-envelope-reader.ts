@@ -1,3 +1,11 @@
+/**
+ * Parses canonical signed attestations and verifies caller-validated
+ * payloads.
+ *
+ * Invariants:
+ * - Verification uses one explicitly allowlisted namespace after domain
+ *   validation, with no namespace retry.
+ */
 import crypto from 'node:crypto';
 
 import type { GrantSignatureVerifierPortV1 } from './grant-envelope-verifier.ts';

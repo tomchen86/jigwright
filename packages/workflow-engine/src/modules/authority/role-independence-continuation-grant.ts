@@ -1,3 +1,15 @@
+/**
+ * Requests degraded role-independence continuation and authenticates its
+ * completed activation.
+ *
+ * Invariants:
+ * - createRoleIndependenceContinuationGrantRequest refuses unless the
+ *   observation is applicable with a null activation and null
+ *   competingAttemptDigest.
+ * - authenticateRoleIndependenceContinuationActivation rejects unless the
+ *   completed authority's terminalOutcomeDigest equals
+ *   grantSha256(canonicalJson(completedOutcome(parameters))).
+ */
 import type {
   CentralGrantCompletedAuthorityRefV1,
   CentralGrantRequestInputV1,

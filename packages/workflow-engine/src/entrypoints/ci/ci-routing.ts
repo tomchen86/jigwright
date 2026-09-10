@@ -1,3 +1,11 @@
+/**
+ * Verifies routing commits and their canonical report and lifecycle-source
+ * bindings.
+ *
+ * Invariants:
+ * - A route commit changes exactly the handoff, lifecycle source and review
+ *   report, with the report bound to its parent.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '@jigwright/core/canonical-json';

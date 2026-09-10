@@ -1,3 +1,11 @@
+/**
+ * Reconciles reviewed implementation intentions with current production
+ * changes and invariants.
+ *
+ * Invariants:
+ * - A reported mutation must account for every planning-time invariant it
+ *   claims.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

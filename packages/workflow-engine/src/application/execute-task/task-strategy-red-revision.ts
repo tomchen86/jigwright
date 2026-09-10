@@ -1,3 +1,9 @@
+/**
+ * Opens and continues durable revisions of sealed RED task evidence.
+ *
+ * Invariants:
+ * - Only one distinct RED revision may be active for a task session.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

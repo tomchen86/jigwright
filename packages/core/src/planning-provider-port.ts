@@ -1,3 +1,11 @@
+/**
+ * Evaluates planning providers and normalizes installation, validation and
+ * inspection evidence.
+ *
+ * Invariants:
+ * - Evaluation requires readOnly true and rejects contradictions between
+ *   validation and inspection results.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from './canonical-json.ts';

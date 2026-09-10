@@ -1,3 +1,10 @@
+/**
+ * Assembles archive CLI discovery, preparation, authorization and
+ * publication dependencies.
+ *
+ * Invariants:
+ * - The GitHub adapter is loaded on demand through the dependency bundle.
+ */
 import {
   discoverArchivePullRequestCandidates,
   inspectArchivePublicationPreparation,

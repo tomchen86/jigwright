@@ -1,3 +1,11 @@
+/**
+ * Derives mutation classifications from reviewed generated assets and the
+ * pinned document policy.
+ *
+ * Invariants:
+ * - Document classifications are read from the supplied tracked snapshot
+ *   rather than the working copy.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

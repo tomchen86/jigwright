@@ -1,3 +1,11 @@
+/**
+ * Preflights and executes signed control-plane rollback recovery against
+ * durable updater state.
+ *
+ * Invariants:
+ * - A source transaction with reserved or completion-pending recovery
+ *   authority cannot obtain a competing recovery Grant.
+ */
 // control plane updater recovery; repository effects remain bound by the public module.
 import type {
   ControlPlaneUpdaterRecoveryBindings,

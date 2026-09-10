@@ -1,3 +1,11 @@
+/**
+ * Validates task diff review ancestry and selects the predecessor at the
+ * end of the chain.
+ *
+ * Invariants:
+ * - Accepted entries form one connected review chain without forks or
+ *   cycles.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {

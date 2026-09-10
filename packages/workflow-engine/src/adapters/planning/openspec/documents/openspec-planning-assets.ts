@@ -1,3 +1,11 @@
+/**
+ * Generates, formats, installs and checks the reviewed OpenSpec planning
+ * assets.
+ *
+ * Invariants:
+ * - Formatting must preserve the generated asset manifest before any
+ *   manifest bytes are published.
+ */
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

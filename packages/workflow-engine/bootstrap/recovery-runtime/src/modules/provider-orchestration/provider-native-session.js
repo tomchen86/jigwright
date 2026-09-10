@@ -1,3 +1,11 @@
+/**
+ * Defines native provider session scopes, claims, completions, and
+ * continuation handles.
+ *
+ * Invariants:
+ * - Assignments requiring a Grant need authority verification before
+ *   session scope derivation.
+ */
 import crypto from 'node:crypto';
 import { assertAgentProviderConfigSnapshot, assertProviderWrapperSessionProtocolReceipt, assertProviderWrapperSessionProtocolOutcome, providerNativeSessionIdDigest, } from '@jigwright/agent-runtime';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

@@ -1,3 +1,11 @@
+/**
+ * Produces a control-plane approval candidate from frozen repository,
+ * sidecar and supervisor evidence.
+ *
+ * Invariants:
+ * - The frozen candidate must recompute as a Class-C protected-capability
+ *   change.
+ */
 import { createControlPlaneCandidateMaterial } from './control-plane-candidate-material.ts';
 import childProcess from 'node:child_process';
 import crypto from 'node:crypto';

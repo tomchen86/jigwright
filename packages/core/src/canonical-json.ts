@@ -1,4 +1,10 @@
-/** Error raised when a value cannot own deterministic canonical JSON bytes. */
+/**
+ * Serializes finite JSON data deterministically for contract identity.
+ *
+ * Invariants:
+ * - Object keys use canonical string order; cycles, sparse arrays and
+ *   non-plain objects are rejected.
+ */
 export class CanonicalJsonError extends TypeError {
   readonly code = 'CANONICAL_JSON_INVALID';
 

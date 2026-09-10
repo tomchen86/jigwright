@@ -1,3 +1,14 @@
+/**
+ * Issues and validates task-revision approvals from an independent trusted
+ * signer.
+ *
+ * Invariants:
+ * - issueTaskRevisionApproval refuses unless the signer is trusted and
+ *   differs from the binding's actorAuthorityId (external authority).
+ * - readAndValidateTaskRevisionApproval rejects the record unless the
+ *   recomputed taskRevisionApprovalRecordId equals the requested
+ *   approvalId.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';

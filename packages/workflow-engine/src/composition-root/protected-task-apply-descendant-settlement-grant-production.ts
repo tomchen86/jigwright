@@ -1,3 +1,10 @@
+/**
+ * Observes and applies Grant-authorized settlement of protected task
+ * descendants.
+ *
+ * Invariants:
+ * - Grant creation requires the unchanged prepared descendant tree.
+ */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';

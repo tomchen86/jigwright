@@ -1,3 +1,11 @@
+/**
+ * Builds implementation subjects, status, and collaboration authority from
+ * current RED state.
+ *
+ * Invariants:
+ * - Recorded RED authors must retain provider, session, and principal
+ *   identities.
+ */
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import { inspectSession } from '../finalize/verification.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

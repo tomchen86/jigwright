@@ -1,3 +1,13 @@
+/**
+ * Requests and records authorization to initialize an exact protected
+ * branch on an empty remote.
+ *
+ * Invariants:
+ * - A grant request is offered only when the remote is exactly empty with
+ *   no remote or local tracking commit.
+ * - The transition records authority only and applies no remote effect
+ *   (remoteEffectApplied is false).
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

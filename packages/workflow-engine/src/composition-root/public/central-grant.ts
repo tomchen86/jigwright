@@ -1,4 +1,10 @@
-/** Current Central Grant composition surface. */
+/**
+ * Exports the public Central Grant contract and its engine composition.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
+ */
 export * from '@jigwright/grants/central-grant-contracts';
 export * from '../../modules/authority/grant-approval.ts';
 export * from '../../modules/authority/grant-coordinator.ts';

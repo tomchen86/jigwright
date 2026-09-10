@@ -1,3 +1,10 @@
+/**
+ * Summarizes authored proposal and design sections alongside the declared
+ * touched files.
+ *
+ * Invariants:
+ * - Touched files are sorted by path before they enter the digest.
+ */
 export type WorkflowPlanDigestTouchedFile = Readonly<{
   path: string;
   why: string;

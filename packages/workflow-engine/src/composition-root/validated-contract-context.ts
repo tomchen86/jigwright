@@ -1,3 +1,11 @@
+/**
+ * Loads stable validated planning contracts and exposes their routing
+ * authority facts.
+ *
+ * Invariants:
+ * - Validation rejects repository identity or projection changes and
+ *   requires the configured current schema.
+ */
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {
   discoverRepository,

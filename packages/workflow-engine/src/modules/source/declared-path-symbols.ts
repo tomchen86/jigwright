@@ -1,17 +1,10 @@
 /**
- * Names a declared target path publishes, extracted mechanically.
+ * Lexically extracts published names from declared source paths for
+ * investigation search.
  *
- * Search terms are supplied by the author, which makes the search only as
- * complete as the author's memory of what they are changing. These symbols are
- * derived from the pinned content of the paths the change itself declares, so
- * they cannot be forgotten, narrowed, or negotiated: whatever a file exports,
- * something elsewhere may name, and that name has to be searched for.
- *
- * The extraction is lexical and deliberately shallow. It reads what a file
- * says it publishes rather than resolving a module graph, and it does not
- * pretend to find names that only exist after a `export *` is resolved — an
- * honest short list the engine can always compute beats a longer one that
- * sometimes fails.
+ * Invariants:
+ * - Only column-zero exports are considered, and results are unique, sorted
+ *   and capped at the declared symbol limit.
  */
 
 export const DECLARED_SYMBOL_LIMIT = 512;

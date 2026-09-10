@@ -84,6 +84,8 @@ sources: [SRC-a341f8c2a6a2c42cebd5d199b134ac105c13247829294c14a8fc9fcc63702ec0]
 
 Each system requirement SHALL cite resolvable Governance Sources. Each scenario SHALL name an existing file-header invariant or a requirement in the same spec through `covers`, and an exact test path and name through `test`. Validation SHALL report absent contracts, unresolved Sources, missing or invalid bindings and a TBD Purpose. Metadata in fenced examples MUST NOT become declarations.
 
+File-header extraction SHALL recognize the leading documentation comment after an optional executable shebang and preserve its actual source line numbers. A comment following executable code MUST NOT become a file header.
+
 `documents validate` SHALL require actual passing evidence for each bound test at the same source snapshot. A skipped, cancelled, failed, absent or stale result MUST NOT count as passed. A current exact native full-gate receipt MAY supply that evidence; editing contract or source bytes SHALL invalidate earlier proof. A newer failed or unexecuted selected test MUST NOT fall back to an older pass.
 
 #### Scenario: Structural bindings are executable
@@ -99,6 +101,14 @@ test: packages/workflow-engine/test/system-spec.contract.test.ts#system spec par
 
 - **WHEN** a spec contains fenced metadata examples
 - **THEN** the parser preserves normative text and only reads declarations outside those examples
+
+#### Scenario: Executable entrypoints expose their file headers
+covers: #Requirement: System Scenarios Bind Existing Meaning and Observed Test Proof
+test: packages/workflow-engine/test/file-header.contract.test.ts#executable file headers retain their source lines after a shebang
+
+- **WHEN** an executable source begins with a shebang followed by its documentation comment
+- **THEN** responsibility and invariants remain available with their original line numbers
+- **AND** a later comment after code does not qualify as a file header
 
 #### Scenario: Native outcomes and contract changes govern proof
 covers: #Requirement: System Scenarios Bind Existing Meaning and Observed Test Proof

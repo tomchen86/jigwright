@@ -1,3 +1,11 @@
+/**
+ * Validates, imports, and adopts implementation patches against sealed RED
+ * evidence.
+ *
+ * Invariants:
+ * - Patch validation requires the exact current engine-sealed RED
+ *   transaction.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -1,3 +1,11 @@
+/**
+ * Loads and verifies protected capability manifests and their code and
+ * policy closures.
+ *
+ * Invariants:
+ * - Each required capability appears once in canonical order, and the
+ *   manifest protects both itself and its loader.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

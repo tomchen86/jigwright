@@ -1,4 +1,12 @@
-/** Canonical human-resolution envelopes and exact decision/state validation; repository trust, audit tags and SSH verification stay in the original owner. */
+/**
+ * Encodes canonical human-resolution envelopes and validates exact decision
+ * and state bindings.
+ *
+ * Invariants:
+ * - A human-resolution grant is single-use: `maxUses` must equal 1.
+ * - `parseHumanResolutionGrantEnvelope` requires the raw input to equal its
+ *   canonical envelope bytes exactly.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { type MaintainerPolicy } from './maintainer-policy.ts';

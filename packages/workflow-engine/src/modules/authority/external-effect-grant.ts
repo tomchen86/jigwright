@@ -1,3 +1,14 @@
+/**
+ * Issues and inspects external-effect Grants bound to an active Task
+ * Mandate.
+ *
+ * Invariants:
+ * - Only effect kinds listed in PRODUCTION_EXTERNAL_EFFECT_EXECUTOR_KINDS
+ *   (currently just publish-git-ref) may be issued; any other kind is
+ *   refused with no grant.
+ * - Issuance binds to the exact active Task Mandate: the parsed request's
+ *   mandateBinding must canonically equal the inspected active mandate.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

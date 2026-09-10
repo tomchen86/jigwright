@@ -1,3 +1,11 @@
+/**
+ * Verifies canonical Grant payload bytes and returns a typed capability
+ * receipt.
+ *
+ * Invariants:
+ * - The effect and signature namespace must both be allowlisted before the
+ *   supplied verifier is called.
+ */
 import crypto from 'node:crypto';
 
 import type { GrantVerifierPort } from '@jigwright/core/grant-verifier-port';

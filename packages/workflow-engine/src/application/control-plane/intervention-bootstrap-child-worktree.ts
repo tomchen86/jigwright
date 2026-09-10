@@ -1,3 +1,11 @@
+/**
+ * Materializes and verifies the child worktree reserved by an authorized
+ * intervention.
+ *
+ * Invariants:
+ * - An existing materialization receipt is reused only after checking both
+ *   its reservation and the actual worktree.
+ */
 // intervention bootstrap child worktree; repository effects remain bound by the public module.
 import type {
   InterventionBootstrapChildWorktreeBindings,

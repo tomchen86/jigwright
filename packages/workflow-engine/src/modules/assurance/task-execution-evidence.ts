@@ -1,3 +1,11 @@
+/**
+ * Reconstructs the current task execution generation from immutable commit
+ * and amendment evidence.
+ *
+ * Invariants:
+ * - Candidate task commits must lie on first-parent history and pass
+ *   canonical task-transition replay.
+ */
 import { replayCommitSequence } from '../../entrypoints/ci/ci-sequence.ts';
 import {
   listRangeCommits,

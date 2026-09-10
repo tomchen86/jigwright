@@ -1,4 +1,10 @@
-/** Shared exact value guards for PlanReview reports and immutable target snapshots. */
+/**
+ * Provides exact value guards and freezing helpers for PlanReview evidence.
+ *
+ * Invariants:
+ * - Exact-key validation admits only enumerable own data properties with
+ *   the expected string names.
+ */
 import crypto from 'node:crypto';
 
 const DIGEST_PATTERN = /^[0-9a-f]{64}$/;

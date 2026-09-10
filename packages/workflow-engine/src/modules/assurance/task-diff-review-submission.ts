@@ -1,4 +1,11 @@
-/** TaskDiff provider submission schemas, canonical findings, and evidence validation. */
+/**
+ * Defines task diff provider submissions, canonical findings, and evidence
+ * validation.
+ *
+ * Invariants:
+ * - Documentation assessment must be present exactly when the subject
+ *   requires it.
+ */
 import { createTaskDiffReviewContinuationSubmissionProtocol } from './task-diff-review-continuation-submission.ts';
 import { TASK_DIFF_REVIEW_COVERAGE } from './task-diff-review.ts';
 import type {

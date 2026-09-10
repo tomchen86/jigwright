@@ -1,3 +1,11 @@
+/**
+ * Applies managed change routing through a recoverable journal and
+ * authority port.
+ *
+ * Invariants:
+ * - Authority load outcomes are memoized within one repository lifecycle
+ *   operation.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

@@ -1,3 +1,11 @@
+/**
+ * Starts and inspects implementation runs and verifies their current
+ * provider ownership.
+ *
+ * Invariants:
+ * - Provider ownership must match the current implementation reservation
+ *   and manifest.
+ */
 import {
   AI_ADAPTER_DATA_AUTHORIZATION_POLICY_PORT,
   parseAiAdapterPolicyDocument,

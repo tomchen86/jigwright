@@ -1,3 +1,10 @@
+/**
+ * Reads stable current role plans and their central provider policy bytes.
+ *
+ * Invariants:
+ * - A role plan and central default must remain unchanged while read as a
+ *   pair.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

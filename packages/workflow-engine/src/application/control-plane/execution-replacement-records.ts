@@ -1,3 +1,11 @@
+/**
+ * Validates and persists execution replacement requests, bindings and
+ * transaction progress.
+ *
+ * Invariants:
+ * - Transaction advancement cannot skip phases; replay of an
+ *   already-reached phase returns durable state.
+ */
 // execution replacement records; repository effects remain bound by the public module.
 import type {
   ExecutionReplacementRecordsBindings,

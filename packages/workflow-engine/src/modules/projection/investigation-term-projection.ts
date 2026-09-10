@@ -1,3 +1,10 @@
+/**
+ * Projects current PlanReview terms into bounded reviewer contribution
+ * deltas.
+ *
+ * Invariants:
+ * - Reviewer terms may project only from a current review.
+ */
 import {
   ExitCode,
   workflowError,

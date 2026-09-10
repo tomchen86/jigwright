@@ -1,3 +1,11 @@
+/**
+ * Binds the provider availability pilot runner to production probes,
+ * execution and clocks.
+ *
+ * Invariants:
+ * - The runner receives the built-in probe and provider implementation
+ *   through a frozen dependency object.
+ */
 import crypto from 'node:crypto';
 
 import { createProviderAvailabilityPilotRunner } from '../runtime/provider-execution/provider-availability-pilot.ts';

@@ -1,3 +1,11 @@
+/**
+ * Validates tracked inventory currentness and the explicit parent
+ * replacement paths used by evidence reuse.
+ *
+ * Invariants:
+ * - Every tracked current-parent reference must have a corresponding
+ *   reuse-proof reference for the same edge.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { readConvergenceBinding, readReuseProofBinding, } from "./evidence-convergence.js";

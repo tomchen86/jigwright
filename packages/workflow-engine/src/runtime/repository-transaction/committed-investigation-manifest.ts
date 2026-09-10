@@ -1,3 +1,11 @@
+/**
+ * Reads and replays an investigation manifest from an exact immutable
+ * commit tree.
+ *
+ * Invariants:
+ * - The committed blob must preserve the exact canonical bytes of the
+ *   authority-validated manifest.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { TextDecoder } from 'node:util';

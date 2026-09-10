@@ -1,4 +1,11 @@
-/** PlanReview submission grammar, provider-facing schema, canonical normalization, and evidence parsing. Repository path normalization is bound by the review facade. */
+/**
+ * Defines PlanReview submission grammar, normalization, and evidence
+ * parsing.
+ *
+ * Invariants:
+ * - Provider submissions must carry exactly the provider-facing submission
+ *   fields.
+ */
 import { sha256, deepFreeze, isRecord, hasExactKeys, isDigest, } from "./plan-review-values.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { normalizeInvestigationTerm } from "../investigation/domain/investigation-terms.js";

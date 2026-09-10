@@ -1,4 +1,11 @@
-/** Retry eligibility, grant requests, and failure-state decisions. */
+/**
+ * Decides retry eligibility, budget grants, and projected execution failure
+ * state.
+ *
+ * Invariants:
+ * - Retry guards retain their defined order and first applicable reason
+ *   code.
+ */
 import type { GrantRequest } from '../authority/execution-governance.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';

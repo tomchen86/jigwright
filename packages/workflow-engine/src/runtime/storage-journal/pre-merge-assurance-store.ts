@@ -1,3 +1,11 @@
+/**
+ * Stores pre-merge assurance nodes and resolves them by their base and head
+ * commit binding.
+ *
+ * Invariants:
+ * - A stored binding must agree with the node identity, result and required
+ *   coverage.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

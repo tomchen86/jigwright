@@ -1,3 +1,11 @@
+/**
+ * Persists workflow records under identities derived from their serialized
+ * bytes.
+ *
+ * Invariants:
+ * - An existing record is reused only when its bytes equal the proposed
+ *   content.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

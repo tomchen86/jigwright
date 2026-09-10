@@ -1,3 +1,11 @@
+/**
+ * Connects archive delta verification to current and pinned repository
+ * evidence.
+ *
+ * Invariants:
+ * - Only OpenSpec archive projection errors are translated into workflow
+ *   errors; other failures propagate.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

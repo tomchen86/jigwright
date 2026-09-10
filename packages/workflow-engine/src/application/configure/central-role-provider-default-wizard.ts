@@ -1,3 +1,11 @@
+/**
+ * Builds declarative role/provider defaults from validated prompt choices
+ * and an explicit save decision.
+ *
+ * Invariants:
+ * - Saving requires confirmation and the same admitted provider
+ *   configuration used to present the choices.
+ */
 import type { AgentProviderConfigSnapshot } from '@jigwright/agent-runtime';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -1,3 +1,11 @@
+/**
+ * Projects investigation WHY overlays into the managed ledger region of a
+ * design document.
+ *
+ * Invariants:
+ * - Validation requires the stored ledger projection to equal a fresh
+ *   projection.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { InvestigationWhyOverlayV3 } from '../investigation/manifest/investigation-manifest.ts';
 import { markdownLines } from '@jigwright/core/markdown-sections';

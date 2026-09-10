@@ -1,4 +1,11 @@
-/** Derives module reference sections from CLI usage, union types, contracts and headers. */
+/**
+ * Derives module reference sections from snapshot CLI usage, union types,
+ * contracts and source headers.
+ *
+ * Invariants:
+ * - A module receives generated reference sections only when its README
+ *   contains a confirmed Why paragraph.
+ */
 import path from 'node:path';
 import { extractFileHeader } from '../source/file-header.ts';
 import { readModuleReadmeWhy } from '../source/module-readme.ts';
@@ -7,33 +14,8 @@ import {
   type SystemDescriptionSnapshot,
   type SystemSpec,
 } from '../source/spec-ownership.ts';
+import { MODULE_README_COMMANDS } from './engine-projection-registry.ts';
 import type { ProjectionBinding } from './projection-service.ts';
-
-const MODULE_COMMANDS = {
-  'governance-intake': [
-    'source',
-    'now',
-    'later',
-    'attach',
-    'correct',
-    'finding',
-    'work-item',
-  ],
-  authority: [
-    'grant',
-    'external-effect',
-    'publish',
-    'task',
-    'change',
-    'engine',
-    'intervention',
-    'control-plane',
-    'audit',
-    'maintainer',
-    'human-resolution-state',
-  ],
-  'provider-orchestration': ['init', 'agent', 'adapter', 'role-config'],
-} as const;
 
 export function moduleReadmeProjectionBindings(
   snapshot: SystemDescriptionSnapshot,
@@ -51,8 +33,38 @@ export function moduleReadmeProjectionBindings(
       /^\s*['"]  (?:pnpm workflow |jigwright )(.+?) — ([^'"\r\n]+)['"],?$/gm,
     ),
   ].map((match) => ({ command: match[1]!, description: match[2]! }));
+  const catalog =
+    snapshot.readText(
+      'packages/workflow-engine/src/modules/guidance/catalog/managed-workflow-command-registry.ts',
+    ) ?? '';
+  const constants = new Map(
+    [
+      ...catalog.matchAll(
+        /const ([A-Z_]+)\s*=\s*'((?:pnpm workflow |jigwright )[^']+)';/g,
+      ),
+    ].map((match) => [match[1]!, match[2]!]),
+  );
+  // Read literal catalog facts from the selected snapshot, never execute its
+  // TypeScript or import the current checkout's catalog for a pinned tree.
+  for (const entry of catalog.split(/\n  \{\n/)) {
+    const commands = /usage:\s*\[([\s\S]*?)\],/.exec(entry)?.[1];
+    const description = /purpose:\s*'([^']+)'/.exec(entry)?.[1];
+    if (!commands || !description) continue;
+    for (const match of commands.matchAll(
+      /'((?:pnpm workflow |jigwright )[^']+)'|\b([A-Z_]+)\b/g,
+    )) {
+      const command = match[1] ?? constants.get(match[2]!);
+      if (command)
+        usage.push({
+          command: command.replace(/^(?:pnpm workflow |jigwright )/, ''),
+          description,
+        });
+    }
+  }
   return (
-    Object.keys(MODULE_COMMANDS) as Array<keyof typeof MODULE_COMMANDS>
+    Object.keys(MODULE_README_COMMANDS) as Array<
+      keyof typeof MODULE_README_COMMANDS
+    >
   ).flatMap((module) => {
     const directory = `packages/workflow-engine/src/modules/${module}`;
     const target = `${directory}/README.md`;
@@ -70,7 +82,7 @@ export function moduleReadmeProjectionBindings(
       const source = snapshot.readText(file) ?? '';
       return [
         ...source.matchAll(
-          /(?:export\s+)?type\s+(\w+)\s*=\s*((?:(?:'[^']+'|"[^"]+"|null|undefined)\s*\|\s*)*(?:'[^']+'|"[^"]+"|null|undefined))\s*;/g,
+          /(?:export\s+)?type\s+(\w+)\s*=\s*\|?\s*((?:(?:'[^']+'|"[^"]+"|null|undefined)\s*\|\s*)*(?:'[^']+'|"[^"]+"|null|undefined))\s*;/g,
         ),
       ].map((match) => ({
         name: match[1]!,
@@ -89,7 +101,7 @@ export function moduleReadmeProjectionBindings(
     const contract = specs.find((spec) => spec.path === owner);
     const changes = changedPathsSince(directory, why.confirmedAtCommit);
     const commands = usage.filter(({ command }) =>
-      (MODULE_COMMANDS[module] as readonly string[]).includes(
+      (MODULE_README_COMMANDS[module] as readonly string[]).includes(
         command.split(' ')[0]!,
       ),
     );

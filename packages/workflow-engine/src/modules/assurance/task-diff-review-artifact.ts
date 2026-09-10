@@ -1,3 +1,11 @@
+/**
+ * Creates and validates task diff review, disposition, and challenge-
+ * response records.
+ *
+ * Invariants:
+ * - A disposition must be closed by the assigned reviewer and not the
+ *   implementer.
+ */
 import { createTaskDiffFinalAssuranceProtocol } from './task-diff-final-assurance-artifact.ts';
 import { createTaskDiffReviewSubmissionProtocol } from './task-diff-review-submission.ts';
 import crypto from 'node:crypto';

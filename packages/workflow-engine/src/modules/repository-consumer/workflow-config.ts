@@ -1,3 +1,11 @@
+/**
+ * Parses repository workflow configuration, namespace choices and task
+ * authorization policy.
+ *
+ * Invariants:
+ * - Conditional task authorization must use the reviewed workflow path-role
+ *   registry.
+ */
 import {
   createWorkflowNamespaceConfig,
   type WorkflowNamespaceConfig,

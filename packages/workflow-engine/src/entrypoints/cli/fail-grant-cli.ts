@@ -1,3 +1,10 @@
+/**
+ * Converts supported workflow refusals into exact Central Grant challenges.
+ *
+ * Invariants:
+ * - Change-routing challenges require the resume intent that produced the
+ *   refusal.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

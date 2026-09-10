@@ -1,4 +1,11 @@
-/** Internal immutable-target codec; the public constructor validates its subject before delegation. */
+/**
+ * Creates and validates immutable planning target snapshots and migration
+ * contracts.
+ *
+ * Invariants:
+ * - Snapshots require planning or exemption planning materialization
+ *   evidence.
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
 import { assertStoredEvidenceNode, createEvidenceNode, } from "../../foundation/evidence-node/evidence-node.js";

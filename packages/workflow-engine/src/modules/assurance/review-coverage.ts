@@ -1,3 +1,11 @@
+/**
+ * Builds review populations and selects the required targets for each
+ * assurance tier.
+ *
+ * Invariants:
+ * - Critical reviews cover every target; lower tiers retain mandatory
+ *   strata before sampling.
+ */
 import crypto from 'node:crypto';
 
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

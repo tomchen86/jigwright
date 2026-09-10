@@ -1,3 +1,10 @@
+/**
+ * Binds immutable candidate construction and verification to production Git
+ * and check primitives.
+ *
+ * Invariants:
+ * - All candidate operations receive the same frozen runtime port.
+ */
 import { pinCheckRunner } from '../adapters/consumer/repository/work-registry/check-runner.ts';
 import {
   buildImmutableGitCandidateWithRuntimePort,

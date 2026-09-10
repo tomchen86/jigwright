@@ -1,3 +1,10 @@
+/**
+ * Dispatches production control-plane approval and candidate application.
+ *
+ * Invariants:
+ * - Approve-and-apply requires a controlling-terminal signer and summary
+ *   presenter.
+ */
 import { bootstrapInterventionStateRoot } from '../../../bootstrap/control-plane-trust.ts';
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';
 import {

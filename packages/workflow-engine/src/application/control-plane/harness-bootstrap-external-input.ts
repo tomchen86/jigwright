@@ -1,3 +1,11 @@
+/**
+ * Validates private recovery state directories and imports canonical
+ * external recovery inputs.
+ *
+ * Invariants:
+ * - External recovery inputs must lie outside both the repository worktree
+ *   and Git common directory.
+ */
 import path from 'node:path';
 import fs from 'node:fs';
 import type {

@@ -1,3 +1,10 @@
+/**
+ * Persists source-scoped implementation patches, import receipts, and
+ * current bindings.
+ *
+ * Invariants:
+ * - An import receipt must match its patch record and candidate tree.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

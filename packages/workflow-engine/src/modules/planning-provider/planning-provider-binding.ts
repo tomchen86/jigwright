@@ -1,3 +1,11 @@
+/**
+ * Adapts the shared planning binding codec to workflow errors and exit
+ * categories.
+ *
+ * Invariants:
+ * - Binding bytes and identity remain core-defined; unsupported migrations
+ *   map to the guard category.
+ */
 import {
   parsePlanningProviderBinding as parseCorePlanningProviderBinding,
   PlanningProviderBindingError,

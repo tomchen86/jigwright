@@ -1,3 +1,11 @@
+/**
+ * Validates durable assignment and native session references for
+ * AgentRuntime execution.
+ *
+ * Invariants:
+ * - Assignment bindings require matching provider placement and a fresh
+ *   session slot.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

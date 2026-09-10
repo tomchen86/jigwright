@@ -1,4 +1,14 @@
-/** Canonical candidate bundles, supporting artifacts and check freshness contracts; no repository reads or durable writes. */
+/**
+ * Builds canonical candidate bundles, supporting artifacts and check
+ * freshness contracts.
+ *
+ * Invariants:
+ * - `buildCandidateExternalEffectsManifest` requires an explicit array and
+ *   rejects any non-empty external-effects declaration as
+ *   not-yet-verifiable.
+ * - The candidate bundle digest is recomputed from canonical content, and a
+ *   supplied `candidateBundleDigest` must equal it.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

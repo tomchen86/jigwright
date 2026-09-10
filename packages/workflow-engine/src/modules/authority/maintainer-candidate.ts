@@ -1,3 +1,13 @@
+/**
+ * Stores and reads immutable candidate bundles, their supporting artifacts
+ * and readable summaries.
+ *
+ * Invariants:
+ * - The three candidate supporting artifacts must share one changeId and
+ *   one task-mandate binding.
+ * - A stored candidate bundle file must be a regular, non-symlink,
+ *   single-hardlink file with mode 0600.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,10 @@
+/**
+ * Schedules independent provider roles and validates granted role
+ * exceptions.
+ *
+ * Invariants:
+ * - Ordinary roles require at least session independence.
+ */
 import { createRoleResultAdmission } from './role-result-admission.ts';
 import crypto from 'node:crypto';
 

@@ -1,3 +1,11 @@
+/**
+ * Captures and restores intervention workspaces and persists trusted
+ * session snapshots.
+ *
+ * Invariants:
+ * - A session snapshot identity cannot be reused for different canonical
+ *   bytes.
+ */
 // intervention bootstrap workspace; repository effects remain bound by the public module.
 import type {
   InterventionBootstrapWorkspaceBindings,

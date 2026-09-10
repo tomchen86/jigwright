@@ -1,4 +1,11 @@
-/** Promotion survey and exact preparation bindings, before the durable promotion transaction. Git and canonical record access are bound by the registry facade. */
+/**
+ * Prepares promotion surveys and exact change bindings before durable
+ * promotion.
+ *
+ * Invariants:
+ * - An empty promotion survey requires a reason; a nonempty survey excludes
+ *   one.
+ */
 import { registryInvalid, changeIdentity, boundedText, workRegistryTextDigest, WORK_ITEM_FILE_MODE, isRecord, hasExactKeys, } from "./work-registry-record.js";
 import path from 'node:path';
 import { canonicalJson } from '@jigwright/core/canonical-json';

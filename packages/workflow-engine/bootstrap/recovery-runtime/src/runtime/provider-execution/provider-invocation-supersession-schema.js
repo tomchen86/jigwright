@@ -1,3 +1,11 @@
+/**
+ * Defines supersession records and verifies predecessor, successor, and
+ * receipt relations.
+ *
+ * Invariants:
+ * - Existing supersession indexes require readable backing transaction
+ *   pointers.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

@@ -1,3 +1,10 @@
+/**
+ * Reviews and applies change routing, dependencies, blockers, and protected
+ * continuations.
+ *
+ * Invariants:
+ * - A blocked change must identify one exact blocker.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,10 @@
+/**
+ * Loads consumer configuration and resolves repository-contained policy
+ * paths.
+ *
+ * Invariants:
+ * - Consumer identity must match the repository package name.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

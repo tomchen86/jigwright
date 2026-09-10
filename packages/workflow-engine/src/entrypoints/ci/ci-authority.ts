@@ -1,3 +1,10 @@
+/**
+ * Verifies managed authority commits, candidate receipts, and policy
+ * transitions in CI.
+ *
+ * Invariants:
+ * - Authority verification requires a canonical commit with one parent.
+ */
 import crypto from 'node:crypto';
 
 import { deriveAuthorityAuditRepositoryId } from '../../runtime/storage-journal/authority-audit-ledger.ts';

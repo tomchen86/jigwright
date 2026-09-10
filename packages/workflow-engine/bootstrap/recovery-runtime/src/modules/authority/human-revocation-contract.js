@@ -1,3 +1,13 @@
+/**
+ * Parses canonical human revocation envelopes and validates their exact
+ * subject bindings.
+ *
+ * Invariants:
+ * - The `signatureNamespace` is fixed to
+ *   `HUMAN_REVOCATION_SIGNATURE_NAMESPACE`; any other value is rejected.
+ * - `parseHumanRevocationAuthorization` requires the raw input to
+ *   re-serialize exactly to canonical JSON plus a trailing newline.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

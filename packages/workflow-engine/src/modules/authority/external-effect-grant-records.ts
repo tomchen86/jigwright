@@ -1,3 +1,15 @@
+/**
+ * Builds and parses canonical external-effect reservation, transaction,
+ * observation and terminal records.
+ *
+ * Invariants:
+ * - Record parsers compare recomputed identities and canonical
+ *   serialization with the stored bytes.
+ * - A transaction record's phase constrains its fields: 'reserved' forbids
+ *   dispatch/observation fields, 'dispatch-issued' requires
+ *   dispatchIssuedAt and forbids observation, and 'effect-observed'
+ *   requires all three.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

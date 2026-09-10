@@ -1,3 +1,11 @@
+/**
+ * Declares current data authorization policy limits and the reader
+ * contract.
+ *
+ * Invariants:
+ * - The version 4 policy type fixes managed-read-only mode and
+ *   lifecycle-only launch policy.
+ */
 export type DataAuthorizationLimits = {
   timeoutMs: number;
   aggregateOutputBytes: number;

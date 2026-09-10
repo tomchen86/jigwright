@@ -1,3 +1,13 @@
+/**
+ * Registers Grant transitions and renders choices bound to their declared
+ * parameters and consequences.
+ *
+ * Invariants:
+ * - A transitionId can be registered only once; a duplicate is rejected.
+ * - `renderTrustedChoice` rejects a choice unless its pinned
+ *   parameter-schema/consequence digests, resolution kind, and approval
+ *   methods still equal the registered definition.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type { CentralGrantTransitionRegistryPortV1 } from '@jigwright/core/central-grant-port';
 import {

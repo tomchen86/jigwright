@@ -1,3 +1,11 @@
+/**
+ * Builds role topology comparison snapshots from current policy and
+ * reviewed provider definitions.
+ *
+ * Invariants:
+ * - Providers are sorted by logical identity, and enabled is true only for
+ *   an explicit true policy value.
+ */
 import { resolveBuiltInProviderDefinitionSnapshot } from '../adapters/providers/built-in-provider-definition.ts';
 import { listBuiltInProviders } from '../modules/provider-orchestration/provider-registry.ts';
 import type { RoleTopologyResolutionDependencyPortV1 } from '../modules/provider-orchestration/role-topology-resolution.ts';

@@ -1,3 +1,11 @@
+/**
+ * Defines the stable identity and schema bindings of routing continuation
+ * Grants.
+ *
+ * Invariants:
+ * - The transition identifier and schema and consequence identities are
+ *   fixed code-owned constants.
+ */
 export const CHANGE_ROUTING_CONTINUATION_TRANSITION_ID =
   'change-routing.continue.v1' as const;
 

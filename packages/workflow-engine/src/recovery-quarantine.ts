@@ -1,4 +1,11 @@
-/** Public recovery-quarantine APIs and authoritative operation ordering. */
+/**
+ * Enters and releases recovery quarantine with verified grants and durable
+ * audit ordering.
+ *
+ * Invariants:
+ * - A different active quarantine marker cannot be replaced by an enter
+ *   operation.
+ */
 import fs from 'node:fs';
 import { canonicalJson } from './foundation/canonical-json/canonical-json.ts';
 import { ExitCode } from './foundation/errors/errors.ts';

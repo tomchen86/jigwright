@@ -1,3 +1,11 @@
+/**
+ * Starts and tracks authority sessions bound to reserved grants and
+ * candidates.
+ *
+ * Invariants:
+ * - A reserved grant must match the repository, change, and starting
+ *   commit.
+ */
 import { createMaintainerSessionInspection } from './maintainer-session-inspection.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

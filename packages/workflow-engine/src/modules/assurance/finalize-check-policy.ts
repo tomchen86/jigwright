@@ -1,3 +1,11 @@
+/**
+ * Selects task and terminal check requirements for a projected completion
+ * state.
+ *
+ * Invariants:
+ * - Terminal escalation replaces only explicitly subsumed task checks and
+ *   retains independent checks.
+ */
 import type {
   ParsedTask,
   WorkflowConfig,

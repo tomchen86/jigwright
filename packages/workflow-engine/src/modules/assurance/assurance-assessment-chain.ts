@@ -1,3 +1,10 @@
+/**
+ * Builds assurance assessments and derives effective coverage and change-
+ * class floors.
+ *
+ * Invariants:
+ * - An assessment can only be appended to a nonempty assurance chain.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

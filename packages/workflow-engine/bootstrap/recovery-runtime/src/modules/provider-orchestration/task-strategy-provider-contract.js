@@ -1,3 +1,11 @@
+/**
+ * Defines implementation and correction subjects, provider manifests, and
+ * output contracts.
+ *
+ * Invariants:
+ * - Implementation manifests retain the repository-read-only capability
+ *   profile.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

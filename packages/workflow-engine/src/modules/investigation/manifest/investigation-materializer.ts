@@ -1,3 +1,11 @@
+/**
+ * Materializes canonical investigation evidence from replayable terms and
+ * tree facts.
+ *
+ * Invariants:
+ * - Materialized evidence views remain process-local and cannot be
+ *   serialized.
+ */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import {
   applyInvestigationDispositionDecisions,

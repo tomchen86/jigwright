@@ -1,3 +1,11 @@
+/**
+ * Persists and preflights control-plane approval candidates and their
+ * review summaries.
+ *
+ * Invariants:
+ * - An existing candidate identity cannot be reused with different
+ *   canonical approval bytes.
+ */
 // control plane updater approval; repository effects remain bound by the public module.
 import type {
   ControlPlaneUpdaterApprovalBindings,

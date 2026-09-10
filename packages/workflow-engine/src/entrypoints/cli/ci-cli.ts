@@ -1,3 +1,10 @@
+/**
+ * Parses CI comparison arguments and submits optional integration review
+ * evidence.
+ *
+ * Invariants:
+ * - Arguments must exactly follow base, head and optional input order.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { type CommandResult, usage, optionValue } from './cli-input.ts';

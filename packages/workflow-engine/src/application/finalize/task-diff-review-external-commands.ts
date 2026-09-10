@@ -1,3 +1,11 @@
+/**
+ * Submits and reconciles external reviews and closures within their grant
+ * transactions.
+ *
+ * Invariants:
+ * - Review submission must retain the initially inspected subject and
+ *   implementation actor.
+ */
 // Submit and reconcile external reviews and closures within their exact grant transactions.
 import {
   type TaskDiffReviewExternalSubmissionInput,

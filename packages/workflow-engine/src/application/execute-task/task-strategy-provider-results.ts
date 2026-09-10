@@ -1,3 +1,11 @@
+/**
+ * Admits implementation provider results and reconciles correction round
+ * evidence.
+ *
+ * Invariants:
+ * - Correction reservations must match the current GREEN failure and patch
+ *   head.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   type ImportedTaskStrategyPatch,

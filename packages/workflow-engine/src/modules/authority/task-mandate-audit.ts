@@ -1,3 +1,13 @@
+/**
+ * Appends authority audit events for Task Mandate authorization, revocation
+ * and provider calls.
+ *
+ * Invariants:
+ * - prefixedDigest throws unsafeStore for any non-64-hex input, so every
+ *   emitted grantDigest is a `sha256:`-prefixed 64-hex string.
+ * - appendTaskMandateRevocationAudit throws unsafeStore unless the record
+ *   is revoked with both revokedAt and revocationReason set.
+ */
 import { type AuthorityRefusalAuditBinding } from './authority-refusal-audit.ts';
 
 import { type ProviderId } from '../provider-orchestration/provider-registry.ts';

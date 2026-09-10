@@ -1,3 +1,10 @@
+/**
+ * Validates exact repository paths and matches allowed directory prefixes.
+ *
+ * Invariants:
+ * - Allowed prefixes use a terminal /** and match only their base path or
+ *   descendants separated by a slash.
+ */
 import path from 'node:path';
 
 const WINDOWS_ABSOLUTE_PATTERN = /^[a-zA-Z]:[\\/]/;

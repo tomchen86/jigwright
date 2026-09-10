@@ -1,3 +1,11 @@
+/**
+ * Executes persisted engine adoption steps through intervention bootstrap
+ * ports.
+ *
+ * Invariants:
+ * - The executable and artifact must match the exact persisted adoption
+ *   record.
+ */
 import { createInterventionBootstrapWorkspace } from './intervention-bootstrap-workspace.ts';
 import { createInterventionBootstrapAbandonment } from './intervention-bootstrap-abandonment.ts';
 import { createInterventionBootstrapStorage } from './intervention-bootstrap-storage.ts';

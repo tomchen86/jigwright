@@ -1,3 +1,11 @@
+/**
+ * Builds authoritative and consumed-replay verifiers from trusted package
+ * composition.
+ *
+ * Invariants:
+ * - Authoritative verification rejects a composition changed since verifier
+ *   creation.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

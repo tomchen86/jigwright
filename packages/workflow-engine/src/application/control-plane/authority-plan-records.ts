@@ -1,3 +1,10 @@
+/**
+ * Stores authority plan revisions and validates their durable lineage.
+ *
+ * Invariants:
+ * - Revision history must be contiguous and preserve the original plan
+ *   intent and baseline.
+ */
 // authority plan records; repository effects remain bound by the public module.
 import type {
   AuthorityPlanRecordsBindings,

@@ -1,3 +1,11 @@
+/**
+ * Materializes durable role assignment records, session slots, and Grant
+ * requirements.
+ *
+ * Invariants:
+ * - Read records must match their recomputed digest and requested change
+ *   generation.
+ */
 import crypto from 'node:crypto';
 
 import {

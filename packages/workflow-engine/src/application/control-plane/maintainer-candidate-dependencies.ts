@@ -1,3 +1,11 @@
+/**
+ * Captures current and sealed dependency snapshots for maintainer candidate
+ * attestations.
+ *
+ * Invariants:
+ * - Current candidate dependencies are observed only at the exact
+ *   trust-base commit.
+ */
 import crypto from 'node:crypto';
 
 import {

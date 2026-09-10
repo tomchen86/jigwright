@@ -1,3 +1,10 @@
+/**
+ * Reads and renders task diff review status without advancing the review
+ * lifecycle.
+ *
+ * Invariants:
+ * - Competing active external grants cannot be resolved by filename order.
+ */
 // Read and render the current review state without advancing its lifecycle.
 import { type TaskDiffReviewSubject } from '../../modules/assurance/task-diff-review.ts';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

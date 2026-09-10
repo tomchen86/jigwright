@@ -1,3 +1,11 @@
+/**
+ * Collects setup answers and initializes consumer and host provider
+ * configuration.
+ *
+ * Invariants:
+ * - Initialization never overwrites an existing host provider
+ *   configuration.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';

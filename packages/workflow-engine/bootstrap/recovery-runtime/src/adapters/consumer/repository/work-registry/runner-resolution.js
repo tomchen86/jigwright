@@ -1,3 +1,10 @@
+/**
+ * Resolves declared check runners and binds their executable, entrypoints
+ * and package closure to a runner digest.
+ *
+ * Invariants:
+ * - Node entrypoints must resolve to regular files inside the repository.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

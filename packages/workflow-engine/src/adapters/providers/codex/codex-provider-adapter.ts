@@ -1,3 +1,11 @@
+/**
+ * Builds the reviewed read-only Codex invocation and required help-surface
+ * flags.
+ *
+ * Invariants:
+ * - The invocation fixes noninteractive read-only execution with ephemeral
+ *   state and a supplied output schema.
+ */
 import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
 export { CODEX_EXECUTABLE_CANDIDATES } from '../built-in-provider-definition.ts';
 

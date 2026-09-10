@@ -1,3 +1,10 @@
+/**
+ * Builds and verifies PlanReview coverage requirements and reuse bindings.
+ *
+ * Invariants:
+ * - Coverage requirements must match the expected change and baseline
+ *   commit and tree.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

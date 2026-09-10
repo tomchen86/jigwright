@@ -1,3 +1,11 @@
+/**
+ * Runs repository lifecycle hook checks and validates ordinary commit
+ * messages.
+ *
+ * Invariants:
+ * - The commit-message hook accepts only the current worktree Git message
+ *   file.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRepositorySpecificationPolicy } from '../../composition-root/repository-specification-policy.ts';

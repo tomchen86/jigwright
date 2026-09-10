@@ -1,3 +1,13 @@
+/**
+ * Parses external-effect requests and Grant envelopes with exact field and
+ * target-kind validation.
+ *
+ * Invariants:
+ * - effectKind and target kind must agree: publish-git-ref and
+ *   force-push-git-ref require a git-ref target and every other effect
+ *   requires an external-resource target.
+ * - A parsed grant payload is single-use: uses must equal 1.
+ */
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 
 import path from 'node:path';

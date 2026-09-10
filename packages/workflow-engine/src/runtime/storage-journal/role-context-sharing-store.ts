@@ -1,3 +1,11 @@
+/**
+ * Stores and transitions role context sharing grants through reservation
+ * and consumption.
+ *
+ * Invariants:
+ * - A consumed use must match the reserved role, session, and provider
+ *   bindings.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

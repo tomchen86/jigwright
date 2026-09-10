@@ -1,3 +1,11 @@
+/**
+ * Connects role/provider default inspection, configuration prompts and
+ * simulations to production storage.
+ *
+ * Invariants:
+ * - Configuration and simulation require an explicit provider ranking from
+ *   the admitted host configuration.
+ */
 import path from 'node:path';
 
 import {

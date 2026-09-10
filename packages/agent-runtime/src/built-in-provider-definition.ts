@@ -1,3 +1,14 @@
+/**
+ * Registers built-in provider capabilities and executable candidates for
+ * each supported platform.
+ *
+ * Invariants:
+ * - assertKnownBuiltInProviderDefinitionSnapshot admits a snapshot only
+ *   when the registry's regenerated snapshot for the matched
+ *   definitionId+revision canonically equals the candidate.
+ * - snapshotFromDefinition returns null when the definition has no
+ *   executable-candidate set for the requested platform.
+ */
 import { canonicalJson } from '@jigwright/core/canonical-json';
 
 import {

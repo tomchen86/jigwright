@@ -1,3 +1,12 @@
+/**
+ * Encodes and validates the portable receipt for a Git authority candidate
+ * application.
+ *
+ * Invariants:
+ * - A receipt is SSH-only: its approvalMethod must equal 'ssh'.
+ * - Embedded apply parameters must match the receipt target ref, base,
+ *   result tree and bound identities.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

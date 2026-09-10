@@ -1,3 +1,11 @@
+/**
+ * Expires, revokes, or rolls back interrupted authority commit
+ * transactions.
+ *
+ * Invariants:
+ * - Expiry rejects journal states outside preparing, commit-created, or
+ *   revoked.
+ */
 // maintainer recovery terminalization; repository effects remain bound by the public module.
 import type {
   MaintainerRecoveryTerminalizationBindings,

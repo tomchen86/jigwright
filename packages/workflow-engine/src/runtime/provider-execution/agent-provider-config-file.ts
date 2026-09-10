@@ -1,3 +1,11 @@
+/**
+ * Loads stable private provider configuration and checks its original
+ * source binding.
+ *
+ * Invariants:
+ * - Currentness checks require the exact loaded path, digest, and snapshot
+ *   binding.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

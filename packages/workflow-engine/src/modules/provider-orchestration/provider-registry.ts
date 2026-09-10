@@ -1,3 +1,11 @@
+/**
+ * Exposes reviewed built-in provider families and checks requested
+ * capability profiles.
+ *
+ * Invariants:
+ * - Capability lookup requires a registered provider and an exact
+ *   purpose/profile pair.
+ */
 import {
   isBuiltInProviderFamily,
   listBuiltInProviderCapabilityDescriptors,

@@ -1,3 +1,11 @@
+/**
+ * Assembles production authority dependencies and grant replay verifiers
+ * for the CLI.
+ *
+ * Invariants:
+ * - External review reconciliation requires the exact durably consumed
+ *   Grant.
+ */
 import {
   discoverRepository,
   runGit,

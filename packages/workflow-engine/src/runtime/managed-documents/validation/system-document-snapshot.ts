@@ -1,4 +1,11 @@
-/** Reads a working or committed repository snapshot for system descriptions. */
+/**
+ * Builds system-test input identities from working snapshots or committed
+ * trees.
+ *
+ * Invariants:
+ * - The three generated proof-view documents are excluded so they cannot
+ *   invalidate their own test evidence.
+ */
 import crypto from 'node:crypto';
 import { runGit } from '../../repository-transaction/git.ts';
 import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';

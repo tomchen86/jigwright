@@ -1,3 +1,14 @@
+/**
+ * Verifies consumed role-context-sharing records and replays their stored
+ * evidence for matching admission inputs.
+ *
+ * Invariants:
+ * - Replay verification requires a consumed record with exactly two
+ *   receipts and matching envelope, binding and admission evidence.
+ * - consumedRoleContextSharingUseForReplay re-emits stored evidence only
+ *   when the proof's admissionDigest equals both the WeakMap-held digest
+ *   and the recomputed digest of the supplied inputs.
+ */
 import crypto from 'node:crypto';
 
 import {

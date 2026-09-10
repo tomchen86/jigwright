@@ -1,3 +1,10 @@
+/**
+ * Loads and validates the public workflow conformance corpus.
+ *
+ * Invariants:
+ * - All registered domains must be present and nonempty, and vector
+ *   identities must be unique across domains.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

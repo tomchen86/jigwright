@@ -1,3 +1,10 @@
+/**
+ * Persists, inspects, revokes, and expires intervention maintenance grants.
+ *
+ * Invariants:
+ * - A maintenance grant must match the approval summary presented to its
+ *   signer.
+ */
 import { createInterventionArtifactProduction } from './intervention-artifact-production.ts';
 import { createInterventionMaintenancePublication } from './intervention-maintenance-publication.ts';
 import crypto from 'node:crypto';

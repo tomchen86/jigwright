@@ -1,3 +1,11 @@
+/**
+ * Parses and evaluates intervention domain requests through a read-only
+ * dispatcher.
+ *
+ * Invariants:
+ * - Requests cannot ask the dispatcher to mutate live refs or promote an
+ *   engine.
+ */
 import {
   advanceEngineAdoption,
   beginHarnessIntervention,

@@ -39,8 +39,78 @@ export function systemDocumentProjectionBindings(
     ),
     '',
   ].join('\n');
+  const linkedSources = new Set(
+    report.specs.flatMap((spec) =>
+      spec.requirements.flatMap((requirement) => [
+        ...requirement.sources,
+        ...requirement.scenarios.flatMap((scenario) => scenario.sources),
+      ]),
+    ),
+  );
+  const uncoveredSources = [...report.sources.values()]
+    .filter((source) => !linkedSources.has(source.id))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const uncoveredDirectories = (
+    report.directories ??
+    report.modules ??
+    []
+  ).filter((directory) => directory.specPath === null);
+  const requirementsWithoutSources = report.specs.flatMap((spec) =>
+    spec.requirements
+      .filter((requirement) => requirement.sources.length === 0)
+      .map((requirement) => ({ spec, requirement })),
+  );
   const coverage = [
-    ...opening('Scenario coverage'),
+    ...opening('Documentation coverage'),
+    '## Sources without a linked contract',
+    '',
+    'Recorded wording with no requirement or scenario citation in the current colocated contracts.',
+    '',
+    '| Original wording |',
+    '| --- |',
+    ...(uncoveredSources.length
+      ? uncoveredSources.map(
+          (source) =>
+            `| ${source.text.split(/\r?\n/).map(cell).join('<br>')} |`,
+        )
+      : ['| None. |']),
+    '',
+    '## Directories without a governing contract',
+    '',
+    'Source directories without any containing spec.md. An inherited package or root contract counts as ownership; generated and test directories are excluded.',
+    '',
+    '| Directory |',
+    '| --- |',
+    ...(uncoveredDirectories.length
+      ? uncoveredDirectories.map(
+          (directory) => `| ${link(directory.path, directory.path)} |`,
+        )
+      : ['| None. |']),
+    '',
+    '## Requirements without Sources',
+    '',
+    '| Requirement | Contract |',
+    '| --- | --- |',
+    ...(requirementsWithoutSources.length
+      ? requirementsWithoutSources.map(
+          ({ spec, requirement }) =>
+            `| ${cell(requirement.title)} | ${link(spec.title, spec.path)} |`,
+        )
+      : ['| None. | None. |']),
+    '',
+    '## Module and package documentation',
+    '',
+    'Header counts cover source files in each scope; package rows include their modules. Two-part headers contain both a responsibility and at least one invariant. Missing local documents and headers are documentation gaps, not additional gates.',
+    '',
+    '| Scope | Kind | Contract | Ownership | README | Headers | Two-part headers |',
+    '| --- | --- | --- | --- | --- | ---: | ---: |',
+    ...(report.documentation ?? []).map((scope) => {
+      const owner = report.specs.find((spec) => spec.path === scope.specPath);
+      return `| ${cell(scope.path)} | ${scope.kind} | ${owner ? link(owner.title, owner.path) : 'Missing'} | ${scope.specPath ? (path.posix.dirname(scope.specPath) === scope.path ? 'Local' : 'Inherited') : 'Uncovered'} | ${scope.readmePath ? link('Present', scope.readmePath) : 'Missing'} | ${scope.headers}/${scope.files} | ${scope.invariantHeaders}/${scope.files} |`;
+    }),
+    '',
+    '## Scenario coverage',
+    '',
     '| Requirement / scenario | Covers | Test | Result |',
     '| --- | --- | --- | --- |',
     ...report.scenarios.map(
@@ -108,7 +178,12 @@ function binding(
   return { id, source: () => [{ path: target, content }] };
 }
 function cell(value: string): string {
-  return value.replaceAll('|', '\\|').replaceAll('\n', ' ');
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('|', '\\|')
+    .replaceAll('\n', ' ');
 }
 function link(label: string, target: string): string {
   return `[${cell(label).replaceAll('[', '\\[').replaceAll(']', '\\]')}](${encodeURI(path.posix.relative('docs', target))})`;

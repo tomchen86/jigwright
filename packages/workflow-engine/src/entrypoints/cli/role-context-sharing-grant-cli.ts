@@ -1,3 +1,10 @@
+/**
+ * Dispatches role-context-sharing approval and terminal-receipt commands.
+ *
+ * Invariants:
+ * - Approval candidates require exact fields, a UUID v4 Grant identity, a
+ *   bounded reason and a positive integer lifetime.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

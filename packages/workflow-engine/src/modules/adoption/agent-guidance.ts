@@ -1,3 +1,10 @@
+/**
+ * Installs, refreshes, removes, and inspects configured agent guidance
+ * projections.
+ *
+ * Invariants:
+ * - Guidance targets are identified by unique paths rather than labels.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

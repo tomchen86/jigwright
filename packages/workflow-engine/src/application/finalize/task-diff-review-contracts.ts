@@ -1,3 +1,10 @@
+/**
+ * Defines shared task diff review command, status, and replay contracts.
+ *
+ * Invariants:
+ * - Lifecycle states carry their own required provider or external
+ *   authority fields.
+ */
 // Shared lifecycle contracts for review commands, inspection, and replay.
 import { type ConsumedRoleResultReplayPort } from '../../modules/assurance/planning-assurance-validator.ts';
 import {

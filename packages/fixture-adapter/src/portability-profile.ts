@@ -1,3 +1,11 @@
+/**
+ * Loads an independent consumer profile and derives its planning provider,
+ * document index and branch.
+ *
+ * Invariants:
+ * - Planning evaluation must match the profile root and schema and
+ *   explicitly request read-only access.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

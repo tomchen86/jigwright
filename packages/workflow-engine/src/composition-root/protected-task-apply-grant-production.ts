@@ -1,3 +1,11 @@
+/**
+ * Connects protected-task Grant observation and finalization to production
+ * lifecycle operations.
+ *
+ * Invariants:
+ * - Finalization asserts lifecycle ownership and checks the active mandate
+ *   unless the task is already completed.
+ */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import {

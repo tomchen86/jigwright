@@ -1,4 +1,11 @@
-/** Projects already-read Git entries into fixed system document facts without repository I/O. */
+/**
+ * Projects an already-read tracked tree into system document snapshot
+ * accessors.
+ *
+ * Invariants:
+ * - Paths without UTF-8 names are omitted, and object identities are
+ *   returned only for regular file modes.
+ */
 import type { SystemDescriptionSnapshot } from './spec-ownership.ts';
 
 export type SystemTrackedTree = Readonly<{

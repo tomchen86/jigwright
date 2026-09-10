@@ -1,3 +1,11 @@
+/**
+ * Validates the provenance and independence claims attached to planning
+ * assurance.
+ *
+ * Invariants:
+ * - Grant references and degradation authority must agree with the declared
+ *   review form.
+ */
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 export function isPlanningAssuranceBinding(value) {
     if (!isRecord(value) ||

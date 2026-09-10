@@ -1,3 +1,11 @@
+/**
+ * Creates, reserves, and consumes exact role context sharing authority for
+ * PlanReview.
+ *
+ * Invariants:
+ * - PlanReview sharing eligibility must prelist exact unique grant
+ *   identifiers.
+ */
 import {
   bindingFromRoleContextSharingGrantPayloadV1,
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,

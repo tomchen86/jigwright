@@ -1,3 +1,10 @@
+/**
+ * Replays managed archive commits and verifies their projected specs and
+ * task evidence.
+ *
+ * Invariants:
+ * - An archive commit requires the exact managed message and one parent.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRepositorySpecificationPolicy } from '../../composition-root/repository-specification-policy.ts';

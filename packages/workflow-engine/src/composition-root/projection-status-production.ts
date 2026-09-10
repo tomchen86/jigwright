@@ -1,3 +1,11 @@
+/**
+ * Inspects all registered projections and reports current, missing and
+ * error states.
+ *
+ * Invariants:
+ * - Inspection I/O refuses writes, and a failed projection is reported
+ *   individually instead of aborting the inventory.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

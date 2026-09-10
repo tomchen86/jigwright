@@ -1,4 +1,10 @@
-/** Derived Work Registry projections, rendering, and drift validation. Canonical reads and locks are bound by the registry facade. */
+/**
+ * Renders Work Registry backlog and history views and detects projection
+ * drift.
+ *
+ * Invariants:
+ * - The history root must be a plain directory rather than a symlink.
+ */
 import { createProjectionService } from '../projection/projection-service.ts';
 import type {
   ProjectionBinding,

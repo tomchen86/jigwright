@@ -1,3 +1,13 @@
+/**
+ * Builds external-effect audit events from the signed Grant and appends
+ * them with deterministic identities.
+ *
+ * Invariants:
+ * - An audit event's scope and correlation fields are drawn from the signed
+ *   grant envelope's payload rather than caller-supplied arguments.
+ * - auditInput defaults an event's result to 'failed' unless a result
+ *   override is supplied.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
 import type {

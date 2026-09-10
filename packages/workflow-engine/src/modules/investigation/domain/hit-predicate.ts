@@ -1,3 +1,11 @@
+/**
+ * Parses a bounded predicate language and evaluates it against stored scan-
+ * hit windows.
+ *
+ * Invariants:
+ * - Missing readable windows satisfy no predicate, and truncated windows
+ *   cannot establish a negation.
+ */
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import type { ScanHitContextWindow } from './investigation-scanner.ts';
 

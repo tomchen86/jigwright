@@ -1,4 +1,12 @@
 #!/usr/bin/env node
+/**
+ * Routes recovery bootstrap commands and resolves durable parent session
+ * state.
+ *
+ * Invariants:
+ * - Parent bootstrap resolution requires an active durable session for the
+ *   change.
+ */
 import { createHarnessBootstrapAudit } from "./application/control-plane/harness-bootstrap-audit.js";
 import { createHarnessBootstrapRecoveryProduction } from "./application/control-plane/harness-bootstrap-production.js";
 import { createHarnessBootstrapRecoveryCommands } from "./application/control-plane/harness-bootstrap-recovery-commands.js";

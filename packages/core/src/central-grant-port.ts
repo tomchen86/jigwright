@@ -1,9 +1,10 @@
 /**
- * Implementation-neutral Central Grant ports owned by Jigwright core.
+ * Declares the request, challenge and transition contracts for Central
+ * Grants.
  *
- * Domain code submits canonical facts and registered transition candidates
- * through these contracts. Human interaction, proof verification, persistence,
- * and transition execution remain optional composition responsibilities.
+ * Invariants:
+ * - The domain request port exposes only requestGrant; challenge resolution
+ *   belongs to the separate lifecycle port.
  */
 
 export type CentralGrantDigest = `sha256:${string}`;

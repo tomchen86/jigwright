@@ -1,3 +1,10 @@
+/**
+ * Resolves providers and session topology from central rules, overrides,
+ * and authorization.
+ *
+ * Invariants:
+ * - Inconsistent pairwise role topology produces an unsatisfied assignment.
+ */
 import crypto from 'node:crypto';
 import { assertAgentProviderConfigSnapshot, } from '@jigwright/agent-runtime';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

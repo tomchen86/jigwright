@@ -1,4 +1,14 @@
-/** Pure collaboration grant and direct-review contracts, canonical bytes, and verification through a supplied verifier. */
+/**
+ * Encodes and verifies collaboration Grants and direct human review
+ * attestations.
+ *
+ * Invariants:
+ * - Every collaboration grant is single-use: validation requires both
+ *   payload.maxUses and policy.maxUses to equal 1.
+ * - Grant lifetime is capped at min(policy.maxTtlMinutes,
+ *   COLLABORATION_GRANT_MAX_TTL_MINUTES=30) minutes between issuedAt and
+ *   expiresAt.
+ */
 import crypto from 'node:crypto';
 import { assertTaskId as assertCoreTaskId } from '@jigwright/core/runtime-path-kernel';
 import {

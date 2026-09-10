@@ -1,3 +1,11 @@
+/**
+ * Routes role/provider configuration commands and presents the terminal
+ * setup questions.
+ *
+ * Invariants:
+ * - Production configuration prompts require interactive standard input and
+ *   standard error.
+ */
 import { createInterface } from 'node:readline/promises';
 
 import {

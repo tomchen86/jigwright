@@ -1,3 +1,11 @@
+/**
+ * Persists and validates task revision journals and their phase
+ * transitions.
+ *
+ * Invariants:
+ * - Transitions preserve lease and task identity and follow the declared
+ *   phase graph.
+ */
 import fs from 'node:fs';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import path from 'node:path';

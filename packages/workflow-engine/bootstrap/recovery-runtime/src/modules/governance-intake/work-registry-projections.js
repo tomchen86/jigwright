@@ -1,4 +1,10 @@
-/** Derived Work Registry projections, rendering, and drift validation. Canonical reads and locks are bound by the registry facade. */
+/**
+ * Renders Work Registry backlog and history views and detects projection
+ * drift.
+ *
+ * Invariants:
+ * - The history root must be a plain directory rather than a symlink.
+ */
 import { createProjectionService } from "../projection/projection-service.js";
 import { repositoryWorkRegistryConfiguration, repositoryConsumerPath, } from "../repository-consumer/repository-consumer-config.js";
 import { canonicalJson } from '@jigwright/core/canonical-json';

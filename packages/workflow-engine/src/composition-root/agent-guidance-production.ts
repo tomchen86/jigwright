@@ -1,4 +1,11 @@
-/** Bind the native guidance command surface to the repository adoption module. */
+/**
+ * Exposes agent guidance installation and maintenance operations to
+ * production entrypoints.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
+ */
 export {
   installAgentGuidance,
   refreshAgentGuidance,

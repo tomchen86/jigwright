@@ -1,3 +1,10 @@
+/**
+ * Executes read-only provider probes and records bounded environment
+ * observations.
+ *
+ * Invariants:
+ * - Repository file probes cannot traverse symbolic links.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

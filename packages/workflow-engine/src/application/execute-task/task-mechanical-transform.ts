@@ -1,3 +1,11 @@
+/**
+ * Evaluates mechanical transformation closure and records candidate
+ * evidence.
+ *
+ * Invariants:
+ * - Mechanical-transform checks require current engine-minted closure
+ *   evidence.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

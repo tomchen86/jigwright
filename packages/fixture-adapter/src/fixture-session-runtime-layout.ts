@@ -1,3 +1,10 @@
+/**
+ * Maps fixture session storage onto the public runtime layout port.
+ *
+ * Invariants:
+ * - All fixture locations are derived beneath the supplied runtime
+ *   directory in fixture-state.
+ */
 import path from 'node:path';
 
 import type { SessionRuntimeLayoutPortV1 } from '@jigwright/core/session-runtime-layout-port';

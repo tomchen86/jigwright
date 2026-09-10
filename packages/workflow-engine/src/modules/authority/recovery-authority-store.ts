@@ -1,4 +1,14 @@
-/** Private recovery-authority storage, immutable publication, and crash residue recovery. */
+/**
+ * Imports and reads the private recovery authority descriptor with exact
+ * replay and interrupted-write recovery.
+ *
+ * Invariants:
+ * - Import is exact-replay idempotent: any stored or prepared descriptor
+ *   that differs from the external one is rejected as replacementForbidden,
+ *   never treated as a rotation.
+ * - The external descriptor path must resolve outside both the repository
+ *   worktree and the Git common directory.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

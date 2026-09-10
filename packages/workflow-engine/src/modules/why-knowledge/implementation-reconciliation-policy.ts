@@ -1,3 +1,11 @@
+/**
+ * Defines the policy identity for reconciling implementation changes with
+ * planned subjects.
+ *
+ * Invariants:
+ * - The identity binds changed-range, production-path, term-floor and
+ *   unplanned-subject policies.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

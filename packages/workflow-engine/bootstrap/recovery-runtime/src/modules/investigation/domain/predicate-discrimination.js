@@ -1,3 +1,11 @@
+/**
+ * Measures whether a class predicate matches its members and distinguishes
+ * control evidence.
+ *
+ * Invariants:
+ * - Controls without readable UTF-8 windows do not count toward
+ *   discrimination.
+ */
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
 import { evaluateHitPredicate, } from "./hit-predicate.js";
 /**

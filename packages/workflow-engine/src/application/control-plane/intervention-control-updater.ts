@@ -1,3 +1,9 @@
+/**
+ * Prepares, executes, and recovers control-plane engine promotions.
+ *
+ * Invariants:
+ * - Promotion authority must match the exact parent Task Mandate binding.
+ */
 import { createControlPlaneUpdaterStorage } from './control-plane-updater-storage.ts';
 import { createControlPlaneUpdaterSupervisor } from './control-plane-updater-supervisor.ts';
 import { createControlPlaneUpdaterApproval } from './control-plane-updater-approval.ts';

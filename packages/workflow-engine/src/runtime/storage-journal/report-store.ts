@@ -1,3 +1,10 @@
+/**
+ * Persists immutable workflow reports and verifies their session and
+ * content identities on read.
+ *
+ * Invariants:
+ * - Report bytes must hash to the requested report identity.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

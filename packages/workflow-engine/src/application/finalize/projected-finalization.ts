@@ -1,3 +1,11 @@
+/**
+ * Applies projected finalize transactions and recovers their checks and
+ * reports.
+ *
+ * Invariants:
+ * - A new projected finalize requires a session without prior completion
+ *   evidence.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

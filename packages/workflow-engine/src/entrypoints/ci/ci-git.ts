@@ -1,3 +1,11 @@
+/**
+ * Reads exact commit identities, managed trailers and changed paths for CI
+ * range validation.
+ *
+ * Invariants:
+ * - An asserted CI commit must resolve to the same full object identity
+ *   supplied by the caller.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,

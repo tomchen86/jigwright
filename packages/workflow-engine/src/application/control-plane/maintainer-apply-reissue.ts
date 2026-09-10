@@ -1,3 +1,10 @@
+/**
+ * Reissues and applies retained candidates from expired or invalidated v2
+ * grants.
+ *
+ * Invariants:
+ * - Reissue requires an expired or invalidated prior grant.
+ */
 // maintainer apply reissue; repository effects remain bound by the public module.
 import type {
   MaintainerApplyReissueBindings,

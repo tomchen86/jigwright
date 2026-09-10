@@ -1,4 +1,10 @@
-/** Shared by intake routing and generated agent guidance. */
+/**
+ * Defines intake kinds and the destination of deferred observations.
+ *
+ * Invariants:
+ * - Active-task observations become Findings; observations outside a task
+ *   become Work Items.
+ */
 export const INTAKE_KINDS = [
   'feature',
   'bug',

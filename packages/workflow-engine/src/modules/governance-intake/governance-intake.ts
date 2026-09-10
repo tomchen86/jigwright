@@ -1,3 +1,11 @@
+/**
+ * Captures and reads immutable requirement Sources and composes development
+ * Finding operations.
+ *
+ * Invariants:
+ * - A Source read must match its path identity and exact canonical
+ *   serialized bytes.
+ */
 import { createGovernanceFindingOperations } from './governance-findings.ts';
 import type { GovernanceFindingRefPort } from './governance-finding-ref.ts';
 import {

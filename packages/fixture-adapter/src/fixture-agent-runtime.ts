@@ -1,3 +1,11 @@
+/**
+ * Provides a synthetic agent runtime with streaming, resume and
+ * cancellation behavior.
+ *
+ * Invariants:
+ * - Start and resume require a prior successful probe of the exact fixture
+ *   definition.
+ */
 import crypto from 'node:crypto';
 
 import {

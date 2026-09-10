@@ -1,3 +1,13 @@
+/**
+ * Defines the Grant that finalizes one exact protected task candidate
+ * through the supplied port.
+ *
+ * Invariants:
+ * - The consequence fixes every bypass flag to false (ordinary checks,
+ *   TaskDiffReview, task mandate, and stale state).
+ * - Changed paths must be relative (no leading '/', no backslash, no empty
+ *   or '..' segments), unique, and already sorted.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

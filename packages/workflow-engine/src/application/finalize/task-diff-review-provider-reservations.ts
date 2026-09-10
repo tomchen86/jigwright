@@ -1,3 +1,11 @@
+/**
+ * Reserves provider review and continuation invocations under lifecycle
+ * authority.
+ *
+ * Invariants:
+ * - Implementation actors require supported caller or engine provider
+ *   attribution.
+ */
 // Reserve provider reviews and continuations under the existing lifecycle locks.
 import {
   type TaskDiffReviewSubject,

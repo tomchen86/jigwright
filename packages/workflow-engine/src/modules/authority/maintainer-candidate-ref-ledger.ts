@@ -1,4 +1,14 @@
-/** One cohesive durable ref-generation ledger: validation, ABA prestate, lifecycle locking and durable transition publication. */
+/**
+ * Validates and publishes the durable ref-generation ledger used to detect
+ * stale candidate prestates.
+ *
+ * Invariants:
+ * - `acceptApplyPrestate` rejects the ledger unless both its generation and
+ *   current OID equal the approved prestate, catching an ABA return to the
+ *   same OID at a different generation.
+ * - A ledger's transition count must equal its generation, and the
+ *   transitions must chain generations and OIDs through to the head OID.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,4 +1,11 @@
-/** Stable canonical Work Item reads, path discovery, and create/replace file publication. Registry locks are bound by the facade. */
+/**
+ * Reads canonical Work Items, discovers their paths and publishes record
+ * replacements.
+ *
+ * Invariants:
+ * - A Work Item must match the identity in its filename, creation year
+ *   directory and canonical bytes.
+ */
 import { TextDecoder } from 'node:util';
 import {
   registryInvalid,

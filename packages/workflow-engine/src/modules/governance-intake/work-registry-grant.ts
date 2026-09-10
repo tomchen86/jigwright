@@ -1,3 +1,10 @@
+/**
+ * Creates and validates protected Work Registry review and promotion Grant
+ * transitions.
+ *
+ * Invariants:
+ * - Review and promotion Grants must bind the current Work Item digest.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {
   ExitCode,

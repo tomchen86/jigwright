@@ -1,3 +1,9 @@
+/**
+ * Journals authority commits and recovers their durable completion phases.
+ *
+ * Invariants:
+ * - The journal audit scope must match the pinned mandate and repository.
+ */
 import { createMaintainerRecoveryJournal } from './maintainer-recovery-journal.ts';
 import { createMaintainerRecoveryAudit } from './maintainer-recovery-audit.ts';
 import { createMaintainerRecoveryVerification } from './maintainer-recovery-verification.ts';

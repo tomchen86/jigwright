@@ -1,3 +1,15 @@
+/**
+ * Reserves and records Task Mandate provider calls while the lifecycle lock
+ * is held.
+ *
+ * Invariants:
+ * - recordTaskMandateProviderInvocationLocked throws
+ *   TASK_MANDATE_PROVIDER_INVOCATION_UNRESERVED unless a stored reservation
+ *   matches the invocation's id, providerId, and requestDigest.
+ * - A reservation replay with an existing id must match its providerId,
+ *   requestDigest, and operationDigest, else it throws
+ *   TASK_MANDATE_PROVIDER_RESERVATION_CONFLICT.
+ */
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export function createTaskMandateProviderLifecycle({ assertTaskMandateBinding, assertProviderReservationId, discoverRepository, taskMandateStorePaths, withRepositoryLifecycleOperation, readTaskRecord, validateTaskMandateEnvelopeForRepository, exactDate, assertRecordActive, assertExactTaskMandateBinding, appendTaskMandateAuthorizationAudit, assertProviderInvocationAuditInput, findTaskMandateProviderReservation, appendTaskMandateProviderInvocationAudit, assertProviderReservationOperation, taskMandateProviderOperationDigest, appendTaskMandateProviderReservationAudit, authorizeProviderCall, replacePrivateFileAtomic, taskRecordPath, canonicalTaskMandateRecord, unsafeStore, }) {
     function authorizeTaskMandateProviderReservation(cwd, binding, requestedReservationId, operation, options = {}) {

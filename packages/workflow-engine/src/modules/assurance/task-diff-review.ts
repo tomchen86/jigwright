@@ -1,3 +1,10 @@
+/**
+ * Derives task diff review subjects, candidate scopes, and documentation
+ * requirements.
+ *
+ * Invariants:
+ * - A required documentation assessment must bind the same candidate tree.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

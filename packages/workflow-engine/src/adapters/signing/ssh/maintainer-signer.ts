@@ -1,3 +1,11 @@
+/**
+ * Provides interactive SSH signing and verification for maintainer
+ * authorization payloads.
+ *
+ * Invariants:
+ * - Policy-based signature verification accepts only identities listed
+ *   among the trusted signers.
+ */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

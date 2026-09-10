@@ -1,4 +1,10 @@
-/** Stored human-resolution grant inspection, publication recovery and revocation. */
+/**
+ * Inspects human-resolution Grants and manages their publication recovery
+ * and revocation.
+ *
+ * Invariants:
+ * - Consumed human-resolution authority cannot be revoked.
+ */
 import type {
   HumanResolutionRuntimeBindings,
   HumanResolutionRuntimeTypes,

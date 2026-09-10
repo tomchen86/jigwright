@@ -1,4 +1,13 @@
-/** Shared exact recovery values, canonical encoding, protocol constants, and error construction. */
+/**
+ * Defines recovery trust-root values, canonical encoders and structural
+ * predicates.
+ *
+ * Invariants:
+ * - Canonical bytes must decode as UTF-8 JSON and equal the canonical
+ *   serialization followed by exactly one newline.
+ * - canonicalDigest returns the SHA-256 hex of the value's canonical JSON,
+ *   prefixed with `sha256:`.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

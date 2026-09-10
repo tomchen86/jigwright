@@ -1,4 +1,10 @@
-/** Groups existing planning deltas by their canonical colocated spec. */
+/**
+ * Groups planning deltas by their canonical colocated specification.
+ *
+ * Invariants:
+ * - Each delta must resolve to a known capability and readable content
+ *   before grouped projection.
+ */
 import {
   combineOpenSpecDeltas,
   type OpenSpecDeltaInput,

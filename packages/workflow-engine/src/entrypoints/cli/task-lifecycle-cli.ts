@@ -1,3 +1,10 @@
+/**
+ * Parses and dispatches task planning, execution, status, and review
+ * commands.
+ *
+ * Invariants:
+ * - Propose options must be recognized, paired, and unique.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import {

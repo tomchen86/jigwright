@@ -1,3 +1,13 @@
+/**
+ * Builds and normalizes recovery Grant payloads, completion receipts and
+ * audit records.
+ *
+ * Invariants:
+ * - A recovery-grant payload is one-shot: normalization requires uses to be
+ *   1 and oneShot to be true.
+ * - The payload's grantId must equal the digest recomputed from its signed
+ *   activation identity, else it is rejected.
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode } from "../../foundation/errors/errors.js";
 export function createControlPlaneRecoveryGrantRecords({ exactIso, CONTROL_PLANE_RECOVERY_GRANT_TTL_MS, isRecord, hasExactKeys, isNonEmpty, recoveryError, HARNESS_RECOVERY_SIGNATURE_NAMESPACE, exactDate, deepFreeze, canonicalDigest, assertDigest: boundAssertDigest, assertIdentifier: boundAssertIdentifier, PAYLOAD_KEYS, RECOVERY_GRANT_ID, isDigest, isExactAbsolutePath, }) {

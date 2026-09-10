@@ -1,3 +1,11 @@
+/**
+ * Commits verified archive transformations and recovers their immutable
+ * transition evidence.
+ *
+ * Invariants:
+ * - An accepted archive report must match the exact commit parent, tree,
+ *   message and changed paths.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

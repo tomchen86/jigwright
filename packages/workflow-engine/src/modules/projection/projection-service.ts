@@ -1,3 +1,11 @@
+/**
+ * Locates, renders, and conditionally updates engine-owned document
+ * regions.
+ *
+ * Invariants:
+ * - A document cannot contain duplicate markers for the same projection
+ *   region.
+ */
 import crypto from 'node:crypto';
 
 import { markdownLines } from '@jigwright/core/markdown-sections';

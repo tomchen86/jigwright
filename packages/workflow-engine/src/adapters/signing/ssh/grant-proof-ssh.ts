@@ -1,3 +1,11 @@
+/**
+ * Collects and verifies optional SSH approval evidence for a live Grant
+ * subject.
+ *
+ * Invariants:
+ * - SSH proof collection requires policy enablement, human presence and a
+ *   trusted signer before signing.
+ */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {

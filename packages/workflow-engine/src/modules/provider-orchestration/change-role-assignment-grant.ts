@@ -1,3 +1,11 @@
+/**
+ * Creates Central Grant challenges and activation bindings for role
+ * assignments.
+ *
+ * Invariants:
+ * - An already activated assignment cannot request another activation
+ *   Grant.
+ */
 import crypto from 'node:crypto';
 
 import type { CentralGrantRequestInputV1 } from '@jigwright/core/central-grant-port';

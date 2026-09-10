@@ -1,3 +1,10 @@
+/**
+ * Verifies mechanical moves and projects reviewed authority paths and
+ * policy.
+ *
+ * Invariants:
+ * - A declared mechanical move preserves blob bytes and Git mode.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';

@@ -1,3 +1,10 @@
+/**
+ * Checks task strategy authority and sealed evidence before GREEN
+ * execution.
+ *
+ * Invariants:
+ * - TDD GREEN checks require exact engine-sealed RED evidence.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

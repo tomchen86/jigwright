@@ -1,3 +1,11 @@
+/**
+ * Extracts Markdown lines and headings while tracking source offsets and
+ * fenced examples.
+ *
+ * Invariants:
+ * - Headings inside fenced code are ignored, and fence delimiter lines are
+ *   themselves marked as fenced.
+ */
 export type MarkdownHeading = {
   start: number;
   level: number;

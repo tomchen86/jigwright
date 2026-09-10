@@ -1,3 +1,11 @@
+/**
+ * Parses registered check commands into explicit Node runner and entrypoint
+ * descriptions.
+ *
+ * Invariants:
+ * - Only node and node-package-bin runners are admitted, with exact policy
+ *   paths and clean argument tokens.
+ */
 import { isRecord, isStringArray } from './contract-values.ts';
 import { RepositoryPathError, normalizePolicyPath } from './repository-path.ts';
 import type {

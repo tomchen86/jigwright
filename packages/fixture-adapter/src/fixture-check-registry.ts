@@ -1,3 +1,10 @@
+/**
+ * Loads consumer fixture scripts into the public check registry contract.
+ *
+ * Invariants:
+ * - Every emitted check uses a validated Node command and declares
+ *   destructiveDatabase false.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

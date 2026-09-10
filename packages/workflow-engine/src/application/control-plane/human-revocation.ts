@@ -1,3 +1,11 @@
+/**
+ * Authorizes and records human revocations under the current repository
+ * policy.
+ *
+ * Invariants:
+ * - Revocation requires human presence and a signer trusted by the current
+ *   policy.
+ */
 import {
   HUMAN_REVOCATION_SIGNATURE_NAMESPACE,
   canonicalHumanRevocationAuthorizationPayload,

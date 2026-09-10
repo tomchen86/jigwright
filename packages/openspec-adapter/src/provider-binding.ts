@@ -1,3 +1,11 @@
+/**
+ * Resolves current and historical OpenSpec provider bindings for planning
+ * transitions.
+ *
+ * Invariants:
+ * - Bindings must explicitly match the selected change, OpenSpec contract,
+ *   package version and planning root.
+ */
 import {
   assertPlanningProviderV1Migration,
   PlanningProviderBindingError,

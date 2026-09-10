@@ -1,3 +1,11 @@
+/**
+ * Defines repository-scoped GitHub App token requests and authenticates
+ * returned leases.
+ *
+ * Invariants:
+ * - Lease receipts must match the requested repository, permissions and
+ *   token bytes within the allowed validity window.
+ */
 import crypto from 'node:crypto';
 
 export type GitHubAppTokenMintRequestV1 = Readonly<{

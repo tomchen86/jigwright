@@ -1,3 +1,13 @@
+/**
+ * Reserves, prepares, consumes, expires and fails durable one-use recovery
+ * Grants.
+ *
+ * Invariants:
+ * - Consumption requires a prior durable completion receipt: it refuses
+ *   unless the current state is completion-pending with a non-null receipt.
+ * - Consumption rejects a reservation whose record digest differs from the
+ *   caller's expected digest.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

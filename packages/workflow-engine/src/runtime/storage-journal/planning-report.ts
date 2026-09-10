@@ -1,3 +1,11 @@
+/**
+ * Writes and validates durable planning transition reports and their
+ * evidence.
+ *
+ * Invariants:
+ * - Planning reports require canonical changed paths and a valid path
+ *   partition.
+ */
 import {
   readContentRecord,
   writeContentRecord,

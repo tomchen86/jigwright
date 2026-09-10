@@ -1,3 +1,11 @@
+/**
+ * Collects runtime inspection, retry, retention and replacement services
+ * for operational CLI commands.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
+ */
 // Production bindings for operational CLI command families.
 export { loadWorkflowConformanceVectorsV2 } from '@jigwright/core/conformance-vectors';
 export { discoverRepository } from '../runtime/repository-transaction/git.ts';

@@ -1,3 +1,11 @@
+/**
+ * Materializes and binds local engine artifacts to parent intervention
+ * workspaces.
+ *
+ * Invariants:
+ * - Initial binding requires the reserved parent branch and derived
+ *   artifact path.
+ */
 // intervention bootstrap engine; repository effects remain bound by the public module.
 import type {
   InterventionBootstrapEngineBindings,

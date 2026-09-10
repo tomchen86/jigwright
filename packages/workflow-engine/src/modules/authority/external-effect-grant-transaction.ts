@@ -1,3 +1,13 @@
+/**
+ * Advances external-effect reservations through dispatch, observation and
+ * terminal states.
+ *
+ * Invariants:
+ * - A new observation requires the dispatch-issued phase; an existing
+ *   matching observation follows the idempotent path.
+ * - The publish-token gate authorizes a push only when both the resolved
+ *   sourceOid and the repository HEAD equal the grant target's sourceOid.
+ */
 import { withAuthorityRefusalAudit } from './authority-refusal-audit.ts';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

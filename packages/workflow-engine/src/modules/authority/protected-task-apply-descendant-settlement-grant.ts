@@ -1,3 +1,13 @@
+/**
+ * Settles the prepared child-Grant tree before recovering its protected-
+ * task parent.
+ *
+ * Invariants:
+ * - Prepared descendants are settled leaf-first, ordered by descending
+ *   depth then challengeId.
+ * - assertSettlementObservation derives the phase from the descendant
+ *   states and rejects any observation whose reported phase disagrees.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

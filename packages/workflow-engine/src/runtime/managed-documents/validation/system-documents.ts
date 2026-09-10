@@ -1,4 +1,11 @@
-/** Runtime entry points for one snapshot's system document checks and projections. */
+/**
+ * Connects system document inspection, projection rendering and exact
+ * referenced-test execution to repository storage.
+ *
+ * Invariants:
+ * - Document validation rejects projection drift and requires regeneration
+ *   of the affected outputs.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';

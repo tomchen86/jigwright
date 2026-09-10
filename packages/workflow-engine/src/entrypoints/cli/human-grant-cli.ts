@@ -1,3 +1,9 @@
+/**
+ * Dispatches human Grant commands and renders their results and failures.
+ *
+ * Invariants:
+ * - Command failures return their workflow exit code.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

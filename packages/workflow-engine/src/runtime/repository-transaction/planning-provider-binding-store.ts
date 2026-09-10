@@ -1,3 +1,11 @@
+/**
+ * Reads current or commit-pinned planning provider bindings from bounded
+ * regular files.
+ *
+ * Invariants:
+ * - Pinned evidence requires a full commit identity and an exact
+ *   non-executable blob at the requested path.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

@@ -1,3 +1,13 @@
+/**
+ * Creates, validates, signs and reads portable receipts for an applied
+ * authority candidate.
+ *
+ * Invariants:
+ * - Envelope parsing is byte-canonical: it rejects any input whose
+ *   re-serialized canonical envelope does not equal the raw bytes.
+ * - The payload encodes a single-step ref advance: newRefGeneration must
+ *   equal oldRefGeneration + 1 (and newRefOid must equal candidateCommit).
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

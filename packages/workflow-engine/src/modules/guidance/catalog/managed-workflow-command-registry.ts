@@ -1,3 +1,9 @@
+/**
+ * Defines managed command routes and derives CLI usage and agent guidance.
+ *
+ * Invariants:
+ * - Managed workflow command identifiers must be unique.
+ */
 export type WorkflowGuidanceStatus =
   'preferred' | 'compatible' | 'read-only' | 'recovery';
 

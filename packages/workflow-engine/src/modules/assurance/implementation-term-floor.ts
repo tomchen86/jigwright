@@ -1,3 +1,11 @@
+/**
+ * Derives implementation term changes and checks their bounded review
+ * dispositions.
+ *
+ * Invariants:
+ * - Implementation term review escalates when the bounded term limit is
+ *   exceeded.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';

@@ -1,3 +1,10 @@
+/**
+ * Commits reviewed planning transitions and restores projections after
+ * failed publication.
+ *
+ * Invariants:
+ * - An amendment must resolve whether existing execution remains valid.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

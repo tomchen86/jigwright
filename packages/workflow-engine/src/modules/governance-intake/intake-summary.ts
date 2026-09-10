@@ -1,3 +1,11 @@
+/**
+ * Aggregates inbox, pending Finding and backlog counts through supplied
+ * readers.
+ *
+ * Invariants:
+ * - Pending Finding counts include only records whose current disposition
+ *   is pending.
+ */
 import type { GovernanceFindingReadModelV1 } from './governance-intake.ts';
 import { inspectWorkRegistry } from './work-registry.ts';
 

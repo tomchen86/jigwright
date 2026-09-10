@@ -1,3 +1,11 @@
+/**
+ * Constructs minimized environments for trusted tools and provider
+ * execution.
+ *
+ * Invariants:
+ * - Executable search paths are rebuilt from reviewed directories instead
+ *   of inheriting the caller search path.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

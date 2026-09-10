@@ -1,3 +1,11 @@
+/**
+ * Determines whether a task scope requires a human mandate under the
+ * configured path-role policy.
+ *
+ * Invariants:
+ * - Omitting the conditional policy retains the legacy requirement for a
+ *   mandate.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

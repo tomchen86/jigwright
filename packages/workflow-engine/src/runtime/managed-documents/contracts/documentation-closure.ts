@@ -1,3 +1,11 @@
+/**
+ * Creates and verifies documentation closure evidence bound to reviewed
+ * commits.
+ *
+ * Invariants:
+ * - Reviews with challenges require satisfied final assurance for the same
+ *   review.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

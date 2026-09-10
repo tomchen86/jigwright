@@ -1,4 +1,10 @@
-/** Compares a fixed source snapshot with the README explanation's confirmation. */
+/**
+ * Finds module changes relative to each README explanation confirmation.
+ *
+ * Invariants:
+ * - README comparisons consider only handwritten explanation text;
+ *   generated reference sections do not count as explanation changes.
+ */
 import crypto from 'node:crypto';
 import { readModuleReadmeWhy } from '../../../modules/source/module-readme.ts';
 import type { SystemDescriptionSnapshot } from '../../../modules/source/spec-ownership.ts';

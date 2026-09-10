@@ -1,3 +1,11 @@
+/**
+ * Connects cancellation Grants to durable provider requests, terminal
+ * observations and worker fence handling.
+ *
+ * Invariants:
+ * - Cancellation observations reject changes to the invocation request or
+ *   input manifest bound by the Grant.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

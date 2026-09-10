@@ -1,3 +1,11 @@
+/**
+ * Reconstructs control-plane updater audit events from persisted
+ * transaction observations.
+ *
+ * Invariants:
+ * - The prepared event precedes stored observations, and unknown
+ *   observation kinds are rejected.
+ */
 // control plane updater audit; repository effects remain bound by the public module.
 import type {
   ControlPlaneUpdaterAuditBindings,

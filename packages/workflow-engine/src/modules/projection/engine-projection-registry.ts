@@ -1,3 +1,11 @@
+/**
+ * Declares generated document outputs, their triggers and privileged
+ * projection path ownership.
+ *
+ * Invariants:
+ * - Declaring an output grants no lifecycle path authority without an
+ *   explicit authorityTransitions entry.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export type EngineProjectionTransition =
@@ -15,6 +23,66 @@ export type ProjectionPathClassification = {
   changedPaths: string[];
 };
 
+export const MODULE_README_COMMANDS = {
+  'governance-intake': [
+    'source',
+    'now',
+    'later',
+    'attach',
+    'correct',
+    'finding',
+    'work-item',
+  ],
+  authority: [
+    'grant',
+    'external-effect',
+    'publish',
+    'task',
+    'change',
+    'engine',
+    'intervention',
+    'control-plane',
+    'audit',
+    'maintainer',
+    'human-resolution-state',
+  ],
+  'provider-orchestration': ['init', 'agent', 'adapter', 'role-config'],
+  adoption: ['init'],
+  assurance: ['doctor', 'run-check', 'ci', 'check', 'boundary'],
+  guidance: ['guide', 'guidance'],
+  investigation: ['propose'],
+  lifecycle: [
+    'route',
+    'task-preflight',
+    'open-task',
+    'update-base',
+    'revise-task',
+    'resume-task',
+    'resume',
+    'status',
+    'check',
+    'complete-task',
+    'finish',
+    'review-diff',
+    'finalize',
+    'rollback-completion',
+    'commit',
+    'abort',
+    'archive',
+  ],
+  'planning-provider': [
+    'propose',
+    'plan-commit',
+    'amend-plan',
+    'validate-change',
+    'openspec-assets',
+  ],
+  projection: ['documents', 'document-refresh', 'handoff'],
+  'repository-consumer': ['boundary'],
+  source: ['documents'],
+  'why-knowledge': ['semantic-ledger'],
+} as const;
+
 export type ProjectionId =
   | 'handoff.current-and-next-steps'
   | 'investigation.why-ledger'
@@ -24,9 +92,7 @@ export type ProjectionId =
   | 'documents.spec-map'
   | 'documents.coverage'
   | 'documents.requirements'
-  | 'documents.governance-intake-readme'
-  | 'documents.authority-readme'
-  | 'documents.provider-orchestration-readme'
+  | `documents.${keyof typeof MODULE_README_COMMANDS}-readme`
   | 'semantic.binding-index'
   | 'guidance.agent-section';
 
@@ -49,7 +115,9 @@ export type ProjectionDefinition = Readonly<{
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY: readonly ProjectionDefinition[] = Object.freeze([
   ...(
-    ['governance-intake', 'authority', 'provider-orchestration'] as const
+    Object.keys(MODULE_README_COMMANDS) as Array<
+      keyof typeof MODULE_README_COMMANDS
+    >
   ).map((module) =>
     Object.freeze({
       id: `documents.${module}-readme` as const,

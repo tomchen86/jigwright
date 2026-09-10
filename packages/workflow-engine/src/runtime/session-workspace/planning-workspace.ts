@@ -1,3 +1,10 @@
+/**
+ * Creates, adopts, and validates durable planning draft workspaces.
+ *
+ * Invariants:
+ * - Only the primary worktree may be adopted without an existing workspace
+ *   record.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

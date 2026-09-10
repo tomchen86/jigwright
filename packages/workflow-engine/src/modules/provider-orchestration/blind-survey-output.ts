@@ -1,3 +1,10 @@
+/**
+ * Defines and validates the provider output schema for an invocation-bound
+ * blind survey.
+ *
+ * Invariants:
+ * - Survey terms must have unique identities after normalization.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -1,3 +1,10 @@
+/**
+ * Statically scans source bindings for namespace and direct boundary
+ * references.
+ *
+ * Invariants:
+ * - Namespace scans require a nonempty prefix ending in a dot.
+ */
 import type * as TypeScript from 'typescript';
 
 export type T3BoundaryTypeScriptApi = Omit<typeof TypeScript, 'default'>;

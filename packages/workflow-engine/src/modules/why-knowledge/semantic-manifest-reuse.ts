@@ -1,3 +1,11 @@
+/**
+ * Applies ledger freshness to full-blob authoring obligations while
+ * retaining review coverage for carried entries.
+ *
+ * Invariants:
+ * - A carried blob must be unchanged, reusable by the freshness plan and
+ *   documented with responsibility and invariant headers.
+ */
 import { observeLedgerSource } from './semantic-freshness.ts';
 import { extractFileHeader } from '../source/file-header.ts';
 import type { SystemDescriptionSnapshot } from '../source/spec-ownership.ts';

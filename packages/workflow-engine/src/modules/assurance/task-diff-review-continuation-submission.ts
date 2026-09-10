@@ -1,4 +1,11 @@
-/** TaskDiff continuation proposals and their exact review/response bindings. */
+/**
+ * Parses advisory task diff continuation proposals and checks their review
+ * and response bindings.
+ *
+ * Invariants:
+ * - A current continuation covers exactly the challenges in its bound
+ *   review.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type {
   TaskDiffReviewSubmissionProtocolBindings,

@@ -1,3 +1,11 @@
+/**
+ * Combines canonical spec ownership with repository-specific lifecycle
+ * paths.
+ *
+ * Invariants:
+ * - Lifecycle selection includes the routing source, configured change tree
+ *   and recognized base specifications.
+ */
 import path from 'node:path';
 import { changeLifecycleRelativePath } from '../modules/lifecycle/change-routing.ts';
 import { isBaseSpecificationPath } from '../modules/source/system-spec-catalog.ts';

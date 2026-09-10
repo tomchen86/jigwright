@@ -1,3 +1,11 @@
+/**
+ * Registers retention entries and advances durable batch cursors with
+ * recovery.
+ *
+ * Invariants:
+ * - Cursor advancement requires the cursor observed when the batch was
+ *   read.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

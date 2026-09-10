@@ -1,3 +1,9 @@
+/**
+ * Reads bounded pinned Git tree objects into canonical tracked snapshots.
+ *
+ * Invariants:
+ * - Tree reads require a full Git object identity.
+ */
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

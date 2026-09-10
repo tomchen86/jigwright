@@ -1,3 +1,11 @@
+/**
+ * Builds and verifies an archive transformation in a temporary detached
+ * worktree.
+ *
+ * Invariants:
+ * - A transformation is returned only after rebuilt specs validate and the
+ *   original eligibility remains current.
+ */
 import {
   boundedArchiveCauseDiagnostic,
   withinDiagnosticBudget,

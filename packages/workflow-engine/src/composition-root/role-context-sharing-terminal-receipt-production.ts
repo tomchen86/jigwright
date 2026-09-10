@@ -1,3 +1,11 @@
+/**
+ * Publishes and verifies portable receipts for terminal role context
+ * sharing uses.
+ *
+ * Invariants:
+ * - Verified receipt identities must correspond exactly to the supplied
+ *   terminal uses.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalRoleContextSharingGrantEnvelopeV1 } from '../modules/authority/optional-grants-package.ts';

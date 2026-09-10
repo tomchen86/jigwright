@@ -1,3 +1,11 @@
+/**
+ * Parses external task diff reviews, challenge responses and advisory
+ * closure requests.
+ *
+ * Invariants:
+ * - An external closure request must pair responses and proposed
+ *   dispositions for the same unique challenge set.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   parseTaskDiffReviewContinuationSubmission,

@@ -1,3 +1,14 @@
+/**
+ * Adapts a host runtime driver to bounded agent operations and private
+ * session identity handling.
+ *
+ * Invariants:
+ * - reserveOperation throws AgentRuntimeOperationConflictError if the
+ *   operationId is already active or present as a terminal tombstone,
+ *   fencing each id to one operation.
+ * - An event containing a known private native session identity or
+ *   continuity token fails with PRIVATE_SESSION_SECRET_ECHO.
+ */
 import {
   AGENT_RUNTIME_PORT_V1_CONTRACT_VERSION,
   AgentRuntimePortContractError,

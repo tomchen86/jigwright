@@ -1,3 +1,11 @@
+/**
+ * Validates provider review reservations, results, and their final
+ * assurance.
+ *
+ * Invariants:
+ * - A provider reservation must match its current session, candidate, and
+ *   implementation actor.
+ */
 // Validate provider reservations, results, and the final assurance they authorize.
 import {
   type TaskDiffReviewSubject,

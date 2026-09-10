@@ -1,3 +1,11 @@
+/**
+ * Creates, reads and replaces canonical amendment decisions embedded in
+ * proposal markers.
+ *
+ * Invariants:
+ * - Duplicate or malformed amendment markers are rejected instead of being
+ *   silently replaced.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

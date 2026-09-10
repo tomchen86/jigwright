@@ -1,3 +1,13 @@
+/**
+ * Loads maintainer policy, trusted signers and the eligible and sealed
+ * authority path sets.
+ *
+ * Invariants:
+ * - A policy is accepted only at schemaVersion 1 with maxTtlMinutes fixed
+ *   at 30 and maxUses fixed at 1.
+ * - Every sealedImmutablePath must also match some bootstrapEligiblePath or
+ *   the policy is rejected.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

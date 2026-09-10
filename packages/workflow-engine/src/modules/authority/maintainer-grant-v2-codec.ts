@@ -1,4 +1,13 @@
-/** Exact maintainer payload, evidence waiver and check-attestation codecs; signing, audit publication and terminal cleanup stay with issuance. */
+/**
+ * Encodes exact Maintainer Grant payloads, envelopes, evidence waivers and
+ * check attestations.
+ *
+ * Invariants:
+ * - parseMaintainerGrantV2Envelope rejects any envelope whose re-serialized
+ *   canonical form is not byte-identical to the raw input.
+ * - validateMaintainerGrantV2Payload caps a grant's lifetime at
+ *   MAX_V2_TTL_MINUTES (seven days) between issuedAt and expiresAt.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

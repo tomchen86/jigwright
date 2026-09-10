@@ -1,4 +1,9 @@
-/** Pure canonical Work Item and change-origin record validation shared by the registry and promotion journal. */
+/**
+ * Parses canonical Work Items, lifecycle records, and change origins.
+ *
+ * Invariants:
+ * - Work Item aliases must be unique.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

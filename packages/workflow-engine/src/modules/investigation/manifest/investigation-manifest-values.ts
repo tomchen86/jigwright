@@ -1,4 +1,10 @@
-/** Manifest value normalization, canonical digests, and validation errors. */
+/**
+ * Validates bounded manifest values and canonical digest reference
+ * collections.
+ *
+ * Invariants:
+ * - Digest reference collections reject duplicates after sorting.
+ */
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import crypto from 'node:crypto';

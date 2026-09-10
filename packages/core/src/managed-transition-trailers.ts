@@ -1,3 +1,10 @@
+/**
+ * Recognizes and parses the reserved trailer blocks of managed commits.
+ *
+ * Invariants:
+ * - Reserved but malformed trailer blocks raise a syntax error; only
+ *   messages without reserved trailers return undefined.
+ */
 export type TaskManagedTrailers = {
   kind: 'task';
   changeId: string;

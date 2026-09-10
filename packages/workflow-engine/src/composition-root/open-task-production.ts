@@ -1,4 +1,10 @@
-/** Supplies pinned document reads to initial task activation and journal recovery. */
+/**
+ * Supplies system document context to task activation and journal recovery.
+ *
+ * Invariants:
+ * - The wrapper forwards task identifiers and options while fixing the
+ *   document reader to taskSystemDocumentContext.
+ */
 import {
   openTaskWithPorts,
   type OpenTaskOptions,

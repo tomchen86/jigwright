@@ -168,6 +168,14 @@ No linked contract yet.
 
 > 我認為 需要讓使用者提供每個provider的command是什麼樣子 例如resume功能需要什麼arg 這樣才能讓使用者簡單的增減provider
 
+- [Host Profiles Declare Capabilities and Ranking](../packages/agent-runtime/spec.md)
+- [Session Receipts Bind Observed Native Execution](../packages/agent-runtime/spec.md)
+- [Canonical Values Preserve Deterministic Bytes](../packages/core/spec.md)
+- [Fixture Consumers Exercise Public Package Boundaries](../packages/fixture-adapter/spec.md)
+- [Pull Request Publication Retains Prepared Identity](../packages/github-adapter/spec.md)
+- [Verification Produces Exact Typed Capabilities](../packages/grants/spec.md)
+- [Grant Reservations Retain One Terminal Use](../packages/grants/spec.md)
+- [OpenSpec Validation Preserves Provider Facts](../packages/openspec-adapter/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -176,6 +184,8 @@ No linked contract yet.
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Provider Baselines Preserve the Repository Object Format](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Role Result Admission Distinguishes Provider and Non-Provider Work](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
+- [Consumer Configuration Preserves Explicit Selections](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
+- [Consumer Paths Remain Within the Canonical Repository](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
 
 ## Validate and dry-run provider configuration
 
@@ -202,6 +212,16 @@ No linked contract yet.
 
 > 剛剛給你的計劃書還有現在給你的計劃書應改有提到engine會朝模組化的方向
 
+- [Host Profiles Declare Capabilities and Ranking](../packages/agent-runtime/spec.md)
+- [Session Receipts Bind Observed Native Execution](../packages/agent-runtime/spec.md)
+- [Canonical Values Preserve Deterministic Bytes](../packages/core/spec.md)
+- [Fixture Consumers Exercise Public Package Boundaries](../packages/fixture-adapter/spec.md)
+- [Pull Request Publication Retains Prepared Identity](../packages/github-adapter/spec.md)
+- [Verification Produces Exact Typed Capabilities](../packages/grants/spec.md)
+- [Grant Reservations Retain One Terminal Use](../packages/grants/spec.md)
+- [OpenSpec Validation Preserves Provider Facts](../packages/openspec-adapter/spec.md)
+- [Archive Projection Reads Through Supplied Ports](../packages/openspec-adapter/spec.md)
+- [Planning Facades Preserve Core Contracts](../packages/workflow-engine/src/modules/planning-provider/spec.md)
 - [Provider Execution Uses a Reviewed Built-In Registry](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Built-In Adapters Resolve Only Reviewed Executable Candidates](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Actor Identity Is Resolved Once and Reported Honestly](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
@@ -210,6 +230,8 @@ No linked contract yet.
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Provider Baselines Preserve the Repository Object Format](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Role Result Admission Distinguishes Provider and Non-Provider Work](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
+- [Consumer Configuration Preserves Explicit Selections](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
+- [Consumer Paths Remain Within the Canonical Repository](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
 
 ## Requirements and plan-document style
 
@@ -276,6 +298,16 @@ No linked contract yet.
 
 > 任何項目都不能因為沒有被注意到就消失；`retired` 必須能證明它只服務 v1/v2／歷史相容，或經你明確批准。
 
+- [Host Profiles Declare Capabilities and Ranking](../packages/agent-runtime/spec.md)
+- [Session Receipts Bind Observed Native Execution](../packages/agent-runtime/spec.md)
+- [Canonical Values Preserve Deterministic Bytes](../packages/core/spec.md)
+- [Governance Source Identity Preserves Wording](../packages/core/spec.md)
+- [Fixture Consumers Exercise Public Package Boundaries](../packages/fixture-adapter/spec.md)
+- [Pull Request Publication Retains Prepared Identity](../packages/github-adapter/spec.md)
+- [Verification Produces Exact Typed Capabilities](../packages/grants/spec.md)
+- [Grant Reservations Retain One Terminal Use](../packages/grants/spec.md)
+- [OpenSpec Validation Preserves Provider Facts](../packages/openspec-adapter/spec.md)
+- [Archive Projection Reads Through Supplied Ports](../packages/openspec-adapter/spec.md)
 - [Collaboration Grants Are Human-Issued and Exactly Bound](../packages/workflow-engine/spec.md)
 - [Collaboration Grants Authorize Only Visible Independence Degradation](../packages/workflow-engine/spec.md)
 - [Granted Role Results Have Exact Distinct Content Forms](../packages/workflow-engine/spec.md)
@@ -408,6 +440,7 @@ No linked contract yet.
 - [Grant Core Owns Protected Continuation](../packages/workflow-engine/src/modules/lifecycle/spec.md)
 - [Writer Admission Requires Managed Routing](../packages/workflow-engine/src/modules/lifecycle/spec.md)
 - [Handoff Is a Derived Repository Projection](../packages/workflow-engine/src/modules/lifecycle/spec.md)
+- [Planning Facades Preserve Core Contracts](../packages/workflow-engine/src/modules/planning-provider/spec.md)
 - [Declarative Projection Catalog](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Deterministic Shared Projection Services](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Preserve Existing Projection Contracts](../packages/workflow-engine/src/modules/projection/spec.md)
@@ -420,8 +453,12 @@ No linked contract yet.
 - [Read-Only Provider Results Require an Unchanged Governed Projection](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Provider Baselines Preserve the Repository Object Format](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
 - [Role Result Admission Distinguishes Provider and Non-Provider Work](../packages/workflow-engine/src/modules/provider-orchestration/spec.md)
+- [Consumer Configuration Preserves Explicit Selections](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
+- [Consumer Paths Remain Within the Canonical Repository](../packages/workflow-engine/src/modules/repository-consumer/spec.md)
 - [Normative Base Specs Pass Pinned Strict Validation](../packages/workflow-engine/src/modules/source/spec.md)
 - [Structural Repairs Preserve Requirement Semantics](../packages/workflow-engine/src/modules/source/spec.md)
+- [Semantic Entries Index Source Meaning Without Copying It](../packages/workflow-engine/src/modules/why-knowledge/spec.md)
+- [Reuse Reassesses Changed Import Dependencies](../packages/workflow-engine/src/modules/why-knowledge/spec.md)
 - [Repository Agent Skill Surface](../spec.md)
 - [Historical Spectra Data Has No Execution Authority](../spec.md)
 - [Registered Checks Are the Sole CI Command Authority](../spec.md)
@@ -440,12 +477,15 @@ No linked contract yet.
 
 > 算是觸及到核心理念 我不希望到處用id 或是給機器看的亂碼 我希望是可以給agent跟人類閱讀的文字 所以我希望善用投影技術 同時維持只有一個權威 但是很多地方都能看到 這是所有文件的中心思想
 
+- [Governance Source Identity Preserves Wording](../packages/core/spec.md)
 - [Design Ledger Is an Engine-Managed Projection](../packages/workflow-engine/spec.md)
 - [Reusable Knowledge Remains Separate From Per-Change WHY](../packages/workflow-engine/spec.md)
 - [Open Task Presents Pinned System Meaning](../packages/workflow-engine/spec.md)
 - [Preserve Existing Projection Contracts](../packages/workflow-engine/src/modules/projection/spec.md)
 - [System Maps Project One Readable Contract Authority](../packages/workflow-engine/src/modules/projection/spec.md)
 - [Module References Combine Reviewed Explanations and Generated Facts](../packages/workflow-engine/src/modules/projection/spec.md)
+- [Semantic Entries Index Source Meaning Without Copying It](../packages/workflow-engine/src/modules/why-knowledge/spec.md)
+- [Reuse Reassesses Changed Import Dependencies](../packages/workflow-engine/src/modules/why-knowledge/spec.md)
 
 ## 我發現dag 是不是不太直觀 寫在標頭是不是更好？ 當初的agent是突見我用dag 但是通常是正式change 的investigate 才會去讀吧？ 如果我寫在src files 標頭 那不是不管怎樣都會讀到？
 
@@ -484,3 +524,40 @@ No linked contract yet.
 > 我的構想是 spec live with code 這樣就比較容易發現 要修改的spec 並且src folder structure 可以視為天然的heirachy?
 
 - [Canonical Contracts Follow Directory Containment](../packages/workflow-engine/src/modules/source/spec.md)
+
+## 我現在的問題是 我發現finding 只是有active session的 source?
+
+> 我現在的問題是 我發現finding 只是有active session的 source?
+>
+> 是不是定義應該是這樣：
+> finding = agent的發現
+> source = 我說的requirement?
+> 有沒有active session好像不太重要？
+
+No linked contract yet.
+
+## 但我的計劃中有個需求是留下使用者當初的原話作為最高準則
+
+> 但我的計劃中有個需求是留下使用者當初的原話作為最高準則
+> 但是其中有些跨module 或是描述系統的 requirement不知道怎麼整合進系統既有的spec
+
+No linked contract yet.
+
+## 簡單講就是grant 本地ref
+
+> 簡單講就是grant 本地ref
+
+No linked contract yet.
+
+## 我覺得你所說的給機器看 應該是只給engine驗證用的
+
+> 我覺得你所說的給機器看 應該是只給engine驗證用的
+> 給人看是同時給agent and human看 除非agent or human想要用指令驗證 不管是時效性 還是 歷史紀錄等等 才會用到hash 不應該讓agent直接讀hash
+
+No linked contract yet.
+
+## 我是不是應該先跑完real pilot 在real consumer身上 之後再開發我們現在討論的這個功能
+
+> 我是不是應該先跑完real pilot 在real consumer身上 之後再開發我們現在討論的這個功能
+
+No linked contract yet.

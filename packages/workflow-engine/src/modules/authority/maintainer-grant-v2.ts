@@ -1,3 +1,13 @@
+/**
+ * Preflights, signs and admits Maintainer Grants for exact checked
+ * candidates against the live trust base.
+ *
+ * Invariants:
+ * - issueMaintainerGrantV2 will not sign unless the resolved signer
+ *   identity is present in the trust-base policy's trustedSigners.
+ * - Issuance re-derives the observed patch manifest and aborts with
+ *   MAINTAINER_PATCH_DRIFT if it differs from the requested manifest.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

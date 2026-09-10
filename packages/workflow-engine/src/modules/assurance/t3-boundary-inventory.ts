@@ -1,3 +1,11 @@
+/**
+ * Compares observed namespace and schema boundaries with the recorded T3
+ * inventory.
+ *
+ * Invariants:
+ * - Check mode rejects drift between recorded boundaries and current
+ *   source.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

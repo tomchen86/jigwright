@@ -1,3 +1,11 @@
+/**
+ * Evaluates evidence freshness against exact inputs, parent lineage and
+ * explicit convergence proofs.
+ *
+ * Invariants:
+ * - A changed parent edge requires exactly one matching descendant reuse
+ *   proof.
+ */
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';
 import {
   parentsCompatible,

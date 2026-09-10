@@ -1,3 +1,10 @@
+/**
+ * Prepares candidate checks and verifies maintainer apply preconditions.
+ *
+ * Invariants:
+ * - Approve-and-apply checks require the current candidate to match its
+ *   preflight.
+ */
 // maintainer apply checks; repository effects remain bound by the public module.
 import type {
   MaintainerApplyChecksBindings,

@@ -1,3 +1,11 @@
+/**
+ * Enumerates configuration and policy files that contribute to workflow
+ * contract identity.
+ *
+ * Invariants:
+ * - The sorted result always includes workflow configuration and checks,
+ *   and includes optional policies only when present as files.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 export function workflowContractArtifactPaths(repositoryRoot) {

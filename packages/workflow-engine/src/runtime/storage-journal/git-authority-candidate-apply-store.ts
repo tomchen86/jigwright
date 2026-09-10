@@ -1,3 +1,9 @@
+/**
+ * Persists Git candidate apply journals and chained phase transitions.
+ *
+ * Invariants:
+ * - Advancement rejects a journal changed since the caller read it.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 
