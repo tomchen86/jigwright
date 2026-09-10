@@ -133,6 +133,21 @@ export function workflowResultNextSteps(
   if (commandId === 'guide') return Object.freeze([]);
   const failGrant = failGrantNextSteps(record(result.result), invocation);
   if (failGrant !== null) return failGrant;
+  const documentReview = record(result.result);
+  const recordCommand = stringField(documentReview, 'recordCommand');
+  if (
+    commandId === 'documents' &&
+    documentReview?.kind === 'system-document-review.v1' &&
+    documentReview.status === 'required' &&
+    recordCommand !== undefined
+  ) {
+    return Object.freeze([
+      Object.freeze({
+        command: recordCommand,
+        why: 'Choose a disposition for every path in inputTemplate, add a nonempty reason for later, and save the completed input as <review.json> before submitting it.',
+      }),
+    ]);
+  }
   const governanceSource = governanceSourceCaptureNextSteps(result);
   if (governanceSource !== null) return governanceSource;
   const archivePullRequest = archivePullRequestLocalNextSteps(result);
@@ -436,18 +451,32 @@ function failGrantNextSteps(
       : invocation.length > 0
         ? `pnpm workflow ${invocation.map((value) => shellQuote(value)).join(' ')}`
         : undefined;
+  const documentReview = record(record(result?.failure)?.details);
+  const reviewCommand =
+    documentReview?.kind === 'system-document-review.v1'
+      ? stringField(input, 'reviewCommand')
+      : undefined;
   const commands: readonly (readonly [string | undefined, string])[] = [
     [
-      stringField(input, 'inspectCommand'),
-      'Inspect the exact Central Fail-Grant challenge and its bound consequences.',
+      reviewCommand ?? stringField(input, 'inspectCommand'),
+      reviewCommand === undefined
+        ? 'Inspect the exact Central Fail-Grant challenge and its bound consequences.'
+        : 'Review each affected document and choose still-valid, updated, or later; later needs a nonempty reason.',
     ],
     [
-      stringField(input, 'decisionCommand'),
-      'Use Human Gate to approve or reject the exact registered transition.',
+      stringField(
+        input,
+        reviewCommand === undefined ? 'decisionCommand' : 'inspectCommand',
+      ),
+      reviewCommand === undefined
+        ? 'Use Human Gate to approve or reject the exact registered transition.'
+        : 'Inspect the existing Central Grant challenge if requesting an exception to the document obligations.',
     ],
     [
       retryCommand,
-      'Retry the same current operation only after the Grant transition completes.',
+      reviewCommand === undefined
+        ? 'Retry the same current operation only after the Grant transition completes.'
+        : 'Retry the same current operation after recording all document dispositions or completing the exact Grant exception.',
     ],
   ];
   return Object.freeze(

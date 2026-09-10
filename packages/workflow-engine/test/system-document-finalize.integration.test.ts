@@ -3,8 +3,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { dispatchAsync } from '../src/cli.ts';
+import { createOpenSpecAdapter } from '../src/composition-root/openspec-adapter-production.ts';
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { createSystemDocumentFailGrantResult } from '../src/entrypoints/cli/system-document-fail-grant-cli.ts';
+import { workflowResultNextSteps } from '../src/modules/guidance/next-steps/workflow-guidance.ts';
 import {
   createFixtureRepository,
   configureChecks,
@@ -47,16 +49,36 @@ const {
   systemDocumentGrantTransitionDefinitions,
 } = createProductionSystemDocumentGrantService();
 
+test('fake OpenSpec reports actual spec files with sorted identities and valid totals', () => {
+  const repository = createFixtureRepository();
+  try {
+    const specs = path.join(repository, 'openspec/specs');
+    for (const capability of ['zulu', 'alpha']) {
+      fs.mkdirSync(path.join(specs, capability), { recursive: true });
+      fs.writeFileSync(path.join(specs, capability, 'spec.md'), '# Contract\n');
+    }
+    fs.mkdirSync(path.join(specs, 'ignored', 'spec.md'), { recursive: true });
+    const validation = createOpenSpecAdapter(repository).validateAllSpecs();
+    assert.equal(validation.valid, true);
+    assert.deepEqual(
+      validation.items.map(({ id }) => id),
+      ['alpha', 'zulu'],
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
 test('finalize requires exact document decisions before checks and recovers the admitted projection', async () => {
   const fixture = prepare();
   const { repository, sessionId, counter } = fixture;
   try {
     const review = inspectSystemDocumentDispositions(repository, sessionId);
-    assert.deepEqual(
-      (await dispatchAsync(['documents', 'review', sessionId], repository))
-        .result,
-      review,
+    const inspected = await dispatchAsync(
+      ['documents', 'review', sessionId],
+      repository,
     );
+    assert.deepEqual(inspected.result, review);
     assert.deepEqual(
       review.documents.map(({ path }) => path),
       ['src/README.md', 'src/spec.md'],
@@ -99,13 +121,93 @@ test('finalize requires exact document decisions before checks and recovers the 
     );
     assert.match(JSON.stringify(mapped), /workflow-fail-grant-required\.v1/);
     assert.match(JSON.stringify(mapped), /retryAfterDecision/);
+    assert.ok(mapped);
+    const failGrant = mapped.result as {
+      failure: { details: typeof review };
+      inputSchema: {
+        inspectCommand: string;
+        decisionCommand: string;
+        retryAfterDecision: string;
+      };
+    };
+    const expectedGuidance = {
+      dispositionChoices: [
+        {
+          disposition: 'still-valid',
+          requiredFields: ['path', 'disposition'],
+          optionalFields: ['reason', 'followUpRef'],
+        },
+        {
+          disposition: 'updated',
+          requiredFields: ['path', 'disposition'],
+          optionalFields: ['reason', 'followUpRef'],
+        },
+        {
+          disposition: 'later',
+          requiredFields: ['path', 'disposition', 'reason'],
+          optionalFields: ['followUpRef'],
+        },
+      ],
+      reviewCommand: `pnpm workflow documents review ${sessionId} --json`,
+      recordCommand: `pnpm workflow documents review ${sessionId} --input <review.json> --json`,
+      inputTemplate: {
+        schemaVersion: 1,
+        candidateDigest: review.candidateDigest,
+        dispositions: review.documents.map(({ path }) => ({
+          path,
+          disposition: null,
+        })),
+      },
+    };
+    assert.deepEqual(
+      [review, failGrant.failure.details].map((publicReview) => ({
+        dispositionChoices: publicReview.dispositionChoices?.map(
+          ({ disposition, requiredFields, optionalFields }) => ({
+            disposition,
+            requiredFields,
+            optionalFields,
+          }),
+        ),
+        reviewCommand: publicReview.reviewCommand,
+        recordCommand: publicReview.recordCommand,
+        inputTemplate: publicReview.inputTemplate,
+      })),
+      [expectedGuidance, expectedGuidance],
+    );
+    assert.ok(
+      review.dispositionChoices.every(({ description }) => description.trim()),
+    );
+    assert.deepEqual(review.dispositions, []);
+    assert.ok(
+      workflowResultNextSteps(inspected).some(
+        ({ command }) => command === review.recordCommand,
+      ),
+    );
+    const nextCommands = workflowResultNextSteps(mapped, args).map(
+      ({ command }) => command,
+    );
+    assert.equal(nextCommands[0], review.reviewCommand);
+    assert.equal(nextCommands.length, 3);
+    for (const command of [
+      review.reviewCommand,
+      failGrant.inputSchema.inspectCommand,
+      failGrant.inputSchema.retryAfterDecision,
+    ])
+      assert.ok(nextCommands.includes(command), command);
     const input = {
       ...review.inputTemplate,
       dispositions: [
-        { path: 'src/spec.md', disposition: 'updated' },
+        {
+          path: 'src/spec.md',
+          disposition: review.dispositionChoices.find(
+            ({ disposition }) => disposition === 'updated',
+          )!.disposition,
+        },
         {
           path: 'src/README.md',
-          disposition: 'later',
+          disposition: review.dispositionChoices.find(
+            ({ disposition }) => disposition === 'later',
+          )!.disposition,
           reason: 'Reassess this explanation in the follow-up.',
         },
       ],
@@ -114,11 +216,22 @@ test('finalize requires exact document decisions before checks and recovers the 
       runtimeRoot(repository),
       'document-review-input.json',
     );
-    fs.writeFileSync(inputPath, JSON.stringify(input));
-    const recorded = await dispatchAsync(
-      ['documents', 'review', sessionId, '--input', inputPath],
-      repository,
+    const recordArgs = review.recordCommand
+      .split(' ')
+      .slice(2)
+      .filter((argument) => argument !== '--json')
+      .map((argument) => (argument === '<review.json>' ? inputPath : argument));
+    fs.writeFileSync(inputPath, JSON.stringify(review.inputTemplate));
+    await assert.rejects(
+      dispatchAsync(recordArgs, repository),
+      hasCode('SYSTEM_DOCUMENT_REVIEW_INVALID'),
     );
+    assert.equal(
+      inspectSystemDocumentDispositions(repository, sessionId).status,
+      'required',
+    );
+    fs.writeFileSync(inputPath, JSON.stringify(input));
+    const recorded = await dispatchAsync(recordArgs, repository);
     assert.equal((recorded.result as { status: string }).status, 'reviewed');
     fs.appendFileSync(
       path.join(repository, 'src/feature.ts'),

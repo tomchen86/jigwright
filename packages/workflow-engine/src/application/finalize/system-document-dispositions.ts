@@ -131,10 +131,43 @@ export function createSystemDocumentDispositionService({
       ...(skippedByGrant
         ? { grant: stored!.record.grant as SystemDocumentGrantBinding }
         : {}),
+      dispositionChoices: [
+        {
+          disposition: 'still-valid',
+          description:
+            'Confirm that the present contract or readable explanation still describes the implementation.',
+          requiredFields: ['path', 'disposition'],
+          optionalFields: ['reason', 'followUpRef'],
+        },
+        {
+          disposition: 'updated',
+          description:
+            'Record an observed contract or explanation update, including an applicable spec delta.',
+          requiredFields: ['path', 'disposition'],
+          optionalFields: ['reason', 'followUpRef'],
+        },
+        {
+          disposition: 'later',
+          description:
+            'Defer this document work with an explicit nonempty reason; followUpRef is optional.',
+          requiredFields: ['path', 'disposition', 'reason'],
+          optionalFields: ['followUpRef'],
+        },
+      ] satisfies ReadonlyArray<{
+        disposition: SystemDocumentDisposition['disposition'];
+        description: string;
+        requiredFields: readonly (keyof SystemDocumentDisposition)[];
+        optionalFields: readonly (keyof SystemDocumentDisposition)[];
+      }>,
+      reviewCommand: `pnpm workflow documents review ${sessionId} --json`,
+      recordCommand: `pnpm workflow documents review ${sessionId} --input <review.json> --json`,
       inputTemplate: {
         schemaVersion: 1 as const,
         candidateDigest: candidate.candidateDigest,
-        dispositions: [] as SystemDocumentDisposition[],
+        dispositions: candidate.documents.map(({ path }) => ({
+          path,
+          disposition: null,
+        })),
       },
     };
   }
@@ -197,14 +230,9 @@ export function createSystemDocumentDispositionService({
     if (review.status !== 'required') return;
     throw workflowError(
       SYSTEM_DOCUMENT_DISPOSITION_REQUIRED,
-      'Confirm, update, or explicitly defer each affected contract and design explanation; an exact Central Grant can skip these document obligations.',
+      'Choose still-valid, updated, or later for each affected contract and design explanation; an exact Central Grant can skip these document obligations.',
       ExitCode.guard,
-      {
-        details: {
-          ...review,
-          reviewCommand: `pnpm workflow documents review ${sessionId} --json`,
-        },
-      },
+      { details: review },
     );
   }
 

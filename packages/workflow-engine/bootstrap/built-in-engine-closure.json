@@ -898,7 +898,7 @@
     {
       "path": "src/application/finalize/system-document-dispositions.ts",
       "mode": "100644",
-      "digest": "sha256:af4aa126725360d77468f26a68c1cc48e82a216383754c437cb94c12e870f87a"
+      "digest": "sha256:cc6252d109262a87d8e8f86c8e37dbe32aa738d25bd844982415cc5487178458"
     },
     {
       "path": "src/application/finalize/system-document-grant.ts",
@@ -2373,7 +2373,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:285d9222b20dd0b5ccb9b73bc8c1165553d4c379f958ae820621d3498dcbd585"
+      "digest": "sha256:9965ab5e9f5de8e414b2916d5eeaa0752bc493cb0be34f6d64d005409a2c7a32"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

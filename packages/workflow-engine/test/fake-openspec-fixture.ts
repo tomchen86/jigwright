@@ -373,11 +373,21 @@ if (process.argv[2] === 'archive') {
   process.exit(0);
 }
 if (process.argv[2] === 'validate' && process.argv.includes('--specs')) {
+  const specsRoot = path.join(process.cwd(), 'openspec/specs');
+  const ids = fs.existsSync(specsRoot)
+    ? fs.readdirSync(specsRoot).filter((id) => {
+        const spec = path.join(specsRoot, id, 'spec.md');
+        return fs.existsSync(spec) && fs.statSync(spec).isFile();
+      }).sort()
+    : [];
+  const items = ids.map((id) => ({
+    id, type: 'spec', valid: true, issues: [], durationMs: 1
+  }));
   process.stdout.write(JSON.stringify({
-    items: [{ id: 'demo', type: 'spec', valid: true, issues: [], durationMs: 1 }],
+    items,
     summary: {
-      totals: { items: 1, passed: 1, failed: 0 },
-      byType: { spec: { items: 1, passed: 1, failed: 0 } }
+      totals: { items: items.length, passed: items.length, failed: 0 },
+      byType: { spec: { items: items.length, passed: items.length, failed: 0 } }
     },
     version: '1.0',
     root: { path: process.cwd(), source: 'nearest' }
