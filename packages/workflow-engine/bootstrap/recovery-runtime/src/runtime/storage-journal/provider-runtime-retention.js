@@ -4,10 +4,13 @@
  * Invariants:
  * - Live and retained artifacts retain exact membership, byte, digest, and snapshot bindings.
  * - Runtime authority is checked before retention evidence, and returned digests remain sorted.
+ * - A file the engine does not own is named, never silently digested, and never
+ *   deleted; a caller that only reads may admit it instead of refusing.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
+import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";
 import { assertProviderInvocationCancellationRequestV1 } from "../../modules/authority/provider-invocation-cancellation-grant.js";
 import { recreateProviderInvocationRequest, } from "../../modules/provider-orchestration/provider-contracts.js";
 import { MAX_HUMAN_RESOLUTION_BYTES, readPrivateBuffer, readPrivateFile, walkPrivateDirectory, } from "./investigation-private-files.js";
@@ -37,7 +40,19 @@ const OPTIONAL_PROVIDER_ROOT_FILES = [
 // never digested, because it keeps changing while the run it describes is
 // still in flight.
 const OBSERVATION_PROVIDER_ROOT_FILES = ['activity.json'];
-export function digestPrivateDirectoryEntries(paths, directory, makeError) {
+function providerInvocationStrayFiles(directory, names) {
+    return workflowError('PROVIDER_INVOCATION_STRAY_FILES', 'Provider invocation directory holds files the engine does not own.', ExitCode.unsafeEnvironment, {
+        details: { directory, files: [...names] },
+        recovery: `Remove ${names.join(', ')} from ${directory}. A write that was killed mid-flight leaves its own .tmp file behind; nothing else writes there.`,
+    });
+}
+/**
+ * A file the engine did not write is never evidence, so digesting refuses it.
+ * Reading is different: a crashed write leaves its own `.tmp` behind, and an
+ * invocation nobody can read any more is a dead end with no exit. Callers that
+ * only read pass `admitStray` and get the names instead of a failure.
+ */
+export function digestPrivateDirectoryEntries(paths, directory, makeError, options = {}) {
     if (!walkPrivateDirectory(paths, directory, makeError, false)) {
         throw makeError();
     }
@@ -73,8 +88,15 @@ export function digestPrivateDirectoryEntries(paths, directory, makeError) {
         ...(runtimeStats ? ['runtime'] : []),
         ...(snapshotArtifacts === null ? [] : ['review-root']),
     ].sort();
-    if (canonicalJson(rootNames) !== canonicalJson(expectedRootNames)) {
+    const strayNames = rootNames.filter((name) => !expectedRootNames.includes(name));
+    if (expectedRootNames.some((name) => !rootNames.includes(name))) {
         throw makeError();
+    }
+    if (strayNames.length > 0) {
+        if (options.admitStray === undefined) {
+            throw providerInvocationStrayFiles(directory, strayNames);
+        }
+        options.admitStray(Object.freeze([...strayNames]));
     }
     const files = rootFiles.map((name) => {
         const content = readPrivateFile(path.join(directory, name), makeError);

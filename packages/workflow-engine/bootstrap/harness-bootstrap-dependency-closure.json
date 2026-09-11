@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:7705744e827fa78ecbfc93b2c915b03c117ff15f1813c608c69dde04181d4ee1"
+      "digest": "sha256:4356e8b713f4d0f2275bd51d96b1861550a587d171e66738a1fee4e0faa9fbd7"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -1768,7 +1768,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-lifecycle.js",
       "mode": "100644",
-      "digest": "sha256:5f310479e614a2e76ab5f38443bb0ff53ef0f6f9a1f3c860fd9aaa6a9432883f"
+      "digest": "sha256:db71924d454d293887f18396c7a2f7a90dfa65e7b55e1d9a32a1a0fa5c2263e4"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-invocation-manifest-validation.js",
@@ -1873,7 +1873,7 @@
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/provider-runtime-retention.js",
       "mode": "100644",
-      "digest": "sha256:1e37981017d35d19825b3937b03f6b13ed23f85c372c1e48b3760b1b5569d9a3"
+      "digest": "sha256:31963223a3439c1382e718658e66ad85238653f2d9ccbe47d1d836a08f2a7a89"
     },
     {
       "path": "bootstrap/recovery-runtime/src/runtime/storage-journal/task-strategy-correction-store.js",

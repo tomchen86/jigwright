@@ -4,7 +4,11 @@ import assert from 'node:assert/strict';
 import path from 'node:path';
 import os from 'node:os';
 import { runCli, createAsyncCliDispatcherForTesting } from '../src/cli.ts';
-import { ExitCode, workflowError } from '../src/foundation/errors/errors.ts';
+import {
+  ExitCode,
+  type WorkflowError,
+  workflowError,
+} from '../src/foundation/errors/errors.ts';
 import { createFixtureRepository, git } from './fixture.ts';
 import { startPropose } from '../src/application/propose/propose-orchestrator.ts';
 import {
@@ -19,6 +23,7 @@ import {
   startProviderInvocationActivityHeartbeat,
 } from '../src/runtime/storage-journal/provider-invocation-activity.ts';
 import { readProviderInvocationLifecycleProjection } from '../src/runtime/storage-journal/investigation-session-store.ts';
+import { digestPrivateDirectoryEntries } from '../src/runtime/storage-journal/provider-runtime-retention.ts';
 import { investigationRuntimePaths } from '../src/runtime/session-workspace/paths.ts';
 import {
   readProviderInvocation,
@@ -291,6 +296,64 @@ test('provider activity tells an unobserved lease apart from a live process', as
     assert.equal(
       inspectProviderInvocationActivity(runtime, lease).state,
       'exited',
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('a killed write leaves a file the engine names instead of a dead invocation', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-stray-file';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const locator = discoverRepository(repository);
+    const runtime = investigationRuntimePaths(
+      locator.gitCommonDirectory,
+      'workflow-engine',
+    );
+    const directory = path.join(runtime.invocations, invocationId);
+    // Exactly what the engine's own atomic write leaves behind when the
+    // process is killed between its open and its rename.
+    const stray = `state.json.4242.6f1a2b3c-dead-4bee-8000-000000000000.tmp`;
+    fs.writeFileSync(path.join(directory, stray), '{}\n', { mode: 0o600 });
+
+    const projection = readProviderInvocationLifecycleProjection(
+      runtime,
+      invocationId,
+    );
+    assert.equal(
+      projection.state,
+      'prepared',
+      'an invocation nobody can read any more is a dead end with no exit',
+    );
+    assert.deepEqual(projection.strayFiles, [stray]);
+
+    let refused: WorkflowError | null = null;
+    try {
+      digestPrivateDirectoryEntries(runtime, directory, () =>
+        workflowError('UNUSED', 'unused', ExitCode.internal),
+      );
+    } catch (error) {
+      refused = error as WorkflowError;
+    }
+    assert.equal(refused?.code, 'PROVIDER_INVOCATION_STRAY_FILES');
+    assert.match(
+      refused?.recovery ?? '',
+      new RegExp(stray.replace(/\./g, '\\.')),
+      'refusing without naming the file is how the dead end started',
+    );
+
+    fs.rmSync(path.join(directory, stray));
+    assert.deepEqual(
+      readProviderInvocationLifecycleProjection(runtime, invocationId)
+        .strayFiles,
+      [],
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

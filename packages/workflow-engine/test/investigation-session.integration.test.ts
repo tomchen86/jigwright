@@ -980,6 +980,8 @@ test('baseline drift and unsafe durable files fail closed', () => {
         mode: 0o600,
       },
     );
+    // Human resolution still refuses a directory holding a file the engine
+    // does not own, and now says which file it is.
     assert.throws(
       () =>
         inspectInvestigationResolutionState(
@@ -987,8 +989,7 @@ test('baseline drift and unsafe durable files fail closed', () => {
           policyStarted.investigationId,
           policyFixture.blindManifest.repositoryId,
         ),
-      (error) =>
-        isWorkflowError(error, 'HUMAN_RESOLUTION_PROVIDER_STATE_UNSAFE'),
+      (error) => isWorkflowError(error, 'PROVIDER_INVOCATION_STRAY_FILES'),
     );
   } finally {
     fs.rmSync(driftFixture.repository, { recursive: true, force: true });

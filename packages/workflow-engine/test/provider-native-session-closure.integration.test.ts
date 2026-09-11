@@ -497,9 +497,17 @@ describe('production host-wrapper artifacts remain an exact provider lifecycle c
         assertUnsafe();
         fs.rmSync(extra);
       }
+      // A file the engine does not own at the invocation root is reported,
+      // not fatal: the engine's own atomic write leaves a .tmp here when it is
+      // killed, and an invocation nobody can read any more has no exit. The
+      // closure stays exact where it is evidence - digesting still refuses.
       const extraRoot = path.join(invocationDirectory, 'unexpected.json');
       rewritePrivateJson(extraRoot, { unexpected: true });
-      assertUnsafe();
+      assert.deepEqual(
+        readProviderInvocationLifecycleProjection(runtime, invocationId)
+          .strayFiles,
+        ['unexpected.json'],
+      );
       fs.rmSync(extraRoot);
       for (const [index, filePath] of artifacts.entries()) {
         fs.chmodSync(filePath, 0o644);

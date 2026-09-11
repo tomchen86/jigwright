@@ -79,6 +79,8 @@ export type ProviderInvocationLifecycleProjection = Readonly<{
     acquiredAt: string;
     expiresAt: string;
   }> | null;
+  /** Files in the invocation directory the engine does not own, if any. */
+  strayFiles: readonly string[];
 }>;
 
 export type ProviderInvocationLifecycleScan = Readonly<{

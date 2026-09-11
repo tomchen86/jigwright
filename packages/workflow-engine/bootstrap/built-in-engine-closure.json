@@ -3928,7 +3928,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:dce6c418012c3a8865f57835839769621ae637b633e8b8a0b362ec85ca7d6893"
+      "digest": "sha256:5c35cc09c79a638f98420ac8087d0c0ca1b7411b2ed874b1c37919288cc3a21f"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-manifest-validation.ts",
@@ -4028,12 +4028,12 @@
     {
       "path": "src/runtime/storage-journal/provider-runtime-evidence-contract.ts",
       "mode": "100644",
-      "digest": "sha256:aa53dae5eb050ac06bca51633a8ad94a9ff86f057d4b81383caa7f63a5a96d61"
+      "digest": "sha256:6536b5dfd44a0f0cf9e9c17c3425c346c63201e2d522d378a0b7ef192541ebc9"
     },
     {
       "path": "src/runtime/storage-journal/provider-runtime-retention.ts",
       "mode": "100644",
-      "digest": "sha256:2d1f501c870ea60ee6e45969d173539b3e2742e3a0a5a7e164d521689dcf8c39"
+      "digest": "sha256:a535892d2994c4f97663c1d5fbb7a175fdbadd8f3d1bdd09250eb036713a84ce"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",
