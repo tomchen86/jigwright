@@ -139,9 +139,9 @@
     "humanTrustRootsClosureDigest": "sha256:f16a3754915fc4510e73b302d901ec20989ccadbd23843834fd1d038c73f4911",
     "applyJournalClosureDigest": "sha256:ca650797098a61ee8e3baaffcdca08fbd46b124dfeaea13861230eb2951b94ce",
     "controlPlaneUpdateClosureDigest": "sha256:06973d5730fa398a3e8499e631eef0057e8eba27a132a347fc9a33374455f1c8",
-    "recoveryClosureDigest": "sha256:a25a6980c695293989825edf9b5c490f5b574d76f6537f546ac68b5eef3ff355",
+    "recoveryClosureDigest": "sha256:cab9f8dc28e79571d77ab6d0f305e54af623b08758218264aeddba4e71db1f1d",
     "repairAuthority": "human-only-authority-plan-or-sealed-recovery",
-    "compositionDigest": "sha256:5ee41b4d4483955044f57f0876cce16f3e3b6fa6b5ad5a73bf3ce17284925018"
+    "compositionDigest": "sha256:b3dca62c538e75525e548790147e7f7066f33c1970f50bb1be2c0ea882b6ca25"
   },
   "entries": [
     {
@@ -240,8 +240,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/intervention-sidecar-store.ts",
         "packages/workflow-engine/src/runtime/storage-journal/intervention-update-store.ts"
       ],
-      "contentDigest": "sha256:cafb52cb18961095d4a710645e2b633ead253f15f287fc5ff409d0fd115cd841",
-      "closureDigest": "sha256:b2b6340ea86542ff9e5c720804bf06734f5aaab74f97a3220fea3e1540aaa1d1"
+      "contentDigest": "sha256:40cc37bbc04568ff926b523694e8547e75f28c4a55e13f086fa2d5da2571ad5a",
+      "closureDigest": "sha256:b8cac84b91e96bdc87d1b8c1cfccae80d9a358c3134a470467b6b00d6d35119b"
     },
     {
       "capability": "apply.journal",
@@ -1317,8 +1317,8 @@
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-grant-values.ts",
         "packages/workflow-engine/src/runtime/storage-journal/maintainer-store.ts"
       ],
-      "contentDigest": "sha256:033a588ba2415a783eca79c1d2e6160ca89220812377dd2b75d7f3b7edce143e",
-      "closureDigest": "sha256:a25a6980c695293989825edf9b5c490f5b574d76f6537f546ac68b5eef3ff355"
+      "contentDigest": "sha256:91ae9a809cfb6324083642c9e6e6e90c8fb1ff0e8b19c9e649ee7110d85aa787",
+      "closureDigest": "sha256:cab9f8dc28e79571d77ab6d0f305e54af623b08758218264aeddba4e71db1f1d"
     },
     {
       "capability": "ref-generation.ledger",
