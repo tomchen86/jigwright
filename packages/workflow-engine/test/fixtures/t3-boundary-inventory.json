@@ -1,7 +1,7 @@
 {
   "kind": "jigwright.workflow.t3-boundary-inventory.v1",
   "schemaVersion": 1,
-  "observedAtCommit": "945a1f950a0894cbefcb33567bbb8cd6ccff3437",
+  "observedAtCommit": "418c384d1994fd82b038ea574da19b420a8c35c8",
   "architectureDocument": "docs/architecture/WORKFLOW_ENGINE_BOUNDARY_INVENTORY.md",
   "namespaceBaseline": {
     "legacyPrefix": "expense-app.workflow.",
@@ -61,9 +61,9 @@
   },
   "workflowArtifactPathBaseline": {
     "packagePrefix": "packages/workflow-engine",
-    "occurrences": 2453,
+    "occurrences": 2455,
     "fileCount": 6,
-    "identityDigest": "sha256:efaaa7650f94685bd52d15b65305c8d53169db75ed547f8766505ad144aa5cdf"
+    "identityDigest": "sha256:023e9c097fd6761fe199636e9bcb2919bafd1f52b48235289db902395c080112"
   },
   "couplings": [
     {
@@ -544,7 +544,7 @@
         {
           "path": "packages/workflow-engine/src/runtime/provider-execution/bounded-provider-process.ts",
           "contains": [
-            "Compatibility facade for the public agent-runtime process package.",
+            "Exposes the public bounded process runner to provider execution.",
             "export * from '@jigwright/agent-runtime/bounded-provider-process';"
           ]
         },

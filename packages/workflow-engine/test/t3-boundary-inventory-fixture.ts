@@ -10,7 +10,7 @@ import {
 } from './boundary-contract-fixture.ts';
 
 export const EXPECTED_T3_BOUNDARY_INVENTORY_DIGEST =
-  'sha256:a0204a739641f39edd65515c565c8867c343477184bc14b1ef9764c1f695a79b';
+  'sha256:790e50e6e470efe59a6792ef8590b8acba5fce3a63594084ad7e91e433c985e8';
 
 export const T3_BOUNDARY_INVENTORY_FILE = 't3-boundary-inventory.json';
 
