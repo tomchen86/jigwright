@@ -656,6 +656,11 @@ test('status is read-only and short transition locks do not survive a call', () 
     assert.equal(leasedStatus.provider.state, 'leased');
     assert.equal(leasedStatus.provider.leaseGeneration, 1);
     assert.equal(
+      leasedStatus.provider.activity.state,
+      'not-observed',
+      'a leased invocation nobody has reported on is unknown, not idle',
+    );
+    assert.equal(
       JSON.stringify(leasedStatus).includes(claim.leaseToken),
       false,
     );

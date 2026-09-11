@@ -9,6 +9,7 @@ import path from 'node:path';
 import { spawn } from 'node:child_process';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
+import { startProviderInvocationActivityHeartbeat } from '../../runtime/storage-journal/provider-invocation-activity.ts';
 import {
   ExitCode,
   WorkflowError,
@@ -746,11 +747,24 @@ function runProviderWorkerWithExecution(
     const report = execute(agentRuntime, runtimeInput, runtimeOptions);
     if (isPromiseLike(report)) {
       releaseSynchronously = false;
+      // The durable record only learns what happened once the run ends. While
+      // it runs, this publication is the only way to tell a live provider from
+      // a dead worker.
+      const activity =
+        runtimeProgress === undefined
+          ? null
+          : startProviderInvocationActivityHeartbeat(context.runtime, {
+              invocationId: request.invocationId,
+              leaseGeneration: claim.record.leaseGeneration,
+              workerId: claimInput.workerId,
+              progress: runtimeProgress,
+            });
       return Promise.resolve(report)
         .then((completedReport) =>
           completeWithReport(completedReport, acceptanceBinding),
         )
         .catch((error) => failWithError(error, acceptanceBinding))
+        .finally(() => activity?.stop())
         .finally(releaseWorkerFence)
         .then(renderTerminal);
     }

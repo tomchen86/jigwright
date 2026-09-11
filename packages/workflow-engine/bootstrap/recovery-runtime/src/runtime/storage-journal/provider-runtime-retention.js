@@ -33,6 +33,10 @@ const OPTIONAL_PROVIDER_ROOT_FILES = [
     'repair-evidence.json',
     'repair-lineage.json',
 ];
+// Observation, not authority: live activity belongs to the closure but is
+// never digested, because it keeps changing while the run it describes is
+// still in flight.
+const OBSERVATION_PROVIDER_ROOT_FILES = ['activity.json'];
 export function digestPrivateDirectoryEntries(paths, directory, makeError) {
     if (!walkPrivateDirectory(paths, directory, makeError, false)) {
         throw makeError();
@@ -56,6 +60,7 @@ export function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const reviewRootPath = path.join(directory, 'review-root');
     const optionalRootFiles = OPTIONAL_PROVIDER_ROOT_FILES.filter((name) => rootNames.includes(name));
     const hostWrapperDirectories = HOST_WRAPPER_DIRECTORIES.filter((name) => rootNames.includes(name));
+    const observationRootFiles = OBSERVATION_PROVIDER_ROOT_FILES.filter((name) => rootNames.includes(name));
     const rootFiles = [
         PROVIDER_POLICY_ROOT_FILE,
         ...BLIND_PROVIDER_CORE_ROOT_FILES,
@@ -63,6 +68,7 @@ export function digestPrivateDirectoryEntries(paths, directory, makeError) {
     const expectedRootNames = [
         ...rootFiles,
         ...optionalRootFiles,
+        ...observationRootFiles,
         ...hostWrapperDirectories,
         ...(runtimeStats ? ['runtime'] : []),
         ...(snapshotArtifacts === null ? [] : ['review-root']),

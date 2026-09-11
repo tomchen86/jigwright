@@ -67,6 +67,11 @@ const OPTIONAL_PROVIDER_ROOT_FILES = [
   'repair-lineage.json',
 ] as const;
 
+// Observation, not authority: live activity belongs to the closure but is
+// never digested, because it keeps changing while the run it describes is
+// still in flight.
+const OBSERVATION_PROVIDER_ROOT_FILES = ['activity.json'] as const;
+
 export function digestPrivateDirectoryEntries(
   paths: InvestigationRuntimePaths,
   directory: string,
@@ -101,6 +106,9 @@ export function digestPrivateDirectoryEntries(
   const hostWrapperDirectories = HOST_WRAPPER_DIRECTORIES.filter((name) =>
     rootNames.includes(name),
   );
+  const observationRootFiles = OBSERVATION_PROVIDER_ROOT_FILES.filter((name) =>
+    rootNames.includes(name),
+  );
   const rootFiles = [
     PROVIDER_POLICY_ROOT_FILE,
     ...BLIND_PROVIDER_CORE_ROOT_FILES,
@@ -108,6 +116,7 @@ export function digestPrivateDirectoryEntries(
   const expectedRootNames = [
     ...rootFiles,
     ...optionalRootFiles,
+    ...observationRootFiles,
     ...hostWrapperDirectories,
     ...(runtimeStats ? ['runtime'] : []),
     ...(snapshotArtifacts === null ? [] : ['review-root']),

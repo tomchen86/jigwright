@@ -418,7 +418,7 @@
     {
       "path": "src/adapters/planning/investigation/investigation-session.ts",
       "mode": "100644",
-      "digest": "sha256:29235387c17c600e64d3925e473abfd97bf33d8e92324580c5ed3b3f6be6d728"
+      "digest": "sha256:9946336fa60e2df3b6cc950edfcd6da554336b025cdc23fb098a18e153e0c3a2"
     },
     {
       "path": "src/adapters/planning/openspec/documents/colocated-openspec-view.ts",
@@ -1643,7 +1643,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:2e8b49e3f8a7cd05dc179908f185b79d9e54dbef0d14c8b66084d13902185168"
+      "digest": "sha256:6e767ee22d57fd19c98f905eebcf81d63565e4b7b0a71b3d116227f265559b43"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -3906,6 +3906,11 @@
       "digest": "sha256:ce71ccb7c9baab14f7653841fd835ccb1351d0f1dea07fb4039b7edea4b71621"
     },
     {
+      "path": "src/runtime/storage-journal/provider-invocation-activity.ts",
+      "mode": "100644",
+      "digest": "sha256:33b1419832051218748cfbf69cb34d76fbdc3dac4ffc819ba70d8b36a755e8d5"
+    },
+    {
       "path": "src/runtime/storage-journal/provider-invocation-artifacts.ts",
       "mode": "100644",
       "digest": "sha256:701b645d49c046ce0f0093649273e556878ec7a2085fd2a50d6c6d2822736bcd"
@@ -4028,7 +4033,7 @@
     {
       "path": "src/runtime/storage-journal/provider-runtime-retention.ts",
       "mode": "100644",
-      "digest": "sha256:126a0f47508c5400abebd0bdc9e6d9eeefb110a2b9165afe6419ca0125741447"
+      "digest": "sha256:2d1f501c870ea60ee6e45969d173539b3e2742e3a0a5a7e164d521689dcf8c39"
     },
     {
       "path": "src/runtime/storage-journal/provider-worker-maintenance.ts",

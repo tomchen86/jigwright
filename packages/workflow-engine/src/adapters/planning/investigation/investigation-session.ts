@@ -143,6 +143,10 @@ import {
   type ProviderInvocationRecord,
 } from '../../../runtime/storage-journal/provider-invocation-store.ts';
 import {
+  inspectProviderInvocationActivity,
+  type ProviderInvocationActivity,
+} from '../../../runtime/storage-journal/provider-invocation-activity.ts';
+import {
   assertProviderExecutionGrantAuthorization,
   authorizeAutomaticProviderRetry,
   type ProviderExecutionGrantAuthorization,
@@ -274,6 +278,7 @@ export type InvestigationStatus = {
     leaseExpiresAt: string | null;
     failure: ProviderInvocationFailure | null;
     resultDigest: string | null;
+    activity: ProviderInvocationActivity;
   };
   checkpoint: {
     schemaVersion: 1;
@@ -1846,6 +1851,7 @@ function statusFromSession(
       leaseExpiresAt: invocation.lease?.expiresAt ?? null,
       failure: invocation.failure,
       resultDigest: invocation.result?.outputDigest ?? null,
+      activity: inspectProviderInvocationActivity(context.runtime, invocation),
     },
     checkpoint,
     nextAction: deriveNextAction(session, invocation),
