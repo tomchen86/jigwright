@@ -1,3 +1,10 @@
+/**
+ * Loads and validates provider execution policy, limits, and retry
+ * accounting.
+ *
+ * Invariants:
+ * - Policy JSON input is bounded to one mebibyte.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,11 @@
+/**
+ * Signs and stores an eligible role context sharing Grant for the current
+ * planning review requirement.
+ *
+ * Invariants:
+ * - The selected Grant identity must already be listed in the durable
+ *   requirement.
+ */
 import {
   canonicalRoleContextSharingGrantPayloadV1,
   ROLE_CONTEXT_SHARING_DEGRADATION_EFFECT_V1,

@@ -1,3 +1,11 @@
+/**
+ * Declares bootstrap recovery status, refusal authority and injectable
+ * runtime hooks.
+ *
+ * Invariants:
+ * - Recovery status carries an authority descriptor and an explicit
+ *   nullable quarantine marker.
+ */
 import type { BootstrapDependencies } from './intervention-control-bootstrap.ts';
 import type {
   ControlPlaneRecoveryApprovalSummary,

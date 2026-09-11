@@ -1,3 +1,11 @@
+/**
+ * Builds, seals and checks an investigation manifest against the exact
+ * lifecycle snapshot.
+ *
+ * Invariants:
+ * - Supplied scan and grouping facts must equal deterministic replay before
+ *   a draft can be built.
+ */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import type {
   InvestigationDispositionDecision,

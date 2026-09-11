@@ -1,3 +1,10 @@
+/**
+ * Issues authority attestations and projects their relay evidence.
+ *
+ * Invariants:
+ * - Attestation relay requires the repository origin trusted by the current
+ *   policy.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';

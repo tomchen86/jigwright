@@ -1,3 +1,11 @@
+/**
+ * Builds the reviewed read-only Claude invocation and its required
+ * capability flags.
+ *
+ * Invariants:
+ * - The invocation fixes plan permissions, read/search tools, maximum
+ *   reasoning effort and an empty strict MCP configuration.
+ */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import type { ProviderInvocationPlan } from '../../../modules/provider-orchestration/provider-contracts.ts';
 export { CLAUDE_EXECUTABLE_CANDIDATES } from '../built-in-provider-definition.ts';

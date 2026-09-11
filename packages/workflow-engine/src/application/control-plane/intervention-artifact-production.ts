@@ -1,3 +1,10 @@
+/**
+ * Builds and validates engine artifacts for an active intervention.
+ *
+ * Invariants:
+ * - Source content must remain unchanged during bootstrap and health
+ *   probes.
+ */
 import type fs from 'node:fs';
 // intervention artifact production; repository effects remain bound by the public module.
 import type {

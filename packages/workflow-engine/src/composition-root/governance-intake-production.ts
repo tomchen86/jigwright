@@ -1,3 +1,11 @@
+/**
+ * Resolves repository and active-task context for governance intake and
+ * handoff rendering.
+ *
+ * Invariants:
+ * - Active sessions must resolve to the current canonical worktree;
+ *   unreadable session records are skipped.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

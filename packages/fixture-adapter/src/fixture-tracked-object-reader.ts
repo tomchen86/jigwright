@@ -1,3 +1,11 @@
+/**
+ * Provides deterministic pinned-tree observations from supplied fixture
+ * trees.
+ *
+ * Invariants:
+ * - Scanning counts each selected blob identity once and omits content
+ *   exceeding per-blob or total byte limits.
+ */
 import crypto from 'node:crypto';
 import { performance } from 'node:perf_hooks';
 

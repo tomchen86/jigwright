@@ -1,3 +1,11 @@
+/**
+ * Parses Collaboration Grant envelopes and verifies their domain-validated
+ * signed payloads.
+ *
+ * Invariants:
+ * - Only version 2 with the exact Collaboration Grant signature namespace
+ *   is admitted; verification has no namespace fallback.
+ */
 import {
   GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1,
   verifyGrantEnvelopeV1,

@@ -1,3 +1,10 @@
+/**
+ * Coordinates pull-request verification against checked-out and historical
+ * repository authority.
+ *
+ * Invariants:
+ * - The requested CI head must be the checked-out commit.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

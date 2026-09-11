@@ -1,3 +1,11 @@
+/**
+ * Resolves provider identity from explicit actor selection and recognized
+ * runtime hints.
+ *
+ * Invariants:
+ * - Contradictory provider signals return an identity conflict without a
+ *   resolved actor.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { isProviderId, type ProviderId } from './provider-registry.ts';
 

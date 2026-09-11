@@ -1,3 +1,10 @@
+/**
+ * Publishes and verifies portable receipts for authorized Git candidate
+ * application.
+ *
+ * Invariants:
+ * - Portable application receipts require SSH approval evidence.
+ */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { verifySshSignatureWithPublicKey } from '../adapters/signing/ssh/maintainer-signer.ts';

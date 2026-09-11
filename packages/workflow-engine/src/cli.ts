@@ -1,4 +1,11 @@
 #!/usr/bin/env node
+/**
+ * Dispatches workflow commands and renders synchronous or asynchronous CLI
+ * results.
+ *
+ * Invariants:
+ * - Reported failures return their workflow exit code.
+ */
 
 import { dispatchBoundaryCommand } from './entrypoints/cli/boundary-cli.ts';
 import { renderHumanCommandResult } from './entrypoints/cli/human-command-output.ts';

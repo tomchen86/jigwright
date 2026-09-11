@@ -1,3 +1,11 @@
+/**
+ * Separates the change-bound role policy path from planning provider
+ * changes.
+ *
+ * Invariants:
+ * - Changed and deleted paths must be canonical and unique, and every
+ *   deletion must also be a changed path.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { normalizeChangedPath } from '../../foundation/repository-path/repository-path.ts';
 

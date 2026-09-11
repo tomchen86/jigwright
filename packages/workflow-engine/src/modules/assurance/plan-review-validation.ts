@@ -1,3 +1,10 @@
+/**
+ * Validates PlanReview evidence, independence, dispositions, and resulting
+ * intake candidates.
+ *
+ * Invariants:
+ * - A disposition may name only a challenge present in the review.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import type { EvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';

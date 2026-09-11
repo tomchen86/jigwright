@@ -1,8 +1,75 @@
+/**
+ * Declares generated document outputs, their triggers and privileged
+ * projection path ownership.
+ *
+ * Invariants:
+ * - Declaring an output grants no lifecycle path authority without an
+ *   explicit authorityTransitions entry.
+ */
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
+export const MODULE_README_COMMANDS = {
+    'governance-intake': [
+        'source',
+        'now',
+        'later',
+        'attach',
+        'correct',
+        'finding',
+        'work-item',
+    ],
+    authority: [
+        'grant',
+        'external-effect',
+        'publish',
+        'task',
+        'change',
+        'engine',
+        'intervention',
+        'control-plane',
+        'audit',
+        'maintainer',
+        'human-resolution-state',
+    ],
+    'provider-orchestration': ['init', 'agent', 'adapter', 'role-config'],
+    adoption: ['init'],
+    assurance: ['doctor', 'run-check', 'ci', 'check', 'boundary'],
+    guidance: ['guide', 'guidance'],
+    investigation: ['propose'],
+    lifecycle: [
+        'route',
+        'task-preflight',
+        'open-task',
+        'update-base',
+        'revise-task',
+        'resume-task',
+        'resume',
+        'status',
+        'check',
+        'complete-task',
+        'finish',
+        'review-diff',
+        'finalize',
+        'rollback-completion',
+        'commit',
+        'abort',
+        'archive',
+    ],
+    'planning-provider': [
+        'propose',
+        'plan-commit',
+        'amend-plan',
+        'validate-change',
+        'openspec-assets',
+    ],
+    projection: ['documents', 'document-refresh', 'handoff'],
+    'repository-consumer': ['boundary'],
+    source: ['documents'],
+    'why-knowledge': ['semantic-ledger'],
+};
 /** Output declarations do not grant transition authority. Only the existing
  * authorityTransitions entry below participates in privileged path ownership. */
 const REGISTRY = Object.freeze([
-    ...['governance-intake', 'authority', 'provider-orchestration'].map((module) => Object.freeze({
+    ...Object.keys(MODULE_README_COMMANDS).map((module) => Object.freeze({
         id: `documents.${module}-readme`,
         version: 1,
         target: Object.freeze({

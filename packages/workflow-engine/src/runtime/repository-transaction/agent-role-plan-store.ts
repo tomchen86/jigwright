@@ -1,3 +1,11 @@
+/**
+ * Reads current role plan overrides and validates their commit-pinned
+ * snapshots.
+ *
+ * Invariants:
+ * - An asserted snapshot must equal the plan re-read from its exact commit
+ *   tree and blob.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

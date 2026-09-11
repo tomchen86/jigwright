@@ -1,3 +1,10 @@
+/**
+ * Creates canonical planning generations from targets, investigation
+ * evidence, and policies.
+ *
+ * Invariants:
+ * - A planning generation requires a valid canonical plan target.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

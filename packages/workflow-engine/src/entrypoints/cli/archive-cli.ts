@@ -1,3 +1,9 @@
+/**
+ * Parses and dispatches managed archive and archive publication commands.
+ *
+ * Invariants:
+ * - Archive publication options must be recognized, paired, and unique.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import {

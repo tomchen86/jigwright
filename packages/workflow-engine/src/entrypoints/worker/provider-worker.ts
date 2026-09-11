@@ -1,3 +1,10 @@
+/**
+ * Runs provider invocations and publishes their admitted results and
+ * terminal follow-ups.
+ *
+ * Invariants:
+ * - An AgentRuntime turn may emit at most one terminal failure receipt.
+ */
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 

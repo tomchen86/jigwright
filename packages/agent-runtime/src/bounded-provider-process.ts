@@ -1,3 +1,14 @@
+/**
+ * Runs bounded provider processes and interprets the explicitly selected
+ * wrapper protocol.
+ *
+ * Invariants:
+ * - Retained output is capped at maxOutputBytes + 1 across stdout and
+ *   stderr combined; exceeding maxOutputBytes triggers an 'output-limit'
+ *   termination.
+ * - Declaring both wrapperProtocol (v1) and wrapperSessionProtocol (v2)
+ *   throws; at most one wrapper protocol is interpreted.
+ */
 import path from 'node:path';
 import { spawn } from 'node:child_process';
 

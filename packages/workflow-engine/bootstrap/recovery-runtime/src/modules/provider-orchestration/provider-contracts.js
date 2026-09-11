@@ -1,3 +1,11 @@
+/**
+ * Constructs provider requests and validates bound process outputs and
+ * failure results.
+ *
+ * Invariants:
+ * - Provider invocation requests use the repository-read-only capability
+ *   profile.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError, } from "../../foundation/errors/errors.js";

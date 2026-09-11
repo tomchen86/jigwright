@@ -1,3 +1,11 @@
+/**
+ * Verifies the created task commit against its authorized finish
+ * projection.
+ *
+ * Invariants:
+ * - Parent, tree, exact managed message and changed paths must all match
+ *   the expected commit facts.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   commitChangedPaths,

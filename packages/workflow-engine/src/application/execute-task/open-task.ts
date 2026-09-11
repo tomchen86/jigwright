@@ -1,3 +1,10 @@
+/**
+ * Opens execution tasks through a recoverable planning and session journal.
+ *
+ * Invariants:
+ * - Opening a task requires the exact registered draft workspace at its
+ *   pinned base.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

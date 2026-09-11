@@ -1,3 +1,10 @@
+/**
+ * Inspects authority sessions and runs checks within their approved scope.
+ *
+ * Invariants:
+ * - Authority checks require changed paths and reject paths outside the
+ *   grant.
+ */
 // maintainer session inspection; repository effects remain bound by the public module.
 import type {
   MaintainerSessionInspectionBindings,

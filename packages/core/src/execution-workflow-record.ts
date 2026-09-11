@@ -1,3 +1,11 @@
+/**
+ * Defines and validates current execution workflow status and blocker
+ * records.
+ *
+ * Invariants:
+ * - The record parser admits only schema version 2 and registered workflow
+ *   statuses.
+ */
 import { canonicalJson } from './canonical-json.ts';
 
 export const EXECUTION_WORKFLOW_RECORD_CONTRACT_VERSION_V2 =

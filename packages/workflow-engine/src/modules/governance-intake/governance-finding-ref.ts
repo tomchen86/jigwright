@@ -1,4 +1,11 @@
-/** Canonical Finding record paths and the persistence boundary used by intake. */
+/**
+ * Defines canonical Finding paths and the dedicated-ref persistence
+ * contract.
+ *
+ * Invariants:
+ * - Generated record paths must satisfy the Finding path grammar before
+ *   they are returned.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 export const GOVERNANCE_FINDING_REF = 'refs/heads/jigwright/findings';

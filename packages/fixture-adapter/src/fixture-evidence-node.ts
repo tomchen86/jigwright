@@ -1,3 +1,11 @@
+/**
+ * Creates and reads fixture observations through the public evidence-node
+ * codec.
+ *
+ * Invariants:
+ * - Reads require exact fixture schemas, one source input, no parent
+ *   evidence and canonical envelope bytes.
+ */
 import {
   assertStoredEvidenceNode,
   canonicalEvidenceNodeEnvelope,

@@ -1,3 +1,10 @@
+/**
+ * Builds fixture repository configuration from a supplied consumer profile.
+ *
+ * Invariants:
+ * - The loader returns its frozen configuration only for the same canonical
+ *   repository root.
+ */
 import fs from 'node:fs';
 
 import type {

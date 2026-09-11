@@ -1,3 +1,13 @@
+/**
+ * Models intervention checkpoints, maintenance Grants and recoverable
+ * engine adoption transitions.
+ *
+ * Invariants:
+ * - A v1 maintenance grant authorizes exactly one local adoption
+ *   (`maxLocalAdoptions` must equal 1).
+ * - Adoption advances only along `ADOPTION_TRANSITIONS`; an event with no
+ *   mapping from the current state is rejected.
+ */
 import {
   type Sha256Digest,
   assertNonEmpty,

@@ -1,3 +1,13 @@
+/**
+ * Provides Grant identifier, canonical value, key-set and timestamp
+ * primitives.
+ *
+ * Invariants:
+ * - Canonical freezing clones through canonical JSON before recursively
+ *   freezing the resulting value.
+ * - `parseGrantTimestamp` accepts a string only when it round-trips exactly
+ *   to its own toISOString().
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 export const GRANT_STABLE_ID = /^[a-z][a-z0-9]*(?:[.-][a-z0-9]+)*$/;

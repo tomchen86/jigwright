@@ -1,3 +1,11 @@
+/**
+ * Maps task-correlated external effect events into the repository-external
+ * authority audit ledger.
+ *
+ * Invariants:
+ * - The durable audit append completes before the optional observation
+ *   callback runs.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

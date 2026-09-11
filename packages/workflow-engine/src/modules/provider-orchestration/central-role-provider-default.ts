@@ -1,3 +1,11 @@
+/**
+ * Defines central provider and session partitions, selection rules, and
+ * pinned defaults.
+ *
+ * Invariants:
+ * - Role partitions must cover the expected roles exactly once in canonical
+ *   order.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

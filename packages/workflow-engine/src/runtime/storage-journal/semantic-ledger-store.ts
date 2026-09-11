@@ -1,3 +1,10 @@
+/**
+ * Persists semantic ledger objects and their validated mutable index.
+ *
+ * Invariants:
+ * - An existing content-addressed ledger identity must retain identical
+ *   bytes.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

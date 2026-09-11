@@ -1,3 +1,10 @@
+/**
+ * Canonicalizes planning components into a stable review target and
+ * identity.
+ *
+ * Invariants:
+ * - Serialized target components must use strict canonical order.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

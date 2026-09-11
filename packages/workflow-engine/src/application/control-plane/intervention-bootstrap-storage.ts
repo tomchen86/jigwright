@@ -1,3 +1,11 @@
+/**
+ * Supplies private file, canonical path, and Git operations for
+ * intervention bootstrap.
+ *
+ * Invariants:
+ * - Admitted local engine executables must match the recorded content
+ *   digest.
+ */
 // intervention bootstrap storage; repository effects remain bound by the public module.
 import type {
   InterventionBootstrapStorageBindings,

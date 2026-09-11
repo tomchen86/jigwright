@@ -1,3 +1,10 @@
+/**
+ * Projects bounded test events and writes canonical full-gate telemetry
+ * records.
+ *
+ * Invariants:
+ * - Telemetry projection cannot exceed its configured record limit.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { Readable } from 'node:stream';

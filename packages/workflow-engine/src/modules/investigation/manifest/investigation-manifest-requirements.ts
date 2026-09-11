@@ -1,4 +1,10 @@
-/** Structured PlanReview coverage and implementation-reconciliation requirements. */
+/**
+ * Normalizes structured review coverage and implementation reconciliation
+ * requirements.
+ *
+ * Invariants:
+ * - Ordinary manifests require exactly one PlanReview coverage requirement.
+ */
 import type { InvestigationSemanticAuthor } from '../domain/investigation-applicability.ts';
 import type { InvestigationV3Baseline } from './investigation-materializer.ts';
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

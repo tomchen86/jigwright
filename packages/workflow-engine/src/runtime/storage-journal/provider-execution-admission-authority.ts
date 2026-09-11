@@ -1,3 +1,11 @@
+/**
+ * Authenticates provider result admission against durable execution and
+ * context evidence.
+ *
+ * Invariants:
+ * - Admission authority must match its acceptance binding and canonical
+ *   execution state.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

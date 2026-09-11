@@ -1,3 +1,9 @@
+/**
+ * Defines canonical agent role plans and their pinned snapshots.
+ *
+ * Invariants:
+ * - Parsed role plans must use the canonical JSON encoding.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson, compareCanonicalStrings, } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

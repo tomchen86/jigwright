@@ -1,3 +1,11 @@
+/**
+ * Persists role assignment activations and authenticates their completed
+ * Central Grants.
+ *
+ * Invariants:
+ * - Activation authority must match the exact assignment, invocation, and
+ *   required role pairs.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

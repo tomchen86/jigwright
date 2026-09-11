@@ -1,3 +1,11 @@
+/**
+ * Validates ordered task history and completion progression during CI
+ * replay.
+ *
+ * Invariants:
+ * - Existing tasks remain an exact ordered prefix, and completed work
+ *   cannot appear after an incomplete task.
+ */
 import type { ParsedTask } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 

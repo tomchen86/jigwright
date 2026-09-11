@@ -1,3 +1,11 @@
+/**
+ * Validates provider process results, runtime receipts, and execution
+ * observation bindings.
+ *
+ * Invariants:
+ * - Accepted outputs must match the digest of their schema-bound canonical
+ *   content.
+ */
 import crypto from 'node:crypto';
 import { assertAgentProviderProfileSnapshot, assertKnownBuiltInProviderDefinitionSnapshot, } from '@jigwright/agent-runtime';
 import { assertInvocationId } from '@jigwright/core/runtime-path-kernel';

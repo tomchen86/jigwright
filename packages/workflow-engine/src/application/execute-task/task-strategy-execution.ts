@@ -1,3 +1,9 @@
+/**
+ * Prepares and seals RED evidence for task strategy transactions.
+ *
+ * Invariants:
+ * - RED sealing requires one resolved implementation actor.
+ */
 import crypto from 'node:crypto';
 
 import { resolveActorIdentity } from '../../modules/provider-orchestration/actor-identity.ts';

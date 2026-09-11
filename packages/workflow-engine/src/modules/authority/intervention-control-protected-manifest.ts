@@ -1,3 +1,13 @@
+/**
+ * Builds protected-capability manifests and classifies the affected
+ * protected closures.
+ *
+ * Invariants:
+ * - A manifest must cover every capability in
+ *   `REQUIRED_PROTECTED_CAPABILITIES`; any missing capability is rejected.
+ * - `verifyProtectedManifest` rebuilds the manifest and requires the
+ *   recomputed `manifestDigest` to match.
+ */
 import {
   type Sha256Digest,
   assertSafePath,

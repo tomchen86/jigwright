@@ -1,3 +1,10 @@
+/**
+ * Adapts shared planning task-history checks to workflow errors.
+ *
+ * Invariants:
+ * - Partial reopening retains the verification category and error details;
+ *   other history errors use the guard category.
+ */
 import {
   amendmentLeftWorkMarkedDone as amendmentLeftWorkMarkedDoneWithCore,
   assertPlanningTaskHistory as assertPlanningTaskHistoryWithCore,

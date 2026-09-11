@@ -1,7 +1,10 @@
 /**
- * Trusted composition boundary for managed route publication and immutable CI
- * replay. Entrypoints do not receive staging, commit, journal, or report-store
- * dependencies directly.
+ * Binds route review and admission operations to production authority and
+ * continuation ports.
+ *
+ * Invariants:
+ * - Prepare and apply wrappers supply both the current-authority and
+ *   continuation-Grant ports.
  */
 export { applyManagedChangeRoutingReview } from './change-routing-transaction-production.ts';
 

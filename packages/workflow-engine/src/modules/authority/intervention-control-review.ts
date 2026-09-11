@@ -1,3 +1,12 @@
+/**
+ * Validates signed independent reviews of exact control-plane promotion
+ * material and lineage.
+ *
+ * Invariants:
+ * - The independent reviewer must differ from the grant signer.
+ * - The review must be completed no later than grant issuance (reviewedAt
+ *   not after grantIssuedAt).
+ */
 import {
   type Sha256Digest,
   canonicalDigest,

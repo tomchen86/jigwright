@@ -1,3 +1,10 @@
+/**
+ * Declares repository consumer configuration and its loader boundary.
+ *
+ * Invariants:
+ * - The versioned loader returns planning, document, Work Registry and
+ *   database configuration, with no command execution methods.
+ */
 export type RepositoryPlanningConfigurationV1 = Readonly<{
   providerId: string;
   packageSchemaNames: readonly string[];

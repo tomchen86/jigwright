@@ -1,3 +1,13 @@
+/**
+ * Declares role-context-sharing records, use evidence and the lock-held
+ * lifecycle port.
+ *
+ * Invariants:
+ * - Consumed-use evidence has the literal kind
+ *   role-context-sharing-consumed-use.v1.
+ * - Both reserve and consume methods require an assertOwned callback in
+ *   their type contract.
+ */
 import type {
   GrantLifecycleAuditReceiptV1,
   GrantLifecycleState,

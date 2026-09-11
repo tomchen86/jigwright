@@ -1,4 +1,13 @@
-/** Private recovery-trust-root-restore storage, immutable publication, and crash residue recovery. */
+/**
+ * Publishes private trust-root restoration records and verifies their
+ * stored publication evidence.
+ *
+ * Invariants:
+ * - ensureImmutable is write-once: an already-present target must be
+ *   canonically equal to the value being written.
+ * - The private store must be a strict descendant of the Git common
+ *   directory.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

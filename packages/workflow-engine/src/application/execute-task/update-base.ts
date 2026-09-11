@@ -1,3 +1,11 @@
+/**
+ * Replays finished task work onto a new base and records the refreshed
+ * projection.
+ *
+ * Invariants:
+ * - A change must finish every active task session before updating its
+ *   base.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

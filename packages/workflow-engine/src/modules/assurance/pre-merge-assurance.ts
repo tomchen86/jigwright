@@ -1,3 +1,10 @@
+/**
+ * Builds and validates pre-merge coverage, planning proofs, and integration
+ * review.
+ *
+ * Invariants:
+ * - All tasks in a planning proof must bind the same effective generation.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

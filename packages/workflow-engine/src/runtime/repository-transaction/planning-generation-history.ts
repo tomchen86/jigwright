@@ -1,3 +1,10 @@
+/**
+ * Reads the planning generation named by a committed PlanReview document.
+ *
+ * Invariants:
+ * - More than one distinct generation is rejected; missing or unreadable
+ *   review data yields null.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { runGit } from './git.ts';
 

@@ -1,3 +1,11 @@
+/**
+ * Validates shared OpenSpec payload values, artifact paths and diagnostic
+ * fields.
+ *
+ * Invariants:
+ * - Existing artifact files must resolve canonically inside the change root
+ *   and match the declared output pattern.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

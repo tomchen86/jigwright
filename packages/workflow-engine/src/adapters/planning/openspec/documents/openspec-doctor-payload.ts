@@ -1,3 +1,11 @@
+/**
+ * Validates OpenSpec doctor results and translates recognized diagnostics
+ * into repository health observations.
+ *
+ * Invariants:
+ * - A resolved doctor root must equal the repository root supplied by the
+ *   caller.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

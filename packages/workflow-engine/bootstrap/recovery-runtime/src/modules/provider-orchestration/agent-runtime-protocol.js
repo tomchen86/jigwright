@@ -1,4 +1,11 @@
-/** Compatibility facade for the public agent-runtime protocol package. */
+/**
+ * Validates public provider protocol receipts against engine invocation and
+ * native-session bindings.
+ *
+ * Invariants:
+ * - When an expected binding is supplied, invocation, request and attempt
+ *   identities must all match.
+ */
 import { assertProviderWrapperProtocolReceipt, } from '@jigwright/agent-runtime/harness-jsonl-v1';
 import { assertProviderWrapperSessionProtocolReceipt, } from '@jigwright/agent-runtime/harness-jsonl-v2';
 import { assertProviderNativeSessionClaimV1, } from "./provider-native-session.js";

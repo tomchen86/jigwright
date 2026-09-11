@@ -1,3 +1,11 @@
+/**
+ * Declares the planning provider instructions and artifact status used
+ * during authoring.
+ *
+ * Invariants:
+ * - The port exposes instruction and status queries; artifact states are
+ *   limited to done, ready and blocked.
+ */
 export type PlanningProviderArtifactInstruction = Readonly<{
   outputPath: string;
   instruction: string;

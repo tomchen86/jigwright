@@ -1,3 +1,10 @@
+/**
+ * Exposes a fixture Markdown outline through the public heading and line
+ * parsers.
+ *
+ * Invariants:
+ * - Visible lines exclude fenced code and its delimiters.
+ */
 import {
   markdownHeadings,
   markdownLines,

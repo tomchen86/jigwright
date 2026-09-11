@@ -1,3 +1,11 @@
+/**
+ * Inspects archive eligibility under change transition authority and checks
+ * refreshed date-bound eligibility.
+ *
+ * Invariants:
+ * - Eligibility and rollover refresh are evaluated while the archive
+ *   transition authority is held.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { baseSpecPathForCapability } from '../../modules/source/system-spec-catalog.ts';

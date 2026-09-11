@@ -1,3 +1,11 @@
+/**
+ * Derives canonical investigation commitments from terms, scan hits, groups
+ * and dispositions.
+ *
+ * Invariants:
+ * - Final groups must partition every current hit without overlap, with one
+ *   matching disposition per group.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

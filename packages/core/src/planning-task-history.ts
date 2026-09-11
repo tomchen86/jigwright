@@ -1,3 +1,10 @@
+/**
+ * Checks task completion history across planning amendments.
+ *
+ * Invariants:
+ * - Planning changes cannot mark new work complete, and an authorized
+ *   reopening must reopen all completed tasks.
+ */
 export type PlanningTaskHistoryErrorCode =
   'AMENDMENT_PARTIAL_REOPEN' | 'PLANNING_TASK_STATE_INVALID';
 

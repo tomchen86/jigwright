@@ -1,3 +1,11 @@
+/**
+ * Reconstructs checked review candidates and their documentation
+ * requirements.
+ *
+ * Invariants:
+ * - Documentation remediation binds only to a checked or later finalize
+ *   transaction.
+ */
 // Reconstruct the checked candidate and verify its baseline, index, and documentation.
 import {
   type TaskDiffReviewSubject,

@@ -1,3 +1,11 @@
+/**
+ * Shares lifecycle locks, authority checks, and helpers across task diff
+ * review modules.
+ *
+ * Invariants:
+ * - Protected apply review requires a checked transaction matching the
+ *   current session.
+ */
 // Lifecycle lock selection, authority checks, and shared digest helpers.
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { assertPreparedProtectedTaskApplyAuthorization } from './protected-task-apply-authorization.ts';

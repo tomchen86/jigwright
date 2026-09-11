@@ -1,3 +1,11 @@
+/**
+ * Declares governed provider-worker inputs, asynchronous controls and
+ * terminal evidence.
+ *
+ * Invariants:
+ * - The current completion receipt is version 4 and carries the full
+ *   invocation acceptance binding.
+ */
 import type { ContextManifest } from '../lifecycle/context-manifest-contract.ts';
 import type {
   ProviderInvocationRequest,

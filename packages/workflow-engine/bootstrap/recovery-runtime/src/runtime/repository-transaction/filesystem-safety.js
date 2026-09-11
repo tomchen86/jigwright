@@ -1,3 +1,10 @@
+/**
+ * Validates plain directories and publishes or reclaims prepared exclusive
+ * locks.
+ *
+ * Invariants:
+ * - Admitted directories must be real directories at their canonical paths.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,11 @@
+/**
+ * Simulates central role defaults from declared provider capabilities and
+ * current repository policy.
+ *
+ * Invariants:
+ * - The report records declared-capabilities-only assumptions and does not
+ *   save an assignment or launch a model.
+ */
 import crypto from 'node:crypto';
 
 import {

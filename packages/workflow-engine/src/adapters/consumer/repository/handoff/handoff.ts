@@ -1,3 +1,11 @@
+/**
+ * Projects and validates the handoff document from controlled workflow and
+ * routing facts.
+ *
+ * Invariants:
+ * - Validation requires exact projected bytes and section order and rejects
+ *   visible commit identities or runtime session identifiers.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

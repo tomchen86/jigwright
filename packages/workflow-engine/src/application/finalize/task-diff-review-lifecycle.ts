@@ -1,3 +1,11 @@
+/**
+ * Composes task diff review modules and exposes their production
+ * entrypoints.
+ *
+ * Invariants:
+ * - Public commands delegate to modules built from the shared runtime
+ *   bindings.
+ */
 // Public review entrypoints and production dependencies. Internal modules retain
 // the existing transaction ordering through a single immutable set of bindings.
 import { parseAiAdapterPolicyDocument } from '../../runtime/provider-execution/ai-adapter-policy.ts';

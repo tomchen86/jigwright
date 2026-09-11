@@ -1,3 +1,10 @@
+/**
+ * Evaluates provider configuration against observed executables and current
+ * policy.
+ *
+ * Invariants:
+ * - The policy must remain unchanged throughout configuration evaluation.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

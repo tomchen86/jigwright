@@ -1,3 +1,13 @@
+/**
+ * Provides shared intervention value checks, signature namespaces and safe
+ * verifier calls.
+ *
+ * Invariants:
+ * - `verifyHumanSignatureSafely` wraps the injected verifier in try/catch
+ *   and returns false on any thrown error.
+ * - `assertSafePath` rejects any path with empty, '.', or '..' segments (as
+ *   well as absolute, backslash, and non-NFC paths).
+ */
 import crypto from 'node:crypto';
 import { canonicalJson, compareCanonicalStrings, } from "../../foundation/canonical-json/canonical-json.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";

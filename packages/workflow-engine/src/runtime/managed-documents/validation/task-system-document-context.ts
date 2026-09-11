@@ -1,4 +1,10 @@
-/** Reads task documentation from its committed baseline, including recovery. */
+/**
+ * Loads the system document context owned by a task baseline.
+ *
+ * Invariants:
+ * - Documentation is read from the session baseline tree and selected by
+ *   the session allowed paths.
+ */
 import { systemDocumentContext } from '../../../modules/source/system-document-context.ts';
 import { readSystemDescriptionSnapshot } from '../../repository-transaction/system-description-snapshot.ts';
 import type { WorkflowSession } from '../../session-workspace/session-store.ts';

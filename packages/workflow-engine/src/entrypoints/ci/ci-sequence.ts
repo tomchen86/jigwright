@@ -1,3 +1,10 @@
+/**
+ * Replays managed commit sequences and validates task and documentation
+ * transitions.
+ *
+ * Invariants:
+ * - Every managed pull-request commit must have exactly one parent.
+ */
 import { validateCiArchiveCommit } from './ci-archive.ts';
 import { validateCiAuthorityCommit } from './ci-authority.ts';
 import { validateCiRouteCommit } from './ci-routing.ts';

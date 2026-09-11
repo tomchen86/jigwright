@@ -1,3 +1,10 @@
+/**
+ * Projects provider requests and invocation records into execution job and
+ * attempt state.
+ *
+ * Invariants:
+ * - The invocation and request must identify the same attempt.
+ */
 import type { ProviderInvocationRequest } from './provider-contracts.ts';
 import { ExitCode } from '../../foundation/errors/errors.ts';
 import type { ProviderInvocationRecord } from '../../runtime/storage-journal/provider-invocation-store.ts';

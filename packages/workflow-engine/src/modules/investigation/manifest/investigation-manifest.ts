@@ -1,3 +1,11 @@
+/**
+ * Builds, seals, and validates v3 Investigation Manifests and structured
+ * blockers.
+ *
+ * Invariants:
+ * - Authority validation requires manifest identity to match the lifecycle
+ *   snapshot.
+ */
 import { SEMANTIC_ASSURANCE } from './investigation-manifest-values.ts';
 import type {
   InvestigationGroupRef,

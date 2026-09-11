@@ -1,3 +1,11 @@
+/**
+ * Classifies repository paths by planning evidence responsibility and
+ * compression eligibility.
+ *
+ * Invariants:
+ * - Only registered ordinary paths are eligible for compressed class
+ *   dispositions.
+ */
 import {
   isRecord,
   isStringArray,

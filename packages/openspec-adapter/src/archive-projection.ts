@@ -1,3 +1,11 @@
+/**
+ * Combines OpenSpec deltas and checks their applicability and projected
+ * contract outcomes.
+ *
+ * Invariants:
+ * - Projected outcomes are checked against delta preconditions before
+ *   operation totals and output identity are returned.
+ */
 import crypto from 'node:crypto';
 import { markdownLines } from '@jigwright/core/markdown-sections';
 

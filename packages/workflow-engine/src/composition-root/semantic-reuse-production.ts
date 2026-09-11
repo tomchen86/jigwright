@@ -1,4 +1,10 @@
-/** Supplies one current repository snapshot when reuse is requested outside a pinned investigation. */
+/**
+ * Supplies repository snapshot access to semantic manifest reuse.
+ *
+ * Invariants:
+ * - A supplied pinned snapshot takes precedence over reading the current
+ *   repository snapshot.
+ */
 import {
   applyLedgerToFullBlobManifest as applyManifestReuse,
   type FullBlobReuseEntry,

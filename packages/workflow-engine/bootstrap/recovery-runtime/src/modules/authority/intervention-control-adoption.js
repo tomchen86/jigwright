@@ -1,3 +1,13 @@
+/**
+ * Models intervention checkpoints, maintenance Grants and recoverable
+ * engine adoption transitions.
+ *
+ * Invariants:
+ * - A v1 maintenance grant authorizes exactly one local adoption
+ *   (`maxLocalAdoptions` must equal 1).
+ * - Adoption advances only along `ADOPTION_TRANSITIONS`; an event with no
+ *   mapping from the current state is rejected.
+ */
 import { assertNonEmpty, assertDigest, assertIsoTimestamp, freezeDeep, canonicalDigest, assertSortedUnique, assertSafePath, verifyHumanSignatureSafely, HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE, assertMonotonicTimestamp, } from "./intervention-control-values.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

@@ -1,4 +1,14 @@
-/** Capability profile and patch-manifest canonical validation; repository observations and file reads remain in the original manifest owner. */
+/**
+ * Validates capability profiles and canonical patch manifests, including
+ * file roles and relationships.
+ *
+ * Invariants:
+ * - parsePatchManifest requires manifest.patchDigest to equal
+ *   digestManifestBody(manifest), the digest of the canonical manifest with
+ *   patchDigest blanked to ''.
+ * - Manifest file entries must be strictly ascending by path and unique
+ *   under case-folding.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

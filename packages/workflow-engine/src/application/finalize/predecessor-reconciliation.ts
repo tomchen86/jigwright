@@ -1,3 +1,11 @@
+/**
+ * Reconciles one immediately preceding incomplete task from pinned commit
+ * and check evidence.
+ *
+ * Invariants:
+ * - Reconciliation permits only the single immediate predecessor and
+ *   requires unchanged task and check definitions.
+ */
 import type { CheckEvidence } from '../../adapters/consumer/repository/work-registry/check-runner.ts';
 import type { TaskPolicy } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

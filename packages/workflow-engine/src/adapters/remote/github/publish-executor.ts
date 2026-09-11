@@ -1,3 +1,11 @@
+/**
+ * Executes and recovers Grant-bound publication through durable dispatch
+ * and observation states.
+ *
+ * Invariants:
+ * - An uncertain prior dispatch requires a queryable outcome or manual
+ *   reconciliation before replay.
+ */
 import { spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 

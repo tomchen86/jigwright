@@ -1,3 +1,11 @@
+/**
+ * Binds a provider timeout exception to its execution-budget request and
+ * durable consumption receipt.
+ *
+ * Invariants:
+ * - The timeout exception is tied to one attempt and a fully consumed
+ *   single-use Grant.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";

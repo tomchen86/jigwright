@@ -1,3 +1,11 @@
+/**
+ * Publishes and advances durable cancellation records for finalize
+ * recovery.
+ *
+ * Invariants:
+ * - Cancellation starts only from checks-running or checked transaction
+ *   phases.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

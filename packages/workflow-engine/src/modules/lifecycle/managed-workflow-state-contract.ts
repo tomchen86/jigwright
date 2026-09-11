@@ -1,9 +1,9 @@
 /**
- * Stable state vocabulary shared by lifecycle owners and read-only guidance.
+ * Defines shared task strategy, review and authority-plan state names.
  *
- * This module owns names only. State transitions and durable authority remain
- * in their application lifecycles; consumers must not infer transitions from
- * these unions.
+ * Invariants:
+ * - Authority-plan state validation accepts only names in the code-owned
+ *   state set.
  */
 export type ManagedTaskStrategyState =
   | 'not-required'

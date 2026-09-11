@@ -1,3 +1,11 @@
+/**
+ * Maps bootstrap recovery, quarantine and control-plane events into durable
+ * authority audit records.
+ *
+ * Invariants:
+ * - Quarantine entry records the marker as poststate, while release records
+ *   it as prestate.
+ */
 import type {
   HarnessRecoveryRefusalAuthority,
   HarnessBootstrapRuntimeOverrides,

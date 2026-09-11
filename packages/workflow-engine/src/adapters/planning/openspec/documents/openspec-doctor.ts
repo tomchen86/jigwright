@@ -1,3 +1,11 @@
+/**
+ * Collects installation, runtime, root and schema diagnostics for the
+ * pinned OpenSpec integration.
+ *
+ * Invariants:
+ * - Healthy status requires every component to pass and every remaining
+ *   diagnostic to be informational.
+ */
 import path from 'node:path';
 
 import { repositoryPlanningConfiguration } from '../../../../modules/repository-consumer/repository-consumer-config.ts';

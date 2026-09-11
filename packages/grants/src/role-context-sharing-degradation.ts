@@ -1,3 +1,11 @@
+/**
+ * Parses and verifies capabilities for exact role-context-sharing
+ * degradation bindings.
+ *
+ * Invariants:
+ * - The canonical payload binding must match the expected binding before
+ *   domain validation and signature verification.
+ */
 import {
   GRANT_ENVELOPE_VERIFIER_CONTRACT_VERSION_V1,
   GrantEnvelopeVerificationError,

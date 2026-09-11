@@ -1,3 +1,11 @@
+/**
+ * Derives and verifies pre-merge assurance from the pull-request commit
+ * range.
+ *
+ * Invariants:
+ * - Pre-merge assurance requires a reviewed v2 task transition in the
+ *   range.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

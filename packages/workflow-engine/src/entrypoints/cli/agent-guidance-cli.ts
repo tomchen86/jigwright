@@ -1,3 +1,11 @@
+/**
+ * Dispatches agent guidance installation, refresh, removal and status
+ * commands.
+ *
+ * Invariants:
+ * - Only install accepts target paths; other actions reject positional
+ *   targets.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   installAgentGuidance,

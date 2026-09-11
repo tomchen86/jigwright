@@ -1,3 +1,13 @@
+/**
+ * Builds and normalizes recovery Grant payloads, completion receipts and
+ * audit records.
+ *
+ * Invariants:
+ * - A recovery-grant payload is one-shot: normalization requires uses to be
+ *   1 and oneShot to be true.
+ * - The payload's grantId must equal the digest recomputed from its signed
+ *   activation identity, else it is rejected.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 
 import { ExitCode } from '../../foundation/errors/errors.ts';

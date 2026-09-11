@@ -1,3 +1,10 @@
+/**
+ * Checks and enumerates plain archive output files.
+ *
+ * Invariants:
+ * - Archive traversal rejects symbolic links, non-regular files and
+ *   executable file modes.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

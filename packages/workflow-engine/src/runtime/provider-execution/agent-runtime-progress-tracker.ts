@@ -1,3 +1,11 @@
+/**
+ * Tracks provider process state, stream byte counts and elapsed activity
+ * times.
+ *
+ * Invariants:
+ * - Activity times cannot decrease, and terminal states reject subsequent
+ *   activity.
+ */
 import type {
   AgentRuntimeProcessActivity,
   AgentRuntimeProcessProgressProjection,

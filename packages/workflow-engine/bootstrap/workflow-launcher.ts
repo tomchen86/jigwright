@@ -1,3 +1,11 @@
+/**
+ * Selects and runs the engine a repository command is entitled to, before any engine code loads.
+ *
+ * Invariants:
+ * - The built-in closure is verified against its pin, so a changed or indirect engine never launches.
+ * - Read-only inspection and session status are recognised ahead of provisioning, so looking never provisions.
+ * - The child process exit code is passed through unchanged; the launcher never reports success for a failed run.
+ */
 import childProcess from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

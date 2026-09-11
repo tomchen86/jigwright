@@ -1,3 +1,9 @@
+/**
+ * Defines investigation applicability and bounded exemption eligibility.
+ *
+ * Invariants:
+ * - An exemption cannot declare reliance on nontrivial behavior.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";

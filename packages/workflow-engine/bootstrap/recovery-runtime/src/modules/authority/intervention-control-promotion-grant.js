@@ -1,3 +1,13 @@
+/**
+ * Builds and verifies promotion Grants bound to exact control-plane
+ * material and review evidence.
+ *
+ * Invariants:
+ * - A Control-Plane Grant v2 is valid only for a positive lifetime of at
+ *   most five minutes (`CONTROL_PLANE_GRANT_V2_MAX_TTL_MS`).
+ * - The v3 Grant reuses material checks but verifies the actual human
+ *   signature under its own v3 namespace.
+ */
 import { verifyControlPlanePromotionMaterial, controlPlanePromotionMaterialDigest, normalizeControlPlaneTaskMandateBinding, normalizedExactChangesV2, normalizeAffectedCapabilitiesV2, controlPlaneCandidateDigestV2, classifyProtectedCandidateImpactV2, verifyControlPlanePromotionLineage, } from "./intervention-control-promotion-material.js";
 import { hasExactObjectKeys, sameJson, freezeDeep, canonicalDigest, assertDigest, assertNonEmpty, assertIsoTimestamp, verifyHumanSignatureSafely, CONTROL_PLANE_SIGNATURE_NAMESPACE_V2, CONTROL_PLANE_SIGNATURE_NAMESPACE_V3, } from "./intervention-control-values.js";
 import { validateControlPlaneIndependentReviewAttestationV2, controlPlaneIndependentReviewAttestationDigestV2, verifyControlPlaneIndependentReviewAttestationV2, validateControlPlaneIndependentReviewAttestationV3, controlPlaneIndependentReviewAttestationDigestV3, reviewPayloadV2Projection, verifyControlPlaneIndependentReviewAttestationV3, } from "./intervention-control-review.js";

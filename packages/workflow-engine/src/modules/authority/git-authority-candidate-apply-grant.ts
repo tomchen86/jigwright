@@ -1,3 +1,14 @@
+/**
+ * Defines the Grant request, transition and validated results for applying
+ * an exact Git authority candidate.
+ *
+ * Invariants:
+ * - The transition treats policy and check observations as facts only and
+ *   executes no checks: its consequence digest fixes
+ *   executesCandidateChecks to false.
+ * - A terminal apply result must carry either a failure or a commitHash; a
+ *   result with neither is rejected as invalid.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isCentralAuthorityCommitSubject } from '@jigwright/core/managed-transition-trailers';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

@@ -1,4 +1,11 @@
-/** Current PlanReview role replay and exact repository/planning evidence resolution. Repository Git access stays bound by the assurance facade. */
+/**
+ * Replays current PlanReview roles and resolves exact repository and
+ * planning evidence.
+ *
+ * Invariants:
+ * - Shared-context review replay requires terminal authority for the exact
+ *   transition.
+ */
 import {
   assertAdmittedRoleResultRecord,
   admitConsumedRoleContextSharingResultReplay,

@@ -1,3 +1,15 @@
+/**
+ * Validates role-context-sharing Grants and applies their reserve and
+ * consume transitions.
+ *
+ * Invariants:
+ * - validateDomainPayload throws bindingMismatch unless policy.maxUses and
+ *   payload.maxUses are both 1 and the payload signer is a trusted policy
+ *   signer.
+ * - The signed lifetime (expiresAt−issuedAt) may not exceed
+ *   min(policy.maxTtlMinutes, 30) minutes, else the grant is rejected as
+ *   expired.
+ */
 import crypto from 'node:crypto';
 
 import {

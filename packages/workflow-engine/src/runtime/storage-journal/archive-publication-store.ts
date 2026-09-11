@@ -1,3 +1,11 @@
+/**
+ * Stores immutable archive publication preparations with their protected
+ * base and assurance bindings.
+ *
+ * Invariants:
+ * - Assurance must cover the preparation protected base and archive head
+ *   exactly.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

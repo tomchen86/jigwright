@@ -1,3 +1,11 @@
+/**
+ * Normalizes investigation terms and previews their bounded provenance
+ * union.
+ *
+ * Invariants:
+ * - Configured investigation limits must be positive integers within engine
+ *   maxima.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";

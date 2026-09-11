@@ -1,3 +1,11 @@
+/**
+ * Derives storage paths for role assignments and provider-native session
+ * authority without performing I/O.
+ *
+ * Invariants:
+ * - Native session turn names accept only safe integers from one through
+ *   the configured maximum.
+ */
 import path from 'node:path';
 const CHANGE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const DIGEST = /^[0-9a-f]{64}$/u;

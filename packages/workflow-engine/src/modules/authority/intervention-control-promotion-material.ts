@@ -1,3 +1,14 @@
+/**
+ * Normalizes promotion material, recovery bundles and lineage while
+ * classifying protected changes.
+ *
+ * Invariants:
+ * - Material identities are computed from verified, normalized promotion
+ *   material.
+ * - Promotion lineage requires consecutive generations: candidateGeneration
+ *   is previousGeneration + 1 and rollbackGeneration is previousGeneration
+ *   + 2.
+ */
 import {
   hasExactObjectKeys,
   freezeDeep,

@@ -1,3 +1,13 @@
+/**
+ * Stores private external-effect records and binds idempotency keys to
+ * exact Grants.
+ *
+ * Invariants:
+ * - A readable private record file must be a non-symlink regular file with
+ *   link count 1, mode 0o600, and at most 64 KiB.
+ * - An idempotency key may bind only one exact (grantId, grantDigest) pair;
+ *   a differing binding raises EXTERNAL_EFFECT_IDEMPOTENCY_CONFLICT.
+ */
 import fs from 'node:fs';
 
 import path from 'node:path';

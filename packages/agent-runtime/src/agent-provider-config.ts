@@ -1,3 +1,14 @@
+/**
+ * Parses provider configuration into immutable snapshots and resolves
+ * eligible provider profiles for each role.
+ *
+ * Invariants:
+ * - assertAgentProviderConfigSnapshot rebuilds the payload and rejects it
+ *   unless sha256(canonicalJson(payload)) equals the stored configDigest.
+ * - A host-wrapper profile is rejected unless its start_args carry exactly
+ *   the {request_file} placeholder (and, when present, resume_args carry
+ *   {native_session_id, request_file}).
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 

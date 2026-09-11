@@ -1,3 +1,10 @@
+/**
+ * Parses document refresh proposal, inspection, review and apply commands.
+ *
+ * Invariants:
+ * - Each action requires its exact set of named options; duplicate or
+ *   unmatched option/value pairs are rejected.
+ */
 import {
   applyDocumentRefresh,
   inspectDocumentRefreshProposal,

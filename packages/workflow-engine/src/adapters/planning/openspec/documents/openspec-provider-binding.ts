@@ -1,3 +1,11 @@
+/**
+ * Binds the public OpenSpec resolver to the reviewed package requirement
+ * and workflow errors.
+ *
+ * Invariants:
+ * - All current and historical resolvers share the same pinned package and
+ *   version requirement.
+ */
 import {
   createOpenSpecProviderBindingResolverV1,
   OpenSpecAdapterError,

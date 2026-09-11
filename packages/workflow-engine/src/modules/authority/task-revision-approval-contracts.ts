@@ -1,4 +1,13 @@
-/** Task-revision approval record, payload and widening-binding contracts; issuer and repository-backed admission retain signing and storage authority. */
+/**
+ * Validates and encodes exact task-revision widening approvals, including
+ * their paths and validity windows.
+ *
+ * Invariants:
+ * - assertTaskRevisionApprovalPayload rejects when the signer equals the
+ *   binding's actorAuthorityId, is not a trusted signer, or the TTL exceeds
+ *   min(policy.maxTtlMinutes, 5) minutes.
+ * - assertPolicyPaths requires normalized, sorted, unique paths.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

@@ -1,3 +1,10 @@
+/**
+ * Binds host execution phases to executable, probe, and native session
+ * evidence.
+ *
+ * Invariants:
+ * - A host probe must preserve the governed repository digest.
+ */
 import crypto from 'node:crypto';
 
 import type { ProviderExecutableIdentity } from '@jigwright/agent-runtime/provider-executable-identity';

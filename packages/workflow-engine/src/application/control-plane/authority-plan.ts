@@ -1,3 +1,11 @@
+/**
+ * Coordinates authority plan preparation, approval, application, resumption
+ * and attestation.
+ *
+ * Invariants:
+ * - Preparation requires a clean worktree on the configured branch for the
+ *   named change.
+ */
 import { createAuthorityPlanRecords } from './authority-plan-records.ts';
 import { createAuthorityPlanWorktree } from './authority-plan-worktree.ts';
 import crypto from 'node:crypto';

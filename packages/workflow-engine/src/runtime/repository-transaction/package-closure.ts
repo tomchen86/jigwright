@@ -1,3 +1,10 @@
+/**
+ * Collects workspace or installed dependency closures for pinned executable
+ * runners.
+ *
+ * Invariants:
+ * - Resolved package files must remain inside their allowed roots.
+ */
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';

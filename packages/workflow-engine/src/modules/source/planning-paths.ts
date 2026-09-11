@@ -1,3 +1,10 @@
+/**
+ * Checks planning artifact boundaries and maps cited Sources to immutable
+ * ledger paths.
+ *
+ * Invariants:
+ * - Planning changes cannot delete a cited Source object.
+ */
 import {
   OpenSpecPlanningPathError,
   assertOpenSpecPlanningPaths,

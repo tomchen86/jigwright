@@ -1,3 +1,11 @@
+/**
+ * Routes sealed recovery commands and enforces the quarantine command
+ * boundary.
+ *
+ * Invariants:
+ * - Active quarantine permits only exact release, trust-root restore or
+ *   control-plane rollback commands.
+ */
 import type {
   HarnessRecoveryRefusalAuthority,
   HarnessBootstrapRuntimeOverrides,

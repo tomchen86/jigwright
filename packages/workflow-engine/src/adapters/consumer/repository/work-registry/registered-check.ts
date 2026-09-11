@@ -1,3 +1,11 @@
+/**
+ * Runs one named non-destructive registered check against the current clean
+ * checkout.
+ *
+ * Invariants:
+ * - Standalone execution rejects dirty worktrees, unknown check identifiers
+ *   and destructive database checks.
+ */
 import type { CheckEvidence } from './check-runner.ts';
 import { runCiChecks } from '../../../../entrypoints/ci/ci-checks.ts';
 import { loadChecksConfig } from './contracts.ts';

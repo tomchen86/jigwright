@@ -1,3 +1,14 @@
+/**
+ * Builds and verifies canonical parent bindings and prepared descendant
+ * trees for Grants.
+ *
+ * Invariants:
+ * - `assertGrantParentBindingV1` rebuilds the binding and rejects it unless
+ *   the recomputed `bindingDigest` equals the supplied one.
+ * - A prepared-descendant tree must already be in canonical
+ *   depth-then-challengeId order (nodes are compared against their sorted
+ *   form), with unique challengeIds that exclude the root.
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

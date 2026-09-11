@@ -1,3 +1,11 @@
+/**
+ * Inspects planning introductions and revisions against the baseline
+ * artifact tree and provider binding.
+ *
+ * Invariants:
+ * - A planning introduction must add a complete new planning tree with its
+ *   provider binding and cited Source additions.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

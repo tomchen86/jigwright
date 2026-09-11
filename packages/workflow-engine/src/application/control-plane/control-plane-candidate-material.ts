@@ -1,3 +1,11 @@
+/**
+ * Derives frozen control-plane candidate material and resolves its
+ * supervisor history and executable evidence.
+ *
+ * Invariants:
+ * - A successor supervisor cannot create an initial history anchor when
+ *   verified history is absent.
+ */
 // control plane candidate material; repository effects remain bound by the public module.
 import type {
   ControlPlaneCandidateMaterialBindings,

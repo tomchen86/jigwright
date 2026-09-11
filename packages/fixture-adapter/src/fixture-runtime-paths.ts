@@ -1,3 +1,11 @@
+/**
+ * Adapts shared runtime paths and repository boundary errors to fixture
+ * consumers.
+ *
+ * Invariants:
+ * - Known path errors become fixture-specific errors while unrelated errors
+ *   propagate unchanged.
+ */
 import {
   RepositoryBoundaryError,
   assertChangeId,

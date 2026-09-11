@@ -1,3 +1,11 @@
+/**
+ * Prepares archive pull requests and publishes them through a restricted
+ * GitHub remote port.
+ *
+ * Invariants:
+ * - Opening a request first verifies that the published branch points to
+ *   the exact prepared head commit.
+ */
 import crypto from 'node:crypto';
 
 export {

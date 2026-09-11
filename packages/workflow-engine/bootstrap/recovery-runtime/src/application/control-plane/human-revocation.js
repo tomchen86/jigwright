@@ -1,3 +1,11 @@
+/**
+ * Authorizes and records human revocations under the current repository
+ * policy.
+ *
+ * Invariants:
+ * - Revocation requires human presence and a signer trusted by the current
+ *   policy.
+ */
 import { HUMAN_REVOCATION_SIGNATURE_NAMESPACE, canonicalHumanRevocationAuthorizationPayload, canonicalHumanRevocationAuthorization, parseHumanRevocationAuthorization, assertHumanRevocationAuthorization, humanRevocationSignatureNamespace, assertAuthorizationBinding, assertBinding, assertPayload, boundedText, exactDate, digest, invalidRevocation, revocationConflict, } from "../../modules/authority/human-revocation-contract.js";
 export { HUMAN_REVOCATION_SIGNATURE_NAMESPACE, digestHumanRevocationSubject, canonicalHumanRevocationAuthorizationPayload, canonicalHumanRevocationAuthorization, parseHumanRevocationAuthorization, assertHumanRevocationAuthorization, } from "../../modules/authority/human-revocation-contract.js";
 import fs from 'node:fs';

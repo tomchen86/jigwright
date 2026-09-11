@@ -1,3 +1,11 @@
+/**
+ * Validates planning archive ports, projection contexts and returned
+ * archive evidence.
+ *
+ * Invariants:
+ * - Returned evidence must match the selected provider identity, adapter
+ *   contract and required provider version.
+ */
 import path from 'node:path';
 
 import { isRecord } from './contract-values.ts';

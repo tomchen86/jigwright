@@ -1,3 +1,11 @@
+/**
+ * Parses planning task, execution and PlanReview artifacts using supplied
+ * validation primitives.
+ *
+ * Invariants:
+ * - Execution task identities must exactly match both the task list and
+ *   guard contract.
+ */
 export { isPlanningAssuranceBinding } from '../../../../modules/assurance/planning-assurance-binding.ts';
 export type {
   PlanningAssuranceSummary,

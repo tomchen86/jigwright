@@ -1,3 +1,10 @@
+/**
+ * Validates bounded execution policy snapshots for provider processes.
+ *
+ * Invariants:
+ * - Accepted snapshots are cloned and deeply frozen after exact-key and
+ *   resource-bound validation.
+ */
 import { CanonicalJsonError, canonicalJson } from './canonical-json.ts';
 
 export const EXECUTION_POLICY_SNAPSHOT_CONTRACT_VERSION_V1 =

@@ -1,3 +1,11 @@
+/**
+ * Issues Collaboration Grants with protected-task continuation context when
+ * one is required.
+ *
+ * Invariants:
+ * - A protected-task continuation is re-derived under the lifecycle lock
+ *   before its available Grant is stored.
+ */
 import {
   issueCollaborationGrant,
   prepareCollaborationGrantIssue,

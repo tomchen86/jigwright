@@ -1,3 +1,10 @@
+/**
+ * Records and lists maintenance warnings that occur after a provider
+ * invocation reaches a durable terminal state.
+ *
+ * Invariants:
+ * - Warnings can be recorded only for succeeded or failed invocations.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

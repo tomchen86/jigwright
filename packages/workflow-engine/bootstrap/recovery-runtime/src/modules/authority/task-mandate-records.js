@@ -1,3 +1,14 @@
+/**
+ * Parses and canonically serializes preparation-only Task Mandate requests,
+ * envelopes and records.
+ *
+ * Invariants:
+ * - parseTaskMandateEnvelope accepts raw input only when its re-serialized
+ *   canonical envelope equals the raw string.
+ * - validateTaskMandatePayload pins the preparation-only boundary:
+ *   authoritativeEffects and controlPlaneMutation false, empty
+ *   secretScopes, auditRequired true.
+ */
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isProviderId, } from "../provider-orchestration/provider-registry.js";

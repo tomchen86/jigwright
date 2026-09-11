@@ -1,3 +1,11 @@
+/**
+ * Parses collaboration Grant requests and routes issuance, inspection and
+ * revocation.
+ *
+ * Invariants:
+ * - A request must select exactly one provider, caller or direct-human
+ *   actor form.
+ */
 import {
   type CollaborationAvailableActor,
   type CollaborationDegradedForm,

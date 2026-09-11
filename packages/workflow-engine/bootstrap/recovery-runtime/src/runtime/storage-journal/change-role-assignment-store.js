@@ -1,3 +1,11 @@
+/**
+ * Publishes and reads immutable role assignment records with verified
+ * source snapshots.
+ *
+ * Invariants:
+ * - Historical reads reject assignment objects or refs changed during
+ *   inspection.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

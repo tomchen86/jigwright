@@ -1,3 +1,11 @@
+/**
+ * Plans, applies and verifies the exact checkbox changes authorized for
+ * completed tasks.
+ *
+ * Invariants:
+ * - Each requested task must have exactly one unchecked checkbox before
+ *   completion is projected.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 

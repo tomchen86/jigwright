@@ -1,3 +1,10 @@
+/**
+ * Binds investigation failures to observable direct or publication
+ * lifecycle sources.
+ *
+ * Invariants:
+ * - Failure sources must name a supported schema and observer.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

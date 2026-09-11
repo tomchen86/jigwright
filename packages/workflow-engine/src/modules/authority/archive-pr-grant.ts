@@ -1,3 +1,14 @@
+/**
+ * Builds and authenticates the Grant that authorizes an exact archive pull
+ * request publication.
+ *
+ * Invariants:
+ * - The transition only authorizes and never performs the publication: its
+ *   execute outcome fixes remoteEffectApplied to false.
+ * - A completed grant is accepted only inside a bounded freshness window,
+ *   rejecting any record whose completedAt precedes now minus
+ *   COMPLETED_GRANT_MAX_AGE_MS (ten minutes).
+ */
 import crypto from 'node:crypto';
 
 import type { CentralGrantCompletedAuthorityRefV1 } from '@jigwright/core/central-grant-port';

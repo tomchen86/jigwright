@@ -1,3 +1,11 @@
+/**
+ * Resolves required CI checks, pins their runners and validates repository
+ * state after execution.
+ *
+ * Invariants:
+ * - A check that changes HEAD, checkout status or the working-state
+ *   fingerprint is rejected.
+ */
 import {
   pinCheckRunner,
   runCheck,

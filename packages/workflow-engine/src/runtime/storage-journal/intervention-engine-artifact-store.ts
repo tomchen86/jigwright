@@ -1,3 +1,11 @@
+/**
+ * Reads stable private intervention artifact records and validates their
+ * bindings.
+ *
+ * Invariants:
+ * - Stored artifacts must match the requested artifact and an active repair
+ *   workflow.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

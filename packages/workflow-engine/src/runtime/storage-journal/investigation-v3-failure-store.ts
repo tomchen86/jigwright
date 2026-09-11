@@ -1,3 +1,11 @@
+/**
+ * Persists and reads current direct or publication investigation failure
+ * observations.
+ *
+ * Invariants:
+ * - Failure observations must validate against the requested investigation
+ *   identity.
+ */
 import path from 'node:path';
 
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

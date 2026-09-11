@@ -1,3 +1,11 @@
+/**
+ * Verifies journaled maintainer commits against the exact authority
+ * transaction and trusted parent policy.
+ *
+ * Invariants:
+ * - Recovered commits must match journal parent, tree, message, allowed
+ *   paths and authority trailers before signature verification.
+ */
 // maintainer recovery verification; repository effects remain bound by the public module.
 import type {
   MaintainerRecoveryVerificationBindings,

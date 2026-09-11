@@ -1,3 +1,11 @@
+/**
+ * Defines and verifies reviewed planning asset contents, mirrors, manifests
+ * and repository write boundaries.
+ *
+ * Invariants:
+ * - Mirrored assets copy the canonical formatted content and digest instead
+ *   of being formatted independently.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

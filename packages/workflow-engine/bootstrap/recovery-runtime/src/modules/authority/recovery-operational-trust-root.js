@@ -1,4 +1,13 @@
-/** Standalone operational trust-root content, signer/fingerprint validation, and content digest. */
+/**
+ * Normalizes the operational trust root and its trusted maintainer signer
+ * identities.
+ *
+ * Invariants:
+ * - normalizeRoot rejects any root whose rootDigest does not equal the
+ *   recomputed canonicalDigest of its payload.
+ * - Each signer's fingerprint must equal the SHA256 fingerprint recomputed
+ *   from its SSH public-key blob.
+ */
 import crypto from 'node:crypto';
 import { ExitCode } from "../../foundation/errors/errors.js";
 import { canonicalDigest, isRecord, hasExactKeys, isDigest, deepFreeze, isIdentifier, isPositiveInteger, exactIso, SSH_PUBLIC_KEY, FINGERPRINT, restoreError, } from "./recovery-trust-root-values.js";

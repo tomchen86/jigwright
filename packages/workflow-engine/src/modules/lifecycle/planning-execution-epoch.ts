@@ -1,3 +1,10 @@
+/**
+ * Advances and recovers execution epochs across planning amendments.
+ *
+ * Invariants:
+ * - An epoch transition must start from the exact completed generation
+ *   being amended.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

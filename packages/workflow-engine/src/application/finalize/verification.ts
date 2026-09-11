@@ -1,3 +1,11 @@
+/**
+ * Inspects task sessions, executes checks, and reconciles evidence after
+ * engine adoption.
+ *
+ * Invariants:
+ * - Adoption reconciliation rejects a session changed since its trusted
+ *   checkpoint.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

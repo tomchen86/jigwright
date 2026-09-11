@@ -1,4 +1,10 @@
-/** Canonical semantic decisions and source evidence used by manifest replay. */
+/**
+ * Normalizes manifest semantic decisions and verifies their source and Why
+ * evidence.
+ *
+ * Invariants:
+ * - Load-bearing sources must retain replayable blob content.
+ */
 import type {
   AppliedInvestigationDisposition,
   InvestigationDispositionDecision,

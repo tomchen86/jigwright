@@ -1,3 +1,9 @@
+/**
+ * Bounds the investigation floor using a deterministic retention order.
+ *
+ * Invariants:
+ * - Dropping any floor entries marks the pruning result as escalated.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from "../../../foundation/canonical-json/canonical-json.js";
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";

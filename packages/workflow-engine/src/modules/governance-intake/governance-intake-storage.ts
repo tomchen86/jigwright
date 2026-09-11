@@ -1,4 +1,11 @@
-/** Create-only canonical publication and stable file reads shared by Source and Finding ledgers. */
+/**
+ * Publishes canonical governance intake records and reads them with file
+ * identity checks.
+ *
+ * Invariants:
+ * - Create-only publication accepts an existing record only when its
+ *   canonical bytes match.
+ */
 import { canonicalJson } from '@jigwright/core/canonical-json';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';
 import fs from 'node:fs';

@@ -1,3 +1,11 @@
+/**
+ * Applies approved Git candidates and recovers exact ref and index
+ * publication.
+ *
+ * Invariants:
+ * - The Central Grant approval subject must remain unchanged before Git
+ *   Apply.
+ */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

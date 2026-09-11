@@ -1,3 +1,10 @@
+/**
+ * Validates managed document policy and plans or applies generated document
+ * updates.
+ *
+ * Invariants:
+ * - Updates accept the expected prior content or an already-applied result.
+ */
 import fs from 'node:fs';
 import { planPlanningSemanticLedger } from '../transaction/semantic-ledger-projection.ts';
 import path from 'node:path';

@@ -1,4 +1,11 @@
-/** Compatibility facade for the public agent-runtime protocol package. */
+/**
+ * Validates public provider protocol receipts against engine invocation and
+ * native-session bindings.
+ *
+ * Invariants:
+ * - When an expected binding is supplied, invocation, request and attempt
+ *   identities must all match.
+ */
 import {
   assertProviderWrapperProtocolReceipt,
   type ProviderWrapperProtocolBinding,

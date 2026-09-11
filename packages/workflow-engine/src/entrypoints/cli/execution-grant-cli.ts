@@ -1,3 +1,10 @@
+/**
+ * Issues, inspects, and revokes execution budget grants for current
+ * execution jobs.
+ *
+ * Invariants:
+ * - Budget requests must match the current job, epoch, and Task Mandate.
+ */
 import crypto from 'node:crypto';
 
 import type {

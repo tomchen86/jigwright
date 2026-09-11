@@ -1,3 +1,10 @@
+/**
+ * Derives planning subjects and validates investigation-first planning
+ * readiness.
+ *
+ * Invariants:
+ * - A PlanReview must select the exact provider result it reviewed.
+ */
 import { createPlanningAssuranceEvidenceResolver } from './planning-assurance-evidence.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';

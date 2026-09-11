@@ -1,3 +1,10 @@
+/**
+ * Resumes deterministic mechanical transformations through recoverable file
+ * publication.
+ *
+ * Invariants:
+ * - Transformation resume rejects a pre-existing staged projection.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

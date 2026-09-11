@@ -1,3 +1,11 @@
+/**
+ * Verifies maintainer data and commit signatures with isolated allowed-
+ * signer files.
+ *
+ * Invariants:
+ * - Commit verification requires a good signature with the exact trusted
+ *   signer identity and fingerprint.
+ */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';

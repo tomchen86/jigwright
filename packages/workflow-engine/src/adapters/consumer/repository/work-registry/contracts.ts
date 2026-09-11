@@ -1,3 +1,11 @@
+/**
+ * Loads repository workflow contracts and binds planning artifacts to
+ * configured policy and evidence.
+ *
+ * Invariants:
+ * - Committed-contract reads require the exact clean commit checkout and
+ *   recheck its fingerprint around loading.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -11,17 +11,23 @@
 | packages/workflow-engine/src/modules/guidance | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | Local |
 | packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | Local |
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | Local |
-| packages/workflow-engine/src/modules/planning-provider | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Inherited |
+| packages/workflow-engine/src/modules/planning-provider | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | Local |
 | packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | Local |
 | packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | Local |
-| packages/workflow-engine/src/modules/repository-consumer | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Inherited |
+| packages/workflow-engine/src/modules/repository-consumer | [Repository consumer](../packages/workflow-engine/src/modules/repository-consumer/spec.md) | Local |
 | packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | Local |
-| packages/workflow-engine/src/modules/why-knowledge | [Shared workflow contracts](../packages/workflow-engine/spec.md) | Inherited |
+| packages/workflow-engine/src/modules/why-knowledge | [WHY knowledge](../packages/workflow-engine/src/modules/why-knowledge/spec.md) | Local |
 
 ## Contract inventory
 
 | Directory | Contract | Requirements | Scenarios |
 | --- | --- | ---: | ---: |
+| packages/agent-runtime | [Agent runtime](../packages/agent-runtime/spec.md) | 2 | 4 |
+| packages/core | [Core contracts](../packages/core/spec.md) | 2 | 3 |
+| packages/fixture-adapter | [Fixture adapter](../packages/fixture-adapter/spec.md) | 1 | 2 |
+| packages/github-adapter | [GitHub adapter](../packages/github-adapter/spec.md) | 1 | 2 |
+| packages/grants | [Grant services](../packages/grants/spec.md) | 2 | 4 |
+| packages/openspec-adapter | [OpenSpec adapter](../packages/openspec-adapter/spec.md) | 2 | 3 |
 | packages/workflow-engine | [Shared workflow contracts](../packages/workflow-engine/spec.md) | 70 | 201 |
 | packages/workflow-engine/src/modules/adoption | [Adoption](../packages/workflow-engine/src/modules/adoption/spec.md) | 4 | 9 |
 | packages/workflow-engine/src/modules/assurance | [Assurance](../packages/workflow-engine/src/modules/assurance/spec.md) | 7 | 22 |
@@ -30,7 +36,10 @@
 | packages/workflow-engine/src/modules/guidance | [Guidance](../packages/workflow-engine/src/modules/guidance/spec.md) | 3 | 5 |
 | packages/workflow-engine/src/modules/investigation | [Investigation](../packages/workflow-engine/src/modules/investigation/spec.md) | 7 | 25 |
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | 6 | 11 |
-| packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 6 | 10 |
+| packages/workflow-engine/src/modules/planning-provider | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | 1 | 2 |
+| packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 6 | 12 |
 | packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | 8 | 28 |
-| packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | 4 | 10 |
+| packages/workflow-engine/src/modules/repository-consumer | [Repository consumer](../packages/workflow-engine/src/modules/repository-consumer/spec.md) | 2 | 2 |
+| packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | 4 | 11 |
+| packages/workflow-engine/src/modules/why-knowledge | [WHY knowledge](../packages/workflow-engine/src/modules/why-knowledge/spec.md) | 2 | 2 |
 | . | [Repository contracts](../spec.md) | 13 | 49 |

@@ -193,3 +193,120 @@ test('system document projections share the registry and print wording without o
     'drifted',
   );
 });
+
+test('coverage exposes unlinked wording, unowned source directories and requirements without Sources', () => {
+  const { files, snapshot } = fixture();
+  const orphan = createGovernanceSourceV1({
+    ...source,
+    text: 'Keep <original> | wording.\nIncluding the next line.',
+  });
+  const scenarioOnly = createGovernanceSourceV1({
+    ...source,
+    text: 'This wording is linked by a scenario.',
+  });
+  for (const record of [orphan, scenarioOnly])
+    files.set(
+      `workflow/source-ledger/objects/sha256/${record.id.slice(4, 6)}/${record.id.slice(4)}.json`,
+      JSON.stringify(record),
+    );
+  files.set(
+    specPath,
+    spec.replace(
+      '#### Scenario: Exact text',
+      `#### Scenario: Exact text\nsources: [${scenarioOnly.id}]`,
+    ) +
+      '\n### Requirement: Missing provenance\nThe engine SHALL explain its provenance.\n',
+  );
+  files.set('src/adapters/unowned/client.ts', 'export const client = 1;');
+  files.set('packages/core/src/value.ts', 'export const value = 1;');
+  files.set('test/unowned/helper.ts', 'export const helper = 1;');
+  files.set('dist/unowned/index.js', 'export const generated = 1;');
+  const render = () => {
+    const report = inspectSystemDocuments(snapshot, () => 'passed');
+    const output = new Map<string, string>();
+    createProjectionService(systemDocumentProjectionBindings(report), {
+      read: (file) => output.get(file) ?? null,
+      write: (file, content) => {
+        output.set(file, content);
+      },
+    }).project('documents.coverage');
+    return { report, content: output.get('docs/COVERAGE.md')! };
+  };
+  const { report, content } = render();
+  assert.equal(report.sources.get(orphan.id)?.text, orphan.text);
+  assert.deepEqual(
+    report.documentation?.find(({ path }) => path === 'src/modules/intake'),
+    {
+      path: 'src/modules/intake',
+      kind: 'module',
+      specPath,
+      readmePath: null,
+      files: 1,
+      headers: 1,
+      invariantHeaders: 1,
+    },
+  );
+  assert.deepEqual(
+    report.documentation?.find(({ path }) => path === 'packages/core'),
+    {
+      path: 'packages/core',
+      kind: 'package',
+      specPath: null,
+      readmePath: null,
+      files: 1,
+      headers: 0,
+      invariantHeaders: 0,
+    },
+  );
+  for (const heading of [
+    'Sources without a linked contract',
+    'Directories without a governing contract',
+    'Requirements without Sources',
+    'Scenario coverage',
+  ])
+    assert.ok(content.includes(`## ${heading}`), heading);
+  assert.match(
+    content,
+    /Keep &lt;original&gt; \\\| wording\.<br>Including the next line\./,
+  );
+  assert.doesNotMatch(content, /This wording is linked by a scenario/);
+  assert.match(content, /src\/adapters\/unowned/);
+  assert.match(content, /packages\/core\/src/);
+  assert.doesNotMatch(content, /test\/unowned|dist\/unowned/);
+  assert.match(content, /Missing provenance/);
+  assert.match(content, /exact text/);
+  assert.doesNotMatch(
+    content,
+    /(?:SRC|WORK|FND)-[A-Za-z0-9]+|sha256:[0-9a-f]+/,
+  );
+
+  files.set(
+    'spec.md',
+    spec.replace('intake.ts#Invariants[1]', '#Requirement: Preserve wording'),
+  );
+  const inherited = render().content;
+  const ownership = inherited
+    .split('## Directories without a governing contract')[1]!
+    .split('## ')[0]!;
+  assert.match(ownership, /None\./);
+  assert.doesNotMatch(ownership, /src\/adapters\/unowned|packages\/core\/src/);
+
+  files.set(
+    specPath,
+    files
+      .get(specPath)!
+      .replace(
+        '### Requirement: Missing provenance',
+        `### Requirement: Missing provenance\nsources: [${orphan.id}]`,
+      ),
+  );
+  const resolved = render().content;
+  for (const heading of [
+    'Sources without a linked contract',
+    'Requirements without Sources',
+  ])
+    assert.match(
+      resolved.split(`## ${heading}`)[1]!.split('## ')[0]!,
+      /None\./,
+    );
+});

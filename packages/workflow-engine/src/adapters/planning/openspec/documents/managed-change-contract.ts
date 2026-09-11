@@ -1,3 +1,11 @@
+/**
+ * Loads a managed change contract after planning-provider readiness and
+ * investigation assurance validation.
+ *
+ * Invariants:
+ * - Managed inputs must retain the same snapshot digest throughout provider
+ *   readiness evaluation.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,4 +1,11 @@
-/** Execution Job, Attempt, failure, and retry record contracts. */
+/**
+ * Defines engine Job, Attempt, failure and retry records around the shared
+ * execution contracts.
+ *
+ * Invariants:
+ * - Workflow status and blocker types alias the public core contracts
+ *   instead of declaring another vocabulary.
+ */
 import type {
   ExecutionWorkflowStatusV2,
   ExecutionWorkflowBlockerV2,

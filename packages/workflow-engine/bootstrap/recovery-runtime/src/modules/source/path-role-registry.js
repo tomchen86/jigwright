@@ -1,3 +1,11 @@
+/**
+ * Classifies repository paths by planning evidence responsibility and
+ * compression eligibility.
+ *
+ * Invariants:
+ * - Only registered ordinary paths are eligible for compressed class
+ *   dispositions.
+ */
 import { isRecord, isStringArray, } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";
 import { matchesAllowedPath, normalizePolicyPath, } from "../../foundation/repository-path/repository-path.js";

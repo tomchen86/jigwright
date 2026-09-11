@@ -1,3 +1,15 @@
+/**
+ * Issues, inspects and revokes preparation-only Task Mandates and
+ * authorizes their operations.
+ *
+ * Invariants:
+ * - authorizeTaskMandate signs and stores only after asserting human
+ *   presence and confirming the resolved identity is in
+ *   policy.trustedSigners.
+ * - validateTaskMandateEnvelopeForRepository throws staleState unless the
+ *   base policyBlob, base/current repository id and origin, and live origin
+ *   all match the payload.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

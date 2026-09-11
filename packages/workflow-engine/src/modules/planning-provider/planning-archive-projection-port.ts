@@ -1,3 +1,11 @@
+/**
+ * Adapts shared planning archive operations to workflow failure
+ * conventions.
+ *
+ * Invariants:
+ * - Only known archive contract errors are remapped; result values and
+ *   other errors retain the core behavior.
+ */
 import {
   inspectPlanningArchiveReadiness as inspectCorePlanningArchiveReadiness,
   PlanningArchiveProjectionPortContractError,

@@ -1,3 +1,11 @@
+/**
+ * Loads current manifest assurance and available ledger reuse observations
+ * for a change.
+ *
+ * Invariants:
+ * - Exemptions use their declared paths; ordinary investigation paths come
+ *   from pinned scan replay.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

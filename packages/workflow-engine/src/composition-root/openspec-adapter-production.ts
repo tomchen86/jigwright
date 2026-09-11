@@ -1,4 +1,10 @@
-/** Assembles native OpenSpec with repository snapshots and trusted temporary storage. */
+/**
+ * Composes native OpenSpec with repository snapshots and trusted temporary
+ * storage.
+ *
+ * Invariants:
+ * - Snapshot reads are supplied only when the repository has a Git marker.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import {

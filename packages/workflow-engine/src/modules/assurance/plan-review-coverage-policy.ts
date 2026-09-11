@@ -1,3 +1,10 @@
+/**
+ * Defines the identity of the global PlanReview coverage policy.
+ *
+ * Invariants:
+ * - Policy identity includes its schema version, sampling grammar, evidence
+ *   mode and target fields.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

@@ -21,7 +21,7 @@ test('module README derives commands, union data, contracts and header facts whi
     [readme]: why,
     [specPath]:
       '# Intake\n\n## Purpose\nPreserve requests.\n\n## Requirements\n### Requirement: Keep wording\n\nThe engine SHALL keep wording.\n',
-    [`${directory}/work.ts`]: `/**\n * Captures exact request wording.\n *\n * Invariants:\n * - Wording is never trimmed.\n */\nexport type WorkKind = 'feature' | 'bug';\nexport type WorkLane = 'next' | null;\n`,
+    [`${directory}/work.ts`]: `/**\n * Captures exact request wording.\n *\n * Invariants:\n * - Wording is never trimmed.\n */\nexport type WorkKind =\n  | 'feature'\n  | 'bug';\nexport type WorkLane = 'next' | null;\n`,
     'packages/workflow-engine/src/entrypoints/cli/cli-input.ts':
       "    '  pnpm workflow now <original-text> [--json] — Start the supplied work.',\n    '  pnpm workflow grant inspect <id> — Inspect exact authority.',\n",
   };
@@ -68,8 +68,8 @@ test('module README derives commands, union data, contracts and header facts whi
   service().project('documents.governance-intake-readme');
   assert.equal(files[readme], before);
   files[`${directory}/work.ts`] = files[`${directory}/work.ts`]!.replace(
-    "'feature' | 'bug'",
-    "'feature' | 'bug' | 'chore'",
+    "| 'feature'\n  | 'bug'",
+    "| 'feature'\n  | 'bug'\n  | 'chore'",
   );
   assert.equal(service().status()[0]?.state, 'drifted');
   service().project('documents.governance-intake-readme');
@@ -99,6 +99,89 @@ test('module README derives commands, union data, contracts and header facts whi
   assert.deepEqual(
     readModuleReadmeWhy(files[providerReadme]!),
     readModuleReadmeWhy(why),
+  );
+});
+
+test('every existing engine module can render its own README region without claiming transition authority', () => {
+  const modules = [
+    'adoption',
+    'assurance',
+    'authority',
+    'governance-intake',
+    'guidance',
+    'investigation',
+    'lifecycle',
+    'planning-provider',
+    'projection',
+    'provider-orchestration',
+    'repository-consumer',
+    'source',
+    'why-knowledge',
+  ];
+  const files = new Map<string, string>();
+  for (const module of modules) {
+    const directory = `packages/workflow-engine/src/modules/${module}`;
+    files.set(
+      `${directory}/README.md`,
+      `# ${module}\n\n<!-- jigwright:module-why confirmed=${'a'.repeat(40)} -->\nKeep the ${module} boundary explicit.\n<!-- /jigwright:module-why -->\n`,
+    );
+    files.set(
+      `${directory}/entry.ts`,
+      `/** Describe ${module}.\n * Invariants:\n * - Preserve the ${module} boundary.\n */\nexport const value = 1;\n`,
+    );
+  }
+  files.set(
+    'packages/workflow-engine/src/modules/guidance/catalog/managed-workflow-command-registry.ts',
+    `
+const FINALIZE_USAGE = 'pnpm workflow finalize <session-id> --message <subject> [--json]';
+const definitions = [
+  {
+    usage: [FINALIZE_USAGE],
+    status: 'preferred',
+    purpose: 'Finalize the selected task.',
+  },
+  {
+    usage: ['pnpm workflow guide [--json]'],
+    status: 'read-only',
+    purpose: 'Inspect the command guide.',
+  },
+];
+`,
+  );
+  const snapshot = {
+    listPaths: () => [...files.keys()],
+    readText: (file: string) => files.get(file),
+  };
+  const bindings = moduleReadmeProjectionBindings(snapshot, [], () => []);
+  assert.equal(bindings.length, modules.length);
+  const service = createProjectionService(bindings, {
+    read: (file) => files.get(file) ?? null,
+    write: (file, content) => {
+      files.set(file, content);
+    },
+  });
+  for (const binding of bindings) {
+    service.project(binding.id, { install: true });
+  }
+  for (const module of modules) {
+    const content = files.get(
+      `packages/workflow-engine/src/modules/${module}/README.md`,
+    )!;
+    assert.match(content, /## Commands/);
+    assert.match(content, /## Data/);
+    assert.match(content, /## Contracts/);
+    assert.match(content, /## Files/);
+    assert.ok(content.includes(`Keep the ${module} boundary explicit.`));
+    assert.ok(content.includes(`Describe ${module}. | 1`));
+  }
+  assert.ok(service.status().every(({ state }) => state === 'current'));
+  assert.match(
+    files.get('packages/workflow-engine/src/modules/lifecycle/README.md')!,
+    /finalize &lt;session-id&gt;.*Finalize the selected task\./,
+  );
+  assert.match(
+    files.get('packages/workflow-engine/src/modules/guidance/README.md')!,
+    /guide \[--json\].*Inspect the command guide\./,
   );
 });
 

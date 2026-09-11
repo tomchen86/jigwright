@@ -1,4 +1,11 @@
-/** Public recovery-trust-root-restore APIs and authoritative operation ordering. */
+/**
+ * Restores operational trust roots through durable reservations and audited
+ * pointer updates.
+ *
+ * Invariants:
+ * - A persisted restore reservation must retain the exact authorized
+ *   envelope.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { canonicalJson } from './foundation/canonical-json/canonical-json.ts';

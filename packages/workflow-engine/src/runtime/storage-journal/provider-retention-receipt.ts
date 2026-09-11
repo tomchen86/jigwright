@@ -1,3 +1,11 @@
+/**
+ * Creates and validates retention receipts and their retained artifact
+ * evidence.
+ *
+ * Invariants:
+ * - Receipt reads reject file identity or size changes observed during the
+ *   read.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

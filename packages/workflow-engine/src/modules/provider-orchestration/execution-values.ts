@@ -1,4 +1,10 @@
-/** Shared execution record value checks and canonical digest helpers. */
+/**
+ * Validates execution value shapes and canonical record encodings.
+ *
+ * Invariants:
+ * - Encoded execution records must stay within the byte limit and end in
+ *   one newline.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import type { TaskMandateBinding } from '../authority/task-mandate.ts';

@@ -1,3 +1,13 @@
+/**
+ * Evaluates registered approval proofs against the exact claims required by
+ * a Grant profile.
+ *
+ * Invariants:
+ * - Approval succeeds only when the union of proven claims exactly equals
+ *   the profile's requiredClaims.
+ * - Each proof module identity (moduleId@version) must be unique within one
+ *   evaluation.
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

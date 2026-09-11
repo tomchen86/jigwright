@@ -1,3 +1,11 @@
+/**
+ * Binds a control-plane bootstrap to the exact repository identity and supervisor provenance it was created from.
+ *
+ * Invariants:
+ * - Repository identity is verified against recorded Git facts; any divergence fails rather than re-deriving.
+ * - Captured supervisor provenance is compared unchanged on every later read, so a rewritten bootstrap is caught.
+ * - Bootstrap paths are asserted to be tracked and inside the package root before any fact is read from them.
+ */
 import { BUILT_IN_BOOTSTRAP_RUNTIME_PATHS } from './control-plane-bootstrap-values.ts';
 /** Immutable Git repository identity and initial supervisor provenance. */
 import childProcess from 'node:child_process';

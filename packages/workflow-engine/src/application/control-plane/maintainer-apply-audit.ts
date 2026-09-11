@@ -1,3 +1,9 @@
+/**
+ * Builds audit bindings and records candidate and Apply Grant events.
+ *
+ * Invariants:
+ * - Apply Grant audit requires its exact immutable candidate.
+ */
 // maintainer apply audit; repository effects remain bound by the public module.
 import type {
   MaintainerApplyAuditBindings,

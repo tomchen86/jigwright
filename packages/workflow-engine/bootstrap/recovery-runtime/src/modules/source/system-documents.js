@@ -153,12 +153,36 @@ export function inspectSystemDocuments(snapshot, readTestOutcome = () => 'missin
             }
         }
     }
+    // Include uncited records: following spec references alone hides precisely
+    // the original wording that the coverage view needs to report as unlinked.
+    for (const file of [...paths].sort()) {
+        const object = /^workflow\/source-ledger\/objects\/sha256\/([0-9a-f]{2})\/([0-9a-f]{64})\.json$/.exec(file);
+        if (!object || object[1] !== object[2].slice(0, 2))
+            continue;
+        const ref = `SRC-${object[2]}`;
+        if (report.sources.has(ref))
+            continue;
+        try {
+            report.sources.set(ref, readSystemSource(snapshot, ref));
+        }
+        catch {
+            issue('source-missing', file, 'Resolve the recorded Source wording.');
+        }
+    }
     const modules = new Set();
+    const directories = new Set();
+    const sourceFiles = [];
+    const packages = new Set();
     for (const file of paths) {
         if (!/\.[cm]?[jt]sx?$/.test(file))
             continue;
         if (/(?:^|\/)(?:node_modules|test|tests|fixtures|dist|coverage|recovery-runtime)\//.test(file))
             continue;
+        sourceFiles.push(file);
+        const packagePath = /^(packages\/[^/]+)\/src\//.exec(file)?.[1];
+        if (packagePath)
+            packages.add(packagePath);
+        directories.add(path.posix.dirname(file));
         const module = /^(.*(?:^|\/)modules\/[^/]+)\//.exec(file)?.[1];
         if (module)
             modules.add(module);
@@ -167,6 +191,32 @@ export function inspectSystemDocuments(snapshot, readTestOutcome = () => 'missin
         path: module,
         specPath: findContainingSpec(`${module}/module.ts`, specPaths),
     }));
+    report.directories = [...directories].sort().map((directory) => ({
+        path: directory,
+        specPath: findContainingSpec(path.posix.join(directory, 'source.ts'), specPaths),
+    }));
+    const scopes = [
+        ...[...packages]
+            .sort()
+            .map((directory) => ({ path: directory, kind: 'package' })),
+        ...[...modules]
+            .sort()
+            .map((directory) => ({ path: directory, kind: 'module' })),
+    ];
+    report.documentation = scopes.map((scope) => {
+        const prefix = `${scope.path}/${scope.kind === 'package' ? 'src/' : ''}`;
+        const files = sourceFiles.filter((file) => file.startsWith(prefix));
+        const headers = files.map((file) => extractFileHeader(snapshot.readText(file) ?? ''));
+        const readmePath = `${scope.path}/README.md`;
+        return {
+            ...scope,
+            specPath: findContainingSpec(`${scope.path}/source.ts`, specPaths),
+            readmePath: snapshot.readText(readmePath) === undefined ? null : readmePath,
+            files: files.length,
+            headers: headers.filter((header) => header?.responsibility).length,
+            invariantHeaders: headers.filter((header) => header?.responsibility && header.invariants.length > 0).length,
+        };
+    });
     for (const { path: module } of report.modules.filter(({ specPath }) => specPath === null))
         issue('spec-missing', module, 'Add spec.md here or in a containing directory.');
     return report;

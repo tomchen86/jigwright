@@ -1,3 +1,11 @@
+/**
+ * Replaces plain text files through flushed temporary files and atomic
+ * rename.
+ *
+ * Invariants:
+ * - The temporary file and target identity are rechecked before
+ *   replacement; creating a missing target requires allowCreate.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

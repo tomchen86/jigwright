@@ -1,3 +1,11 @@
+/**
+ * Persists projected finalize transactions and verifies their phase
+ * progression.
+ *
+ * Invariants:
+ * - Phase advancement preserves transaction identity and follows the next
+ *   allowed phase.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

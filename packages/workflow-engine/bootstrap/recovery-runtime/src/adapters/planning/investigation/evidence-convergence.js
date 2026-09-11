@@ -1,3 +1,11 @@
+/**
+ * Builds convergence and descendant reuse evidence for replacement parent
+ * nodes.
+ *
+ * Invariants:
+ * - Convergence requires matching parent type, evaluator, policy, schemas
+ *   and semantic result.
+ */
 import crypto from 'node:crypto';
 import { ExitCode, workflowError } from "../../../foundation/errors/errors.js";
 import { assertStoredEvidenceNode, createEvidenceNode, } from "./evidence-node.js";

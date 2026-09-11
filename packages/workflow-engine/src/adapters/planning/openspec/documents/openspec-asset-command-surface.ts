@@ -1,4 +1,11 @@
-/** Pure Markdown and shell command-surface recognition for reviewed planning assets. */
+/**
+ * Recognizes Markdown and shell command surfaces in reviewed planning
+ * assets.
+ *
+ * Invariants:
+ * - Normalization retains HTML comment bodies for command inspection
+ *   instead of hiding them.
+ */
 
 export function normalizeCommandSurface(content: string): string {
   const decoded = decodeHtmlEntities(content.normalize('NFKC'));

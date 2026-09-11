@@ -1,3 +1,11 @@
+/**
+ * Loads task scope and check authority from a historical commit and its
+ * governing planning evidence.
+ *
+ * Invariants:
+ * - Historical tasks and guard policies must have a one-to-one identity
+ *   mapping.
+ */
 import { lastCommitChangingPath, readFileAtCommit } from './ci-git.ts';
 import { validateCiPlanningCommit } from './ci-planning.ts';
 import {

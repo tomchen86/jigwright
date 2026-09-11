@@ -1,3 +1,11 @@
+/**
+ * Adapts pinned OpenSpec operations into validated repository planning
+ * results.
+ *
+ * Invariants:
+ * - Validation exit status must agree with the validity reported by the
+ *   result payload.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

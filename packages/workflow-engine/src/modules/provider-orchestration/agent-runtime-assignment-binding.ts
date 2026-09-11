@@ -1,3 +1,11 @@
+/**
+ * Creates and validates the public binding of a durable role assignment to
+ * its provider profile and input manifests.
+ *
+ * Invariants:
+ * - A binding must match both its embedded provider profile identity and
+ *   its recomputed payload digest.
+ */
 import crypto from 'node:crypto';
 
 import {

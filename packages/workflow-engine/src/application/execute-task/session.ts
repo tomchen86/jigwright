@@ -1,3 +1,9 @@
+/**
+ * Admits, publishes, inspects, and aborts task execution sessions.
+ *
+ * Invariants:
+ * - A task session cannot start from detached HEAD.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

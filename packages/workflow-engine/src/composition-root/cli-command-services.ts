@@ -1,3 +1,11 @@
+/**
+ * Collects workflow lifecycle and authority services used by CLI command
+ * handlers.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
+ */
 // Production services used by the CLI command families.
 export { commitArchiveTransition } from '../application/archive/archive-transition.ts';
 export {

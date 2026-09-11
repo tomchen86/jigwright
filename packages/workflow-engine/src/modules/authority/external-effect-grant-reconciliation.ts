@@ -1,3 +1,13 @@
+/**
+ * Reconciles uncertain external-effect outcomes and revokes eligible Grants
+ * without replaying the effect.
+ *
+ * Invariants:
+ * - Only a durable manual-reconciliation terminal (with a non-null
+ *   transactionId) may be reconciled.
+ * - A dispatched grant whose transaction phase is not 'reserved' cannot be
+ *   revoked without reconciliation.
+ */
 import { withAuthorityRefusalAudit } from './authority-refusal-audit.ts';
 
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

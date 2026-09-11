@@ -1,3 +1,11 @@
+/**
+ * Checks archive commit trees and compares their contents with an
+ * independently replayed archive.
+ *
+ * Invariants:
+ * - Archival must preserve the active tree under its new root and remove
+ *   the old active tree.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

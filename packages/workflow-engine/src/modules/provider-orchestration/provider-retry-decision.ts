@@ -1,3 +1,10 @@
+/**
+ * Authorizes provider retries from durable attempt history and execution
+ * budget receipts.
+ *
+ * Invariants:
+ * - Budget receipts must authorize the exact replacement attempt.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

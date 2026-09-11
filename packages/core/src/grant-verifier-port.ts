@@ -1,6 +1,10 @@
 /**
- * Verify one exact, caller-selected signature namespace without exposing
- * signing, signer selection, or human-presence authority to validation paths.
+ * Declares signature verification and optional verifier-currentness
+ * capabilities.
+ *
+ * Invariants:
+ * - Every verification call requires the payload, signature, signer
+ *   identity and explicit namespace.
  */
 export type GrantVerifierPort = Readonly<{
   verify(

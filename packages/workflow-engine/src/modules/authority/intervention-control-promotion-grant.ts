@@ -1,3 +1,13 @@
+/**
+ * Builds and verifies promotion Grants bound to exact control-plane
+ * material and review evidence.
+ *
+ * Invariants:
+ * - A Control-Plane Grant v2 is valid only for a positive lifetime of at
+ *   most five minutes (`CONTROL_PLANE_GRANT_V2_MAX_TTL_MS`).
+ * - The v3 Grant reuses material checks but verifies the actual human
+ *   signature under its own v3 namespace.
+ */
 import {
   type ControlPlanePromotionMaterial,
   verifyControlPlanePromotionMaterial,

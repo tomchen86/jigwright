@@ -1,3 +1,11 @@
+/**
+ * Dispatches authority audit operations with exact repository and input
+ * bindings.
+ *
+ * Invariants:
+ * - Audit verification must name the repository identity from the current
+ *   trust base.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

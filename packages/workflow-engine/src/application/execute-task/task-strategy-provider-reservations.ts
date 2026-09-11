@@ -1,3 +1,10 @@
+/**
+ * Reserves implementation providers and authorizes their retry attempts.
+ *
+ * Invariants:
+ * - A retry reservation requires the same failed attempt with a retryable
+ *   failure.
+ */
 import {
   type TaskStrategyImplementationSubject,
   TASK_STRATEGY_IMPLEMENTATION_POLICY_DIGEST,

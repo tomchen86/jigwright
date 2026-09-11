@@ -1,3 +1,11 @@
+/**
+ * Initializes and publishes protected bases through bound Grant and Git
+ * observations.
+ *
+ * Invariants:
+ * - Fetch and push remote identities must match the canonical repository
+ *   origin.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

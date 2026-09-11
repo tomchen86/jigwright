@@ -1,3 +1,11 @@
+/**
+ * Applies authenticated task diff review and assurance requirements to
+ * completion.
+ *
+ * Invariants:
+ * - An accepted challenge prevents completion until the changed candidate
+ *   is reviewed.
+ */
 // Apply review requirements and assurance gates to task completion.
 import {
   type TaskDiffReviewRecord,

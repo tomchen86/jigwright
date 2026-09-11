@@ -1,3 +1,10 @@
+/**
+ * Connects routing continuation checks to the repository Grant store.
+ *
+ * Invariants:
+ * - Grant reads use the discovered Git-common directory and configured
+ *   runtime directory.
+ */
 import { loadWorkflowConfig } from '../adapters/consumer/repository/work-registry/contracts.ts';
 import type { ChangeRoutingContinuationGrantPort } from '../modules/lifecycle/change-routing.ts';
 import { discoverRepository } from '../runtime/repository-transaction/git.ts';

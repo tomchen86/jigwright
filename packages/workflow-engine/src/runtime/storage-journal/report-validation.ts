@@ -1,3 +1,11 @@
+/**
+ * Checks session report bindings, check evidence and authorized completion
+ * projections.
+ *
+ * Invariants:
+ * - Inspection reports must match the current session scope, artifact
+ *   digests and working-state fingerprint.
+ */
 import { digestRequiredCheckDefinitions } from '../../modules/lifecycle/contract-digests.ts';
 import { parseTasks } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

@@ -1,3 +1,11 @@
+/**
+ * Resolves the pinned OpenSpec installation and runs its bounded process
+ * operations.
+ *
+ * Invariants:
+ * - The declared dependency and installed package identity must match the
+ *   exact pinned OpenSpec version.
+ */
 import { spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,11 @@
+/**
+ * Declares pinned-tree reads with explicit byte budgets, deadlines and
+ * skipped-entry reasons.
+ *
+ * Invariants:
+ * - Read requests identify a tree OID, and path identity retains raw bytes
+ *   even when no UTF-8 path is available.
+ */
 export type TrackedObjectSkipReasonV1 =
   | 'symlink'
   | 'submodule'

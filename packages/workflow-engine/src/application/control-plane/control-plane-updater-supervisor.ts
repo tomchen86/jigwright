@@ -1,3 +1,11 @@
+/**
+ * Initializes and advances supervisor engine selections with executable and
+ * history verification.
+ *
+ * Invariants:
+ * - Initial executable bytes must match the verified engine artifact
+ *   digest.
+ */
 // control plane updater supervisor; repository effects remain bound by the public module.
 import type {
   ControlPlaneUpdaterSupervisorBindings,

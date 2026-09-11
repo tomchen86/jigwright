@@ -1,3 +1,11 @@
+/**
+ * Resolves current provider assignments and binds their runtime launch
+ * authority.
+ *
+ * Invariants:
+ * - An assignment requiring a Grant cannot launch without its exact
+ *   decision.
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

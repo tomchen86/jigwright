@@ -1,3 +1,11 @@
+/**
+ * Requests and executes Grant-bound replacements for failed provider
+ * attempts.
+ *
+ * Invariants:
+ * - This replacement path excludes task implementation and task diff review
+ *   invocations.
+ */
 import { createExecutionReplacementRecords } from './execution-replacement-records.ts';
 import { createExecutionReplacementPublication } from './execution-replacement-publication.ts';
 import crypto from 'node:crypto';

@@ -1,4 +1,9 @@
-/** Execution record codecs and canonical failure descriptors. */
+/**
+ * Validates execution records and constructs canonical failure descriptors.
+ *
+ * Invariants:
+ * - Retry delay must be a nonnegative safe integer no greater than one day.
+ */
 import { ExitCode } from '../../foundation/errors/errors.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

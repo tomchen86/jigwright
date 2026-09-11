@@ -1,3 +1,10 @@
+/**
+ * Runs evidence retention maintenance and manages durable workflow evidence
+ * pins.
+ *
+ * Invariants:
+ * - Jobs in a pinned workflow must agree on the exact Task Mandate binding.
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { projectProviderInvocationExecution } from '../../modules/provider-orchestration/execution-core.ts';
 import {

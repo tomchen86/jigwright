@@ -1,3 +1,10 @@
+/**
+ * Replays committed planning generations and verifies their historical
+ * review evidence.
+ *
+ * Invariants:
+ * - Historical planning artifacts must use canonical JSON bytes.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

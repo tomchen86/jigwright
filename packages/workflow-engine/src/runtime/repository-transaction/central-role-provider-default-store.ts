@@ -1,3 +1,10 @@
+/**
+ * Reads pinned provider defaults and safely replaces their current
+ * configuration.
+ *
+ * Invariants:
+ * - Pinned defaults require a full commit object identity.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

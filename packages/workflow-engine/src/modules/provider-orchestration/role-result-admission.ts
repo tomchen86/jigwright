@@ -1,4 +1,10 @@
-/** Admitted role-result validation and live/consumed replay admission. Durable collaboration grant validation remains bound by the scheduler facade. */
+/**
+ * Admits role results and replays their ordinary or granted participant
+ * authority.
+ *
+ * Invariants:
+ * - Submitted content must match the assigned reviewer or implementer role.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import {

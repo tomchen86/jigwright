@@ -79,7 +79,7 @@ test: packages/workflow-engine/test/document-refresh.integration.test.ts#approve
 ### Requirement: System Maps Project One Readable Contract Authority
 sources: [SRC-9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e]
 
-The engine SHALL generate SPEC_MAP, COVERAGE and REQUIREMENTS through its existing projection registry from one system-description snapshot. These views SHALL expose contract locations, scenario coverage and exact cited Source wording using readable titles and text. Opaque Source, Finding and Work Item identities or content hashes MUST NOT replace wording on the human-readable surface; structured validation results MAY retain technical identities. Generated views MUST NOT create a second canonical Source or contract authority.
+The engine SHALL generate SPEC_MAP, COVERAGE and REQUIREMENTS through its existing projection registry from one system-description snapshot. These views SHALL expose contract locations, scenario coverage and exact recorded Source wording using readable titles and text. COVERAGE SHALL identify recorded Sources cited by no requirement or scenario, source directories with no containing contract, and requirements without Sources. A package or root contract inherited through containment SHALL count as ownership. The same view SHALL report module and package README presence, local or inherited contracts, and source header counts without introducing a new gate. Opaque Source, Finding and Work Item identities or content hashes MUST NOT replace wording on the human-readable surface; structured validation results MAY retain technical identities. Generated views MUST NOT create a second canonical Source or contract authority.
 
 #### Scenario: Maps retain exact wording without opaque identities
 covers: #Requirement: System Maps Project One Readable Contract Authority
@@ -88,6 +88,14 @@ test: packages/workflow-engine/test/system-documents.contract.test.ts#system doc
 - **WHEN** the system document projections are generated
 - **THEN** they use the registered projection service and print the underlying wording
 - **AND** human-readable maps do not substitute opaque identities for that wording
+
+#### Scenario: Coverage reveals missing links and documentation
+covers: #Requirement: System Maps Project One Readable Contract Authority
+test: packages/workflow-engine/test/system-documents.contract.test.ts#coverage exposes unlinked wording, unowned source directories and requirements without Sources
+
+- **WHEN** the source snapshot contains uncited wording, unowned source directories or requirements without Sources
+- **THEN** COVERAGE lists those gaps and the observed module and package document counts
+- **AND** a containing root contract prevents an inherited directory from being mislabeled unowned
 
 #### Scenario: Test, render and validation use the same contracts
 covers: #Requirement: System Maps Project One Readable Contract Authority
@@ -99,7 +107,7 @@ test: packages/workflow-engine/test/system-documents-cli.contract.test.ts#docume
 ### Requirement: Module References Combine Reviewed Explanations and Generated Facts
 sources: [SRC-a341f8c2a6a2c42cebd5d199b134ac105c13247829294c14a8fc9fcc63702ec0, SRC-9e0335a71c67a8c57e3d03c9fe6070503f73b89d92c0426cd40a6c5aad615d8e]
 
-The governance-intake and authority module READMEs SHALL retain one handwritten explanation and its confirmation commit. The existing projection service SHALL derive Commands, Data, Contracts and Files from usage descriptions, source unions, containing contracts and shallow leading file headers. It SHALL report the files changed since confirmation using the selected source snapshot, without counting regenerated sections or a confirmation-only edit as explanation changes. Header history MAY flag possibly stale prose by comparing Git blame at the confirmation with current snapshot bytes; missing history SHALL remain informational and MUST NOT become a new gate or a claim that prose was verified.
+Every engine module README SHALL retain one handwritten explanation and its confirmation commit. The existing projection service SHALL derive Commands, Data, Contracts and Files from CLI usage descriptions and the managed command catalog, source unions, containing contracts and shallow leading file headers. Literal union declarations SHALL retain their values when formatted with a leading union separator. It SHALL report the files changed since confirmation using the selected source snapshot, without counting regenerated sections or a confirmation-only edit as explanation changes. Header history MAY flag possibly stale prose by comparing Git blame at the confirmation with current snapshot bytes; missing history SHALL remain informational and MUST NOT become a new gate or a claim that prose was verified.
 
 #### Scenario: Reference sections derive from existing facts
 covers: #Requirement: Module References Combine Reviewed Explanations and Generated Facts
@@ -108,6 +116,14 @@ test: packages/workflow-engine/test/module-readme-projection.contract.test.ts#mo
 - **WHEN** a module reference is rendered
 - **THEN** all four reference sections are generated from their existing inputs
 - **AND** the handwritten explanation and confirmation remain intact
+
+#### Scenario: Every engine module has a generated reference region
+covers: #Requirement: Module References Combine Reviewed Explanations and Generated Facts
+test: packages/workflow-engine/test/module-readme-projection.contract.test.ts#every existing engine module can render its own README region without claiming transition authority
+
+- **WHEN** each engine module supplies its confirmed explanation
+- **THEN** the projection catalog renders that module's Commands, Data, Contracts and Files
+- **AND** readable output declarations do not gain privileged transition ownership
 
 #### Scenario: Change counts use the selected snapshot
 covers: #Requirement: Module References Combine Reviewed Explanations and Generated Facts

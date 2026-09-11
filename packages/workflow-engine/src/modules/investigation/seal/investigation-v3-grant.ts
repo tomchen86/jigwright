@@ -1,3 +1,10 @@
+/**
+ * Creates source-bound Grants for investigation blockers and stop
+ * transitions.
+ *
+ * Invariants:
+ * - A publication failure source may bind only a publication blocker.
+ */
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../../foundation/errors/errors.ts';

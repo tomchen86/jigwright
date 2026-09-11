@@ -1,4 +1,14 @@
-/** Private recovery-quarantine storage, immutable publication, and crash residue recovery. */
+/**
+ * Publishes immutable private quarantine records and reconciles interrupted
+ * publications.
+ *
+ * Invariants:
+ * - ensureImmutable is write-once: an already-present target must be
+ *   byte-canonically equal to the value being written.
+ * - reconcileTemporaries promotes a residue file only when its embedded
+ *   content digest matches its canonical bytes, otherwise it is
+ *   state-corrupt.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

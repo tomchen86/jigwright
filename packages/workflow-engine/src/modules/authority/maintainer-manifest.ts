@@ -1,3 +1,13 @@
+/**
+ * Builds and verifies exact patch manifests against the pinned trust base
+ * and observed worktree.
+ *
+ * Invariants:
+ * - Capability profiles are read only from the pinned trust-base commit's
+ *   workflow/maintainer-profiles.json, never the working tree.
+ * - readWorktreeEntry admits only a regular, non-symlink, non-executable
+ *   file (mode normalized to 100644).
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

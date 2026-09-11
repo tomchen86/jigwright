@@ -1,3 +1,10 @@
+/**
+ * Parses authority plan mutations and checks, applies or recovers their
+ * worktree effects.
+ *
+ * Invariants:
+ * - Mutation paths in an authority plan must be sorted and unique.
+ */
 // authority plan worktree; repository effects remain bound by the public module.
 import type {
   AuthorityPlanWorktreeBindings,

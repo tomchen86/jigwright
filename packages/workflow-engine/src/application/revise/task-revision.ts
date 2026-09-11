@@ -1,3 +1,11 @@
+/**
+ * Revises and resumes task planning while preserving implementation and
+ * session authority.
+ *
+ * Invariants:
+ * - Planning operations require the exact live revision lease and revising
+ *   session.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

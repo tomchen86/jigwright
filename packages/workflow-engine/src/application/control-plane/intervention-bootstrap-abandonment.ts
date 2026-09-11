@@ -1,3 +1,11 @@
+/**
+ * Persists and recovers abandonment of an intervention and its parent
+ * engine binding.
+ *
+ * Invariants:
+ * - Abandonment replay preserves the recorded grant digest, reason, and
+ *   timestamp.
+ */
 // intervention bootstrap abandonment; repository effects remain bound by the public module.
 import type {
   InterventionBootstrapAbandonmentBindings,

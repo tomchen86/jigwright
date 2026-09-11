@@ -1,3 +1,11 @@
+/**
+ * Commits an authorized session and coordinates its durable authority
+ * journal.
+ *
+ * Invariants:
+ * - Applied poststate must retain the verified commit and expected
+ *   candidate tree.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

@@ -1,3 +1,11 @@
+/**
+ * Observes ledger subjects and dependencies and decides whether recorded
+ * understanding remains usable.
+ *
+ * Invariants:
+ * - Unknown dependency state requires revalidation when the entry declares
+ *   dependencies.
+ */
 import type { LedgerEntry } from './semantic-ledger.ts';
 import {
   readImportDependencies,

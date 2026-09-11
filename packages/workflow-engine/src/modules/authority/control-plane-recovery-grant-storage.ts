@@ -1,3 +1,15 @@
+/**
+ * Reads and atomically replaces private recovery Grant records while
+ * reconciling interrupted writes.
+ *
+ * Invariants:
+ * - Every record directory and file must be a non-symlink,
+ *   current-user-owned, real-path-exact entry with private mode (0o700 for
+ *   directories).
+ * - Atomic replacement with an expected prior digest only proceeds when the
+ *   current record's recordDigest equals that expected digest, otherwise it
+ *   is treated as corrupt.
+ */
 import path from 'node:path';
 
 import { ExitCode } from '../../foundation/errors/errors.ts';

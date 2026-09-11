@@ -1,3 +1,10 @@
+/**
+ * Parses routing preparation, application and inspection commands.
+ *
+ * Invariants:
+ * - A --grant preparation retry is accepted only for a resume intent that
+ *   does not already contain a Grant.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

@@ -1,3 +1,10 @@
+/**
+ * Connects the fixed macOS Human Gate process to approval decisions and
+ * authentication proof verification.
+ *
+ * Invariants:
+ * - Runtime inspection requires a bounded, non-symlink executable file.
+ */
 import crypto from 'node:crypto';
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import fs from 'node:fs';

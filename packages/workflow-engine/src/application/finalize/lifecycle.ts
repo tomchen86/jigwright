@@ -1,3 +1,10 @@
+/**
+ * Coordinates task finalization, completion, rollback, finish, and commit.
+ *
+ * Invariants:
+ * - Protected apply recovery authorization must bind the exact requested
+ *   transition.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

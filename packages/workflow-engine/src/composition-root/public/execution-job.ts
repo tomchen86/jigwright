@@ -1,3 +1,11 @@
+/**
+ * Exposes execution Job inspection and watching through the public engine
+ * boundary.
+ *
+ * Invariants:
+ * - Public wrappers forward identifiers and watch options directly to the
+ *   runtime implementation.
+ */
 import {
   inspectExecutionJob as inspectExecutionJobInternal,
   watchExecutionJob as watchExecutionJobInternal,

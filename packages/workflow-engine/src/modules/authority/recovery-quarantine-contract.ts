@@ -1,4 +1,14 @@
-/** Canonical recovery-quarantine records, exact value validation, and dependency contracts. */
+/**
+ * Encodes quarantine Grants, markers, receipts and record chains for
+ * recovery state.
+ *
+ * Invariants:
+ * - A quarantine grant's grantId is content-addressed as
+ *   quarantine-<enter|release>-<digest of the canonical id-less payload>
+ *   and is re-derived and checked on normalize.
+ * - A quarantine grant's lifetime must be positive and at most
+ *   RECOVERY_QUARANTINE_GRANT_TTL_MS (five minutes).
+ */
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

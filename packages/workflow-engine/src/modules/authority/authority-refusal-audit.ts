@@ -1,3 +1,14 @@
+/**
+ * Records durable authority refusals while preserving the original
+ * operation error.
+ *
+ * Invariants:
+ * - The refusal idempotency key is derived from an identity object that
+ *   omits wall-clock time, so a retried audit reuses the first durable
+ *   occurrence's timestamp instead of a fresh clock read.
+ * - withAuthorityRefusalAudit always rethrows the underlying error and
+ *   skips auditing errors whose code starts with AUTHORITY_AUDIT_.
+ */
 import crypto from 'node:crypto';
 
 import {

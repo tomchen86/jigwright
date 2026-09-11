@@ -1,4 +1,10 @@
-/** PlanReview disposition records and exact challenge-closure authorization. Evidence construction and signature verification remain bound by the review facade. */
+/**
+ * Constructs and validates PlanReview dispositions and challenge-closure
+ * authorization.
+ *
+ * Invariants:
+ * - A PlanReview disposition set must not be empty.
+ */
 import { isRecord, hasExactKeys, isDigest, sha256, deepFreeze, } from "./plan-review-values.js";
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { assertAuthorizedReviewChallengeClosure } from "./review-challenge.js";

@@ -1,4 +1,15 @@
-/** Canonical recovery-trust-root-restore records, exact value validation, and dependency contracts. */
+/**
+ * Encodes trust-root restoration records and checks replacement
+ * generations, grant windows and pointer state.
+ *
+ * Invariants:
+ * - A restore grant's replacementGeneration must be exactly
+ *   expectedGeneration + 1.
+ * - assertPointerCas admits the restore only when the active pointer's
+ *   generation and digest equal the grant's expectedGeneration and
+ *   expectedActivePointerDigest (generation 0 / null when no pointer is
+ *   active).
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { ExitCode } from "../../foundation/errors/errors.js";
 import { normalizeRoot } from "./recovery-operational-trust-root.js";

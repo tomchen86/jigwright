@@ -1,3 +1,10 @@
+/**
+ * Resolves role independence from central policy, overrides, and actual
+ * placements.
+ *
+ * Invariants:
+ * - Central configuration must describe every supported role pair.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

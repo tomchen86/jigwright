@@ -1,3 +1,11 @@
+/**
+ * Reports configured provider capabilities, bounded preflight results and
+ * unverified isolation controls.
+ *
+ * Invariants:
+ * - The diagnostic reports launch authorization as denied regardless of
+ *   provider availability.
+ */
 import os from 'node:os';
 
 import {

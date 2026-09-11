@@ -1,3 +1,11 @@
+/**
+ * Collects execution, governance and retention observations for engine
+ * metrics computation.
+ *
+ * Invariants:
+ * - A supersede reason is accepted only from a resolution node bound to
+ *   that workflow and a supersede decision.
+ */
 import { createEngineMetricsComputation } from './engine-metrics-computation.ts';
 import path from 'node:path';
 

@@ -1,3 +1,11 @@
+/**
+ * Parses provider probe and live-test commands and maps configuration
+ * errors to workflow failures.
+ *
+ * Invariants:
+ * - Provider tests require an explicit --live argument and an explicit
+ *   configuration path.
+ */
 import { AgentProviderConfigError } from '@jigwright/agent-runtime';
 import { ProviderExecutableObservationError } from '@jigwright/agent-runtime/provider-executable-identity';
 

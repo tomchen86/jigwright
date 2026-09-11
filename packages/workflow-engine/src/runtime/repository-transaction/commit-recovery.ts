@@ -1,3 +1,11 @@
+/**
+ * Resumes a pending managed commit and finalizes its session and isolation
+ * leases.
+ *
+ * Invariants:
+ * - Recovery accepts HEAD only at the recorded baseline or the
+ *   already-created managed commit.
+ */
 import path from 'node:path';
 
 import { assertCommitObject } from './commit-object-validation.ts';

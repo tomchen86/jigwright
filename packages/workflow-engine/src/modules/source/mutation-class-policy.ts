@@ -1,3 +1,10 @@
+/**
+ * Canonicalizes mutation-class rules and classifies exact repository path
+ * identities.
+ *
+ * Invariants:
+ * - A path cannot be claimed by conflicting mutation classes.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

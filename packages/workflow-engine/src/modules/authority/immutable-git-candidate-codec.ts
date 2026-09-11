@@ -1,4 +1,13 @@
-/** Pure immutable Git candidate decoding and canonical object, patch, policy and check binding validation. */
+/**
+ * Decodes immutable Git candidates and validates their canonical patch,
+ * policy and check bindings.
+ *
+ * Invariants:
+ * - The candidate identity is recomputed from the canonical body and must
+ *   equal the supplied identity.
+ * - Patch-manifest files must be strictly ascending by canonical UTF-8 path
+ *   and unique case-insensitively.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

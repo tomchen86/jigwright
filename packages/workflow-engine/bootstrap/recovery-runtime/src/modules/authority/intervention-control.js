@@ -1,3 +1,14 @@
+/**
+ * Models minimal updater transitions, recovery decisions and permitted
+ * workflow replacement reasons.
+ *
+ * Invariants:
+ * - The minimal updater advances only along `MINIMAL_UPDATER_TRANSITIONS`;
+ *   an event unmapped from the current state is rejected.
+ * - `validateWorkflowSupersedeReason` refuses execution-failure reasons,
+ *   accepting only the explicit replacement reasons in
+ *   `WORKFLOW_SUPERSEDE_REASONS`.
+ */
 import { freezeDeep, canonicalDigest, assertDigest, assertNonEmpty, assertMonotonicTimestamp, } from "./intervention-control-values.js";
 import { workflowError, ExitCode } from "../../foundation/errors/errors.js";
 export { HARNESS_MAINTENANCE_SIGNATURE_NAMESPACE, CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE, CONTROL_PLANE_SIGNATURE_NAMESPACE_V2, CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V2, CONTROL_PLANE_SIGNATURE_NAMESPACE_V3, CONTROL_PLANE_REVIEW_SIGNATURE_NAMESPACE_V3, } from "./intervention-control-values.js";

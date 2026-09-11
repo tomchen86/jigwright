@@ -1,3 +1,11 @@
+/**
+ * Inspects and resumes task strategies across mechanical and TDD execution
+ * states.
+ *
+ * Invariants:
+ * - Mechanical and other non-TDD tasks cannot retain a TDD strategy
+ *   transaction.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

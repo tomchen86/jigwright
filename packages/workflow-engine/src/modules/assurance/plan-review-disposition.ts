@@ -1,4 +1,10 @@
-/** PlanReview disposition records and exact challenge-closure authorization. Evidence construction and signature verification remain bound by the review facade. */
+/**
+ * Constructs and validates PlanReview dispositions and challenge-closure
+ * authorization.
+ *
+ * Invariants:
+ * - A PlanReview disposition set must not be empty.
+ */
 import {
   isRecord,
   hasExactKeys,

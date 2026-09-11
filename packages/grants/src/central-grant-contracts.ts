@@ -1,8 +1,10 @@
 /**
- * Public, implementation-neutral Central Grant v1 DTO and port surface.
- * These contracts do not create authority: trusted composition supplies the
- * policy, transition registry, Human Gate, proof modules, storage, and exact
- * package-integrity binding.
+ * Defines public Central Grant contracts and validates canonical challenge,
+ * approval and record documents.
+ *
+ * Invariants:
+ * - Record bytes must exactly equal canonical JSON plus a newline, and
+ *   terminal outcomes must agree with record state.
  */
 
 import crypto from 'node:crypto';

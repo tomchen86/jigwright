@@ -1,3 +1,10 @@
+/**
+ * Encodes and validates the exact planning provider selected for a change.
+ *
+ * Invariants:
+ * - Parsed binding bytes must exactly equal the canonical rendered
+ *   document.
+ */
 import crypto from 'node:crypto';
 
 import { isRecord } from './contract-values.ts';

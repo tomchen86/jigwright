@@ -1,3 +1,14 @@
+/**
+ * Prepares and issues signed collaboration Grants and direct human review
+ * attestations.
+ *
+ * Invariants:
+ * - The requested baseline must be an ancestor of the current HEAD:
+ *   issuance rejects when the merge-base of baseline and HEAD is not the
+ *   baseline commit.
+ * - Issuance refuses when the grantId already has any local available,
+ *   reserved, or terminal state.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

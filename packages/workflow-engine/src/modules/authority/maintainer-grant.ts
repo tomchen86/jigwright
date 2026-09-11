@@ -1,3 +1,14 @@
+/**
+ * Verifies human-resolution Grants and binds their audit tags to the
+ * maintainer trust base.
+ *
+ * Invariants:
+ * - readHumanResolutionAuditTag returns null for any ref not under the
+ *   policy's resolution- prefix rather than treating it as a resolution
+ *   tag.
+ * - createMaintainerAuditTag writes the tag message through a 0o700
+ *   temporary directory that it always removes in finally.
+ */
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';

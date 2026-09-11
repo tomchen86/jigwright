@@ -1,3 +1,11 @@
+/**
+ * Validates repository changes and documents against worktree or exact
+ * committed sources.
+ *
+ * Invariants:
+ * - Committed validation requires checkout configuration to match the
+ *   committed bytes.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { TextDecoder } from 'node:util';

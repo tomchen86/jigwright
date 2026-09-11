@@ -1,3 +1,11 @@
+/**
+ * Loads TaskDiffReview JSON and selects the appropriate typed review input
+ * parser.
+ *
+ * Invariants:
+ * - Only the three recognized envelope kinds select provider response,
+ *   initial external review or external closure routes.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { workflowError, ExitCode } from '../../foundation/errors/errors.ts';

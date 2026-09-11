@@ -1,3 +1,11 @@
+/**
+ * Admits caller-supplied implementations and reserves their correction
+ * rounds.
+ *
+ * Invariants:
+ * - Admitted implementation validation must retain the submitted patch and
+ *   source tree.
+ */
 import {
   type TaskStrategyImplementationSubject,
   assertTaskStrategyImplementationOutput,

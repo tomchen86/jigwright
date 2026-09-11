@@ -1,3 +1,11 @@
+/**
+ * Validates implementation patch output and optionally binds it to a sealed
+ * session and source tree.
+ *
+ * Invariants:
+ * - Accepted patch bytes are nonempty, bounded, canonically encoded and
+ *   consistent with their declared digest.
+ */
 import crypto from 'node:crypto';
 
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';

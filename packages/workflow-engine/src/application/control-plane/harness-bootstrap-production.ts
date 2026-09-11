@@ -1,3 +1,11 @@
+/**
+ * Composes bootstrap recovery signers, signature verification and audit
+ * dependencies.
+ *
+ * Invariants:
+ * - Trust-root signature checks require the expected namespace, signer
+ *   identity and fingerprint.
+ */
 import type {
   RecoveryAuthorityDescriptorV1,
   RecoveryAuthorityExpectations,

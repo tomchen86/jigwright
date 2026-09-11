@@ -1,4 +1,13 @@
-/** Pure role-independence owner, parameter, degradation and observation contracts; Grant transition execution and activation authentication remain with their owner. */
+/**
+ * Validates and encodes role-independence continuation owners, parameters
+ * and observations.
+ *
+ * Invariants:
+ * - assertRoleIndependenceContinuationParameters rejects unless
+ *   targetDigest equals ownerTargetDigest(owner) for the owner variant.
+ * - An observation is rejected unless parametersDigest equals
+ *   roleIndependenceContinuationParametersDigest(parameters).
+ */
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

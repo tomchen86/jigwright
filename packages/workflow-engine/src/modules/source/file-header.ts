@@ -2,7 +2,7 @@
  * Reads a file's responsibility and invariant bullets for document projections.
  *
  * Invariants:
- * - Only the leading documentation comment supplies file-level explanations.
+ * - Only the leading documentation comment, after an optional shebang, supplies file-level explanations.
  * - Invariant order matches one-based spec covers references; missing prose is not a gate.
  */
 
@@ -14,9 +14,11 @@ export type FileHeader = Readonly<{
 }>;
 
 export function extractFileHeader(source: string): FileHeader | null {
-  const match = /^\uFEFF?\/\*\*([\s\S]*?)\*\//.exec(source);
+  const match = /^(\uFEFF?(?:#![^\r\n]*\r?\n)?)\/\*\*([\s\S]*?)\*\//.exec(
+    source,
+  );
   if (match === null) return null;
-  const lines = match[1]!
+  const lines = match[2]!
     .split(/\r?\n/)
     .map((line) => line.replace(/^\s*\* ?/, '').trim());
   const responsibilityLines: string[] = [];
@@ -41,7 +43,7 @@ export function extractFileHeader(source: string): FileHeader | null {
   return Object.freeze({
     responsibility: responsibilityLines.join(' '),
     invariants: Object.freeze(invariants),
-    startLine: 1,
+    startLine: match[1]!.split('\n').length,
     endLine: match[0].split('\n').length,
   });
 }

@@ -1,3 +1,10 @@
+/**
+ * Enforces review challenge closure authority and identifies targets
+ * requiring another review.
+ *
+ * Invariants:
+ * - The plan author cannot close a challenge raised against their own plan.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 /**

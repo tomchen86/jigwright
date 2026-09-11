@@ -1,3 +1,10 @@
+/**
+ * Adapts shared canonical JSON encoding to workflow error conventions.
+ *
+ * Invariants:
+ * - Only canonical JSON errors are remapped; unrelated errors propagate
+ *   unchanged.
+ */
 import {
   CanonicalJsonError,
   canonicalJson as encodeCanonicalJson,

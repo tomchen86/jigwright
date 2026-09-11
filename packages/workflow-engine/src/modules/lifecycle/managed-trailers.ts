@@ -1,6 +1,9 @@
 /**
- * Compatibility surface for the mechanically extracted neutral Git trailer
- * grammar. The public core module is the sole parser and error authority.
+ * Exposes the shared managed commit trailer grammar to lifecycle callers.
+ *
+ * Invariants:
+ * - This facade re-exports its defining modules without local wrappers or
+ *   duplicate implementations.
  */
 export {
   hasManagedTrailerLine,

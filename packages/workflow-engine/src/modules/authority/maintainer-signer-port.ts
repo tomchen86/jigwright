@@ -1,7 +1,10 @@
 /**
- * Authority-owned signing contract. Concrete key discovery and SSH execution
- * remain adapter concerns; authority and application code depend only on this
- * port.
+ * Declares the human-presence, identity, signing and verification port used
+ * by maintainer operations.
+ *
+ * Invariants:
+ * - The port declares four methods; signing and verification accept an
+ *   optional signature namespace.
  */
 export type MaintainerSignerProvider = {
   assertHumanPresent(): void;

@@ -1,3 +1,10 @@
+/**
+ * Persists resumable preapproval checks and binds their completion
+ * attestation.
+ *
+ * Invariants:
+ * - Incomplete check evidence outside the freshness window cannot resume.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,11 @@
+/**
+ * Verifies the package-manager lock and supply-chain configuration for
+ * pinned OpenSpec.
+ *
+ * Invariants:
+ * - Package-manager selection must resolve to one supported manager with
+ *   its required lockfile.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 

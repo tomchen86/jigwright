@@ -1,3 +1,11 @@
+/**
+ * Defines and requests authorization to continue a parked or manually
+ * blocked change.
+ *
+ * Invariants:
+ * - Continuation remains bound to the routing Source digest observed when
+ *   authorization was requested.
+ */
 import type { CentralGrantRequestInputV1 } from '@jigwright/core/central-grant-port';
 
 import { isRecord } from '../../foundation/canonical-json/contract-values.ts';

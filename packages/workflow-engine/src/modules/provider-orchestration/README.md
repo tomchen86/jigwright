@@ -8,11 +8,11 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:7d5cf3e824c7b8b2e765fd30250609d0446184f2a6a7000d40a77c2a5cf2a915 -->
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:ecb94a68a49a7c89edd2bb2aee3e88987fdf53ef9c2c4daf11f8bd97051824b9 -->
 
 <!-- prettier-ignore-start -->
 
-1 file changed in this module since confirmation.
+30 files changed in this module since confirmation.
 
 ## Commands
 
@@ -33,8 +33,15 @@ Keep installed provider profiles on the host so repositories select roles withou
 | AgentRoleIndependenceRequirement | provider-independent, session-independent, none | [agent-role-plan.ts](agent-role-plan.ts) |
 | AgentCustomWrapperPolicy | forbidden, allowed-non-protected, allowed | [agent-role-plan.ts](agent-role-plan.ts) |
 | AgentRuntimeHostExecutionPhaseV1 | assignment-admitted, probe-attested, native-terminal | [agent-runtime-host-execution-binding.ts](agent-runtime-host-execution-binding.ts) |
+| AgentRuntimeProcessTermination | exited, timed-out, cancelled, output-limit, spawn-error, protocol-error | [agent-runtime-port.ts](agent-runtime-port.ts) |
+| ChangeRoleAssignmentDiagnosticReasonV1 | ADAPTIVE_CALLER_UNAVAILABLE, CALLER_SESSION_NOT_ADOPTABLE, CALLER_SESSION_UNAVAILABLE, CUSTOM_WRAPPER_FORBIDDEN, DATA_AUTHORIZATION_DENIED, FRESH_SESSION_UNSUPPORTED, LOGICAL_PROVIDER_UNAVAILABLE, PROFILE_DISABLED, PROVIDER_BOUNDARY_CONFLICT, PROVIDER_FAMILY_NOT_ALLOWED, RESUME_UNSUPPORTED, ROLE_CAPABILITY_UNSUPPORTED | [change-role-assignment.ts](change-role-assignment.ts) |
+| RetryMode | same-input, execution-policy-change, repair, strategy-change, new-context, none | [execution-record-types.ts](execution-record-types.ts) |
 | AttemptRetention | active, debug, pinned | [execution-record-types.ts](execution-record-types.ts) |
+| FailureSource | provider, network, worker, lease, tool, validator, environment, state, effect, policy | [execution-record-types.ts](execution-record-types.ts) |
+| ExecutionFailureKind | provider-timeout, network, rate-limit, provider-process-crash, worker-crash, lease-expiry, temporary-file-lock, provider-capacity, stdout-truncated, process-nonzero, json-parse, schema-mismatch, missing-required-field, citation-out-of-range, probe-transient, needs-user-decision, state-corruption, unknown-side-effect | [execution-record-types.ts](execution-record-types.ts) |
 | ProviderNativeSessionDispositionV1 | usable, rejected, error, cancelled, timeout, indeterminate | [provider-native-session.ts](provider-native-session.ts) |
+| ProviderNativeSessionErrorCode | PROVIDER_NATIVE_SESSION_INVALID, PROVIDER_NATIVE_SESSION_ASSIGNMENT_AUTHORITY_REQUIRED, PROVIDER_NATIVE_SESSION_CALLER_EXISTING_UNSUPPORTED, PROVIDER_NATIVE_SESSION_PROTOCOL_UNSUPPORTED, PROVIDER_NATIVE_SESSION_CAPABILITY_UNSUPPORTED | [provider-native-session.ts](provider-native-session.ts) |
+| IndependenceDimension | provider-independent, principal-independent, session-independent, none | [role-scheduler.ts](role-scheduler.ts) |
 | OrdinaryRole | plan-reviewer | [role-scheduler.ts](role-scheduler.ts) |
 | TaskDiffReviewRole | task-diff-reviewer | [role-scheduler.ts](role-scheduler.ts) |
 | TaskImplementerRole | task-implementer | [role-scheduler.ts](role-scheduler.ts) |
@@ -56,35 +63,35 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [actor-identity.ts](actor-identity.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-role-plan.ts](agent-role-plan.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-runtime-assignment-binding.ts](agent-runtime-assignment-binding.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-runtime-durable-authority.ts](agent-runtime-durable-authority.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-runtime-host-execution-binding.ts](agent-runtime-host-execution-binding.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-runtime-port.ts](agent-runtime-port.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [agent-runtime-protocol.ts](agent-runtime-protocol.ts) | Compatibility facade for the public agent-runtime protocol package. | 0 | Possibly stale |
-| [blind-survey-output.ts](blind-survey-output.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [central-role-provider-default.ts](central-role-provider-default.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [change-role-assignment-grant.ts](change-role-assignment-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [change-role-assignment-record.ts](change-role-assignment-record.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [change-role-assignment.ts](change-role-assignment.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [data-authorization-policy-port.ts](data-authorization-policy-port.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [execution-attempts.ts](execution-attempts.ts) | Pure Job and Attempt state transitions, including lease fencing and result acceptance. | 0 | No newer code observed |
-| [execution-core.ts](execution-core.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [execution-record-types.ts](execution-record-types.ts) | Execution Job, Attempt, failure, and retry record contracts. | 0 | No newer code observed |
-| [execution-records.ts](execution-records.ts) | Execution record codecs and canonical failure descriptors. | 0 | No newer code observed |
-| [execution-retry.ts](execution-retry.ts) | Retry eligibility, grant requests, and failure-state decisions. | 0 | No newer code observed |
-| [execution-values.ts](execution-values.ts) | Shared execution record value checks and canonical digest helpers. | 0 | No newer code observed |
-| [provider-contracts.ts](provider-contracts.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [provider-native-session.ts](provider-native-session.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [provider-registry.ts](provider-registry.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [provider-retry-decision.ts](provider-retry-decision.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [provider-runtime-evidence.ts](provider-runtime-evidence.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [role-result-admission.ts](role-result-admission.ts) | Admitted role-result validation and live/consumed replay admission. | 0 | No newer code observed |
-| [role-scheduler.ts](role-scheduler.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [role-topology-resolution.ts](role-topology-resolution.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [task-strategy-implementation-output.ts](task-strategy-implementation-output.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [task-strategy-provider-contract.ts](task-strategy-provider-contract.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [actor-identity.ts](actor-identity.ts) | Resolves provider identity from explicit actor selection and recognized runtime hints. | 1 | History unavailable |
+| [agent-role-plan.ts](agent-role-plan.ts) | Defines canonical agent role plans and their pinned snapshots. | 1 | History unavailable |
+| [agent-runtime-assignment-binding.ts](agent-runtime-assignment-binding.ts) | Creates and validates the public binding of a durable role assignment to its provider profile and input manifests. | 1 | History unavailable |
+| [agent-runtime-durable-authority.ts](agent-runtime-durable-authority.ts) | Validates durable assignment and native session references for AgentRuntime execution. | 1 | History unavailable |
+| [agent-runtime-host-execution-binding.ts](agent-runtime-host-execution-binding.ts) | Binds host execution phases to executable, probe, and native session evidence. | 1 | History unavailable |
+| [agent-runtime-port.ts](agent-runtime-port.ts) | Declares governed provider-worker inputs, asynchronous controls and terminal evidence. | 1 | History unavailable |
+| [agent-runtime-protocol.ts](agent-runtime-protocol.ts) | Validates public provider protocol receipts against engine invocation and native-session bindings. | 1 | Header changed since confirmation |
+| [blind-survey-output.ts](blind-survey-output.ts) | Defines and validates the provider output schema for an invocation-bound blind survey. | 1 | History unavailable |
+| [central-role-provider-default.ts](central-role-provider-default.ts) | Defines central provider and session partitions, selection rules, and pinned defaults. | 1 | History unavailable |
+| [change-role-assignment-grant.ts](change-role-assignment-grant.ts) | Creates Central Grant challenges and activation bindings for role assignments. | 1 | History unavailable |
+| [change-role-assignment-record.ts](change-role-assignment-record.ts) | Materializes durable role assignment records, session slots, and Grant requirements. | 1 | History unavailable |
+| [change-role-assignment.ts](change-role-assignment.ts) | Resolves providers and session topology from central rules, overrides, and authorization. | 1 | History unavailable |
+| [data-authorization-policy-port.ts](data-authorization-policy-port.ts) | Exposes shared current data authorization policy types to provider orchestration. | 1 | History unavailable |
+| [execution-attempts.ts](execution-attempts.ts) | Creates execution jobs and attempts and applies lease and result transitions. | 1 | Header changed since confirmation |
+| [execution-core.ts](execution-core.ts) | Projects provider requests and invocation records into execution job and attempt state. | 1 | History unavailable |
+| [execution-record-types.ts](execution-record-types.ts) | Defines engine Job, Attempt, failure and retry records around the shared execution contracts. | 1 | Header changed since confirmation |
+| [execution-records.ts](execution-records.ts) | Validates execution records and constructs canonical failure descriptors. | 1 | Header changed since confirmation |
+| [execution-retry.ts](execution-retry.ts) | Decides retry eligibility, budget grants, and projected execution failure state. | 1 | Header changed since confirmation |
+| [execution-values.ts](execution-values.ts) | Validates execution value shapes and canonical record encodings. | 1 | Header changed since confirmation |
+| [provider-contracts.ts](provider-contracts.ts) | Constructs provider requests and validates bound process outputs and failure results. | 1 | History unavailable |
+| [provider-native-session.ts](provider-native-session.ts) | Defines native provider session scopes, claims, completions, and continuation handles. | 1 | History unavailable |
+| [provider-registry.ts](provider-registry.ts) | Exposes reviewed built-in provider families and checks requested capability profiles. | 1 | History unavailable |
+| [provider-retry-decision.ts](provider-retry-decision.ts) | Authorizes provider retries from durable attempt history and execution budget receipts. | 1 | History unavailable |
+| [provider-runtime-evidence.ts](provider-runtime-evidence.ts) | Validates provider process results, runtime receipts, and execution observation bindings. | 1 | History unavailable |
+| [role-result-admission.ts](role-result-admission.ts) | Admits role results and replays their ordinary or granted participant authority. | 1 | Header changed since confirmation |
+| [role-scheduler.ts](role-scheduler.ts) | Schedules independent provider roles and validates granted role exceptions. | 1 | History unavailable |
+| [role-topology-resolution.ts](role-topology-resolution.ts) | Resolves role independence from central policy, overrides, and actual placements. | 1 | History unavailable |
+| [task-strategy-implementation-output.ts](task-strategy-implementation-output.ts) | Validates implementation patch output and optionally binds it to a sealed session and source tree. | 1 | History unavailable |
+| [task-strategy-provider-contract.ts](task-strategy-provider-contract.ts) | Defines implementation and correction subjects, provider manifests, and output contracts. | 1 | History unavailable |
 
 <!-- prettier-ignore-end -->
 

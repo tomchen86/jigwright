@@ -1,3 +1,11 @@
+/**
+ * Dispatches boundary inventory, conformance vector and authority-remap
+ * commands.
+ *
+ * Invariants:
+ * - Remap input must be a bounded plain JSON file, and source inventory
+ *   loads its TypeScript parser only when requested.
+ */
 import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';

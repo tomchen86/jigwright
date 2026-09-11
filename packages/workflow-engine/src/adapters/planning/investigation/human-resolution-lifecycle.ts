@@ -1,5 +1,10 @@
-/** Grant Core human-resolution execution, publication and exact journal recovery.
- * Runtime bindings stay at the existing investigation adapter boundary.
+/**
+ * Executes and recovers authorized human resolutions through their durable
+ * publication journal.
+ *
+ * Invariants:
+ * - Execution requires the same repository HEAD and tree observed by the
+ *   human authorization.
  */
 import type {
   HumanResolutionRuntimeBindings,

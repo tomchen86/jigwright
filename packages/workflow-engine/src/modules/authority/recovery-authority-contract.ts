@@ -1,4 +1,13 @@
-/** Canonical recovery-authority records, exact value validation, and dependency contracts. */
+/**
+ * Validates recovery authority descriptors against their canonical payload
+ * and external expectations.
+ *
+ * Invariants:
+ * - A descriptor is accepted only when its descriptorDigest equals the
+ *   sha256 of its canonical payload.
+ * - assertRecoveryAuthorityDomain rejects any namespace that is not a known
+ *   recovery domain or not listed in the descriptor's allowedDomains.
+ */
 import crypto from 'node:crypto';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';

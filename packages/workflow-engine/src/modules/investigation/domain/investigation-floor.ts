@@ -1,3 +1,10 @@
+/**
+ * Derives investigation floors and path facts from pinned repository
+ * changes.
+ *
+ * Invariants:
+ * - A supplied floor must equal its recomputed canonical derivation.
+ */
 import path from 'node:path';
 
 import { canonicalJson } from '../../../foundation/canonical-json/canonical-json.ts';

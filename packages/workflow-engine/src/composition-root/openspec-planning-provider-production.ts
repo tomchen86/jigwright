@@ -1,3 +1,11 @@
+/**
+ * Composes the selected OpenSpec planning provider with installation
+ * evidence and repository schema policy.
+ *
+ * Invariants:
+ * - Composition rejects consumers that did not select OpenSpec and maps
+ *   only known adapter errors.
+ */
 import { createOpenSpecAdapter } from './openspec-adapter-production.ts';
 import {
   createOpenSpecPlanningProviderPortV1,

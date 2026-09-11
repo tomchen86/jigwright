@@ -1,3 +1,10 @@
+/**
+ * Composes production Grant coordinators and routes lifecycle continuation
+ * requests.
+ *
+ * Invariants:
+ * - A Grant challenge may claim at most one parent continuation.
+ */
 import type { CentralGrantRequestPortV1 } from '@jigwright/core/central-grant-port';
 import { isRecord } from '../foundation/canonical-json/contract-values.ts';
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';

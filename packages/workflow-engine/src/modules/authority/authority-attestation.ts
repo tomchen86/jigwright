@@ -1,3 +1,13 @@
+/**
+ * Encodes authority attestations and verifies the original and protected-
+ * main commit pair.
+ *
+ * Invariants:
+ * - Envelope parsing is byte-canonical: any input whose canonical
+ *   re-serialization differs from the raw bytes is rejected.
+ * - An attested pair must relate two distinct commits with identical result
+ *   trees (and identical parent trees and byte-identical messages).
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
   ManagedTrailerSyntaxError,

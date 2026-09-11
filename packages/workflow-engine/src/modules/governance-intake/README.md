@@ -8,11 +8,11 @@ Keep original requirement wording separate from the working inbox so corrections
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:d88d4a68f7f84345f56ae79af7f81efa86878d9faab24f071b06a01f857d17d1 -->
+<!-- jigwright:region id=documents.governance-intake-readme v=1 digest=sha256:2e3c427739d1d42fd0cabc2336c26617882b70fa12985572c4dcd9ece12defd2 -->
 
 <!-- prettier-ignore-start -->
 
-4 files changed in this module since confirmation.
+12 files changed in this module since confirmation.
 
 ## Commands
 
@@ -69,21 +69,21 @@ Header history compares Git blame at the explanation confirmation with this sour
 
 | File | Responsibility | Invariants | Header history |
 | --- | --- | ---: | --- |
-| [governance-finding-ref.ts](governance-finding-ref.ts) | Canonical Finding record paths and the persistence boundary used by intake. | 0 | Header changed since confirmation |
+| [governance-finding-ref.ts](governance-finding-ref.ts) | Defines canonical Finding paths and the dedicated-ref persistence contract. | 1 | Header changed since confirmation |
 | [governance-findings.ts](governance-findings.ts) | Capture exact Finding observations and resolve their append-only dispositions. | 3 | Possibly stale |
-| [governance-intake-storage.ts](governance-intake-storage.ts) | Create-only canonical publication and stable file reads shared by Source and Finding ledgers. | 0 | No newer code observed |
-| [governance-intake.ts](governance-intake.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [intake-policy.ts](intake-policy.ts) | Shared by intake routing and generated agent guidance. | 0 | No newer code observed |
-| [intake-summary.ts](intake-summary.ts) | No leading responsibility comment. | 0 | History unavailable |
+| [governance-intake-storage.ts](governance-intake-storage.ts) | Publishes canonical governance intake records and reads them with file identity checks. | 1 | Header changed since confirmation |
+| [governance-intake.ts](governance-intake.ts) | Captures and reads immutable requirement Sources and composes development Finding operations. | 1 | History unavailable |
+| [intake-policy.ts](intake-policy.ts) | Defines intake kinds and the destination of deferred observations. | 1 | Header changed since confirmation |
+| [intake-summary.ts](intake-summary.ts) | Aggregates inbox, pending Finding and backlog counts through supplied readers. | 1 | History unavailable |
 | [source-aliases.ts](source-aliases.ts) | Resolve named owner requirements to their canonical Source records. | 1 | Possibly stale |
-| [work-registry-grant.ts](work-registry-grant.ts) | No leading responsibility comment. | 0 | History unavailable |
-| [work-registry-projections.ts](work-registry-projections.ts) | Derived Work Registry projections, rendering, and drift validation. | 0 | Possibly stale |
-| [work-registry-promotion-preparation.ts](work-registry-promotion-preparation.ts) | Promotion survey and exact preparation bindings, before the durable promotion transaction. | 0 | No newer code observed |
+| [work-registry-grant.ts](work-registry-grant.ts) | Creates and validates protected Work Registry review and promotion Grant transitions. | 1 | History unavailable |
+| [work-registry-projections.ts](work-registry-projections.ts) | Renders Work Registry backlog and history views and detects projection drift. | 1 | Header changed since confirmation |
+| [work-registry-promotion-preparation.ts](work-registry-promotion-preparation.ts) | Prepares promotion surveys and exact change bindings before durable promotion. | 1 | Header changed since confirmation |
 | [work-registry-promotion-transaction.ts](work-registry-promotion-transaction.ts) | Commit and recover paired Work Item/origin updates under the registry lock. | 3 | No newer code observed |
-| [work-registry-queries.ts](work-registry-queries.ts) | Read-only Work Registry discovery, provenance tracing, inventory, and canonical relationship validation. | 0 | No newer code observed |
-| [work-registry-record.ts](work-registry-record.ts) | Pure canonical Work Item and change-origin record validation shared by the registry and promotion journal. | 0 | Possibly stale |
+| [work-registry-queries.ts](work-registry-queries.ts) | Discovers Work Items, traces provenance, and validates registry relationships. | 1 | Header changed since confirmation |
+| [work-registry-record.ts](work-registry-record.ts) | Parses canonical Work Items, lifecycle records, and change origins. | 1 | Header changed since confirmation |
 | [work-registry-source-update.ts](work-registry-source-update.ts) | Project a Source attachment or correction onto a Work Item and its origin. | 3 | No newer code observed |
-| [work-registry-storage.ts](work-registry-storage.ts) | Stable canonical Work Item reads, path discovery, and create/replace file publication. | 0 | No newer code observed |
+| [work-registry-storage.ts](work-registry-storage.ts) | Reads canonical Work Items, discovers their paths and publishes record replacements. | 1 | Header changed since confirmation |
 | [work-registry.ts](work-registry.ts) | Maintain canonical Work Items, reviewed transitions and change provenance. | 3 | No newer code observed |
 
 <!-- prettier-ignore-end -->

@@ -1,3 +1,11 @@
+/**
+ * Binds role-context-sharing Grant lifecycle operations to production
+ * storage.
+ *
+ * Invariants:
+ * - Reserve and consume forward the caller lock assertion to their exact
+ *   storage operation.
+ */
 import type { RoleContextSharingGrantLifecyclePortV1 } from '../modules/authority/role-context-sharing-grant-lifecycle-port.ts';
 import {
   consumeOrReadExactRoleContextSharingGrantUnderLifecycleLock,

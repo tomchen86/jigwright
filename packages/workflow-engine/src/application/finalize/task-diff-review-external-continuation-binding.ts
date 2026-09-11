@@ -1,3 +1,11 @@
+/**
+ * Authenticates external review continuations and recovers their terminal
+ * assurance.
+ *
+ * Invariants:
+ * - Terminal external assurance requires exactly one matching continuation
+ *   binding.
+ */
 // Authenticate external continuation bindings and recover terminal assurance.
 import {
   assertTaskDiffReviewChallengeResponseCurrent,

@@ -1,3 +1,11 @@
+/**
+ * Runs host-wrapper provider turns and publishes AgentRuntime protocol
+ * completion.
+ *
+ * Invariants:
+ * - Resume requires an advertised resumable-session capability and resume
+ *   arguments.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

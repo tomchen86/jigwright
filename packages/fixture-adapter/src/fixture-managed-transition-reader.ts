@@ -1,3 +1,10 @@
+/**
+ * Extracts managed transition observations from a fixture commit log.
+ *
+ * Invariants:
+ * - Unmanaged entries are omitted, and errors from malformed reserved
+ *   trailers propagate from the shared parser.
+ */
 import {
   parseManagedTrailers,
   type ManagedTrailers,

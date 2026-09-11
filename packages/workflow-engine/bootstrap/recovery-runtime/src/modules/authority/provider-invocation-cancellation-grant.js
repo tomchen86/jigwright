@@ -1,3 +1,13 @@
+/**
+ * Defines exact cancellation Grants for prepared or leased provider
+ * invocations.
+ *
+ * Invariants:
+ * - A cancellation binding's bindingDigest must re-derive from the
+ *   namespaced canonical body with bindingDigest removed.
+ * - Cancellation completes only when the invocation is terminal with its
+ *   worker fence absent.
+ */
 import { canonicalJson } from "../../foundation/canonical-json/canonical-json.js";
 import { isRecord } from "../../foundation/canonical-json/contract-values.js";
 import { ExitCode, workflowError } from "../../foundation/errors/errors.js";

@@ -1,3 +1,11 @@
+/**
+ * Adapts OpenSpec archive execution and validates its projected document
+ * results.
+ *
+ * Invariants:
+ * - A nonzero OpenSpec process exit cannot accompany a valid validation
+ *   result.
+ */
 import { createColocatedOpenSpecViewDependencies } from './openspec-adapter-production.ts';
 import { readSystemDescriptionSnapshot } from '../runtime/repository-transaction/system-description-snapshot.ts';
 import path from 'node:path';

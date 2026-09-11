@@ -1,3 +1,11 @@
+/**
+ * Derives investigation hit groups and validates their source and context
+ * facts.
+ *
+ * Invariants:
+ * - Scan hit context windows require a positive byte length within the
+ *   context limit.
+ */
 import crypto from 'node:crypto';
 
 import {

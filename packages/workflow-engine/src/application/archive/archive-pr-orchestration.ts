@@ -1,3 +1,11 @@
+/**
+ * Discovers archive PR candidates and coordinates their worktree
+ * preparation, assurance and authorized publication.
+ *
+ * Invariants:
+ * - Candidate discovery requires a clean protected branch equal to its
+ *   remote-tracking commit and tree.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';

@@ -1,3 +1,9 @@
+/**
+ * Computes identities for the required registered check definitions.
+ *
+ * Invariants:
+ * - Each requested check is hashed from its serialized registry definition.
+ */
 import crypto from 'node:crypto';
 
 import type { ChecksConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';

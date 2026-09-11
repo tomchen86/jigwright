@@ -1,3 +1,11 @@
+/**
+ * Stores and validates archive transition reports and lists evidence for a
+ * named change.
+ *
+ * Invariants:
+ * - Reading a report verifies that its patch matches the recorded patch
+ *   digest.
+ */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 

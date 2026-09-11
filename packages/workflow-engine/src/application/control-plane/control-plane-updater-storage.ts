@@ -1,3 +1,11 @@
+/**
+ * Provides private updater storage, exclusive operation locks and guarded
+ * record replacement.
+ *
+ * Invariants:
+ * - Updater operations refuse an occupied or unsafe lock before invoking
+ *   the operation callback.
+ */
 // control plane updater storage; repository effects remain bound by the public module.
 import type {
   ControlPlaneUpdaterStorageBindings,

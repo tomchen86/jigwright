@@ -1,3 +1,11 @@
+/**
+ * Compares planned intent with recorded mutations, changed ranges and
+ * preserved invariants.
+ *
+ * Invariants:
+ * - Reconciliation succeeds only when no changed range is unaccounted for
+ *   and no promised invariant is recorded as broken.
+ */
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 
 /**

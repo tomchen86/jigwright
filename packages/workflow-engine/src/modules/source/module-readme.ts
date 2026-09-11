@@ -1,4 +1,10 @@
-/** Reads the one handwritten explanation without treating generated text as a decision. */
+/**
+ * Reads the handwritten module explanation and its confirmation marker.
+ *
+ * Invariants:
+ * - A marked explanation requires exactly one paragraph, paired markers and
+ *   a full confirmation commit.
+ */
 import { markdownLines } from '@jigwright/core/markdown-sections';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 

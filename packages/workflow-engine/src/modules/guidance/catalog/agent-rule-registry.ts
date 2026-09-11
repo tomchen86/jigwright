@@ -1,3 +1,11 @@
+/**
+ * Renders agent rules from product purpose, Source preservation and intake
+ * policy.
+ *
+ * Invariants:
+ * - Transcription and intake instructions derive from shared policy
+ *   constants rather than separate rule copies.
+ */
 import { GOVERNANCE_SOURCE_TEXT_POLICY } from '@jigwright/core/governance-source';
 import {
   INTAKE_KINDS,

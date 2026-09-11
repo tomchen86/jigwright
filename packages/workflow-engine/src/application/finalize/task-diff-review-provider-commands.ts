@@ -1,3 +1,10 @@
+/**
+ * Begins and reconciles provider reviews and their continuation results.
+ *
+ * Invariants:
+ * - Review admission must retain the subject inspected before the lifecycle
+ *   operation.
+ */
 // Begin and reconcile provider reviews, preserving durable result and replay order.
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { type TaskDiffReviewChallengeResponseInput } from '../../modules/assurance/task-diff-review-input.ts';

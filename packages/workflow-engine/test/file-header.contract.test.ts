@@ -82,3 +82,30 @@ test('header extraction stays shallow and never turns missing prose into a gate'
     ['First.'],
   );
 });
+
+test('executable file headers retain their source lines after a shebang', () => {
+  const source = [
+    '#!/usr/bin/env node',
+    '/**',
+    ' * Dispatches workflow commands.',
+    ' *',
+    ' * Invariants:',
+    ' * - Failures preserve their exit code.',
+    ' */',
+    'export const value = 1;',
+  ].join('\n');
+  for (const input of [source, `\uFEFF${source.replaceAll('\n', '\r\n')}`]) {
+    assert.deepEqual(extractFileHeader(input), {
+      responsibility: 'Dispatches workflow commands.',
+      invariants: ['Failures preserve their exit code.'],
+      startLine: 2,
+      endLine: 7,
+    });
+  }
+  assert.equal(
+    extractFileHeader(
+      '#!/usr/bin/env node\nexport const value = 1;\n/** Later. */',
+    ),
+    null,
+  );
+});

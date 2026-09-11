@@ -1,3 +1,11 @@
+/**
+ * Verifies protected-base authority attestations and their historical grant
+ * mappings.
+ *
+ * Invariants:
+ * - A protected attestation must bind the authority commit and trusted
+ *   repository.
+ */
 import crypto from 'node:crypto';
 
 import {

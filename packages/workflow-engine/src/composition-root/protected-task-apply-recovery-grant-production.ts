@@ -1,3 +1,11 @@
+/**
+ * Binds protected task recovery Grants to current transactions and terminal
+ * outcomes.
+ *
+ * Invariants:
+ * - Recovery must publish the requested cancelled or aborted state and
+ *   cancellation record.
+ */
 import { canonicalJson } from '../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../foundation/errors/errors.ts';
 import { cancelProtectedTaskApplyRecoveryUnderGrant } from '../application/finalize/lifecycle.ts';
