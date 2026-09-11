@@ -2383,7 +2383,7 @@
     {
       "path": "src/modules/guidance/next-steps/workflow-guidance.ts",
       "mode": "100644",
-      "digest": "sha256:9965ab5e9f5de8e414b2916d5eeaa0752bc493cb0be34f6d64d005409a2c7a32"
+      "digest": "sha256:6f12e3eed84f8c66f8710b81bb657af8705d7349e7fbc9f3d2d621e42f3afc96"
     },
     {
       "path": "src/modules/guidance/renderers/plan-digest.ts",

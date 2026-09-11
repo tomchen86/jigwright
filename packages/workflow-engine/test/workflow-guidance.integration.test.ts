@@ -166,6 +166,34 @@ test('task completion guidance puts pending Finding triage first without exceedi
   );
 });
 
+test('WHY-answer guidance warns about the seam between files before sealing', () => {
+  const proposeResult = (nextAction: string) => ({
+    command: 'propose',
+    result: {
+      kind: 'workflow-propose',
+      changeId: 'demo-change',
+      nextAction,
+    },
+  });
+
+  const nextSteps = workflowResultNextSteps(proposeResult('submit-why-answers'));
+  assert.equal(nextSteps.length <= 3, true);
+  assert.equal(
+    nextSteps[0]?.command,
+    'pnpm workflow propose demo-change --resume --input <why-answers.json> --json',
+  );
+  assert.match(nextSteps[0]!.why, /seams/);
+  assert.match(nextSteps[0]!.why, /more than one author/);
+
+  assert.equal(
+    workflowResultNextSteps(proposeResult('submit-group-dispositions')).some(
+      (step) => /seams/.test(step.why),
+    ),
+    false,
+    'the seam warning belongs to the checkpoint that starts the deep read',
+  );
+});
+
 test('update-base guidance requires a finished current branch without an active writer', () => {
   const guidance = workflowCommandGuidance('update-base');
   const contract = [

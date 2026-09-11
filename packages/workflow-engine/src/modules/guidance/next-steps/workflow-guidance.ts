@@ -183,10 +183,38 @@ export function workflowResultNextSteps(
       : ['guide'],
     bindings,
   );
-  const findingTriage = pendingFindingTriageNextStep(result, bindings);
-  return findingTriage === null
+  const leading = [
+    investigationBoundaryNextStep(result),
+    pendingFindingTriageNextStep(result, bindings),
+  ].filter((step): step is WorkflowNextStep => step !== null);
+  return leading.length === 0
     ? ordinary
-    : limitNextSteps([findingTriage, ...ordinary]);
+    : limitNextSteps([...leading, ...ordinary]);
+}
+
+/**
+ * Coverage is enforced per file. Nothing enforces the seam between two files,
+ * and splitting an investigation across authors is exactly when that seam
+ * stops being one reader's problem.
+ */
+function investigationBoundaryNextStep(
+  result: Readonly<Record<string, unknown>>,
+): WorkflowNextStep | null {
+  if (result.command !== 'propose') return null;
+  const propose = record(result.result);
+  if (
+    propose === undefined ||
+    propose.kind !== 'workflow-propose' ||
+    propose.nextAction !== 'submit-why-answers'
+  ) {
+    return null;
+  }
+  const changeId = stringField(propose, 'changeId');
+  if (changeId === undefined) return null;
+  return Object.freeze({
+    command: `pnpm workflow propose ${changeId} --resume --input <why-answers.json> --json`,
+    why: 'Answer one row per load-bearing file. Sealing checks that every file has a row, but never that two files still agree where they meet, so read across the seams; when more than one author contributed, have one of them read all of them.',
+  });
 }
 
 function pendingFindingTriageNextStep(
