@@ -1173,7 +1173,7 @@
     {
       "path": "src/composition-root/agent-runtime-host-wrapper-production.ts",
       "mode": "100644",
-      "digest": "sha256:bcefe3fe751115750d5e82db000a8646fef323b862dd6cb18df0ec0133a8a138"
+      "digest": "sha256:2f968cbcbd159bedd2363d49026d0471f3bce3f3ad5066ef675b462c4a99051d"
     },
     {
       "path": "src/composition-root/agent-runtime-production.ts",
@@ -1183,7 +1183,7 @@
     {
       "path": "src/composition-root/agent-runtime-v1-production.ts",
       "mode": "100644",
-      "digest": "sha256:379273768d4c35f37229a1be519df410c527161ed896952c1d49a9e6b7a0ab62"
+      "digest": "sha256:de541c47f38e0a88c4299269f67fae21a2efd936dff340251f1284af93fb242c"
     },
     {
       "path": "src/composition-root/archive-cli-production.ts",
@@ -1643,7 +1643,7 @@
     {
       "path": "src/entrypoints/worker/provider-worker.ts",
       "mode": "100644",
-      "digest": "sha256:8b7d981408dbd0ece7232714a3441b898a9b7ea496eeebd6b289636148e52341"
+      "digest": "sha256:2e8b49e3f8a7cd05dc179908f185b79d9e54dbef0d14c8b66084d13902185168"
     },
     {
       "path": "src/foundation/canonical-json/canonical-json.ts",
@@ -1658,7 +1658,7 @@
     {
       "path": "src/foundation/errors/errors.ts",
       "mode": "100644",
-      "digest": "sha256:0d48e92afe2141feaaa42a0b7b325c1d3e095f146e074beaf70a6e0beb7a3a04"
+      "digest": "sha256:59af93bcefefbf7d5b900cc2c398d27cf8529333596318995db456232e08bd97"
     },
     {
       "path": "src/foundation/evidence-node/evidence-node.ts",
@@ -3053,7 +3053,7 @@
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
       "mode": "100644",
-      "digest": "sha256:35f3bac03b702ecc790f5d17f0148fe6425d3d73a26d28e907680c633c83cc32"
+      "digest": "sha256:d51df1e5b11415042cbc8b2f48ae9d873ab88c6904124eb41ab07b2f5c3c87d4"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-record.ts",

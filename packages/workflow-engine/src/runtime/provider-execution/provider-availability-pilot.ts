@@ -15,7 +15,10 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import { loadWorkflowConfig } from '../../adapters/consumer/repository/work-registry/contracts.ts';
 import { createEvidenceNode } from '../../adapters/planning/investigation/evidence-node.ts';
 import { writeEvidenceNode } from '../storage-journal/evidence-node-store.ts';
-import { WorkflowError } from '../../foundation/errors/errors.ts';
+import {
+  WorkflowError,
+  durableFailureMessage,
+} from '../../foundation/errors/errors.ts';
 import { discoverRepository } from '../repository-transaction/git.ts';
 import { investigationRuntimePaths } from '../session-workspace/paths.ts';
 import {
@@ -462,7 +465,10 @@ function runAvailableProvider(input: {
       failure: {
         kind: 'retryable',
         code,
-        message: `Provider availability observation failed durably (${code}).`,
+        message: durableFailureMessage(
+          `Provider availability observation failed durably (${code})`,
+          error,
+        ),
       },
     });
     return failedObservation(

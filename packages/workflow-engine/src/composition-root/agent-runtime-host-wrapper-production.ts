@@ -5,6 +5,7 @@
  * Invariants:
  * - Resume requires an advertised resumable-session capability and resume
  *   arguments.
+ * - Observed process activity reaches the consumer even when the turn fails.
  */
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -385,6 +386,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
   ): AsyncIterable<AgentRuntimeDriverEventV1> {
     return (async function* (): AsyncGenerator<AgentRuntimeDriverEventV1> {
       const activeClaim = claim!;
+      const activities: AgentRuntimeDriverEventV1[] = [];
       let privateIdentity: ProviderWrapperNativeSessionIdentityObservation | null =
         null;
       try {
@@ -393,7 +395,6 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
           input.repositoryRoot,
           runtime.governedInputs,
         );
-        const activities: AgentRuntimeDriverEventV1[] = [];
         const outcome = await spawnBoundedProviderSessionProcess({
           executable: profile.executable,
           args: renderArguments(
@@ -487,7 +488,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
           privateIdentity as ProviderWrapperNativeSessionIdentityObservation | null;
         if (protocolOutcome.receipt.terminal !== 'result') {
           publishProtocolCompletion(protocolOutcome, null);
-          for (const event of activities) yield event;
+          while (activities.length > 0) yield activities.shift()!;
           try {
             options.onProtocolReceipt?.(protocolOutcome.receipt);
           } catch {
@@ -510,7 +511,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
           observedIdentity === null
         ) {
           publishRejectedProtocolCompletion(protocolOutcome);
-          for (const event of activities) yield event;
+          while (activities.length > 0) yield activities.shift()!;
           if (governedProjectionChanged) {
             throw runtimeFailure(
               'AGENT_RUNTIME_V1_GOVERNED_PROJECTION_DRIFT',
@@ -552,7 +553,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
         } catch {
           // Receipt observers cannot alter the already-bound terminal state.
         }
-        for (const event of activities) yield event;
+        while (activities.length > 0) yield activities.shift()!;
         yield Object.freeze({
           type: 'session-started' as const,
           nativeSessionId: observedIdentity.nativeSessionId,
@@ -587,6 +588,7 @@ export async function runHostWrapperProviderThroughAgentRuntimeV1(
             // fail-closed and cannot be relaunched by this bridge.
           }
         }
+        while (activities.length > 0) yield activities.shift()!;
         throw error;
       }
     })();

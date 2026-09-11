@@ -4,6 +4,7 @@
  *
  * Invariants:
  * - Public execution requires a current built-in provider definition.
+ * - Observed process activity reaches the consumer even when the run fails.
  */
 import crypto from 'node:crypto';
 
@@ -179,7 +180,7 @@ export function createBuiltInAgentRuntimeV1Bridge(
                   ? {}
                   : { onProtocolReceipt: options.onProtocolReceipt }),
               });
-              for (const event of activity) yield event;
+              while (activity.length > 0) yield activity.shift()!;
               yield Object.freeze({
                 type: 'completed' as const,
                 output: report.semanticOutput,
@@ -199,6 +200,7 @@ export function createBuiltInAgentRuntimeV1Bridge(
               });
             } catch (error) {
               driverFailure = error;
+              while (activity.length > 0) yield activity.shift()!;
               throw error;
             }
           })();

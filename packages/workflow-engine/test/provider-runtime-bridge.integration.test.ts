@@ -63,6 +63,120 @@ import {
   sha256,
 } from './provider-adapter-fixture.ts';
 
+function runtimeV1BridgeFixture(
+  repository: string,
+  invocationDirectory: string,
+) {
+  const request = createProviderInvocationRequest({
+    invocationId: 'invocation-runtime-v1-bridge',
+    nonce: 'runtime-v1-bridge-nonce-000000000',
+    purpose: 'survey',
+    providerId: 'claude',
+    roleAssignment: {
+      role: 'plan-reviewer',
+      providerId: 'claude',
+      sessionId: 'runtime-v1-bridge-session',
+      targetDigest: '1'.repeat(64),
+      requiredIndependence: 'provider-independent',
+      achievedIndependence: 'provider-independent',
+    },
+    capabilityProfile: 'repository-read-only',
+    repositoryId: 'runtime-v1-fixture',
+    baseCommit: '2'.repeat(40),
+    baseTree: '3'.repeat(40),
+    targetDigest: '1'.repeat(64),
+    inputManifestDigest: '4'.repeat(64),
+    authorizationNodeId: '5'.repeat(64),
+    writeAllowedPaths: [],
+    outputSchema: {
+      id: 'runtime-v1-output',
+      version: 1,
+      digest: sha256(canonicalJson(PROVIDER_SCHEMA)),
+    },
+    evaluatorVersion: 'runtime-v1-fixture',
+    policyDigest: '6'.repeat(64),
+    limits: { timeoutMs: 30_000, aggregateOutputBytes: 1_048_576 },
+  });
+  const definition = resolveBuiltInProviderDefinitionSnapshot(
+    'claude',
+    'darwin',
+  )!;
+  const executable = executableIdentity(
+    '/opt/homebrew/bin/claude',
+    '/opt/homebrew/Caskroom/claude-code/2.1.206/claude',
+  );
+  const selectedProfile = builtInProfile(executable.candidatePath);
+  const acceptancePayload = {
+    schemaVersion: 1 as const,
+    kind: 'provider-invocation-acceptance-binding' as const,
+    invocationId: request.invocationId,
+    requestDigest: request.requestDigest,
+    ownerWorkflowId: 'workflow-runtime-v1',
+    invocationRevision: 1,
+    leaseGeneration: 1,
+    context: {
+      ownerWorkflowId: 'workflow-runtime-v1',
+      purpose: request.purpose,
+      workflowId: 'workflow-runtime-v1',
+      generation: 1,
+      epoch: 1,
+      contextDigest: '8'.repeat(64),
+      manifest:
+        {} as ProviderInvocationAcceptanceBinding['context']['manifest'],
+    },
+    executionJobId: 'job-runtime-v1',
+    executionAttemptId: 'attempt-runtime-v1',
+    executionRevision: 1,
+    executionStateDigest: '9'.repeat(64),
+    receiptRequirement: 'schema-v4' as const,
+    repair: {
+      invocationId: request.invocationId,
+      lineagePath: path.join(invocationDirectory, 'repair-lineage.json'),
+      lineageDigest: null,
+      currentEvidencePath: path.join(
+        invocationDirectory,
+        'repair-evidence.json',
+      ),
+      evidencePath: null,
+      evidenceDigest: null,
+    },
+  };
+  const acceptanceBinding = {
+    ...acceptancePayload,
+    bindingDigest: sha256(canonicalJson(acceptancePayload)),
+  };
+  const bridgeInput = {
+    providerId: 'claude' as const,
+    repositoryRoot: repository,
+    invocationDirectory,
+    request,
+    semanticOutputSchema: PROVIDER_SCHEMA,
+    outputValidator: outputValidatorFor(request),
+    governedRuntimeInputs: [],
+    acceptanceBinding,
+    reviewSnapshotRoot: null,
+    sourceEnvironment: {},
+    assignmentBinding: createAgentRuntimeAssignmentBindingV1({
+      schemaVersion: 1,
+      kind: 'agent-runtime-assignment-binding.v1',
+      changeId: 'runtime-v1-bridge',
+      planningGeneration: 'b'.repeat(64),
+      recordDigest: 'c'.repeat(64),
+      assignmentDigest: 'd'.repeat(64),
+      role: 'author',
+      logicalProviderId: 'claude',
+      providerProfileId: selectedProfile.id,
+      providerProfileSnapshot: selectedProfile,
+      definitionDigest: definition.definitionDigest,
+      dataAuthorizationPolicyDigest: request.policyDigest,
+      assignmentManifestDigest: 'e'.repeat(64),
+      inputManifestDigest: request.inputManifestDigest,
+      targetDigest: request.targetDigest,
+    }),
+  };
+  return { request, definition, executable, selectedProfile, bridgeInput };
+}
+
 test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing runner', async () => {
   const repository = fs.mkdtempSync(
     path.join(os.tmpdir(), 'runtime-v1-bridge-'),
@@ -71,45 +185,8 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
   fs.mkdirSync(invocationDirectory);
   const activity: string[] = [];
   try {
-    const request = createProviderInvocationRequest({
-      invocationId: 'invocation-runtime-v1-bridge',
-      nonce: 'runtime-v1-bridge-nonce-000000000',
-      purpose: 'survey',
-      providerId: 'claude',
-      roleAssignment: {
-        role: 'plan-reviewer',
-        providerId: 'claude',
-        sessionId: 'runtime-v1-bridge-session',
-        targetDigest: '1'.repeat(64),
-        requiredIndependence: 'provider-independent',
-        achievedIndependence: 'provider-independent',
-      },
-      capabilityProfile: 'repository-read-only',
-      repositoryId: 'runtime-v1-fixture',
-      baseCommit: '2'.repeat(40),
-      baseTree: '3'.repeat(40),
-      targetDigest: '1'.repeat(64),
-      inputManifestDigest: '4'.repeat(64),
-      authorizationNodeId: '5'.repeat(64),
-      writeAllowedPaths: [],
-      outputSchema: {
-        id: 'runtime-v1-output',
-        version: 1,
-        digest: sha256(canonicalJson(PROVIDER_SCHEMA)),
-      },
-      evaluatorVersion: 'runtime-v1-fixture',
-      policyDigest: '6'.repeat(64),
-      limits: { timeoutMs: 30_000, aggregateOutputBytes: 1_048_576 },
-    });
-    const definition = resolveBuiltInProviderDefinitionSnapshot(
-      'claude',
-      'darwin',
-    )!;
-    const executable = executableIdentity(
-      '/opt/homebrew/bin/claude',
-      '/opt/homebrew/Caskroom/claude-code/2.1.206/claude',
-    );
-    const selectedProfile = builtInProfile(executable.candidatePath);
+    const { request, definition, executable, selectedProfile, bridgeInput } =
+      runtimeV1BridgeFixture(repository, invocationDirectory);
     const bridge = createBuiltInAgentRuntimeV1Bridge({
       preflight(providerId, options, profile) {
         assert.equal(providerId, 'claude');
@@ -148,82 +225,12 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
         };
       },
     });
-    const acceptancePayload = {
-      schemaVersion: 1 as const,
-      kind: 'provider-invocation-acceptance-binding' as const,
-      invocationId: request.invocationId,
-      requestDigest: request.requestDigest,
-      ownerWorkflowId: 'workflow-runtime-v1',
-      invocationRevision: 1,
-      leaseGeneration: 1,
-      context: {
-        ownerWorkflowId: 'workflow-runtime-v1',
-        purpose: request.purpose,
-        workflowId: 'workflow-runtime-v1',
-        generation: 1,
-        epoch: 1,
-        contextDigest: '8'.repeat(64),
-        manifest:
-          {} as ProviderInvocationAcceptanceBinding['context']['manifest'],
+    const report = await bridge(bridgeInput, {
+      platform: 'darwin',
+      onActivity(event) {
+        activity.push(event.type);
       },
-      executionJobId: 'job-runtime-v1',
-      executionAttemptId: 'attempt-runtime-v1',
-      executionRevision: 1,
-      executionStateDigest: '9'.repeat(64),
-      receiptRequirement: 'schema-v4' as const,
-      repair: {
-        invocationId: request.invocationId,
-        lineagePath: path.join(invocationDirectory, 'repair-lineage.json'),
-        lineageDigest: null,
-        currentEvidencePath: path.join(
-          invocationDirectory,
-          'repair-evidence.json',
-        ),
-        evidencePath: null,
-        evidenceDigest: null,
-      },
-    };
-    const acceptanceBinding = {
-      ...acceptancePayload,
-      bindingDigest: sha256(canonicalJson(acceptancePayload)),
-    };
-    const report = await bridge(
-      {
-        providerId: 'claude',
-        repositoryRoot: repository,
-        invocationDirectory,
-        request,
-        semanticOutputSchema: PROVIDER_SCHEMA,
-        outputValidator: outputValidatorFor(request),
-        governedRuntimeInputs: [],
-        acceptanceBinding,
-        reviewSnapshotRoot: null,
-        sourceEnvironment: {},
-        assignmentBinding: createAgentRuntimeAssignmentBindingV1({
-          schemaVersion: 1,
-          kind: 'agent-runtime-assignment-binding.v1',
-          changeId: 'runtime-v1-bridge',
-          planningGeneration: 'b'.repeat(64),
-          recordDigest: 'c'.repeat(64),
-          assignmentDigest: 'd'.repeat(64),
-          role: 'author',
-          logicalProviderId: 'claude',
-          providerProfileId: selectedProfile.id,
-          providerProfileSnapshot: selectedProfile,
-          definitionDigest: definition.definitionDigest,
-          dataAuthorizationPolicyDigest: request.policyDigest,
-          assignmentManifestDigest: 'e'.repeat(64),
-          inputManifestDigest: request.inputManifestDigest,
-          targetDigest: request.targetDigest,
-        }),
-      },
-      {
-        platform: 'darwin',
-        onActivity(event) {
-          activity.push(event.type);
-        },
-      },
-    );
+    });
 
     assert.deepEqual(report.semanticOutput, semanticOutput(request));
     assert.equal(report.requestDigest, request.requestDigest);
@@ -232,6 +239,53 @@ test('public AgentRuntimePortV1 bridges one fresh single-shot into the existing 
     assert.deepEqual(
       report.providerDefinitionSnapshot,
       resolveBuiltInProviderDefinitionSnapshot('claude', 'darwin'),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('public AgentRuntimePortV1 keeps observed activity when the run fails', async () => {
+  const repository = fs.mkdtempSync(
+    path.join(os.tmpdir(), 'runtime-v1-bridge-failure-'),
+  );
+  const invocationDirectory = path.join(repository, 'invocation');
+  fs.mkdirSync(invocationDirectory);
+  const activity: string[] = [];
+  const crash = new TypeError('runner crashed after the process spawned');
+  try {
+    const { executable, bridgeInput } = runtimeV1BridgeFixture(
+      repository,
+      invocationDirectory,
+    );
+    const bridge = createBuiltInAgentRuntimeV1Bridge({
+      preflight() {
+        return {
+          status: 'available',
+          executable,
+          version: '2.1.206 (Claude Code)',
+        };
+      },
+      async runAsync(_input, options) {
+        options.onActivity?.({ type: 'spawned', elapsedMs: 0 });
+        options.onActivity?.({ type: 'stdout', elapsedMs: 1, bytes: 7 });
+        throw crash;
+      },
+    });
+
+    await assert.rejects(
+      bridge(bridgeInput, {
+        platform: 'darwin',
+        onActivity(event) {
+          activity.push(event.type);
+        },
+      }),
+      (error: unknown) => error === crash,
+    );
+    assert.deepEqual(
+      activity,
+      ['spawned', 'stdout'],
+      'a failed run still has to account for the process it started',
     );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });

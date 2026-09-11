@@ -12,6 +12,7 @@ import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts
 import {
   ExitCode,
   WorkflowError,
+  durableFailureMessage,
   workflowError,
 } from '../../foundation/errors/errors.ts';
 import {
@@ -1037,7 +1038,10 @@ function classifyProviderFailure(error: unknown): ProviderInvocationFailure {
       ? ('repository-reconciliation-required' as const)
       : ('retryable' as const),
     code,
-    message: `Provider invocation failed durably (${code}).`,
+    message: durableFailureMessage(
+      `Provider invocation failed durably (${code})`,
+      error,
+    ),
     ...(executionKind === null ? {} : { executionKind }),
     ...(retryAfterMs === null ? {} : { retryAfterMs }),
     ...(executionKind === 'probe-transient' && probe !== null ? { probe } : {}),

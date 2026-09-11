@@ -154,6 +154,10 @@ test('provider worker records launch and admission failure durably', () => {
     });
     assert.equal(failed.state, 'failed');
     assert.equal(failed.failure?.code, 'PROVIDER_UNAVAILABLE');
+    assert.match(
+      failed.failure!.message,
+      /The selected provider is unavailable\./,
+    );
 
     const locator = discoverRepository(repository);
     const runtime = investigationRuntimePaths(
@@ -175,6 +179,34 @@ test('provider worker records launch and admission failure durably', () => {
     assert.equal(replayed.state, 'failed');
     assert.equal(replayed.launched, false);
     assert.equal(launches, 1);
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
+
+test('provider worker keeps an unexpected throw reason on the durable failure', () => {
+  const repository = createFixtureRepository();
+  const changeId = 'worker-unexpected-failure';
+  try {
+    git(repository, ['checkout', '-b', `work/${changeId}`]);
+    const started = startPropose(repository, changeId, intent(), {
+      explicitActor: 'codex',
+      environment: {},
+    });
+    const invocationId = started.investigation!.providerInvocationId;
+    const failed = runProviderWorker(repository, invocationId, {
+      runner() {
+        throw new TypeError('adapter policy digest is not a function');
+      },
+    });
+
+    assert.equal(failed.state, 'failed');
+    assert.equal(failed.failure?.code, 'PROVIDER_WORKER_UNEXPECTED_FAILURE');
+    assert.match(
+      failed.failure!.message,
+      /TypeError: adapter policy digest is not a function/,
+      'an unexpected throw is the only account of why the attempt failed',
+    );
   } finally {
     fs.rmSync(repository, { recursive: true, force: true });
   }
