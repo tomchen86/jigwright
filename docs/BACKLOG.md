@@ -152,3 +152,17 @@ Blind reader test 2026-09-10: every link under the recorded requirement that gra
 - Stage: inbox
 
 Blind reader test 2026-09-10: the compatibility module appears in the modules directory but in neither the root README module table nor docs/SPEC_MAP.md; the adoption module appears in SPEC_MAP.md but not in the README module table. A reader navigating by the tables cannot discover either.
+
+### The plan review artifact records the same review twice instead of citing it once
+
+- Kind: improvement
+- Stage: inbox
+
+Measured on openspec/changes/grant-module-headers/plan-review.json, 36,965 bytes across three nodes. The provider result node and the admitted plan-review node each carry a byte-identical 42-entry scope evidence array at 9,362 bytes apiece, plus duplicate residualRisk, uncertainty and verdict. The role assignment block appears six times and one subject digest appears thirteen times. Storing the provider output once and having the admitted node cite it by digest proves the same thing -- that the engine did not alter the reviewer's words -- and removes roughly two fifths of the artifact.
+
+### The investigation artifact stores the whole survey rather than its conclusion
+
+- Kind: improvement
+- Stage: inbox
+
+Measured on openspec/changes/grant-module-headers/investigation.json, 438,758 bytes for a change that adds header comments to seven files. applicability is 99 percent of it: semanticDelta 337 KB (230 dispositions at 155 KB, 33 WHY overlays at 108 KB, 2 investigation requirements at 57 KB) and replayContract 100 KB (125 canonical terms at 49 KB, grouping at 37 KB, 3 term contributions at 12 KB). The dispositions, terms and grouping are recomputable from the pinned baseline commit and the scanner version, so a digest binding proves them without carrying the bytes. Within one WHY row only about a third is meaning: why 226, protectedInvariant 303, answer 294 and reviewerQuestion 139 bytes against anchors 391, pathIdentity 207, groupRefs 168 and several digests. The prose is what a reader later needs and should stay; the survey process should be bound, not stored. This is the same ruling already taken for the design.md ledger region in the system description docs plan section 9 item 5, applied to the manifest itself.
