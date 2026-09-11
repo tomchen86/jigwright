@@ -343,12 +343,12 @@
     {
       "path": "src/adapters/consumer/repository/work-registry/contract-parsers.ts",
       "mode": "100644",
-      "digest": "sha256:c1db3fc72036afc6348e2942d55c261644ed6a137d2358e9e3ff7b9a600c94a4"
+      "digest": "sha256:606ee03a1dc2d1f626ef54aeb21cc3162838aacad2008932487a026e3e68b54e"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/contracts.ts",
       "mode": "100644",
-      "digest": "sha256:32c28cc97ae19e07ef82d25af1d0b23f3bbe7b3afd693a5c4bfae6a83a4cea56"
+      "digest": "sha256:a404cf3638772ea6782d09b3aa5a0919de138aaa8023e116410d9bb0d05cadc0"
     },
     {
       "path": "src/adapters/consumer/repository/work-registry/database-policy.ts",
@@ -386,24 +386,14 @@
       "digest": "sha256:a8cc51e8e4e3ea290e11dc1512eac85f1cf355e8b90c77b7da07a64575dfc3c3"
     },
     {
-      "path": "src/adapters/planning/investigation/evidence-convergence.ts",
+      "path": "src/adapters/planning/investigation/evidence-dag.ts",
       "mode": "100644",
-      "digest": "sha256:fefe16d17b801f2a42bd8f431d976b272e648f9c189fe840c20413b1cb1592f1"
-    },
-    {
-      "path": "src/adapters/planning/investigation/evidence-currentness.ts",
-      "mode": "100644",
-      "digest": "sha256:23dec9a8edeb90ed63970a38d1dce24004c30fdbf1eb491fe25ca73289b24d6e"
+      "digest": "sha256:eac36e58da3281b93f67d55991fb889c08ffe6fbe2b8422b2ad01c0669901a33"
     },
     {
       "path": "src/adapters/planning/investigation/evidence-node.ts",
       "mode": "100644",
       "digest": "sha256:8f0da9f6eb048848ecfb0639546b6bdcc8f6251f9197b7ed5bf07ef8d2a96668"
-    },
-    {
-      "path": "src/adapters/planning/investigation/evidence-reuse-path.ts",
-      "mode": "100644",
-      "digest": "sha256:e7ea51c3b8d1da232d2e6a754ceafc6b55e6fc2b70d3cfa36c56ce5652dd685f"
     },
     {
       "path": "src/adapters/planning/investigation/human-resolution-grant-management.ts",

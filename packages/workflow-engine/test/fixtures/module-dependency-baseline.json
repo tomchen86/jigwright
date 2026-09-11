@@ -2,7 +2,7 @@
   "kind": "workflow-engine-module-dependency-baseline.v1",
   "schemaVersion": 1,
   "frozenEdgeCount": 832,
-  "frozenIdentityDigest": "sha256:237ae527c8c4c0abeca75802b3292641c13ac2dd3d150ee319e4e58b8311288c",
+  "frozenIdentityDigest": "sha256:2be13a3aac75d50fd23952eef8cc4d28e0c73b35d9b7c6051361bf5ee348ca40",
   "reasonCatalog": {
     "legacy.adapter-to-application": {
       "summary": "Pre-layout adapter-to-application coupling retained by the layout-only migration; no semantic inversion is performed in this change.",
@@ -124,11 +124,11 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
-      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-currentness.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-dag.ts",
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
@@ -148,7 +148,7 @@
       "rule": "cross-adapter",
       "reasonId": "legacy.cross-adapter",
       "retirementPhase": "post-layout-adapter-isolation",
-      "status": "active"
+      "status": "retired"
     },
     {
       "from": "packages/workflow-engine/src/adapters/consumer/repository/work-registry/contracts.ts",
@@ -5896,7 +5896,7 @@
     },
     {
       "from": "packages/workflow-engine/src/modules/investigation/domain/investigation-groups.ts",
-      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-currentness.ts",
+      "to": "packages/workflow-engine/src/adapters/planning/investigation/evidence-dag.ts",
       "rule": "module-to-adapters",
       "reasonId": "legacy.module-to-adapters",
       "retirementPhase": "post-layout-module-port-inversion",

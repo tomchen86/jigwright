@@ -11,17 +11,17 @@ import {
   ts,
 } from './boundary-contract-fixture.ts';
 
-export const EXPECTED_MAP_ROWS = 262;
+export const EXPECTED_MAP_ROWS = 260;
 
 export const EXPECTED_FROZEN_MAP_DIGEST =
-  'sha256:931d205467a344db99e9c5d9295557bbcd031987899a40aeccde3b87f4ef2762';
+  'sha256:101ca72d95d7a7d00ff9cae668d2135b3196a4529137e0a6f8cc5851432f5fa7';
 
 export const EXPECTED_FROZEN_EDGE_COUNT = 832;
 
-export const EXPECTED_ACTIVE_EDGE_COUNT = 711;
+export const EXPECTED_ACTIVE_EDGE_COUNT = 709;
 
 export const EXPECTED_FROZEN_IDENTITY_DIGEST =
-  'sha256:237ae527c8c4c0abeca75802b3292641c13ac2dd3d150ee319e4e58b8311288c';
+  'sha256:2be13a3aac75d50fd23952eef8cc4d28e0c73b35d9b7c6051361bf5ee348ca40';
 
 export const SRC_PREFIX = 'packages/workflow-engine/src/';
 

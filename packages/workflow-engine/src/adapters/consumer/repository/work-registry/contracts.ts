@@ -41,14 +41,7 @@ import {
   assertStoredEvidenceNode,
   type EvidenceNode,
 } from '../../../planning/investigation/evidence-node.ts';
-import { validateClosedEvidenceDag } from '../../../planning/investigation/evidence-currentness.ts';
-import {
-  createConvergenceRecord,
-  createDescendantReuseProof,
-  readConvergenceBinding,
-  readReuseProofBinding,
-} from '../../../planning/investigation/evidence-convergence.ts';
-import { validateTrackedEvidenceReusePaths } from '../../../planning/investigation/evidence-reuse-path.ts';
+import { validateClosedEvidenceDag } from '../../../planning/investigation/evidence-dag.ts';
 import { engineProjectionDefinitions } from '../../../../modules/projection/engine-projection-registry.ts';
 import { validateCurrentChangeOrigin } from '../../../../modules/governance-intake/work-registry.ts';
 import {
@@ -125,11 +118,6 @@ export type ContractParserRuntime = {
   normalizePolicyPath: typeof normalizePolicyPath;
   assertStoredEvidenceNode: typeof assertStoredEvidenceNode;
   validateClosedEvidenceDag: typeof validateClosedEvidenceDag;
-  createConvergenceRecord: typeof createConvergenceRecord;
-  createDescendantReuseProof: typeof createDescendantReuseProof;
-  readConvergenceBinding: typeof readConvergenceBinding;
-  readReuseProofBinding: typeof readReuseProofBinding;
-  validateTrackedEvidenceReusePaths: typeof validateTrackedEvidenceReusePaths;
 };
 
 function boundContractParsers() {
@@ -139,11 +127,6 @@ function boundContractParsers() {
     normalizePolicyPath,
     assertStoredEvidenceNode,
     validateClosedEvidenceDag,
-    createConvergenceRecord,
-    createDescendantReuseProof,
-    readConvergenceBinding,
-    readReuseProofBinding,
-    validateTrackedEvidenceReusePaths,
   });
 }
 

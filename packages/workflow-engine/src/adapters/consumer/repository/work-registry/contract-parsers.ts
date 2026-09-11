@@ -279,11 +279,6 @@ export function createContractParsers({
   normalizePolicyPath,
   assertStoredEvidenceNode,
   validateClosedEvidenceDag,
-  createConvergenceRecord,
-  createDescendantReuseProof,
-  readConvergenceBinding,
-  readReuseProofBinding,
-  validateTrackedEvidenceReusePaths,
 }: ContractParserRuntime) {
   function parsePlanReviewArtifact(
     value: unknown,
@@ -612,11 +607,6 @@ export function createContractParsers({
       }
       currentRefs[role] = nodeId;
     }
-    try {
-      validateTrackedEvidenceReusePaths(nodes, currentRefs);
-    } catch {
-      throw invalid();
-    }
     return {
       schemaVersion: 1,
       kind: 'plan-review-artifact',
@@ -627,65 +617,7 @@ export function createContractParsers({
   }
 
   function validateEvidenceArtifactNodes(nodes: EvidenceNode[]): void {
-    const byId = new Map(nodes.map((node) => [node.nodeId, node]));
-    const ordinaryNodes = nodes.filter(
-      ({ type }) =>
-        type !== 'evidence-convergence' && type !== 'evidence-reuse-proof',
-    );
-    validateClosedEvidenceDag(ordinaryNodes);
-
-    for (const node of nodes.filter(
-      ({ type }) => type === 'evidence-convergence',
-    )) {
-      const binding = readConvergenceBinding(node);
-      const oldParent = binding ? byId.get(binding.oldParentNode) : undefined;
-      const newParent = binding ? byId.get(binding.newParentNode) : undefined;
-      if (!binding || !oldParent || !newParent) {
-        throw new Error('invalid convergence record');
-      }
-      const reconstructed = createConvergenceRecord({
-        oldParent,
-        newParent,
-        validatorVersion: binding.validatorVersion,
-        runtimeMetadata: {},
-      });
-      if (canonicalJson(reconstructed) !== canonicalJson(node)) {
-        throw new Error('invalid convergence record');
-      }
-    }
-
-    for (const node of nodes.filter(
-      ({ type }) => type === 'evidence-reuse-proof',
-    )) {
-      const binding = readReuseProofBinding(node);
-      const descendant = binding ? byId.get(binding.descendantNode) : undefined;
-      const oldParent = binding ? byId.get(binding.oldParentNode) : undefined;
-      const newParent = binding ? byId.get(binding.newParentNode) : undefined;
-      const convergenceRecord = binding
-        ? byId.get(binding.convergenceNode)
-        : undefined;
-      if (
-        !binding ||
-        !descendant ||
-        !oldParent ||
-        !newParent ||
-        !convergenceRecord
-      ) {
-        throw new Error('invalid descendant reuse proof');
-      }
-      const reconstructed = createDescendantReuseProof({
-        descendant,
-        parentRole: binding.parentRole,
-        oldParent,
-        newParent,
-        convergenceRecord,
-        validatorVersion: binding.validatorVersion,
-        runtimeMetadata: {},
-      });
-      if (canonicalJson(reconstructed) !== canonicalJson(node)) {
-        throw new Error('invalid descendant reuse proof');
-      }
-    }
+    validateClosedEvidenceDag(nodes);
   }
 
   function parseTasks(markdown: string): ParsedTask[] {

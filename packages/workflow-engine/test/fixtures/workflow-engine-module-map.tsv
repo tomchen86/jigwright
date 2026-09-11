@@ -60,11 +60,9 @@ packages/workflow-engine/src/documentation-closure.ts	packages/workflow-engine/s
 packages/workflow-engine/src/engine-metrics.ts	packages/workflow-engine/src/application/control-plane/engine-metrics.ts	MOVE
 packages/workflow-engine/src/engine-projection-registry.ts	packages/workflow-engine/src/modules/projection/engine-projection-registry.ts	MOVE
 packages/workflow-engine/src/errors.ts	packages/workflow-engine/src/foundation/errors/errors.ts	MOVE
-packages/workflow-engine/src/evidence-convergence.ts	packages/workflow-engine/src/adapters/planning/investigation/evidence-convergence.ts	MOVE
-packages/workflow-engine/src/evidence-currentness.ts	packages/workflow-engine/src/adapters/planning/investigation/evidence-currentness.ts	MOVE
+packages/workflow-engine/src/evidence-currentness.ts	packages/workflow-engine/src/adapters/planning/investigation/evidence-dag.ts	MOVE
 packages/workflow-engine/src/evidence-node.ts	packages/workflow-engine/src/adapters/planning/investigation/evidence-node.ts	MOVE
 packages/workflow-engine/src/evidence-object-store.ts	packages/workflow-engine/src/runtime/storage-journal/evidence-object-store.ts	MOVE
-packages/workflow-engine/src/evidence-reuse-path.ts	packages/workflow-engine/src/adapters/planning/investigation/evidence-reuse-path.ts	MOVE
 packages/workflow-engine/src/execution-core.ts	packages/workflow-engine/src/modules/provider-orchestration/execution-core.ts	MOVE
 packages/workflow-engine/src/execution-environment.ts	packages/workflow-engine/src/runtime/provider-execution/execution-environment.ts	MOVE
 packages/workflow-engine/src/execution-governance.ts	packages/workflow-engine/src/modules/authority/execution-governance.ts	MOVE_PRIMARY_OWNER_MIXED

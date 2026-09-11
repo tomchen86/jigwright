@@ -4,7 +4,7 @@
 
 <!-- jigwright:module-why confirmed=7a8fb8990a902bf6f01d8e17cedc115486ac8d40 -->
 
-Build the investigation around a manifest of the exact tracked source snapshot so every selected hit has a disposition and every explanation can be traced back to the bytes that prompted it. Terms retain their provenance, scanning covers the governed tracked tree, and durable `propose` state allows an interrupted investigation to resume. This follows the [recorded requirements](../../../../../docs/REQUIREMENTS.md): retain useful working memory without making an agent repeat completed work. Manifest facts and PlanReview are separate records, and an investigation exemption records an explicit choice without fabricating an investigation result.
+Build the investigation around a manifest of the exact tracked source snapshot so every selected hit has a disposition and every explanation can be traced back to the bytes that prompted it. Terms retain their provenance, scanning covers the governed tracked tree, and durable `propose` state allows an interrupted investigation to resume. This follows the [recorded requirements](../../../../../docs/REQUIREMENTS.md): retain useful working memory without making an agent repeat completed work. Manifest facts and PlanReview are separate records, and an investigation exemption records an explicit choice without fabricating an investigation result. This working memory is scoped to one change and never outlives it; durable understanding that survives across changes belongs to the semantic ledger in `why-knowledge`.
 
 <!-- /jigwright:module-why -->
 

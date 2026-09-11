@@ -390,7 +390,7 @@ sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
 Every investigation evidence node SHALL have a provenance-sensitive `nodeId` and a semantic `resultDigest`. Runtime-only timestamps, retry counts, latency, process IDs, mutable ref names, and UI metadata MUST NOT enter either digest unless reviewed policy explicitly makes them semantic.
 
-An exact input or provenance-parent change MUST produce a new `nodeId`. Invalidation MAY stop at equal semantic output only when evaluator, policy, node schema, and output schema are compatible and a current convergence record proves the shared `resultDigest`.
+An exact input or provenance-parent change MUST produce a new `nodeId`.
 
 #### Scenario: Input changes but semantic output converges
 covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
@@ -401,7 +401,6 @@ test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence node
 - **WHEN** node identity is calculated
 - **THEN** the new `nodeId` differs from the old one
 - **AND** the `resultDigest` is equal
-- **AND** propagation stops only through a valid convergence record
 
 #### Scenario: Runtime metadata changes
 covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
@@ -410,14 +409,6 @@ test: packages/workflow-engine/test/evidence-node.contract.test.ts#evidence iden
 - **GIVEN** only timestamp, retry, latency, process, or display metadata changes
 - **WHEN** semantic node identity is evaluated
 - **THEN** the semantic `nodeId` and `resultDigest` remain unchanged
-
-#### Scenario: Policy changes with equal output bytes
-covers: #Requirement: Investigation Evidence Uses Provenance and Semantic Digests
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#convergence rejects incompatible evaluator, policy, and schema identities
-
-- **GIVEN** a node is recomputed under an incompatible evaluator, policy, node schema, or output schema
-- **WHEN** output bytes happen to match
-- **THEN** the old and new parent edges do not converge
 
 ### Requirement: Tracked Investigation Manifest Replays Deterministic Facts From Pinned Git
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -617,38 +608,6 @@ test: packages/workflow-engine/test/system-semantic-ledger.contract.test.ts#impo
 
 - **WHEN** a workspace package export resolves to a different repository file
 - **THEN** the importing entry is dependency-changed rather than reused solely because its own source bytes match
-
-### Requirement: Descendant Reuse Preserves Original Provenance
-sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
-
-An existing descendant MAY remain current across a converged parent only when its current evidence path contains a valid reuse proof for every changed parent edge. The descendant's immutable object and original parent provenance MUST NOT be rewritten.
-
-#### Scenario: Every changed parent has a valid reuse proof
-covers: #Requirement: Descendant Reuse Preserves Original Provenance
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
-
-- **GIVEN** an existing descendant semantically depends on converged parent outputs
-- **AND** each changed parent edge has a proof naming the descendant, old and new parents, convergence record, shared result digest, and validator version
-- **WHEN** currentness is evaluated
-- **THEN** the original descendant may be reused through that complete proof path
-
-#### Scenario: One changed parent lacks proof
-covers: #Requirement: Descendant Reuse Preserves Original Provenance
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
-
-- **GIVEN** a descendant has multiple changed parent edges
-- **AND** at least one edge lacks a current compatible proof
-- **WHEN** currentness is evaluated
-- **THEN** the descendant is stale
-
-#### Scenario: Reuse attempts to rewrite descendant provenance
-covers: #Requirement: Descendant Reuse Preserves Original Provenance
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
-
-- **GIVEN** an old descendant names an old immutable parent
-- **WHEN** reuse is recorded
-- **THEN** the engine retains the original descendant object and parent link
-- **AND** it records the new evidence path in separate immutable proof objects
 
 ### Requirement: Exact Project-Local OpenSpec Surface
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
@@ -2086,9 +2045,9 @@ test: packages/workflow-engine/test/ignored-state.integration.test.ts#ignored ne
 ### Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
-Every planning evidence node SHALL declare exact direct inputs, semantic parent result digests, exact provenance parent node IDs, evaluator/schema/policy identity, and canonical output. A changed input SHALL stale only dependent descendants unless a valid compatible convergence and descendant-reuse proof path establishes unchanged semantic output.
+Every planning evidence node SHALL declare exact direct inputs, semantic parent result digests, exact provenance parent node IDs, evaluator/schema/policy identity, and canonical output. A changed input SHALL stale its dependent descendants.
 
-Unknown dependencies, missing parents, ambiguous grouping coverage, incompatible versions, incomplete multi-parent proofs, or unverifiable input digests MUST remain stale.
+Unknown dependencies, missing parents, ambiguous grouping coverage, incompatible versions, or unverifiable input digests MUST remain stale.
 
 #### Scenario: Unrelated term is added
 covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
@@ -2099,32 +2058,6 @@ test: packages/workflow-engine/test/investigation-groups.contract.test.ts#zero-h
 - **THEN** only its scan and changed descendants are computed
 - **AND** unrelated current nodes remain reusable
 
-#### Scenario: One source blob changes
-covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#currentness invalidates only the node whose exact input changed
-
-- **GIVEN** several WHY nodes depend on distinct complete source blobs
-- **WHEN** one blob changes
-- **THEN** only nodes depending on that blob and their semantic descendants become stale
-
-#### Scenario: Equal compatible output converges
-covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
-
-- **GIVEN** a changed parent recomputes under compatible evaluator, policy, and schema identities
-- **AND** its canonical semantic output has the prior `resultDigest`
-- **WHEN** a convergence record and every required descendant-reuse proof validate
-- **THEN** an old descendant may remain current through the explicit proof path
-
-#### Scenario: One changed parent proof is missing
-covers: #Requirement: Planning Evidence Invalidation Is Dependency-Specific and Fail-Closed
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#multi-parent descendant reuse requires one valid proof for every changed edge
-
-- **GIVEN** a descendant depends on multiple changed parents
-- **AND** at least one changed edge lacks a valid proof
-- **WHEN** currentness is evaluated
-- **THEN** the descendant is stale
-
 ### Requirement: Live and CI Planning Assurance Share Content-Pure Validators
 sources: [SRC-763dd72e374ecaf4a822a2c650221d7e3b098835cc42103d1f7b134b5a27dbad]
 
@@ -2134,7 +2067,7 @@ Provider invocation itself MUST NOT be replayed in CI. CI MUST NOT upgrade soft 
 
 #### Scenario: Live and CI receive the same canonical subject
 covers: #Requirement: Live and CI Planning Assurance Share Content-Pure Validators
-test: packages/workflow-engine/test/evidence-currentness.contract.test.ts#live and CI loaders share one canonical content-pure planning validator
+test: packages/workflow-engine/test/evidence-dag.contract.test.ts#live and CI loaders share one canonical content-pure planning validator
 
 - **GIVEN** live transition and CI loaders construct the same canonical subject and immutable artifact set
 - **WHEN** planning validation runs

@@ -18,9 +18,7 @@ import { readCommittedInvestigationManifestV3, } from "../../../../runtime/repos
 import { workflowContractArtifactPaths } from "./contract-artifacts.js";
 import { isRecord, isStringArray, } from "../../../../foundation/canonical-json/contract-values.js";
 import { assertStoredEvidenceNode, } from "../../../planning/investigation/evidence-node.js";
-import { validateClosedEvidenceDag } from "../../../planning/investigation/evidence-currentness.js";
-import { createConvergenceRecord, createDescendantReuseProof, readConvergenceBinding, readReuseProofBinding, } from "../../../planning/investigation/evidence-convergence.js";
-import { validateTrackedEvidenceReusePaths } from "../../../planning/investigation/evidence-reuse-path.js";
+import { validateClosedEvidenceDag } from "../../../planning/investigation/evidence-dag.js";
 import { engineProjectionDefinitions } from "../../../../modules/projection/engine-projection-registry.js";
 import { validateCurrentChangeOrigin } from "../../../../modules/governance-intake/work-registry.js";
 import { assertChangeId, assertPolicyPathInsideRepository, assertTaskId, matchesAllowedPath, normalizePolicyPath, } from "../../../../runtime/session-workspace/paths.js";
@@ -38,11 +36,6 @@ function boundContractParsers() {
         normalizePolicyPath,
         assertStoredEvidenceNode,
         validateClosedEvidenceDag,
-        createConvergenceRecord,
-        createDescendantReuseProof,
-        readConvergenceBinding,
-        readReuseProofBinding,
-        validateTrackedEvidenceReusePaths,
     });
 }
 export function parsePlanReviewArtifact(value, expectedChangeId) {

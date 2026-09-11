@@ -8,11 +8,11 @@ Derive command guidance and next steps from one executable command catalog and t
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.guidance-readme v=1 digest=sha256:253d6bcc26d69fccf732abb43989e8ee219b6c5d54feccc3da8457f6ffe2b631 -->
+<!-- jigwright:region id=documents.guidance-readme v=1 digest=sha256:5abd834c0609cd524921dac9e7e3e69f1f15c0d3b6300f250191017bc160068e -->
 
 <!-- prettier-ignore-start -->
 
-5 files changed in this module since confirmation.
+6 files changed in this module since confirmation.
 
 ## Commands
 

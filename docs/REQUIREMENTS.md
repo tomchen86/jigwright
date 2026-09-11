@@ -324,7 +324,6 @@ No linked contract yet.
 - [Investigation v3 Is Manifest-First](../packages/workflow-engine/spec.md)
 - [v3 Applicability and Validation Boundaries Are Exact](../packages/workflow-engine/spec.md)
 - [Every v3 Failure Delegates Continuation to Central Grant Core](../packages/workflow-engine/spec.md)
-- [Descendant Reuse Preserves Original Provenance](../packages/workflow-engine/spec.md)
 - [Exact Project-Local OpenSpec Surface](../packages/workflow-engine/spec.md)
 - [Typed and Isolated OpenSpec Adapter](../packages/workflow-engine/spec.md)
 - [Project-Local Managed Change Schema](../packages/workflow-engine/spec.md)

@@ -8,7 +8,7 @@
     {
       "path": "bootstrap/recovery-runtime/bootstrap/built-in-engine-closure-pin.js",
       "mode": "100644",
-      "digest": "sha256:c0b678acb1b1f489feeb901216536e00cca964144c8ba4d681d92ee8d7b5e8b7"
+      "digest": "sha256:b8864e8f31b1e3a077b3747d37f9164d5ea1d33787f4fcce52d284485a64f949"
     },
     {
       "path": "bootstrap/recovery-runtime/node_modules/@jigwright/agent-runtime/package.json",
@@ -228,12 +228,12 @@
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contract-parsers.js",
       "mode": "100644",
-      "digest": "sha256:9d4c2af8397158d5c608469788018283287eb7fcc44956cd364886efefae1321"
+      "digest": "sha256:84d5045d0b662df1e4a067adf566deed162d7026ff27a8cf61099fb8e4d70345"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/contracts.js",
       "mode": "100644",
-      "digest": "sha256:08f6e2c54a1e383a26c0879286582f2d232373c3d116371e202ef48b42496ee2"
+      "digest": "sha256:eeca49b1fce6b30f029bdb4a5c683356a433546ddb2e8b61481fdb0a8c6eaa09"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/consumer/repository/work-registry/runner-resolution.js",
@@ -241,24 +241,14 @@
       "digest": "sha256:af47b2a1c2bab264e1960f7a685ae0ed4d70161f33f62b640e9df31b2e9e3c79"
     },
     {
-      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-convergence.js",
+      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-dag.js",
       "mode": "100644",
-      "digest": "sha256:0ea96bac03c802b3ec537ddd05a7e8a1b11dcc34a197b6fc9d7d8c5855d71078"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-currentness.js",
-      "mode": "100644",
-      "digest": "sha256:e3b54932b5191e4c93823599b58424a402d6f8cfb8dc3e88c4c25f6d807ee7d5"
+      "digest": "sha256:b26dd290c1cb8b027469886fb7e35ebfdcceeb46657f69ac3726ee663a60dc62"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-node.js",
       "mode": "100644",
       "digest": "sha256:0423a60746088e5c712b9a18c35ab8d10edee155c1ccaaf78a894ac99031b216"
-    },
-    {
-      "path": "bootstrap/recovery-runtime/src/adapters/planning/investigation/evidence-reuse-path.js",
-      "mode": "100644",
-      "digest": "sha256:8ec792cc4523b7bdf794128ab64bd0fdb9d38ee704798818de5671fa70d88dee"
     },
     {
       "path": "bootstrap/recovery-runtime/src/adapters/signing/ssh/maintainer-signer.js",
