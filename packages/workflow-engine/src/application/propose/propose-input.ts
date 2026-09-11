@@ -5,6 +5,7 @@
  * - Envelope bindings and exact keys remain unchanged across construction and validation.
  * - Authored Markdown, specification paths, and guard policies keep their existing checks.
  */
+import { parseProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -556,7 +557,11 @@ export function assertProviderRetryEnvelope(
   ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [...KEYS]) ||
+    !hasExactKeys(value, [
+      ...KEYS,
+      ...('timeoutMs' in value ? ['timeoutMs'] : []),
+      ...('retryExplanation' in value ? ['retryExplanation'] : []),
+    ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'provider-retry' ||
     typeof value.investigationId !== 'string' ||
@@ -589,6 +594,7 @@ export function assertProviderRetryEnvelope(
   ) {
     throw proposeInputInvalid(envelopeKeyDetail('provider-retry', KEYS, value));
   }
+  assertRetryOptions(value);
   return value as ProviderRetryEnvelope;
 }
 
@@ -610,7 +616,11 @@ export function assertPlanReviewRetryEnvelope(
   ] as const;
   if (
     !isRecord(value) ||
-    !hasExactKeys(value, [...KEYS]) ||
+    !hasExactKeys(value, [
+      ...KEYS,
+      ...('timeoutMs' in value ? ['timeoutMs'] : []),
+      ...('retryExplanation' in value ? ['retryExplanation'] : []),
+    ]) ||
     value.schemaVersion !== 1 ||
     value.kind !== 'plan-review-retry' ||
     typeof value.investigationId !== 'string' ||
@@ -647,6 +657,7 @@ export function assertPlanReviewRetryEnvelope(
       envelopeKeyDetail('plan-review-retry', KEYS, value),
     );
   }
+  assertRetryOptions(value);
   return value as PlanReviewRetryEnvelope;
 }
 
@@ -915,4 +926,16 @@ export function assertBlindOutput(value: unknown): {
     };
   });
   return { reference: value.reference, terms };
+}
+
+function assertRetryOptions(value: Record<string, unknown>): void {
+  if (
+    'timeoutMs' in value &&
+    (!Number.isSafeInteger(value.timeoutMs) ||
+      (value.timeoutMs as number) < 1 ||
+      (value.timeoutMs as number) > 3_600_000)
+  )
+    throw proposeInputInvalid();
+  if ('retryExplanation' in value)
+    parseProviderRetryExplanation(value.retryExplanation);
 }

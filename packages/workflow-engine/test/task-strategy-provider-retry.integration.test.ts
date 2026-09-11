@@ -375,7 +375,7 @@ test('correction provider transport retry keeps one correction round and binds t
   }
 });
 
-test('repeated failure requires an authenticated strategy change and replays that exact retry mode', () => {
+test('repeated transport failure reuses the provider within its fixed budget', () => {
   const repository = createRetryFixture();
   try {
     const { sessionId, waiting } = openFailedImplementation(repository);
@@ -397,13 +397,13 @@ test('repeated failure requires an authenticated strategy change and replays tha
     );
     assert.equal(retry?.schemaVersion, 3);
     if (retry?.schemaVersion !== 3) return;
-    assert.equal(retry.replacement.retryMode, 'strategy-change');
-    assert.ok(retry.replacement.strategyChanges.length > 0);
-    assert.notEqual(
+    assert.equal(retry.replacement.retryMode, 'same-input');
+    assert.deepEqual(retry.replacement.strategyChanges, []);
+    assert.equal(
       retry.request.providerId,
       readProviderInvocationRequest(runtime, second.invocationId).providerId,
     );
-    assert.notEqual(
+    assert.equal(
       retry.request.roleAssignment.sessionId,
       waiting.assignment.sessionId,
     );
@@ -412,7 +412,7 @@ test('repeated failure requires an authenticated strategy change and replays tha
       retry.retryDecision.executionJobId,
     );
     assert.equal(job?.attempts.length, 3);
-    assert.equal(job?.attempts[2]?.retryMode, 'strategy-change');
+    assert.equal(job?.attempts[2]?.retryMode, 'same-input');
     assert.deepEqual(
       job?.attempts[2]?.strategyChanges,
       retry.replacement.strategyChanges,

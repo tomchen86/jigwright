@@ -244,7 +244,7 @@ export function authorizeAutomaticProviderRetry(
     input.now,
     input.failed.updatedAt,
   );
-  const decision = decideRetry({
+  let decision = decideRetry({
     workflow: state.workflow,
     job: state.job,
     attempt: failedAttempt,
@@ -260,6 +260,18 @@ export function authorizeAutomaticProviderRetry(
     boundedGrantRequest: input.boundedGrantRequest,
     now: evaluatedAt,
   });
+  // A receipt issued before a retry rule was relaxed still owns its exact
+  // replacement. Keep using it when the ordinary path now also admits work;
+  // the caller verifies the receipt and replacement binding below.
+  if (input.executionGrantAuthorization !== undefined && decision.automatic) {
+    decision = {
+      retryable: true,
+      automatic: false,
+      retryMode: 'none',
+      requiredGrant: input.executionGrantAuthorization.grantRequest,
+      reasonCode: 'EXECUTION_GRANT_REQUIRED',
+    };
+  }
   const evidenceDigest = digestCanonical({
     schemaVersion: 1,
     kind: 'provider-retry-decision-evidence',

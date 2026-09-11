@@ -8,11 +8,15 @@ Keep installed provider profiles on the host so repositories select roles withou
 
 <!-- /jigwright:module-why -->
 
-<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:ecb94a68a49a7c89edd2bb2aee3e88987fdf53ef9c2c4daf11f8bd97051824b9 -->
+## Retry a failed job
+
+Use `jigwright job retry-preview <job-id> --json`, fill in the failure assessment and planned action, then submit the template with `jigwright job retry-request <job-id> --input retry.json --json`. The timeout may stay unchanged. See [retry behavior and single-use budget exceptions](../../../../../docs/features/PROVIDER_RETRY.md).
+
+<!-- jigwright:region id=documents.provider-orchestration-readme v=1 digest=sha256:d5e1af9cc7b1db4f57fefe171534ba49c4a12ff0706b0dbb0ceb7f7d5e7a9806 -->
 
 <!-- prettier-ignore-start -->
 
-30 files changed in this module since confirmation.
+32 files changed in this module since confirmation.
 
 ## Commands
 
@@ -86,6 +90,7 @@ Header history compares Git blame at the explanation confirmation with this sour
 | [provider-native-session.ts](provider-native-session.ts) | Defines native provider session scopes, claims, completions, and continuation handles. | 1 | History unavailable |
 | [provider-registry.ts](provider-registry.ts) | Exposes reviewed built-in provider families and checks requested capability profiles. | 1 | History unavailable |
 | [provider-retry-decision.ts](provider-retry-decision.ts) | Authorizes provider retries from durable attempt history and execution budget receipts. | 1 | History unavailable |
+| [provider-retry-explanation.ts](provider-retry-explanation.ts) | Preserves the agent's failure assessment and next action with a retry. | 2 | History unavailable |
 | [provider-runtime-evidence.ts](provider-runtime-evidence.ts) | Validates provider process results, runtime receipts, and execution observation bindings. | 1 | History unavailable |
 | [role-result-admission.ts](role-result-admission.ts) | Admits role results and replays their ordinary or granted participant authority. | 1 | Header changed since confirmation |
 | [role-scheduler.ts](role-scheduler.ts) | Schedules independent provider roles and validates granted role exceptions. | 1 | History unavailable |

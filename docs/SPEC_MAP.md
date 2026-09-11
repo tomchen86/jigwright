@@ -38,7 +38,7 @@
 | packages/workflow-engine/src/modules/lifecycle | [Lifecycle](../packages/workflow-engine/src/modules/lifecycle/spec.md) | 6 | 11 |
 | packages/workflow-engine/src/modules/planning-provider | [Planning provider](../packages/workflow-engine/src/modules/planning-provider/spec.md) | 1 | 2 |
 | packages/workflow-engine/src/modules/projection | [Projection](../packages/workflow-engine/src/modules/projection/spec.md) | 6 | 12 |
-| packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | 8 | 28 |
+| packages/workflow-engine/src/modules/provider-orchestration | [Provider Orchestration](../packages/workflow-engine/src/modules/provider-orchestration/spec.md) | 8 | 33 |
 | packages/workflow-engine/src/modules/repository-consumer | [Repository consumer](../packages/workflow-engine/src/modules/repository-consumer/spec.md) | 2 | 2 |
 | packages/workflow-engine/src/modules/source | [Source](../packages/workflow-engine/src/modules/source/spec.md) | 4 | 11 |
 | packages/workflow-engine/src/modules/why-knowledge | [WHY knowledge](../packages/workflow-engine/src/modules/why-knowledge/spec.md) | 2 | 2 |

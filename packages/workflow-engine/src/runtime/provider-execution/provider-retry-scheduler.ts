@@ -6,6 +6,7 @@
  * - Context loading and application retry calls remain at this runtime entrypoint.
  */
 
+import { defaultProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -710,6 +711,7 @@ function publishSurveyReplacement(
     policy.digest,
     policy.policy.limits,
     identity,
+    failed.failure,
   );
   const retried = retryInvestigationProvider(cwd, failed.investigationId, {
     expectedRevision: session.revision,
@@ -729,6 +731,7 @@ function replacementProviderRequest(
   policyDigest: string,
   limits: { timeoutMs: number; aggregateOutputBytes: number },
   identity: string,
+  failure: ProviderInvocationRecord['failure'],
 ): ProviderInvocationRequest {
   return createProviderInvocationRequest({
     invocationId: `invocation-auto-retry-${identity}`,
@@ -746,6 +749,7 @@ function replacementProviderRequest(
     writeAllowedPaths: [...failed.writeAllowedPaths],
     outputSchema: failed.outputSchema,
     evaluatorVersion: failed.evaluatorVersion,
+    retryExplanation: defaultProviderRetryExplanation(failure),
     policyDigest,
     limits: {
       timeoutMs: limits.timeoutMs,

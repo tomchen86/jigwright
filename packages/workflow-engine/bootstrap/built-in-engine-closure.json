@@ -626,19 +626,29 @@
       "digest": "sha256:e86acf620b41867c9b4daa16ec992e5cddf12368bccf778cea9a421b9718e5e5"
     },
     {
+      "path": "src/application/control-plane/execution-job-retry.ts",
+      "mode": "100644",
+      "digest": "sha256:e4ae0fa901874d0a2038ebff066361edcdde0cd09743679689105b04f3ffb026"
+    },
+    {
+      "path": "src/application/control-plane/execution-replacement-budget.ts",
+      "mode": "100644",
+      "digest": "sha256:ffb0cd47aefaefc321e5093de61d81e2fb832a884273f993f82a48d546db5dad"
+    },
+    {
       "path": "src/application/control-plane/execution-replacement-publication.ts",
       "mode": "100644",
-      "digest": "sha256:fa8beedb9ca80a911c84c4933896552fc0a1c08da83c712455c35a42cdb9207f"
+      "digest": "sha256:ce2f6224b1e8370c509e5a351fc16c34d770ad94f19b9db8454181a6d33f1525"
     },
     {
       "path": "src/application/control-plane/execution-replacement-records.ts",
       "mode": "100644",
-      "digest": "sha256:42b7adacfe821e85263a9a9a05a8bb34f050105743e8ffbcda3702284aa03bf6"
+      "digest": "sha256:7e316839bcc830a34240d5d8c2ac96b03857abd2f3bd0af90897704ef02a1125"
     },
     {
       "path": "src/application/control-plane/execution-replacement.ts",
       "mode": "100644",
-      "digest": "sha256:784d2d916551dd2f5695f1fcab608278132f40c5d0e46636092f188f9d909939"
+      "digest": "sha256:048cafcf642f92ef3a53f26a87671422f06787b668d17cc2cd220c4e31e5994b"
     },
     {
       "path": "src/application/control-plane/harness-bootstrap-audit.ts",
@@ -983,7 +993,7 @@
     {
       "path": "src/application/propose/plan-review-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:a8928b2f942d1f9b4029175f6f75270f9e9b1f21448594cba1f965ba1fbbcc95"
+      "digest": "sha256:e1cc8a5d84566c7de80c218176125c984870f5e36a98ff4ad52c92622e35a8c4"
     },
     {
       "path": "src/application/propose/plan-review-preparation.ts",
@@ -998,7 +1008,7 @@
     {
       "path": "src/application/propose/plan-review-retry.ts",
       "mode": "100644",
-      "digest": "sha256:92cca1ed94bd6cdffec86f2803bdabec8410a2b2ad6c342f95fcce8498905bb8"
+      "digest": "sha256:a0ad0d684f96879b649a8cc53417bedb7fc03d8c39e798eafe513662ceace608"
     },
     {
       "path": "src/application/propose/plan-review-role-topology.ts",
@@ -1008,7 +1018,7 @@
     {
       "path": "src/application/propose/plan-review-store.ts",
       "mode": "100644",
-      "digest": "sha256:32c6d07858011384775f95d87e583c63223c687738368845efe4da38c78e464a"
+      "digest": "sha256:449c322b1f8127b59738b4f660938eb8f55572a000e962e70121fb10eb832c4c"
     },
     {
       "path": "src/application/propose/planning-transition.ts",
@@ -1043,7 +1053,7 @@
     {
       "path": "src/application/propose/propose-input.ts",
       "mode": "100644",
-      "digest": "sha256:c5c7fe2623563af9f261b7a8358176abad75f51d2b8a712074d234e4bd126e18"
+      "digest": "sha256:f1d5901e3242821401536f1048d560abf26b145c67ba3b87cb71463369939375"
     },
     {
       "path": "src/application/propose/propose-investigation-facts.ts",
@@ -1083,7 +1093,7 @@
     {
       "path": "src/application/propose/propose-provider-lifecycle.ts",
       "mode": "100644",
-      "digest": "sha256:1de515bbe421fe78198e29da731384532efb3f278fbe99f17e3fdbb2b6013703"
+      "digest": "sha256:1ce87c6db73922be79bebf27e0dfc861feab4e0f885e1ad033cd85a51e92e0b9"
     },
     {
       "path": "src/application/propose/propose-publication.ts",
@@ -1128,7 +1138,7 @@
     {
       "path": "src/application/propose/propose-types.ts",
       "mode": "100644",
-      "digest": "sha256:b19aee1c67a855245fa5d8312b624cc7f274b299b7830d8fb198b2edbde22ff5"
+      "digest": "sha256:2b3dbffb6183008a03d16841b5570031c8e59b00cfd4c0c3b265a64b4b6c0f2b"
     },
     {
       "path": "src/application/propose/role-context-sharing-plan-review.ts",
@@ -1253,7 +1263,7 @@
     {
       "path": "src/composition-root/cli-operational-services.ts",
       "mode": "100644",
-      "digest": "sha256:b52c84356b76d2708a7e70f1866e6ae25540abbc289fe4f98b15a2b9ddb4d076"
+      "digest": "sha256:3d1c965284848fb283736a9ece41bf3af178dac8d77bb0356d60bf441722c6fd"
     },
     {
       "path": "src/composition-root/collaboration-grant-production.ts",
@@ -1558,7 +1568,7 @@
     {
       "path": "src/entrypoints/cli/cli-input.ts",
       "mode": "100644",
-      "digest": "sha256:16341368708914d1b3dffa4937f1bc61f8134c9909a7d9edb971d8d2775a5025"
+      "digest": "sha256:c642832770cbb195394ce8402dcc8631ad555a4e9fa141cb9217753886086ee0"
     },
     {
       "path": "src/entrypoints/cli/collaboration-grant-cli.ts",
@@ -1613,7 +1623,7 @@
     {
       "path": "src/entrypoints/cli/provider-operations-cli.ts",
       "mode": "100644",
-      "digest": "sha256:28c5c2285eea8220f8857645641a45d826a8b8750e53d2da58e9854dc26fdd1d"
+      "digest": "sha256:650b7a10c1a4722f18071dfd417bf58d27a97c98cfd44d0ff8a4d7ad321b3dfe"
     },
     {
       "path": "src/entrypoints/cli/role-context-sharing-grant-cli.ts",
@@ -2698,7 +2708,7 @@
     {
       "path": "src/modules/provider-orchestration/execution-retry.ts",
       "mode": "100644",
-      "digest": "sha256:54af0a048f9ce103d0b12aeb5a70e4896112c8ea021daf4bfd176d3641a6129a"
+      "digest": "sha256:5e938b5669ee01d9c1a444c0aa2a7ac7712c6be64e0128342ea704e6f81a016e"
     },
     {
       "path": "src/modules/provider-orchestration/execution-values.ts",
@@ -2708,7 +2718,7 @@
     {
       "path": "src/modules/provider-orchestration/provider-contracts.ts",
       "mode": "100644",
-      "digest": "sha256:1ab944dbb9dc74e52196151a066fd04700afbb7940ce59792ba4725e1d6a98a0"
+      "digest": "sha256:1b9d7ced793ff9fe3c28118bd4a161fb05bf8e1c78df5ae34b753d168065bd2d"
     },
     {
       "path": "src/modules/provider-orchestration/provider-native-session.ts",
@@ -2723,7 +2733,12 @@
     {
       "path": "src/modules/provider-orchestration/provider-retry-decision.ts",
       "mode": "100644",
-      "digest": "sha256:a014cf0529f0bde2618cb2ad07f01e0a37fff1fc035da44116c006bef3ee2edc"
+      "digest": "sha256:8a4ea1301080a8e140a0495cd4d2fb5bc3526dd9886dd09e2533dff6965fd878"
+    },
+    {
+      "path": "src/modules/provider-orchestration/provider-retry-explanation.ts",
+      "mode": "100644",
+      "digest": "sha256:98141a73596ee1959c48bf6fd4db81a27e166899118ca46143db2e6bbb01fe72"
     },
     {
       "path": "src/modules/provider-orchestration/provider-runtime-evidence.ts",
@@ -3048,7 +3063,7 @@
     {
       "path": "src/runtime/provider-execution/execution-runtime.ts",
       "mode": "100644",
-      "digest": "sha256:42a839b6c1654d0cb439d4a894781aa7b881b85c6a42373370e60f1e4f112098"
+      "digest": "sha256:ede0bc97b38b408cbdcf9976313a0f469e6cedc854e7a31295fdce2d946a7067"
     },
     {
       "path": "src/runtime/provider-execution/provider-availability-pilot.ts",
@@ -3073,7 +3088,7 @@
     {
       "path": "src/runtime/provider-execution/provider-execution-projection.ts",
       "mode": "100644",
-      "digest": "sha256:a78e3ed2fc8df9fcddb1308abec0413ed6b24986d1d1f9ab885d3cef9c983d5c"
+      "digest": "sha256:8d5661c829b10ebbeafba3082578a5ee9ae1f90ae4406dfa7b8d92cbc89c82b3"
     },
     {
       "path": "src/runtime/provider-execution/provider-governance-values.ts",
@@ -3138,7 +3153,7 @@
     {
       "path": "src/runtime/provider-execution/provider-retry-scheduler.ts",
       "mode": "100644",
-      "digest": "sha256:449ce4c7cf04be065c520d3f4967a458b78ae37e878a86db73bfa9a3e1a6b9e5"
+      "digest": "sha256:068949f1193836c1f1c4be498af009f8c5c49bec72b22451cfb163db29266d4f"
     },
     {
       "path": "src/runtime/provider-execution/provider-retry-store.ts",
@@ -3593,7 +3608,7 @@
     {
       "path": "src/runtime/storage-journal/evidence-plan-review-ownership.ts",
       "mode": "100644",
-      "digest": "sha256:07b47f5b68140e92ca1bf55e111a1b3adbcac8b56342c1df65d00bea8bd66239"
+      "digest": "sha256:40d64aefef2f7a643cd217dcfcb3b43eeb990efe8820d2ca91b0af8b85566f5a"
     },
     {
       "path": "src/runtime/storage-journal/evidence-planning-ownership.ts",
@@ -3638,7 +3653,7 @@
     {
       "path": "src/runtime/storage-journal/execution-provider-projection.ts",
       "mode": "100644",
-      "digest": "sha256:cc4d8ae7d1fe8884985f1ff0b2d9e8c9e38c59f0df571f21d3c2c8d9876f83de"
+      "digest": "sha256:72722a5e1b6f1add405945d74cfdfa8993b4b00a40c9940779aec6835ca6c4b9"
     },
     {
       "path": "src/runtime/storage-journal/execution-state-contract.ts",
@@ -3963,7 +3978,7 @@
     {
       "path": "src/runtime/storage-journal/provider-invocation-validation.ts",
       "mode": "100644",
-      "digest": "sha256:566a329fbf01b4ac4117828fc5f281a143b43fbbda6f4cf1874817c1fdd26020"
+      "digest": "sha256:abb42283609861ce824442b8c791af1eac96a845e27470968c21ace6198ce920"
     },
     {
       "path": "src/runtime/storage-journal/provider-invocation-workers.ts",

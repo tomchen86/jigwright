@@ -173,10 +173,9 @@ test('granted replacement republication traverses its own reservation crash wind
     );
     assert.equal(materialized.state, 'waiting-for-plan-review');
 
-    // Two same-fingerprint failures put the ladder at its boundary, where the
-    // bounded grant is the only executable exit.
+    // Four failures exhaust the fixed attempt budget; repeated fingerprints alone do not require a Grant.
     let review: ReturnType<typeof getProposeStatus> = materialized;
-    for (let attempt = 1; attempt <= 2; attempt += 1) {
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
       const invocationId = review.planReview!.invocationId;
       const claim = claimProviderInvocation(paths, invocationId, {
         workerId: `crash-window-worker-${attempt}`,
@@ -193,7 +192,7 @@ test('granted replacement republication traverses its own reservation crash wind
         },
       });
       review = getProposeStatus(repository, investigation.investigationId);
-      if (attempt < 2) {
+      if (attempt < 4) {
         review = resumePropose(
           repository,
           changeId,

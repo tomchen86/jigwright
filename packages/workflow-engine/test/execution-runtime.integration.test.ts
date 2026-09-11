@@ -109,10 +109,11 @@ test('300 to 600 is one provider Job with replacement Attempt lineage and one ac
       '--json',
     ]);
     assert.equal(cliPreview.status, 0, cliPreview.stderr);
-    assert.deepEqual(
-      (JSON.parse(cliPreview.stdout) as { result: ReplacementResult }).result
-        .changedFields,
-      [{ path: '/timeoutMs', from: 300_000, to: 600_000 }],
+    // This raw runtime fixture has no owning propose session: preview must not promise it can submit.
+    assert.equal(JSON.parse(cliPreview.stdout).result.status, 'blocked');
+    assert.equal(
+      JSON.parse(cliPreview.stdout).result.reasonCode,
+      'INVESTIGATION_SESSION_UNSAFE',
     );
     const beforePreview = fs.readFileSync(
       path.join(runtime.invocations, first.invocationId, 'state.json'),
@@ -504,7 +505,7 @@ test('exhausted retryable provider Job returns a concrete scoped GrantRequest', 
     const decision = inspection.latestFailure?.decision;
     assert.equal(decision?.automatic, false);
     assert.equal(decision?.retryable, true);
-    assert.equal(decision?.reasonCode, 'REPEATED_FAILURE_GRANT_REQUIRED');
+    assert.equal(decision?.reasonCode, 'EXECUTION_GRANT_REQUIRED');
     assert.equal(
       decision?.requiredGrant?.workflowId,
       inspection.workflow.workflowId,
@@ -536,10 +537,16 @@ test('exhausted retryable provider Job returns a concrete scoped GrantRequest', 
     assert.deepEqual(retryRequest.request.requestedChanges, [
       { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
       {
-        path: '/retryPolicy/maxSameFailureFingerprint',
-        from: 2,
-        to: 3,
+        path: '/retryPolicy/maxProviderCostMicros',
+        from: 40_000_000,
+        to: 50_000_000,
       },
+      {
+        path: '/retryPolicy/maxProviderTokens',
+        from: 2_000_000,
+        to: 2_500_000,
+      },
+      { path: '/retryPolicy/providerLimits/claude', from: 4, to: 5 },
       { path: '/timeoutMs', from: 300_000, to: 600_000 },
     ]);
     assert.equal(

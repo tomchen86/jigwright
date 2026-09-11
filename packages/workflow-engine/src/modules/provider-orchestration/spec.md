@@ -172,6 +172,57 @@ Every provider call SHALL use a typed request and result contract bound to invoc
 
 A malformed result, mismatched binding, excessive output, timeout, signal, spawn failure, or non-zero exit MUST NOT produce successful evidence.
 
+Survey and PlanReview retries SHALL accept an agent failure assessment and planned action, preserve them in the immutable replacement request, and bind them to its digest. An unknown cause is valid; the engine MUST NOT judge whether the action is sufficiently different. Existing retry envelopes remain readable. Automatic retries SHALL record the observed failure and the selected default action without another model call.
+
+Repeated failure fingerprints SHALL produce an informational warning, not an independent settings-change or early Grant requirement. Ordinary retries SHALL retain the current fixed attempt, reserved runtime, provider, cost, token, repair and deadline budgets and existing state/authorization checks. `job retry-preview` SHALL perform no reservation or dispatch, and `job retry-request --input` SHALL route Survey and PlanReview to their existing owning lifecycle. Unchanged admission inputs SHALL have consistent preview and submit outcomes; exact replays SHALL reuse the durable replacement.
+
+A job-bound, single-use Grant SHALL allow another attempt with the original timeout. It SHALL enumerate every capacity limit that the next reservation would exceed, and only the capacity needed for that reservation. Limits with sufficient capacity SHALL remain absent from the exception. Timeout changes remain optional and existing timeout-changing Grants remain readable. Neither this exception nor a repeated failure SHALL rewrite default provider policy. The approved P08 discussion and additional budget decision are preserved in [the implementation plan](../../../../../docs/research/p08-retry-recovery.md).
+
+#### Scenario: Repeated Survey failures retry through the job entry with an explanation
+covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/investigation-provider-retry.integration.test.ts#propose retry envelope authorizes one idempotent replacement survey
+
+- **GIVEN** two retryable failures and remaining fixed budget
+- **WHEN** the agent supplies its failure assessment and action through job retry-request
+- **THEN** the next attempt may retain its timeout and the original failures remain intact
+- **AND** replay creates no additional attempt, while changing the explanation makes it a different request
+
+#### Scenario: PlanReview uses the same explained job retry entry
+covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/investigation-plan-review-retry.integration.test.ts#retries PlanReview with intact invocation and snapshot lineage
+
+- **GIVEN** a failed PlanReview and its recorded snapshot
+- **WHEN** the agent submits the job retry preview with an explanation
+- **THEN** the owning PlanReview lifecycle preserves snapshot and reservation lineage
+- **AND** exact replay reuses the replacement
+
+#### Scenario: One more attempt keeps the original timeout and consumes one Grant
+covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/execution-replacement.integration.test.ts#a one-attempt Grant keeps the 60 minute timeout and records every extra reservation exactly once
+
+- **GIVEN** four attempts have consumed the fixed reserved budgets
+- **WHEN** a single-use Grant explicitly authorizes the next reservation without changing timeout
+- **THEN** the fifth attempt retains the 60 minute limit and the explanation
+- **AND** crash recovery reuses one receipt and dispatch, leaving default policy unchanged
+
+#### Scenario: A previously signed timeout Grant remains executable
+covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/execution-replacement.integration.test.ts#an already signed timeout Grant from the repeated-failure gate still executes once
+
+- **GIVEN** a request signed under the previous repeated-failure rule
+- **WHEN** the ordinary retry rule now also admits that work
+- **THEN** its exact signed request and receipt still publish one replacement
+- **AND** replay neither consumes another use nor changes the original signed bytes
+
+#### Scenario: Sufficient capacity requires no extra exception
+covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
+test: packages/workflow-engine/test/execution-core.contract.test.ts#a one-attempt budget exception lists only exhausted reservation dimensions
+
+- **GIVEN** total attempt count is exhausted while other reservation dimensions have capacity
+- **WHEN** the next attempt's exception is computed
+- **THEN** only the total attempt count is listed
+- **AND** the default policy remains unchanged
+
 #### Scenario: Provider returns a mismatched nonce
 covers: #Requirement: Every Provider Call Uses a Bound Typed Invocation
 test: packages/workflow-engine/test/provider-execution-wire.contract.test.ts#provider results reject every mismatched request binding

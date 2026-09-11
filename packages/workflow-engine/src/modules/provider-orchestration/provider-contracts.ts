@@ -6,6 +6,10 @@
  * - Provider invocation requests use the repository-read-only capability
  *   profile.
  */
+import {
+  parseProviderRetryExplanation,
+  type ProviderRetryExplanation,
+} from './provider-retry-explanation.ts';
 import crypto from 'node:crypto';
 
 import type {
@@ -133,6 +137,7 @@ export type ProviderInvocationRequest = {
   evaluatorVersion: string;
   policyDigest: string;
   limits: ProviderLimits;
+  retryExplanation?: ProviderRetryExplanation;
   requestDigest: string;
 };
 
@@ -154,6 +159,7 @@ export type ProviderInvocationRequestInput = {
   evaluatorVersion: string;
   policyDigest: string;
   limits: ProviderLimits;
+  retryExplanation?: ProviderRetryExplanation;
 };
 
 /**
@@ -376,7 +382,13 @@ export function createProviderInvocationRequest(
   input: ProviderInvocationRequestInput,
 ): ProviderInvocationRequest {
   // Reject unknown or missing input keys before any field is trusted.
-  if (!isRecord(input) || !hasExactKeys(input, REQUEST_INPUT_KEYS)) {
+  if (
+    !isRecord(input) ||
+    !hasExactKeys(input, [
+      ...REQUEST_INPUT_KEYS,
+      ...('retryExplanation' in input ? ['retryExplanation'] : []),
+    ])
+  ) {
     throw requestInvalid();
   }
 
@@ -440,7 +452,13 @@ export function createProviderInvocationRequest(
   }) as ProviderLimits;
   const roleAssignmentDigest = sha256(canonicalJson(roleAssignment));
 
+  const retryMetadata = !('retryExplanation' in input)
+    ? {}
+    : {
+        retryExplanation: parseProviderRetryExplanation(input.retryExplanation),
+      };
   const binding = {
+    ...retryMetadata,
     schemaVersion: REQUEST_SCHEMA_VERSION,
     invocationId: input.invocationId,
     nonce: input.nonce,
@@ -463,6 +481,7 @@ export function createProviderInvocationRequest(
   const requestDigest = sha256(canonicalJson(binding));
 
   const request: ProviderInvocationRequest = {
+    ...retryMetadata,
     schemaVersion: REQUEST_SCHEMA_VERSION,
     invocationId: input.invocationId,
     nonce: input.nonce,
@@ -495,6 +514,7 @@ export function recreateProviderInvocationRequest(
     !hasExactKeys(value, [
       'schemaVersion',
       ...REQUEST_INPUT_KEYS,
+      ...('retryExplanation' in value ? ['retryExplanation'] : []),
       'roleAssignmentDigest',
       'requestDigest',
     ])
@@ -519,6 +539,9 @@ export function recreateProviderInvocationRequest(
     evaluatorVersion: value.evaluatorVersion,
     policyDigest: value.policyDigest,
     limits: value.limits,
+    ...('retryExplanation' in value
+      ? { retryExplanation: value.retryExplanation }
+      : {}),
   } as ProviderInvocationRequestInput);
   if (canonicalJson(request) !== canonicalJson(value)) {
     throw requestInvalid();

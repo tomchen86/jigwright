@@ -1,4 +1,9 @@
 import assert from 'node:assert/strict';
+import { executionReplacementBudgetChanges } from '../src/application/control-plane/execution-replacement-budget.ts';
+import {
+  previewExecutionJobRetry,
+  requestExecutionJobRetry,
+} from '../src/application/control-plane/execution-job-retry.ts';
 import { spawn, spawnSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -17,6 +22,7 @@ import {
   SimulatedExecutionReplacementCrash,
 } from '../src/application/control-plane/execution-replacement.ts';
 import {
+  canonicalExecutionBudgetGrantRequest,
   createExecutionBudgetGrantEnvelope,
   createExecutionBudgetGrantRequest,
   inspectExecutionBudgetGrant,
@@ -88,6 +94,9 @@ test('granted Survey retries raise a 300s policy ceiling through 600s to the 360
     [
       '/providerPolicy/limits/timeoutMs',
       '/retryPolicy/maxAttempts',
+      '/retryPolicy/maxProviderCostMicros',
+      '/retryPolicy/maxProviderTokens',
+      '/retryPolicy/providerLimits/codex',
       '/timeoutMs',
     ],
   );
@@ -98,6 +107,13 @@ test('granted Survey retries raise a 300s policy ceiling through 600s to the 360
       to: 600_000,
     },
     { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
+    {
+      path: '/retryPolicy/maxProviderCostMicros',
+      from: 40_000_000,
+      to: 50_000_000,
+    },
+    { path: '/retryPolicy/maxProviderTokens', from: 2_000_000, to: 2_500_000 },
+    { path: '/retryPolicy/providerLimits/codex', from: 4, to: 5 },
     { path: '/timeoutMs', from: 300_000, to: 600_000 },
   ]);
   const grantId = '77777777-7777-4777-8777-777777777777';
@@ -299,7 +315,14 @@ test('granted Survey retries raise a 300s policy ceiling through 600s to the 360
       from: 300_000,
       to: 3_600_000,
     },
-    { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
+    { path: '/retryPolicy/maxAttempts', from: 4, to: 6 },
+    {
+      path: '/retryPolicy/maxProviderCostMicros',
+      from: 40_000_000,
+      to: 60_000_000,
+    },
+    { path: '/retryPolicy/maxProviderTokens', from: 2_000_000, to: 3_000_000 },
+    { path: '/retryPolicy/providerLimits/codex', from: 4, to: 6 },
     { path: '/timeoutMs', from: 600_000, to: 3_600_000 },
   ]);
   const capGrantId = '99999999-9999-4999-8999-999999999999';
@@ -909,6 +932,219 @@ test('granted PlanReview retry publishes one v3 reservation ref before dispatch'
   }
 });
 
+test('a one-attempt Grant keeps the 60 minute timeout and records every extra reservation exactly once', (t) => {
+  const { repository, jobId, mandate, paths, investigationId } =
+    createExhaustedSurveyReplacementFixture(t, 3_600_000);
+  const policyBefore = fs.readFileSync(
+    path.join(repository, 'workflow/ai-adapter-policy.json'),
+  );
+  const retryExplanation = {
+    failureReason: 'Sandbox access was unavailable.',
+    plannedAction: 'Use the authorized host with the same time limit.',
+  };
+  const inspection = listExecutionJobs(repository).find(
+    (row) => row.job.jobId === jobId,
+  )!;
+  const policy = loadAiAdapterPolicy(repository);
+  const capacity = executionReplacementBudgetChanges(
+    inspection,
+    3_600_000,
+    policy,
+  );
+  const advancedClock = t.mock.method(
+    Date,
+    'now',
+    () => Date.parse(inspection.job.retryPolicy.deadline) + 1,
+  );
+  try {
+    assert.deepEqual(
+      executionReplacementBudgetChanges(inspection, 3_600_000, policy),
+      capacity,
+    );
+  } finally {
+    advancedClock.mock.restore();
+  }
+  const preview = previewExecutionJobRetry(repository, jobId);
+  assert.equal(preview.status, 'grant-required');
+  const request = requestExecutionJobRetry(repository, jobId, {
+    ...preview.inputTemplate!,
+    retryExplanation,
+  });
+  if (request.status !== 'grant-required')
+    assert.fail('Expected one exact Grant request from the job entry.');
+  if (preview.status !== 'grant-required')
+    assert.fail('Expected a Grant preview.');
+  assert.deepEqual(
+    preview.grantRequest.requestedChanges,
+    request.request.requestedChanges,
+  );
+  assert.deepEqual(request.request.requestedChanges, [
+    { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
+    {
+      path: '/retryPolicy/maxCumulativeRuntimeMs',
+      from: 14_400_000,
+      to: 18_000_000,
+    },
+    {
+      path: '/retryPolicy/maxProviderCostMicros',
+      from: 40_000_000,
+      to: 50_000_000,
+    },
+    { path: '/retryPolicy/maxProviderTokens', from: 2_000_000, to: 2_500_000 },
+    { path: '/retryPolicy/providerLimits/codex', from: 4, to: 5 },
+  ]);
+  assert.equal(request.request.expiresAfterAttempts, 1);
+  const grantId = 'aaaa8888-8888-4888-8888-888888888888';
+  issueExecutionBudgetGrant(repository, request.request, {
+    grantId,
+    maxUses: 1,
+    signer: mandate.signer,
+  });
+  assert.throws(
+    () =>
+      executeGrantedReplacement(repository, jobId, grantId, {
+        simulateCrashAfter: 'grant-consumed',
+      }),
+    (error) => error instanceof SimulatedExecutionReplacementCrash,
+  );
+  let dispatches = 0;
+  const dispatcher = () => {
+    dispatches += 1;
+  };
+  const executed = executeGrantedReplacement(repository, jobId, grantId, {
+    providerDispatcher: dispatcher,
+  });
+  const replay = executeGrantedReplacement(repository, jobId, grantId, {
+    providerDispatcher: dispatcher,
+  });
+  assert.equal(
+    replay.replacementInvocationId,
+    executed.replacementInvocationId,
+  );
+  assert.equal(dispatches, 1);
+  assert.equal(
+    readProviderInvocation(paths, executed.replacementInvocationId).attempt,
+    5,
+  );
+  const replacement = readProviderInvocationRequest(
+    paths,
+    executed.replacementInvocationId,
+  );
+  assert.equal(replacement.limits.timeoutMs, 3_600_000);
+  assert.deepEqual(replacement.retryExplanation, retryExplanation);
+  assert.equal(readProviderRetryReservation(paths, investigationId, 6), null);
+  const runtime = loadInvestigationRuntimeContext(repository);
+  const grant = inspectExecutionBudgetGrant(
+    runtime.lifecycleRuntime.root,
+    grantId,
+  );
+  assert.equal(grant.remainingUses, 0);
+  assert.equal(grant.receipts.length, 1);
+  assert.deepEqual(
+    fs.readFileSync(path.join(repository, 'workflow/ai-adapter-policy.json')),
+    policyBefore,
+  );
+});
+
+test('an already signed timeout Grant from the repeated-failure gate still executes once', (t) => {
+  const { repository, jobId, mandate, paths } =
+    createExhaustedSurveyReplacementFixture(t, 300_000, 2);
+  const inspection = listExecutionJobs(repository).find(
+    (row) => row.job.jobId === jobId,
+  )!;
+  const previous = inspection.attempts.at(-1)!;
+  const failed = readProviderInvocation(
+    paths,
+    previous.providerInvocation!.invocationId,
+  );
+  const policy = loadAiAdapterPolicy(repository);
+  const changes = [
+    { path: '/providerPolicy/limits/timeoutMs', from: 300_000, to: 600_000 },
+    { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
+    { path: '/timeoutMs', from: 300_000, to: 600_000 },
+  ];
+  const hash = (text: string) =>
+    crypto.createHash('sha256').update(text).digest('hex');
+  const seed = hash(
+    canonicalJson({
+      kind: 'execution-replacement-request',
+      jobId,
+      failedAttemptId: previous.attemptId,
+      changes,
+    }),
+  );
+  // Persist the pre-P08 request and binding bytes; no new optional fields.
+  const request = createExecutionBudgetGrantRequest({
+    requestId: `${seed.slice(0, 8)}-${seed.slice(8, 12)}-4${seed.slice(13, 16)}-8${seed.slice(17, 20)}-${seed.slice(20, 32)}`,
+    workflowId: inspection.workflow.workflowId,
+    epoch: inspection.job.epoch,
+    jobId,
+    mandateBinding: inspection.job.mandateBinding!,
+    requestedChanges: changes,
+    rationale: `Authorize exactly Attempt ${previous.attemptNumber + 1} after failed ${previous.attemptId} (${previous.failure!.code}, ${previous.failure!.fingerprint}): extend maxAttempts once and change timeout 300000ms to 600000ms under provider policy ${policy.digest}.`,
+    expiresAfterAttempts: 1,
+    createdAt: new Date(previous.updatedAt),
+  });
+  const requestDigest = `sha256:${hash(canonicalExecutionBudgetGrantRequest(request))}`;
+  const binding = {
+    schemaVersion: 1,
+    kind: 'execution-replacement-request-binding',
+    requestDigest,
+    workflowId: inspection.workflow.workflowId,
+    epoch: inspection.job.epoch,
+    contextDigest: inspection.job.contextDigest,
+    jobId,
+    failedAttemptId: previous.attemptId,
+    failedInvocationId: failed.invocationId,
+    failedInvocationRevision: failed.revision,
+    failureFingerprint: previous.failure!.fingerprint,
+    providerPolicyDigest: policy.digest,
+    providerPolicyDocumentDigest: `sha256:${hash(policy.document)}`,
+  };
+  const context = loadInvestigationRuntimeContext(repository);
+  for (const [directory, value] of [
+    ['requests', request],
+    [
+      'request-bindings',
+      { ...binding, recordDigest: `sha256:${hash(canonicalJson(binding))}` },
+    ],
+  ] as const) {
+    const parent = path.join(
+      context.lifecycleRuntime.root,
+      'execution-replacements',
+      directory,
+    );
+    fs.mkdirSync(parent, { recursive: true, mode: 0o700 });
+    fs.writeFileSync(
+      path.join(parent, `${requestDigest.slice(7)}.json`),
+      `${canonicalJson(value)}\n`,
+      { flag: 'wx', mode: 0o600 },
+    );
+  }
+  const grantId = 'abab8888-8888-4888-8888-888888888888';
+  issueExecutionBudgetGrant(repository, request, {
+    grantId,
+    maxUses: 1,
+    signer: mandate.signer,
+  });
+  const result = executeGrantedReplacement(repository, jobId, grantId);
+  assert.equal(result.phase, 'complete');
+  assert.equal(
+    readProviderInvocation(paths, result.replacementInvocationId).attempt,
+    3,
+  );
+  assert.equal(result.replacementRequest.limits.timeoutMs, 600_000);
+  assert.deepEqual(
+    executeGrantedReplacement(repository, jobId, grantId),
+    result,
+  );
+  assert.equal(
+    inspectExecutionBudgetGrant(context.lifecycleRuntime.root, grantId).receipts
+      .length,
+    1,
+  );
+});
+
 function inspectExecutionJobForInvocation(
   repository: string,
   invocationId: string,
@@ -1101,7 +1337,11 @@ function runWorkflowCliAsync(
   });
 }
 
-function createExhaustedSurveyReplacementFixture(t: TestContext) {
+function createExhaustedSurveyReplacementFixture(
+  t: TestContext,
+  timeoutMs = 300_000,
+  attempts = 4,
+) {
   const repository = createFixtureRepository();
   const changeId = 'execution-granted-survey';
   let mandate: ReturnType<typeof prepareExecutionMandate> | undefined;
@@ -1110,7 +1350,7 @@ function createExhaustedSurveyReplacementFixture(t: TestContext) {
     fs.rmSync(repository, { recursive: true, force: true });
   });
   git(repository, ['checkout', '-b', `work/${changeId}`]);
-  setFixtureProviderTimeout(repository, 300_000);
+  setFixtureProviderTimeout(repository, timeoutMs);
   mandate = prepareExecutionMandate(repository, changeId);
   const started = startPropose(
     repository,
@@ -1154,7 +1394,7 @@ function createExhaustedSurveyReplacementFixture(t: TestContext) {
     discoverRepository(repository).gitCommonDirectory,
     'workflow-engine',
   );
-  for (let attempt = 1; attempt <= 4; attempt += 1) {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
     const invocationId =
       requireOrdinaryInvestigation(output).providerInvocationId;
     const claim = claimProviderInvocation(paths, invocationId, {
@@ -1167,12 +1407,15 @@ function createExhaustedSurveyReplacementFixture(t: TestContext) {
       leaseToken: claim.leaseToken,
       failure: {
         kind: 'retryable',
-        code: `PROVIDER_PROCESS_FAILED_${attempt}`,
+        code:
+          attempts < 4
+            ? 'PROVIDER_PROCESS_FAILED'
+            : `PROVIDER_PROCESS_FAILED_${attempt}`,
         message: `Provider attempt ${attempt} failed.`,
       },
     });
     output = getProposeStatus(repository, investigationId);
-    if (attempt < 4) {
+    if (attempt < attempts) {
       output = resumePropose(
         repository,
         changeId,

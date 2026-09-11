@@ -13,6 +13,7 @@ import {
 } from '@jigwright/core/job-attempt-runtime';
 import { assertReadOnlyProbeRequestV1 } from '@jigwright/core/read-only-probe';
 
+import { executionRetryBudgetChanges } from '../src/modules/provider-orchestration/execution-retry.ts';
 import * as executionCore from '../src/modules/provider-orchestration/execution-core.ts';
 import {
   acceptAttemptResult,
@@ -625,8 +626,10 @@ test('failure descriptors are canonical and retry decisions follow fixed orderin
     sameFingerprintCount: 2,
     now: LATER,
   });
-  assert.equal(repeated.retryMode, 'strategy-change');
-  assert.equal(repeated.changedStrategyRequired, true);
+  assert.equal(repeated.retryMode, 'same-input');
+  assert.equal(repeated.automatic, true);
+  assert.equal(repeated.changedStrategyRequired, undefined);
+  assert.equal(repeated.reasonCode, 'REPEATED_FAILURE_WARNING');
 
   const exhaustedJob: JobRecord = {
     ...initial.job,
@@ -831,11 +834,7 @@ function isWorkflowError(error: unknown, code: string): boolean {
   return error instanceof WorkflowError && error.code === code;
 }
 
-test('a bounded grant reaches the fingerprint boundary, not only past it', () => {
-  // At exactly maxSameFailureFingerprint the ladder demands a changed
-  // strategy, and no automatic executor exists for one. The bounded grant is
-  // the same manual lever the past-the-boundary branch already honors; a
-  // decision that ignores it here is executable by nobody.
+test('repeated failures stay within the fixed budget without demanding a strategy or grant', () => {
   const initial = createJob();
   const crash = classifyExecutionFailure({
     kind: 'provider-process-crash',
@@ -870,15 +869,11 @@ test('a bounded grant reaches the fingerprint boundary, not only past it', () =>
     now: LATER,
   });
   assert.equal(granted.retryable, true);
-  assert.equal(granted.automatic, false);
-  assert.equal(granted.reasonCode, 'REPEATED_FAILURE_GRANT_REQUIRED');
-  assert.equal(
-    granted.requiredGrant?.requestId,
-    '123e4567-e89b-42d3-a456-426614174001',
-  );
+  assert.equal(granted.automatic, true);
+  assert.equal(granted.reasonCode, 'REPEATED_FAILURE_WARNING');
+  assert.equal(granted.requiredGrant, undefined);
 
-  // Without the grant candidate the boundary still reports the changed-
-  // strategy requirement exactly as before.
+  // A third identical failure still permits the remaining fourth attempt.
   const ungranted = decideRetry({
     workflow: WORKFLOW,
     job: initial.job,
@@ -887,6 +882,69 @@ test('a bounded grant reaches the fingerprint boundary, not only past it', () =>
     sameFingerprintCount: 2,
     now: LATER,
   });
-  assert.equal(ungranted.retryMode, 'strategy-change');
-  assert.equal(ungranted.changedStrategyRequired, true);
+  assert.equal(ungranted.retryMode, 'same-input');
+  assert.equal(ungranted.changedStrategyRequired, undefined);
+  const third = decideRetry({
+    workflow: WORKFLOW,
+    job: { ...initial.job, attemptCount: 3 },
+    attempt: initial.attempt,
+    failure: crash,
+    sameFingerprintCount: 3,
+    now: LATER,
+  });
+  assert.equal(third.automatic, true);
+  const exhausted = decideRetry({
+    workflow: WORKFLOW,
+    job: { ...initial.job, attemptCount: 4 },
+    attempt: initial.attempt,
+    failure: crash,
+    sameFingerprintCount: 4,
+    now: LATER,
+  });
+  assert.equal(exhausted.automatic, false);
+});
+
+test('a one-attempt budget exception lists only exhausted reservation dimensions', () => {
+  const initial = createJob();
+  const failure = classifyExecutionFailure({
+    kind: 'provider-timeout',
+    stage: initial.job.stage,
+    inputDigest: initial.attempt.inputDigest,
+    environmentDigest: initial.attempt.environmentDigest,
+    observedAt: LATER,
+  });
+  const input = {
+    job: { ...initial.job, attemptCount: 4 },
+    attempt: initial.attempt,
+    failure,
+    providerAttemptCount: 2,
+    nextRuntimeMs: 300_000,
+    nextProviderCostMicros: 100,
+    nextProviderTokens: 10,
+    now: LATER,
+  };
+  assert.deepEqual(executionRetryBudgetChanges(input), [
+    { path: '/retryPolicy/maxAttempts', from: 4, to: 5 },
+  ]);
+  assert.deepEqual(
+    executionRetryBudgetChanges({
+      ...input,
+      job: {
+        ...input.job,
+        attemptCount: 5,
+        providerCostMicros: RETRY_POLICY.maxProviderCostMicros,
+      },
+      providerAttemptCount: 4,
+    }),
+    [
+      { path: '/retryPolicy/maxAttempts', from: 4, to: 6 },
+      {
+        path: '/retryPolicy/maxProviderCostMicros',
+        from: RETRY_POLICY.maxProviderCostMicros,
+        to: RETRY_POLICY.maxProviderCostMicros + 100,
+      },
+      { path: '/retryPolicy/providerLimits/claude', from: 4, to: 5 },
+    ],
+  );
+  assert.deepEqual(input.job.retryPolicy, RETRY_POLICY);
 });

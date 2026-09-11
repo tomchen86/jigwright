@@ -7,6 +7,7 @@
  * - These declarations carry no runtime initialization or transition behavior.
  */
 
+import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { type AssuranceAssessmentReport } from '../../modules/assurance/assurance-assessment-chain.ts';
 import { type GlobalPlanReviewCoverageRequirement } from '../../modules/assurance/plan-review-coverage.ts';
 import {
@@ -157,6 +158,8 @@ export type PlanReviewProgressEnvelope = {
 };
 
 export type PlanReviewRetryEnvelope = {
+  timeoutMs?: number;
+  retryExplanation?: ProviderRetryExplanation;
   schemaVersion: 1;
   kind: 'plan-review-retry';
   investigationId: string;
@@ -262,6 +265,8 @@ export type ProviderProgressEnvelope = {
 };
 
 export type ProviderRetryEnvelope = {
+  timeoutMs?: number;
+  retryExplanation?: ProviderRetryExplanation;
   schemaVersion: 1;
   kind: 'provider-retry';
   investigationId: string;

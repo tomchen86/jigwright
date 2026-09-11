@@ -2,9 +2,11 @@
  * Routes execution job inspection, retries and evidence retention commands.
  *
  * Invariants:
- * - Executing a requested retry requires the Grant argument and uses the
- *   granted replacement service.
+ * - Explained retries remain owned by their planning lifecycle.
+ * - Budget exceptions use the existing granted replacement service.
  */
+import fs from 'node:fs';
+import path from 'node:path';
 import { type CommandResult, usage } from './cli-input.ts';
 import type { WorkflowError } from '../../foundation/errors/errors.ts';
 import { dispatchProviderWorker } from '../worker/provider-worker.ts';
@@ -18,7 +20,8 @@ import {
   requestExecutionReplacement,
   executeGrantedReplacement,
   productionConsumedPlanReviewReplayPort,
-  prepareProviderReplacement,
+  previewExecutionJobRetry,
+  requestExecutionJobRetry,
   inspectEvidenceRetention,
   runEvidenceRetentionMaintenance,
   pinWorkflowEvidence,
@@ -26,7 +29,7 @@ import {
 
 function executionJobUsage(): WorkflowError {
   return usage(
-    'Usage: pnpm workflow job <list|status <job-id>|watch <job-id>|prune --limit <count>|retry-pump --limit <count>|retry-schedules|retry-receipts [schedule-id]|retry-request <job-id> --timeout <milliseconds>|retry <job-id> --grant <grant-id>|retry-preview <job-id> --timeout <milliseconds>> [--json]',
+    'Usage: pnpm workflow job <list|status <job-id>|watch <job-id>|prune --limit <count>|retry-pump --limit <count>|retry-schedules|retry-receipts [schedule-id]|retry-request <job-id> --input <retry.json>|retry-request <job-id> --timeout <milliseconds>|retry <job-id> --grant <grant-id>|retry-preview <job-id> [--timeout <milliseconds>]> [--json]',
   );
 }
 function retentionUsage(): WorkflowError {
@@ -124,6 +127,35 @@ export function dispatchExecutionJobCommand(
       result: requestExecutionReplacement(cwd, rest[1]!, { timeoutMs }),
     };
   }
+  if (
+    rest[0] === 'retry-request' &&
+    rest.length === 4 &&
+    rest[2] === '--input'
+  ) {
+    let input: unknown;
+    try {
+      input = JSON.parse(fs.readFileSync(path.resolve(cwd, rest[3]!), 'utf8'));
+    } catch {
+      throw usage(
+        'Retry input must be a readable JSON file from retry-preview.',
+      );
+    }
+    return {
+      command,
+      action: 'retry-request',
+      ok: true,
+      result: requestExecutionJobRetry(cwd, rest[1]!, input, {
+        collaborationGrantValidation: {
+          consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
+          consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+        },
+        providerDispatcher:
+          process.env.WORKFLOW_TEST_DISABLE_PROVIDER_DISPATCH === '1'
+            ? undefined
+            : dispatchProviderWorker,
+      }),
+    };
+  }
   if (rest[0] === 'retry' && rest.length === 4 && rest[2] === '--grant') {
     return {
       command,
@@ -140,18 +172,20 @@ export function dispatchExecutionJobCommand(
   }
   if (
     rest[0] === 'retry-preview' &&
-    rest.length === 4 &&
-    rest[2] === '--timeout'
+    (rest.length === 2 || (rest.length === 4 && rest[2] === '--timeout'))
   ) {
-    const timeoutMs = Number.parseInt(rest[3]!, 10);
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 1) {
-      throw executionJobUsage();
-    }
+    const timeoutMs = rest.length === 4 ? Number(rest[3]) : undefined;
     return {
       command,
       action: 'retry-preview',
       ok: true,
-      result: prepareProviderReplacement(cwd, rest[1]!, { timeoutMs }),
+      result: previewExecutionJobRetry(cwd, rest[1]!, {
+        timeoutMs,
+        collaborationGrantValidation: {
+          consumedRoleResultReplay: productionConsumedPlanReviewReplayPort,
+          consumedPlanReviewReplay: productionConsumedPlanReviewReplayPort,
+        },
+      }),
     };
   }
   throw executionJobUsage();

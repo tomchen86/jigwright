@@ -426,8 +426,8 @@ function assertPlanReviewRetryOwnership(paths, refs, node, output, request, expe
             previousRetry.attempt >= 2
             ? previousRetry.attempt
             : 0;
-    const { invocationId: _previousInvocationId, nonce: _previousNonce, requestDigest: _previousRequestDigest, policyDigest: _previousPolicyDigest, limits: _previousLimits, ...previousRequestBinding } = previousRequest;
-    const { invocationId: _replacementInvocationId, nonce: _replacementNonce, requestDigest: _replacementRequestDigest, policyDigest: _replacementPolicyDigest, limits: _replacementLimits, ...replacementRequestBinding } = request;
+    const { invocationId: _previousInvocationId, nonce: _previousNonce, requestDigest: _previousRequestDigest, policyDigest: _previousPolicyDigest, limits: _previousLimits, retryExplanation: _previousExplanation, ...previousRequestBinding } = previousRequest;
+    const { invocationId: _replacementInvocationId, nonce: _replacementNonce, requestDigest: _replacementRequestDigest, policyDigest: _replacementPolicyDigest, limits: _replacementLimits, retryExplanation: _replacementExplanation, ...replacementRequestBinding } = request;
     if (previousAttempt === 0 ||
         retry.attempt !== previousAttempt + 1 ||
         retry.failedInvocation.attempt !== previousAttempt ||

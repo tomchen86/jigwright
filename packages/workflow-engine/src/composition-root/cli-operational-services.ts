@@ -37,3 +37,8 @@ export {
   listProviderRetryScheduleReceipts,
 } from '../runtime/provider-execution/provider-retry-scheduler.ts';
 export { productionConsumedPlanReviewReplayPort } from './grant-verifier-composition.ts';
+
+export {
+  previewExecutionJobRetry,
+  requestExecutionJobRetry,
+} from '../application/control-plane/execution-job-retry.ts';

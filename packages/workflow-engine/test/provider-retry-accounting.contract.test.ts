@@ -26,6 +26,7 @@ import { loadInvestigationRuntimeContext } from '../src/composition-root/lifecyc
 import { listProviderInvocationLifecycleProjections } from '../src/runtime/storage-journal/investigation-session-store.ts';
 import {
   createProviderInvocationRequest,
+  recreateProviderInvocationRequest,
   type ProviderInvocationRequest,
 } from '../src/modules/provider-orchestration/provider-contracts.ts';
 import {
@@ -48,6 +49,53 @@ import { authorizeAutomaticProviderRetry } from '../src/modules/provider-orchest
 import { createFixtureRepository, git, isWorkflowError } from './fixture.ts';
 
 const CREATED_AT = '2026-08-03T08:00:00.000Z';
+
+test('retry explanations are bound to the persisted request without changing execution limits', () => {
+  const repository = createFixtureRepository();
+  try {
+    const manifest = createManifest(repository);
+    const original = createRequest(
+      repository,
+      manifest,
+      'invocation-explanation',
+    );
+    const { schemaVersion, requestDigest, roleAssignmentDigest, ...input } =
+      original;
+    const retryExplanation = {
+      failureReason:
+        'Root cause is uncertain; the sandbox preflight was unavailable.',
+      plannedAction:
+        'Retry in the authorized host environment using the same timeout.',
+    };
+    const explained = createProviderInvocationRequest({
+      ...input,
+      retryExplanation,
+    });
+    assert.deepEqual(explained.limits, original.limits);
+    assert.deepEqual(
+      recreateProviderInvocationRequest(JSON.parse(JSON.stringify(explained))),
+      explained,
+    );
+    assert.notEqual(explained.requestDigest, original.requestDigest);
+    assert.throws(() =>
+      recreateProviderInvocationRequest({
+        ...explained,
+        retryExplanation: {
+          ...retryExplanation,
+          plannedAction: 'A different plan',
+        },
+      }),
+    );
+    assert.throws(() =>
+      createProviderInvocationRequest({
+        ...input,
+        retryExplanation: { ...retryExplanation, failureReason: ' ' },
+      }),
+    );
+  } finally {
+    fs.rmSync(repository, { recursive: true, force: true });
+  }
+});
 
 test('provider policy and retry readers contain no V1 cleanup parsers', () => {
   const storeRoot = new URL('../src/runtime/storage-journal/', import.meta.url);

@@ -5,6 +5,7 @@
  * - Stored requirements retain their exact subject, author, baseline, and role bindings.
  * - A retry keeps its deterministic identity and the failed request's semantic inputs.
  */
+import type { ProviderRetryExplanation } from '../../modules/provider-orchestration/provider-retry-explanation.ts';
 import { canonicalJson } from '../../foundation/canonical-json/canonical-json.ts';
 import { ExitCode, workflowError } from '../../foundation/errors/errors.ts';
 import {
@@ -170,7 +171,10 @@ export function planReviewRetryBindingDigest(
 export function createPlanReviewReplacementRequest(
   input: PlanReviewRetryEnvelope,
   failedRequest: ProviderInvocationRequest,
-  executionPolicy: Pick<ProviderInvocationRequest, 'policyDigest' | 'limits'>,
+  executionPolicy: Pick<
+    ProviderInvocationRequest,
+    'policyDigest' | 'limits'
+  > & { retryExplanation?: ProviderRetryExplanation },
 ): ProviderInvocationRequest {
   const bindingDigest = planReviewRetryBindingDigest(input);
   return createProviderInvocationRequest({
@@ -191,6 +195,13 @@ export function createPlanReviewReplacementRequest(
     evaluatorVersion: failedRequest.evaluatorVersion,
     policyDigest: executionPolicy.policyDigest,
     limits: executionPolicy.limits,
+    ...((input.retryExplanation ?? executionPolicy.retryExplanation) ===
+    undefined
+      ? {}
+      : {
+          retryExplanation:
+            input.retryExplanation ?? executionPolicy.retryExplanation,
+        }),
   });
 }
 
